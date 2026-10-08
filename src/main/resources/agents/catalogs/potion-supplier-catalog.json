@@ -33,6 +33,7 @@
     { "mapId": 541000000, "npcId": 9270022, "town": "Singapore" },
     { "mapId": 550000000, "npcId": 9270057, "town": "Malaysia" },
     { "mapId": 600000000, "npcId": 9201060, "town": "New Leaf City" },
-    { "mapId": 801000300, "npcId": 9120002, "town": "Showa Town" }
+    { "mapId": 801000300, "npcId": 9120002, "town": "Showa Town" },
+    { "mapId": 105070001, "npcId": 1061001, "town": "Ant Tunnel Park" }
   ]
 }

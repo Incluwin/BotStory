@@ -3035,6 +3035,14 @@ public final class RosterService {
             // a boss's entrance (Mu Young's room): companions short of its standard look at their potions now (P7)
             world.executor().submit("boss.owner_arrived " + ownerId, () -> bossRuns.ownerArrived(ownerId, mapId));
         }
+        if (bossRuns != null && bossRuns.approachKeyAt(map.getId()) != null) {
+            int ownerId = owner.getId();
+            int mapId = map.getId();
+            // a boss's approach with a store (Ant Tunnel Park on the way down to Easy Balrog): companions short of its
+            // standard look at their potions now, and shop there before the party walks on (fix L7)
+            world.executor().submit("boss.owner_approached " + ownerId,
+                    () -> bossRuns.ownerApproached(ownerId, mapId));
+        }
         if (map.getEventInstance() != null) {
             return;
         }

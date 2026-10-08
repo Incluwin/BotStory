@@ -61,6 +61,7 @@ class AgentCareerShopCatalogTest {
         assertStop(260000000, 2100004, warrior, 260000000); // Ariant -> SagaT
         assertStop(230000002, 2060004, warrior, 230000000); // Aquarium -> Oannes
         assertStop(104000002, 1001100, warrior, 104000000); // Lith Harbor -> Mina, not a first-job town
+        assertStop(105070001, 1061001, warrior, 105070001); // Ant Tunnel Park -> its 24 Hr Mobile Store (fix L7)
     }
 
     @Test

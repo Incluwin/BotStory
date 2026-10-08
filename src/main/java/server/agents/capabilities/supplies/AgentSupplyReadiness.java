@@ -139,6 +139,16 @@ public final class AgentSupplyReadiness {
         default boolean restocksFrom(int agentCharacterId, int mapId) {
             return true;
         }
+
+        /**
+         * Whether the Agent may set off for a shop from {@code mapId} for {@code activity} although that map is no
+         * town and has monsters (a hunting field, where a duty holder otherwise never leaves its anchor): true where
+         * the host lets it top up on its way to that activity, from a store on that very map (Ant Tunnel Park's 24 Hr
+         * Mobile Store on the way down to Easy Balrog). False by default. Memory only, any thread.
+         */
+        default boolean restocksOnField(int agentCharacterId, int mapId, Activity activity) {
+            return false;
+        }
     }
 
     public static void install(Rule installed) {
@@ -170,6 +180,20 @@ public final class AgentSupplyReadiness {
         } catch (RuntimeException failure) {
             log.debug("readiness rule failed to answer for Agent {} on map {}", agentCharacterId, mapId, failure);
             return true;
+        }
+    }
+
+    /** The installed rule's answer to {@link Rule#restocksOnField}; false without a rule or if it failed. */
+    public static boolean restocksOnField(int agentCharacterId, int mapId, Activity activity) {
+        Rule current = rule;
+        if (current == null || activity == null) {
+            return false;
+        }
+        try {
+            return current.restocksOnField(agentCharacterId, mapId, activity);
+        } catch (RuntimeException failure) {
+            log.debug("readiness rule failed to answer for Agent {} on field {}", agentCharacterId, mapId, failure);
+            return false;
         }
     }
 
@@ -514,7 +538,7 @@ public final class AgentSupplyReadiness {
             return false;
         }
         Shortfall lacking = shortfall(agent, activity);
-        if (lacking.none() || !AgentSupplyReadinessRuntime.free(entry, agent)) {
+        if (lacking.none() || !AgentSupplyReadinessRuntime.free(entry, agent, activity)) {
             return false;
         }
         AgentSupplyReadinessState readiness =

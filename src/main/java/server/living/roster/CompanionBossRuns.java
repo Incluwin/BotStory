@@ -433,6 +433,60 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
     }
 
+    // ---- potions on the way there (fix L7: no shop is in reach of the entrance) --------------------
+
+    /**
+     * The boss whose approach map with a store {@code mapId} is (BossEntrance.approachMapId: Ant Tunnel Park,
+     * 105070001, on the walk down to Easy Balrog) while the switch lists it; null anywhere else or with the switch off.
+     * Memory only, any thread.
+     */
+    String approachKeyAt(int mapId) {
+        BossEntrance entrance = BossEntrance.atApproachMap(mapId);
+        LivingWorldConfig config = world.config();
+        String bossKey = entrance == null ? null : entrance.definition().key();
+        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+    }
+
+    /**
+     * The boss whose potion standard companion {@code bot} keeps on its way there: the boss's key while it stands on
+     * that boss's approach map with the switch listing the boss ({@link #approachKeyAt}), it is at or above the boss's
+     * level (its expedition's minimum: 50 for Easy Balrog) and it is in its owner's party; null otherwise. The rule
+     * opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
+     */
+    String approachKeyFor(Character bot, int ownerId) {
+        String bossKey = bot == null ? null : approachKeyAt(bot.getMapId());
+        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
+        if (definition == null || bot.getLevel() < definition.type().getMinLevel()) {
+            return null;
+        }
+        Party party = bot.getParty();
+        return party != null && party.getMemberById(ownerId) != null ? bossKey : null;
+    }
+
+    /**
+     * On companion-ops: the owner came into a boss's approach map with a store ({@code mapId},
+     * RosterService.ownerEnteredMap). Each companion of theirs in their party at or above the boss's level that is
+     * short of the boss's potion standard looks at its potions on its next tick instead of its next check, so it shops
+     * at that store (and says when it will be back) before the party walks on.
+     */
+    void ownerApproached(int ownerId, int mapId) {
+        String bossKey = approachKeyAt(mapId);
+        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
+        Character owner = definition == null ? null : world.roster().onlineCharacter(ownerId);
+        Party party = owner == null ? null : owner.getParty();
+        if (party == null) {
+            return;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            Character bot = persona == null || world.roster().cachedOwnerOf(persona.id()) != ownerId ? null : bot(id);
+            if (bot != null && bot.getLevel() >= definition.type().getMinLevel()) {
+                supplies.checkIfShort(id, bossKey);
+            }
+        }
+    }
+
     // ---- the host rule (AgentBossRunHost), on the run's tick -------------------------------------
 
     /**

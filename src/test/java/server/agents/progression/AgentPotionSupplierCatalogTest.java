@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Every town potion supplier is a real NPC shop, standing on its map, that the portal router walks to. */
 class AgentPotionSupplierCatalogTest {
-    private static final Set<Integer> BASIC_HP_POTIONS = Set.of(2000000, 2000001, 2000002);
-    private static final Set<Integer> BASIC_MP_POTIONS = Set.of(2000003, 2000006);
+    /** Red, Orange and White; and Unagi, which Ant Tunnel Park's 24 Hr Mobile Store sells instead (fix L7). */
+    private static final Set<Integer> BASIC_HP_POTIONS = Set.of(2000000, 2000001, 2000002, 2022003);
+    /** Blue and Mana Elixir; and Pure Water, which Ant Tunnel Park's 24 Hr Mobile Store sells instead (fix L7). */
+    private static final Set<Integer> BASIC_MP_POTIONS = Set.of(2000003, 2000006, 2022000);
     private static final Pattern LIFE_BLOCK = Pattern.compile("(?s)<imgdir name=\"life\">(.*?)\\n  </imgdir>");
     private static final Pattern LIFE_ENTRY = Pattern.compile("(?s)<imgdir name=\"\\d+\">(.*?)</imgdir>");
     private static final Pattern FIELD = Pattern.compile("name=\"(\\w+)\" value=\"([^\"]*)\"");
@@ -109,6 +111,15 @@ class AgentPotionSupplierCatalogTest {
             assertFalse(supplier.npcId() == 2040049, "the Gumball Machine on Eos Tower's 26th-40th floors");
             assertFalse(supplier.npcId() == 1061002, "Sleepywood's sauna: no portal leads in");
         }
+    }
+
+    @Test
+    void antTunnelParksMobileStoreIsTheLastEntryTheStopOnTheWayDownToEasyBalrog() {
+        // fix L7 (2026-10-08): no shop is in reach of Mu Young's room; this store on the walk down sells Unagi
+        // (2022003) and Pure Water (2022000) (db/data/102-shopitems-data.sql), appended so earlier ties break as before
+        List<AgentPotionSupplierCatalog.Supplier> suppliers = AgentPotionSupplierCatalog.suppliers();
+        assertEquals(new AgentPotionSupplierCatalog.Supplier(105070001, 1061001, "Ant Tunnel Park"),
+                suppliers.get(suppliers.size() - 1));
     }
 
     @Test

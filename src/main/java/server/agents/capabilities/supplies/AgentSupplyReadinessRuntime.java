@@ -35,18 +35,18 @@ import java.util.function.LongSupplier;
 
 /**
  * The standing readiness duty on the Agent tick (AgentSupplyReadiness). An Agent the host gave a duty looks at its
- * potions and projectiles every CHECK_INTERVAL_MS; short of the standard on a town map, or a map without monsters
- * that is no travel station (a party quest's entry, a lobby), whose nearest potion supplier is at most
- * STANDING_MAX_HOPS away (DESK_MAX_HOPS on a party quest's recruit map), from a map the host lets it shop from (never
- * a boss's gate), and free (alive, outside an event, no objective, shop visit, trade, queued script task or Activity
- * Host controller of its own, and, while it follows, its anchor still on its map), it offers procurement a readiness
- * request, which one visit to the supplier fills for HP, MP and projectiles. It never goes when the trip cannot be
- * paid for (the ammo top-up at a Victoria supplier plus the potions to the standard at the supplier's cheapest
- * potion, and for a trip short of ammo alone the readiness ammo at the supplier, against its purse less its wallet
- * reserve) or when its Use tab has no room for a new kind of potion or the new ammo stacks; it tells the host once and
- * waits until its purse grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Trips from
- * one town cut short twice in a row (its owner called it back, the shop failed) end its tries there until it has
- * been elsewhere.
+ * potions and projectiles every CHECK_INTERVAL_MS; short of the standard on a town map, a map without monsters that
+ * is no travel station (a party quest's entry, a lobby), or a field the host opens for its activity
+ * (Rule.restocksOnField: a store on a boss's approach), whose nearest potion supplier is at most STANDING_MAX_HOPS
+ * away (DESK_MAX_HOPS on a party quest's recruit map), from a map the host lets it shop from (never a boss's gate),
+ * and free (alive, outside an event, no objective, shop visit, trade, queued script task or Activity Host controller
+ * of its own, and, while it follows, its anchor still on its map), it offers procurement a readiness request, which
+ * one visit to the supplier fills for HP, MP and projectiles. It never goes when the trip cannot be paid for (the ammo
+ * top-up at a Victoria supplier plus the potions to the standard at the supplier's cheapest potion, and for a trip
+ * short of ammo alone the readiness ammo at the supplier, against its purse less its wallet reserve) or when its Use
+ * tab has no room for a new kind of potion or the new ammo stacks; it tells the host once and waits until its purse
+ * grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Trips from one town cut short twice
+ * in a row (its owner called it back, the shop failed) end its tries there until it has been elsewhere.
  *
  * <p>A duty holder's critical resupply ({@link #criticalGate}) passes a lighter check: it needs only the critical
  * deficit (back to POT_STOP) at the supplier's cheapest potion, without the ammo top-up. When even that cannot be
@@ -109,7 +109,7 @@ public final class AgentSupplyReadinessRuntime {
             return null;
         }
         if (state.cooldownInForce(nowMs, mesos(agent), freeUseSlots(agent), shortfall, agent.getMapId()) != null
-                || !free(entry, agent)) {
+                || !free(entry, agent, activity)) {
             return null;
         }
         if (!AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId())) {
@@ -582,13 +582,15 @@ public final class AgentSupplyReadinessRuntime {
     }
 
     /**
-     * Free for a trip of its own: alive, outside an event instance, on a town or monster-free map, with no objective, pending shop
-     * visit, open trade, queued script task, or Activity Host controller owning its foreground (an idle following
-     * Agent has none); and while it follows, its anchor stands on its map and is not changing maps (an owner heading
-     * out of town is followed, not left for the shop). Memory only.
+     * Free for a trip of its own: alive, outside an event instance, on a town or monster-free map (or a field the rule
+     * opens for {@code activity}, {@link AgentSupplyReadiness#restocksOnField}: a store on a boss's approach), with no
+     * objective, pending shop visit, open trade, queued script task, or Activity Host controller owning its foreground
+     * (an idle following Agent has none); and while it follows, its anchor stands on its map and is not changing maps
+     * (an owner heading out of town is followed, not left for the shop). Memory only.
      */
-    static boolean free(AgentRuntimeEntry entry, Character agent) {
-        if (agent.getHp() <= 0 || agent.getEventInstance() != null || !restockGround(agent)) {
+    static boolean free(AgentRuntimeEntry entry, Character agent, AgentSupplyReadiness.Activity activity) {
+        if (agent.getHp() <= 0 || agent.getEventInstance() != null || !restockGround(agent)
+                && !AgentSupplyReadiness.restocksOnField(agent.getId(), agent.getMapId(), activity)) {
             return false;
         }
         if (AgentObjectiveKernel.active(entry) != null || AgentShopStateRuntime.shopVisitPending(entry)

@@ -14,12 +14,17 @@ import java.util.WeakHashMap;
 /**
  * Where companions sign up for a boss (P7, flow 4): the boss run's entry NPC on its recruit map (Mu Young in her room,
  * 105100100, for Easy Balrog), and where each companion waiting to sign up stands beside her, by its ordinal in the
- * run, the way a lineup's extras wait beside a party quest's entry NPC (PqEntrance.Beside).
+ * run, the way a lineup's extras wait beside a party quest's entry NPC (PqEntrance.Beside). Also the map on the way
+ * there whose store its companions top up at ({@code approachMapId}; 0: none), since no shop is in reach of her room.
  */
-record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside) {
-    /** Mu Young stands at 617,246 (WZ 105100100 life/0): her companions wait at x 567, 537, 507, 477 and 447. */
+record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside, int approachMapId) {
+    /**
+     * Mu Young stands at 617,246 (WZ 105100100 life/0): her companions wait at x 567, 537, 507, 477 and 447. On the
+     * walk down from Sleepywood they pass Ant Tunnel Park (105070001), where the 24 Hr Mobile Store (1061001) sells
+     * Unagi and Pure Water.
+     */
     static final BossEntrance EASY_BALROG = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
-            new PqEntrance.Beside(-50, -30, true));
+            new PqEntrance.Beside(-50, -30, true), 105_070_001);
     // slot: zakum
 
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG);
@@ -35,6 +40,16 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside)
     static BossEntrance atRecruitMap(int mapId) {
         for (BossEntrance entrance : ALL) {
             if (entrance.definition.recruitMapId() == mapId) {
+                return entrance;
+            }
+        }
+        return null;
+    }
+
+    /** The entrance whose approach map (the one with a store on the way there) is {@code mapId}, or null. */
+    static BossEntrance atApproachMap(int mapId) {
+        for (BossEntrance entrance : ALL) {
+            if (entrance.approachMapId > 0 && entrance.approachMapId == mapId) {
                 return entrance;
             }
         }

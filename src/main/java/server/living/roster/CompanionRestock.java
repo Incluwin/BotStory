@@ -28,7 +28,9 @@ import java.util.function.LongSupplier;
  * entry NPC's room (Mu Young's, while COMPANION_BOSS_ENABLED_TYPES lists Easy Balrog) it keeps that boss's standard,
  * says about when it will be back as it sets off, and says when no shop is in reach (P7, user decision 7). A trip for
  * projectiles alone (its potions are fine; 2026-10-07) says the same things in its ammo lines, naming what it shoots;
- * a trip short of both says the potion lines.
+ * a trip short of both says the potion lines. Since no shop is in reach of her room, it keeps that standard on the
+ * walk down too, at the store of the boss's approach map (Ant Tunnel Park's 24 Hr Mobile Store), a field the rule
+ * opens to its trip while it is short, at the boss's level and in its owner's party (fix L7).
  *
  * <p>Memory only: {@link #standing} answers on any thread, the callbacks on the Agent tick and only hand their lines to
  * companion-ops; it never reads the store or writes a row.</p>
@@ -83,7 +85,19 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                 at.ownerId())) {
             return null; // told to wait, sent somewhere or hunting on its own: its owner's order stands
         }
-        return deskActivity(agentCharacterId);
+        AgentSupplyReadiness.Activity onTheWay = onTheWay(agentCharacterId, at.ownerId());
+        return onTheWay != null ? onTheWay : deskActivity(agentCharacterId);
+    }
+
+    /**
+     * The boss's standard a companion out with its owner keeps on that boss's approach map with a store
+     * (CompanionBossRuns.approachKeyFor: Ant Tunnel Park on the walk down to Easy Balrog, while the switch lists it,
+     * at the boss's level and in its owner's party); null anywhere else (fix L7).
+     */
+    private AgentSupplyReadiness.Activity onTheWay(int agentCharacterId, int ownerId) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        String key = bossRuns == null ? null : bossRuns.approachKeyFor(bot(agentCharacterId), ownerId);
+        return key == null ? null : AgentSupplyReadiness.Activity.partyQuest(key);
     }
 
     /**
@@ -112,6 +126,23 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     @Override
     public boolean restocksFrom(int agentCharacterId, int mapId) {
         return !world.config().companionRestockBossMap(mapId);
+    }
+
+    /**
+     * A boss's approach map with a store (Ant Tunnel Park, a hunting field, on the walk down to Easy Balrog) is open to
+     * a companion's trip for that boss's standard only: while it keeps that standard there ({@link #standing}: out with
+     * its owner, at the boss's level, in its owner's party, the switch listing the boss), stands on {@code mapId}, and
+     * is short of it. Memory only (fix L7).
+     */
+    @Override
+    public boolean restocksOnField(int agentCharacterId, int mapId, AgentSupplyReadiness.Activity activity) {
+        CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
+        if (activity == null || at == null || !activity.equals(standing(agentCharacterId))
+                || !activity.equals(onTheWay(agentCharacterId, at.ownerId()))) {
+            return false; // no duty, a desk's or the default one, or held outside a run
+        }
+        Character bot = bot(agentCharacterId);
+        return bot != null && bot.getMapId() == mapId && !AgentSupplyReadiness.shortfall(bot, activity).none();
     }
 
     /**

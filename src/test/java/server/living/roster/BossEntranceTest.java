@@ -38,6 +38,15 @@ class BossEntranceTest {
     }
 
     @Test
+    void easyBalrogsApproachWithAStoreIsAntTunnelPark() {
+        assertEquals(105070001, BossEntrance.EASY_BALROG.approachMapId());
+        assertSame(BossEntrance.EASY_BALROG, BossEntrance.atApproachMap(105070001));
+        assertNull(BossEntrance.atApproachMap(105100100), "Mu Young's room is her entrance, not its approach");
+        assertNull(BossEntrance.atApproachMap(105070000), "the field next to the park");
+        assertNull(BossEntrance.atApproachMap(0));
+    }
+
+    @Test
     void eachOrdinalWaitsThirtyPixelsFurtherLeftOnTheGroundBelow() {
         MapleMap room = muYoungsRoom(new Point(617, 246));
         when(room.getPointBelow(any(Point.class))).thenAnswer(inv -> new Point(((Point) inv.getArgument(0)).x, 252));

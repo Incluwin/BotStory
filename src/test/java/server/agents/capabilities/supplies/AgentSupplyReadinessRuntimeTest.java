@@ -86,11 +86,16 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int SLEEPYWOOD = 105_040_300;
     private static final int ORBIS_TRAIN_GATE = 200_000_121;
     private static final int PAPULATUS_GATE = 220_080_000;
+    /** A hunting field (town=0, about 60 monsters) with a store on it: the 24 Hr Mobile Store. */
+    private static final int ANT_TUNNEL_PARK = 105_070_001;
+    private static final int MOBILE_STORE = 1_061_001;
     private static final int OWNER = 77;
     private static final int RED = 50;
     private static final int BLUE = 200;
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
     private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
+    private static final AgentSupplyReadiness.Activity EASY_BALROG =
+            AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
 
     /** Character id -> {HP potions, MP potions}. */
     private final Map<Integer, int[]> potions = new HashMap<>();
@@ -120,6 +125,8 @@ class AgentSupplyReadinessRuntimeTest {
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
     /** Maps the rule keeps companions on (a boss's gate): no shop trip from there. */
     private final java.util.Set<Integer> noShopMaps = new java.util.HashSet<>();
+    /** Hunting fields the rule opens to a duty holder of Easy Balrog's standard (a store on the way down there). */
+    private final java.util.Set<Integer> fieldStores = new java.util.HashSet<>();
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final ShopGateway shops = mock(ShopGateway.class);
     private AgentRouteStatus route = AgentRouteStatus.MOVING;
@@ -186,6 +193,11 @@ class AgentSupplyReadinessRuntimeTest {
             @Override
             public boolean restocksFrom(int id, int mapId) {
                 return !noShopMaps.contains(mapId);
+            }
+
+            @Override
+            public boolean restocksOnField(int id, int mapId, AgentSupplyReadiness.Activity activity) {
+                return fieldStores.contains(mapId) && EASY_BALROG.equals(activity);
             }
 
             @Override
@@ -375,6 +387,73 @@ class AgentSupplyReadinessRuntimeTest {
 
         assertFalse(execution(entry).isActive());
         assertEquals(List.of(), calls);
+    }
+
+    /**
+     * Fix L7 (live 2026-10-07: no shop is in reach of Mu Young's room): on the walk down to Easy Balrog, Ant Tunnel
+     * Park is a hunting field, so a companion never set off from it. Where the rule opens the field for the boss's
+     * standard, a short one shops at the store on that same map (no travel, 0 hops) and follows its owner again after.
+     */
+    @Test
+    void onAFieldTheRuleOpensForABossItShopsAtTheStoreOnThatMapAndFollowsBack() {
+        Character isolde = companion(544, "Isolde", Job.CLERIC, 60, 40, 300_000);
+        stand(isolde, ANT_TUNNEL_PARK, false);
+        activities.put(544, EASY_BALROG);
+        AgentRuntimeEntry entry = following(isolde);
+
+        assertFalse(AgentSupplyReadiness.restockPending(entry, 500L), "a field the rule keeps closed");
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, isolde, 1_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of(), calls, "no trip and no callback while the rule keeps it closed (the switch off)");
+
+        fieldStores.add(ANT_TUNNEL_PARK);
+        assertTrue(AgentSupplyReadiness.restockPending(entry, 5_500L), "short, free, and the field is open now");
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, isolde, 6_000L));
+
+        AgentSupplyProcurementState execution = execution(entry);
+        assertTrue(execution.isActive());
+        assertTrue(execution.requestId().startsWith("readiness:HP_POTION:"), execution.requestId());
+        assertEquals(ANT_TUNNEL_PARK, execution.supplierMapId(), "the store on the same map");
+        assertEquals(MOBILE_STORE, execution.supplierNpcId(), "the 24 Hr Mobile Store");
+        assertEquals(AgentSupplyProcurementState.Phase.SHOPPING, execution.phase(), "no travel");
+        assertTrue(execution.resumeFollow(), "it follows its owner again after");
+        assertEquals(List.of("started 544 25000"), calls, "no hop: 25 s");
+    }
+
+    @Test
+    void anOpenFieldIsOpenOnlyForTheActivityTheRuleNamesAndOnlyWhileItsOwnerStaysThere() {
+        fieldStores.add(ANT_TUNNEL_PARK);
+        Character casse = companion(545, "Casse", Job.BANDIT, 5, 5, 300_000);
+        stand(casse, ANT_TUNNEL_PARK, false); // a party quest's standard: the field stays closed to it
+        AgentRuntimeEntry entry = following(casse);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of(), calls);
+
+        Character isolde = companion(546, "Isolde", Job.CLERIC, 60, 40, 300_000);
+        stand(isolde, ANT_TUNNEL_PARK, false);
+        activities.put(546, EASY_BALROG);
+        AgentRuntimeEntry walkingOn = following(isolde);
+        Character owner = AgentRelationshipRuntime.followTarget(walkingOn);
+        when(owner.getMapId()).thenReturn(105_070_100); // its owner walked on toward Sleepywood's depths
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(walkingOn, isolde, 1_000L));
+        assertFalse(execution(walkingOn).isActive(), "it follows its owner instead");
+        assertEquals(List.of(), calls);
+    }
+
+    @Test
+    void withNoRuleInstalledAFieldStaysClosed() {
+        AgentSupplyReadiness.install(null);
+        assertFalse(AgentSupplyReadiness.restocksOnField(547, ANT_TUNNEL_PARK, EASY_BALROG));
+        AgentSupplyReadiness.install(new AgentSupplyReadiness.Rule() {
+            @Override
+            public AgentSupplyReadiness.Activity standing(int id) {
+                return EASY_BALROG;
+            }
+        });
+        assertFalse(AgentSupplyReadiness.restocksOnField(547, ANT_TUNNEL_PARK, EASY_BALROG), "closed by default");
     }
 
     // (c)
