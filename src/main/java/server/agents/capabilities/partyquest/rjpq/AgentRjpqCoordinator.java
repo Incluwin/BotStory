@@ -19,7 +19,8 @@ import server.agents.runtime.AgentRuntimeRegistry;
  * moves the run's phase forward from the maps its members stand on, and ends the run when the event does. Each
  * companion's own tick keeps it out of FOLLOW for the whole run (map-sync would otherwise pull it into its leader's
  * Dark Lab or Lab Unit, past the doors and the one-room rule) and holds it at full rate while it is in the event.
- * Stage play is Step 2's: until then a companion stands where it is.
+ * Once its last action has settled, a living companion in the event plays the stage it stands on
+ * ({@link AgentRjpqStagePlay}).
  */
 final class AgentRjpqCoordinator {
     private static final Logger log = LoggerFactory.getLogger(AgentRjpqCoordinator.class);
@@ -43,7 +44,10 @@ final class AgentRjpqCoordinator {
         return agent != null ? agent : AgentCharacterGatewayRuntime.characters().findOnlineCharacterById(id);
     }
 
-    /** One companion's own tick: never FOLLOW inside a run, and full rate while it stands in the run's event. */
+    /**
+     * One companion's own tick: never FOLLOW inside a run, full rate while it stands in the run's event, and its stage
+     * play there while it lives.
+     */
     static void tickMember(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentRjpqMemberState member = session.member(agent.getId());
         if (member == null || !member.agent() || session.terminal()) {
@@ -57,6 +61,9 @@ final class AgentRjpqCoordinator {
         EventInstanceManager event = session.eventInstance();
         boolean inEvent = event != null && agent.getEventInstance() == event;
         AgentRjpqFullRateSimulation.apply(session, agent.getId(), entry, inEvent);
+        if (inEvent && actions().alive(agent) && nowMs >= member.nextActionAtMs()) {
+            AgentRjpqStagePlay.play(session, entry, agent, member, nowMs);
+        }
     }
 
     /** The run's own tick, on the lease holder. */

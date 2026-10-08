@@ -38,6 +38,10 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) {
     }
 
+    /** One companion walking to a book until the claim runs out. */
+    private record BookClaim(int agentId, long untilMs) {
+    }
+
     private final String sessionId = UUID.randomUUID().toString();
     private final AgentRjpqSide side;
     private final long seed;
@@ -50,6 +54,9 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private final Map<Integer, Long> downSinceMs = new LinkedHashMap<>();
     private final Map<Integer, Boolean> fullRateHeld = new LinkedHashMap<>();
+    private final Set<Integer> checkedBooks = new HashSet<>();
+    private final Map<Integer, BookClaim> bookClaims = new LinkedHashMap<>();
+    private int beakerTarget = -1;
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -314,6 +321,50 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     synchronized void setPotionsAtEntry(String potions) {
         potionsAtEntry = potions == null ? "" : potions;
+    }
+
+    /** Remembers that one of the run's companions checked this book (its object id); true the first time. */
+    synchronized boolean markBookChecked(int bookObjectId) {
+        bookClaims.remove(bookObjectId);
+        return checkedBooks.add(bookObjectId);
+    }
+
+    /** The books the run's companions have checked, as a player remembers the ones his party called out. */
+    synchronized Set<Integer> checkedBooks() {
+        return Set.copyOf(checkedBooks);
+    }
+
+    /**
+     * Claims a book for one companion until {@code untilMs}, so two companions do not walk to the same one; true when
+     * it is free, expired or already this companion's.
+     */
+    synchronized boolean claimBook(int bookObjectId, int agentId, long nowMs, long untilMs) {
+        BookClaim claim = bookClaims.get(bookObjectId);
+        if (claim != null && claim.agentId() != agentId && claim.untilMs() > nowMs) {
+            return false;
+        }
+        bookClaims.put(bookObjectId, new BookClaim(agentId, untilMs));
+        return true;
+    }
+
+    /** The books another companion has a live claim on. */
+    synchronized Set<Integer> booksClaimedByOthers(int agentId, long nowMs) {
+        Set<Integer> claimed = new HashSet<>();
+        bookClaims.forEach((book, claim) -> {
+            if (claim.agentId() != agentId && claim.untilMs() > nowMs) {
+                claimed.add(book);
+            }
+        });
+        return claimed;
+    }
+
+    /** Records the beaker the companions feed now; true when it changed (the first target counts as a change). */
+    synchronized boolean observeBeakerTarget(int beaker) {
+        if (beaker == beakerTarget) {
+            return false;
+        }
+        beakerTarget = beaker;
+        return true;
     }
 
     /** True only the first time a line key is used in this run. */

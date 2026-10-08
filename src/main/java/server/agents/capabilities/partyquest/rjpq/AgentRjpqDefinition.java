@@ -53,6 +53,13 @@ public final class AgentRjpqDefinition {
     public static final List<String> BEAKER_NAMES = List.of("beaker1", "beaker2", "beaker3");
     /** A beaker that reached this state was counted by its hit() (2618000.js; Reactor.wz 2618000 states 7-8). */
     public static final int BEAKER_COUNTED_STATE = 7;
+    /** Reactor.wz 2618000 item area around a beaker: lt(-26,-24) rb(24,9); a liquid dropped inside it is poured. */
+    public static final int BEAKER_AREA_LEFT_PX = 26;
+    public static final int BEAKER_AREA_RIGHT_PX = 24;
+    public static final int BEAKER_AREA_TOP_PX = 24;
+    public static final int BEAKER_AREA_BOTTOM_PX = 9;
+    /** The exit portal of the books, the tunnel and the beakers (rnj1_pt00, rnj1_out, rnj2_out). */
+    public static final String STAGE_EXIT_PORTAL = "pt00";
     public static final int REAL_BOX_LAB_ONE_REACTOR_ID = 2_612_002;
     public static final int REAL_BOX_LAB_TWO_REACTOR_ID = 2_612_001;
     public static final int DECOY_BOX_REACTOR_ID = 2_612_003;

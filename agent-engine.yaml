@@ -5789,3 +5789,27 @@ tuning:
     # Purpose: How often the RJPQ watchdog looks at every run, so a run whose companions all lie dead or are unloaded still ticks and a finished run is released.
     # Technical: AgentRjpqWatchdogRuntime registers one scheduler task at the first admission; each pass takes an expired coordinator lease for the run's first standing companion, runs AgentRjpqCoordinator.tickSession and releases a terminal run.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqWatchdogRuntime.PERIOD_MS: '5000'
+    # Values: 300-5000 milliseconds. Recommended: 900, the pause EPQ companions take after an action.
+    # Purpose: How long an RJPQ companion waits after it reads a book, drops a liquid or takes a portal before its next action, so it acts at a player's pace and the server has applied the last action.
+    # Technical: AgentRjpqStagePlay defers the member's next stage action by this much after runNpcObject, a liquid drop or enterPortal; AgentRjpqCoordinator.tickMember skips stage play until then.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ACTION_RETRY_MS: '900'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion keeps a book on stage one to itself while it walks there, so the companions split the books instead of crowding the same one.
+    # Technical: AgentRjpqStagePlay.books renews the claim on each tick it walks to the book (AgentRjpqSession.claimBook); the other companions skip a book with a live claim; a checked book drops its claim.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.BOOK_CLAIM_MS: '15000'
+    # Values: 30-150 pixels. Recommended: 80, EPQ's NPC radius.
+    # Purpose: How close an RJPQ companion stands to a book before it reads it, so it reads from beside the book as a player clicks one in reach.
+    # Technical: AgentRjpqStagePlay.books walks to the ground under the book until the companion is grounded within this distance, then stops and calls PartyQuestGateway.runNpcObject.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.NPC_REACH_PX: '80'
+    # Values: 20-80 pixels. Recommended: 45, EPQ's portal radius.
+    # Purpose: How close an RJPQ companion stands to a stage's exit portal before it takes it, so it walks onto the portal as a player does.
+    # Technical: AgentRjpqStagePlay.leave walks to portal pt00 until the companion is grounded within this distance, then stops and calls PartyQuestGateway.enterPortal.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.PORTAL_REACH_PX: '45'
+    # Values: 20-120 pixels. Recommended: 60.
+    # Purpose: How close an RJPQ companion stands to a drop (a liquid on stage three) before it picks it up.
+    # Technical: AgentRjpqStagePlay.pickUp walks to the drop until within this distance, then calls PrimitiveCapabilityGateway.lootItem with this distance as its limit.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.LOOT_REACH_PX: '60'
+    # Values: 5-40 pixels. Recommended: 20, well inside a beaker's 50-pixel-wide item area.
+    # Purpose: How close an RJPQ companion stands to the target beaker's spot before it drops a liquid, so the liquid lands in the beaker and is not lost on the floor.
+    # Technical: AgentRjpqStagePlay.pour drops one liquid only when the companion is grounded within this distance of the ground under the beaker and predictDropLanding (or its feet) lies inside the beaker's item area.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DROP_REACH_PX: '20'
