@@ -57,12 +57,13 @@ import static org.mockito.Mockito.when;
  * functions ask the living world (its class loaded inside them, lazily, never at the top level); the leader's list gets
  * the options as its fourth and fifth choices (status 2); a member already on his list, one who just joined it and the
  * owner who just created it get them as choices 1 and 3 of a window that ends with "That's all for now." (status 30).
- * The bench picker loops at status 40 until "That's all for now." (99) or an answer with no choice. Adobis has no
- * Normal branch that stays stock, so his join block runs only while he offers something, and every other join is the
- * stock line. Without the seven blocks his script is the stock one byte for byte (its SHA-256 at c6883f520, unchanged
- * since). Run in Graal as NPCScriptManager runs it: with the switch off (neither offer made), with no living world and
- * for an Agent's headless sign-up (no choices) every window is the stock script's; the in-progress and start branches
- * stay stock with both offers on; and every step of every talk answers with a window or ends it.
+ * The bench picker loops at status 40 until "That's all for now." (99) or an answer with no choice. His join block is
+ * guarded by the expedition type as Mu Young's is (Zakum, so it always runs): it joins first and asks for the choices
+ * only for one it listed, because the bench is offered only to one on his list. Without the seven blocks his script is
+ * the stock one byte for byte (its SHA-256 at c6883f520, unchanged since). Run in Graal as NPCScriptManager runs it:
+ * with the switch off (neither offer made), with no living world and for an Agent's headless sign-up (no choices) every
+ * window is the stock script's; the in-progress and start branches stay stock with both offers on; and every step of
+ * every talk answers with a window or ends it.
  */
 class AdobisHookScriptTest {
     private static final Path SCRIPT = Path.of("scripts/npc/2030013.js");
@@ -147,9 +148,12 @@ class AdobisHookScriptTest {
             + "                        status = 30;\n"
             + "                        return;\n"
             + "                    }\n";
-    /** d: a member joining his list while he offers something, before the stock join: the join first, then choices. */
+    /**
+     * d: a member joining his list, before the stock join: the join first, then choices. Guarded by the expedition type
+     * as Mu Young's Easy join is (always Zakum here), never by an offer: the bench is offered only to one on his list.
+     */
     private static final String JOINING = ""
-            + "                    if (companionOffer() || allyOffer()) {\n"
+            + "                    if (exped == ExpeditionType.ZAKUM) {\n"
             + "                        var joined = expedition.addMember(player);\n"
             + "                        var choices = expedition.contains(player) ? companionChoices() : null;\n"
             + "                        if (choices != null) {\n"
@@ -205,6 +209,7 @@ class AdobisHookScriptTest {
     private static final String ALLY_OPTION = "#L3#Call allies from my bench...#l";
     private static final String BOTH_CHOICES = "\r\n#b" + OPTION + "\r\n" + ALLY_OPTION
             + "\r\n#L2#That's all for now.#l";
+    private static final String BENCH_CHOICES = "\r\n#b" + ALLY_OPTION + "\r\n#L2#That's all for now.#l";
     private static final String STOCK_LIST = "What would you like to do?#b\r\n\r\n#L1#View current Expedition members#l"
             + "\r\n#L2#Start the fight!#l\r\n#L3#Stop the expedition.#l";
     private static final String FOURTH = "\r\n#L4#My party will register too.#l";
@@ -470,6 +475,23 @@ class AdobisHookScriptTest {
     }
 
     @Test
+    void anOwnerWhoseOnlyOfferIsTheBenchSeesItOnJoiningAndCreating() throws Exception {
+        benchOffered(); // zakum on COMPANION_BOSS_ALLY_TYPES and no party companion can sign up
+
+        assertEquals(List.of("simple " + JOINED + BENCH_CHOICES, "simple " + BENCH, "dispose"),
+                talk(script(), 3, 99), "joining his list, then the bench picker and \"That's all for now.\"");
+        verify(expedition).addMember(player);
+        verify(bossRuns).allyPicker(player, KEY);
+
+        fresh();
+        onTheChannel = null;
+        List<String> seen = talk(script(), 1, 2); // "Lets get this going!", then "That's all for now."
+        assertEquals(List.of("simple " + CREATED_LINE + BENCH_CHOICES, "dispose"), seen.subList(1, seen.size()),
+                "creating it");
+        verify(bossRuns, never()).registerFromNpc(any(), anyString());
+    }
+
+    @Test
     void theFifthChoiceOpensTheBenchPickerWhichLoopsAtStatus40() throws Exception {
         livingWorldOffers();
         benchOffered();
@@ -636,12 +658,13 @@ class AdobisHookScriptTest {
     }
 
     /**
-     * The living world runs, and its boss runs offer the owner "Call allies from my bench...": his picker offers Orrin
-     * and Magna, and a pick of either sends word and shows it again.
+     * The living world runs, and its boss runs offer the owner "Call allies from my bench..." once they are on his list
+     * (as CompanionBossAllies.context: never before the join): his picker offers Orrin and Magna, and a pick of either
+     * sends word and shows it again.
      */
     private void benchOffered() {
         when(world.bossRuns()).thenReturn(bossRuns);
-        when(bossRuns.alliesOffered(player, KEY)).thenReturn(true);
+        when(bossRuns.alliesOffered(player, KEY)).thenAnswer(inv -> expedition.contains(player));
         when(bossRuns.allyPicker(player, KEY)).thenReturn(BENCH);
         when(bossRuns.allyCall(any(), anyString(), anyInt())).thenReturn(SENT);
     }
@@ -690,6 +713,7 @@ class AdobisHookScriptTest {
         when(cm.createExpedition(ExpeditionType.ZAKUM)).thenAnswer(inv -> {
             if (createResult == 0) {
                 onTheChannel = expedition;
+                leading.set(true); // the one who creates it leads it, and is on its list
             }
             return createResult;
         });

@@ -141,7 +141,7 @@ function action(mode, type, selection) {
                     cm.sendOk("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it.");
                     cm.dispose();
                 } else { //If you aren't in it, you're going to get added
-                    if (companionOffer() || allyOffer()) {
+                    if (exped == ExpeditionType.ZAKUM) {
                         var joined = expedition.addMember(player);
                         var choices = expedition.contains(player) ? companionChoices() : null;
                         if (choices != null) {
