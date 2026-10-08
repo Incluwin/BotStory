@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntPredicate;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -89,13 +90,33 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
         executionAgentId = executionId;
     }
     public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs) {
-        if (id != executionAgentId && nowMs < executionLeaseUntilMs) return false;
-        if (nowMs >= executionLeaseUntilMs || id == executionAgentId) {
-            executionAgentId = id;
-            executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
-            return true;
-        }
-        return false;
+        return claimExecutionTick(id, nowMs, leaseMs, holder -> true);
+    }
+
+    /**
+     * As {@link #claimExecutionTick(int, long, long)}, except that a holder for which {@code holderAlive} is false
+     * (dead, or no longer loaded) loses its lease at once: a dead Agent's tick never reaches the OPQ runtime, so its
+     * lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps it until it expires.
+     */
+    public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs, IntPredicate holderAlive) {
+        if (id != executionAgentId && nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId)) return false;
+        executionAgentId = id;
+        executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
+        return true;
+    }
+
+    /**
+     * The watchdog's claim: an Agent member takes the lease only when it has expired or its holder is dead, with the
+     * same dead-holder rule as {@link #claimExecutionTick(int, long, long, IntPredicate)}.
+     */
+    public synchronized boolean claimExpiredExecutionTick(int id, long nowMs, long leaseMs,
+                                                          IntPredicate holderAlive) {
+        AgentOpqMemberState member = members.get(id);
+        if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT
+                || (nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId))) return false;
+        executionAgentId = id;
+        executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
+        return true;
     }
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;

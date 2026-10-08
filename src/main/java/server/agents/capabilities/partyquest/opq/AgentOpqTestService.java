@@ -326,6 +326,7 @@ public final class AgentOpqTestService {
         session.setLeadership(run.leaderId, run.leaderId);
         run.engagement.reserveEntry(nowMs);
         AgentOpqSessionRegistry.registerComplete(session);
+        AgentOpqWatchdogRuntime.ensureStarted();
         run.engagement.activateSession(session.sessionId(), nowMs);
         run.session = session;
         run.operator.dropMessage(6, "Six-Agent OPQ activated. Every in-PQ movement now uses authored navigation and portals.");

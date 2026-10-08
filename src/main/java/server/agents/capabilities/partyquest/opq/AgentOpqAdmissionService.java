@@ -151,6 +151,7 @@ public final class AgentOpqAdmissionService {
             lobby.reserve(nowMs);
             engagement.reserveEntry(nowMs);
             AgentOpqSessionRegistry.registerComplete(session);
+            AgentOpqWatchdogRuntime.ensureStarted();
             lobby.beginHandoff(nowMs);
             engagement.activateSession(session.sessionId(), nowMs);
             if (companionRun) {

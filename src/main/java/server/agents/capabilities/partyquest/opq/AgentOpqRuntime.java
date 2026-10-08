@@ -2,7 +2,9 @@ package server.agents.capabilities.partyquest.opq;
 
 import client.Character;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 /** OPQ facade: central coordination lease plus independent per-member room work. */
 public final class AgentOpqRuntime {
@@ -18,10 +20,25 @@ public final class AgentOpqRuntime {
         }
         if (session.paused()) return true;
         AgentOpqCoordinator.tickMember(session, entry, agent, nowMs);
-        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS)) {
+        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS, AgentOpqRuntime::holderAlive)) {
             AgentOpqCoordinator.tickSession(session, nowMs);
         }
         return true;
+    }
+
+    /**
+     * Whether an OPQ coordinator lease holder can still drive the party: its Agent is loaded and has HP left (the
+     * watchdog's own live test). A dead or unloaded holder hands the lease over at once.
+     */
+    static boolean holderAlive(int characterId) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
+        Character holder = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+        return holder != null && holder.getHp() > 0;
+    }
+
+    /** The coordinator lease every claim takes, the watchdog's included. */
+    static long coordinatorLeaseMs() {
+        return COORDINATOR_LEASE_MS;
     }
 
     public static boolean requestStop(int id, String reason, long nowMs) {

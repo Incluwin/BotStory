@@ -1505,6 +1505,11 @@ tuning:
     # Purpose: Spaces creation of the six dedicated OPQ observation fixtures.
     # Technical: The GM-only harness consumes this value before PQ entry; active OPQ travel and room ticks do not use it.
     server.agents.capabilities.partyquest.opq.AgentOpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 250-5000 milliseconds. Recommended: 1000 for timely OPQ liveness checks with modest scheduler overhead.
+    # Purpose: Scans active OPQ sessions for an expired or dead coordinator lease holder and for the loss of every live Agent.
+    # Technical: AgentOpqWatchdogRuntime iterates only AgentOpqSessionRegistry; a live Agent takes an expired or dead holder's lease and ticks the coordinator, and a session with no live Agent fails through the OPQ termination path.
+    server.agents.capabilities.partyquest.opq.AgentOpqWatchdogRuntime.PERIOD_MS: '1000'
+
     # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
     # Technical: Read only by the GM-only LMPQ observation harness between fixture launches; production LMPQ admission and coordination never read this value.
