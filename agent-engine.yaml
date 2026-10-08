@@ -5775,3 +5775,17 @@ tuning:
     # Purpose: How long a pirate is untouchable after Corkscrew Blow lands, as the client grants, so Corkscrew followed by quick attacks takes no touch or magic damage.
     # Technical: AgentClientSkillRules.invincible gates AgentCombatDamageRuntime.applyMobHit (touch damage) and ServerMobDamageService (server-driven mob attacks on Agents) for this long after a landed Corkscrew Blow.
     server.agents.capabilities.combat.AgentClientSkillRules.CORKSCREW_INVINCIBLE_MS: '2000'
+
+    # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
+    # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.
+    # Purpose: Bounds how long one companion keeps the right to run an RJPQ run's shared tick before another companion or the watchdog may take it over.
+    # Technical: Read by AgentRjpqRuntime when a companion claims the session's execution lease after its own member tick, and by AgentRjpqWatchdogRuntime, which takes over only a lease that has expired (every companion dead or unloaded).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqRuntime.COORDINATOR_LEASE_MS: '3000'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the time '!rjpqtest party prod' tells the leader to talk to Romeo or Juliet in.
+    # Purpose: Ends an admitted RJPQ companion run whose leader never starts the event, so the companions are handed back instead of standing in the hidden room.
+    # Technical: AgentRjpqCoordinator.tickSession counts it from the session's admission while no event is bound; the run fails with 'The RJPQ leader did not start the event in time' and its release recovers every companion.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 1000-30000 milliseconds. Recommended: 5000.
+    # Purpose: How often the RJPQ watchdog looks at every run, so a run whose companions all lie dead or are unloaded still ticks and a finished run is released.
+    # Technical: AgentRjpqWatchdogRuntime registers one scheduler task at the first admission; each pass takes an expired coordinator lease for the run's first standing companion, runs AgentRjpqCoordinator.tickSession and releases a terminal run.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqWatchdogRuntime.PERIOD_MS: '5000'
