@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.life.Monster;
 import server.maps.MapItem;
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,7 +32,8 @@ import static org.mockito.Mockito.when;
  * never try out00 (the leader's). They wait CLEAR_WAIT_MS for him on the golem's map, then leave through the event's
  * exit; a leader offline, down, out of the event or no longer leading the party is not waited on. The golem's marble is
  * the leader's for GOLEM_MARBLE_LEADER_FIRST_MS, then the work Agent's, and before a leave the companion holding it
- * hands it over at his feet (or drops it where it stands when he cannot take it). The watchdog after the clear leaves
+ * hands it over at his feet (or drops it where it stands when he cannot take it); a hand-over still open when the leave
+ * is due leaves the marble on the golem's map, never in a bag going out. The watchdog after the clear leaves
  * instead of failing; EXITING waits for the companions only; a leave with no player left in the event closes it; a run
  * that already ended does nothing more.
  */
@@ -225,7 +228,8 @@ class AgentEpqCompanionAfterClearTest {
         run.pickUp(marble);
         run.holds(mira, MARBLE, 1);
         AgentEpqCoordinator.tickSession(session, 26_000L);
-        said(mira, "got the golem's marble. i'll drop it in the fountain outside.");
+        said(mira, "got the golem's marble. take the portal out and i'll drop it in the fountain.");
+        neverSaid("got the golem's marble. i'll drop it in the fountain outside.");
     }
 
     @Test
@@ -331,20 +335,108 @@ class AgentEpqCompanionAfterClearTest {
         }
     }
 
+    /**
+     * Live 2026-10-08 (session 0bfe0fb4): the work Agent took the marble (E16t), its walk to the leader standing on the
+     * golem's map never ended, and the leave went at the hand-over's time-out with the marble in its bag ('marble=held'):
+     * the event's exit put it on the public 930000800, where no run drives a drop, and the run was released in the same
+     * pass. The leave still never waits past the time-out, but the holder first leaves the marble on the golem's map and
+     * tells him where it lies.
+     */
     @Test
-    void theLeaveNeverWaitsPastTheHandOversTimeout() {
+    void theLeaveNeverWaitsPastTheHandOversTimeoutAndNeverTakesTheMarbleOut() {
         AgentEpqSession session = companionRun();
-        run.holds(mira, MARBLE, 1); // she never gets to drop it
+        run.holds(mira, MARBLE, 1);
+        Point farSpot = new Point(-400, 150); // her walk to Ben never ends
+        when(mira.getPosition()).thenReturn(new Point(farSpot));
+        when(run.actions.predictDropLanding(eq(mira), any())).thenReturn(new Point(farSpot));
         AgentEpqCoordinator.tickSession(session, 2_000L);
-        AgentEpqCoordinator.tickSession(session, 62_000L);
+        AgentEpqCoordinator.tickSession(session, 62_000L); // the wait ends: the leave is decided
+        tick(session, mira, 62_000L);
+        verify(run.actions).navigate(run.entry(mira), BEN_SPOT, true);
+        tick(session, mira, 62_000L + AgentEpqHandOver.TIMEOUT_MS - 1L);
         AgentEpqCoordinator.tickSession(session, 62_000L + AgentEpqHandOver.TIMEOUT_MS - 1L);
         verify(run.event, never()).exitPlayer(any());
+        verify(run.inventory(), never()).dropItem(any(), any(), anyShort(), anyShort());
 
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class)) {
             AgentEpqCoordinator.tickSession(session, 62_000L + AgentEpqHandOver.TIMEOUT_MS);
-            assertEquals(1, lines.startingWith("EPQ after clear: session=" + session.sessionId()
-                    + " action=leave why=wait leader=Ben marble=held").size());
+            assertEquals(List.of("EPQ after clear: session=" + session.sessionId()
+                    + " action=leave why=wait leader=Ben marble=dropped"), lines.startingWith("EPQ after clear:"));
         }
+        InOrder order = inOrder(run.inventory(), run.event);
+        order.verify(run.inventory()).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
+        order.verify(run.event).exitPlayer(mira);
+        said(mira, "Ben, couldn't reach you, so the golem's marble is here. drop it by the fountain outside.");
+        said(mira, WAIT_OUTSIDE);
+    }
+
+    /** A holder kept off its feet beside him (knocked about) never drops at his feet; at the time-out it lands beside him. */
+    @Test
+    void aHolderOffItsFeetBesideTheLeaderLeavesTheMarbleRightNextToHimBeforeTheLeave() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 1);
+        when(mira.getPosition()).thenReturn(new Point(280, 100));
+        when(run.actions.footing(mira)).thenReturn(PrimitiveCapabilityGateway.Footing.AIR);
+        when(run.actions.predictDropLanding(eq(mira), any())).thenReturn(new Point(280, 150));
+        AgentEpqCoordinator.tickSession(session, 2_000L);
+        AgentEpqCoordinator.tickSession(session, 62_000L);
+        tick(session, mira, 62_000L);
+        tick(session, mira, 70_000L);
+        verify(run.inventory(), never()).dropItem(any(), any(), anyShort(), anyShort());
+
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class)) {
+            AgentEpqCoordinator.tickSession(session, 62_000L + AgentEpqHandOver.TIMEOUT_MS);
+            assertEquals(List.of("EPQ after clear: session=" + session.sessionId()
+                    + " action=leave why=wait leader=Ben marble=handed"), lines.startingWith("EPQ after clear:"));
+        }
+        InOrder order = inOrder(run.inventory(), run.event);
+        order.verify(run.inventory()).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
+        order.verify(run.event).exitPlayer(mira);
+        said(mira, "Ben, the golem's marble is right next to you. drop it by the fountain outside.");
+    }
+
+    /** A leader the holder has no route to gets the marble where it stands, and hears where it lies (E16x). */
+    @Test
+    void anUnreachableLeaderHearsWhereTheMarbleWasLeft() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 1);
+        when(mira.getPosition()).thenReturn(new Point(-400, 150));
+        when(run.actions.canReach(eq(run.entry(mira)), eq(mira), any())).thenReturn(false);
+        when(run.actions.predictDropLanding(eq(mira), any())).thenReturn(new Point(-400, 150));
+        AgentEpqCoordinator.tickSession(session, 2_000L);
+        AgentEpqCoordinator.tickSession(session, 62_000L);
+
+        tick(session, mira, 62_000L);
+
+        verify(run.inventory()).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
+        said(mira, "Ben, couldn't reach you, so the golem's marble is here. drop it by the fountain outside.");
+        run.holds(mira, MARBLE, 0);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class)) {
+            AgentEpqCoordinator.tickSession(session, 63_000L);
+            assertEquals(List.of("EPQ after clear: session=" + session.sessionId()
+                    + " action=leave why=wait leader=Ben marble=dropped"), lines.startingWith("EPQ after clear:"));
+        }
+    }
+
+    /** With no leader in the event to tell, a holder whose own pass never came drops it where it stands, silently. */
+    @Test
+    void aHolderStillHoldingItWhenTheLeaveGoesWithTheLeaderGoneDropsItWithoutAWord() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 1);
+        when(ben.getEventInstance()).thenReturn(null);
+        run.onMap(ben, AgentEpqDefinition.RECRUIT_MAP); // out through east00
+        AgentEpqCoordinator.tickSession(session, 2_000L); // why=left; she never gets a pass of her own
+        verify(run.event, never()).exitPlayer(any());
+
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class)) {
+            AgentEpqCoordinator.tickSession(session, 2_000L + AgentEpqHandOver.TIMEOUT_MS);
+            assertEquals(List.of("EPQ after clear: session=" + session.sessionId()
+                    + " action=leave why=left leader=Ben marble=dropped"), lines.startingWith("EPQ after clear:"));
+        }
+        InOrder order = inOrder(run.inventory(), run.event);
+        order.verify(run.inventory()).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
+        order.verify(run.event).exitPlayer(mira);
+        verify(run.packets, never()).broadcastChatText(eq(mira), any(), anyBoolean(), anyInt());
     }
 
     @Test

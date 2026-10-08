@@ -68,6 +68,7 @@ Each code change has a test that was red before it (red logs `p6g_epq_rv_<item>_
 | 2e19df983 | B11 (low): no coaching for a marble outside the fountain | New E17m fountain-miss. |
 | 370319997 | B12 (low): "let's head out" said from outside | Outside forms of every parting, chosen by whether the speaker still stands in the bound event. |
 | (this commit) | B1-B5, B7, B13 (docs) | The line table above; the Step 7 recipe fixes below. |
+| (fix/epq-golem-marble-fountain) | Live 2026-10-08: the holder of the golem's marble left with it ('marble=held') | The leave went at the hand-over's time-out with the walk to the leader still open, and the hand-over's own fallback (drop where it stands past TIMEOUT_MS) could never come first. The event's exit put the holder on the public 930000800 and the run was released in the same pass, so nothing could drop it in the fountain. Now a holder still holding it as the leave goes leaves it on its map first (E16h beside him, else the new E16x), and E16t no longer promises the fountain without the portal. |
 
 Recipe fixes in Step 7: the restore trap (B1: never '!setlevel me restore' or '!setlevel party restore' on Crewfriend), '!hpmp 0' for the leader (B2), L1b i with '!drop' only (B3), L10b on 930000200 (B4), the pass items for where the companions stand after an after-clear leave (B7), and the log proofs (B13: a case-insensitive grep that also matches 'EPQ companion exit closed the empty event:', 'EPQ member left the run and was ejected' and 'companion EPQ'; L0 without the desk-install line, which does not exist; 'decision=PROCEED'; E16m at once in L1b f; E14w only when a companion tops up; COMPLETED only on 'EPQ session released:').
 
@@ -120,8 +121,9 @@ No finding was skipped. Finding B13 arrived cut off after its item 6; items 1-6 
 | E16 | cleared | The clear, with him standing on 930000600 | Narrator | we did it! only you can open the way out, `<leader>`. the portal on the right. |
 | E16d | cleared (same key as E16: only one of the two is said) | The clear, with him down | Narrator | we got the golem! sorry you went down, `<leader>`. see you outside. |
 | E16m | golem-marble | The golem's marble lies on 930000600 after the clear (said at once) | Narrator | the golem dropped a marble, `<leader>`! grab it, it goes in the fountain outside. |
-| E16t | golem-marble-taken | The work Agent picked it up (GOLEM_MARBLE_LEADER_FIRST_MS, 15 s, after the drop) | The work Agent | got the golem's marble. i'll drop it in the fountain outside. |
-| E16h | golem-marble-handed | Before the leave, the holder dropped it at his feet | The holder | `<leader>`, the golem's marble is at your feet. drop it by the fountain outside. / ... right next to you ... |
+| E16t | golem-marble-taken | The work Agent picked it up (GOLEM_MARBLE_LEADER_FIRST_MS, 15 s, after the drop) | The work Agent | got the golem's marble. take the portal out and i'll drop it in the fountain. (fix 2026-10-08; was "got the golem's marble. i'll drop it in the fountain outside.") |
+| E16h | golem-marble-handed | Before the leave, the holder dropped it at his feet, or the leave came due (TIMEOUT_MS after its decision) and the marble landed right next to him | The holder | `<leader>`, the golem's marble is at your feet. drop it by the fountain outside. / ... right next to you ... |
+| E16x | golem-marble-left | Before the leave the holder has no route to him, or the leave came due (TIMEOUT_MS after its decision) before it got to him: it leaves the marble where it stands, on his map (fix 2026-10-08, new; the no-route drop was silent before) | The holder | `<leader>`, couldn't reach you, so the golem's marble is here. drop it by the fountain outside. |
 | E16w | wait-outside | The companions leave through the event's exit while he still stands in the event | Narrator | we'll head out and wait for you outside. |
 | E17a | fountain-dropped | A companion dropped the golem's marble in the fountain | The holder | marble's in the fountain! exp for everyone. |
 | E17b | fountain-hint | He holds the golem's marble on 930000800 | The first companion whose tick sees it | `<leader>`, drop the marble by the fountain. exp for everyone, and a fragment on the way out. |
@@ -324,6 +326,10 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
    f) Golem's marble (when 9300182 drops it; 60 %): E16m at once [B13]; leave it lying 15 s -> the work Agent takes it
       (E16t); stand still 60 s -> it walks to you, E16h, the marble lands at your feet, then E16w and 'EPQ after
       clear: action=leave ... marble=handed'; then the [B7] pass item of c. Record "not seen" when no marble drops.
+      [Fix 2026-10-08] When its walk does not end within 30 s of the leave's decision, the holder still never leaves
+      with the marble: E16h "right next to you" or E16x, an 'EPQ handover: item=golem-marble ...' line, then E16w and
+      'marble=handed' or 'marble=dropped', never 'marble=held'; the marble lies on 930000600 and no companion holds
+      4001164 on 300030100 afterwards.
    g) After a clear, close the leader's client -> 'EPQ after clear: action=leave why=offline' in the next pass, the run
       completed, no 'EPQ session failure:'; when you log back in, the [B7] pass item of c (they follow you again). In
       another run, close it before the clear -> 'EPQ parting: kind=GONE' and the failure in the next pass (not after

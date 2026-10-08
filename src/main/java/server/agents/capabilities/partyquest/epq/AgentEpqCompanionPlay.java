@@ -457,13 +457,26 @@ final class AgentEpqCompanionPlay {
         return "the golem dropped a marble, " + leader + "! grab it, it goes in the fountain outside.";
     }
 
-    /** E16t: the work Agent picked up the golem's marble. */
-    static final String GOLEM_MARBLE_TAKEN = "got the golem's marble. i'll drop it in the fountain outside.";
+    /**
+     * E16t: the work Agent picked up the golem's marble. It drops it in the fountain itself only when the leader takes
+     * out00 (the whole event goes to the fountain); a leave without him hands it over first (E16h, E16x), so the line
+     * says the condition.
+     */
+    static final String GOLEM_MARBLE_TAKEN =
+            "got the golem's marble. take the portal out and i'll drop it in the fountain.";
 
     /** E16h: before the companions leave, the golem's marble lies at the leader's feet (or right next to him). */
     static String golemMarbleHandedLine(String leader, boolean atHisFeet) {
         return leader + ", the golem's marble is " + (atHisFeet ? "at your feet" : "right next to you")
                 + ". drop it by the fountain outside.";
+    }
+
+    /**
+     * E16x: the leave is due and the holder never got to the leader: it leaves the golem's marble where it stands, on
+     * his map, before it goes.
+     */
+    static String golemMarbleLeftLine(String leader) {
+        return leader + ", couldn't reach you, so the golem's marble is here. drop it by the fountain outside.";
     }
 
     /** E16w: the companions leave through the event's exit while their leader is still in the event. */
@@ -555,8 +568,9 @@ final class AgentEpqCompanionPlay {
                 marblesByEllinLine(leader), LEAVING_MARBLES, CLIMB, STONE_FOUND, stoneBySpriteLine(leader),
                 stoneNudgeLine(leader), STONE_RECOLLECTED, stoneHeldLine(leader), LEAVING_STONE, DRINKING_UP,
                 altarReadyLine(leader), altarNudgeLine(leader), stoneOnTheFloorLine(leader), clearedLine(leader),
-                clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN, WAIT_OUTSIDE,
-                FOUNTAIN_DROPPED, fountainHintLine(leader), fountainMissLine(leader), SEE_YOU));
+                clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN,
+                golemMarbleLeftLine(leader), WAIT_OUTSIDE, FOUNTAIN_DROPPED, fountainHintLine(leader),
+                fountainMissLine(leader), SEE_YOU));
         lines.addAll(atFeetLines(leader));
         lines.add(memberLeftLine(name, 4));
         lines.add(memberLeftLine(name, 5));

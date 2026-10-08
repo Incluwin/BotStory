@@ -701,8 +701,10 @@ final class AgentEpqCompanionRun {
 
     /**
      * A decided leave goes once no companion in the event holds the golem's marble, or AgentEpqHandOver.TIMEOUT_MS
-     * after the decision: E16w while the leader still stands in the event, the EXITING phase and the event's own exit
-     * for the companions only ('EPQ after clear: ... action=leave').
+     * after the decision: a companion still holding it then leaves it on its map first (the event's exit would take it
+     * to the public 930000800, where no fountain is the run's: live 2026-10-08), then E16w while the leader still stands
+     * in the event, the EXITING phase and the event's own exit for the companions only ('EPQ after clear: ...
+     * action=leave').
      */
     static void leaveWhenReady(AgentEpqSession session, Character leader, long nowMs) {
         int holders = golemMarbleHolders(session);
@@ -710,6 +712,7 @@ final class AgentEpqCompanionRun {
                 || !session.markLeftAfterClear()) {
             return;
         }
+        if (holders > 0) holders = dropGolemMarblesBeforeTheLeave(session, nowMs);
         if (leader != null && leader.getHp() > 0 && inBoundEvent(session, leader)) {
             coordinate(session, narrator(session, leader), "wait-outside", AgentEpqCompanionPlay.WAIT_OUTSIDE);
         }
@@ -725,9 +728,10 @@ final class AgentEpqCompanionRun {
      * A companion on the golem's map past the clear, on its own tick (Step 2.9). Out00 is the leader's
      * (party6_out.js), so no companion tries it, and the invisible dummy is left alone. Before the leave the work Agent
      * takes the golem's marble once the leader had GOLEM_MARBLE_LEADER_FIRST_MS to take it; once the leave is decided a
-     * companion holding it hands it over at the leader's feet (AgentEpqHandOver, no NPC: an unreachable leader or a
-     * walk past TIMEOUT_MS gets it where the companion stands), or drops it where it stands without a word when he
-     * cannot take it. Everyone else stands.
+     * companion holding it hands it over at the leader's feet (AgentEpqHandOver, no NPC: an unreachable leader gets it
+     * where the companion stands, and a walk still open when the leave goes TIMEOUT_MS after its decision leaves it
+     * there too, in leaveWhenReady), or drops it where it stands without a word when he cannot take it. Everyone else
+     * stands.
      */
     static void afterClearMember(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                  AgentEpqMemberState member, long nowMs) {
@@ -1001,6 +1005,28 @@ final class AgentEpqCompanionRun {
         return leader.getMap() != null && AgentMapPerception.items(leader.getMap()).stream()
                 .anyMatch(drop -> drop != null && !drop.isPickedUp()
                         && drop.getItemId() == AgentEpqDefinition.GOLEMS_MARBLE);
+    }
+
+    /**
+     * Each companion of the run in its bound event that still holds the golem's marble as the leave goes leaves it on
+     * its map (AgentEpqHandOver.dropBeforeTheLeave); the holders that still hold one after (a drop that failed, or one
+     * with no runtime to drop it).
+     */
+    private static int dropGolemMarblesBeforeTheLeave(AgentEpqSession session, long nowMs) {
+        int stillHolding = 0;
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = AgentEpqCoordinator.character(member.characterId());
+            if (!inBoundEvent(session, agent)
+                    || AgentEpqCoordinator.actions().itemCount(agent, AgentEpqDefinition.GOLEMS_MARBLE) <= 0) {
+                continue;
+            }
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
+            if (entry == null || !AgentEpqHandOver.dropBeforeTheLeave(session, entry, agent, member, nowMs)) {
+                stillHolding++;
+            }
+        }
+        return stillHolding;
     }
 
     /** The run's companions in its bound event that hold the golem's marble (read from the characters). */

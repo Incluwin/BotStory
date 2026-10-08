@@ -141,15 +141,18 @@ final class AgentEpqHandOver {
         actions().navigate(entry, npc, true);
     }
 
-    /** Drops the whole stack in one drop, says where it lies (by where the map lands it), and logs it. */
-    private static void drop(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
-                             AgentEpqMemberState member, int itemId, int held, Character leader, Point spot,
-                             AgentEpqCompanionPlay.HandOver branch, boolean toNpc, long nowMs) {
+    /**
+     * Drops the whole stack in one drop, says where it lies (by where the map lands it), and logs it. True when it
+     * dropped.
+     */
+    private static boolean drop(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                AgentEpqMemberState member, int itemId, int held, Character leader, Point spot,
+                                AgentEpqCompanionPlay.HandOver branch, boolean toNpc, long nowMs) {
         Point at = agent.getPosition() == null ? null : new Point(agent.getPosition());
         Point landing = actions().predictDropLanding(agent, at);
         actions().stop(entry);
         int lyingBefore = lyingTotal(session, agent, itemId);
-        if (!AgentEpqCoordinator.dropItem(entry, agent, InventoryType.ETC, itemId, (short) held)) return;
+        if (!AgentEpqCoordinator.dropItem(entry, agent, InventoryType.ETC, itemId, (short) held)) return false;
         AgentEpqCompanionPlay.Place place = AgentEpqCompanionPlay.place(branch, landing, spot, REACH_PX, toNpc);
         boolean recollect = member.handOverRecollect();
         int lineage = member.handOverRecollectCount();
@@ -173,23 +176,45 @@ final class AgentEpqHandOver {
         }
         logHandOver(session, agent, itemId, held, place, recollect, leader, at, landing);
         say(session, agent, itemId, held, place, recollect, leader, lyingBefore, handOver, nowMs);
+        return true;
     }
 
     /**
      * Drops the whole stack where this companion stands, without a word ('EPQ handover: ... place=HERE'): the golem's
-     * marble before the companions leave, when the leader cannot take it (Step 2.9).
+     * marble before the companions leave, when the leader cannot take it (Step 2.9). True when it dropped.
      */
-    static void dropHere(AgentEpqSession session, AgentRuntimeEntry entry, Character agent, AgentEpqMemberState member,
-                         int itemId, int held, long nowMs) {
+    static boolean dropHere(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                            AgentEpqMemberState member, int itemId, int held, long nowMs) {
         Point at = agent.getPosition() == null ? null : new Point(agent.getPosition());
         Point landing = actions().predictDropLanding(agent, at);
         actions().stop(entry);
-        if (!AgentEpqCoordinator.dropItem(entry, agent, InventoryType.ETC, itemId, (short) held)) return;
+        if (!AgentEpqCoordinator.dropItem(entry, agent, InventoryType.ETC, itemId, (short) held)) return false;
         member.endHandOver();
         session.markProgress(nowMs);
         if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) session.noteGolemMarble("dropped");
         logHandOver(session, agent, itemId, held, AgentEpqCompanionPlay.Place.HERE, false,
                 AgentEpqCoordinator.character(session.eventLeaderId()), at, landing);
+        return true;
+    }
+
+    /**
+     * The leave's deadline for the golem's marble (Step 2.9): a companion still holding it when the leave goes (its
+     * walk to the leader never ended within TIMEOUT_MS of the decision) leaves it on its map before the event's exit
+     * takes it out to the public 930000800, where no fountain is the run's (live 2026-10-08: 'marble=held'). With the
+     * leader standing on its map it says where the map lands it: E16h when right next to him, else E16x; otherwise it
+     * drops it without a word (dropHere). True when it no longer holds one.
+     */
+    static boolean dropBeforeTheLeave(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                      AgentEpqMemberState member, long nowMs) {
+        int itemId = AgentEpqDefinition.GOLEMS_MARBLE;
+        int held = Math.max(0, actions().itemCount(agent, itemId));
+        if (held <= 0) return true;
+        Character leader = AgentEpqCoordinator.character(session.eventLeaderId());
+        boolean leaderThere = leader != null && leader.getHp() > 0 && leader.getMap() == agent.getMap()
+                && AgentEpqCompanionRun.inBoundEvent(session, leader);
+        if (!leaderThere) return dropHere(session, entry, agent, member, itemId, held, nowMs);
+        return drop(session, entry, agent, member, itemId, held, leader, groundSpot(leader),
+                AgentEpqCompanionPlay.HandOver.TO_NPC, false, nowMs);
     }
 
     /** A carrier about to go down drops its stack where it stands, says so, and the stack is due back at once. */
@@ -330,7 +355,14 @@ final class AgentEpqHandOver {
                     AgentEpqCompanionPlay.byNpcLine(itemId, name));
             return;
         }
-        if (place == AgentEpqCompanionPlay.Place.HERE) return;
+        if (place == AgentEpqCompanionPlay.Place.HERE) {
+            // E16x: the golem's marble left short of a leader standing on this map (it has no NPC to go to).
+            if (itemId == AgentEpqDefinition.GOLEMS_MARBLE && leader.getHp() > 0 && leader.getMap() == agent.getMap()) {
+                AgentEpqCompanionRun.coordinate(session, agent, "golem-marble-left",
+                        AgentEpqCompanionPlay.golemMarbleLeftLine(name));
+            }
+            return;
+        }
         boolean atHisFeet = place == AgentEpqCompanionPlay.Place.FEET;
         String feet = item + "-feet";
         if (recollect) {
