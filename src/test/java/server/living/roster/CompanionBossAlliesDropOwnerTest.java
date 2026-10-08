@@ -1,6 +1,8 @@
 package server.living.roster;
 
 import client.Character;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,9 +42,9 @@ import static server.living.roster.LifecycleHarness.HENESYS;
  * Who gets a monster's drops and mesos in a companion boss run (P7 Part B step 11, decision B7, through
  * LivingWorldHooks.bossDropOwner from Monster.killBy): when a bench ally of the run topped the damage, its owner gets
  * them while she stands on the monster's map; else the top damager there who is a player and no Agent; with no human
- * there the ally keeps them. After a logout handoff the human it stays with takes its owner's place. A party companion,
- * a human, a party quest's event, a field, a run that is gone and the ally switch off all keep the stock owner. Every
- * monster of the run's event counts (a claw as much as the body).
+ * there the ally keeps them. After a logout handoff the human it stays with takes its owner's place. An ally with an
+ * online human in its party, a party companion, a human, a party quest's event, a field, a run that is gone and the
+ * ally switch off all keep the stock owner. Every monster of the run's event counts (a claw as much as the body).
  */
 class CompanionBossAlliesDropOwnerTest {
     private static final int ORRIN = 911;
@@ -165,6 +168,29 @@ class CompanionBossAlliesDropOwnerTest {
     }
 
     @Test
+    void anAllyWithAnOnlineHumanInItsPartyKeepsIt() {
+        inTheFight();
+        stands(ben, battle);
+        Monster body = monster(AgentBalrogDefinition.BODY_MOB, battle);
+        hit(body, ally(ORRIN), 900);
+        hit(body, ben, 200);
+        hit(body, h.game.ann, 100);
+        Party allies = party(ORRIN, MAGNA); // its party of allies holds no human
+        when(ally(ORRIN).getParty()).thenReturn(allies);
+        assertSame(h.game.ann, dropOwner(body, ally(ORRIN)), "a party of allies only");
+
+        PartyCharacter benRow = member(BEN, false, true);
+        List<PartyCharacter> rows = List.of(member(ORRIN, true, true), member(MAGNA, true, true), benRow);
+        when(allies.getMembers()).thenReturn(rows);
+
+        assertSame(ally(ORRIN), dropOwner(body, ally(ORRIN)), "Ben, online, shares its party");
+
+        when(benRow.isOnline()).thenReturn(false); // Ben logged off; the party lists him offline
+
+        assertSame(h.game.ann, dropOwner(body, ally(ORRIN)), "an offline human in its party does not count");
+    }
+
+    @Test
     void aHumanCandidateKeepsItWithoutAskingTheRuns() {
         inTheFight();
         stands(ben, battle);
@@ -281,6 +307,25 @@ class CompanionBossAlliesDropOwnerTest {
 
     private static Character dropOwner(Monster monster, Character candidate) {
         return LivingWorldHooks.bossDropOwner(monster, candidate);
+    }
+
+    /** A game party whose members are the given bots, all online. */
+    private static Party party(int... botIds) {
+        Party party = mock(Party.class);
+        List<PartyCharacter> rows = new ArrayList<>();
+        for (int id : botIds) {
+            rows.add(member(id, true, true));
+        }
+        when(party.getMembers()).thenReturn(rows);
+        return party;
+    }
+
+    private static PartyCharacter member(int id, boolean bot, boolean online) {
+        PartyCharacter row = mock(PartyCharacter.class);
+        when(row.getId()).thenReturn(id);
+        when(row.isBot()).thenReturn(bot);
+        when(row.isOnline()).thenReturn(online);
+        return row;
     }
 
     private static Character human(int id, String name) {
