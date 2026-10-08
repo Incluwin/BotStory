@@ -2,8 +2,10 @@ package server.living.roster;
 
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
+import server.agents.progression.AgentPotionSupplierCatalog;
 import server.life.NPC;
 import server.maps.MapleMap;
+import server.maps.Portal;
 
 import java.awt.Point;
 import java.util.Collections;
@@ -16,15 +18,19 @@ import java.util.WeakHashMap;
  * 105100100, for Easy Balrog), and where each companion waiting to sign up stands beside her, by its ordinal in the
  * run, the way a lineup's extras wait beside a party quest's entry NPC (PqEntrance.Beside). Also the map on the way
  * there whose store its companions top up at ({@code approachMapId}; 0: none), since no shop is in reach of her room.
+ * A bench ally (Part B) comes into the room at its arrival portal, where players coming down to her land, and leaves
+ * by its exit portal.
  */
-record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside, int approachMapId) {
+record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside, int approachMapId,
+                    String arrivalPortal, String exitPortal) {
     /**
      * Mu Young stands at 617,246 (WZ 105100100 life/0): her companions wait at x 567, 537, 507, 477 and 447. On the
      * walk down from Sleepywood they pass Ant Tunnel Park (105070001), where the 24 Hr Mobile Store (1061001) sells
-     * Unagi and Pure Water.
+     * Unagi and Pure Water. Allies come in at top00 (-65,-264), where the stairway's six portals under00..05
+     * (105100000) land, and leave by outPerrion (-691,246), the room's way out to Perion.
      */
     static final BossEntrance EASY_BALROG = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
-            new PqEntrance.Beside(-50, -30, true), 105_070_001);
+            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion");
     // slot: zakum
 
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG);
@@ -79,6 +85,39 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
         Point point = new Point(npcAt.x + beside.dx() + beside.step() * ordinal, npcAt.y);
         Point ground = beside.grounded() ? map.getPointBelow(point) : null;
         return ground != null ? new Point(ground) : point;
+    }
+
+    /**
+     * The store on the approach map ({@code approachMapId}): the NPC the potion supplier catalog lists on that map
+     * (Ant Tunnel Park's 24 Hr Mobile Store, 1061001, for Easy Balrog); 0 with no approach map or no supplier on it.
+     * A bench ally buys at its prices on arrival (CompanionBossAllies), as it never walks past it.
+     */
+    int approachStoreNpcId() {
+        if (approachMapId <= 0) {
+            return 0;
+        }
+        for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
+            if (supplier.mapId() == approachMapId) {
+                return supplier.npcId();
+            }
+        }
+        return 0;
+    }
+
+    /** Where an ally comes into {@code map} (its arrival portal), or null when that map has no such portal. */
+    Point arrivalAt(MapleMap map) {
+        return portalAt(map, arrivalPortal);
+    }
+
+    /** Where an ally leaves {@code map} (its exit portal), or null when that map has no such portal. */
+    Point exitAt(MapleMap map) {
+        return portalAt(map, exitPortal);
+    }
+
+    private static Point portalAt(MapleMap map, String name) {
+        Portal portal = map == null || name == null ? null : map.getPortal(name);
+        Point at = portal == null ? null : portal.getPosition();
+        return at == null ? null : new Point(at);
     }
 
     private Point npcAt(MapleMap map) {

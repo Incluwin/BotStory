@@ -322,6 +322,19 @@ public class LivingWorldConfig {
      * companions (the Poison Golem mechanism). false = the stock choice of controller (touch damage only for bots).
      */
     public boolean COMPANION_BOSS_SERVER_AUTHORITY = true;
+    /**
+     * Boss expeditions whose entry NPC also offers an owner on her list "Call allies from my bench...", a comma list of
+     * {@link CompanionBossKeys#KNOWN} keys that COMPANION_BOSS_ENABLED_TYPES lists too: up to ROSTER_MAX - 5 benched
+     * companions travel down, sign up, fight in their own bot party and go back to their bench duty after the run.
+     * Empty = off: her window and every boss run are Part A's.
+     */
+    public String COMPANION_BOSS_ALLY_TYPES = "";
+    /** Owners whose companions may sign up for one expedition (1-6; 1 = Part A's one-owner rule). */
+    public int COMPANION_BOSS_OWNERS_MAX = 1;
+    /** Seats of the expedition list that companions always leave free for players (0-25). */
+    public int COMPANION_BOSS_HUMAN_SEATS = 2;
+    /** How long an ally walks to the room's way out after the run before it goes where it stands. */
+    public int COMPANION_BOSS_ALLY_WALK_OUT_MS = 20000;
 
     // Rumors
     public int RUMOR_TICK_MS = 60000;
@@ -356,6 +369,22 @@ public class LivingWorldConfig {
             return false;
         }
         for (String entry : COMPANION_BOSS_ENABLED_TYPES.split(",")) {
+            if (!entry.isBlank() && entry.trim().equalsIgnoreCase(bossKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when COMPANION_BOSS_ALLY_TYPES lists {@code bossKey} (any case, spaces around it ignored) and
+     * {@link #companionBossEnabled} is true for it too: allies need both switches.
+     */
+    public boolean companionBossAlliesEnabled(String bossKey) {
+        if (!companionBossEnabled(bossKey) || COMPANION_BOSS_ALLY_TYPES == null) {
+            return false;
+        }
+        for (String entry : COMPANION_BOSS_ALLY_TYPES.split(",")) {
             if (!entry.isBlank() && entry.trim().equalsIgnoreCase(bossKey.trim())) {
                 return true;
             }
@@ -540,6 +569,28 @@ public class LivingWorldConfig {
             if (!key.isBlank() && !CompanionBossKeys.known(key)) {
                 throw new IllegalArgumentException(CompanionBossKeys.message());
             }
+        }
+        for (String key : COMPANION_BOSS_ALLY_TYPES == null ? new String[0] : COMPANION_BOSS_ALLY_TYPES.split(",")) {
+            if (key.isBlank()) {
+                continue;
+            }
+            if (!CompanionBossKeys.known(key)) {
+                throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_TYPES must list boss keys ("
+                        + String.join(", ", CompanionBossKeys.KNOWN) + "), not \"" + key.trim() + "\"");
+            }
+            if (!companionBossEnabled(key)) {
+                throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_TYPES must list only bosses"
+                        + " COMPANION_BOSS_ENABLED_TYPES also lists, not \"" + key.trim() + "\"");
+            }
+        }
+        if (COMPANION_BOSS_OWNERS_MAX < 1 || COMPANION_BOSS_OWNERS_MAX > 6) {
+            throw new IllegalArgumentException("living_world.COMPANION_BOSS_OWNERS_MAX must be within 1..6");
+        }
+        if (COMPANION_BOSS_HUMAN_SEATS < 0 || COMPANION_BOSS_HUMAN_SEATS > 25) {
+            throw new IllegalArgumentException("living_world.COMPANION_BOSS_HUMAN_SEATS must be within 0..25");
+        }
+        if (COMPANION_BOSS_ALLY_WALK_OUT_MS < 1000 || COMPANION_BOSS_ALLY_WALK_OUT_MS > 120000) {
+            throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_WALK_OUT_MS must be within 1000..120000");
         }
     }
 }

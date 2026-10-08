@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.mock;
@@ -51,6 +52,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     boolean stillTheChannels = true;
     boolean adoptionAnswer = true;
     RunNpc runNpc = (agent, npcId, selections) -> true;
+    /** What a fake leave from the entry NPC's list does once the call is logged; nothing by default. */
+    BiConsumer<Expedition, Character> leaveList = (expedition, agent) -> { };
 
     /**
      * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is logged in, in the event
@@ -133,6 +136,12 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     }
 
     @Override
+    public void leaveList(Expedition expedition, Character agent) {
+        calls.add("leaveList " + agent.getId());
+        leaveList.accept(expedition, agent);
+    }
+
+    @Override
     public void navigate(int agentId, Point destination, boolean precise) {
         calls.add("navigate " + agentId + " " + destination.x + "," + destination.y);
     }
@@ -212,9 +221,23 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         /** The members a granted seat tied to the run; a test removes one to let go of its tie. */
         final Set<Integer> held = new HashSet<>();
         final List<AgentBossRunHost.RunEnded> ended = new ArrayList<>();
+        /**
+         * The seats of the list a companion leaves free for players (roomFor, logged as "room id listed/max"); below 0
+         * (the default) the host does not answer it, as a rule that leaves every seat to the stock list.
+         */
+        int reserve = -1;
 
         Host(List<String> calls) {
             this.calls = calls;
+        }
+
+        @Override
+        public boolean roomFor(AgentBossRunHost.Seat seat, int listed, int maxSize) {
+            if (reserve < 0) {
+                return true;
+            }
+            calls.add("room " + seat.agentCharacterId() + " " + listed + "/" + maxSize);
+            return listed < maxSize - reserve;
         }
 
         @Override

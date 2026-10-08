@@ -1,9 +1,14 @@
 package server.living.roster;
 
 import client.Character;
+import config.AgentYamlConfig;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.maps.MapleMap;
 
 import java.util.List;
 import java.util.Map;
@@ -13,8 +18,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * What a companion says in party chat about a boss run (P7, Mu Young's Easy Balrog), in its own lower-case player
  * voice: signed up, why it could not sign up, a missed start, going down, everyone down, seeing the run through for a
  * friend, gg, and off to the shop from the boss's entrance. A persona's arc or dialogue may have its own lines for
- * each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's name and
- * "{n}" whole minutes. Said on companion-ops.
+ * each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's name,
+ * "{n}" whole minutes, "{ammo}" a projectile word and "{eta}" a bench ally's recall ETA (RecallTravel.describe). A
+ * bench ally (Part B, "boss.ally.*": on its way down, here, back to camp) leads itself in a party of bots, so it tells
+ * its owner where the owner hears it ({@link #tell}). Said on companion-ops.
  */
 final class BossRunLines {
     static final String SIGNED_UP = "boss.signedup";
@@ -41,6 +48,24 @@ final class BossRunLines {
      * about when it will be back, as {@link #GO} says it.
      */
     static final String GO_AMMO = "boss.goAmmo";
+    static final String ALLY_ON_MY_WAY = "boss.ally.onmyway";
+    static final String ALLY_NO_ROOM = "boss.ally.noroom";
+    static final String ALLY_CANT_COME = "boss.ally.cantcome";
+    static final String ALLY_HERE = "boss.ally.here";
+    static final String ALLY_LOW_POTS = "boss.ally.lowpots";
+    /** Still short of projectiles after buying what it could on arrival ("{ammo}": stars, arrows, bolts, bullets). */
+    static final String ALLY_LOW_AMMO = "boss.ally.lowammo";
+    static final String ALLY_TURNED_BACK = "boss.ally.turnedback";
+    static final String ALLY_NOT_LISTED = "boss.ally.notlisted";
+    static final String ALLY_CALLED_OFF = "boss.ally.calledoff";
+    /**
+     * Back to camp after missing the start. Most often the Start took the ally in from the room while its owner stood
+     * elsewhere, and the run moved it back out; else the ally itself did not get in. So no wording says who went in.
+     */
+    static final String ALLY_MISSED = "boss.ally.missed";
+    static final String ALLY_GOOD_FIGHT = "boss.ally.goodfight";
+    static final String ALLY_NEXT_TIME = "boss.ally.nexttime";
+    static final String ALLY_GOODBYE = "boss.ally.goodbye";
 
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
@@ -94,7 +119,45 @@ final class BossRunLines {
                     "gonna grab potions first. back in ~{n} min.")),
             Map.entry(GO_AMMO, List.of(
                     "low on {ammo} for balrog, running to the shop. back in ~{n} min.",
-                    "gonna grab {ammo} first. back in ~{n} min.")));
+                    "gonna grab {ammo} first. back in ~{n} min.")),
+            Map.entry(ALLY_ON_MY_WAY, List.of(
+                    "heading down to the temple. {eta}.",
+                    "omw to mu young, {eta}.",
+                    "coming! be there in {eta}.")),
+            Map.entry(ALLY_NO_ROOM, List.of("too many of us out right now, can't make it down. sorry!")),
+            Map.entry(ALLY_CANT_COME, List.of(
+                    "can't get away right now, sorry.",
+                    "something came up, can't make it this time.")),
+            Map.entry(ALLY_HERE, List.of(
+                    "made it down. signing up.",
+                    "here! putting my name down.",
+                    "phew, long way down. where do i sign?")),
+            Map.entry(ALLY_LOW_POTS, List.of(
+                    "bit low on pots, i'll make it work.",
+                    "running low on pots and no shop down here. i'll manage.")),
+            Map.entry(ALLY_LOW_AMMO, List.of(
+                    "low on {ammo}, i'll make it last.",
+                    "not many {ammo} left and no shop down here. i'll make them count.")),
+            Map.entry(ALLY_TURNED_BACK, List.of(
+                    "list closed before i got there. heading back to camp.",
+                    "won't make it down in time, heading back. good luck!")),
+            Map.entry(ALLY_NOT_LISTED, List.of(
+                    "couldn't get my name down. heading back to camp.",
+                    "missed the list, sorry. back to camp for me.")),
+            Map.entry(ALLY_CALLED_OFF, List.of(
+                    "guess we're not going. back to camp.",
+                    "no fight today huh. back to camp then.")),
+            Map.entry(ALLY_MISSED, List.of(
+                    "missed the start. back to camp for me.",
+                    "didn't make it in with you. heading back to camp.")),
+            Map.entry(ALLY_GOOD_FIGHT, List.of(
+                    "good fight! back to camp.",
+                    "good fight. see ya around.",
+                    "gg, good fight. heading back to camp.")),
+            Map.entry(ALLY_NEXT_TIME, List.of(
+                    "we'll get him next time. back to camp.",
+                    "rough one. heading back to camp.")),
+            Map.entry(ALLY_GOODBYE, List.of("heading back to camp. see ya.")));
 
     private static final AtomicInteger counter = new AtomicInteger();
 
@@ -110,7 +173,7 @@ final class BossRunLines {
             case BANNED -> REFUSED_BANNED;
             case LATE -> REFUSED_LATE;
             case NOT_HERE -> REFUSED_NOT_HERE;
-            case BUSY, UNKNOWN -> REFUSED_OTHER;
+            case BUSY, UNKNOWN, WITHDRAWN -> REFUSED_OTHER;
         };
     }
 
@@ -148,11 +211,82 @@ final class BossRunLines {
         if (lines.isEmpty()) {
             return false;
         }
+        return world.roster().sayInParty(bot, line(lines, intent, name, minutes, null, ammo, run));
+    }
+
+    /**
+     * On companion-ops: {@code bot} says one of its {@code intent} lines where the human it came for, its anchor
+     * ({@code anchorId}: its owner, or the human it sees the run through for), hears it. In its party's chat when a
+     * human online shares its party (a party companion, as {@link #say}); else on its map when the anchor stands on
+     * that map (the same instance) and bots' map chat is on; else in a whisper to the anchor, once per intent per
+     * anchor in {@code run} (five allies down in the fight are one whisper; with no run, every time); else nowhere.
+     * "{name}" reads as {@code name} and "{eta}" as {@code eta}. False when it said nothing.
+     */
+    static boolean tell(LivingWorld world, Character bot, String intent, String name, String eta,
+                        CompanionBossRun run, int anchorId) {
+        return tell(world, bot, intent, name, eta, run, anchorId, null);
+    }
+
+    /**
+     * As {@link #tell(LivingWorld, Character, String, String, String, CompanionBossRun, int)}, "{ammo}" read as
+     * {@code ammo} (CompanionRestockLines.withAmmo: "ammo" when null).
+     */
+    static boolean tell(LivingWorld world, Character bot, String intent, String name, String eta,
+                        CompanionBossRun run, int anchorId, String ammo) {
+        if (bot == null) {
+            return false;
+        }
+        Persona persona = world.residents().personaOfCharacterId(bot.getId());
+        List<String> lines = lines(world, persona, intent);
+        if (lines.isEmpty()) {
+            return false;
+        }
+        if (humanInParty(bot)) {
+            return world.roster().sayInParty(bot, line(lines, intent, name, 0, eta, ammo, run));
+        }
+        if (anchorId == 0) {
+            return false;
+        }
+        MapleMap map = bot.getMap();
+        if (map != null && map.getCharacterById(anchorId) != null
+                && AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED) {
+            AgentDialogueTransportRuntime.sayMapNow(bot, line(lines, intent, name, 0, eta, ammo, run));
+            return true;
+        }
+        Character anchor = persona == null ? null : world.roster().onlineCharacter(anchorId);
+        if (anchor == null || run != null && !run.firstWhisper(anchorId, intent)) {
+            return false;
+        }
+        world.residents().whisper(persona, anchor, line(lines, intent, name, 0, eta, ammo, run));
+        return true;
+    }
+
+    /**
+     * One of {@code lines} (not empty), never a wording {@code run} said for {@code intent} until it said each, with
+     * "{name}", "{n}", "{eta}" and "{ammo}" (CompanionRestockLines.withAmmo) filled in.
+     */
+    private static String line(List<String> lines, String intent, String name, int minutes, String eta, String ammo,
+                               CompanionBossRun run) {
         int turn = counter.getAndIncrement();
         String wording = run == null ? lines.get(Math.floorMod(turn, lines.size())) : run.wording(intent, lines, turn);
         String line = wording
                 .replace("{name}", name == null ? "" : name)
-                .replace("{n}", Integer.toString(minutes));
-        return world.roster().sayInParty(bot, CompanionRestockLines.withAmmo(line, ammo));
+                .replace("{n}", Integer.toString(minutes))
+                .replace("{eta}", eta == null ? "" : eta);
+        return CompanionRestockLines.withAmmo(line, ammo);
+    }
+
+    /** True when a human online is in {@code bot}'s party (its owner's, for a party companion; never an ally's). */
+    static boolean humanInParty(Character bot) {
+        Party party = bot.getParty();
+        if (party == null) {
+            return false;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            if (!member.isBot() && member.isOnline()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

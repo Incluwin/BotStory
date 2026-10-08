@@ -9,22 +9,29 @@ import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 
 import java.awt.Point;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** A boss run walks each enlisted companion through Mu Young's own sign-up, one conversation per tick. */
+/**
+ * A boss run walks each enlisted companion through Mu Young's own sign-up, one conversation per tick. A member its
+ * host withdraws before Start is taken off her list by the run itself and refused WITHDRAWN.
+ */
 class AgentBossRunSessionRegistrationTest {
     private static final int OWNER = 1;
     private static final int THANE = 10;
@@ -185,6 +192,61 @@ class AgentBossRunSessionRegistrationTest {
     }
 
     @Test
+    void memberTheHostHasNoRoomForIsRefusedFullAndNeverTiedOrTalkingToMuYoung() {
+        AgentBossRunSession session = session(THANE);
+        session.addMember(ISOLDE, OWNER, NOW, AgentBossRunMember.Kind.SELF_LED);
+        inReach(THANE);
+        inReach(ISOLDE);
+        host.reserve = 2;
+        for (int player = 100; player < 126; player++) {
+            listed.add(player); // the owner and 26 more players: 27 of 30
+        }
+
+        session.tick(ports, host, NOW);
+        session.tick(ports, host, NOW + 500L);
+
+        assertEquals(List.of("room " + THANE + " 27/30", "seat " + THANE, "runNpc " + THANE + " " + MU_YOUNG + " 1",
+                        "registered " + THANE, "room " + ISOLDE + " 28/30", "refused " + ISOLDE + " FULL"),
+                ports.calls, "the host is asked with the list as it is before each turn, a self-led member's too");
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.REFUSED, session.member(ISOLDE).phase());
+        assertEquals(AgentBossRunHost.Refusal.FULL, session.member(ISOLDE).refusal());
+        assertFalse(host.held.contains(ISOLDE), "a member refused for room is never tied to the run");
+    }
+
+    @Test
+    void theRoomRuleIsForwardedAndAFailingOrMissingOneLeavesTheListToMuYoung() {
+        AgentBossRunSession session = session(THANE, ISOLDE);
+        inReach(THANE);
+        inReach(ISOLDE);
+        host.reserve = 30;
+        AgentBossRunHost.install(null);
+
+        session.tick(ports, AgentBossRunHost.guarded(host), NOW);
+        assertEquals(List.of("room " + THANE + " 1/30", "refused " + THANE + " FULL"), ports.calls);
+
+        AgentBossRunHost.Rule failing = new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean roomFor(AgentBossRunHost.Seat seat, int listed, int maxSize) {
+                throw new IllegalStateException("host down");
+            }
+        };
+        session.tick(ports, AgentBossRunHost.guarded(failing), NOW + 500L);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(ISOLDE).phase(),
+                "a failing room rule leaves the list's own check to Mu Young");
+
+        AgentBossRunHost.Seat seat = new AgentBossRunHost.Seat("easy_balrog", 7L, THANE, OWNER);
+        AgentBossRunHost.Rule silent = s -> true;
+        assertTrue(silent.roomFor(seat, 29, 30), "a rule that does not answer it leaves every seat to the list");
+        assertTrue(AgentBossRunHost.installed().roomFor(seat, 29, 30), "no rule installed");
+    }
+
+    @Test
     void unlistedAfterTheConversationIsRefusedForTheReasonReadBeforeIt() {
         ports.runNpc = (agent, npcId, selections) -> false;
 
@@ -290,6 +352,114 @@ class AgentBossRunSessionRegistrationTest {
         assertEquals(-1, AgentBossRunRegistry.waitingOrdinal(ISOLDE));
         assertFalse(AgentBossRunRegistry.anyWaiting());
         assertSame(session, AgentBossRunRegistry.forMember(ISOLDE), "a refused member stays in the run until it ends");
+    }
+
+    @Test
+    void withdrawingARegisteredMemberTakesItOffTheListThenRefusesItWithdrawnNotBanned() {
+        AgentBossRunSession session = session(THANE);
+        inReach(THANE);
+        ports.leaveList = (list, agent) -> {
+            assertSame(expedition, list);
+            listed.remove(agent.getId());
+        };
+        session.tick(ports, host, NOW);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        ports.calls.clear();
+
+        assertTrue(AgentBossRunService.withdraw(7L, THANE));
+        assertTrue(session.member(THANE).withdrawn());
+        assertEquals(List.of(), ports.calls, "the withdraw itself only marks the member");
+        assertTrue(listed.contains(THANE));
+
+        session.tick(ports, host, NOW + 500L);
+
+        assertEquals(List.of("leaveList " + THANE, "refused " + THANE + " WITHDRAWN"), ports.calls);
+        assertFalse(listed.contains(THANE));
+        assertEquals(AgentBossRunMember.Phase.REFUSED, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Refusal.WITHDRAWN, session.member(THANE).refusal());
+
+        session.tick(ports, host, NOW + 1_000L);
+        assertEquals(2, ports.calls.size(), "its own leave is never taken for the leader's ban");
+    }
+
+    @Test
+    void withdrawingAWaitingMemberRefusesItWithoutTouchingTheList() {
+        int flint = 12;
+        AgentBossRunSession session = session(THANE, ISOLDE, flint);
+        inReach(THANE);
+        inReach(ISOLDE);
+        assertTrue(session.withdraw(THANE));
+        assertTrue(session.withdraw(flint), "one still on its way (not loaded) is withdrawn too");
+
+        session.tick(ports, host, NOW);
+
+        assertEquals(List.of("refused " + THANE + " WITHDRAWN", "refused " + flint + " WITHDRAWN",
+                        "seat " + ISOLDE, "runNpc " + ISOLDE + " " + MU_YOUNG + " 1", "registered " + ISOLDE),
+                ports.calls, "a withdrawn member never talks to Mu Young, and the next one takes the turn");
+        assertEquals(0L, ports.count("leaveList"));
+        assertEquals(AgentBossRunHost.Refusal.WITHDRAWN, session.member(THANE).refusal());
+        assertEquals(AgentBossRunHost.Refusal.WITHDRAWN, session.member(flint).refusal());
+    }
+
+    @Test
+    void withdrawIsRefusedOnceTheRunStarted() {
+        AgentBossRunSession session = session(THANE, ISOLDE);
+        inReach(THANE);
+        inReach(ISOLDE);
+        host.busy.add(ISOLDE);
+        session.tick(ports, host, NOW);
+        session.tick(ports, host, NOW + 500L);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Refusal.BUSY, session.member(ISOLDE).refusal());
+
+        assertFalse(session.withdraw(ISOLDE), "a refused member is no longer the run's to withdraw");
+        assertFalse(session.withdraw(99), "nor an Agent that is no member");
+        assertFalse(AgentBossRunService.withdraw(8L, THANE), "nor a member of a run that is gone");
+
+        when(expedition.isRegistering()).thenReturn(false);
+        session.tick(ports, host, NOW + 1_000L);
+        assertEquals(AgentBossRunSession.Phase.STARTING, session.phase());
+
+        assertFalse(AgentBossRunService.withdraw(7L, THANE));
+        assertFalse(session.member(THANE).withdrawn());
+        assertFalse(session.member(ISOLDE).withdrawn());
+    }
+
+    @Test
+    void withdrawReturnsWhileATickHoldsTheSession() throws InterruptedException {
+        AgentBossRunSession session = session(THANE);
+        inReach(THANE);
+        CountDownLatch talking = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        ports.runNpc = (agent, npcId, selections) -> {
+            talking.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            return listed.add(agent.getId());
+        };
+        // The tick holds the session's lock through the whole Mu Young conversation.
+        Thread ticker = new Thread(() -> session.tick(ports, host, NOW), "boss-run-tick");
+        ticker.start();
+        try {
+            assertTrue(talking.await(10, TimeUnit.SECONDS));
+            boolean withdrawn = assertTimeoutPreemptively(Duration.ofSeconds(2),
+                    () -> AgentBossRunService.withdraw(7L, THANE), "a host thread never waits on a tick");
+            assertTrue(withdrawn);
+        } finally {
+            release.countDown();
+            ticker.join(10_000L);
+        }
+        assertFalse(ticker.isAlive());
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase(),
+                "the conversation it was in still listed it");
+
+        session.tick(ports, host, NOW + 500L);
+
+        assertEquals(List.of("seat " + THANE, "runNpc " + THANE + " " + MU_YOUNG + " 1", "registered " + THANE,
+                "leaveList " + THANE, "refused " + THANE + " WITHDRAWN"), ports.calls);
     }
 
     private String refusalFor(Runnable arrange) {

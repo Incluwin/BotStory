@@ -418,9 +418,13 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         rewardFidgetStepByMember.clear();
     }
 
+    /**
+     * A boss run may adopt more members than the fight has formation slots: the ones past ROSTER_SIZE share the
+     * slots, ordinal 12 taking slot 0 again, so no slot lookup throws and aborts the whole fight tick.
+     */
     @Override
     public void adopt(int characterId, int ordinal) {
-        memberOrdinals.put(characterId, ordinal);
+        memberOrdinals.put(characterId, Math.floorMod(ordinal, AgentBalrogDefinition.ROSTER_SIZE));
     }
 
     @Override

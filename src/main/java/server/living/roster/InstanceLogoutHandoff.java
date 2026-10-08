@@ -4,6 +4,8 @@ import client.Character;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import scripting.event.EventInstanceManager;
+import server.expeditions.Expedition;
+import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.store.LivingStore.RosterEntry;
 
@@ -93,6 +95,40 @@ public final class InstanceLogoutHandoff {
             }
         }
         return heir;
+    }
+
+    /**
+     * P7 Part B, for a bench ally only (CompanionBossAllies; a party companion keeps {@link #heir}): the human still in
+     * {@code instance} to see the run through for, past the owner's party: the party's heir ({@link #heir}), else the
+     * expedition's leader while a human player of it, else its first human player still logged in. Never the owner and
+     * never an Agent; null when there is none.
+     */
+    static Character anyHuman(Character owner, EventInstanceManager instance) {
+        if (owner == null || instance == null) {
+            return null;
+        }
+        Character heir = heir(owner, instance);
+        if (heir != null) {
+            return heir;
+        }
+        Expedition expedition = instance.getExpedition();
+        Character leader = expedition == null ? null : expedition.getLeader();
+        Character leading = leader == null ? null : instance.getPlayerById(leader.getId());
+        if (anotherHuman(owner, leading)) {
+            return leading;
+        }
+        for (Character player : instance.getPlayers()) {
+            if (anotherHuman(owner, player)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
+    /** A human player still logged in who is not the owner. */
+    private static boolean anotherHuman(Character owner, Character player) {
+        return player != null && player.getId() != owner.getId() && !AgentPresence.isAgent(player)
+                && player.isLoggedin();
     }
 
     /** True while the character finishes a run for someone other than its owner. */

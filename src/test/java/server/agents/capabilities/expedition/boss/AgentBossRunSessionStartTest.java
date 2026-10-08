@@ -10,6 +10,7 @@ import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,15 +28,19 @@ import static org.mockito.Mockito.when;
 
 /**
  * At Start a boss run adopts the signed-up companions the stock warp took into the battle, drives them through the
- * fight, and lets them follow their owner again at the clear.
+ * fight, and lets them follow their owner again at the clear. A self-led member (a bench ally) is adopted only while
+ * its anchor is in the event, and a member its host withdrew is never adopted.
  */
 class AgentBossRunSessionStartTest {
     private static final int OWNER = 1;
+    private static final int SECOND_OWNER = 2;
     private static final int THANE = 10;
     private static final int ISOLDE = 11;
     private static final int INGRID = 12;
     private static final int FLINT = 13;
     private static final int SORREL = 14;
+    private static final int ORRIN = 20;
+    private static final int MAGNA = 21;
     private static final long NOW = 1_000_000L;
     private static final long REGISTRATION_END = NOW + 300_000L;
     private static final long START = NOW + 60_000L;
@@ -356,6 +361,99 @@ class AgentBossRunSessionStartTest {
         assertEquals("end", fight.calls.getLast());
     }
 
+    @Test
+    void aSelfLedMemberIsAdoptedOnlyWhileItsAnchorIsInTheEvent() {
+        AgentBossRunSession session = startedWithSelfLed(List.of(), List.of(ORRIN));
+        inside(ORRIN);
+        ownerNotInTheEvent();
+
+        session.tick(ports, host, START + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(ORRIN).phase());
+        assertEquals(List.of(), ports.calls, "neither tied again nor adopted while its owner is not in the fight");
+        assertEquals(List.of(), fight.calls);
+
+        // Within the grace the owner comes in after another human: Orrin fights with him.
+        Character owner = ports.human(OWNER);
+        when(event.getPlayers()).thenReturn(List.of(ports.human(SECOND_OWNER), owner));
+        when(event.getPlayerById(OWNER)).thenReturn(owner);
+        session.tick(ports, host, START + 1_000L);
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(ORRIN).phase());
+        assertTrue(session.member(ORRIN).wentIn());
+        assertEquals(List.of("seat " + ORRIN, "prepareAdoption " + ORRIN), ports.calls);
+        assertEquals(List.of("adopt " + ORRIN + " 0", "tick [" + ORRIN + "]"), fight.calls);
+    }
+
+    @Test
+    void aSelfLedMemberWithoutItsAnchorIsMovedOutThenMissesTheStart() {
+        AgentBossRunSession session = startedWithSelfLed(List.of(), List.of(ORRIN, MAGNA));
+        inside(ORRIN);
+        inside(MAGNA);
+        ports.dead.add(MAGNA);
+        ownerNotInTheEvent();
+
+        session.tick(ports, host, START + AgentBossRunSession.startGraceMs() - 1L);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(ORRIN).phase());
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(MAGNA).phase());
+        assertEquals(List.of(), ports.calls);
+
+        session.tick(ports, host, START + AgentBossRunSession.startGraceMs());
+
+        // Nobody would lead Orrin out of a fight his owner never came into, so he goes back to Mu Young's room
+        // first; Magna lies dead in it and is left to the stock respawn.
+        assertEquals(List.of("moveOut " + ORRIN + " " + RECRUIT_MAP, "out " + ORRIN + " MISSED_START",
+                "out " + MAGNA + " MISSED_START", "ended nobody-inside"), ports.calls);
+        assertEquals(AgentBossRunHost.Out.MISSED_START, session.member(ORRIN).out());
+        assertFalse(session.member(ORRIN).wentIn());
+        assertFalse(session.member(MAGNA).wentIn());
+        assertEquals(List.of(), fight.calls);
+    }
+
+    @Test
+    void aWithdrawnRegisteredMemberIsNeverAdopted() {
+        AgentBossRunSession session = signedUp(List.of(THANE, INGRID), List.of(ORRIN), List.of());
+        // The withdraws land after the sign-ups, just before the leader presses Start: no registering tick takes
+        // the two off the list, so the Start warps them in with Thane.
+        assertTrue(session.withdraw(INGRID));
+        assertTrue(session.withdraw(ORRIN));
+        start(session);
+        inside(THANE);
+        inside(INGRID);
+        inside(ORRIN);
+
+        session.tick(ports, host, START + 500L);
+
+        // Out at once, without waiting for the grace; only the self-led one is moved back to Mu Young's room.
+        assertEquals(List.of("seat " + THANE, "prepareAdoption " + THANE, "out " + INGRID + " MISSED_START",
+                "moveOut " + ORRIN + " " + RECRUIT_MAP, "out " + ORRIN + " MISSED_START"), ports.calls);
+        assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
+        assertEquals(AgentBossRunMember.Phase.OUT, session.member(INGRID).phase());
+        assertEquals(AgentBossRunHost.Out.MISSED_START, session.member(ORRIN).out());
+
+        session.tick(ports, host, START + AgentBossRunSession.startGraceMs());
+
+        assertFalse(session.member(INGRID).wentIn());
+        assertFalse(session.member(ORRIN).wentIn());
+        assertEquals(0L, ports.count("prepareAdoption " + INGRID));
+        assertEquals(0L, ports.count("prepareAdoption " + ORRIN));
+        assertEquals(1L, ports.count("out " + ORRIN));
+        assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
+    }
+
+    @Test
+    void aFollowerWithoutItsAnchorIsAdoptedAsBefore() {
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+        ownerNotInTheEvent();
+
+        session.tick(ports, host, START + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
+        assertEquals(List.of("seat " + THANE, "prepareAdoption " + THANE), ports.calls);
+        assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     /**
@@ -368,19 +466,40 @@ class AgentBossRunSessionStartTest {
         return session;
     }
 
+    /** Like {@link #started}, with the {@code selfLed} members signed up after the {@code followers}. */
+    private AgentBossRunSession startedWithSelfLed(List<Integer> followers, List<Integer> selfLed) {
+        AgentBossRunSession session = signedUp(followers, selfLed, List.of());
+        start(session);
+        return session;
+    }
+
     /** A run whose {@code registered} members signed up and whose {@code waiting} members are at the store; no Start. */
     private AgentBossRunSession signedUp(List<Integer> registered, List<Integer> waiting) {
+        return signedUp(registered, List.of(), waiting);
+    }
+
+    /**
+     * A run whose {@code followers}, then {@code selfLed} members (enlisted by the owner, ordinals in that order)
+     * signed up and whose {@code waiting} members are at the store; no Start.
+     */
+    private AgentBossRunSession signedUp(List<Integer> followers, List<Integer> selfLed, List<Integer> waiting) {
         AgentBossRunSession session = new AgentBossRunSession(7L, AgentBossRunCatalog.EASY_BALROG, expedition, fight,
                 NOW);
         AgentBossRunRegistry.put(session);
-        for (int agentId : registered) {
+        for (int agentId : followers) {
             session.addMember(agentId, OWNER, NOW);
+            ports.place(agentId, RECRUIT_MAP, MU_YOUNG_X - 50, FLOOR_Y, 70);
+        }
+        for (int agentId : selfLed) {
+            session.addMember(agentId, OWNER, NOW, AgentBossRunMember.Kind.SELF_LED);
             ports.place(agentId, RECRUIT_MAP, MU_YOUNG_X - 50, FLOOR_Y, 70);
         }
         for (int agentId : waiting) {
             session.addMember(agentId, OWNER, NOW);
             ports.restocking.add(agentId);
         }
+        List<Integer> registered = new ArrayList<>(followers);
+        registered.addAll(selfLed);
         long tickAt = NOW;
         for (int ignored : registered) {
             session.tick(ports, host, tickAt);
@@ -389,6 +508,14 @@ class AgentBossRunSessionStartTest {
         registered.forEach(agentId ->
                 assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(agentId).phase()));
         return session;
+    }
+
+    /** The owner never came into the fight; a second owner stands in it, so the run still has a human. */
+    private void ownerNotInTheEvent() {
+        Character secondOwner = ports.human(SECOND_OWNER);
+        when(event.getPlayers()).thenReturn(List.of(secondOwner));
+        when(event.getPlayerById(OWNER)).thenReturn(null);
+        when(event.getPlayerById(SECOND_OWNER)).thenReturn(secondOwner);
     }
 
     /** The leader pressed Start (at {@link #START}): the run is ticked once into STARTING; call logs are cleared. */

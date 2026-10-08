@@ -3,15 +3,22 @@ package server.living.roster;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.life.NPC;
+import server.maps.GenericPortal;
 import server.maps.MapleMap;
+import server.maps.Portal;
 
 import java.awt.Point;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -21,7 +28,8 @@ import static org.mockito.Mockito.when;
 /**
  * A boss's entrance for companions: Mu Young's room (105100100) for Easy Balrog. A companion waiting to sign up
  * stands at its own spot beside her (she stands at 617,246 in the WZ): 50 px to her left for the first, 30 px further
- * for each next one, on the ground below.
+ * for each next one, on the ground below. A bench ally (Part B) comes in at the top of her stairs, where players
+ * coming down land (top00), and leaves by the room's way out to Perion (outPerrion).
  */
 class BossEntranceTest {
     private static final int MU_YOUNG = 1061014;
@@ -47,6 +55,11 @@ class BossEntranceTest {
     }
 
     @Test
+    void theApproachsStoreIsTheTwentyFourHourMobileStoreAsThePotionSupplierCatalogListsIt() {
+        assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");
+    }
+
+    @Test
     void eachOrdinalWaitsThirtyPixelsFurtherLeftOnTheGroundBelow() {
         MapleMap room = muYoungsRoom(new Point(617, 246));
         when(room.getPointBelow(any(Point.class))).thenAnswer(inv -> new Point(((Point) inv.getArgument(0)).x, 252));
@@ -68,6 +81,42 @@ class BossEntranceTest {
 
         assertNull(BossEntrance.EASY_BALROG.spot(mock(MapleMap.class), 0));
         assertNull(BossEntrance.EASY_BALROG.spot(null, 0));
+    }
+
+    @Test
+    void arrivalIsTop00AndExitIsOutPerrion() throws IOException {
+        assertEquals("top00", BossEntrance.EASY_BALROG.arrivalPortal());
+        assertEquals("outPerrion", BossEntrance.EASY_BALROG.exitPortal());
+        String wz = Files.readString(Path.of("wz/Map.wz/Map/Map1/105100100.img.xml"));
+        assertTrue(wzPortal("top00", -65, -264).matcher(wz).find(), "the WZ names her stairs' landing top00");
+        assertTrue(wzPortal("outPerrion", -691, 246).matcher(wz).find(), "the WZ names the way out outPerrion");
+
+        MapleMap room = mock(MapleMap.class);
+        Portal top = portal("top00", -65, -264);
+        when(room.getPortal("top00")).thenReturn(top);
+        when(room.getPortal("outPerrion")).thenReturn(portal("outPerrion", -691, 246));
+
+        assertEquals(new Point(-65, -264), BossEntrance.EASY_BALROG.arrivalAt(room));
+        assertEquals(new Point(-691, 246), BossEntrance.EASY_BALROG.exitAt(room));
+        BossEntrance.EASY_BALROG.arrivalAt(room).translate(10, 10);
+        assertEquals(new Point(-65, -264), top.getPosition(), "a copy: the portal never moves");
+
+        assertNull(BossEntrance.EASY_BALROG.arrivalAt(mock(MapleMap.class)), "no such portal on that map");
+        assertNull(BossEntrance.EASY_BALROG.exitAt(mock(MapleMap.class)), "no such portal on that map");
+        assertNull(BossEntrance.EASY_BALROG.arrivalAt(null));
+        assertNull(BossEntrance.EASY_BALROG.exitAt(null));
+    }
+
+    private static Pattern wzPortal(String name, int x, int y) {
+        return Pattern.compile("<string name=\"pn\" value=\"" + name + "\"/>\\s*<int name=\"pt\" value=\"\\d+\"/>"
+                + "\\s*<int name=\"x\" value=\"" + x + "\"/>\\s*<int name=\"y\" value=\"" + y + "\"/>");
+    }
+
+    private static Portal portal(String name, int x, int y) {
+        GenericPortal portal = new GenericPortal(Portal.MAP_PORTAL);
+        portal.setName(name);
+        portal.setPosition(new Point(x, y));
+        return portal;
     }
 
     private static MapleMap muYoungsRoom(Point at) {

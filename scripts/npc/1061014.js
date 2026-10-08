@@ -35,14 +35,56 @@ function selectExpedition(type) {
 }
 
 // companions: Mu Young offers an owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES)
-var companionOptions = "\r\n#b#L1#My party will register too.#l\r\n#L2#That's all for now.#l";
-
+// and "Call allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES)
 function companionOffer() {
     return exped == ExpeditionType.BALROG_EASY && Java.type('server.living.LivingWorldHooks').bossPartyOffered(cm, "easy_balrog");
 }
 
 function companionRegister() {
     return Java.type('server.living.LivingWorldHooks').bossPartyRegister(cm, "easy_balrog");
+}
+
+function allyOffer() {
+    return exped == ExpeditionType.BALROG_EASY && Java.type('server.living.LivingWorldHooks').bossAlliesOffered(cm, "easy_balrog");
+}
+
+function allyPicker() {
+    return Java.type('server.living.LivingWorldHooks').bossAllyPicker(cm, "easy_balrog");
+}
+
+function allyCall(selection) {
+    return Java.type('server.living.LivingWorldHooks').bossAllyCall(cm, "easy_balrog", selection);
+}
+
+// her choices after a member's line (status 30); null when she offers neither
+function companionChoices() {
+    var party = companionOffer();
+    var allies = allyOffer();
+    if (!party && !allies) {
+        return null;
+    }
+    return "\r\n#b" + (party ? "#L1#My party will register too.#l\r\n" : "") + (allies ? "#L3#Call allies from my bench...#l\r\n" : "") + "#L2#That's all for now.#l";
+}
+
+// her choices after the leader's list (status 2); null when she offers neither
+function leaderChoices() {
+    var party = companionOffer();
+    var allies = allyOffer();
+    if (!party && !allies) {
+        return null;
+    }
+    return (party ? "\r\n#L4#My party will register too.#l" : "") + (allies ? "\r\n#L5#Call allies from my bench...#l" : "");
+}
+
+// the bench picker's answer: with choices it loops (status 40), any other answer ends the talk
+function allyWindow(text) {
+    if (text.indexOf("#L") >= 0) {
+        cm.sendSimple(text);
+        status = 40;
+    } else {
+        cm.sendOk(text);
+        cm.dispose();
+    }
 }
 
 function openExpedition() {
@@ -57,8 +99,9 @@ function openExpedition() {
             cm.sendOk("Your expedition is already in progress, for those who remain battling lets pray for those brave souls.");
             cm.dispose();
         } else {
-            if (companionOffer()) {
-                cm.sendSimple(list + "\r\n#L4#My party will register too.#l");
+            var choices = leaderChoices();
+            if (choices != null) {
+                cm.sendSimple(list + choices);
                 status = 2;
                 return;
             }
@@ -67,18 +110,20 @@ function openExpedition() {
         }
     } else if (expedition.isRegistering()) {
         if (expedition.contains(player)) {
-            if (companionOffer()) {
-                cm.sendSimple("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it." + companionOptions);
+            var choices = companionChoices();
+            if (choices != null) {
+                cm.sendSimple("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it." + choices);
                 status = 30;
                 return;
             }
             cm.sendOk("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it.");
             cm.dispose();
         } else {
-            if (companionOffer()) {
+            if (exped == ExpeditionType.BALROG_EASY) {
                 var joined = expedition.addMember(player);
-                if (expedition.contains(player)) {
-                    cm.sendSimple(joined + companionOptions);
+                var choices = expedition.contains(player) ? companionChoices() : null;
+                if (choices != null) {
+                    cm.sendSimple(joined + choices);
                     status = 30;
                 } else {
                     cm.sendOk(joined);
@@ -128,8 +173,9 @@ function action(mode, type, selection) {
             }
             var result = cm.createExpedition(exped);
             if (result == 0) {
-                if (companionOffer()) {
-                    cm.sendSimple("The #r" + expedDifficulty + " " + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team or start the fight!" + companionOptions);
+                var choices = companionChoices();
+                if (choices != null) {
+                    cm.sendSimple("The #r" + expedDifficulty + " " + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team or start the fight!" + choices);
                     status = 30;
                     return;
                 }
@@ -151,6 +197,10 @@ function action(mode, type, selection) {
         if (selection == 4) {
             cm.sendOk(companionRegister());
             cm.dispose();
+            return;
+        }
+        if (selection == 5) {
+            allyWindow(allyPicker());
             return;
         }
         if (selection == 1) {
@@ -215,10 +265,20 @@ function action(mode, type, selection) {
             status = 2;
         }
     } else if (status == 30) {
+        if (selection == 3) {
+            allyWindow(allyPicker());
+            return;
+        }
         if (selection == 1) {
             cm.sendOk(companionRegister());
         }
         cm.dispose();
+    } else if (status == 40) {
+        if (selection == 99) {
+            cm.dispose();
+            return;
+        }
+        allyWindow(allyCall(selection));
     } else if (status == 10) {
         cm.sendOk("The Order of the Altair is a group of elite mercenaries that oversees the world's economy and battle operations. It was founded 40 years after the Black Mage was defeated to foresee the next possible attack.");
         cm.dispose();

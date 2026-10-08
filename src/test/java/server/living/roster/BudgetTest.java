@@ -13,6 +13,11 @@ import server.living.roster.CompanionBudget.Kind;
 import server.living.roster.CompanionBudget.Usage;
 import server.living.store.LivingStore;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,6 +109,53 @@ class BudgetTest {
         assertEquals(0L, CompanionBudget.waitMs(null, 5_000L, 2_000L));
         assertEquals(500L, CompanionBudget.waitMs(1_000L, 2_500L, 2_000L));
         assertEquals(0L, CompanionBudget.waitMs(1_000L, 3_000L, 2_000L));
+    }
+
+    @Test
+    void expeditionShareTable() {
+        // P7 Part B: owners calling bench allies split the burst evenly, floor(burst / owners) each
+        // cap 12 (the burst itself), while every owner holds a permit: what each may hold in all
+        assertEquals(List.of(12), sharedBy(12, 12, 1));
+        assertEquals(List.of(6, 6), sharedBy(12, 12, 2));
+        assertEquals(List.of(4, 4, 4), sharedBy(12, 12, 3));
+        assertEquals(List.of(2, 2, 2, 2, 2), sharedBy(12, 12, 5));
+        assertEquals(2, CompanionBudget.expeditionShareLeft(12, 12, Map.of(1, 1, 2, 1, 3, 1, 4, 1), 5),
+                "a fifth owner who holds none yet counts as an owner");
+        // owners calling one after another: a permit already taken is never taken back
+        assertEquals(List.of(12, 0), firstCome(12, 12, 2));
+        assertEquals(0, CompanionBudget.expeditionShareLeft(4, 12, Map.of(1, 5), 1), "over its share, never below 0");
+        // cap 5 (ROSTER_MAX - 5 allies per owner)
+        assertEquals(List.of(5), firstCome(12, 5, 1));
+        assertEquals(List.of(5, 5), firstCome(12, 5, 2));
+        assertEquals(List.of(5, 5, 2), firstCome(12, 5, 3));
+        // a burst of 0 lets nobody come
+        assertEquals(0, CompanionBudget.expeditionShareLeft(0, 5, Map.of(), ALICE));
+        assertEquals(List.of(0, 0), firstCome(0, 5, 2));
+    }
+
+    /** What each of {@code owners} owners may hold in all while every one of them already holds one permit. */
+    private static List<Integer> sharedBy(int burstMax, int perOwnerCap, int owners) {
+        Map<Integer, Integer> held = new HashMap<>();
+        for (int owner = 1; owner <= owners; owner++) {
+            held.put(owner, 1);
+        }
+        List<Integer> shares = new ArrayList<>();
+        for (int owner = 1; owner <= owners; owner++) {
+            shares.add(1 + CompanionBudget.expeditionShareLeft(burstMax, perOwnerCap, held, owner));
+        }
+        return shares;
+    }
+
+    /** Owners 1..{@code owners} ask one after another, each taking every permit it may: what each took. */
+    private static List<Integer> firstCome(int burstMax, int perOwnerCap, int owners) {
+        Map<Integer, Integer> held = new HashMap<>();
+        List<Integer> taken = new ArrayList<>();
+        for (int owner = 1; owner <= owners; owner++) {
+            int left = CompanionBudget.expeditionShareLeft(burstMax, perOwnerCap, held, owner);
+            held.put(owner, left);
+            taken.add(left);
+        }
+        return taken;
     }
 
     // ---- admit over live counts ----------------------------------------------------------

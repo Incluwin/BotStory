@@ -93,6 +93,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntPredicate;
 
 public class Monster extends AbstractLoadedLife {
     private static final Logger log = LoggerFactory.getLogger(Monster.class);
@@ -906,7 +907,10 @@ public class Monster extends AbstractLoadedLife {
         }
 
         Character looter = map.getCharacterById(getHighestDamagerId());
-        return looter != null ? looter : killer;
+        Character owner = looter != null ? looter : killer;
+        // a bench ally's kill in a companion boss run drops for the human it fights for; null keeps the stock owner
+        Character chosen = server.living.LivingWorldHooks.bossDropOwner(this, owner);
+        return chosen != null ? chosen : owner;
     }
 
     public void dropFromFriendlyMonster(long delay) {
@@ -1059,6 +1063,22 @@ public class Monster extends AbstractLoadedLife {
         long curDmg = 0;
 
         for (Entry<Integer, AtomicLong> damage : takenDamage.entrySet()) {
+            curId = damage.getValue().get() >= curDmg ? damage.getKey() : curId;
+            curDmg = damage.getKey() == curId ? damage.getValue().get() : curDmg;
+        }
+
+        return curId;
+    }
+
+    /** {@link #getHighestDamagerId()} over the damagers {@code wanted} lets through; 0 when none of them hit it. */
+    public int highestDamagerIdWhere(IntPredicate wanted) {
+        int curId = 0;
+        long curDmg = 0;
+
+        for (Entry<Integer, AtomicLong> damage : takenDamage.entrySet()) {
+            if (!wanted.test(damage.getKey())) {
+                continue;
+            }
             curId = damage.getValue().get() >= curDmg ? damage.getKey() : curId;
             curDmg = damage.getKey() == curId ? damage.getValue().get() : curDmg;
         }

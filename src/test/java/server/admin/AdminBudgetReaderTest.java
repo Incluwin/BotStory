@@ -2,7 +2,11 @@ package server.admin;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import config.LivingWorldConfig;
 import org.junit.jupiter.api.Test;
+import server.living.LivingWorld;
+import server.living.roster.CompanionBossRuns;
+import server.living.roster.CompanionLeases;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -119,5 +123,32 @@ class AdminBudgetReaderTest {
         assertEquals(1, kinds.citizens());
         assertEquals(2, kinds.other());
         assertEquals(kinds.active(), kinds.companions() + kinds.benchLive() + kinds.residents() + kinds.citizens() + kinds.other());
+    }
+
+    @Test
+    void theExpeditionPermitsAreTheLeasesHeldThePeakAndTheBurstCap() throws Exception {
+        LivingWorld world = mock(LivingWorld.class);
+        CompanionLeases leases = new CompanionLeases();
+        leases.tryAcquire(911, CompanionLeases.Kind.EXPEDITION, 1); // two bench allies on a boss run
+        leases.tryAcquire(912, CompanionLeases.Kind.EXPEDITION, 1);
+        leases.tryAcquire(901, CompanionLeases.Kind.COMPANION, 1);  // a party companion is no expedition permit
+        when(world.leases()).thenReturn(leases);
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(bossRuns.expeditionPeak()).thenReturn(5); // five held at once earlier
+        when(world.bossRuns()).thenReturn(bossRuns);
+        LivingWorldConfig config = new LivingWorldConfig();
+        config.EXPEDITION_BURST_MAX = 12;
+        when(world.config()).thenReturn(config);
+
+        JsonNode permits = parse(AdminBudgetReader.expeditionPermits(new AdminJson.Obj(), world));
+
+        assertEquals(2, permits.get("expeditionLeases").asInt());
+        assertEquals(5, permits.get("expeditionPeak").asInt());
+        assertEquals(12, permits.get("expeditionBurstMax").asInt());
+
+        JsonNode off = parse(AdminBudgetReader.expeditionPermits(new AdminJson.Obj(), null)); // no living world
+        assertEquals(0, off.get("expeditionLeases").asInt());
+        assertEquals(0, off.get("expeditionPeak").asInt());
+        assertEquals(0, off.get("expeditionBurstMax").asInt());
     }
 }

@@ -19,6 +19,8 @@ import server.living.LivingWorld;
 import server.living.population.CitizenSession;
 import server.living.population.Population;
 import server.living.resident.ResidentRuntime;
+import server.living.roster.CompanionBossRuns;
+import server.living.roster.CompanionLeases;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -234,7 +236,7 @@ final class AdminBudgetReader {
             }
         }
         AgentKinds kinds = AgentKinds.classify(active, companionIds, benchLiveIds, residentIds, citizenIds);
-        return new AdminJson.Obj()
+        return expeditionPermits(new AdminJson.Obj()
                 .num("active", kinds.active())
                 .num("companions", kinds.companions())
                 .num("benchLive", kinds.benchLive())
@@ -249,8 +251,20 @@ final class AdminBudgetReader {
                 .num("residentsMaterialized", residentsMaterialized)
                 .num("citizensLoaded", citizensLoaded)
                 // commands queued on the companion-ops thread (plan "CompanionAuditor + ops endpoints")
-                .num("companionOpsQueue", companionOpsQueue)
+                .num("companionOpsQueue", companionOpsQueue), world)
                 .finished();
+    }
+
+    /**
+     * The bench allies' EXPEDITION permits (P7 Part B), appended to {@code into}: the leases held now, the most held at
+     * once since the living world started (it never falls), and EXPEDITION_BURST_MAX; each 0 without a living world.
+     */
+    static AdminJson.Obj expeditionPermits(AdminJson.Obj into, LivingWorld world) {
+        CompanionBossRuns bossRuns = world == null ? null : world.bossRuns();
+        return into
+                .num("expeditionLeases", world == null ? 0 : world.leases().count(CompanionLeases.Kind.EXPEDITION))
+                .num("expeditionPeak", bossRuns == null ? 0 : bossRuns.expeditionPeak())
+                .num("expeditionBurstMax", world == null ? 0 : world.config().EXPEDITION_BURST_MAX);
     }
 
     /** Scheduler registrations vs capacity plus the metrics AgentSchedulerMetrics keeps (cycle p95 is not tracked; avg and max are). */

@@ -2,7 +2,9 @@ package server.agents.capabilities.expedition.boss;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.List;
 
 /**
@@ -23,7 +25,7 @@ public final class AgentBossRunHost {
         LEVEL,
         /** The list closed before its turn. */
         CLOSED,
-        /** The list was full. */
+        /** The list was full, or the host keeps its last seats for players (Rule.roomFor). */
         FULL,
         /** The leader took it off the list. */
         BANNED,
@@ -34,7 +36,9 @@ public final class AgentBossRunHost {
         /** The host would not tie it to the run. */
         BUSY,
         /** The NPC did not list it for a reason the session could not see. */
-        UNKNOWN
+        UNKNOWN,
+        /** The host took it back before Start (AgentBossRunService.withdraw); the run took it off the list itself. */
+        WITHDRAWN
     }
 
     /** How a member left a run it was part of. */
@@ -78,6 +82,16 @@ public final class AgentBossRunHost {
          */
         boolean seat(Seat seat);
 
+        /**
+         * True when the member may take a seat on the entry NPC's list of {@code maxSize} that holds {@code listed}
+         * now. Asked at its turn to sign up, before {@link #seat}; false refuses it FULL before it is tied to the run or
+         * talks to the entry NPC (the host keeps the list's last seats for players). Unless answered, every seat the
+         * list has: the entry NPC's own check. Synchronous.
+         */
+        default boolean roomFor(Seat seat, int listed, int maxSize) {
+            return true;
+        }
+
         /** The entry NPC listed the member. */
         default void registered(Seat seat) {
         }
@@ -93,6 +107,15 @@ public final class AgentBossRunHost {
         /** The run ended; called once per session. */
         default void runEnded(RunEnded ended) {
         }
+
+        /**
+         * Where the WAITING member stands to sign up on the recruit {@code map}, by its {@code ordinal} in the run;
+         * null names no spot. Asked on every tick while it waits there: a SELF_LED member walks to the spot, and any
+         * member standing at a spot beyond the entry NPC's reach signs up from it.
+         */
+        default Point standAt(Seat seat, MapleMap map, int ordinal) {
+            return null;
+        }
     }
 
     private static volatile Rule rule;
@@ -105,7 +128,10 @@ public final class AgentBossRunHost {
         rule = installed;
     }
 
-    /** The installed rule behind a guard: a missing rule grants seats and drops reports, a failing one is logged. */
+    /**
+     * The installed rule behind a guard: a missing rule grants seats and drops reports, a failing one is logged (a
+     * failing room answer leaves the list to the entry NPC's own check).
+     */
     public static Rule installed() {
         return INSTALLED;
     }
@@ -131,6 +157,20 @@ public final class AgentBossRunHost {
             } catch (RuntimeException failure) {
                 log.warn("boss-run seat rule failed for {}", seat, failure);
                 return false;
+            }
+        }
+
+        @Override
+        public boolean roomFor(Seat seat, int listed, int maxSize) {
+            Rule current = current();
+            if (current == null) {
+                return true;
+            }
+            try {
+                return current.roomFor(seat, listed, maxSize);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run room rule failed for {} ({}/{})", seat, listed, maxSize, failure);
+                return true;
             }
         }
 
@@ -183,6 +223,20 @@ public final class AgentBossRunHost {
                 current.runEnded(ended);
             } catch (RuntimeException failure) {
                 log.warn("boss-run run-ended rule failed for {}", ended, failure);
+            }
+        }
+
+        @Override
+        public Point standAt(Seat seat, MapleMap map, int ordinal) {
+            Rule current = current();
+            if (current == null) {
+                return null;
+            }
+            try {
+                return current.standAt(seat, map, ordinal);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run stand-at rule failed for {} (ordinal {})", seat, ordinal, failure);
+                return null;
             }
         }
     }

@@ -40,6 +40,8 @@ final class CompanionBossRun {
     long goneSinceMs;
     /** Intent -> the wordings its companions said for it in this run, until every one was said (guarded by this). */
     private final Map<String, Set<String>> wordingsSaid = new HashMap<>();
+    /** "anchor:intent" of each line its allies whispered (BossRunLines.tell): each once per run to each human. */
+    private final Set<String> whispered = ConcurrentHashMap.newKeySet();
 
     CompanionBossRun(String bossKey, long sessionId, int ownerId) {
         this.key = key(bossKey, sessionId, ownerId);
@@ -64,6 +66,14 @@ final class CompanionBossRun {
             }
         }
         return wordings.get(Math.floorMod(turn, wordings.size()));
+    }
+
+    /**
+     * True the first time a companion of this run whispers {@code intent} to {@code anchorId}, false after: five allies
+     * down in the fight are one whisper to their owner, not five. Any thread.
+     */
+    boolean firstWhisper(int anchorId, String intent) {
+        return whispered.add(anchorId + ":" + intent);
     }
 
     /** The commitment key of {@code ownerId}'s companions in boss run {@code sessionId}. */

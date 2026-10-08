@@ -336,6 +336,8 @@ public final class LivingWorld {
             timer.cancel(false);
         }
         world.timers.clear();
+        // bench allies on a boss run (P7 Part B) go first on the one companion-ops thread: the wait below covers them
+        world.executor.submit("boss.allies_stop", world.bossRuns::stopAllies);
         // live bench slices unload on companion-ops like every companion unload; shutdown waits for their saves
         try {
             world.executor.submit("bench_duty.end_all", () -> world.benchDuty.endAll("server shutdown"))

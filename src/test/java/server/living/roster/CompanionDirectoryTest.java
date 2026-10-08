@@ -169,6 +169,18 @@ class CompanionDirectoryTest {
     }
 
     @Test
+    void mayLoadStaysCompanionOnlyForAnExpeditionLease() {
+        // P7 Part B: a bench ally on its trip to a boss run holds an EXPEDITION lease; it loads only on its arrival,
+        // never through a spawn or an invite (the party-invite gate asks mayLoad), while its owner still controls it
+        leases.tryAcquire(OLWEN, CompanionLeases.Kind.EXPEDITION, ALICE);
+
+        assertFalse(directory.mayLoad(alice, OLWEN));
+        assertFalse(directory.mayLoad(bob, OLWEN));
+        assertFalse(directory.mayLoad(admin, OLWEN));
+        assertTrue(directory.mayControl(alice, OLWEN), "the boss run adopts it for its owner");
+    }
+
+    @Test
     void aPlainAgentLoadsForWhoeverMayControlIt() {
         assertTrue(directory.mayLoad(alice, PROBE));
         assertFalse(directory.mayLoad(bob, PROBE));

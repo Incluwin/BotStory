@@ -612,6 +612,89 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * Mu Young's Easy window (P7 Part B, on the clicker's I/O thread): true when she offers the owner "Call allies
+     * from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES). False keeps her window as it was: no living world, an
+     * Agent clicking, or any failure.
+     */
+    public static boolean bossAlliesOffered(scripting.npc.NPCConversationManager cm, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        Character clicker = cm == null ? null : cm.getPlayer();
+        if (world == null || clicker == null || world.bossRuns() == null || AgentPresence.isAgent(clicker)) {
+            return false;
+        }
+        try {
+            return world.bossRuns().alliesOffered(clicker, bossKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossAlliesOffered hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * The owner picked "Call allies from my bench..." in Mu Young's window: her bench picker's text (its choices loop
+     * in her script); her "none of your companions on the bench" line when there is none, with no living world, for an
+     * Agent, or on any failure.
+     */
+    public static String bossAllyPicker(scripting.npc.NPCConversationManager cm, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        Character clicker = cm == null ? null : cm.getPlayer();
+        if (world == null || clicker == null || world.bossRuns() == null || AgentPresence.isAgent(clicker)) {
+            return server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME;
+        }
+        try {
+            String text = world.bossRuns().allyPicker(clicker, bossKey);
+            return text == null ? server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME : text;
+        } catch (RuntimeException failure) {
+            log.warn("living world bossAllyPicker hook failed", failure);
+            return server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME;
+        }
+    }
+
+    /**
+     * The owner picked {@code selection} in Mu Young's bench picker: her answer (whom she sent word to, then the picker
+     * again), the calls handed to companion-ops; her "none of your companions on the bench" line as above.
+     */
+    public static String bossAllyCall(scripting.npc.NPCConversationManager cm, String bossKey, int selection) {
+        LivingWorld world = LivingWorld.get();
+        Character clicker = cm == null ? null : cm.getPlayer();
+        if (world == null || clicker == null || world.bossRuns() == null || AgentPresence.isAgent(clicker)) {
+            return server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME;
+        }
+        try {
+            String text = world.bossRuns().allyCall(clicker, bossKey, selection);
+            return text == null ? server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME : text;
+        } catch (RuntimeException failure) {
+            log.warn("living world bossAllyCall hook failed", failure);
+            return server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME;
+        }
+    }
+
+    /**
+     * A monster died (Monster.killBy, on the thread that landed the kill, from memory): who its drops and mesos go to,
+     * {@code candidate} being its stock owner (its top damager on the map, else its killer). P7 Part B: a bench ally
+     * that topped the damage in a companion boss run hands them to the human it fights for
+     * (CompanionBossRuns.dropOwner). {@code candidate} at once when it is no Agent (every kill a player tops) or no
+     * living world runs, and on any failure.
+     */
+    public static Character bossDropOwner(Monster monster, Character candidate) {
+        if (candidate == null || !AgentPresence.isAgent(candidate)) {
+            return candidate;
+        }
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
+            return candidate;
+        }
+        try {
+            server.living.roster.CompanionBossRuns bossRuns = world.bossRuns();
+            Character owner = bossRuns == null ? null : bossRuns.dropOwner(monster, candidate);
+            return owner == null ? candidate : owner;
+        } catch (RuntimeException failure) {
+            log.warn("living world bossDropOwner hook failed", failure);
+            return candidate;
+        }
+    }
+
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
     public static boolean markerClicked(Character clicker, int objectId) {
         LivingWorld world = LivingWorld.get();

@@ -827,7 +827,8 @@ public final class RosterService {
      * arrival") unless a whistle is used. Once it is seated or on its way it no longer waits for room. One waiting
      * outside a run (HOLD) rejoins, unless the run is still on ("after the run"); one whose trip its owner's logout cut
      * short sets off again for the time it had left (or walks in when that is up). Nobody is called while the owner is
-     * inside a companion party-quest run's instance: that is "after the run" too.
+     * inside a companion party-quest run's instance: that is "after the run" too, as is a call for a bench ally out
+     * with a boss run (its row stays BENCHED for the whole trip).
      */
     public RosterResult call(Character owner, Persona persona) {
         RosterResult result = call(owner, persona, null);
@@ -871,6 +872,10 @@ public final class RosterService {
             return committed(persona.id()) || owner.getEventInstance() != null ? afterTheRun(owner, persona)
                     : rejoinHold(owner, persona, entry);
         }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (entry.state() == RosterState.BENCHED && bossRuns != null && bossRuns.allyOnTrip(persona.id())) {
+            return afterTheRun(owner, persona); // a bench ally out with a boss run (P7 Part B, CompanionBossAllies)
+        }
         if (owner.getEventInstance() != null && inCompanionRun(owner.getId())) {
             // a load there lands on the run's map unregistered, and a join grows the party mid-run (P6)
             return afterTheRun(owner, persona);
@@ -900,9 +905,10 @@ public final class RosterService {
 
     /**
      * Where a benched companion called now sets off from: the map its live bench slice stands on (a field camp, a town
-     * it rests in, a Free Market room; read before the call ends the slice), else its camp.
+     * it rests in, a Free Market room; read before the call ends the slice), else its camp. A boss run's bench ally
+     * sets off the same way (CompanionBossAllies).
      */
-    private int departure(RosterEntry entry, Persona persona) {
+    int departure(RosterEntry entry, Persona persona) {
         BenchDutyDispatcher bench = world.benchDuty();
         BenchDutyDispatcher.Slice slice = bench == null ? null : bench.slice(persona.id());
         return slice != null && slice.mapId() > 0 ? slice.mapId() : campOf(entry, persona);
@@ -2335,6 +2341,10 @@ public final class RosterService {
         }
         if (ownParty) {
             parkedParty.put(ownerId, party.getId());
+        }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null) {
+            bossRuns.ownerLoggedOut(owner); // P7 Part B: their bench allies (BENCHED rows, so none of them is out)
         }
     }
 

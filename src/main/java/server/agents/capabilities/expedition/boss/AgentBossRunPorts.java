@@ -46,6 +46,9 @@ public interface AgentBossRunPorts {
     /** One headless NPC conversation with these window choices; false when it failed or threw. */
     boolean runNpc(Character agent, int npcId, int... selections);
 
+    /** Takes the Agent off the expedition's list the way a member leaves it (the stock "has left" notice). */
+    void leaveList(Expedition expedition, Character agent);
+
     void navigate(int agentId, Point destination, boolean precise);
 
     void stop(int agentId);
@@ -122,6 +125,15 @@ public interface AgentBossRunPorts {
             } catch (RuntimeException failure) {
                 log.warn("boss-run NPC {} conversation failed for {}", npcId, agent.getId(), failure);
                 return false;
+            }
+        }
+
+        @Override
+        public void leaveList(Expedition expedition, Character agent) {
+            try {
+                expedition.removeMember(agent);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run list leave failed for {}", agent.getId(), failure);
             }
         }
 

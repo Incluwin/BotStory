@@ -3,10 +3,14 @@ package server.living.roster;
 import config.LivingWorldConfig;
 import config.YamlConfig;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import server.knowledge.KnowledgeTestKit;
 import server.living.LivingWorld;
+import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.store.LivingStore;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,7 +23,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * The bench ledger's FARM_ITEM and GATHER credit (docs/SERVER_KNOWLEDGE_PLAN.md 8.3): with server knowledge only a
- * monster the companion could farm counts, with no DB query; without it the top drop_data row, as before.
+ * monster the companion could farm counts, with no DB query; without it the top drop_data row, as before. A bench ally
+ * out with a boss run (P7 Part B) is credited nothing while its trip lasts: only the clock moves.
  */
 class BenchLedgerFarmCreditTest {
     private static final int FAIRY_WING = 4003003;
@@ -58,6 +63,36 @@ class BenchLedgerFarmCreditTest {
             assertEquals(0.0d, ledger.chancePerKill(SNAIL_SHELL, 10, ELLINIA_FIELD, false), "no snails at its camp");
             assertTrue(ledger.chancePerKill(SNAIL_SHELL, 10, ELLINIA_FIELD, true) > 0, "GATHER's visit goes to the snails");
         }
+    }
+
+    @Test
+    void anAllyOutWithAnExpeditionMovesOnlyTheClock() {
+        // P7 Part B: a benched farmer called down to a boss run; the fight credits its EXP, the ledger nothing
+        LivingStore.RosterEntry row = new LivingStore.RosterEntry(10, "orrin", LivingStore.RosterState.BENCHED,
+                LivingStore.Assignment.FARM_MESO, 0, 0, SNAIL_FIELD, 1_500L, 700L, 0L, 1_000L, 1_000L,
+                System.currentTimeMillis() - 3_600_000L, 120, "2026-10-07");
+        Persona orrin = mock(Persona.class);
+        when(orrin.id()).thenReturn("orrin");
+        LivingContent content = mock(LivingContent.class);
+        when(content.persona("orrin")).thenReturn(orrin);
+        when(world.content()).thenReturn(content);
+        when(world.routineDate()).thenReturn(LocalDate.of(2026, 10, 7));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class)); // no live slice
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(bossRuns.allyOnTrip("orrin")).thenReturn(true);
+        when(world.bossRuns()).thenReturn(bossRuns);
+        long before = System.currentTimeMillis();
+
+        ledger.accrueNow(row);
+
+        ArgumentCaptor<LivingStore.RosterEntry> saved = ArgumentCaptor.forClass(LivingStore.RosterEntry.class);
+        verify(store).saveRosterProgress(saved.capture());
+        LivingStore.RosterEntry after = saved.getValue();
+        assertTrue(after.lastLedgerAtMs() >= before, "the clock moved");
+        assertEquals(1_500L, after.accruedExp(), "no EXP credit");
+        assertEquals(700L, after.haulMeso(), "no meso credit");
+        assertEquals(120, after.farmSecondsToday(), "and no farm time toward the daily cap");
+        assertEquals(LivingStore.RosterState.BENCHED, after.state());
     }
 
     @Test
