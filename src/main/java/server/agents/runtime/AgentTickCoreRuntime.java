@@ -49,18 +49,25 @@ public final class AgentTickCoreRuntime {
                 defaultHooks(issueGrind, issueFollow));
     }
 
+    /**
+     * One tick's inactive-owner safety. A corpse a party-quest departure gate holds is left to its gate: the safety
+     * would scroll it to its return map after the owner-inactive delay, which ends the event the gate keeps it in. Every
+     * other Agent runs the safety as before.
+     */
+    static boolean inactiveLeaderTick(AgentRuntimeEntry entry, Character agent, Character leader, long nowMs,
+                                      int leaderCharId) {
+        if (AgentDeathTickCoordinator.respawnHeld(entry, nowMs)) {
+            return false;
+        }
+        return AgentLeaderSafetyCoordinator.handleInactiveLeaderTick(entry, agent, leader, nowMs, leaderCharId);
+    }
+
     private static AgentTickCoreService.Hooks defaultHooks(Consumer<AgentRuntimeEntry> issueGrind,
                                                            Consumer<AgentRuntimeEntry> issueFollow) {
         return hooks(
                 (runtimeEntry, ignoredCohortId) ->
                         AgentFollowTargetSessionService.resolveLiveFollowTarget(runtimeEntry),
-                (runtimeEntry, agent, leader, nowMs, runtimeLeaderCharId) ->
-                        AgentLeaderSafetyCoordinator.handleInactiveLeaderTick(
-                                runtimeEntry,
-                                agent,
-                                leader,
-                                nowMs,
-                                runtimeLeaderCharId),
+                AgentTickCoreRuntime::inactiveLeaderTick,
                 AgentMapTransitionRuntime::groundAfterMapChange,
                 AgentStandaloneMoveTargetCoordinator::tickStandaloneMoveTarget,
                 (runtimeEntry, agent, leader) ->

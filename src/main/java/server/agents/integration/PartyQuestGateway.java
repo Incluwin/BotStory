@@ -37,4 +37,17 @@ public interface PartyQuestGateway {
     default int openInstances(Character anchor, String eventName) {
         return 0;
     }
+
+    /** Every NPC object of {@code npcId} on the agent's map, hidden ones too, in object-id order. */
+    default List<NpcSighting> npcObjects(Character agent, int npcId) {
+        return List.of();
+    }
+
+    /**
+     * Runs {@code npcId}'s script as a click on the NPC object {@code npcObjectId} of the agent's map, for scripts
+     * that tell their NPC objects apart; false when that object is not an {@code npcId} NPC on the agent's map.
+     */
+    default boolean runNpcObject(Character agent, int npcId, int npcObjectId, int... selections) {
+        return false;
+    }
 }

@@ -4,8 +4,14 @@ import client.Character;
 import scripting.event.EventInstanceManager;
 import scripting.event.EventManager;
 import scripting.npc.NPCScriptManager;
+import server.agents.integration.NpcSighting;
 import server.agents.integration.PartyQuestGateway;
+import server.life.NPC;
+import server.maps.MapObject;
+import server.maps.MapleMap;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Set;
 import java.util.List;
 
@@ -15,6 +21,36 @@ public enum CosmicPartyQuestGateway implements PartyQuestGateway {
     @Override
     public boolean runNpc(Character agent, int npcId, int... selections) {
         return CosmicPrimitiveCapabilityGateway.INSTANCE.runNpcScript(agent, npcId, selections);
+    }
+
+    @Override
+    public List<NpcSighting> npcObjects(Character agent, int npcId) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        if (map == null) {
+            return List.of();
+        }
+        List<NpcSighting> sightings = new ArrayList<>();
+        for (MapObject object : map.getMapObjects()) {
+            if (object instanceof NPC npc && npc.getId() == npcId) {
+                sightings.add(new NpcSighting(npc.getObjectId(), npcId, npc.getPosition()));
+            }
+        }
+        sightings.sort(Comparator.comparingInt(NpcSighting::objectId));
+        return List.copyOf(sightings);
+    }
+
+    @Override
+    public boolean runNpcObject(Character agent, int npcId, int npcObjectId, int... selections) {
+        return runNpcObject(CosmicPreparedNpcScriptEngines.INSTANCE, agent, npcId, npcObjectId, selections);
+    }
+
+    static boolean runNpcObject(CosmicPreparedNpcScriptEngines engines, Character agent, int npcId, int npcObjectId,
+                                int... selections) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        if (map == null || !(map.getMapObject(npcObjectId) instanceof NPC npc) || npc.getId() != npcId) {
+            return false;
+        }
+        return CosmicHeadlessNpcScriptGateway.executeOnObject(engines, agent, npcId, npcObjectId, selections);
     }
 
     @Override
