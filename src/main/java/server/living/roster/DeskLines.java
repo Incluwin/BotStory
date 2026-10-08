@@ -29,8 +29,8 @@ public final class DeskLines {
     static final String LOW_ON_AMMO_LINE = "<name> is low on ammo.";
     static final String LOW_ON_AMMO_BROKE_LINE = "<name> is low on ammo and can't afford any more.";
     /**
-     * Above the lineup, when a companion in it (or waiting with it) ran to the store for potions or projectiles (user
-     * decision 3, 2026-10-07: one text for both).
+     * Above the lineup, when a companion in it (or waiting with it) ran to the store for potions or projectiles: one
+     * text for both, chosen with decision 3 (2026-10-07: companions restock ammo as they do potions).
      */
     public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for supplies. They won't be long.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";

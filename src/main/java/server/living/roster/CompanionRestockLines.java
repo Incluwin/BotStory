@@ -55,16 +55,16 @@ final class CompanionRestockLines {
                     "short on potions, and nowhere to buy any here. careful."),
             GO_AMMO, List.of(
                     "need more {ammo}, heading to the shop.",
-                    "almost out of {ammo}, gonna restock real quick."),
+                    "gonna grab more {ammo} real quick."),
             BACK_AMMO, List.of(
                     "{ammo} restocked. let's do this.",
-                    "back with a full load of {ammo}."),
+                    "picked up more {ammo}. lead the way."),
             BROKE_AMMO, List.of(
                     "no mesos left for {ammo}. could someone chip in?",
-                    "broke and nearly out of {ammo}. mind lending me some mesos?"),
+                    "can't pay for the {ammo} i need. mind lending me some mesos?"),
             NO_SHOP_AMMO, List.of(
                     "running thin on {ammo} and there's nowhere to restock here.",
-                    "not many {ammo} left and no shop nearby. i'll make them count."));
+                    "low on {ammo} and no shop nearby. i'll make them count."));
 
     private static final AtomicInteger counter = new AtomicInteger();
 

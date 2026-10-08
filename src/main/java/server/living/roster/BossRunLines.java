@@ -30,8 +30,16 @@ final class BossRunLines {
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
+    /**
+     * Off to the shop from the boss's entrance for potions, saying about when it will be back ("{n}" minutes). With
+     * {@link #GO_AMMO}, the one approved exception to the no-digits rule for companion speech (P7 decision 7: the
+     * owner may be signing it up meanwhile, so it says when it will be back).
+     */
     static final String GO = "boss.go";
-    /** Off to the shop from the boss's entrance for projectiles alone ("{ammo}": stars, arrows, bolts, bullets). */
+    /**
+     * Off to the shop from the boss's entrance for projectiles alone ("{ammo}": stars, arrows, bolts, bullets), with
+     * about when it will be back, as {@link #GO} says it.
+     */
     static final String GO_AMMO = "boss.goAmmo";
 
     /** Every companion's lines for an intent its persona has none of its own for. */

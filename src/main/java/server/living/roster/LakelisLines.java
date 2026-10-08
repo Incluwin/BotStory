@@ -38,7 +38,7 @@ public final class LakelisLines {
     static final String LOW_ON_MANA_LINE = DeskLines.LOW_ON_MANA_LINE;
     static final String LOW_ON_POTIONS_BROKE_LINE = DeskLines.LOW_ON_POTIONS_BROKE_LINE;
     static final String LOW_ON_MANA_BROKE_LINE = DeskLines.LOW_ON_MANA_BROKE_LINE;
-    /** Above the lineup, when a companion in it (or waiting with it) ran to the store for potions. */
+    /** Above the lineup, when a companion in it (or waiting with it) ran to the store for supplies. */
     public static final String RAN_TO_THE_STORE = DeskLines.RAN_TO_THE_STORE;
     static final String BUSY = DeskLines.BUSY;
     /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
@@ -63,7 +63,7 @@ public final class LakelisLines {
     static final String LOW_ON_MANA_BROKE = DeskLines.LOW_ON_MANA_BROKE;
     /** Not at the entrance (another map of the town, the shop...). */
     static final String NOT_IN_KERNING = "not in Kerning";
-    /** A companion's errand while it is on its way: gone to the store for potions (LineupPlan.Seat.errand). */
+    /** A companion's errand while it is on its way: gone to the store for supplies (LineupPlan.Seat.errand). */
     public static final String AT_THE_STORE = DeskLines.AT_THE_STORE;
     static final String OTHER_CHANNEL = DeskLines.OTHER_CHANNEL;
     static final String KNOCKED_OUT = DeskLines.KNOCKED_OUT;

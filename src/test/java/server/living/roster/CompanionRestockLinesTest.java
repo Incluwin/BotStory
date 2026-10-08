@@ -80,6 +80,33 @@ class CompanionRestockLinesTest {
     }
 
     @Test
+    void noAmmoLineOverstatesHowShortItIs() throws Exception {
+        // review: at a desk with a 1600 standard, a companion with 1500 stars restocks too; and a bow outside
+        // Victoria tops up a few arrows at a time, so "almost out" and "a full load" would read as scripted
+        LivingWorld world = world();
+        Persona fenna = ContentLoader.load(Path.of("scripts/config/living-world")).persona("fenna");
+        for (String intent : AMMO_INTENTS) {
+            List<String> lines = new ArrayList<>(CompanionRestockLines.GENERIC.get(intent));
+            lines.addAll(CompanionRestockLines.lines(world, fenna, intent));
+            for (String line : lines) {
+                String lower = line.toLowerCase(Locale.ROOT);
+                assertFalse(lower.contains("almost out") || lower.contains("nearly out")
+                        || lower.contains("full load"), intent + ": " + line);
+            }
+        }
+    }
+
+    @Test
+    void theAmmoLinesReadWellWithTheAmmoFallback() {
+        for (String intent : AMMO_INTENTS) {
+            for (String template : CompanionRestockLines.GENERIC.get(intent)) {
+                String line = CompanionRestockLines.withAmmo(template, null);
+                assertFalse(line.contains("many ammo") || line.contains("few ammo"), "\"ammo\" is uncountable: " + line);
+            }
+        }
+    }
+
+    @Test
     void noAmmoLineRepeatsAPotionLine() throws Exception {
         LivingWorld world = world();
         List<Persona> speakers = new ArrayList<>();

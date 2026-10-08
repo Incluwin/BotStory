@@ -155,6 +155,8 @@ class AgentDialogueCatalogTest {
                 assertFalse(line.chars().anyMatch(Character::isDigit), line);
                 assertFalse(line.contains("heading back") || line.contains("coming to you"),
                         "it keeps its post in a run: " + line);
+                assertFalse(line.contains("was my last " + word) || line.contains("that was my last"),
+                        "the word is plural, so is its verb: " + line);
             }
         }
         assertTrue(AgentDialogueCatalog.inRunAmmoOutReplies().stream().map(line -> String.format(line, "stars"))

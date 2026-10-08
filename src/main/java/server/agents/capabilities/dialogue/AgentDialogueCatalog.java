@@ -192,7 +192,7 @@ public final class AgentDialogueCatalog {
     /** Out of projectiles inside a companion run, where it keeps its post: "%s" is stars, arrows, bolts or bullets. */
     private static final List<String> IN_RUN_AMMO_OUT_REPLIES = List.of(
             "ugh, out of %s.",
-            "that was my last %s... this'll be rough.");
+            "those were my last %s... this'll be rough.");
     private static final List<String> COMBAT_MP_POTS_OUT_REPLIES = List.of(
             "out of MP pots! heading back",
             "no MP pots left, coming to you",
