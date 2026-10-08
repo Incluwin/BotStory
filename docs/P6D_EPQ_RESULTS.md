@@ -70,6 +70,7 @@ Each code change has a test that was red before it (red logs `p6g_epq_rv_<item>_
 | (this commit) | B1-B5, B7, B13 (docs) | The line table above; the Step 7 recipe fixes below. |
 | (fix/epq-golem-marble-fountain) | Live 2026-10-08: the holder of the golem's marble left with it ('marble=held') | The leave went at the hand-over's time-out with the walk to the leader still open, and the hand-over's own fallback (drop where it stands past TIMEOUT_MS) could never come first. The event's exit put the holder on the public 930000800 and the run was released in the same pass, so nothing could drop it in the fountain. Now a holder still holding it as the leave goes leaves it on its map first (E16h beside him, else the new E16x), and E16t no longer promises the fountain without the portal. |
 | (fix/epq-after-clear-adds) | Live 2026-10-07 and 2026-10-08: after 'EPQ boss: cleared' the golem's last adds (9300177-9300179) kept hitting the companions, who stood still (10-07: Halvard, Pell and Kestrel went down at x -540 with no HP potion left; 10-08: the holder's walk to the leader never ended within 30 s) | AgentEpqCoordinator.boss fights only while a golem lives; past the clear AgentEpqCompanionRun.afterClearMember called stop for every companion without an errand. Now, until the leave goes, a companion fights an add within ADD_THREAT_PX first, then does its golem's-marble errand (the work Agent's take, the hand-over), then fights the adds left anywhere on the map, and stands only when none is left ('EPQ after clear adds: state=FIGHT' once, 'state=GONE' once). The leave, its timers, the hand-overs and stock runs are unchanged. Tests: AgentEpqAfterClearAddsTest. |
+| (fix/epq-sealed-basic-attack) | Live 2026-10-08 (session ad7e9a29): 9300182 lived 14 min; Halvard, Kestrel and Casse went down and the run was stopped | 9300182's seal (MobSkill 120 level 3: 70 % a cast, 30 s, everyone within 450 px, every 35 s) takes every attack skill, and EPQ requires an attack skill of each member every tick (AgentEpqCoordinator.tickMember, from the graft), so AgentCombatPlanRuntime.planAttack gave a sealed companion no plan at all while it stood in melee drinking potions; meanwhile HEAL_M (MobSkill 114 level 22) healed it 19k-40k a minute below 70 %. Now a companion run's sealed member falls back to its basic attack until the seal ends (AgentCombatSkillConstraintState.releaseAttackSkill); a stock run keeps the requirement. New 'EPQ boss hp:' every BOSS_HP_LOG_INTERVAL_MS (30 s) while a golem lives: its HP, the members on 930000600 and who is sealed. Tests: AgentEpqSealedCompanionTest; BotCombatManagerTest.aSealedAgentHasNoAttackWhileAnAttackSkillIsRequiredAndItsBasicAttackWithout pins the planner. Not changed: the rest rule (it starts only once the potions are gone and ends at POT_STOP potions at any HP, and a member pinned at x -540 must cross the golem to reach x 1020). |
 
 Recipe fixes in Step 7: the restore trap (B1: never '!setlevel me restore' or '!setlevel party restore' on Crewfriend), '!hpmp 0' for the leader (B2), L1b i with '!drop' only (B3), L10b on 930000200 (B4), the pass items for where the companions stand after an after-clear leave (B7), and the log proofs (B13: a case-insensitive grep that also matches 'EPQ companion exit closed the empty event:', 'EPQ member left the run and was ejected' and 'companion EPQ'; L0 without the desk-install line, which does not exist; 'decision=PROCEED'; E16m at once in L1b f; E14w only when a companion tops up; COMPLETED only on 'EPQ session released:').
 
@@ -199,6 +200,7 @@ All are appended at the end of the EPQ block of agent-engine.yaml, prefix `serve
 | AgentEpqPaceProfile.FRAGILE_TOUCHES | 5 |
 | AgentEpqPaceProfile.WEAK_HIT_CHANCE | 0.6 |
 | AgentEpqPaceProfile.PACE_EPOCH | 1 |
+| AgentEpqCoordinator.BOSS_HP_LOG_INTERVAL_MS (fix/epq-sealed-basic-attack, later) | 30000 |
 
 The desk constants are in server.living, not tunables: QUICK_S 900, CLOSE_TO_TIMER_S 120, RANGE_FROM_S 180, SEEN_RUNS 3, CAUTIONS 2 (EllinLines). Seats 4-6, her choice 6. Extras wait at x 164, 134, 104 ... on the floor (EpqEntrance).
 
@@ -348,6 +350,13 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
       Second run, marble with adds: when 9300182 drops its marble, spawn the adds next to it at once. Pass: E16t at
       about 15 s, the holder fights an add on it and then walks to you, 'EPQ handover: item=golem-marble ...
       place=FEET'. Extra grep: grep -E "EPQ (after clear adds|member down|boss: .* cleared)" logs/cosmic-log.log
+   i) [Fix 2026-10-08, sealed companions] '!epqtest checkpoint boss' + '!item 4001163 1', drop the stone and fight
+      the golem chain; watch 9300182. Pass: an 'EPQ boss hp:' line every 30 s from the first golem on, with
+      'sealed=' naming the members under the seal after each 'skill=SEAL' cast; between two lines the pct drops while
+      'sealed=' is not '-' (the sealed companions still hit it with their basic attacks); the golem dies ('EPQ boss:
+      ... cleared'). 9300182 seals on its own about every 35 s; '!debuff' skips Agents (CommandTargetPolicy), so
+      there is no GM way to seal a companion. Record each line's pct and sealed= for the report.
+      Extra grep: grep -E "EPQ boss (hp|rest)|EPQ member down|skill=(SEAL|HEAL_M)" logs/cosmic-log.log
    h) N1, the fountain window (when 9300182 drops its marble): pick the marble up yourself, take out00, drop it
       in the fountain (x -73..220 on 930000800) and walk straight to east00. Pass: no companion takes east00 before
       the fountain fires (about 5 s after your drop), 52000 EXP for everyone on the map, each companion leaves with

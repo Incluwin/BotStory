@@ -23,4 +23,18 @@ class AgentCombatSkillConstraintStateTest {
         assertEquals(0, state.requiredSkillId());
         assertFalse(state.attackSkillRequired());
     }
+
+    @Test
+    void releasingTheAttackSkillRequirementKeepsEveryOtherConstraint() {
+        AgentCombatSkillConstraintState state = new AgentCombatSkillConstraintState();
+        state.require(1234);
+        state.ban(5678);
+        state.requireAttackSkill();
+
+        state.releaseAttackSkill();
+
+        assertFalse(state.attackSkillRequired());
+        assertEquals(1234, state.requiredSkillId());
+        assertTrue(state.banned(5678));
+    }
 }

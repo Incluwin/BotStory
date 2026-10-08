@@ -1276,6 +1276,10 @@ tuning:
     # Purpose: Keeps the EPQ party in the boss field briefly after Ellin Forest marks the event cleared.
     # Technical: Starts only from the first authoritative isEventCleared observation and affects no combat or reward calculation.
     server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.BOSS_LOOT_SETTLE_MS: '2000'
+    # Values: 5000-120000 milliseconds. Recommended: 30000 so a slow golem fight leaves about two lines a minute.
+    # Purpose: Sets how often the EPQ coordinator logs 'EPQ boss hp:' (the living golem's HP, the members standing on 930000600 and which of them are sealed) while a golem lives.
+    # Technical: AgentEpqCoordinator.logBossProgress reads it on the leader's pass on 930000600, in every EPQ mode, through AgentEpqSession.claimLogWindow; nothing decides by the line.
+    server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.BOSS_HP_LOG_INTERVAL_MS: '30000'
     # Values: 600000-1800000 milliseconds. Recommended: 1800000 to match the authored 30-minute Ellin Forest event timer.
     # Purpose: Bounds ownership if the EPQ event script or roster becomes stuck without completing.
     # Technical: Measured from EPQ session admission and released only through EPQ's idempotent termination path.

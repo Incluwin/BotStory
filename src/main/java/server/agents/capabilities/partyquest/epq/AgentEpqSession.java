@@ -57,6 +57,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final AgentEpqPaceMarks pace = new AgentEpqPaceMarks();
     private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
+    private final Map<String, Long> logWindows = new HashMap<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
     private final Set<Integer> departed = new LinkedHashSet<>();
@@ -507,6 +508,14 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     /** A once-only mark for a log line, apart from the chat announcements. */
     synchronized boolean claimLogMark(String key) {
         return key != null && !key.isBlank() && logMarks.add(key);
+    }
+
+    /** A repeating log line: true the first time, then once {@code intervalMs} has passed since the last claim. */
+    synchronized boolean claimLogWindow(String key, long nowMs, long intervalMs) {
+        Long last = logWindows.get(key);
+        if (last != null && nowMs - last < intervalMs) return false;
+        logWindows.put(key, nowMs);
+        return true;
     }
 
     /** Counts one of the coordinator's assists of this kind and returns how many there have been. */

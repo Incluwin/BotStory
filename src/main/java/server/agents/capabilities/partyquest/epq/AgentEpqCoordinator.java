@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.epq;
 
 import client.Character;
+import client.Disease;
 import client.inventory.Item;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ import server.maps.MapItem;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -47,6 +49,8 @@ public final class AgentEpqCoordinator {
             "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.EVENT_TIMEOUT_MS");
     private static final long BOSS_LOOT_SETTLE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.BOSS_LOOT_SETTLE_MS");
+    static final long BOSS_HP_LOG_INTERVAL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.BOSS_HP_LOG_INTERVAL_MS");
     private static final long LOBBY_ENTRY_DELAY_MS = 5_000L;
     private static final long LOBBY_CHAT_STAGGER_MS = 650L;
     private static final int ITEM_REACTOR_DROP_RADIUS = 40;
@@ -266,8 +270,13 @@ public final class AgentEpqCoordinator {
             actions().stop(entry);
             return;
         }
-        entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY)
-                .requireAttackSkill();
+        AgentCombatSkillConstraintState skills =
+                entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY);
+        // Live 2026-10-08 (session ad7e9a29): a seal (9300182's MobSkill 120) takes every attack skill, and the
+        // requirement then left a sealed companion no attack at all. A companion run's sealed member falls back to
+        // its basic attack until the seal ends; a stock run keeps the requirement.
+        if (session.companionAdopted() && agent.hasDisease(Disease.SEAL)) skills.releaseAttackSkill();
+        else skills.requireAttackSkill();
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
             actions().clearHorizontalBoundary(entry);
         }
@@ -1024,10 +1033,43 @@ public final class AgentEpqCoordinator {
                     if (AgentEpqCompanionRun.acting(session)) AgentEpqCompanionRun.golemSeen(session, leader, golem);
                 }
             }
+            Monster living = alive.stream().filter(monster -> AgentEpqDefinition.BOSS_MOBS.contains(monster.getId()))
+                    .findFirst().orElse(null);
+            if (living != null && session.claimLogWindow("boss-hp", nowMs, BOSS_HP_LOG_INTERVAL_MS)) {
+                logBossHp(session, living);
+            }
         }
         if (AgentEpqTerminationService.pastTheClear(session.eventInstance()) && session.claimLogMark("cleared")) {
             if (session.companionAdopted()) session.pace().markCleared(nowMs); // Step 5.2
             log.info("EPQ boss: session={} cleared runMs={}", session.sessionId(), nowMs - session.startedAtMs());
+        }
+    }
+
+    /**
+     * 'EPQ boss hp:' every BOSS_HP_LOG_INTERVAL_MS while a golem lives on the leader's map, in every mode (live
+     * 2026-10-08: a golem that lived 14 min left no trace of why): its HP, how many members stand on its map, and
+     * which of them are sealed. Nothing decides by it; never throws.
+     */
+    private static void logBossHp(AgentEpqSession session, Monster golem) {
+        try {
+            int standing = 0;
+            List<String> sealed = new ArrayList<>();
+            for (AgentEpqMemberState member : session.members()) {
+                Character character = character(member.characterId());
+                if (character == null || character.getHp() <= 0
+                        || character.getMapId() != AgentEpqDefinition.BOSS_MAP) {
+                    continue;
+                }
+                standing++;
+                if (character.hasDisease(Disease.SEAL)) sealed.add(character.getName());
+            }
+            long hp = golem.getHp();
+            long maxHp = golem.getMaxHp();
+            log.info("EPQ boss hp: session={} golem={} hp={}/{} pct={} members={} sealed={}", session.sessionId(),
+                    golem.getId(), hp, maxHp, maxHp > 0L ? hp * 100L / maxHp : 0L, standing,
+                    sealed.isEmpty() ? "-" : String.join(",", sealed));
+        } catch (RuntimeException e) {
+            log.warn("EPQ boss hp line failed: session={}", session.sessionId(), e);
         }
     }
 

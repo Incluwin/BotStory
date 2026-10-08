@@ -19,6 +19,8 @@ public final class AgentCombatSkillConstraintState {
     public synchronized boolean attackSkillRequired() { return attackSkillRequired; }
     public synchronized void require(int skillId) { requiredSkillId = Math.max(0, skillId); }
     public synchronized void requireAttackSkill() { attackSkillRequired = true; }
+    /** Lifts only the attack-skill requirement, so the basic-attack fallback is allowed again. */
+    public synchronized void releaseAttackSkill() { attackSkillRequired = false; }
     public synchronized boolean banned(int skillId) { return bannedSkillIds.contains(skillId); }
     public synchronized void ban(int skillId) { bannedSkillIds.add(skillId); }
     public synchronized void clear() {

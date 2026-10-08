@@ -33,6 +33,7 @@ import server.agents.integration.SkillGateway;
 import server.agents.capabilities.movement.AgentMovementProfile;
 
 import client.BuffStat;
+import client.Disease;
 import client.Character;
 import client.Job;
 import client.Skill;
@@ -74,6 +75,7 @@ import server.agents.capabilities.combat.AgentCombatDeathRuntime;
 import server.agents.capabilities.combat.AgentCombatFacingRuntime;
 import server.agents.capabilities.combat.AgentCombatGroundRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillCacheStateRuntime;
+import server.agents.capabilities.combat.AgentCombatSkillConstraintState;
 import server.agents.capabilities.combat.AgentCombatSkillCacheRuntime;
 import server.agents.capabilities.combat.AgentCombatHealRuntime;
 import server.agents.capabilities.combat.AgentCombatPlanRuntime;
@@ -1236,6 +1238,44 @@ class BotCombatManagerTest {
             assertEquals(List.of(target), plan.targets);
             assertEquals(AgentAttackRoute.CLOSE, plan.route);
             assertNotNull(plan.hitBox);
+        }
+    }
+
+    /**
+     * Live 2026-10-08 (EPQ session ad7e9a29): a seal (MobSkill 120) takes every attack skill. While an activity
+     * requires an attack skill (AgentCombatSkillConstraintState, EPQ's rule) a sealed Agent has no attack at all;
+     * without the requirement it falls back to its basic attack.
+     */
+    @Test
+    void aSealedAgentHasNoAttackWhileAnAttackSkillIsRequiredAndItsBasicAttackWithout() {
+        MapleMap map = mock(MapleMap.class);
+        Character bot = mockBot(new Point(100, 200), map, 20_000, null);
+        when(bot.calculateMaxBaseDamage(100)).thenReturn(20);
+        when(bot.calculateMinBaseDamage(100, 0.1d)).thenReturn(10);
+        when(bot.hasDisease(Disease.SEAL)).thenReturn(true);
+        when(bot.getSkillLevel(any(Skill.class))).thenReturn((byte) 1);
+        Skill slashBlast = skillWithAttackBox(Warrior.SLASH_BLAST, 1, 6, 200,
+                new Rectangle(80, 150, 220, 100));
+        Monster target = mockMob(new Point(140, 200), 9300508);
+        when(map.getAllMonsters()).thenReturn(List.of(target));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentCombatSkillCacheStateRuntime.addAttackSkillId(entry, slashBlast.getId());
+        AgentCombatSkillConstraintState constraint =
+                entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY);
+
+        try (MockedStatic<SkillFactory> skillFactory = Mockito.mockStatic(SkillFactory.class);
+             MockedStatic<AgentAttackExecutionProvider> attacks =
+                     Mockito.mockStatic(AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
+            skillFactory.when(() -> SkillFactory.getSkill(slashBlast.getId())).thenReturn(slashBlast);
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.SWORD1H);
+
+            constraint.requireAttackSkill();
+            assertNull(AgentCombatPlanRuntime.planAttack(entry, bot, target, AgentCombatConfig.cfg));
+
+            constraint.clear();
+            AgentAttackPlan plan = AgentCombatPlanRuntime.planAttack(entry, bot, target, AgentCombatConfig.cfg);
+            assertNotNull(plan);
+            assertEquals(0, plan.skillId);
         }
     }
 
