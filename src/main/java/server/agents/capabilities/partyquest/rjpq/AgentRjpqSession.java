@@ -38,9 +38,12 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) {
     }
 
-    /** One companion walking to a book until the claim runs out. */
-    private record BookClaim(int agentId, long untilMs) {
+    /** One companion walking to a book or a door until the claim runs out. */
+    private record Claim(int agentId, long untilMs) {
     }
+
+    private static final String BOOK_CLAIM = "book:";
+    private static final String DOOR_CLAIM = "door:";
 
     private final String sessionId = UUID.randomUUID().toString();
     private final AgentRjpqSide side;
@@ -55,7 +58,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> downSinceMs = new LinkedHashMap<>();
     private final Map<Integer, Boolean> fullRateHeld = new LinkedHashMap<>();
     private final Set<Integer> checkedBooks = new HashSet<>();
-    private final Map<Integer, BookClaim> bookClaims = new LinkedHashMap<>();
+    private final Map<String, Claim> claims = new LinkedHashMap<>();
     private int beakerTarget = -1;
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
@@ -325,7 +328,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     /** Remembers that one of the run's companions checked this book (its object id); true the first time. */
     synchronized boolean markBookChecked(int bookObjectId) {
-        bookClaims.remove(bookObjectId);
+        claims.remove(bookKey(bookObjectId));
         return checkedBooks.add(bookObjectId);
     }
 
@@ -339,23 +342,60 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
      * it is free, expired or already this companion's.
      */
     synchronized boolean claimBook(int bookObjectId, int agentId, long nowMs, long untilMs) {
-        BookClaim claim = bookClaims.get(bookObjectId);
-        if (claim != null && claim.agentId() != agentId && claim.untilMs() > nowMs) {
-            return false;
-        }
-        bookClaims.put(bookObjectId, new BookClaim(agentId, untilMs));
-        return true;
+        return claim(bookKey(bookObjectId), agentId, nowMs, untilMs);
     }
 
     /** The books another companion has a live claim on. */
     synchronized Set<Integer> booksClaimedByOthers(int agentId, long nowMs) {
         Set<Integer> claimed = new HashSet<>();
-        bookClaims.forEach((book, claim) -> {
+        for (String key : claimedByOthers(agentId, nowMs)) {
+            if (key.startsWith(BOOK_CLAIM)) {
+                claimed.add(Integer.parseInt(key.substring(BOOK_CLAIM.length())));
+            }
+        }
+        return claimed;
+    }
+
+    /**
+     * Claims a closed door (by its reactor name) for the companion carrying a card key to it until {@code untilMs},
+     * so two carriers do not spend two keys on one door; true when it is free, expired or already this companion's.
+     */
+    synchronized boolean claimDoor(String doorName, int agentId, long nowMs, long untilMs) {
+        return claim(DOOR_CLAIM + doorName, agentId, nowMs, untilMs);
+    }
+
+    /** The doors (reactor names) another key carrier has a live claim on. */
+    synchronized Set<String> doorsClaimedByOthers(int agentId, long nowMs) {
+        Set<String> claimed = new HashSet<>();
+        for (String key : claimedByOthers(agentId, nowMs)) {
+            if (key.startsWith(DOOR_CLAIM)) {
+                claimed.add(key.substring(DOOR_CLAIM.length()));
+            }
+        }
+        return claimed;
+    }
+
+    private boolean claim(String key, int agentId, long nowMs, long untilMs) {
+        Claim claim = claims.get(key);
+        if (claim != null && claim.agentId() != agentId && claim.untilMs() > nowMs) {
+            return false;
+        }
+        claims.put(key, new Claim(agentId, untilMs));
+        return true;
+    }
+
+    private Set<String> claimedByOthers(int agentId, long nowMs) {
+        Set<String> claimed = new HashSet<>();
+        claims.forEach((key, claim) -> {
             if (claim.agentId() != agentId && claim.untilMs() > nowMs) {
-                claimed.add(book);
+                claimed.add(key);
             }
         });
         return claimed;
+    }
+
+    private static String bookKey(int bookObjectId) {
+        return BOOK_CLAIM + bookObjectId;
     }
 
     /** Records the beaker the companions feed now; true when it changed (the first target counts as a change). */

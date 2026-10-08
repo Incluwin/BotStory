@@ -7,10 +7,12 @@ import client.inventory.Item;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.CharacterGateway;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.NpcSighting;
 import server.agents.integration.PacketGateway;
@@ -19,6 +21,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -74,6 +78,10 @@ final class RjpqStageFixture implements AutoCloseable {
         open(AgentPacketGatewayRuntime.class).when(AgentPacketGatewayRuntime::packets).thenReturn(packets);
         open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
         open(AgentModeStateRuntime.class);
+        open(AgentRuntimeRegistry.class);
+        CharacterGateway online = mock(CharacterGateway.class);
+        when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
+        open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         open(AgentMapPerception.class).when(() -> AgentMapPerception.items(map)).thenAnswer(call -> List.copyOf(floor));
         loot = open(AgentLootEligibility.class);
         loot.when(() -> AgentLootEligibility.canBotTargetLoot(any(), any(), any(), any(), anyLong())).thenReturn(true);
@@ -142,10 +150,14 @@ final class RjpqStageFixture implements AutoCloseable {
 
     /** The side's exit portal pt00 at {@code (x, y)} with portal id {@code portalId}. */
     Portal exitPortal(int portalId, int x, int y) {
+        return portal(AgentRjpqDefinition.STAGE_EXIT_PORTAL, portalId, x, y);
+    }
+
+    Portal portal(String name, int portalId, int x, int y) {
         Portal portal = mock(Portal.class);
         when(portal.getId()).thenReturn(portalId);
         when(portal.getPosition()).thenReturn(new Point(x, y));
-        when(map.getPortal(AgentRjpqDefinition.STAGE_EXIT_PORTAL)).thenReturn(portal);
+        when(map.getPortal(name)).thenReturn(portal);
         return portal;
     }
 
@@ -155,6 +167,10 @@ final class RjpqStageFixture implements AutoCloseable {
     }
 
     Reactor beaker(String name, int state, int x, int y) {
+        return reactor(name, state, x, y);
+    }
+
+    Reactor reactor(String name, int state, int x, int y) {
         Reactor reactor = mock(Reactor.class);
         when(reactor.getName()).thenReturn(name);
         when(reactor.getState()).thenReturn((byte) state);

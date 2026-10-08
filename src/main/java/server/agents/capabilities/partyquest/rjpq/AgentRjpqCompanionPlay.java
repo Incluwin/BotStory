@@ -52,6 +52,16 @@ final class AgentRjpqCompanionPlay {
         };
     }
 
+    // ---- lines (stage 4-5) ----
+
+    static String keysStart() {
+        return "the huroids drop card keys. one key opens each door.";
+    }
+
+    static String officeStandBack() {
+        return "if you want yulete, go talk to him now. we'll stay back.";
+    }
+
     // ---- rules ----
 
     /** A beaker as its reactor stands now: its index (0-2 left to right) and state. */
@@ -89,18 +99,6 @@ final class AgentRjpqCompanionPlay {
 
     /** Whether a floor drop at {@code at} lies on a beaker's item area (a liquid there is being poured, not lost). */
     static boolean inBeakerArea(Point at, Collection<Beaker> beakers) {
-        if (at == null) {
-            return false;
-        }
-        for (Beaker beaker : beakers) {
-            Point position = beaker.position();
-            if (position != null && at.x >= position.x - AgentRjpqDefinition.BEAKER_AREA_LEFT_PX
-                    && at.x <= position.x + AgentRjpqDefinition.BEAKER_AREA_RIGHT_PX
-                    && at.y >= position.y - AgentRjpqDefinition.BEAKER_AREA_TOP_PX
-                    && at.y <= position.y + AgentRjpqDefinition.BEAKER_AREA_BOTTOM_PX) {
-                return true;
-            }
-        }
-        return false;
+        return beakers.stream().anyMatch(beaker -> AgentRjpqDefinition.BEAKER_AREA.contains(beaker.position(), at));
     }
 }

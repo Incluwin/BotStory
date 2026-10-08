@@ -53,13 +53,25 @@ public final class AgentRjpqDefinition {
     public static final List<String> BEAKER_NAMES = List.of("beaker1", "beaker2", "beaker3");
     /** A beaker that reached this state was counted by its hit() (2618000.js; Reactor.wz 2618000 states 7-8). */
     public static final int BEAKER_COUNTED_STATE = 7;
+    /**
+     * An item reactor's trigger area around its position (Reactor.wz state 0 event lt/rb): an item dropped so that it
+     * lands inside it, edges included, is the one the reactor takes.
+     */
+    public record ItemArea(int left, int top, int right, int bottom) {
+        public boolean contains(Point reactor, Point at) {
+            return reactor != null && at != null && at.x >= reactor.x + left && at.x <= reactor.x + right
+                    && at.y >= reactor.y + top && at.y <= reactor.y + bottom;
+        }
+    }
+
     /** Reactor.wz 2618000 item area around a beaker: lt(-26,-24) rb(24,9); a liquid dropped inside it is poured. */
-    public static final int BEAKER_AREA_LEFT_PX = 26;
-    public static final int BEAKER_AREA_RIGHT_PX = 24;
-    public static final int BEAKER_AREA_TOP_PX = 24;
-    public static final int BEAKER_AREA_BOTTOM_PX = 9;
-    /** The exit portal of the books, the tunnel and the beakers (rnj1_pt00, rnj1_out, rnj2_out). */
+    public static final ItemArea BEAKER_AREA = new ItemArea(-26, -24, 24, 9);
+    /** The exit portal of stages 1-4: the books, the tunnel, the beakers and the Special Lab (rnj1_pt00 ... rnj3_out). */
     public static final String STAGE_EXIT_PORTAL = "pt00";
+    /** The office's exit to the Lab Units (rnj6_out; open when the reactor rnj6_out is). Its pt00 is a script spot. */
+    public static final String OFFICE_EXIT_PORTAL = "out00";
+    /** The office spawn point (-540,200), far from Yulete (252,243): where companions stand back while he is there. */
+    public static final String OFFICE_STAND_BACK_PORTAL = "sp";
     public static final int REAL_BOX_LAB_ONE_REACTOR_ID = 2_612_002;
     public static final int REAL_BOX_LAB_TWO_REACTOR_ID = 2_612_001;
     public static final int DECOY_BOX_REACTOR_ID = 2_612_003;
@@ -75,6 +87,9 @@ public final class AgentRjpqDefinition {
     public static final String LAB_TWO_EXIT = "32_out";
     public static final String OFFICE_EXIT = "6_out";
 
+    /** Reactor.wz 2618002 (rnj3_out1, the Lab 1 door) and 2618001 (rnj3_out2, Lab 2): one card key opens each. */
+    public static final ItemArea LAB_ONE_DOOR_AREA = new ItemArea(-26, -16, 32, 9);
+    public static final ItemArea LAB_TWO_DOOR_AREA = new ItemArea(-32, -16, 25, 9);
     /** Map.wz 926100200: where each card-key door stands. */
     public static final Point LAB_ONE_DOOR_POSITION = new Point(-1310, 176);
     public static final Point LAB_TWO_DOOR_POSITION = new Point(812, 175);

@@ -5813,3 +5813,11 @@ tuning:
     # Purpose: How close an RJPQ companion stands to the target beaker's spot before it drops a liquid, so the liquid lands in the beaker and is not lost on the floor.
     # Technical: AgentRjpqStagePlay.pour drops one liquid only when the companion is grounded within this distance of the ground under the beaker and predictDropLanding (or its feet) lies inside the beaker's item area.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DROP_REACH_PX: '20'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion carrying a card key keeps a closed Dark Lab door to itself, so two carriers do not spend two keys on the same door.
+    # Technical: AgentRjpqStagePlay.keys renews the claim on each tick it carries a key to the door (AgentRjpqSession.claimDoor); another carrier picks the other closed door or keeps its key; an opened door is no longer a target.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DOOR_CLAIM_MS: '15000'
+    # Values: 0-200 pixels. Recommended: 30.
+    # Purpose: How far beyond Yulete's 310-pixel rule an RJPQ companion stands while the leader may still want to meet Yulete alone in his office, so no companion spoils it by standing at the edge.
+    # Technical: AgentRjpqStagePlay.office walks a companion within 310 + this many pixels of Yulete (252,243) back to the office spawn while npcShocked is 1 and yuleteTalked is not -1.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.YULETE_CLEAR_MARGIN_PX: '30'
