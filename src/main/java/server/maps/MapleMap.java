@@ -1645,6 +1645,23 @@ public class MapleMap {
 
     }
 
+    /**
+     * Removes a live monster from this map without a death: clients see it fade out as after a killer-less kill, but no
+     * kill listener, quest count, living-world kill hook or event-script monsterKilled runs, and the event instance
+     * keeps it in its monster list. For teardown of a fight that was not won; real deaths keep using killMonster.
+     *
+     * @return true when the monster was still live and is now removed
+     */
+    public boolean removeMonsterWithoutKill(final Monster monster) {
+        if (monster == null || !removeKilledMonsterObject(monster)) {
+            return false;
+        }
+        monster.dispatchMonsterRemovedWithoutKill();
+        broadcastMessage(PacketCreator.killMonster(monster.getObjectId(), 1), monster.getPosition());
+        monster.aggroSwitchController(null, false);
+        return true;
+    }
+
     public void killFriendlies(Monster mob) {
         this.killMonster(mob, (Character) getPlayers().get(0), false, (short) 0);
     }

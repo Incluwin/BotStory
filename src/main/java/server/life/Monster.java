@@ -991,6 +991,21 @@ public class Monster extends AbstractLoadedLife {
             listener.monsterKilled(getAnimationTime("die1"));
         }
 
+        clearStatiAndListeners();
+    }
+
+    /**
+     * Clears this mob's aggro entries, summon links, statuses and listeners after its map removed it without a death
+     * (an encounter torn down, not won). Unlike {@link #dispatchMonsterKilled(boolean)} it tells no one the mob died:
+     * no kill listener, quest count, living-world kill hook or event-script monsterKilled runs.
+     */
+    public synchronized void dispatchMonsterRemovedWithoutKill() {
+        this.aggroClearDamages();
+        this.dispatchClearSummons();
+        clearStatiAndListeners();
+    }
+
+    private void clearStatiAndListeners() {
         statiLock.lock();
         try {
             stati.clear();

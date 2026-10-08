@@ -333,10 +333,14 @@ public final class EasyBalrogEncounterService {
             helpers.clear();
         }
 
+        /**
+         * Teardown, never a kill: a lost or reset fight must not reach the event's monsterKilled
+         * (BalrogBattle_Easy.js runs its clear and victory there when the body dies).
+         */
         private void removeActor(Monster monster) {
             if (monster != null && monster.isAlive() && monster.getMap() == map
                     && map.getMonsterByOid(monster.getObjectId()) == monster) {
-                map.killMonster(monster, null, false, (short) 0);
+                map.removeMonsterWithoutKill(monster);
             }
         }
 
