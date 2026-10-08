@@ -7,6 +7,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -39,11 +40,13 @@ class AgentTickSchedulerScaleGateTest {
         AtomicInteger updates = new AtomicInteger();
         AtomicInteger duplicateExecutions = new AtomicInteger();
         AtomicIntegerArray inFlight = new AtomicIntegerArray(AGENT_COUNT + 1);
+        int[] expectedCounts = new int[SHARD_COUNT];
 
         for (int agentId = 1; agentId <= AGENT_COUNT; agentId++) {
             int sessionAgentId = agentId;
             AgentRuntimeEntry entry = entry(agentId);
             AgentRuntimeRegistry.registerEntry(agentId, entry);
+            expectedCounts[AgentShardedTickScheduler.shardIndex(AgentSessionId.from(entry), SHARD_COUNT)]++;
             handles.add(scheduler.register(entry, () -> {
                 if (inFlight.getAndIncrement(sessionAgentId) != 0) {
                     duplicateExecutions.incrementAndGet();
@@ -57,7 +60,10 @@ class AgentTickSchedulerScaleGateTest {
         }
 
         assertEquals(AGENT_COUNT, scheduler.registrationCounts().stream().mapToInt(Integer::intValue).sum());
-        assertTrue(scheduler.registrationImbalance() < 100);
+        // Session generations come from a JVM-wide counter, so the spread here depends on how many entries earlier
+        // test classes created. The balance bound is gated with pinned generations in AgentShardedTickSchedulerTest.
+        assertEquals(Arrays.stream(expectedCounts).boxed().toList(), scheduler.registrationCounts());
+        assertTrue(scheduler.registrationCounts().stream().allMatch(count -> count > 0));
 
         try (var executor = Executors.newFixedThreadPool(SHARD_COUNT)) {
             for (int cadence = 0; cadence < CADENCE_COUNT; cadence++) {
