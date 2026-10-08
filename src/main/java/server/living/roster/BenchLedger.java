@@ -107,11 +107,13 @@ public final class BenchLedger {
         }
         String today = world.routineDate().toString();
         int farmSecondsToday = today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0;
-        if (world.benchDuty().live(persona.id())) {
+        // a bench ally out with a boss run (P7 Part B): the fight credits its EXP; only the clock moves, no farm time
+        boolean allyTrip = allyOnTrip(persona.id());
+        if (allyTrip || world.benchDuty().live(persona.id())) {
             // live at its camp, its stall or in town (P5): the fight credits EXP and the harvest takes the loot (a
             // stall its sales); here only the clock moves, and farming time still counts toward the daily cap
-            if (entry.assignment() == Assignment.FARM_MESO || entry.assignment() == Assignment.FARM_ITEM
-                    || entry.assignment() == Assignment.GATHER) {
+            if (!allyTrip && (entry.assignment() == Assignment.FARM_MESO || entry.assignment() == Assignment.FARM_ITEM
+                    || entry.assignment() == Assignment.GATHER)) {
                 farmSecondsToday += (int) (hours * 3600);
             }
             world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
@@ -518,6 +520,12 @@ public final class BenchLedger {
      */
     public String takeReport(int ownerId, String personaId, int levelNow) {
         return report.take(ownerId, personaId, levelNow, placeNames, itemNames);
+    }
+
+    /** True while a boss run's bench ally trip holds the persona (CompanionBossAllies, from memory). */
+    private boolean allyOnTrip(String personaId) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return bossRuns != null && bossRuns.allyOnTrip(personaId);
     }
 
     /**

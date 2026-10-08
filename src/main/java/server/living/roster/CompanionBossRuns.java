@@ -111,6 +111,33 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
          */
         boolean handTo(long sessionId, int agentId, int heirId);
 
+        /**
+         * Enlists the owner's bench allies into the run for {@code expedition} as members that lead themselves
+         * (AgentBossRunService.enlist, SELF_LED). Refuses them all unless implemented.
+         */
+        default Enlisted enlistSelfLed(Character owner, AgentBossRunDefinition definition, Expedition expedition,
+                                       List<Integer> agentIds, long nowMs) {
+            return new Enlisted(0L, List.of(), agentIds);
+        }
+
+        /** Takes a WAITING or REGISTERED member of run {@code sessionId} back before Start (AgentBossRunService). */
+        default boolean withdraw(long sessionId, int agentId) {
+            return false;
+        }
+
+        /** The Agent's phase as a member of run {@code sessionId}; null when it is none (or the run is gone). */
+        default AgentBossRunMember.Phase phaseOf(long sessionId, int agentId) {
+            return null;
+        }
+
+        /**
+         * The list of {@code expedition} as the seat share reads it ({@link #seatsLeft}) for {@code ownerId}; unless
+         * implemented, everyone listed is a human and the owner signs up alone.
+         */
+        default Seats seats(Expedition expedition, int ownerId) {
+            return new Seats(expedition == null ? 0 : expedition.getMembers().size(), 0, 1, 0);
+        }
+
         OpenRuns LIVE = new OpenRuns() {
             @Override
             public boolean open(long sessionId) {
@@ -194,8 +221,59 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             public boolean handTo(long sessionId, int agentId, int heirId) {
                 return AgentBossRunService.handTo(sessionId, agentId, heirId);
             }
+
+            @Override
+            public Enlisted enlistSelfLed(Character owner, AgentBossRunDefinition definition, Expedition expedition,
+                                          List<Integer> agentIds, long nowMs) {
+                return AgentBossRunService.enlist(owner, definition, expedition, agentIds, nowMs,
+                        AgentBossRunMember.Kind.SELF_LED);
+            }
+
+            @Override
+            public boolean withdraw(long sessionId, int agentId) {
+                return AgentBossRunService.withdraw(sessionId, agentId);
+            }
+
+            @Override
+            public AgentBossRunMember.Phase phaseOf(long sessionId, int agentId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                AgentBossRunMember member = session == null ? null : session.member(agentId);
+                return member == null ? null : member.phase();
+            }
+
+            @Override
+            public Seats seats(Expedition expedition, int ownerId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+                Set<Integer> owners = new LinkedHashSet<>(List.of(ownerId));
+                Set<Integer> listed = new LinkedHashSet<>();
+                int bots = 0;
+                int held = 0;
+                for (AgentBossRunMember member : session == null ? List.<AgentBossRunMember>of() : session.members()) {
+                    AgentBossRunMember.Phase phase = member.phase();
+                    if (phase != AgentBossRunMember.Phase.WAITING && phase != AgentBossRunMember.Phase.REGISTERED) {
+                        continue;
+                    }
+                    bots++;
+                    held += member.enlistedBy() == ownerId ? 1 : 0;
+                    owners.add(member.enlistedBy());
+                    if (phase == AgentBossRunMember.Phase.REGISTERED) {
+                        listed.add(member.agentId());
+                    }
+                }
+                int humans = 0;
+                for (int id : expedition == null ? Set.<Integer>of() : expedition.getMembers().keySet()) {
+                    humans += listed.contains(id) ? 0 : 1;
+                }
+                return new Seats(humans, bots, owners.size(), held);
+            }
         };
     }
+
+    /**
+     * An expedition list as the seat share reads it: the players on it who are not companions, the companions on it or
+     * still waiting to sign up, the owners signing companions up (the asker included), and the asker's own of those.
+     */
+    record Seats(int humansListed, int botsListedOrPending, int owners, int held) { }
 
     /** What signing up asks of a companion's own potion duty (AgentSupplyReadiness): memory only, any thread. */
     interface Supplies {
@@ -242,6 +320,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final Supplies supplies;
     /** Run key -> an owner's part of an open boss run: from its enlist (or first seat or report) to the run's end. */
     private final Map<String, CompanionBossRun> runs = new ConcurrentHashMap<>();
+    /** P7 Part B: the owners' bench allies, each on its trip from its call to its unload. */
+    private final CompanionBossAllies allies;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -259,6 +339,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.open = open;
         this.potions = potions;
         this.supplies = supplies;
+        this.allies = new CompanionBossAllies(world, open, runs);
     }
 
     /**
@@ -403,8 +484,16 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return Math.max(0, Math.min(share - held, free - botsListedOrPending));
     }
 
+    /**
+     * P7 Part B, from memory, any thread: true while a bench ally's trip to a boss run holds {@code personaId}
+     * (CompanionBossAllies), from its call to its unload; bench duty and the bench ledger leave it alone meanwhile.
+     */
+    public boolean allyOnTrip(String personaId) {
+        return allies.onTrip(personaId);
+    }
+
     /** The expedition of {@code definition}'s type on the clicker's channel (as her script reads it), or null. */
-    private static Expedition expeditionOf(Character clicker, AgentBossRunDefinition definition) {
+    static Expedition expeditionOf(Character clicker, AgentBossRunDefinition definition) {
         Client client = clicker.getClient();
         Channel channel = client == null ? null : client.getChannelServer();
         return channel == null ? null : channel.getExpedition(definition.type());

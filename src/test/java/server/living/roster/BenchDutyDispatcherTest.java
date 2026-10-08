@@ -20,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static server.living.roster.BenchHarness.ANN;
 import static server.living.roster.BenchHarness.BEN;
 import static server.living.roster.BenchHarness.FIELD;
@@ -307,6 +312,30 @@ class BenchDutyDispatcherTest {
 
         assertFalse(game.duty.live("olwen"));
         assertEquals(List.of(), game.calls);
+    }
+
+    @Test
+    void anAllyOnATripIsNotDueAndKeepsItsDuty() {
+        // P7 Part B: Olwen was called down to a boss run (her slice ended, her call waits on companion-ops)
+        game.companion(ANN, "olwen", "Olwen", 901, Assignment.TRAIN);
+        game.duty.setYourCall(ANN, "olwen", true);
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(bossRuns.allyOnTrip("olwen")).thenReturn(true);
+        when(game.world.bossRuns()).thenReturn(bossRuns);
+
+        game.duty.tick();
+
+        assertFalse(game.duty.live("olwen"));
+        assertEquals(List.of(), game.calls, "no slice of hers while her trip lasts");
+        assertNull(game.leases.holder(901));
+        verify(game.roster, never()).applyYourCall(anyInt(), anyString(), any(), anyInt());
+        assertEquals(Assignment.TRAIN, game.row(ANN, "olwen").assignment(), "her duty waits for her");
+        assertEquals(FIELD, game.row(ANN, "olwen").campMapId());
+
+        when(bossRuns.allyOnTrip("olwen")).thenReturn(false); // back from the run
+        game.duty.tick();
+
+        assertTrue(game.duty.live("olwen"), "on its next turn once the trip is over");
     }
 
     private static RosterEntry row(int ownerId, String personaId) {

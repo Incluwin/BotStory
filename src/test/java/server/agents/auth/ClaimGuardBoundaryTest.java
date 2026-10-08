@@ -102,6 +102,8 @@ class ClaimGuardBoundaryTest {
             "server/living/roster/CompanionManager.java chat 1",
             // P5: every live bench slice (a field, town or stall form) loads here, behind its lease and the loaded check
             "server/living/roster/BenchDutyDispatcher.java load 1",
+            // P7 Part B: a boss run's bench ally loads on its arrival, behind its EXPEDITION lease and the loaded check
+            "server/living/roster/CompanionBossAllies.java load 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",
             "server/living/population/PresenceScheduler.java load 1",

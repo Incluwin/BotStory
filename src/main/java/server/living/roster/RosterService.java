@@ -900,9 +900,10 @@ public final class RosterService {
 
     /**
      * Where a benched companion called now sets off from: the map its live bench slice stands on (a field camp, a town
-     * it rests in, a Free Market room; read before the call ends the slice), else its camp.
+     * it rests in, a Free Market room; read before the call ends the slice), else its camp. A boss run's bench ally
+     * sets off the same way (CompanionBossAllies).
      */
-    private int departure(RosterEntry entry, Persona persona) {
+    int departure(RosterEntry entry, Persona persona) {
         BenchDutyDispatcher bench = world.benchDuty();
         BenchDutyDispatcher.Slice slice = bench == null ? null : bench.slice(persona.id());
         return slice != null && slice.mapId() > 0 ? slice.mapId() : campOf(entry, persona);

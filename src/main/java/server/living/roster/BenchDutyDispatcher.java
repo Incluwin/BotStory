@@ -898,7 +898,8 @@ public final class BenchDutyDispatcher {
         for (RosterEntry entry : world.store().allBenched()) {
             if (BenchSessions.benchGoverned(entry) && formOf(entry) != null && !live.containsKey(entry.personaId())
                     && restingUntilMs.getOrDefault(entry.personaId(), 0L) <= now
-                    && world.roster().companion(entry) == null && world.residents().agentOf(entry.personaId()) == null) {
+                    && world.roster().companion(entry) == null && world.residents().agentOf(entry.personaId()) == null
+                    && !allyOnTrip(entry.personaId())) {
                 due.add(entry);
                 owners.add(entry.characterId());
             }
@@ -937,6 +938,15 @@ public final class BenchDutyDispatcher {
             }
             begin(entry, form, now);
         }
+    }
+
+    /**
+     * P7 Part B: a boss run's bench ally on its trip (CompanionBossAllies, from memory) is not due: its call ended its
+     * slice, and its row's turn (and a Your call pick) waits until the trip is over.
+     */
+    private boolean allyOnTrip(String personaId) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return bossRuns != null && bossRuns.allyOnTrip(personaId);
     }
 
     /**
