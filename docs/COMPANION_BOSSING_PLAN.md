@@ -1029,7 +1029,7 @@ Rules for every item:
 ## Every phase
 
 - **Guard tests stay green:** AgentKpqIsolationTest, ClaimGuardBoundaryTest, RosterStateWriterBoundaryTest, BenchLoadsOnExecutorTest, AgentLivingImportBoundaryTest, AgentConfigurationBoundaryTest and AgentArchitectureBoundaryTest. Add AgentSchedulerBlockingBoundaryTest when new Agent code is added. This is the guard set of p7a_amendments.md item 7. AgentConfigurationBoundaryTest enforces the no-numeric-constants rule.
-- **Full suite:** run it with `-Dtest='!BotManagerTest,!BotCombatManagerTest' -Dsurefire.failIfNoSpecifiedTests=false`. The baseline is 0 failures and 40 skipped, in about 10,651 tests. Any failure is new.
+- **Full suite:** run it with `JAVA_TOOL_OPTIONS=-Xmx5g` and a plain `test`, with no `-Dtest` filter. The baseline is 0 failures and 37 skipped, in 11,478 tests at 28cd66e4e. Any failure is new. A base older than 28cd66e4e still needs `-Dtest='!BotManagerTest,!BotCombatManagerTest' -Dsurefire.failIfNoSpecifiedTests=false`, because BotManagerTest runs out of a 5 GB heap there.
 - **House rules:** server.agents never imports server.living. KPQ, HPQ, LPQ and EPQ behaviour does not change. Edits to shared files are small and append-only.
 - **Database:** if a phase needs a table, it uses changeset 47 and db/tables/038-*.sql.
 - **Hand-over:** each hand-over states the one-line death-chain change, if the phase touches it, and any balance run that crew B dropped.
