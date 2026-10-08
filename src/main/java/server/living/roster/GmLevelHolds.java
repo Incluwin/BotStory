@@ -30,8 +30,9 @@ import java.util.regex.Pattern;
  * cached; a read that fails counts as held and is not cached. A record changes in memory at once and its row is written
  * on companion-ops (inline when already there). From {@link #begin} until its {@link Pending} settles, a use is
  * {@linkplain #settling settling} and another use of the same record waits for it. While a record holds a companion,
- * its Resident quest gear is not applied (ResidentRuntime.kitAllowed) and it is not shaped again as a Resident; a
- * release refreshes its gear. No timer.</p>
+ * its Resident quest gear is not applied (ResidentRuntime.kitAllowed) and it is not shaped as a Resident or as a
+ * companion; a release prepares it again (ResidentRuntime.prepareCompanion: a never-shaped persona is shaped, then its
+ * gear is refreshed). No timer.</p>
  */
 public final class GmLevelHolds {
     public static final String HOLD = "gm.level.hold";
@@ -236,14 +237,14 @@ public final class GmLevelHolds {
     }
 
     /**
-     * Releases the record (in memory at once; {@code why} is the row's detail) and refreshes a companion's quest gear;
-     * completes false when its row could not be written.
+     * Releases the record (in memory at once; {@code why} is the row's detail) and prepares a companion again (shaped if
+     * it never was, then its quest gear); completes false when its row could not be written.
      */
     public CompletableFuture<Boolean> release(int characterId, String personaId, String why) {
         records.put(key(characterId, personaId), Optional.empty());
         CompletableFuture<Boolean> written = write(characterId, personaId, RELEASE, why);
         if (!SELF.equals(personaId)) {
-            refreshKit(personaId);
+            prepareCompanion(personaId);
         }
         return written;
     }
@@ -278,18 +279,21 @@ public final class GmLevelHolds {
         return saved;
     }
 
-    /** The companion's Resident quest gear for the level it is at now, once nothing holds it (companion-ops). */
-    private void refreshKit(String personaId) {
+    /**
+     * The companion prepared as its persona once nothing holds it (companion-ops): a never-shaped one (granted) is shaped,
+     * then it gets the Resident quest gear for the level it is at.
+     */
+    private void prepareCompanion(String personaId) {
         CompanionExecutor ops = world.executor();
         if (ops == null) {
             return;
         }
-        ops.submit("gm.level kit " + personaId, () -> {
+        ops.submit("gm.level prepare " + personaId, () -> {
             Persona persona = world.content().persona(personaId);
             Character bot = world.roster().loaded(personaId);
             server.living.resident.ResidentRuntime residents = world.residents();
             if (persona != null && bot != null && residents != null) {
-                residents.refreshKit(bot, persona);
+                residents.prepareCompanion(bot, persona, false);
             }
         });
     }

@@ -410,8 +410,7 @@ public final class ResidentRuntime {
     void shapeIfNeeded(Session session, Character agent) {
         LivingStore.PersonaState state = world.store().personaState(session.persona.id());
         String loadoutId = currentLoadoutId(session.persona);
-        int wanted = ResidentShaper.RECIPE_VERSION * 1000 + Math.abs(loadoutId == null ? 0 : loadoutId.hashCode() % 1000);
-        if (state.shapedVersion() == wanted) {
+        if (state.shapedVersion() == shapedVersion(loadoutId)) {
             wearMissingEquips(session.persona, agent, loadoutId);
             return;
         }
@@ -419,11 +418,21 @@ public final class ResidentRuntime {
             log.info("Resident {}: not shaped while a GM level set holds it", session.persona.id());
             return;
         }
-        Loadout loadout = world.content().loadout(loadoutId);
-        ResidentShaper.shape(agent, session.persona, loadout, session.persona.id().hashCode());
-        world.store().savePersonaState(state.withCharacter(session.characterId).withShaped(wanted));
-        world.store().event(0, session.persona.id(), "persona.shaped", "level " + agent.getLevel() + " job " + agent.getJob()
-                + (loadoutId == null ? "" : " loadout " + loadoutId));
+        shape(session.persona, session.characterId, agent, state, loadoutId, "");
+    }
+
+    /** Shapes the character to its persona and loadout {@code loadoutId}, and records that version on {@code state}. */
+    private void shape(Persona persona, int characterId, Character agent, LivingStore.PersonaState state, String loadoutId,
+                       String how) {
+        ResidentShaper.shape(agent, persona, world.content().loadout(loadoutId), persona.id().hashCode());
+        world.store().savePersonaState(state.withCharacter(characterId).withShaped(shapedVersion(loadoutId)));
+        world.store().event(0, persona.id(), "persona.shaped", "level " + agent.getLevel() + " job " + agent.getJob()
+                + (loadoutId == null ? "" : " loadout " + loadoutId) + how);
+    }
+
+    /** The version a persona with loadout {@code loadoutId} is shaped to; never 0, which is a character never shaped. */
+    private static int shapedVersion(String loadoutId) {
+        return ResidentShaper.RECIPE_VERSION * 1000 + Math.abs(loadoutId == null ? 0 : loadoutId.hashCode() % 1000);
     }
 
     /** The persona's loadout, or its arc chapter's while that chapter overrides it. */
@@ -457,6 +466,59 @@ public final class ResidentRuntime {
                     ResidentWardrobe.handedOut(world.content().loadouts().values()));
         } catch (RuntimeException failure) {
             log.warn("Resident {}: dressing failed", persona.id(), failure);
+        }
+    }
+
+    /**
+     * A companion the roster or bench has just loaded ({@code loading}), or one a GM level set no longer holds: a persona
+     * whose character was never shaped is shaped to it now, then it puts on its quest gear ({@link #refreshKit}). A
+     * Resident is shaped when it materializes in its home town; one granted (!grantcompanion) or called before it ever
+     * did had its character made at its first call, a level-1 beginner with the creator's sword (found live 2026-10-07:
+     * Flint, a Gunslinger, fought Easy Balrog with it). Not reshaped here: a companion shaped to any version (it has grown
+     * since), one a GM level set holds (shaped once the set is restored or kept), a hired citizen (its gear is its own).
+     * Registered, it is shaped on its own mailbox, which its next tick drains before it acts; loaded and not registered
+     * yet, right here. A character not live now is shaped when it next loads.
+     */
+    public void prepareCompanion(Character agent, Persona persona, boolean loading) {
+        if (agent != null && persona != null && !LivingContent.isHire(persona.id())
+                && neverShaped(world.store().personaState(persona.id()), agent)) {
+            AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
+            if (runtime == null) {
+                if (loading && agent.getClient() != null) {
+                    shapeCompanion(agent, persona);
+                }
+            } else {
+                server.agents.runtime.AgentMailboxRuntime.dispatch(runtime, entry -> {
+                    Character live = entry.bot();
+                    if (live != null && live.getId() == agent.getId() && live.getClient() != null) {
+                        shapeCompanion(live, persona);
+                    }
+                    return null;
+                });
+            }
+        }
+        refreshKit(agent, persona, loading);
+    }
+
+    /** Its persona state names this character and records no shaping; a state that cannot be read names none. */
+    private static boolean neverShaped(LivingStore.PersonaState state, Character agent) {
+        return state.characterId() == agent.getId() && state.shapedVersion() == 0;
+    }
+
+    /** {@link #prepareCompanion}'s shaping where it runs, its state read again there; never in the way of the load. */
+    private void shapeCompanion(Character agent, Persona persona) {
+        try {
+            LivingStore.PersonaState state = world.store().personaState(persona.id());
+            if (!neverShaped(state, agent)) {
+                return;
+            }
+            if (heldAtGmLevel(agent, persona)) {
+                log.info("Companion {}: not shaped while a GM level set holds it", persona.id());
+                return;
+            }
+            shape(persona, agent.getId(), agent, state, currentLoadoutId(persona), " as a companion");
+        } catch (RuntimeException failure) {
+            log.warn("Companion {}: shaping failed", persona.id(), failure);
         }
     }
 

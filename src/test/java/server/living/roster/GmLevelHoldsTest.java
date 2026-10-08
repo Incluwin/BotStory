@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -210,7 +211,7 @@ class GmLevelHoldsTest {
     }
 
     @Test
-    void releasingACompanionsRecordRefreshesItsQuestGearAndAPlayersDoesNot() {
+    void releasingACompanionsRecordPreparesItAndAPlayersDoesNot() {
         Persona yara = mock(Persona.class);
         Character bot = mock(Character.class);
         LivingContent content = mock(LivingContent.class);
@@ -223,10 +224,11 @@ class GmLevelHoldsTest {
         when(world.residents()).thenReturn(residents);
 
         holds.release(CREWFRIEND, GmLevelHolds.SELF, "keep");
-        verify(residents, never()).refreshKit(any(), any());
+        verify(residents, never()).prepareCompanion(any(), any(), anyBoolean());
 
+        // a never-shaped persona (granted) is shaped once nothing holds it, then gets its quest gear; live, not loading
         holds.release(901, "yara", "restored");
-        verify(residents).refreshKit(bot, yara);
+        verify(residents).prepareCompanion(bot, yara, false);
     }
 
     @Test
