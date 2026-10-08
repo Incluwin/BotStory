@@ -1,15 +1,18 @@
 package server.agents.capabilities.partyquest.lmpq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /** LMPQ aggregate root; all routing and lease state is isolated per event. */
-public final class AgentLmpqSession {
+public final class AgentLmpqSession implements AgentCompanionRunSession {
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_MEMBER, HUMAN_LEADER }
     public enum Phase { PREPARING, ENTERING, FARMING, REGROUPING, CLEARING, REWARD, EXITING, COMPLETED, FAILED }
 
@@ -34,6 +37,11 @@ public final class AgentLmpqSession {
     private String failure = "";
     private EventInstanceManager eventInstance;
     private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private AgentPqPaceCalibration paceCalibration;
+    private String potionsAtEntry;
+    private int couponsAtClearing;
+    private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -78,6 +86,7 @@ public final class AgentLmpqSession {
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
         if (next != phase) {
+            firstEntries.putIfAbsent(next, nowMs);
             phase = next;
             phaseEnteredAtMs = nowMs;
             markProgress(nowMs);
@@ -94,13 +103,28 @@ public final class AgentLmpqSession {
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
     public synchronized void fail(String reason, long nowMs) {
         failure = reason == null || reason.isBlank() ? "LMPQ failed" : reason;
+        if (phase != Phase.FAILED) firstEntries.putIfAbsent(Phase.FAILED, nowMs);
         phase = Phase.FAILED;
         markProgress(nowMs);
     }
-    public synchronized void complete(long nowMs) { phase = Phase.COMPLETED; markProgress(nowMs); }
+    public synchronized void complete(long nowMs) {
+        if (phase != Phase.COMPLETED) firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
+        phase = Phase.COMPLETED;
+        markProgress(nowMs);
+    }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
 
+    /** True once a release has begun (it is claimed by beginTermination). */
+    public synchronized boolean terminationStarted() { return terminating; }
+
+    /** When the run first entered {@code phase} (a re-entry keeps the first), or 0 when it never did. */
+    synchronized long firstEnteredAtMs(Phase phase) {
+        Long at = phase == null ? null : firstEntries.get(phase);
+        return at == null ? 0L : at;
+    }
+
+    @Override
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
@@ -109,6 +133,7 @@ public final class AgentLmpqSession {
     public long startedAtMs() { return startedAtMs; }
     public AgentLmpqRoomLedger rooms() { return rooms; }
     public synchronized Phase phase() { return phase; }
+    @Override
     public synchronized int eventLeaderId() { return eventLeaderId; }
     public synchronized int executionAgentId() { return executionAgentId; }
     public synchronized long lastProgressAtMs() { return lastProgressAtMs; }
@@ -137,8 +162,50 @@ public final class AgentLmpqSession {
      * A human-led run of owner-bound companions, admitted by AgentLmpqAdmissionService.admit. Every companion-run
      * behaviour is gated on it; stock, background and GM fixture runs leave it false.
      */
+    @Override
     public synchronized boolean companionAdopted() { return companionAdopted; }
 
     /** Set only by the public admit, before the session is published. */
     synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** The leader's clear-time calibration, kept for the run's pace; null until a host hands one. */
+    synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+        paceCalibration = calibration;
+    }
+
+    /** The companions' potions as 'LMPQ potions:' logged them on entry; null when that line was never logged. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    /** Keeps the companions' potions on entry; the first caller wins and later ones are refused (false). */
+    synchronized boolean recordPotionsAtEntry(String potions) {
+        if (potionsAtEntry != null || potions == null) return false;
+        potionsAtEntry = potions;
+        return true;
+    }
+
+    /** The coupons the leader held when the run moved to Pietri (CLEARING); 0 until then. */
+    synchronized int couponsAtClearing() { return couponsAtClearing; }
+
+    synchronized void setCouponsAtClearing(int coupons) { couponsAtClearing = Math.max(0, coupons); }
+
+    /**
+     * Takes a member out of the run (a companion that tapped out); the event leader is never taken out. The
+     * requested party size stays as admitted, so memberCount() shrinks below it. Nothing calls it before Step 3.
+     */
+    public synchronized void removeMember(int characterId) {
+        if (characterId == eventLeaderId) {
+            throw new IllegalArgumentException("the LMPQ event leader cannot be removed from his run");
+        }
+        members.remove(characterId);
+    }
 }
