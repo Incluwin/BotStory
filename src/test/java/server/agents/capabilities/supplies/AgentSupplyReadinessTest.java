@@ -98,28 +98,28 @@ class AgentSupplyReadinessTest {
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
-        assertEquals(new AgentSupplyReadiness.Standard(250, 350), standardFor("EPQ "), "keys are trimmed, any case");
+        assertEquals(new AgentSupplyReadiness.Standard(350, 350), standardFor("EPQ "), "keys are trimmed, any case");
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
     }
 
     @Test
     void theCountOverloadAndTheCompanionsOwnCountAgreeOnTheEpqStandard() {
-        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion. This checks the
-        // two overloads only: no desk passes epq on this branch (Ellin's desk reads PARTY_QUEST until EPQ step 6.3)
+        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion.
+        // Ellin's desk passes partyQuest("epq") (CompanionPartyQuestService.waitingReason), as the duty does.
         AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character mage = withJob(Job.FP_WIZARD);
         when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
-        int[] carried = {249, 350};
+        int[] carried = {349, 350};
         try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
             potions.when(() -> AgentPotionService.countPotions(mage)).thenAnswer(inv -> carried.clone());
 
-            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(249, 350, true, epq),
+            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(349, 350, true, epq),
                     "the count overload, which a desk calls with its own key");
             assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(mage, epq),
                     "what the companion's own restock reads");
 
-            carried[0] = 250;
-            assertTrue(AgentSupplyReadiness.shortfall(250, 350, true, epq).none());
+            carried[0] = 350;
+            assertTrue(AgentSupplyReadiness.shortfall(350, 350, true, epq).none());
             assertTrue(AgentSupplyReadiness.shortfall(mage, epq).none());
         }
     }

@@ -288,24 +288,24 @@ class AgentShopServicePotionFloorTest {
         purse = 200_000;
         visit(List.of(RED, WHITE, BLUE));
 
-        assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE, "35 x " + WHITE,
+        assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE, "100 x " + WHITE, "35 x " + WHITE,
                         "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "35 x " + BLUE), transactions,
                 "the whole standard in one visit, and no top-up past it");
-        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot));
-        assertEquals(200_000 - 235 * 320 - 335 * 200, purse);
+        assertArrayEquals(new int[]{350, 350}, AgentPotionService.countPotions(bot));
+        assertEquals(200_000 - 335 * 320 - 335 * 200, purse);
     }
 
     @Test
     void aPurseThatCoversTheEpqStandardAtItsCheapestReachesItAndKeepsTheManaMoney() {
         AgentSupplyReadiness.install(id -> EPQ);
         carry(0, 0);
-        purse = 250 * 50 + 350 * 200; // this shop sells no food: Red and Blue are its cheapest
+        purse = 350 * 50 + 350 * 200; // this shop sells no food: Red and Blue are its cheapest
         visit(List.of(RED, WHITE, BLUE));
 
-        assertEquals(List.of("100 x " + RED, "100 x " + RED, "50 x " + RED,
+        assertEquals(List.of("100 x " + RED, "100 x " + RED, "100 x " + RED, "50 x " + RED,
                         "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "50 x " + BLUE), transactions,
                 "White would eat the mana potions' money");
-        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot));
+        assertArrayEquals(new int[]{350, 350}, AgentPotionService.countPotions(bot));
         assertEquals(0, purse);
     }
 
@@ -325,7 +325,7 @@ class AgentShopServicePotionFloorTest {
         assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE), transactions,
                 "two stacks of HP potions, and no new stack of mana potions in the run's slot");
         assertEquals(1, use.getNumFreeSlot());
-        assertEquals(new AgentShopBuyReport(WHITE, 200, 235, AgentShopShortfallReason.NO_SPACE),
+        assertEquals(new AgentShopBuyReport(WHITE, 200, 335, AgentShopShortfallReason.NO_SPACE),
                 visit.firstShortfall(), "it says its bag is full");
     }
 
@@ -347,7 +347,7 @@ class AgentShopServicePotionFloorTest {
         assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE), transactions,
                 "no mana potion in the run's slot, from the floor or from the reserve passes");
         assertEquals(1, use.getNumFreeSlot());
-        assertEquals(new AgentShopBuyReport(WHITE, 200, 250, AgentShopShortfallReason.NO_SPACE),
+        assertEquals(new AgentShopBuyReport(WHITE, 200, 350, AgentShopShortfallReason.NO_SPACE),
                 visit.firstShortfall(), "it says its bag is full");
         speech.verify(() -> AgentShopRuntime.sayMapNow(eq(bot), contains("for MP")), never());
     }
@@ -381,9 +381,9 @@ class AgentShopServicePotionFloorTest {
         prices.put(APPLE, 30);
         prices.put(ORANGE, 100);
         purse = 200_000;
-        use = new Inventory(bot, InventoryType.USE, (byte) 8);
+        use = new Inventory(bot, InventoryType.USE, (byte) 9);
         use.addItem(Items.itemWithQuantity(WHITE, 20));
-        use.addItem(Items.itemWithQuantity(BLUE, 30)); // 6 free slots
+        use.addItem(Items.itemWithQuantity(BLUE, 30)); // 7 free slots
         when(bot.getInventory(InventoryType.USE)).thenReturn(use);
         fillCarriedStacksFirst();
         Shop mayoren = shop(List.of(APPLE, ORANGE, RED, WHITE, BLUE));
@@ -393,12 +393,12 @@ class AgentShopServicePotionFloorTest {
             inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
             needed = useSlotsNeeded(mayoren, AgentSupplyReadiness.shortfall(bot, EPQ), purse);
         }
-        assertEquals(6, needed, "2 stacks of White and 3 of Blue beside the carried ones, and the run's slot");
+        assertEquals(7, needed, "3 stacks of White and 3 of Blue beside the carried ones, and the run's slot");
         assertTrue(use.getNumFreeSlot() >= needed, "the gate lets it go");
 
         visit(List.of(APPLE, ORANGE, RED, WHITE, BLUE), slotMax);
 
-        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot), transactions.toString());
+        assertArrayEquals(new int[]{350, 350}, AgentPotionService.countPotions(bot), transactions.toString());
         assertEquals(1, use.getNumFreeSlot(), "the counter took the slots the gate asked for, less the run's one");
     }
 

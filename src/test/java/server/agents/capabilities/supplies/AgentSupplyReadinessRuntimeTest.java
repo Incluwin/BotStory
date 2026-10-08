@@ -620,38 +620,39 @@ class AgentSupplyReadinessRuntimeTest {
 
     @Test
     void anEpqCompanionBackFromARunRestocksIntoTheSlotsItsRunFreed() {
-        // review 2026-10-06: from 0/0 with exactly 8 free the visit leaves White 100/100/50 and Blue 100/100/100/50; a
-        // run uses 230/320, autopot empties 2 + 3 stacks: 6 free, 20 White and 30 Blue on a stack each. 2 + 3 + the run's
+        // review 2026-10-06: from 0/0 with exactly 9 free the visit leaves White 100/100/100/50 and Blue 100/100/100/50;
+        // a run uses 330/320, autopot empties 3 + 3 stacks: 7 free, 20 White and 30 Blue on a stack each. 3 + 3 + the
+        // run's
         stackSize = 100;
         Character casse = companion(545, "Casse", Job.MAGICIAN, 20, 30, 200_000);
         activities.put(545, EPQ);
         pickRoom.put(545, new int[]{80, 70});
-        freeSlots.put(545, 5);
+        freeSlots.put(545, 6);
         AgentRuntimeEntry entry = following(casse);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
         assertFalse(execution(entry).isActive());
         assertEquals(List.of("refused 545 NO_SPACE 0"), calls, "one slot short: it says so once");
-        freeSlots.put(545, 6);
+        freeSlots.put(545, 7);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L), "the slots its run freed are enough");
         assertTrue(execution(entry).isActive());
 
-        // 230 White do not fit the purse less the mana potions at their cheapest (100,000 - 320 x 200): the counter
-        // may buy another HP potion, so that stack's room is not counted on (3), the Blue's is (3), and the run's
-        assertFalse(epqMagicianSetsOff(546, 100_000, 80, 70, 6));
-        assertTrue(epqMagicianSetsOff(547, 100_000, 80, 70, 7));
+        // 330 White do not fit the purse less the mana potions at their cheapest (100,000 - 320 x 200): the counter
+        // may buy another HP potion, so that stack's room is not counted on (4), the Blue's is (3), and the run's
+        assertFalse(epqMagicianSetsOff(546, 100_000, 80, 70, 7));
+        assertTrue(epqMagicianSetsOff(547, 100_000, 80, 70, 8));
         // two carried White stacks with 130 room: still not counted on while the White do not fit
-        assertFalse(epqMagicianSetsOff(548, 100_000, 130, 70, 6));
-        assertTrue(epqMagicianSetsOff(549, 200_000, 130, 70, 5), "they fit: 1 + 3 + the run's");
+        assertFalse(epqMagicianSetsOff(548, 100_000, 130, 70, 7));
+        assertTrue(epqMagicianSetsOff(549, 200_000, 130, 70, 6), "they fit: 2 + 3 + the run's");
 
         // the MP pick is dearer than the cheapest: after an HP pass that may spend its whole budget, 320 of it at 310
-        // do not fit what is left (64,000), so its room is not counted on (3 + 4 + the run's)
+        // do not fit what is left (64,000), so its room is not counted on (4 + 4 + the run's)
         mpPickPrice = 310;
-        assertFalse(epqMagicianSetsOff(550, 100_000, 80, 70, 7));
-        assertTrue(epqMagicianSetsOff(551, 100_000, 80, 70, 8));
-        // the White fit (200,000 - 64,000): that pass spends 73,600, and 320 at 250 fit the 126,400 left (2 + 3 + 1)
+        assertFalse(epqMagicianSetsOff(550, 100_000, 80, 70, 8));
+        assertTrue(epqMagicianSetsOff(551, 100_000, 80, 70, 9));
+        // the White fit (200,000 - 64,000): that pass spends 105,600, and 320 at 250 fit the 94,400 left (3 + 3 + 1)
         mpPickPrice = 250;
-        assertTrue(epqMagicianSetsOff(552, 200_000, 80, 70, 6));
+        assertTrue(epqMagicianSetsOff(552, 200_000, 80, 70, 7));
     }
 
     @Test
@@ -661,7 +662,7 @@ class AgentSupplyReadinessRuntimeTest {
         stackSize = 100;
         Character casse = companion(553, "Casse", Job.MAGICIAN, 0, 0, 200_000);
         activities.put(553, EPQ);
-        freeSlots.put(553, 8);
+        freeSlots.put(553, 9);
         AgentRuntimeEntry entry = following(casse);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
         freeSlots.put(553, 1); // loot on the way took a slot: the counter stopped at the run's
@@ -691,45 +692,45 @@ class AgentSupplyReadinessRuntimeTest {
     @Test
     void anEpqCompanionNeedsAFreeUseSlotForEveryStackAndOneForTheRun() {
         stackSize = 100;
-        // from 0/0: 3 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
+        // from 0/0: 4 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
         Character casse = companion(540, "Casse", Job.MAGICIAN, 0, 0, 200_000);
         activities.put(540, EPQ);
-        freeSlots.put(540, 7);
+        freeSlots.put(540, 8);
         AgentRuntimeEntry entry = following(casse);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
         assertFalse(execution(entry).isActive());
         assertEquals(List.of("refused 540 NO_SPACE 0"), calls, "it says so once");
-        freeSlots.put(540, 8);
+        freeSlots.put(540, 9);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L));
         assertTrue(execution(entry).isActive());
 
-        // back from a run with 150/200 on stacks with room, short 100/150: 1 + 2 + the run's
+        // back from a run with 150/200 on stacks with room, short 200/150: 2 + 2 + the run's
         calls.clear();
         Character halvard = companion(541, "Halvard", Job.SPEARMAN, 150, 200, 200_000);
         activities.put(541, EPQ);
         redStack.add(541);
         blueStack.add(541);
         hpStackRoom.put(541, 100); // not counted on with more than the run's slot free: the counter may open a new kind
-        freeSlots.put(541, 3);
+        freeSlots.put(541, 4);
         entry = following(halvard);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
         assertEquals(List.of("refused 541 NO_SPACE 0"), calls);
-        freeSlots.put(541, 4);
+        freeSlots.put(541, 5);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 6_000L));
         assertTrue(execution(entry).isActive());
         shopService.verify(() -> AgentShopService.carriesStackWithRoom(eq(halvard), any(), anyBoolean()), never());
 
-        // a few short of 250 with only the run's slot free: the counter puts them on the carried stack
+        // a few short of 350 with only the run's slot free: the counter puts them on the carried stack
         calls.clear();
-        Character fenna = companion(543, "Fenna", Job.CLERIC, 220, 350, 200_000);
+        Character fenna = companion(543, "Fenna", Job.CLERIC, 320, 350, 200_000);
         activities.put(543, EPQ);
         freeSlots.put(543, 1);
         hpStackRoom.put(543, 20);
         entry = following(fenna);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
         assertEquals(List.of("refused 543 NO_SPACE 0"), calls, "20 room for 30: a new stack would take the slot");
-        Character garrick = companion(544, "Garrick", Job.CLERIC, 220, 350, 200_000);
+        Character garrick = companion(544, "Garrick", Job.CLERIC, 320, 350, 200_000);
         activities.put(544, EPQ);
         freeSlots.put(544, 1);
         hpStackRoom.put(544, 50);
