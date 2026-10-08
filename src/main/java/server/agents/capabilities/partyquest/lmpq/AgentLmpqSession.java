@@ -45,6 +45,7 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private String potionsAtEntry;
     private int couponsAtClearing;
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
+    private final java.util.Set<Integer> departed = new java.util.LinkedHashSet<>();
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -207,6 +208,17 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
         potionsAtEntry = potions;
         return true;
     }
+
+    /**
+     * Marks a member the bound event no longer holds as departed (LMPQ base fix 3): true the first time only, and
+     * never for someone who is not a member.
+     */
+    synchronized boolean markDeparted(int characterId) {
+        return members.containsKey(characterId) && departed.add(characterId);
+    }
+
+    /** True once the member was marked departed; the run no longer counts it. */
+    synchronized boolean departed(int characterId) { return departed.contains(characterId); }
 
     /** The coupons the leader held when the run moved to Pietri (CLEARING); 0 until then. */
     synchronized int couponsAtClearing() { return couponsAtClearing; }

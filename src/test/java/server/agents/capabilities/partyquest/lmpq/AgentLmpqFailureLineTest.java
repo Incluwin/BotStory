@@ -70,7 +70,7 @@ class AgentLmpqFailureLineTest {
         when(run.event.isEventDisposed()).thenReturn(true);
         try (LmpqLogLines lines = new LmpqLogLines(AgentLmpqCoordinator.class)) {
             AgentLmpqCoordinator.tickSession(session, 10_000L);
-            assertFailedWith(session, lines, "LMPQ event instance was disposed before clear");
+            assertFailedWith(session, lines, "LMPQ event ended before the clear");
         }
     }
 
@@ -121,6 +121,6 @@ class AgentLmpqFailureLineTest {
     void noSiteFailsTheSessionDirectly() throws Exception {
         assertEquals(Map.of("fail", 1), LmpqSource.of("AgentLmpqCoordinator").callers("\\bsession\\s*\\.\\s*fail\\s*\\("));
         Map<String, Integer> sites = LmpqSource.of("AgentLmpqCoordinator").callers("\\bfail\\s*\\(\\s*session\\s*,");
-        assertEquals(Map.of("tickMember", 1, "tickSession", 5), sites);
+        assertEquals(Map.of("tickMember", 1, "tickSession", 7), sites);
     }
 }

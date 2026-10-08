@@ -60,7 +60,11 @@ public final class AgentLmpqCoordinator {
             return;
         }
         Character leader = character(session.eventLeaderId());
-        if (leader == null || leader.getHp() <= 0) {
+        if (leader == null) {
+            fail(session, "LMPQ leader left", nowMs);
+            return;
+        }
+        if (leader.getHp() <= 0) {
             fail(session, "LMPQ event leader is unavailable", nowMs);
             return;
         }
@@ -74,22 +78,27 @@ public final class AgentLmpqCoordinator {
             session.bindEventInstance(leader.getEventInstance());
             beginFarming(session, nowMs);
         }
-        if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
-                && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
-            fail(session, "LMPQ event instance was disposed before clear", nowMs);
-            return;
+        EventInstanceManager bound = session.eventInstance();
+        if (bound != null && !AgentLmpqTerminationService.pastTheClear(session)) {
+            // LMPQ base fix 3: before the clear, an event that ended, or a leader it no longer holds (LudiMazePQ.js
+            // ends the event when its leader leaves the maze), ends the run at once with the honest reason.
+            if (bound.isEventDisposed()) {
+                fail(session, "LMPQ event ended before the clear", nowMs);
+                return;
+            }
+            if (leader.getEventInstance() != bound || !AgentLmpqDefinition.isEventMap(leader.getMapId())) {
+                fail(session, "LMPQ leader left", nowMs);
+                return;
+            }
         }
-        if (session.eventInstance() != null
+        if (bound != null
                 && session.phase().ordinal() >= AgentLmpqSession.Phase.FARMING.ordinal()
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
-            boolean missing = session.members().stream().map(member -> character(member.characterId()))
-                    .anyMatch(member -> member == null || member.getHp() <= 0
-                            || member.getEventInstance() != session.eventInstance()
-                            || !AgentLmpqDefinition.isEventMap(member.getMapId()));
-            if (missing) {
+            if (memberInAnotherInstance(session, bound)) {
                 fail(session, "An LMPQ participant left the active maze", nowMs);
                 return;
             }
+            observeDepartures(session, bound, nowMs);
         }
         if (session.eventInstance() != null) updateHumanOccupancy(session, nowMs);
         int expired = session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
@@ -174,7 +183,7 @@ public final class AgentLmpqCoordinator {
                 || nowMs < member.nextActionAtMs()) return;
         member.observeRoom(AgentLmpqDefinition.roomForMap(agent.getMapId()));
         if (session.eventInstance() != null && AgentLmpqDefinition.isEventMap(agent.getMapId())
-                && agent.getEventInstance() != session.eventInstance()) {
+                && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
             fail(session, "LMPQ member entered a different event instance", nowMs);
             return;
         }
@@ -484,8 +493,57 @@ public final class AgentLmpqCoordinator {
         }
     }
 
-    private static int usableCoupons(AgentLmpqSession session) {
+    /**
+     * LMPQ base fix 3: the members the run counts now, in session order: not departed and, once the run is bound,
+     * held by its event (a dead member the event still holds is down and still counted). Before the binding, every
+     * member that has not departed.
+     */
+    private static List<AgentLmpqMemberState> active(AgentLmpqSession session) {
+        EventInstanceManager bound = session.eventInstance();
+        Set<Integer> held = bound == null ? null : heldIds(bound);
         return session.members().stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .filter(member -> held == null || held.contains(member.characterId()))
+                .toList();
+    }
+
+    private static Set<Integer> heldIds(EventInstanceManager event) {
+        return event.getPlayers().stream().filter(java.util.Objects::nonNull).map(Character::getId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /** A member that has not departed stands in another, non-null event instance (it can never return). */
+    private static boolean memberInAnotherInstance(AgentLmpqSession session, EventInstanceManager bound) {
+        return session.members().stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
+                .anyMatch(member -> member.getEventInstance() != null && member.getEventInstance() != bound);
+    }
+
+    /**
+     * LMPQ base fix 3: a member the bound event no longer holds (a dead Agent its respawn took to 809050017, a
+     * disconnected human) has departed rather than failed the run: it is logged once ('LMPQ departed:'), its room
+     * lease is released, and the run goes on; the event itself ends the run when a departure leaves it at its floor.
+     * Nothing is marked while the run is being released.
+     */
+    private static void observeDepartures(AgentLmpqSession session, EventInstanceManager bound, long nowMs) {
+        if (session.terminationStarted()) return;
+        Set<Integer> held = heldIds(bound);
+        for (AgentLmpqMemberState state : session.members()) {
+            int id = state.characterId();
+            if (held.contains(id) || !session.markDeparted(id)) continue;
+            session.rooms().releaseOwner(id, nowMs);
+            state.clearTargetRoom();
+            Character member = character(id);
+            log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
+                    session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
+                    member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
+                    session.companionAdopted());
+        }
+    }
+
+    private static int usableCoupons(AgentLmpqSession session) {
+        return active(session).stream()
                 .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT
                         || member.characterId() == session.eventLeaderId())
                 .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
@@ -519,15 +577,16 @@ public final class AgentLmpqCoordinator {
 
     private static boolean allMembersInRoom(AgentLmpqSession session, int room) {
         int mapId = AgentLmpqDefinition.mapForRoom(room);
-        List<Character> members = session.members().stream().map(member -> character(member.characterId()))
+        List<AgentLmpqMemberState> counted = active(session);
+        List<Character> members = counted.stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull).toList();
-        return members.size() == session.memberCount()
+        return members.size() == counted.size()
                 && members.stream().allMatch(member -> member.getMapId() == mapId);
     }
 
     private static long progressSignature(AgentLmpqSession session) {
         long signature = session.phase().ordinal();
-        for (AgentLmpqMemberState state : session.members()) {
+        for (AgentLmpqMemberState state : active(session)) {
             Character member = character(state.characterId());
             signature = signature * 31L + state.characterId();
             signature = signature * 31L + (member == null ? 0 : member.getMapId());
@@ -563,7 +622,7 @@ public final class AgentLmpqCoordinator {
     }
 
     private static void announceOnce(AgentLmpqSession session, String key, String message) {
-        AgentLmpqMemberState speakerState = session.members().stream()
+        AgentLmpqMemberState speakerState = active(session).stream()
                 .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT)
                 .filter(member -> member.claimAnnouncement(key)).findFirst().orElse(null);
         Character speaker = speakerState == null ? null : character(speakerState.characterId());
@@ -579,7 +638,7 @@ public final class AgentLmpqCoordinator {
                 : session.phase() == AgentLmpqSession.Phase.CLEARING
                 ? AgentLmpqDefinition.CLEAR_ROOM : 0;
         if (target == 0) return;
-        for (AgentLmpqMemberState state : session.members()) {
+        for (AgentLmpqMemberState state : active(session)) {
             if (state.memberType() != AgentLmpqMemberState.MemberType.HUMAN) continue;
             Character human = character(state.characterId());
             int room = human == null ? 0 : AgentLmpqDefinition.roomForMap(human.getMapId());
