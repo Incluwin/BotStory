@@ -125,9 +125,10 @@ final class AgentRjpqTerminationService {
                 .collect(Collectors.joining(", ", "{", "}"));
     }
 
-    /** The run's pace for the host's records; none until Step 4 (AgentRjpqPaceReport.of). */
+    /** The run's pace for the host's records (Step 4), with one 'RJPQ pace span:' line per begun span. */
     static AgentPqPace pace(AgentRjpqSession session, long nowMs) {
-        return null;
+        AgentRjpqPaceReport.logSpans(session, nowMs);
+        return AgentRjpqPaceReport.of(session, nowMs);
     }
 
     private static void logPotions(AgentRjpqSession session) {

@@ -22,6 +22,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,7 +136,8 @@ class AgentRjpqReleaseTest {
         verify(event, never()).exitPlayer(characters.get(BEN));
         verify(event, never()).dispose();
         lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
-                eq(session.sessionId()), eq(true), anyString(), anyLong(), any()), times(1));
+                eq(session.sessionId()), eq(true), anyString(), anyLong(),
+                argThat(pace -> pace != null && "rjpqj".equals(pace.questKey()))), times(1));
     }
 
     @Test

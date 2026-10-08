@@ -4,6 +4,14 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.maps.MapleMap;
+import server.maps.Reactor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The run-level rules of an RJPQ companion run (Step 3), on the lease holder's pass: the leader, the members, the
@@ -58,6 +66,7 @@ final class AgentRjpqCompanionRun {
             return false;
         }
         if (leader.getHp() <= 0 && leader.getEventInstance() == event && session.markLeaderWentDown()) {
+            session.pace().markDown(leader.getId());
             log.info("RJPQ leader down: session={} side={} filesIn={}", session.sessionId(), session.side().key(),
                     session.filesHandedIn());
             Character speaker = partingSpeaker(session, leader);
@@ -66,6 +75,7 @@ final class AgentRjpqCompanionRun {
         if (!verdicts(session, event, nowMs)) {
             return false;
         }
+        paceMarks(session, event, leader, nowMs);
         if (nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
             fail(session, "The RJPQ run made no progress for " + STALL_TIMEOUT_MS + " ms",
                     AgentRjpqParting.of(AgentRjpqParting.Kind.TOO_LONG, session.eventLeaderName()), null, nowMs);
@@ -88,7 +98,11 @@ final class AgentRjpqCompanionRun {
                     character != null && character.getEventInstance() == event, false, session.downSinceMs(id),
                     standingCompanions(session, id)));
             switch (verdict) {
-                case DOWN_WAIT -> session.markDown(id, nowMs);
+                case DOWN_WAIT -> {
+                    if (session.markDown(id, nowMs)) {
+                        session.pace().markDown(id);
+                    }
+                }
                 case REVIVED -> session.clearDown(id);
                 case SHORT_HANDED -> {
                     fail(session, character.getName() + " went down, and no companion of the RJPQ run stands",
@@ -197,6 +211,87 @@ final class AgentRjpqCompanionRun {
             }
         }
         return false;
+    }
+
+    /**
+     * The pace boundaries the run's pass sees (Step 4): both Dark Lab doors open, both files in the leader's bag, the
+     * files in, every standing companion out of the Lab Units, the leader out of his. Never throws.
+     */
+    private static void paceMarks(AgentRjpqSession session, EventInstanceManager event, Character leader,
+                                  long nowMs) {
+        try {
+            AgentRjpqSide side = session.side();
+            AgentRjpqPaceMarks pace = session.pace();
+            MapleMap lab = event.getMapInstance(side.map(AgentRjpqDefinition.SPECIAL_LAB_MAP));
+            if (lab != null && open(lab, side.reactorName(AgentRjpqDefinition.LAB_ONE_DOOR))
+                    && open(lab, side.reactorName(AgentRjpqDefinition.LAB_TWO_DOOR))) {
+                pace.mark(AgentRjpqPaceMarks.Boundary.DOORS_OPEN, nowMs);
+            }
+            var actions = AgentRjpqCoordinator.actions();
+            if (actions.itemCount(leader, AgentRjpqDefinition.ALCADNO_FILES_ITEM_ID) > 0
+                    && actions.itemCount(leader, AgentRjpqDefinition.ZENUMIST_FILES_ITEM_ID) > 0) {
+                pace.mark(AgentRjpqPaceMarks.Boundary.FILES_HELD, nowMs);
+            }
+            if (session.filesHandedIn()) {
+                pace.mark(AgentRjpqPaceMarks.Boundary.FILES_IN, nowMs);
+            }
+            if (pastTheUnits(side, leader)) {
+                pace.mark(AgentRjpqPaceMarks.Boundary.LEADER_OUT, nowMs);
+            }
+            int standing = 0;
+            int out = 0;
+            for (AgentRjpqMemberState member : session.members()) {
+                Character agent = member.agent() ? AgentRjpqCoordinator.character(member.characterId()) : null;
+                if (agent != null && agent.getHp() > 0 && agent.getEventInstance() == event) {
+                    standing++;
+                    out += pastTheUnits(side, agent) ? 1 : 0;
+                }
+            }
+            if (standing > 0 && out == standing) {
+                pace.mark(AgentRjpqPaceMarks.Boundary.COMPANIONS_OUT, nowMs);
+            }
+        } catch (RuntimeException failure) {
+            log.debug("RJPQ pace marks unreadable: session={}", session.sessionId(), failure);
+        }
+    }
+
+    private static boolean open(MapleMap map, String reactorName) {
+        Reactor reactor = map.getReactorByName(reactorName);
+        return reactor != null && reactor.getState() == 1;
+    }
+
+    private static boolean pastTheUnits(AgentRjpqSide side, Character character) {
+        int map = side.zenumistMap(character.getMapId());
+        return map == AgentRjpqDefinition.CENTER_ENTRANCE_MAP || map == AgentRjpqDefinition.CENTER_LAB_MAP;
+    }
+
+    /** The party is inside: who entered, and each member's power from the side's warmed profile (empty while cold). */
+    static void markEntered(AgentRjpqSession session, long nowMs) {
+        List<Integer> entrants = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(session.side().key());
+        boolean readable = profile != null;
+        for (AgentRjpqMemberState member : session.members()) {
+            entrants.add(member.characterId());
+            if (!readable) {
+                continue;
+            }
+            Character character = AgentRjpqCoordinator.character(member.characterId());
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentRjpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("RJPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().markEntered(readable ? power : List.of(), entrants, nowMs);
     }
 
     private static long timeLeft(EventInstanceManager event) {

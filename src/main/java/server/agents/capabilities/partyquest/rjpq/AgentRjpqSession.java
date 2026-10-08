@@ -71,6 +71,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private int escortHurtLines;
     private long escortHurtLineAtMs = -1;
     private String eventLeaderName;
+    private final AgentRjpqPaceMarks pace = new AgentRjpqPaceMarks();
     private boolean filesHandedIn;
     private long lastTimeLeftMs = Long.MAX_VALUE;
     private int leaderMapId = -1;
@@ -462,6 +463,11 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
             Arrays.fill(rows, -1);
             return rows;
         });
+    }
+
+    /** The run's pace marks (Step 4); locked on their own. */
+    AgentRjpqPaceMarks pace() {
+        return pace;
     }
 
     /** The event leader's name as the run bound its event, for the companions' lines about him. */

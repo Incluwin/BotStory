@@ -5877,3 +5877,63 @@ tuning:
     # Purpose: How long after the boss an RJPQ companion run waits for its companions to finish their claims before it ends and takes out any still inside.
     # Technical: AgentRjpqCompanionRun.pass completes the run once no companion stands in the event or this long after the clear; the release then exits any companion still in the event (AgentRjpqTerminationService).
     server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for stage one, the companions finding the pass among the twenty-six books.
+    # Technical: AgentRjpqPaceProfile.priors "books" (a COMPANION Fixed segment); AgentPqPaceCalibration replaces it with the fitted time once runs are recorded under the side's key (rjpq, rjpqj).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BOOKS_MS: '120000'
+    # Values: 0.05-1.0. Recommended: 0.30, EPQ's tree clear.
+    # Purpose: The share of a party's raw damage that lands while it clears the RJPQ dark tunnel (walking, finding the last ones, overkill).
+    # Technical: AgentRjpqPaceProfile.priors "tunnel", the efficiency of the Clear of the tunnel's Map.wz census (Homun 9300145 and Cyti 9300146) that every member fights.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.TUNNEL_EFFICIENCY: '0.30'
+    # Values: 60000-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for stage three, the companions filling the three beakers one after another.
+    # Technical: AgentRjpqPaceProfile.priors "beakers" (a COMPANION Fixed segment); the liquid always drops, so the stage is bound by carrying and the beakers' timing, not by damage.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BEAKERS_MS: '240000'
+    # Values: 500-30000 milliseconds. Recommended: 4000; the Special Lab keeps 23 Neo Huroids, refilled every 15 seconds.
+    # Purpose: The RJPQ clear-time estimate's prior for how long a member walks to its next Neo Huroid while the party fights for the card keys.
+    # Technical: AgentRjpqPaceProfile.priors "keys.seek", the seek term of the "keys" Quota: each kill costs this plus the Neo Huroid's HP over the member's damage at "keys.combat".
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.KEYS_SEEK_MS: '4000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it fights Neo Huroids for the two card keys on the Special Lab.
+    # Technical: AgentRjpqPaceProfile.priors "keys.combat", the efficiency of the Quota of Neo Huroid 9300148 kills drawn from AgentRjpqPaceProfile.keyKills (two keys at a 30% drop).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.KEYS_EFFICIENCY: '0.30'
+    # Values: 0.0-1.0. Recommended: 0.5.
+    # Purpose: How much of a human leader's own kill rate counts toward the RJPQ card keys, since he spends part of the stage on the doors and the labs.
+    # Technical: AgentRjpqPaceProfile builds the "keys" Quota with this leader credit; every companion counts in full.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.LEADER_KEY_CREDIT: '0.5'
+    # Values: 60000-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the Dark Labs, which the leader plays himself until the first live test shows how a companion reaches the boxes.
+    # Technical: AgentRjpqPaceProfile.priors "labs" (a LEADER Fixed segment, learned per leader); the span runs from both doors open to both files in the leader's bag.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.LABS_MS: '240000'
+    # Values: 5000-300000 milliseconds. Recommended: 40000.
+    # Purpose: The RJPQ clear-time estimate's prior for the leader handing both files to Romeo or Juliet once he holds them.
+    # Technical: AgentRjpqPaceProfile.priors "handin" (a LEADER Fixed segment); the span runs from both files in his bag to statusStg4 at 1.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.HANDIN_MS: '40000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it clears the thirty Mutae Yulete leaves in his office.
+    # Technical: AgentRjpqPaceProfile.priors "office", the efficiency of the Clear of fifteen Iron Mutae 9300143 and fifteen Mithril Mutae 9300144 that every member fights.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.OFFICE_EFFICIENCY: '0.30'
+    # Values: 60000-900000 milliseconds. Recommended: 300000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the companions climbing their Lab Units, learning each row by trying its portals.
+    # Technical: AgentRjpqPaceProfile.priors "units" (a COMPANION Fixed segment); the span runs from the first one in the Lab Units to every standing companion out of them.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.UNITS_MS: '300000'
+    # Values: 0-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the leader finishing his own Lab Unit after his companions are out, helped by their row hints.
+    # Technical: AgentRjpqPaceProfile.priors "unitsLeader" (a LEADER Fixed segment, learned per leader); the span runs from the companions out to the leader out.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.UNITS_LEADER_MS: '240000'
+    # Values: 0.05-1.0. Recommended: 0.25.
+    # Purpose: The share of a party's raw damage that lands on Frankenroid while it also keeps the captive safe and waits for the boss call.
+    # Technical: AgentRjpqPaceProfile.priors "boss", the efficiency of the Clear of the side's normal boss (9300139 or 9300151) that every member fights, the leader included.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BOSS_EFFICIENCY: '0.25'
+    # Values: 1-50. Recommended: 7.
+    # Purpose: Below how many touches of the RJPQ boss a member is named fragile in the clear-time estimate's weaknesses.
+    # Technical: AgentRjpqPaceProfile.thresholds fragileTouches; AgentPqPaceEstimator compares each member's touchesToDown against the side's normal boss.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6.
+    # Purpose: Below what chance to hit the RJPQ boss a member is named as missing it in the clear-time estimate's weaknesses.
+    # Technical: AgentRjpqPaceProfile.thresholds weakHitChance; AgentPqPaceEstimator compares each member's hit chance on the boss against it.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when an RJPQ pace change lands.
+    # Purpose: Keeps RJPQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentRjpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for rjpq and rjpqj.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.PACE_EPOCH: '1'

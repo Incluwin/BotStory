@@ -83,9 +83,10 @@ final class AgentRjpqCoordinator {
         boolean cleared = AgentRjpqTerminationService.pastTheClear(event);
         if (cleared) {
             session.observeCleared(nowMs);
+            session.pace().mark(AgentRjpqPaceMarks.Boundary.CLEARED, nowMs);
         }
         AgentRjpqSession.Phase next = cleared ? AgentRjpqSession.Phase.CLAIMING : furthestPhase(session);
-        logChange(session, session.advance(next, nowMs));
+        logChange(session, session.advance(next, nowMs), nowMs);
         AgentRjpqCompanionRun.pass(session, event, leader, nowMs);
     }
 
@@ -105,7 +106,8 @@ final class AgentRjpqCoordinator {
             partyQuest().prepareNpcScripts(side.bookNpcId(), side.officeYuleteNpcId(), side.claimNpcId(),
                     side.tracesYuleteNpcId(), AgentRjpqDefinition.REWARD_NPC_ID);
             session.setPotionsAtEntry(AgentRjpqTerminationService.potions(session));
-            logChange(session, session.advance(AgentRjpqSession.Phase.ENTERING, nowMs));
+            AgentRjpqCompanionRun.markEntered(session, nowMs);
+            logChange(session, session.advance(AgentRjpqSession.Phase.ENTERING, nowMs), nowMs);
         }
         return session.eventInstance();
     }
@@ -171,10 +173,11 @@ final class AgentRjpqCoordinator {
         session.fail(reason, nowMs);
     }
 
-    private static void logChange(AgentRjpqSession session, AgentRjpqSession.Change change) {
+    private static void logChange(AgentRjpqSession session, AgentRjpqSession.Change change, long nowMs) {
         if (change == null) {
             return;
         }
+        session.pace().markPhase(change.to(), nowMs);
         log.info("RJPQ phase: session={} side={} {}->{} phaseMs={} runMs={} companionRun=true", session.sessionId(),
                 session.side().key(), change.from(), change.to(), change.phaseMs(), change.runMs());
     }
