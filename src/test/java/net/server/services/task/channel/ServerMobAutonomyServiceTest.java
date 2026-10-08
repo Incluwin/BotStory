@@ -23,10 +23,13 @@ import server.life.autonomy.balrog.EasyBalrogReleasedClawBehavior;
 import server.life.autonomy.papapixie.PapaPixieActorBehavior;
 import server.life.autonomy.poisongolem.PoisonGolemActorBehavior;
 import server.maps.MapleMap;
+import testutil.LogLines;
 
 import java.awt.Point;
 import java.util.List;
 import java.util.random.RandomGenerator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -245,6 +248,32 @@ class ServerMobAutonomyServiceTest {
                 "left-facing skill1 must use the client skill animation activity");
         assertEquals(server.life.MobSkillType.SEAL.getId(), Byte.toUnsignedInt(bytes[9]));
         assertEquals(1, Byte.toUnsignedInt(bytes[10]));
+    }
+
+    @Test
+    void serverSkillImpactLogsTheTimeSinceItsCastPacket() {
+        Fixture fixture = fixture(0);
+        long castNanos = System.nanoTime() - 2_000_000_000L;
+
+        assertTrue(service.acquire(fixture.monster, fixture.agent));
+        service.tickForTest(castNanos);
+        ArgumentCaptor<Runnable> impact = ArgumentCaptor.forClass(Runnable.class);
+        verify(fixture.overall).registerOverallAction(
+                org.mockito.ArgumentMatchers.eq(922010900), impact.capture(),
+                org.mockito.ArgumentMatchers.eq(800L));
+
+        try (LogLines lines = new LogLines(ServerMobAutonomyService.class)) {
+            impact.getValue().run();
+
+            List<String> impacts = lines.startingWith("Boss server impact ");
+            assertEquals(1, impacts.size(), "one impact line per server-owned skill impact");
+            Matcher line = Pattern.compile("Boss server impact mob=" + AlisharActorBehavior.MOB_ID
+                    + " oid=77 skill=SEAL level=1 sinceCastMs=(\\d+)").matcher(impacts.getFirst());
+            assertTrue(line.matches(), impacts.getFirst());
+            long sinceCastMs = Long.parseLong(line.group(1));
+            assertTrue(sinceCastMs >= 2_000L && sinceCastMs < 60_000L,
+                    "sinceCastMs must count from the cast packet's tick, was " + sinceCastMs);
+        }
     }
 
     @Test

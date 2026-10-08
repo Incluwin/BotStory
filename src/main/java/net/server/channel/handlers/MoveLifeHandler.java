@@ -44,6 +44,8 @@ import tools.exceptions.EmptyMovementException;
 import java.awt.*;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Danny (Leifde)
@@ -52,6 +54,10 @@ import java.util.List;
  */
 public final class MoveLifeHandler extends AbstractMovementPacketHandler {
     private static final Logger log = LoggerFactory.getLogger(MoveLifeHandler.class);
+    static final int SERVER_OWNED_MOVE_LOG_LIMIT = 1_024;
+
+    /** (character id, oid) pairs already logged for a server-owned mob; forgotten when full. */
+    private final Set<Long> serverOwnedMovesLogged = ConcurrentHashMap.newKeySet();
 
     @Override
     public void handlePacket(InPacket p, Client c) {
@@ -73,6 +79,11 @@ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
         if (ServerMobAutonomyService.isActiveInstance(monster)) {
             c.sendPacket(PacketCreator.moveMonsterResponse(
                     objectid, moveid, monster.getMp(), false));
+            if (firstServerOwnedMove(player.getId(), objectid)) {
+                // A client that still simulates a server-owned mob holds stale control.
+                log.info("MOVE_LIFE for server-owned mob chr={} mob={} oid={}",
+                        player.getName(), monster.getId(), objectid);
+            }
             return;
         }
         List<Character> banishPlayers = null;
@@ -187,6 +198,17 @@ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
                 chr.changeMapBanish(monster.getBanish());
             }
         }
+    }
+
+    private boolean firstServerOwnedMove(int characterId, int objectId) {
+        long key = ((long) characterId << 32) | (objectId & 0xFFFF_FFFFL);
+        if (serverOwnedMovesLogged.contains(key)) {
+            return false;
+        }
+        if (serverOwnedMovesLogged.size() >= SERVER_OWNED_MOVE_LOG_LIMIT) {
+            serverOwnedMovesLogged.clear();
+        }
+        return serverOwnedMovesLogged.add(key);
     }
 
     private static boolean inRangeInclusive(Byte pVal, Integer pMin, Integer pMax) {

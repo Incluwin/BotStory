@@ -425,7 +425,7 @@ public final class ServerMobAutonomyService extends BaseService {
         int primaryTargetId = selected.primaryTarget() == null
                 ? 0 : selected.primaryTarget().getId();
         scheduleImpact(actor, new PreparedAction(
-                action, facingLeft, selectedRegions, primaryTargetId), impactDelayMs);
+                action, facingLeft, selectedRegions, primaryTargetId, nowNanos), impactDelayMs);
     }
 
     private static boolean reserve(Monster monster, BossAction action) {
@@ -540,6 +540,10 @@ public final class ServerMobAutonomyService extends BaseService {
         if (action instanceof BossAction.Skill skillAction) {
             List<Character> banished = new ArrayList<>();
             MobSkill skill = skillAction.mobSkill();
+            // The impact runs on the OverallService clock, not at impactMs: log the real delay.
+            log.info("Boss server impact mob={} oid={} skill={} level={} sinceCastMs={}",
+                    actor.monster.getId(), actor.monster.getObjectId(), skill.getType(),
+                    skill.getId().level(), (System.nanoTime() - prepared.castNanos) / 1_000_000L);
             skill.applyEffect(null, actor.monster, true, banished,
                     target -> isCombatTarget(actor, target));
             for (Character target : banished) {
@@ -868,6 +872,7 @@ public final class ServerMobAutonomyService extends BaseService {
     }
 
     private record PreparedAction(BossAction action, boolean facingLeft,
-                                  List<Integer> selectedRegions, int primaryTargetId) {
+                                  List<Integer> selectedRegions, int primaryTargetId,
+                                  long castNanos) {
     }
 }
