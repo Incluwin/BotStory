@@ -407,7 +407,7 @@ public final class AgentSupplyReadiness {
 
     /**
      * The {HP, MP} counts PARTY_QUEST_STANDARDS lists for {@code key} ("lpq=40/50,..."), else the ones BOSS_STANDARDS
-     * lists ("easy_balrog=40/50"), or null: the key is blank or in neither, or its pair is malformed (skipped, the
+     * lists ("easy_balrog=100/60"), or null: the key is blank or in neither, or its pair is malformed (skipped, the
      * default applies).
      */
     private static int[] partyQuestStandard(String key) {

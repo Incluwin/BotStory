@@ -11,9 +11,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The boss potion standard (user decision 8, 2026-10-06): BOSS_STANDARDS gives Easy Balrog 40 HP / 50 MP potions,
- * read after PARTY_QUEST_STANDARDS, so a key listed there wins; KPQ and the default keep 20/25, and a malformed boss
- * pair keeps the default.
+ * The boss potion standard (user decision 8, 2026-10-06, raised after the live run of 2026-10-07): BOSS_STANDARDS
+ * gives Easy Balrog 100 HP / 60 MP potions, read after PARTY_QUEST_STANDARDS, so a key listed there wins; KPQ and the
+ * default keep 20/25, and a malformed boss pair keeps the default.
  */
 class AgentSupplyReadinessBossStandardTest {
     private static final String PQ_STANDARDS_KEY =
@@ -27,10 +27,10 @@ class AgentSupplyReadinessBossStandardTest {
     }
 
     @Test
-    void easyBalrogKeepsFortyHpAndFiftyMpPotionsFromTheYaml() {
-        assertEquals("easy_balrog=40/50", AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
-        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("easy_balrog"));
-        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor(" Easy_Balrog "),
+    void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
+        assertEquals("easy_balrog=100/60", AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
+        assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor("easy_balrog"));
+        assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor(" Easy_Balrog "),
                 "keys are trimmed, any case");
     }
 
@@ -74,14 +74,14 @@ class AgentSupplyReadinessBossStandardTest {
     @Test
     void theShortfallAndTheBuyTargetFollowTheBossStandard() {
         AgentSupplyReadiness.Activity balrog = AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
-        assertEquals(new AgentSupplyReadiness.Shortfall(20, 25), AgentSupplyReadiness.shortfall(20, 25, true, balrog));
+        assertEquals(new AgentSupplyReadiness.Shortfall(80, 35), AgentSupplyReadiness.shortfall(20, 25, true, balrog));
 
         Character priest = mock(Character.class);
         when(priest.getJob()).thenReturn(Job.PRIEST);
         when(priest.getId()).thenReturn(71);
         AgentSupplyReadiness.install(id -> id == 71 ? balrog : null);
-        assertEquals(80, AgentSupplyReadiness.buyTarget(priest, true));
-        assertEquals(100, AgentSupplyReadiness.buyTarget(priest, false));
+        assertEquals(200, AgentSupplyReadiness.buyTarget(priest, true), "BUY_TO_PERCENT 200");
+        assertEquals(120, AgentSupplyReadiness.buyTarget(priest, false));
     }
 
     private static AgentSupplyReadiness.Standard standardFor(String key) {

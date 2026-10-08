@@ -44,7 +44,7 @@ import static server.living.roster.LifecycleHarness.KERNING;
 
 /**
  * Restocking at a boss's entrance (P7 Part A step 10, user decision 7): with the switch listing easy_balrog, a
- * companion in Mu Young's room keeps Easy Balrog's potion standard (40 HP / 50 MP, BOSS_STANDARDS); a trip it starts
+ * companion in Mu Young's room keeps Easy Balrog's potion standard (100 HP / 60 MP, BOSS_STANDARDS); a trip it starts
  * from there is announced with when it will be back, and when no shop is in reach it says so at most once per
  * COMPANION_RESTOCK_ASK_EVERY_MS (never while held outside a run). The owner coming into her room has each of their
  * party companions short of that standard look at its potions at once (on companion-ops). With the switch off,
@@ -129,8 +129,8 @@ class CompanionRestockBossTest {
         @Test
         void withTheSwitchOnItKeepsEasyBalrogsStandardThereAndTheDefaultWithItOff() {
             assertEquals(EASY_BALROG, restock.standing(FENNA), "Mu Young's room: Easy Balrog's entrance");
-            assertEquals(new AgentSupplyReadiness.Standard(40, 50), AgentSupplyReadiness.standard(EASY_BALROG),
-                    "user decision 8");
+            assertEquals(new AgentSupplyReadiness.Standard(100, 60), AgentSupplyReadiness.standard(EASY_BALROG),
+                    "user decision 8, raised after the live run of 2026-10-07");
 
             hold();
             assertEquals(EASY_BALROG, restock.standing(FENNA), "held there too");
@@ -288,8 +288,8 @@ class CompanionRestockBossTest {
             game.outWithAnn(brannock); // a friend's companion in Ann's party
             game.standsBesideAnn(game.bot(CITIZEN, "Citizen"));
             game.members.add(CITIZEN); // a citizen in her party: no companion of anyone's
-            carried.put(ISOLDE, new int[]{45, 55}); // stocked for Balrog
-            carried.put(THANE, new int[]{30, 30}); // enough for a party quest (20/25), short for Balrog (40/50)
+            carried.put(ISOLDE, new int[]{105, 65}); // stocked for Balrog
+            carried.put(THANE, new int[]{30, 30}); // enough for a party quest (20/25), short for Balrog (100/60)
             carried.put(SORREL, new int[]{10, 60});
             carried.put(BRANNOCK, new int[]{0, 0});
             carried.put(CITIZEN, new int[]{0, 0});
@@ -314,7 +314,7 @@ class CompanionRestockBossTest {
         }
 
         @Test
-        void onlyHerOwnCompanionsShortOfFortyAndFiftyLookAtTheirPotionsAtOnce() {
+        void onlyHerOwnCompanionsShortOfTheBossStandardLookAtTheirPotionsAtOnce() {
             assertTrue(AgentSupplyReadiness.shortfall(30, 30, true, AgentSupplyReadiness.Activity.PARTY_QUEST).none(),
                     "Thane carries enough for a party quest");
 
