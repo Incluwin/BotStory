@@ -476,7 +476,15 @@ public final class AgentLmpqCoordinator {
     }
 
     private static long idleLimit(AgentLmpqSession session) {
-        return session.mode() == AgentLmpqSession.Mode.AUTONOMOUS ? 120_000L : 240_000L;
+        return session.mode() == AgentLmpqSession.Mode.AUTONOMOUS ? 120_000L : humanIdleLimitMs();
+    }
+
+    /**
+     * How long a run with a human in it may make no progress before it fails as stalled; it bounds a human-led run's
+     * wait at Rolly too ('!lmpqtest party prod' tells its leader).
+     */
+    static long humanIdleLimitMs() {
+        return 240_000L;
     }
 
     private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
