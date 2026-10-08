@@ -197,11 +197,14 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                     Point safePoint = AgentPrimitiveCapabilityGatewayRuntime.gateway()
                             .groundPoint(member.getMap(),
                                     AgentEasyBalrogCombatPolicy.initialClawSafePoint(ordinal));
-                    if (safePoint != null) {
+                    // A precise move stops up to 8 px short, and ordinal 0's safe point sits on the
+                    // staging line itself: arrival there ends staging. No safe point means grind, not idle.
+                    if (safePoint != null
+                            && !AgentEasyBalrogCombatPolicy.atAnchor(member.getPosition(), safePoint)) {
                         AgentPrimitiveCapabilityGatewayRuntime.gateway()
                                 .navigate(entry, safePoint, true);
+                        continue;
                     }
-                    continue;
                 }
                 Set<Integer> ordinaryTargets = new HashSet<>();
                 if (!reflecting) ordinaryTargets.addAll(AgentBalrogDefinition.CLAW_MOBS);
