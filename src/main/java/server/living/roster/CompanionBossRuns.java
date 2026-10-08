@@ -589,7 +589,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * P7 Part B, the owner picked {@code selection} in her bench picker: whom she sent word to (their calls handed to
-     * companion-ops) and the picker again; the picker as it is now for a stale pick; null as {@link #allyPicker}.
+     * companion-ops) and the picker again; why she sent word to nobody, then the picker, for a shown choice she can no
+     * longer send word to; the picker as it is now for a stale pick; null as {@link #allyPicker}.
      */
     public String allyCall(Character clicker, String bossKey, int selection) {
         return allies.callFromNpc(clicker, bossKey, selection, System.currentTimeMillis());

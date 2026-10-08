@@ -432,11 +432,16 @@ final class CompanionBossAllies {
      * The picker's window, in the entry NPC's words: when she closes the list (whole minutes, rounded down), how many
      * more of theirs she takes, each benched companion of theirs as a choice from 100 on when she offers it (level,
      * job, its ETA in whole minutes rounded up) or a plain line saying why not, "Everyone who can make it." with two or
-     * more to call, and "That's all for now." last. Whom it offers is kept for the owner's pick ({@link #callFromNpc}).
-     * Null when there is nothing to show: no picker, or no benched companion.
+     * more to call, and "That's all for now." last. With no room left for more of theirs, each one she offers is a
+     * plain line saying so, and there is no "Everyone". Whom it gives a choice is kept for the owner's pick
+     * ({@link #callFromNpc}). Null when there is nothing to show: no picker, or no benched companion.
      */
     String pickerWindow(Character clicker, String bossKey, long nowMs) {
-        Picker picker = clicker == null ? null : picker(clicker, bossKey, nowMs);
+        return window(clicker, clicker == null ? null : picker(clicker, bossKey, nowMs), nowMs);
+    }
+
+    /** {@link #pickerWindow} of {@code picker} (null: none) for {@code clicker}. */
+    private String window(Character clicker, Picker picker, long nowMs) {
         if (picker == null || picker.rows().isEmpty()) {
             if (clicker != null) {
                 snapshots.remove(clicker.getId());
@@ -454,19 +459,15 @@ final class CompanionBossAllies {
         List<String> offered = new ArrayList<>();
         for (Row row : picker.rows()) {
             text.append("\r\n");
-            if (row.offered()) {
+            if (row.offered() && left > 0) {
                 text.append("#L").append(FIRST_CHOICE + offered.size()).append('#').append(row.name()).append(" (Lv. ")
                         .append(row.level()).append(row.job() == null || row.job().isEmpty() ? "" : " " + row.job())
                         .append(") - about ").append(Math.max(1L, Math.ceilDiv(row.etaMs(), MINUTE_MS)))
                         .append(" min away#l");
                 offered.add(row.personaId());
             } else {
-                text.append(switch (row.why()) {
-                    case TOO_FAR -> row.name() + " (Lv. " + row.level() + ") cannot reach me before the list closes.";
-                    case NOT_READY -> row.name() + " is not ready for this battle.";
-                    case ON_THE_WAY -> row.name() + " is already on the way.";
-                    case BUSY -> row.name() + " is busy right now.";
-                });
+                text.append(row.offered() ? row.name() + " could come, but I can take no more of yours."
+                        : notOffered(row.name(), row.level(), row.why()));
             }
         }
         if (offered.size() >= 2) {
@@ -480,9 +481,9 @@ final class CompanionBossAllies {
     /**
      * The owner picked {@code selection} in the picker's window (an ally's choice, or "Everyone who can make it."):
      * those it names are called as {@link #send} calls them (the offer asked again under this object's lock, as many as
-     * she still takes), and she says whom she sent word to, then shows the picker again. A pick from a stale window
-     * (none shown, another list, a choice it never had, nobody it names still offered) only shows the picker as it is
-     * now.
+     * she still takes), and she says whom she sent word to, then shows the picker again. When she sends word to none
+     * of those it names, she says why first ({@link #notSent}). A pick from a stale window (none shown, another list, a
+     * choice it never had) only shows the picker as it is now.
      * Null when there is nothing to show (see {@link #pickerWindow}).
      */
     String callFromNpc(Character clicker, String bossKey, int selection, long nowMs) {
@@ -491,12 +492,52 @@ final class CompanionBossAllies {
         List<String> picked = context == null || context.expedition() != shown.expedition() ? List.of()
                 : shown.picked(selection);
         List<String> names = picked.isEmpty() ? List.of() : send(clicker, bossKey, picked, nowMs);
-        String picker = pickerWindow(clicker, bossKey, nowMs);
+        Picker now = clicker == null ? null : picker(clicker, bossKey, nowMs);
+        String picker = window(clicker, now, nowMs);
         if (names.isEmpty()) {
-            return picker;
+            return picked.isEmpty() || picker == null ? picker : notSent(now, picked) + "\r\n\r\n" + picker;
         }
         String sent = "I have sent word to #b" + spoken(names) + "#k.";
         return picker == null ? sent : sent + "\r\n\r\n" + picker;
+    }
+
+    /**
+     * Why she sent word to none of {@code picked} (choices her window showed), from her picker as it is {@code now}:
+     * each one she no longer offers says why as its line in her window does (one gone from the bench is busy), and
+     * when she can take no more of theirs she says so once, last.
+     */
+    private String notSent(Picker now, List<String> picked) {
+        List<String> names = new ArrayList<>();
+        StringBuilder why = new StringBuilder();
+        boolean noRoom = false;
+        for (String personaId : picked) {
+            Row row = now.row(personaId);
+            if (row == null) {
+                Persona persona = world.content().persona(personaId);
+                String name = persona == null ? personaId : persona.name();
+                names.add(name);
+                why.append(' ').append(notOffered(name, 0, NotOffered.BUSY));
+            } else {
+                names.add(row.name());
+                if (!row.offered()) {
+                    why.append(' ').append(notOffered(row.name(), row.level(), row.why()));
+                } else if (now.left() <= 0) {
+                    noRoom = true;
+                }
+            }
+        }
+        return "I could not send word to #b" + spoken(names) + "#k." + why
+                + (noRoom ? " I can take no more of yours." : "");
+    }
+
+    /** A benched companion she does not offer, as her window's plain line saying why. */
+    private static String notOffered(String name, int level, NotOffered why) {
+        return switch (why) {
+            case TOO_FAR -> name + " (Lv. " + level + ") cannot reach me before the list closes.";
+            case NOT_READY -> name + " is not ready for this battle.";
+            case ON_THE_WAY -> name + " is already on the way.";
+            case BUSY -> name + " is busy right now.";
+        };
     }
 
     /** "Orrin", "Orrin and Magna", "Orrin, Magna and Gunnar". */

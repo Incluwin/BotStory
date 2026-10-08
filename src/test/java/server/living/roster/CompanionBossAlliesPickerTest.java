@@ -39,10 +39,11 @@ import static server.living.roster.LifecycleHarness.LITH;
  * list (whole minutes, rounded down, never below 1), how many more of theirs she takes ("seats", "seat", or no room),
  * each ally she offers as a choice numbered from 100 in roster order with its level, job and ETA (whole minutes,
  * rounded up, never below 1), each one she does not offer as a plain line saying why, "Everyone who can make it." (98)
- * only with two or more to call, and "That's all for now." (99) last. A pick sends word, says to whom and shows the
- * picker again; a pick from a window that is stale (none shown, another list, a choice it never had, an ally no longer
- * offered) only shows the picker as it is now. With no benched companion, or with no living world, for an Agent and on
- * any failure, her hooks answer "None of your companions on the bench can come right now."
+ * only with two or more to call, and "That's all for now." (99) last. With no room left, each ally she would offer is
+ * a plain line saying so and there is no "Everyone". A pick sends word, says to whom and shows the picker again; a
+ * pick from a window that is stale (none shown, another list, a choice it never had) only shows the picker as it is
+ * now; a shown choice she can no longer send word to says why first. With no benched companion, or with no living
+ * world, for an Agent and on any failure, her hooks answer "None of your companions on the bench can come right now."
  */
 class CompanionBossAlliesPickerTest {
     private static final int ORRIN = 911;
@@ -226,11 +227,66 @@ class CompanionBossAlliesPickerTest {
         assertNull(h.allies.trip("orrin"));
         assertEquals(List.of(), h.open.calls);
 
-        window(); // of the list now
-        h.game.commitments.commit("pq:kpq:3:" + ANN, ANN, ORRIN);
-        answer = h.allies.callFromNpc(h.game.ann, KEY, 100, h.now);
-        assertTrue(answer.startsWith(HEADER) && answer.contains("\r\nOrrin is busy right now."), answer);
-        assertNull(h.allies.trip("orrin"), "no longer offered");
+    }
+
+    @Test
+    void withNoRoomLeftEachAllySheWouldOfferIsAPlainLineAndThereIsNoEveryone() {
+        h.benched("orrin", "Orrin", ORRIN, SLEEPYWOOD_CAMP);
+        h.benched("magna", "Magna", MAGNA, SLEEPYWOOD_CAMP);
+        h.benched("gunnar", "Gunnar", GUNNAR, SLEEPYWOOD_CAMP);
+        h.game.store.levels.put(GUNNAR, 49);
+        h.game.roster();
+        h.open.listed = new CompanionBossRuns.Seats(28, 0, 1, 0); // 30 - 2 kept for players - 28 = 0
+
+        String full = window();
+
+        assertEquals(HEADER + "There is no room on my list for more of yours.\r\n\r\nOrrin could come, but I can take "
+                + "no more of yours.\r\nMagna could come, but I can take no more of yours.\r\nGunnar is not ready for "
+                + "this battle." + THATS_ALL, full);
+        assertEquals(full, h.allies.callFromNpc(h.game.ann, KEY, 100, h.now), "no choice of Orrin's to pick");
+        assertEquals(full, h.allies.callFromNpc(h.game.ann, KEY, 98, h.now), "no 'everyone' to pick");
+        assertNull(h.allies.trip("orrin"));
+        assertNull(h.allies.trip("magna"));
+    }
+
+    @Test
+    void aShownChoiceSheCanNoLongerSendWordToSaysWhyBeforeThePicker() {
+        h.benched("orrin", "Orrin", ORRIN, SLEEPYWOOD_CAMP);
+        h.benched("magna", "Magna", MAGNA, SLEEPYWOOD_CAMP);
+        h.benched("gunnar", "Gunnar", GUNNAR, SLEEPYWOOD_CAMP);
+        h.game.roster();
+        CompanionBossRuns.Seats room = h.open.listed;
+        CompanionBossRuns.Seats full = new CompanionBossRuns.Seats(28, 0, 1, 0);
+
+        window();
+        h.open.listed = full; // the list filled up after she showed it
+        String answer = h.allies.callFromNpc(h.game.ann, KEY, 100, h.now);
+        assertEquals("I could not send word to #bOrrin#k. I can take no more of yours.\r\n\r\n" + window(), answer);
+
+        h.open.listed = room;
+        window();
+        h.open.listed = full;
+        answer = h.allies.callFromNpc(h.game.ann, KEY, 98, h.now);
+        assertEquals("I could not send word to #bOrrin, Magna and Gunnar#k. I can take no more of yours.\r\n\r\n"
+                + window(), answer);
+
+        h.open.listed = room;
+        window();
+        h.game.commitments.commit("pq:kpq:3:" + ANN, ANN, MAGNA);
+        answer = h.allies.callFromNpc(h.game.ann, KEY, 101, h.now);
+        assertEquals("I could not send word to #bMagna#k. Magna is busy right now.\r\n\r\n" + window(), answer);
+
+        window(); // Orrin 100, Gunnar 101 and everyone
+        h.game.commitments.commit("pq:kpq:3:" + ANN, ANN, GUNNAR);
+        h.open.listed = full;
+        answer = h.allies.callFromNpc(h.game.ann, KEY, 98, h.now);
+        assertEquals("I could not send word to #bOrrin and Gunnar#k. Gunnar is busy right now. I can take no more of "
+                + "yours.\r\n\r\n" + window(), answer);
+
+        for (String persona : List.of("orrin", "magna", "gunnar")) {
+            assertNull(h.allies.trip(persona), persona);
+        }
+        assertEquals(List.of(), h.open.calls);
     }
 
     @Test
