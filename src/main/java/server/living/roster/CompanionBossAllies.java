@@ -169,7 +169,7 @@ final class CompanionBossAllies {
         /** True while any Agent runtime holds the character. */
         boolean loaded(int characterId);
 
-        /** True when the Agent carries less than {@code bossKey}'s potion standard (AgentSupplyReadiness). */
+        /** True when the Agent carries fewer potions than {@code bossKey}'s standard (AgentSupplyReadiness). */
         boolean shortOfPotions(Character agent, String bossKey);
 
         /** The ally joins {@code lead}'s party; a lead in no party makes one first. */
@@ -211,7 +211,9 @@ final class CompanionBossAllies {
 
             @Override
             public boolean shortOfPotions(Character agent, String bossKey) {
-                return !AgentSupplyReadiness.shortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey)).none();
+                // potions only: the shortfall counts projectiles too (ammo readiness), and the line says "pots"
+                return !AgentSupplyReadiness.shortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey))
+                        .potionsNone();
             }
 
             @Override
