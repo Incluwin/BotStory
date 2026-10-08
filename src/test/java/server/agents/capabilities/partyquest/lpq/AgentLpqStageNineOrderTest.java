@@ -199,7 +199,8 @@ class AgentLpqStageNineOrderTest {
         assertTrue(flat.contains("AgentLpqStageNineBossPolicy.MemberStatebefore=member.stageNineState();"), flat);
         assertTrue(flat.contains("intpotions=ACTIONS.hpPotionCount(agent);"), flat);
         assertTrue(flat.contains("AgentLpqStageNineBossPolicy.Orderorder=AgentLpqStageNineBossPolicy.order(before,"
-                + "newAgentLpqStageNineBossPolicy.Pass(stageNineShooter(agent),shooterIds.indexOf(agent.getId()),"
+                + "newAgentLpqStageNineBossPolicy.Pass(stageNineShooter(agent,session.companionAdopted()),"
+                + "shooterIds.indexOf(agent.getId()),"
                 + "groupsUnset,agent.getPosition(),boss,summons,potions,"
                 + "server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP,agent.getHp(),agent.getMaxHp()),"
                 + "stageNineFloor());"), flat);

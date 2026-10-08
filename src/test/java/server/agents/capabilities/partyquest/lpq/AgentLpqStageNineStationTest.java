@@ -245,9 +245,11 @@ class AgentLpqStageNineStationTest {
         // fightAlishar applies AgentLpqStageNineBossPolicy.order as is: AgentLpqStageNineOrderTest pins both.
         String fight = method(source, "    private static void fightAlishar(");
 
-        String shooter = method(source, "    private static boolean stageNineShooter(");
+        String shooter = method(source, "    static boolean stageNineShooter(");
         assertTrue(shooter.replaceAll("\\s+", "").contains("AgentLpqStageNineBossPolicy.shooter("
-                + "AgentLpqRosterRequirementPolicy.magicAttack(agent),ACTIONS.rangedWeapon(agent))"));
+                + "AgentLpqRosterRequirementPolicy.magicAttack(agent),ACTIONS.rangedWeapon(agent)"
+                + "&&!(companionRun&&AgentAmmoService.dryShooter(agent)))"),
+                "a dry ranged member is no shooter in a companion run only (AgentLpqStageNineShooterTest)");
         assertFalse(shooter.contains("rangedAttack("), "a Lucky Seven dagger rogue is not a shooter");
 
         for (String body : List.of(branch, fight, shooter, method(source, "    private static List<Integer> "

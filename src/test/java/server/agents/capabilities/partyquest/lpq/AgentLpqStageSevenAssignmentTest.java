@@ -158,6 +158,72 @@ class AgentLpqStageSevenAssignmentTest {
                 AgentLpqCoordinator.stageSevenRatzPriorityYs(1, 1));
     }
 
+    // ---- a dry shooter in a companion run (2026-10-07: Kestrel kept his ratz lane with no stars) --------------
+
+    @Test
+    void aDryCompanionIsNoStageSevenShooterInACompanionRun() {
+        java.util.Map<Integer, client.Character> chars = java.util.Map.of(
+                401, assassin(0), 402, assassin(800), 400, assassin(800));
+        List<AgentLpqMemberState> members = List.of(member(400, AgentLpqMemberState.MemberType.HUMAN),
+                member(401, AgentLpqMemberState.MemberType.AGENT), member(402, AgentLpqMemberState.MemberType.AGENT));
+        try (org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> weapons =
+                     claws()) {
+            List<Integer> top = AgentLpqCoordinator.stageSevenTopMemberIds(
+                    members, id -> AgentLpqCoordinator.stageSevenShooter(chars.get(id), true), 400);
+
+            assertEquals(List.of(402), top, "the loaded one moves up; the human leader keeps the bottom");
+            assertEquals(List.of(-1_044, -1_276, -1_543), AgentLpqCoordinator.stageSevenRatzPriorityYs(
+                    top.indexOf(402), top.size()), "a single shooter takes all three ratz");
+        }
+    }
+
+    @Test
+    void aStockRunKeepsTheJobOnlyPick() {
+        java.util.Map<Integer, client.Character> chars = java.util.Map.of(401, assassin(0), 402, assassin(800));
+        List<AgentLpqMemberState> members = List.of(member(400, AgentLpqMemberState.MemberType.AGENT),
+                member(401, AgentLpqMemberState.MemberType.AGENT), member(402, AgentLpqMemberState.MemberType.AGENT));
+        try (org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> weapons =
+                     claws()) {
+            assertEquals(List.of(401, 402), AgentLpqCoordinator.stageSevenTopMemberIds(
+                    members, id -> AgentLpqCoordinator.stageSevenShooter(chars.get(id), false), 400));
+        }
+    }
+
+    @Test
+    void aMemberHandedStarsIsAShooterAgain() {
+        client.Character kestrel = assassin(0);
+        try (org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> weapons =
+                     claws()) {
+            assertFalse(AgentLpqCoordinator.stageSevenShooter(kestrel, true));
+            kestrel.getInventory(client.inventory.InventoryType.USE).addItem(testutil.Items.itemWithQuantity(2_070_000, 300));
+            assertTrue(AgentLpqCoordinator.stageSevenShooter(kestrel, true));
+        }
+    }
+
+    /** An Assassin with a claw and {@code stars} throwing stars in a real Use tab. */
+    static client.Character assassin(int stars) {
+        client.Character assassin = org.mockito.Mockito.mock(client.Character.class);
+        org.mockito.Mockito.when(assassin.getJob()).thenReturn(client.Job.ASSASSIN);
+        org.mockito.Mockito.when(assassin.getBuffedValue(org.mockito.ArgumentMatchers.any(client.BuffStat.class)))
+                .thenReturn(null); // no Shadow Claw
+        client.inventory.Inventory use = new client.inventory.Inventory(assassin, client.inventory.InventoryType.USE,
+                (byte) 24);
+        if (stars > 0) {
+            use.addItem(testutil.Items.itemWithQuantity(2_070_000, stars));
+        }
+        org.mockito.Mockito.when(assassin.getInventory(client.inventory.InventoryType.USE)).thenReturn(use);
+        return assassin;
+    }
+
+    /** Every character holds a claw. */
+    static org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> claws() {
+        org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> weapons =
+                org.mockito.Mockito.mockStatic(server.agents.capabilities.combat.AgentAttackExecutionProvider.class);
+        weapons.when(() -> server.agents.capabilities.combat.AgentAttackExecutionProvider.getEquippedWeaponType(
+                org.mockito.ArgumentMatchers.any())).thenReturn(client.inventory.WeaponType.CLAW);
+        return weapons;
+    }
+
     private static AgentLpqMemberState member(
             int id, AgentLpqMemberState.MemberType memberType) {
         return new AgentLpqMemberState(id, memberType);

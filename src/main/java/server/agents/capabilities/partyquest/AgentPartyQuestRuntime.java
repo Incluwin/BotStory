@@ -333,6 +333,10 @@ public final class AgentPartyQuestRuntime {
             return adopted(AgentLpqSessionRegistry.forMember(characterId));
         }
 
+        @Override public boolean ownsDryLine(int characterId, int mapId) {
+            return AgentLpqRuntime.ownsDryLine(characterId, mapId);
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("lpq"); }
         @Override public boolean sessionActive(int characterId) { return AgentLpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
