@@ -98,6 +98,10 @@ final class AgentRjpqCompanionPlay {
         return "we did it! " + side.captiveName() + " is safe. " + side.npcName() + " has our reward.";
     }
 
+    static String leaderDown(String leader) {
+        return leader + " went down!";
+    }
+
     static String bagFull() {
         return "my bag's full, one sec.";
     }

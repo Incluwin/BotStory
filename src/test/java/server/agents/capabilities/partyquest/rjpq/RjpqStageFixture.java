@@ -73,6 +73,7 @@ final class RjpqStageFixture implements AutoCloseable {
     final List<Monster> monsters = new ArrayList<>();
     final List<String> said = new ArrayList<>();
     final MockedStatic<AgentLootEligibility> loot;
+    final CharacterGateway online = mock(CharacterGateway.class);
     private final List<MockedStatic<?>> statics = new ArrayList<>();
 
     RjpqStageFixture(AgentRjpqSide side, int zenumistStageMap) {
@@ -84,7 +85,6 @@ final class RjpqStageFixture implements AutoCloseable {
         open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
         open(AgentModeStateRuntime.class);
         open(AgentRuntimeRegistry.class);
-        CharacterGateway online = mock(CharacterGateway.class);
         when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         MockedStatic<AgentMapPerception> perception = open(AgentMapPerception.class);
@@ -100,6 +100,7 @@ final class RjpqStageFixture implements AutoCloseable {
             Character character = mock(Character.class);
             when(character.getId()).thenReturn(id);
             when(character.getName()).thenReturn(name(id));
+            when(character.getHp()).thenReturn(1_000);
             when(character.getMap()).thenReturn(map);
             when(character.getMapId()).thenReturn(side.map(zenumistStageMap));
             when(character.getEventInstance()).thenReturn(event);
@@ -117,6 +118,9 @@ final class RjpqStageFixture implements AutoCloseable {
         session.setLeadership(BEN, MIRA);
         session.setCompanionAdopted(true);
         session.setMemberCoordinationChatEnabled(true);
+        session.setEventLeaderName("Ben");
+        when(event.getLeaderId()).thenReturn(BEN);
+        when(event.getTimeLeft()).thenReturn(2_700_000L);
         session.bindEventInstance(event, 1_000L);
         when(partyQuest.property(any(), any())).thenAnswer(call -> properties.get((String) call.getArgument(1)));
         doAnswer(call -> {

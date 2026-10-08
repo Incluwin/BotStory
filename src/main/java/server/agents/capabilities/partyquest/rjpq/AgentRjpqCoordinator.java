@@ -75,7 +75,8 @@ final class AgentRjpqCoordinator {
         EventInstanceManager event = bind(session, leader, nowMs);
         if (event == null) {
             if (nowMs - session.startedAtMs() > COMPANION_ENTRY_WAIT_MS) {
-                fail(session, "The RJPQ leader did not start the event in time", nowMs);
+                AgentRjpqCompanionRun.fail(session, "The RJPQ leader did not start the event in time",
+                        AgentRjpqParting.SILENT, null, nowMs);
             }
             return;
         }
@@ -85,17 +86,7 @@ final class AgentRjpqCoordinator {
         }
         AgentRjpqSession.Phase next = cleared ? AgentRjpqSession.Phase.CLAIMING : furthestPhase(session);
         logChange(session, session.advance(next, nowMs));
-        if (event.isEventDisposed()) {
-            if (cleared) {
-                session.complete(nowMs);
-            } else {
-                fail(session, "The RJPQ event ended before the clear", nowMs);
-            }
-            return;
-        }
-        if (!cleared && leader == null) {
-            fail(session, "The RJPQ event leader is offline", nowMs);
-        }
+        AgentRjpqCompanionRun.pass(session, event, leader, nowMs);
     }
 
     /** The run's event: bound once, when the leader stands in an instance on one of the side's event maps. */
@@ -109,6 +100,7 @@ final class AgentRjpqCoordinator {
             return null;
         }
         if (session.bindEventInstance(candidate, nowMs)) {
+            session.setEventLeaderName(leader.getName());
             AgentRjpqSide side = session.side();
             partyQuest().prepareNpcScripts(side.bookNpcId(), side.officeYuleteNpcId(), side.claimNpcId(),
                     side.tracesYuleteNpcId(), AgentRjpqDefinition.REWARD_NPC_ID);
@@ -167,9 +159,13 @@ final class AgentRjpqCoordinator {
 
     /** Fails the run once, whoever asks first; the release runs on the next tick that sees it terminal. */
     static void fail(AgentRjpqSession session, String reason, long nowMs) {
-        if (!session.claimFailure()) {
-            return;
+        if (session.claimFailure()) {
+            failClaimed(session, reason, nowMs);
         }
+    }
+
+    /** Fails a run whose failure the caller already claimed. */
+    static void failClaimed(AgentRjpqSession session, String reason, long nowMs) {
         log.warn("RJPQ session failure: session={} side={} reason={}", session.sessionId(), session.side().key(),
                 reason);
         session.fail(reason, nowMs);

@@ -5865,3 +5865,15 @@ tuning:
     # Purpose: How many times an RJPQ companion asks one claim NPC (the marble, the traces, the reward) before it gives that claim up.
     # Technical: AgentRjpqStagePlay.claim counts its tries per map in the member state; from the second try a full tab first loses its cheapest item (E2 once); past this many it logs 'RJPQ claim skipped' and stands, and the release takes it out through the event.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.CLAIM_RETRY_MAX: '3'
+    # Values: 1000-30000 milliseconds. Recommended: 6000, a little more than the RJPQ watchdog period.
+    # Purpose: How close to the end of its 45-minute timer an RJPQ event must have been at the run's last look for its end to count as the timer running out.
+    # Technical: AgentRjpqCompanionRun.pass stores the event's getTimeLeft on every pass; when the event ends before the clear and the last read was at most this, AgentRjpqParting.endedCause names TIMEOUT ("out of time... yulete got away.").
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.TIMEOUT_SLACK_MS: '6000'
+    # Values: 120000-1800000 milliseconds. Recommended: 600000.
+    # Purpose: How long an RJPQ companion run may go without progress before its companions call it off, so a run stuck on a stage does not hold them for the rest of the timer.
+    # Technical: AgentRjpqCompanionRun.pass fails the run TOO_LONG before the clear when AgentRjpqSession.lastProgressAtMs is this old (phase changes, books, drops, Lab Unit rows, the boss call, the files in and the leader's map changes are progress).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.STALL_TIMEOUT_MS: '600000'
+    # Values: 60000-900000 milliseconds. Recommended: 300000.
+    # Purpose: How long after the boss an RJPQ companion run waits for its companions to finish their claims before it ends and takes out any still inside.
+    # Technical: AgentRjpqCompanionRun.pass completes the run once no companion stands in the event or this long after the clear; the release then exits any companion still in the event (AgentRjpqTerminationService).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'

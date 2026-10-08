@@ -70,6 +70,10 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private long escortHp = -1;
     private int escortHurtLines;
     private long escortHurtLineAtMs = -1;
+    private String eventLeaderName;
+    private boolean filesHandedIn;
+    private long lastTimeLeftMs = Long.MAX_VALUE;
+    private int leaderMapId = -1;
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -458,6 +462,41 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
             Arrays.fill(rows, -1);
             return rows;
         });
+    }
+
+    /** The event leader's name as the run bound its event, for the companions' lines about him. */
+    public synchronized String eventLeaderName() {
+        return eventLeaderName;
+    }
+
+    synchronized void setEventLeaderName(String name) {
+        eventLeaderName = name;
+    }
+
+    /** Romeo or Juliet took the files (statusStg4 seen at 1); it stays set. */
+    synchronized boolean filesHandedIn() {
+        return filesHandedIn;
+    }
+
+    /** The event timer's time left at the run's last look; Long.MAX_VALUE before any. */
+    synchronized long lastTimeLeftMs() {
+        return lastTimeLeftMs;
+    }
+
+    /**
+     * One look at the live event by the run's pass: the timer's time left, the files in, the leader's map. The files
+     * going in and the leader changing maps count as progress (the Dark Labs and the hand-in are his).
+     */
+    synchronized void observeEvent(long timeLeftMs, boolean filesIn, int leaderMap, long nowMs) {
+        lastTimeLeftMs = timeLeftMs;
+        if (filesIn && !filesHandedIn) {
+            filesHandedIn = true;
+            markProgress(nowMs);
+        }
+        if (leaderMap != leaderMapId) {
+            leaderMapId = leaderMap;
+            markProgress(nowMs);
+        }
     }
 
     /** When the boss call was announced (the first ask sets it to {@code nowMs}). */

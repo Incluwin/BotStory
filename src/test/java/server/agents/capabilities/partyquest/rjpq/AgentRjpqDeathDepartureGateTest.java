@@ -65,9 +65,9 @@ class AgentRjpqDeathDepartureGateTest {
         AtomicInteger respawns = new AtomicInteger();
 
         assertFalse(AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event,
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
         assertFalse(AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event,
-                respawns::incrementAndGet, 2_710_000L), "forty-five minutes later, still held");
+                respawns::incrementAndGet, dying -> 1, 2_710_000L), "forty-five minutes later, still held");
 
         assertEquals(0, respawns.get());
         assertEquals(1, session.heldDeadCount());
@@ -80,9 +80,9 @@ class AgentRjpqDeathDepartureGateTest {
         AtomicInteger respawns = new AtomicInteger();
 
         assertFalse(AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event,
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
         assertFalse(AgentRjpqDeathDepartureGate.respawnOrHold(session, UNA, "Una", event,
-                respawns::incrementAndGet, 11_000L));
+                respawns::incrementAndGet, dying -> 1, 11_000L));
 
         assertEquals(0, respawns.get());
         assertEquals(2, session.heldDeadCount());
@@ -93,12 +93,12 @@ class AgentRjpqDeathDepartureGateTest {
         AgentRjpqSession session = session();
         FakeEvent event = new FakeEvent();
         AtomicInteger respawns = new AtomicInteger();
-        AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event, respawns::incrementAndGet, 10_000L);
+        AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event, respawns::incrementAndGet, dying -> 1, 10_000L);
 
         event.cleared = true;
 
         assertTrue(AgentRjpqDeathDepartureGate.respawnOrHold(session, TOBI, "Tobi", event,
-                respawns::incrementAndGet, 70_000L));
+                respawns::incrementAndGet, dying -> 1, 70_000L));
         assertEquals(1, respawns.get());
         assertEquals(0, session.heldDeadCount());
     }
@@ -114,13 +114,13 @@ class AgentRjpqDeathDepartureGateTest {
         gone.registered.remove(UNA);
 
         assertTrue(AgentRjpqDeathDepartureGate.respawnOrHold(ending, TOBI, "Tobi", new FakeEvent(),
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
         assertTrue(AgentRjpqDeathDepartureGate.respawnOrHold(session(), TOBI, "Tobi", disposed,
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
         assertTrue(AgentRjpqDeathDepartureGate.respawnOrHold(session(), UNA, "Una", gone,
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
         assertTrue(AgentRjpqDeathDepartureGate.respawnOrHold(session(), TOBI, "Tobi", null,
-                respawns::incrementAndGet, 10_000L));
+                respawns::incrementAndGet, dying -> 1, 10_000L));
 
         assertEquals(4, respawns.get());
     }

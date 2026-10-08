@@ -107,6 +107,8 @@ class AgentRjpqCoordinatorSkeletonTest {
 
     private EventInstanceManager enter(int... ids) {
         EventInstanceManager event = mock(EventInstanceManager.class);
+        when(event.getLeaderId()).thenReturn(BEN);
+        when(event.getTimeLeft()).thenReturn(2_700_000L);
         for (int id : ids) {
             when(characters.get(id).getEventInstance()).thenReturn(event);
             when(characters.get(id).getMapId()).thenReturn(AgentRjpqDefinition.BOOKS_MAP);

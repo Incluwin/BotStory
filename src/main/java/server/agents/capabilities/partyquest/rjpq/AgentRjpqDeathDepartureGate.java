@@ -7,6 +7,7 @@ import scripting.event.EventInstanceManager;
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -76,11 +77,16 @@ public final class AgentRjpqDeathDepartureGate {
         }
         EventInstanceManager event = session.eventInstance();
         return respawnOrHold(session, agent.getId(), agent.getName(),
-                event == null ? null : EventView.of(event), respawn, nowMs);
+                event == null ? null : EventView.of(event), respawn,
+                dying -> AgentRjpqCompanionRun.standingCompanions(session, dying), nowMs);
     }
 
+    /**
+     * {@code standingOthers}: how many of the run's other companions stand (online, up, in the event); with none,
+     * a companion run ends on this first hold in the dying companion's own words (8.4) and the next tick releases.
+     */
     static boolean respawnOrHold(AgentRjpqSession session, int id, String name, EventView event,
-                                 Runnable respawn, long nowMs) {
+                                 Runnable respawn, IntUnaryOperator standingOthers, long nowMs) {
         if (session.terminal() || session.terminationStarted() || event == null || event.disposed()
                 || event.cleared() || id == event.leaderId() || !event.registeredIds().contains(id)) {
             long heldMs = session.releaseHold(id, nowMs);
@@ -94,6 +100,9 @@ public final class AgentRjpqDeathDepartureGate {
         if (!departure.proceed()) {
             if (departure.firstHold()) {
                 logDeparture(session, id, name, "HOLD", departure.registered(), departure.othersInFlight(), 0L);
+                if (session.companionAdopted() && standingOthers.applyAsInt(id) == 0) {
+                    AgentRjpqCompanionRun.shortHanded(session, id, nowMs);
+                }
             }
             return false;
         }
