@@ -193,3 +193,90 @@ Extra live checks for the fix branch (GM-first, after the setup above):
    companions, Isolde grinding from the start, and Flint never using a gun skill without a gun.
 7. Let one run end without a clear (everyone dies or leaves). Expect no "Runtime failure at
    EventInstanceManager#monsterKilled" error and no clear effect.
+
+## Body cast crash: diagnostics and repro (2026-10-08, branch fix/p7a-live-2)
+
+In live run 2, Bossfriend's client closed at 10:56:03, 1.7 s after the body (8830007) cast its first skill
+(Physical/Magic Counter, skill 145 level 4). The cause is not proven. The lead (unconfirmed) is how the client handles
+the cast packet: the MOVE_MONSTER packet that starts the skill1 animation and the Skill1 sound. The status packet that
+applies the counter at impact is unlikely to be the trigger.
+
+What the branch adds:
+- D1, a log line at each server-owned skill impact: `Boss server impact mob= oid= skill= level= sinceCastMs=`. It
+  shows when the status packet really goes out.
+- D2, a log line once per (character, oid) when a client sends MOVE_LIFE for a mob that the server owns:
+  `MOVE_LIFE for server-owned mob chr= mob= oid=`. It shows stale control (a human client that still thinks it
+  controls the mob).
+- Fix A: when the server owns the body, its activation sends a stop-control packet for the body to every human on the
+  map who is not changing maps. The `Easy Balrog body activated` line gains `controlStops=<count>`.
+- Fix B: the body's skill casts (145 and 133) send no action. The movement and the impact do not change.
+- Visible change while Fix B is on (the default): the body's 145 and 133 casts play no skill1 animation and no Skill1
+  sound. The status still applies at impact.
+- The GM6 tool `!balrogprobe`.
+
+`!balrogprobe` (GM6 only, each use is logged as `gm balrogprobe ...`):
+- `!balrogprobe hp <percent> [mobId]` lowers each live, non-fake mob on your map (or only mobId) to
+  max(1, floor(maxHp x percent / 100)). It never kills a mob and never raises HP. It prints one line per lowered mob.
+  Clients see the new HP on the HP bar at the mob's next hit.
+- `!balrogprobe telegraph action` makes the body's casts send the skill1 action again (Fix B off).
+- `!balrogprobe telegraph none` sends the casts without the action (Fix B on).
+- `!balrogprobe telegraph` prints the current value.
+- The switch is not saved. A restart sets it back to `none`.
+
+Warning: each arm below may close the human client. Each step changes only your own test server.
+
+Before you start:
+1. Deploy the branch. Restart only with `start-maple-stack -RestartServer`.
+2. Use one human client (Bossfriend, GM6).
+3. Filter the server log for `Boss server`, `Easy Balrog`, `Exception caught` and `MOVE_LIFE`.
+
+Arm S, the status packet only (about 2 min, works on any build):
+1. Go to a quiet field with a few ordinary mobs and no boss.
+2. Type `!mobskill 140 12`. This is the control status. It already reached a human without a crash.
+3. Wait 5 s.
+4. Type `!mobskill 145 4`. This sends only the status packet, with no cast packet.
+5. Watch the client for 10 s. The expected result is no exit.
+
+Arm R, a server-owned body that was never fake, so no stale control (about 3 min):
+1. Go to a quiet map with a wide flat floor and no Agent or other player, for example `!warp 180000000`.
+2. Type `!hide`. A hidden player cannot control the body, so the body starts server-owned.
+3. Type `!balrogprobe telegraph action`.
+4. Type `!spawn 8830007`. Expect `Server mob autonomy acquired mob=8830007`.
+5. If you see `Boss native controller selected`, stop and check that you are hidden.
+6. Type `!balrogprobe hp 49 8830007`.
+7. Type `!spawnbot <existing bot name>`. The body waits for a target, and a hidden player is not one.
+8. Within about 1 s, expect `Boss server cast mob=8830007 ... skill=PHYSICAL_AND_MAGIC_COUNTER level=4`.
+9. Watch the client for 10 s.
+10. If the client exits, relaunch it and type `!hide`. Type `!killall`, then `!balrogprobe telegraph none`. Repeat
+    steps 4-9.
+11. If the client does not exit, wait 60 s for a second 145 cast. Then type `!balrogprobe hp 24 8830007` to get one
+    133 cast.
+
+Arm E, the real encounter, fast-forwarded (about 4 min):
+1. Type `!balrogprobe telegraph action`.
+2. Open the Easy Balrog companion run the same way as run 2. Stay in the party on map 105100400.
+3. After `Easy Balrog encounter started`, type `!balrogprobe hp 1 8830009`.
+4. After `Easy Balrog seal released` (60 s), type `!balrogprobe hp 1 8830008`.
+5. Wait for `Easy Balrog body activated`. After that line, no D2 line may name the body's oid.
+6. Type `!balrogprobe hp 49 8830007`. Expect the cast line within about 4.5 s (the action lock plus the pause).
+7. Watch the client for 10 s.
+8. If the client does not exit, repeat Arm R step 11.
+
+What to watch:
+- t0 is the `Boss server cast` line. t1 is the D1 `Boss server impact ... sinceCastMs=` line. t2 is
+  `Exception caught by Bossfriend ... Connection reset`.
+- If t2 comes before t1, the status packet never went out.
+- On screen: does skill1 start, does a speech balloon appear, and does the client freeze for about 1 s before it
+  exits?
+
+How to read the results:
+1. If Arm S exits, the status packet is the trigger. Remove 145 from the body's skills and fix the counter status
+   encoding with a decode test.
+2. If Arm R exits with `action` and passes with `none`, the cast packet's action is the trigger. Keep Fix B on. Keep
+   Fix A as hygiene.
+3. If Arm R exits with both values, compare t1 and t2. If the status packet went out first, go to item 1. Otherwise
+   capture the packets the human client receives and rerun Arm E.
+4. If Arm R and Arm E both pass for 3 casts with `action`, Fix A probably removed the trigger. Use `action` for normal
+   play. Change the default only after one clean full run.
+5. If Arm R passes but Arm E exits with `action`, a state that only the encounter has remains. Read the D2 lines, rerun
+   Arm E with `none`, then capture the packets.

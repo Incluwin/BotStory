@@ -18,6 +18,10 @@ public final class EasyBalrogBodyBehavior extends EasyBalrogBehavior {
         telegraphSkillActions = telegraph;
     }
 
+    public static boolean telegraphSkillActions() {
+        return telegraphSkillActions;
+    }
+
     @Override
     public int mobId() {
         return MOB_ID;

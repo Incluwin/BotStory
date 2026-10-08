@@ -235,6 +235,7 @@ import client.command.commands.gm6.EpqTestCommand;
 import client.command.commands.gm6.WarpLpqCommand;
 import client.command.commands.gm6.MushroomTestCommand;
 import client.command.commands.gm6.BalrogTestCommand;
+import client.command.commands.gm6.BalrogProbeCommand;
 import client.command.commands.gm6.SecondJobTestCommand;
 import client.command.commands.gm6.AgentFieldCommand;
 import client.command.commands.gm6.AmherstCommand;
@@ -688,6 +689,7 @@ public class CommandsExecutor {
         addCommand("warplpq", 6, WarpLpqCommand.class);
         addCommand("mushroomtest", 6, MushroomTestCommand.class);
         addCommand("balrogtest", 6, BalrogTestCommand.class);
+        addCommand("balrogprobe", 6, BalrogProbeCommand.class);
         addCommand("secondjobtest", 6, SecondJobTestCommand.class);
         addCommand("agentfield", 6, AgentFieldCommand.class);
         addCommand("townlife", 6, TownLifeCommand.class);
