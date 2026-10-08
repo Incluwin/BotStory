@@ -152,6 +152,29 @@ public final class CompanionBudget {
         };
     }
 
+    /**
+     * P7 Part B, pure: how many more EXPEDITION permits (bench allies) {@code ownerId} may take now. The burst is split
+     * evenly between the owners holding permits ({@code heldByOwner}: owner id -> permits held) and the asker when it
+     * holds none yet: floor(burstMax / owners) each and {@code perOwnerCap} at most, less what the asker holds, and
+     * never more than the burst has left. A permit already taken is never taken back: an owner past its share gets 0.
+     */
+    static int expeditionShareLeft(int burstMax, int perOwnerCap, Map<Integer, Integer> heldByOwner, int ownerId) {
+        int owners = 0;
+        int heldAll = 0;
+        for (int held : heldByOwner.values()) {
+            if (held > 0) {
+                owners++;
+                heldAll += held;
+            }
+        }
+        int mine = Math.max(0, heldByOwner.getOrDefault(ownerId, 0));
+        if (mine == 0) {
+            owners++; // the asker is new
+        }
+        int share = Math.min(Math.floorDiv(burstMax, owners), perOwnerCap);
+        return Math.max(0, Math.min(share - mine, burstMax - heldAll));
+    }
+
     /** Ms left before a load is allowed after one at {@code lastAtMs} (null = never loaded). */
     static long waitMs(Long lastAtMs, long nowMs, long intervalMs) {
         return lastAtMs == null ? 0L : Math.max(0L, lastAtMs + intervalMs - nowMs);

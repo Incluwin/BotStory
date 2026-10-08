@@ -390,6 +390,19 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return ids;
     }
 
+    /**
+     * P7 Part B, pure: the seats of an expedition list of {@code maxSize} that one owner's companions may still take
+     * while {@code owners} owners (the asker included; 0 counts as the asker alone) sign companions up. {@code reserve}
+     * seats (HUMAN_SEATS) stay free for players. What the humans listed leave of the rest is split evenly,
+     * floor((maxSize - reserve - humansListed) / owners) each, less the {@code held} seats of this owner's companions
+     * (listed or on their way), and never more than the list's room after every bot listed or on its way. Never < 0.
+     */
+    static int seatsLeft(int maxSize, int reserve, int humansListed, int botsListedOrPending, int owners, int held) {
+        int free = maxSize - reserve - humansListed;
+        int share = Math.floorDiv(free, Math.max(1, owners));
+        return Math.max(0, Math.min(share - held, free - botsListedOrPending));
+    }
+
     /** The expedition of {@code definition}'s type on the clicker's channel (as her script reads it), or null. */
     private static Expedition expeditionOf(Character clicker, AgentBossRunDefinition definition) {
         Client client = clicker.getClient();
