@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.supplies.AgentAmmoService;
+import server.agents.capabilities.supplies.AgentProjectileKind;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
@@ -200,6 +202,26 @@ class CompanionRestockBossTest {
             noSupplier(EASY_BALROG);
             drain();
             assertEquals(2, said.size(), "the held refusal did not use up the ask: " + said);
+        }
+
+        @Test
+        void anAmmoOnlyBossTripSaysTheBossAmmoLine() {
+            try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                    org.mockito.Mockito.CALLS_REAL_METHODS);
+                 MockedStatic<AgentAmmoService> ammo = mockStatic(AgentAmmoService.class,
+                         org.mockito.Mockito.CALLS_REAL_METHODS)) {
+                readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                        any(AgentSupplyReadiness.Activity.class)))
+                        .thenReturn(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+                ammo.when(() -> AgentAmmoService.projectileKind(any())).thenReturn(AgentProjectileKind.ARROWS);
+
+                restock.started(FENNA, EASY_BALROG, 120_000L);
+                drain();
+            }
+            assertEquals(1, said.size(), said.toString());
+            assertTrue(BossRunLines.GENERIC.get(BossRunLines.GO_AMMO).stream()
+                    .map(line -> line.replace("{n}", "2").replace("{ammo}", "arrows")).toList()
+                    .contains(said.getFirst()), said.toString());
         }
 
         private void noSupplier(AgentSupplyReadiness.Activity activity) {

@@ -123,6 +123,27 @@ class LineupPlanTest {
     }
 
     @Test
+    void aCompanionLowOnAmmoAndBrokeBlocksWithItsOwnLine() {
+        fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
+        fx.companion("kestrel", "Kestrel", 903, 25, Job.ASSASSIN);
+        fx.ammo.put(903, 0); // live: no stars, and its own restock cannot afford a set
+        fx.ready();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class, CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.status(any(), org.mockito.ArgumentMatchers.anyLong()))
+                    .thenAnswer(inv -> inv.getArgument(0) != null
+                            && ((server.agents.runtime.AgentRuntimeEntry) inv.getArgument(0)).bot().getId() == 903
+                            ? new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, 0L, 500)
+                            : AgentSupplyReadiness.Status.NONE);
+
+            LineupPlan plan = fx.service.plan(game.ann, "kpq");
+
+            assertEquals(List.of(new LineupPlan.Waiting(903, "Kestrel", "low on ammo, out of mesos")), plan.waiting());
+            assertEquals("Kestrel is low on ammo and can't afford any more.", plan.blocker());
+            assertFalse(plan.startable());
+        }
+    }
+
+    @Test
     void aCompanionLowOnManaPotionsWaitsWhenItFightsWithSkills() {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);

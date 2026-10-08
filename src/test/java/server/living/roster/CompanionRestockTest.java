@@ -12,6 +12,8 @@ import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.supplies.AgentAmmoService;
+import server.agents.capabilities.supplies.AgentProjectileKind;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentRelationshipRuntime;
@@ -338,6 +340,120 @@ class CompanionRestockTest {
                 new AgentSupplyReadiness.Shortfall(19, 0), 795);
         drain();
         assertEquals(2, said.size(), "half an hour later it asks again");
+    }
+
+    // ---- trips for projectiles alone (2026-10-07) ---------------------------------------------
+
+    @Test
+    void anAmmoOnlyTripSaysItsAmmoLines() {
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.started(FENNA, KPQ, 50_000L);
+            drain();
+            assertEquals(1, said.size(), said.toString());
+            assertTrue(ammoLines(CompanionRestockLines.GO_AMMO, "stars").contains(said.getFirst()), said.toString());
+
+            restock.finished(FENNA, KPQ, AgentSupplyReadiness.Outcome.READY);
+            drain();
+            assertEquals(2, said.size(), said.toString());
+            assertTrue(ammoLines(CompanionRestockLines.BACK_AMMO, "stars").contains(said.get(1)), said.toString());
+        }
+    }
+
+    @Test
+    void anAmmoOnlyTripThatCannotAffordItSaysTheAmmoBrokeLine() {
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.ARROWS)) {
+            restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                    new AgentSupplyReadiness.Shortfall(0, 0, 500), 300);
+            drain();
+            assertEquals(1, said.size(), said.toString());
+            assertTrue(ammoLines(CompanionRestockLines.BROKE_AMMO, "arrows").contains(said.getFirst()),
+                    said.toString());
+
+            restock.started(FENNA, KPQ, 50_000L);
+            restock.finished(FENNA, KPQ, AgentSupplyReadiness.Outcome.SHORT_MESOS);
+            restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                    new AgentSupplyReadiness.Shortfall(19, 0), 795);
+            drain();
+            assertEquals(2, said.size(), "one broke line per ask interval, potions or ammo: " + said);
+            assertTrue(ammoLines(CompanionRestockLines.GO_AMMO, "arrows").contains(said.get(1)), said.toString());
+        }
+    }
+
+    @Test
+    void aTripShortOfPotionsAndAmmoSaysThePotionLines() {
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(5, 0, 500));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.started(FENNA, KPQ, 50_000L);
+            restock.finished(FENNA, KPQ, AgentSupplyReadiness.Outcome.READY);
+            drain();
+            assertEquals(2, said.size(), said.toString());
+            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.GO).contains(said.getFirst()));
+            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BACK).contains(said.get(1)));
+        }
+    }
+
+    @Test
+    void anAmmoTripDismissedMidwayLeavesNoStaleWord() {
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.started(FENNA, KPQ, 50_000L);
+            when(settings.boundTo(FENNA)).thenReturn(null); // dismissed mid-trip
+            restock.finished(FENNA, KPQ, AgentSupplyReadiness.Outcome.INTERRUPTED);
+            when(settings.boundTo(FENNA)).thenReturn(new CompanionSettingsApplier.Bound(ANN, "fenna"));
+            drain();
+            said.clear();
+
+            readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                    any(AgentSupplyReadiness.Activity.class))).thenReturn(new AgentSupplyReadiness.Shortfall(5, 0, 0));
+            restock.finished(FENNA, KPQ, AgentSupplyReadiness.Outcome.READY);
+            drain();
+            assertEquals(1, said.size(), said.toString());
+            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BACK).contains(said.getFirst()),
+                    "the potion back line, not the stars': " + said);
+        }
+    }
+
+    @Test
+    void atABossGateACompanionShortOnlyOfAmmoSaysTheAmmoNoShopLine() {
+        when(fenna.getMapId()).thenReturn(PAPULATUS_GATE);
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(FENNA);
+        when(member.isBot()).thenReturn(true);
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(member));
+        when(ann.getParty()).thenReturn(party);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.bossGate(ANN, PAPULATUS_GATE);
+            restock.bossGate(ANN, PAPULATUS_GATE);
+        }
+        assertEquals(1, said.size(), "once in the window: " + said);
+        assertTrue(ammoLines(CompanionRestockLines.NO_SHOP_AMMO, "stars").contains(said.getFirst()), said.toString());
+    }
+
+    /** Fenna's own count lacks {@code shortfall} (AgentSupplyReadiness.shortfall), whatever her bag holds. */
+    private static MockedStatic<AgentSupplyReadiness> shortOf(AgentSupplyReadiness.Shortfall shortfall) {
+        MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS);
+        readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                any(AgentSupplyReadiness.Activity.class))).thenReturn(shortfall);
+        return readiness;
+    }
+
+    /** Fenna's weapon shoots {@code kind}. */
+    private static MockedStatic<AgentAmmoService> shoots(AgentProjectileKind kind) {
+        MockedStatic<AgentAmmoService> ammo = mockStatic(AgentAmmoService.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        ammo.when(() -> AgentAmmoService.projectileKind(any())).thenReturn(kind);
+        return ammo;
+    }
+
+    /** The generic {@code intent} lines with {ammo} read as {@code word}. */
+    private static List<String> ammoLines(String intent, String word) {
+        return CompanionRestockLines.GENERIC.get(intent).stream()
+                .map(line -> CompanionRestockLines.withAmmo(line, word)).toList();
     }
 
     @Test

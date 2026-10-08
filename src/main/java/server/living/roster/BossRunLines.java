@@ -31,6 +31,8 @@ final class BossRunLines {
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
     static final String GO = "boss.go";
+    /** Off to the shop from the boss's entrance for projectiles alone ("{ammo}": stars, arrows, bolts, bullets). */
+    static final String GO_AMMO = "boss.goAmmo";
 
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
@@ -81,7 +83,10 @@ final class BossRunLines {
                     "we did it! gg.")),
             Map.entry(GO, List.of(
                     "low on pots for balrog, running to the shop. back in ~{n} min.",
-                    "gonna grab potions first. back in ~{n} min.")));
+                    "gonna grab potions first. back in ~{n} min.")),
+            Map.entry(GO_AMMO, List.of(
+                    "low on {ammo} for balrog, running to the shop. back in ~{n} min.",
+                    "gonna grab {ammo} first. back in ~{n} min.")));
 
     private static final AtomicInteger counter = new AtomicInteger();
 
@@ -122,6 +127,12 @@ final class BossRunLines {
      */
     static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes,
                        CompanionBossRun run) {
+        return say(world, bot, intent, name, minutes, run, null);
+    }
+
+    /** As {@link #say(LivingWorld, Character, String, String, int, CompanionBossRun)}, "{ammo}" read as {@code ammo}. */
+    static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes,
+                       CompanionBossRun run, String ammo) {
         if (bot == null) {
             return false;
         }
@@ -134,6 +145,6 @@ final class BossRunLines {
         String line = wording
                 .replace("{name}", name == null ? "" : name)
                 .replace("{n}", Integer.toString(minutes));
-        return world.roster().sayInParty(bot, line);
+        return world.roster().sayInParty(bot, CompanionRestockLines.withAmmo(line, ammo));
     }
 }

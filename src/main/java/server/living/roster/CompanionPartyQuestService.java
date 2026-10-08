@@ -386,18 +386,21 @@ public final class CompanionPartyQuestService {
 
     /**
      * Every loaded companion of the party short of the readiness standard of the quest whose entry NPC the leader
-     * stands at (PqEntrance.keyAt, the standard its restock duty there fills) looks at its potions on its next tick
-     * (AgentSupplyReadiness.checkSoon), so one that can go sets off now. Memory only, on the leader's I/O thread.
+     * stands at (PqEntrance.keyAt, the standard its restock duty there fills), potions or projectiles, looks at its
+     * supplies on its next tick (AgentSupplyReadiness.checkSoon), so one that can go sets off now. Memory only, on
+     * the leader's I/O thread.
      */
     private void checkShortSoon(Character leader) {
         Party party = leader.getParty();
+        AgentSupplyReadiness.Activity activity =
+                AgentSupplyReadiness.Activity.partyQuest(PqEntrance.keyAt(leader.getMapId()));
         for (PartyCharacter member : party == null ? List.<PartyCharacter>of() : party.getMembers()) {
             AgentRuntimeEntry runtime = member.isBot() ? AgentRuntimeRegistry.findByAgentCharacterId(member.getId())
                     : null;
             Character bot = runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
-            if (bot != null && !AgentSupplyReadiness.shortfall(hpPotions.applyAsInt(bot), mpPotions.applyAsInt(bot),
-                    AgentSupplyReadiness.needsManaPotions(bot),
-                    AgentSupplyReadiness.Activity.partyQuest(PqEntrance.keyAt(leader.getMapId()))).none()) {
+            if (bot != null && (!AgentSupplyReadiness.shortfall(hpPotions.applyAsInt(bot), mpPotions.applyAsInt(bot),
+                    AgentSupplyReadiness.needsManaPotions(bot), activity).none()
+                    || AgentSupplyReadiness.ammoShortfall(ammo.applyAsInt(bot), activity) > 0)) {
                 AgentSupplyReadiness.checkSoon(runtime);
             }
         }
@@ -416,27 +419,29 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * Before entry: a companion the lineup leaves waiting for potions asks for some in party chat, in the Agents'
-     * own pot-share words (mana, or HP); one that cannot afford them says so in its own voice. At most once per
-     * {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops. One whose own restock decides on its next tick
-     * (AgentSupplyReadiness.restockPending: the click just asked it to look) asks nothing: it sets off, or says why
-     * not, itself. The broke line shares its memory with the companion's own (CompanionRestock.mayAsk), so it is never
-     * said twice within seconds.
+     * Before entry: a companion the lineup leaves waiting for potions or ammo asks for some in party chat, in the
+     * Agents' own words (mana, HP, or ammo); one that cannot afford them says so in its own voice (its ammo broke line
+     * names what it shoots). At most once per {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops. One
+     * whose own restock decides on its next tick (AgentSupplyReadiness.restockPending: the click just asked it to
+     * look) asks nothing: it sets off, or says why not, itself. The broke line shares its memory with the companion's
+     * own (CompanionRestock.mayAsk, one key for a potion and an ammo broke line), so it is never said twice within
+     * seconds.
      */
     private void askShort(LineupPlan plan) {
         long now = System.currentTimeMillis();
         CompanionRestock restock = world.restock();
         for (LineupPlan.Waiting member : plan.waiting()) {
             String reason = member.reason();
+            boolean brokeForAmmo = DeskLines.LOW_ON_AMMO_BROKE.equals(reason);
             boolean broke = DeskLines.LOW_ON_POTIONS_BROKE.equals(reason)
-                    || DeskLines.LOW_ON_MANA_BROKE.equals(reason);
+                    || DeskLines.LOW_ON_MANA_BROKE.equals(reason) || brokeForAmmo;
             boolean mana = DeskLines.LOW_ON_MANA.equals(reason);
-            boolean shotless = DeskLines.LOW_ON_AMMO.equals(reason); // nothing restocks ammo: it only asks
+            boolean shotless = DeskLines.LOW_ON_AMMO.equals(reason);
             if (!broke && !mana && !shotless && !DeskLines.LOW_ON_POTIONS.equals(reason)) {
                 continue;
             }
             int id = member.characterId();
-            if (!broke && !shotless
+            if (!broke
                     && AgentSupplyReadiness.restockPending(AgentRuntimeRegistry.findByAgentCharacterId(id), now)) {
                 continue;
             }
@@ -457,7 +462,10 @@ public final class CompanionPartyQuestService {
                 if (bot == null) {
                     return;
                 }
-                if (broke) {
+                if (brokeForAmmo) {
+                    CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE_AMMO,
+                            CompanionRestockLines.ammoWord(bot));
+                } else if (broke) {
                     CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE);
                 } else {
                     world.roster().sayInParty(bot, AgentDialogueSelector.randomReply(shotless
@@ -723,7 +731,7 @@ public final class CompanionPartyQuestService {
             AgentSupplyReadiness.Status trip = AgentSupplyReadiness.status(
                     AgentRuntimeRegistry.findByAgentCharacterId(id), System.currentTimeMillis());
             if (trip.restocking()) {
-                // gone to the store for potions (its own restock): on its way, as a bench call is
+                // gone to the store for potions or ammo (its own restock): on its way, as a bench call is
                 return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), trip.etaMs(),
                         DeskLines.AT_THE_STORE, entrance), LineupPlan.Fit.ON_THE_WAY, null, usual,
                         dps.applyAsDouble(bot, entrance), power(bot, profile, false, false));
@@ -732,6 +740,8 @@ public final class CompanionPartyQuestService {
                 reason = DeskLines.LOW_ON_POTIONS_BROKE;
             } else if (trip.cannotAfford() && DeskLines.LOW_ON_MANA.equals(reason)) {
                 reason = DeskLines.LOW_ON_MANA_BROKE;
+            } else if (trip.cannotAfford() && DeskLines.LOW_ON_AMMO.equals(reason)) {
+                reason = DeskLines.LOW_ON_AMMO_BROKE;
             }
         }
         return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L, entrance),
@@ -744,8 +754,8 @@ public final class CompanionPartyQuestService {
      * Why the quest's admission would refuse the companion (its entrance's words for it), or why it would go in
      * unready: short of the quest's readiness standard (AgentSupplyReadiness.shortfall(partyQuest(key)), the one its
      * own restock fills at that entrance) on HP potions, or on mana potions when it fights with skills (every job
-     * past a beginner's), or short of PARTY_QUEST_AMMO projectiles for a claw, bow, crossbow or gun (only ever asked
-     * for: nothing restocks ammo); null: it can go.
+     * past a beginner's), or short of the quest's ammo standard (AgentSupplyReadiness.ammoStandard) for a claw, bow,
+     * crossbow or gun, which its own restock buys like potions; null: it can go.
      */
     private String waitingReason(Character bot, PqEntrance entrance) {
         String problem = entrance.memberProblem(bot, false);
@@ -762,10 +772,10 @@ public final class CompanionPartyQuestService {
                 ? DeskLines.LOW_ON_AMMO : null;
     }
 
-    /** A wait its own restock may be behind: short of potions, or off the entrance (at the shop). */
+    /** A wait its own restock may be behind: short of potions or ammo, or off the entrance (at the shop). */
     private static boolean restockReason(String reason, PqEntrance entrance) {
         return DeskLines.LOW_ON_POTIONS.equals(reason) || DeskLines.LOW_ON_MANA.equals(reason)
-                || entrance.voice().notAtEntrance().equals(reason);
+                || DeskLines.LOW_ON_AMMO.equals(reason) || entrance.voice().notAtEntrance().equals(reason);
     }
 
     private LineupPlan.Candidate blocks(int id, String name, String line, PqEntrance entrance) {
