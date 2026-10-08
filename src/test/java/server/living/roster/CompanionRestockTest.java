@@ -64,6 +64,7 @@ class CompanionRestockTest {
     private static final int HENESYS_PARK = 100_000_200;
     /** Kerning City is KPQ's desk: a companion there keeps KPQ's standard. */
     private static final AgentSupplyReadiness.Activity KPQ = AgentSupplyReadiness.Activity.partyQuest("kpq");
+    private static final AgentSupplyReadiness.Activity LPQ = AgentSupplyReadiness.Activity.partyQuest("lpq");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingWorldConfig config = new LivingWorldConfig();
@@ -391,6 +392,25 @@ class CompanionRestockTest {
             assertEquals(2, said.size(), said.toString());
             assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.GO).contains(said.getFirst()));
             assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BACK).contains(said.get(1)));
+        }
+    }
+
+    @Test
+    void aMixedTripThatBoughtThePotionsButNotTheStarsSaysTheAmmoBrokeLine() {
+        // review: it set off short of both, the potions took the purse, and the stars were left unaffordable
+        try (MockedStatic<AgentSupplyReadiness> readiness = shortOf(new AgentSupplyReadiness.Shortfall(5, 10, 1_600));
+             MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.started(FENNA, LPQ, 50_000L);
+            drain();
+            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.GO).contains(said.getFirst()));
+
+            readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                    any(AgentSupplyReadiness.Activity.class))).thenReturn(new AgentSupplyReadiness.Shortfall(0, 0, 1_600));
+            restock.finished(FENNA, LPQ, AgentSupplyReadiness.Outcome.SHORT_MESOS);
+            drain();
+            assertEquals(2, said.size(), said.toString());
+            assertTrue(ammoLines(CompanionRestockLines.BROKE_AMMO, "stars").contains(said.get(1)),
+                    "not \"can't afford potions\" with a full potion standard: " + said);
         }
     }
 

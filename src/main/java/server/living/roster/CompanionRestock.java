@@ -173,6 +173,11 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         }
     }
 
+    /**
+     * The trip is over: an ACTIVE companion says it is back (READY), or too broke (SHORT_MESOS, once per
+     * COMPANION_RESTOCK_ASK_EVERY_MS) in its ammo words when the trip set off for projectiles alone or ends short of
+     * them alone ({@link #ammoWordAtTheEnd}); a held one walks back to its spot.
+     */
     @Override
     public void finished(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                          AgentSupplyReadiness.Outcome outcome) {
@@ -191,10 +196,23 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                             : CompanionRestockLines.BACK, word));
         } else if (outcome == AgentSupplyReadiness.Outcome.SHORT_MESOS
                 && mayAsk(agentCharacterId, CompanionRestockLines.BROKE, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
+            String broke = word != null ? word : ammoWordAtTheEnd(agentCharacterId, activity);
             world.executor().submit("companion.restock.broke " + agentCharacterId,
-                    () -> say(agentCharacterId, word != null ? CompanionRestockLines.BROKE_AMMO
-                            : CompanionRestockLines.BROKE, word));
+                    () -> say(agentCharacterId, broke != null ? CompanionRestockLines.BROKE_AMMO
+                            : CompanionRestockLines.BROKE, broke));
         }
+    }
+
+    /**
+     * The ammo word for a trip that set off short of potions and projectiles and ends short of projectiles alone (it
+     * bought the potions; its stars were left unaffordable), so its broke line is about what is still short; null
+     * otherwise. A READY trip is short of nothing, so its back line keeps the word it set off with. Reads the bag: on
+     * the Agent tick, where the rule's callbacks run.
+     */
+    private static String ammoWordAtTheEnd(int agentCharacterId, AgentSupplyReadiness.Activity activity) {
+        Character bot = bot(agentCharacterId);
+        return bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))
+                ? CompanionRestockLines.ammoWord(bot) : null;
     }
 
     // ---- on companion-ops -------------------------------------------------------------------
