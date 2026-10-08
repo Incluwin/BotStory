@@ -375,6 +375,35 @@ class AgentShopServiceReadinessAmmoTest {
     }
 
     @Test
+    void anAmmoOnlyTripKeepsItsStarMoneyFromThePotionTopUp() {
+        // review probe 1: potions at the LPQ standard (40/50) but under the buy target (80/100), no stars, and a
+        // purse the trip's checks priced for the stars alone; the MP top-up used to spend it on 12 Blue first
+        trip = LPQ;
+        carryPotions(45, 55);
+        Shop mayoren = shop(List.of(RED, WHITE, BLUE, SUBI));
+        AgentShopService.ReadinessAmmoPlan plan = plan(mayoren, WeaponType.CLAW, false,
+                AgentSupplyReadiness.ammoTarget(LPQ));
+        purse = (int) plan.spend() + 500;
+
+        visit(mayoren, WeaponType.CLAW);
+
+        assertTrue(stars() >= 1_600, stars() + " stars after " + transactions);
+    }
+
+    @Test
+    void aTripShortOfPotionsAndStarsBuysBothBeforeTheTopUp() {
+        // review probe 2: the purse covers the potion standard (40 White, 50 Blue), 2,000 for stars and 3,000 more
+        trip = LPQ;
+        purse = 40 * 320 + 50 * 200 + 2_000 + 3_000;
+
+        visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        int[] potions = AgentPotionService.countPotions(bot);
+        assertTrue(potions[0] >= 40 && potions[1] >= 50, java.util.Arrays.toString(potions) + " " + transactions);
+        assertTrue(stars() >= 1_600, stars() + " stars after " + transactions);
+    }
+
+    @Test
     void readinessAmmoPlanMatchesWhatTheCounterDoes() {
         // a claw at a Victoria supplier: its partial stack refilled by the top-up, then one set to pass 500
         trip = KPQ;

@@ -491,8 +491,11 @@ public final class AgentShopService {
 
     /**
      * The purchase steps of a visit, in order: a required travel item alone; else on a Victoria shop the old ammo
-     * top-up (a seed set, the best stacks' refills, arrows to the ammo target), the potions, on a readiness trip its
-     * ammo step ({@link #buyReadinessAmmo}, at any supplier), then skill and buff consumables.
+     * top-up (a seed set, the best stacks' refills, arrows to the ammo target), the potions, then skill and buff
+     * consumables. On a readiness trip the potions come in two parts around its ammo step ({@link #buyReadinessAmmo},
+     * at any supplier): first the potion standard and the critical reserve ({@link #buyPotionStandard}), then the
+     * trip's ammo standard, then the ordinary reserve and the top-up toward the buy target ({@link #buyPotionExtras}),
+     * so nothing past the potion standard spends the money the trip's checks priced for its projectiles.
      */
     static List<AgentShopPurchaseAction<AgentRuntimeEntry>> purchaseActions(
             AgentRuntimeEntry entry, Character bot, InventoryGateway inventory, WeaponType wt) {
@@ -550,12 +553,18 @@ public final class AgentShopService {
         }
         AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
         if (!itemOnlyVisit) {
-            actions.add((sequence, shop) ->
-                    buyPotionStock(sequence, shop, minimumMesoReserve));
-            if (trip != null) {
-                // a readiness trip tops its projectiles up to the trip's ammo target after the potions, at any supplier
+            if (trip == null) {
+                actions.add((sequence, shop) ->
+                        buyPotionStock(sequence, shop, minimumMesoReserve));
+            } else {
+                // a readiness trip buys its ammo standard after the potion standard, before any potion past it
+                int[] potionsBought = {0, 0};
+                actions.add((sequence, shop) ->
+                        buyPotionStandard(sequence, shop, minimumMesoReserve, potionsBought));
                 actions.add((sequence, shop) -> readinessAmmoStep(sequence, shop, bot, wt,
                         AgentSupplyReadiness.ammoTarget(trip), minimumMesoReserve));
+                actions.add((sequence, shop) ->
+                        buyPotionExtras(sequence, shop, minimumMesoReserve, potionsBought));
             }
             actions.add((sequence, shop) ->
                     buySkillConsumables(sequence, shop, minimumMesoReserve));
@@ -1226,10 +1235,26 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.triggerReserveBars(forHp));
     }
 
+    /** A visit's potions in one step: {@link #buyPotionStandard}, then {@link #buyPotionExtras}. */
     static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStock(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             Shop shop,
             int minimumMesoReserve) {
+        int[] bought = {0, 0};
+        return buyPotionExtras(buyPotionStandard(sequence, shop, minimumMesoReserve, bought), shop,
+                minimumMesoReserve, bought);
+    }
+
+    /**
+     * The first part of a visit's potions: a standing readiness duty's standard ({@link #buyReadinessFloor}), the
+     * purchase intent lines, then the critical reserve-bar passes. {@code bought} counts what it buys per kind (HP,
+     * MP) for the per-visit limit {@link #buyPotionExtras} goes on with.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStandard(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            int minimumMesoReserve,
+            int[] bought) {
         Character bot = sequence.bot();
         ShopSlotItem hpPotion = findPotionItem(shop, bot, true);
         ShopSlotItem mpPotion = findPotionItem(shop, bot, false);
@@ -1285,13 +1310,32 @@ public final class AgentShopService {
                 Integer.MAX_VALUE,
                 reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
-        current = appendBuyReport(current, report, "critical MP pots");
+        bought[0] += hpBought;
+        bought[1] += mpBought;
+        return appendBuyReport(current, report, "critical MP pots");
+    }
 
+    /**
+     * The rest of a visit's potions, after {@link #buyPotionStandard} (and on a readiness trip after its ammo step):
+     * the ordinary reserve-bar passes, then with what is left a duty holder's top-up toward its buy target
+     * (BUY_TO_PERCENT of the standard). {@code bought}: this visit's purchases per kind (HP, MP) so far, kept up.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionExtras(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            int minimumMesoReserve,
+            int[] bought) {
+        Character bot = sequence.bot();
+        ShopSlotItem hpPotion = findPotionItem(shop, bot, true);
+        ShopSlotItem mpPotion = findPotionItem(shop, bot, false);
+        int hpBought = bought[0];
+        int mpBought = bought[1];
+        AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
         boolean mpNeedsNormalStock = needsPotionTarget(bot, mpPotion, false);
         int spendable = Math.max(0, bot.getMeso() - Math.max(0, minimumMesoReserve));
         int hpBudget = AgentPotionPurchasePolicy.normalSpendBudget(
                 spendable, mpNeedsNormalStock);
-        report = buyPotionToReserve(
+        AgentShopBuyReport report = buyPotionToReserve(
                 bot,
                 shop,
                 hpPotion,
@@ -1318,9 +1362,10 @@ public final class AgentShopService {
                 reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "MP pots");
+        bought[0] = hpBought;
+        bought[1] = mpBought;
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
-        return buyReadinessFloor(current, shop, hpPotion, mpPotion, minimumMesoReserve,
-                new int[]{hpBought, mpBought}, true);
+        return buyReadinessFloor(current, shop, hpPotion, mpPotion, minimumMesoReserve, bought, true);
     }
 
     /**
