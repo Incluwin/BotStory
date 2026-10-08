@@ -31,7 +31,13 @@ public final class AgentOpqRuntime {
             return AgentPartyQuestLifecycleRuntime.requestStop(id, reason, nowMs);
         }
         if (!session.terminal()) return false;
-        AgentOpqTerminationService.release(session, reason, nowMs, false);
+        // A companion run that did not complete is ended as a companion run (its party kept; after the clear only
+        // its companions leave); a completed run, and every stock run, are released as they always were.
+        if (session.companionAdopted() && session.phase() != AgentOpqSession.Phase.COMPLETED) {
+            AgentOpqTerminationService.fail(session, reason, nowMs);
+        } else {
+            AgentOpqTerminationService.release(session, reason, nowMs, false);
+        }
         return true;
     }
 
@@ -41,7 +47,7 @@ public final class AgentOpqRuntime {
             AgentOpqLobbyAdmissionRuntime.releaseTracking(id);
             AgentPartyQuestLifecycleRuntime.forceStop(id, reason, nowMs);
         }
-        else AgentOpqTerminationService.release(session, reason, nowMs, true);
+        else AgentOpqTerminationService.fail(session, reason, nowMs);
     }
 
     public static void runtimeRemoved(int id, long nowMs) {

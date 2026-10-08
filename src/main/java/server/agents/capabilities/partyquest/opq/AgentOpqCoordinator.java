@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.capabilities.looting.AgentLootEligibility;
@@ -69,17 +70,20 @@ final class AgentOpqCoordinator {
     static void tickSession(AgentOpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
+            // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
+            if (session.companionAdopted() && session.terminationStarted()) return;
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
-                AgentOpqTerminationService.release(session, "No legal OPQ progress before timeout", nowMs, true);
+                AgentOpqTerminationService.fail(session, "No legal OPQ progress before timeout", nowMs);
                 return;
             }
             session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
             Character leader = character(session.eventLeaderId());
             if (leader == null || leader.getHp() <= 0) {
-                AgentOpqTerminationService.release(session, "OPQ leader unavailable", nowMs, true);
+                AgentOpqTerminationService.fail(session, "OPQ leader unavailable", nowMs);
                 return;
             }
             if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));
+            noteClear(session, nowMs);
             synchronizePhase(session, leader, nowMs);
             switch (session.phase()) {
                 case PREPARING -> session.transition(AgentOpqSession.Phase.ENTERING, nowMs);
@@ -101,6 +105,7 @@ final class AgentOpqCoordinator {
     static void tickMember(AgentOpqSession session, AgentRuntimeEntry entry,
                            Character agent, long nowMs) {
         if (session == null || entry == null || agent == null || session.terminal()) return;
+        if (session.companionAdopted() && session.terminationStarted()) return;
         AgentOpqMemberState member = session.member(agent.getId());
         if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT
                 || nowMs < member.nextActionAtMs()) return;
@@ -136,8 +141,7 @@ final class AgentOpqCoordinator {
     private static void synchronizePhase(AgentOpqSession session, Character leader, long nowMs) {
         if (leader.getMapId() == AgentOpqDefinition.ENTRANCE_MAP && OPQ.event(leader) != null
                 && session.phase().ordinal() <= AgentOpqSession.Phase.ENTRANCE.ordinal()) {
-            session.bindEventInstance(OPQ.event(leader));
-            session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
+            beginEntrance(session, OPQ.event(leader), nowMs);
         }
         if (leader.getMapId() == AgentOpqDefinition.CENTER_MAP
                 && session.phase() == AgentOpqSession.Phase.ENTRANCE
@@ -161,6 +165,43 @@ final class AgentOpqCoordinator {
         }
         if (leader.getMapId() == AgentOpqDefinition.CLEAR_MAP) {
             session.transition(AgentOpqSession.Phase.CLAIMING_REWARD, nowMs);
+        }
+    }
+
+    /**
+     * The party is in the entrance (this runs on every coordinator pass while the leader stands there): a companion
+     * run logs its companions' potions once ('OPQ potions: session= start=') and keeps them for the release's end line;
+     * a failure to read them is logged once and never keeps the run from its entrance. Then the event is bound and
+     * the phase is ENTRANCE, as before.
+     */
+    static void beginEntrance(AgentOpqSession session, EventInstanceManager event, long nowMs) {
+        synchronized (session) {
+            if (session.companionAdopted() && session.potionsAtEntry() == null) {
+                try {
+                    String potions = AgentOpqTerminationService.potions(session);
+                    session.setPotionsAtEntry(potions);
+                    log.info("OPQ potions: session={} start={}", session.sessionId(), potions);
+                } catch (RuntimeException failure) {
+                    session.setPotionsAtEntry("unavailable");
+                    log.warn("OPQ potions failed: session={}", session.sessionId(), failure);
+                }
+            }
+            session.bindEventInstance(event);
+            session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
+        }
+    }
+
+    /**
+     * Records the first pass that saw the clear (the event cleared, or Minerva freed: statusStg8, read as text), for the
+     * run's pace. Reading only; a failure to read is not the clear.
+     */
+    private static void noteClear(AgentOpqSession session, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null || session.clearSeenAtMs() != 0L) return;
+        try {
+            if (event.isEventCleared() || "1".equals(event.getProperty("statusStg8"))) session.markClearSeen(nowMs);
+        } catch (RuntimeException ignored) {
+            // not seen this pass
         }
     }
 
