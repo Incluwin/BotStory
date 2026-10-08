@@ -1426,11 +1426,13 @@ public final class AgentSkillProbeService {
         probeMobOids.clear();
     }
 
+    // Package-private for SkillProbeAutobanSignalTest.
     static long latestSecuritySequence() {
         List<SecurityEvent> events = SecurityEventRuntime.snapshot();
         return events.isEmpty() ? 0L : events.get(events.size() - 1).sequence();
     }
 
+    // Package-private for SkillProbeAutobanSignalTest.
     static List<String> autobanSignalsSince(int characterId, long floorSequence) {
         List<String> signals = new ArrayList<>();
         for (SecurityEvent event : SecurityEventRuntime.snapshot()) {

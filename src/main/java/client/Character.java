@@ -11935,7 +11935,8 @@ public class Character extends AbstractCharacterObject {
             return;
         }
         // An Agent's account is already locked ("Agent-only backing account"); a ban would overwrite that reason.
-        // Its anomalies are server bugs, so they stay in the logs and security events instead.
+        // Its anomalies are server bugs, so they stay in the AntiCheat log and in the in-memory security events that the
+        // GM skill probe reads.
         if (client instanceof BotClient) {
             log.warn("Autoban skipped for Agent {} ({}): {}", name, id, reason);
             return;

@@ -136,6 +136,19 @@ class AutobanSignalSecurityEventTest {
         assertEquals(List.of(humanEvent), store.appended);
     }
 
+    /** Some handlers pass c.getPlayer() before a character is attached; alert accepts null and still reports it. */
+    @Test
+    void aSignalWithNoCharacterIsStillPersisted() {
+        AutobanFactory.GENERAL.alert(null, MESO_REASON);
+
+        assertEquals(1, store.appended.size(), "the signal is persisted like a human's");
+        SecurityEvent event = store.appended.getFirst();
+        assertEquals(-1, event.characterId());
+        assertEquals(-1, event.accountId());
+        assertEquals(SecurityEventType.AUTOBAN_SIGNAL, event.type());
+        assertEquals(List.of("INFO securityEvent"), lines.atInfoOrHigher());
+    }
+
     /** Every place that writes an AUTOBAN_SIGNAL: AutobanFactory alert and autoban, AutobanManager points and spam. */
     private static void fireEverySignal(Character chr) {
         AutobanFactory.GENERAL.alert(chr, MESO_REASON);
