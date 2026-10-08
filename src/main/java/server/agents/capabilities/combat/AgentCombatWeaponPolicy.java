@@ -4,7 +4,10 @@ import client.inventory.WeaponType;
 import constants.skills.Assassin;
 import constants.skills.Bandit;
 import constants.skills.ChiefBandit;
+import constants.skills.Corsair;
 import constants.skills.DragonKnight;
+import constants.skills.Gunslinger;
+import constants.skills.Outlaw;
 import constants.skills.Hermit;
 import constants.skills.NightLord;
 import constants.skills.Fighter;
@@ -56,6 +59,14 @@ public final class AgentCombatWeaponPolicy {
         return switch (skillId) {
             case Pirate.FLASH_FIST -> weaponType == WeaponType.KNUCKLE;
             case Pirate.DOUBLE_SHOT -> weaponType == WeaponType.GUN;
+            // Skill.wz marks these weapon=49 (gun) and the client never casts them without one.
+            // Ungated, a Gunslinger holding a sword or nothing planned Invisible Shot and sent it
+            // through the close-range handler (live Easy Balrog run 2026-10-07).
+            case Gunslinger.INVISIBLE_SHOT, Gunslinger.BLANK_SHOT, Gunslinger.RECOIL_SHOT,
+                    Outlaw.BURST_FIRE, Outlaw.FLAME_THROWER, Outlaw.ICE_SPLITTER,
+                    Corsair.RAPID_FIRE, Corsair.BATTLESHIP_CANNON, Corsair.BATTLESHIP_TORPEDO,
+                    Corsair.HYPNOTIZE ->
+                    weaponType == WeaponType.GUN;
             case Rogue.LUCKY_SEVEN, Assassin.DRAIN, Assassin.CLAW_BOOSTER,
                     Hermit.AVENGER, NightLord.TRIPLE_THROW ->
                     weaponType == WeaponType.CLAW;
