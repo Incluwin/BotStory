@@ -2,6 +2,8 @@ package server.living.roster;
 
 import client.Character;
 import net.server.Server;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -110,7 +113,37 @@ class BossRunLinesTellTest {
         assertSays("Magna", BossRunLines.ALLY_HERE, mapChat.get(1));
         assertFalse(wording("Orrin", mapChat.get(0)).equals(wording("Magna", mapChat.get(1))),
                 "two allies of one run say it in their own words: " + mapChat);
-        assertEquals(List.of(), game.partyChat, "no human shares an ally's party");
+        assertEquals(List.of(), game.partyChat, "an ally in no party has no party chat");
+        assertEquals(List.of(), whispers);
+    }
+
+    @Test
+    void anAllyInAPartyOfBotsSaysItOnItsAnchorsMapOrWhispersNeverInThatPartysChat() {
+        Party allies = party(member(ORRIN, true, true), member(MAGNA, true, true)); // the overflow party formParty makes
+        doReturn(allies).when(orrin).getParty();
+        doReturn(allies).when(magna).getParty();
+
+        assertTrue(BossRunLines.tell(game.world, orrin, BossRunLines.ALLY_HERE, null, null, run, ANN));
+        game.annEntersInstance(105100400);
+        assertTrue(BossRunLines.tell(game.world, magna, BossRunLines.ALLY_GOOD_FIGHT, null, null, run, ANN));
+
+        assertEquals(List.of(), game.partyChat, "no human hears a party of bots: " + game.partyChat);
+        assertEquals(1, mapChat.size(), mapChat.toString());
+        assertSays("Orrin", BossRunLines.ALLY_HERE, mapChat.get(0));
+        assertEquals(1, whispers.size(), whispers.toString());
+        assertWhispers("Magna", "Ann", BossRunLines.ALLY_GOOD_FIGHT, whispers.get(0));
+    }
+
+    @Test
+    void aHumanWhoLoggedOffDoesNotMakeAnAllysPartyChatHeard() {
+        Party allies = party(member(ORRIN, true, true), member(FRIEND, false, false), member(MAGNA, true, true));
+        doReturn(allies).when(orrin).getParty();
+
+        assertTrue(BossRunLines.tell(game.world, orrin, BossRunLines.ALLY_HERE, null, null, run, ANN));
+
+        assertEquals(List.of(), game.partyChat, "its only human is offline: " + game.partyChat);
+        assertEquals(1, mapChat.size(), mapChat.toString());
+        assertSays("Orrin", BossRunLines.ALLY_HERE, mapChat.get(0));
         assertEquals(List.of(), whispers);
     }
 
@@ -227,6 +260,22 @@ class BossRunLinesTellTest {
     }
 
     // ---- helpers -------------------------------------------------------------------------------
+
+    /** A party of {@code members} (a mock: only its member list answers). */
+    private static Party party(PartyCharacter... members) {
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(members));
+        return party;
+    }
+
+    /** A party row for {@code id}: a bot or a human, online or offline. */
+    private static PartyCharacter member(int id, boolean bot, boolean online) {
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(id);
+        when(member.isBot()).thenReturn(bot);
+        when(member.isOnline()).thenReturn(online);
+        return member;
+    }
 
     /** {@code line} is "{@code name}: " and one of the generic wordings for {@code intent}. */
     private static void assertSays(String name, String intent, String line) {
