@@ -21,6 +21,7 @@
  */
 package net.server.channel.handlers;
 
+import client.BotClient;
 import client.BuffStat;
 import client.Character;
 import client.Job;
@@ -84,6 +85,7 @@ import constants.skills.WindArcher;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.PlayerBuffValueHolder;
+import net.server.services.task.channel.ServerMobAutonomyService;
 import scripting.AbstractPlayerInteraction;
 import server.StatEffect;
 import server.TimerManager;
@@ -195,6 +197,51 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
         return false;
     }
 
+    /**
+     * Raises DISTANCE_HACK and resends the monster's position when the attacker stands farther from the monster's
+     * origin than the attack can reach. A headless Agent's hit on a server-owned boss actor is exempt: the server
+     * chooses that Agent's attacks, and a multipart boss reports one shared origin for all its parts (each Easy Balrog
+     * part at (412,257) while the claw bodies stand 118-404 px to the side). In one live run that made 472 alerts for
+     * legal Agent hits, and each alert resent the boss part's position to every client. Humans are checked as before.
+     */
+    static void checkAttackDistance(AttackInfo attack, Character player, Monster monster) {
+        double distance = player.getPosition().distanceSq(monster.getPosition());
+        double distanceToDetect = 200000.0;
+
+        if (attack.ranged) {
+            distanceToDetect += 400000;
+        }
+
+        if (attack.magic) {
+            distanceToDetect += 200000;
+        }
+
+        if (player.getJob().isA(Job.ARAN1)) {
+            distanceToDetect += 200000; // Arans have extra range over normal warriors.
+        }
+
+        if (attack.skill == Aran.COMBO_SMASH || attack.skill == Aran.BODY_PRESSURE) {
+            distanceToDetect += 40000;
+        } else if (attack.skill == Bishop.GENESIS || attack.skill == ILArchMage.BLIZZARD || attack.skill == FPArchMage.METEOR_SHOWER) {
+            distanceToDetect += 275000;
+        } else if (attack.skill == Hero.BRANDISH || attack.skill == DragonKnight.SPEAR_CRUSHER || attack.skill == DragonKnight.POLE_ARM_CRUSHER) {
+            distanceToDetect += 40000;
+        } else if (attack.skill == DragonKnight.DRAGON_ROAR || attack.skill == SuperGM.SUPER_DRAGON_ROAR) {
+            distanceToDetect += 250000;
+        } else if (attack.skill == Shadower.BOOMERANG_STEP) {
+            distanceToDetect += 60000;
+        }
+
+        if (distance > distanceToDetect && !isAgentHitOnServerOwnedBoss(player, monster)) {
+            AutobanFactory.DISTANCE_HACK.alert(player, "Distance Sq to monster: " + distance + " SID: " + attack.skill + " MID: " + monster.getId());
+            monster.refreshMobPosition();
+        }
+    }
+
+    private static boolean isAgentHitOnServerOwnedBoss(Character player, Monster monster) {
+        return player.getClient() instanceof BotClient && ServerMobAutonomyService.isActiveInstance(monster);
+    }
+
     public static boolean applyAttack(AttackInfo attack, final Character player, int attackCount) {
         final MapleMap map = player.getMap();
         if (map.isOwnershipRestricted(player)) {
@@ -269,37 +316,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             for (Map.Entry<Integer, AttackTarget> target : attack.targets.entrySet()) {
                 final Monster monster = map.getMonsterByOid(target.getKey());
                 if (monster != null) {
-                    double distance = player.getPosition().distanceSq(monster.getPosition());
-                    double distanceToDetect = 200000.0;
-
-                    if (attack.ranged) {
-                        distanceToDetect += 400000;
-                    }
-
-                    if (attack.magic) {
-                        distanceToDetect += 200000;
-                    }
-
-                    if (player.getJob().isA(Job.ARAN1)) {
-                        distanceToDetect += 200000; // Arans have extra range over normal warriors.
-                    }
-
-                    if (attack.skill == Aran.COMBO_SMASH || attack.skill == Aran.BODY_PRESSURE) {
-                        distanceToDetect += 40000;
-                    } else if (attack.skill == Bishop.GENESIS || attack.skill == ILArchMage.BLIZZARD || attack.skill == FPArchMage.METEOR_SHOWER) {
-                        distanceToDetect += 275000;
-                    } else if (attack.skill == Hero.BRANDISH || attack.skill == DragonKnight.SPEAR_CRUSHER || attack.skill == DragonKnight.POLE_ARM_CRUSHER) {
-                        distanceToDetect += 40000;
-                    } else if (attack.skill == DragonKnight.DRAGON_ROAR || attack.skill == SuperGM.SUPER_DRAGON_ROAR) {
-                        distanceToDetect += 250000;
-                    } else if (attack.skill == Shadower.BOOMERANG_STEP) {
-                        distanceToDetect += 60000;
-                    }
-
-                    if (distance > distanceToDetect) {
-                        AutobanFactory.DISTANCE_HACK.alert(player, "Distance Sq to monster: " + distance + " SID: " + attack.skill + " MID: " + monster.getId());
-                        monster.refreshMobPosition();
-                    }
+                    checkAttackDistance(attack, player, monster);
 
                     int totDamageToOneMonster = 0;
                     List<Integer> onedList = target.getValue().damageLines();
