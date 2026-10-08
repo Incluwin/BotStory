@@ -13,6 +13,7 @@ import server.living.roster.CompanionBossAllies.State;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -25,12 +26,15 @@ import static server.living.roster.BossAllyHarness.seat;
  * waits to sign up (or is still being called), those on Mu Young's list or in the fight form one party of bots, led by
  * the highest level (the lower ordinal on a tie); a party already formed keeps its lead, so a late registrant joins it.
  * One ally forms none, and a party holds six. A refusal (a LATE one at Start too) or an ally leaving forms it again.
+ * The party is the game's (the harness keeps it as the stock party code does): a lead down outside keeps it until it
+ * goes home, and the leave of whoever leads it ends it.
  * Every join and leave carries the "companion.boss" cause, so the party sync takes it for companion code's own echo.
  */
 class CompanionBossAlliesPartyTest {
     private static final int ORRIN = 911;
     private static final int MAGNA = 912;
     private static final int GUNNAR = 913;
+    private static final int EXTRA0 = 920;
 
     private final BossAllyHarness h = new BossAllyHarness();
 
@@ -161,6 +165,82 @@ class CompanionBossAlliesPartyTest {
         assertEquals(List.of("leave Orrin (companion.boss)", "join Magna <- Gunnar (companion.boss)"), h.ports.party);
     }
 
+    /**
+     * A lead down outside still leads the game's party (Party.leaveParty disbands a party only as its leader leaves):
+     * the others keep that party while it waits, and once it goes home they form a new one.
+     */
+    @Test
+    void aDeadLeadKeepsItsPartyWhileItWaitsAndTheRestFormANewOneAsItGoesHome() {
+        h.benched("extra0", "Extra0", EXTRA0, SLEEPYWOOD_CAMP);
+        level(ORRIN, 80);
+        h.game.roster();
+        h.arrived("orrin", "magna", "gunnar", "extra0");
+        signUp(ORRIN, MAGNA, GUNNAR, EXTRA0);
+        assertEquals(List.of(ORRIN, MAGNA, GUNNAR, EXTRA0), h.ports.partyOf(ORRIN));
+        inside(ORRIN, MAGNA, GUNNAR, EXTRA0);
+        h.game.annEntersInstance(105100300); // Ann fights on
+        h.ports.party.clear();
+
+        die(ORRIN);
+        h.bossRuns.memberOut(seat(GUNNAR), Out.GONE); // the others form their party again
+
+        assertEquals(List.of("leave Gunnar (companion.boss)"), h.ports.party, "Orrin still leads it");
+        assertEquals(List.of(ORRIN, MAGNA, EXTRA0), h.ports.partyOf(MAGNA));
+
+        annComesOut("orrin");
+
+        assertEquals(List.of("leave Gunnar (companion.boss)", "leave Orrin (companion.boss)",
+                "join Magna <- Extra0 (companion.boss)"), h.ports.party);
+        assertEquals(List.of(MAGNA, EXTRA0), h.ports.partyOf(EXTRA0), "the two still fighting share a party");
+        assertEquals(List.of(), h.ports.partyOf(ORRIN));
+    }
+
+    /**
+     * Two allies down outside go home together as their owner comes out, the lead last (Magna leads, and the trips'
+     * order puts Orrin first): whatever the order, the two still fighting end up in one party.
+     */
+    @Test
+    void twoDeadAlliesGoingHomeTogetherLeaveTheOthersInOneParty() {
+        h.benched("extra0", "Extra0", EXTRA0, SLEEPYWOOD_CAMP);
+        level(MAGNA, 80);
+        h.game.roster();
+        h.arrived("orrin", "magna", "gunnar", "extra0");
+        signUp(ORRIN, MAGNA, GUNNAR, EXTRA0);
+        assertEquals(List.of(MAGNA, ORRIN, GUNNAR, EXTRA0), h.ports.partyOf(MAGNA));
+        inside(ORRIN, MAGNA, GUNNAR, EXTRA0);
+        h.game.annEntersInstance(105100300); // another human keeps the fight going once she is out
+
+        die(MAGNA);
+        die(ORRIN);
+        annComesOut("orrin", "magna");
+
+        assertNull(h.allies.trip("orrin"));
+        assertNull(h.allies.trip("magna"));
+        assertEquals(List.of(GUNNAR, EXTRA0), h.ports.partyOf(GUNNAR), h.ports.party.toString());
+        assertEquals(List.of(), h.ports.partyOf(MAGNA));
+        assertEquals(List.of(), h.ports.partyOf(ORRIN));
+    }
+
+    /**
+     * The game may hand a party's lead to another member (the stock code does so when its leader drops). That ally's
+     * leave then ends the party, and the others form a new one.
+     */
+    @Test
+    void anAllyTheGameMadeLeadEndsThePartyAsItLeavesAndTheOthersFormANewOne() {
+        h.game.roster();
+        h.arrived("orrin", "magna", "gunnar");
+        signUp(ORRIN, MAGNA, GUNNAR);
+        inside(ORRIN, MAGNA, GUNNAR);
+        h.ports.passLead(GUNNAR);
+        h.ports.party.clear();
+
+        h.bossRuns.memberOut(seat(GUNNAR), Out.GONE);
+
+        assertEquals(List.of("leave Gunnar (companion.boss)", "join Orrin <- Magna (companion.boss)"),
+                h.ports.party);
+        assertEquals(List.of(ORRIN, MAGNA), h.ports.partyOf(MAGNA));
+    }
+
     @Test
     void everyJoinCarriesTheBossCauseSoThePartySyncTakesItForAnEcho() {
         h.game.roster();
@@ -187,5 +267,28 @@ class CompanionBossAlliesPartyTest {
 
     private void level(int id, int level) {
         when(h.game.bots.get(id).getLevel()).thenReturn(level);
+    }
+
+    private void inside(int... ids) {
+        for (int id : ids) {
+            h.open.phases.put(id, Phase.INSIDE);
+        }
+    }
+
+    /** The ally went down in the fight and came to outside, by Mu Young (it waits there for Ann). */
+    private void die(int id) {
+        h.open.phases.put(id, Phase.OUT);
+        h.bossRuns.memberOut(seat(id), Out.DIED);
+        assertEquals(State.HERE, h.allies.trip(h.game.personaOfBot.get(id)).state, "it waits outside");
+    }
+
+    /** Ann comes out to Mu Young's room on the channel her allies {@code personaIds} wait on. */
+    private void annComesOut(String... personaIds) {
+        for (String personaId : personaIds) {
+            h.game.companionOnChannel(h.game.personas.get(personaId), BossAllyHarness.CHANNEL);
+        }
+        h.game.moveAnn(BossAllyHarness.ROOM, 300, 246);
+        h.game.annOnChannel(BossAllyHarness.CHANNEL);
+        h.bossRuns.ownerArrived(LifecycleHarness.ANN, BossAllyHarness.ROOM);
     }
 }

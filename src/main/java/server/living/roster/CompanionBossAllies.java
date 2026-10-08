@@ -6,6 +6,7 @@ import net.server.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.server.world.CauseScope;
+import net.server.world.Party;
 import net.server.world.PartyEvents;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
@@ -168,6 +169,9 @@ final class CompanionBossAllies {
         /** The ally leaves the party it is in, if any. */
         void leaveParty(Character ally);
 
+        /** The id of the leader of the party the ally is in, as the game keeps it; 0 when it is in none. */
+        int partyLeaderOf(Character ally);
+
         /** The ally walks to {@code to} on its map; false when no Agent runtime holds it. */
         boolean walkTo(Character ally, Point to);
 
@@ -209,6 +213,12 @@ final class CompanionBossAllies {
             @Override
             public void leaveParty(Character ally) {
                 AgentPartyLifecycleService.leaveAgentParty(ally);
+            }
+
+            @Override
+            public int partyLeaderOf(Character ally) {
+                Party party = ally.getParty();
+                return party == null ? 0 : party.getLeaderId();
             }
 
             @Override
@@ -655,13 +665,16 @@ final class CompanionBossAllies {
 
     /**
      * The owner's allies in run {@code sessionId} form one party of bots, once none of the owner's allies still waits
-     * to sign up or is still being called: those on the entry NPC's list or in the fight, loaded, two at least. The
-     * highest level leads (the lower ordinal on a tie); a party already formed keeps its lead, so a late one joins it.
-     * Every other one joins the lead's party, six in all at most, under the boss cause token (the party sync takes the
-     * joins for companion code's own echo). Idempotent; again after an ally is refused or leaves the run.
+     * to sign up or is still being called: those on the entry NPC's list or in the fight, loaded, two at least. A party
+     * already formed keeps its lead, so a late one joins it: the ally of theirs in this run, still here, that leads its
+     * party as the game keeps it, even one down outside (the stock leave ends a party only as its leader leaves). With
+     * none, the highest level leads (the lower ordinal on a tie). Every other one joins the lead's party, six in all at
+     * most, under the boss cause token (the party sync takes the joins for companion code's own echo). Idempotent;
+     * again after an ally is refused or leaves the run.
      */
     private void formParty(int ownerId, long sessionId, String bossKey) {
         List<Trip> mine = new ArrayList<>();
+        List<Trip> here = new ArrayList<>(); // mine, and those down from the fight waiting outside
         Map<Integer, Integer> ordinals = new HashMap<>();
         for (Trip trip : trips.values()) {
             if (trip.ownerId != ownerId) {
@@ -675,9 +688,16 @@ final class CompanionBossAllies {
             if (phase == AgentBossRunMember.Phase.WAITING) {
                 return;
             }
-            if (trip.state == State.HERE && trip.agent != null && (phase == AgentBossRunMember.Phase.REGISTERED
-                    || phase == AgentBossRunMember.Phase.INSIDE)) {
-                mine.add(trip);
+            if (trip.state != State.HERE || trip.agent == null || trip.sessionId != sessionId) {
+                continue;
+            }
+            boolean listedOrInside = phase == AgentBossRunMember.Phase.REGISTERED
+                    || phase == AgentBossRunMember.Phase.INSIDE;
+            if (listedOrInside || trip.waitingOutside) {
+                here.add(trip);
+                if (listedOrInside) {
+                    mine.add(trip);
+                }
                 int ordinal = open.ordinalOf(sessionId, trip.characterId);
                 ordinals.put(trip.characterId, ordinal < 0 ? Integer.MAX_VALUE : ordinal);
             }
@@ -686,18 +706,24 @@ final class CompanionBossAllies {
             return;
         }
         mine.sort(Comparator.comparingInt(trip -> ordinals.get(trip.characterId)));
+        here.sort(Comparator.comparingInt(trip -> ordinals.get(trip.characterId)));
         Overflow party = parties.computeIfAbsent(CompanionBossRun.key(bossKey, sessionId, ownerId),
                 unused -> new Overflow(sessionId));
         Trip lead = null;
-        for (Trip trip : mine) {
-            lead = trip.characterId == party.leadId ? trip : lead;
+        for (Trip trip : here) { // the game's party, the one formed here first
+            if (leadsItsParty(trip.agent) && (lead == null || trip.characterId == party.leadId)) {
+                lead = trip;
+            }
         }
-        if (lead == null) { // none formed yet, or its lead left (which ended it): a new one
-            party.members.clear();
+        boolean kept = lead != null;
+        if (!kept) { // none formed yet, or its lead left (which ended it): a new one
             for (Trip trip : mine) { // in ordinal order: a tie keeps the first
                 lead = lead == null || trip.agent.getLevel() > lead.agent.getLevel() ? trip : lead;
             }
+        }
+        if (!kept || lead.characterId != party.leadId) { // the joins tell who is in it already (ALREADY_MEMBER)
             party.leadId = lead.characterId;
+            party.members.clear();
         }
         List<Integer> joined = new ArrayList<>();
         try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
@@ -827,10 +853,13 @@ final class CompanionBossAllies {
         watchWalkOut(trip, generation, target, now + walkOutMs());
     }
 
-    /** Out of its party of allies under the boss cause token; a lead's leave ends the party (the stock leave). */
+    /**
+     * Out of its party of allies under the boss cause token. The leave of the party's leader, as the game keeps it,
+     * ends the party (the stock leave), so the next formation makes a new one.
+     */
     private void leaveParty(Trip trip, Character agent) {
         Overflow party = parties.get(CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId));
-        if (party != null && party.leadId == trip.characterId) {
+        if (party != null && (party.leadId == trip.characterId || leadsItsParty(agent))) {
             party.leadId = 0;
             party.members.clear();
         } else if (party != null) {
@@ -840,6 +869,16 @@ final class CompanionBossAllies {
             ports.leaveParty(agent);
         } catch (RuntimeException failure) {
             log.warn("boss ally {} did not leave its party", trip.personaId, failure);
+        }
+    }
+
+    /** True when the ally leads the party it is in, as the game keeps it (false when that cannot be read). */
+    private boolean leadsItsParty(Character agent) {
+        try {
+            return agent != null && ports.partyLeaderOf(agent) == agent.getId();
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {}'s party could not be read", agent.getId(), failure);
+            return false;
         }
     }
 

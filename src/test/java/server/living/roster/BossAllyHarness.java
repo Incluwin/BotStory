@@ -24,6 +24,7 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -342,6 +343,13 @@ final class BossAllyHarness implements AutoCloseable {
         boolean loadFails;
         /** "join Lead <- Ally (cause)" and "leave Ally (cause)", in order; the cause token in force then. */
         final List<String> party = new ArrayList<>();
+        /**
+         * The game's parties as the stock party code keeps them: party id -> its members' ids, its leader first. A
+         * join puts the ally in its lead's party (made first when the lead is in none; the ally leaves its own party
+         * first), and the stock leave of a party's leader disbands it.
+         */
+        final Map<Integer, List<Integer>> gameParties = new LinkedHashMap<>();
+        private int nextPartyId = 1;
         /** "walk Ally to x,y" per walk, in order. */
         final List<String> walks = new ArrayList<>();
         /** "unload Ally" per unload asked for, in order. */
@@ -379,12 +387,70 @@ final class BossAllyHarness implements AutoCloseable {
         @Override
         public JoinOutcome join(Character lead, Character ally) {
             party.add("join " + lead.getName() + " <- " + ally.getName() + " (" + CauseScope.current() + ")");
+            Integer allyParty = partyIdOf(ally.getId());
+            if (allyParty != null && allyParty.equals(partyIdOf(lead.getId()))) {
+                return JoinOutcome.ALREADY_MEMBER;
+            }
+            leave(ally.getId());
+            Integer leadParty = partyIdOf(lead.getId());
+            if (leadParty == null) {
+                leadParty = nextPartyId++;
+                gameParties.put(leadParty, new ArrayList<>(List.of(lead.getId())));
+            }
+            List<Integer> members = gameParties.get(leadParty);
+            if (members.size() >= 6) {
+                return JoinOutcome.PARTY_FULL;
+            }
+            members.add(ally.getId());
             return JoinOutcome.JOINED;
         }
 
         @Override
         public void leaveParty(Character ally) {
             party.add("leave " + ally.getName() + " (" + CauseScope.current() + ")");
+            leave(ally.getId());
+        }
+
+        @Override
+        public int partyLeaderOf(Character ally) {
+            Integer partyId = partyIdOf(ally.getId());
+            return partyId == null ? 0 : gameParties.get(partyId).get(0);
+        }
+
+        /** The members of {@code characterId}'s party in the game, its leader first; empty when it is in none. */
+        List<Integer> partyOf(int characterId) {
+            Integer partyId = partyIdOf(characterId);
+            return partyId == null ? List.of() : List.copyOf(gameParties.get(partyId));
+        }
+
+        /** The game hands the lead of its party to {@code characterId}, as the stock code does when a leader drops. */
+        void passLead(int characterId) {
+            List<Integer> members = gameParties.get(partyIdOf(characterId));
+            members.remove(Integer.valueOf(characterId));
+            members.add(0, characterId);
+        }
+
+        private Integer partyIdOf(int characterId) {
+            for (Map.Entry<Integer, List<Integer>> entry : gameParties.entrySet()) {
+                if (entry.getValue().contains(characterId)) {
+                    return entry.getKey();
+                }
+            }
+            return null;
+        }
+
+        /** The stock leave: its leader's leave disbands the party. */
+        private void leave(int characterId) {
+            Integer partyId = partyIdOf(characterId);
+            if (partyId == null) {
+                return;
+            }
+            List<Integer> members = gameParties.get(partyId);
+            if (members.get(0) == characterId) {
+                gameParties.remove(partyId);
+            } else {
+                members.remove(Integer.valueOf(characterId));
+            }
         }
 
         @Override
