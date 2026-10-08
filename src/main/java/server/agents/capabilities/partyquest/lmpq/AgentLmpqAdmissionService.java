@@ -159,6 +159,7 @@ public final class AgentLmpqAdmissionService {
             lobby.reserve(nowMs);
             engagement.reserveEntry(nowMs);
             AgentLmpqSessionRegistry.registerComplete(session);
+            AgentLmpqWatchdogRuntime.ensureStarted();
             published = true;
             lobby.beginHandoff(nowMs);
             engagement.activateSession(session.sessionId(), nowMs);

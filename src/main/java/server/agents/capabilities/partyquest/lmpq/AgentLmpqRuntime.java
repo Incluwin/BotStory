@@ -2,7 +2,9 @@ package server.agents.capabilities.partyquest.lmpq;
 
 import client.Character;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 /** LMPQ facade over independent member work and one short coordinator lease. */
 public final class AgentLmpqRuntime {
@@ -17,12 +19,27 @@ public final class AgentLmpqRuntime {
         }
         if (session.paused()) return true;
         AgentLmpqCoordinator.tickMember(session, entry, agent, nowMs);
-        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS)) {
+        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS, AgentLmpqRuntime::holderAlive)) {
             AgentLmpqCoordinator.tickSession(session, nowMs);
         }
         if (session.terminal()) AgentLmpqTerminationService.finish(
                 session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
         return true;
+    }
+
+    /**
+     * Whether an LMPQ coordinator lease holder can still drive the run: its Agent is loaded and has HP left (the
+     * watchdog's own live test). A dead or unloaded holder hands the lease over at once.
+     */
+    static boolean holderAlive(int characterId) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
+        Character holder = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+        return holder != null && holder.getHp() > 0;
+    }
+
+    /** The coordinator lease an Agent's tick takes, for the watchdog's claim. */
+    static long coordinatorLeaseMs() {
+        return COORDINATOR_LEASE_MS;
     }
 
     public static boolean requestStop(int id, String reason, long nowMs) {

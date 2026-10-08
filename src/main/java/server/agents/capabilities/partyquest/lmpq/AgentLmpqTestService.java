@@ -283,6 +283,7 @@ public final class AgentLmpqTestService {
         session.setRendezvousRoom(run.options.rendezvousRoom());
         run.engagement.reserveEntry(nowMs);
         AgentLmpqSessionRegistry.registerComplete(session);
+        AgentLmpqWatchdogRuntime.ensureStarted();
         run.engagement.activateSession(session.sessionId(), nowMs);
         run.session = session;
         run.operator.dropMessage(6, run.options.partySize()

@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntPredicate;
 
 /** LMPQ aggregate root; all routing and lease state is isolated per event. */
 public final class AgentLmpqSession implements AgentCompanionRunSession {
@@ -79,9 +80,35 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     }
 
     public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs) {
+        return claimExecutionTick(id, nowMs, leaseMs, holder -> true);
+    }
+
+    /**
+     * As {@link #claimExecutionTick(int, long, long)}, except that a holder for which {@code holderAlive} is false
+     * (dead, or no longer loaded) loses its lease at once (LMPQ base fix 8): a dead Agent's tick never reaches the
+     * LMPQ runtime, so its lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps
+     * it until it expires.
+     */
+    public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs, IntPredicate holderAlive) {
         AgentLmpqMemberState member = members.get(id);
         if (member == null || member.memberType() != AgentLmpqMemberState.MemberType.AGENT) return false;
-        if (id != executionAgentId && nowMs < executionLeaseUntilMs) return false;
+        if (id != executionAgentId && nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId)) {
+            return false;
+        }
+        executionAgentId = id;
+        executionLeaseUntilMs = nowMs + Math.max(250L, leaseMs);
+        return true;
+    }
+
+    /**
+     * The watchdog's claim: only a lease that has run out, or whose holder is no longer alive, as in
+     * {@link #claimExecutionTick(int, long, long, IntPredicate)}.
+     */
+    public synchronized boolean claimExpiredExecutionTick(int id, long nowMs, long leaseMs,
+                                                          IntPredicate holderAlive) {
+        AgentLmpqMemberState member = members.get(id);
+        if (member == null || member.memberType() != AgentLmpqMemberState.MemberType.AGENT
+                || (nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId))) return false;
         executionAgentId = id;
         executionLeaseUntilMs = nowMs + Math.max(250L, leaseMs);
         return true;
