@@ -68,16 +68,19 @@ class LivingWorldConfigCompanionPqTest {
     }
 
     @Test
-    void configYamlShipsKpqAndHpqOnAndStaysAsciiAndLf() throws IOException {
+    void configYamlShipsKpqHpqLpqAndEpqOnAndStaysAsciiAndLf() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
-        assertEquals("kpq,hpq", living.COMPANION_PQ_ENABLED_KEYS);
+        assertEquals("kpq,hpq,lpq,epq", living.COMPANION_PQ_ENABLED_KEYS);
         assertTrue(living.companionPqEnabled("kpq"));
-        assertTrue(living.companionPqEnabled("hpq"), "Tory's desk is on for its live checks");
+        assertTrue(living.companionPqEnabled("hpq"), "Tory's desk is on");
+        assertTrue(living.companionPqEnabled("lpq"), "the Red Sign's desk is on for its live checks");
+        assertTrue(living.companionPqEnabled("epq"), "Ellin's desk is on for its live checks");
         assertTrue(living.COMPANION_PQ_GUIDANCE);
 
         byte[] bytes = Files.readAllBytes(Path.of("config.yaml"));
         String yaml = new String(bytes, StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    COMPANION_PQ_ENABLED_KEYS: \"kpq,hpq\"\n"), "living_world carries the kill switch, on for Lakelis and Tory");
+        assertTrue(yaml.contains("\n    COMPANION_PQ_ENABLED_KEYS: \"kpq,hpq,lpq,epq\"\n"),
+                "living_world carries the kill switch, on for Lakelis, Tory, the Red Sign and Ellin");
         assertTrue(yaml.contains("\n    COMPANION_PQ_GUIDANCE: true\n"));
         for (byte b : bytes) {
             assertTrue(b >= 0, "config.yaml stays US-ASCII");

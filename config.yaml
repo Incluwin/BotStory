@@ -878,17 +878,17 @@ living_world:
     AUTO_ROTATE_TICK_MS: 30000
     AUTO_ROTATE_COOLDOWN_MS: 600000
     AUTO_ROTATE_LEVEL_GAP: 10
-    # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list of "kpq", Lakelis, and
-    # "hpq", Tory, whose desk also has the owner's companions wait off her ledge) offers a party leader with companions
-    # in their party a lineup to take in; empty = off, the NPC is stock. "hpq" is listed for its live checks (P6b,
-    # 2026-10-03); back to "kpq" alone if they fail.
+    # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list of "kpq", Lakelis;
+    # "hpq", Tory, whose desk also has the owner's companions wait off her ledge; "lpq", the Red Sign; "epq", Ellin)
+    # offers a party leader with companions in their party a lineup to take in; empty = off, the NPC is stock. "lpq" and
+    # "epq" are listed for their desk live checks (P6g, 2026-10-08); drop one to make its NPC stock again.
     # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
     # CLEAR_TIME: the NPC says how long the lineup should take (a range, and who would struggle where) and picks the
     # quickest lineup within each owner's seats; false = the kill switch, her window and lineup exactly as before.
     # PACE_EXCLUDED_LEADERS: character ids (a comma list) whose runs as leader teach the clear-time records no leader
     # term; their companions' times still count. 2 (ohboy) and 865 (Crewfriend) are led by the scripted test driver,
     # which talks and works the puzzles far slower than a person; empty this to learn from every leader.
-    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq"
+    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq,lpq,epq"
     COMPANION_PQ_GUIDANCE: true
     COMPANION_PQ_CLEAR_TIME: true
     COMPANION_PQ_PACE_EXCLUDED_LEADERS: "2,865"
