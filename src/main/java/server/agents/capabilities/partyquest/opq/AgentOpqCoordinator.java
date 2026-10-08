@@ -83,8 +83,20 @@ final class AgentOpqCoordinator {
             }
             session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
             Character leader = character(session.eventLeaderId());
-            if (leader == null || leader.getHp() <= 0) {
+            EventInstanceManager bound = session.eventInstance();
+            if (leader == null || bound == null && leader.getHp() <= 0) {
                 AgentOpqTerminationService.fail(session, "OPQ leader unavailable", nowMs);
+                return;
+            }
+            if (bound != null && leader.getEventInstance() != bound) {
+                // Before the clear the stock event ends when its leader leaves; after it he may claim and go.
+                if (!AgentOpqTerminationService.pastTheClear(session)) {
+                    AgentOpqTerminationService.fail(session, "OPQ leader left the event", nowMs);
+                    return;
+                }
+            } else if (bound != null && leader.getHp() <= 0) {
+                // A dead leader still in the event is no failure: the stock event ends on his revive, and the next
+                // pass sees him out of it.
                 return;
             }
             if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));
