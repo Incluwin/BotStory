@@ -125,6 +125,11 @@ class AgentSupplyReadinessRuntimeTest {
     private AgentRouteStatus route = AgentRouteStatus.MOVING;
     private int ammoSpend;
     private MockedStatic<AgentPotionService> potionService;
+    /** Character id -> the projectiles in its bag (AgentAmmoService.carriedProjectiles); not listed: no ammo weapon. */
+    private final Map<Integer, Integer> ammo = new HashMap<>();
+    /** What AgentShopService.readinessAmmoPlan answers: by default it reaches any standard for nothing. */
+    private AgentShopService.ReadinessAmmoPlan ammoPlan = new AgentShopService.ReadinessAmmoPlan(Integer.MAX_VALUE, 0L, 0);
+    private MockedStatic<AgentAmmoService> ammoService;
     private MockedStatic<AgentShopService> shopService;
     private MockedStatic<AgentShopGatewayRuntime> shopGateway;
     private MockedStatic<AgentPrimitiveCapabilityGatewayRuntime> primitives;
@@ -132,6 +137,9 @@ class AgentSupplyReadinessRuntimeTest {
     @BeforeEach
     void stubTheWorld() {
         potionService = mockStatic(AgentPotionService.class);
+        ammoService = mockStatic(AgentAmmoService.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        ammoService.when(() -> AgentAmmoService.carriedProjectiles(any()))
+                .thenAnswer(inv -> ammo.getOrDefault(((Character) inv.getArgument(0)).getId(), Integer.MAX_VALUE));
         potionService.when(() -> AgentPotionService.countPotions(any(Character.class)))
                 .thenAnswer(inv -> potions.get(((Character) inv.getArgument(0)).getId()).clone());
         potionService.when(() -> AgentPotionService.requestPotShare(any(), any(), anyBoolean(), anyBoolean()))
@@ -141,6 +149,8 @@ class AgentSupplyReadinessRuntimeTest {
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(true))).thenReturn(RED);
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(false))).thenReturn(BLUE);
         shopService.when(() -> AgentShopService.plannedAmmoSpend(any(), any())).thenAnswer(inv -> ammoSpend);
+        shopService.when(() -> AgentShopService.readinessAmmoPlan(any(), any(), anyInt(), any()))
+                .thenAnswer(inv -> ammoPlan);
         shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(true)))
                 .thenAnswer(inv -> redStack.contains(((Character) inv.getArgument(0)).getId()));
         shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(false)))
@@ -205,6 +215,7 @@ class AgentSupplyReadinessRuntimeTest {
         shopGateway.close();
         shopService.close();
         potionService.close();
+        ammoService.close();
     }
 
     // (a)
@@ -345,6 +356,8 @@ class AgentSupplyReadinessRuntimeTest {
         Character fenna = companion(539, "Fenna", Job.HUNTER, 14, 21, 20 * RED + 10 * BLUE);
         standWithoutSpawns(fenna, LPQ_DESK, 0);
         ammoSpend = 1_000_000; // what its arrows would cost at a Victoria store
+        ammo.put(539, 0);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_600, 1_000_000L, 1); // and its readiness arrows here
         AgentRuntimeEntry entry = following(fenna);
 
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
@@ -1155,6 +1168,163 @@ class AgentSupplyReadinessRuntimeTest {
         assertFalse(AgentSupplyReadiness.restockPending(following(ready), 1_000L), "nothing lacking");
         duty.remove(541);
         assertFalse(AgentSupplyReadiness.restockPending(following(silent), 1_000L), "no duty");
+    }
+
+
+    // ---- projectiles (2026-10-07: Kestrel reached LPQ stage 7 with no stars) ------------------------------
+
+    @Test
+    void aCompanionWithItsPotionsButNoStarsSetsOffForTheStore() {
+        Character silent = companion(560, "SilentSin", Job.ASSASSIN, 20, 25, 103_000);
+        ammo.put(560, 120);
+        AgentRuntimeEntry entry = following(silent);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+        AgentSupplyProcurementState execution = execution(entry);
+        assertTrue(execution.isActive());
+        assertTrue(execution.requestId().startsWith("readiness:HP_POTION:"), execution.requestId());
+        assertEquals(380, readinessRequest(entry).quantity(), "what it lacks of the 500 stars");
+        assertEquals(KERNING_SHOP, execution.supplierMapId(), "the potion supplier: one visit fills both");
+        assertEquals(List.of("started 560 50000"), calls);
+    }
+
+    @Test
+    void aCompanionShortOnlyOfAmmoThatCannotPayForItCannotAfford() {
+        Character silent = companion(561, "SilentSin", Job.ASSASSIN, 20, 25, 300);
+        ammo.put(561, 0);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_000, 1_000L, 2);
+        AgentRuntimeEntry entry = following(silent);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 561 CANNOT_AFFORD 700"), calls);
+        assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, AgentSupplyReadiness.status(entry, 1_000L).kind());
+    }
+
+    @Test
+    void aCompanionShortOfPotionsWhosePurseCoversOnlyThePotionsStillGoes() {
+        Character silent = companion(562, "SilentSin", Job.ASSASSIN, 14, 21, 6 * RED + 4 * BLUE);
+        ammo.put(562, 0);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_000, 1_000_000L, 2); // stars it buys with what is left
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(following(silent), silent, 1_000L),
+                "the potions are never held back by the price of its stars");
+        assertEquals(List.of("started 562 50000"), calls);
+    }
+
+    @Test
+    void anAmmoOnlyShortfallThatTheSupplierCannotBringToTheStandardIsNoSupplier() {
+        Character silent = companion(563, "SilentSin", Job.ASSASSIN, 20, 25, 103_000);
+        ammo.put(563, 300);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(300, 0L, 0); // its own stack is full and no stars on sale
+        AgentRuntimeEntry entry = following(silent);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 563 NO_SUPPLIER 0"), calls);
+    }
+
+    @Test
+    void anAmmoOnlyClawWithOneFreeSlotAndNoRefillableStackHasNoSpace() {
+        Character silent = companion(564, "SilentSin", Job.ASSASSIN, 20, 25, 103_000);
+        ammo.put(564, 0);
+        freeSlots.put(564, 1);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_000, 1_000L, 2);
+        AgentRuntimeEntry entry = following(silent);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        assertEquals(List.of("refused 564 NO_SPACE 0"), calls, "the run's slot stays free");
+
+        freeSlots.put(564, 3);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L), "two sets and the run's slot");
+    }
+
+    @Test
+    void aTripEndsReadyOnlyWithTheAmmoStandardMet() {
+        Character silent = companion(565, "SilentSin", Job.ASSASSIN, 20, 25, 103_000);
+        ammo.put(565, 0);
+        AgentRuntimeEntry entry = following(silent);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        AgentSupplyProcurementState execution = execution(entry);
+        AgentSupplyProcurementOutcome bought = new AgentSupplyProcurementOutcome(
+                AgentSupplyProcurementOutcome.Status.RESTORED, AgentResourceCategory.HP_POTION, 20, 30, 103_000,
+                100_000, 1_500L, "bought");
+
+        assertEquals(AgentSupplyProcurementOutcome.Status.PARTIALLY_RESTORED,
+                AgentSupplyReadinessRuntime.judged(entry, silent, execution, bought).status(),
+                "potions bought, stars still short");
+        ammo.put(565, 1_000);
+        assertEquals(AgentSupplyProcurementOutcome.Status.RESTORED,
+                AgentSupplyReadinessRuntime.judged(entry, silent, execution, bought).status());
+
+        shopCompletes(entry, silent, 20, 25);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, silent, 2_100L);
+        AgentSupplyProcurementRuntime.tick(entry, silent, 2_200L);
+        assertEquals("finished 565 READY", calls.getLast());
+    }
+
+    @Test
+    void aCriticalPotionTripThatMetThePotionStandardIsRestoredWhileAmmoIsShort() {
+        Character mira = companion(566, "Mira", Job.ASSASSIN, 5, 30, 20_000);
+        ammo.put(566, 0);
+        AgentRuntimeEntry entry = following(mira);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 5);
+        startCriticalTrip(entry, "supply:HP_POTION:566", AgentResourceCategory.HP_POTION, 5);
+        potions.put(566, new int[]{45, 50});
+        AgentSupplyProcurementOutcome bought = new AgentSupplyProcurementOutcome(
+                AgentSupplyProcurementOutcome.Status.NO_PROGRESS, AgentResourceCategory.HP_POTION, 5, 45, 20_000,
+                18_000, 1_500L, "short of its planned 200");
+
+        assertEquals(AgentSupplyProcurementOutcome.Status.RESTORED,
+                AgentSupplyReadinessRuntime.judged(entry, mira, execution(entry), bought).status(),
+                "its critical trip is about potions: stars are its readiness trip's business");
+    }
+
+    @Test
+    void anAmmoTripThatCannotPayForTheStarsEndsShortOfMesos() {
+        Character silent = companion(567, "SilentSin", Job.ASSASSIN, 20, 25, 2_000);
+        ammo.put(567, 0);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_000, 1_000L, 2);
+        AgentRuntimeEntry entry = following(silent);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        purses.put(567, 400); // something else took its purse meanwhile
+
+        assertEquals(AgentSupplyReadiness.Outcome.SHORT_MESOS,
+                AgentSupplyReadinessRuntime.abandonedOutcome(entry, silent, execution(entry), 2_000L));
+        assertEquals(AgentSupplyReadinessState.Cooldown.SHORT_MESOS,
+                entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).cooldown());
+    }
+
+    @Test
+    void anAmmoTripEndingWithOneFreeSlotEndsShortOfSpace() {
+        Character silent = companion(568, "SilentSin", Job.ASSASSIN, 20, 25, 103_000);
+        ammo.put(568, 0);
+        ammoPlan = new AgentShopService.ReadinessAmmoPlan(1_000, 1_000L, 2);
+        AgentRuntimeEntry entry = following(silent);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        freeSlots.put(568, 1); // loot on the way: the counter stopped at the run's slot
+
+        assertEquals(AgentSupplyReadiness.Outcome.SHORT_SPACE,
+                AgentSupplyReadinessRuntime.abandonedOutcome(entry, silent, execution(entry), 2_000L));
+    }
+
+    @Test
+    void aFailedReadinessTripDoesNotSuppressTheCriticalHpPath() {
+        Character kettle = companion(569, "Kettle", Job.CLERIC, 15, 30, 1_000);
+        AgentRuntimeEntry entry = following(kettle);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        purses.put(569, 100);
+        shopCompletes(entry, kettle, 15, 30);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 2_100L);
+        assertEquals("finished 569 SHORT_MESOS", calls.getLast());
+
+        assertFalse(execution(entry).suppressed(AgentResourceCategory.HP_POTION, 2_200L),
+                "an ammo-only trip carries HP_POTION too: readiness keeps its own cooldowns");
     }
 
     // ---- fixture ---------------------------------------------------------------------------

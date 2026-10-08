@@ -844,8 +844,12 @@ public final class AgentSupplyProcurementRuntime {
             // Companions and citizens give up, walk back to the plan and ask the party
             // instead of standing at the shop with their foreground suspended forever.
             execution.markAbandoned(reason);
-            execution.suppress(execution.category(),
-                    nowMs + AgentSupplyRecoveryPolicy.failedProcurementCooldownMs());
+            if (!AgentSupplyReadinessRuntime.readiness(execution.requestId())) {
+                // a readiness trip keeps its own cooldowns, and an ammo-only one carries HP_POTION: suppressing it
+                // would hold back the critical HP path
+                execution.suppress(execution.category(),
+                        nowMs + AgentSupplyRecoveryPolicy.failedProcurementCooldownMs());
+            }
         }
         publish(entry, agent, "resource.recovery-stalled",
                 "resource-stalled:" + execution.requestId() + ':' + nowMs,

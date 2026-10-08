@@ -1,12 +1,18 @@
 package server.agents.capabilities.supplies;
 
+import client.BuffStat;
 import client.Character;
 import client.Job;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.WeaponType;
 import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.runtime.AgentRuntimeConfig;
+import testutil.Items;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -219,13 +225,42 @@ class AgentSupplyReadinessTest {
                 "no ammo weapon, or Soul Arrow / Shadow Claw up");
         assertEquals(0, AgentSupplyReadiness.ammoShortfall(0, null), "no activity");
         assertEquals(0, AgentSupplyReadiness.ammoShortfall(withJob(Job.WARRIOR), PQ), "nothing equipped to shoot");
+        assertEquals(800, AgentSupplyReadiness.ammoShortfall(800, AgentSupplyReadiness.Activity.partyQuest("epq")),
+                "EPQ's own standard (AMMO_STANDARDS)");
     }
 
     @Test
-    void ammoNeverMakesThePotionShortfall() {
+    void theDutyShortfallCountsProjectilesAndTheDeskCountStaysPotionsOnly() {
+        assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the desk's count overload: potions only");
+        AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character assassin = withJob(Job.ASSASSIN);
-        assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the restock duty only ever sees potions");
-        assertEquals(0, AgentSupplyReadiness.ammoShortfall(assassin, PQ), "no claw equipped on this mock");
+        Inventory use = new Inventory(assassin, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(2_070_000, 120));
+        when(assassin.getInventory(InventoryType.USE)).thenReturn(use);
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = mockStatic(AgentAttackExecutionProvider.class);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
+            weapons.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(assassin)).thenReturn(WeaponType.CLAW);
+            potions.when(() -> AgentPotionService.countPotions(assassin)).thenReturn(new int[]{350, 350});
+
+            AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(assassin, epq);
+            assertEquals(1_480, shortfall.ammo(), "the duty's own count: 120 of EPQ's 1600 stars");
+            assertTrue(shortfall.potionsNone());
+            assertFalse(shortfall.none());
+            assertEquals(0, shortfall.categories(), "no potion slot to size");
+        }
+    }
+
+    @Test
+    void theReadinessCountIgnoresSoulArrowAndShadowClaw() {
+        Character hunter = withJob(Job.HUNTER);
+        when(hunter.getBuffedValue(BuffStat.SOULARROW)).thenReturn(1);
+        when(hunter.getInventory(InventoryType.USE)).thenReturn(new Inventory(hunter, InventoryType.USE, (byte) 24));
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = mockStatic(AgentAttackExecutionProvider.class)) {
+            weapons.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(hunter)).thenReturn(WeaponType.BOW);
+
+            assertEquals(0, AgentSupplyReadiness.carriedAmmo(hunter), "an empty quiver is empty, buff or not");
+            assertEquals(500, AgentSupplyReadiness.ammoShortfall(hunter, PQ));
+        }
     }
 
     @Test

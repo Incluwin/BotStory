@@ -12,16 +12,19 @@ import server.agents.runtime.AgentRuntimeEntry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Readiness before an activity: the recovery potions an Agent carries into it (a party quest now; a boss arrives with
- * its expedition work), and the owner-free seam through which a host gives an Agent a standing duty to keep them.
+ * Readiness before an activity: the recovery potions, and the projectiles for a claw, bow, crossbow or gun, an Agent
+ * carries into it (a party quest or a boss run), and the owner-free seam through which a host gives an Agent a
+ * standing duty to keep them.
  *
  * <p>One standard serves everyone who asks: the host's entry desk reads {@link #shortfall(int, int, boolean, Activity)}
- * with the counts it already has, and the Agent's own procurement reads {@link #shortfall(Character, Activity)} with
- * {@link AgentPotionService#countPotions}. While the installed {@link Rule} answers {@link Rule#standing} for an Agent,
- * the Agent walks to the nearest potion shop by itself on a town map whose supplier is close (AgentSupplyReadinessRuntime)
- * and buys toward {@code BUY_TO_PERCENT} of the standard ({@link #buyTarget}); it never goes when it cannot afford the
- * trip, and says so through the rule instead of asking its party. With nothing installed, nothing here changes what an
- * Agent does.</p>
+ * with the potion counts it already has and {@link #ammoShortfall(int, Activity)} with its projectile count, and the
+ * Agent's own procurement reads {@link #shortfall(Character, Activity)}: {@link AgentPotionService#countPotions} and
+ * {@link AgentAmmoService#carriedProjectiles} together. While the installed {@link Rule} answers {@link Rule#standing}
+ * for an Agent, the Agent walks to the nearest potion shop by itself on a town map whose supplier is close
+ * (AgentSupplyReadinessRuntime) when it lacks either; one visit fills both, potions first, buying toward
+ * {@code BUY_TO_PERCENT} of the potion standard ({@link #buyTarget}) and toward {@link #ammoTarget} projectiles; it
+ * never goes when it cannot afford the trip, and says so through the rule instead of asking its party. With nothing
+ * installed, nothing here changes what an Agent does.</p>
  *
  * <p>The host's reads ({@link #status}, {@link #restockPending}, {@link #carriedBy}, {@link #checkSoon},
  * {@link #resumeFollowAfterTrip}) touch memory only and may run on any thread; the rule's callbacks run on the Agent
@@ -58,11 +61,25 @@ public final class AgentSupplyReadiness {
     /** Recovery potions an Agent goes in with at least: HP potions, and MP potions when it fights with skills. */
     public record Standard(int hp, int mp) { }
 
-    /** How many HP and MP potions an Agent still lacks for a standard (0 when it has enough). */
-    public record Shortfall(int hp, int mp) {
-        public static final Shortfall NONE = new Shortfall(0, 0);
+    /**
+     * How many HP and MP potions, and projectiles for its weapon, an Agent still lacks for a standard (0 when it has
+     * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles.
+     */
+    public record Shortfall(int hp, int mp, int ammo) {
+        public static final Shortfall NONE = new Shortfall(0, 0, 0);
 
+        /** Potions only: no projectiles lacking. */
+        public Shortfall(int hp, int mp) {
+            this(hp, mp, 0);
+        }
+
+        /** Nothing lacking at all. */
         public boolean none() {
+            return potionsNone() && ammo <= 0;
+        }
+
+        /** No potions lacking, whatever the projectiles. */
+        public boolean potionsNone() {
             return hp <= 0 && mp <= 0;
         }
 
@@ -245,15 +262,16 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * Projectiles a fighter carrying {@code carriedAmmo} for its weapon lacks for {@code activity}'s PARTY_QUEST_AMMO;
-     * 0 without an activity, or for one that shoots none ({@code Integer.MAX_VALUE}). Pure. Only a host's desk reads
-     * it: no restock trip buys ammo (projectiles keep their own rules).
+     * Projectiles a fighter carrying {@code carriedAmmo} for its weapon lacks for {@code activity}'s ammo standard
+     * ({@link #ammoStandard}); 0 without an activity, or for one that shoots none ({@code Integer.MAX_VALUE}). Pure.
+     * The host's desk and the standing duty both read it; the duty's trip buys them at the potion supplier, after the
+     * potions.
      */
     public static int ammoShortfall(int carriedAmmo, Activity activity) {
         if (activity == null) {
             return 0;
         }
-        long standard = Math.max(0, tuningInt("PARTY_QUEST_AMMO"));
+        long standard = ammoStandard(activity);
         return (int) Math.max(0L, standard - Math.max(0, carriedAmmo));
     }
 
@@ -306,21 +324,25 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * The projectiles the Agent carries for its equipped weapon; {@code Integer.MAX_VALUE} when it shoots none, or
-     * with Soul Arrow or Shadow Claw up.
+     * The projectiles in the Agent's bag for its equipped weapon (Soul Arrow and Shadow Claw do not fill an empty bag);
+     * {@code Integer.MAX_VALUE} when it shoots none.
      */
     public static int carriedAmmo(Character agent) {
-        return AgentAmmoService.carriedAmmo(agent);
+        return AgentAmmoService.carriedProjectiles(agent);
     }
 
-    /** What the Agent's own potions ({@link AgentPotionService#countPotions}) lack for {@code activity}. */
+    /**
+     * What the Agent's own potions ({@link AgentPotionService#countPotions}) and projectiles ({@link #carriedAmmo})
+     * lack for {@code activity}.
+     */
     public static Shortfall shortfall(Character agent, Activity activity) {
         if (agent == null) {
             return Shortfall.NONE;
         }
         int[] potions = agent.getInventory(InventoryType.USE) == null ? new int[]{0, 0}
                 : AgentPotionService.countPotions(agent);
-        return shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
+        Shortfall lacking = shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
+        return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity));
     }
 
     /**
