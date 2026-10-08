@@ -2,6 +2,7 @@ package config;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,6 +32,15 @@ class AgentEngineConfigValidatorAmmoStandardsTest {
         assertFalse(AgentEngineConfigValidator.validAmmoStandards("epq=5001", BOUND), "past one Victoria visit");
         assertFalse(AgentEngineConfigValidator.validAmmoStandards("epq=99999999999", BOUND));
         assertFalse(AgentEngineConfigValidator.validAmmoStandards("epq=9999999999999999999999", BOUND));
+    }
+
+    @Test
+    void theAmmoBuyToPercentMayBuyUpToFiveTimesTheStandard() {
+        assertEquals(500.0d, AgentEngineConfigValidator.maximumPercent(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_BUY_TO_PERCENT"));
+        assertEquals(500.0d, AgentEngineConfigValidator.maximumPercent(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BUY_TO_PERCENT"));
+        assertEquals(100.0d, AgentEngineConfigValidator.maximumPercent("server.agents.SOME_SHARE_PERCENT"));
     }
 
     @Test

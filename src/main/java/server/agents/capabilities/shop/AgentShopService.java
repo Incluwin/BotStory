@@ -570,8 +570,22 @@ public final class AgentShopService {
                     buySkillConsumables(sequence, shop, minimumMesoReserve));
             actions.add((sequence, shop) ->
                     buyBuffConsumables(sequence, shop, minimumMesoReserve));
+            if (trip != null) {
+                // last, with what is left: headroom past the ammo standard
+                actions.add((sequence, shop) -> readinessAmmoHeadroomStep(sequence, shop, bot, wt,
+                        readinessAmmoBuyTarget(trip), minimumMesoReserve));
+            }
         }
         return actions;
+    }
+
+    /**
+     * What a readiness trip's last step buys its projectiles toward: AgentSupplyReadiness.ammoBuyTarget, never past
+     * what one Victoria top-up buys to (AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD) unless the standard itself is.
+     */
+    static int readinessAmmoBuyTarget(AgentSupplyReadiness.Activity trip) {
+        return Math.max(AgentSupplyReadiness.ammoTarget(trip),
+                Math.min(ammoTargetThreshold(), AgentSupplyReadiness.ammoBuyTarget(trip)));
     }
 
     private static void runPurchaseStep(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, int index) {
@@ -1036,6 +1050,22 @@ public final class AgentShopService {
                     report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
         }
         return sequence.withUnspoken(report.quantity()).withQuietShortfall(report);
+    }
+
+    /**
+     * A readiness trip's last step: {@link #buyReadinessAmmo} on toward {@code buyTarget} with what is left, counted
+     * as bought but never said, and no shortfall of any kind when it stops short (headroom is a bonus).
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoHeadroomStep(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt,
+            int buyTarget, int minimumMesoReserve) {
+        AgentShopBuyReport report = buyReadinessAmmo(bot, shop, wt, sequence.inventory(), buyTarget,
+                minimumMesoReserve);
+        if (report.quantity() > 0) {
+            log.info("Agent '{}' readiness ammo headroom: {} x{} ({}), now {}", bot.getName(), report.itemId(),
+                    report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
+        }
+        return sequence.withUnspoken(report.quantity());
     }
 
     /**

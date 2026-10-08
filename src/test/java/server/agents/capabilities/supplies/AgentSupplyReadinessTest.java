@@ -306,6 +306,24 @@ class AgentSupplyReadinessTest {
         }
     }
 
+    @Test
+    void theAmmoBuyTargetIsTwiceTheStandardAndNeverBelowTheTarget() {
+        // review 2026-10-07: a bow bought exactly to 501 and walked back for a handful of arrows after every hunt
+        assertEquals("200", AgentYamlConfig.config.tuning.get(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_BUY_TO_PERCENT"));
+        assertEquals(1_000, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(3_200, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        assertEquals(0, AgentSupplyReadiness.ammoBuyTarget(null));
+        String key = "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_BUY_TO_PERCENT";
+        String configured = AgentYamlConfig.config.tuning.put(key, "50");
+        try {
+            assertEquals(501, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")),
+                    "under 100 percent buys to the target only");
+        } finally {
+            AgentYamlConfig.config.tuning.put(key, configured);
+        }
+    }
+
     private static AgentSupplyReadiness.Standard standardFor(String key) {
         return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest(key));
     }

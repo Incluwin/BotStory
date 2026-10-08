@@ -115,11 +115,13 @@ final class AgentEngineConfigValidator {
     }
 
     /**
-     * A percentage is a share of a whole (0-100), except a readiness buy-to percentage: a multiple of a potion
-     * standard, so a shop visit can buy past it (AgentSupplyReadiness.BUY_TO_PERCENT, up to five times).
+     * A percentage is a share of a whole (0-100), except a readiness buy-to percentage: a multiple of a potion or ammo
+     * standard, so a shop visit can buy past it (AgentSupplyReadiness.BUY_TO_PERCENT and AMMO_BUY_TO_PERCENT, up to
+     * five times).
      */
-    private static double maximumPercent(String key) {
-        return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT") ? 500.0d : 100.0d;
+    static double maximumPercent(String key) {
+        return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT")
+                || key.endsWith("AgentSupplyReadiness.AMMO_BUY_TO_PERCENT") ? 500.0d : 100.0d;
     }
 
     /**

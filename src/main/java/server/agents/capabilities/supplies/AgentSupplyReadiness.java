@@ -299,6 +299,21 @@ public final class AgentSupplyReadiness {
         return standard <= 0 ? 0 : Math.max(standard, AgentSupplyConfig.cfg.AMMO_LOW_WARN + 1);
     }
 
+    /**
+     * How many projectiles a readiness trip's counter buys toward once the standard is met, with what is left after
+     * everything else: AMMO_BUY_TO_PERCENT of the standard, rounded up, and at least {@link #ammoTarget}; 0 for a
+     * standard of 0. The headroom keeps a bow that just restocked from walking back for a handful of arrows after
+     * its next hunt; the trip's checks and its end price the standard alone.
+     */
+    public static int ammoBuyTarget(Activity activity) {
+        int target = ammoTarget(activity);
+        if (target <= 0) {
+            return 0;
+        }
+        long wanted = ((long) ammoStandard(activity) * Math.max(0, tuningInt("AMMO_BUY_TO_PERCENT")) + 99L) / 100L;
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(target, wanted));
+    }
+
     /** The count {@code standards} ("key=count,...") lists for {@code key}, or null: blank, unlisted or malformed. */
     private static Integer listedCount(String key, String standards) {
         if (key == null || key.isEmpty()) {

@@ -237,8 +237,10 @@ class AgentShopServiceReadinessAmmoTest {
 
         visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
 
-        assertEquals(List.of("refill x " + ILBI, "set x " + SUBI, "set x " + SUBI), transactions);
-        assertEquals(1_800, stars());
+        assertEquals(List.of("refill x " + ILBI, "set x " + SUBI, "set x " + SUBI,
+                "set x " + SUBI, "set x " + SUBI, "set x " + SUBI), transactions,
+                "the refill and two sets reach the standard; three more sets are its headroom");
+        assertEquals(3_300, stars());
     }
 
     @Test
@@ -251,9 +253,10 @@ class AgentShopServiceReadinessAmmoTest {
 
         visit(List.of(RED, WHITE, BLUE, SHOWA_ARROW), WeaponType.BOW);
 
-        assertEquals(1_600, arrows(), transactions.toString());
-        assertEquals(List.of("1000 x " + SHOWA_ARROW, "500 x " + SHOWA_ARROW), transactions,
-                "to the target at 40 mesos each, never toward 5000");
+        assertEquals(3_200, arrows(), transactions.toString());
+        assertEquals(List.of("1000 x " + SHOWA_ARROW, "500 x " + SHOWA_ARROW, "1000 x " + SHOWA_ARROW,
+                        "600 x " + SHOWA_ARROW), transactions,
+                "to the standard at 40 mesos each, then its headroom (twice the standard), never toward 5000");
     }
 
     @Test
@@ -295,7 +298,7 @@ class AgentShopServiceReadinessAmmoTest {
         bag(4);
         carryPotions(40, 50); // 2 free slots
         visit(List.of(RED, WHITE, BLUE, ARROW), WeaponType.BOW);
-        assertEquals(1_600, arrows(), transactions.toString());
+        assertEquals(2_000, arrows(), "the standard, then headroom up to the stack's room: " + transactions);
         assertEquals(1, use.getNumFreeSlot());
 
         buffs.put(BuffStat.SOULARROW, 1); // the fight never runs out under Soul Arrow, but the bag does
@@ -303,7 +306,7 @@ class AgentShopServiceReadinessAmmoTest {
         bag(4);
         carryPotions(40, 50);
         visit(List.of(RED, WHITE, BLUE, ARROW), WeaponType.BOW);
-        assertEquals(1_600, arrows(), "by the bag count");
+        assertEquals(2_000, arrows(), "by the bag count");
         assertEquals(1, use.getNumFreeSlot());
 
         buffs.clear();
@@ -368,9 +371,36 @@ class AgentShopServiceReadinessAmmoTest {
 
         AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
 
-        assertEquals(2_000, stars());
+        assertEquals(3_500, stars(), "four sets to the standard, three more as headroom");
         assertEquals(List.of(), visit.bought(), "the spoken \"bought ...\" line never grows with it");
-        assertEquals(2_000, visit.unspokenUnits(), "but the visit knows it bought something");
+        assertEquals(3_500, visit.unspokenUnits(), "but the visit knows it bought something");
+    }
+
+    @Test
+    void aBowOutsideVictoriaBuysPastItsStandardSoItsNextTownIsNoStoreTrip() {
+        // review: at the default 500 standard a bow bought exactly to 501, so a Hunter at 480 walked to the shop for
+        // 21 arrows and did it again after every hunt
+        trip = KPQ;
+        hunter();
+        carryPotions(80, 100);
+        use.addItem(Items.itemWithQuantity(ARROW, 480));
+
+        visit(List.of(RED, WHITE, BLUE, ARROW), WeaponType.BOW);
+
+        assertEquals(1_000, arrows(), "AMMO_BUY_TO_PERCENT 200 of the 500 standard: " + transactions);
+    }
+
+    @Test
+    void theHeadroomIsBoughtLastWithWhatIsLeftAndIsNoShortfall() {
+        trip = LPQ;
+        carryPotions(80, 100); // at the potion buy target: nothing past it to buy
+        purse = 5 * 500 + 200; // the four sets of the standard and one more
+
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        assertEquals(2_500, stars(), transactions.toString());
+        assertNull(visit.firstShortfall());
+        assertFalse(visit.quietShortfall(), "falling short of the headroom is no shortfall at all");
     }
 
     @Test
@@ -419,6 +449,9 @@ class AgentShopServiceReadinessAmmoTest {
 
     @Test
     void readinessAmmoPlanMatchesWhatTheCounterDoes() {
+        // the plan prices the standard; the headroom step after it is off here (its own tests above)
+        readiness.when(() -> AgentSupplyReadiness.ammoBuyTarget(any()))
+                .thenAnswer(inv -> AgentSupplyReadiness.ammoTarget(inv.getArgument(0)));
         // a claw at a Victoria supplier: its partial stack refilled by the top-up, then one set to pass 500
         trip = KPQ;
         mapId = KERNING_PHARMACY;
