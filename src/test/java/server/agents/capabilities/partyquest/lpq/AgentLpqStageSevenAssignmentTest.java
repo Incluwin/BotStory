@@ -200,6 +200,33 @@ class AgentLpqStageSevenAssignmentTest {
         }
     }
 
+    @Test
+    void theRunsOwnAdoptionDecidesWhetherADryMemberKeepsALane() {
+        // review: replacing session.companionAdopted() with false at these call sites left every test green
+        java.util.Map<Integer, client.Character> chars = java.util.Map.of(
+                400, assassin(800), 401, assassin(0), 402, assassin(800));
+        AgentLpqSession run = new AgentLpqSession(AgentLpqSession.Mode.PRODUCTION, 1L, 400, 6, 0L);
+        run.addMember(400, AgentLpqMemberState.MemberType.HUMAN);
+        run.addMember(401, AgentLpqMemberState.MemberType.AGENT);
+        run.addMember(402, AgentLpqMemberState.MemberType.AGENT);
+        run.setLeadership(400, 402);
+        server.agents.integration.CharacterGateway gateway =
+                org.mockito.Mockito.mock(server.agents.integration.CharacterGateway.class);
+        org.mockito.Mockito.when(gateway.findOnlineCharacterById(org.mockito.ArgumentMatchers.anyInt()))
+                .thenAnswer(inv -> chars.get((int) inv.getArgument(0)));
+        try (org.mockito.MockedStatic<server.agents.capabilities.combat.AgentAttackExecutionProvider> weapons =
+                     claws();
+             org.mockito.MockedStatic<server.agents.integration.AgentCharacterGatewayRuntime> characters =
+                     org.mockito.Mockito.mockStatic(server.agents.integration.AgentCharacterGatewayRuntime.class)) {
+            characters.when(server.agents.integration.AgentCharacterGatewayRuntime::characters).thenReturn(gateway);
+
+            assertTrue(AgentLpqCoordinator.stageSevenTopMemberIds(run).contains(401), "a stock run picks by job");
+            run.setCompanionAdopted(true);
+            assertEquals(List.of(402), AgentLpqCoordinator.stageSevenTopMemberIds(run),
+                    "an adopted run hands the dry member's lane on");
+        }
+    }
+
     /** An Assassin with a claw and {@code stars} throwing stars in a real Use tab. */
     static client.Character assassin(int stars) {
         client.Character assassin = org.mockito.Mockito.mock(client.Character.class);

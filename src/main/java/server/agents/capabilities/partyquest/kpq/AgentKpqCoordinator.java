@@ -3437,7 +3437,7 @@ final class AgentKpqCoordinator {
     private static Point stageOneFiringSpot(AgentKpqSession session, AgentKpqMemberState member,
                                             AgentRuntimeEntry entry, Character agent,
                                             AgentKpqSession.HelperTerritory territory) {
-        if (!stageOneFiresFromASpot(agent, ACTIONS.rangedWeapon(agent), session.companionAdopted())) return null;
+        if (!stageOneFiresFromASpot(session, agent, ACTIONS.rangedWeapon(agent))) return null;
         List<Point> area = territory.spawns();
         if (!member.stage1FiringSpotKnownFor(area)) {
             Point spot = AgentKpqStageOneClusterPolicy.firingSpot(area, STAGE1_RANGED_SPAWN_STANDOFF_PX,
@@ -3456,6 +3456,11 @@ final class AgentKpqCoordinator {
      * (AgentAmmoService.dryShooter); a dry one grinds its territory like a melee member, and its cached spot waits for
      * its next projectiles. A stock run keeps the spot.
      */
+    static boolean stageOneFiresFromASpot(AgentKpqSession session, Character agent, boolean rangedWeapon) {
+        return stageOneFiresFromASpot(agent, rangedWeapon, session.companionAdopted());
+    }
+
+    /** {@link #stageOneFiresFromASpot(AgentKpqSession, Character, boolean)} with the run's adoption given. */
     static boolean stageOneFiresFromASpot(Character agent, boolean rangedWeapon, boolean companionRun) {
         return rangedWeapon && (!companionRun || !AgentAmmoService.dryShooter(agent));
     }

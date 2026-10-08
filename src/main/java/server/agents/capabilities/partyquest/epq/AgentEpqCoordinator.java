@@ -1118,7 +1118,8 @@ public final class AgentEpqCoordinator {
         return ground == null ? new Point(pond.x + offset, agent.getPosition().y) : ground;
     }
 
-    private static List<Integer> stageTwoLurerIds(AgentEpqSession session) {
+    /** The run's stage-2 lurers: its living, present non-carrier companions, gated as the run is adopted or not. */
+    static List<Integer> stageTwoLurerIds(AgentEpqSession session) {
         int carrierId = workAgentId(session);
         List<Character> nonCarriers = session.members().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)

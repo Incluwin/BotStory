@@ -39,6 +39,26 @@ class AgentLpqStageNineShooterTest {
         }
     }
 
+    @Test
+    void aDryClawIsSentToNoBlackRatzInACompanionRunButIsInAStockRun() {
+        // review: removing this gate left every AgentLpq test green; a dry companion would go to the balloon platform
+        Character dry = luckySeven(AgentLpqStageSevenAssignmentTest.assassin(0));
+        Character loaded = luckySeven(AgentLpqStageSevenAssignmentTest.assassin(800));
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = AgentLpqStageSevenAssignmentTest.claws()) {
+            assertFalse(AgentLpqCoordinator.stageNineRatzShooter(dry, true));
+            assertTrue(AgentLpqCoordinator.stageNineRatzShooter(loaded, true));
+            assertTrue(AgentLpqCoordinator.stageNineRatzShooter(dry, false), "a stock run keeps the skill-only pick");
+            assertFalse(AgentLpqCoordinator.stageNineRatzShooter(AgentLpqStageSevenAssignmentTest.assassin(800), true),
+                    "no ranged attack skill");
+        }
+    }
+
+    /** {@code rogue} with Lucky Seven learned. */
+    private static Character luckySeven(Character rogue) {
+        when(rogue.getSkillLevel(constants.skills.Rogue.LUCKY_SEVEN)).thenReturn(1);
+        return rogue;
+    }
+
     /** The gateway the coordinator's actions reach says every character's weapon shoots. */
     private static MockedStatic<AgentPrimitiveCapabilityGatewayRuntime> rangedWeapons() {
         PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);

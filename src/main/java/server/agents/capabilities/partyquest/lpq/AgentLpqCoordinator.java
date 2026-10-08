@@ -297,9 +297,7 @@ final class AgentLpqCoordinator {
     }
 
     private static void assignStageSevenRoles(AgentLpqSession session) {
-        List<Integer> topIds = stageSevenTopMemberIds(
-                session.members(), id -> stageSevenShooter(character(id), session.companionAdopted()),
-                session.eventLeaderId(), preferredStageSevenHuman(session));
+        List<Integer> topIds = stageSevenTopMemberIds(session);
         for (AgentLpqMemberState member : session.members()) {
             int topIndex = topIds.indexOf(member.characterId());
             member.assign(topIndex >= 0 ? AgentLpqMemberState.Role.RANGED_TRIGGER
@@ -1483,11 +1481,19 @@ final class AgentLpqCoordinator {
                 && (member.heldStageSevenLane() || run.stageSevenNoShooter());
     }
 
-    private static void stageSevenObjectives(AgentLpqSession session, long nowMs) {
-        int mapId = AgentLpqDefinition.stage(7).mapId();
-        List<Integer> topIds = stageSevenTopMemberIds(
+    /**
+     * The run's stage-7 ratz shooters ({@link #stageSevenShooter}, gated as the run is adopted or not), by
+     * {@link #stageSevenTopMemberIds(java.util.Collection, java.util.function.IntPredicate, int, int)}.
+     */
+    static List<Integer> stageSevenTopMemberIds(AgentLpqSession session) {
+        return stageSevenTopMemberIds(
                 session.members(), id -> stageSevenShooter(character(id), session.companionAdopted()),
                 session.eventLeaderId(), preferredStageSevenHuman(session));
+    }
+
+    private static void stageSevenObjectives(AgentLpqSession session, long nowMs) {
+        int mapId = AgentLpqDefinition.stage(7).mapId();
+        List<Integer> topIds = stageSevenTopMemberIds(session);
         Character observer = session.members().stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull).filter(member -> member.getMapId() == mapId)
                 .findFirst().orElse(null);
@@ -4353,8 +4359,7 @@ final class AgentLpqCoordinator {
                         stageNineGroupsUnset, stageNineSummons);
                 continue;
             }
-            if (triggerRatzAlive && AgentLpqRosterRequirementPolicy.rangedAttack(agent)
-                    && !(session.companionAdopted() && AgentAmmoService.dryShooter(agent))) {
+            if (triggerRatzAlive && stageNineRatzShooter(agent, session.companionAdopted())) {
                 member.assign(AgentLpqMemberState.Role.RANGED_TRIGGER,
                         AgentLpqDefinition.stage(9).mapId());
                 engageBossTriggerRatz(session, member, entry, agent, nowMs);
@@ -4474,6 +4479,16 @@ final class AgentLpqCoordinator {
                     session.sessionId(), agent.getName(), agent.getId(),
                     before.side() == null ? "NONE" : before.side(), after.side(), boss, after.station());
         }
+    }
+
+    /**
+     * Who goes to the balloon platform for the Black Ratz (RANGED_TRIGGER): a member with a ranged attack skill; in a
+     * companion run not one with nothing to shoot (AgentAmmoService.dryShooter), which could not hit it from there.
+     * A stock run keeps the skill-only pick.
+     */
+    static boolean stageNineRatzShooter(Character agent, boolean companionRun) {
+        return AgentLpqRosterRequirementPolicy.rangedAttack(agent)
+                && !(companionRun && AgentAmmoService.dryShooter(agent));
     }
 
     /**

@@ -1238,8 +1238,12 @@ class AgentSupplyReadinessRuntimeTest {
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
         assertEquals(List.of("refused 564 NO_SPACE 0"), calls, "the run's slot stays free");
 
+        freeSlots.put(564, 2); // the boundary: as many free slots as new stacks, none left for the run
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L), "two sets need three free slots");
+        assertEquals(List.of("refused 564 NO_SPACE 0"), calls, "no trip started (the same refusal is not repeated)");
+
         freeSlots.put(564, 3);
-        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L), "two sets and the run's slot");
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 11_000L), "two sets and the run's slot");
     }
 
     @Test

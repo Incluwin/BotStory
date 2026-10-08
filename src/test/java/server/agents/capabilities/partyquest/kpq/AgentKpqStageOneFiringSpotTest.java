@@ -42,6 +42,19 @@ class AgentKpqStageOneFiringSpotTest {
         }
     }
 
+    @Test
+    void theRunsOwnAdoptionDecidesTheFiringSpot() {
+        // review: replacing session.companionAdopted() with false at the call site left every test green
+        AgentKpqSession run = new AgentKpqSession(AgentKpqSession.Mode.PRODUCTION, 1L, 300, 4, 0L);
+        Character dry = claw(0);
+        try (MockedStatic<AgentAttackExecutionProvider> attacks = claws()) {
+            assertTrue(AgentKpqCoordinator.stageOneFiresFromASpot(run, dry, true), "a stock run keeps the spot");
+            run.setCompanionAdopted(true);
+            assertFalse(AgentKpqCoordinator.stageOneFiresFromASpot(run, dry, true), "an adopted run: it grinds");
+            assertTrue(AgentKpqCoordinator.stageOneFiresFromASpot(run, claw(800), true));
+        }
+    }
+
     private static Character claw(int stars) {
         Character agent = mock(Character.class);
         when(agent.getBuffedValue(any(BuffStat.class))).thenReturn(null);

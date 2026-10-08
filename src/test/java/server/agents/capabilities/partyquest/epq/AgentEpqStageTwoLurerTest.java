@@ -49,6 +49,34 @@ class AgentEpqStageTwoLurerTest {
         }
     }
 
+    @Test
+    void theRunsOwnAdoptionDecidesWhetherADryMemberLures() {
+        // review: replacing session.companionAdopted() with false in the session wiring left every test green
+        Character carrier = member(500, 50, WeaponType.SPEAR_STAB, 0); // the lowest id: the work agent
+        Character kestrel = member(501, 10, WeaponType.CLAW, 0);
+        Character pell = member(502, 20, WeaponType.BOW, 2_000);
+        Character halvard = member(503, 30, WeaponType.SPEAR_STAB, 0);
+        Map<Integer, Character> online = Map.of(500, carrier, 501, kestrel, 502, pell, 503, halvard);
+        AgentEpqSession run = new AgentEpqSession(AgentEpqSession.Mode.HUMAN_ASSISTED, 1L, 499, 0L);
+        run.addMember(499, AgentEpqMemberState.MemberType.HUMAN);
+        for (int id : List.of(500, 501, 502, 503)) {
+            run.addMember(id, AgentEpqMemberState.MemberType.AGENT);
+        }
+        run.setLeadership(499, 500);
+        server.agents.integration.CharacterGateway gateway = mock(server.agents.integration.CharacterGateway.class);
+        when(gateway.findOnlineCharacterById(org.mockito.ArgumentMatchers.anyInt()))
+                .thenAnswer(inv -> online.get((int) inv.getArgument(0)));
+        try (MockedStatic<AgentAttackExecutionProvider> attacks = equipped();
+             MockedStatic<server.agents.integration.AgentCharacterGatewayRuntime> characters =
+                     mockStatic(server.agents.integration.AgentCharacterGatewayRuntime.class)) {
+            characters.when(server.agents.integration.AgentCharacterGatewayRuntime::characters).thenReturn(gateway);
+
+            assertEquals(List.of(501, 502), AgentEpqCoordinator.stageTwoLurerIds(run), "a stock run");
+            run.setCompanionAdopted(true);
+            assertEquals(List.of(502, 503), AgentEpqCoordinator.stageTwoLurerIds(run), "an adopted run");
+        }
+    }
+
     /** A living member hitting for {@code damage}, holding {@code weapon} with {@code projectiles} for it. */
     private Character member(int id, int damage, WeaponType weapon, int projectiles) {
         Character member = mock(Character.class);
