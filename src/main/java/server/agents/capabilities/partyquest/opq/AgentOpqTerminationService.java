@@ -108,7 +108,7 @@ final class AgentOpqTerminationService {
 
     /**
      * A companion run's party is its owner's own: his companions stay in it whatever the outcome, as KPQ, HPQ, LPQ and
-     * EPQ keep a party they did not form. Every other run leaves it, as it always has.
+     * EPQ keep a party they did not form. In every other run the Agents leave it (a human never does).
      */
     static boolean keepPartyAfterRelease(boolean companionRun) {
         return companionRun;
@@ -146,7 +146,10 @@ final class AgentOpqTerminationService {
             try { event.dispose(); } catch (RuntimeException ignored) { }
         }
         if (!keepPartyAfterRelease(companionRun)) {
-            session.members().stream().map(member -> AgentOpqCoordinator.character(member.characterId()))
+            // Only the Agents leave: a human in the run (HUMAN_ASSISTED) keeps his own party, in every mode.
+            session.members().stream()
+                    .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
+                    .map(member -> AgentOpqCoordinator.character(member.characterId()))
                     .filter(java.util.Objects::nonNull).filter(AgentPartyGatewayRuntime.party()::hasParty)
                     .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
         }

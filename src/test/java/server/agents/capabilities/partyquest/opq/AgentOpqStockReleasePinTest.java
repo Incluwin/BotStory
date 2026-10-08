@@ -22,7 +22,8 @@ import static org.mockito.Mockito.verify;
 
 /**
  * P6h OPQ step 1, C1 pin (green on the base and after): how a run that is not a companion run is released. The
- * companion seam changes the release of a companion run; these runs must not notice.
+ * companion seam changes the release of a companion run; these runs must not notice. The Step 1b base fixes change
+ * stock runs on purpose, and each says so where it changed a pin here (OB2: the human keeps his party).
  */
 class AgentOpqStockReleasePinTest {
     private final OpqRunFixture run = new OpqRunFixture();
@@ -39,7 +40,7 @@ class AgentOpqStockReleasePinTest {
     }
 
     @Test
-    void aStockFailureExitsEveryoneDisposesAndEveryMemberLeavesTheParty() {
+    void aStockFailureExitsEveryoneDisposesAndTheAgentsLeaveTheParty() {
         AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, AgentOpqSession.Phase.SPLIT_ROOMS,
                 ben, mira, kes, pel, hal, gus);
 
@@ -47,8 +48,10 @@ class AgentOpqStockReleasePinTest {
 
         for (Character member : new Character[]{ben, mira, kes, pel, hal, gus}) {
             verify(run.event).exitPlayer(member);
-            verify(run.party).leaveCurrentParty(member);
         }
+        // OB2: only the Agents leave the party; the human keeps his own (until OB2 he left it too).
+        for (Character agent : new Character[]{mira, kes, pel, hal, gus}) verify(run.party).leaveCurrentParty(agent);
+        verify(run.party, never()).leaveCurrentParty(ben);
         for (Character agent : new Character[]{mira, kes, pel, hal, gus}) {
             verify(run.actions).stop(run.entries.get(agent.getId()));
         }
