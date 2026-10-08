@@ -50,6 +50,8 @@ final class AgentOpqCoordinator {
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.NAVIGATION_STALL_MS");
     private static final int NPC_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.NPC_RADIUS");
+    private static final int REWARD_REFUSALS_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX");
     private static final int LOOT_RADIUS = server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
     private static final Point ENTRANCE_HANDOFF = new Point(170, 96);
     private static final Point ENTRANCE_EAK = new Point(377, 66);
@@ -1035,7 +1037,32 @@ final class AgentOpqCoordinator {
             return;
         }
         if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP
-                && runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) session.markProgress(nowMs);
+                && runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) {
+            session.markProgress(nowMs);
+            // Minerva's script ran to its end; a rewarded Agent is warped to Wonky, a refused one (a full bag) stays.
+            if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP) rewardRefused(session, agent);
+        }
+    }
+
+    /**
+     * Counts a refused reward; at REWARD_REFUSALS_MAX the Agent leaves through the event's own exit, unrewarded, so it
+     * stops asking and the claims can end ('OPQ reward refused: session= member= attempts=').
+     */
+    private static void rewardRefused(AgentOpqSession session, Character agent) {
+        AgentOpqMemberState member = session.member(agent.getId());
+        if (member == null) return;
+        int attempts = member.recordRewardRefusal();
+        if (attempts < REWARD_REFUSALS_MAX) return;
+        log.warn("OPQ reward refused: session={} member={} attempts={}", session.sessionId(), agent.getName(),
+                attempts);
+        EventInstanceManager event = session.eventInstance();
+        if (event == null) return;
+        try {
+            event.exitPlayer(agent);
+        } catch (RuntimeException failure) {
+            log.warn("OPQ refused reward exit failed: session={} member={}", session.sessionId(), agent.getId(),
+                    failure);
+        }
     }
 
     private static boolean collectReservedDrop(AgentOpqSession session, AgentRuntimeEntry entry,

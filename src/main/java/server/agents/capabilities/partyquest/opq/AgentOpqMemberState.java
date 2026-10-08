@@ -31,6 +31,7 @@ public final class AgentOpqMemberState {
     private int loungeBaselineCount;
     private int bossObjectId;
     private int bossHp = -1;
+    private int rewardRefusals;
 
     public AgentOpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) throw new IllegalArgumentException("valid OPQ member required");
@@ -133,4 +134,7 @@ public final class AgentOpqMemberState {
         loungeBaselineCount = 0;
         clearBossCombat();
     }
+
+    /** Counts one more refusal of this member's reward (still on the reward map after Minerva ran); the new count. */
+    int recordRewardRefusal() { return ++rewardRefusals; }
 }
