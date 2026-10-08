@@ -101,14 +101,22 @@ final class LmpqRunFixture implements AutoCloseable {
      * executes. The event holds every member.
      */
     AgentLmpqSession session(AgentLmpqSession.Mode mode, AgentLmpqSession.Phase phase, Character... members) {
-        AgentLmpqSession session = unregistered(mode, phase, members);
+        return session(mode, false, phase, members);
+    }
+
+    /** As above; {@code companionRun} flags it adopted, as the public admit does before publishing it. */
+    AgentLmpqSession session(AgentLmpqSession.Mode mode, boolean companionRun, AgentLmpqSession.Phase phase,
+                             Character... members) {
+        AgentLmpqSession session = unregistered(mode, companionRun, phase, members);
         AgentLmpqSessionRegistry.registerComplete(session);
         return session;
     }
 
-    /** As {@link #session(AgentLmpqSession.Mode, AgentLmpqSession.Phase, Character...)}, not registered. */
-    AgentLmpqSession unregistered(AgentLmpqSession.Mode mode, AgentLmpqSession.Phase phase, Character... members) {
+    /** As {@link #session(AgentLmpqSession.Mode, boolean, AgentLmpqSession.Phase, Character...)}, not registered. */
+    AgentLmpqSession unregistered(AgentLmpqSession.Mode mode, boolean companionRun, AgentLmpqSession.Phase phase,
+                                  Character... members) {
         AgentLmpqSession session = new AgentLmpqSession(mode, 7L, members[0].getId(), members.length, 1_000L);
+        if (companionRun) session.setCompanionAdopted(true);
         Integer execution = null;
         for (Character member : members) {
             boolean agent = entries.containsKey(member.getId());

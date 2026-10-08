@@ -1,5 +1,7 @@
 package server.agents.capabilities.partyquest.lmpq;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
@@ -13,6 +15,7 @@ import java.util.UUID;
 
 /** LMPQ aggregate root; all routing and lease state is isolated per event. */
 public final class AgentLmpqSession implements AgentCompanionRunSession {
+    private static final Logger log = LoggerFactory.getLogger(AgentLmpqSession.class);
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_MEMBER, HUMAN_LEADER }
     public enum Phase { PREPARING, ENTERING, FARMING, REGROUPING, CLEARING, REWARD, EXITING, COMPLETED, FAILED }
 
@@ -87,6 +90,7 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
         if (next != phase) {
             firstEntries.putIfAbsent(next, nowMs);
+            logPhase(next, nowMs);
             phase = next;
             phaseEnteredAtMs = nowMs;
             markProgress(nowMs);
@@ -104,16 +108,27 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     public synchronized void fail(String reason, long nowMs) {
         failure = reason == null || reason.isBlank() ? "LMPQ failed" : reason;
         if (phase != Phase.FAILED) firstEntries.putIfAbsent(Phase.FAILED, nowMs);
+        if (!terminal()) logPhase(Phase.FAILED, nowMs);
         phase = Phase.FAILED;
         markProgress(nowMs);
     }
     public synchronized void complete(long nowMs) {
         if (phase != Phase.COMPLETED) firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
+        if (!terminal()) logPhase(Phase.COMPLETED, nowMs);
         phase = Phase.COMPLETED;
         markProgress(nowMs);
     }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
+
+    /**
+     * The phase line every PQ logs (HPQ/KPQ shape), for stock and companion runs alike: one per phase change, none for
+     * a same-phase transition or for a fail or complete of a run that already ended. Logging only.
+     */
+    private void logPhase(Phase next, long nowMs) {
+        log.info("LMPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", sessionId, phase, next,
+                Math.max(0L, nowMs - phaseEnteredAtMs), Math.max(0L, nowMs - startedAtMs), companionAdopted);
+    }
 
     /** True once a release has begun (it is claimed by beginTermination). */
     public synchronized boolean terminationStarted() { return terminating; }

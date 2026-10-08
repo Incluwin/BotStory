@@ -2,6 +2,8 @@ package server.agents.capabilities.partyquest.lmpq;
 
 import client.Character;
 import client.inventory.InventoryType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.agents.capabilities.partyquest.AgentPqRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 /** Natural-action LMPQ coordinator: distributed farming, handoff, and Room 9 barrier. */
 public final class AgentLmpqCoordinator {
+    private static final Logger log = LoggerFactory.getLogger(AgentLmpqCoordinator.class);
     private static final long EVENT_TIMEOUT_MS = 15L * 60_000L;
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
@@ -33,15 +36,25 @@ public final class AgentLmpqCoordinator {
 
     private AgentLmpqCoordinator() { }
 
+    /**
+     * Fails the run as before, with one 'LMPQ session failure:' line in every mode: the phase it was in when it failed
+     * (read before the fail, which moves it to FAILED), the reason, its size and whether it is a companion run.
+     */
+    static void fail(AgentLmpqSession session, String reason, long nowMs) {
+        log.warn("LMPQ session failure: session={} phase={} reason={} members={} companionRun={}",
+                session.sessionId(), session.phase(), reason, session.memberCount(), session.companionAdopted());
+        session.fail(reason, nowMs);
+    }
+
     public static void tickSession(AgentLmpqSession session, long nowMs) {
         if (session.terminal() || session.paused()) return;
         if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
-            session.fail("LMPQ event timer expired", nowMs);
+            fail(session, "LMPQ event timer expired", nowMs);
             return;
         }
         Character leader = character(session.eventLeaderId());
         if (leader == null || leader.getHp() <= 0) {
-            session.fail("LMPQ event leader is unavailable", nowMs);
+            fail(session, "LMPQ event leader is unavailable", nowMs);
             return;
         }
         if (session.phase() == AgentLmpqSession.Phase.PREPARING
@@ -56,7 +69,7 @@ public final class AgentLmpqCoordinator {
         }
         if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
-            session.fail("LMPQ event instance was disposed before clear", nowMs);
+            fail(session, "LMPQ event instance was disposed before clear", nowMs);
             return;
         }
         if (session.eventInstance() != null
@@ -67,12 +80,17 @@ public final class AgentLmpqCoordinator {
                             || member.getEventInstance() != session.eventInstance()
                             || !AgentLmpqDefinition.isEventMap(member.getMapId()));
             if (missing) {
-                session.fail("An LMPQ participant left the active maze", nowMs);
+                fail(session, "An LMPQ participant left the active maze", nowMs);
                 return;
             }
         }
         if (session.eventInstance() != null) updateHumanOccupancy(session, nowMs);
-        if (session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS) > 0) session.markProgress(nowMs);
+        int expired = session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
+        if (expired > 0) {
+            session.markProgress(nowMs);
+            log.info("LMPQ room: session={} expired={} runMs={}", session.sessionId(), expired,
+                    nowMs - session.startedAtMs());
+        }
 
         int secured = usableCoupons(session);
         if (session.phase() == AgentLmpqSession.Phase.FARMING
@@ -83,6 +101,7 @@ public final class AgentLmpqCoordinator {
                 session.rooms().releaseOwner(member.characterId(), nowMs);
                 member.clearTargetRoom();
             });
+            logCoupons(session, leader, secured);
             session.transition(AgentLmpqSession.Phase.REGROUPING, nowMs);
             announceOnce(session, "regroup", "Coupon target secured. Meet in Maze Room "
                     + session.rendezvousRoom() + '.');
@@ -91,6 +110,8 @@ public final class AgentLmpqCoordinator {
                 && leader.getItemQuantity(AgentLmpqDefinition.COUPON, false)
                 >= AgentLmpqDefinition.REQUIRED_COUPONS
                 && allMembersInRoom(session, session.rendezvousRoom())) {
+            session.setCouponsAtClearing(leader.getItemQuantity(AgentLmpqDefinition.COUPON, false));
+            logCoupons(session, leader, usableCoupons(session));
             session.transition(AgentLmpqSession.Phase.CLEARING, nowMs);
             if (session.rendezvousRoom() == AgentLmpqDefinition.RENDEZVOUS_ROOM) {
                 announceOnce(session, "enter-clear", "All ready. Take Room 9's middle portal into Room 16.");
@@ -123,7 +144,7 @@ public final class AgentLmpqCoordinator {
         }
         session.observeProgressSignature(progressSignature(session), nowMs);
         if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) {
-            session.fail("LMPQ stalled in " + session.phase(), nowMs);
+            fail(session, "LMPQ stalled in " + session.phase(), nowMs);
         }
     }
 
@@ -135,7 +156,7 @@ public final class AgentLmpqCoordinator {
         member.observeRoom(AgentLmpqDefinition.roomForMap(agent.getMapId()));
         if (session.eventInstance() != null && AgentLmpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != session.eventInstance()) {
-            session.fail("LMPQ member entered a different event instance", nowMs);
+            fail(session, "LMPQ member entered a different event instance", nowMs);
             return;
         }
         switch (session.phase()) {
@@ -219,6 +240,10 @@ public final class AgentLmpqCoordinator {
             return;
         }
         session.rooms().depleted(currentRoom, agent.getId(), nowMs);
+        if (session.rooms().room(currentRoom).state() == AgentLmpqRoomLedger.State.DEPLETED) {
+            log.info("LMPQ room: session={} room={} state=DEPLETED owner={} runMs={}", session.sessionId(),
+                    currentRoom, agent.getName(), nowMs - session.startedAtMs());
+        }
         member.clearTargetRoom();
         session.markProgress(nowMs);
     }
@@ -384,6 +409,24 @@ public final class AgentLmpqCoordinator {
                         || member.characterId() == session.eventLeaderId())
                 .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
                 .mapToInt(member -> member.getItemQuantity(AgentLmpqDefinition.COUPON, false)).sum();
+    }
+
+    /**
+     * The 'LMPQ coupons:' line, as the run leaves FARMING and as it leaves REGROUPING: the coupons the run counts as
+     * secured, the leader's, and each online member's by name. Logging only; a failure to read them is logged.
+     */
+    private static void logCoupons(AgentLmpqSession session, Character leader, int secured) {
+        try {
+            log.info("LMPQ coupons: session={} phase={} secured={} leader={} members={}", session.sessionId(),
+                    session.phase(), secured, leader.getItemQuantity(AgentLmpqDefinition.COUPON, false),
+                    session.members().stream().map(member -> character(member.characterId()))
+                            .filter(java.util.Objects::nonNull)
+                            .map(member -> member.getName() + ":"
+                                    + member.getItemQuantity(AgentLmpqDefinition.COUPON, false))
+                            .collect(java.util.stream.Collectors.joining(",", "{", "}")));
+        } catch (RuntimeException failure) {
+            log.warn("LMPQ coupons line failed: session={}", session.sessionId(), failure);
+        }
     }
 
     private static boolean noAvailableFarmRooms(AgentLmpqSession session) {
