@@ -5821,3 +5821,47 @@ tuning:
     # Purpose: How far beyond Yulete's 310-pixel rule an RJPQ companion stands while the leader may still want to meet Yulete alone in his office, so no companion spoils it by standing at the edge.
     # Technical: AgentRjpqStagePlay.office walks a companion within 310 + this many pixels of Yulete (252,243) back to the office spawn while npcShocked is 1 and yuleteTalked is not -1.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.YULETE_CLEAR_MARGIN_PX: '30'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion keeps a free Lab Unit room to itself while it walks to the room's door, so two companions do not head for the same room and none takes the room left for the leader.
+    # Technical: AgentRjpqStagePlay.hallway renews the claim on each tick it walks to the room (AgentRjpqSession.claimRoom); the others count a claimed room as taken; the event's statusStg5 marks it taken once entered.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ROOM_CLAIM_MS: '15000'
+    # Values: 10000-300000 milliseconds. Recommended: 60000.
+    # Purpose: How long an RJPQ companion may stay on one Lab Unit row before it refreshes its way around the room once, in case its route there went stale.
+    # Technical: AgentRjpqStagePlay.room calls PrimitiveCapabilityGateway.refreshNavigation once per stuck spell when the member's standing row has not changed for this long, and logs 'RJPQ units: stuck'; a row change starts a new spell.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.UNIT_STUCK_MS: '60000'
+    # Values: 40-250 pixels. Recommended: 110.
+    # Purpose: How far apart the RJPQ companions' guard posts stand around the captive in the Center Lab.
+    # Technical: AgentRjpqCompanionPlay.guardPosts puts posts at the captive's x plus 0, minus and plus this many pixels, each on the ground there; a post whose ground is off the captive's ledge falls back to the captive's spot.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_SPREAD_PX: '110'
+    # Values: 10-200 pixels. Recommended: 60.
+    # Purpose: How far a Center Lab guard post's ground may lie above or below the captive before the post is taken as off her ledge.
+    # Technical: AgentRjpqCompanionPlay.guardPosts replaces a post whose ground lies farther than this above or below the captive with the captive's own spot.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_POST_MAX_DY_PX: '60'
+    # Values: 10-100 pixels. Recommended: 30.
+    # Purpose: How close an RJPQ guard stands to its post before it stops and waits there.
+    # Technical: AgentRjpqStagePlay.guard navigates to its Center Lab post until within this distance, then stops there until a Neo Huroid wakes it.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_ARRIVAL_PX: '30'
+    # Values: 80-500 pixels. Recommended: 220.
+    # Purpose: How near a Neo Huroid must come to an RJPQ guard before the guard leaves its post to fight it.
+    # Technical: AgentRjpqStagePlay.guard calls grindFromAnchor at the post for Neo Huroids when one is within this distance of the guard (or near the captive, ESCORT_THREAT_RADIUS_PX).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.WAKE_RADIUS_PX: '220'
+    # Values: 80-600 pixels. Recommended: 260.
+    # Purpose: How near a Neo Huroid must come to the captive before every RJPQ guard goes for it.
+    # Technical: AgentRjpqStagePlay.guard wakes for a Neo Huroid within this distance of the captive (the escort mob, else her ledge).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_THREAT_RADIUS_PX: '260'
+    # Values: 0-15000 milliseconds. Recommended: 4000.
+    # Purpose: How long the RJPQ companion who calls the boss waits after its warning line before it talks to Yulete, so the party can get ready.
+    # Technical: AgentRjpqStagePlay.callBoss says C1 when it reaches Yulete (AgentRjpqSession.warnBossCall) and runs Yulete's script headless this long after.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.BOSS_CALL_DELAY_MS: '4000'
+    # Values: 5000-120000 milliseconds. Recommended: 30000.
+    # Purpose: The least time between two "she's getting hit" calls by the RJPQ captive's guard, so it speaks up now and then, not on every hit.
+    # Technical: AgentRjpqSession.observeEscortHp allows a C3 line only this long after the last one, when the escort mob's HP fell since the last look.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_EVERY_MS: '30000'
+    # Values: 0-10. Recommended: 3.
+    # Purpose: How many times in a run the RJPQ captive's guard calls out that she is being hit.
+    # Technical: AgentRjpqSession.observeEscortHp counts the C3 lines of the run and stops allowing them after this many; 0 keeps the guard silent.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_MAX: '3'
+    # Values: 1-10. Recommended: 3.
+    # Purpose: How many times an RJPQ companion asks one claim NPC (the marble, the traces, the reward) before it gives that claim up.
+    # Technical: AgentRjpqStagePlay.claim counts its tries per map in the member state; from the second try a full tab first loses its cheapest item (E2 once); past this many it logs 'RJPQ claim skipped' and stands, and the release takes it out through the event.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.CLAIM_RETRY_MAX: '3'

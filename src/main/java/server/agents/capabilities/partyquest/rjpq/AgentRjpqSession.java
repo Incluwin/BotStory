@@ -4,7 +4,10 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -44,6 +47,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     private static final String BOOK_CLAIM = "book:";
     private static final String DOOR_CLAIM = "door:";
+    private static final String ROOM_CLAIM = "room:";
 
     private final String sessionId = UUID.randomUUID().toString();
     private final AgentRjpqSide side;
@@ -60,6 +64,12 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private final Set<Integer> checkedBooks = new HashSet<>();
     private final Map<String, Claim> claims = new LinkedHashMap<>();
     private int beakerTarget = -1;
+    private final Map<Integer, int[]> unitKnown = new HashMap<>();
+    private final Map<Integer, Set<Integer>> unitTried = new HashMap<>();
+    private long bossCallWarnedAtMs = -1;
+    private long escortHp = -1;
+    private int escortHurtLines;
+    private long escortHurtLineAtMs = -1;
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -373,6 +383,104 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
             }
         }
         return claimed;
+    }
+
+    /** Claims a free Lab Unit room (1-4) for the companion walking to it; see {@link #claimDoor}. */
+    synchronized boolean claimRoom(int room, int agentId, long nowMs, long untilMs) {
+        return claim(ROOM_CLAIM + room, agentId, nowMs, untilMs);
+    }
+
+    /** The Lab Unit rooms another companion has a live claim on. */
+    synchronized Set<Integer> roomsClaimedByOthers(int agentId, long nowMs) {
+        Set<Integer> claimed = new HashSet<>();
+        for (String key : claimedByOthers(agentId, nowMs)) {
+            if (key.startsWith(ROOM_CLAIM)) {
+                claimed.add(Integer.parseInt(key.substring(ROOM_CLAIM.length())));
+            }
+        }
+        return claimed;
+    }
+
+    /** A companion found {@code column} right on {@code row} of its room. */
+    synchronized void learnUnitRow(int room, int row, int column) {
+        unitRows(room)[row] = column;
+    }
+
+    /** The column a companion found right on that row of the room; -1 when none has. */
+    synchronized int unitKnown(int room, int row) {
+        int[] rows = unitKnown.get(room);
+        return rows == null ? -1 : rows[row];
+    }
+
+    /** The columns other rooms' companions found right on that row. */
+    synchronized List<Integer> unitKnownByOthers(int room, int row) {
+        List<Integer> known = new ArrayList<>();
+        unitKnown.forEach((other, rows) -> {
+            if (other != room && rows[row] >= 0) {
+                known.add(rows[row]);
+            }
+        });
+        return known;
+    }
+
+    /** Every room's known rows, copied. */
+    synchronized Map<Integer, int[]> unitKnowledge() {
+        Map<Integer, int[]> copy = new HashMap<>();
+        unitKnown.forEach((room, rows) -> copy.put(room, rows.clone()));
+        return copy;
+    }
+
+    /** A wrong column tried on that row of the room. */
+    synchronized void markUnitTried(int room, int row, int column) {
+        unitTried.computeIfAbsent(room * AgentRjpqDefinition.LAB_UNIT_ROWS + row, key -> new HashSet<>()).add(column);
+    }
+
+    synchronized Set<Integer> unitTried(int room, int row) {
+        return Set.copyOf(unitTried.getOrDefault(room * AgentRjpqDefinition.LAB_UNIT_ROWS + row, Set.of()));
+    }
+
+    /** Drops what the other rooms knew of a row that left this room no column (one of them must be wrong). */
+    synchronized void forgetOtherRooms(int room, int row) {
+        unitKnown.forEach((other, rows) -> {
+            if (other != room) {
+                rows[row] = -1;
+            }
+        });
+    }
+
+    synchronized void forgetTried(int room, int row) {
+        unitTried.remove(room * AgentRjpqDefinition.LAB_UNIT_ROWS + row);
+    }
+
+    private int[] unitRows(int room) {
+        return unitKnown.computeIfAbsent(room, key -> {
+            int[] rows = new int[AgentRjpqDefinition.LAB_UNIT_ROWS];
+            Arrays.fill(rows, -1);
+            return rows;
+        });
+    }
+
+    /** When the boss call was announced (the first ask sets it to {@code nowMs}). */
+    synchronized long warnBossCall(long nowMs) {
+        if (bossCallWarnedAtMs < 0) {
+            bossCallWarnedAtMs = nowMs;
+        }
+        return bossCallWarnedAtMs;
+    }
+
+    /**
+     * Follows the captive's HP; true when it fell since the last look and a hurt line is due (none for
+     * {@code everyMs}, fewer than {@code max} so far), which it then counts.
+     */
+    synchronized boolean observeEscortHp(long hp, long nowMs, long everyMs, int max) {
+        boolean hurt = escortHp >= 0 && hp < escortHp;
+        escortHp = hp;
+        if (!hurt || escortHurtLines >= max || (escortHurtLineAtMs >= 0 && nowMs - escortHurtLineAtMs < everyMs)) {
+            return false;
+        }
+        escortHurtLines++;
+        escortHurtLineAtMs = nowMs;
+        return true;
     }
 
     private boolean claim(String key, int agentId, long nowMs, long untilMs) {

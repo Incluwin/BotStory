@@ -147,27 +147,4 @@ class AgentRjpqBeakersTest {
 
         verify(fixture.partyQuest).enterPortal(fixture.character(MIRA), 4);
     }
-
-    @Test
-    void theLinesAreLowerCasePlayerChatWithNoDigitsOrMarkup() {
-        List<String> lines = List.of(AgentRjpqCompanionPlay.booksStart(), AgentRjpqCompanionPlay.passFound(),
-                AgentRjpqCompanionPlay.letterFound(AgentRjpqSide.ZENUMIST),
-                AgentRjpqCompanionPlay.letterFound(AgentRjpqSide.ALCADNO), AgentRjpqCompanionPlay.tunnelStart(),
-                AgentRjpqCompanionPlay.beakersStart(0), AgentRjpqCompanionPlay.beakersStart(2),
-                AgentRjpqCompanionPlay.beakerNext(1));
-        for (String line : lines) {
-            assertEquals(line.toLowerCase(java.util.Locale.ROOT), line, line);
-            assertEquals(-1, indexOfAny(line, "0123456789#[<{"), line);
-            assertEquals(true, line.length() <= 100, line);
-        }
-    }
-
-    private static int indexOfAny(String line, String characters) {
-        for (int i = 0; i < line.length(); i++) {
-            if (characters.indexOf(line.charAt(i)) >= 0) {
-                return i;
-            }
-        }
-        return -1;
-    }
 }

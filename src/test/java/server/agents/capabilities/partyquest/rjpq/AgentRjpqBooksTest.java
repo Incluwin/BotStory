@@ -157,6 +157,22 @@ class AgentRjpqBooksTest {
     }
 
     @Test
+    void withPqGuidanceOffTheCompanionsPlayInSilence() {
+        fixture.session.setMemberCoordinationChatEnabled(false);
+        fixture.books(WEST_BOOK);
+        fixture.at(MIRA, -290, 100);
+        when(fixture.partyQuest.runNpcObject(fixture.character(MIRA), 2_112_007, 102)).thenAnswer(call -> {
+            fixture.properties.put("statusStg1", "1");
+            return true;
+        });
+
+        fixture.tick(MIRA, 2_000L);
+
+        verify(fixture.partyQuest).runNpcObject(fixture.character(MIRA), 2_112_007, 102);
+        verify(fixture.packets, never()).broadcastChatText(any(), any(), anyBoolean(), anyInt());
+    }
+
+    @Test
     void theOpeningLineIsSaidOnceForTheWholeParty() {
         fixture.books(WEST_BOOK, EAST_BOOK);
         for (int id : RjpqStageFixture.COMPANIONS) {

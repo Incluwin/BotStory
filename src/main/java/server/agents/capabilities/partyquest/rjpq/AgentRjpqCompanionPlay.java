@@ -1,12 +1,17 @@
 package server.agents.capabilities.partyquest.rjpq;
 
+import client.inventory.Item;
 import server.agents.integration.NpcSighting;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.IntPredicate;
+import java.util.function.IntToLongFunction;
+import java.util.function.UnaryOperator;
 
 /**
  * RJPQ companion play's pure rules and every line a companion says. Lines are lower case map chat with no digits and
@@ -62,7 +67,64 @@ final class AgentRjpqCompanionPlay {
         return "if you want yulete, go talk to him now. we'll stay back.";
     }
 
+    // ---- lines (stage 6-7 and the claims) ----
+
+    private static final List<String> ORDINALS = List.of("first", "second", "third", "fourth", "fifth", "sixth",
+            "seventh", "eighth", "ninth", "tenth");
+    private static final List<String> COLUMNS = List.of("far left", "second from the left", "second from the right",
+            "far right");
+
+    static String roomsStart(String leader) {
+        return "one room each. we'll leave one for you, " + leader + ".";
+    }
+
+    static String leaderRow(String leader, int row, int column) {
+        return leader + ", your " + ORDINALS.get(row) + " row should be the " + COLUMNS.get(column) + " one.";
+    }
+
+    static String bossCall() {
+        return "everyone ready? i'll talk to yulete.";
+    }
+
+    static String watchCaptive(AgentRjpqSide side) {
+        return "watch " + side.captiveName() + "! keep them off " + pronoun(side) + ".";
+    }
+
+    static String captiveHit(AgentRjpqSide side) {
+        return side.captiveName() + "'s getting hit, on it!";
+    }
+
+    static String cleared(AgentRjpqSide side) {
+        return "we did it! " + side.captiveName() + " is safe. " + side.npcName() + " has our reward.";
+    }
+
+    static String bagFull() {
+        return "my bag's full, one sec.";
+    }
+
+    /** The captive as "her" (Juliet, held on the Zenumist side) or "him" (Romeo, on the Alcadno side). */
+    static String pronoun(AgentRjpqSide side) {
+        return "juliet".equals(side.captiveName()) ? "her" : "him";
+    }
+
     // ---- rules ----
+
+    private static final List<Integer> POST_SPREADS = List.of(0, -1, 1);
+
+    /**
+     * Three guard posts around the captive: her x plus 0, -s and +s, each on the ground there; a post whose ground lies
+     * more than {@code maxDyPx} above or below her (off her ledge) is her own spot.
+     */
+    static List<Point> guardPosts(Point anchor, int spreadPx, int maxDyPx, UnaryOperator<Point> groundAt) {
+        List<Point> posts = new ArrayList<>();
+        for (int spread : POST_SPREADS) {
+            Point raw = new Point(anchor.x + spread * spreadPx, anchor.y);
+            Point ground = groundAt.apply(raw);
+            Point post = ground == null ? raw : ground;
+            posts.add(Math.abs(post.y - anchor.y) > maxDyPx ? new Point(anchor) : new Point(post));
+        }
+        return posts;
+    }
 
     /** A beaker as its reactor stands now: its index (0-2 left to right) and state. */
     record Beaker(int index, int state, Point position) {
@@ -95,6 +157,28 @@ final class AgentRjpqCompanionPlay {
                 .min(Comparator.comparingDouble((NpcSighting book) -> book.position().distanceSq(from))
                         .thenComparingInt(NpcSighting::objectId))
                 .orElse(null);
+    }
+
+    /**
+     * The item a companion drops to free a slot: the least valuable one it may part with, never one of the run's own
+     * (letters, liquid, keys, files, marbles); the first of equals; null when there is none.
+     */
+    static Item cheapest(Collection<Item> items, IntToLongFunction value, IntPredicate mayDrop) {
+        Item cheapest = null;
+        long cheapestValue = Long.MAX_VALUE;
+        for (Item item : items) {
+            int itemId = item.getItemId();
+            if (AgentRjpqDefinition.EXCLUSIVE_ITEM_IDS.contains(itemId) || itemId == AgentRjpqSide.ZENUMIST.marbleItemId()
+                    || itemId == AgentRjpqSide.ALCADNO.marbleItemId() || !mayDrop.test(itemId)) {
+                continue;
+            }
+            long itemValue = value.applyAsLong(itemId);
+            if (itemValue < cheapestValue) {
+                cheapest = item;
+                cheapestValue = itemValue;
+            }
+        }
+        return cheapest;
     }
 
     /** Whether a floor drop at {@code at} lies on a beaker's item area (a liquid there is being poured, not lost). */

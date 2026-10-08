@@ -2,13 +2,16 @@ package server.agents.capabilities.partyquest.rjpq;
 
 import client.Character;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ItemInformationProvider;
 import server.agents.capabilities.looting.AgentLootEligibility;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.NpcSighting;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -23,9 +26,9 @@ import java.util.Set;
 /**
  * What a companion does on each RJPQ stage, on its own tick, the way a player would: it walks to what it needs and acts
  * from beside it (a book, a beaker, a door, a portal, a drop), never from afar, and it leaves a stage through its exit
- * once the stage is open, without waiting for its leader (the default between stages). Stages 1-5 so far: the books,
- * the dark tunnel, the beakers, the Special Lab's card keys and doors (the Dark Labs and the files stay the leader's
- * until the first live test shows how a player reaches the boxes) and the office.
+ * once the stage is open, without waiting for its leader (the default between stages), but it waits for the leader
+ * before the boss. Every stage but the Dark Labs and the file hand-over, which stay the leader's until the first live
+ * test shows how a player reaches the boxes; after the boss, each companion claims for itself.
  */
 final class AgentRjpqStagePlay {
     private static final Logger log = LoggerFactory.getLogger(AgentRjpqStagePlay.class);
@@ -45,15 +48,39 @@ final class AgentRjpqStagePlay {
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DROP_REACH_PX");
     private static final int YULETE_CLEAR_MARGIN_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.YULETE_CLEAR_MARGIN_PX");
+    private static final long ROOM_CLAIM_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ROOM_CLAIM_MS");
+    private static final long UNIT_STUCK_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.UNIT_STUCK_MS");
+    private static final int GUARD_SPREAD_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_SPREAD_PX");
+    private static final int GUARD_POST_MAX_DY_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_POST_MAX_DY_PX");
+    private static final int GUARD_ARRIVAL_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_ARRIVAL_PX");
+    private static final int WAKE_RADIUS_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.WAKE_RADIUS_PX");
+    private static final int ESCORT_THREAT_RADIUS_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_THREAT_RADIUS_PX");
+    private static final long BOSS_CALL_DELAY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.BOSS_CALL_DELAY_MS");
+    private static final long ESCORT_HURT_LINE_EVERY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_EVERY_MS");
+    private static final int ESCORT_HURT_LINE_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_MAX");
+    private static final int CLAIM_RETRY_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.CLAIM_RETRY_MAX");
 
     private AgentRjpqStagePlay() {
     }
 
-    /** The companion's stage work this tick, by the stage map it stands on. */
+    /** The companion's stage work this tick, by the stage map it stands on; its claims once the boss is down. */
     static void play(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
                      AgentRjpqMemberState member, long nowMs) {
         int stageMap = session.side().zenumistMap(agent.getMapId());
-        if (stageMap == AgentRjpqDefinition.BOOKS_MAP) {
+        if (AgentRjpqTerminationService.pastTheClear(session.eventInstance())) {
+            claim(session, entry, agent, member, nowMs);
+        } else if (stageMap == AgentRjpqDefinition.BOOKS_MAP) {
             books(session, entry, agent, member, nowMs);
         } else if (stageMap == AgentRjpqDefinition.TUNNEL_MAP) {
             tunnel(session, entry, agent, member, nowMs);
@@ -63,6 +90,14 @@ final class AgentRjpqStagePlay {
             keys(session, entry, agent, member, nowMs);
         } else if (stageMap == AgentRjpqDefinition.OFFICE_MAP) {
             office(session, entry, agent, member, nowMs);
+        } else if (stageMap == AgentRjpqDefinition.LAB_TUNNEL_MAP) {
+            hallway(session, entry, agent, member, nowMs);
+        } else if (AgentRjpqDefinition.isLabUnit(stageMap)) {
+            room(session, entry, agent, member, AgentRjpqDefinition.labUnitRoom(stageMap), nowMs);
+        } else if (stageMap == AgentRjpqDefinition.CENTER_ENTRANCE_MAP) {
+            leave(entry, agent, member, AgentRjpqDefinition.STAGE_EXIT_PORTAL, nowMs);
+        } else if (stageMap == AgentRjpqDefinition.CENTER_LAB_MAP) {
+            centerLab(session, entry, agent, member, nowMs);
         }
     }
 
@@ -289,6 +324,350 @@ final class AgentRjpqStagePlay {
         }
     }
 
+    // ---- stage 6: the Lab Units ----
+
+    /**
+     * The hallway: four rooms, one person each, and a room once entered is taken for the run. A companion takes the
+     * nearest free room nobody else is walking to, but never the last one while the leader has none.
+     */
+    static void hallway(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                        AgentRjpqMemberState member, long nowMs) {
+        Character leader = AgentRjpqCoordinator.character(session.eventLeaderId());
+        AgentRjpqDialogue.narrate(session, "U1", agent, AgentRjpqCompanionPlay.roomsStart(leaderName(leader)));
+        int taken = intProperty(agent, "statusStg5");
+        Set<Integer> others = session.roomsClaimedByOthers(agent.getId(), nowMs);
+        List<Integer> free = new ArrayList<>();
+        for (int room = 1; room <= AgentRjpqDefinition.LAB_UNIT_COLUMNS; room++) {
+            if (((taken >> (room - 1)) & 1) == 0 && !others.contains(room)) {
+                free.add(room);
+            }
+        }
+        if (!AgentRjpqLabUnits.mayTakeRoom(free.size(), leaderHasRoom(session, leader))) {
+            AgentRjpqCoordinator.actions().stop(entry);
+            return;
+        }
+        MapleMap map = agent.getMap();
+        Portal door = null;
+        int room = -1;
+        for (int candidate : free) {
+            Portal portal = map == null ? null : map.getPortal(AgentRjpqDefinition.labUnitRoomPortalName(candidate));
+            if (portal != null && (door == null
+                    || distanceSq(agent, portal.getPosition()) < distanceSq(agent, door.getPosition()))) {
+                door = portal;
+                room = candidate;
+            }
+        }
+        if (door == null || !session.claimRoom(room, agent.getId(), nowMs, nowMs + ROOM_CLAIM_MS)) {
+            AgentRjpqCoordinator.actions().stop(entry);
+            return;
+        }
+        leave(entry, agent, member, AgentRjpqDefinition.labUnitRoomPortalName(room), nowMs);
+    }
+
+    /** The leader holds a room (he is in one, or past them), or cannot take one any more. */
+    private static boolean leaderHasRoom(AgentRjpqSession session, Character leader) {
+        if (leader == null || session.leaderWentDown()) {
+            return true;
+        }
+        int map = session.side().zenumistMap(leader.getMapId());
+        return AgentRjpqDefinition.isLabUnit(map) || map == AgentRjpqDefinition.CENTER_ENTRANCE_MAP
+                || map == AgentRjpqDefinition.CENTER_LAB_MAP;
+    }
+
+    /**
+     * A room: the companion reads what its last portal taught (a row higher: that column was right; back on the floor:
+     * wrong), gives the leader his row once the other three rooms know it, and walks onto the next portal to try, or
+     * out through out00 once it is past the last row.
+     */
+    static void room(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                     AgentRjpqMemberState member, int room, long nowMs) {
+        Point position = agent.getPosition();
+        if (position == null) {
+            return;
+        }
+        int row = AgentRjpqLabUnits.standingRow(position.y);
+        learn(session, agent, member, room, row, nowMs);
+        hintLeader(session, agent);
+        if (row >= AgentRjpqLabUnits.TOP) {
+            leave(entry, agent, member, AgentRjpqDefinition.LAB_UNIT_EXIT_PORTAL, nowMs);
+            return;
+        }
+        int column = column(session, agent, room, row);
+        String name = AgentRjpqDefinition.labUnitPortalName(row, column);
+        Portal portal = standAtPortal(entry, agent, name);
+        if (portal != null && AgentRjpqCoordinator.partyQuest().enterPortal(agent,
+                AgentRjpqDefinition.labUnitPortalId(row, column))) {
+            member.tryUnitPortal(row, column);
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
+        }
+        if (member.unitStuck(nowMs, UNIT_STUCK_MS)) {
+            AgentRjpqCoordinator.actions().refreshNavigation(entry, agent);
+            log.info("RJPQ units: stuck session={} side={} member={} room={} row={}", session.sessionId(),
+                    session.side().key(), agent.getId(), room, row);
+        }
+    }
+
+    private static void learn(AgentRjpqSession session, Character agent, AgentRjpqMemberState member, int room,
+                              int row, long nowMs) {
+        member.observeUnitRow(row, nowMs);
+        int triedRow = member.triedUnitRow();
+        int triedColumn = member.triedUnitColumn();
+        if (triedRow < 0) {
+            return;
+        }
+        member.clearUnitTry();
+        AgentRjpqLabUnits.Outcome outcome = AgentRjpqLabUnits.outcome(triedRow, row);
+        if (outcome == AgentRjpqLabUnits.Outcome.RIGHT) {
+            session.learnUnitRow(room, triedRow, triedColumn);
+            session.markProgress(nowMs);
+        } else if (outcome == AgentRjpqLabUnits.Outcome.WRONG) {
+            session.markUnitTried(room, triedRow, triedColumn);
+        }
+        log.info("RJPQ units: session={} side={} member={} room={} row={} column={} outcome={}", session.sessionId(),
+                session.side().key(), agent.getId(), room, triedRow, triedColumn, outcome);
+    }
+
+    /** The column to try on a row: the known one, else the first one still possible. */
+    private static int column(AgentRjpqSession session, Character agent, int room, int row) {
+        int known = session.unitKnown(room, row);
+        if (known >= 0) {
+            return known;
+        }
+        List<Integer> candidates = AgentRjpqLabUnits.candidates(session.unitTried(room, row),
+                session.unitKnownByOthers(room, row));
+        if (candidates.isEmpty()) {
+            session.forgetOtherRooms(room, row);
+            log.info("RJPQ units: inconsistent row session={} side={} member={} room={} row={}", session.sessionId(),
+                    session.side().key(), agent.getId(), room, row);
+            candidates = AgentRjpqLabUnits.candidates(session.unitTried(room, row), List.of());
+        }
+        if (candidates.isEmpty()) {
+            session.forgetTried(room, row);
+            return 0;
+        }
+        return candidates.getFirst();
+    }
+
+    /** Once per row, when the other three rooms know it: the leader's column on the row he stands at, in party chat. */
+    private static void hintLeader(AgentRjpqSession session, Character agent) {
+        Character leader = AgentRjpqCoordinator.character(session.eventLeaderId());
+        if (leader == null || leader.getPosition() == null) {
+            return;
+        }
+        int leaderRoom = AgentRjpqDefinition.labUnitRoom(session.side().zenumistMap(leader.getMapId()));
+        if (leaderRoom < 0) {
+            return;
+        }
+        int row = AgentRjpqLabUnits.standingRow(leader.getPosition().y);
+        if (row >= AgentRjpqLabUnits.TOP) {
+            return;
+        }
+        int column = AgentRjpqLabUnits.leaderColumn(leaderRoom, row, session.unitKnowledge());
+        if (column >= 0) {
+            AgentRjpqDialogue.narrateParty(session, "U3-" + row, agent,
+                    AgentRjpqCompanionPlay.leaderRow(leader.getName(), row, column));
+        }
+    }
+
+    // ---- stage 7: the Center Lab ----
+
+    /**
+     * The captive stands on her ledge while two Neo Huroids keep coming. Companions guard posts around her and fight
+     * what comes near; once the leader is in (or went down) and no boss lives, the companion nearest Yulete walks to
+     * him, warns the party and talks to him, which calls the boss. While the boss lives everyone fights it except the
+     * guard nearest the captive.
+     */
+    static void centerLab(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                          AgentRjpqMemberState member, long nowMs) {
+        AgentRjpqSide side = session.side();
+        MapleMap map = agent.getMap();
+        List<Monster> live = AgentMapPerception.monsters(map).stream().filter(monster -> monster.getHp() > 0).toList();
+        Monster escort = live.stream().filter(monster -> monster.getId() == side.escortMobId()).findFirst()
+                .orElse(null);
+        Point anchor = escort != null && escort.getPosition() != null ? escort.getPosition()
+                : ground(agent, side.escortLedge());
+        List<Character> standing = standingHere(session, agent);
+        Character nearestEscort = nearestTo(standing, anchor);
+        boolean bossAlive = live.stream().anyMatch(monster -> side.bossMobIds().contains(monster.getId()));
+        if (bossAlive) {
+            AgentRjpqDialogue.narrate(session, "C2", agent, AgentRjpqCompanionPlay.watchCaptive(side));
+            if (same(agent, nearestEscort)) {
+                escortHurtLine(session, agent, escort, nowMs);
+                guard(entry, agent, anchor, anchor, live, side);
+            } else {
+                AgentRjpqCoordinator.actions().grind(entry, side.bossMobIds());
+            }
+            return;
+        }
+        Character leader = AgentRjpqCoordinator.character(session.eventLeaderId());
+        boolean leaderIn = leader != null
+                && side.zenumistMap(leader.getMapId()) == AgentRjpqDefinition.CENTER_LAB_MAP;
+        if (intProperty(agent, "statusStg7") == 0 && (leaderIn || session.leaderWentDown())
+                && same(agent, nearestTo(standing, AgentRjpqDefinition.CENTER_YULETE_POSITION))) {
+            callBoss(session, entry, agent, member, nowMs);
+            return;
+        }
+        List<Point> posts = AgentRjpqCompanionPlay.guardPosts(anchor, GUARD_SPREAD_PX, GUARD_POST_MAX_DY_PX,
+                point -> AgentRjpqCoordinator.actions().groundPoint(map, point));
+        int ordinal = 0;
+        for (int i = 0; i < standing.size(); i++) {
+            if (same(agent, standing.get(i))) {
+                ordinal = i;
+            }
+        }
+        guard(entry, agent, posts.get(ordinal % posts.size()), anchor, live, side);
+    }
+
+    /** Walks to Yulete, says it is about to talk to him, and does so a moment later (his talk calls the boss). */
+    private static void callBoss(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                                 AgentRjpqMemberState member, long nowMs) {
+        Point stand = ground(agent, AgentRjpqDefinition.CENTER_YULETE_POSITION);
+        if (!near(agent.getPosition(), stand, NPC_REACH_PX) || !AgentRjpqCoordinator.actions().grounded(agent)) {
+            AgentRjpqCoordinator.actions().navigate(entry, stand, true);
+            return;
+        }
+        AgentRjpqCoordinator.actions().stop(entry);
+        long warnedAt = session.warnBossCall(nowMs);
+        if (warnedAt == nowMs) {
+            AgentRjpqDialogue.narrate(session, "C1", agent, AgentRjpqCompanionPlay.bossCall());
+        }
+        if (nowMs - warnedAt < BOSS_CALL_DELAY_MS) {
+            return;
+        }
+        boolean talked = AgentRjpqCoordinator.partyQuest().runNpc(agent, session.side().officeYuleteNpcId());
+        session.markProgress(nowMs);
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        log.info("RJPQ boss call: session={} side={} member={} talked={}", session.sessionId(), session.side().key(),
+                agent.getId(), talked);
+    }
+
+    /**
+     * A guard wakes for a Neo Huroid near itself or near the captive and fights from its post; otherwise it walks back
+     * to its post and waits there.
+     */
+    private static void guard(AgentRuntimeEntry entry, Character agent, Point post, Point escort, List<Monster> live,
+                              AgentRjpqSide side) {
+        Set<Integer> guards = Set.of(AgentRjpqDefinition.GUARD_HUROID_MOB_ID);
+        boolean wake = live.stream().filter(monster -> guards.contains(monster.getId()))
+                .anyMatch(monster -> near(monster.getPosition(), agent.getPosition(), WAKE_RADIUS_PX)
+                        || near(monster.getPosition(), escort, ESCORT_THREAT_RADIUS_PX));
+        if (wake) {
+            AgentRjpqCoordinator.actions().grindFromAnchor(entry, post, guards, guards);
+        } else if (!near(agent.getPosition(), post, GUARD_ARRIVAL_PX)) {
+            AgentRjpqCoordinator.actions().navigate(entry, post, true);
+        } else {
+            AgentRjpqCoordinator.actions().stop(entry);
+        }
+    }
+
+    /** The captive's guard calls out when the captive loses HP, now and then and a few times at most. */
+    private static void escortHurtLine(AgentRjpqSession session, Character agent, Monster escort, long nowMs) {
+        if (escort != null && session.observeEscortHp(escort.getHp(), nowMs, ESCORT_HURT_LINE_EVERY_MS,
+                ESCORT_HURT_LINE_MAX)) {
+            AgentRjpqDialogue.say(session, "C3", agent, AgentRjpqCompanionPlay.captiveHit(session.side()));
+        }
+    }
+
+    // ---- after the clear: the claims ----
+
+    /**
+     * After the boss: each companion claims for itself, never waiting for the leader, as players do: Romeo or Juliet
+     * beside the boss (the marble), Yulete on the traces map when there is one, then the reward NPC, which sends it back
+     * to the recruit map. A refused claim (a full tab) frees one slot of that tab and tries again, a few times at most.
+     */
+    static void claim(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                      AgentRjpqMemberState member, long nowMs) {
+        AgentRjpqSide side = session.side();
+        AgentRjpqDialogue.narrate(session, "E1", agent, AgentRjpqCompanionPlay.cleared(side));
+        int stageMap = side.zenumistMap(agent.getMapId());
+        int npcId;
+        InventoryType tab;
+        if (stageMap == AgentRjpqDefinition.CENTER_LAB_MAP) {
+            npcId = side.claimNpcId();
+            tab = InventoryType.ETC;
+        } else if (stageMap == AgentRjpqDefinition.TRACES_MAP) {
+            npcId = side.tracesYuleteNpcId();
+            tab = null;
+        } else if (stageMap == AgentRjpqDefinition.REWARD_MAP) {
+            npcId = AgentRjpqDefinition.REWARD_NPC_ID;
+            tab = fullRewardTab(agent);
+        } else {
+            return;
+        }
+        if (member.claimSkipped(stageMap)) {
+            AgentRjpqCoordinator.actions().stop(entry);
+            return;
+        }
+        Point at = AgentRjpqCoordinator.actions().npcPosition(agent, npcId);
+        Point stand = ground(agent, at);
+        if (stand == null) {
+            AgentRjpqCoordinator.actions().stop(entry);
+            return;
+        }
+        if (!near(agent.getPosition(), stand, NPC_REACH_PX) || !AgentRjpqCoordinator.actions().grounded(agent)) {
+            AgentRjpqCoordinator.actions().navigate(entry, stand, true);
+            return;
+        }
+        AgentRjpqCoordinator.actions().stop(entry);
+        int tries = member.claimTry(stageMap);
+        if (tries > CLAIM_RETRY_MAX) {
+            member.skipClaim(stageMap);
+            log.info("RJPQ claim skipped: session={} side={} member={} map={} npc={}", session.sessionId(), side.key(),
+                    agent.getId(), agent.getMapId(), npcId);
+            return;
+        }
+        if (tries > 1 && tab != null && freeOneSlot(agent, tab)) {
+            AgentRjpqDialogue.narrate(session, "E2-" + agent.getId(), agent, AgentRjpqCompanionPlay.bagFull());
+        }
+        boolean ran = AgentRjpqCoordinator.partyQuest().runNpc(agent, npcId);
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        log.info("RJPQ claim: session={} side={} member={} map={} npc={} try={} ran={}", session.sessionId(),
+                side.key(), agent.getId(), agent.getMapId(), npcId, tries, ran);
+    }
+
+    /** An item's shop value; 0 when the item catalog cannot be read. */
+    private static long marketValue(int itemId) {
+        try {
+            return Math.max(0, ItemInformationProvider.getInstance().getWholePrice(itemId));
+        } catch (RuntimeException | LinkageError unavailableCatalog) {
+            return 0L;
+        }
+    }
+
+    private static boolean questItem(int itemId) {
+        try {
+            return ItemInformationProvider.getInstance().isQuestItem(itemId);
+        } catch (RuntimeException | LinkageError unavailableCatalog) {
+            return false;
+        }
+    }
+
+    /** The reward's tab when one of the two it may come in (equipment, use) is full; null when neither is. */
+    private static InventoryType fullRewardTab(Character agent) {
+        for (InventoryType type : List.of(InventoryType.EQUIP, InventoryType.USE)) {
+            var inventory = agent.getInventory(type);
+            if (inventory != null && inventory.isFull()) {
+                return type;
+            }
+        }
+        return null;
+    }
+
+    /** Drops the tab's least valuable item that is not a quest or RJPQ item, as a player clears a slot. */
+    private static boolean freeOneSlot(Character agent, InventoryType type) {
+        var inventory = agent.getInventory(type);
+        if (inventory == null || !inventory.isFull()) {
+            return false;
+        }
+        Item cheapest = AgentRjpqCompanionPlay.cheapest(inventory.list(), AgentRjpqStagePlay::marketValue,
+                itemId -> !questItem(itemId));
+        if (cheapest == null) {
+            return false;
+        }
+        AgentInventoryGatewayRuntime.inventory().dropItem(agent, type, cheapest.getPosition(), cheapest.getQuantity());
+        return true;
+    }
+
     // ---- shared moves ----
 
     /**
@@ -390,6 +769,42 @@ final class AgentRjpqStagePlay {
         }
         AgentInventoryGatewayRuntime.inventory().dropItem(agent, InventoryType.ETC, item.getPosition(), (short) 1);
         return true;
+    }
+
+    /** The run's companions standing (alive, in the run's event) on the agent's map, in the run's member order. */
+    private static List<Character> standingHere(AgentRjpqSession session, Character agent) {
+        List<Character> standing = new ArrayList<>();
+        for (AgentRjpqMemberState member : session.members()) {
+            if (!member.agent()) {
+                continue;
+            }
+            Character other = AgentRjpqCoordinator.character(member.characterId());
+            if (other != null && other.getMapId() == agent.getMapId()
+                    && other.getEventInstance() == session.eventInstance()
+                    && AgentRjpqCoordinator.actions().alive(other)) {
+                standing.add(other);
+            }
+        }
+        return standing;
+    }
+
+    /** The first of {@code characters} nearest {@code point}; null when there is none. */
+    private static Character nearestTo(List<Character> characters, Point point) {
+        Character nearest = null;
+        for (Character character : characters) {
+            if (nearest == null || distanceSq(character, point) < distanceSq(nearest, point)) {
+                nearest = character;
+            }
+        }
+        return nearest;
+    }
+
+    private static boolean same(Character first, Character second) {
+        return first != null && second != null && first.getId() == second.getId();
+    }
+
+    private static String leaderName(Character leader) {
+        return leader == null ? "" : leader.getName();
     }
 
     private static Reactor reactor(Character agent, String name) {

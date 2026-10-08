@@ -105,6 +105,8 @@ public final class AgentRjpqDefinition {
     public static final int LAB_UNIT_FIRST_ROW_PORTAL_ID = 15;
     public static final List<Integer> LAB_UNIT_ROW_Y =
             List.of(-52, -352, -656, -944, -1250, -1534, -1842, -2128, -2434, -2720);
+    /** Map.wz 926100301: the ledge past the last row (success, y -3042) lies 322 px above row 9; this far up is past it. */
+    public static final int LAB_UNIT_PAST_LAST_ROW_PX = 120;
     public static final String LAB_UNIT_FAIL_PORTAL = "fail";
     public static final String LAB_UNIT_SUCCESS_PORTAL = "success";
     public static final String LAB_UNIT_EXIT_PORTAL = "out00";
@@ -136,6 +138,14 @@ public final class AgentRjpqDefinition {
             throw new IllegalArgumentException("no Lab Unit row portal " + row + "/" + column);
         }
         return LAB_UNIT_FIRST_ROW_PORTAL_ID + LAB_UNIT_COLUMNS * row + column;
+    }
+
+    /** The hallway (926100300) door of Lab Unit room 1-4: pt00-pt03 (rnj4_r1-4). */
+    public static String labUnitRoomPortalName(int room) {
+        if (room < 1 || room > LAB_UNIT_COLUMNS) {
+            throw new IllegalArgumentException("no Lab Unit room " + room);
+        }
+        return "pt0" + (room - 1);
     }
 
     public static String labUnitPortalName(int row, int column) {

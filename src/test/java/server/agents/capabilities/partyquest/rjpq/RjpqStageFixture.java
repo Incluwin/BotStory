@@ -10,18 +10,21 @@ import server.agents.capabilities.looting.AgentLootEligibility;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
+import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.CharacterGateway;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.NpcSighting;
 import server.agents.integration.PacketGateway;
+import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -58,6 +61,7 @@ final class RjpqStageFixture implements AutoCloseable {
     final PartyQuestGateway partyQuest = mock(PartyQuestGateway.class);
     final PacketGateway packets = mock(PacketGateway.class);
     final InventoryGateway inventory = mock(InventoryGateway.class);
+    final PartyGateway party = mock(PartyGateway.class);
     final MapleMap map = mock(MapleMap.class);
     final EventInstanceManager event = mock(EventInstanceManager.class);
     final AgentRjpqSession session;
@@ -66,6 +70,7 @@ final class RjpqStageFixture implements AutoCloseable {
     final Map<Integer, Point> positions = new HashMap<>();
     final Map<String, String> properties = new HashMap<>();
     final List<MapItem> floor = new ArrayList<>();
+    final List<Monster> monsters = new ArrayList<>();
     final List<String> said = new ArrayList<>();
     final MockedStatic<AgentLootEligibility> loot;
     private final List<MockedStatic<?>> statics = new ArrayList<>();
@@ -82,7 +87,10 @@ final class RjpqStageFixture implements AutoCloseable {
         CharacterGateway online = mock(CharacterGateway.class);
         when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
-        open(AgentMapPerception.class).when(() -> AgentMapPerception.items(map)).thenAnswer(call -> List.copyOf(floor));
+        MockedStatic<AgentMapPerception> perception = open(AgentMapPerception.class);
+        perception.when(() -> AgentMapPerception.items(map)).thenAnswer(call -> List.copyOf(floor));
+        perception.when(() -> AgentMapPerception.monsters(map)).thenAnswer(call -> List.copyOf(monsters));
+        open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
         loot = open(AgentLootEligibility.class);
         loot.when(() -> AgentLootEligibility.canBotTargetLoot(any(), any(), any(), any(), anyLong())).thenReturn(true);
 
@@ -108,6 +116,7 @@ final class RjpqStageFixture implements AutoCloseable {
         }
         session.setLeadership(BEN, MIRA);
         session.setCompanionAdopted(true);
+        session.setMemberCoordinationChatEnabled(true);
         session.bindEventInstance(event, 1_000L);
         when(partyQuest.property(any(), any())).thenAnswer(call -> properties.get((String) call.getArgument(1)));
         doAnswer(call -> {
@@ -176,6 +185,15 @@ final class RjpqStageFixture implements AutoCloseable {
         when(reactor.getState()).thenReturn((byte) state);
         when(reactor.getPosition()).thenReturn(new Point(x, y));
         return reactor;
+    }
+
+    Monster monster(int mobId, long hp, int x, int y) {
+        Monster monster = mock(Monster.class);
+        when(monster.getId()).thenReturn(mobId);
+        when(monster.getHp()).thenReturn(hp);
+        when(monster.getPosition()).thenReturn(new Point(x, y));
+        monsters.add(monster);
+        return monster;
     }
 
     void reactors(Reactor... reactors) {
