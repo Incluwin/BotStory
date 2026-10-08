@@ -61,8 +61,9 @@ import java.util.function.LongSupplier;
  * where its owner hears it, leaves its party, walks to the room's way out and is unloaded; only then do its lease, its
  * commitment and its trip go, and its BENCHED row takes up its bench duty again. While a trip lasts, bench duty, the
  * bench ledger and the roster's call leave its persona alone. Calls, arrivals and the way home run on companion-ops;
- * the picker (who can come, and how many) reads the crew cache and memory on the owner's I/O thread. It writes no
- * roster state. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
+ * the entry NPC's window (her offer, the picker of who can come and how many, the owner's pick) reads the crew cache
+ * and memory on the owner's I/O thread. It writes no roster state. Owned by CompanionBossRuns; nothing survives a
+ * restart (the rows stayed BENCHED).
  */
 final class CompanionBossAllies {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossAllies.class);
@@ -251,6 +252,14 @@ final class CompanionBossAllies {
      * code's own echo (CompanionPartySync.CAUSE_PREFIX) and never pulls an ally out of a party its owner is not in.
      */
     static final String CAUSE = "companion.boss";
+    /** The picker window's choice of the first ally it offers; each next one it offers takes the next number. */
+    private static final int FIRST_CHOICE = 100;
+    /** The picker window's "Everyone who can make it." */
+    private static final int EVERYONE = 98;
+    /** The picker window's "That's all for now." (the entry NPC's script ends the talk on it). */
+    private static final int THATS_ALL = 99;
+    /** The picker window's minutes. */
+    private static final long MINUTE_MS = 60_000L;
 
     private final LivingWorld world;
     private final CompanionBossRuns.OpenRuns open;
@@ -263,9 +272,23 @@ final class CompanionBossAllies {
     /** Run key -> that owner's party of allies in the run, as formed here; companion-ops only. */
     private final Map<String, Overflow> parties = new HashMap<>();
     private final AtomicInteger turns = new AtomicInteger();
+    /** Owner id -> the picker their entry NPC window last showed (their I/O thread); dropped once that list closed. */
+    private final Map<Integer, Snapshot> snapshots = new ConcurrentHashMap<>();
 
     /** The boss and the expedition an owner on its entry NPC's list may call allies to now. */
     private record Context(AgentBossRunDefinition definition, Expedition expedition) { }
+
+    /** The entry NPC's picker as its window last showed it to an owner: for which list, whom it offered, in order. */
+    private record Snapshot(Expedition expedition, List<String> offered) {
+        /** The allies a pick of {@code selection} names: one by its choice, everyone, or none (a choice not shown). */
+        List<String> picked(int selection) {
+            if (selection == EVERYONE) {
+                return offered;
+            }
+            int index = selection - FIRST_CHOICE;
+            return index >= 0 && index < offered.size() ? List.of(offered.get(index)) : List.of();
+        }
+    }
 
     CompanionBossAllies(LivingWorld world, CompanionBossRuns.OpenRuns open, Map<String, CompanionBossRun> runs) {
         this(world, open, runs, Ports.LIVE, System::currentTimeMillis);
@@ -365,6 +388,103 @@ final class CompanionBossAllies {
             }
         }
         return reserved;
+    }
+
+    // ---- the entry NPC's window (the owner's I/O thread) ------------------------------------------
+
+    /**
+     * The entry NPC's Easy window for {@code clicker} (memory and the crew cache): true when she offers "Call allies
+     * from my bench...": the terms of her picker hold ({@link #picker}: both switches, a human owner on a list a human
+     * leads that still takes sign-ups, no other owner's companions on it) and a BENCHED row of theirs has no trip.
+     */
+    boolean offers(Character clicker, String bossKey) {
+        if (context(clicker, bossKey) == null) {
+            return false;
+        }
+        CompanionViews views = world.views();
+        for (CompanionView view : views == null ? List.<CompanionView>of() : views.crew(clicker)) {
+            if (view.state() == RosterState.BENCHED && !onTrip(view.personaId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The picker's window, in the entry NPC's words: when she closes the list (whole minutes, rounded down), how many
+     * more of theirs she takes, each benched companion of theirs as a choice from 100 on when she offers it (level,
+     * job, its ETA in whole minutes rounded up) or a plain line saying why not, "Everyone who can make it." with two or
+     * more to call, and "That's all for now." last. Whom it offers is kept for the owner's pick ({@link #callFromNpc}).
+     * Null when there is nothing to show: no picker, or no benched companion.
+     */
+    String pickerWindow(Character clicker, String bossKey, long nowMs) {
+        Picker picker = clicker == null ? null : picker(clicker, bossKey, nowMs);
+        if (picker == null || picker.rows().isEmpty()) {
+            if (clicker != null) {
+                snapshots.remove(clicker.getId());
+            }
+            return null;
+        }
+        int left = picker.left();
+        StringBuilder text = new StringBuilder("Who should I send word to? I close the list in about #b")
+                .append(Math.max(1L, (picker.deadlineMs() - nowMs) / MINUTE_MS))
+                .append(" min#k, so they must reach me before then.\r\n")
+                .append(left == 0 ? "There is no room on my list for more of yours."
+                        : left == 1 ? "There is #b1#k seat left for you."
+                        : "There are #b" + left + "#k seats left for you.")
+                .append("\r\n");
+        List<String> offered = new ArrayList<>();
+        for (Row row : picker.rows()) {
+            text.append("\r\n");
+            if (row.offered()) {
+                text.append("#L").append(FIRST_CHOICE + offered.size()).append('#').append(row.name()).append(" (Lv. ")
+                        .append(row.level()).append(row.job() == null || row.job().isEmpty() ? "" : " " + row.job())
+                        .append(") - about ").append(Math.max(1L, Math.ceilDiv(row.etaMs(), MINUTE_MS)))
+                        .append(" min away#l");
+                offered.add(row.personaId());
+            } else {
+                text.append(switch (row.why()) {
+                    case TOO_FAR -> row.name() + " (Lv. " + row.level() + ") cannot reach me before the list closes.";
+                    case NOT_READY -> row.name() + " is not ready for this battle.";
+                    case ON_THE_WAY -> row.name() + " is already on the way.";
+                    case BUSY -> row.name() + " is busy right now.";
+                });
+            }
+        }
+        if (offered.size() >= 2) {
+            text.append("\r\n#L").append(EVERYONE).append("#Everyone who can make it.#l");
+        }
+        text.append("\r\n#L").append(THATS_ALL).append("#That's all for now.#l");
+        snapshots.put(clicker.getId(), new Snapshot(picker.expedition(), List.copyOf(offered)));
+        return text.toString();
+    }
+
+    /**
+     * The owner picked {@code selection} in the picker's window (an ally's choice, or "Everyone who can make it."):
+     * those it names are called as {@link #send} calls them (the offer asked again under this object's lock, as many as
+     * she still takes), and she says whom she sent word to, then shows the picker again. A pick from a stale window
+     * (none shown, another list, a choice it never had, nobody it names still offered) only shows the picker as it is
+     * now.
+     * Null when there is nothing to show (see {@link #pickerWindow}).
+     */
+    String callFromNpc(Character clicker, String bossKey, int selection, long nowMs) {
+        Snapshot shown = clicker == null ? null : snapshots.get(clicker.getId());
+        Context context = shown == null ? null : context(clicker, bossKey);
+        List<String> picked = context == null || context.expedition() != shown.expedition() ? List.of()
+                : shown.picked(selection);
+        List<String> names = picked.isEmpty() ? List.of() : send(clicker, bossKey, picked, nowMs);
+        String picker = pickerWindow(clicker, bossKey, nowMs);
+        if (names.isEmpty()) {
+            return picker;
+        }
+        String sent = "I have sent word to #b" + spoken(names) + "#k.";
+        return picker == null ? sent : sent + "\r\n\r\n" + picker;
+    }
+
+    /** "Orrin", "Orrin and Magna", "Orrin, Magna and Gunnar". */
+    private static String spoken(List<String> names) {
+        int last = names.size() - 1;
+        return last == 0 ? names.get(0) : String.join(", ", names.subList(0, last)) + " and " + names.get(last);
     }
 
     // ---- the call and the arrival (companion-ops) ---------------------------------------------
@@ -618,7 +738,8 @@ final class CompanionBossAllies {
     /**
      * On companion-ops, from the audit (CompanionBossRuns.sweepLostRuns): an ally whose unload left it online (or whose
      * walk out lost its timer) is unloaded again once its walk out is over; one here whose runtime went away goes home;
-     * one whose run is gone without an end goes home once it has been gone LOST_RUN_AFTER_MS.
+     * one whose run is gone without an end goes home once it has been gone LOST_RUN_AFTER_MS. The picker windows kept
+     * for lists that closed are dropped.
      */
     void sweep(long nowMs) {
         for (Trip trip : List.copyOf(trips.values())) {
@@ -649,6 +770,7 @@ final class CompanionBossAllies {
             }
         }
         parties.values().removeIf(party -> !open.open(party.sessionId));
+        snapshots.values().removeIf(shown -> !shown.expedition().isRegistering()); // a closed list's window is stale
     }
 
     /** True while a call of the owner's still waits on companion-ops (CALLING): not all of theirs are signed up. */

@@ -61,9 +61,11 @@ import java.util.function.IntFunction;
  * register too.", that pick enlists the owner's party companions in the Agent layer's run, and each one still waiting
  * to sign up walks to its own spot beside her (the follow guard asks {@link #waitsAt}).</p>
  *
- * <p>P7 Part B: an owner's bench allies (CompanionBossAllies) are members of the same run that lead themselves. They
- * walk to their spot ({@link #standAt}), each report about one goes to them first, they never say a party companion's
- * party line where no human hears it (the signed-up line, gg), and the run's end and the audit send them home.</p>
+ * <p>P7 Part B: an owner's bench allies (CompanionBossAllies) are members of the same run that lead themselves. Her
+ * window offers an owner on her list "Call allies from my bench..." ({@link #alliesOffered}) and a picker of their
+ * benched companions ({@link #allyPicker}, {@link #allyCall}). They walk to their spot ({@link #standAt}), each report
+ * about one goes to them first, they never say a party companion's party line where no human hears it (the signed-up
+ * line, gg), and the run's end and the audit send them home.</p>
  */
 public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossRuns.class);
@@ -326,6 +328,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     public static final String SIGN_UP_REPLY = "Very well. Have them come and speak with me before time runs out.";
     /** Her answer when none of the owner's companions can sign up now (or the living world is not running). */
     public static final String NONE_CAN_SIGN_UP = "None of your companions can sign up right now.";
+    /** P7 Part B: her answer when none of the owner's benched companions can be called (or no living world runs). */
+    public static final String NO_ALLY_CAN_COME = "None of your companions on the bench can come right now.";
     /** The owner's own party companions in one run (Part A): a full party is the owner and five. */
     static final int MOST_PER_OWNER = CompanionSlots.PARTY_CAP - 1;
 
@@ -510,6 +514,30 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         int free = maxSize - reserve - humansListed;
         int share = Math.floorDiv(free, Math.max(1, owners));
         return Math.max(0, Math.min(share - held, free - botsListedOrPending));
+    }
+
+    /**
+     * P7 Part B, Mu Young's Easy window for {@code clicker} (1061014.js, on their I/O thread, memory and the crew
+     * cache): true when she offers "Call allies from my bench..." (CompanionBossAllies.offers).
+     */
+    public boolean alliesOffered(Character clicker, String bossKey) {
+        return allies.offers(clicker, bossKey);
+    }
+
+    /**
+     * P7 Part B, the owner picked "Call allies from my bench...": her bench picker's text (CompanionBossAllies), or
+     * null when there is no one to show (her script then says {@link #NO_ALLY_CAN_COME}).
+     */
+    public String allyPicker(Character clicker, String bossKey) {
+        return allies.pickerWindow(clicker, bossKey, System.currentTimeMillis());
+    }
+
+    /**
+     * P7 Part B, the owner picked {@code selection} in her bench picker: whom she sent word to (their calls handed to
+     * companion-ops) and the picker again; the picker as it is now for a stale pick; null as {@link #allyPicker}.
+     */
+    public String allyCall(Character clicker, String bossKey, int selection) {
+        return allies.callFromNpc(clicker, bossKey, selection, System.currentTimeMillis());
     }
 
     /**
