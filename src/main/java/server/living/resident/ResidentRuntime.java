@@ -430,7 +430,7 @@ public final class ResidentRuntime {
                        boolean keepLevel, String how) {
         Loadout loadout = world.content().loadout(loadoutId);
         if (keepLevel) {
-            ResidentShaper.shapeKeepingLevel(agent, persona, loadout);
+            ResidentShaper.shapeKeepingLevel(agent, persona, loadout, world.content().loadouts().values());
         } else {
             ResidentShaper.shape(agent, persona, loadout, persona.id().hashCode());
         }

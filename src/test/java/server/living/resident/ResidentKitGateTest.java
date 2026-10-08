@@ -145,7 +145,7 @@ class ResidentKitGateTest {
         try (MockedStatic<ResidentShaper> shaper = mockStatic(ResidentShaper.class)) {
             runtime.shapeIfNeeded(session, yara);
             shaper.verify(() -> ResidentShaper.shape(any(), any(), any(), anyInt()), never());
-            shaper.verify(() -> ResidentShaper.shapeKeepingLevel(eq(yara), eq(YARA), any()));
+            shaper.verify(() -> ResidentShaper.shapeKeepingLevel(eq(yara), eq(YARA), any(), any()));
         }
     }
 

@@ -2,7 +2,6 @@ package server.living.resident;
 
 import client.Character;
 import client.Client;
-import client.Job;
 import config.LivingWorldConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -152,16 +152,15 @@ class ResidentCompanionShapingTest {
 
     /**
      * '!setlevel Flint 25' then '!setlevel Flint keep' answers "Flint keeps level 25 for good.": the release then
-     * shaped it to its persona's level (33-36) and job. Kept, it is shaped at the level it has; the keep is read from
-     * its GM level record, so a load after a boot (or after shaping on its mailbox never ran) keeps the level too.
+     * shaped it to its persona's level (33-36) and job. Kept, it is shaped at the level it has (its AP and a weapon
+     * that level allows, from every loadout: ResidentShaperKeptLevelTest); the keep is read from its GM level record,
+     * so a load after a boot (or after shaping on its mailbox never ran) keeps the level too.
      */
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void aNeverShapedCompanionAGmKeptAtItsLevelIsShapedAtThatLevel(boolean afterBoot) {
         stored(FLINT_CHARACTER, 0);
-        when(flint.getLevel()).thenReturn(25);
-        shaper.when(() -> ResidentShaper.shapeKeepingLevel(any(), any(), any())).thenCallRealMethod();
-        shaper.when(() -> ResidentShaper.job("GUNSLINGER")).thenReturn(Job.GUNSLINGER);
+        when(content.loadouts()).thenReturn(Map.of(GUN_L33, GUN_LOADOUT));
         GmLevelHolds gmHolds = new GmLevelHolds(world);
         when(world.gmLevelHolds()).thenReturn(gmHolds);
         when(store.latestGmLevel(FLINT_CHARACTER, "flint")).thenReturn(Optional.of(afterBoot
@@ -175,7 +174,8 @@ class ResidentCompanionShapingTest {
         runtime.prepareCompanion(flint, FLINT, true);
 
         shaper.verify(() -> ResidentShaper.shape(any(), any(), any(), anyInt()), never()); // levels it to 33-36
-        shaper.verify(() -> ResidentShaper.shapeTo(flint, Job.GUNSLINGER, 25, GUN_LOADOUT));
+        shaper.verify(() -> ResidentShaper.shapeKeepingLevel(eq(flint), eq(FLINT), eq(GUN_LOADOUT),
+                argThat(catalog -> catalog.contains(GUN_LOADOUT))));
         verify(store).savePersonaState(any()); // shaped once: a later load does not shape it again
         verify(store).event(eq(0), eq("flint"), eq("persona.shaped"), contains("kept level"));
     }

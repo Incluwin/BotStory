@@ -23,9 +23,13 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Turns a freshly provisioned level-1 beginner into the authored Persona: levels one at a time
@@ -51,13 +55,16 @@ public final class ResidentShaper {
 
     /**
      * As {@link #shape}, at the level the character has (a GM kept it there: {@code !setlevel <name> keep}): its job
-     * advances as far as that level allows, then its AP, skills and loadout. A hired citizen is never reshaped.
+     * advances as far as that level allows, then its AP, skills and loadout. A Beginner it advances gets back the AP
+     * its Beginner levels spent, and below its loadout weapon's level it wears the best weapon that level allows
+     * ({@code catalog}: every loadout, see {@link #fallbackWeapons}). A hired citizen is never reshaped.
      */
-    public static void shapeKeepingLevel(Character agent, Persona persona, Loadout loadout) {
+    public static void shapeKeepingLevel(Character agent, Persona persona, Loadout loadout,
+                                         Collection<Loadout> catalog) {
         if (LivingContent.isHire(persona.id())) {
             return;
         }
-        shapeTo(agent, job(persona.job()), agent.getLevel(), loadout);
+        shapeTo(agent, job(persona.job()), agent.getLevel(), loadout, fallbackWeapons(loadout, catalog));
     }
 
     /**
@@ -66,9 +73,14 @@ public final class ResidentShaper {
      * Residents and for generated citizens (population).
      */
     public static void shapeTo(Character agent, Job target, int level, Loadout loadout) {
+        shapeTo(agent, target, level, loadout, null);
+    }
+
+    /** {@code keptWeapons}: at a level a GM kept, the weapons it may fall back to; null for a level chosen here. */
+    private static void shapeTo(Character agent, Job target, int level, Loadout loadout, Set<Integer> keptWeapons) {
         SHAPING.set(Boolean.TRUE);
         try {
-            shapeUnhooked(agent, target, level, loadout);
+            shapeUnhooked(agent, target, level, loadout, keptWeapons);
         } finally {
             SHAPING.remove();
         }
@@ -81,20 +93,10 @@ public final class ResidentShaper {
         return Boolean.TRUE.equals(SHAPING.get());
     }
 
-    private static void shapeUnhooked(Character agent, Job target, int level, Loadout loadout) {
-        int targetLevel = Math.max(1, Math.min(level, 200));
-        List<Job> chain = AgentCharacterShaper.advancementChain(target);
-        int guard = 0;
-        while (guard++ < 250) {
-            AgentCharacterShaper.advanceIfLegal(agent, chain);
-            if (agent.getLevel() >= targetLevel) {
-                break;
-            }
-            agent.levelUp(false);
-        }
-        AgentCharacterShaper.advanceIfLegal(agent, chain);
-        AgentCharacterShaper.repairGrowth(agent);
-        AgentCharacterShaper.assignAp(agent, agent.getJob(), loadout == null ? Map.of() : loadout.stats());
+    private static void shapeUnhooked(Character agent, Job target, int level, Loadout loadout,
+                                      Set<Integer> keptWeapons) {
+        boolean keptLevel = keptWeapons != null;
+        advanceAndSpendAp(agent, target, level, loadout, keptLevel);
         int learned = AgentSpBuildProfileService.assignOffline(agent);
         if (learned > 0) {
             log.debug("shaped {} learned {} skill levels", agent.getName(), learned);
@@ -121,9 +123,130 @@ public final class ResidentShaper {
             } catch (RuntimeException failure) {
                 log.debug("autoequip for {} failed", agent.getName(), failure);
             }
+            if (keptLevel) {
+                try {
+                    wearAllowedWeapon(agent, loadout, keptWeapons, new WzItemRules());
+                } catch (RuntimeException failure) {
+                    log.warn("kept-level weapon for {} failed", agent.getName(), failure);
+                }
+            }
         }
         agent.healHpMp();
         agent.saveCharToDB();
+    }
+
+    /**
+     * The level, job and AP step of shaping: levels the character one step at a time to {@code level} along the legal
+     * job chain toward {@code target}, repairs skipped growth and spends its AP by the loadout's shares. At a level a
+     * GM kept ({@code keptLevel}) a Beginner advanced here first gets back the AP its Beginner levels spent, as the
+     * first-job instructors' stat reset does (USE_AUTOASSIGN_STARTERS_AP put them on the Beginner curve, STR first).
+     */
+    static void advanceAndSpendAp(Character agent, Job target, int level, Loadout loadout, boolean keptLevel) {
+        int targetLevel = Math.max(1, Math.min(level, 200));
+        List<Job> chain = AgentCharacterShaper.advancementChain(target);
+        boolean beginner = agent.isBeginnerJob();
+        int guard = 0;
+        while (guard++ < 250) {
+            AgentCharacterShaper.advanceIfLegal(agent, chain);
+            if (agent.getLevel() >= targetLevel) {
+                break;
+            }
+            agent.levelUp(false);
+        }
+        AgentCharacterShaper.advanceIfLegal(agent, chain);
+        if (keptLevel && beginner && !agent.isBeginnerJob()) {
+            AgentCharacterShaper.resetToStatFloors(agent);
+        }
+        AgentCharacterShaper.repairGrowth(agent);
+        AgentCharacterShaper.assignAp(agent, agent.getJob(), loadout == null ? Map.of() : loadout.stats());
+    }
+
+    /**
+     * The weapons a kept level may fall back to: what any loadout gives as gear (its equips), this loadout's own outfit
+     * weapons and the first-job starter kits. Other loadouts' outfit weapons are looks only (the townsfolk's are work
+     * tools).
+     */
+    static Set<Integer> fallbackWeapons(Loadout loadout, Collection<Loadout> catalog) {
+        Set<Integer> ids = new HashSet<>(ResidentWardrobe.handedOut(loadout == null ? List.of() : List.of(loadout)));
+        for (Loadout other : catalog) {
+            for (int equipId : other.equipIds()) {
+                if (ItemConstants.isWeapon(equipId)) {
+                    ids.add(equipId);
+                }
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * At a level a GM kept below its loadout weapon's own: wears the best weapon of {@code weapons} it can use (the
+     * highest level requirement), one of the loadout weapon's type or, failing that, any it can fight with that shoots
+     * nothing (a bow, crossbow, claw or gun needs the loadout's own ammo), unless what it holds is as good. Found
+     * 2026-10-08: Flint (GUNSLINGER, nautilus-gun-l33, a level-30 gun) kept at 25 held the creator's sword. True when
+     * it wore one.
+     */
+    static boolean wearAllowedWeapon(Character agent, Loadout loadout, Collection<Integer> weapons, ItemRules items) {
+        Set<WeaponType> types = new HashSet<>();
+        for (int equipId : loadout.equipIds()) {
+            if (items.slot(equipId) == WEAPON) {
+                if (usable(agent, items, equipId, WEAPON)) {
+                    return false; // shaping wore the loadout's own
+                }
+                types.add(items.weaponType(equipId));
+            }
+        }
+        if (types.isEmpty()) {
+            return false;
+        }
+        Item worn = agent.getInventory(InventoryType.EQUIPPED).getItem(WEAPON);
+        int wornId = worn == null ? 0 : worn.getItemId();
+        int best = best(agent, weapons, wornId, items, types::contains);
+        if (best == 0) {
+            best = best(agent, weapons, wornId, items, type -> !shoots(type));
+        }
+        if (best == 0 || best == wornId) {
+            return false;
+        }
+        boolean carried = agent.getInventory(InventoryType.EQUIP).countById(best) > 0;
+        if (!carried && (agent.getInventory(InventoryType.EQUIP).isFull()
+                || !InventoryManipulator.addById(agent.getClient(), best, (short) 1))) {
+            return false;
+        }
+        if (AgentEquipmentService.equipInSlot(agent, best, WEAPON)) {
+            return true;
+        }
+        if (!carried) {
+            removeOne(agent, best);
+        }
+        return false;
+    }
+
+    /**
+     * The weapon it can use whose type {@code fits} with the highest level requirement: the worn one ({@code wornId}, 0
+     * for none) on a tie, else the lowest id. 0 for none.
+     */
+    private static int best(Character agent, Collection<Integer> weapons, int wornId, ItemRules items,
+                            Predicate<WeaponType> fits) {
+        List<Integer> candidates = new ArrayList<>();
+        if (wornId > 0) {
+            candidates.add(wornId);
+        }
+        weapons.stream().sorted().forEach(candidates::add);
+        int best = 0;
+        for (int itemId : candidates) {
+            if (items.slot(itemId) == WEAPON && fits.test(items.weaponType(itemId))
+                    && usable(agent, items, itemId, WEAPON)
+                    && (best == 0 || items.reqLevel(itemId) > items.reqLevel(best))) {
+                best = itemId;
+            }
+        }
+        return best;
+    }
+
+    /** It fires ammo (arrows, crossbow bolts, stars, bullets). */
+    private static boolean shoots(WeaponType type) {
+        return type == WeaponType.BOW || type == WeaponType.CROSSBOW || type == WeaponType.CLAW
+                || type == WeaponType.GUN;
     }
 
     /**
