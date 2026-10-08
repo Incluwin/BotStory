@@ -1443,9 +1443,38 @@ public final class AgentShopService {
             int minimumMesoReserve,
             int[] bought,
             boolean topUp) {
-        Character bot = sequence.bot();
         // the trip's own activity when the duty cannot be read at the counter (travel cleared its follow target)
-        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
+        return buyReadinessFloor(sequence, shop, hpPick, mpPick, minimumMesoReserve, bought, topUp,
+                AgentSupplyReadiness.shoppingActivity(sequence.entry(), sequence.bot()));
+    }
+
+    /**
+     * {@link #buyReadinessFloor} for {@code activity} with the coverage picks a visit makes at {@code shop}
+     * ({@link #findPotionItem}): a counter with no visit under way (AgentShopProvisioning).
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            AgentSupplyReadiness.Activity activity,
+            int minimumMesoReserve,
+            int[] bought,
+            boolean topUp) {
+        Character bot = sequence.bot();
+        return buyReadinessFloor(sequence, shop, findPotionItem(shop, bot, true), findPotionItem(shop, bot, false),
+                minimumMesoReserve, bought, topUp, activity);
+    }
+
+    /** {@link #buyReadinessFloor} for {@code activity}; nothing when it is null. */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            ShopSlotItem hpPick,
+            ShopSlotItem mpPick,
+            int minimumMesoReserve,
+            int[] bought,
+            boolean topUp,
+            AgentSupplyReadiness.Activity activity) {
+        Character bot = sequence.bot();
         if (activity == null) {
             return sequence;
         }

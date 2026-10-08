@@ -21,6 +21,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunService.Enlisted;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
+import server.agents.capabilities.shop.AgentShopProvisioning;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -56,8 +57,9 @@ import java.util.function.LongSupplier;
  * in the Agent layer's run as a member that leads itself, committed under its owner's run key, not loaded), HERE
  * (loaded in her room or in the fight) and LEAVING. A call is admitted by the budget before anything changes, then it
  * ends the ally's live bench slice and the ally whispers the roster's own recall ETA; at that ETA it loads at the
- * room's arrival portal, where players coming down land, as an idle Agent that leads itself, and the run's tick walks
- * it up to her. A call that fails undoes itself, last step first, and the ally whispers that it cannot come. Once on
+ * room's arrival portal, where players coming down land, as an idle Agent that leads itself, buys what it lacks of
+ * the boss's standard at the store on the way down it never walked past, and the run's tick walks it up to her. A
+ * call that fails undoes itself, last step first, and the ally whispers that it cannot come. Once on
  * her list, an owner's allies form one party of bots, the highest level leading. However the run ends for an ally (a
  * refusal, a missed start, the fight, a death it waits out beside her, the run's end, a lost run), it says how it went
  * where its owner hears it, leaves its party, walks to the room's way out and is unloaded; only then do its lease, its
@@ -172,6 +174,16 @@ final class CompanionBossAllies {
         /** True when the Agent carries fewer potions than {@code bossKey}'s standard (AgentSupplyReadiness). */
         boolean shortOfPotions(Character agent, String bossKey);
 
+        /** True when the Agent carries fewer projectiles for its weapon than {@code bossKey}'s ammo standard. */
+        boolean shortOfAmmo(Character agent, String bossKey);
+
+        /**
+         * The Agent buys at NPC {@code storeNpcId}'s shop what it lacks of {@code bossKey}'s readiness standard (its
+         * potions and the projectiles for its weapon), on toward its buy target, from its own purse, with no walk
+         * (AgentShopProvisioning); nothing when it lacks nothing.
+         */
+        AgentShopProvisioning.Provisioned provision(Character agent, String bossKey, int storeNpcId);
+
         /** The ally joins {@code lead}'s party; a lead in no party makes one first. */
         JoinOutcome join(Character lead, Character ally);
 
@@ -214,6 +226,17 @@ final class CompanionBossAllies {
                 // potions only: the shortfall counts projectiles too (ammo readiness), and the line says "pots"
                 return !AgentSupplyReadiness.shortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey))
                         .potionsNone();
+            }
+
+            @Override
+            public boolean shortOfAmmo(Character agent, String bossKey) {
+                return AgentSupplyReadiness.ammoShortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey)) > 0;
+            }
+
+            @Override
+            public AgentShopProvisioning.Provisioned provision(Character agent, String bossKey, int storeNpcId) {
+                return AgentShopProvisioning.provisionAt(agent, storeNpcId,
+                        AgentSupplyReadiness.Activity.partyQuest(bossKey));
             }
 
             @Override
@@ -619,10 +642,11 @@ final class CompanionBossAllies {
     /**
      * On companion-ops, at the ally's ETA: it loads at the entry NPC room's arrival portal of the expedition's own copy
      * of the room, on the expedition's channel, as an idle Agent that leads itself; it comes back whole, drinks by its
-     * own settings, takes its banked EXP and any stall stock back (the order a live slice loads in), says it is here,
-     * and says once when it is short of the boss's potions. A stale timer (another generation, a trip no longer on its
-     * way) does nothing. A member no longer waiting to sign up, or a run no longer taking sign-ups, turns it back with
-     * a whisper; one loaded elsewhere whispers that it cannot come; both let everything go.
+     * own settings, takes its banked EXP and any stall stock back (the order a live slice loads in), buys what it lacks
+     * of the boss's standard at the store on the boss's approach ({@link #provision}), says it is here, and says once
+     * when it is still short of the boss's potions, and of its projectiles. A stale timer (another generation, a trip
+     * no longer on its way) does nothing. A member no longer waiting to sign up, or a run no longer taking sign-ups,
+     * turns it back with a whisper; one loaded elsewhere whispers that it cannot come; both let everything go.
      */
     void arrive(Trip trip, int generation) {
         if (trip.generation != generation || trip.state != State.TRAVELLING || trips.get(trip.personaId) != trip) {
@@ -659,11 +683,40 @@ final class CompanionBossAllies {
         trip.state = State.HERE;
         log.info("Boss ally here: session={} ally={} map={}", trip.sessionId, id, map.getId());
         settle(trip, persona, agent);
+        boolean provisioned = provision(trip, agent); // before its first line
         CompanionBossRun run = runs.get(CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId));
         BossRunLines.tell(world, agent, BossRunLines.ALLY_HERE, null, null, run, trip.ownerId);
         if (ports.shortOfPotions(agent, trip.bossKey)) {
             BossRunLines.tell(world, agent, BossRunLines.ALLY_LOW_POTS, null, null, run, trip.ownerId);
         }
+        if (provisioned && ports.shortOfAmmo(agent, trip.bossKey)) {
+            BossRunLines.tell(world, agent, BossRunLines.ALLY_LOW_AMMO, null, null, run, trip.ownerId,
+                    CompanionRestockLines.ammoWord(agent));
+        }
+    }
+
+    /**
+     * A loaded ally buys what it lacks of the boss's readiness standard (its potions, and the projectiles for its
+     * weapon) at the store on the boss's approach (BossEntrance.approachStoreNpcId: Ant Tunnel Park's 24 Hr Mobile
+     * Store for Easy Balrog), on toward its buy target, from its own purse less its wallet reserve, at that store's
+     * prices and picks: allies come down by recall and never walk past it. Only while COMPANION_BOSS_ALLY_TYPES lists
+     * the boss (false then: nothing was tried); one log line per ally. A failure never undoes its arrival.
+     */
+    private boolean provision(Trip trip, Character agent) {
+        if (!world.config().companionBossAlliesEnabled(trip.bossKey)) {
+            return false;
+        }
+        BossEntrance entrance = BossEntrance.of(trip.bossKey);
+        int store = entrance == null ? 0 : entrance.approachStoreNpcId();
+        try {
+            AgentShopProvisioning.Provisioned bought = ports.provision(agent, trip.bossKey, store);
+            log.info("Boss ally provisioned: session={} ally={} store={} bought hp={} mp={} ammo={} mesos {}->{}",
+                    trip.sessionId, trip.characterId, store, bought.hpPotions(), bought.mpPotions(),
+                    bought.projectiles(), bought.mesosBefore(), bought.mesosAfter());
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} bought nothing on arrival", trip.characterId, failure);
+        }
+        return true;
     }
 
     /** A loaded ally as a live slice is (BenchDutyDispatcher.begin): each step on its own, never undoing the load. */

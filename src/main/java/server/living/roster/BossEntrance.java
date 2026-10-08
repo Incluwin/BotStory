@@ -2,6 +2,7 @@ package server.living.roster;
 
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
+import server.agents.progression.AgentPotionSupplierCatalog;
 import server.life.NPC;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -84,6 +85,23 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
         Point point = new Point(npcAt.x + beside.dx() + beside.step() * ordinal, npcAt.y);
         Point ground = beside.grounded() ? map.getPointBelow(point) : null;
         return ground != null ? new Point(ground) : point;
+    }
+
+    /**
+     * The store on the approach map ({@code approachMapId}): the NPC the potion supplier catalog lists on that map
+     * (Ant Tunnel Park's 24 Hr Mobile Store, 1061001, for Easy Balrog); 0 with no approach map or no supplier on it.
+     * A bench ally buys at its prices on arrival (CompanionBossAllies), as it never walks past it.
+     */
+    int approachStoreNpcId() {
+        if (approachMapId <= 0) {
+            return 0;
+        }
+        for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
+            if (supplier.mapId() == approachMapId) {
+                return supplier.npcId();
+            }
+        }
+        return 0;
     }
 
     /** Where an ally comes into {@code map} (its arrival portal), or null when that map has no such portal. */

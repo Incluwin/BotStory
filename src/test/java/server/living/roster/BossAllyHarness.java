@@ -11,6 +11,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.capabilities.party.JoinOutcome;
+import server.agents.capabilities.shop.AgentShopProvisioning;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
@@ -367,6 +368,15 @@ final class BossAllyHarness implements AutoCloseable {
         final Set<Integer> elsewhere = new HashSet<>();
         /** Agents short of the boss's potion standard. */
         final Set<Integer> shortOfPotions = new HashSet<>();
+        /** Agents short of the boss's ammo standard. */
+        final Set<Integer> shortOfAmmo = new HashSet<>();
+        /** "provision <Name> <boss> at <store NPC>" per provisioning asked for, in order. */
+        final List<String> provisions = new ArrayList<>();
+        /**
+         * True: provisioning and the potion and ammo counts are the live ones (Ports.LIVE: the real shop code path,
+         * its statics stubbed by the test); false: the sets above, and provisioning buys nothing.
+         */
+        boolean liveStore;
         boolean loadFails;
         /** "join Lead <- Ally (cause)" and "leave Ally (cause)", in order; the cause token in force then. */
         final List<String> party = new ArrayList<>();
@@ -408,7 +418,21 @@ final class BossAllyHarness implements AutoCloseable {
 
         @Override
         public boolean shortOfPotions(Character agent, String bossKey) {
-            return shortOfPotions.contains(agent.getId());
+            return liveStore ? CompanionBossAllies.Ports.LIVE.shortOfPotions(agent, bossKey)
+                    : shortOfPotions.contains(agent.getId());
+        }
+
+        @Override
+        public boolean shortOfAmmo(Character agent, String bossKey) {
+            return liveStore ? CompanionBossAllies.Ports.LIVE.shortOfAmmo(agent, bossKey)
+                    : shortOfAmmo.contains(agent.getId());
+        }
+
+        @Override
+        public AgentShopProvisioning.Provisioned provision(Character agent, String bossKey, int storeNpcId) {
+            provisions.add("provision " + agent.getName() + " " + bossKey + " at " + storeNpcId);
+            return liveStore ? CompanionBossAllies.Ports.LIVE.provision(agent, bossKey, storeNpcId)
+                    : AgentShopProvisioning.Provisioned.nothing(0);
         }
 
         @Override

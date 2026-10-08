@@ -53,6 +53,8 @@ final class BossRunLines {
     static final String ALLY_CANT_COME = "boss.ally.cantcome";
     static final String ALLY_HERE = "boss.ally.here";
     static final String ALLY_LOW_POTS = "boss.ally.lowpots";
+    /** Still short of projectiles after buying what it could on arrival ("{ammo}": stars, arrows, bolts, bullets). */
+    static final String ALLY_LOW_AMMO = "boss.ally.lowammo";
     static final String ALLY_TURNED_BACK = "boss.ally.turnedback";
     static final String ALLY_NOT_LISTED = "boss.ally.notlisted";
     static final String ALLY_CALLED_OFF = "boss.ally.calledoff";
@@ -133,6 +135,9 @@ final class BossRunLines {
             Map.entry(ALLY_LOW_POTS, List.of(
                     "bit low on pots, i'll make it work.",
                     "running low on pots and no shop down here. i'll manage.")),
+            Map.entry(ALLY_LOW_AMMO, List.of(
+                    "low on {ammo}, i'll make it last.",
+                    "not many {ammo} left and no shop down here. i'll make them count.")),
             Map.entry(ALLY_TURNED_BACK, List.of(
                     "list closed before i got there. heading back to camp.",
                     "won't make it down in time, heading back. good luck!")),
@@ -219,6 +224,15 @@ final class BossRunLines {
      */
     static boolean tell(LivingWorld world, Character bot, String intent, String name, String eta,
                         CompanionBossRun run, int anchorId) {
+        return tell(world, bot, intent, name, eta, run, anchorId, null);
+    }
+
+    /**
+     * As {@link #tell(LivingWorld, Character, String, String, String, CompanionBossRun, int)}, "{ammo}" read as
+     * {@code ammo} (CompanionRestockLines.withAmmo: "ammo" when null).
+     */
+    static boolean tell(LivingWorld world, Character bot, String intent, String name, String eta,
+                        CompanionBossRun run, int anchorId, String ammo) {
         if (bot == null) {
             return false;
         }
@@ -228,7 +242,7 @@ final class BossRunLines {
             return false;
         }
         if (humanInParty(bot)) {
-            return world.roster().sayInParty(bot, line(lines, intent, name, 0, eta, null, run));
+            return world.roster().sayInParty(bot, line(lines, intent, name, 0, eta, ammo, run));
         }
         if (anchorId == 0) {
             return false;
@@ -236,14 +250,14 @@ final class BossRunLines {
         MapleMap map = bot.getMap();
         if (map != null && map.getCharacterById(anchorId) != null
                 && AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED) {
-            AgentDialogueTransportRuntime.sayMapNow(bot, line(lines, intent, name, 0, eta, null, run));
+            AgentDialogueTransportRuntime.sayMapNow(bot, line(lines, intent, name, 0, eta, ammo, run));
             return true;
         }
         Character anchor = persona == null ? null : world.roster().onlineCharacter(anchorId);
         if (anchor == null || run != null && !run.firstWhisper(anchorId, intent)) {
             return false;
         }
-        world.residents().whisper(persona, anchor, line(lines, intent, name, 0, eta, null, run));
+        world.residents().whisper(persona, anchor, line(lines, intent, name, 0, eta, ammo, run));
         return true;
     }
 

@@ -264,6 +264,8 @@ class BossRunLinesTellTest {
                         "phew, long way down. where do i sign?")),
                 Map.entry(BossRunLines.ALLY_LOW_POTS, List.of("bit low on pots, i'll make it work.",
                         "running low on pots and no shop down here. i'll manage.")),
+                Map.entry(BossRunLines.ALLY_LOW_AMMO, List.of("low on {ammo}, i'll make it last.",
+                        "not many {ammo} left and no shop down here. i'll make them count.")),
                 Map.entry(BossRunLines.ALLY_TURNED_BACK, List.of(
                         "list closed before i got there. heading back to camp.",
                         "won't make it down in time, heading back. good luck!")),
@@ -287,7 +289,7 @@ class BossRunLinesTellTest {
             }
         }
         long allyIntents = BossRunLines.GENERIC.keySet().stream().filter(key -> key.startsWith("boss.ally.")).count();
-        assertEquals(plan.size(), allyIntents, "the plan's twelve ally intents and no other");
+        assertEquals(plan.size(), allyIntents, "the plan's twelve ally intents, the low-ammo line (R5) and no other");
     }
 
     // ---- helpers -------------------------------------------------------------------------------

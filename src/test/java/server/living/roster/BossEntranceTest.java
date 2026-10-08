@@ -55,6 +55,11 @@ class BossEntranceTest {
     }
 
     @Test
+    void theApproachsStoreIsTheTwentyFourHourMobileStoreAsThePotionSupplierCatalogListsIt() {
+        assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");
+    }
+
+    @Test
     void eachOrdinalWaitsThirtyPixelsFurtherLeftOnTheGroundBelow() {
         MapleMap room = muYoungsRoom(new Point(617, 246));
         when(room.getPointBelow(any(Point.class))).thenAnswer(inv -> new Point(((Point) inv.getArgument(0)).x, 252));
