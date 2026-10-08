@@ -33,6 +33,8 @@ public final class AgentLmpqCoordinator {
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TIMEOUT_SLACK_MS");
     private static final int REWARD_REFUSALS_MAX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX");
+    private static final long REWARD_STALL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS");
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
     private static final int PORTAL_RADIUS = 55;
@@ -149,7 +151,8 @@ public final class AgentLmpqCoordinator {
         }
         session.observeProgressSignature(progressSignature(session), nowMs);
         if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) {
-            fail(session, "LMPQ stalled in " + session.phase(), nowMs);
+            fail(session, session.phase() == AgentLmpqSession.Phase.REWARD
+                    ? "LMPQ reward stalled" : "LMPQ stalled in " + session.phase(), nowMs);
         }
     }
 
@@ -534,7 +537,9 @@ public final class AgentLmpqCoordinator {
         return signature;
     }
 
+    /** LMPQ base fix 2: a run past the clear that makes no progress ends after REWARD_STALL_MS in every mode. */
     private static long idleLimit(AgentLmpqSession session) {
+        if (session.phase() == AgentLmpqSession.Phase.REWARD) return REWARD_STALL_MS;
         return session.mode() == AgentLmpqSession.Mode.AUTONOMOUS ? 120_000L : humanIdleLimitMs();
     }
 

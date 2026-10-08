@@ -23,26 +23,27 @@ final class AgentLmpqTerminationService {
 
     /**
      * Lets an ended run go, from the tick (a terminal run), a stop request (a terminal run) or a forced stop (any
-     * run). {@code stockDispose} is the dispose a stock run gets, as it always has: the tick passes whether the run
-     * failed, a forced stop true and a stop request false. A companion run is routed instead: a completed one is
-     * released without a dispose; one past its clear lets only its companions go (failAfterClear); any other is
-     * disposed whoever ends it, because its party is kept and nobody else would end the event.
+     * run). Past the clear no release takes a human out or disposes the event under him, in any mode (LMPQ base fix
+     * 2): a completed run is released, any other lets only its Agents go (failAfterClear, which disposes the event
+     * only once nobody is left in it), so a human still in the event keeps his reward. Before the clear,
+     * {@code stockDispose} is the dispose a stock run gets, as it always has: the tick passes whether the run failed,
+     * a forced stop true and a stop request false. A companion run before the clear is released without a dispose
+     * when it completed and disposed otherwise, whoever ends it, because its party is kept and nobody else would end
+     * the event.
      */
     static void finish(AgentLmpqSession session, String reason, long nowMs, boolean stockDispose) {
         if (session == null) return;
+        boolean completed = session.phase() == AgentLmpqSession.Phase.COMPLETED;
+        if (pastTheClear(session)) {
+            if (completed) release(session, reason, nowMs, false);
+            else failAfterClear(session, reason, nowMs);
+            return;
+        }
         if (!session.companionAdopted()) {
             release(session, reason, nowMs, stockDispose);
             return;
         }
-        if (session.phase() == AgentLmpqSession.Phase.COMPLETED) {
-            release(session, reason, nowMs, false);
-            return;
-        }
-        if (pastTheClear(session)) {
-            failAfterClear(session, reason, nowMs);
-            return;
-        }
-        release(session, reason, nowMs, true);
+        release(session, reason, nowMs, !completed);
     }
 
     /**

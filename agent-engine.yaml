@@ -1517,6 +1517,10 @@ tuning:
     # Purpose: Bounds how often an LMPQ Agent claims at the reward Rolly while it stays on the reward map before it leaves unrewarded.
     # Technical: AgentLmpqCoordinator counts claims per member on 809050016; past the limit the Agent leaves once through the event's own exit to 809050017, and the event is disposed when it was the last player.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX: '3'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 so the companions' claims and exits fit and a run nobody finishes after the clear ends within two minutes.
+    # Purpose: Ends an LMPQ run that makes no progress in its REWARD phase, after the clear, in every mode.
+    # Technical: AgentLmpqCoordinator fails the run as "LMPQ reward stalled"; past the clear the release only takes the Agents out through the event's exit and disposes the event only when no player is left, so a human keeps his claim.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS: '120000'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
 
