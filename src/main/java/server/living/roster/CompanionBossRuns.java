@@ -60,6 +60,10 @@ import java.util.function.IntFunction;
  * <p>How a run starts: the entry NPC (Mu Young) offers an owner who creates or joins the expedition "My party will
  * register too.", that pick enlists the owner's party companions in the Agent layer's run, and each one still waiting
  * to sign up walks to its own spot beside her (the follow guard asks {@link #waitsAt}).</p>
+ *
+ * <p>P7 Part B: an owner's bench allies (CompanionBossAllies) are members of the same run that lead themselves. They
+ * walk to their spot ({@link #standAt}), each report about one goes to them first, they never say a party companion's
+ * party line where no human hears it (the signed-up line, gg), and the run's end and the audit send them home.</p>
  */
 public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossRuns.class);
@@ -136,6 +140,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
          */
         default Seats seats(Expedition expedition, int ownerId) {
             return new Seats(expedition == null ? 0 : expedition.getMembers().size(), 0, 1, 0);
+        }
+
+        /** The member's ordinal in run {@code sessionId} (its enlist order, its spot beside the entry NPC); else -1. */
+        default int ordinalOf(long sessionId, int agentId) {
+            return -1;
         }
 
         OpenRuns LIVE = new OpenRuns() {
@@ -266,6 +275,13 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 }
                 return new Seats(humans, bots, owners.size(), held);
             }
+
+            @Override
+            public int ordinalOf(long sessionId, int agentId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                AgentBossRunMember member = session == null ? null : session.member(agentId);
+                return member == null ? -1 : member.ordinal();
+            }
         };
     }
 
@@ -319,7 +335,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final IntFunction<int[]> potions;
     private final Supplies supplies;
     /** Run key -> an owner's part of an open boss run: from its enlist (or first seat or report) to the run's end. */
-    private final Map<String, CompanionBossRun> runs = new ConcurrentHashMap<>();
+    private final Map<String, CompanionBossRun> runs;
     /** P7 Part B: the owners' bench allies, each on its trip from its call to its unload. */
     private final CompanionBossAllies allies;
 
@@ -339,7 +355,19 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.open = open;
         this.potions = potions;
         this.supplies = supplies;
+        this.runs = new ConcurrentHashMap<>();
         this.allies = new CompanionBossAllies(world, open, runs);
+    }
+
+    /** The bench allies a test builds (their game and clock faked) over {@code runs}, the map they keep lines in. */
+    CompanionBossRuns(LivingWorld world, OpenRuns open, IntFunction<int[]> potions, Supplies supplies,
+                      Map<String, CompanionBossRun> runs, CompanionBossAllies allies) {
+        this.world = world;
+        this.open = open;
+        this.potions = potions;
+        this.supplies = supplies;
+        this.runs = runs;
+        this.allies = allies;
     }
 
     /**
@@ -517,9 +545,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * On companion-ops: the owner came into a boss's entry NPC room ({@code mapId}, RosterService.ownerEnteredMap).
      * Each companion of theirs in their party that is short of that boss's potion standard looks at its potions on its
      * next tick instead of its next check, so one that can reach a shop sets off (and says when it will be back), and
-     * one that cannot says there is no shop out here, before it is asked to sign up.
+     * one that cannot says there is no shop out here, before it is asked to sign up. First, a bench ally of theirs down
+     * from the fight and waiting there says goodbye and goes back to its bench duty (CompanionBossAllies).
      */
     void ownerArrived(int ownerId, int mapId) {
+        allies.ownerArrived(ownerId, mapId);
         String bossKey = restockKeyAt(mapId);
         Character owner = bossKey == null ? null : world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
@@ -626,12 +656,25 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         world.executor().submit("boss.run_ended " + ended.sessionId(), () -> finish(ended));
     }
 
+    /**
+     * P7 Part B, on the run's tick, from memory: where a member waiting to sign up stands on the entry NPC's map, its
+     * own spot beside her by its ordinal in the run (BossEntrance.spot), so a bench ally (which leads itself) walks up
+     * to it. Null while the ally switch leaves the boss out, so Part A's sign-ups stay exactly as they were.
+     */
+    @Override
+    public Point standAt(Seat seat, MapleMap map, int ordinal) {
+        LivingWorldConfig config = world.config();
+        BossEntrance entrance = config == null || !config.companionBossAlliesEnabled(seat.bossKey()) ? null
+                : BossEntrance.of(seat.bossKey());
+        return entrance == null ? null : entrance.spot(map, ordinal);
+    }
+
     // ---- on companion-ops -----------------------------------------------------------------------
 
     /**
      * The companion is on the entry NPC's list: its persona and its potions are noted for its record and the potion
-     * line, and once none of its owner's companions waits to sign up any more (the list still open), one of them says
-     * they are all set.
+     * line (a bench ally's too), a bench ally's owner's allies form their party once none of them waits, and once none
+     * of its owner's companions waits to sign up any more (the list still open), one of them says they are all set.
      */
     private void signedUp(Seat seat) {
         int id = seat.agentCharacterId();
@@ -645,12 +688,14 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (carried != null) {
             run.potionsAtSignUp.put(id, carried);
         }
+        allies.registered(seat);
         allSignedUp(run, id);
     }
 
     /**
-     * The companion did not get onto the list, or the leader took it off: it is let go and says why. When it was the
-     * last one of its owner's still waiting and the list is still open, one already on the list says they are all set.
+     * The companion did not get onto the list, or the leader took it off: it is let go and says why (a bench ally in
+     * its own words, and it goes back to its bench duty). When it was the last one of its owner's still waiting and the
+     * list is still open, one already on the list says they are all set.
      */
     private void notListed(Seat seat, Refusal refusal) {
         int id = seat.agentCharacterId();
@@ -659,7 +704,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             run.signedUp.remove(id);
         }
         release(key(seat), id);
-        BossRunLines.say(world, bot(id), BossRunLines.refusal(refusal), null, 0, run);
+        if (!allies.refused(seat, refusal, run)) {
+            BossRunLines.say(world, bot(id), BossRunLines.refusal(refusal), null, 0, run);
+        }
         if (run != null) {
             allSignedUp(run, 0);
         }
@@ -667,31 +714,47 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * Once per owner, while the entry NPC's list is still open, when none of their companions waits to sign up any
-     * more and one is on the list: {@code speaker} (or, when it is 0 or not loaded, another on the list) says they are
-     * all signed up. After Start it says nothing: the owner is already on the way into the fight.
+     * more (a bench ally still being called or on its way down included) and one is on the list: {@code speaker} (or,
+     * when it is 0, not loaded or a bench ally, another on the list) says they are all signed up, in the owner's party
+     * when a companion of it is on the list; with only bench allies on it, one of them tells the owner where they hear
+     * it (a party of bots has nobody to hear it). After Start it says nothing: the owner is on the way into the fight.
      */
     private void allSignedUp(CompanionBossRun run, int speaker) {
         if (run.signedUpSaid || run.signedUp.isEmpty() || !open.registering(run.sessionId)
-                || open.waiting(run.sessionId, run.ownerId)) {
+                || open.waiting(run.sessionId, run.ownerId) || allies.calling(run.ownerId)) {
             return;
         }
-        Character bot = speaker == 0 ? null : bot(speaker);
+        Character bot = follows(speaker, run.ownerId) ? bot(speaker) : null;
+        Character ally = null;
         for (Iterator<Integer> listed = run.signedUp.iterator(); bot == null && listed.hasNext(); ) {
-            bot = bot(listed.next());
+            int id = listed.next();
+            Character loaded = bot(id);
+            if (follows(id, run.ownerId)) {
+                bot = loaded;
+            } else if (ally == null) {
+                ally = loaded;
+            }
         }
         if (bot != null) {
             run.signedUpSaid = true;
             BossRunLines.say(world, bot, BossRunLines.SIGNED_UP, null, 0);
+        } else if (ally != null) {
+            run.signedUpSaid = true;
+            BossRunLines.tell(world, ally, BossRunLines.SIGNED_UP, null, null, run, run.ownerId);
         }
     }
 
     /**
-     * The companion left the run. A missed start lets it go with a line; a death keeps it tied to the run (it waits
-     * outside for its owner and follows them out) with a line; no human left is one line per owner and the run's end
-     * lets them go; a plain exit says nothing; a runtime that went away (parked at its owner's logout) is let go.
+     * The companion left the run (a bench ally's way home is CompanionBossAllies'). A missed start lets it go with a
+     * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line; no
+     * human left is one line per owner and the run's end lets them go; a plain exit says nothing; a runtime that went
+     * away (parked at its owner's logout) is let go.
      */
     private void out(Seat seat, Out out) {
         int id = seat.agentCharacterId();
+        if (allies.out(seat, out, runs.get(key(seat)))) {
+            return;
+        }
         switch (out) {
             case MISSED_START -> {
                 release(key(seat), id);
@@ -713,7 +776,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * The run is over: every owner's commitments to it end (the party changes and walk-outs that waited go through),
-     * and each owner's part of it is taken out, once. A run that started then writes one record per companion that
+     * and each owner's part of it is taken out, once; every bench ally of it still here says how it went and goes back
+     * to its bench duty, a list that never started too. A run that started then writes one record per companion that
      * went in (an owner's part taken out here: a second end of the same run writes nothing), logs the potion line, and
      * when it cleared each owner online hears one gg.
      */
@@ -739,6 +803,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 taken.put(ownerId, run);
             }
         }
+        allies.runEnded(ended, taken);
         if (!ended.started() || taken.isEmpty()) {
             return;
         }
@@ -798,7 +863,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 ended.cleared() ? "cleared" : "failed", companions));
     }
 
-    /** One gg for the owner, when online, from a companion of theirs that went in (one in at the clear first). */
+    /**
+     * One gg for the owner, when online, from a companion of their party that went in (one in at the clear first);
+     * never from a bench ally, which says its own goodbye.
+     */
     private void sayGg(CompanionBossRun run, List<MemberResult> wentIn) {
         if (run.ggSaid || world.roster().onlineCharacter(run.ownerId) == null) {
             return;
@@ -806,7 +874,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         List<MemberResult> theirs = wentIn.stream().filter(member -> member.enlistedBy() == run.ownerId)
                 .sorted((a, b) -> Boolean.compare(b.inAtClear(), a.inAtClear())).toList();
         for (MemberResult member : theirs) {
-            Character bot = bot(member.agentId());
+            Character bot = follows(member.agentId(), run.ownerId) ? bot(member.agentId()) : null;
             if (bot != null) {
                 run.ggSaid = true;
                 BossRunLines.say(world, bot, BossRunLines.GG, null, 0);
@@ -818,7 +886,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * On companion-ops, from the audit: an owner's part of a run whose session is gone without ending it (no runEnded
      * came; the Agent layer holds no run of that id any more) is let go once it has been gone
-     * {@link CompanionPartyQuestService#LOST_RUN_AFTER_MS}, with no record.
+     * {@link CompanionPartyQuestService#LOST_RUN_AFTER_MS}, with no record. The bench allies' trips are swept too
+     * (CompanionBossAllies.sweep: a lost run's allies go home, an unload that left one online is tried again).
      */
     public void sweepLostRuns(long nowMs) {
         for (CompanionBossRun run : List.copyOf(runs.values())) {
@@ -835,6 +904,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 }
             }
         }
+        allies.sweep(nowMs);
     }
 
     // ---- the fight's server authority and the logout delegation ---------------------------------
@@ -918,5 +988,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     private static Character bot(int characterId) {
         return AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(characterId));
+    }
+
+    /** True while the loaded Agent follows {@code ownerId}: a party companion of theirs (a bench ally leads itself). */
+    private static boolean follows(int characterId, int ownerId) {
+        return characterId != 0 && AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) == ownerId;
     }
 }

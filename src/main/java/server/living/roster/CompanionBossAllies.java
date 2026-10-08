@@ -5,28 +5,43 @@ import config.LivingWorldConfig;
 import net.server.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.server.world.CauseScope;
+import net.server.world.PartyEvents;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Out;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.RunEnded;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.capabilities.expedition.boss.AgentBossRunService.Enlisted;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.capabilities.party.JoinOutcome;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentRuntimeCleanupService;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.resident.ResidentRuntime;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
@@ -39,10 +54,14 @@ import java.util.function.LongSupplier;
  * (loaded in her room or in the fight) and LEAVING. A call is admitted by the budget before anything changes, then it
  * ends the ally's live bench slice and the ally whispers the roster's own recall ETA; at that ETA it loads at the
  * room's arrival portal, where players coming down land, as an idle Agent that leads itself, and the run's tick walks
- * it up to her. A call that fails undoes itself, last step first, and the ally whispers that it cannot come. While a
- * trip lasts, bench duty and the bench ledger leave its persona alone. Calls and arrivals run on companion-ops; the
- * picker (who can come, and how many) reads the crew cache and memory on the owner's I/O thread. It writes no roster
- * state. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
+ * it up to her. A call that fails undoes itself, last step first, and the ally whispers that it cannot come. Once on
+ * her list, an owner's allies form one party of bots, the highest level leading. However the run ends for an ally (a
+ * refusal, a missed start, the fight, a death it waits out beside her, the run's end, a lost run), it says how it went
+ * where its owner hears it, leaves its party, walks to the room's way out and is unloaded; only then do its lease, its
+ * commitment and its trip go, and its BENCHED row takes up its bench duty again. While a trip lasts, bench duty, the
+ * bench ledger and the roster's call leave its persona alone. Calls, arrivals and the way home run on companion-ops;
+ * the picker (who can come, and how many) reads the crew cache and memory on the owner's I/O thread. It writes no
+ * roster state. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
  */
 final class CompanionBossAllies {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossAllies.class);
@@ -112,6 +131,14 @@ final class CompanionBossAllies {
         volatile long sessionId;
         /** Bumped by each step that ends a wait: a timer of an older generation does nothing. */
         volatile int generation;
+        /** The loaded ally (null until it arrives). */
+        volatile Character agent;
+        /** It went down in the fight and waits beside the entry NPC for its owner (or the run's end), still tied. */
+        volatile boolean waitingOutside;
+        /** When it set off for the way out (LEAVING). */
+        volatile long leftAtMs;
+        /** When the audit first found its run gone (0: it has not); companion-ops only. */
+        long goneSinceMs;
 
         Trip(String personaId, int ownerId, String bossKey, Expedition expedition) {
             this.personaId = personaId;
@@ -134,6 +161,21 @@ final class CompanionBossAllies {
 
         /** True when the Agent carries less than {@code bossKey}'s potion standard (AgentSupplyReadiness). */
         boolean shortOfPotions(Character agent, String bossKey);
+
+        /** The ally joins {@code lead}'s party; a lead in no party makes one first. */
+        JoinOutcome join(Character lead, Character ally);
+
+        /** The ally leaves the party it is in, if any. */
+        void leaveParty(Character ally);
+
+        /** The ally walks to {@code to} on its map; false when no Agent runtime holds it. */
+        boolean walkTo(Character ally, Point to);
+
+        /**
+         * Unloads the ally as a live bench slice leaves: out of the Agent registry, then saved and disconnected. True
+         * once it is offline; false (or a failure) while it is still online.
+         */
+        boolean unload(Character ally);
 
         Ports LIVE = new Ports() {
             @Override
@@ -158,11 +200,47 @@ final class CompanionBossAllies {
             public boolean shortOfPotions(Character agent, String bossKey) {
                 return !AgentSupplyReadiness.shortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey)).none();
             }
+
+            @Override
+            public JoinOutcome join(Character lead, Character ally) {
+                return AgentPartyLifecycleService.joinAgentToLeaderParty(lead, ally);
+            }
+
+            @Override
+            public void leaveParty(Character ally) {
+                AgentPartyLifecycleService.leaveAgentParty(ally);
+            }
+
+            @Override
+            public boolean walkTo(Character ally, Point to) {
+                AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(ally.getId());
+                if (runtime == null) {
+                    return false;
+                }
+                AgentMovementCommandRuntime.moveTo(runtime, to, false);
+                return true;
+            }
+
+            @Override
+            public boolean unload(Character ally) {
+                AgentRuntimeCleanupService.removeAgentByCharacterId(ally.getId());
+                if (ally.getClient() == null) {
+                    return true;
+                }
+                ally.saveCharToDB(); // first, so its next load (a bench slice, a call) sees what it gained here
+                ally.getClient().forceDisconnect();
+                return true;
+            }
         };
     }
 
     /** Where a called ally's live bench slice ends, as the bench's event log says it. */
     static final String CALLED = "called to the temple";
+    /**
+     * The cause token of every join and leave of an owner's party of allies: the party sync takes it for companion
+     * code's own echo (CompanionPartySync.CAUSE_PREFIX) and never pulls an ally out of a party its owner is not in.
+     */
+    static final String CAUSE = "companion.boss";
 
     private final LivingWorld world;
     private final CompanionBossRuns.OpenRuns open;
@@ -172,6 +250,8 @@ final class CompanionBossAllies {
     private final LongSupplier clock;
     /** Persona id -> its trip; one trip per persona. Reserved under this object's lock, moved on companion-ops. */
     private final Map<String, Trip> trips = new ConcurrentHashMap<>();
+    /** Run key -> that owner's party of allies in the run, as formed here; companion-ops only. */
+    private final Map<String, Overflow> parties = new HashMap<>();
     private final AtomicInteger turns = new AtomicInteger();
 
     /** The boss and the expedition an owner on its entry NPC's list may call allies to now. */
@@ -385,6 +465,7 @@ final class CompanionBossAllies {
             cantCome(trip, persona, "it did not load");
             return;
         }
+        trip.agent = agent;
         trip.state = State.HERE;
         log.info("Boss ally here: session={} ally={} map={}", trip.sessionId, id, map.getId());
         settle(trip, persona, agent);
@@ -424,6 +505,396 @@ final class CompanionBossAllies {
         } catch (RuntimeException failure) {
             log.warn("boss ally {} took no stall stock back", persona.id(), failure);
         }
+    }
+
+    // ---- the run's reports (companion-ops, through CompanionBossRuns) -----------------------------
+
+    /**
+     * On companion-ops, the ally of {@code seat} is on the entry NPC's list: once none of its owner's allies still
+     * waits to sign up, they form their party ({@link #formParty}). Any other seat: nothing.
+     */
+    void registered(Seat seat) {
+        Trip trip = tripOf(seat);
+        if (trip != null) {
+            formParty(trip.ownerId, trip.sessionId, trip.bossKey);
+        }
+    }
+
+    /**
+     * On companion-ops, the run refused {@code seat} (the list closed or was full, it came too late, the leader took it
+     * off, it was withdrawn): false when it is no ally's (a party companion says its own line). A loaded ally says it
+     * could not get its name down, or that the fight is off when it was withdrawn, and goes back to its bench duty; one
+     * still on its way turns back with a whisper (none when withdrawn: whoever withdrew it let it know). Its owner's
+     * other allies form their party again.
+     */
+    boolean refused(Seat seat, Refusal refusal, CompanionBossRun run) {
+        Trip trip = tripOf(seat);
+        if (trip == null) {
+            return false;
+        }
+        boolean withdrawn = refusal == Refusal.WITHDRAWN;
+        log.info("Boss ally refused: session={} ally={} refusal={}", trip.sessionId, trip.characterId, refusal);
+        sendHome(trip, trip.state != State.HERE ? (withdrawn ? null : BossRunLines.ALLY_TURNED_BACK)
+                : withdrawn ? BossRunLines.ALLY_CALLED_OFF : BossRunLines.ALLY_NOT_LISTED, run);
+        return true;
+    }
+
+    /**
+     * On companion-ops, the ally of {@code seat} left the run ({@code out}): false when it is no ally's. Down in the
+     * fight, it waits outside ({@link #waitOutside}). Having missed the start, with no human left in the fight, or out
+     * of it alive, it says so and goes back to its bench duty; one whose runtime went away goes with no line. Its
+     * owner's other allies form their party again.
+     */
+    boolean out(Seat seat, Out out, CompanionBossRun run) {
+        Trip trip = tripOf(seat);
+        if (trip == null) {
+            return false;
+        }
+        switch (out) {
+            case DIED -> waitOutside(trip, run);
+            case MISSED_START -> sendHome(trip, BossRunLines.ALLY_MISSED, run);
+            case NO_HUMAN_LEFT -> sendHome(trip, BossRunLines.ALLY_NEXT_TIME, run);
+            case EXITED -> sendHome(trip, BossRunLines.ALLY_GOOD_FIGHT, run);
+            case GONE -> sendHome(trip, null, run);
+        }
+        return true;
+    }
+
+    /**
+     * On companion-ops, the run ended ({@code taken}: its owners' parts of it, by owner, as CompanionBossRuns took them
+     * out): every ally of it not on its way out yet says how it went (a clear "good fight", a fight lost "next time", a
+     * list that never started "called off") and goes back to its bench duty; one still on its way down turns back with
+     * a whisper. Its owners' parties are forgotten.
+     */
+    void runEnded(RunEnded ended, Map<Integer, CompanionBossRun> taken) {
+        String intent = !ended.started() ? BossRunLines.ALLY_CALLED_OFF
+                : ended.cleared() ? BossRunLines.ALLY_GOOD_FIGHT : BossRunLines.ALLY_NEXT_TIME;
+        int sent = 0;
+        for (Trip trip : List.copyOf(trips.values())) {
+            if (trip.sessionId != ended.sessionId() || !trip.bossKey.equals(ended.bossKey())
+                    || trip.state == State.LEAVING) {
+                continue;
+            }
+            dismiss(trip, trip.state == State.HERE ? intent : BossRunLines.ALLY_TURNED_BACK, taken.get(trip.ownerId));
+            sent++;
+        }
+        parties.values().removeIf(party -> party.sessionId == ended.sessionId());
+        if (sent > 0) {
+            log.info("Boss allies: session={} boss={} reason={} sent home={}", ended.sessionId(), ended.bossKey(),
+                    ended.reason(), sent);
+        }
+    }
+
+    /**
+     * On companion-ops, the owner came into a boss's entry NPC room ({@code mapId}, never an event's copy): each ally
+     * of theirs down from the fight and waiting there on the owner's channel says goodbye and goes back to its bench
+     * duty.
+     */
+    void ownerArrived(int ownerId, int mapId) {
+        Character owner = null;
+        for (Trip trip : List.copyOf(trips.values())) {
+            Character agent = trip.agent;
+            if (trip.ownerId != ownerId || !trip.waitingOutside || trip.state != State.HERE || agent == null
+                    || agent.getMapId() != mapId) {
+                continue;
+            }
+            owner = owner != null ? owner : world.roster().onlineCharacter(ownerId);
+            if (owner != null && RosterService.sameChannel(owner, agent)) {
+                sendHome(trip, BossRunLines.ALLY_GOODBYE, run(trip));
+            }
+        }
+    }
+
+    /**
+     * On companion-ops, from the audit (CompanionBossRuns.sweepLostRuns): an ally whose unload left it online (or whose
+     * walk out lost its timer) is unloaded again once its walk out is over; one here whose runtime went away goes home;
+     * one whose run is gone without an end goes home once it has been gone LOST_RUN_AFTER_MS.
+     */
+    void sweep(long nowMs) {
+        for (Trip trip : List.copyOf(trips.values())) {
+            switch (trip.state) {
+                case LEAVING -> {
+                    if (nowMs - trip.leftAtMs >= walkOutMs()) {
+                        leave(trip);
+                    }
+                }
+                case TRAVELLING, HERE -> {
+                    if (open.open(trip.sessionId)) {
+                        trip.goneSinceMs = 0L;
+                        if (trip.state == State.HERE && !ports.loaded(trip.characterId)) {
+                            log.info("Boss ally lost its runtime: session={} ally={}", trip.sessionId,
+                                    trip.characterId);
+                            sendHome(trip, null, run(trip));
+                        }
+                    } else if (trip.goneSinceMs == 0L) {
+                        trip.goneSinceMs = Math.max(1L, nowMs);
+                    } else if (nowMs - trip.goneSinceMs >= CompanionPartyQuestService.LOST_RUN_AFTER_MS) {
+                        log.warn("boss ally {} lost its run {}; sending it home", trip.personaId, trip.sessionId);
+                        dismiss(trip, trip.state == State.HERE ? BossRunLines.ALLY_GOODBYE
+                                : BossRunLines.ALLY_TURNED_BACK, run(trip));
+                    }
+                }
+                case CALLING -> {
+                }
+            }
+        }
+        parties.values().removeIf(party -> !open.open(party.sessionId));
+    }
+
+    /** True while a call of the owner's still waits on companion-ops (CALLING): not all of theirs are signed up. */
+    boolean calling(int ownerId) {
+        for (Trip trip : trips.values()) {
+            if (trip.ownerId == ownerId && trip.state == State.CALLING) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ---- the overflow party (companion-ops) ------------------------------------------------------
+
+    /**
+     * The owner's allies in run {@code sessionId} form one party of bots, once none of the owner's allies still waits
+     * to sign up or is still being called: those on the entry NPC's list or in the fight, loaded, two at least. The
+     * highest level leads (the lower ordinal on a tie); a party already formed keeps its lead, so a late one joins it.
+     * Every other one joins the lead's party, six in all at most, under the boss cause token (the party sync takes the
+     * joins for companion code's own echo). Idempotent; again after an ally is refused or leaves the run.
+     */
+    private void formParty(int ownerId, long sessionId, String bossKey) {
+        List<Trip> mine = new ArrayList<>();
+        Map<Integer, Integer> ordinals = new HashMap<>();
+        for (Trip trip : trips.values()) {
+            if (trip.ownerId != ownerId) {
+                continue;
+            }
+            if (trip.state == State.CALLING) {
+                return; // a call of theirs still to come: it signs up too
+            }
+            AgentBossRunMember.Phase phase = trip.sessionId == sessionId
+                    ? open.phaseOf(sessionId, trip.characterId) : null;
+            if (phase == AgentBossRunMember.Phase.WAITING) {
+                return;
+            }
+            if (trip.state == State.HERE && trip.agent != null && (phase == AgentBossRunMember.Phase.REGISTERED
+                    || phase == AgentBossRunMember.Phase.INSIDE)) {
+                mine.add(trip);
+                int ordinal = open.ordinalOf(sessionId, trip.characterId);
+                ordinals.put(trip.characterId, ordinal < 0 ? Integer.MAX_VALUE : ordinal);
+            }
+        }
+        if (mine.size() < 2) {
+            return;
+        }
+        mine.sort(Comparator.comparingInt(trip -> ordinals.get(trip.characterId)));
+        Overflow party = parties.computeIfAbsent(CompanionBossRun.key(bossKey, sessionId, ownerId),
+                unused -> new Overflow(sessionId));
+        Trip lead = null;
+        for (Trip trip : mine) {
+            lead = trip.characterId == party.leadId ? trip : lead;
+        }
+        if (lead == null) { // none formed yet, or its lead left (which ended it): a new one
+            party.members.clear();
+            for (Trip trip : mine) { // in ordinal order: a tie keeps the first
+                lead = lead == null || trip.agent.getLevel() > lead.agent.getLevel() ? trip : lead;
+            }
+            party.leadId = lead.characterId;
+        }
+        List<Integer> joined = new ArrayList<>();
+        try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
+            for (Trip trip : mine) {
+                if (trip == lead || party.members.contains(trip.characterId)) {
+                    continue;
+                }
+                if (party.members.size() + 1 >= CompanionSlots.PARTY_CAP) {
+                    break;
+                }
+                JoinOutcome outcome;
+                try {
+                    outcome = ports.join(lead.agent, trip.agent);
+                } catch (RuntimeException failure) {
+                    log.warn("boss ally {} failed to join its party", trip.personaId, failure);
+                    continue;
+                }
+                if (outcome == JoinOutcome.JOINED || outcome == JoinOutcome.ALREADY_MEMBER) {
+                    party.members.add(trip.characterId);
+                    joined.add(trip.characterId);
+                } else {
+                    log.info("boss ally {} did not join its party: {}", trip.personaId, outcome);
+                }
+            }
+        }
+        if (!joined.isEmpty()) {
+            log.info("Boss allies party: session={} owner={} lead={} joined={} members={}", sessionId, ownerId,
+                    lead.characterId, joined, party.members.size() + 1);
+        }
+    }
+
+    /** One owner's party of allies in one run, as it was formed here: its lead, and the others that joined it. */
+    private static final class Overflow {
+        final long sessionId;
+        int leadId;
+        final Set<Integer> members = new LinkedHashSet<>();
+
+        Overflow(long sessionId) {
+            this.sessionId = sessionId;
+        }
+    }
+
+    // ---- the way home (companion-ops) ------------------------------------------------------------
+
+    /**
+     * The ally went down in the fight and came to outside: it tells its owner, walks to its own spot beside the entry
+     * NPC (by its ordinal in the run) and waits there, still tied to the run, until its owner comes out to the room
+     * ({@link #ownerArrived}) or the run ends. With its owner standing there already, it says goodbye and goes.
+     */
+    private void waitOutside(Trip trip, CompanionBossRun run) {
+        Character agent = trip.agent;
+        if (trip.state != State.HERE || agent == null) {
+            sendHome(trip, null, run);
+            return;
+        }
+        Character owner = world.roster().onlineCharacter(trip.ownerId);
+        if (owner != null && owner.getEventInstance() == null && owner.getMapId() == agent.getMapId()
+                && RosterService.sameChannel(owner, agent)) {
+            sendHome(trip, BossRunLines.ALLY_GOODBYE, run);
+            return;
+        }
+        trip.waitingOutside = true;
+        BossRunLines.tell(world, agent, BossRunLines.DOWN, null, null, run, trip.ownerId);
+        BossEntrance entrance = BossEntrance.of(trip.bossKey);
+        MapleMap map = agent.getMap();
+        int ordinal = open.ordinalOf(trip.sessionId, trip.characterId);
+        Point spot = entrance == null || map == null || ordinal < 0
+                || map.getId() != entrance.definition().recruitMapId() ? null : entrance.spot(map, ordinal);
+        try {
+            if (spot != null) {
+                ports.walkTo(agent, spot);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} did not walk to its spot", trip.personaId, failure);
+        }
+    }
+
+    /** {@link #dismiss}, then the owner's other allies in the run form their party again (its leave may end it). */
+    private void sendHome(Trip trip, String intent, CompanionBossRun run) {
+        dismiss(trip, intent, run);
+        formParty(trip.ownerId, trip.sessionId, trip.bossKey);
+    }
+
+    /**
+     * The ally's trip ends and it goes back to its bench duty, saying {@code intent} (null: nothing). One never loaded
+     * lets everything go at once and whispers it. A loaded one says it where its owner hears it, leaves its party, and
+     * walks to the room's way out (its exit portal on the entry NPC's map, else the portal nearest it) while a human
+     * there sees it; it is unloaded once there, after COMPANION_BOSS_ALLY_WALK_OUT_MS, or when nobody is left to see
+     * it, and at once inside an event or with nowhere to walk. Its lease, its commitment and its trip go only once it
+     * is offline. Once per trip.
+     */
+    private void dismiss(Trip trip, String intent, CompanionBossRun run) {
+        if (trip.state == State.LEAVING || trips.get(trip.personaId) != trip) {
+            return;
+        }
+        Character agent = trip.agent;
+        if (trip.state != State.HERE || agent == null) {
+            letGo(trip);
+            if (intent != null) {
+                whisper(trip, world.content().persona(trip.personaId), intent, null, run);
+            }
+            return;
+        }
+        if (intent != null) {
+            BossRunLines.tell(world, agent, intent, null, null, run, trip.ownerId);
+        }
+        trip.state = State.LEAVING;
+        trip.waitingOutside = false;
+        int generation = ++trip.generation;
+        long now = clock.getAsLong();
+        trip.leftAtMs = now;
+        leaveParty(trip, agent);
+        Point target = null;
+        try {
+            target = wayOut(trip, agent);
+            if (target != null && !ports.walkTo(agent, target)) {
+                target = null;
+            }
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} did not walk out", trip.personaId, failure);
+            target = null;
+        }
+        if (target == null) {
+            leave(trip);
+            return;
+        }
+        watchWalkOut(trip, generation, target, now + walkOutMs());
+    }
+
+    /** Out of its party of allies under the boss cause token; a lead's leave ends the party (the stock leave). */
+    private void leaveParty(Trip trip, Character agent) {
+        Overflow party = parties.get(CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId));
+        if (party != null && party.leadId == trip.characterId) {
+            party.leadId = 0;
+            party.members.clear();
+        } else if (party != null) {
+            party.members.remove(trip.characterId);
+        }
+        try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
+            ports.leaveParty(agent);
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} did not leave its party", trip.personaId, failure);
+        }
+    }
+
+    /**
+     * Where the ally walks to go: the entrance's exit portal on its entry NPC's map, else the portal nearest it; null
+     * (it goes where it stands) inside an event, or with no human on its map to see it go.
+     */
+    private Point wayOut(Trip trip, Character agent) {
+        MapleMap map = agent.getMap();
+        if (map == null || agent.getEventInstance() != null || ResidentRuntime.humansIn(map) == 0) {
+            return null;
+        }
+        BossEntrance entrance = BossEntrance.of(trip.bossKey);
+        Point exit = entrance != null && map.getId() == entrance.definition().recruitMapId() ? entrance.exitAt(map)
+                : null;
+        return exit != null ? exit : ArrivalPlacement.portalNear(map, agent.getPosition());
+    }
+
+    private void watchWalkOut(Trip trip, int generation, Point target, long deadlineMs) {
+        world.roster().later("boss.ally_walk_out " + trip.personaId, () -> {
+            if (trip.generation != generation || trip.state != State.LEAVING || trips.get(trip.personaId) != trip) {
+                return; // gone meanwhile
+            }
+            Character agent = trip.agent;
+            Point at = agent.getPosition();
+            MapleMap map = agent.getMap();
+            if (at != null && at.distance(target) > ArrivalPlacement.WALK_OUT_REACH_PX && clock.getAsLong() < deadlineMs
+                    && map != null && ResidentRuntime.humansIn(map) > 0) {
+                watchWalkOut(trip, generation, target, deadlineMs);
+            } else {
+                leave(trip);
+            }
+        }, ArrivalPlacement.WALK_OUT_CHECK_MS);
+    }
+
+    /**
+     * The ally on its way out is unloaded; once it is offline everything it took goes. Still online (its save or
+     * disconnect failed), it stays LEAVING and keeps its lease, so nothing loads a second copy of it, and the audit
+     * unloads it again ({@link #sweep}).
+     */
+    private void leave(Trip trip) {
+        Character agent = trip.agent;
+        boolean offline;
+        try {
+            offline = agent == null || ports.unload(agent);
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} failed to unload; it keeps its lease and is unloaded again", trip.personaId,
+                    failure);
+            offline = false;
+        }
+        if (!offline) {
+            return;
+        }
+        log.info("Boss ally home: session={} ally={}", trip.sessionId, trip.characterId);
+        letGo(trip);
     }
 
     // ---- shares ----------------------------------------------------------------------------------
@@ -537,20 +1008,61 @@ final class CompanionBossAllies {
         trip.generation++;
         int id = trip.characterId;
         if (id != 0) {
-            Commitments commitments = world.commitments();
-            String key = CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId);
-            if (trip.sessionId != 0L && commitments != null && key.equals(commitments.keyOf(id))) {
-                commitments.releaseMember(id);
-            }
+            releaseCommitment(trip);
             if (trip.sessionId != 0L) {
                 open.withdraw(trip.sessionId, id);
             }
-            if (new CompanionLeases.Lease(CompanionLeases.Kind.EXPEDITION, trip.ownerId)
-                    .equals(world.leases().holder(id))) {
-                world.leases().release(id, CompanionLeases.Kind.EXPEDITION);
-            }
+            releaseLease(trip);
         }
         trips.remove(trip.personaId, trip);
+    }
+
+    /**
+     * The trip is over (the run is done with the ally, and it is offline or never loaded): its commitment to the run
+     * key, if it is still tied to it, and its EXPEDITION lease go; then the trip, and any timer of it is stale.
+     */
+    private void letGo(Trip trip) {
+        trip.generation++;
+        if (trip.characterId != 0) {
+            releaseCommitment(trip);
+            releaseLease(trip);
+        }
+        trips.remove(trip.personaId, trip);
+    }
+
+    private void releaseCommitment(Trip trip) {
+        Commitments commitments = world.commitments();
+        String key = CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId);
+        if (trip.sessionId != 0L && commitments != null && key.equals(commitments.keyOf(trip.characterId))) {
+            commitments.releaseMember(trip.characterId);
+        }
+    }
+
+    private void releaseLease(Trip trip) {
+        if (new CompanionLeases.Lease(CompanionLeases.Kind.EXPEDITION, trip.ownerId)
+                .equals(world.leases().holder(trip.characterId))) {
+            world.leases().release(trip.characterId, CompanionLeases.Kind.EXPEDITION);
+        }
+    }
+
+    /** The trip of the ally {@code seat} names (its run, its owner), or null: the seat is a party companion's. */
+    private Trip tripOf(Seat seat) {
+        for (Trip trip : trips.values()) {
+            if (trip.characterId == seat.agentCharacterId() && trip.sessionId == seat.sessionId()
+                    && trip.ownerId == seat.enlistedBy() && trip.bossKey.equals(seat.bossKey())) {
+                return trip;
+            }
+        }
+        return null;
+    }
+
+    /** Its owner's part of its run while CompanionBossRuns keeps it (an ally's lines rotate their wordings there). */
+    private CompanionBossRun run(Trip trip) {
+        return runs.get(CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId));
+    }
+
+    private long walkOutMs() {
+        return world.config().COMPANION_BOSS_ALLY_WALK_OUT_MS;
     }
 
     /** A whisper to the owner from an ally that is not loaded (its persona speaks), its wordings rotated per run. */

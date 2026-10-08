@@ -36,7 +36,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 
@@ -46,7 +52,9 @@ import static server.living.roster.LifecycleHarness.ANN;
  * other report is handed to companion-ops, where a refusal or a missed start lets the companion go with one line, a
  * death keeps it tied to the run with one line, and the run's end lets them all go, writes one record per companion
  * that went in, logs the potion line and says one gg. A run whose session vanished is let go by the audit after a
- * minute. The server-authority rule and the logout delegation by key are wired here too.
+ * minute. The server-authority rule and the logout delegation by key are wired here too. A bench ally (Part B, an
+ * Agent that leads itself in a party of bots) is noted for its record like the rest, but the signed-up line comes from
+ * a companion in the owner's party when there is one, and gg never comes from an ally.
  */
 class CompanionBossRunsTest {
     private static final long SID = 7L;
@@ -55,6 +63,8 @@ class CompanionBossRunsTest {
     private static final int THANE = 902;
     private static final int SORREL = 903;
     private static final int INGRID = 904;
+    /** A bench ally of Ann's (P7 Part B). */
+    private static final int ORRIN = 911;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final FakeRuns open = new FakeRuns();
@@ -467,6 +477,81 @@ class CompanionBossRunsTest {
         assertEquals(1, game.partyChat.stream().filter(line -> line.contains("gg")).count(), game.partyChat.toString());
     }
 
+    // ---- bench allies (P7 Part B) ----------------------------------------------------------------
+
+    @Test
+    void anAllyGetsItsPersonaAndPotionsNotedAtSignUpForItsRecordAndThePotionLine() {
+        ally();
+        potions.put(ISOLDE, new int[] {40, 50});
+        potions.put(ORRIN, new int[] {60, 60});
+        signUp(ISOLDE, ORRIN);
+        when(game.residents.personaOfCharacterId(ORRIN)).thenReturn(null); // unloaded since: the noted one counts
+        potions.put(ISOLDE, new int[] {31, 22});
+        potions.put(ORRIN, new int[] {20, 30});
+
+        try (LivingLogLines log = new LivingLogLines(CompanionBossRuns.class)) {
+            runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                    new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                    new MemberResult(ORRIN, ANN, true, true, 0, Out.EXITED))));
+
+            assertEquals(List.of("PQ potions: session=7 pq=easy_balrog outcome=cleared"
+                    + " companions=[isolde(901) hp=40>31 mp=50>22, orrin(911) hp=60>20 mp=60>30]"),
+                    log.startingWith("PQ potions:"));
+        }
+        assertEquals(List.of("901 isolde easy_balrog cleared, deaths 0, party 3, 60 s",
+                "911 orrin easy_balrog cleared, deaths 0, party 3, 60 s"), rows());
+    }
+
+    @Test
+    void theSignedUpLineWaitsForATravellingAllyAndAPartyCompanionSaysIt() {
+        ally();
+        open.waiting.add(SID + ":" + ANN); // Orrin is on its way down: a member Ann enlisted that still waits
+        signUp(ISOLDE, THANE);
+        assertEquals(List.of(), game.partyChat, "Orrin is not here yet");
+
+        open.waiting.clear();
+        runs.registered(seat(ORRIN)); // the ally signs up last
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(game.partyChat.get(0).startsWith("Isolde: "), "said in Ann's party: " + game.partyChat);
+        verify(game.residents, never()).whisper(any(), any(), anyString());
+    }
+
+    @Test
+    void anOwnerWhoBroughtOnlyAlliesHearsTheSignedUpLineFromOneOfThem() {
+        Persona orrin = ally();
+
+        runs.registered(seat(ORRIN));
+
+        assertEquals(List.of(), game.partyChat, "a party of bots: nobody would hear it there");
+        verify(game.residents).whisper(eq(orrin), eq(game.ann),
+                argThat(line -> BossRunLines.GENERIC.get(BossRunLines.SIGNED_UP).contains(line)));
+    }
+
+    @Test
+    void ggIsNeverSaidByAnAlly() {
+        ally();
+        signUp(ISOLDE);
+        runs.registered(seat(ORRIN));
+        game.partyChat.clear();
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ORRIN, ANN, true, true, 0, Out.EXITED), // in at the clear: it came first before
+                new MemberResult(ISOLDE, ANN, true, false, 1, Out.DIED))));
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(game.partyChat.get(0).startsWith("Isolde: "), game.partyChat.toString());
+
+        open.open.add(8L);
+        runs.seat(new Seat("easy_balrog", 8L, ORRIN, ANN));
+        game.partyChat.clear();
+        runs.runEnded(new RunEnded(8L, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 2,
+                List.of(new MemberResult(ORRIN, ANN, true, true, 0, Out.EXITED))));
+
+        assertEquals(List.of(), game.partyChat, "only an ally went in: no gg");
+        verify(game.residents, never()).whisper(any(), any(), argThat(line -> line.contains("gg")));
+    }
+
     // ---- the lost-run sweep --------------------------------------------------------------------
 
     @Test
@@ -662,6 +747,14 @@ class CompanionBossRunsTest {
 
     private static Seat seat(int agentId) {
         return new Seat("easy_balrog", SID, agentId, ANN);
+    }
+
+    /** Orrin, a bench ally of Ann's (P7 Part B): loaded, leading itself, in no party of hers. */
+    private Persona ally() {
+        Persona orrin = game.companion("orrin", "Orrin", ORRIN, RosterState.BENCHED, 105040300);
+        game.loaded.add(ORRIN);
+        game.selfLed.add(ORRIN);
+        return orrin;
     }
 
     /** Each companion is seated and on Mu Young's list (its persona and potions noted). */

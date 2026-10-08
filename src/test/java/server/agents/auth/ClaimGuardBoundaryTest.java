@@ -104,6 +104,8 @@ class ClaimGuardBoundaryTest {
             "server/living/roster/BenchDutyDispatcher.java load 1",
             // P7 Part B: a boss run's bench ally loads on its arrival, behind its EXPEDITION lease and the loaded check
             "server/living/roster/CompanionBossAllies.java load 1",
+            // P7 Part B: an owner's bench allies form one party of bots (the highest level leads), on companion-ops
+            "server/living/roster/CompanionBossAllies.java join 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",
             "server/living/population/PresenceScheduler.java load 1",

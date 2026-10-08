@@ -1,12 +1,16 @@
 package server.living.roster;
 
 import client.Character;
+import client.Job;
 import net.server.channel.Channel;
+import net.server.world.CauseScope;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
+import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
@@ -38,8 +42,9 @@ import static server.living.roster.LifecycleHarness.ANN;
  * A living world for the bench-ally tests (P7 Part B, CompanionBossAllies): {@link LifecycleHarness} with Ann on
  * Mu Young's Easy Balrog list in her room (105100100), both switches listing easy_balrog, the real budget, leases,
  * commitments and crew cache, and benched companions of Ann's at Lv70 camping in the Sleepywood dungeon (40 s away by
- * the recall estimate). The Agent layer's run ({@link FakeOpen}) and the game's loads ({@link FakePorts}) are fakes;
- * whispers, map chat and the bench calls are recorded. The list closes 5 min from {@link #now}.
+ * the recall estimate). The Agent layer's run ({@link FakeOpen}) and the game's loads, party joins, walks and unloads
+ * ({@link FakePorts}) are fakes; whispers, map chat and the bench calls are recorded. The host rule over these allies
+ * ({@link #bossRuns}) hands them the run's reports. The list closes 5 min from {@link #now}.
  */
 final class BossAllyHarness implements AutoCloseable {
     static final int ROOM = 105100100;
@@ -64,6 +69,10 @@ final class BossAllyHarness implements AutoCloseable {
     final MapleMap room;
     long now = 1_000_000_000L;
     final CompanionBossAllies allies;
+    /** Character id -> its {HP, MP} potions now, for the run's records; missing reads as not online. */
+    final Map<Integer, int[]> potions = new HashMap<>();
+    /** The host rule over these allies (the run's reports reach them through it). */
+    final CompanionBossRuns bossRuns;
 
     private final MockedStatic<AgentDialogueTransportRuntime> transport;
     private final boolean mapChatWasOn;
@@ -82,6 +91,16 @@ final class BossAllyHarness implements AutoCloseable {
         mapChatWasOn = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
         config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
         allies = new CompanionBossAllies(game.world, open, runs, ports, () -> now);
+        bossRuns = new CompanionBossRuns(game.world, open, potions::get, new CompanionBossRuns.Supplies() {
+            @Override
+            public boolean restocking(int agentId, long nowMs) {
+                return false;
+            }
+
+            @Override
+            public void checkIfShort(int agentId, String bossKey) {
+            }
+        }, runs, allies);
     }
 
     private void stub() {
@@ -91,6 +110,9 @@ final class BossAllyHarness implements AutoCloseable {
         Portal top = mock(Portal.class);
         when(top.getPosition()).thenReturn(new Point(-65, -264)); // WZ 105100100 portal 1
         when(room.getPortal("top00")).thenReturn(top);
+        Portal out = mock(Portal.class);
+        when(out.getPosition()).thenReturn(new Point(-691, 246)); // WZ 105100100 portal 6
+        when(room.getPortal("outPerrion")).thenReturn(out);
         Channel channel = mock(Channel.class);
         when(channel.getId()).thenReturn(CHANNEL);
         when(room.getChannelServer()).thenReturn(channel);
@@ -118,11 +140,17 @@ final class BossAllyHarness implements AutoCloseable {
                 .when(game.residents).whisper(any(), any(), anyString());
     }
 
-    /** A benched companion of Ann's at Lv70 (a White Knight), camping at {@code campMapId}. */
+    /**
+     * A benched companion of Ann's at Lv70 (a White Knight), camping at {@code campMapId}; its character says so too
+     * once it is loaded (the crew view reads a loaded one's own level and job).
+     */
     Persona benched(String id, String name, int characterId, int campMapId) {
         Persona persona = game.companion(id, name, characterId, RosterState.BENCHED, campMapId);
         game.store.levels.put(characterId, 70);
         game.store.jobs.put(characterId, 121);
+        Character bot = game.bots.get(characterId);
+        when(bot.getLevel()).thenReturn(70);
+        when(bot.getJob()).thenReturn(Job.WHITEKNIGHT);
         return persona;
     }
 
@@ -145,6 +173,22 @@ final class BossAllyHarness implements AutoCloseable {
             }
         }
         return out;
+    }
+
+    /** The seat of Ann's member {@code agentId} in run {@link #SID}. */
+    static Seat seat(int agentId) {
+        return new Seat("easy_balrog", SID, agentId, ANN);
+    }
+
+    /** Ann's benched companions of {@code personaIds} are called and arrive in her room (loaded, still waiting). */
+    void arrived(String... personaIds) {
+        allies.send(game.ann, "easy_balrog", List.of(personaIds), now);
+        game.runDueTimers();
+    }
+
+    /** Ann stands in the room with the allies (a human sees them walk out). */
+    void annIsInTheRoom() {
+        when(room.getAllPlayers()).thenAnswer(inv -> game.ann.getMap() == room ? List.of(game.ann) : List.of());
     }
 
     /** True when {@code line} is one of {@code intent}'s generic wordings, "{eta}" read as {@code eta}. */
@@ -181,10 +225,19 @@ final class BossAllyHarness implements AutoCloseable {
         IntConsumer onEnlist = id -> { };
         /** Told of each withdrawn id, as it is withdrawn. */
         IntConsumer onWithdraw = id -> { };
+        /** Agent id -> its ordinal in the run (its enlist order, from 5: Ann's party companions come first). */
+        final Map<Integer, Integer> ordinals = new HashMap<>();
+        /** The run left the Agent layer's registry without an end (a lost run). */
+        boolean gone;
 
         @Override
         public boolean open(long sessionId) {
-            return sessionId == SID;
+            return sessionId == SID && !gone;
+        }
+
+        @Override
+        public int ordinalOf(long sessionId, int agentId) {
+            return sessionId == SID ? ordinals.getOrDefault(agentId, -1) : -1;
         }
 
         @Override
@@ -248,6 +301,7 @@ final class BossAllyHarness implements AutoCloseable {
             accepted.forEach(id -> {
                 onEnlist.accept(id);
                 phases.put(id, AgentBossRunMember.Phase.WAITING);
+                ordinals.putIfAbsent(id, CompanionBossRuns.MOST_PER_OWNER + ordinals.size());
             });
             return new AgentBossRunService.Enlisted(accepted.isEmpty() ? 0L : SID, accepted,
                     agentIds.stream().filter(refuse::contains).toList());
@@ -286,6 +340,16 @@ final class BossAllyHarness implements AutoCloseable {
         /** Agents short of the boss's potion standard. */
         final Set<Integer> shortOfPotions = new HashSet<>();
         boolean loadFails;
+        /** "join Lead <- Ally (cause)" and "leave Ally (cause)", in order; the cause token in force then. */
+        final List<String> party = new ArrayList<>();
+        /** "walk Ally to x,y" per walk, in order. */
+        final List<String> walks = new ArrayList<>();
+        /** "unload Ally" per unload asked for, in order. */
+        final List<String> unloads = new ArrayList<>();
+        /** Allies whose save or disconnect fails: still online after their unload. */
+        final Set<Integer> stayOnline = new HashSet<>();
+        /** Walks take them there at once; false: they stand where they are until a test moves them. */
+        boolean walksArrive = true;
 
         @Override
         public Character load(int characterId, int worldId, int channel, MapleMap map, Point at) {
@@ -304,12 +368,43 @@ final class BossAllyHarness implements AutoCloseable {
 
         @Override
         public boolean loaded(int characterId) {
-            return elsewhere.contains(characterId);
+            return elsewhere.contains(characterId) || game.loaded.contains(characterId);
         }
 
         @Override
         public boolean shortOfPotions(Character agent, String bossKey) {
             return shortOfPotions.contains(agent.getId());
+        }
+
+        @Override
+        public JoinOutcome join(Character lead, Character ally) {
+            party.add("join " + lead.getName() + " <- " + ally.getName() + " (" + CauseScope.current() + ")");
+            return JoinOutcome.JOINED;
+        }
+
+        @Override
+        public void leaveParty(Character ally) {
+            party.add("leave " + ally.getName() + " (" + CauseScope.current() + ")");
+        }
+
+        @Override
+        public boolean walkTo(Character ally, Point to) {
+            if (!game.loaded.contains(ally.getId())) {
+                return false;
+            }
+            walks.add("walk " + ally.getName() + " to " + to.x + "," + to.y);
+            if (walksArrive) {
+                ally.changeMap(ally.getMap(), new Point(to));
+            }
+            return true;
+        }
+
+        @Override
+        public boolean unload(Character ally) {
+            unloads.add("unload " + ally.getName());
+            game.loaded.remove(ally.getId()); // out of the registry either way
+            game.selfLed.remove(ally.getId());
+            return !stayOnline.contains(ally.getId());
         }
     }
 }
