@@ -27,7 +27,7 @@ they go down, and follow the owner out after the run. Everything is off until `C
 - After the clear, companions follow the owner to the reward room and out by its portal. They pick up nothing there.
 - Inside a boss run, companions leave boss drops to the humans. The card text "Leave boss drops to you outside boss
   runs" now reads "Leave boss drops to you except in party runs". This text changes at deploy even with the switch off.
-- A companion short of 40 HP / 50 MP potions at 105100100 says the no-shop line once. No shop is reachable from there
+- A companion short of 100 HP / 60 MP potions at 105100100 says the no-shop line once (40/50 until fix L6). No shop is reachable from there
   (the room has no outgoing route edge). See open decision 1.
 
 ## Config
@@ -38,7 +38,8 @@ they go down, and follow the owner out after the run. Everything is off until `C
 - `COMPANION_BOSS_SERVER_AUTHORITY: true`.
 
 `agent-engine.yaml` (appended, each with Values/Purpose/Technical lines):
-- `AgentSupplyReadiness.BOSS_STANDARDS: 'easy_balrog=40/50'` (user decision 8). `config.AgentEngineConfigValidator`
+- `AgentSupplyReadiness.BOSS_STANDARDS: 'easy_balrog=100/60'` (user decision 8 set 40/50; fix L6 raised it after the
+  first live run). `config.AgentEngineConfigValidator`
   allowlists it as a non-numeric value.
 - `AgentBossRunService.MONITOR_MS 500`, `AgentBossRunSession.REGISTRATION_MARGIN_MS 60000`, `VERDICT_WAIT_MS 12000`,
   `NPC_REACH_PX 200`, `WALK_TIMEOUT_MS 30000`, `START_GRACE_MS 5000`, `HUMAN_GONE_GRACE_MS 3000`, `EXIT_REACH_PX 120`,
@@ -81,7 +82,7 @@ scripts/npc/1061014.js.
 
 ## Open decisions (asked 2026-10-07)
 
-1. Potions before Easy Balrog: (a) Lv50+ companions keep 40/50 in every town with a shop (recommended), (b) a
+1. Potions before Easy Balrog (superseded by fix L7, the Ant Tunnel Park store): (a) Lv50+ companions keep the standard in every town with a shop, (b) a
    Sleepywood-Henesys trip, (c) only the no-shop line (what Part A ships).
 2. Levelling ohboy's companions for the two-owner check: `!setgmlevel ohboy 6` on test days, `0` before each check.
 3. Boss clears stop counting as party-quest clears (today: PQ records named like "Balrogundefined").
@@ -153,3 +154,42 @@ Regression:
 37. One KPQ desk run and one HPQ desk run with companions still work.
 
 If a check fails: set `COMPANION_BOSS_ENABLED_TYPES: ""` and restart.
+
+## Live run 1 and fix L1-L7 (2026-10-07/08, branch fix/p7a-live-1)
+
+Live run 1 (Bossfriend Lv70 + five Lv70 companions): the mechanics passed (no-shop line, walk-ups, sign-up line,
+server authority, down line and wait outside, no summons). The fight was lost at Balrog 80%: each companion burned
+20-36 HP potions a minute (White Potions) and died within 3-5 minutes. Runs 2 (no human left) and 4 (logout) passed.
+The GM `!balrogtest` fixture never showed the potion cost, because it gives free Power Elixirs.
+
+Fixes (each failing-first with a mutation check and an independent audit):
+- L1: an Agent whose airborne tick is clamped by a fight boundary while crossing a floor now lands on it. Before, it
+  fell through and was recovered below the map (Isolde twice at x -100). Also changes the GM fixture and EPQ stage 4,
+  the only other users of a boundary.
+- L2: ordinal 0 leaves the initial-claw staging once it stands within 14 px of its safe point (it idled about 60 s
+  8 px short). Also changes the GM fixture.
+- L3: a lost Easy Balrog fight (time-out, wipe, everyone gone) removes its parts without the kill path, so it no longer
+  throws on a null leader or credits a clear. This bug was older than Part A and hit every Easy Balrog run.
+- L4: an Agent's hit on a server-owned boss no longer raises DISTANCE_HACK or refreshes the boss position (472 alerts
+  in run 1). Humans are unchanged.
+- L5: Agents use the 10 gun-only pirate skills only while holding a gun (all Agents, all content). Flint holds a
+  beginner sword (his gun loadout was never applied), so he now uses basic attacks until he gets a gun.
+- L6: the Easy Balrog potion standard is 100 HP / 60 MP potions (a shop tops up toward 200/120).
+- L7: when an owner with party companions walks through Ant Tunnel Park (105070001) while Easy Balrog is on, a Lv50+
+  companion short of the standard buys at the 24 Hr Mobile Store (NPC 1061001: Unagi 1000 HP, Pure Water 800 MP) and
+  catches up. The store is now in potion-supplier-catalog.json, so 29 Ant Tunnel and Drake maps now use it as their
+  nearest supplier instead of Henesys.
+
+Known limits: the standard counts potions, not HP, so 100 White Potions still pass; potion choice at 1061001 follows
+the existing shop band rule (Unconfirmed live); whether Agents reach NPC 1061001 at (333,-248) is Unconfirmed live.
+
+Extra live checks for the fix branch (GM-first, after the setup above):
+1. Give Flint a gun: `!giveitem Flint 1492000 1` (or any gun) and check that he equips it, or note that he does not.
+2. Give each companion mesos for potions (about 400k each), or check its purse first.
+3. From Sleepywood, walk down through the Ant Tunnels with the five companions (no `!warp` past Ant Tunnel Park).
+4. In Ant Tunnel Park, expect short companions to say a go line, buy at the 24 Hr Mobile Store and catch up.
+5. Read the "PQ potions" line after the run and compare it with run 1.
+6. Repeat Run 1 of the recipe. Expect no "below map bounds" line for 105100400, no DISTANCE_HACK alerts for the
+   companions, Isolde grinding from the start, and Flint never using a gun skill without a gun.
+7. Let one run end without a clear (everyone dies or leaves). Expect no "Runtime failure at
+   EventInstanceManager#monsterKilled" error and no clear effect.
