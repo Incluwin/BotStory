@@ -15,9 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The P7 kill switch (docs/BOT_MANAGEMENT_PLAN.md flow 4): boss expeditions with companions are off unless
- * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only easy_balrog (Mu Young) may be listed.
- * COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code default is
- * off; config.yaml ships easy_balrog on since its live checks began (2026-10-07), and says why. Part B: bench allies
+ * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only easy_balrog (Mu Young) or zakum (Adobis, P8) may
+ * be listed. COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code
+ * default is off; config.yaml ships easy_balrog on since its live checks began (2026-10-07), and says why, and zakum
+ * off until its live checks pass. Part B: bench allies
  * need COMPANION_BOSS_ALLY_TYPES to list the boss as well, and COMPANION_BOSS_OWNERS_MAX ships at 1 (Part A's
  * one-owner rule).
  */
@@ -40,12 +41,22 @@ class LivingWorldConfigBossTest {
 
         assertTrue(config.companionBossEnabled("easy_balrog"));
         assertTrue(config.companionBossEnabled(" Easy_Balrog "));
-        assertFalse(config.companionBossEnabled("zakum"));
+        assertFalse(config.companionBossEnabled("zakum"), "a known boss the switch does not list stays off");
         assertFalse(config.companionBossEnabled(null));
         assertDoesNotThrow(config::validate);
 
         config.COMPANION_BOSS_ENABLED_TYPES = " EASY_BALROG ,, ";
         assertTrue(config.companionBossEnabled("easy_balrog"));
+        assertDoesNotThrow(config::validate);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+        assertTrue(config.companionBossEnabled("easy_balrog"));
+        assertTrue(config.companionBossEnabled(" Zakum "));
+        assertDoesNotThrow(config::validate);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "zakum";
+        assertTrue(config.companionBossEnabled("zakum"));
+        assertFalse(config.companionBossEnabled("easy_balrog"));
         assertDoesNotThrow(config::validate);
 
         config.COMPANION_BOSS_ENABLED_TYPES = null;
@@ -55,7 +66,7 @@ class LivingWorldConfigBossTest {
 
     @Test
     void anyOtherBossFailsValidation() {
-        for (String bad : new String[] {"zakum", "easy_balrog,zakum", "balrog"}) {
+        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "zakum,horntail", "zakum_easy"}) {
             LivingWorldConfig config = new LivingWorldConfig();
             config.COMPANION_BOSS_ENABLED_TYPES = bad;
 
@@ -130,11 +141,20 @@ class LivingWorldConfigBossTest {
 
         config.COMPANION_BOSS_ENABLED_TYPES = "EASY_BALROG";
         assertDoesNotThrow(config::validate);
+
+        config.COMPANION_BOSS_ALLY_TYPES = "easy_balrog,zakum";
+        refused = assertThrows(IllegalArgumentException.class, config::validate);
+        assertEquals("living_world.COMPANION_BOSS_ALLY_TYPES must list only bosses COMPANION_BOSS_ENABLED_TYPES"
+                + " also lists, not \"zakum\"", refused.getMessage());
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+        assertDoesNotThrow(config::validate);
+        assertTrue(config.companionBossAlliesEnabled("zakum"));
     }
 
     @Test
     void anUnknownAllyTypeIsRejected() {
-        for (String bad : new String[] {"zakum", "easy_balrog,zakum", "balrog"}) {
+        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "horntail"}) {
             LivingWorldConfig config = new LivingWorldConfig();
             config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
             config.COMPANION_BOSS_ALLY_TYPES = bad;

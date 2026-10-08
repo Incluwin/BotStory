@@ -129,7 +129,7 @@ class AgentBossRunServiceEnlistTest {
     @Test
     void catalogFindsEasyBalrogByItsKeyOnly() {
         assertSame(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.of(" Easy_Balrog "));
-        assertNull(AgentBossRunCatalog.of("zakum"));
+        assertNull(AgentBossRunCatalog.of("balrog"));
         assertNull(AgentBossRunCatalog.of(" "));
         AgentBossRunDefinition balrog = AgentBossRunCatalog.EASY_BALROG;
         assertEquals(ExpeditionType.BALROG_EASY, balrog.type());
