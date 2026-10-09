@@ -31,11 +31,17 @@ final class CompanionBossRun {
     final Map<Integer, int[]> potionsAtSignUp = new ConcurrentHashMap<>();
     /** The companions on the entry NPC's list now. */
     final Set<Integer> signedUp = ConcurrentHashMap.newKeySet();
-    /** Once per owner: "we're all signed up", "let's regroup outside", the logout handoff line, "gg". */
+    /**
+     * Once per owner: "we're all signed up", "let's regroup outside", the logout handoff line, "gg", and (P8) "we're
+     * coming too" when the owner left before the clear and the marker line ("drop the eye") as the first goes in.
+     */
     volatile boolean signedUpSaid;
     volatile boolean regroupSaid;
     volatile boolean handoffSaid;
     volatile boolean ggSaid;
+    volatile boolean ownerLeftSaid;
+    /** The first of the owner's party companions went in: the marker line was said then, or never is. */
+    volatile boolean eyeAsked;
     /** When the lost-run sweep first found its session gone (0: it has not); read and written on companion-ops only. */
     long goneSinceMs;
     /** Intent -> the wordings its companions said for it in this run, until every one was said (guarded by this). */

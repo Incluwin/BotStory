@@ -844,13 +844,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * P8, on the run's tick, from memory: the member went into the fight. A companion this run allowed for a boss with
-     * a daily entry log (CompanionBossQuota: Zakum) has its entry logged on companion-ops, once; every other member
+     * a daily entry log (CompanionBossQuota: Zakum) has its entry logged on companion-ops, once. For a boss with a
+     * marker item (Zakum's Eye of Fire) companion-ops asks for the marker line ({@link #eyeLine}). Every other member
      * (Easy Balrog's, one the stock count let in) hands nothing over.
      */
     @Override
     public void entered(Seat seat) {
         if (quota.counts(seat)) {
             world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
+        }
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(seat.bossKey());
+        if (definition != null && !definition.markerItemIds().isEmpty()) {
+            world.executor().submit("boss.eye " + seat.agentCharacterId(), () -> eyeLine(seat, definition));
         }
     }
 
@@ -953,10 +958,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * The companion left the run (a bench ally's way home is CompanionBossAllies'). A missed start lets it go with a
-     * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line; no
-     * human left is one line per owner and the run's end lets them go; a plain exit says nothing; a runtime that went
-     * away (parked at its owner's logout) is let go. {@code cleared}: the run was past its clear as it handed the
-     * member back (only a bench ally's goodbye reads it).
+     * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line in its
+     * boss's words; no human left is one line per owner and the run's end lets them go; P8, its owner leaving before
+     * the clear (Zakum) is one line per owner from the first of theirs out, and the run's end lets them go too; a plain
+     * exit says nothing; a runtime that went away (parked at its owner's logout) is let go. {@code cleared}: the run
+     * was past its clear as it handed the member back (only a bench ally's goodbye reads it).
      */
     private void out(Seat seat, Out out, boolean cleared) {
         int id = seat.agentCharacterId();
@@ -968,7 +974,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 release(key(seat), id);
                 BossRunLines.say(world, bot(id), BossRunLines.MISSED, null, 0, whileOpen(seat));
             }
-            case DIED -> BossRunLines.say(world, bot(id), BossRunLines.DOWN, null, 0);
+            case DIED -> BossRunLines.say(world, seat.bossKey(), bot(id), BossRunLines.DOWN, null, 0);
             case NO_HUMAN_LEFT -> {
                 CompanionBossRun run = run(seat);
                 if (!run.regroupSaid) {
@@ -976,10 +982,38 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                     BossRunLines.say(world, bot(id), BossRunLines.REGROUP, null, 0);
                 }
             }
+            case OWNER_LEFT -> {
+                CompanionBossRun run = whileOpen(seat);
+                if (run != null && !run.ownerLeftSaid
+                        && BossRunLines.say(world, bot(id), BossRunLines.OWNER_LEFT, null, 0, run)) {
+                    run.ownerLeftSaid = true;
+                }
+            }
             case EXITED -> {
             }
             case GONE -> release(key(seat), id);
         }
+    }
+
+    /**
+     * P8, Zakum's Eye of Fire: as the first of the owner's party companions goes in, the owner on the altar with one
+     * of the boss's marker items in their bag hears that companion say the marker line ({@link BossRunLines#ZAKUM_EYE})
+     * in party chat. Asked once per owner's run, at that first one, with or without the item; a bench ally going in
+     * first never asks (a party of bots has nobody to hear it).
+     */
+    private void eyeLine(Seat seat, AgentBossRunDefinition definition) {
+        CompanionBossRun run = whileOpen(seat);
+        int id = seat.agentCharacterId();
+        if (run == null || run.eyeAsked || !follows(id, run.ownerId)) {
+            return;
+        }
+        run.eyeAsked = true;
+        Character owner = world.roster().onlineCharacter(run.ownerId);
+        if (owner == null || owner.getMapId() != definition.battleMapId()
+                || definition.markerItemIds().stream().noneMatch(owner::haveItem)) {
+            return;
+        }
+        BossRunLines.say(world, bot(id), BossRunLines.ZAKUM_EYE, null, 0, run);
     }
 
     /**
@@ -1043,14 +1077,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * A companion's outcome: cleared when it was in the fight as the boss fell (lying dead there too), tapped out when
-     * it went down before that (it waited outside while the run went on), or left before a clear the run went on to;
-     * else failed with the run (everyone down, the time ran out, the event ended).
+     * it went down before that (it waited outside while the run went on), or left before a clear the run went on to
+     * (P8: with its owner too); else failed with the run (everyone down, the time ran out, the event ended).
      */
     static String outcome(MemberResult member, boolean runCleared) {
         if (member.inAtClear()) {
             return "cleared";
         }
-        if (member.out() == Out.DIED || runCleared && (member.out() == Out.EXITED || member.out() == Out.GONE)) {
+        if (member.out() == Out.DIED || runCleared && (member.out() == Out.EXITED || member.out() == Out.GONE
+                || member.out() == Out.OWNER_LEFT)) {
             return "tapped_out";
         }
         return "failed";
@@ -1073,8 +1108,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * One gg for the owner, when online, from a companion of their party that went in (one in at the clear first);
-     * never from a bench ally, which says its own goodbye.
+     * One gg for the owner, when online, from a companion of their party that went in (one in at the clear first), in
+     * the boss's own words (P8); never from a bench ally, which says its own goodbye.
      */
     private void sayGg(CompanionBossRun run, List<MemberResult> wentIn) {
         if (run.ggSaid || world.roster().onlineCharacter(run.ownerId) == null) {
@@ -1086,7 +1121,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             Character bot = follows(member.agentId(), run.ownerId) ? bot(member.agentId()) : null;
             if (bot != null) {
                 run.ggSaid = true;
-                BossRunLines.say(world, bot, BossRunLines.GG, null, 0);
+                BossRunLines.say(world, run.bossKey, bot, BossRunLines.GG, null, 0);
                 return;
             }
         }

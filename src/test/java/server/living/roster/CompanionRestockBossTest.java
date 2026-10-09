@@ -233,6 +233,28 @@ class CompanionRestockBossTest {
                     .contains(said.getFirst()), said.toString());
         }
 
+        @Test
+        void aZakumTripSaysZakumsGoLinesNeverBalrogs() {
+            AgentSupplyReadiness.Activity zakum = AgentSupplyReadiness.Activity.partyQuest("zakum");
+            restock.started(FENNA, zakum, 120_000L);
+            drain();
+            try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                    org.mockito.Mockito.CALLS_REAL_METHODS);
+                 MockedStatic<AgentAmmoService> ammo = mockStatic(AgentAmmoService.class,
+                         org.mockito.Mockito.CALLS_REAL_METHODS)) {
+                readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                        any(AgentSupplyReadiness.Activity.class)))
+                        .thenReturn(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+                ammo.when(() -> AgentAmmoService.projectileKind(any())).thenReturn(AgentProjectileKind.ARROWS);
+
+                restock.started(FENNA, zakum, 120_000L);
+                drain();
+            }
+
+            assertEquals(List.of("low on pots for zakum, grabbing some here. back in ~2 min.",
+                    "low on arrows for zakum, grabbing some here. back in ~2 min."), said);
+        }
+
         private void noSupplier(AgentSupplyReadiness.Activity activity) {
             restock.refused(FENNA, activity, AgentSupplyReadiness.Refusal.NO_SUPPLIER,
                     new AgentSupplyReadiness.Shortfall(19, 0), 0);

@@ -150,7 +150,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     /**
      * It set off: an ACTIVE companion says so, from a boss's entrance with about when it will be back (the
-     * owner may be signing it up meanwhile: user decision 7).
+     * owner may be signing it up meanwhile: user decision 7), in that boss's own words (BossRunLines.BY_BOSS, P8).
      */
     @Override
     public void started(int agentCharacterId, AgentSupplyReadiness.Activity activity, long etaMs) {
@@ -159,14 +159,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return; // a held companion goes quietly: its owner is inside the run
         }
         Character bot = bot(agentCharacterId);
+        String bossKey = activity == null ? null : activity.partyQuestKey();
         if (bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))) {
             String word = CompanionRestockLines.ammoWord(bot);
             ammoTrips.put(agentCharacterId, word);
             if (boss(activity)) {
                 int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
                 world.executor().submit("companion.restock.boss_go_ammo " + agentCharacterId,
-                        () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO_AMMO, null, minutes, null,
-                                word));
+                        () -> BossRunLines.say(world, bossKey, bot(agentCharacterId), BossRunLines.GO_AMMO, null,
+                                minutes, word));
                 return;
             }
             world.executor().submit("companion.restock.go_ammo " + agentCharacterId,
@@ -177,7 +178,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (boss(activity)) {
             int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
             world.executor().submit("companion.restock.boss_go " + agentCharacterId,
-                    () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO, null, minutes));
+                    () -> BossRunLines.say(world, bossKey, bot(agentCharacterId), BossRunLines.GO, null, minutes));
             return;
         }
         world.executor().submit("companion.restock.go " + agentCharacterId,

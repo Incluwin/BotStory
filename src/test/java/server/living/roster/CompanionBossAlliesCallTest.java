@@ -285,6 +285,20 @@ class CompanionBossAlliesCallTest {
     }
 
     @Test
+    void aZakumAllyWhispersItsWayToTheDoorToZakumInZakumsWords() {
+        atAdobis();
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            sendTo("zakum", "orrin");
+
+            List<String> said = h.said("Orrin");
+            assertEquals(1, said.size(), h.whispers.toString());
+            assertTrue(said.get(0).startsWith("heading to the door to zakum. ~")
+                    || said.get(0).startsWith("omw to adobis, ~"), h.whispers.toString());
+            assertTrue(said.get(0).endsWith("."), said.get(0));
+        }
+    }
+
+    @Test
     void easyBalrogAlliesAreNeverCounted() {
         try (BossLogDatabase db = new BossLogDatabase()) {
             send("orrin");

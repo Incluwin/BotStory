@@ -1534,7 +1534,10 @@ final class CompanionBossAllies {
         return world.config().COMPANION_BOSS_ALLY_WALK_OUT_MS;
     }
 
-    /** A whisper to the owner from an ally that is not loaded (its persona speaks), its wordings rotated per run. */
+    /**
+     * A whisper to the owner from an ally that is not loaded (its persona speaks), its wordings rotated per run, in its
+     * boss's own words where it has them (BossRunLines.BY_BOSS, P8).
+     */
     private void whisper(Trip trip, Persona persona, String intent, String eta) {
         CompanionBossRun run = trip.sessionId == 0L ? null
                 : runs.get(CompanionBossRun.key(trip.bossKey, trip.sessionId, trip.ownerId));
@@ -1543,7 +1546,7 @@ final class CompanionBossAllies {
 
     private void whisper(Trip trip, Persona persona, String intent, String eta, CompanionBossRun run) {
         Character owner = persona == null ? null : world.roster().onlineCharacter(trip.ownerId);
-        List<String> lines = owner == null ? List.of() : BossRunLines.lines(world, persona, intent);
+        List<String> lines = owner == null ? List.of() : BossRunLines.lines(world, persona, intent, trip.bossKey);
         if (lines.isEmpty()) {
             return;
         }

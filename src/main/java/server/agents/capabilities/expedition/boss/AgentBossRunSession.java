@@ -20,7 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * After Start the run adopts each signed-up member the stock warp took into the expedition's event on the battle map,
  * drives the alive ones through the fight, and at the clear hands them back to following their owner. A member that
  * died, or left the event, waits outside for its owner; when no human stands in the fight any more, or after the clear
- * once its anchor left, a member walks out by the stock ways. The run ends when every member is out or the event is
+ * once its anchor left, a member walks out by the stock ways (P8: for a boss whose owner takes the party out, Zakum, a
+ * member that follows its owner does so before the clear too). The run ends when every member is out or the event is
  * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
  * under the session's lock. A SELF_LED member (one that leads itself, with no owner to walk up with or follow) walks to
  * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
@@ -339,7 +340,7 @@ public final class AgentBossRunSession {
             clear(ports);
             return;
         }
-        if (phase == Phase.POST_CLEAR) {
+        if (phase == Phase.POST_CLEAR || definition.ownerLeavingTakesParty()) {
             followAnchorsOut(ports, nowMs);
         }
         watchHumans(ports, nowMs);
@@ -457,11 +458,16 @@ public final class AgentBossRunSession {
      * After the clear a member stays while its anchor (its owner, or a handoff's heir) is in the event. An anchor that
      * walked out is followed at once. One that logged out is waited for HUMAN_GONE_GRACE_MS from the first tick that
      * misses it: its logout leaves the event before companion-ops hands the member to an heir (handTo), and a member
-     * already LEAVING could not be handed over.
+     * already LEAVING could not be handed over. P8: before the clear, for a boss whose owner takes the party out
+     * (ownerLeavingTakesParty: Zakum), the same rule walks out each member that follows its owner, OWNER_LEFT. A dead
+     * anchor still lying in the event is in it; a member that leads itself (a bench ally) stays while any human stands
+     * (watchHumans).
      */
     private void followAnchorsOut(AgentBossRunPorts ports, long nowMs) {
+        boolean beforeClear = !cleared;
         for (AgentBossRunMember member : members) {
-            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE
+                    || beforeClear && member.kind() != AgentBossRunMember.Kind.FOLLOWER) {
                 continue;
             }
             int anchor = member.anchorId();
@@ -475,7 +481,8 @@ public final class AgentBossRunSession {
             boolean anchorLeft = ports.online(anchor) || nowMs - member.anchorGoneSince(nowMs) >= humanGoneGraceMs();
             // A handTo that landed during this tick has the last word.
             if (anchorLeft && member.anchorId() == anchor) {
-                leave(ports, member, AgentBossRunHost.Out.EXITED, nowMs);
+                leave(ports, member, beforeClear ? AgentBossRunHost.Out.OWNER_LEFT : AgentBossRunHost.Out.EXITED,
+                        nowMs);
             }
         }
     }

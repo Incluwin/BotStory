@@ -53,7 +53,13 @@ public final class AgentBossRunHost {
         /** Left the event alive: after its anchor once the boss fell, or by any other way out. */
         EXITED,
         /** Its runtime went away (unloaded at its owner's logout). */
-        GONE
+        GONE,
+        /**
+         * P8: walked out before the clear because its anchor (its owner, or a logout handoff's heir) left the event, in
+         * a run whose owner takes the party out (AgentBossRunDefinition.ownerLeavingTakesParty: Zakum). Only a member
+         * that follows its owner; a member that leads itself stays while any human stands.
+         */
+        OWNER_LEFT
     }
 
     /** What one member did in a run that ended. */

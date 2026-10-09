@@ -206,7 +206,7 @@ public final class AgentBossRunMember {
         }
     }
 
-    /** Why it is on its way out (NO_HUMAN_LEFT or EXITED); null unless {@link Phase#LEAVING}. */
+    /** Why it is on its way out (NO_HUMAN_LEFT, OWNER_LEFT or EXITED); null unless {@link Phase#LEAVING}. */
     AgentBossRunHost.Out leavingFor() {
         return leavingFor;
     }

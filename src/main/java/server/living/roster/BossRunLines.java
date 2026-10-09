@@ -21,7 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's name,
  * "{n}" whole minutes, "{ammo}" a projectile word and "{eta}" a bench ally's recall ETA (RecallTravel.describe). A
  * bench ally (Part B, "boss.ally.*": on its way down, here, back to camp) leads itself in a party of bots, so it tells
- * its owner where the owner hears it ({@link #tell}). Said on companion-ops.
+ * its owner where the owner hears it ({@link #tell}). P8: a boss whose place the generic lines do not fit (Zakum:
+ * Adobis, the Door to Zakum, El Nath) has its own lines for those intents ({@link #BY_BOSS}), read by the boss key a
+ * caller passes or its run's. Said on companion-ops.
  */
 final class BossRunLines {
     static final String SIGNED_UP = "boss.signedup";
@@ -71,6 +73,16 @@ final class BossRunLines {
      * party companion says it in party chat, a bench ally whispers it. Every boss with an entry log.
      */
     static final String QUOTA = "boss.refused.quota";
+    /**
+     * P8: its owner left the fight before the clear, so it walks out too (AgentBossRunHost.Out.OWNER_LEFT, a boss whose
+     * owner takes the party out: Zakum); one line per owner's run. Every boss with that rule.
+     */
+    static final String OWNER_LEFT = "boss.owner_left";
+    /**
+     * P8, Zakum only ({@link #BY_BOSS}): the first of the owner's party companions to go in says it once per run while
+     * the owner stands on the altar carrying the Eye of Fire (the run's marker item).
+     */
+    static final String ZAKUM_EYE = "boss.zakum.eye";
 
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
@@ -166,7 +178,45 @@ final class BossRunLines {
             Map.entry(QUOTA, List.of(
                     "already went in today. i'll wait out here.",
                     "used up my run for today, i'll hang back.",
-                    "can't go in again today. good luck in there!")));
+                    "can't go in again today. good luck in there!")),
+            Map.entry(OWNER_LEFT, List.of(
+                    "you're out? we're coming too.",
+                    "heading out with you.")));
+
+    /**
+     * P8: a boss's own lines for an intent (boss key -> intent -> lines), where the generic ones name another boss or
+     * its place (Mu Young, Balrog, her temple, "down here"), and the intents only that boss has. A persona's own lines
+     * still come first; every intent a boss has none for keeps the generic ones.
+     */
+    static final Map<String, Map<String, List<String>>> BY_BOSS = Map.of(
+            // slot: zakum (Adobis's room behind the Door to Zakum, the altar, El Nath)
+            "zakum", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, zakum got me. i'll wait in el nath.",
+                            "i'm down... see you back in town.",
+                            "that arm hit hard. waiting in el nath.")),
+                    Map.entry(REFUSED_LEVEL, List.of("adobis won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "adobis won't let me sign. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to adobis in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for zakum, grabbing some here. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for zakum, grabbing some here. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the door to zakum. {eta}.",
+                            "omw to adobis, {eta}.")),
+                    Map.entry(ALLY_HERE, List.of(
+                            "made it to the door. signing up.",
+                            "here! putting my name down.")),
+                    Map.entry(ALLY_LOW_POTS, List.of("bit low on pots and no shop up here. i'll manage.")),
+                    Map.entry(ALLY_LOW_AMMO, List.of(
+                            "not many {ammo} left and no shop up here. i'll make them count.")),
+                    Map.entry(GG, List.of(
+                            "gg! zakum's down.",
+                            "we did it! gg.")),
+                    Map.entry(ZAKUM_EYE, List.of(
+                            "ready when you are. drop the eye on the altar.",
+                            "we're set, drop the eye whenever."))));
 
     private static final AtomicInteger counter = new AtomicInteger();
 
@@ -186,18 +236,41 @@ final class BossRunLines {
         };
     }
 
-    /** The persona's own lines for {@code intent} (its arc's or its dialogue's), else the generic ones. */
-    static List<String> lines(LivingWorld world, Persona persona, String intent) {
+    /**
+     * The persona's own lines for {@code intent} (its arc's or its dialogue's), else {@code bossKey}'s own
+     * ({@link #BY_BOSS}), else the generic ones; a null boss reads the generic ones.
+     */
+    static List<String> lines(LivingWorld world, Persona persona, String intent, String bossKey) {
         List<String> own = persona == null ? null : world.arcs().lines(persona, intent);
-        return own == null || own.isEmpty() ? GENERIC.getOrDefault(intent, List.of()) : own;
+        if (own != null && !own.isEmpty()) {
+            return own;
+        }
+        Map<String, List<String>> boss = bossKey == null ? null : BY_BOSS.get(bossKey);
+        List<String> theirs = boss == null ? null : boss.get(intent);
+        return theirs != null ? theirs : GENERIC.getOrDefault(intent, List.of());
     }
 
     /**
      * On companion-ops: {@code bot} says one of its {@code intent} lines in its party's chat, "{name}" read as
-     * {@code name} and "{n}" as {@code minutes}. False when it has no line for it or could not say it.
+     * {@code name} and "{n}" as {@code minutes}. False when it has no line for it or could not say it. The generic
+     * lines: a caller that knows the boss passes its key or its run.
      */
     static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes) {
         return say(world, bot, intent, name, minutes, null);
+    }
+
+    /**
+     * As {@link #say(LivingWorld, Character, String, String, int)}, in {@code bossKey}'s own words where it has them
+     * ({@link #BY_BOSS}), for a caller with no run at hand (a death, a shop trip from the boss's entrance).
+     */
+    static boolean say(LivingWorld world, String bossKey, Character bot, String intent, String name, int minutes) {
+        return say(world, bossKey, bot, intent, name, minutes, null);
+    }
+
+    /** As {@link #say(LivingWorld, String, Character, String, String, int)}, "{ammo}" read as {@code ammo}. */
+    static boolean say(LivingWorld world, String bossKey, Character bot, String intent, String name, int minutes,
+                       String ammo) {
+        return speak(world, bossKey, bot, intent, name, minutes, null, ammo);
     }
 
     /**
@@ -210,13 +283,22 @@ final class BossRunLines {
         return say(world, bot, intent, name, minutes, run, null);
     }
 
-    /** As {@link #say(LivingWorld, Character, String, String, int, CompanionBossRun)}, "{ammo}" read as {@code ammo}. */
+    /**
+     * As {@link #say(LivingWorld, Character, String, String, int, CompanionBossRun)}, "{ammo}" read as {@code ammo}; in
+     * the words of {@code run}'s boss ({@link #BY_BOSS}).
+     */
     static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes,
                        CompanionBossRun run, String ammo) {
+        return speak(world, run == null ? null : run.bossKey, bot, intent, name, minutes, run, ammo);
+    }
+
+    /** {@code bot} says one of its {@code intent} lines for {@code bossKey} in its party's chat (see {@link #say}). */
+    private static boolean speak(LivingWorld world, String bossKey, Character bot, String intent, String name,
+                                 int minutes, CompanionBossRun run, String ammo) {
         if (bot == null) {
             return false;
         }
-        List<String> lines = lines(world, world.residents().personaOfCharacterId(bot.getId()), intent);
+        List<String> lines = lines(world, world.residents().personaOfCharacterId(bot.getId()), intent, bossKey);
         if (lines.isEmpty()) {
             return false;
         }
@@ -246,7 +328,7 @@ final class BossRunLines {
             return false;
         }
         Persona persona = world.residents().personaOfCharacterId(bot.getId());
-        List<String> lines = lines(world, persona, intent);
+        List<String> lines = lines(world, persona, intent, run == null ? null : run.bossKey);
         if (lines.isEmpty()) {
             return false;
         }
