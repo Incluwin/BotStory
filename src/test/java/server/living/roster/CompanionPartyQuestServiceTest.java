@@ -278,8 +278,36 @@ class CompanionPartyQuestServiceTest {
         assertEquals(1, game.partyChat.size(), "once: " + game.partyChat);
         String said = game.partyChat.getFirst();
         assertTrue(said.startsWith("Fenna: ") && CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE)
+                .stream().map(line -> CompanionRestockLines.filled(line, "potions")).toList()
                 .contains(said.substring("Fenna: ".length())), said);
         assertNotNull(fenna);
+    }
+
+    @Test
+    void aCompanionShortOnlyOfManaThatCannotAffordThemAsksForManaPotionsOrMesos() {
+        fx.companion("fenna", "Fenna", 903, 25, Job.HUNTER);
+        game.members.remove((Integer) 902);
+        fx.potions.put(903, 40);
+        fx.manaPotions.put(903, 3); // her HP potions are fine
+        fx.ready();
+        enableDesk();
+        List<Runnable> ops = fx.holdCompanionOps();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.status(any(), anyLong())).thenAnswer(inv ->
+                    inv.getArgument(0) == entries.get(903)
+                            ? new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, 0L, 4_000)
+                            : AgentSupplyReadiness.Status.NONE);
+            assertEquals(List.of(new LineupPlan.Waiting(903, "Fenna", LakelisLines.LOW_ON_MANA_BROKE)),
+                    fx.service.plan(game.ann, "kpq").waiting());
+            assertTrue(offer());
+        }
+        CompanionPqFixture.drain(ops);
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        String said = game.partyChat.getFirst().substring("Fenna: ".length());
+        assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE).stream()
+                .map(line -> CompanionRestockLines.filled(line, "mana potions")).toList().contains(said),
+                "the desk's \"low on mana potions, out of mesos\" in her words: " + said);
     }
 
     @Test

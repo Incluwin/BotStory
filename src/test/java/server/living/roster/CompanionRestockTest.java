@@ -322,7 +322,7 @@ class CompanionRestockTest {
                 new AgentSupplyReadiness.Shortfall(19, 0), 795);
         drain();
         assertEquals(1, said.size(), "once per ask interval: " + said);
-        assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE).contains(said.getFirst()));
+        assertTrue(filled(CompanionRestockLines.BROKE, "potions").contains(said.getFirst()), said.toString());
 
         restock.finished(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Outcome.INTERRUPTED);
         restock.finished(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Outcome.SHORT_SPACE);
@@ -341,6 +341,72 @@ class CompanionRestockTest {
                 new AgentSupplyReadiness.Shortfall(19, 0), 795);
         drain();
         assertEquals(2, said.size(), "half an hour later it asks again");
+    }
+
+    // ---- asking its owner, and taking the help (user decision 2026-10-09) ------------------------
+
+    @Test
+    void itAsksForWhatItLacksOrMesosManaPotionsWhenOnlyManaIsShort() {
+        restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                new AgentSupplyReadiness.Shortfall(0, 25), 795);
+        drain();
+
+        assertEquals(1, said.size(), said.toString());
+        assertTrue(filled(CompanionRestockLines.BROKE, "mana potions").contains(said.getFirst()),
+                "it has its HP potions: " + said);
+    }
+
+    @Test
+    void givenPartOfWhatItLackedItSaysWhatItStillLacks() {
+        restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                new AgentSupplyReadiness.Shortfall(0, 25), 795);
+        drain();
+        said.clear();
+
+        restock.stillShort(FENNA, KPQ, new AgentSupplyReadiness.Shortfall(0, 25), 300);
+        assertEquals(List.of(), said, "nothing said on the Agent tick");
+        assertEquals("companion.restock.still_short " + FENNA, submitted.getLast());
+        drain();
+        assertEquals(1, said.size(), said.toString());
+        assertTrue(filled(CompanionRestockLines.STILL_SHORT, "mana potions").contains(said.getFirst()),
+                said.toString());
+
+        hold(); // waiting outside its owner's run, it still answers the help it asked for
+        restock.stillShort(FENNA, KPQ, new AgentSupplyReadiness.Shortfall(0, 25), 100);
+        drain();
+        assertEquals(2, said.size(), "each report is a gift of its own; the Agent spaces them: " + said);
+    }
+
+    @Test
+    void helpItNeverAskedForOrAskedForLongAgoGetsNoLine() {
+        restock.stillShort(FENNA, KPQ, new AgentSupplyReadiness.Shortfall(19, 0), 300);
+        drain();
+        assertEquals(List.of(), said, "a party member's pot share it never asked for");
+
+        restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                new AgentSupplyReadiness.Shortfall(19, 0), 795);
+        now += config.COMPANION_RESTOCK_ASK_EVERY_MS;
+        restock.stillShort(FENNA, KPQ, new AgentSupplyReadiness.Shortfall(19, 0), 300);
+        drain();
+        assertEquals(1, said.size(), "the broke line only: its ask is past: " + said);
+    }
+
+    @Test
+    void anAmmoOnlyCompanionStillShortSaysWhatItShoots() {
+        try (MockedStatic<AgentAmmoService> ammo = shoots(AgentProjectileKind.STARS)) {
+            restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                    new AgentSupplyReadiness.Shortfall(0, 0, 500), 300);
+            restock.stillShort(FENNA, KPQ, new AgentSupplyReadiness.Shortfall(0, 0, 500), 120);
+            drain();
+        }
+        assertEquals(2, said.size(), said.toString());
+        assertTrue(filled(CompanionRestockLines.STILL_SHORT, "stars").contains(said.get(1)), said.toString());
+    }
+
+    /** The generic {@code intent} lines with {need} and {ammo} read as {@code word}. */
+    private static List<String> filled(String intent, String word) {
+        return CompanionRestockLines.GENERIC.get(intent).stream()
+                .map(line -> CompanionRestockLines.filled(line, word)).toList();
     }
 
     // ---- trips for projectiles alone (2026-10-07) ---------------------------------------------
