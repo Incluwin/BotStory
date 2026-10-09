@@ -59,6 +59,7 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private EventInstanceManager eventInstance;
     private long phaseEnteredAtMs;
     private AgentPpqStage leaderStage = AgentPpqStage.LOBBY;
+    private String potionsAtEntry = "{}";
     private long stageEnteredAtMs;
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
@@ -177,6 +178,11 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     }
 
     synchronized AgentPpqStage leaderStage() { return leaderStage; }
+
+    /** The companions' potions as the run bound its event, for the release's 'PPQ potions:' line. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions == null ? "{}" : potions; }
 
     /** Whether the run's release has begun. */
     public synchronized boolean terminationStarted() { return terminating; }

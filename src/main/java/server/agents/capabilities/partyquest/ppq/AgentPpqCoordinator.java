@@ -58,6 +58,7 @@ public final class AgentPpqCoordinator {
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
+            session.setPotionsAtEntry(AgentPpqTerminationService.potions(session));
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
         logStage(session, leader, nowMs);
