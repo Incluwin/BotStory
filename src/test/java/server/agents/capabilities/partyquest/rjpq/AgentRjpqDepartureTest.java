@@ -93,6 +93,43 @@ class AgentRjpqDepartureTest {
     }
 
     @Test
+    void aDeadCompanionIsNotShortHandedWhileTheStockEndWalksTheOthersOut() {
+        when(fixture.event.getTimeLeft()).thenReturn(900L);
+        tick(2_000L);
+        // Una lies dead, still registered; end() has walked Mira and Tobi out, Ben is next.
+        when(fixture.character(UNA).getHp()).thenReturn(0);
+        for (int id : List.of(MIRA, TOBI)) {
+            when(fixture.character(id).getEventInstance()).thenReturn(null);
+        }
+        assertEquals(2, AgentRjpqCompanionRun.standingCompanions(fixture.session, UNA),
+                "walking out, not departed: they still stand for the gate too");
+
+        tick(2_500L);
+        assertFalse(fixture.session.terminal(), fixture.session.failure());
+
+        when(fixture.event.isEventDisposed()).thenReturn(true);
+        tick(3_000L);
+
+        assertEquals("The RJPQ event ended before the clear", fixture.session.failure());
+        assertEquals("out of time... yulete got away.", fixture.said.getLast());
+    }
+
+    @Test
+    void pinADeadCompanionWithTheOthersDepartedIsShortHanded() {
+        tick(2_000L);
+        when(fixture.character(UNA).getHp()).thenReturn(0);
+        for (int id : List.of(MIRA, TOBI)) {
+            when(fixture.character(id).getEventInstance()).thenReturn(null);
+        }
+        tick(2_500L);
+        tick(4_500L);
+
+        assertEquals(0, AgentRjpqCompanionRun.standingCompanions(fixture.session, UNA));
+        assertTrue(fixture.session.failure().contains("went down, and no companion of the RJPQ run stands"),
+                fixture.session.failure());
+    }
+
+    @Test
     void theStockEndWalkingThePlayersOutIsNotACarryOn() {
         when(fixture.event.getTimeLeft()).thenReturn(900L);
         tick(2_000L);
