@@ -106,6 +106,7 @@ class AgentSupplyReadinessTest {
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpqj"), "Juliet's side: rjpq's standard");
         assertEquals(new AgentSupplyReadiness.Standard(350, 350), standardFor("EPQ "), "keys are trimmed, any case");
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
     }

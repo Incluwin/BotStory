@@ -37,6 +37,8 @@ import server.agents.capabilities.partyquest.ppq.AgentPpqLobbyProfile;
 import server.agents.capabilities.partyquest.ppq.AgentPpqSession;
 import server.agents.capabilities.partyquest.ppq.AgentPpqSessionRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSide;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSystem;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.session.AgentActivityAdmissionResult;
 
@@ -46,7 +48,8 @@ import java.util.List;
 public final class AgentPartyQuestRuntime {
     private static final List<AgentPartyQuestSystem> SYSTEMS = List.of(
             new HpqSystem(), new KpqSystem(), new LpqSystem(), new LmpqSystem(),
-            new OpqSystem(), new EpqSystem(), new PpqSystem());
+            new OpqSystem(), new EpqSystem(), new PpqSystem(),
+            new AgentRjpqSystem(AgentRjpqSide.ZENUMIST), new AgentRjpqSystem(AgentRjpqSide.ALCADNO));
 
     private AgentPartyQuestRuntime() {
     }
