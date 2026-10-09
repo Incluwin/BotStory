@@ -1506,8 +1506,8 @@ tuning:
     # Technical: The GM-only harness consumes this value before PQ entry; active OPQ travel and room ticks do not use it.
     server.agents.capabilities.partyquest.opq.AgentOpqTestService.SPAWN_STAGGER_MS: '500'
     # Values: 250-5000 milliseconds. Recommended: 1000 for timely OPQ liveness checks with modest scheduler overhead.
-    # Purpose: Scans active OPQ sessions for an expired or dead coordinator lease holder and for the loss of every live Agent.
-    # Technical: AgentOpqWatchdogRuntime iterates only AgentOpqSessionRegistry; a live Agent takes an expired or dead holder's lease and ticks the coordinator, and a session with no live Agent fails through the OPQ termination path.
+    # Purpose: Scans active OPQ sessions for an expired or dead coordinator lease holder and for the loss of every loaded Agent.
+    # Technical: AgentOpqWatchdogRuntime iterates only AgentOpqSessionRegistry; the first live Agent (or, while every loaded Agent is dead, the lowest-id one) takes an expired or dead holder's lease and ticks the coordinator, and a session with no loaded Agent fails through the OPQ termination path.
     server.agents.capabilities.partyquest.opq.AgentOpqWatchdogRuntime.PERIOD_MS: '1000'
     # Values: 1-10 refusals. Recommended: 3 so a companion whose bag is full gives up the reward instead of asking Minerva forever.
     # Purpose: Bounds how often an OPQ Agent asks Minerva for its reward while its inventory cannot take it.

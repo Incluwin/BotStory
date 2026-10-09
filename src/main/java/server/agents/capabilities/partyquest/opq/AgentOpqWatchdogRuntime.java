@@ -8,12 +8,15 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 
 /**
- * OPQ-only coordinator failover and orphan watchdog (a copy of LPQ's): a session whose lease holder stopped ticking
- * (dead or unloaded) is driven by its first live Agent, and a session with no live Agent left is ended, so a run
- * still ticks, fails or completes when none of its Agents' own ticks reach it.
+ * OPQ-only coordinator failover and orphan watchdog (a copy of LPQ's, with LMPQ's dead-crew rule): a session whose
+ * lease holder stopped ticking (dead or unloaded) is driven by its first live Agent, or, while every loaded Agent is
+ * dead (each respawns or is held on its own death tick), by the lowest-id one, so the run's own rules (stall timer,
+ * leader, departures, the death departure gate) decide. Only a session with no Agent loaded at all is ended here, so a
+ * run still ticks, fails or completes when none of its Agents' own ticks reach it.
  */
 final class AgentOpqWatchdogRuntime {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqWatchdogRuntime.class);
@@ -39,19 +42,22 @@ final class AgentOpqWatchdogRuntime {
 
     static void tick(AgentOpqSession session, long nowMs) {
         if (session == null || session.paused() || session.terminal()) return;
-        // The body found here is the one used below: reading it again could find the Agent unloaded meanwhile.
-        Character agent = session.members().stream()
+        // The bodies found here are the ones used below: reading them again could find an Agent unloaded meanwhile.
+        List<Character> loaded = session.members().stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId))
                 .map(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .map(AgentRuntimeIdentityRuntime::bot)
-                .filter(candidate -> candidate != null && candidate.getHp() > 0)
-                .findFirst().orElse(null);
-        if (agent == null) {
-            AgentOpqTerminationService.fail(session, "No live Agent remains", nowMs);
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        if (loaded.isEmpty()) {
+            AgentOpqTerminationService.fail(session, "No OPQ Agent is loaded", nowMs);
             return;
         }
+        // A dead crew is not an ended run: stock OrbisPQ only unregisters a dead member, and only above its floor.
+        Character agent = loaded.stream().filter(candidate -> candidate.getHp() > 0).findFirst()
+                .orElse(loaded.getFirst());
         long lease = AgentOpqRuntime.coordinatorLeaseMs();
         if (session.claimExpiredExecutionTick(agent.getId(), nowMs, lease, AgentOpqRuntime::holderAlive)) {
             AgentOpqCoordinator.tickSession(session, nowMs);

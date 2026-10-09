@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 
 import java.lang.reflect.Field;
@@ -16,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,8 +34,9 @@ import static org.mockito.Mockito.when;
 /**
  * P6h OPQ base fix OB9: OPQ gets LPQ's watchdog. Every OPQ session is scanned on a schedule (PERIOD_MS, agent-engine.yaml):
  * when no Agent's own tick drives it (the lease expired, or its holder is dead or unloaded) its first live Agent takes
- * the lease and ticks the coordinator; when no live Agent is left the run is ended. It is started once a session is
- * published, by the admission and by the fixture harness.
+ * the lease and ticks the coordinator. While every loaded Agent is dead the lowest-id one takes it, so the run's own
+ * rules decide (P6h OB9 follow-up, LMPQ's dead-crew rule); only a run with no Agent loaded at all is ended here. It is
+ * started once a session is published, by the admission and by the fixture harness.
  */
 class AgentOpqWatchdogTest {
     private Object savedTask;
@@ -130,7 +133,48 @@ class AgentOpqWatchdogTest {
     }
 
     @Test
-    void aRunWithNoLiveAgentIsEnded() {
+    void aRunWithNoAgentLoadedIsEnded() {
+        try (OpqRunFixture run = new OpqRunFixture()) {
+            Character ben = run.human(1, "Ben");
+            Character[] agents = {run.companion(2, "Mira"), run.companion(3, "Kes"), run.companion(4, "Pel"),
+                    run.companion(5, "Hal")};
+            AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
+                    AgentOpqSession.Phase.SPLIT_ROOMS, ben, agents[0], agents[1], agents[2], agents[3]);
+            for (Character agent : agents) {
+                run.registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(agent.getId())).thenReturn(null);
+            }
+
+            AgentOpqWatchdogRuntime.tick(session, 5_000L);
+
+            assertEquals(AgentOpqSession.Phase.FAILED, session.phase());
+            assertEquals("No OPQ Agent is loaded", session.failure());
+            assertNull(AgentOpqSessionRegistry.forMember(ben.getId()));
+        }
+    }
+
+    @Test
+    void aDeadButLoadedCrewIsTickedNotFailed() {
+        try (OpqRunFixture run = new OpqRunFixture()) {
+            Character ben = run.human(1, "Ben");
+            Character kes = run.companion(3, "Kes");
+            Character mira = run.companion(2, "Mira");
+            Character[] agents = {kes, mira, run.companion(4, "Pel"), run.companion(5, "Hal")};
+            AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
+                    AgentOpqSession.Phase.PREPARING, ben, agents[0], agents[1], agents[2], agents[3]);
+            for (Character agent : agents) when(agent.getHp()).thenReturn(0); // each respawns on its own tick
+
+            AgentOpqWatchdogRuntime.tick(session, 5_000L);
+
+            assertFalse(session.terminal(), session.failure());
+            assertEquals(mira.getId(), session.executionAgentId(), "the lowest-id loaded Agent took the lease");
+            assertEquals(AgentOpqSession.Phase.ENTERING, session.phase(), "the coordinator pass ran");
+            assertSame(session, AgentOpqSessionRegistry.forMember(ben.getId()));
+            verify(run.event, never()).dispose();
+        }
+    }
+
+    @Test
+    void aDeadCrewWhoseEventEndedIsFailedByTheRunsOwnRule() {
         try (OpqRunFixture run = new OpqRunFixture()) {
             Character ben = run.human(1, "Ben");
             Character[] agents = {run.companion(2, "Mira"), run.companion(3, "Kes"), run.companion(4, "Pel"),
@@ -138,12 +182,12 @@ class AgentOpqWatchdogTest {
             AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
                     AgentOpqSession.Phase.SPLIT_ROOMS, ben, agents[0], agents[1], agents[2], agents[3]);
             for (Character agent : agents) when(agent.getHp()).thenReturn(0);
+            when(run.event.isEventDisposed()).thenReturn(true);
 
             AgentOpqWatchdogRuntime.tick(session, 5_000L);
 
             assertEquals(AgentOpqSession.Phase.FAILED, session.phase());
-            assertEquals("No live Agent remains", session.failure());
-            assertNull(AgentOpqSessionRegistry.forMember(ben.getId()));
+            assertEquals("OPQ event ended before the clear", session.failure());
         }
     }
 
