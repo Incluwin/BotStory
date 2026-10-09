@@ -17,6 +17,8 @@ class AgentEngineConfigValidatorAmmoStandardsTest {
     @Test
     void keyCountPairsUpToTheBoundAreAccepted() {
         assertTrue(AgentEngineConfigValidator.validAmmoStandards("lpq=1600,epq=1600", BOUND));
+        assertTrue(AgentEngineConfigValidator.validAmmoStandards("lpq=1600,epq=1600,easy_balrog=2000", BOUND),
+                "the shipped value (2026-10-08)");
         assertTrue(AgentEngineConfigValidator.validAmmoStandards("epq=0", BOUND));
         assertTrue(AgentEngineConfigValidator.validAmmoStandards("epq=5000", BOUND));
         assertTrue(AgentEngineConfigValidator.validAmmoStandards("easy_balrog=800", BOUND));
