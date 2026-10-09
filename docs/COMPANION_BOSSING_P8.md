@@ -38,9 +38,9 @@ The user answered the 13 open questions of the P8 plan with "use all recommended
 9. `!bossgear` items are untradeable and tagged "bossgear".
 10. The Easy Balrog client-memory log runs before the first live Zakum fight.
 11. The first live Zakum uses only the owner and the 5 party companions. Allies come after a clean memory stage.
-12. The Zakum live checks may use a copied client folder with the large-address-aware MapleStory.exe. Use it in a
-    copy only. Never ship it to friends without a separate approval.
-13. P11's Lv100 Normal Balrog check runs before crew A goes to Lv160, because levels only rise.
+12. Superseded on 2026-10-09: the user approved shipping the large-address-aware MapleStory.exe to friends, and it
+    is live in Game Files. The live checks use the normal client. No copied folder is needed.
+13. Superseded by the other-bosses plan (decision 13, default branch): P11 runs on crew B (ohboy) at Lv100, so crew A may go to Lv160 without waiting for P11. Levels only rise, so finish the Lv70 Easy Balrog runs with crew A first.
 
 ## What the player sees (with zakum on)
 
@@ -265,7 +265,7 @@ Warnings first:
 - Each stage may close your client.
 - Never use `!setlevel ... restore`. Do not add `auto` for companions.
 - Do not use `!hide`. A hidden GM controller makes companions hold.
-- Decision 13: crew A goes to Lv160 (steps 5-11) only after P11's Lv100 Normal Balrog check.
+- Decision 13: crew A goes to Lv160 (steps 5-11) only after its Lv70 Easy Balrog runs are done. P11 uses crew B.
 
 Stop rule: stop the stage on either of these:
 - a new entry in the game's crash log, %LOCALAPPDATA%\VirtualStore\Windows\SysWOW64\msexcr.ini,
@@ -285,7 +285,7 @@ Evidence to grep in the server log:
 Setup (zakum off):
 1. Deploy with `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"`.
 2. Talk to Adobis with Bossfriend. Check that his windows are stock.
-3. Use the copied client folder with the large-address-aware MapleStory.exe (decision 12). In PowerShell, start the
+3. Use the normal client: it is large-address-aware since 2026-10-09 (decision 12). In PowerShell, start the
    memory logger and leave it running:
    ```
    while ($true) { Get-Process MapleStory -ErrorAction SilentlyContinue | Select-Object @{n='t';e={Get-Date -Format HH:mm:ss}}, Id, @{n='Private_MB';e={[int]($_.PrivateMemorySize64/1MB)}}, @{n='VM_MB';e={[int]($_.VirtualMemorySize64/1MB)}} | Export-Csv -Append -NoTypeInformation maple_mem.csv; Start-Sleep -Seconds 5 }
