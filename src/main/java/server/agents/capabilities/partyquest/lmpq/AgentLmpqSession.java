@@ -11,8 +11,10 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 
 /** LMPQ aggregate root; all routing and lease state is isolated per event. */
 public final class AgentLmpqSession implements AgentCompanionRunSession {
@@ -48,6 +50,8 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
     private final java.util.Set<Integer> departed = new java.util.LinkedHashSet<>();
     private final java.util.Set<Integer> seenHeld = new java.util.LinkedHashSet<>();
+    private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private final java.util.concurrent.atomic.AtomicBoolean coordinating =
             new java.util.concurrent.atomic.AtomicBoolean();
 
@@ -274,6 +278,51 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     synchronized int couponsAtClearing() { return couponsAtClearing; }
 
     synchronized void setCouponsAtClearing(int coupons) { couponsAtClearing = Math.max(0, coupons); }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold; atFloor is true when the event cannot spare it (a member
+     * that leaves at the floor ends the event).
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight,
+                     boolean atFloor) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (LudiMazePQ.js ends the event when a member leaves at the floor). At the floor it
+     * stays down only when {@code mayWait} (its body lies where it does not keep the team apart); otherwise it leaves
+     * anyway, as before. registeredIds is read here, under this monitor, so a departure that has just finished is seen
+     * as gone; the event's read lock nests inside this monitor, as when the coordinator reads the event's players.
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, boolean mayWait,
+                                            long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        boolean atFloor = staying <= floor;
+        if (!atFloor || !mayWait) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight, atFloor);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight, true);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
 
     /**
      * Takes a member out of the run (a companion that tapped out); the event leader is never taken out. The
