@@ -12,8 +12,11 @@ public final class AgentPpqDefinition {
     public static final int MEDAL_MAP = 925_100_100;
     public static final int DECK_ONE_MAP = 925_100_200;
     public static final int CHEST_ONE_MAP = 925_100_201;
+    /** The hidden side room off the first deck (PiratePQ.js resets it with the chest room). */
+    public static final int SIDE_ONE_MAP = 925_100_202;
     public static final int DECK_TWO_MAP = 925_100_300;
     public static final int CHEST_TWO_MAP = 925_100_301;
+    public static final int SIDE_TWO_MAP = 925_100_302;
     public static final int DOOR_MAP = 925_100_400;
     public static final int BOSS_MAP = 925_100_500;
     public static final int CLEAR_MAP = 925_100_600;
@@ -48,6 +51,25 @@ public final class AgentPpqDefinition {
 
     public static boolean isEventMap(int mapId) {
         return mapId >= ENTRY_MAP && mapId <= CLEAR_MAP;
+    }
+
+    /** Where a member on this map stands in the run. */
+    public static AgentPpqStage stageOf(int mapId) {
+        return switch (mapId) {
+            case RECRUIT_MAP -> AgentPpqStage.LOBBY;
+            case ENTRY_MAP -> AgentPpqStage.STAGE_ONE;
+            case MEDAL_MAP -> AgentPpqStage.MEDALS;
+            case DECK_ONE_MAP -> AgentPpqStage.DECK_ONE;
+            case CHEST_ONE_MAP -> AgentPpqStage.CHEST_ONE;
+            case SIDE_ONE_MAP -> AgentPpqStage.SIDE_ONE;
+            case DECK_TWO_MAP -> AgentPpqStage.DECK_TWO;
+            case CHEST_TWO_MAP -> AgentPpqStage.CHEST_TWO;
+            case SIDE_TWO_MAP -> AgentPpqStage.SIDE_TWO;
+            case DOOR_MAP -> AgentPpqStage.DOORS;
+            case BOSS_MAP -> AgentPpqStage.BOSS;
+            case CLEAR_MAP -> AgentPpqStage.CLEAR;
+            default -> AgentPpqStage.OUTSIDE;
+        };
     }
 
     public static int nextPortalId(int mapId) {

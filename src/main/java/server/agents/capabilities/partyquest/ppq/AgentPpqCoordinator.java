@@ -2,6 +2,8 @@ package server.agents.capabilities.partyquest.ppq;
 
 import client.Character;
 import client.inventory.InventoryType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 /** Natural-action PPQ coordinator: clear, collect, optional chests, doors, boss. */
 public final class AgentPpqCoordinator {
+    private static final Logger log = LoggerFactory.getLogger(AgentPpqCoordinator.class);
     private static final long EVENT_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS");
     private static final long STALL_TIMEOUT_MS = config.AgentTuning.longValue(
@@ -55,11 +58,12 @@ public final class AgentPpqCoordinator {
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
-            session.transition(AgentPpqSession.Phase.ACTIVE, nowMs);
+            logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
+        logStage(session, leader, nowMs);
         if (session.eventInstance() != null && session.eventInstance().isEventCleared()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
-            session.transition(AgentPpqSession.Phase.CLEARING, nowMs);
+            logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
         if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
@@ -81,7 +85,7 @@ public final class AgentPpqCoordinator {
             else announce(session, "human-clear", leader.getName() + ", talk to Wu Yang after Lord Pirate falls.");
         }
         if (leader.getMapId() == AgentPpqDefinition.CLEAR_MAP) {
-            session.transition(AgentPpqSession.Phase.CLEARING, nowMs);
+            logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
         if (session.phase() == AgentPpqSession.Phase.CLEARING
                 && session.members().stream().map(member -> character(member.characterId()))
@@ -127,7 +131,8 @@ public final class AgentPpqCoordinator {
             actions().stop(entry); return;
         }
         if (runNpc(entry, agent, AgentPpqDefinition.ENTRY_NPC, 0)) {
-            member.deferUntil(nowMs + RETRY_MS); session.transition(AgentPpqSession.Phase.ENTERING, nowMs);
+            member.deferUntil(nowMs + RETRY_MS);
+            logChange(session, session.transition(AgentPpqSession.Phase.ENTERING, nowMs));
         }
     }
 
@@ -368,6 +373,24 @@ public final class AgentPpqCoordinator {
                     leader.getName() + ", take the side portal, clear the chest room, talk to Guon, and drop a chest key by the chest.");
         }
     }
+    /** 'PPQ phase:' for a phase change, in every mode; nothing for none. */
+    static void logChange(AgentPpqSession session, AgentPpqSession.Change change) {
+        if (change == null) return;
+        log.info("PPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
+                change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
+    }
+
+    /** 'PPQ stage:' when the leader stands on another stage, in every mode, with the medal wave the event is on. */
+    private static void logStage(AgentPpqSession session, Character leader, long nowMs) {
+        AgentPpqSession.StageChange change =
+                session.observeStage(AgentPpqDefinition.stageOf(leader.getMapId()), nowMs);
+        if (change == null) return;
+        String wave = session.eventInstance() == null ? "-" : partyQuest().property(leader, "stage2");
+        log.info("PPQ stage: session={} {}->{} stageMs={} runMs={} medalWave={} companionRun={}", session.sessionId(),
+                change.from(), change.to(), change.stageMs(), change.runMs(), wave == null ? "-" : wave,
+                session.companionAdopted());
+    }
+
     private static int parseInt(String value) {
         try { return Integer.parseInt(value); } catch (RuntimeException ignored) { return 0; }
     }

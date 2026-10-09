@@ -26,6 +26,10 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     public record Change(Phase from, Phase to, long phaseMs, long runMs) {
     }
 
+    /** The leader's stage changed: the coordinator logs it, outside this monitor. */
+    public record StageChange(AgentPpqStage from, AgentPpqStage to, long stageMs, long runMs) {
+    }
+
     /**
      * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
      * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
@@ -54,6 +58,8 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private String failure = "";
     private EventInstanceManager eventInstance;
     private long phaseEnteredAtMs;
+    private AgentPpqStage leaderStage = AgentPpqStage.LOBBY;
+    private long stageEnteredAtMs;
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private AgentPqPaceCalibration paceCalibration;
@@ -67,6 +73,7 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         this.mode = mode; this.seed = seed; this.operatorId = operatorId;
         this.skipChestRooms = skipChestRooms; this.startedAtMs = nowMs; this.lastProgressAtMs = nowMs;
         this.phaseEnteredAtMs = nowMs;
+        this.stageEnteredAtMs = nowMs;
     }
     public synchronized void addMember(int id, AgentPpqMemberState.MemberType type) {
         if (members.size() >= AgentPpqDefinition.PARTY_SIZE
@@ -159,6 +166,17 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
 
     /** True the first time a line's key is used in this run. */
     synchronized boolean narrateOnce(String key) { return key != null && !key.isBlank() && narrated.add(key); }
+
+    /** Records the stage the leader stands on; the change, or null when it is the same. Marks no progress. */
+    synchronized StageChange observeStage(AgentPpqStage stage, long nowMs) {
+        if (stage == null || stage == leaderStage) return null;
+        StageChange change = new StageChange(leaderStage, stage, nowMs - stageEnteredAtMs, nowMs - startedAtMs);
+        leaderStage = stage;
+        stageEnteredAtMs = nowMs;
+        return change;
+    }
+
+    synchronized AgentPpqStage leaderStage() { return leaderStage; }
 
     /** Whether the run's release has begun. */
     public synchronized boolean terminationStarted() { return terminating; }
