@@ -104,10 +104,12 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     /**
      * As {@link #claimExecutionTick(int, long, long)}, except that a holder for which {@code holderAlive} is false
      * (dead, or no longer loaded) loses its lease at once: a dead Agent's tick never reaches the OPQ runtime, so its
-     * lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps it until it expires.
+     * lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps it until it expires. A
+     * departed member (handed back, no longer the run's) never claims the lease and never keeps it.
      */
     public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs, IntPredicate holderAlive) {
-        if (id != executionAgentId && nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId)) return false;
+        if (departed.contains(id)) return false;
+        if (id != executionAgentId && nowMs < executionLeaseUntilMs && holderStands(holderAlive)) return false;
         executionAgentId = id;
         executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
         return true;
@@ -120,12 +122,17 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     public synchronized boolean claimExpiredExecutionTick(int id, long nowMs, long leaseMs,
                                                           IntPredicate holderAlive) {
         AgentOpqMemberState member = members.get(id);
-        if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT
-                || (nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId))) return false;
+        if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT || departed.contains(id)
+                || (nowMs < executionLeaseUntilMs && holderStands(holderAlive))) return false;
         executionAgentId = id;
         executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
         return true;
     }
+    /** The lease holder can still drive the run: alive by {@code holderAlive}, and not departed (P6h review). */
+    private boolean holderStands(IntPredicate holderAlive) {
+        return !departed.contains(executionAgentId) && holderAlive.test(executionAgentId);
+    }
+
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
         if (next != phase) {

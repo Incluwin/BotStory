@@ -113,11 +113,14 @@ public final class AgentLmpqCoordinator {
         if (bound != null
                 && session.phase().ordinal() >= AgentLmpqSession.Phase.FARMING.ordinal()
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
+            session.noteHeld(heldIds(bound)); // a member held now is one this event was seen holding
             if (memberInAnotherInstance(session, bound)) {
                 fail(session, "An LMPQ participant left the active maze", nowMs);
                 return;
             }
             observeDepartures(session, bound, nowMs);
+            // P6h review: the last companion has departed and humans stay in the maze: they carry on without the run.
+            if (AgentLmpqTerminationService.humansCarryOn(session, nowMs)) return;
         }
         if (session.eventInstance() != null) updateHumanOccupancy(session, nowMs);
         int expired = session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
@@ -537,10 +540,13 @@ public final class AgentLmpqCoordinator {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
-    /** A member that has not departed stands in another, non-null event instance (it can never return). */
+    /** A member this event was seen holding, not departed, stands in another event instance (it can never return). */
     private static boolean memberInAnotherInstance(AgentLmpqSession session, EventInstanceManager bound) {
         return session.members().stream()
                 .filter(member -> !session.departed(member.characterId()))
+                // P6h review: only a member this event was seen holding has left it; one it never held (in another
+                // quest's instance when Rolly started without him) departs as never-registered after the grace.
+                .filter(member -> session.seenHeld(member.characterId()))
                 .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
                 .anyMatch(member -> member.getEventInstance() != null && member.getEventInstance() != bound);
     }

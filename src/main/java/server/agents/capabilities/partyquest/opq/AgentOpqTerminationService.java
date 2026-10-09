@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 /** Idempotent OPQ cleanup; never moves a live run as a recovery shortcut. */
 final class AgentOpqTerminationService {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqTerminationService.class);
+    /** The release reason of a run whose companions all departed while its humans stay in the tower. */
+    static final String HUMANS_CARRY_ON = "every companion left; the humans carry on";
 
     private AgentOpqTerminationService() { }
 
@@ -65,6 +67,37 @@ final class AgentOpqTerminationService {
      * The run is past its clear: the event says it is cleared, Minerva is free (statusStg8, which 2006001.js sets with
      * the clear), or the run is claiming its reward. The property is read as text: a missing one is not the clear.
      */
+    /**
+     * HPQ's and LPQ's carriesOn rule, in every mode: when every Agent member has departed and the bound event still
+     * holds a human member, the run lets go of them without a disposal and without an exit, so the humans carry on in
+     * the tower by themselves. True when it let the run go; false (nothing done) while an Agent member has not
+     * departed, when the event holds no human, or when a release is already under way.
+     */
+    static boolean humansCarryOn(AgentOpqSession session, long nowMs) {
+        if (session == null || session.terminationStarted() || !onlyHumansRemain(session)) return false;
+        release(session, HUMANS_CARRY_ON, nowMs, false);
+        return true;
+    }
+
+    /** Every Agent member departed, and the bound, undisposed event holds a human member. */
+    private static boolean onlyHumansRemain(AgentOpqSession session) {
+        boolean companionLeft = session.members().stream()
+                .anyMatch(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT
+                        && !session.departed(member.characterId()));
+        EventInstanceManager event = session.eventInstance();
+        if (companionLeft || event == null) return false;
+        Set<Integer> humans = session.members().stream()
+                .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.HUMAN)
+                .map(AgentOpqMemberState::characterId)
+                .collect(Collectors.toSet());
+        try {
+            return !event.isEventDisposed() && event.getPlayers().stream()
+                    .anyMatch(player -> player != null && humans.contains(player.getId()));
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
     static boolean pastTheClear(AgentOpqSession session) {
         EventInstanceManager event = session.eventInstance();
         return (event != null && (event.isEventCleared() || "1".equals(event.getProperty("statusStg8"))))
