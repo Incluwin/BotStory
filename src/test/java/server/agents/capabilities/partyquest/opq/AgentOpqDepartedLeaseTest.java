@@ -35,15 +35,27 @@ class AgentOpqDepartedLeaseTest {
 
     /** A stock six-Agent run in which 2001 died at six, respawned out (alive) and departed. */
     private AgentOpqSession withDorranDeparted() {
+        return withDorranDeparted(false);
+    }
+
+    /**
+     * As {@link #withDorranDeparted()}; with {@code holdingTheLease}, 2001's own tick claimed the lease (until 5,400)
+     * just before the pass that marked it departed.
+     */
+    private AgentOpqSession withDorranDeparted(boolean holdingTheLease) {
         AgentOpqSession session = run.session(AgentOpqSession.Mode.AUTONOMOUS, AgentOpqSession.Phase.SPLIT_ROOMS,
                 lead, a2001, a2002, a2003, a2004, a2005);
         AgentOpqCoordinator.tickSession(session, 3_000L);
+        if (holdingTheLease) {
+            assertTrue(session.claimExecutionTick(a2001.getId(), 3_900L, 1_500L, AgentOpqRuntime::holderAlive));
+        }
         when(a2001.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP);
         when(a2001.getEventInstance()).thenReturn(null);
         List<Character> held = List.of(lead, a2002, a2003, a2004, a2005);
         when(run.event.getPlayers()).thenAnswer(call -> new ArrayList<>(held));
         AgentOpqCoordinator.tickSession(session, 4_000L);
         assertTrue(session.departed(a2001.getId()));
+        if (holdingTheLease) assertEquals(a2001.getId(), session.executionAgentId(), "its lease runs until 5,400");
         return session;
     }
 
@@ -61,20 +73,18 @@ class AgentOpqDepartedLeaseTest {
 
     @Test
     void aLeaseADepartedAgentStillHoldsDoesNotRefuseTheRunsAgents() {
-        AgentOpqSession session = withDorranDeparted();
-        session.claimExecutionTick(a2001.getId(), 5_000L, 1_500L, holder -> true); // claimed just before it departed
+        AgentOpqSession session = withDorranDeparted(true);
 
-        assertTrue(session.claimExecutionTick(a2003.getId(), 5_100L, 1_500L, AgentOpqRuntime::holderAlive),
+        assertTrue(session.claimExecutionTick(a2003.getId(), 4_100L, 1_500L, AgentOpqRuntime::holderAlive),
                 "an in-event Agent's own tick takes the lease at once");
         assertEquals(a2003.getId(), session.executionAgentId());
     }
 
     @Test
     void theWatchdogTakesALeaseADepartedAgentStillHolds() {
-        AgentOpqSession session = withDorranDeparted();
-        session.claimExecutionTick(a2001.getId(), 5_000L, 1_500L, holder -> true);
+        AgentOpqSession session = withDorranDeparted(true);
 
-        assertTrue(session.claimExpiredExecutionTick(a2002.getId(), 5_100L, 1_500L, AgentOpqRuntime::holderAlive));
+        assertTrue(session.claimExpiredExecutionTick(a2002.getId(), 4_100L, 1_500L, AgentOpqRuntime::holderAlive));
         assertEquals(a2002.getId(), session.executionAgentId());
     }
 
