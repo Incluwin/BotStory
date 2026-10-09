@@ -20,11 +20,24 @@ public final class AgentLmpqRuntime {
         if (session.paused()) return true;
         AgentLmpqCoordinator.tickMember(session, entry, agent, nowMs);
         if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS, AgentLmpqRuntime::holderAlive)) {
-            AgentLmpqCoordinator.tickSession(session, nowMs);
+            coordinate(session, nowMs);
         }
         if (session.terminal()) AgentLmpqTerminationService.finish(
                 session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
         return true;
+    }
+
+    /**
+     * Runs one coordinator pass, unless another is under way: the lease holder's tick and the watchdog can both hold
+     * the lease, so the pass itself is claimed, and released even when it throws.
+     */
+    static void coordinate(AgentLmpqSession session, long nowMs) {
+        if (!session.tryBeginCoordinating()) return;
+        try {
+            AgentLmpqCoordinator.tickSession(session, nowMs);
+        } finally {
+            session.endCoordinating();
+        }
     }
 
     /**

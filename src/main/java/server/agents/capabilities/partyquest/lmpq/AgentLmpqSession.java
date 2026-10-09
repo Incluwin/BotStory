@@ -48,6 +48,8 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
     private final java.util.Set<Integer> departed = new java.util.LinkedHashSet<>();
     private final java.util.Set<Integer> seenHeld = new java.util.LinkedHashSet<>();
+    private final java.util.concurrent.atomic.AtomicBoolean coordinating =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -158,6 +160,15 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
         log.info("LMPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", sessionId, phase, next,
                 Math.max(0L, nowMs - phaseEnteredAtMs), Math.max(0L, nowMs - startedAtMs), companionAdopted);
     }
+
+    /**
+     * Claims the run's coordinator pass: false while another pass is under way. An Agent's tick and the watchdog can
+     * both hold the lease at once (the lease refuses only another holder), and a pass is not reentrant.
+     */
+    boolean tryBeginCoordinating() { return coordinating.compareAndSet(false, true); }
+
+    /** Ends the pass claimed by {@link #tryBeginCoordinating()}. */
+    void endCoordinating() { coordinating.set(false); }
 
     /** True once a release has begun (it is claimed by beginTermination). */
     public synchronized boolean terminationStarted() { return terminating; }

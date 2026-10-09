@@ -48,7 +48,7 @@ final class AgentLmpqWatchdogRuntime {
                     .orElse(loaded.getFirst());
             if (!session.claimExpiredExecutionTick(agent.getId(), nowMs, AgentLmpqRuntime.coordinatorLeaseMs(),
                     AgentLmpqRuntime::holderAlive)) return;
-            AgentLmpqCoordinator.tickSession(session, nowMs);
+            AgentLmpqRuntime.coordinate(session, nowMs);
         }
         if (session.terminal()) AgentLmpqTerminationService.finish(
                 session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
