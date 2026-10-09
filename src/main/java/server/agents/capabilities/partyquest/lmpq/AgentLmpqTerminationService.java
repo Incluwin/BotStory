@@ -137,6 +137,7 @@ final class AgentLmpqTerminationService {
         boolean companionRun = session.companionAdopted();
         boolean pastTheClear = pastTheClear(session);
         session.members().forEach(member -> {
+            if (session.departed(member.characterId())) return; // handed back already: its new activity is its own
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
         });

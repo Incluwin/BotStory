@@ -57,15 +57,17 @@ class AgentLmpqTimerFromEntryTest {
     }
 
     @Test
-    void aRunThatNeverEnteredHasNoTimer() {
+    void beforeTheEntryTheTimerRunsFromAdmission() {
         AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.PREPARING,
                 ben, mira, kes, pel);
         session.clearEventInstance();
         when(ben.getEventInstance()).thenReturn(null);
 
-        tick(session, ADMITTED + 20 * 60_000L);
+        tick(session, ADMITTED + 900_000L + 4_999L);
+        assertFalse(session.terminal(), session.failure());
 
-        assertFalse(session.terminal(), "the stall bounds a wait at Rolly, not the event timer");
+        tick(session, ADMITTED + 900_000L + 5_000L);
+        assertEquals("LMPQ event timer expired", session.failure());
     }
 
     @Test

@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.AgentPqRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -35,6 +38,8 @@ public final class AgentLmpqCoordinator {
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX");
     private static final long REWARD_STALL_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS");
+    private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.ENTRY_HOLD_GRACE_MS");
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
     private static final int PORTAL_RADIUS = 55;
@@ -83,8 +88,14 @@ public final class AgentLmpqCoordinator {
         }
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentLmpqDefinition.isEventMap(leader.getMapId())) {
-            session.bindEventInstance(leader.getEventInstance());
+            session.bindEventInstance(leader.getEventInstance(), nowMs);
             beginFarming(session, nowMs);
+        }
+        // A companion run waits at Rolly for its leader no longer than its harness and host promise him.
+        if (session.companionAdopted() && session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING) == 0L
+                && nowMs - session.startedAtMs() >= humanIdleLimitMs()) {
+            fail(session, "LMPQ was never entered", nowMs);
+            return;
         }
         EventInstanceManager bound = session.eventInstance();
         if (bound != null && !AgentLmpqTerminationService.pastTheClear(session)) {
@@ -175,13 +186,16 @@ public final class AgentLmpqCoordinator {
 
     /**
      * LMPQ base fix 1: the run's clock is the event's. LudiMazePQ.js starts its timer (the catalog's eventTimerMs) as
-     * the party enters the maze and stops it at the clear, so the run's own timer runs from its first FARMING entry,
-     * with TIMEOUT_SLACK_MS so the event's own timeout ends a slow run first, and never after the clear.
+     * the party enters the maze and stops it at the clear, so once inside the run's own timer runs from its first
+     * FARMING entry, with TIMEOUT_SLACK_MS so the event's own timeout ends a slow run first, and never after the
+     * clear. Before the entry the same cap runs from admission, as the run's timer always did, so a run that never
+     * enters is still bounded.
      */
     static boolean eventTimerExpired(AgentLmpqSession session, long nowMs) {
+        if (AgentLmpqTerminationService.pastTheClear(session)) return false;
         long enteredAt = session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING);
-        if (enteredAt == 0L || AgentLmpqTerminationService.pastTheClear(session)) return false;
-        return nowMs - enteredAt >= AgentPartyQuestCatalog.require("lmpq").eventTimerMs() + TIMEOUT_SLACK_MS;
+        long from = enteredAt == 0L ? session.startedAtMs() : enteredAt;
+        return nowMs - from >= AgentPartyQuestCatalog.require("lmpq").eventTimerMs() + TIMEOUT_SLACK_MS;
     }
 
     public static void tickMember(
@@ -541,18 +555,43 @@ public final class AgentLmpqCoordinator {
         if (session.terminationStarted()) return;
         Set<Integer> held = heldIds(bound);
         session.noteHeld(held);
+        boolean entryGraceOver = nowMs - session.boundAtMs() >= ENTRY_HOLD_GRACE_MS;
         for (AgentLmpqMemberState state : session.members()) {
             int id = state.characterId();
-            // Only a member the event held and no longer holds has departed: the run binds as soon as its leader is
-            // inside, while EventInstanceManager.registerParty is still registering the others one by one.
-            if (held.contains(id) || !session.seenHeld(id) || !session.markDeparted(id)) continue;
+            if (held.contains(id)) continue;
+            // A member the event held and no longer holds has left. One it has not held yet is still being registered
+            // (the run binds as soon as its leader is inside, while EventInstanceManager.registerParty registers the
+            // others one by one), until ENTRY_HOLD_GRACE_MS after the bind: then it was never registered (it was not
+            // at Rolly, or not eligible, when the event started without it).
+            boolean left = session.seenHeld(id);
+            if (!left && !entryGraceOver) continue;
+            if (!session.markDeparted(id)) continue;
             session.rooms().releaseOwner(id, nowMs);
             state.clearTargetRoom();
             Character member = character(id);
-            log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
-                    session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
-                    member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
-                    session.companionAdopted());
+            log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}"
+                            + " reason={}", session.sessionId(), member == null ? "-" : member.getName(), id,
+                    state.memberType(), member == null ? "-" : String.valueOf(member.getMapId()), session.phase(),
+                    held.size(), session.companionAdopted(), left ? "left" : "never-registered");
+            if (state.memberType() == AgentLmpqMemberState.MemberType.AGENT) handBack(session, id, nowMs);
+        }
+    }
+
+    /**
+     * LMPQ base fix 3: a departed Agent is handed back at once, as EPQ's departMember hands one back (without the
+     * event exit: the event no longer holds it). It leaves the LMPQ index and the engagement and is rehomed by the
+     * party-quest lifecycle, so it no longer stands frozen until the run ends and its activity's stop requests are
+     * answered again. It stays in the session, marked departed, for the run's counts and lines. A failure is logged
+     * and the coordinator pass goes on.
+     */
+    private static void handBack(AgentLmpqSession session, int id, long nowMs) {
+        try {
+            AgentLmpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+            if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "lmpq", nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("LMPQ departed Agent hand-back failed: session={} member={}", session.sessionId(), id, failure);
         }
     }
 
@@ -600,6 +639,9 @@ public final class AgentLmpqCoordinator {
 
     private static long progressSignature(AgentLmpqSession session) {
         long signature = session.phase().ordinal();
+        // Before the maze entry only a phase change is progress: members walking around town (the human leader
+        // wandering, an Agent refused at Rolly) must not keep a run that never enters alive.
+        if (session.eventInstance() == null) return signature;
         for (AgentLmpqMemberState state : active(session)) {
             Character member = character(state.characterId());
             signature = signature * 31L + state.characterId();

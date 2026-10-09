@@ -1534,6 +1534,10 @@ tuning:
     # Purpose: Ends an LMPQ run that makes no progress in its REWARD phase, after the clear, in every mode.
     # Technical: AgentLmpqCoordinator fails the run as "LMPQ reward stalled"; past the clear the release only takes the Agents out through the event's exit and disposes the event only when no player is left, so a human keeps his claim.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS: '120000'
+    # Values: 1000-30000 milliseconds. Recommended: 5000 so every member LudiMazePQ.js registers is seen held, since the event registers and warps a party one member at a time.
+    # Purpose: Bounds how long after the LMPQ run binds to its event a member the event has not registered still counts as entering.
+    # Technical: AgentLmpqCoordinator marks such a member departed ('LMPQ departed: ... reason=never-registered') once this long has passed since the bind, so the rendezvous and the coupons stop waiting for a member the event started without.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
     # Values: 250-5000 milliseconds. Recommended: 1000 for timely LMPQ liveness checks with modest scheduler overhead.
     # Purpose: Scans active LMPQ runs for an expired or dead coordinator lease, or the loss of every loaded Agent, so each run still ticks, fails or completes.
     # Technical: AgentLmpqWatchdogRuntime iterates only AgentLmpqSessionRegistry, ticks a run through its first live Agent when the lease has run out, and releases a run that ended through the idempotent LMPQ termination path.
