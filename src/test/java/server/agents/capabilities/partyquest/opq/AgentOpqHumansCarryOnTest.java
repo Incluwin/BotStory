@@ -4,6 +4,7 @@ import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +92,20 @@ class AgentOpqHumansCarryOnTest {
         AgentOpqSession session = fiveHumansAndKes();
         session.noteHeld(List.of(ben.getId(), ann.getId(), cy.getId(), dee.getId(), eve.getId(), kes.getId()));
         assertTrue(session.markDeparted(kes.getId())); // departed and handed back by an earlier pass
+        holds(ben, ann, cy, dee, eve);
+
+        AgentOpqWatchdogRuntime.tick(session, 5_000L);
+
+        assertTheHumansCarryOn(session);
+    }
+
+    @Test
+    void aDepartedCompanionThatHasSinceLoggedOutStillLeavesTheHumansToCarryOn() {
+        AgentOpqSession session = fiveHumansAndKes();
+        session.noteHeld(List.of(ben.getId(), ann.getId(), cy.getId(), dee.getId(), eve.getId(), kes.getId()));
+        assertTrue(session.markDeparted(kes.getId()));
+        // handed back, then logged out: departed, not "not loaded"
+        run.registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(kes.getId())).thenReturn(null);
         holds(ben, ann, cy, dee, eve);
 
         AgentOpqWatchdogRuntime.tick(session, 5_000L);

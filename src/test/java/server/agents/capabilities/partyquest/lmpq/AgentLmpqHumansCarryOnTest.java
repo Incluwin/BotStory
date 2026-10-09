@@ -96,6 +96,20 @@ class AgentLmpqHumansCarryOnTest {
     }
 
     @Test
+    void aDepartedCompanionThatHasSinceLoggedOutStillLeavesTheHumansToCarryOn() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
+                ben, ann, cy, kes);
+        session.noteHeld(List.of(ben.getId(), ann.getId(), cy.getId(), kes.getId()));
+        assertTrue(session.markDeparted(kes.getId()));
+        run.unload(kes); // handed back, then logged out: departed, not "not loaded"
+        run.livePlayers(ben, ann, cy);
+
+        AgentLmpqWatchdogRuntime.tick(session, 10_000L);
+
+        assertTheHumansCarryOn(session);
+    }
+
+    @Test
     void aCompanionTheEventNeverRegisteredLeavesTheHumansToCarryOn() {
         AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.PREPARING,
                 ben, ann, cy, kes);
