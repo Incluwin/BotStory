@@ -76,6 +76,12 @@ public final class CompanionManager {
     static final String AUTO_EQUIP = "auto equip";
     /** What a companion says for a little coin, unless it has its own "coin" lines. */
     static final String COIN_THANKS = "thanks. that'll keep me in potions.";
+    /**
+     * What a companion short of its potion standard says for a little coin (CompanionRestock.shortOfStandard): no
+     * promise that it is enough, since its own restock says that a few seconds later (off to the store, or still
+     * short). Its own "coin" lines may promise it, so they are not said then.
+     */
+    static final String COIN_THANKS_SHORT = "ty! appreciate it.";
     /** A settings change or a coin that cannot be made right now (its row unreadable, the owner's session gone). */
     static final String TRY_AGAIN = "Try again in a moment.";
 
@@ -655,7 +661,7 @@ public final class CompanionManager {
      * transaction (COMPANION_GIFT): its participant locks put it in line with the owner's shops and trades, the checks
      * run again under them, and an unloaded companion's row is credited in the same database commit as the owner's
      * purse. Refused for more than the owner has, or than its purse holds; logged; it thanks the owner in its own
-     * words.
+     * words, or, short of its potion standard, with no word on whether that is enough (its restock tells that).
      */
     public RosterResult giveCoin(Character owner, Persona persona, long meso) {
         if (row(owner, persona) == null) {
@@ -707,8 +713,8 @@ public final class CompanionManager {
         world.store().event(owner.getId(), persona.id(), "roster.coin", amount + " meso, " + where);
         log.info("{} gives companion {} {} meso ({})", owner.getName(), persona.id(), amount, where);
         List<String> lines = world.arcs().lines(persona, "coin");
-        world.residents().reply(persona, owner, lines.isEmpty() ? COIN_THANKS
-                : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        world.residents().reply(persona, owner, CompanionRestock.shortOfStandard(bot) ? COIN_THANKS_SHORT
+                : lines.isEmpty() ? COIN_THANKS : lines.get(Math.floorMod(owner.getId(), lines.size())));
         return new RosterResult.Ok(String.format(Locale.ROOT, "You give %s %,d meso.", persona.name(), amount));
     }
 

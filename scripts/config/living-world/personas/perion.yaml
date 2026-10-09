@@ -48,7 +48,7 @@
     refuseOwnErrand: ["that one's your errand, not mine."]
     restock.go: ["potions. back in a minute.", "need potions. don't wait on me."]
     restock.back: ["back. stocked.", "potions. let's go."]
-    restock.broke: ["no coin for potions. you paying or not?", "broke. potions cost money."]
+    restock.broke: ["no coin for {need}. spare some, or the mesos. you paying or not?", "broke. got {need} to spare? mesos'll do."]
     restock.noShop: ["low on potions. no shop here. i'll manage.", "short on potions. watch my back."]
     restock.stillShort: ["still short for {need}.", "not enough. {need} cost more than that."]
     questOffer.garrick-lost-badge: ["lost my unit badge near the boars. bring it and we talk."]

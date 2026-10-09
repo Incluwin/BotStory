@@ -150,8 +150,17 @@ final class CompanionRestockLines {
         List<String> lines = lines(world, persona, intent);
         String line = filled(lines.get(Math.floorMod(counter.getAndIncrement(), lines.size())), word);
         String heard = heard(world, bot, persona, line);
-        log.info("companion {} says {} ({}): {}", bot.getName(), intent, heard == null ? "nowhere" : heard, line);
+        logSaid(bot, intent, heard, line);
         return heard != null;
+    }
+
+    /**
+     * Logs that {@code bot} said {@code line} for {@code intent} and where it went ({@code heard}: party, map, whisper;
+     * null for nowhere): bots' party chat is logged nowhere else. Also for a boss run's lines (BossRunLines.say: its
+     * go line from a boss's entrance) and the desk's low-on-potions reminders.
+     */
+    static void logSaid(Character bot, String intent, String heard, String line) {
+        log.info("companion {} says {} ({}): {}", bot.getName(), intent, heard == null ? "nowhere" : heard, line);
     }
 
     /** Says {@code line} in its party's chat, else on its map, else to its owner; where it went, null for nowhere. */
