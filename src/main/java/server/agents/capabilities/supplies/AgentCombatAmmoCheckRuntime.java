@@ -4,6 +4,8 @@ import client.Character;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.StatEffect;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
@@ -24,9 +26,12 @@ import server.agents.runtime.AgentRuntimeEntry;
  * adopted, or a boss run) a member that runs dry keeps its post and says once that it ran out, in its own words,
  * unless the run says it itself (AgentPartyQuestRuntime.ownsDryLine); any projectile it gets back lets it shoot again
  * at once. That news is said again only after a run ends (the next run hears it too) or once its bag holds
- * AMMO_LOW_WARN again; Soul Arrow's endless count is no refill.
+ * AMMO_LOW_WARN again; Soul Arrow's endless count is no refill. Each time a run member runs dry the server log gets one
+ * INFO line, since its words reach only map chat.
  */
 public final class AgentCombatAmmoCheckRuntime {
+    private static final Logger log = LoggerFactory.getLogger(AgentCombatAmmoCheckRuntime.class);
+
     private AgentCombatAmmoCheckRuntime() {
     }
 
@@ -87,6 +92,10 @@ public final class AgentCombatAmmoCheckRuntime {
             }
             case PROJECTILE_NO_AMMO -> {
                 AgentAmmoStateRuntime.setNoAmmo(entry, true);
+                if (inRun) { // its words go to map chat only; the server log gets each dry episode once
+                    log.info("Agent out of ammo in a run: agent={} id={} map={} weapon={}",
+                            bot.getName(), bot.getId(), bot.getMapId(), weaponType);
+                }
                 if (!inRun && AgentModeStateRuntime.grinding(entry)) { // in a run it keeps its post
                     AgentMovementCommandRuntime.followConfiguredTarget(entry);
                     AgentCombatRuntime.sayMapNow(bot, AgentDialogueSelector.randomReply(AgentDialogueCatalog.combatAmmoOutReplies()));

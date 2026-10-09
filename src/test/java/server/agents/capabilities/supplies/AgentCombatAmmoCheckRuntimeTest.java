@@ -15,6 +15,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
+import testutil.LogLines;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -240,6 +241,42 @@ class AgentCombatAmmoCheckRuntimeTest {
         }
     }
 
+    // ---- the dry news in the server log (2026-10-08: Flint's bullets ran out in Easy Balrog, said in map chat only) --
+
+    @Test
+    void aRunMemberThatRunsDryLogsOneLinePerDryEpisode() {
+        try (Scene scene = new Scene(WeaponType.GUN, 0);
+             LogLines lines = new LogLines(AgentCombatAmmoCheckRuntime.class)) {
+            scene.bossRun = true;
+
+            scene.tick();
+            scene.tick(); // still dry: no second line
+            assertEquals(List.of("Agent out of ammo in a run: agent=Flint id=77 map=922010700 weapon=GUN"),
+                    lines.startingWith("Agent out of ammo"));
+
+            scene.count = 300; // a share: it shoots again
+            scene.carried = 300;
+            scene.tick();
+            scene.count = 0;
+            scene.carried = 0;
+            scene.tick();
+            assertEquals(2, lines.startingWith("Agent out of ammo").size(), "a new dry episode is a new line");
+        }
+    }
+
+    @Test
+    void aStockMemberThatRunsDryLogsNothing() {
+        try (Scene scene = new Scene(WeaponType.CLAW, 0);
+             LogLines lines = new LogLines(AgentCombatAmmoCheckRuntime.class)) {
+            AgentModeStateRuntime.setGrinding(scene.entry, true);
+
+            scene.tick();
+
+            assertTrue(AgentAmmoStateRuntime.noAmmo(scene.entry));
+            assertEquals(List.of(), lines.startingWith("Agent out of ammo"), "grinding Agents say it in map chat");
+        }
+    }
+
     private static List<String> inRunLines(String word) {
         return AgentDialogueCatalog.inRunAmmoOutReplies().stream().map(line -> String.format(line, word)).toList();
     }
@@ -265,6 +302,7 @@ class AgentCombatAmmoCheckRuntimeTest {
 
         Scene(WeaponType weapon, int count) {
             when(bot.getId()).thenReturn(77);
+            when(bot.getName()).thenReturn("Flint");
             when(bot.getMapId()).thenReturn(922_010_700);
             attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(weapon);
             this.count = count;
