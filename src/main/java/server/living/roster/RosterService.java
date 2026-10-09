@@ -3170,7 +3170,10 @@ public final class RosterService {
     /**
      * Saves the companion and takes it off the server as a player logging off, with its COMPANION lease. {@code
      * leaveParty}: it leaves its party first; else it stays in it as an offline member (the stock log-off, under the
-     * caller's cause token).
+     * caller's cause token). The lease goes only once it has logged off, whose save is in the store then (as
+     * ResidentRuntime.standby and BenchDutyDispatcher.unload): a released companion is nobody's while it walks out,
+     * so a Resident tick or a citizen session could load it in between from a store that still holds its old kit. A
+     * log-off that fails still gives the lease back.
      */
     private void unload(RosterEntry entry, String reason, boolean leaveParty) {
         leaving.remove(entry.personaId()); // a walk-out in progress ends here
@@ -3188,10 +3191,16 @@ public final class RosterService {
             if (released) {
                 takeBossGearOff(entry, bot, characterId); // nothing ticks it now, and it keeps its lease meanwhile
             }
-            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
         }
-        if (bot != null && bot.getClient() != null) {
-            bot.getClient().forceDisconnect();
+        try {
+            if (bot != null && bot.getClient() != null) {
+                bot.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
+            }
+        } finally {
+            if (characterId != 0) {
+                // saved first, so the next load sees it
+                world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+            }
         }
         log.info("companion {} despawned: {}", entry.personaId(), reason);
     }
