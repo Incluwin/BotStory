@@ -100,13 +100,17 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         if (id != executionAgentId && nowMs < executionLeaseUntilMs) return false;
         executionAgentId = id; executionLeaseUntilMs = nowMs + Math.max(MIN_LEASE_MS, leaseMs); return true;
     }
-    /** Moves to {@code next} when it is not behind; the change, or null when nothing changed. */
+    /**
+     * Moves to {@code next} when it is not behind; the change, or null when nothing changed. Only a change is progress:
+     * asking for the phase the run is already in (a Guon talk the lobby refused) marks none.
+     */
     public synchronized Change transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return null;
-        Change change = next == phase ? null
-                : new Change(phase, next, nowMs - phaseEnteredAtMs, nowMs - startedAtMs);
-        if (change != null) phaseEnteredAtMs = nowMs;
-        phase = next; markProgress(nowMs);
+        if (next == phase) return null;
+        Change change = new Change(phase, next, nowMs - phaseEnteredAtMs, nowMs - startedAtMs);
+        phaseEnteredAtMs = nowMs;
+        phase = next;
+        markProgress(nowMs);
         return change;
     }
     public synchronized void markChestComplete(int mapId, long nowMs) {

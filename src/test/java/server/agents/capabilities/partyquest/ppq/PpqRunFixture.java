@@ -50,6 +50,11 @@ final class PpqRunFixture implements AutoCloseable {
     private final List<MockedStatic<?>> statics = new ArrayList<>();
 
     PpqRunFixture(boolean companionRun, int mapId) {
+        this(companionRun, mapId, AgentPpqSession.Mode.HUMAN_LEADER);
+    }
+
+    /** As above in {@code mode}; outside HUMAN_LEADER, Mira leads the event and Ben is a member. */
+    PpqRunFixture(boolean companionRun, int mapId, AgentPpqSession.Mode mode) {
         open(AgentPrimitiveCapabilityGatewayRuntime.class).when(AgentPrimitiveCapabilityGatewayRuntime::gateway)
                 .thenReturn(actions);
         open(AgentPartyQuestGatewayRuntime.class).when(AgentPartyQuestGatewayRuntime::partyQuest)
@@ -58,7 +63,7 @@ final class PpqRunFixture implements AutoCloseable {
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         MockedStatic<AgentRuntimeRegistry> registry = open(AgentRuntimeRegistry.class);
         MockedStatic<AgentRuntimeIdentityRuntime> identity = open(AgentRuntimeIdentityRuntime.class);
-        session = new AgentPpqSession(AgentPpqSession.Mode.HUMAN_LEADER, 1L, BEN, false, 1_000L);
+        session = new AgentPpqSession(mode, 1L, BEN, false, 1_000L);
         for (int id : List.of(BEN, MIRA, TOBI, UNA)) {
             Character character = mock(Character.class);
             when(character.getId()).thenReturn(id);
@@ -77,7 +82,7 @@ final class PpqRunFixture implements AutoCloseable {
             }
         }
         when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
-        session.setLeadership(BEN, MIRA);
+        session.setLeadership(mode == AgentPpqSession.Mode.HUMAN_LEADER ? BEN : MIRA, MIRA);
         session.setCompanionAdopted(companionRun);
         session.bindEventInstance(event);
         when(partyQuest.property(any(), any())).thenAnswer(call -> properties.get((String) call.getArgument(1)));

@@ -164,9 +164,15 @@ public final class AgentPpqCoordinator {
         actions().stop(entry);
     }
 
+    /**
+     * The Agent event leader talks to Guon until the run has entered. After entry (Wu Yang's exit lands on Guon's map
+     * after the clear) it never talks to him again: setEventCleared freed the lobby, so a talk would start a new
+     * instance.
+     */
     private static void enter(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
                               AgentPpqMemberState member, long nowMs) {
-        if (agent.getId() != session.eventLeaderId() || session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) {
+        if (agent.getId() != session.eventLeaderId() || session.mode() == AgentPpqSession.Mode.HUMAN_LEADER
+                || session.phase().ordinal() >= AgentPpqSession.Phase.ACTIVE.ordinal()) {
             actions().stop(entry); return;
         }
         if (runNpc(entry, agent, AgentPpqDefinition.ENTRY_NPC, 0)) {
