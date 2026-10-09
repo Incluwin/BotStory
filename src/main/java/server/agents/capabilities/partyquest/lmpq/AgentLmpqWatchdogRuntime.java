@@ -43,6 +43,7 @@ final class AgentLmpqWatchdogRuntime {
         if (session.paused()) return;
         List<Character> loaded = session.members().stream()
                 .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT)
+                .filter(member -> !session.departed(member.characterId())) // handed back: no longer the run's
                 .sorted(Comparator.comparingInt(AgentLmpqMemberState::characterId))
                 .map(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()))
                 .filter(java.util.Objects::nonNull)

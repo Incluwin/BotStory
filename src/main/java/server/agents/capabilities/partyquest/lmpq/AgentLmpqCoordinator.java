@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.AgentPqRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -570,6 +573,25 @@ public final class AgentLmpqCoordinator {
                             + " reason={}", session.sessionId(), member == null ? "-" : member.getName(), id,
                     state.memberType(), member == null ? "-" : String.valueOf(member.getMapId()), session.phase(),
                     held.size(), session.companionAdopted(), left ? "left" : "never-registered");
+            if (state.memberType() == AgentLmpqMemberState.MemberType.AGENT) handBack(session, id, nowMs);
+        }
+    }
+
+    /**
+     * LMPQ base fix 3: a departed Agent is handed back at once, as EPQ's departMember hands one back (without the
+     * event exit: the event no longer holds it). It leaves the LMPQ index and the engagement and is rehomed by the
+     * party-quest lifecycle, so it no longer stands frozen until the run ends and its activity's stop requests are
+     * answered again. It stays in the session, marked departed, for the run's counts and lines. A failure is logged
+     * and the coordinator pass goes on.
+     */
+    private static void handBack(AgentLmpqSession session, int id, long nowMs) {
+        try {
+            AgentLmpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+            if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "lmpq", nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("LMPQ departed Agent hand-back failed: session={} member={}", session.sessionId(), id, failure);
         }
     }
 
