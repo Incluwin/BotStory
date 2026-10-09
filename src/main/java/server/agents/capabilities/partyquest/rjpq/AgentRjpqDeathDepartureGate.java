@@ -82,7 +82,8 @@ public final class AgentRjpqDeathDepartureGate {
     }
 
     /**
-     * {@code standingOthers}: how many of the run's other companions stand (online, up, in the event); with none,
+     * {@code standingOthers}: how many of the run's other companions stand (online, up, in the event or not departed
+     * yet: AgentRjpqCompanionRun.standingCompanions); with none,
      * a companion run ends on this first hold in the dying companion's own words (8.4) and the next tick releases.
      */
     static boolean respawnOrHold(AgentRjpqSession session, int id, String name, EventView event,

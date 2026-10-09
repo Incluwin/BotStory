@@ -256,16 +256,25 @@ final class AgentRjpqCompanionRun {
         return standing != null ? standing : loaded;
     }
 
-    /** The run's companions other than {@code exceptId} that are online, up and in the run's event. */
+    /**
+     * The run's companions other than {@code exceptId} that are online, up and in the run's event, or up and held by
+     * it before but not departed yet: MagatiaPQ's own end walks the standing ones out before it disposes the event, and
+     * until LEFT_CONFIRM_MS decides they left, a dead companion still registered is not short-handed (the disposal
+     * ends the run in its own words).
+     */
     static int standingCompanions(AgentRjpqSession session, int exceptId) {
         int standing = 0;
         for (AgentRjpqMemberState member : session.members()) {
-            if (!member.agent() || member.characterId() == exceptId || session.departed(member.characterId())) {
+            int id = member.characterId();
+            if (!member.agent() || id == exceptId || session.departed(id)) {
                 continue;
             }
-            Character agent = AgentRjpqCoordinator.character(member.characterId());
-            if (agent != null && agent.getHp() > 0 && session.eventInstance() != null
-                    && agent.getEventInstance() == session.eventInstance()) {
+            Character agent = AgentRjpqCoordinator.character(id);
+            if (agent == null || agent.getHp() <= 0) {
+                continue;
+            }
+            boolean inEvent = session.eventInstance() != null && agent.getEventInstance() == session.eventInstance();
+            if (inEvent || session.seenHeld(id)) {
                 standing++;
             }
         }
