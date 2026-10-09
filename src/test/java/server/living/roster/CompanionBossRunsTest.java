@@ -615,6 +615,38 @@ class CompanionBossRunsTest {
     }
 
     @Test
+    void aZakumCompanionDownInElNathIsLetGoOnCompanionOpsWhenItsOwnerLeavesTheRun() {
+        List<Runnable> ops = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(ops);
+        when(game.world.executor()).thenReturn(queued);
+        runs.seat(zakumSeat(THANE));
+        runs.seat(zakumSeat(ISOLDE));
+        runs.memberOut(zakumSeat(THANE), Out.DIED);
+        ops.forEach(Runnable::run);
+        ops.clear();
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(THANE), "its owner still fights: it waits for them");
+
+        runs.ownerLeftWhileDown(zakumSeat(THANE));
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(THANE), "nothing changes on the run's tick");
+        ops.forEach(Runnable::run);
+
+        assertFalse(game.commitments.isCommitted(THANE), "nobody it waits for is in the fight: it takes orders again");
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(ISOLDE), "one still in the fight stays the run's");
+        assertEquals(1, game.partyChat.size(), "only its down line: " + game.partyChat);
+    }
+
+    @Test
+    void anOwnerLeftWhileDownOfAnotherRunLeavesTheCommitmentToTheRunItIsInAlone() {
+        runs.seat(zakumSeat(THANE));
+        game.commitments.releaseMember(THANE);
+        game.commitments.commit("boss:zakum:8:" + ANN, ANN, THANE);
+
+        runs.ownerLeftWhileDown(zakumSeat(THANE));
+
+        assertEquals("boss:zakum:8:" + ANN, game.commitments.keyOf(THANE), "another run's commitment is its own");
+    }
+
+    @Test
     void aMemberThatLeftWithItsOwnerIsTappedOutWhenTheRunWentOnToClearAndFailedWhenItDidNot() {
         MemberResult left = new MemberResult(ISOLDE, ANN, true, false, 0, Out.OWNER_LEFT);
 

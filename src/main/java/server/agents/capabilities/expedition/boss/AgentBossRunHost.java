@@ -130,6 +130,16 @@ public final class AgentBossRunHost {
          */
         default void entered(Seat seat) {
         }
+
+        /**
+         * P8: the anchor (its owner, or a logout handoff's heir) of a member that went down and came to outside (out
+         * {@link Out#DIED}) left the event before the clear, in a run whose owner takes the party out
+         * (AgentBossRunDefinition.ownerLeavingTakesParty: Zakum), by the rule that walks the living ones out
+         * OWNER_LEFT. Nobody the member waits for is in the fight any more. Once per member and run; only a member
+         * that follows its owner.
+         */
+        default void ownerLeftWhileDown(Seat seat) {
+        }
     }
 
     private static volatile Rule rule;
@@ -264,6 +274,19 @@ public final class AgentBossRunHost {
                 current.entered(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run entered rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void ownerLeftWhileDown(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.ownerLeftWhileDown(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run owner-left-while-down rule failed for {}", seat, failure);
             }
         }
     }

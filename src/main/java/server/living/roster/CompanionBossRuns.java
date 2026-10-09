@@ -873,6 +873,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * P8, on the run's tick, from memory: the owner of a party companion that went down and waits outside (out DIED)
+     * left the fight before the clear (Zakum's owner-left rule). Nobody it waits for is in the fight any more, so on
+     * companion-ops it is let go as one out OWNER_LEFT is: it takes orders, can be benched and restocks again while
+     * another human fights on. Its line was its down line; another run's commitment is left alone.
+     */
+    @Override
+    public void ownerLeftWhileDown(Seat seat) {
+        int id = seat.agentCharacterId();
+        world.executor().submit("boss.owner_left_down " + id, () -> release(key(seat), id));
+    }
+
+    /**
      * P8, the boss log's question (LivingWorldHooks.bossQuota, from memory, on the asking thread): TRUE for a
      * companion this run allowed for {@code expedition} (its sign-up and the Start count and log nothing for it);
      * null, the stock count and log, for everyone else (CompanionBossQuota.answer).
@@ -1050,11 +1062,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * The companion left the run (a bench ally's way home is CompanionBossAllies'). A missed start lets it go with a
      * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line in its
-     * boss's words; no human left is one line per owner and the run's end lets them go; P8, its owner leaving before
-     * the clear (Zakum) lets it go at once (it is out beside its owner, and another human may fight on for half an
-     * hour), with one line per owner from the first of theirs out; a plain exit says nothing; a runtime that went
-     * away (parked at its owner's logout) is let go. {@code cleared}: the run was past its clear as it handed the
-     * member back (only a bench ally's goodbye reads it).
+     * boss's words, until its owner leaves before the clear (P8, {@link #ownerLeftWhileDown}); no human left is one
+     * line per owner and the run's end lets them go; P8, its owner leaving before the clear (Zakum) lets it go at once
+     * (it is out beside its owner, and another human may fight on for half an hour), with one line per owner from the
+     * first of theirs out; a plain exit says nothing; a runtime that went away (parked at its owner's logout) is let
+     * go. {@code cleared}: the run was past its clear as it handed the member back (only a bench ally's goodbye reads
+     * it).
      */
     private void out(Seat seat, Out out, boolean cleared) {
         int id = seat.agentCharacterId();

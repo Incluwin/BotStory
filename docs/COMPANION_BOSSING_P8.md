@@ -91,7 +91,8 @@ Going down and leaving:
 - If the owner leaves the fight before the clear (by Amon, or by reviving in El Nath), the owner's party companions
   leave too. One says "you're out? we're coming too." or "heading out with you." when the first one is out.
 - Each party companion that leaves with its owner is free at once. It takes orders, follows a channel change, can be
-  benched and restocks again, even while another human fights on. A dead companion stays the run's until it ends.
+  benched and restocks again, even while another human fights on. A dead companion stays the run's while its owner
+  fights on. When its owner leaves the fight before the clear, it is free at once too, by the same rule.
 - That rule waits until the owner was seen in the fight, or 5 s after the Start. A dead owner who still lies on the
   altar counts as in the fight. Allies stay while any human stands.
 - When no living human is left in the fight for 3 s, companions leave by Amon. One says "everyone's down... let's

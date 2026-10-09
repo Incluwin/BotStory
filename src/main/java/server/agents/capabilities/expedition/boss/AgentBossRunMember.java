@@ -55,6 +55,8 @@ public final class AgentBossRunMember {
     private AgentBossRunHost.Out leavingFor;
     private long leavingSinceMs;
     private AgentBossRunHost.Out out;
+    /** Its anchor left while it was down outside, and the host heard it (see {@link #ownerLeftWhileDown}). */
+    private boolean ownerLeftWhileDown;
 
     AgentBossRunMember(int agentId, int enlistedBy, int ordinal, long enlistedAtMs) {
         this(agentId, enlistedBy, ordinal, enlistedAtMs, Kind.FOLLOWER);
@@ -258,5 +260,17 @@ public final class AgentBossRunMember {
     void leftRun(AgentBossRunHost.Out reason) {
         out = reason;
         phase = Phase.OUT;
+    }
+
+    /**
+     * Its anchor left the event before the clear while it was down outside (out DIED; see
+     * AgentBossRunSession.followAnchorsOut). True only the first time, so the host hears it once.
+     */
+    boolean ownerLeftWhileDown() {
+        if (ownerLeftWhileDown) {
+            return false;
+        }
+        ownerLeftWhileDown = true;
+        return true;
     }
 }
