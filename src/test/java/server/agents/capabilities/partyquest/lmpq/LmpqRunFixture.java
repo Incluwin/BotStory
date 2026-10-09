@@ -83,6 +83,11 @@ final class LmpqRunFixture implements AutoCloseable {
         return companion;
     }
 
+    /** The companion's runtime is gone (logged out or removed): it is no longer a loaded Agent. */
+    void unload(Character companion) {
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(companion.getId())).thenReturn(null);
+    }
+
     AgentRuntimeEntry entry(Character agent) {
         return entries.get(agent.getId());
     }

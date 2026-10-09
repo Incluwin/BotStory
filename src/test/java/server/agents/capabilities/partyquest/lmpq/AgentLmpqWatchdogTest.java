@@ -25,8 +25,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * LMPQ base fix 8 (all modes), the watchdog: a run whose Agents no longer tick it (its lease ran out, or its holder
- * is dead) is ticked through its first live Agent, so it still fails or completes and is released; a run with no
- * live Agent fails at once and is released; a live lease is left alone. The admission starts the watchdog once,
+ * is dead) is ticked through its first live Agent, so it still fails or completes and is released; while every
+ * loaded Agent is dead the run is ticked through the lowest-id one and its own rules decide; only a run with no Agent
+ * loaded fails at once; a live lease is left alone. The admission starts the watchdog once,
  * every PERIOD_MS (1000 ms).
  */
 class AgentLmpqWatchdogTest {
@@ -90,14 +91,40 @@ class AgentLmpqWatchdogTest {
     }
 
     @Test
-    void aRunWithNoLiveAgentFailsAtOnce() {
+    void aRunWhoseAgentsAreAllDeadButLoadedIsTickedNotFailed() {
         AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
                 ben, mira, kes, pel);
         for (Character agent : new Character[]{mira, kes, pel}) when(agent.getHp()).thenReturn(0);
 
         AgentLmpqWatchdogRuntime.tick(session, 10_000L);
 
-        assertEquals("No live Agent remains", session.failure());
+        assertFalse(session.terminal(), "their respawns decide: they depart, or the event ends the run");
+        assertEquals(mira.getId(), session.executionAgentId(), "the lowest-id loaded Agent drives the pass");
+        verify(run.event, never()).dispose();
+    }
+
+    @Test
+    void aRunWhoseAgentsAreAllDeadIsStillJudgedByItsOwnRules() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
+                ben, mira, kes, pel);
+        for (Character agent : new Character[]{mira, kes, pel}) when(agent.getHp()).thenReturn(0);
+        when(run.event.isEventDisposed()).thenReturn(true);
+
+        AgentLmpqWatchdogRuntime.tick(session, 10_000L);
+
+        assertEquals("LMPQ event ended before the clear", session.failure());
+        assertNull(AgentLmpqSessionRegistry.forMember(mira.getId()), "released");
+    }
+
+    @Test
+    void aRunWithNoAgentLoadedFailsAtOnce() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
+                ben, mira, kes, pel);
+        for (Character agent : new Character[]{mira, kes, pel}) run.unload(agent);
+
+        AgentLmpqWatchdogRuntime.tick(session, 10_000L);
+
+        assertEquals("No LMPQ Agent is loaded", session.failure());
         assertNull(AgentLmpqSessionRegistry.forMember(mira.getId()), "released");
     }
 
