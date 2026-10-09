@@ -591,7 +591,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                         for (MobSkillId msId : monster.getSkills()) {
                             if (msId.type() == MobSkillType.PHYSICAL_AND_MAGIC_COUNTER) {
                                 MobSkill toUse = MobSkillFactory.getMobSkillOrThrow(MobSkillType.PHYSICAL_AND_MAGIC_COUNTER, msId.level());
-                                player.addHP(-toUse.getX());
+                                applyReflectLoss(player, toUse.getX());
                                 map.broadcastMessage(player, PacketCreator.damagePlayer(0, monster.getId(), player.getId(), toUse.getX(), 0, 0, false, 0, true, monster.getObjectId(), 0, 0), true);
                             }
                         }
@@ -600,7 +600,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                         for (MobSkillId msId : monster.getSkills()) {
                             if (msId.type() == MobSkillType.PHYSICAL_AND_MAGIC_COUNTER) {
                                 MobSkill toUse = MobSkillFactory.getMobSkillOrThrow(MobSkillType.PHYSICAL_AND_MAGIC_COUNTER, msId.level());
-                                player.addHP(-toUse.getY());
+                                applyReflectLoss(player, toUse.getY());
                                 map.broadcastMessage(player, PacketCreator.damagePlayer(0, monster.getId(), player.getId(), toUse.getY(), 0, 0, false, 0, true, monster.getObjectId(), 0, 0), true);
                             }
                         }
@@ -612,6 +612,18 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
             return false;
         }
         return true;
+    }
+
+    /**
+     * A monster's Weapon or Magic Reflect hurts the attacker. A headless Agent has no client pet autopot to answer the
+     * HP packet, so its loss runs the server autopot; a human keeps the stock loss and its client drinks.
+     */
+    private static void applyReflectLoss(Character attacker, int loss) {
+        if (attacker.getClient() instanceof BotClient) {
+            attacker.addMPHPAndTriggerAutopot(-loss, 0);
+        } else {
+            attacker.addHP(-loss);
+        }
     }
 
     private static void damageMonsterWithSkill(final Character attacker, final MapleMap map, final Monster monster,

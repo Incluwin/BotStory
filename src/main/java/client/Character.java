@@ -3335,7 +3335,12 @@ public class Character extends AbstractCharacterObject {
 
     public void doHurtHp() {
         if (!(this.getInventory(InventoryType.EQUIPPED).findById(getMap().getHPDecProtect()) != null || buffMapProtection())) {
-            addHP(-getMap().getHPDec());
+            if (client instanceof BotClient) {
+                // A headless Agent has no client pet autopot to answer the HP packet; a human's client drinks itself.
+                addMPHPAndTriggerAutopot(-getMap().getHPDec(), 0);
+            } else {
+                addHP(-getMap().getHPDec());
+            }
         }
     }
 
