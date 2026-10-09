@@ -73,14 +73,32 @@ class AgentOpqDepartedHandBackTest {
             assertFalse(session.departed(ann.getId()), "still entering within the grace");
 
             AgentOpqCoordinator.tickSession(session, 10_000L + GRACE_MS);
+            assertTrue(session.departed(ann.getId()), "the grace is over");
             AgentOpqCoordinator.tickSession(session, 11_000L + GRACE_MS);
 
-            assertTrue(session.departed(ann.getId()));
             assertEquals(List.of("OPQ departed: session=" + session.sessionId() + " member=Ann(7) type=HUMAN"
                             + " map=200080101 phase=ENTRANCE registered=5 companionRun=false"),
                     lines.startingWith("OPQ departed:"));
             assertFalse(session.terminal(), session.failure());
         }
+    }
+
+    @Test
+    void theGraceRunsFromTheBind() {
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, false,
+                AgentOpqSession.Phase.ENTERING, ben, mira, kes, pel, hal, ann);
+        session.clearEventInstance(); // bound by the coordinator when the leader is inside
+        when(run.partyQuest.event(ben)).thenReturn(run.event);
+        when(ben.getMapId()).thenReturn(AgentOpqDefinition.ENTRANCE_MAP);
+        when(ann.getMapId()).thenReturn(AgentOpqDefinition.RECRUIT_MAP);
+        when(ann.getEventInstance()).thenReturn(null);
+        holds(ben, mira, kes, pel, hal);
+
+        AgentOpqCoordinator.tickSession(session, 10_000L); // binds, then enters ENTRANCE
+        assertEquals(AgentOpqSession.Phase.ENTRANCE, session.phase());
+        AgentOpqCoordinator.tickSession(session, 10_000L + GRACE_MS); // the first look at the departures
+
+        assertTrue(session.departed(ann.getId()), "the grace ran from the bind, not from the first look");
     }
 
     @Test

@@ -232,7 +232,6 @@ final class AgentOpqCoordinator {
                 }
             }
             session.bindEventInstance(event);
-            session.noteBoundAt(nowMs);
             session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
         }
     }
