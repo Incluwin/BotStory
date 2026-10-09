@@ -58,8 +58,14 @@ public final class CompanionGearTool {
     private static final short WEAPON = -11;
     private static final short TOP = -5;
 
-    /** What the companion's mailbox did: pieces put in its bag, and of those, pieces it wears. */
-    public record Outcome(int given, int worn) {
+    /**
+     * What the companion's mailbox did: pieces put in its bag, of those the pieces it wears, and the pieces it skipped
+     * because their slot wore that boss piece by then.
+     */
+    public record Outcome(int given, int worn, int skipped) {
+        public Outcome(int given, int worn) {
+            this(given, worn, 0);
+        }
     }
 
     /** The game as this tool uses it (production: {@link #LIVE}). */
@@ -225,10 +231,16 @@ public final class CompanionGearTool {
         String text;
         if (outcome != null) {
             logUse(gm, target, kit, false, outcome.given(), outcome.worn(), startedMs);
-            text = outcome.given() == 0 ? bot.getName() + "'s Equip tab filled up first; nothing was given."
-                    : bot.getName() + " now wears " + outcome.worn() + " boss pieces of " + kit.size() + " (every slot a"
-                    + " passed 60% scroll): " + pieces + (outcome.worn() < outcome.given()
-                    ? "; the rest are in its Equip tab." : ".");
+            int planned = kit.size() - outcome.skipped(); // the rest it wore by then (an earlier use went on first)
+            if (outcome.given() == 0) {
+                text = planned == 0 ? bot.getName() + " already wears boss gear in every slot it has a piece for."
+                        : bot.getName() + "'s Equip tab filled up first; nothing was given.";
+            } else {
+                text = bot.getName() + " now wears " + outcome.worn() + " boss pieces of " + planned + " (every slot a"
+                        + " passed 60% scroll): " + pieces + (outcome.worn() < outcome.given()
+                        ? "; the rest are in its Equip tab" : "") + (outcome.skipped() > 0
+                        ? "; " + outcome.skipped() + " it wore already were skipped." : ".");
+            }
         } else {
             Throwable cause = unwrap(failure);
             log.warn("gm bossgear: gm={} target={} ({}) did not apply", gm.getName(), bot.getName(), bot.getId(), cause);
@@ -324,16 +336,24 @@ public final class CompanionGearTool {
     /**
      * On the companion's mailbox: each piece forged into its bag and worn by position, not by id (as
      * AgentEquipmentService.equipInSlot would: a plain copy of the same id may sit in the bag, and the same id worn
-     * would count as done); what it wore swaps into the freed slot. Nothing is given unless {@code need} slots are free.
+     * would count as done); what it wore swaps into the freed slot. A piece whose slot wears that boss piece by now is
+     * skipped (a second use planned on companion-ops before the first kit went on), and then the free slots it needs
+     * are counted again. Nothing is given unless {@code need} slots are free.
      */
     static Outcome wearKit(AgentRuntimeEntry entry, List<Piece> kit, int need) {
         Character bot = entry.bot();
-        if (bot == null || bot.getInventory(InventoryType.EQUIP).getNumFreeSlot() < need) {
+        if (bot == null) {
             return new Outcome(0, 0);
+        }
+        List<Piece> left = kit.stream().filter(piece -> !wearsAlready(bot, piece)).toList();
+        int skipped = kit.size() - left.size();
+        if (left.isEmpty() || bot.getInventory(InventoryType.EQUIP).getNumFreeSlot()
+                < (skipped == 0 ? need : need(bot, left))) {
+            return new Outcome(0, 0, skipped);
         }
         int given = 0;
         int worn = 0;
-        for (Piece piece : kit) {
+        for (Piece piece : left) {
             Item item = BossGearPlanner.forge(piece);
             if (!InventoryManipulator.addFromDrop(bot.getClient(), item, false)) {
                 continue; // a one-of-a-kind piece it holds already: the rest still go on
@@ -348,7 +368,7 @@ public final class CompanionGearTool {
             AgentInventoryReservationRuntime.refreshEquipmentReservations(entry, bot, System.currentTimeMillis());
             bot.saveCharToDB();
         }
-        return new Outcome(given, worn);
+        return new Outcome(given, worn, skipped);
     }
 
     private CompletableFuture<String> refused(Character gm, String name, String line) {

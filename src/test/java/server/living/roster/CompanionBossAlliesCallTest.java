@@ -257,10 +257,30 @@ class CompanionBossAlliesCallTest {
             assertEquals(List.of(), h.open.calls, "never enlisted");
             assertNull(h.game.commitments.keyOf(ORRIN));
             assertEquals(List.of(), h.game.timers, "no arrival");
+            assertEquals(List.of(), h.bench, "a denial never ends its live slice");
             assertEquals(List.of("count " + ORRIN + " ZAKUM"), db.statements, "the stock count, on companion-ops");
             List<String> said = h.said("Orrin");
             assertEquals(1, said.size(), h.whispers.toString());
-            assertTrue(isLine(BossRunLines.QUOTA, null, said.get(0)), h.whispers.toString());
+            assertTrue(isLine(BossRunLines.ALLY_QUOTA, null, said.get(0)), "from its camp, not at the door: "
+                    + h.whispers);
+        }
+    }
+
+    @Test
+    void anAllyWithNoCharacterYetIsAskedOnceItHasOne() {
+        atAdobis();
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            db.counts.put(ORRIN, 1);
+            List<Runnable> ops = queuedOps();
+            assertEquals(List.of("Orrin"), sendTo("zakum", "orrin"));
+            when(h.game.residents.characterIdOf("orrin")).thenReturn(0); // its row is made by the call
+            ops.forEach(Runnable::run);
+
+            assertNull(h.allies.trip("orrin"));
+            assertNull(h.game.leases.holder(ORRIN), "no lease taken");
+            assertEquals(List.of(), h.open.calls, "never enlisted");
+            assertEquals(List.of("count " + ORRIN + " ZAKUM"), db.statements, "asked once, for the new character");
+            assertTrue(isLine(BossRunLines.ALLY_QUOTA, null, h.said("Orrin").get(0)), h.whispers.toString());
         }
     }
 

@@ -63,6 +63,10 @@ class CompanionRestockBossTest {
     private static final int ADOBIS_ROOM = 211_042_400;
     private static final AgentSupplyReadiness.Activity EASY_BALROG =
             AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
+    /** El Nath's taxi stop and Yeti field on the way to the Door to Zakum, where Glibber sells potions (P8). */
+    private static final int ICE_VALLEY_II = 211_040_200;
+    private static final int EYE_OF_FIRE = 4_001_017;
+    private static final AgentSupplyReadiness.Activity ZAKUM = AgentSupplyReadiness.Activity.partyQuest("zakum");
 
     /** The readiness rule (CompanionRestock) for Fenna, out with Ann and following her. */
     @Nested
@@ -580,6 +584,24 @@ class CompanionRestockBossTest {
         }
 
         @Test
+        void onIceValleyIiZakumsStandardHoldsOnlyWhileItsOwnerCarriesTheEyeOfFire() {
+            config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            when(fenna.getMapId()).thenReturn(ICE_VALLEY_II);
+            when(roster.onlineCharacter(ANN)).thenReturn(ann);
+
+            // Ann hunts Yetis there, or takes the taxi on to Sharp Cliff: no Eye, no Zakum
+            assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "the default there");
+            assertFalse(restock.restocksOnField(FENNA, ICE_VALLEY_II, ZAKUM), "the field stays closed");
+
+            when(ann.haveItem(EYE_OF_FIRE)).thenReturn(true); // the Door to Zakum asks every player for it
+            assertEquals(ZAKUM, restock.standing(FENNA), "on the way to Zakum");
+            assertTrue(restock.restocksOnField(FENNA, ICE_VALLEY_II, ZAKUM), "short of 500/400");
+
+            when(roster.onlineCharacter(ANN)).thenReturn(null);
+            assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "its owner offline");
+        }
+
+        @Test
         void desksMuYoungsRoomAndOtherFieldsKeepTheirOwnStandard() {
             when(fenna.getMapId()).thenReturn(KERNING);
             assertEquals(AgentSupplyReadiness.Activity.partyQuest("kpq"), restock.standing(FENNA), "Lakelis's desk");
@@ -701,6 +723,23 @@ class CompanionRestockBossTest {
             assertEquals(List.of(ISOLDE), checkedSoon,
                     "Thane is stocked, Sorrel is below 50, Brannock and the citizen are not hers");
             assertEquals(Set.of(EASY_BALROG), measuredFor, "measured against Easy Balrog's standard");
+        }
+
+        @Test
+        void onIceValleyIiOnlyAnOwnerCarryingTheEyeOfFireHasHerCompanionsLookAtZakumsStandard() {
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            game.moveAnn(ICE_VALLEY_II, 100, 0);
+
+            game.roster().ownerEnteredMap(game.ann, game.map(ICE_VALLEY_II));
+            ops.forEach(Runnable::run);
+            ops.clear();
+            assertEquals(List.of(), checkedSoon, "no Eye: she hunts Yetis or rides the taxi on");
+
+            when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+            game.roster().ownerEnteredMap(game.ann, game.map(ICE_VALLEY_II));
+            ops.forEach(Runnable::run);
+            assertEquals(List.of(ISOLDE, THANE), checkedSoon, "both short of 500/400; Sorrel is below 50");
+            assertEquals(Set.of(ZAKUM), measuredFor, "measured against Zakum's standard");
         }
 
         @Test

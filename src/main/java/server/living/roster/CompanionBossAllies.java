@@ -592,8 +592,10 @@ final class CompanionBossAllies {
      * denial changes nothing and the ally whispers there is no room; then its live slice ends, its EXPEDITION lease is
      * taken, it is enlisted in the run as a member that leads itself, and it is committed under its owner's run key.
      * It whispers its recall ETA and arrives at that ETA plus a stagger. Any later failure undoes, last step first.
-     * P8: for a boss with a daily entry log (Zakum), an ally with no entry left today (CompanionBossQuota, asked once
-     * its character is known) whispers so and does not travel: no lease, no enlist.
+     * P8: for a boss with a daily entry log (Zakum), an ally with no entry left today (CompanionBossQuota) whispers so
+     * from its camp (ALLY_QUOTA) and does not travel: no lease, no enlist. It is asked right after the budget, before
+     * its live slice ends, so that denial changes nothing either; an ally with no character yet is asked once the call
+     * made it one.
      */
     void call(Trip trip) {
         if (trips.get(trip.personaId) != trip || trip.state != State.CALLING) {
@@ -621,13 +623,23 @@ final class CompanionBossAllies {
                 whisper(trip, persona, BossRunLines.ALLY_NO_ROOM, null);
                 return;
             }
+            // its character as known now (read only: a live slice's character is loaded, and ensureCharacter writes
+            // looks), so a quota denial, like the budget's, changes nothing and its live slice goes on
+            int known = world.residents().characterIdOf(persona.id());
+            if (known != 0 && !quota.admit(context.definition(), trip.expedition, known)) {
+                log.info("boss ally call of {} for owner {} denied: no entry left today", persona.id(), trip.ownerId);
+                trips.remove(trip.personaId, trip);
+                whisper(trip, persona, BossRunLines.ALLY_QUOTA, null);
+                return;
+            }
             world.benchDuty().endFor(persona.id(), CALLED);
             int id = world.residents().ensureCharacter(persona);
             trip.characterId = id;
-            if (id != 0 && !quota.admit(context.definition(), trip.expedition, id)) {
+            if (id != 0 && id != known && !quota.admit(context.definition(), trip.expedition, id)) {
+                // a character made just now: asked once it has one, as before
                 log.info("boss ally call of {} for owner {} undone: no entry left today", persona.id(), trip.ownerId);
                 undo(trip);
-                whisper(trip, persona, BossRunLines.QUOTA, null);
+                whisper(trip, persona, BossRunLines.ALLY_QUOTA, null);
                 return;
             }
             if (id == 0 || !world.leases().tryAcquire(id, CompanionLeases.Kind.EXPEDITION, trip.ownerId)) {

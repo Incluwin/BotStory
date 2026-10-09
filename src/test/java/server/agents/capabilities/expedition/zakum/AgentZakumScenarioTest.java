@@ -209,6 +209,22 @@ class AgentZakumScenarioTest {
     }
 
     @Test
+    void betweenBodyFormsAnAltarWithNoLivePartHoldsInsteadOfLiningUpAgain() {
+        summon();
+        Character hero = member(1, 0, Job.HERO, new Point(0, -213));
+        try (LogLines lines = new LogLines(AgentZakumScenario.class)) {
+            fight.tick(List.of(hero), event, 0L);
+            monsters.clear(); // a body form fell; the next one rises after its die1 (1.2 s)
+            fight.tick(List.of(hero), event, 500L);
+
+            verify(gateway).stop(entries.get(1));
+            verify(gateway, never()).navigate(any(), any(), anyBoolean());
+            assertEquals(1, lines.startingWith("Zakum combat phase=TRANSITION").size(),
+                    lines.startingWith("Zakum combat phase=").toString());
+        }
+    }
+
+    @Test
     void aPartNoHumanDrivesIsDropped() {
         summon();
         idle.add(monster(8_800_007));

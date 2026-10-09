@@ -48,6 +48,8 @@ On the way:
 - In Ice Valley II (211040200, the El Nath taxi stop), a Lv50+ party companion short of the Zakum standard says a go
   line, for example "low on pots for zakum, grabbing some here. back in ~2 min.". It buys at Glibber (NPC 2030009)
   from its own purse and catches up.
+- This happens only while the owner carries the Eye of Fire, which the Door to Zakum asks every player for. An owner
+  who hunts Yetis there, or rides the taxi on to Sharp Cliff or the Dead Mine, keeps the normal standard.
 - Companions follow the owner through the Door to Zakum. They need no quest and no Eye of Fire (plan decision 11a).
 - In Adobis's room no companion leaves for a shop. The nearest shop is 22 maps away with no way back. A short
   companion says the no-shop line when the owner walks in, at most once in `COMPANION_RESTOCK_ASK_EVERY_MS` (30 min).
@@ -60,7 +62,8 @@ At Adobis:
 - Each companion walks up beside Adobis and signs up. The stock "[Expedition] ... has joined" notice appears. One
   companion says a signed-up line.
 - A companion with no Zakum entry left today says "already went in today. i'll wait out here." or a variant. It does
-  not sign up. A capped ally still shows in the picker, then whispers the line and does not travel.
+  not sign up. A capped ally still shows in the picker. It whispers "already did my run today, can't come. sorry!"
+  or a variant from its camp and does not travel. Its bench slice goes on.
 - Zakum needs 6 names on the list to start. The owner and 5 companions are exactly 6, so one refusal blocks the Start.
 
 In the fight:
@@ -116,7 +119,7 @@ With zakum off: no visible change for players. GMs get `!bossgear` and `!bossmir
 | `expedition.boss.AgentBossAttackMirror.MODE` | `'APPLY'` | OFF, OBSERVE (log only) or APPLY (companions take the hits) |
 | `...AgentBossAttackMirror.DEDUP_MAX_MS` | `'6000'` | Cap on the window that counts repeated reports as one attack |
 | `...AgentBossAttackMirror.MAX_SHOWN_HITS` | `'30'` | Companions per attack that show a damage number. The rest lose HP silently |
-| `...AgentBossAttackMirror.DAMAGE_PERCENT` | `'100'` | Scales the rolled damage of mirrored hits |
+| `...AgentBossAttackMirror.DAMAGE_PERCENT` | `'100'` | Scales the HP loss of mirrored hits. A deadly hit, MP burn and a disease stay at any percent |
 | `...AgentBossAttackMirror.SHARED_HIT_WINDOW` | `'true'` | Mirrored hits share MOB_HIT_COOLDOWN_MS (1500) with touch hits |
 | `...AgentBossAttackMirror.CALIBRATION_WINDOW_MS` | `'1500'` | How long a prediction and a human's hit report wait for each other |
 | `...AgentBossAttackMirror.SUMMARY_LOG_MS` | `'60000'` | One summary line per run per interval |
@@ -311,8 +314,8 @@ Stage 2, enable zakum:
 22. Warn players. Set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,zakum"` and restart.
 
 Run 1, owner plus 5:
-23. Take the El Nath taxi to Ice Valley II. Leave one companion short of potions. Expect its go line, a buy at
-    Glibber and a catch-up.
+23. Carry an Eye of Fire. Take the El Nath taxi to Ice Valley II. Leave one companion short of potions. Expect its
+    go line, a buy at Glibber and a catch-up.
 24. Talk to Jeff. Walk to the Door to Zakum (or `!warp 211042300`) and enter.
 25. Talk to Adobis and pick "Lets get this going!". Expect "My party will register too." and "That's all for now.".
     Pick "My party will register too.".

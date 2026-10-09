@@ -279,7 +279,9 @@ class BossRunLinesTellTest {
                         "good fight. see ya around.", "gg, good fight. heading back to camp.")),
                 Map.entry(BossRunLines.ALLY_NEXT_TIME, List.of("we'll get him next time. back to camp.",
                         "rough one. heading back to camp.")),
-                Map.entry(BossRunLines.ALLY_GOODBYE, List.of("heading back to camp. see ya.")));
+                Map.entry(BossRunLines.ALLY_GOODBYE, List.of("heading back to camp. see ya.")),
+                Map.entry(BossRunLines.ALLY_QUOTA, List.of("already did my run today, can't come. sorry!",
+                        "used up my run for today, can't make it. sorry!")));
         for (Map.Entry<String, List<String>> intent : plan.entrySet()) {
             assertTrue(intent.getKey().startsWith("boss.ally."), intent.getKey());
             assertEquals(intent.getValue(), BossRunLines.GENERIC.get(intent.getKey()), intent.getKey());
@@ -289,7 +291,8 @@ class BossRunLinesTellTest {
             }
         }
         long allyIntents = BossRunLines.GENERIC.keySet().stream().filter(key -> key.startsWith("boss.ally.")).count();
-        assertEquals(plan.size(), allyIntents, "the plan's twelve ally intents, the low-ammo line (R5) and no other");
+        assertEquals(plan.size(), allyIntents,
+                "the plan's twelve ally intents, the low-ammo line (R5), the quota line (P8) and no other");
     }
 
     // ---- P8: Zakum's own words -------------------------------------------------------------------

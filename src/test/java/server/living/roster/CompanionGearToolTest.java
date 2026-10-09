@@ -7,9 +7,11 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import client.inventory.manipulator.InventoryManipulator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.knowledge.KnowledgeTestKit;
@@ -35,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -83,6 +86,8 @@ class CompanionGearToolTest {
         final List<Integer> needs = new ArrayList<>();
         boolean engaged;
         boolean inBossRun;
+        /** The mailbox finds every piece worn already (a use planned before the last kit went on). */
+        boolean woreAlready;
 
         @Override
         public AgentRuntimeEntry runtime(int characterId) {
@@ -125,7 +130,8 @@ class CompanionGearToolTest {
         public CompletableFuture<Outcome> wear(AgentRuntimeEntry runtime, List<Piece> kit, int need) {
             worn.add(kit);
             needs.add(need);
-            return CompletableFuture.completedFuture(new Outcome(kit.size(), kit.size()));
+            return CompletableFuture.completedFuture(woreAlready ? new Outcome(0, 0, kit.size())
+                    : new Outcome(kit.size(), kit.size()));
         }
 
         @Override
@@ -246,6 +252,48 @@ class CompanionGearToolTest {
         use("Flint", false);
 
         assertFalse(game.worn.get(1).stream().anyMatch(piece -> piece.position() == WEAPON), game.worn.get(1).toString());
+    }
+
+    @Test
+    void aPlainWornCopyOfThePickedItemStillGetsTheBossPiece() throws Exception {
+        use("Flint", false);
+        int gun = at(game.worn.get(0), WEAPON).itemId();
+        flintWears.removeSlot(WEAPON);
+        flintWears.addItemFromDB(Equip.restored(gun, WEAPON)); // bought, looted or shaped: no tag, no scrolls
+
+        use("Flint", false);
+
+        assertEquals(gun, at(game.worn.get(1), WEAPON).itemId(), game.worn.get(1).toString());
+    }
+
+    @Test
+    void onItsMailboxAKitPlannedBeforeTheLastOneWentOnSkipsEveryPieceItNowWears() throws Exception {
+        use("Flint", false);
+        List<Piece> kit = game.worn.get(0);
+        for (Piece piece : kit) { // the first kit went on after this one was planned
+            Item worn = Equip.restored(piece.itemId(), piece.position());
+            worn.setOwner(BossGearPlanner.OWNER_TAG);
+            flintWears.removeSlot(piece.position());
+            flintWears.addItemFromDB(worn);
+        }
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        when(entry.bot()).thenReturn(flint);
+
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            Outcome outcome = CompanionGearTool.wearKit(entry, kit, game.needs.get(0));
+
+            assertEquals(new Outcome(0, 0, kit.size()), outcome);
+            inventory.verifyNoInteractions();
+        }
+    }
+
+    @Test
+    void aMailboxThatFoundEveryPieceWornAlreadySaysSo() throws Exception {
+        game.woreAlready = true;
+
+        String reply = use("Flint", false);
+
+        assertEquals("Flint already wears boss gear in every slot it has a piece for.", reply);
     }
 
     @Test

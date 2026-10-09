@@ -42,9 +42,10 @@ public final class ServerMobDamageService {
     }
 
     /**
-     * The same hit with the rolled damage scaled to {@code damagePercent} (a deadly hit and MP burn stay as they are),
-     * and without the damage packet when {@code broadcast} is false: the target still loses the HP and an Agent still
-     * reacts. The boss attack mirror softens and quiets the hits it copies onto Agents with these two.
+     * The same hit with the rolled damage scaled to {@code damagePercent}, and without the damage packet when
+     * {@code broadcast} is false: the target still loses the HP and an Agent still reacts. Whether the hit lands is the
+     * unscaled roll's, so a deadly hit, MP burn and a disease stay as they are at any percent, 0 included: the percent
+     * scales only the HP loss. The boss attack mirror softens and quiets the hits it copies onto Agents with these two.
      */
     public static int applyOrdinaryAttack(
             Monster attacker, Character target, BossAction.OrdinaryAttack attack,
@@ -76,11 +77,12 @@ public final class ServerMobDamageService {
                 : defense.rollPhysicalTouchDamage(target, attacker,
                         physicalAttackOverride > 0
                                 ? physicalAttackOverride : attacker.getPADamage());
-        if (damagePercent != 100 && damage > 0) {
-            damage = (int) ((long) damage * Math.max(0, damagePercent) / 100);
-        }
         if (damage > 0 && target.getClient() instanceof BotClient && AgentCombatDamageRuntime.invincible(target)) {
             damage = 0;   // a player's client would have been invincible here (after Corkscrew Blow lands)
+        }
+        boolean landed = damage > 0; // the unscaled roll: a deadly hit, MP burn and a disease ignore the percent
+        if (landed && damagePercent != 100) {
+            damage = (int) ((long) damage * Math.max(0, damagePercent) / 100);
         }
         int mpAttack = 0;
         boolean deadly = deadlyOverride;
@@ -103,15 +105,16 @@ public final class ServerMobDamageService {
         int resolvedDiseaseLevel = diseaseLevel;
         Optional<MobSkill> diseaseSkill = disease.map(type ->
                 MobSkillFactory.getMobSkillOrThrow(type, resolvedDiseaseLevel));
-        if (diseaseSkill.isPresent() && damage > 0) {
+        if (diseaseSkill.isPresent() && landed) {
             diseaseSkill.get().applyEffect(target, attacker, false, banishPlayers);
         }
 
         if (deadly && MapId.isDojo(map.getId()) && !YamlConfig.config.server.USE_DEADLY_DOJO) {
             damage = 0;
             mpAttack = 0;
+            landed = false;
         }
-        if (damage > 0) {
+        if (landed) {
             if (deadly) {
                 damage = Math.max(0, target.getHp() - 1);
                 mpAttack = Math.max(0, target.getMp() - 1);

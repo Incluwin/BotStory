@@ -200,6 +200,24 @@ class CompanionBossQuotaTest {
     }
 
     @Test
+    void theEntryIsLoggedOnCompanionOpsNeverOnTheRunsTick() {
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            runs.registerParty(ANN, "zakum");
+            db.clear();
+            List<Runnable> ops = DirectExecutor.queue();
+            CompanionExecutor queued = DirectExecutor.queued(ops);
+            when(game.world.executor()).thenReturn(queued);
+
+            runs.entered(seat(ISOLDE)); // on the run's tick, inside its session lock
+
+            assertEquals(0, db.connections(), "no JDBC on the run's tick");
+            assertEquals(List.of(), db.inserts());
+            ops.forEach(Runnable::run);
+            assertEquals(List.of(ISOLDE + " ZAKUM"), db.inserts(), "logged once companion-ops runs it");
+        }
+    }
+
+    @Test
     void theRunsEndForgetsItsAnswersSoTheNextSignUpIsCountedAgain() {
         try (BossLogDatabase db = new BossLogDatabase()) {
             runs.registerParty(ANN, "zakum");

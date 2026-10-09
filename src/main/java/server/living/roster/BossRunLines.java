@@ -75,9 +75,15 @@ final class BossRunLines {
     static final String ALLY_GOODBYE = "boss.ally.goodbye";
     /**
      * P8: no entry of the boss left today (its daily entry log, ExpeditionBossLog: Zakum), so it was not signed up; a
-     * party companion says it in party chat, a bench ally whispers it. Every boss with an entry log.
+     * party companion at the door says it in party chat (a bench ally whispers {@link #ALLY_QUOTA}). Every boss with an
+     * entry log.
      */
     static final String QUOTA = "boss.refused.quota";
+    /**
+     * P8: a bench ally called for a boss it has no entry of left today whispers it from its camp, so it never travels:
+     * no word says it waits at the door. Every boss with an entry log.
+     */
+    static final String ALLY_QUOTA = "boss.ally.quota";
     /**
      * P8: its owner left the fight before the clear, so it walks out too (AgentBossRunHost.Out.OWNER_LEFT, a boss whose
      * owner takes the party out: Zakum); one line per owner's run. Every boss with that rule.
@@ -189,6 +195,9 @@ final class BossRunLines {
                     "already went in today. i'll wait out here.",
                     "used up my run for today, i'll hang back.",
                     "can't go in again today. good luck in there!")),
+            Map.entry(ALLY_QUOTA, List.of(
+                    "already did my run today, can't come. sorry!",
+                    "used up my run for today, can't make it. sorry!")),
             Map.entry(OWNER_LEFT, List.of(
                     "you're out? we're coming too.",
                     "heading out with you.")));

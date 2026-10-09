@@ -5809,7 +5809,7 @@ tuning:
     server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MAX_SHOWN_HITS: '30'
     # Values: an integer from 0 to 100; unit: percent. Recommended: 100; lower only to test whether companions survive a boss at all.
     # Purpose: Scales the damage a mirrored boss attack does to a companion, against the damage the same attack does to a player.
-    # Technical: ServerMobDamageService.applyOrdinaryAttack multiplies the rolled PAD or MAD damage by this percent before the defenses; a deadly attack (HP to 1) and MP burn stay as they are. The validator's percent rule bounds it to 0-100.
+    # Technical: ServerMobDamageService.applyOrdinaryAttack multiplies the rolled PAD or MAD damage by this percent before the defenses; whether the hit lands is the unscaled roll's, so a deadly attack (HP to 1), MP burn and a disease stay as they are at any percent, 0 included. The validator's percent rule bounds it to 0-100.
     server.agents.capabilities.expedition.boss.AgentBossAttackMirror.DAMAGE_PERCENT: '100'
     # Values: true or false. Recommended: true, so a companion takes at most one boss or touch hit per window, as a player's invincibility frames allow.
     # Purpose: Makes a mirrored boss hit and a touch hit share one short hit window per companion, the way a player is briefly invincible after a hit.

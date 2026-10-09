@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.Character;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.progression.AgentPotionSupplierCatalog;
@@ -71,6 +72,17 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
             }
         }
         return null;
+    }
+
+    /**
+     * True when {@code owner}, passing the approach map, is on the way to this boss: always for a boss with no marker
+     * item (Easy Balrog: Ant Tunnel Park is on the walk down to Mu Young and nowhere else); else only while they carry
+     * one (Zakum: the Eye of Fire, which the Door to Zakum asks every player for), since Ice Valley II is also a Yeti
+     * field and the taxi stop for Sharp Cliff and the Dead Mine. Memory only.
+     */
+    boolean approachMeantBy(Character owner) {
+        List<Integer> markers = definition.markerItemIds();
+        return markers.isEmpty() || owner != null && markers.stream().anyMatch(owner::haveItem);
     }
 
     /** The entrance of boss {@code key} (any case, spaces around it ignored), or null when there is none. */

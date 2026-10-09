@@ -16,6 +16,11 @@ import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.life.MobAttackInfo;
+import server.life.MobAttackInfoFactory;
+import server.life.MobSkill;
+import server.life.MobSkillFactory;
+import server.life.MobSkillType;
 import server.life.Monster;
 import server.life.autonomy.BossAction;
 import server.maps.MapleMap;
@@ -168,6 +173,43 @@ class ServerMobDamageServiceTest {
     }
 
     @Test
+    void atZeroPercentADeadlyHitStillLeavesOneHpAndOneMp() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+        when(fixture.target().getHp()).thenReturn(5_000);
+        when(fixture.target().getMp()).thenReturn(300);
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000)) {
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), attack(true), 0, true);
+
+            assertEquals(4_999, damage, "whether it lands is the unscaled roll's");
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-4_999, -299);
+    }
+
+    @Test
+    void atZeroPercentAHitThatLandsStillBurnsMpAndBringsItsDisease() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+        MobAttackInfo burn = new MobAttackInfo(8_800_003, 1); // an arm's attack2: mpBurn 300
+        burn.setMpBurn(300);
+        MobSkill seal = mock(MobSkill.class);
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000);
+             MockedStatic<MobAttackInfoFactory> infos = mockStatic(MobAttackInfoFactory.class);
+             MockedStatic<MobSkillFactory> skills = mockStatic(MobSkillFactory.class)) {
+            infos.when(() -> MobAttackInfoFactory.getMobAttackInfo(any(), anyInt())).thenReturn(burn);
+            skills.when(() -> MobSkillFactory.getMobSkillOrThrow(MobSkillType.SEAL, 1)).thenReturn(seal);
+
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), sealing(), 0, true);
+
+            assertEquals(0, damage, "no HP lost at 0 percent");
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(0, -300);
+        verify(seal).applyEffect(eq(fixture.target()), eq(fixture.attacker()), eq(false), any());
+    }
+
+    @Test
     void withoutBroadcastTheAgentStillLosesHpAndReactsButNoDamagePacketGoesOut() {
         DamageFixture fixture = damageFixture(mock(BotClient.class));
         when(fixture.target().getId()).thenReturn(7001);
@@ -194,6 +236,12 @@ class ServerMobDamageServiceTest {
     private static BossAction.OrdinaryAttack attack(boolean deadly) {
         return new BossAction.OrdinaryAttack(0, 1, 0, 0, 0, false, null, null, 0, 0, 0,
                 deadly, 500, 0, 0, 0, false);
+    }
+
+    /** Zakum's attack2 as an autonomous physical attack: it seals (mob skill 120, level 1) when it lands. */
+    private static BossAction.OrdinaryAttack sealing() {
+        return new BossAction.OrdinaryAttack(1, 1, 0, 0, 0, false, null, null, 0, 0, 0,
+                false, 500, 0, MobSkillType.SEAL.getId(), 1, false);
     }
 
     private static MockedStatic<AgentDefenseDataProvider> fixedRoll(int damage) {

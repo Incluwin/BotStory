@@ -752,8 +752,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * The boss whose potion standard companion {@code bot} keeps on its way there: the boss's key while it stands on
      * that boss's approach map with the switch listing the boss ({@link #approachKeyAt}), it is at or above the boss's
-     * level (its expedition's minimum: 50 for Easy Balrog) and it is in its owner's party; null otherwise. The rule
-     * opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
+     * level (its expedition's minimum: 50 for Easy Balrog), it is in its owner's party and its owner is on the way to
+     * that boss (BossEntrance.approachMeantBy: for Zakum, the owner carries the Eye of Fire; P8 review); null
+     * otherwise. The rule opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
      */
     String approachKeyFor(Character bot, int ownerId) {
         String bossKey = bot == null ? null : approachKeyAt(bot.getMapId());
@@ -762,20 +763,28 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return null;
         }
         Party party = bot.getParty();
-        return party != null && party.getMemberById(ownerId) != null ? bossKey : null;
+        if (party == null || party.getMemberById(ownerId) == null) {
+            return null;
+        }
+        BossEntrance entrance = BossEntrance.of(bossKey);
+        boolean meant = entrance == null || definition.markerItemIds().isEmpty()
+                || entrance.approachMeantBy(world.roster().onlineCharacter(ownerId)); // no owner lookup: Easy Balrog
+        return meant ? bossKey : null;
     }
 
     /**
      * On companion-ops: the owner came into a boss's approach map with a store ({@code mapId},
      * RosterService.ownerEnteredMap). Each companion of theirs in their party at or above the boss's level that is
      * short of the boss's potion standard looks at its potions on its next tick instead of its next check, so it shops
-     * at that store (and says when it will be back) before the party walks on.
+     * at that store (and says when it will be back) before the party walks on. Only while the owner is on the way to
+     * that boss (BossEntrance.approachMeantBy: for Zakum, the Eye of Fire).
      */
     void ownerApproached(int ownerId, int mapId) {
         String bossKey = approachKeyAt(mapId);
         AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
         Character owner = definition == null ? null : world.roster().onlineCharacter(ownerId);
-        Party party = owner == null ? null : owner.getParty();
+        BossEntrance entrance = owner == null ? null : BossEntrance.of(bossKey);
+        Party party = entrance == null || !entrance.approachMeantBy(owner) ? null : owner.getParty();
         if (party == null) {
             return;
         }
