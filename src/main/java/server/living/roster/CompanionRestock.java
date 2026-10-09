@@ -245,7 +245,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * still short of what it lacks ("{need}"), its own news, once per report (the Agent spaces them by
      * STILL_SHORT_EVERY_MS). Only while its broke line (its own or the desk's) is less than
      * COMPANION_RESTOCK_ASK_EVERY_MS old: a pot share it never asked for gets no answer. Held or not: its owner
-     * may hand it coin as they come out of the run.
+     * may hand it coin as they come out of the run. A refusal the same check finds comes after this, so its broke
+     * line, said already, holds (the gift is answered once).
      */
     @Override
     public void stillShort(int agentCharacterId, AgentSupplyReadiness.Activity activity,
@@ -327,6 +328,16 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     // ---- helpers -------------------------------------------------------------------------------
+
+    /**
+     * True when {@code bot} keeps a standing duty and lacks its standard now: a coin for it may not pay for its
+     * potions, and its own restock says next whether it does (off to the store, or still short). Memory only, any
+     * thread.
+     */
+    static boolean shortOfStandard(Character bot) {
+        AgentSupplyReadiness.Activity activity = bot == null ? null : AgentSupplyReadiness.standing(bot.getId());
+        return activity != null && !AgentSupplyReadiness.shortfall(bot, activity).none();
+    }
 
     /** True while the companion waits outside a run for its owner (its HOLD seat). */
     private boolean held(CompanionSettingsApplier.Bound at) {

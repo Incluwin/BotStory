@@ -9,7 +9,7 @@ import server.agents.runtime.state.AgentCapabilityStateKey;
  * readiness trip under way, the last time it could not go (on which map, and how many mesos it lacked), the cooldown
  * that keeps it from trying again too soon, how many trips from one town in a row were cut short, the last
  * affordability check of a critical potion trip, and what it was given while it could not pay (its last look at its
- * purse and shortfall). Written on the Agent tick; a host only asks for an early look
+ * purse, shortfall and own shop visits). Written on the Agent tick; a host only asks for an early look
  * ({@link #checkSoon}) and reads it.
  */
 public final class AgentSupplyReadinessState {
@@ -69,6 +69,7 @@ public final class AgentSupplyReadinessState {
     private int lookMapId;
     private int lookMesos;
     private AgentSupplyReadiness.Shortfall lookShortfall;
+    private long lookShopVisits;
     private boolean givenPending;
     private long stillShortToldAtMs = -1L;
 
@@ -269,17 +270,20 @@ public final class AgentSupplyReadinessState {
     // ---- what it was given while it could not pay ------------------------------------------------
 
     /**
-     * One check's look at its purse and its shortfall on {@code mapId}. While a meso cooldown holds it back
-     * (CANNOT_AFFORD, SHORT_MESOS) and it stands on {@code restockGround} (a town or a monster-free map, where no
-     * monster drops a coin), a purse grown or fewer potions or projectiles lacking since the last look on this same
-     * map is something it was given; that stays to be told until {@link #toldStillShort} or {@link #clearGiven}.
-     * Another map forgets it.
+     * One check's look at its purse and its shortfall on {@code mapId}, once {@code shopVisits} shop visits of its own
+     * have ended (AgentShopStateRuntime.shopVisitGeneration). While a meso cooldown holds it back (CANNOT_AFFORD,
+     * SHORT_MESOS) and it stands on {@code giftGround} (a town or a monster-free map, where no monster drops a coin,
+     * that it may set off from), a purse grown or fewer potions or projectiles lacking since the last look on this
+     * same map is something it was given; that stays to be told until {@link #toldStillShort} or {@link #clearGiven}.
+     * Another map, or a shop visit of its own that ended since (it bought or sold there itself), forgets it, as
+     * {@link #forgetLook} does.
      */
-    synchronized void look(int mapId, int mesos, AgentSupplyReadiness.Shortfall shortfall, boolean restockGround) {
-        boolean sameMap = lookShortfall != null && mapId == lookMapId;
+    synchronized void look(int mapId, int mesos, AgentSupplyReadiness.Shortfall shortfall, boolean giftGround,
+                           long shopVisits) {
+        boolean sameMap = lookShortfall != null && mapId == lookMapId && shopVisits == lookShopVisits;
         if (!sameMap) {
             givenPending = false;
-        } else if (restockGround && (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS)
+        } else if (giftGround && (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS)
                 && (mesos > lookMesos || shortfall.hp() < lookShortfall.hp() || shortfall.mp() < lookShortfall.mp()
                 || shortfall.ammo() < lookShortfall.ammo())) {
             givenPending = true;
@@ -287,6 +291,19 @@ public final class AgentSupplyReadinessState {
         lookMapId = mapId;
         lookMesos = mesos;
         lookShortfall = shortfall;
+        lookShopVisits = shopVisits;
+    }
+
+    /**
+     * Forgets the last look and anything given not told yet: what it buys or earns on its own (a supply trip, a shop
+     * visit under way, time without its duty) is no gift, and the next look starts afresh.
+     */
+    synchronized void forgetLook() {
+        lookMapId = 0;
+        lookMesos = 0;
+        lookShortfall = null;
+        lookShopVisits = 0L;
+        givenPending = false;
     }
 
     /**

@@ -84,7 +84,7 @@
     refuseOwnErrand: ["that's your errand! i'd feel weird farming my own favor."]
     restock.go: ["oh! potions. be right back, don't leave!", "gotta grab potions real quick, hold on!"]
     restock.back: ["back! got a whole bag of potions.", "okay okay, stocked up. let's go!"]
-    restock.broke: ["uh, i'm kinda broke and out of potions... spare some mesos?", "potions cost money and i have, um, none."]
+    restock.broke: ["uh, i'm kinda broke and out of {need}... got any to spare? or some mesos?", "{need} cost money and i have, um, none. could you spare some? mesos work too!"]
     restock.noShop: ["uh oh, no shop out here and i'm low on potions.", "should've bought potions back in town. oops."]
     restock.stillShort: ["oh! that helps. still not enough for {need} though...", "almost! still a little short for {need}."]
     questOffer.brannock-crates: ["the shrooms at the 3-way road keep breaking into the crates. ten caps and i can prove it to Olwen."]

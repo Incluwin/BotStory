@@ -195,7 +195,8 @@ final class BossRunLines {
 
     /**
      * On companion-ops: {@code bot} says one of its {@code intent} lines in its party's chat, "{name}" read as
-     * {@code name} and "{n}" as {@code minutes}. False when it has no line for it or could not say it.
+     * {@code name} and "{n}" as {@code minutes}, and it is logged (CompanionRestockLines.logSaid). False when it has
+     * no line for it or could not say it.
      */
     static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes) {
         return say(world, bot, intent, name, minutes, null);
@@ -221,7 +222,10 @@ final class BossRunLines {
         if (lines.isEmpty()) {
             return false;
         }
-        return world.roster().sayInParty(bot, line(lines, intent, name, minutes, null, ammo, run));
+        String line = line(lines, intent, name, minutes, null, ammo, run);
+        boolean said = world.roster().sayInParty(bot, line);
+        CompanionRestockLines.logSaid(bot, intent, said ? "party" : null, line);
+        return said;
     }
 
     /**

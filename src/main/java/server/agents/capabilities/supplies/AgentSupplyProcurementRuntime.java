@@ -156,6 +156,7 @@ public final class AgentSupplyProcurementRuntime {
                 return false;
             }
             evaluations.resolve(request.category());
+            AgentSupplyReadinessRuntime.ownTrip(entry);
             if (readinessTrip) {
                 AgentSupplyReadinessRuntime.began(entry, agent, request, execution, nowMs);
             }
@@ -931,6 +932,7 @@ public final class AgentSupplyProcurementRuntime {
         }
         AgentRemediationCoordinator.finish(entry, frameId, status, reason, nowMs);
         restoreForegroundMode(entry, resumeFollow, resumeGrind);
+        AgentSupplyReadinessRuntime.ownTrip(entry);
         if (readinessTrip) {
             AgentSupplyReadinessRuntime.finished(entry, agent, requestId, status, readinessOutcome);
         }

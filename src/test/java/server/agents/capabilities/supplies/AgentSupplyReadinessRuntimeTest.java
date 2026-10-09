@@ -1198,6 +1198,178 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(3, calls.size(), calls.toString());
     }
 
+    // ---- what it was never given (review of the 2026-10-09 change) ------------------------------------
+    // Each of these said "that helps, but i'm still short" (or nothing at all for a real gift) before the fix.
+
+    @Test
+    void potionsItBoughtOnItsOwnTripThatRanOutOfMesosAreNoGift() {
+        Character kettle = companion(580, "Kettle", Job.CLERIC, 15, 30, 5 * RED);
+        AgentRuntimeEntry entry = following(kettle);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        purses.put(580, 0); // something else took its purse on the way: two potions bought, three still short
+        shopCompletes(entry, kettle, 17, 30);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 2_100L);
+        assertEquals(List.of("started 580 50000", "finished 580 SHORT_MESOS"), calls, "its broke line");
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 7_000L)); // back on the map it set off from
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 12_000L));
+
+        assertEquals(List.of("started 580 50000", "finished 580 SHORT_MESOS"), calls,
+                "what it bought itself is no gift: nothing still short after its broke line");
+    }
+
+    @Test
+    void potionsItBoughtOnItsOwnCriticalTripAreNoGift() {
+        Character fenna = companion(581, "Fenna", Job.HUNTER, 1, 30, 155 + 9 * RED);
+        AgentRuntimeEntry entry = following(fenna);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+        int missing = 19 * RED - (155 + 9 * RED);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 581 CANNOT_AFFORD " + missing, "party ask 581"), calls,
+                "the standard is past her purse, the nine potions back to POT_STOP are not");
+        long now = 1_000L + partyWaitMs();
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, now));
+        assertTrue(execution(entry).requestId().startsWith("supply:HP_POTION:"), execution(entry).requestId());
+
+        purses.put(581, 155);
+        shopCompletes(entry, fenna, 10, 30);
+        for (int i = 0; i < 5 && execution(entry).isActive(); i++) {
+            AgentSupplyProcurementRuntime.tick(entry, fenna, now + 100L * (i + 1));
+        }
+        assertFalse(execution(entry).isActive(), "the critical trip is over");
+        for (long later = now + 5_000L; later <= now + 20_000L; later += 5_000L) {
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, later));
+        }
+
+        assertTrue(calls.stream().noneMatch(call -> call.startsWith("still short")),
+                "the potions she bought herself are no gift: " + calls);
+    }
+
+    @Test
+    void mesosItPicksUpOnItsOwnCriticalTripThatNeverReachedAShopAreNoGift() {
+        Character fenna = companion(586, "Fenna", Job.HUNTER, 1, 30, 155 + 9 * RED);
+        AgentRuntimeEntry entry = following(fenna);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        route = AgentRouteStatus.NO_ROUTE; // the way to the store is shut: the trip turns back without shopping
+        long now = 1_000L + partyWaitMs();
+        AgentSupplyProcurementRuntime.tick(entry, fenna, now);
+        assertTrue(execution(entry).requestId().startsWith("supply:HP_POTION:"), execution(entry).requestId());
+        purses.put(586, 155 + 9 * RED + 100); // a coin it picked up on the way
+
+        for (int i = 0; i < 5 && execution(entry).isActive(); i++) {
+            AgentSupplyProcurementRuntime.tick(entry, fenna, now + 100L * (i + 1));
+        }
+        assertFalse(execution(entry).isActive(), "the critical trip is over");
+        for (long later = now + 5_000L; later <= now + 20_000L; later += 5_000L) {
+            AgentSupplyProcurementRuntime.tick(entry, fenna, later);
+        }
+
+        assertTrue(calls.stream().noneMatch(call -> call.startsWith("still short")),
+                "what it picked up on its own trip is no gift: " + calls);
+    }
+
+    @Test
+    void mesosFromSellingItsOwnLootAtAShopAreNoGift() {
+        Character fenna = companion(587, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        // its owner told it to sell its trash (AgentUtilityRuntime.sellTrash): a whole visit between two checks
+        AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), new Point(-297, -78), 0, 2_000L);
+        purses.put(587, 255);
+        AgentShopStateRuntime.clearShopState(entry);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        // and again, a check while the visit is under way
+        AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), new Point(-297, -78), 0, 7_000L);
+        purses.put(587, 355);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        AgentShopStateRuntime.clearShopState(entry);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
+
+        assertEquals(List.of("refused 587 CANNOT_AFFORD " + (19 * RED - 155)), calls,
+                "what it sold itself is no gift: nothing still short");
+    }
+
+    @Test
+    void mesosItLootedWhileItsDutyWasOffAreNoGift() {
+        Character fenna = companion(582, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        duty.remove(582); // its owner told it to hunt on its own: no duty
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        stand(fenna, FIELD, false);
+        purses.put(582, 455); // its own loot
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        stand(fenna, KERNING, true); // back with its owner in the town it was refused in
+        duty.add(582);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
+
+        assertEquals(List.of("refused 582 CANNOT_AFFORD " + (19 * RED - 155)), calls,
+                "richer by its own hunt: no gift, nothing still short");
+    }
+
+    @Test
+    void potionsGivenAfterATripThatRanOutOfMesosAreToldStillShort() {
+        Character kettle = companion(583, "Kettle", Job.CLERIC, 15, 30, 5 * RED);
+        AgentRuntimeEntry entry = following(kettle);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        purses.put(583, 0);
+        shopCompletes(entry, kettle, 17, 30);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 2_100L);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 7_000L));
+
+        potions.put(583, new int[]{18, 30}); // its owner hands over one potion: two still short, an empty purse
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 12_000L));
+
+        assertEquals(List.of("started 583 50000", "finished 583 SHORT_MESOS", "still short 583 " + 2 * RED,
+                "refused 583 CANNOT_AFFORD " + 2 * RED), calls,
+                "the gift first: its host says still short, and its broke line (said at the trip's end) holds");
+    }
+
+    @Test
+    void potionsGivenOnAnotherMapThanItsRefusalAreToldStillShort() {
+        Character fenna = companion(584, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        stand(fenna, KERNING_SHOP, true); // its owner walks into the store with it
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        potions.put(584, new int[]{9, 30}); // and hands over eight potions there
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+
+        assertEquals(List.of("refused 584 CANNOT_AFFORD " + (19 * RED - 155), "still short 584 " + (11 * RED - 155),
+                "refused 584 CANNOT_AFFORD " + (11 * RED - 155)), calls,
+                "the gift is told before the new map's refusal, whose broke line its host already said");
+    }
+
+    @Test
+    void atABossGateWhereItCannotShopAGiftIsNeverToldAndTheRestPaysForATripBackInTown() {
+        Character fenna = companion(585, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        int missing = 19 * RED - 155;
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        standWithoutSpawns(fenna, PAPULATUS_GATE, 0); // no town, no monsters: but the rule keeps it here
+        noShopMaps.add(PAPULATUS_GATE);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        purses.put(585, 455); // part of it at the gate
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        purses.put(585, 155 + missing); // the rest
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+        assertEquals(List.of("refused 585 CANNOT_AFFORD " + missing), calls, "no shop from here: nothing still short");
+        assertFalse(execution(entry).isActive());
+
+        stand(fenna, KERNING, true);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
+        assertEquals("started 585 50000", calls.getLast(), "back in town, what it was given pays for its trip");
+    }
+
     @Test
     void anOwnersFollowMeMidTripBringsItAlongAndNoNewTripForFiveMinutes() {
         Character wren = companion(533, "Wren", Job.ASSASSIN, 15, 30, 5_000);

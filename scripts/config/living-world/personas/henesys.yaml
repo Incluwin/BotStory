@@ -43,7 +43,7 @@
     refuseOwnErrand: ["you're the one who wanted to hunt. i'm the one who watches."]
     restock.go: ["low on potions. back before the boars notice.", "store run. don't pull anything till i'm back."]
     restock.back: ["stocked. let's hunt.", "back. quiver's full, so's the pouch."]
-    restock.broke: ["out of potions and out of coin. a loan, not charity.", "can't afford potions. spare some mesos?"]
+    restock.broke: ["out of {need} and out of coin. spare a few, or some mesos? a loan, not charity.", "can't afford {need}. got any to spare? mesos work too."]
     restock.noShop: ["no store out here and i'm short on potions. i'll aim carefully.", "should've stocked up. low on potions."]
     restock.goAmmo: ["quiver's getting light. off to restock.", "need more arrows. won't be long."]
     restock.backAmmo: ["fresh arrows, sharp heads. ready.", "got my arrows. lead on."]

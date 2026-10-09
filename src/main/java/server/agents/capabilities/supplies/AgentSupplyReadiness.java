@@ -150,8 +150,11 @@ public final class AgentSupplyReadiness {
          * was given mesos, potions or projectiles where it stands (a trade, a drop it picked up, a host's gift), and
          * what it has still does not pay for the trip: {@code missingMesos} more ({@code shortfall}: what it lacks
          * now). At most once per STILL_SHORT_EVERY_MS; gifts in between are told together. A gift that pays for it
-         * starts the trip ({@link #started}) instead, and one that leaves it lacking nothing is not told. On the
-         * Agent tick.
+         * starts the trip ({@link #started}) instead, and one that leaves it lacking nothing is not told. Never on a
+         * map it may not set off from ({@link #restocksFrom} false), and never for what it bought or earned itself (a
+         * supply trip or shop visit of its own, time without a duty). When the same check finds a new refusal
+         * ({@link #refused} CANNOT_AFFORD: the potions it was given lifted the cooldown, or it stands on another map
+         * than the last refusal), this comes first. On the Agent tick.
          */
         default void stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
         }
