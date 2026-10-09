@@ -20,7 +20,8 @@ import java.util.Set;
  * Combat strength remains the optimizer's concern; this policy only removes an
  * already-used appearance item when the Agent owns another legal candidate. A piece
  * made for this character (its name as the owner tag: a living-world Resident's own
- * quest gear) is its look and is never removed.
+ * quest gear) is its look and is never removed. Neither is a piece of a GM boss-test kit
+ * ({@link AgentEquipmentOwnerTags#BOSS_GEAR}): two warriors given the same kit both keep it.
  */
 final class AgentEquipmentAppearanceDiversityPolicy {
     static final short HAT_SLOT = -1;
@@ -60,7 +61,8 @@ final class AgentEquipmentAppearanceDiversityPolicy {
         List<Equip> unused = candidates.stream()
                 .filter(candidate -> candidate != null
                         && (!usedItemIds.contains(candidate.getItemId())
-                                || agentName != null && agentName.equals(candidate.getOwner())))
+                                || agentName != null && agentName.equals(candidate.getOwner())
+                                || AgentEquipmentOwnerTags.BOSS_GEAR.equals(candidate.getOwner())))
                 .toList();
         return unused.isEmpty() ? candidates : new ArrayList<>(unused);
     }
