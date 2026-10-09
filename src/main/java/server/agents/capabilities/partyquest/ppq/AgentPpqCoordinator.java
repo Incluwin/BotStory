@@ -2,6 +2,9 @@ package server.agents.capabilities.partyquest.ppq;
 
 import client.Character;
 import client.inventory.InventoryType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
@@ -20,34 +23,61 @@ import server.maps.Reactor;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Natural-action PPQ coordinator: clear, collect, optional chests, doors, boss. */
 public final class AgentPpqCoordinator {
-    private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway PPQ = AgentPartyQuestGatewayRuntime.partyQuest();
-    private static final long EVENT_TIMEOUT_MS = 30L * 60_000L;
-    private static final long STALL_TIMEOUT_MS = 10L * 60_000L;
-    private static final long RETRY_MS = 900L;
-    private static final int INTERACTION_RADIUS = 70;
+    private static final Logger log = LoggerFactory.getLogger(AgentPpqCoordinator.class);
+    private static final long EVENT_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS");
+    private static final long STALL_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.STALL_TIMEOUT_MS");
+    private static final long RETRY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.RETRY_MS");
+    private static final int INTERACTION_RADIUS = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.INTERACTION_RADIUS");
+    private static final long AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.AFTER_CLEAR_LIMIT_MS");
+    private static final long COMPANION_ENTRY_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_ENTRY_WAIT_MS");
+    private static final long PRE_ENTRY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.PRE_ENTRY_TIMEOUT_MS");
 
     private AgentPpqCoordinator() { }
 
+    /** The primitive actions, looked up on every call so a test can swap them. */
+    static PrimitiveCapabilityGateway actions() {
+        return AgentPrimitiveCapabilityGatewayRuntime.gateway();
+    }
+
+    /** The party-quest gateway, looked up on every call so a test can swap it. */
+    static PartyQuestGateway partyQuest() {
+        return AgentPartyQuestGatewayRuntime.partyQuest();
+    }
+
     public static void tickSession(AgentPpqSession session, long nowMs) {
-        if (session.terminal() || session.paused()) return;
-        if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
-            session.fail("PPQ event timer expired", nowMs); return;
-        }
+        if (session.terminal() || session.terminationStarted() || session.paused()) return;
         Character leader = character(session.eventLeaderId());
-        if (leader == null || leader.getHp() <= 0) { session.fail("PPQ event leader is unavailable", nowMs); return; }
+        if (leader == null) { session.fail("PPQ event leader is unavailable", nowMs); return; }
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
-            session.bindEventInstance(leader.getEventInstance());
-            session.transition(AgentPpqSession.Phase.ACTIVE, nowMs);
+            session.bindEventInstance(leader.getEventInstance(), nowMs);
+            session.setPotionsAtEntry(AgentPpqTerminationService.potions(session));
+            logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
+        if (capReached(session, nowMs)) return;
+        // A leader down in the bound event is PiratePQ.js's to judge (his OK ends the event); anywhere else he is gone.
+        if (leader.getHp() <= 0 && (session.eventInstance() == null
+                || leader.getEventInstance() != session.eventInstance())) {
+            session.fail("PPQ event leader is unavailable", nowMs); return;
+        }
+        logStage(session, leader, nowMs);
+        observeProgress(session, nowMs);
         if (session.eventInstance() != null && session.eventInstance().isEventCleared()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
-            session.transition(AgentPpqSession.Phase.CLEARING, nowMs);
+            logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
         if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
@@ -58,36 +88,94 @@ public final class AgentPpqCoordinator {
             announce(session, "human-enter", leader.getName() + ", talk to Guon to enter Pirate PQ.");
         }
         if (session.eventInstance() != null) {
-            int openedChests = parseInt(PPQ.property(leader, "openedChests"));
+            int openedChests = parseInt(partyQuest().property(leader, "openedChests"));
             if (openedChests >= 1) session.markChestComplete(AgentPpqDefinition.CHEST_ONE_MAP, nowMs);
             if (openedChests >= 2) session.markChestComplete(AgentPpqDefinition.CHEST_TWO_MAP, nowMs);
         }
         if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) guideHumanLeader(session, leader);
         if (leader.getMapId() == AgentPpqDefinition.BOSS_MAP
-                && ACTIONS.liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
+                && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
             if (isAgent(leader)) runNpc(entry(leader.getId()), leader, AgentPpqDefinition.RESCUE_NPC);
             else announce(session, "human-clear", leader.getName() + ", talk to Wu Yang after Lord Pirate falls.");
         }
         if (leader.getMapId() == AgentPpqDefinition.CLEAR_MAP) {
-            session.transition(AgentPpqSession.Phase.CLEARING, nowMs);
+            logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
-        if (session.phase() == AgentPpqSession.Phase.CLEARING
-                && session.members().stream().map(member -> character(member.characterId()))
-                .filter(java.util.Objects::nonNull).noneMatch(member -> member.getMapId() == AgentPpqDefinition.CLEAR_MAP)) {
-            session.complete(nowMs);
+        if (session.phase() == AgentPpqSession.Phase.CLEARING) {
+            long afterClearMs = nowMs - session.observeCleared(nowMs);
+            boolean waiting = stillInside(session);
+            if (!waiting || afterClearMs >= AFTER_CLEAR_LIMIT_MS) {
+                log.info("PPQ after clear: session={} stillInside={} afterClearMs={} companionRun={}",
+                        session.sessionId(), waiting, afterClearMs, session.companionAdopted());
+                session.complete(nowMs);
+                return;
+            }
         }
         // The authored medal stage allows six minutes and uses probabilistic drops.  Do not
         // declare a legal, still-attacking party stalled before that stage can naturally finish.
-        if (nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) session.fail("PPQ stalled", nowMs);
+        if (!cleared(session) && nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
+            session.fail("PPQ stalled", nowMs);
+        }
+    }
+
+    /**
+     * The run's time caps, none after the clear. From entry, EVENT_TIMEOUT_MS ("PPQ event timer expired"); before it,
+     * COMPANION_ENTRY_WAIT_MS for a companion run (its human leader clicks Guon himself) and PRE_ENTRY_TIMEOUT_MS for
+     * every run, so a slow start never shortens the stages. True when it failed the run.
+     */
+    private static boolean capReached(AgentPpqSession session, long nowMs) {
+        if (cleared(session)) return false;
+        if (session.eventInstance() == null) {
+            long waitedMs = nowMs - session.startedAtMs();
+            if (session.companionAdopted() && waitedMs >= COMPANION_ENTRY_WAIT_MS) {
+                session.fail("The PPQ leader did not start the event in time", nowMs);
+                return true;
+            }
+            if (waitedMs >= PRE_ENTRY_TIMEOUT_MS) {
+                session.fail("PPQ entry timed out", nowMs);
+                return true;
+            }
+            return false;
+        }
+        if (nowMs - session.enteredAtMs() >= EVENT_TIMEOUT_MS) {
+            session.fail("PPQ event timer expired", nowMs);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether a member the run waits for after the clear still stands on a PPQ map: the boss map until clearPQ's warp,
+     * then Wu Yang's room, which has no exit. A companion run waits for its companions only, never a human; every other
+     * mode waits for every member.
+     */
+    static boolean stillInside(AgentPpqSession session) {
+        boolean companionRun = session.companionAdopted();
+        return session.members().stream()
+                .filter(member -> !companionRun || member.memberType() == AgentPpqMemberState.MemberType.AGENT)
+                .map(member -> character(member.characterId()))
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(member -> AgentPpqDefinition.isEventMap(member.getMapId()));
+    }
+
+    /**
+     * Whether the bound event reported its clear. From then on neither the cap nor the stall fails the run; it
+     * completes once nobody it waits for is left inside, or AFTER_CLEAR_LIMIT_MS after the clear.
+     */
+    static boolean cleared(AgentPpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        return event != null && event.isEventCleared();
     }
 
     public static void tickMember(AgentPpqSession session, AgentRuntimeEntry entry,
                                   Character agent, long nowMs) {
         AgentPpqMemberState member = session.member(agent.getId());
+        // A run that ended or whose release began (a stop off the central tick thread) does nothing more.
         if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT
-                || nowMs < member.nextActionAtMs()) return;
+                || session.terminal() || session.terminationStarted() || nowMs < member.nextActionAtMs()) return;
+        // No instance is not another instance: the clear warps everyone to 925100600 and ends the event under them.
         if (session.eventInstance() != null && AgentPpqDefinition.isEventMap(agent.getMapId())
-                && agent.getEventInstance() != session.eventInstance()) {
+                && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
             session.fail("PPQ member entered a different event instance", nowMs); return;
         }
         int mapId = agent.getMapId();
@@ -106,16 +194,23 @@ public final class AgentPpqCoordinator {
                 || mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP) {
             clearAndAdvance(session, entry, agent, member, nowMs); return;
         }
-        ACTIONS.stop(entry);
+        actions().stop(entry);
     }
 
+    /**
+     * The Agent event leader talks to Guon until the run has entered. After entry (Wu Yang's exit lands on Guon's map
+     * after the clear) it never talks to him again: setEventCleared freed the lobby, so a talk would start a new
+     * instance.
+     */
     private static void enter(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
                               AgentPpqMemberState member, long nowMs) {
-        if (agent.getId() != session.eventLeaderId() || session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) {
-            ACTIONS.stop(entry); return;
+        if (agent.getId() != session.eventLeaderId() || session.mode() == AgentPpqSession.Mode.HUMAN_LEADER
+                || session.phase().ordinal() >= AgentPpqSession.Phase.ACTIVE.ordinal()) {
+            actions().stop(entry); return;
         }
         if (runNpc(entry, agent, AgentPpqDefinition.ENTRY_NPC, 0)) {
-            member.deferUntil(nowMs + RETRY_MS); session.transition(AgentPpqSession.Phase.ENTERING, nowMs);
+            member.deferUntil(nowMs + RETRY_MS);
+            logChange(session, session.transition(AgentPpqSession.Phase.ENTERING, nowMs));
         }
     }
 
@@ -135,16 +230,16 @@ public final class AgentPpqCoordinator {
             if (itemId != 0 && collectObjectiveDrop(
                     session, entry, agent, Set.of(itemId), nowMs)) return;
         }
-        if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
-            ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
         }
         if (itemId == 0) usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(agent.getMapId()), nowMs);
-        else ACTIONS.stop(entry);
+        else actions().stop(entry);
     }
 
     private static int expectedMedal(Character leader) {
         if (leader == null) return AgentPpqDefinition.ROOKIE_MEDAL;
-        String stage = PPQ.property(leader, "stage2");
+        String stage = partyQuest().property(leader, "stage2");
         return switch (stage == null ? "0" : stage) {
             case "0" -> AgentPpqDefinition.ROOKIE_MEDAL;
             case "1" -> AgentPpqDefinition.RISING_MEDAL;
@@ -155,8 +250,8 @@ public final class AgentPpqCoordinator {
 
     private static void clearAndAdvance(AgentPpqSession session, AgentRuntimeEntry entry,
                                         Character agent, AgentPpqMemberState member, long nowMs) {
-        if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
-            ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
         }
         int mapId = agent.getMapId();
         boolean deck = mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP;
@@ -178,16 +273,16 @@ public final class AgentPpqCoordinator {
             member.clearChestDrop();
             usePortal(entry, agent, member, 1, nowMs); return;
         }
-        if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
-            ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
         }
         if (agent.getId() != session.eventLeaderId()) {
-            ACTIONS.stop(entry); return;
+            actions().stop(entry); return;
         }
         if (member.chestDropPending(agent.getMapId())) {
-            ACTIONS.stop(entry); return;
+            actions().stop(entry); return;
         }
-        Reactor chest = ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        Reactor chest = actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(Reactor::isAlive).filter(reactor -> AgentPpqDefinition.CHEST_REACTORS.contains(reactor.getId()))
                 .findFirst().orElse(null);
         if (chest == null || !chest.isActive() || chest.getState() < 1) {
@@ -197,11 +292,11 @@ public final class AgentPpqCoordinator {
         if (agent.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0) {
             Point trigger = reactorDropPoint(chest);
             if (!chest.getArea().contains(agent.getPosition())) {
-                Point ground = ACTIONS.groundPoint(agent.getMap(), trigger);
-                if (ground != null) ACTIONS.navigate(entry, ground, true);
+                Point ground = actions().groundPoint(agent.getMap(), trigger);
+                if (ground != null) actions().navigate(entry, ground, true);
                 return;
             }
-            ACTIONS.stop(entry);
+            actions().stop(entry);
             if (AgentScriptItemActionService.dropItem(entry, InventoryType.ETC,
                     AgentPpqDefinition.CHEST_KEY, (short) 1)) {
                 member.beginChestDrop(agent.getMapId());
@@ -221,13 +316,13 @@ public final class AgentPpqCoordinator {
         int totalKeys = session.members().stream().map(memberState -> character(memberState.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .mapToInt(character -> character.getItemQuantity(AgentPpqDefinition.OLD_METAL_KEY, false)).sum();
-        int openDoors = (int) ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        int openDoors = (int) actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(reactor -> AgentPpqDefinition.DOOR_REACTORS.contains(reactor.getId()))
                 .filter(reactor -> reactor.getState() < 1).count();
         // Preserve every authored spawn point until the party has enough keys for all remaining doors.
         if (totalKeys < openDoors) {
-            if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS);
-            else ACTIONS.stop(entry);
+            if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+            else actions().stop(entry);
             return;
         }
         Reactor door = committedDoor(agent, member.committedReactorObjectId());
@@ -236,22 +331,22 @@ public final class AgentPpqCoordinator {
             member.commitReactor(door.getObjectId());
             Point trigger = reactorDropPoint(door);
             if (!door.getArea().contains(agent.getPosition())) {
-                Point ground = ACTIONS.groundPoint(agent.getMap(), trigger);
-                if (ground != null) ACTIONS.navigate(entry, ground, true);
+                Point ground = actions().groundPoint(agent.getMap(), trigger);
+                if (ground != null) actions().navigate(entry, ground, true);
                 return;
             }
-            ACTIONS.stop(entry);
+            actions().stop(entry);
             if (AgentScriptItemActionService.dropItem(entry, InventoryType.ETC,
                     AgentPpqDefinition.OLD_METAL_KEY, (short) 1)) {
                 member.clearReactor(); member.deferUntil(nowMs + RETRY_MS); session.markProgress(nowMs);
             }
             return;
         }
-        if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
-            ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
         }
         if (openDoors == 0) usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(agent.getMapId()), nowMs);
-        else ACTIONS.stop(entry);
+        else actions().stop(entry);
     }
 
     /**
@@ -272,13 +367,13 @@ public final class AgentPpqCoordinator {
                 .orElse(null);
         if (target == null) return false;
         if (near(agent.getPosition(), target.getPosition())) {
-            ACTIONS.stop(entry);
+            actions().stop(entry);
             int before = agent.getItemQuantity(target.getItemId(), false);
             agent.pickupItem(target);
             if (agent.getItemQuantity(target.getItemId(), false) > before) session.markProgress(nowMs);
         } else {
-            Point ground = ACTIONS.groundPoint(agent.getMap(), target.getPosition());
-            ACTIONS.navigate(entry, ground == null ? target.getPosition() : ground, true);
+            Point ground = actions().groundPoint(agent.getMap(), target.getPosition());
+            actions().navigate(entry, ground == null ? target.getPosition() : ground, true);
         }
         return true;
     }
@@ -303,19 +398,19 @@ public final class AgentPpqCoordinator {
     }
 
     private static void boss(AgentPpqSession session, AgentRuntimeEntry entry, Character agent) {
-        if (ACTIONS.liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) ACTIONS.grind(entry, AgentPpqDefinition.COMBAT_MOBS);
-        else if (agent.getId() != session.eventLeaderId()) ACTIONS.stop(entry);
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+        else if (agent.getId() != session.eventLeaderId()) actions().stop(entry);
     }
 
     private static Reactor committedDoor(Character agent, int objectId) {
         if (objectId == 0) return null;
-        return ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(reactor -> reactor.getObjectId() == objectId && reactor.getState() < 1).findFirst().orElse(null);
     }
     private static Reactor nearestUnclaimedDoor(AgentPpqSession session, Character agent) {
         Set<Integer> claimed = session.members().stream().map(AgentPpqMemberState::committedReactorObjectId)
                 .filter(id -> id > 0).collect(java.util.stream.Collectors.toSet());
-        return ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(reactor -> AgentPpqDefinition.DOOR_REACTORS.contains(reactor.getId()) && reactor.getState() < 1)
                 .filter(reactor -> !claimed.contains(reactor.getObjectId()))
                 .min(Comparator.comparingDouble(reactor -> reactor.getPosition().distanceSq(agent.getPosition())))
@@ -323,16 +418,16 @@ public final class AgentPpqCoordinator {
     }
     private static void usePortal(AgentRuntimeEntry entry, Character agent, AgentPpqMemberState member,
                                   int portalId, long nowMs) {
-        if (portalId < 0) { ACTIONS.stop(entry); return; }
-        Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!near(agent.getPosition(), portal)) { if (portal != null) ACTIONS.navigate(entry, portal, true); return; }
-        ACTIONS.stop(entry);
-        if (PPQ.enterPortal(agent, portalId)) member.deferUntil(nowMs + RETRY_MS);
+        if (portalId < 0) { actions().stop(entry); return; }
+        Point portal = actions().portalPosition(agent, portalId);
+        if (!near(agent.getPosition(), portal)) { if (portal != null) actions().navigate(entry, portal, true); return; }
+        actions().stop(entry);
+        if (partyQuest().enterPortal(agent, portalId)) member.deferUntil(nowMs + RETRY_MS);
     }
     private static boolean runNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
-        Point npc = ACTIONS.npcPosition(agent, npcId);
-        if (!near(agent.getPosition(), npc)) { if (npc != null) ACTIONS.navigate(entry, npc, true); return false; }
-        ACTIONS.stop(entry); return PPQ.runNpc(agent, npcId, selections);
+        Point npc = actions().npcPosition(agent, npcId);
+        if (!near(agent.getPosition(), npc)) { if (npc != null) actions().navigate(entry, npc, true); return false; }
+        actions().stop(entry); return partyQuest().runNpc(agent, npcId, selections);
     }
     private static void announce(AgentPpqSession session, String key, String message) {
         AgentPpqMemberState speaker = session.members().stream()
@@ -351,14 +446,62 @@ public final class AgentPpqCoordinator {
                 && (mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP)
                 && !session.chestCompleteForDeck(mapId)
                 && leader.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0
-                && ACTIONS.liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
+                && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
             announce(session, "human-chest-" + mapId,
                     leader.getName() + ", take the side portal, clear the chest room, talk to Guon, and drop a chest key by the chest.");
         }
     }
+    /** 'PPQ phase:' for a phase change, in every mode; nothing for none. */
+    static void logChange(AgentPpqSession session, AgentPpqSession.Change change) {
+        if (change == null) return;
+        log.info("PPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
+                change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
+    }
+
+    /** 'PPQ stage:' when the leader stands on another stage, in every mode, with the medal wave the event is on. */
+    private static void logStage(AgentPpqSession session, Character leader, long nowMs) {
+        AgentPpqSession.StageChange change =
+                session.observeStage(AgentPpqDefinition.stageOf(leader.getMapId()), nowMs);
+        if (change == null) return;
+        session.markProgress(nowMs);
+        String wave = session.eventInstance() == null ? "-" : partyQuest().property(leader, "stage2");
+        log.info("PPQ stage: session={} {}->{} stageMs={} runMs={} medalWave={} companionRun={}", session.sessionId(),
+                change.from(), change.to(), change.stageMs(), change.runMs(), wave == null ? "-" : wave,
+                session.companionAdopted());
+    }
+
     private static int parseInt(String value) {
         try { return Integer.parseInt(value); } catch (RuntimeException ignored) { return 0; }
     }
+    /**
+     * Marks the progress the stock stages make outside the coordinator's own steps: a kill on any member's map, a
+     * member's medals or keys changing hands (humans included), a door or chest reactor changing state. Everything is
+     * read here, outside the session's monitor; the session compares it with the last pass.
+     */
+    private static void observeProgress(AgentPpqSession session, long nowMs) {
+        Map<Integer, Integer> mobs = new HashMap<>();
+        Map<String, Integer> items = new HashMap<>();
+        Map<String, Integer> reactors = new HashMap<>();
+        for (AgentPpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character == null) continue;
+            int mapId = character.getMapId();
+            if (AgentPpqDefinition.isEventMap(mapId) && !mobs.containsKey(mapId)) {
+                mobs.put(mapId, actions().liveMonsterCount(character, AgentPpqDefinition.COMBAT_MOBS));
+                if (mapId == AgentPpqDefinition.DOOR_MAP || mapId == AgentPpqDefinition.CHEST_ONE_MAP
+                        || mapId == AgentPpqDefinition.CHEST_TWO_MAP) {
+                    for (Reactor reactor : actions().reactors(character)) {
+                        if (reactor != null) reactors.put(mapId + ":" + reactor.getObjectId(), (int) reactor.getState());
+                    }
+                }
+            }
+            for (int itemId : AgentPpqDefinition.PROGRESS_ITEMS) {
+                items.put(member.characterId() + ":" + itemId, character.getItemQuantity(itemId, false));
+            }
+        }
+        session.observeProgress(mobs, items, reactors, nowMs);
+    }
+
     private static boolean near(Point first, Point second) {
         return first != null && second != null && first.distanceSq(second) <= (long) INTERACTION_RADIUS * INTERACTION_RADIUS;
     }

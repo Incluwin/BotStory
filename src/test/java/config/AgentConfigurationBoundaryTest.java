@@ -93,17 +93,10 @@ class AgentConfigurationBoundaryTest {
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_PRE_BOSS_RALLY_SPACING_PX",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java:STAGE_9_PRE_BOSS_RALLY_X",
             "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqStageFiveReactorOrder.java:DARK_SIGHT_ROOM",
-            "src/main/java/server/agents/capabilities/partyquest/ppq/AgentPpqCoordinator.java:INTERACTION_RADIUS",
-            "src/main/java/server/agents/capabilities/partyquest/ppq/AgentPpqCoordinator.java:RETRY_MS",
-            "src/main/java/server/agents/capabilities/partyquest/ppq/AgentPpqRuntime.java:COORDINATOR_LEASE_MS",
-            "src/main/java/server/agents/capabilities/partyquest/ppq/AgentPpqTestService.java:SPAWN_STAGGER_MS",
             "src/main/java/server/agents/field/AgentEpqTestFixtureService.java:CAPE",
             "src/main/java/server/agents/field/AgentEpqTestFixtureService.java:EARRING",
             "src/main/java/server/agents/field/AgentEpqTestFixtureService.java:SHOES_SPEED_10",
-            "src/main/java/server/agents/field/AgentOpqTestFixtureService.java:OPQ_MINIMUM_JUMP_STAT",
-            "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:CAPE",
-            "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:EARRING",
-            "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:SHOES_SPEED_SCROLL");
+            "src/main/java/server/agents/field/AgentOpqTestFixtureService.java:OPQ_MINIMUM_JUMP_STAT");
 
     @Test
     void cosmicServerConfigurationContainsNoAgentOwnedKeys() throws Exception {

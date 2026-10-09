@@ -22,10 +22,11 @@ import java.util.Map;
 
 /** Legal level-67 PPQ roster with distinct class hats and visible clothing. */
 public final class AgentPpqTestFixtureService {
-    public static final int LEVEL = 67;
-    private static final int SHOES_SPEED_SCROLL = 2_040_708;
-    private static final int EARRING = 1_032_075;
-    private static final int CAPE = 1_102_055;
+    public static final int LEVEL = config.AgentTuning.intValue(
+            "server.agents.field.AgentPpqTestFixtureService.PPQ_START_LEVEL");
+    private static final int SHOES_SPEED_SCROLL_ITEM_ID = 2_040_708;
+    private static final int EARRING_ITEM_ID = 1_032_075;
+    private static final int CAPE_ITEM_ID = 1_102_055;
     static final List<String> BUILD_IDS = List.of(
             "spearman-spear", "cleric-wand", "hunter-bow",
             "bandit-dagger", "gunslinger-gun", "il-wizard-staff");
@@ -72,7 +73,7 @@ public final class AgentPpqTestFixtureService {
                         entry, build, LEVEL, AgentPpqDefinition.COMBAT_MOBS,
                         loadout.equipment(agent.getGender()),
                         loadout.weaponScroll(),
-                        SHOES_SPEED_SCROLL, loadout.capeScroll(), nowMs);
+                        SHOES_SPEED_SCROLL_ITEM_ID, loadout.capeScroll(), nowMs);
         if (!prepared.completeBuild()) throw new IllegalStateException("PPQ fixture has unspent AP/SP");
         return new PreparationResult(prepared.level(), prepared.career(), build.job().name(),
                 prepared.weaponItemId(), prepared.weaponAttack());
@@ -131,8 +132,8 @@ public final class AgentPpqTestFixtureService {
                    List<Integer> male, List<Integer> female) {
         List<Integer> equipment(int gender) {
             ArrayList<Integer> items = new ArrayList<>(gender == 0 ? male : female);
-            items.add(EARRING);
-            items.add(CAPE);
+            items.add(EARRING_ITEM_ID);
+            items.add(CAPE_ITEM_ID);
             items.add(weapon);
             return List.copyOf(items);
         }
