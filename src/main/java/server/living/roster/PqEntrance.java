@@ -5,6 +5,7 @@ import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSide;
 import server.life.NPC;
 import server.maps.MapleMap;
 
@@ -121,6 +122,8 @@ public final class PqEntrance {
         // slot: ppq
 
         // slot: rjpq
+        register(entrances, RjpqEntrance.create(AgentRjpqSide.ZENUMIST));
+        register(entrances, RjpqEntrance.create(AgentRjpqSide.ALCADNO));
         return entrances;
     }
 
