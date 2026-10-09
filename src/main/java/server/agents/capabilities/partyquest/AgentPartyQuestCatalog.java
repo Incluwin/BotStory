@@ -44,7 +44,7 @@ public final class AgentPartyQuestCatalog {
                 809_050_017, 220_000_000, 51, 70, 3, 6, 900_000L));
         add(definitions, new AgentPartyQuestDefinition(
                 "opq", "OrbisPQ", 200_080_101, 920_010_000, 920_011_300,
-                920_011_200, 200_080_101, 51, 70, 5, 6));
+                920_011_200, 200_080_101, 51, 70, 5, 6, 2_700_000L));
         add(definitions, new AgentPartyQuestDefinition(
                 "epq", "EllinPQ", 300_030_100, 930_000_000, 930_000_800,
                 930_000_800, 300_030_100, 44, 55, 4, 6, 1_800_000L));
