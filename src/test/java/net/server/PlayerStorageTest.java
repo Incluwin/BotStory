@@ -4,6 +4,7 @@ import client.BotClient;
 import client.Character;
 import client.Client;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import java.util.Collection;
 
@@ -11,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +33,21 @@ class PlayerStorageTest {
         verify(client).forceDisconnect();
         assertNull(storage.getCharacterById(12));
         assertNull(storage.getCharacterByName("Alice"));
+    }
+
+    @Test
+    void disconnectAllUnloadsThePlayersBeforeTheBots() {
+        PlayerStorage storage = new PlayerStorage();
+        Client botClient = mock(BotClient.class);
+        Client playerClient = mock(Client.class);
+        storage.addPlayer(character(1, "citizen", botClient)); // loaded first, unloaded last
+        storage.addPlayer(character(2, "player", playerClient));
+
+        storage.disconnectAll();
+
+        InOrder order = inOrder(playerClient, botClient);
+        order.verify(playerClient).forceDisconnect();
+        order.verify(botClient).forceDisconnect();
     }
 
     @Test

@@ -1,6 +1,7 @@
 package server.living.population;
 
 import client.Character;
+import client.Client;
 import config.YamlConfig;
 import net.server.Server;
 import net.server.world.World;
@@ -45,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Who is online when (plan 3.2/3.3): every sweep, offline citizens log in with a probability
@@ -275,33 +279,44 @@ public final class PresenceScheduler {
     }
 
     public void logout(CitizenSession session, String reason) {
+        Character agent = unhook(session);
+        if (agent != null) {
+            agent.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
+        }
+        settle(session, reason);
+    }
+
+    /** Ends the session and runs the logout hooks; the loaded agent that is still to unload, else null. */
+    private Character unhook(CitizenSession session) {
         sessions.remove(session.characterId);
         Character agent = session.agent();
-        if (!session.virtual && agent != null) {
-            try {
-                population.chatter().onLogout(session);
-                population.social().onLogout(session);
-                population.market().onLogout(session);
-                AgentRuntimeEntry entry = session.entry;
-                if (entry != null && AgentTownLifeRuntime.active(entry)) {
-                    AgentTownLifeRuntime.stop(entry, agent);
-                    AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
-                }
-                World world = population.gameWorld();
-                if (world != null) { // its buddies are told it went offline as it unloads (Client.disconnectInternal)
-                    if (agent.getGuildId() > 0) {
-                        Server.getInstance().setGuildMemberOnline(agent, false, session.channel);
-                    }
-                }
-            } catch (RuntimeException failure) {
-                log.debug("citizen {} logout hooks failed", session.name(), failure);
-            }
-            AgentRuntimeCleanupService.removeAgentByCharacterId(session.characterId);
-            if (agent.getClient() != null) {
-                agent.saveCharToDB();
-                agent.getClient().forceDisconnect();
-            }
+        if (session.virtual || agent == null) {
+            return null;
         }
+        try {
+            population.chatter().onLogout(session);
+            population.social().onLogout(session);
+            population.market().onLogout(session);
+            AgentRuntimeEntry entry = session.entry;
+            if (entry != null && AgentTownLifeRuntime.active(entry)) {
+                AgentTownLifeRuntime.stop(entry, agent);
+                AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
+            }
+            World world = population.gameWorld();
+            if (world != null) { // its buddies are told it went offline as it unloads (Client.disconnectInternal)
+                if (agent.getGuildId() > 0) {
+                    Server.getInstance().setGuildMemberOnline(agent, false, session.channel);
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.debug("citizen {} logout hooks failed", session.name(), failure);
+        }
+        AgentRuntimeCleanupService.removeAgentByCharacterId(session.characterId);
+        return agent.getClient() == null ? null : agent;
+    }
+
+    /** After the unload: its known world is written and its time online booked. */
+    private void settle(CitizenSession session, String reason) {
         PersonalKnowledge.shared().close(session.characterId);
         book(session);
         log.info("citizen {} offline: {}", session.name(), reason);
@@ -401,10 +416,65 @@ public final class PresenceScheduler {
         return leases != null && leases.holder(characterId) != null;
     }
 
+    /**
+     * Server shutdown: every citizen logs off. The unloads are the slow part (a full character save each, ~0.2 s live), so
+     * they run on {@code SHUTDOWN_LOGOUT_THREADS} workers for at most {@code SHUTDOWN_LOGOUT_BUDGET_MS}: a full town never
+     * holds the channels' shutdown, and the players' saves in it, past the restart's budget. A citizen still waiting then
+     * stays loaded, and its channel's shutdown unloads and saves it. The hooks before and the bookkeeping after stay on
+     * this thread, in session order, as a single logout runs them.
+     */
     public void logoutAll(String reason) {
-        for (CitizenSession session : new ArrayList<>(sessions.values())) {
-            logout(session, reason);
+        long startedMs = System.currentTimeMillis();
+        List<CitizenSession> ending = new ArrayList<>(sessions.values());
+        List<Character> loaded = new ArrayList<>();
+        for (CitizenSession session : ending) {
+            Character agent = unhook(session);
+            if (agent != null) {
+                loaded.add(agent);
+            }
         }
+        int left = unloadAll(loaded, population.config().SHUTDOWN_LOGOUT_THREADS, population.config().SHUTDOWN_LOGOUT_BUDGET_MS);
+        for (CitizenSession session : ending) {
+            settle(session, reason);
+        }
+        log.info("citizens logged off ({}): {} sessions, {} unloaded, {} left to their channel's shutdown, {} ms", reason,
+                ending.size(), loaded.size() - left, left, System.currentTimeMillis() - startedMs);
+    }
+
+    /** Unloads the agents on {@code threads} workers for at most {@code budgetMs}; how many were never started. */
+    static int unloadAll(List<Character> agents, int threads, long budgetMs) {
+        if (agents.isEmpty()) {
+            return 0;
+        }
+        int workers = Math.max(1, Math.min(threads, agents.size()));
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(workers, workers, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(), Thread.ofPlatform().daemon().name("citizen-logout-", 1).factory());
+        for (Character agent : agents) {
+            pool.execute(() -> {
+                try {
+                    Client client = agent.getClient();
+                    if (client != null) {
+                        client.forceDisconnect(); // saves it in full (Client.disconnectInternal)
+                    }
+                } catch (RuntimeException failure) {
+                    log.warn("citizen {} could not be unloaded", agent.getName(), failure);
+                }
+            });
+        }
+        pool.shutdown();
+        try {
+            if (pool.awaitTermination(Math.max(0L, budgetMs), TimeUnit.MILLISECONDS)) {
+                return 0;
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        // the workers are never interrupted, so no save is cut off half-way: the running ones finish on their own
+        List<Runnable> waiting = new ArrayList<>();
+        pool.getQueue().drainTo(waiting);
+        log.warn("{} of {} citizens were not unloaded within {} ms; their channel's shutdown unloads and saves them",
+                waiting.size(), agents.size(), budgetMs);
+        return waiting.size();
     }
 
     // ---- planning ------------------------------------------------------------------------

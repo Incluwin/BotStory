@@ -159,6 +159,8 @@ public class Server {
     private DatabaseConsoleBridgeServer databaseConsoleBridgeServer;
     private AgentDirectorBridgeServer agentDirectorBridgeServer;
     private AgentMapGraphWebServer agentMapGraphWebServer;
+    /** Set once shutdownInternal took the worlds down; the JVM shutdown hook then has nothing left to do. */
+    private boolean offline;
     private final List<Map<Integer, String>> channels = new LinkedList<>();
     private final List<World> worlds = new ArrayList<>();
     private final Properties subnetInfo = new Properties();
@@ -2322,19 +2324,38 @@ public class Server {
         }
     }
 
-    private synchronized void shutdownInternal(boolean restart) {
-        log.info("{} the server!", restart ? "Restarting" : "Shutting down");
-        if (getWorlds() == null) {
-            return;//already shutdown
+    /** Saves every player character in full (the bots are left to their own teardown). */
+    static void savePlayersFirst(List<World> worlds) {
+        long startedNs = System.nanoTime();
+        int saved = 0;
+        for (World world : worlds) {
+            for (Character player : world.getPlayerStorage().getRealPlayers()) {
+                try {
+                    player.saveCharToDB(true, CharacterSaveDiagnostics.SaveReason.SAVE_ALL);
+                    saved++;
+                } catch (RuntimeException failure) {
+                    log.error("Shutdown could not save player {} ahead of the bots", player.getName(), failure);
+                }
+            }
         }
+        log.info("Saved {} players ahead of the bots' teardown in {} ms", saved,
+                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNs));
+    }
+
+    private synchronized void shutdownInternal(boolean restart) {
+        if (offline) {
+            return; // already shut down: the JVM shutdown hook after System.exit below
+        }
+        log.info("{} the server!", restart ? "Restarting" : "Shutting down");
 
         // Final 30s warning before tearing worlds down. World.shutdown() below
         // disconnects every channel immediately, so the broadcast has to land
         // first. stop_all.bat's PowerShell grace window must stay >= 30s plus
         // character-save time, otherwise the helper force-kills mid-save.
+        // Only players with a connection count: bots (citizens, companions) read no notice.
         int connectedCount = 0;
         for (World w : getWorlds()) {
-            connectedCount += w.getPlayerStorage().getAllCharacters().size();
+            connectedCount += w.getPlayerStorage().getNetworkRecipients().size();
         }
         if (connectedCount > 0) {
             String notice = (restart ? "The server will restart" : "The server will shut down")
@@ -2353,6 +2374,9 @@ public class Server {
 
         List<World> shuttingWorlds = new ArrayList<>(getWorlds());
         List<Channel> allChannels = getAllChannels();
+        // The bots' teardown below saves hundreds of characters; the players are saved before it, so a restart
+        // that runs out of time never costs a player progress. Their channel's shutdown saves them once more.
+        savePlayersFirst(shuttingWorlds);
         AgentRuntimeShutdownCoordinator.beginShutdown();
         stopQuietly("living-world", server.living.LivingWorld::stop);
         stopQuietly("agent-population", AgentPopulationRuntime::stop);
@@ -2392,6 +2416,7 @@ public class Server {
         }
 
         resetServerWorlds();
+        offline = true;
 
         ExpLogger.shutdown();
         ThreadManager.getInstance().stop();
