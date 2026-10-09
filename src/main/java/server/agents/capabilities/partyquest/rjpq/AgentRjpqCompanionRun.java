@@ -4,14 +4,20 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapleMap;
 import server.maps.Reactor;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The run-level rules of an RJPQ companion run (Step 3), on the lease holder's pass: the leader, the members, the
@@ -26,6 +32,8 @@ final class AgentRjpqCompanionRun {
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.STALL_TIMEOUT_MS");
     private static final long COMPANION_AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.COMPANION_AFTER_CLEAR_LIMIT_MS");
+    private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.ENTRY_HOLD_GRACE_MS");
 
     private AgentRjpqCompanionRun() {
     }
@@ -72,6 +80,10 @@ final class AgentRjpqCompanionRun {
             Character speaker = partingSpeaker(session, leader);
             AgentRjpqDialogue.narrate(session, "D1", speaker, AgentRjpqCompanionPlay.leaderDown(leader.getName()));
         }
+        observeDepartures(session, event, nowMs);
+        if (AgentRjpqTerminationService.humansCarryOn(session, nowMs)) {
+            return false;
+        }
         if (!verdicts(session, event, nowMs)) {
             return false;
         }
@@ -89,7 +101,7 @@ final class AgentRjpqCompanionRun {
         boolean inside = AgentRjpqMemberVerdicts.inside(session.phase());
         for (AgentRjpqMemberState member : session.members()) {
             int id = member.characterId();
-            if (id == session.eventLeaderId()) {
+            if (id == session.eventLeaderId() || session.departed(id)) {
                 continue;
             }
             Character character = AgentRjpqCoordinator.character(id);
@@ -121,6 +133,57 @@ final class AgentRjpqCompanionRun {
             }
         }
         return true;
+    }
+
+    /**
+     * A member the bound event held and no longer holds (a disconnect, a walk-out), or one it never held once
+     * ENTRY_HOLD_GRACE_MS has passed since the bind (the event started without it), has departed instead of stalling
+     * the run: it is logged once ('RJPQ departed:'), the run stops counting it, and a departed Agent is handed back to
+     * its owner at once. A dead member the event still holds has not departed (its gate holds it). Before the clear
+     * only.
+     */
+    private static void observeDepartures(AgentRjpqSession session, EventInstanceManager event, long nowMs) {
+        if (session.terminationStarted()) {
+            return;
+        }
+        Set<Integer> held = new HashSet<>();
+        for (Character player : event.getPlayers()) {
+            if (player != null) {
+                held.add(player.getId());
+            }
+        }
+        session.noteHeld(held);
+        boolean entryOver = nowMs - session.enteredEventAtMs() >= ENTRY_HOLD_GRACE_MS;
+        for (AgentRjpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (held.contains(id) || !session.seenHeld(id) && !entryOver || !session.markDeparted(id)) {
+                continue;
+            }
+            Character character = AgentRjpqCoordinator.character(id);
+            log.info("RJPQ departed: session={} side={} member={}({}) type={} map={} phase={} registered={} reason={}",
+                    session.sessionId(), session.side().key(), character == null ? "-" : character.getName(), id,
+                    member.memberType(), character == null ? "-" : String.valueOf(character.getMapId()),
+                    session.phase(), held.size(), session.seenHeld(id) ? "left" : "never-registered");
+            if (member.agent()) {
+                handBack(session, id, nowMs);
+            }
+        }
+    }
+
+    /** Hands a departed Agent back to its owner: the run no longer routes it and the lifecycle rehomes it. */
+    private static void handBack(AgentRjpqSession session, int id, long nowMs) {
+        try {
+            session.releaseHold(id, nowMs);
+            AgentRjpqFullRateSimulation.apply(session, id, AgentRuntimeRegistry.findByAgentCharacterId(id), false);
+            AgentRjpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+            if (engagement != null) {
+                AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            }
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, session.side().key(), nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("RJPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
+        }
     }
 
     /**
@@ -165,7 +228,7 @@ final class AgentRjpqCompanionRun {
         Character standing = null;
         Character loaded = null;
         for (AgentRjpqMemberState member : session.members()) {
-            if (!member.agent()) {
+            if (!member.agent() || session.departed(member.characterId())) {
                 continue;
             }
             Character agent = AgentRjpqCoordinator.character(member.characterId());
@@ -190,7 +253,7 @@ final class AgentRjpqCompanionRun {
     static int standingCompanions(AgentRjpqSession session, int exceptId) {
         int standing = 0;
         for (AgentRjpqMemberState member : session.members()) {
-            if (!member.agent() || member.characterId() == exceptId) {
+            if (!member.agent() || member.characterId() == exceptId || session.departed(member.characterId())) {
                 continue;
             }
             Character agent = AgentRjpqCoordinator.character(member.characterId());

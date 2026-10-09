@@ -63,6 +63,8 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Boolean> fullRateHeld = new LinkedHashMap<>();
     private final Set<Integer> checkedBooks = new HashSet<>();
     private final Map<String, Claim> claims = new LinkedHashMap<>();
+    private final Set<Integer> departed = new LinkedHashSet<>();
+    private final Set<Integer> seenHeld = new HashSet<>();
     private int beakerTarget = -1;
     private final Map<Integer, int[]> unitKnown = new HashMap<>();
     private final Map<Integer, Set<Integer>> unitTried = new HashMap<>();
@@ -123,7 +125,10 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     /** The coordinator lease: one Agent at a time runs the session's tick. */
     public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs) {
-        if (id != executionAgentId && nowMs < executionLeaseUntilMs) {
+        if (departed.contains(id)) {
+            return false;
+        }
+        if (id != executionAgentId && nowMs < executionLeaseUntilMs && !departed.contains(executionAgentId)) {
             return false;
         }
         executionAgentId = id;
@@ -158,7 +163,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     /** Takes the coordinator lease only when it has expired (the watchdog's failover). */
     synchronized boolean claimExpiredExecutionTick(int id, long nowMs, long leaseMs) {
-        if (nowMs < executionLeaseUntilMs) {
+        if (departed.contains(id) || nowMs < executionLeaseUntilMs && !departed.contains(executionAgentId)) {
             return false;
         }
         executionAgentId = id;
@@ -468,6 +473,32 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     /** The run's pace marks (Step 4); locked on their own. */
     AgentRjpqPaceMarks pace() {
         return pace;
+    }
+
+    /**
+     * Marks a member the bound event no longer holds, or never held after the entry grace, as departed: the run no
+     * longer counts it, its Agent is handed back, and it never claims or keeps the coordinator lease. True the first
+     * time only.
+     */
+    synchronized boolean markDeparted(int id) {
+        return members.containsKey(id) && departed.add(id);
+    }
+
+    public synchronized boolean departed(int id) {
+        return departed.contains(id);
+    }
+
+    /** The members the bound event holds now; once seen held, a member that is no longer held has left it. */
+    synchronized void noteHeld(Set<Integer> held) {
+        for (int id : held) {
+            if (members.containsKey(id)) {
+                seenHeld.add(id);
+            }
+        }
+    }
+
+    synchronized boolean seenHeld(int id) {
+        return seenHeld.contains(id);
     }
 
     /** The event leader's name as the run bound its event, for the companions' lines about him. */

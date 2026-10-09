@@ -107,17 +107,18 @@ class AgentRjpqReleaseTest {
     }
 
     @Test
-    void aFailureBeforeTheClearTakesEveryParticipantOutAndDisposesTheEvent() {
+    void aFailureBeforeTheClearTakesTheCompanionsOutAndLeavesTheHumanHisEvent() {
         EventInstanceManager event = eventWith(BEN, MIRA, TOBI, UNA);
         AgentRjpqSession session = boundSession(event);
         session.fail("why", 3_000L);
 
         AgentRjpqTerminationService.release(session, "why", 3_000L, true);
 
-        for (int id : List.of(BEN, MIRA, TOBI, UNA)) {
+        for (int id : List.of(MIRA, TOBI, UNA)) {
             verify(event).exitPlayer(characters.get(id));
         }
-        verify(event).dispose();
+        verify(event, never()).exitPlayer(characters.get(BEN));
+        verify(event, never()).dispose();
         assertNull(AgentRjpqSessionRegistry.forOperator(BEN));
         lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
                 eq(session.sessionId()), eq(false), eq("why"), eq(3_000L), any()), times(1));
@@ -141,6 +142,19 @@ class AgentRjpqReleaseTest {
     }
 
     @Test
+    void anEventLeftWithNoPlayerIsDisposed() {
+        EventInstanceManager event = eventWith(MIRA, TOBI, UNA);
+        when(event.getPlayers()).thenReturn(List.of(characters.get(MIRA), characters.get(TOBI),
+                characters.get(UNA)), List.of());
+        AgentRjpqSession session = boundSession(event);
+        session.fail("why", 3_000L);
+
+        AgentRjpqTerminationService.release(session, "why", 3_000L, true);
+
+        verify(event).dispose();
+    }
+
+    @Test
     void theReleaseRunsOnceAndStopsEveryCompanion() {
         EventInstanceManager event = eventWith(BEN, MIRA, TOBI, UNA);
         AgentRjpqSession session = boundSession(event);
@@ -149,7 +163,7 @@ class AgentRjpqReleaseTest {
         AgentRjpqTerminationService.release(session, "why", 3_000L, true);
         AgentRjpqTerminationService.release(session, "again", 4_000L, true);
 
-        verify(event, times(1)).dispose();
+        verify(event, times(3)).exitPlayer(any());
         verify(actions, times(3)).stop(any());
         assertEquals(AgentRjpqSession.Phase.FAILED, session.phase());
     }

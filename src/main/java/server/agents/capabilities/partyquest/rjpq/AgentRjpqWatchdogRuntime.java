@@ -56,7 +56,7 @@ final class AgentRjpqWatchdogRuntime {
     private static int firstCompanionId(AgentRjpqSession session) {
         int first = 0;
         for (AgentRjpqMemberState member : session.members()) {
-            if (!member.agent()) {
+            if (!member.agent() || session.departed(member.characterId())) {
                 continue;
             }
             Character companion = AgentRjpqCoordinator.character(member.characterId());

@@ -120,6 +120,8 @@ final class RjpqStageFixture implements AutoCloseable {
         session.setMemberCoordinationChatEnabled(true);
         session.setEventLeaderName("Ben");
         when(event.getLeaderId()).thenReturn(BEN);
+        when(event.getPlayers()).thenAnswer(call -> characters.values().stream()
+                .filter(character -> character.getEventInstance() == event).toList());
         when(event.getTimeLeft()).thenReturn(2_700_000L);
         session.bindEventInstance(event, 1_000L);
         when(partyQuest.property(any(), any())).thenAnswer(call -> properties.get((String) call.getArgument(1)));

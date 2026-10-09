@@ -5937,3 +5937,7 @@ tuning:
     # Purpose: Keeps RJPQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
     # Technical: AgentRjpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for rjpq and rjpqj.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 1000-30000 milliseconds. Recommended: 5000, OPQ's and LMPQ's value, so MagatiaPQ has registered and warped the whole party.
+    # Purpose: Bounds how long after an RJPQ run binds its event a member the event has not registered yet still counts as entering, so a member the event started without departs instead of stalling the run.
+    # Technical: AgentRjpqCompanionRun.observeDepartures marks a member the bound event never held as departed ('RJPQ departed: ... reason=never-registered', its Agent handed back) once this long has passed since the bind; one held and then lost departs at once.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.ENTRY_HOLD_GRACE_MS: '5000'
