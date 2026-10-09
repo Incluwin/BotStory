@@ -4,6 +4,7 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.supplies.AgentSupplyLogFields;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
@@ -79,6 +80,12 @@ public interface AgentBossRunPorts {
     void prepareScripts(int... npcIds);
 
     void schedule(Runnable action, long delayMs);
+
+    /**
+     * What a log line shows of the character's supplies (AgentSupplyLogFields.of: " pots=H/M", a shooter's
+     * " ammo=N noAmmo=B"); a dead member's bag still answers.
+     */
+    String supplies(Character agent);
 
     /** The live server. */
     final class Live implements AgentBossRunPorts {
@@ -219,6 +226,11 @@ public interface AgentBossRunPorts {
         @Override
         public void schedule(Runnable action, long delayMs) {
             AgentSchedulerRuntime.schedule(action, delayMs);
+        }
+
+        @Override
+        public String supplies(Character agent) {
+            return AgentSupplyLogFields.of(agent);
         }
     }
 }

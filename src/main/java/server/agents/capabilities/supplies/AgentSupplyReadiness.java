@@ -1,10 +1,12 @@
 package server.agents.capabilities.supplies;
 
 import client.Character;
+import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -19,12 +21,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>One standard serves everyone who asks: the host's entry desk reads {@link #shortfall(int, int, boolean, Activity)}
  * with the potion counts it already has and {@link #ammoShortfall(int, Activity)} with its projectile count, and the
  * Agent's own procurement reads {@link #shortfall(Character, Activity)}: {@link AgentPotionService#countPotions} and
- * {@link AgentAmmoService#carriedProjectiles} together. While the installed {@link Rule} answers {@link Rule#standing}
- * for an Agent, the Agent walks to the nearest potion shop by itself on a town map whose supplier is close
- * (AgentSupplyReadinessRuntime) when it lacks either; one visit fills both, potions first, buying toward
- * {@code BUY_TO_PERCENT} of the potion standard ({@link #buyTarget}) and toward {@link #ammoTarget} projectiles; it
- * never goes when it cannot afford the trip, and says so through the rule instead of asking its party. With nothing
- * installed, nothing here changes what an Agent does.</p>
+ * {@link AgentAmmoService#carriedProjectiles} together (for a boss whose standard is HP and MP points,
+ * {@link #recoveryStandard}, what its potions restore instead of how many it carries). While the installed
+ * {@link Rule} answers {@link Rule#standing} for an Agent, the Agent walks to the nearest potion shop by itself on a
+ * town map whose supplier is close (AgentSupplyReadinessRuntime) when it lacks either; one visit fills both, potions
+ * first, buying toward {@code BUY_TO_PERCENT} of the potion standard ({@link #buyTarget}) and toward
+ * {@link #ammoTarget} projectiles; it never goes when it cannot afford the trip, and says so through the rule instead
+ * of asking its party. With nothing installed, nothing here changes what an Agent does.</p>
  *
  * <p>The host's reads ({@link #status}, {@link #restockPending}, {@link #carriedBy}, {@link #checkSoon},
  * {@link #resumeFollowAfterTrip}) touch memory only and may run on any thread; the rule's callbacks run on the Agent
@@ -62,8 +65,16 @@ public final class AgentSupplyReadiness {
     public record Standard(int hp, int mp) { }
 
     /**
+     * Recovery an Agent goes into a boss run with at least, in HP and MP points rather than potions: what its recovery
+     * potions restore together at its current maximum HP and MP ({@link #recoveryCarried}). BOSS_RECOVERY_STANDARDS.
+     */
+    public record RecoveryStandard(long hp, long mp) { }
+
+    /**
      * How many HP and MP potions, and projectiles for its weapon, an Agent still lacks for a standard (0 when it has
-     * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles.
+     * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles, and
+     * for a points standard ({@link #recoveryStandard}) gives HP and MP points instead of potions, which a shop turns
+     * into a count of the potion it buys.
      */
     public record Shortfall(int hp, int mp, int ammo) {
         public static final Shortfall NONE = new Shortfall(0, 0, 0);
@@ -278,7 +289,10 @@ public final class AgentSupplyReadiness {
         return agent != null && agent.getJob() != null && agent.getJob().getId() % 1000 != 0;
     }
 
-    /** What {@code hpPotions} and {@code mpPotions} lack for {@code activity}'s standard. Pure. */
+    /**
+     * What {@code hpPotions} and {@code mpPotions} lack for {@code activity}'s standard ({@link #standard}), by count
+     * whatever BOSS_RECOVERY_STANDARDS lists: a party quest desk's check. Pure.
+     */
     public static Shortfall shortfall(int hpPotions, int mpPotions, boolean skillUser, Activity activity) {
         Standard standard = standard(activity);
         return new Shortfall(Math.max(0, standard.hp() - Math.max(0, hpPotions)),
@@ -372,11 +386,16 @@ public final class AgentSupplyReadiness {
 
     /**
      * What the Agent's own potions ({@link AgentPotionService#countPotions}) and projectiles ({@link #carriedAmmo})
-     * lack for {@code activity}.
+     * lack for {@code activity}; for a key BOSS_RECOVERY_STANDARDS lists ({@link #recoveryStandard}), the HP and MP
+     * points its recovery potions ({@link #recoveryCarried}) lack of that standard instead of the potions.
      */
     public static Shortfall shortfall(Character agent, Activity activity) {
         if (agent == null) {
             return Shortfall.NONE;
+        }
+        RecoveryStandard points = recoveryStandard(activity);
+        if (points != null) {
+            return recoveryShortfall(agent, activity, points);
         }
         int[] potions = agent.getInventory(InventoryType.USE) == null ? new int[]{0, 0}
                 : AgentPotionService.countPotions(agent);
@@ -442,6 +461,66 @@ public final class AgentSupplyReadiness {
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS"));
         return own != null ? own : listed(key, config.AgentTuning.stringValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_STANDARDS"));
+    }
+
+    // ---- a points standard (BOSS_RECOVERY_STANDARDS) ------------------------------------------
+
+    /**
+     * The HP and MP points BOSS_RECOVERY_STANDARDS lists for {@code activity}'s key ("easy_balrog=130000/32000"), or
+     * null: no activity, a key not listed, or a malformed pair. With one, the Agent's own count
+     * ({@link #shortfall(Character, Activity)}) measures what its recovery potions restore instead of how many it
+     * carries, and a shop turns the gap into a count of the potion it buys ({@link #potionsFor}); without one the
+     * potion counts ({@link #standard}) apply. Read from agent-engine.yaml at every call.
+     */
+    public static RecoveryStandard recoveryStandard(Activity activity) {
+        if (activity == null || activity.partyQuestKey().isEmpty()) {
+            return null;
+        }
+        int[] own = listed(activity.partyQuestKey(), config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_RECOVERY_STANDARDS"));
+        return own == null ? null : new RecoveryStandard(own[0], Math.max(0, own[1]));
+    }
+
+    /**
+     * The HP (or MP) the Agent's recovery potions restore together at its current maximum
+     * (AgentPotionInventoryPolicy.recoveryCapacity, the measure of an ordinary restock's reserve); 0 without a Use tab.
+     */
+    public static long recoveryCarried(Character agent, boolean forHp) {
+        Inventory use = agent == null ? null : agent.getInventory(InventoryType.USE);
+        return use == null ? 0L : AgentPotionInventoryPolicy.recoveryCapacity(use.list(),
+                AgentUseItemClassificationPolicy::itemEffect, agent.getCurrentMaxHp(), agent.getCurrentMaxMp(), forHp);
+    }
+
+    /**
+     * The HP (or MP) points a shop visit tops up toward for {@code activity}'s points standard: BUY_TO_PERCENT of it,
+     * rounded up; 0 without a points standard, and for MP when the Agent fights without skills.
+     */
+    public static long recoveryBuyTarget(Activity activity, Character agent, boolean forHp) {
+        RecoveryStandard points = recoveryStandard(activity);
+        if (points == null || agent == null || !forHp && !needsManaPotions(agent)) {
+            return 0L;
+        }
+        long standard = forHp ? points.hp() : points.mp();
+        return (standard * Math.max(0, tuningInt("BUY_TO_PERCENT")) + 99L) / 100L;
+    }
+
+    /**
+     * The potions restoring {@code perPotion} points each that hold {@code points}, rounded up: how a shop turns a
+     * points gap into a count of the potion it buys. 0 for no points, and for a potion that restores none.
+     */
+    public static int potionsFor(long points, int perPotion) {
+        if (points <= 0L || perPotion <= 0) {
+            return 0;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, (points + perPotion - 1L) / perPotion);
+    }
+
+    /** What the Agent's recovery ({@link #recoveryCarried}) lacks of {@code points}: HP, and MP for a skill user. */
+    private static Shortfall recoveryShortfall(Character agent, Activity activity, RecoveryStandard points) {
+        long hp = Math.max(0L, points.hp() - recoveryCarried(agent, true));
+        long mp = needsManaPotions(agent) ? Math.max(0L, points.mp() - recoveryCarried(agent, false)) : 0L;
+        return new Shortfall((int) Math.min(Integer.MAX_VALUE, hp), (int) Math.min(Integer.MAX_VALUE, mp),
+                ammoShortfall(agent, activity));
     }
 
     /** The {HP, MP} counts {@code standards} ("key=HP/MP,...") lists for {@code key}, or null. */
