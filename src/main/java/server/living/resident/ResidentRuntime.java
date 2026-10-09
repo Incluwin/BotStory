@@ -720,8 +720,7 @@ public final class ResidentRuntime {
         }
         AgentRuntimeCleanupService.removeAgentByCharacterId(session.characterId);
         if (agent != null && agent.getClient() != null) {
-            agent.saveCharToDB();
-            agent.getClient().forceDisconnect();
+            agent.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
         }
         world.leases().release(session.characterId, CompanionLeases.Kind.RESIDENT); // saved first, so the next load sees it
         log.info("Resident {} to standby: {}", session.persona.id(), reason);

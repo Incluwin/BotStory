@@ -20,6 +20,7 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `CONVERSATION_*` | generated replies per player per day, per-citizen cooldown, concurrency |
 | `GUILDS_ENABLED`, `GUILD_TARGET`, `BUDDIES_ENABLED`, `BUDDY_REQUEST_AFTER_MINUTES` | social fabric |
 | `MARKET_ENABLED`, `MARKET_STALLS_MAX`, `MARKET_BUY_BUDGET_PER_DAY` | Free Market participation |
+| `SHUTDOWN_LOGOUT_THREADS`, `SHUTDOWN_LOGOUT_BUDGET_MS` | server shutdown: loaded citizens unload (a full save each) on this many threads for at most this long; the rest unload with their channel |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
 `living_guild`, `living_price_index`, `living_acquaintance`). Generated replies use the existing

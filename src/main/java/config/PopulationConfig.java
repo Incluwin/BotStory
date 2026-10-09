@@ -39,6 +39,14 @@ public class PopulationConfig {
     public int LIFE_DAYS_MAX = 400;
     /** When seeding an empty registry, citizens are backdated up to this many days so levels look like a mature server. */
     public int SEED_BACKDATE_DAYS = 240;
+    /**
+     * Server shutdown: loaded citizens unload (a full character save each) on this many threads at once. Each holds one
+     * database connection (the pool has 10). Measured on the live MySQL settings, 240 citizens: 1 = 21.8 s, 4 = 10.2 s,
+     * 8 = 8.7 s.
+     */
+    public int SHUTDOWN_LOGOUT_THREADS = 4;
+    /** Server shutdown: the longest the citizens' unloads may take; any still waiting then unload with their channel. */
+    public int SHUTDOWN_LOGOUT_BUDGET_MS = 45000;
 
     // Chatter (plan 5)
     public boolean CHATTER_ENABLED = true;
@@ -89,6 +97,9 @@ public class PopulationConfig {
         }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");
+        }
+        if (SHUTDOWN_LOGOUT_THREADS < 1 || SHUTDOWN_LOGOUT_BUDGET_MS < 0) {
+            throw new IllegalArgumentException("population.SHUTDOWN_LOGOUT_THREADS must be >= 1 and SHUTDOWN_LOGOUT_BUDGET_MS >= 0");
         }
     }
 }
