@@ -124,7 +124,7 @@ public final class AgentVictoriaRouteRuntime {
         Integer portalId = AgentVictoriaTrainingRouteCatalog.scriptedPortalId(sourceMapId, nextMap);
         boolean scriptedPortal = portalId != null;
         if (portalId == null) {
-            portalId = gateway.directPortalIdTo(agent, nextMap);
+            portalId = reachablePortalTo(entry, agent, nextMap, gateway, state);
         }
         if (portalId == null) {
             state.clearActiveTravel();
@@ -149,6 +149,46 @@ public final class AgentVictoriaRouteRuntime {
             gateway.navigate(entry, portal, true);
         }
         return new TravelOutcome(Status.MOVING, sourceMapId, nextMap, destinationMapId, false);
+    }
+
+    /**
+     * The open portal to nextMapId this Agent walks to: the one it chose on this map before, while its own navigation
+     * graph does not rule that one out; else the first, in directPortalIdTo's order, that the graph does not rule out;
+     * else directPortalIdTo's answer as before. Live 2026-10-09: on Another Entrance (105090200) the first portal to
+     * 105090100, west00, stands on the top floor that nothing below climbs to; four companions arriving at under00 on
+     * the bottom floor held still there for 8+ minutes, while west01 on the middle floor is two climbs away. The choice
+     * is kept because canReach cannot rule anything out while the Agent is in the air (a jump to the rope), and a new
+     * target mid-jump would send it back toward the first portal. It looks one hop ahead only: whether the landing on
+     * the next map reaches the portal after it is not checked.
+     */
+    private static Integer reachablePortalTo(AgentRuntimeEntry entry,
+                                             Character agent,
+                                             int nextMapId,
+                                             PrimitiveCapabilityGateway gateway,
+                                             AgentVictoriaRouteState state) {
+        List<Integer> portalIds = gateway.directPortalIdsTo(agent, nextMapId);
+        if (portalIds.isEmpty()) {
+            return gateway.directPortalIdTo(agent, nextMapId);
+        }
+        Integer kept = state.keptPortal(nextMapId);
+        if (kept != null && portalIds.contains(kept) && notRuledOut(entry, agent, kept, gateway)) {
+            return kept;
+        }
+        for (Integer portalId : portalIds) {
+            if (notRuledOut(entry, agent, portalId, gateway)) {
+                state.keepPortal(nextMapId, portalId);
+                return portalId;
+            }
+        }
+        return portalIds.get(0);
+    }
+
+    private static boolean notRuledOut(AgentRuntimeEntry entry,
+                                       Character agent,
+                                       int portalId,
+                                       PrimitiveCapabilityGateway gateway) {
+        Point portal = gateway.portalPosition(agent, portalId);
+        return portal != null && gateway.canReach(entry, agent, portal);
     }
 
     /**
