@@ -50,6 +50,7 @@ import server.life.MobSkill;
 import server.life.MobSkillFactory;
 import server.life.MobSkillType;
 import server.life.Monster;
+import server.life.autonomy.BossAttackMirrorSeam;
 import server.maps.MapObject;
 import server.maps.MapleMap;
 import tools.PacketCreator;
@@ -96,6 +97,7 @@ public final class TakeDamageHandler extends AbstractPacketHandler {
                     if (damagefrom >= 0 && ServerMobAutonomyService.isActiveInstance(attacker)) {
                         return;
                     }
+                    BossAttackMirrorSeam.reportedHit(chr, attacker, damagefrom, damage);
                     if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
                         return;
                     }
