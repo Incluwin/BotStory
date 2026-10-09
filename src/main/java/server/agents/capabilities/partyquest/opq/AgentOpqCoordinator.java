@@ -12,6 +12,9 @@ import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.perception.AgentMapPerception;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -52,6 +55,8 @@ final class AgentOpqCoordinator {
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.NPC_RADIUS");
     private static final int REWARD_REFUSALS_MAX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX");
+    private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS");
     private static final int LOOT_RADIUS = server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
     private static final Point ENTRANCE_HANDOFF = new Point(170, 96);
     private static final Point ENTRANCE_EAK = new Point(377, 66);
@@ -75,6 +80,13 @@ final class AgentOpqCoordinator {
     }
 
     static void tickSession(AgentOpqSession session, long nowMs) {
+        coordinate(session, nowMs);
+        // P6h OB7: a departed Agent is handed back after the pass, outside the session monitor (the hand-back moves
+        // it and changes its activity).
+        for (int id : session.takeHandBacks()) handBack(session, id, nowMs);
+    }
+
+    private static void coordinate(AgentOpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
             // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
@@ -107,7 +119,10 @@ final class AgentOpqCoordinator {
                 // pass sees him out of it. After the clear the pass goes on, so he never holds up the claims.
                 return;
             }
-            if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));
+            if (session.eventInstance() == null && OPQ.event(leader) != null) {
+                session.bindEventInstance(OPQ.event(leader));
+                session.noteBoundAt(nowMs);
+            }
             EventInstanceManager held = session.eventInstance();
             if (held != null && session.phase().ordinal() >= AgentOpqSession.Phase.ENTRANCE.ordinal()
                     && !AgentOpqTerminationService.pastTheClear(session)) {
@@ -217,6 +232,7 @@ final class AgentOpqCoordinator {
                 }
             }
             session.bindEventInstance(event);
+            session.noteBoundAt(nowMs);
             session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
         }
     }
@@ -1350,22 +1366,43 @@ final class AgentOpqCoordinator {
     /**
      * P6h OB7: a member the bound event no longer holds (a dead Agent its respawn took to 920011200, a disconnected
      * human) has departed rather than failed the run: it is logged once ('OPQ departed:') and the run goes on without
-     * counting it; the event itself ends the run when a departure leaves it at its floor. Only a member the event held
-     * before and no longer holds departs (the run binds while OrbisPQ.js is still registering the party one member at
-     * a time). Nothing is marked while the run is being released.
+     * counting it; the event itself ends the run when a departure leaves it at its floor. A member the event held
+     * before and no longer holds departs; one it has not held yet is still entering (the run binds while OrbisPQ.js is
+     * still registering the party one member at a time) until ENTRY_HOLD_GRACE_MS after the bind, when one it never
+     * held (a human who walked off or disconnected before the start) departs too. A departed Agent is handed back at
+     * once, in every mode, and stays in the session for the run's counts and lines. Nothing is marked while the run is
+     * being released.
      */
     private static void observeDepartures(AgentOpqSession session, EventInstanceManager bound, long nowMs) {
         if (session.terminationStarted()) return;
         Set<Integer> held = heldIds(bound);
         session.noteHeld(held);
+        boolean entryOver = nowMs - session.noteBoundAt(nowMs) >= ENTRY_HOLD_GRACE_MS;
         for (AgentOpqMemberState state : session.members()) {
             int id = state.characterId();
-            if (held.contains(id) || !session.seenHeld(id) || !session.markDeparted(id)) continue;
+            if (held.contains(id) || !session.seenHeld(id) && !entryOver || !session.markDeparted(id)) continue;
+            if (state.memberType() == AgentOpqMemberState.MemberType.AGENT) session.queueHandBack(id);
             Character member = character(id);
             log.info("OPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
                     session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
                     member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
                     session.companionAdopted());
+        }
+    }
+
+    /**
+     * P6h OB7: hands a departed Agent back at once, in every mode (EPQ's departMember without the event exit: it is
+     * already out). The run no longer routes it (session and engagement indexes) and the lifecycle rehomes it; it
+     * stays in the session, marked departed.
+     */
+    private static void handBack(AgentOpqSession session, int id, long nowMs) {
+        try {
+            AgentOpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+            if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "opq", nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("OPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
         }
     }
 

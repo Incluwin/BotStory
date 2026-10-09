@@ -63,6 +63,8 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     private final Set<Integer> seenHeld = new LinkedHashSet<>();
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<Integer> handBacks = new LinkedHashSet<>();
+    private long boundAtMs;
 
     /** A session of the stock six members (every Agent-run and fixture run). */
     public AgentOpqSession(Mode mode, long seed, int operatorId, long nowMs) {
@@ -271,6 +273,25 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
 
     /** True once the member was marked departed; the run no longer counts it. */
     synchronized boolean departed(int characterId) { return departed.contains(characterId); }
+
+    /**
+     * When the run was first seen bound to its event (the coordinator's bind, or its first look at a bound event):
+     * the first call keeps {@code nowMs} and every later one answers it.
+     */
+    synchronized long noteBoundAt(long nowMs) {
+        if (boundAtMs == 0L && nowMs > 0L) boundAtMs = nowMs;
+        return boundAtMs;
+    }
+
+    /** Queues a departed Agent for its hand-back, which runs outside this monitor. */
+    synchronized void queueHandBack(int characterId) { handBacks.add(characterId); }
+
+    /** The departed Agents queued for their hand-back since the last call, each once. */
+    synchronized List<Integer> takeHandBacks() {
+        List<Integer> taken = List.copyOf(handBacks);
+        handBacks.clear();
+        return taken;
+    }
 
     /** Notes the members the bound event holds now: each of them has been held from then on. */
     synchronized void noteHeld(Collection<Integer> ids) {

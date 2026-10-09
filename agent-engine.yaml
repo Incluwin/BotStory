@@ -1513,6 +1513,10 @@ tuning:
     # Purpose: Bounds how often an OPQ Agent asks Minerva for its reward while its inventory cannot take it.
     # Technical: tickRewardMember counts a refusal when the Agent is still on 920011300 once the retry window after Minerva's script has passed; at this count it stops asking and leaves through the event's own exit, unrewarded, so the claims can end.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX: '3'
+    # Values: 1000-30000 milliseconds. Recommended: 5000 so OrbisPQ.js has registered and warped the whole party before a member it never held counts as gone.
+    # Purpose: Bounds how long after the OPQ run binds its event a member the event has not registered yet is still treated as entering.
+    # Technical: AgentOpqCoordinator.observeDepartures marks a member the bound event never held as departed (logged, its Agent handed back) once this long has passed since the bind; a member held and then lost departs at once, whatever this value.
+    server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
 
     # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
