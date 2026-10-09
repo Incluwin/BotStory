@@ -572,18 +572,34 @@ class CompanionBossRunsTest {
     // ---- P8: Zakum's lines and the owner-left rule ---------------------------------------------
 
     @Test
-    void anOwnerWhoLeftZakumBeforeTheClearHearsOneLineFromTheirPartyAndTheRunsEndLetsThemGo() {
+    void anOwnerWhoLeftZakumBeforeTheClearHearsOneLineFromTheirPartyAndEachIsLetGoAsItIsOut() {
         runs.seat(zakumSeat(ISOLDE));
         runs.seat(zakumSeat(THANE));
         runs.seat(zakumSeat(SORREL));
 
         runs.memberOut(zakumSeat(ISOLDE), Out.OWNER_LEFT);
         runs.memberOut(zakumSeat(THANE), Out.OWNER_LEFT);
+
+        assertFalse(game.commitments.isCommitted(ISOLDE), "out with its owner: it takes orders again at once");
+        assertFalse(game.commitments.isCommitted(THANE), "out with its owner: it takes orders again at once");
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(SORREL), "still walking out: the run's until it is out");
+
         runs.memberOut(zakumSeat(SORREL), Out.OWNER_LEFT);
 
+        assertFalse(game.commitments.isCommitted(SORREL));
         assertEquals(1, game.partyChat.size(), game.partyChat.toString());
         assertSays("Isolde", BossRunLines.OWNER_LEFT, game.partyChat.get(0));
-        assertEquals(ZAKUM_KEY, game.commitments.keyOf(THANE), "the run's end lets them go");
+    }
+
+    @Test
+    void anOwnerLeftOutOfAnotherRunLeavesTheCommitmentToTheRunItIsInAlone() {
+        runs.seat(zakumSeat(THANE));
+        game.commitments.releaseMember(THANE);
+        game.commitments.commit("boss:zakum:8:" + ANN, ANN, THANE);
+
+        runs.memberOut(zakumSeat(THANE), Out.OWNER_LEFT);
+
+        assertEquals("boss:zakum:8:" + ANN, game.commitments.keyOf(THANE), "another run's commitment is its own");
     }
 
     @Test

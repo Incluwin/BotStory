@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.expeditions.ExpeditionBossLog;
 import server.expeditions.ExpeditionType;
 import server.living.LivingWorld;
@@ -301,6 +302,22 @@ class CompanionBossAlliesCallTest {
             // At Adobis, his sign-up runs inside the NPC script: answered from memory.
             assertTrue(ExpeditionBossLog.attemptBoss(ORRIN, BossAllyHarness.CHANNEL, h.expedition, false));
             assertEquals(0, db.connections());
+        }
+    }
+
+    @Test
+    void anAllyCalledToZakumSpendsItsOwnEntryOnceAsItGoesIn() {
+        atAdobis();
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            sendTo("zakum", "orrin");
+            db.clear();
+            Seat seat = new Seat("zakum", SID, ORRIN, ANN);
+
+            h.bossRuns.entered(seat);
+            h.bossRuns.entered(seat); // the same member and run again
+
+            assertEquals(List.of(ORRIN + " ZAKUM"), db.inserts(), "its own daily entry, logged as it goes in");
+            assertEquals(db.inserts().size(), db.statements.size(), "no count: the entry is logged as it is");
         }
     }
 
