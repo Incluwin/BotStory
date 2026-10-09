@@ -15,7 +15,8 @@ class AgentPpqTuningTest {
 
     @Test
     void everyMovedNumberKeepsItsValue() {
-        assertEquals(30L * 60_000L, AgentTuning.longValue(PP + "AgentPpqCoordinator.EVENT_TIMEOUT_MS"));
+        assertEquals(75L * 60_000L, AgentTuning.longValue(PP + "AgentPpqCoordinator.EVENT_TIMEOUT_MS"),
+                "1b.4 raised the cap to the stock timers' worst case");
         assertEquals(10L * 60_000L, AgentTuning.longValue(PP + "AgentPpqCoordinator.STALL_TIMEOUT_MS"));
         assertEquals(900L, AgentTuning.longValue(PP + "AgentPpqCoordinator.RETRY_MS"));
         assertEquals(70, AgentTuning.intValue(PP + "AgentPpqCoordinator.INTERACTION_RADIUS"));

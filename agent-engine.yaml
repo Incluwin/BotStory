@@ -1544,13 +1544,13 @@ tuning:
     server.agents.capabilities.partyquest.lmpq.AgentLmpqWatchdogRuntime.PERIOD_MS: '1000'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
-    # Values: 1800000-7200000 milliseconds. Recommended: 1800000 until the PPQ base fixes raise it to the stock timers' worst case.
-    # Purpose: The longest a PPQ run may last from its admission before the coordinator fails it, a cap over PiratePQ.js's own stage timers.
-    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ event timer expired" once this long has passed since AgentPpqSession.startedAtMs; it was the coordinator's constant 30 minutes before the move.
-    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS: '1800000'
+    # Values: 1800000-7200000 milliseconds. Recommended: 4500000, PiratePQ.js's stage timers end to end (about 54 minutes without the chest rooms, about 70 with both) plus slack.
+    # Purpose: The longest a PPQ run may last from its admission before the coordinator fails it, a cap over PiratePQ.js's own stage timers that never cuts a run the stock timers still allow.
+    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ event timer expired" once this long has passed since AgentPpqSession.startedAtMs, never after the bound event reports its clear; it was the coordinator's constant 30 minutes before the move.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS: '4500000'
     # Values: 120000-1800000 milliseconds. Recommended: 600000, longer than the medal stage's eight minutes.
     # Purpose: How long a PPQ run may go without progress before the coordinator calls it stalled, so a stuck run hands its party back.
-    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ stalled" when AgentPpqSession.lastProgressAtMs is this old; progress is marked by phase changes, hand-ins, pickups, chest and door drops.
+    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ stalled" when AgentPpqSession.lastProgressAtMs is this old, never after the bound event reports its clear; progress is marked by phase changes, the leader's stage changes, kills on any member's map, any member's medal or key count changing, door and chest reactor state changes, hand-ins, pickups, chest and door drops.
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.STALL_TIMEOUT_MS: '600000'
     # Values: 300-5000 milliseconds. Recommended: 900, the pause the other party quests' coordinators take after an action.
     # Purpose: How long a PPQ Agent waits after an NPC talk, a portal or an item drop before its next action, so the server has applied the last one.
