@@ -461,7 +461,8 @@ public final class AgentBossRunSession {
      * already LEAVING could not be handed over. P8: before the clear, for a boss whose owner takes the party out
      * (ownerLeavingTakesParty: Zakum), the same rule walks out each member that follows its owner, OWNER_LEFT. A dead
      * anchor still lying in the event is in it; a member that leads itself (a bench ally) stays while any human stands
-     * (watchHumans).
+     * (watchHumans). The Start registers and warps the members one at a time while this runs on its own timer, so
+     * before the clear an anchor not yet seen in the event is waited for until START_GRACE_MS after Start.
      */
     private void followAnchorsOut(AgentBossRunPorts ports, long nowMs) {
         boolean beforeClear = !cleared;
@@ -476,6 +477,9 @@ public final class AgentBossRunSession {
                 continue;
             }
             if (!alive(ports, member)) {
+                continue;
+            }
+            if (beforeClear && !member.anchorSeen() && nowMs - startedAtMs < startGraceMs()) {
                 continue;
             }
             boolean anchorLeft = ports.online(anchor) || nowMs - member.anchorGoneSince(nowMs) >= humanGoneGraceMs();

@@ -18,6 +18,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -31,7 +32,8 @@ import static org.mockito.Mockito.when;
  * on the altar keeps them, and so does the heir of a logout handoff while the heir stands in the fight; a logged-out
  * owner is waited for through the grace first. A bench ally (a member that leads itself) stays while any human stands.
  * Easy Balrog keeps P7's rule: its companions fight on while another human stands. After the clear the P7 walk-out
- * with the anchor is unchanged (EXITED).
+ * with the anchor is unchanged (EXITED). The Start brings the members in one at a time, so an owner not yet seen in
+ * the fight is waited for through the start grace before the rule applies.
  */
 class AgentBossRunSessionOwnerLeftTest {
     private static final int OWNER = 1;
@@ -292,6 +294,60 @@ class AgentBossRunSessionOwnerLeftTest {
                 "after the clear every member leaves with its anchor (P7)");
     }
 
+    @Test
+    void anOwnerTheStartBringsInJustAfterTheirCompanionsKeepsThemAndLeavingLaterStillTakesThemOut() {
+        // EventManager.startInstance registers and warps the expedition one member at a time (Expedition's member map
+        // order), while the session ticks on its own timer: the tick that adopts the companions may not see the owner.
+        AgentBossRunSession session = warpedIn(AgentBossRunCatalog.ZAKUM, List.of(THANE, ISOLDE), List.of());
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT);
+
+        assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
+        for (int companion : List.of(THANE, ISOLDE)) {
+            assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(companion).phase(),
+                    "member " + companion + ": its owner is still on the way in");
+            assertNull(session.member(companion).leavingFor());
+        }
+        assertEquals(0L, ports.count("stop "));
+        assertEquals(0L, ports.count("navigate "));
+        assertEquals(0L, ports.count("prepareScripts "));
+
+        // The owner's registration lands; the fight goes on with them.
+        players.put(OWNER, ports.human(OWNER));
+        session.tick(ports, host, FIGHT + 500L);
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
+        assertEquals("tick [" + THANE + ", " + ISOLDE + "]", fight.calls.getLast());
+
+        // Still inside the Start's grace, the owner talks to Amon: seen in the fight once, so no wait.
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT + 1_000L);
+        assertTrue(FIGHT + 1_000L - START < AgentBossRunSession.startGraceMs());
+        for (int companion : List.of(THANE, ISOLDE)) {
+            assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(companion).phase(), "member " + companion);
+            assertEquals(AgentBossRunHost.Out.OWNER_LEFT, session.member(companion).leavingFor());
+        }
+    }
+
+    @Test
+    void anOwnerTheStartNeverBroughtInLosesTheirCompanionsOnceTheStartGraceIsOver() {
+        AgentBossRunSession session = warpedIn(AgentBossRunCatalog.ZAKUM, List.of(THANE), List.of());
+        // The owner was off Adobis's room at the Start, still logged in; another human fights.
+        players.remove(OWNER);
+        players.put(FRIEND, ports.human(FRIEND));
+        long graceEnd = START + AgentBossRunSession.startGraceMs();
+
+        for (long at = FIGHT; at < graceEnd; at += 500L) {
+            session.tick(ports, host, at);
+        }
+        session.tick(ports, host, graceEnd - 1L);
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase(), "the Start may still bring them");
+        assertEquals(0L, ports.count("stop "));
+
+        session.tick(ports, host, graceEnd);
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Out.OWNER_LEFT, session.member(THANE).leavingFor());
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     /**
@@ -300,6 +356,24 @@ class AgentBossRunSessionOwnerLeftTest {
      * {@link #FIGHT}); the owner stands in the event too. Call logs are cleared.
      */
     private AgentBossRunSession fighting(AgentBossRunDefinition definition, List<Integer> followers,
+                                        List<Integer> selfLed) {
+        List<Integer> memberIds = new ArrayList<>(followers);
+        memberIds.addAll(selfLed);
+        AgentBossRunSession session = warpedIn(definition, followers, selfLed);
+        session.tick(ports, host, FIGHT);
+        assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
+        for (int agentId : memberIds) {
+            assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(agentId).phase());
+        }
+        ports.calls.clear();
+        return session;
+    }
+
+    /**
+     * A run of {@code definition}'s boss whose members signed up beside its entry NPC and stand in the event on the
+     * battle map after the leader's Start ({@link #START}), before the tick that adopts them ({@link #FIGHT}).
+     */
+    private AgentBossRunSession warpedIn(AgentBossRunDefinition definition, List<Integer> followers,
                                         List<Integer> selfLed) {
         when(expedition.getType()).thenReturn(definition.type());
         AgentBossRunSession session = new AgentBossRunSession(SESSION_ID, definition, expedition, fight, NOW);
@@ -324,12 +398,6 @@ class AgentBossRunSessionOwnerLeftTest {
             ports.eventOf.put(agentId, event);
             players.put(agentId, ports.agent(agentId));
         }
-        session.tick(ports, host, FIGHT);
-        assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
-        for (int agentId : memberIds) {
-            assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(agentId).phase());
-        }
-        ports.calls.clear();
         return session;
     }
 

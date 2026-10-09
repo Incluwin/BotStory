@@ -40,6 +40,8 @@ public final class AgentBossRunMember {
     private volatile int anchorId;
     /** Since when its logged-out anchor has been gone from the event; -1 while the anchor is there. */
     private volatile long anchorGoneSinceMs = -1L;
+    /** Its anchor has stood in the event since it last changed; the Start brings the members in one at a time. */
+    private volatile boolean anchorSeen;
     private volatile Phase phase = Phase.WAITING;
     /** Its host took it back before Start; set from any thread, acted on by the session's next tick. */
     private volatile boolean withdrawn;
@@ -222,10 +224,19 @@ public final class AgentBossRunMember {
         phase = Phase.LEAVING;
     }
 
-    /** Stays with {@code humanId} from now on (the heir of its owner's logout); any wait for the old anchor ends. */
+    /**
+     * Stays with {@code humanId} from now on (the heir of its owner's logout); any wait for the old anchor ends, and
+     * the heir is not yet seen in the event.
+     */
     void anchorTo(int humanId) {
         anchorId = humanId;
         anchorGoneSinceMs = -1L;
+        anchorSeen = false;
+    }
+
+    /** Its anchor has been seen in the event since it became its anchor (see {@link #anchorHere}). */
+    boolean anchorSeen() {
+        return anchorSeen;
     }
 
     /** Since when its logged-out anchor has been gone, starting the wait at {@code nowMs} on the first sighting. */
@@ -238,9 +249,10 @@ public final class AgentBossRunMember {
         return since;
     }
 
-    /** Its anchor is in the event again: the wait is over. */
+    /** Its anchor is in the event (again): any wait is over, and the anchor counts as seen. */
     void anchorHere() {
         anchorGoneSinceMs = -1L;
+        anchorSeen = true;
     }
 
     void leftRun(AgentBossRunHost.Out reason) {
