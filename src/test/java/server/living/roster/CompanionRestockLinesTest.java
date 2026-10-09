@@ -28,9 +28,11 @@ import static org.mockito.Mockito.when;
 /**
  * Every line a companion says about its own store trips is player chat in its own voice: non-empty, lower-case at
  * the start, and nothing a system message would carry (no #-codes, brackets, angle tags, "system"). Fenna, Garrick
- * and Brannock have lines of their own for every potion intent in their dialogue, and Fenna (a Hunter) for every ammo
- * intent too; a hire (and anyone else) uses the generic ones. An ammo line names what the companion shoots
- * ({ammo}: stars, arrows, bolts, bullets), fits a chat line and never repeats a potion line with another word.
+ * and Brannock have lines of their own for every potion intent and the still-short one in their dialogue, and Fenna
+ * (a Hunter) for every ammo intent too; a hire (and anyone else) uses the generic ones. An ammo line names what the
+ * companion shoots ({ammo}: stars, arrows, bolts, bullets), fits a chat line and never repeats a potion line with
+ * another word. A broke line asks for what it lacks ({need}: potions, or mana potions alone) or mesos, and a
+ * still-short line names what it still lacks, both without a count (2026-10-09).
  */
 class CompanionRestockLinesTest {
     private static final List<String> POTION_INTENTS = List.of(CompanionRestockLines.GO, CompanionRestockLines.BACK,
