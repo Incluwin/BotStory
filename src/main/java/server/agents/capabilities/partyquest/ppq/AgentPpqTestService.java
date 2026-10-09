@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.ppq;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.auth.AgentAuthorityService;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -20,6 +21,7 @@ import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
@@ -28,11 +30,15 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.runtime.activity.AgentActivityBootstrap;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -55,6 +61,8 @@ public final class AgentPpqTestService {
                         parseSkip(params), parseSeed(params, nowMs), nowMs);
                 case "humanmember", "agentleader" -> start(operator, Flow.HUMAN_MEMBER,
                         parseSkip(params), parseSeed(params, nowMs), nowMs);
+                case "party", "adopt" -> adoptCurrentParty(operator, params, nowMs);
+                case "checkpoint" -> checkpoint(operator, params, nowMs);
                 case "status" -> status(operator);
                 case "pause" -> pause(operator, true);
                 case "resume" -> pause(operator, false);
@@ -72,6 +80,10 @@ public final class AgentPpqTestService {
         if (operator.getMapId() != AgentPpqDefinition.RECRUIT_MAP) return List.of("Stand at the Pirate PQ entrance (251010404) first.");
         if (flow != Flow.AGENTS_ONLY && (operator.getLevel() < 55 || operator.getLevel() > 100)) {
             return List.of("Your participating character must be level 55-100.");
+        }
+        Run live = RUNS.get(operator.getId());
+        if (live != null && live.flow == Flow.ADOPTED && !finished(live)) {
+            return List.of("A PPQ companion run is live: stop it first (!ppqtest stop).");
         }
         if (AgentPartyGatewayRuntime.party().snapshot(operator) != null) return List.of("Leave your current party before starting PPQ test.");
         if (RUNS.containsKey(operator.getId())) stop(operator, "replaced by a new PPQ test", nowMs);
@@ -239,7 +251,7 @@ public final class AgentPpqTestService {
         AgentPpqSession session = new AgentPpqSession(
                 switch (run.flow) {
                     case AGENTS_ONLY -> AgentPpqSession.Mode.TEST_OBSERVATION;
-                    case HUMAN_LEADER -> AgentPpqSession.Mode.HUMAN_LEADER;
+                    case HUMAN_LEADER, ADOPTED -> AgentPpqSession.Mode.HUMAN_LEADER;
                     case HUMAN_MEMBER -> AgentPpqSession.Mode.HUMAN_MEMBER;
                 }, run.seed, run.operator.getId(), run.skipChests, nowMs);
         if (run.flow != Flow.AGENTS_ONLY) {
@@ -297,9 +309,181 @@ public final class AgentPpqTestService {
         if (run == null || run.session == null) return List.of("No active PPQ session.");
         run.session.setPaused(paused); return List.of(paused ? "PPQ paused." : "PPQ resumed.");
     }
+    /**
+     * "party prod [skipchests] [seed]": the operator's own fully online party of four to six beside Guon becomes a
+     * companion run through the public admit. Nothing is spawned, invited, joined or granted.
+     */
+    private static synchronized List<String> adoptCurrentParty(Character operator, String[] params, long nowMs) {
+        if (params.length < 2 || !"prod".equalsIgnoreCase(params[1])) {
+            return List.of("PPQ adopts a party only as a companion run: !ppqtest party prod [skipchests] [seed].");
+        }
+        if (operator.getMapId() != AgentPpqDefinition.RECRUIT_MAP) {
+            return List.of("Stand at the Pirate PQ entrance (251010404) first.");
+        }
+        Run existing = RUNS.get(operator.getId());
+        if (existing != null && existing.flow == Flow.ADOPTED && finished(existing)) {
+            RUNS.remove(operator.getId(), existing);
+        }
+        if (RUNS.containsKey(operator.getId())) {
+            return List.of("Stop the current PPQ test before adopting another party.");
+        }
+        AgentPartySnapshot snapshot = AgentPartyGatewayRuntime.party().snapshot(operator);
+        if (snapshot == null) {
+            return List.of("Create the party first: you and three to five companions.");
+        }
+        List<Character> online = AgentPartyGatewayRuntime.party().onlineMembers(operator).stream()
+                .filter(Objects::nonNull).distinct().toList();
+        if (online.size() != snapshot.members().size()) {
+            return List.of("Every party member must be online on this channel before the companion run starts.");
+        }
+        boolean leads = snapshot.members().stream().anyMatch(member -> member != null
+                && member.id() == operator.getId() && member.leader());
+        if (!leads) {
+            return List.of("Lead the party yourself for a companion run: the public admit keys the run by its leader.");
+        }
+        boolean skipChests = parseSkip(params);
+        long seed = parseSeedAfter(params, 2, nowMs);
+        AgentPpqAdmissionService.AdmissionResult result =
+                AgentPpqAdmissionService.admit(operator, operator, online, skipChests, seed, nowMs);
+        if (!result.success()) {
+            return List.of("Could not adopt the party: " + result.message());
+        }
+        result.session().setMemberCoordinationChatEnabled(true);
+        Run run = new Run(operator, result.engagement(), seed, skipChests, Flow.ADOPTED);
+        run.leaderId = operator.getId();
+        run.session = result.session();
+        RUNS.put(operator.getId(), run);
+        return List.of("Adopted as a companion run. Talk to Guon within 30 seconds.");
+    }
+
+    /** An adopted run with nothing left for a stop to do: its session ended and its engagement is gone or closed. */
+    private static boolean finished(Run run) {
+        if (run.session == null || !run.session.terminal()) return false;
+        AgentPartyQuestEngagement engagement = run.engagement;
+        if (AgentPartyQuestEngagementRegistry.byId(engagement.engagementId()) != engagement) return true;
+        AgentPartyQuestEngagement.State state = engagement.state();
+        return state == AgentPartyQuestEngagement.State.FAILED || state == AgentPartyQuestEngagement.State.CLOSED;
+    }
+
+    /**
+     * Stops an adopted run as the companion run it is (EPQ's stopAdopted): a live session is released (the party is
+     * kept); without one, an engagement still registered is recovered, so its companions go back to their owner.
+     * Never a test close, a party leave or a logout.
+     */
+    private static List<String> stopAdopted(Run run, String reason, long nowMs) {
+        if (AgentPpqSessionRegistry.forOperator(run.operator.getId()) == run.session) {
+            AgentPpqTerminationService.release(run.session, reason, nowMs, true);
+        } else if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
+            run.engagement.beginRecovery(reason, nowMs);
+            AgentPartyQuestLifecycleRuntime.recover(run.engagement, nowMs);
+        }
+        return List.of("PPQ test stopped safely.");
+    }
+
+    /**
+     * "checkpoint <medals|deck1|deck2|doors|boss>": an adopted run already inside PPQ goes forward to that stage. The
+     * run is read under its session's lock; every change to the event and the members' maps is made after it: the
+     * stage counter one short of the target (curStage) and the medal waves done (stage2 = 3) for every target after
+     * the medals, the cleared maps emptied, the boss spawned as davy_next4.js does for 'boss', then every member moved
+     * inside the instance to the target map's first portal (never a !warp), so changedMapInside restarts the stock
+     * timer for the stage.
+     */
+    private static List<String> checkpoint(Character operator, String[] params, long nowMs) {
+        Checkpoint target = params.length < 2 ? null : Checkpoint.of(params[1]);
+        if (target == null) return List.of("Syntax: !ppqtest checkpoint <medals|deck1|deck2|doors|boss>");
+        Run run = RUNS.get(operator.getId());
+        if (run == null || run.flow != Flow.ADOPTED) {
+            return List.of("Checkpoints apply only to a party prod companion run.");
+        }
+        AgentPpqSession session = run.session;
+        EventInstanceManager event;
+        List<Character> members = new ArrayList<>();
+        synchronized (session) {
+            event = session.eventInstance();
+            if (event == null || session.terminal() || session.terminationStarted()
+                    || operator.getEventInstance() != event) {
+                return List.of("Enter PPQ through Guon before a checkpoint.");
+            }
+            for (AgentPpqMemberState member : session.members()) {
+                Character character = online(member.characterId());
+                if (character == null || character.getEventInstance() != event) {
+                    return List.of("Every member must be inside the PPQ instance first.");
+                }
+                members.add(character);
+            }
+        }
+        prepare(event, target);
+        MapleMap map = event.getMapInstance(target.mapId);
+        var portal = map.getPortal(0);
+        Point spawn = portal == null ? new Point(0, 0) : portal.getPosition();
+        for (Character member : members) {
+            AgentMapGatewayRuntime.map().changeMapNear(member, map, spawn);
+        }
+        session.markProgress(nowMs);
+        log.info("PPQ checkpoint: session={} stage={} by={}", session.sessionId(),
+                target.name().toLowerCase(java.util.Locale.ROOT), operator.getId());
+        return List.of("PPQ checkpoint: everyone is at the " + target.name().toLowerCase(java.util.Locale.ROOT)
+                + ". Earlier stages are skipped for this run only.");
+    }
+
+    /** The event state the stock stages before {@code target} would have left. */
+    static void prepare(EventInstanceManager event, Checkpoint target) {
+        event.setIntProperty("curStage", target.curStageBefore);
+        if (target != Checkpoint.MEDALS) event.setProperty("stage2", "3");
+        for (int cleared : target.clearedMaps) {
+            MapleMap map = event.getMapInstance(cleared);
+            if (map != null) map.killAllMonsters();
+        }
+        if (target == Checkpoint.BOSS && event.getProperty("spawnedBoss") == null) {
+            int chests = parse(event.getProperty("openedChests"));
+            Monster boss = LifeFactory.getMonster(chests == 0 ? 9_300_119 : chests == 1 ? 9_300_105 : 9_300_106);
+            boss.changeDifficulty(parse(event.getProperty("level")), true);
+            event.getMapInstance(AgentPpqDefinition.BOSS_MAP).spawnMonsterOnGroundBelow(boss, new Point(777, 140));
+            event.setProperty("spawnedBoss", "true");
+        }
+    }
+
+    private static int parse(String value) {
+        try {
+            return value == null ? 0 : Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    /** The stages a checkpoint can skip to: the target map, curStage one short of it, the maps cleared before it. */
+    enum Checkpoint {
+        MEDALS(AgentPpqDefinition.MEDAL_MAP, 1, AgentPpqDefinition.ENTRY_MAP),
+        DECK1(AgentPpqDefinition.DECK_ONE_MAP, 2, AgentPpqDefinition.ENTRY_MAP, AgentPpqDefinition.MEDAL_MAP),
+        DECK2(AgentPpqDefinition.DECK_TWO_MAP, 3, AgentPpqDefinition.ENTRY_MAP, AgentPpqDefinition.MEDAL_MAP,
+                AgentPpqDefinition.DECK_ONE_MAP),
+        DOORS(AgentPpqDefinition.DOOR_MAP, 4, AgentPpqDefinition.ENTRY_MAP, AgentPpqDefinition.MEDAL_MAP,
+                AgentPpqDefinition.DECK_ONE_MAP, AgentPpqDefinition.DECK_TWO_MAP),
+        BOSS(AgentPpqDefinition.BOSS_MAP, 5, AgentPpqDefinition.ENTRY_MAP, AgentPpqDefinition.MEDAL_MAP,
+                AgentPpqDefinition.DECK_ONE_MAP, AgentPpqDefinition.DECK_TWO_MAP, AgentPpqDefinition.DOOR_MAP);
+
+        final int mapId;
+        final int curStageBefore;
+        final int[] clearedMaps;
+
+        Checkpoint(int mapId, int curStageBefore, int... clearedMaps) {
+            this.mapId = mapId;
+            this.curStageBefore = curStageBefore;
+            this.clearedMaps = clearedMaps;
+        }
+
+        static Checkpoint of(String name) {
+            for (Checkpoint checkpoint : values()) {
+                if (checkpoint.name().equalsIgnoreCase(name)) return checkpoint;
+            }
+            return null;
+        }
+    }
+
     private static List<String> stop(Character operator, String reason, long nowMs) {
         Run run = RUNS.remove(operator.getId());
         if (run == null) return List.of("No PPQ test is active.");
+        if (run.flow == Flow.ADOPTED) return stopAdopted(run, reason, nowMs);
         if (run.session != null) AgentPpqTerminationService.release(run.session, reason, nowMs, true);
         if (run.lobby != null) AgentPartyQuestLobbyRuntime.unregister(run.lobby.lobbyId(), nowMs);
         if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
@@ -331,12 +515,17 @@ public final class AgentPpqTestService {
                 || "skip".equalsIgnoreCase(params[i])) return true;
         return false;
     }
-    private static long parseSeed(String[] params, long fallback) {
-        for (int i = 1; i < params.length; i++) {
+    /** The first number from {@code from} on, skipping the chest flag; {@code fallback} without one. */
+    private static long parseSeedAfter(String[] params, int from, long fallback) {
+        for (int i = from; i < params.length; i++) {
             if ("skipchests".equalsIgnoreCase(params[i]) || "skip".equalsIgnoreCase(params[i])) continue;
             return Long.parseLong(params[i]);
         }
         return fallback;
+    }
+
+    private static long parseSeed(String[] params, long fallback) {
+        return parseSeedAfter(params, 1, fallback);
     }
     private static void disconnect(int id) {
         Character agent = online(id); AgentRuntimeCleanupService.removeAgentByCharacterId(id);
@@ -348,12 +537,15 @@ public final class AgentPpqTestService {
         return agent != null ? agent : AgentCharacterGatewayRuntime.characters().findOnlineCharacterById(id);
     }
     private static List<String> help() {
-        return List.of("!ppqtest start [skipchests] [seed]",
+        return List.of("!ppqtest party prod [skipchests] [seed] (beside Guon: adopt your party of four to six as a"
+                        + " companion run)",
+                "!ppqtest checkpoint <medals|deck1|deck2|doors|boss> (party prod runs inside PPQ)",
+                "!ppqtest start [skipchests] [seed]",
                 "!ppqtest humanleader [skipchests] [seed]",
                 "!ppqtest humanmember [skipchests] [seed]",
                 "!ppqtest status | pause | resume | stop");
     }
-    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, HUMAN_MEMBER }
+    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, HUMAN_MEMBER, ADOPTED }
     private static final class Run {
         final Object lock = new Object(); final Character operator;
         final AgentPartyQuestEngagement engagement; final long seed; final boolean skipChests; final Flow flow;
