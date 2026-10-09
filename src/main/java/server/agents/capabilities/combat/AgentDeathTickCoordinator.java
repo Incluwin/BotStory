@@ -5,6 +5,7 @@ import server.agents.capabilities.partyquest.epq.AgentEpqDeathDepartureGate;
 import server.agents.capabilities.partyquest.lmpq.AgentLmpqDeathDepartureGate;
 import server.agents.capabilities.partyquest.lpq.AgentLpqDeathDepartureGate;
 import server.agents.capabilities.partyquest.opq.AgentOpqDeathDepartureGate;
+import server.agents.capabilities.partyquest.ppq.AgentPpqDeathDepartureGate;
 import server.agents.capabilities.partyquest.rjpq.AgentRjpqDeathDepartureGate;
 import server.agents.capabilities.recovery.AgentRespawnCoordinator;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -38,9 +39,11 @@ public final class AgentDeathTickCoordinator {
                 gatedRespawn(agent, () -> AgentEpqDeathDepartureGate.respawnOrHold(agent,
                                 () -> AgentLmpqDeathDepartureGate.respawnOrHold(agent,
                                         () -> AgentOpqDeathDepartureGate.respawnOrHold(agent,
-                                                () -> AgentRjpqDeathDepartureGate.respawnOrHold(agent,
-                                                        () -> AgentRespawnCoordinator.respawnAtNearestTown(entry,
-                                                                agent),
+                                                () -> AgentPpqDeathDepartureGate.respawnOrHold(agent,
+                                                        () -> AgentRjpqDeathDepartureGate.respawnOrHold(agent,
+                                                                () -> AgentRespawnCoordinator.respawnAtNearestTown(
+                                                                        entry, agent),
+                                                                System.currentTimeMillis()),
                                                         System.currentTimeMillis()),
                                                 System.currentTimeMillis()),
                                         System.currentTimeMillis()),
@@ -59,9 +62,9 @@ public final class AgentDeathTickCoordinator {
 
     /**
      * The respawn a due dead tick runs: the gate runs {@code respawn} at once, or holds the Agent dead until a later
-     * tick (an LPQ, EPQ, LMPQ, OPQ or RJPQ member whose departure would end its event). The party-quest gates nest in
-     * a fixed order, each inside the respawn the one before hands on: LPQ, EPQ, LMPQ, OPQ, RJPQ. An Agent without a
-     * session in any of them respawns as before.
+     * tick (an LPQ, EPQ, LMPQ, OPQ, PPQ or RJPQ member whose departure would end its event). The party-quest gates
+     * nest in a fixed order, each inside the respawn the one before hands on: LPQ, EPQ, LMPQ, OPQ, PPQ, RJPQ. An Agent
+     * without a session in any of them respawns as before.
      */
     static Runnable gatedRespawn(Character agent, Runnable respawn, LongSupplier nowMs, RespawnGate gate) {
         return () -> gate.respawnOrHold(agent, respawn, nowMs.getAsLong());
