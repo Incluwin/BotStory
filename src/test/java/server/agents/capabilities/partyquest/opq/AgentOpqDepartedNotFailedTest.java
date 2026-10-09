@@ -214,6 +214,25 @@ class AgentOpqDepartedNotFailedTest {
     }
 
     @Test
+    void aMemberTheEventNoLongerHoldsIsNotCountedBeforeThePassMarksIt() {
+        // Kes has just left; the leader's own tick comes before the next coordinator pass logs the departure.
+        Character lead = run.companion(11, "Lead");
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.AUTONOMOUS, false, AgentOpqSession.Phase.ENTRANCE,
+                lead, mira, kes, pel, hal, ivy);
+        when(lead.getMapId()).thenReturn(AgentOpqDefinition.ENTRANCE_MAP);
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+        when(kes.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false)).thenReturn(5);
+        when(kes.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP);
+        when(kes.getEventInstance()).thenReturn(null);
+        holds(lead, mira, pel, hal, ivy);
+
+        AgentOpqCoordinator.tickMember(session, run.entries.get(lead.getId()), lead, 3_500L);
+
+        assertFalse(session.departed(kes.getId()), "not marked yet");
+        verify(run.actions, times(1)).npcPosition(lead, AgentOpqDefinition.EAK_NPC);
+    }
+
+    @Test
     void aMemberWhoStillHoldsCloudsKeepsTheLeaderFromEak() {
         Character lead = run.companion(11, "Lead");
         AgentOpqSession session = run.session(AgentOpqSession.Mode.AUTONOMOUS, false, AgentOpqSession.Phase.ENTRANCE,
@@ -224,6 +243,52 @@ class AgentOpqDepartedNotFailedTest {
         AgentOpqCoordinator.tickMember(session, run.entries.get(lead.getId()), lead, 4_000L);
 
         verify(run.actions, never()).npcPosition(any(), anyInt());
+    }
+
+    @Test
+    void aDepartedLoungeRunnersSubroomGoesToARunnerTheEventHolds() {
+        // An Agent-led fixture run past the sealed room: Pel and Ivy run the lounge, one subroom each.
+        Character lead = run.companion(11, "Lead");
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.AUTONOMOUS, false,
+                AgentOpqSession.Phase.SPLIT_ROOMS, lead, mira, kes, pel, hal, ivy);
+        session.rooms().claim(AgentOpqDefinition.Room.SEALED, lead.getId(), 2_500L);
+        session.rooms().advance(AgentOpqDefinition.Room.SEALED, lead.getId(), AgentOpqRoomLedger.State.COMPLETE,
+                2_500L);
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+        int first = AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(0);
+        assertEquals(first, session.member(pel.getId()).assignedSubroomMapId());
+        assertEquals(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(1), session.member(ivy.getId()).assignedSubroomMapId());
+        when(pel.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP); // Pel died in the first subroom and left
+        when(pel.getEventInstance()).thenReturn(null);
+        holds(lead, mira, kes, hal, ivy);
+        session.completeLoungeSubroom(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(1), 3_500L); // Ivy is done with hers
+
+        AgentOpqCoordinator.tickSession(session, 4_000L);
+
+        assertEquals(first, session.member(ivy.getId()).assignedSubroomMapId(), "Pel's unfinished subroom is Ivy's");
+    }
+
+    @Test
+    void theGardenRolesCountOnlyTheMembersTheEventHolds() {
+        AgentOpqSession session = benLeads(AgentOpqSession.Phase.GARDEN);
+        for (Character member : List.of(ben, mira, kes, pel, hal, ivy)) {
+            when(member.getMapId()).thenReturn(AgentOpqDefinition.GARDEN_MAP);
+        }
+        server.life.Monster papaPixie = mock(server.life.Monster.class);
+        when(papaPixie.getId()).thenReturn(AgentOpqDefinition.PAPA_PIXIE);
+        when(papaPixie.getHp()).thenReturn(672_000L);
+        when(run.map.getAllMonsters()).thenReturn(List.of(papaPixie));
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+        when(ivy.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP); // Ivy died and left
+        when(ivy.getEventInstance()).thenReturn(null);
+        holds(ben, mira, kes, pel, hal);
+
+        AgentOpqCoordinator.tickSession(session, 4_000L);
+
+        assertEquals(AgentOpqMemberState.Role.BOSS_SUMMON_CLEARER, session.member(pel.getId()).role(),
+                "the last two of the four left clear the summons");
+        assertEquals(AgentOpqMemberState.Role.BOSS_SUMMON_CLEARER, session.member(hal.getId()).role());
+        assertEquals(AgentOpqMemberState.Role.BOSS_ATTACKER, session.member(kes.getId()).role());
     }
 
     @Test

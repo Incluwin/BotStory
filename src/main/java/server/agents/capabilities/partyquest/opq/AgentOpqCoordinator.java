@@ -248,7 +248,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignEntrance(AgentOpqSession session) {
-        counted(session).forEach(member -> member.assign(
+        session.members().forEach(member -> member.assign(
                 AgentOpqMemberState.Role.ENTRANCE_COLLECTOR, null, 0));
     }
 
@@ -354,7 +354,10 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignSplitRooms(AgentOpqSession session, long nowMs) {
-        List<AgentOpqMemberState> agents = counted(session).stream()
+        // The fixed six-Agent layout below assigns nothing with fewer than six. It keeps counting every member, a
+        // departed one included (its room then waits), so the leader's hand-ins and the lounge runners are still
+        // assigned after a departure; the lounge subrooms themselves go only to runners the event still holds.
+        List<AgentOpqMemberState> agents = session.members().stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
         if (agents.size() < 6) return;
