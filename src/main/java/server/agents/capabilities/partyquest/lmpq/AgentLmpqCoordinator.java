@@ -35,6 +35,8 @@ public final class AgentLmpqCoordinator {
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX");
     private static final long REWARD_STALL_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS");
+    private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.ENTRY_HOLD_GRACE_MS");
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
     private static final int PORTAL_RADIUS = 55;
@@ -83,7 +85,7 @@ public final class AgentLmpqCoordinator {
         }
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentLmpqDefinition.isEventMap(leader.getMapId())) {
-            session.bindEventInstance(leader.getEventInstance());
+            session.bindEventInstance(leader.getEventInstance(), nowMs);
             beginFarming(session, nowMs);
         }
         // A companion run waits at Rolly for its leader no longer than its harness and host promise him.
@@ -550,18 +552,24 @@ public final class AgentLmpqCoordinator {
         if (session.terminationStarted()) return;
         Set<Integer> held = heldIds(bound);
         session.noteHeld(held);
+        boolean entryGraceOver = nowMs - session.boundAtMs() >= ENTRY_HOLD_GRACE_MS;
         for (AgentLmpqMemberState state : session.members()) {
             int id = state.characterId();
-            // Only a member the event held and no longer holds has departed: the run binds as soon as its leader is
-            // inside, while EventInstanceManager.registerParty is still registering the others one by one.
-            if (held.contains(id) || !session.seenHeld(id) || !session.markDeparted(id)) continue;
+            if (held.contains(id)) continue;
+            // A member the event held and no longer holds has left. One it has not held yet is still being registered
+            // (the run binds as soon as its leader is inside, while EventInstanceManager.registerParty registers the
+            // others one by one), until ENTRY_HOLD_GRACE_MS after the bind: then it was never registered (it was not
+            // at Rolly, or not eligible, when the event started without it).
+            boolean left = session.seenHeld(id);
+            if (!left && !entryGraceOver) continue;
+            if (!session.markDeparted(id)) continue;
             session.rooms().releaseOwner(id, nowMs);
             state.clearTargetRoom();
             Character member = character(id);
-            log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
-                    session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
-                    member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
-                    session.companionAdopted());
+            log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}"
+                            + " reason={}", session.sessionId(), member == null ? "-" : member.getName(), id,
+                    state.memberType(), member == null ? "-" : String.valueOf(member.getMapId()), session.phase(),
+                    held.size(), session.companionAdopted(), left ? "left" : "never-registered");
         }
     }
 

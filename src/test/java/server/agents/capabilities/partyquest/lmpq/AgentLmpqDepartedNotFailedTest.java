@@ -65,7 +65,7 @@ class AgentLmpqDepartedNotFailedTest {
             assertFalse(session.terminal(), session.failure());
             assertTrue(session.departed(kes.getId()));
             assertEquals(List.of("LMPQ departed: session=" + session.sessionId() + " member=Kes(3) type=AGENT"
-                            + " map=809050017 phase=FARMING registered=4 companionRun=false"),
+                            + " map=809050017 phase=FARMING registered=4 companionRun=false reason=left"),
                     lines.startingWith("LMPQ departed:"));
             assertEquals(AgentLmpqRoomLedger.State.AVAILABLE, session.rooms().room(6).state(), "its lease is free");
             assertEquals(0, session.member(kes.getId()).targetRoom());
@@ -83,7 +83,7 @@ class AgentLmpqDepartedNotFailedTest {
 
             assertFalse(session.terminal(), session.failure());
             assertEquals(List.of("LMPQ departed: session=" + session.sessionId() + " member=-(5) type=HUMAN map=-"
-                            + " phase=FARMING registered=4 companionRun=false"),
+                            + " phase=FARMING registered=4 companionRun=false reason=left"),
                     lines.startingWith("LMPQ departed:"));
         }
     }

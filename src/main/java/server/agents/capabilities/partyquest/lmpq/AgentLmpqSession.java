@@ -40,6 +40,7 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private boolean terminating;
     private String failure = "";
     private EventInstanceManager eventInstance;
+    private long boundAtMs;
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private AgentPqPaceCalibration paceCalibration;
@@ -198,6 +199,22 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     public synchronized String failure() { return failure; }
     public synchronized EventInstanceManager eventInstance() { return eventInstance; }
     public synchronized void bindEventInstance(EventInstanceManager value) { eventInstance = value; }
+
+    /** Binds the run to its event at {@code nowMs} (the coordinator, on its leader's entry). */
+    synchronized void bindEventInstance(EventInstanceManager value, long nowMs) {
+        eventInstance = value;
+        boundAtMs = nowMs;
+    }
+
+    /**
+     * When the coordinator bound the run to its event; for a run bound without a time, its first FARMING entry, or
+     * its admission.
+     */
+    synchronized long boundAtMs() {
+        if (boundAtMs > 0L) return boundAtMs;
+        Long farming = firstEntries.get(Phase.FARMING);
+        return farming != null ? farming : startedAtMs;
+    }
     public synchronized void clearEventInstance() { eventInstance = null; }
     public synchronized int rendezvousRoom() { return rendezvousRoom; }
     public synchronized void setRendezvousRoom(int room) {
