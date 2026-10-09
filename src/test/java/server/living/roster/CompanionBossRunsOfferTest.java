@@ -121,7 +121,7 @@ class CompanionBossRunsOfferTest {
     void muYoungOffersAnOwnerWhoseCompanionsStandInHerRoom() {
         assertTrue(runs.offers(game.ann, "easy_balrog"));
         assertTrue(runs.offers(game.ann, " Easy_Balrog "), "the key in any case");
-        assertFalse(runs.offers(game.ann, "zakum"), "no other boss in Part A");
+        assertFalse(runs.offers(game.ann, "zakum"), "a boss the switch does not list");
         assertFalse(runs.offers(null, "easy_balrog"));
     }
 

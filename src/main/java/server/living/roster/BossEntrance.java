@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.Character;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.progression.AgentPotionSupplierCatalog;
@@ -19,10 +20,12 @@ import java.util.WeakHashMap;
  * run, the way a lineup's extras wait beside a party quest's entry NPC (PqEntrance.Beside). Also the map on the way
  * there whose store its companions top up at ({@code approachMapId}; 0: none), since no shop is in reach of her room.
  * A bench ally (Part B) comes into the room at its arrival portal, where players coming down to her land, and leaves
- * by its exit portal.
+ * by its exit portal. {@code holdsTripsAtEntry} (P8): a companion's potion trip out of the recruit map is to be held
+ * there while the switch lists the boss, since the way back is too long (Zakum: no route leads back into Adobis's
+ * room).
  */
 record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside, int approachMapId,
-                    String arrivalPortal, String exitPortal) {
+                    String arrivalPortal, String exitPortal, boolean holdsTripsAtEntry) {
     /**
      * Mu Young stands at 617,246 (WZ 105100100 life/0): her companions wait at x 567, 537, 507, 477 and 447. On the
      * walk down from Sleepywood they pass Ant Tunnel Park (105070001), where the 24 Hr Mobile Store (1061001) sells
@@ -30,10 +33,19 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
      * (105100000) land, and leave by outPerrion (-691,246), the room's way out to Perion.
      */
     static final BossEntrance EASY_BALROG = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
-            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion");
+            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false);
     // slot: zakum
+    /**
+     * Adobis stands at -800,-236 (WZ 211042400 life/0) on one continuous floor: her companions wait at x -850, -880,
+     * -910 and on. Players reach the Door to Zakum through Ice Valley II (211040200), where Glibber (2030009) sells
+     * Unagi, Pure Water, bullets and crossbow arrows. Allies come in and leave by west00 (-1601,-339), the room's way
+     * back to the door (211042300). No shop is in reach of her room and no route leads back into it, so a trip out is
+     * to be held there.
+     */
+    static final BossEntrance ZAKUM = new BossEntrance(AgentBossRunCatalog.ZAKUM,
+            new PqEntrance.Beside(-50, -30, true), 211_040_200, "west00", "west00", true);
 
-    private static final List<BossEntrance> ALL = List.of(EASY_BALROG);
+    private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM);
     /**
      * Where the entry NPC stands, by the map instance she was found on: looked for once per map (MapleMap.getNPCById
      * copies every object on it under its lock, and she never moves), not on every tick a companion walks up.
@@ -60,6 +72,17 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
             }
         }
         return null;
+    }
+
+    /**
+     * True when {@code owner}, passing the approach map, is on the way to this boss: always for a boss with no marker
+     * item (Easy Balrog: Ant Tunnel Park is on the walk down to Mu Young and nowhere else); else only while they carry
+     * one (Zakum: the Eye of Fire, which the Door to Zakum asks every player for), since Ice Valley II is also a Yeti
+     * field and the taxi stop for Sharp Cliff and the Dead Mine. Memory only.
+     */
+    boolean approachMeantBy(Character owner) {
+        List<Integer> markers = definition.markerItemIds();
+        return markers.isEmpty() || owner != null && markers.stream().anyMatch(owner::haveItem);
     }
 
     /** The entrance of boss {@code key} (any case, spaces around it ignored), or null when there is none. */

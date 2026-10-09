@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
+import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 import testutil.LogLines;
@@ -30,8 +31,9 @@ import static org.mockito.Mockito.when;
 /**
  * How companions leave a boss run: a death sends one out to wait for its owner, a fight with no human left standing
  * sends them all out through the battle map's exit NPC, and after the clear they leave with their anchor through the
- * reward room's portal, never through the exit NPC (which then warps the whole team). The run ends once, when every
- * member is out or the event is gone.
+ * reward room's portal, never through the exit NPC (which then warps the whole team). Zakum has no reward room: there
+ * Amon is the way out after the clear too, and he warps only the talker. The run ends once, when every member is out
+ * or the event is gone.
  */
 class AgentBossRunSessionExitTest {
     private static final int OWNER = 1;
@@ -57,6 +59,14 @@ class AgentBossRunSessionExitTest {
     // WZ: 1061018 stands at (993, 241) on 105100400; portal 2 (balog_end) is at (808, 129) on 105100401.
     private static final Point EXIT_NPC_SPOT = new Point(993, 241);
     private static final Point REWARD_PORTAL_SPOT = new Point(808, 129);
+    private static final int ADOBIS = AgentZakumDefinition.ENTRY_NPC_ID;
+    private static final int AMON = AgentZakumDefinition.EXIT_NPC_ID;
+    private static final int ADOBIS_ROOM = AgentZakumDefinition.RECRUIT_MAP_ID;
+    private static final int ALTAR = AgentZakumDefinition.BATTLE_MAP_ID;
+    private static final int DOOR_TO_ZAKUM = 211_042_300;
+    // WZ: 2030013 stands at (-800, -236) on 211042400; 2030010 at (-473, -430) on 280030000, up on his ledge.
+    private static final Point ADOBIS_SPOT = new Point(-800, -236);
+    private static final Point AMON_SPOT = new Point(-473, -430);
 
     private final FakeBossRunPorts ports = new FakeBossRunPorts();
     private final FakeBossRunPorts.Host host = new FakeBossRunPorts.Host(ports.calls);
@@ -73,6 +83,8 @@ class AgentBossRunSessionExitTest {
         ports.npcs.put(MU_YOUNG, new Point(MU_YOUNG_X, FLOOR_Y));
         ports.npcs.put(EXIT_NPC, new Point(EXIT_NPC_SPOT));
         ports.portals.put(REWARD_EXIT_PORTAL, new Point(REWARD_PORTAL_SPOT));
+        ports.npcs.put(ADOBIS, new Point(ADOBIS_SPOT));
+        ports.npcs.put(AMON, new Point(AMON_SPOT));
         expedition = mock(Expedition.class);
         when(expedition.isRegistering()).thenReturn(true);
         when(expedition.getStartTime()).thenReturn(REGISTRATION_END);
@@ -86,10 +98,15 @@ class AgentBossRunSessionExitTest {
         });
         when(expedition.contains(any())).thenAnswer(invocation ->
                 listed.contains(((Character) invocation.getArgument(0)).getId()));
-        // Mu Young lists the talker; 1061018 before the clear warps only the talker to her room.
+        // Mu Young and Adobis list the talker; 1061018 before the clear warps only the talker to her room, and Amon
+        // (2030010.js), before or after the clear, warps only the talker to the Door to Zakum.
         ports.runNpc = (agent, npcId, selections) -> {
             if (npcId == EXIT_NPC) {
                 outOfTheEvent(agent.getId(), RECRUIT_MAP);
+                return true;
+            }
+            if (npcId == AMON) {
+                outOfTheEvent(agent.getId(), DOOR_TO_ZAKUM);
                 return true;
             }
             return listed.add(agent.getId());
@@ -312,6 +329,7 @@ class AgentBossRunSessionExitTest {
 
         assertEquals(0L, ports.count("runNpc " + THANE + " " + EXIT_NPC), "1061018 after the clear warps everyone");
         assertEquals(0L, ports.count("runNpc " + ISOLDE + " " + EXIT_NPC));
+        assertEquals(0L, ports.count("prepareScripts "), "1061018 is no way out after the clear");
         assertTrue(ports.calls.containsAll(List.of("follow " + THANE, "out " + THANE + " EXITED",
                 "follow " + ISOLDE, "out " + ISOLDE + " EXITED")));
         assertEquals(List.of("ended members-out"),
@@ -341,6 +359,83 @@ class AgentBossRunSessionExitTest {
         assertEquals(AgentBossRunSession.Phase.POST_CLEAR, session.phase());
         assertFalse(session.member(THANE).inAtClear(), "it had left the fight before the boss fell");
         assertEquals(List.of("moveOut " + THANE + " " + RECRUIT_MAP), callsFor(THANE));
+    }
+
+    @Test
+    void afterTheClearZakumMembersLeaveByTalkingToAmonWhoWarpsOnlyTheTalkerOut() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, THANE, ISOLDE);
+        cleared = true;
+        session.tick(ports, host, FIGHT + 500L);
+        assertEquals(AgentBossRunSession.Phase.POST_CLEAR, session.phase());
+        // Isolde already stands on Amon's ledge; Thane is still down on the altar floor.
+        ports.place(ISOLDE, ALTAR, AMON_SPOT.x - 30, AMON_SPOT.y, 70);
+        ports.calls.clear();
+
+        // The owner talked to Amon: out of the event on the Door to Zakum, still logged in.
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT + 1_000L);
+
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(ISOLDE).phase());
+        assertEquals(1L, ports.count("prepareScripts " + AMON), "Amon is the way out after the clear too");
+        String toAmon = "navigate " + THANE + " " + AMON_SPOT.x + "," + AMON_SPOT.y;
+        assertEquals(List.of(toAmon), callsFor(THANE));
+        assertEquals(List.of("stop " + ISOLDE, "runNpc " + ISOLDE + " " + AMON + " "), callsFor(ISOLDE));
+        assertEquals(DOOR_TO_ZAKUM, ports.agent(ISOLDE).getMapId(), "his yes warped Isolde alone");
+
+        ports.place(THANE, ALTAR, AMON_SPOT.x + 40, AMON_SPOT.y, 70);
+        session.tick(ports, host, FIGHT + 1_500L);
+        session.tick(ports, host, FIGHT + 2_000L);
+
+        assertEquals(List.of(toAmon, "stop " + THANE, "runNpc " + THANE + " " + AMON + " ",
+                "clearBoundary " + THANE, "follow " + THANE, "out " + THANE + " EXITED"), callsFor(THANE));
+        assertEquals(List.of("stop " + ISOLDE, "runNpc " + ISOLDE + " " + AMON + " ",
+                "clearBoundary " + ISOLDE, "follow " + ISOLDE, "out " + ISOLDE + " EXITED"), callsFor(ISOLDE));
+        assertEquals(0L, ports.count("moveOut "), "nobody is moved out while Amon is in reach");
+        assertEquals(1L, ports.count("prepareScripts "), "prepared once for the run");
+        assertEquals(List.of("ended members-out"),
+                ports.calls.stream().filter(call -> call.startsWith("ended ")).toList());
+        assertTrue(host.ended.getFirst().cleared());
+        assertForgotten(session);
+    }
+
+    @Test
+    void zakumMemberLeavingAtTheClearKeepsTalkingToAmonInsteadOfBeingMovedOut() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, THANE);
+        ports.dead.add(OWNER);
+        session.tick(ports, host, FIGHT + 500L);
+        session.tick(ports, host, FIGHT + 500L + AgentBossRunSession.humanGoneGraceMs());
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+        assertEquals(1L, ports.count("prepareScripts " + AMON));
+        ports.place(THANE, ALTAR, AMON_SPOT.x - 30, AMON_SPOT.y, 70);
+        cleared = true;
+        ports.calls.clear();
+
+        session.tick(ports, host, FIGHT + 5_000L);
+        session.tick(ports, host, FIGHT + 5_500L);
+
+        assertEquals(AgentBossRunSession.Phase.POST_CLEAR, session.phase());
+        assertEquals(List.of("stop " + THANE, "runNpc " + THANE + " " + AMON + " "), callsFor(THANE));
+        assertEquals(0L, ports.count("prepareScripts "), "Amon was prepared when Thane first left");
+    }
+
+    @Test
+    void zakumMemberThatCannotReachAmonBeforeTheExitTimeoutIsMovedToAdobissRoom() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, THANE);
+        cleared = true;
+        session.tick(ports, host, FIGHT + 500L);
+        players.remove(OWNER);
+        long leftAt = FIGHT + 1_000L;
+
+        session.tick(ports, host, leftAt);
+        session.tick(ports, host, leftAt + AgentBossRunSession.exitTimeoutMs() - 1L);
+        assertEquals(2L, ports.count("navigate " + THANE + " " + AMON_SPOT.x + "," + AMON_SPOT.y));
+        assertEquals(0L, ports.count("moveOut "));
+
+        session.tick(ports, host, leftAt + AgentBossRunSession.exitTimeoutMs());
+
+        assertEquals(1L, ports.count("moveOut " + THANE + " " + ADOBIS_ROOM));
+        assertEquals(0L, ports.count("runNpc " + THANE + " " + AMON));
     }
 
     @Test
@@ -599,17 +694,23 @@ class AgentBossRunSessionExitTest {
     // ---- helpers ---------------------------------------------------------------------------------
 
     /**
-     * A run whose members signed up with Mu Young, were warped in by the leader's Start and were adopted in the
-     * first tick after it (at {@link #FIGHT}); the owner stands in the event too. Call logs are cleared.
+     * An Easy Balrog run whose members signed up with Mu Young, were warped in by the leader's Start and were adopted
+     * in the first tick after it (at {@link #FIGHT}); the owner stands in the event too. Call logs are cleared.
      */
     private AgentBossRunSession fighting(int... memberIds) {
-        AgentBossRunSession session = new AgentBossRunSession(SESSION_ID, AgentBossRunCatalog.EASY_BALROG, expedition,
-                fight, NOW);
+        return fighting(AgentBossRunCatalog.EASY_BALROG, memberIds);
+    }
+
+    /** The same for {@code definition}'s boss: members sign up beside its entry NPC and fight on its battle map. */
+    private AgentBossRunSession fighting(AgentBossRunDefinition definition, int... memberIds) {
+        when(expedition.getType()).thenReturn(definition.type());
+        AgentBossRunSession session = new AgentBossRunSession(SESSION_ID, definition, expedition, fight, NOW);
         AgentBossRunRegistry.put(session);
+        Point entryNpc = ports.npcs.get(definition.entryNpcId());
         long tickAt = NOW;
         for (int agentId : memberIds) {
             session.addMember(agentId, OWNER, NOW);
-            ports.place(agentId, RECRUIT_MAP, MU_YOUNG_X - 50, FLOOR_Y, 70);
+            ports.place(agentId, definition.recruitMapId(), entryNpc.x - 50, entryNpc.y, 70);
         }
         for (int ignored : memberIds) {
             session.tick(ports, host, tickAt);
@@ -618,7 +719,7 @@ class AgentBossRunSessionExitTest {
         when(expedition.isRegistering()).thenReturn(false);
         session.tick(ports, host, START);
         for (int agentId : memberIds) {
-            ports.place(agentId, BATTLE_MAP, 100 + agentId, 0, 70);
+            ports.place(agentId, definition.battleMapId(), 100 + agentId, 0, 70);
             ports.eventOf.put(agentId, event);
             players.put(agentId, ports.agent(agentId));
         }

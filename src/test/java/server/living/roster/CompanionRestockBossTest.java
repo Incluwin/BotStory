@@ -40,6 +40,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.HENESYS;
@@ -57,8 +59,14 @@ class CompanionRestockBossTest {
     private static final int MU_YOUNGS_ROOM = 105_100_100;
     /** On the walk down from Sleepywood: a hunting field with the 24 Hr Mobile Store on it (fix L7). */
     private static final int ANT_TUNNEL_PARK = 105_070_001;
+    /** Adobis's room behind the Door to Zakum: its entrance holds a companion's trip out while zakum is on (P8). */
+    private static final int ADOBIS_ROOM = 211_042_400;
     private static final AgentSupplyReadiness.Activity EASY_BALROG =
             AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
+    /** El Nath's taxi stop and Yeti field on the way to the Door to Zakum, where Glibber sells potions (P8). */
+    private static final int ICE_VALLEY_II = 211_040_200;
+    private static final int EYE_OF_FIRE = 4_001_017;
+    private static final AgentSupplyReadiness.Activity ZAKUM = AgentSupplyReadiness.Activity.partyQuest("zakum");
 
     /** The readiness rule (CompanionRestock) for Fenna, out with Ann and following her. */
     @Nested
@@ -229,6 +237,28 @@ class CompanionRestockBossTest {
                     .contains(said.getFirst()), said.toString());
         }
 
+        @Test
+        void aZakumTripSaysZakumsGoLinesNeverBalrogs() {
+            AgentSupplyReadiness.Activity zakum = AgentSupplyReadiness.Activity.partyQuest("zakum");
+            restock.started(FENNA, zakum, 120_000L);
+            drain();
+            try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                    org.mockito.Mockito.CALLS_REAL_METHODS);
+                 MockedStatic<AgentAmmoService> ammo = mockStatic(AgentAmmoService.class,
+                         org.mockito.Mockito.CALLS_REAL_METHODS)) {
+                readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                        any(AgentSupplyReadiness.Activity.class)))
+                        .thenReturn(new AgentSupplyReadiness.Shortfall(0, 0, 500));
+                ammo.when(() -> AgentAmmoService.projectileKind(any())).thenReturn(AgentProjectileKind.ARROWS);
+
+                restock.started(FENNA, zakum, 120_000L);
+                drain();
+            }
+
+            assertEquals(List.of("low on pots for zakum, grabbing some here. back in ~2 min.",
+                    "low on arrows for zakum, grabbing some here. back in ~2 min."), said);
+        }
+
         private void noSupplier(AgentSupplyReadiness.Activity activity) {
             restock.refused(FENNA, activity, AgentSupplyReadiness.Refusal.NO_SUPPLIER,
                     new AgentSupplyReadiness.Shortfall(19, 0), 0);
@@ -336,6 +366,35 @@ class CompanionRestockBossTest {
             game.config.COMPANION_BOSS_ENABLED_TYPES = "";
             runs.ownerArrived(ANN, MU_YOUNGS_ROOM);
             assertEquals(List.of(), checkedSoon, "the switch off");
+        }
+
+        @Test
+        void inAdobissRoomHerShortCompanionsSayThereIsNoShopInsteadOfLookingForOne() {
+            // P8: no trip leaves that room while zakum is on (CompanionRestock.restocksFrom), so a look would find
+            // nothing to do and its own no-shop refusal never comes: the readiness rule says the line at once
+            CompanionRestock restock = mock(CompanionRestock.class);
+            when(game.world.restock()).thenReturn(restock);
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+
+            runs.ownerArrived(ANN, ADOBIS_ROOM);
+
+            verify(restock).bossGate(ANN, ADOBIS_ROOM, AgentSupplyReadiness.Activity.partyQuest("zakum"));
+            assertEquals(List.of(), checkedSoon, "nobody looks for a shop it may not walk to");
+
+            runs.ownerArrived(ANN, MU_YOUNGS_ROOM);
+            assertEquals(List.of(THANE, SORREL), checkedSoon, "Mu Young's room as before");
+            verifyNoMoreInteractions(restock);
+
+            checkedSoon.clear();
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+            runs.ownerArrived(ANN, ADOBIS_ROOM);
+            assertEquals(List.of(), checkedSoon, "the switch off");
+            verifyNoMoreInteractions(restock);
+
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            when(game.world.restock()).thenReturn(null);
+            runs.ownerArrived(ANN, ADOBIS_ROOM); // the readiness rule not running: nothing to say it with
+            assertEquals(List.of(), checkedSoon);
         }
 
         @Test
@@ -525,6 +584,24 @@ class CompanionRestockBossTest {
         }
 
         @Test
+        void onIceValleyIiZakumsStandardHoldsOnlyWhileItsOwnerCarriesTheEyeOfFire() {
+            config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            when(fenna.getMapId()).thenReturn(ICE_VALLEY_II);
+            when(roster.onlineCharacter(ANN)).thenReturn(ann);
+
+            // Ann hunts Yetis there, or takes the taxi on to Sharp Cliff: no Eye, no Zakum
+            assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "the default there");
+            assertFalse(restock.restocksOnField(FENNA, ICE_VALLEY_II, ZAKUM), "the field stays closed");
+
+            when(ann.haveItem(EYE_OF_FIRE)).thenReturn(true); // the Door to Zakum asks every player for it
+            assertEquals(ZAKUM, restock.standing(FENNA), "on the way to Zakum");
+            assertTrue(restock.restocksOnField(FENNA, ICE_VALLEY_II, ZAKUM), "short of 500/400");
+
+            when(roster.onlineCharacter(ANN)).thenReturn(null);
+            assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "its owner offline");
+        }
+
+        @Test
         void desksMuYoungsRoomAndOtherFieldsKeepTheirOwnStandard() {
             when(fenna.getMapId()).thenReturn(KERNING);
             assertEquals(AgentSupplyReadiness.Activity.partyQuest("kpq"), restock.standing(FENNA), "Lakelis's desk");
@@ -646,6 +723,23 @@ class CompanionRestockBossTest {
             assertEquals(List.of(ISOLDE), checkedSoon,
                     "Thane is stocked, Sorrel is below 50, Brannock and the citizen are not hers");
             assertEquals(Set.of(EASY_BALROG), measuredFor, "measured against Easy Balrog's standard");
+        }
+
+        @Test
+        void onIceValleyIiOnlyAnOwnerCarryingTheEyeOfFireHasHerCompanionsLookAtZakumsStandard() {
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            game.moveAnn(ICE_VALLEY_II, 100, 0);
+
+            game.roster().ownerEnteredMap(game.ann, game.map(ICE_VALLEY_II));
+            ops.forEach(Runnable::run);
+            ops.clear();
+            assertEquals(List.of(), checkedSoon, "no Eye: she hunts Yetis or rides the taxi on");
+
+            when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+            game.roster().ownerEnteredMap(game.ann, game.map(ICE_VALLEY_II));
+            ops.forEach(Runnable::run);
+            assertEquals(List.of(ISOLDE, THANE), checkedSoon, "both short of 500/400; Sorrel is below 50");
+            assertEquals(Set.of(ZAKUM), measuredFor, "measured against Zakum's standard");
         }
 
         @Test

@@ -69,6 +69,14 @@ class AgentShopServicePotionFloorTest {
     private static final int SUBI = 2_070_000;
     private static final int WARRIOR_POTION = 2_002_004;
     private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
+    private static final AgentSupplyReadiness.Activity ZAKUM = AgentSupplyReadiness.Activity.partyQuest("zakum");
+    private static final int ORANGE_POTION = 2_000_001;
+    private static final int MANA_ELIXIR = 2_000_006;
+    private static final int UNAGI = 2_022_003;
+    private static final int PURE_WATER = 2_022_000;
+    /** Glibber's potions on Ice Valley II (102-shopitems-data.sql, NPC 2030009), his food and dews left out. */
+    private static final List<Integer> GLIBBERS_POTIONS =
+            List.of(PURE_WATER, UNAGI, MANA_ELIXIR, BLUE, WHITE, ORANGE_POTION);
 
     private final Map<Integer, StatEffect> effects = new HashMap<>();
     private final Map<Integer, Integer> prices = new HashMap<>();
@@ -403,6 +411,60 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void aZakumDutyAtGlibbersBuysFiveHundredAndFourHundredInOneVisitInTheSlotsTheGateAsksFor() throws Exception {
+        // P8 (user decision 2026-10-08): zakum=500/400 is past the carry (200) and per-visit (100) limits and takes
+        // five stacks of HP potions and four of MP potions; the gate asks exactly those and the run's slot
+        assertEquals("200", config.AgentYamlConfig.config.tuning.get(
+                "server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_CARRIED_QUANTITY"));
+        assertEquals("100", config.AgentYamlConfig.config.tuning.get(
+                "server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_PURCHASE_QUANTITY_PER_VISIT"));
+        AgentSupplyReadiness.install(id -> ZAKUM);
+        glibbersPrices();
+        when(bot.getCurrentMaxHp()).thenReturn(9_000); // a Lv160 Bowmaster
+        when(bot.getCurrentMaxMp()).thenReturn(6_000);
+        purse = 2_000_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 10); // ten free slots and no potion: loot took the rest
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        int needed;
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            needed = useSlotsNeeded(shop(GLIBBERS_POTIONS), ZAKUM, AgentSupplyReadiness.shortfall(bot, ZAKUM), purse);
+        }
+        assertEquals(10, needed, "five stacks of HP potions, four of MP potions and the run's slot");
+
+        visit(GLIBBERS_POTIONS, slotMax);
+
+        assertArrayEquals(new int[]{500, 400}, AgentPotionService.countPotions(bot), transactions.toString());
+        assertEquals(1, use.getNumFreeSlot(), "the counter took the slots the gate asked for, less the run's one");
+        assertTrue(transactions.stream().allMatch(line -> Integer.parseInt(line.substring(0, line.indexOf(' '))) <= 100),
+                "the shop's batch of 100 per purchase: " + transactions);
+        assertTrue(purse > 0, "a purse of 2,000,000 pays for it: " + purse);
+    }
+
+    @Test
+    void aZakumDutyCarryingTheOldCapTopsUpToTheStandardAndNoFurther() {
+        AgentSupplyReadiness.install(id -> ZAKUM);
+        glibbersPrices();
+        when(bot.getCurrentMaxHp()).thenReturn(9_000);
+        when(bot.getCurrentMaxMp()).thenReturn(6_000);
+        purse = 2_000_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(UNAGI, 100));
+        use.addItem(Items.itemWithQuantity(UNAGI, 100));
+        use.addItem(Items.itemWithQuantity(PURE_WATER, 100));
+        use.addItem(Items.itemWithQuantity(PURE_WATER, 100)); // 200/200: the carry limit before P8
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        visit(GLIBBERS_POTIONS, slotMax);
+
+        assertArrayEquals(new int[]{500, 400}, AgentPotionService.countPotions(bot), transactions.toString());
+        assertEquals(24 - 9, use.getNumFreeSlot(), "nine stacks in all, and no top-up toward BUY_TO_PERCENT past it");
+    }
+
+    @Test
     void anEpqDutyFillsTheRoomOfAStackItCarriesBesideTheRunsSlot() {
         AgentSupplyReadiness.install(id -> EPQ);
         purse = 200_000;
@@ -593,10 +655,30 @@ class AgentShopServicePotionFloorTest {
 
     /** The readiness gate's real slot count (AgentSupplyReadinessRuntime.useSlotsNeeded, package-private there). */
     private int useSlotsNeeded(Shop shop, AgentSupplyReadiness.Shortfall shortfall, long spendable) throws Exception {
+        return useSlotsNeeded(shop, EPQ, shortfall, spendable);
+    }
+
+    /** {@link #useSlotsNeeded(Shop, AgentSupplyReadiness.Shortfall, long)} for {@code activity}'s standard. */
+    private int useSlotsNeeded(Shop shop, AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
+                               long spendable) throws Exception {
         Method gate = AgentSupplyReadinessRuntime.class.getDeclaredMethod("useSlotsNeeded", Character.class,
                 Shop.class, AgentSupplyReadiness.Activity.class, AgentSupplyReadiness.Shortfall.class, long.class);
         gate.setAccessible(true);
-        return (int) gate.invoke(null, bot, shop, EPQ, shortfall, spendable);
+        return (int) gate.invoke(null, bot, shop, activity, shortfall, spendable);
+    }
+
+    /** Glibber's prices and what his potions restore (Item.wz Consume spec hp/mp). */
+    private void glibbersPrices() {
+        effects.put(ORANGE_POTION, effect(150, 0, 0.0d, 0.0d));
+        effects.put(MANA_ELIXIR, effect(0, 300, 0.0d, 0.0d));
+        effects.put(UNAGI, effect(1_000, 0, 0.0d, 0.0d));
+        effects.put(PURE_WATER, effect(0, 800, 0.0d, 0.0d));
+        prices.put(ORANGE_POTION, 166);
+        prices.put(WHITE, 332);
+        prices.put(BLUE, 208);
+        prices.put(MANA_ELIXIR, 644);
+        prices.put(UNAGI, 1_144);
+        prices.put(PURE_WATER, 1_716);
     }
 
     private void visit(List<Integer> itemIds) {

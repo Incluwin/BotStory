@@ -62,6 +62,10 @@ import static server.living.roster.LifecycleHarness.ANN;
 class CompanionBossRunsTest {
     private static final long SID = 7L;
     private static final String KEY = "boss:easy_balrog:7:" + ANN;
+    private static final String ZAKUM_KEY = "boss:zakum:7:" + ANN;
+    /** Zakum's altar (280030000) and the Eye of Fire the owner drops on it (P8). */
+    private static final int ALTAR = 280_030_000;
+    private static final int EYE_OF_FIRE = 4_001_017;
     private static final int ISOLDE = 901;
     private static final int THANE = 902;
     private static final int SORREL = 903;
@@ -565,6 +569,118 @@ class CompanionBossRunsTest {
         assertEquals(KEY, game.commitments.keyOf(SORREL), "the run's end lets them go");
     }
 
+    // ---- P8: Zakum's lines and the owner-left rule ---------------------------------------------
+
+    @Test
+    void anOwnerWhoLeftZakumBeforeTheClearHearsOneLineFromTheirPartyAndEachIsLetGoAsItIsOut() {
+        runs.seat(zakumSeat(ISOLDE));
+        runs.seat(zakumSeat(THANE));
+        runs.seat(zakumSeat(SORREL));
+
+        runs.memberOut(zakumSeat(ISOLDE), Out.OWNER_LEFT);
+        runs.memberOut(zakumSeat(THANE), Out.OWNER_LEFT);
+
+        assertFalse(game.commitments.isCommitted(ISOLDE), "out with its owner: it takes orders again at once");
+        assertFalse(game.commitments.isCommitted(THANE), "out with its owner: it takes orders again at once");
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(SORREL), "still walking out: the run's until it is out");
+
+        runs.memberOut(zakumSeat(SORREL), Out.OWNER_LEFT);
+
+        assertFalse(game.commitments.isCommitted(SORREL));
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Isolde", BossRunLines.OWNER_LEFT, game.partyChat.get(0));
+    }
+
+    @Test
+    void anOwnerLeftOutOfAnotherRunLeavesTheCommitmentToTheRunItIsInAlone() {
+        runs.seat(zakumSeat(THANE));
+        game.commitments.releaseMember(THANE);
+        game.commitments.commit("boss:zakum:8:" + ANN, ANN, THANE);
+
+        runs.memberOut(zakumSeat(THANE), Out.OWNER_LEFT);
+
+        assertEquals("boss:zakum:8:" + ANN, game.commitments.keyOf(THANE), "another run's commitment is its own");
+    }
+
+    @Test
+    void aZakumDeathSaysZakumsDownLine() {
+        runs.seat(zakumSeat(THANE));
+
+        runs.memberOut(zakumSeat(THANE), Out.DIED);
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(BossRunLines.BY_BOSS.get("zakum").get(BossRunLines.DOWN)
+                .contains(wording("Thane", game.partyChat.get(0))), game.partyChat.toString());
+        assertEquals(ZAKUM_KEY, game.commitments.keyOf(THANE), "it waits in el nath, still in the run");
+    }
+
+    @Test
+    void aMemberThatLeftWithItsOwnerIsTappedOutWhenTheRunWentOnToClearAndFailedWhenItDidNot() {
+        MemberResult left = new MemberResult(ISOLDE, ANN, true, false, 0, Out.OWNER_LEFT);
+
+        assertEquals("tapped_out", CompanionBossRuns.outcome(left, true));
+        assertEquals("failed", CompanionBossRuns.outcome(left, false));
+    }
+
+    @Test
+    void theFirstPartyCompanionToGoInSaysTheEyeLineOnceWhileTheOwnerCarriesTheEyeOnTheAltar() {
+        List<Runnable> ops = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(ops);
+        when(game.world.executor()).thenReturn(queued);
+        game.moveAnn(ALTAR, -10, -204);
+        when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+        runs.seat(zakumSeat(ISOLDE));
+        runs.seat(zakumSeat(THANE));
+
+        runs.entered(zakumSeat(ISOLDE));
+        runs.entered(zakumSeat(THANE));
+        assertEquals(List.of(), game.partyChat, "nothing said on the run's tick");
+        ops.forEach(Runnable::run);
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(game.partyChat.get(0).startsWith("Isolde: "), game.partyChat.toString());
+        assertTrue(BossRunLines.BY_BOSS.get("zakum").get(BossRunLines.ZAKUM_EYE)
+                .contains(wording("Isolde", game.partyChat.get(0))), game.partyChat.toString());
+    }
+
+    @Test
+    void noEyeLineWhenTheOwnerHasNoEyeAtTheFirstOneInAndNeverFromAnAllyOrForEasyBalrog() {
+        List<Runnable> ops = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(ops);
+        when(game.world.executor()).thenReturn(queued);
+        game.moveAnn(ALTAR, -10, -204);
+        ally();
+
+        runs.entered(new Seat("easy_balrog", SID, ISOLDE, ANN));
+        assertEquals(List.of(), ops, "Easy Balrog has no marker: nothing handed over");
+
+        when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+        runs.entered(zakumSeat(ORRIN)); // a bench ally first: a party of bots has nobody to hear it
+        ops.forEach(Runnable::run);
+        ops.clear();
+        assertEquals(List.of(), game.partyChat);
+
+        when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(false); // another human of the list carries it
+        runs.entered(zakumSeat(ISOLDE));
+        ops.forEach(Runnable::run);
+        ops.clear();
+        when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+        runs.entered(zakumSeat(THANE));
+        ops.forEach(Runnable::run);
+
+        assertEquals(List.of(), game.partyChat, "asked once, at the first of her party to go in");
+    }
+
+    @Test
+    void noEyeLineWhileTheOwnerIsNotOnTheAltar() {
+        game.moveAnn(211_042_400, -850, -236); // still in Adobis's room as her companions go in
+        when(game.ann.haveItem(EYE_OF_FIRE)).thenReturn(true);
+
+        runs.entered(zakumSeat(ISOLDE));
+
+        assertEquals(List.of(), game.partyChat);
+    }
+
     // ---- the run's end -------------------------------------------------------------------------
 
     @Test
@@ -1041,6 +1157,11 @@ class CompanionBossRunsTest {
 
     private static Seat seat(int agentId) {
         return new Seat("easy_balrog", SID, agentId, ANN);
+    }
+
+    /** Ann's companion's seat in a Zakum run (P8). */
+    private static Seat zakumSeat(int agentId) {
+        return new Seat("zakum", SID, agentId, ANN);
     }
 
     /** Orrin, a bench ally of Ann's (P7 Part B): loaded, leading itself, in no party of hers. */

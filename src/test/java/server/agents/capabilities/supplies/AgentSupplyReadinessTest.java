@@ -265,9 +265,12 @@ class AgentSupplyReadinessTest {
     }
 
     @Test
-    void ammoStandardsListLpqAndEpqAtSixteenHundredEasyBalrogAtTwoThousandAndOtherKeysKeepPartyQuestAmmo() {
+    void ammoStandardsListLpqAndEpqAtSixteenHundredEasyBalrogAtTwoThousandZakumAtFourThousandAndOtherKeysKeepPartyQuestAmmo() {
         // live 2026-10-07: a claw companion used 800 stars in one EPQ golem fight; another reached LPQ stage 7 with none
-        assertEquals("lpq=1600,epq=1600,easy_balrog=2000", AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        // P8 (user decision 2026-10-08): Zakum's fight is far longer, 4000 projectiles
+        assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000",
+                AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        assertEquals(4000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("zakum")));
         int partyQuestAmmo = config.AgentTuning.intValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
         assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("EPQ ")));
@@ -277,7 +280,7 @@ class AgentSupplyReadinessTest {
         assertEquals(2000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
                 "its own since 2026-10-08, bought at Ant Tunnel Park on the way down");
         assertEquals(partyQuestAmmo,
-                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("zakum")),
+                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("horntail")),
                 "an unlisted boss");
         assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(PQ));
         assertEquals(0, AgentSupplyReadiness.ammoStandard(null), "no activity");

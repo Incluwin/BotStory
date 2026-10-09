@@ -1,7 +1,11 @@
 package server.agents.capabilities.expedition.boss;
 
+import client.Character;
 import scripting.event.EventInstanceManager;
 import server.expeditions.Expedition;
+import server.life.Monster;
+import server.maps.MapItem;
+import server.maps.MapleMap;
 
 import java.util.Collection;
 import java.util.List;
@@ -118,6 +122,37 @@ public final class AgentBossRunRegistry {
             }
         }
         return false;
+    }
+
+    /**
+     * True for a fake part (Zakum's body before its arms fall) in the event of an open run that never targets fakes:
+     * a hit on it is thrown away, so the combat selector never takes it, not even as a secondary or projectile target.
+     * Memory only, any thread; false at once while no run is open. The fake flag is read last, because it takes the
+     * monster's lock and every other read here is a plain field or map read.
+     */
+    public static boolean neverTarget(Monster monster) {
+        if (SESSIONS.isEmpty() || monster == null) {
+            return false;
+        }
+        MapleMap map = monster.getMap();
+        EventInstanceManager event = map == null ? null : map.getEventInstance();
+        AgentBossRunSession session = event == null ? null : forExpedition(event.getExpedition());
+        return session != null && session.definition().neverTargetFakes() && monster.isFake();
+    }
+
+    /**
+     * True when the drop is a marker item of the Agent's own run (Zakum's Eye of Fire, which the altar must take) and
+     * the Agent is an INSIDE or LEAVING member: it leaves the drop on the floor. Memory only, any thread.
+     */
+    public static boolean preservesMarker(Character agent, MapItem drop) {
+        if (SESSIONS.isEmpty() || agent == null || drop == null) {
+            return false;
+        }
+        AgentBossRunSession session = forMember(agent.getId());
+        AgentBossRunMember member = session == null ? null : session.member(agent.getId());
+        AgentBossRunMember.Phase phase = member == null ? null : member.phase();
+        return (phase == AgentBossRunMember.Phase.INSIDE || phase == AgentBossRunMember.Phase.LEAVING)
+                && session.definition().markerItemIds().contains(drop.getItemId());
     }
 
     /** Forgets every run; tests only. */

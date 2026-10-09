@@ -46,4 +46,19 @@ public final class BossActionGeometry {
                 && target.y >= origin.y + attack.lt().y
                 && target.y <= origin.y + attack.rb().y;
     }
+
+    /**
+     * Tests only the given regions of a region attack, also when the attack uses every region
+     * (where {@link #contains} reads the attack as one box). An empty list hits nothing.
+     */
+    public static boolean containsRegions(BossAction.OrdinaryAttack attack, Point origin,
+                                          Point target, boolean facingLeft,
+                                          List<Integer> regions) {
+        if (origin == null || target == null || attack.lt() == null || attack.rb() == null
+                || regions == null) {
+            return false;
+        }
+        return regions.stream().anyMatch(region -> containsRegion(
+                attack, origin, target, facingLeft, region));
+    }
 }

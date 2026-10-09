@@ -20,7 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * After Start the run adopts each signed-up member the stock warp took into the expedition's event on the battle map,
  * drives the alive ones through the fight, and at the clear hands them back to following their owner. A member that
  * died, or left the event, waits outside for its owner; when no human stands in the fight any more, or after the clear
- * once its anchor left, a member walks out by the stock ways. The run ends when every member is out or the event is
+ * once its anchor left, a member walks out by the stock ways (P8: for a boss whose owner takes the party out, Zakum, a
+ * member that follows its owner does so before the clear too). The run ends when every member is out or the event is
  * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
  * under the session's lock. A SELF_LED member (one that leads itself, with no owner to walk up with or follow) walks to
  * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
@@ -339,7 +340,7 @@ public final class AgentBossRunSession {
             clear(ports);
             return;
         }
-        if (phase == Phase.POST_CLEAR) {
+        if (phase == Phase.POST_CLEAR || definition.ownerLeavingTakesParty()) {
             followAnchorsOut(ports, nowMs);
         }
         watchHumans(ports, nowMs);
@@ -458,11 +459,17 @@ public final class AgentBossRunSession {
      * After the clear a member stays while its anchor (its owner, or a handoff's heir) is in the event. An anchor that
      * walked out is followed at once. One that logged out is waited for HUMAN_GONE_GRACE_MS from the first tick that
      * misses it: its logout leaves the event before companion-ops hands the member to an heir (handTo), and a member
-     * already LEAVING could not be handed over.
+     * already LEAVING could not be handed over. P8: before the clear, for a boss whose owner takes the party out
+     * (ownerLeavingTakesParty: Zakum), the same rule walks out each member that follows its owner, OWNER_LEFT. A dead
+     * anchor still lying in the event is in it; a member that leads itself (a bench ally) stays while any human stands
+     * (watchHumans). The Start registers and warps the members one at a time while this runs on its own timer, so
+     * before the clear an anchor not yet seen in the event is waited for until START_GRACE_MS after Start.
      */
     private void followAnchorsOut(AgentBossRunPorts ports, long nowMs) {
+        boolean beforeClear = !cleared;
         for (AgentBossRunMember member : members) {
-            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE
+                    || beforeClear && member.kind() != AgentBossRunMember.Kind.FOLLOWER) {
                 continue;
             }
             int anchor = member.anchorId();
@@ -473,10 +480,14 @@ public final class AgentBossRunSession {
             if (!alive(ports, member)) {
                 continue;
             }
+            if (beforeClear && !member.anchorSeen() && nowMs - startedAtMs < startGraceMs()) {
+                continue;
+            }
             boolean anchorLeft = ports.online(anchor) || nowMs - member.anchorGoneSince(nowMs) >= humanGoneGraceMs();
             // A handTo that landed during this tick has the last word.
             if (anchorLeft && member.anchorId() == anchor) {
-                leave(ports, member, AgentBossRunHost.Out.EXITED, nowMs);
+                leave(ports, member, beforeClear ? AgentBossRunHost.Out.OWNER_LEFT : AgentBossRunHost.Out.EXITED,
+                        nowMs);
             }
         }
     }
@@ -486,16 +497,19 @@ public final class AgentBossRunSession {
         return agent != null && agent.isAlive();
     }
 
-    /** The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls. */
+    /**
+     * The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls.
+     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}).
+     */
     private void leave(AgentBossRunPorts ports, AgentBossRunMember member, AgentBossRunHost.Out reason, long nowMs) {
         int agentId = member.agentId();
         if (!cleared) {
             ports.stop(agentId);
             ports.clearBoundary(agentId);
-            if (!exitNpcPrepared) {
-                exitNpcPrepared = true;
-                ports.prepareScripts(definition.exitNpcId());
-            }
+        }
+        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared) {
+            exitNpcPrepared = true;
+            ports.prepareScripts(definition.exitNpcId());
         }
         member.leaving(reason, nowMs);
         log.info("Boss run member leaving: session={} boss={} member={} reason={} anchor={}", sessionId,
@@ -525,7 +539,9 @@ public final class AgentBossRunSession {
      * One step out. In the reward room the member takes the stock exit portal; on the battle map before the clear it
      * talks to the exit NPC, whose yes then warps only the talker to the recruit map. After the clear that NPC warps
      * the whole team into the reward room, so a member still on the battle map then, one on any other map of the
-     * event, and one still inside after EXIT_TIMEOUT_MS are moved straight to the recruit map.
+     * event, and one still inside after EXIT_TIMEOUT_MS are moved straight to the recruit map. A boss with no reward
+     * room (exitNpcAfterClear, Zakum's Amon) keeps the exit NPC as the way out after the clear too: its yes then still
+     * warps only the talker.
      */
     private void walkOut(AgentBossRunPorts ports, AgentBossRunMember member, Character agent, long nowMs) {
         int agentId = member.agentId();
@@ -543,7 +559,7 @@ public final class AgentBossRunSession {
             } else {
                 ports.navigate(agentId, portal, true);
             }
-        } else if (mapId == definition.battleMapId() && !clearedNow) {
+        } else if (mapId == definition.battleMapId() && (!clearedNow || definition.exitNpcAfterClear())) {
             Point npc = ports.npcPosition(agent, definition.exitNpcId());
             if (npc == null) {
                 moveOut(ports, agent);
@@ -643,6 +659,7 @@ public final class AgentBossRunSession {
                 }
                 fight.adopt(agentId, member.ordinal());
                 member.adopted();
+                host.entered(member.seat(definition.key(), sessionId));
                 log.info("Boss run member inside: session={} boss={} member={} ordinal={}", sessionId,
                         definition.key(), agentId, member.ordinal());
                 return;

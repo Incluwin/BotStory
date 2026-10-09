@@ -33,21 +33,33 @@ public final class ServerMobDamageService {
     public static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic) {
         return applyOrdinaryAttack(attacker, target, attackIndex, magic,
-                0, 0, false, 0, 0);
+                0, 0, false, 0, 0, 100, true);
     }
 
     public static int applyOrdinaryAttack(
             Monster attacker, Character target, BossAction.OrdinaryAttack attack) {
+        return applyOrdinaryAttack(attacker, target, attack, 100, true);
+    }
+
+    /**
+     * The same hit with the rolled damage scaled to {@code damagePercent}, and without the damage packet when
+     * {@code broadcast} is false: the target still loses the HP and an Agent still reacts. Whether the hit lands is the
+     * unscaled roll's, so a deadly hit, MP burn and a disease stay as they are at any percent, 0 included: the percent
+     * scales only the HP loss. The boss attack mirror softens and quiets the hits it copies onto Agents with these two.
+     */
+    public static int applyOrdinaryAttack(
+            Monster attacker, Character target, BossAction.OrdinaryAttack attack,
+            int damagePercent, boolean broadcast) {
         return applyOrdinaryAttack(attacker, target, attack.attackIndex(), attack.magic(),
                 attack.physicalAttack(), attack.magicAttack(), attack.deadly(),
-                attack.diseaseSkill(), attack.diseaseLevel());
+                attack.diseaseSkill(), attack.diseaseLevel(), damagePercent, broadcast);
     }
 
     private static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic,
             int physicalAttackOverride, int magicAttackOverride,
             boolean deadlyOverride, int diseaseSkillOverride,
-            int diseaseLevelOverride) {
+            int diseaseLevelOverride, int damagePercent, boolean broadcast) {
         if (attacker == null || target == null || !attacker.isAlive() || !target.isAlive()) {
             return 0;
         }
@@ -67,6 +79,10 @@ public final class ServerMobDamageService {
                                 ? physicalAttackOverride : attacker.getPADamage());
         if (damage > 0 && target.getClient() instanceof BotClient && AgentCombatDamageRuntime.invincible(target)) {
             damage = 0;   // a player's client would have been invincible here (after Corkscrew Blow lands)
+        }
+        boolean landed = damage > 0; // the unscaled roll: a deadly hit, MP burn and a disease ignore the percent
+        if (landed && damagePercent != 100) {
+            damage = (int) ((long) damage * Math.max(0, damagePercent) / 100);
         }
         int mpAttack = 0;
         boolean deadly = deadlyOverride;
@@ -89,15 +105,16 @@ public final class ServerMobDamageService {
         int resolvedDiseaseLevel = diseaseLevel;
         Optional<MobSkill> diseaseSkill = disease.map(type ->
                 MobSkillFactory.getMobSkillOrThrow(type, resolvedDiseaseLevel));
-        if (diseaseSkill.isPresent() && damage > 0) {
+        if (diseaseSkill.isPresent() && landed) {
             diseaseSkill.get().applyEffect(target, attacker, false, banishPlayers);
         }
 
         if (deadly && MapId.isDojo(map.getId()) && !YamlConfig.config.server.USE_DEADLY_DOJO) {
             damage = 0;
             mpAttack = 0;
+            landed = false;
         }
-        if (damage > 0) {
+        if (landed) {
             if (deadly) {
                 damage = Math.max(0, target.getHp() - 1);
                 mpAttack = Math.max(0, target.getMp() - 1);
@@ -109,9 +126,11 @@ public final class ServerMobDamageService {
         }
 
         int direction = target.getPosition().x < attacker.getPosition().x ? 0 : 1;
-        map.broadcastMessage(target, PacketCreator.damagePlayer(
-                attackIndex, attacker.getId(), target.getId(), damage, 0, direction,
-                false, 0, true, attacker.getObjectId(), 0, 0), true);
+        if (broadcast) {
+            map.broadcastMessage(target, PacketCreator.damagePlayer(
+                    attackIndex, attacker.getId(), target.getId(), damage, 0, direction,
+                    false, 0, true, attacker.getObjectId(), 0, 0), true);
+        }
         if (damage > 0 && target.getClient() instanceof BotClient) {
             AgentCombatDamageRuntime.reactToServerAttack(
                     target, attacker, direction);

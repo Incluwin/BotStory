@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.shop.AgentPotionPurchasePolicy;
 import testutil.Items;
 
 import java.util.List;
@@ -32,6 +33,9 @@ import static org.mockito.Mockito.when;
  * of 2026-10-08) is 2000 projectiles; LPQ and EPQ keep 1600 and every other key PARTY_QUEST_AMMO. Since user decision 2
  * of 2026-10-08 a companion's own count for Easy Balrog measures HP and MP points (BOSS_RECOVERY_STANDARDS,
  * 130,000 / 32,000): what its recovery potions restore, not how many it carries; the party quests still count potions.
+ * P8 (user decision 2026-10-08): Zakum keeps 500 HP / 400 MP potions, counted (no points standard), and 4000
+ * projectiles (AMMO_STANDARDS), above the 200-potion carry limit and the 100-potion visit limit, which a readiness
+ * standard raises to itself; Easy Balrog keeps what it had.
  */
 class AgentSupplyReadinessBossStandardTest {
     private static final String PQ_STANDARDS_KEY =
@@ -57,7 +61,7 @@ class AgentSupplyReadinessBossStandardTest {
 
     @Test
     void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
-        assertEquals("easy_balrog=100/60", AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
+        assertEquals("easy_balrog=100/60,zakum=500/400", AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
         assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor("easy_balrog"));
         assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor(" Easy_Balrog "),
                 "keys are trimmed, any case");
@@ -70,7 +74,53 @@ class AgentSupplyReadinessBossStandardTest {
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("kpq"));
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("hpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"), "party quest standards unchanged");
-        assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("zakum"), "an unlisted boss: the default");
+        assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("horntail"),
+                "an unlisted boss: the default");
+    }
+
+    @Test
+    void zakumKeepsFiveHundredHpAndFourHundredMpPotionsAndFourThousandProjectiles() {
+        // user decision 2026-10-08: "zakum will require much more than 200 potions"
+        AgentSupplyReadiness.Activity zakum = AgentSupplyReadiness.Activity.partyQuest("zakum");
+        assertEquals(new AgentSupplyReadiness.Standard(500, 400), standardFor("zakum"));
+        assertEquals(new AgentSupplyReadiness.Standard(500, 400), standardFor(" ZAKUM "), "keys are trimmed, any case");
+        assertEquals(4_000, AgentSupplyReadiness.ammoStandard(zakum));
+        assertEquals(4_000, AgentSupplyReadiness.ammoTarget(zakum), "above the low-ammo warning already");
+        assertEquals(new AgentSupplyReadiness.Shortfall(500, 400), AgentSupplyReadiness.shortfall(0, 0, true, zakum));
+        assertEquals(new AgentSupplyReadiness.Shortfall(0, 0), AgentSupplyReadiness.shortfall(500, 400, true, zakum));
+
+        assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor("easy_balrog"), "Easy Balrog unchanged");
+        assertEquals(2_000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
+                "Easy Balrog keeps its own ammo standard");
+        assertNull(AgentSupplyReadiness.recoveryStandard(zakum), "Zakum counts potions, not points");
+    }
+
+    @Test
+    void zakumsStandardIsAboveTheCarryAndVisitLimitsSoOneVisitBuysAllOfItAndTheTopUpNothingMore() {
+        int carryLimit = config.AgentTuning.intValue(
+                "server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_CARRIED_QUANTITY");
+        int visitLimit = config.AgentTuning.intValue(
+                "server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_PURCHASE_QUANTITY_PER_VISIT");
+        AgentSupplyReadiness.Standard zakum = standardFor("zakum");
+        assertTrue(zakum.hp() > carryLimit && zakum.mp() > carryLimit && zakum.mp() > visitLimit,
+                "the limits it raises: carry " + carryLimit + ", visit " + visitLimit);
+
+        Character priest = mock(Character.class);
+        when(priest.getJob()).thenReturn(Job.PRIEST);
+        when(priest.getId()).thenReturn(71);
+        AgentSupplyReadiness.install(id -> id == 71 ? AgentSupplyReadiness.Activity.partyQuest("zakum") : null);
+        int hpTopUp = AgentSupplyReadiness.buyTarget(priest, true);
+        int mpTopUp = AgentSupplyReadiness.buyTarget(priest, false);
+        assertEquals(1_000, hpTopUp, "BUY_TO_PERCENT 200");
+        assertEquals(800, mpTopUp);
+
+        // the counter's readiness floor (AgentShopService.buyReadinessFloor) sizes each kind with floorQuantity
+        assertEquals(500, AgentPotionPurchasePolicy.floorQuantity(zakum.hp(), 0, 0, zakum.hp()), "all 500 at once");
+        assertEquals(400, AgentPotionPurchasePolicy.floorQuantity(zakum.mp(), 0, 0, zakum.mp()), "all 400 at once");
+        assertEquals(380, AgentPotionPurchasePolicy.floorQuantity(zakum.mp(), 20, 0, zakum.mp()));
+        assertEquals(0, AgentPotionPurchasePolicy.floorQuantity(hpTopUp, 500, 500, zakum.hp()),
+                "the top-up finds the carry room used: nothing past the standard");
+        assertEquals(0, AgentPotionPurchasePolicy.floorQuantity(mpTopUp, 400, 400, zakum.mp()));
     }
 
     @Test
@@ -130,8 +180,9 @@ class AgentSupplyReadinessBossStandardTest {
         int partyQuestAmmo = config.AgentTuning.intValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
         assertEquals(partyQuestAmmo, ammoStandardFor("kpq"));
-        assertEquals(partyQuestAmmo, ammoStandardFor("zakum"), "an unlisted boss: the default");
-        assertEquals("lpq=1600,epq=1600,easy_balrog=2000", AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        assertEquals(partyQuestAmmo, ammoStandardFor("horntail"), "an unlisted boss: the default");
+        assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000",
+                AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
     }
 
     @Test

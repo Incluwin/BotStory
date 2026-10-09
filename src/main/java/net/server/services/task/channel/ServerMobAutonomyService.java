@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.mobcontrol.AgentBossScope;
 import server.combat.ServerMobDamageService;
 import server.life.MobSkill;
 import server.life.Monster;
@@ -264,6 +265,7 @@ public final class ServerMobAutonomyService extends BaseService {
 
     public static boolean blocksAgentPhysicsInstance(Monster monster) {
         if (monster == null) return false;
+        if (AgentBossScope.guards(monster)) return true;
         for (ServerMobAutonomyService service : Set.copyOf(INSTANCES)) {
             if (service.blocksAgentPhysics(monster)) return true;
         }

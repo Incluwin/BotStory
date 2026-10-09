@@ -1,5 +1,7 @@
 package config;
 
+import server.expeditions.ExpeditionType;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
@@ -67,6 +69,36 @@ final class AgentEngineConfigValidator {
             String value = entry.getValue();
             if (key == null || key.isBlank() || value == null || value.isBlank()) {
                 throw new IllegalStateException("Agent tuning keys and values must be non-blank");
+            }
+            // AgentBossScope's lists go before the boolean and numeric checks, which pass "true" or a bare number
+            if (key.endsWith("AgentBossScope.EXPEDITION_TYPES")) {
+                if (!validExpeditionTypes(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be ExpeditionType names separated by commas, such as ZAKUM");
+                }
+                continue;
+            }
+            if (key.endsWith("AgentBossScope.BOSS_IDS")) {
+                if (!validBossIds(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key + " must be none, or mob ids"
+                            + " and ascending id ranges separated by commas, such as 8800003-8800010");
+                }
+                continue;
+            }
+            // the boss attack mirror's mode, before the boolean and numeric checks too
+            if (key.endsWith("AgentBossAttackMirror.MODE")) {
+                if (!validMirrorMode(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key + " must be OFF, OBSERVE or APPLY");
+                }
+                continue;
+            }
+            // the Zakum fight's platform anchors, before the boolean and numeric checks too
+            if (key.endsWith("AgentZakumScenario.PLATFORM_ANCHORS")) {
+                if (!validPlatformAnchors(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be none, or x,y points separated by |, such as -345,-488|446,-530");
+                }
+                continue;
             }
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
@@ -185,6 +217,48 @@ final class AgentEngineConfigValidator {
             }
         }
         return true;
+    }
+
+    /** True for ExpeditionType names separated by commas, such as "ZAKUM" or "ZAKUM,HORNTAIL". */
+    static boolean validExpeditionTypes(String value) {
+        if (value == null || !value.matches("[A-Z_]+(,[A-Z_]+)*")) {
+            return false;
+        }
+        for (String name : value.split(",")) {
+            try {
+                ExpeditionType.valueOf(name);
+            } catch (IllegalArgumentException unknown) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** True for "none", or mob ids and ascending id ranges separated by commas, such as "8800003-8800010,8810002". */
+    static boolean validBossIds(String value) {
+        if (value == null || !value.matches("none|\\d{1,9}(-\\d{1,9})?(,\\d{1,9}(-\\d{1,9})?)*")) {
+            return false;
+        }
+        if ("none".equals(value)) {
+            return true;
+        }
+        for (String entry : value.split(",")) {
+            int dash = entry.indexOf('-');
+            if (dash > 0 && Integer.parseInt(entry.substring(0, dash)) > Integer.parseInt(entry.substring(dash + 1))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** True for OFF, OBSERVE or APPLY in any case: the boss attack mirror's modes. */
+    static boolean validMirrorMode(String value) {
+        return "OFF".equalsIgnoreCase(value) || "OBSERVE".equalsIgnoreCase(value) || "APPLY".equalsIgnoreCase(value);
+    }
+
+    /** True for "none", or x,y points separated by "|", such as "-345,-488|446,-530": the Zakum platform anchors. */
+    static boolean validPlatformAnchors(String value) {
+        return value != null && value.matches("none|-?\\d{1,6},-?\\d{1,6}(\\|-?\\d{1,6},-?\\d{1,6})*");
     }
 
     /**

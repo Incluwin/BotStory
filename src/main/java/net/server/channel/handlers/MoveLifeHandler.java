@@ -35,6 +35,7 @@ import server.life.MobSkillId;
 import server.life.MobSkillType;
 import server.life.Monster;
 import server.life.MonsterInformationProvider;
+import server.life.autonomy.BossAttackMirrorSeam;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
 import server.maps.MapleMap;
@@ -173,6 +174,7 @@ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
         } else {
             c.sendPacket(PacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro));
         }
+        BossAttackMirrorSeam.acceptedMove(player, monster, rawActivity, pOption, moveid);
 
 
         try {

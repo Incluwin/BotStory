@@ -202,6 +202,8 @@ public final class LivingWorld {
         // up for Easy Balrog is in the fight the server moves Balrog (living_world.COMPANION_BOSS_SERVER_AUTHORITY)
         server.agents.capabilities.expedition.boss.AgentBossRunHost.install(world.bossRuns);
         server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(world.bossRuns::forcesServerAuthority);
+        // and a boss part a player's client moves (Zakum's arms) hits the run's companions as it hits the player (P8)
+        server.life.autonomy.BossAttackMirrorSeam.install(server.agents.capabilities.expedition.boss.AgentBossAttackMirror.get());
         // each entry NPC offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS): one desk
         // per entrance, Lakelis's for KPQ and Tory's for HPQ
         server.living.roster.ui.CompanionMenus deskMenus = new server.living.roster.ui.CompanionMenus(world);
@@ -325,6 +327,7 @@ public final class LivingWorld {
         world.roster.installInstanceDelegation(null);
         server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);
         server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(null);
+        server.life.autonomy.BossAttackMirrorSeam.install(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         server.living.roster.CompanionRestock.uninstall();

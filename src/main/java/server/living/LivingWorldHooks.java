@@ -766,4 +766,26 @@ public final class LivingWorldHooks {
             return 1.0d;
         }
     }
+
+    /**
+     * A boss's daily entry count (ExpeditionBossLog.attemptBoss, after its switch, boss and channel checks, from
+     * memory, on the asking thread: the entry NPC's script, the Start, companion-ops). TRUE for a companion its boss
+     * run's pre-check on companion-ops allowed for {@code expedition} (CompanionBossQuota): its sign-up inside the NPC
+     * script runs no JDBC, and the Start logs nothing for it ({@code logEntry}), as its entry is logged when it enters
+     * the fight. Null keeps the stock count and log: every player, a companion no pre-check allowed, no living world,
+     * and any failure. Easy Balrog keeps no entry log, so it never gets here.
+     */
+    public static Boolean bossQuota(int characterId, server.expeditions.Expedition expedition, boolean logEntry) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
+            return null;
+        }
+        try {
+            server.living.roster.CompanionBossRuns bossRuns = world.bossRuns();
+            return bossRuns == null ? null : bossRuns.bossQuota(characterId, expedition, logEntry);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossQuota hook failed", failure);
+            return null;
+        }
+    }
 }

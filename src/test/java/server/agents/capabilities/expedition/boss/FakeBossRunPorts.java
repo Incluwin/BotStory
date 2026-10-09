@@ -228,6 +228,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         /** The members a granted seat tied to the run; a test removes one to let go of its tie. */
         final Set<Integer> held = new HashSet<>();
         final List<AgentBossRunHost.RunEnded> ended = new ArrayList<>();
+        /** The members the run reported as gone into the fight (entered), in order; apart from the call list. */
+        final List<Integer> entered = new ArrayList<>();
         /**
          * The seats of the list a companion leaves free for players (roomFor, logged as "room id listed/max"); below 0
          * (the default) the host does not answer it, as a rule that leaves every seat to the stock list.
@@ -276,6 +278,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         public void runEnded(AgentBossRunHost.RunEnded run) {
             calls.add("ended " + run.reason());
             ended.add(run);
+        }
+
+        @Override
+        public void entered(AgentBossRunHost.Seat seat) {
+            entered.add(seat.agentCharacterId());
         }
     }
 

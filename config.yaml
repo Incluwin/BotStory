@@ -939,6 +939,7 @@ living_world:
     # SERVER_AUTHORITY: while a signed-up companion is in the fight, the server moves Balrog for all of it and its
     # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
     # Timings: agent-engine.yaml AgentBossRunSession.
+    # "zakum" (Adobis, P8) stays off until its staged client-memory checks pass (docs/COMPANION_BOSSING_P8.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

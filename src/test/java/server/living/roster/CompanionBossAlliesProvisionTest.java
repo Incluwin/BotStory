@@ -18,6 +18,7 @@ import server.ShopItem;
 import server.StatEffect;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.shop.AgentShopProvisioning;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
@@ -35,12 +36,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -85,6 +88,20 @@ class CompanionBossAlliesProvisionTest {
             WeaponType.GUN, 1_492_000);
     private static final AgentSupplyReadiness.Activity EASY_BALROG =
             AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
+    /** Glibber on Ice Valley II, Zakum's approach store (P8). */
+    private static final int GLIBBER = 2_030_009;
+    private static final int ORANGE_POTION = 2_000_001;
+    private static final int WHITE_POTION = 2_000_002;
+    private static final int BLUE_POTION = 2_000_003;
+    private static final int MANA_ELIXIR = 2_000_006;
+    /**
+     * Glibber's projectiles and potions in his slot order and prices (102-shopitems-data.sql:1106-1134), his food
+     * and dews left out.
+     */
+    private static final List<int[]> GLIBBERS_STOCK = List.of(new int[]{BULLET, 600}, new int[]{SUBI, 500},
+            new int[]{BOLT, 1}, new int[]{ARROW, 1}, new int[]{PURE_WATER, 1_716}, new int[]{UNAGI, 1_144},
+            new int[]{MANA_ELIXIR, 644}, new int[]{BLUE_POTION, 208}, new int[]{WHITE_POTION, 332},
+            new int[]{ORANGE_POTION, 166});
 
     private final BossAllyHarness h = new BossAllyHarness();
     private final Map<Integer, Integer> prices = new HashMap<>();
@@ -301,7 +318,60 @@ class CompanionBossAlliesProvisionTest {
         assertTrue(isLine(BossRunLines.ALLY_LOW_POTS, null, said(1)), h.mapChat.toString());
     }
 
+    @Test
+    void aZakumAllyBuysFiveHundredAndFourHundredPotionsAndFourThousandBulletsAtGlibbersInOneGo() {
+        // P8 (user decision 2026-10-08): the zakum standard is past the carry and per-visit limits; an ally that
+        // never walks past Glibber reaches it from its own purse as a party companion's trip does at his counter
+        AgentSupplyReadiness.Activity zakum = AgentSupplyReadiness.Activity.partyQuest("zakum");
+        assertEquals(GLIBBER, BossEntrance.ZAKUM.approachStoreNpcId(), "the store an ally to Zakum buys at");
+        Shop glibber = glibbersStore();
+        ranged(WeaponType.GUN); // a Lv160 Corsair
+        when(orrin.getCurrentMaxHp()).thenReturn(12_000);
+        when(orrin.getCurrentMaxMp()).thenReturn(5_000);
+        purse = 2_000_000;
+
+        AgentShopProvisioning.Provisioned bought = CompanionBossAllies.Ports.LIVE.provision(orrin, "zakum",
+                BossEntrance.ZAKUM.approachStoreNpcId());
+
+        assertArrayEquals(new int[]{500, 400}, potions(), transactions.toString());
+        assertEquals(500, bought.hpPotions());
+        assertEquals(400, bought.mpPotions());
+        int bullets = AgentCombatAmmoCounter.countCarried(orrin, WeaponType.GUN);
+        assertTrue(bullets >= AgentSupplyReadiness.ammoStandard(zakum), bullets + " " + transactions);
+        assertEquals(4_000, AgentSupplyReadiness.ammoStandard(zakum));
+        assertTrue(AgentSupplyReadiness.shortfall(orrin, zakum).none(), "nothing short of the zakum standard");
+        assertTrue(use.getNumFreeSlot() >= 1, "the run's slot stays free: " + use.getNumFreeSlot());
+        assertEquals(List.of(GLIBBER), asked);
+        assertTrue(transactions.stream().noneMatch(line -> line.endsWith(" x " + SUBI) || line.endsWith(" x " + BOLT)
+                || line.endsWith(" x " + ARROW)), "bullets for a gun: " + transactions);
+        assertEquals(2_000_000 - purse, bought.mesosBefore() - bought.mesosAfter(), "paid from its own purse");
+    }
+
     // ---- helpers -------------------------------------------------------------------------------
+
+    /** Glibber's store behind the shop gateway (every other NPC: none), with what his potions restore. */
+    private Shop glibbersStore() {
+        effects.put(ORANGE_POTION, effect(150, 0));
+        effects.put(WHITE_POTION, effect(300, 0));
+        effects.put(BLUE_POTION, effect(0, 100));
+        effects.put(MANA_ELIXIR, effect(0, 300));
+        Shop store = mock(Shop.class);
+        List<ShopItem> items = new ArrayList<>();
+        for (int[] row : GLIBBERS_STOCK) {
+            ShopItem item = mock(ShopItem.class);
+            when(item.getItemId()).thenReturn(row[0]);
+            when(item.getPrice()).thenReturn(row[1]);
+            items.add(item);
+            prices.put(row[0], row[1]);
+        }
+        when(store.getItems()).thenReturn(items);
+        doAnswer(inv -> {
+            int npcId = inv.getArgument(0);
+            asked.add(npcId);
+            return npcId == GLIBBER ? store : null;
+        }).when(gateway).findForNpc(anyInt());
+        return store;
+    }
 
     /** The store's sale: a star or bullet set is one full stack; potions and arrows go onto stacks, then new ones. */
     private Shop.TransactionResult buy(int itemId, short quantity) {

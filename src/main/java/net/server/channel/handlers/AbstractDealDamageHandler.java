@@ -89,6 +89,7 @@ import net.server.services.task.channel.ServerMobAutonomyService;
 import scripting.AbstractPlayerInteraction;
 import server.StatEffect;
 import server.TimerManager;
+import server.agents.capabilities.mobcontrol.AgentBossScope;
 import server.life.Element;
 import server.life.ElementalEffectiveness;
 import server.life.MobSkill;
@@ -202,7 +203,10 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
      * origin than the attack can reach. A headless Agent's hit on a server-owned boss actor is exempt: the server
      * chooses that Agent's attacks, and a multipart boss reports one shared origin for all its parts (each Easy Balrog
      * part at (412,257) while the claw bodies stand 118-404 px to the side). In one live run that made 472 alerts for
-     * legal Agent hits, and each alert resent the boss part's position to every client. Humans are checked as before.
+     * legal Agent hits, and each alert resent the boss part's position to every client. An Agent's hit on a part that
+     * AgentBossScope guards (a Zakum arm a human controls) is exempt too: every Zakum part reports the altar reactor
+     * spot as its origin, and each position resend takes the part's controller away from the human. Humans are checked
+     * as before.
      */
     static void checkAttackDistance(AttackInfo attack, Character player, Monster monster) {
         double distance = player.getPosition().distanceSq(monster.getPosition());
@@ -239,7 +243,8 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
     }
 
     private static boolean isAgentHitOnServerOwnedBoss(Character player, Monster monster) {
-        return player.getClient() instanceof BotClient && ServerMobAutonomyService.isActiveInstance(monster);
+        return player.getClient() instanceof BotClient
+                && (ServerMobAutonomyService.isActiveInstance(monster) || AgentBossScope.guards(monster));
     }
 
     public static boolean applyAttack(AttackInfo attack, final Character player, int attackCount) {

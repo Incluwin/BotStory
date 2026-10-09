@@ -402,6 +402,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final Map<String, CompanionBossRun> runs;
     /** P7 Part B: the owners' bench allies, each on its trip from its call to its unload. */
     private final CompanionBossAllies allies;
+    /** P8: the companions' daily boss entries (Zakum), shared with the bench allies' calls. */
+    private final CompanionBossQuota quota;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -420,10 +422,14 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.potions = potions;
         this.supplies = supplies;
         this.runs = new ConcurrentHashMap<>();
-        this.allies = new CompanionBossAllies(world, open, runs);
+        this.quota = new CompanionBossQuota(open);
+        this.allies = new CompanionBossAllies(world, open, runs, quota);
     }
 
-    /** The bench allies a test builds (their game and clock faked) over {@code runs}, the map they keep lines in. */
+    /**
+     * The bench allies a test builds (their game and clock faked) over {@code runs}, the map they keep lines in; the
+     * daily entries are theirs ({@link CompanionBossAllies#quota}).
+     */
     CompanionBossRuns(LivingWorld world, OpenRuns open, IntFunction<int[]> potions, Supplies supplies,
                       Map<String, CompanionBossRun> runs, CompanionBossAllies allies) {
         this.world = world;
@@ -432,6 +438,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.supplies = supplies;
         this.runs = runs;
         this.allies = allies;
+        this.quota = allies.quota();
     }
 
     /**
@@ -478,7 +485,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * On companion-ops: the owner's companions that can sign up, asked again (five at most, in party order), are
      * enlisted in the run for the expedition, the owner being on her list (they joined it or lead it). Each walks up to
      * her and signs up through her own window on the run's tick; one short of the boss's potion standard looks at its
-     * potions at once, so a shop trip comes first. The owner's part of the run is kept from here on.
+     * potions at once, so a shop trip comes first. The owner's part of the run is kept from here on. P8: for a boss
+     * with a daily entry log (Zakum), one with no entry left today says so and is not enlisted (CompanionBossQuota).
      */
     void registerParty(int ownerId, String bossKey) {
         long now = System.currentTimeMillis();
@@ -489,7 +497,20 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return;
         }
         String key = offer.definition().key();
-        Enlisted enlisted = open.enlist(owner, offer.definition(), offer.expedition(), offer.companions(), now);
+        List<Integer> admitted = new ArrayList<>();
+        for (int id : offer.companions()) {
+            if (quota.admit(offer.definition(), offer.expedition(), id)) {
+                admitted.add(id);
+            } else {
+                BossRunLines.say(world, bot(id), BossRunLines.QUOTA, null, 0);
+            }
+        }
+        if (admitted.isEmpty()) {
+            log.info("boss sign-up {} for owner {}: nobody to enlist, no entry left today", key, ownerId);
+            return;
+        }
+        Enlisted enlisted = open.enlist(owner, offer.definition(), offer.expedition(), admitted, now);
+        quota.enlisted(offer.expedition(), enlisted, admitted);
         if (enlisted.sessionId() == 0L || enlisted.accepted().isEmpty()) {
             log.info("boss sign-up {} for owner {}: nobody enlisted, refused {}", key, ownerId, enlisted.refused());
             return;
@@ -671,15 +692,35 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * True on a boss's entry NPC room whose entrance holds a companion's potion trips there
+     * (BossEntrance.holdsTripsAtEntry: Adobis's, 211042400, for Zakum, where no shop is in reach and no route leads back
+     * in) while the switch lists that boss ({@link #restockKeyAt}); false anywhere else, in Mu Young's room and with the
+     * switch off. Memory only, any thread (CompanionRestock.restocksFrom asks it, P8).
+     */
+    boolean holdsTripsAt(int mapId) {
+        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
+        return entrance != null && entrance.holdsTripsAtEntry() && restockKeyAt(mapId) != null;
+    }
+
+    /**
      * On companion-ops: the owner came into a boss's entry NPC room ({@code mapId}, RosterService.ownerEnteredMap).
      * Each companion of theirs in their party that is short of that boss's potion standard looks at its potions on its
      * next tick instead of its next check, so one that can reach a shop sets off (and says when it will be back), and
-     * one that cannot says there is no shop out here, before it is asked to sign up. First, a bench ally of theirs down
-     * from the fight and waiting there says goodbye and goes back to its bench duty (CompanionBossAllies).
+     * one that cannot says there is no shop out here, before it is asked to sign up. In a room that holds its trips
+     * ({@link #holdsTripsAt}: Adobis's, P8) none can set off, so its own no-shop refusal never comes: the readiness rule
+     * has each one short of the boss's standard say so at once instead (CompanionRestock.bossGate). First, a bench ally
+     * of theirs down from the fight and waiting there says goodbye and goes back to its bench duty (CompanionBossAllies).
      */
     void ownerArrived(int ownerId, int mapId) {
         allies.ownerArrived(ownerId, mapId);
         String bossKey = restockKeyAt(mapId);
+        if (bossKey != null && holdsTripsAt(mapId)) {
+            CompanionRestock restock = world.restock();
+            if (restock != null) {
+                restock.bossGate(ownerId, mapId, AgentSupplyReadiness.Activity.partyQuest(bossKey));
+            }
+            return;
+        }
         Character owner = bossKey == null ? null : world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
@@ -711,8 +752,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * The boss whose potion standard companion {@code bot} keeps on its way there: the boss's key while it stands on
      * that boss's approach map with the switch listing the boss ({@link #approachKeyAt}), it is at or above the boss's
-     * level (its expedition's minimum: 50 for Easy Balrog) and it is in its owner's party; null otherwise. The rule
-     * opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
+     * level (its expedition's minimum: 50 for Easy Balrog), it is in its owner's party and its owner is on the way to
+     * that boss (BossEntrance.approachMeantBy: for Zakum, the owner carries the Eye of Fire; P8 review); null
+     * otherwise. The rule opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
      */
     String approachKeyFor(Character bot, int ownerId) {
         String bossKey = bot == null ? null : approachKeyAt(bot.getMapId());
@@ -721,20 +763,28 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return null;
         }
         Party party = bot.getParty();
-        return party != null && party.getMemberById(ownerId) != null ? bossKey : null;
+        if (party == null || party.getMemberById(ownerId) == null) {
+            return null;
+        }
+        BossEntrance entrance = BossEntrance.of(bossKey);
+        boolean meant = entrance == null || definition.markerItemIds().isEmpty()
+                || entrance.approachMeantBy(world.roster().onlineCharacter(ownerId)); // no owner lookup: Easy Balrog
+        return meant ? bossKey : null;
     }
 
     /**
      * On companion-ops: the owner came into a boss's approach map with a store ({@code mapId},
      * RosterService.ownerEnteredMap). Each companion of theirs in their party at or above the boss's level that is
      * short of the boss's potion standard looks at its potions on its next tick instead of its next check, so it shops
-     * at that store (and says when it will be back) before the party walks on.
+     * at that store (and says when it will be back) before the party walks on. Only while the owner is on the way to
+     * that boss (BossEntrance.approachMeantBy: for Zakum, the Eye of Fire).
      */
     void ownerApproached(int ownerId, int mapId) {
         String bossKey = approachKeyAt(mapId);
         AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
         Character owner = definition == null ? null : world.roster().onlineCharacter(ownerId);
-        Party party = owner == null ? null : owner.getParty();
+        BossEntrance entrance = owner == null ? null : BossEntrance.of(bossKey);
+        Party party = entrance == null || !entrance.approachMeantBy(owner) ? null : owner.getParty();
         if (party == null) {
             return;
         }
@@ -803,6 +853,32 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     @Override
     public void runEnded(RunEnded ended) {
         world.executor().submit("boss.run_ended " + ended.sessionId(), () -> finish(ended));
+    }
+
+    /**
+     * P8, on the run's tick, from memory: the member went into the fight. A companion this run allowed for a boss with
+     * a daily entry log (CompanionBossQuota: Zakum) has its entry logged on companion-ops, once. For a boss with a
+     * marker item (Zakum's Eye of Fire) companion-ops asks for the marker line ({@link #eyeLine}). Every other member
+     * (Easy Balrog's, one the stock count let in) hands nothing over.
+     */
+    @Override
+    public void entered(Seat seat) {
+        if (quota.counts(seat)) {
+            world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
+        }
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(seat.bossKey());
+        if (definition != null && !definition.markerItemIds().isEmpty()) {
+            world.executor().submit("boss.eye " + seat.agentCharacterId(), () -> eyeLine(seat, definition));
+        }
+    }
+
+    /**
+     * P8, the boss log's question (LivingWorldHooks.bossQuota, from memory, on the asking thread): TRUE for a
+     * companion this run allowed for {@code expedition} (its sign-up and the Start count and log nothing for it);
+     * null, the stock count and log, for everyone else (CompanionBossQuota.answer).
+     */
+    public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {
+        return quota.answer(characterId, expedition, logEntry);
     }
 
     /**
@@ -973,8 +1049,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * The companion left the run (a bench ally's way home is CompanionBossAllies'). A missed start lets it go with a
-     * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line; no
-     * human left is one line per owner and the run's end lets them go; a plain exit says nothing; a runtime that went
+     * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line in its
+     * boss's words; no human left is one line per owner and the run's end lets them go; P8, its owner leaving before
+     * the clear (Zakum) lets it go at once (it is out beside its owner, and another human may fight on for half an
+     * hour), with one line per owner from the first of theirs out; a plain exit says nothing; a runtime that went
      * away (parked at its owner's logout) is let go. {@code cleared}: the run was past its clear as it handed the
      * member back (only a bench ally's goodbye reads it).
      */
@@ -988,12 +1066,20 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 release(key(seat), id);
                 BossRunLines.say(world, bot(id), BossRunLines.MISSED, null, 0, whileOpen(seat));
             }
-            case DIED -> BossRunLines.say(world, bot(id), BossRunLines.DOWN, null, 0);
+            case DIED -> BossRunLines.say(world, seat.bossKey(), bot(id), BossRunLines.DOWN, null, 0);
             case NO_HUMAN_LEFT -> {
                 CompanionBossRun run = run(seat);
                 if (!run.regroupSaid) {
                     run.regroupSaid = true;
                     BossRunLines.say(world, bot(id), BossRunLines.REGROUP, null, 0);
+                }
+            }
+            case OWNER_LEFT -> {
+                release(key(seat), id);
+                CompanionBossRun run = whileOpen(seat);
+                if (run != null && !run.ownerLeftSaid
+                        && BossRunLines.say(world, bot(id), BossRunLines.OWNER_LEFT, null, 0, run)) {
+                    run.ownerLeftSaid = true;
                 }
             }
             case EXITED -> {
@@ -1003,13 +1089,35 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * P8, Zakum's Eye of Fire: as the first of the owner's party companions goes in, the owner on the altar with one
+     * of the boss's marker items in their bag hears that companion say the marker line ({@link BossRunLines#ZAKUM_EYE})
+     * in party chat. Asked once per owner's run, at that first one, with or without the item; a bench ally going in
+     * first never asks (a party of bots has nobody to hear it).
+     */
+    private void eyeLine(Seat seat, AgentBossRunDefinition definition) {
+        CompanionBossRun run = whileOpen(seat);
+        int id = seat.agentCharacterId();
+        if (run == null || run.eyeAsked || !follows(id, run.ownerId)) {
+            return;
+        }
+        run.eyeAsked = true;
+        Character owner = world.roster().onlineCharacter(run.ownerId);
+        if (owner == null || owner.getMapId() != definition.battleMapId()
+                || definition.markerItemIds().stream().noneMatch(owner::haveItem)) {
+            return;
+        }
+        BossRunLines.say(world, bot(id), BossRunLines.ZAKUM_EYE, null, 0, run);
+    }
+
+    /**
      * The run is over: every owner's commitments to it end (the party changes and walk-outs that waited go through),
      * and each owner's part of it is taken out, once; every bench ally of it still here says how it went and goes back
      * to its bench duty, a list that never started too. A run that started then writes one record per companion that
      * went in (an owner's part taken out here: a second end of the same run writes nothing), logs the potion line, and
-     * when it cleared each owner online hears one gg.
+     * when it cleared each owner online hears one gg. P8: the run's allowed daily entries are forgotten.
      */
     void finish(RunEnded ended) {
+        quota.runEnded(ended.sessionId());
         Set<Integer> owners = new LinkedHashSet<>();
         for (MemberResult member : ended.members()) {
             owners.add(member.enlistedBy());
@@ -1062,14 +1170,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * A companion's outcome: cleared when it was in the fight as the boss fell (lying dead there too), tapped out when
-     * it went down before that (it waited outside while the run went on), or left before a clear the run went on to;
-     * else failed with the run (everyone down, the time ran out, the event ended).
+     * it went down before that (it waited outside while the run went on), or left before a clear the run went on to
+     * (P8: with its owner too); else failed with the run (everyone down, the time ran out, the event ended).
      */
     static String outcome(MemberResult member, boolean runCleared) {
         if (member.inAtClear()) {
             return "cleared";
         }
-        if (member.out() == Out.DIED || runCleared && (member.out() == Out.EXITED || member.out() == Out.GONE)) {
+        if (member.out() == Out.DIED || runCleared && (member.out() == Out.EXITED || member.out() == Out.GONE
+                || member.out() == Out.OWNER_LEFT)) {
             return "tapped_out";
         }
         return "failed";
@@ -1092,8 +1201,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * One gg for the owner, when online, from a companion of their party that went in (one in at the clear first);
-     * never from a bench ally, which says its own goodbye.
+     * One gg for the owner, when online, from a companion of their party that went in (one in at the clear first), in
+     * the boss's own words (P8); never from a bench ally, which says its own goodbye.
      */
     private void sayGg(CompanionBossRun run, List<MemberResult> wentIn) {
         if (run.ggSaid || world.roster().onlineCharacter(run.ownerId) == null) {
@@ -1105,7 +1214,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             Character bot = follows(member.agentId(), run.ownerId) ? bot(member.agentId()) : null;
             if (bot != null) {
                 run.ggSaid = true;
-                BossRunLines.say(world, bot, BossRunLines.GG, null, 0);
+                BossRunLines.say(world, run.bossKey, bot, BossRunLines.GG, null, 0);
                 return;
             }
         }

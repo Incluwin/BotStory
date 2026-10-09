@@ -122,12 +122,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     /**
-     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS): it keeps its no-shop line, and the companion stays put
-     * however short it is (a critical request only asks the party). Memory only.
+     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS), nor from a boss's entry NPC room that holds its trips
+     * while the switch lists that boss (CompanionBossRuns.holdsTripsAt: Adobis's room for Zakum, P8, where no shop is in
+     * reach and no route leads back in): it keeps its no-shop line, and the companion stays put however short it is (a
+     * critical request only asks the party). Memory only.
      */
     @Override
     public boolean restocksFrom(int agentCharacterId, int mapId) {
-        return !world.config().companionRestockBossMap(mapId);
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return !world.config().companionRestockBossMap(mapId) && (bossRuns == null || !bossRuns.holdsTripsAt(mapId));
     }
 
     /**
@@ -149,7 +152,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     /**
      * It set off: an ACTIVE companion says so, from a boss's entrance with about when it will be back (the
-     * owner may be signing it up meanwhile: user decision 7).
+     * owner may be signing it up meanwhile: user decision 7), in that boss's own words (BossRunLines.BY_BOSS, P8).
      */
     @Override
     public void started(int agentCharacterId, AgentSupplyReadiness.Activity activity, long etaMs) {
@@ -158,14 +161,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return; // a held companion goes quietly: its owner is inside the run
         }
         Character bot = bot(agentCharacterId);
+        String bossKey = activity == null ? null : activity.partyQuestKey();
         if (bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))) {
             String word = CompanionRestockLines.ammoWord(bot);
             ammoTrips.put(agentCharacterId, word);
             if (boss(activity)) {
                 int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
                 world.executor().submit("companion.restock.boss_go_ammo " + agentCharacterId,
-                        () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO_AMMO, null, minutes, null,
-                                word));
+                        () -> BossRunLines.say(world, bossKey, bot(agentCharacterId), BossRunLines.GO_AMMO, null,
+                                minutes, word));
                 return;
             }
             world.executor().submit("companion.restock.go_ammo " + agentCharacterId,
@@ -176,7 +180,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (boss(activity)) {
             int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
             world.executor().submit("companion.restock.boss_go " + agentCharacterId,
-                    () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO, null, minutes));
+                    () -> BossRunLines.say(world, bossKey, bot(agentCharacterId), BossRunLines.GO, null, minutes));
             return;
         }
         world.executor().submit("companion.restock.go " + agentCharacterId,
@@ -298,6 +302,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * Entry is never held up.
      */
     void bossGate(int ownerId, int mapId) {
+        bossGate(ownerId, mapId, AgentSupplyReadiness.Activity.PARTY_QUEST);
+    }
+
+    /**
+     * {@link #bossGate(int, int)} measured against {@code activity}'s standard: a boss's entry NPC room that holds its
+     * companions' trips (CompanionBossRuns.ownerArrived, Adobis's room for Zakum, P8), where none can set off for the
+     * boss's standard and so never hears its own no-shop refusal.
+     */
+    void bossGate(int ownerId, int mapId, AgentSupplyReadiness.Activity activity) {
         Character owner = world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
@@ -312,8 +325,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                     || bot.getMapId() != mapId && !AgentModeStateRuntime.following(runtime)) {
                 continue;
             }
-            AgentSupplyReadiness.Shortfall lacking =
-                    AgentSupplyReadiness.shortfall(bot, AgentSupplyReadiness.Activity.PARTY_QUEST);
+            AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(bot, activity);
             if (!lacking.none()
                     && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
                 if (lacking.potionsNone()) {

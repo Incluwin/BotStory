@@ -454,6 +454,78 @@ class AgentBossRunSessionStartTest {
         assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
     }
 
+    // ---- P8 step 11: the host hears who went in (a companion's daily boss entry is logged then) ----------------
+
+    @Test
+    void eachAdoptedMemberIsReportedInOnceAndAMemberThatMissedTheStartNever() {
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE, INGRID), List.of());
+        inside(THANE);
+        inside(ISOLDE);
+        // Ingrid stays in Mu Young's room: she misses the start once the grace is over.
+
+        session.tick(ports, host, START + 500L);
+        assertEquals(List.of(THANE, ISOLDE), host.entered, "each one as it is adopted, in order");
+
+        session.tick(ports, host, START + 1_000L);
+        session.tick(ports, host, START + AgentBossRunSession.startGraceMs());
+
+        assertEquals(AgentBossRunHost.Out.MISSED_START, session.member(INGRID).out());
+        assertEquals(List.of(THANE, ISOLDE), host.entered, "once per member and run, never for a missed start");
+    }
+
+    @Test
+    void anAdoptionThatWaitsOrThatTheHostRefusesReportsNobodyIn() {
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE), List.of());
+        inside(THANE);
+        inside(ISOLDE);
+        host.held.remove(ISOLDE);
+        host.busy.add(ISOLDE); // another run holds her now
+        ports.adoptionAnswer = false; // Thane's other activity would not stop yet
+
+        session.tick(ports, host, START + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Out.MISSED_START, session.member(ISOLDE).out());
+        assertEquals(List.of(), host.entered);
+
+        ports.adoptionAnswer = true;
+        session.tick(ports, host, START + 1_000L);
+
+        assertEquals(List.of(THANE), host.entered, "reported as it is adopted");
+    }
+
+    @Test
+    void theGuardedHostPassesTheEntryOn() {
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+
+        session.tick(ports, AgentBossRunHost.guarded(host), START + 500L);
+
+        assertEquals(List.of(THANE), host.entered);
+    }
+
+    @Test
+    void aHostThatFailsOnTheEntryNeverStopsTheAdoption() {
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+        AgentBossRunHost.Rule failing = new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public void entered(AgentBossRunHost.Seat seat) {
+                throw new IllegalStateException("living world down");
+            }
+        };
+
+        session.tick(ports, AgentBossRunHost.guarded(failing), START + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase(), "adopted all the same");
+        assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     /**

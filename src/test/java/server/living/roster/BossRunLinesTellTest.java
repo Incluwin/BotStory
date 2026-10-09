@@ -279,7 +279,9 @@ class BossRunLinesTellTest {
                         "good fight. see ya around.", "gg, good fight. heading back to camp.")),
                 Map.entry(BossRunLines.ALLY_NEXT_TIME, List.of("we'll get him next time. back to camp.",
                         "rough one. heading back to camp.")),
-                Map.entry(BossRunLines.ALLY_GOODBYE, List.of("heading back to camp. see ya.")));
+                Map.entry(BossRunLines.ALLY_GOODBYE, List.of("heading back to camp. see ya.")),
+                Map.entry(BossRunLines.ALLY_QUOTA, List.of("already did my run today, can't come. sorry!",
+                        "used up my run for today, can't make it. sorry!")));
         for (Map.Entry<String, List<String>> intent : plan.entrySet()) {
             assertTrue(intent.getKey().startsWith("boss.ally."), intent.getKey());
             assertEquals(intent.getValue(), BossRunLines.GENERIC.get(intent.getKey()), intent.getKey());
@@ -289,7 +291,116 @@ class BossRunLinesTellTest {
             }
         }
         long allyIntents = BossRunLines.GENERIC.keySet().stream().filter(key -> key.startsWith("boss.ally.")).count();
-        assertEquals(plan.size(), allyIntents, "the plan's twelve ally intents, the low-ammo line (R5) and no other");
+        assertEquals(plan.size(), allyIntents,
+                "the plan's twelve ally intents, the low-ammo line (R5), the quota line (P8) and no other");
+    }
+
+    // ---- P8: Zakum's own words -------------------------------------------------------------------
+
+    @Test
+    void noZakumLineNamesMuYoungBalrogHerTempleOrDownHere() {
+        Set<String> intents = new HashSet<>(BossRunLines.GENERIC.keySet());
+        intents.addAll(BossRunLines.BY_BOSS.get("zakum").keySet());
+        for (String intent : intents) {
+            List<String> lines = BossRunLines.lines(game.world, null, intent, "zakum");
+            assertFalse(lines.isEmpty(), intent);
+            for (String line : lines) {
+                assertEquals(line.toLowerCase(Locale.ROOT), line, line);
+                for (String elsewhere : List.of("mu young", "balrog", "temple", "down here", "she ")) {
+                    assertFalse(line.contains(elsewhere), intent + ": " + line);
+                }
+            }
+        }
+    }
+
+    @Test
+    void easyBalrogKeepsEveryGenericLineAndHasNoEyeLine() {
+        for (Map.Entry<String, List<String>> intent : BossRunLines.GENERIC.entrySet()) {
+            assertEquals(intent.getValue(), BossRunLines.lines(game.world, null, intent.getKey(), "easy_balrog"),
+                    intent.getKey());
+            assertEquals(intent.getValue(), BossRunLines.lines(game.world, null, intent.getKey(), null),
+                    "no boss: " + intent.getKey());
+        }
+        assertFalse(BossRunLines.BY_BOSS.containsKey("easy_balrog"));
+        assertEquals(List.of(), BossRunLines.lines(game.world, null, BossRunLines.ZAKUM_EYE, "easy_balrog"));
+        assertFalse(BossRunLines.say(game.world, thane, BossRunLines.ZAKUM_EYE, null, 0, run), "nothing to say");
+        assertEquals(List.of(), game.partyChat);
+    }
+
+    @Test
+    void zakumHasThePlansOwnLinesAndEveryOtherIntentKeepsTheGenericOnes() {
+        Map<String, List<String>> plan = Map.ofEntries(
+                Map.entry(BossRunLines.DOWN, List.of("ugh, zakum got me. i'll wait in el nath.",
+                        "i'm down... see you back in town.", "that arm hit hard. waiting in el nath.")),
+                Map.entry(BossRunLines.REFUSED_LEVEL, List.of("adobis won't take me yet. i'll wait out here.")),
+                Map.entry(BossRunLines.REFUSED_BANNED, List.of("guess i'm off the list. i'll wait out here.",
+                        "adobis won't let me sign. i'll sit this one out.")),
+                Map.entry(BossRunLines.REFUSED_NOT_HERE, List.of(
+                        "couldn't get to adobis in time. i'll catch up after.")),
+                Map.entry(BossRunLines.GO, List.of("low on pots for zakum, grabbing some here. back in ~{n} min.")),
+                Map.entry(BossRunLines.GO_AMMO, List.of(
+                        "low on {ammo} for zakum, grabbing some here. back in ~{n} min.")),
+                Map.entry(BossRunLines.ALLY_ON_MY_WAY, List.of("heading to the door to zakum. {eta}.",
+                        "omw to adobis, {eta}.")),
+                Map.entry(BossRunLines.ALLY_HERE, List.of("made it to the door. signing up.",
+                        "here! putting my name down.")),
+                Map.entry(BossRunLines.ALLY_LOW_POTS, List.of("bit low on pots and no shop up here. i'll manage.")),
+                Map.entry(BossRunLines.ALLY_LOW_AMMO, List.of(
+                        "not many {ammo} left and no shop up here. i'll make them count.")),
+                Map.entry(BossRunLines.GG, List.of("gg! zakum's down.", "we did it! gg.")),
+                Map.entry(BossRunLines.ZAKUM_EYE, List.of("ready when you are. drop the eye on the altar.",
+                        "we're set, drop the eye whenever.")));
+        assertEquals(plan, BossRunLines.BY_BOSS.get("zakum"));
+        assertEquals("boss.zakum.eye", BossRunLines.ZAKUM_EYE);
+        for (Map.Entry<String, List<String>> intent : BossRunLines.GENERIC.entrySet()) {
+            if (!plan.containsKey(intent.getKey())) {
+                assertEquals(intent.getValue(), BossRunLines.lines(game.world, null, intent.getKey(), "zakum"),
+                        intent.getKey());
+            }
+        }
+        assertEquals(List.of("already went in today. i'll wait out here.",
+                        "used up my run for today, i'll hang back.", "can't go in again today. good luck in there!"),
+                BossRunLines.lines(game.world, null, BossRunLines.QUOTA, "zakum"), "every boss's quota line");
+    }
+
+    @Test
+    void theOwnerLeftLinesAreEveryBossesAndSoundLikeAPlayer() {
+        assertEquals("boss.owner_left", BossRunLines.OWNER_LEFT);
+        assertEquals(List.of("you're out? we're coming too.", "heading out with you."),
+                BossRunLines.GENERIC.get(BossRunLines.OWNER_LEFT));
+        assertEquals(BossRunLines.GENERIC.get(BossRunLines.OWNER_LEFT),
+                BossRunLines.lines(game.world, null, BossRunLines.OWNER_LEFT, "zakum"));
+    }
+
+    @Test
+    void aZakumRunsLinesComeInZakumsWordsWhereverTheyAreSaid() {
+        CompanionBossRun zakum = new CompanionBossRun("zakum", 8L, ANN);
+
+        assertTrue(BossRunLines.tell(game.world, orrin, BossRunLines.ALLY_HERE, null, null, zakum, ANN));
+        assertTrue(BossRunLines.say(game.world, thane, BossRunLines.GG, null, 0, zakum), "the run names its boss");
+        assertTrue(BossRunLines.say(game.world, "zakum", thane, BossRunLines.DOWN, null, 0), "no run: the boss key");
+        assertTrue(BossRunLines.say(game.world, "zakum", thane, BossRunLines.GO_AMMO, null, 3, "bolts"));
+
+        assertEquals(1, mapChat.size(), mapChat.toString());
+        assertTrue(BossRunLines.BY_BOSS.get("zakum").get(BossRunLines.ALLY_HERE).contains(wording("Orrin",
+                mapChat.get(0))), mapChat.toString());
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(BossRunLines.BY_BOSS.get("zakum").get(BossRunLines.GG).contains(wording("Thane",
+                game.partyChat.get(0))), game.partyChat.toString());
+        assertTrue(BossRunLines.BY_BOSS.get("zakum").get(BossRunLines.DOWN).contains(wording("Thane",
+                game.partyChat.get(1))), game.partyChat.toString());
+        assertEquals("Thane: low on bolts for zakum, grabbing some here. back in ~3 min.", game.partyChat.get(2));
+    }
+
+    @Test
+    void aPersonasOwnLinesStillComeBeforeZakumsLines() {
+        Persona thanePersona = game.world.residents().personaOfCharacterId(THANE);
+        when(game.world.arcs().lines(thanePersona, BossRunLines.DOWN)).thenReturn(List.of("ow. see you outside."));
+
+        assertEquals(List.of("ow. see you outside."),
+                BossRunLines.lines(game.world, thanePersona, BossRunLines.DOWN, "zakum"));
+        assertTrue(BossRunLines.say(game.world, "zakum", thane, BossRunLines.DOWN, null, 0));
+        assertEquals(List.of("Thane: ow. see you outside."), game.partyChat);
     }
 
     // ---- helpers -------------------------------------------------------------------------------
