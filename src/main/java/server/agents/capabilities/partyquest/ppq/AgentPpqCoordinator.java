@@ -52,7 +52,7 @@ public final class AgentPpqCoordinator {
     }
 
     public static void tickSession(AgentPpqSession session, long nowMs) {
-        if (session.terminal() || session.paused()) return;
+        if (session.terminal() || session.terminationStarted() || session.paused()) return;
         if (!cleared(session) && nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
             session.fail("PPQ event timer expired", nowMs); return;
         }
@@ -116,8 +116,9 @@ public final class AgentPpqCoordinator {
     public static void tickMember(AgentPpqSession session, AgentRuntimeEntry entry,
                                   Character agent, long nowMs) {
         AgentPpqMemberState member = session.member(agent.getId());
+        // A run that ended or whose release began (a stop off the central tick thread) does nothing more.
         if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT
-                || nowMs < member.nextActionAtMs()) return;
+                || session.terminal() || session.terminationStarted() || nowMs < member.nextActionAtMs()) return;
         // No instance is not another instance: the clear warps everyone to 925100600 and ends the event under them.
         if (session.eventInstance() != null && AgentPpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
