@@ -12,10 +12,12 @@ import org.mockito.MockedStatic;
 import server.agents.capabilities.combat.AgentCombatRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
 import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.Monster;
+import server.life.autonomy.BossAction;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -25,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -118,6 +122,87 @@ class ServerMobDamageServiceTest {
         assertEquals(0, damage);
         verify(fixture.target(), never()).addMPHP(-1, 0);
         verify(fixture.target(), never()).addMPHPAndTriggerAutopot(-1, 0);
+    }
+
+    @Test
+    void theAttackFormIsTheFullHitWithItsDamagePacket() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000)) {
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), attack(false));
+
+            assertEquals(1_000, damage);
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-1_000, 0);
+        verify(fixture.map()).broadcastMessage(eq(fixture.target()), any(Packet.class), eq(true));
+    }
+
+    @Test
+    void damagePercentScalesTheRolledDamage() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000)) {
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), attack(false), 50, true);
+
+            assertEquals(500, damage);
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-500, 0);
+        verify(fixture.map()).broadcastMessage(eq(fixture.target()), any(Packet.class), eq(true));
+    }
+
+    @Test
+    void aDeadlyHitIgnoresTheDamagePercent() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+        when(fixture.target().getHp()).thenReturn(5_000);
+        when(fixture.target().getMp()).thenReturn(300);
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000)) {
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), attack(true), 50, true);
+
+            assertEquals(4_999, damage);
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-4_999, -299);
+    }
+
+    @Test
+    void withoutBroadcastTheAgentStillLosesHpAndReactsButNoDamagePacketGoesOut() {
+        DamageFixture fixture = damageFixture(mock(BotClient.class));
+        when(fixture.target().getId()).thenReturn(7001);
+        when(fixture.target().getHp()).thenReturn(5_000);
+        when(fixture.target().getMapId()).thenReturn(280030000);
+        when(fixture.map().isObservedByPlayer()).thenReturn(false);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(fixture.target(), null, null);
+        AgentRuntimeRegistry.registerEntry(entry);
+        AgentCombatObjectiveTargetStateRuntime.setAllowedMobIds(entry, Set.of(fixture.attacker().getId()));
+
+        try (MockedStatic<AgentDefenseDataProvider> ignored = fixedRoll(1_000);
+             MockedStatic<AgentCombatRuntime> combat = mockStatic(AgentCombatRuntime.class)) {
+            int damage = ServerMobDamageService.applyOrdinaryAttack(
+                    fixture.attacker(), fixture.target(), attack(false), 100, false);
+
+            assertEquals(1_000, damage);
+        }
+        verify(fixture.target()).addMPHPAndTriggerAutopot(-1_000, 0);
+        verify(fixture.map(), never()).broadcastMessage(any(Character.class), any(Packet.class), anyBoolean());
+        assertSame(fixture.attacker(), AgentGrindTargetStateRuntime.target(entry), "the Agent still reacts");
+    }
+
+    /** Balrog's attack1 as an autonomous physical attack; {@code deadly} sets the WZ deadlyAttack flag. */
+    private static BossAction.OrdinaryAttack attack(boolean deadly) {
+        return new BossAction.OrdinaryAttack(0, 1, 0, 0, 0, false, null, null, 0, 0, 0,
+                deadly, 500, 0, 0, 0, false);
+    }
+
+    private static MockedStatic<AgentDefenseDataProvider> fixedRoll(int damage) {
+        AgentDefenseDataProvider defense = mock(AgentDefenseDataProvider.class);
+        when(defense.rollPhysicalTouchDamage(any(), any(), anyInt())).thenReturn(damage);
+        when(defense.rollMagicAttackDamage(any(), any(), anyInt())).thenReturn(damage);
+        MockedStatic<AgentDefenseDataProvider> defenses = mockStatic(AgentDefenseDataProvider.class);
+        defenses.when(AgentDefenseDataProvider::getInstance).thenReturn(defense);
+        return defenses;
     }
 
     private static DamageFixture damageFixture(Client client) {

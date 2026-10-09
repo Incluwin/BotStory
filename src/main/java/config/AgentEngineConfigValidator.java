@@ -85,6 +85,13 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
+            // the boss attack mirror's mode, before the boolean and numeric checks too
+            if (key.endsWith("AgentBossAttackMirror.MODE")) {
+                if (!validMirrorMode(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key + " must be OFF, OBSERVE or APPLY");
+                }
+                continue;
+            }
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
             }
@@ -226,6 +233,11 @@ final class AgentEngineConfigValidator {
             }
         }
         return true;
+    }
+
+    /** True for OFF, OBSERVE or APPLY in any case: the boss attack mirror's modes. */
+    static boolean validMirrorMode(String value) {
+        return "OFF".equalsIgnoreCase(value) || "OBSERVE".equalsIgnoreCase(value) || "APPLY".equalsIgnoreCase(value);
     }
 
     private static boolean validNonNumericTuning(String key, String value) {

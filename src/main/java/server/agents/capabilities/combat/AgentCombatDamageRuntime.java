@@ -17,10 +17,14 @@ import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.combat.PhysicalContactDamagePolicy;
+import server.combat.ServerMobDamageService;
 import server.life.Monster;
+import server.life.autonomy.BossAction;
+import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntUnaryOperator;
 
 public final class AgentCombatDamageRuntime {
@@ -201,5 +205,47 @@ public final class AgentCombatDamageRuntime {
             return;
         }
         AgentGrindTargetStateRuntime.setTarget(entry, attacker);
+    }
+
+    /**
+     * Applies one boss attack that a human client played for a part it controls (the boss attack mirror). Runs on the
+     * Agent's own mailbox. The Agent must still be alive, visible, on the part's map and in its event. Under the
+     * shared window ({@code sharedWindow}) a hit inside the touch-damage cooldown is skipped, and a hit that does
+     * damage starts that cooldown. A jump attack misses an Agent in the air. {@code show} is asked only for a hit that
+     * is applied: false sends no damage packet.
+     */
+    public static MirroredHit applyMirroredHit(AgentRuntimeEntry entry, Character bot, Monster part,
+                                               BossAction.OrdinaryAttack attack, int damagePercent,
+                                               BooleanSupplier show, boolean jumpAttack, boolean sharedWindow) {
+        MapleMap map = part == null ? null : part.getMap();
+        if (entry == null || bot == null || attack == null || map == null || !part.isAlive() || !bot.isAlive()
+                || bot.isHidden() || bot.getMap() != map || bot.getEventInstance() != map.getEventInstance()) {
+            return MirroredHit.NONE;
+        }
+        if (sharedWindow && AgentCombatCooldownStateRuntime.hasMobHitCooldown(entry)) {
+            return MirroredHit.WINDOW;
+        }
+        if (jumpAttack && AgentMovementStateRuntime.inAir(entry)) {
+            return MirroredHit.AIRBORNE;
+        }
+        int damage = ServerMobDamageService.applyOrdinaryAttack(part, bot, attack, damagePercent, show.getAsBoolean());
+        if (sharedWindow && damage > 0) {
+            AgentCombatCooldownStateRuntime.setMobHitCooldownMs(
+                    entry,
+                    AgentMovementTimers.delayAfterCurrentTick(AgentCombatConfig.cfg.MOB_HIT_COOLDOWN_MS));
+        }
+        return MirroredHit.APPLIED;
+    }
+
+    /** What one mirrored boss attack did to an Agent ({@link #applyMirroredHit}). */
+    public enum MirroredHit {
+        /** The hit was rolled and applied; a dodge or a 0 counts too. */
+        APPLIED,
+        /** Skipped: the Agent was still inside its shared hit window. */
+        WINDOW,
+        /** Skipped: a jump attack, and the Agent was in the air. */
+        AIRBORNE,
+        /** Skipped: the Agent or the part is no longer alive, on the same map or in the same event. */
+        NONE
     }
 }

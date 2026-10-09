@@ -33,21 +33,32 @@ public final class ServerMobDamageService {
     public static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic) {
         return applyOrdinaryAttack(attacker, target, attackIndex, magic,
-                0, 0, false, 0, 0);
+                0, 0, false, 0, 0, 100, true);
     }
 
     public static int applyOrdinaryAttack(
             Monster attacker, Character target, BossAction.OrdinaryAttack attack) {
+        return applyOrdinaryAttack(attacker, target, attack, 100, true);
+    }
+
+    /**
+     * The same hit with the rolled damage scaled to {@code damagePercent} (a deadly hit and MP burn stay as they are),
+     * and without the damage packet when {@code broadcast} is false: the target still loses the HP and an Agent still
+     * reacts. The boss attack mirror softens and quiets the hits it copies onto Agents with these two.
+     */
+    public static int applyOrdinaryAttack(
+            Monster attacker, Character target, BossAction.OrdinaryAttack attack,
+            int damagePercent, boolean broadcast) {
         return applyOrdinaryAttack(attacker, target, attack.attackIndex(), attack.magic(),
                 attack.physicalAttack(), attack.magicAttack(), attack.deadly(),
-                attack.diseaseSkill(), attack.diseaseLevel());
+                attack.diseaseSkill(), attack.diseaseLevel(), damagePercent, broadcast);
     }
 
     private static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic,
             int physicalAttackOverride, int magicAttackOverride,
             boolean deadlyOverride, int diseaseSkillOverride,
-            int diseaseLevelOverride) {
+            int diseaseLevelOverride, int damagePercent, boolean broadcast) {
         if (attacker == null || target == null || !attacker.isAlive() || !target.isAlive()) {
             return 0;
         }
@@ -65,6 +76,9 @@ public final class ServerMobDamageService {
                 : defense.rollPhysicalTouchDamage(target, attacker,
                         physicalAttackOverride > 0
                                 ? physicalAttackOverride : attacker.getPADamage());
+        if (damagePercent != 100 && damage > 0) {
+            damage = (int) ((long) damage * Math.max(0, damagePercent) / 100);
+        }
         if (damage > 0 && target.getClient() instanceof BotClient && AgentCombatDamageRuntime.invincible(target)) {
             damage = 0;   // a player's client would have been invincible here (after Corkscrew Blow lands)
         }
@@ -109,9 +123,11 @@ public final class ServerMobDamageService {
         }
 
         int direction = target.getPosition().x < attacker.getPosition().x ? 0 : 1;
-        map.broadcastMessage(target, PacketCreator.damagePlayer(
-                attackIndex, attacker.getId(), target.getId(), damage, 0, direction,
-                false, 0, true, attacker.getObjectId(), 0, 0), true);
+        if (broadcast) {
+            map.broadcastMessage(target, PacketCreator.damagePlayer(
+                    attackIndex, attacker.getId(), target.getId(), damage, 0, direction,
+                    false, 0, true, attacker.getObjectId(), 0, 0), true);
+        }
         if (damage > 0 && target.getClient() instanceof BotClient) {
             AgentCombatDamageRuntime.reactToServerAttack(
                     target, attacker, direction);

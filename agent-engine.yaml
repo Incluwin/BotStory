@@ -5754,3 +5754,31 @@ tuning:
     # Purpose: Names boss mobs outside events, such as field bosses, whose control stays with a player's client while companions hit them.
     # Technical: AgentBossScope.guards covers a listed mob id only on a map with no event; event bosses are scoped by EXPEDITION_TYPES. A blank value fails startup (AgentEngineConfigValidator), so the empty list is written as none.
     server.agents.capabilities.mobcontrol.AgentBossScope.BOSS_IDS: 'none'
+    # Values: OFF, OBSERVE or APPLY. Recommended: APPLY; OBSERVE for a dry run that only logs, OFF to stop the mirror without a restart of anything else.
+    # Purpose: Lets the boss parts a player's client moves, such as Zakum's arms, hit the companions fighting beside that player, as they hit the player.
+    # Technical: AgentBossAttackMirror decodes each attack the part's controller reports in MOVE_LIFE (BossAttackMirrorSeam) and, at the attack's attackAfter, hits the INSIDE members of the open companion run in its shape. OBSERVE logs the predicted targets and changes no HP. The GM's !bossmirror mode beats this value until the next restart. Only parts AgentBossScope guards count.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MODE: 'APPLY'
+    # Values: a positive integer; unit: milliseconds. Recommended: 4000-8000; 6000 covers the longest Zakum arm animation (attack2 of 8800009, about 5800 ms).
+    # Purpose: Caps how long the mirror treats repeated reports of one attack as the same attack, so a client that repeats the action never doubles a hit.
+    # Technical: AgentBossAttackMirror accepts a part's attack again only after min(DEDUP_MAX_MS, max(attackAfter, the full animation with UOL frames, ServerMobActionCatalog.resolvedAnimationMs)) since the last accepted report of that attack; keys of dead parts and keys older than this are pruned.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.DEDUP_MAX_MS: '6000'
+    # Values: a non-negative integer; unit: Agents per attack. Recommended: 30 (every Agent shows its damage); 3 when a boss fight strains the game client.
+    # Purpose: Limits how many companions show a damage number for one mirrored boss attack; the others still lose the HP without a packet.
+    # Technical: AgentBossAttackMirror counts the applied hits of each accepted attack (an AtomicInteger per attack) and passes broadcast=false to ServerMobDamageService.applyOrdinaryAttack after this many, which skips the damagePlayer packet only. A hit skipped by the shared window or a jump attack uses up no slot.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MAX_SHOWN_HITS: '30'
+    # Values: an integer from 0 to 100; unit: percent. Recommended: 100; lower only to test whether companions survive a boss at all.
+    # Purpose: Scales the damage a mirrored boss attack does to a companion, against the damage the same attack does to a player.
+    # Technical: ServerMobDamageService.applyOrdinaryAttack multiplies the rolled PAD or MAD damage by this percent before the defenses; a deadly attack (HP to 1) and MP burn stay as they are. The validator's percent rule bounds it to 0-100.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.DAMAGE_PERCENT: '100'
+    # Values: true or false. Recommended: true, so a companion takes at most one boss or touch hit per window, as a player's invincibility frames allow.
+    # Purpose: Makes a mirrored boss hit and a touch hit share one short hit window per companion, the way a player is briefly invincible after a hit.
+    # Technical: AgentCombatDamageRuntime.applyMirroredHit skips a hit while AgentCombatCooldownStateRuntime.hasMobHitCooldown is set, and a hit that does damage sets it for AgentCombatConfig.MOB_HIT_COOLDOWN_MS (1500), the window touch damage already uses. False ignores and leaves the window.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.SHARED_HIT_WINDOW: 'true'
+    # Values: a positive integer; unit: milliseconds. Recommended: 1000-2000; 1500 allows for the network delay between the controller's report and a player's own hit report.
+    # Purpose: How far apart the mirror's predicted hit on a player and that player's own hit report may be and still count as the same hit in the calibration counts.
+    # Technical: AgentBossAttackMirror records each player in an attack's shape at impact and matches it with TAKE_DAMAGE reports of the same part, attack and player (BossAttackMirrorSeam.reportedHit) in either order; older ones count as predicted-not-reported or reported-not-predicted (logged with dx, dy and the delay) in !bossmirror status.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.CALIBRATION_WINDOW_MS: '1500'
+    # Values: a positive integer; unit: milliseconds. Recommended: 30000-120000; 60000 gives one line a minute per boss run.
+    # Purpose: How often the boss attack mirror writes one summary line per run to the server log while attacks come in.
+    # Technical: AgentBossAttackMirror logs "Boss mirror summary session= attacks= mirrored= dispatched= applied= shown= window= airborne= unengaged= regionsMask= regionsSampled=" at INFO when a report or an impact comes this long after the run's last line; the counts are since the run began.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.SUMMARY_LOG_MS: '60000'
