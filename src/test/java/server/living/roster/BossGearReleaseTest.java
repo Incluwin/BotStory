@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Job;
 import client.inventory.Equip;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
@@ -8,10 +9,12 @@ import client.inventory.Item;
 import constants.inventory.ItemConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import server.knowledge.KnowledgeTestKit;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.quest.BossGearPlanner;
 import server.living.store.LivingStore.RosterState;
+import server.living.store.LivingStore.WearStats;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +22,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -152,5 +156,109 @@ class BossGearReleaseTest {
         assertNull(game.row(hadrik), "the release itself goes on");
         assertEquals(List.of(), game.store.storedWrites);
         assertEquals(5, game.store.storedItems.get(HADRIK).size());
+    }
+
+    // ---- its own gear goes back on (OwnGearRefit) -------------------------------------------------
+
+    private static final int GLADIUS = 1302008;
+    private static final int LIONHEART = 1402006;
+    private static final int STEEL_SHIELD = 1092000;
+    private static final int BOSS_SHIELD = 1092017;
+    private static final int BOSS_TWO_HANDED = 1402011;
+    private static final short SHIELD = -10;
+    /** A Lv70 Fighter, male, STR 250 (Garrick's build): its Gladius and Steel Shield fit it. */
+    private static final WearStats FIGHTER = new WearStats(110, 70, 0, 250, 20, 4, 4, 0);
+
+    /** "id@position" of each item, by item id. */
+    private static List<String> placed(Iterable<Item> items) {
+        List<Item> out = new ArrayList<>();
+        items.forEach(out::add);
+        return out.stream().sorted(java.util.Comparator.comparingInt(Item::getItemId))
+                .map(item -> item.getItemId() + "@" + item.getPosition()).toList();
+    }
+
+    /** Hadrik's saved inventory (nothing has it loaded) as a Lv70 Fighter, with the server knowledge about. */
+    private List<Item> savedAsAFighter(Item... items) {
+        List<Item> saved = new ArrayList<>(List.of(items));
+        game.store.storedItems.put(HADRIK, saved);
+        offline(HADRIK);
+        when(game.store.store.wearStats(HADRIK)).thenReturn(FIGHTER);
+        return saved;
+    }
+
+    @Test
+    void aReleasedCompanionOutWithItsOwnerWearsTheShieldTheKitSwappedIntoItsBagAgainBeforeItIsSaved() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            Character bot = game.bot(hadrik);
+            when(bot.getJob()).thenReturn(Job.FIGHTER);
+            when(bot.getLevel()).thenReturn(FIGHTER.level());
+            when(bot.getStr()).thenReturn(FIGHTER.str());
+            Inventory worn = new Inventory(bot, InventoryType.EQUIPPED, (byte) 100);
+            worn.addItemFromDB(Equip.restored(GLADIUS, WEAPON));
+            worn.addItemFromDB(boss(BOSS_SHIELD, SHIELD));
+            Inventory bag = new Inventory(bot, InventoryType.EQUIP, (byte) 24);
+            bag.addItemFromDB(Equip.restored(STEEL_SHIELD, (short) 1)); // !bossgear swapped it in here
+            bag.addItemFromDB(questGloves((short) 2));
+            when(bot.getInventory(InventoryType.EQUIPPED)).thenReturn(worn);
+            when(bot.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+            List<String> savedWearing = new ArrayList<>();
+            doAnswer(inv -> savedWearing.add(String.join(",", placed(worn.list())))).when(bot).saveCharToDB();
+            game.store.seed(game.row(hadrik).with(RosterState.ACTIVE, 1_000L));
+            game.roster();
+            game.outWithAnn(hadrik);
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+            game.runTimers();
+
+            assertEquals(List.of(STEEL_SHIELD + "@-10", GLADIUS + "@-11"), placed(worn.list()),
+                    "the boss shield is gone and its own Steel Shield is on again");
+            assertEquals(List.of(QUEST_GLOVES + "@2"), placed(bag.list()), "out of its bag; nothing made");
+            assertEquals(STEEL_SHIELD + "@-10," + GLADIUS + "@-11", savedWearing.get(savedWearing.size() - 1),
+                    "saved wearing it");
+            assertEquals(List.of(ANN + " hadrik bossgear.removed released: 1 piece"),
+                    game.store.events("bossgear.removed"));
+        }
+    }
+
+    @Test
+    void aBenchedCompanionsSavedInventoryWearsItsOwnShieldAgainInTheSameRewrite() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = savedAsAFighter(Equip.restored(GLADIUS, WEAPON), boss(BOSS_SHIELD, SHIELD),
+                    Equip.restored(STEEL_SHIELD, (short) 1), questGloves((short) 2));
+            game.roster();
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+
+            assertEquals(List.of(HADRIK), game.store.storedWrites, "one rewrite");
+            assertEquals(List.of(QUEST_GLOVES + "@2", STEEL_SHIELD + "@-10", GLADIUS + "@-11"), placed(saved),
+                    "the shield is on at -10 and no longer in its bag");
+        }
+    }
+
+    @Test
+    void besideATwoHandedWeaponItsShieldStaysInTheBag() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = savedAsAFighter(boss(BOSS_TWO_HANDED, WEAPON), Equip.restored(LIONHEART, (short) 1),
+                    Equip.restored(STEEL_SHIELD, (short) 2));
+            game.roster();
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+
+            assertEquals(List.of(STEEL_SHIELD + "@2", LIONHEART + "@-11"), placed(saved),
+                    "its own two-handed sword is on again; a shield never goes beside it");
+        }
+    }
+
+    @Test
+    void withNoCarriedShieldTheSlotStaysEmptyAndNothingIsMade() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = savedAsAFighter(Equip.restored(GLADIUS, WEAPON), boss(BOSS_SHIELD, SHIELD),
+                    questGloves((short) 1));
+            game.roster();
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+
+            assertEquals(List.of(QUEST_GLOVES + "@1", GLADIUS + "@-11"), placed(saved));
+        }
     }
 }

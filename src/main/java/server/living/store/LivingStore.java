@@ -1014,26 +1014,50 @@ public final class LivingStore {
     }
 
     /**
-     * Takes the items {@code drop} picks out of the saved inventory of a character nothing has loaded (a released
-     * companion's boss gear, CompanionGearTool): its items are read and, when {@code drop} picks any, written back
-     * without them in one transaction, the way the game saves an inventory (ItemFactory). A loaded character saves its
-     * own inventory over this, so it is only for one that is not loaded; the caller holds the maintenance lock that
-     * offline loads take. Returns how many items were taken (0: nothing was written), or -1 when the read or the write
-     * failed (nothing changed).
+     * What a rewrite of a saved inventory puts on once its drop is decided ({@link #dropStoredItems}):
+     * {@code takenWorn} the worn items it takes, {@code worn} what the character still wears and {@code carried} its
+     * Equip tab. It may move a carried item onto an empty worn slot by setting its position (below 0); it never adds or
+     * removes one.
      */
-    public int dropStoredItems(int characterId, Predicate<Item> drop) {
+    @FunctionalInterface
+    public interface Redress {
+        void apply(List<Item> takenWorn, List<Item> worn, List<Item> carried);
+    }
+
+    /**
+     * Takes the items {@code drop} picks out of the saved inventory of a character nothing has loaded (a released
+     * companion's boss gear, CompanionGearTool): its items are read and, when {@code drop} picks any,
+     * {@code redress} may put carried pieces on the slots they left, and it is written back without them in one
+     * transaction, the way the game saves an inventory (ItemFactory). A loaded character saves its own inventory over
+     * this, so it is only for one that is not loaded; the caller holds the maintenance lock that offline loads take.
+     * Returns how many items were taken (0: nothing was written), or -1 when the read or the write failed (nothing
+     * changed).
+     */
+    public int dropStoredItems(int characterId, Predicate<Item> drop, Redress redress) {
         try {
             List<Pair<Item, InventoryType>> items = ItemFactory.INVENTORY.loadItems(characterId, false);
-            List<Pair<Item, InventoryType>> kept = items.stream().filter(pair -> !drop.test(pair.getLeft())).toList();
+            List<Pair<Item, InventoryType>> kept = new ArrayList<>();
+            List<Item> takenWorn = new ArrayList<>();
+            for (Pair<Item, InventoryType> pair : items) {
+                if (!drop.test(pair.getLeft())) {
+                    kept.add(pair);
+                } else if (pair.getRight() == InventoryType.EQUIPPED) {
+                    takenWorn.add(pair.getLeft());
+                }
+            }
             int dropped = items.size() - kept.size();
             if (dropped == 0) {
                 return 0;
             }
+            redress.apply(takenWorn, tab(kept, InventoryType.EQUIPPED), tab(kept, InventoryType.EQUIP));
+            List<Pair<Item, InventoryType>> written = kept.stream().map(pair -> pair.getRight() == InventoryType.EQUIP
+                    && pair.getLeft().getPosition() < 0 ? new Pair<>(pair.getLeft(), InventoryType.EQUIPPED) : pair)
+                    .toList();
             try (Connection con = DatabaseConnection.getConnection()) {
                 boolean autoCommit = con.getAutoCommit();
                 con.setAutoCommit(false);
                 try {
-                    ItemFactory.INVENTORY.saveItems(kept, characterId, con);
+                    ItemFactory.INVENTORY.saveItems(written, characterId, con);
                     con.commit();
                 } catch (SQLException | RuntimeException failure) {
                     con.rollback();
@@ -1046,6 +1070,31 @@ public final class LivingStore {
         } catch (SQLException | RuntimeException failure) {
             log.warn("inventory rewrite failed for character {}", characterId, failure);
             return -1;
+        }
+    }
+
+    private static List<Item> tab(List<Pair<Item, InventoryType>> items, InventoryType type) {
+        return items.stream().filter(pair -> pair.getRight() == type).map(Pair::getLeft).toList();
+    }
+
+    /**
+     * What a character can wear by, from its characters row (a released companion's, CompanionGearTool): its job id,
+     * level, gender (0 male, 1 female), base STR, DEX, INT and LUK, and fame.
+     */
+    public record WearStats(int jobId, int level, int gender, int str, int dex, int int_, int luk, int fame) { }
+
+    /** {@link WearStats} of any character (online or not) from the characters table; null if unknown or unread. */
+    public WearStats wearStats(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT job, level, gender, str, dex, `int`, luk, fame FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? new WearStats(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
+                        rs.getInt(6), rs.getInt(7), rs.getInt(8)) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("character wear stats lookup failed for {}", characterId, failure);
+            return null;
         }
     }
 

@@ -3210,14 +3210,15 @@ public final class RosterService {
      * unloads it, every piece tagged as boss gear leaves it, worn and carried, and nothing else does. Loaded, they come
      * off right here on companion-ops (out of the registry, nothing ticks it) and it is saved; its unload then saves it
      * in full. Not loaded, they leave its saved inventory, unless its character is online now (it saves its own over
-     * the store). Its kit, wardrobe or gear optimizer dresses the empty slots at its next load. Never in the way of the
-     * release: a failure is logged.
+     * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: what
+     * the kit swapped into its bag, such as its own shield), since no load path dresses a carried shield again. Never
+     * in the way of the release: a failure is logged.
      */
     private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
         try {
             int taken;
             if (bot != null) {
-                taken = CompanionGearTool.takeBossGear(bot);
+                taken = CompanionGearTool.takeBossGearOnRelease(bot);
                 if (taken > 0) {
                     bot.saveCharToDB();
                 }
