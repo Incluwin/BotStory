@@ -5782,3 +5782,27 @@ tuning:
     # Purpose: How often the boss attack mirror writes one summary line per run to the server log while attacks come in.
     # Technical: AgentBossAttackMirror logs "Boss mirror summary session= attacks= mirrored= dispatched= applied= shown= window= airborne= unengaged= regionsMask= regionsSampled=" at INFO when a report or an impact comes this long after the run's last line; the counts are since the run began.
     server.agents.capabilities.expedition.boss.AgentBossAttackMirror.SUMMARY_LOG_MS: '60000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 15000-60000; 30000 gives two lines a minute per Zakum run.
+    # Purpose: How often the Zakum fight writes one line with each companion's HP, MP, place and current choice, and the parts still alive.
+    # Technical: AgentZakumScenario.tick logs "Zakum party vitals phase= [name=hp/maxhp,mp/maxmp@(x,y) choice] parts=[id(fake)(no-human)(weapon-immune)(magic-immune)=hp/maxhp]" at INFO when this long has passed since its last line; a phase change is logged at once on its own.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.VITALS_LOG_INTERVAL_MS: '30000'
+    # Values: a non-negative integer; unit: pixels. Recommended: 100-250; 150 keeps the floor by the altar free for the Eye of Fire.
+    # Purpose: How far left of Zakum's altar the companions line up before the Eye of Fire is dropped, so they wait beside the altar rather than on it.
+    # Technical: AgentZakumScenario.preSummonSpot puts ordinal 0 this far left of the altar reactor 2111001 (at -10,-204 on 280030000) and each next ordinal PRE_SUMMON_SPACING_PX further left, inside the altar's foothold bounds; the spot is grounded with groundPoint.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.PRE_SUMMON_OFFSET_PX: '150'
+    # Values: a positive integer; unit: pixels. Recommended: 20-60; 30 is about one character's width.
+    # Purpose: How far apart the companions stand on their line left of Zakum's altar while they wait for the summon.
+    # Technical: AgentZakumScenario.preSummonSpot steps each ordinal this far left; a line longer than the floor starts over at its first spot (Math.floorMod over the spots that fit), and a member within half of this of its spot counts as lined up and is stopped.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.PRE_SUMMON_SPACING_PX: '30'
+    # Values: a non-negative integer; unit: pixels. Recommended: 90-200; 100 splits Zakum's arms into the three low ones and the five high ones.
+    # Purpose: How low a Zakum arm must reach for melee companions to take it first from the floor; higher arms come first for ranged and magic companions.
+    # Technical: BossTargetRules.tiers puts an arm in the floor tier when its WZ stand box (AgentMobHitboxProvider) ends at most this far above the arm's origin: 8800007 (87), 8800009 (-2) and 8800010 (30) do; 8800003-8800006 and 8800008 (160-266) do not.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.FLOOR_REACH_PX: '100'
+    # Values: a positive integer; unit: live adds. Recommended: 5-10; 6 is more than one summon wave of 5.
+    # Purpose: How many of Zakum's summoned monsters may be alive before the companions turn on them before the body.
+    # Technical: BossTargetRules.tiers counts every live non-fake monster on the altar that is not a Zakum part (the skill 200 summons 6130104, 6230101, 6300003, 6400003, 6400004); at or above this count the adds are every member's first tier, below it their last.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.ADD_CLEAR_THRESHOLD: '6'
+    # Values: none, or x,y points on the altar separated by |, such as -345,-488|446,-530. Recommended: the four platforms below, the ones AgentZakumAnchorReachTest finds reachable.
+    # Purpose: Platforms on Zakum's altar where melee companions stand to hit the high arms once the low arms are down.
+    # Technical: A melee member whose first BossTargetRules tier is UPPER_ARMS grinds from (grindFromAnchor) the listed point nearest the body box of any arm in that tier, grounded with groundPoint. AgentZakumAnchorReachTest checks on the offline navigation graph of 280030000 that each candidate lies on a foothold with a path up from the floor and back, and that this value is exactly the reachable ones. AgentEngineConfigValidator refuses a blank value.
+    server.agents.capabilities.expedition.zakum.AgentZakumScenario.PLATFORM_ANCHORS: '-345,-488|-373,-556|446,-530|473,-391'

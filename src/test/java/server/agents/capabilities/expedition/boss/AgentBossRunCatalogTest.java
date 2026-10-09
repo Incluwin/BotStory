@@ -1,6 +1,5 @@
 package server.agents.capabilities.expedition.boss;
 
-import client.Character;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
@@ -75,18 +74,17 @@ class AgentBossRunCatalogTest {
     }
 
     @Test
-    void zakumsFightIsAFreshIdleScenarioPerSession() {
+    void zakumsFightIsAFreshZakumScenarioPerSession() {
         AgentBossFight fight = AgentBossRunCatalog.ZAKUM.fight().get();
         assertInstanceOf(AgentZakumScenario.class, fight);
         assertNotSame(fight, AgentBossRunCatalog.ZAKUM.fight().get(), "each session gets its own fight");
 
-        Character member = mock(Character.class);
         EventInstanceManager event = mock(EventInstanceManager.class);
         fight.adopt(7, 0);
-        fight.tick(List.of(member), event, 1_000L);
+        fight.tick(List.of(), event, 1_000L);
         fight.end(event);
 
-        verifyNoInteractions(member, event);
+        verifyNoInteractions(event);
     }
 
     @Test

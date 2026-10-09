@@ -92,6 +92,14 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
+            // the Zakum fight's platform anchors, before the boolean and numeric checks too
+            if (key.endsWith("AgentZakumScenario.PLATFORM_ANCHORS")) {
+                if (!validPlatformAnchors(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be none, or x,y points separated by |, such as -345,-488|446,-530");
+                }
+                continue;
+            }
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
             }
@@ -238,6 +246,11 @@ final class AgentEngineConfigValidator {
     /** True for OFF, OBSERVE or APPLY in any case: the boss attack mirror's modes. */
     static boolean validMirrorMode(String value) {
         return "OFF".equalsIgnoreCase(value) || "OBSERVE".equalsIgnoreCase(value) || "APPLY".equalsIgnoreCase(value);
+    }
+
+    /** True for "none", or x,y points separated by "|", such as "-345,-488|446,-530": the Zakum platform anchors. */
+    static boolean validPlatformAnchors(String value) {
+        return value != null && value.matches("none|-?\\d{1,6},-?\\d{1,6}(\\|-?\\d{1,6},-?\\d{1,6})*");
     }
 
     private static boolean validNonNumericTuning(String key, String value) {
