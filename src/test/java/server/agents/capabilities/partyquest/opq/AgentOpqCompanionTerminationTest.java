@@ -153,4 +153,19 @@ class AgentOpqCompanionTerminationTest {
                 eq(stock.sessionId()), eq(false), anyString(), anyLong(), isNull()));
         assertNull(reported.get(), "a stock run reports none");
     }
+
+    @Test
+    void exitAgentsOnlySkipsACompanionAClaimHasAlreadyTakenOut() {
+        AgentOpqSession session = fiveMemberRun(true, AgentOpqSession.Phase.CLAIMING_REWARD);
+        when(run.event.getPlayers()).thenReturn(List.of(ben, mira, kes, pel, hal)); // read before Kes's claim landed
+        when(kes.getEventInstance()).thenReturn(null); // Minerva has warped Kes out since
+
+        AgentOpqTerminationService.exitAgentsOnly(session);
+
+        verify(run.event, never()).exitPlayer(kes);
+        verify(run.event).exitPlayer(mira);
+        verify(run.event).exitPlayer(pel);
+        verify(run.event).exitPlayer(hal);
+        verify(run.event, never()).exitPlayer(ben);
+    }
 }

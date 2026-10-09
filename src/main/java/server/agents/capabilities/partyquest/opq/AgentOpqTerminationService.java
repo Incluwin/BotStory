@@ -98,6 +98,7 @@ final class AgentOpqTerminationService {
                 .collect(Collectors.toSet());
         for (Character participant : new ArrayList<>(event.getPlayers())) {
             if (participant == null || !agents.contains(participant.getId())) continue;
+            if (participant.getEventInstance() != event) continue; // a claim has already taken it out
             try {
                 event.exitPlayer(participant);
             } catch (RuntimeException failure) {
