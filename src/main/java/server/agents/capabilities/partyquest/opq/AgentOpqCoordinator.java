@@ -96,9 +96,9 @@ final class AgentOpqCoordinator {
                     AgentOpqTerminationService.fail(session, "OPQ leader left the event", nowMs);
                     return;
                 }
-            } else if (bound != null && leader.getHp() <= 0) {
+            } else if (bound != null && leader.getHp() <= 0 && !AgentOpqTerminationService.pastTheClear(session)) {
                 // A dead leader still in the event is no failure: the stock event ends on his revive, and the next
-                // pass sees him out of it.
+                // pass sees him out of it. After the clear the pass goes on, so he never holds up the claims.
                 return;
             }
             if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));

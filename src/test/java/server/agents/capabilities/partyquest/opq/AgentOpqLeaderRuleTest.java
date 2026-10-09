@@ -125,4 +125,19 @@ class AgentOpqLeaderRuleTest {
         verify(run.event, never()).exitPlayer(ben);
         verify(run.event, never()).dispose();
     }
+
+    @Test
+    void aDeadLeaderAfterTheClearDoesNotHoldUpTheClaims() {
+        AgentOpqSession session = benLeads(AgentOpqSession.Phase.CLAIMING_REWARD);
+        when(run.event.getProperty("statusStg8")).thenReturn("1");
+        when(ben.getHp()).thenReturn(0); // he died in the jail bonus and is still in the event
+        for (Character agent : new Character[]{mira, kes, pel, hal}) {
+            when(agent.getMapId()).thenReturn(AgentOpqDefinition.RECRUIT_MAP); // every companion has claimed
+        }
+
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+
+        assertEquals(3_000L, session.clearSeenAtMs(), "the pass went on and saw the clear");
+        assertEquals(AgentOpqSession.Phase.COMPLETED, session.phase(), "the claims ended without him");
+    }
 }
