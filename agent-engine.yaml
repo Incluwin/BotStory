@@ -1511,7 +1511,7 @@ tuning:
     server.agents.capabilities.partyquest.opq.AgentOpqWatchdogRuntime.PERIOD_MS: '1000'
     # Values: 1-10 refusals. Recommended: 3 so a companion whose bag is full gives up the reward instead of asking Minerva forever.
     # Purpose: Bounds how often an OPQ Agent asks Minerva for its reward while its inventory cannot take it.
-    # Technical: tickRewardMember counts a refusal when the Agent is still on 920011300 after Minerva's script ran; at this count it leaves through the event's own exit, unrewarded, so the claims can end.
+    # Technical: tickRewardMember counts a refusal when the Agent is still on 920011300 once the retry window after Minerva's script has passed; at this count it stops asking and leaves through the event's own exit, unrewarded, so the claims can end.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX: '3'
 
     # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.

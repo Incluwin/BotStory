@@ -1030,31 +1030,43 @@ final class AgentOpqCoordinator {
         if (agentsOut) AgentOpqTerminationService.complete(session, nowMs);
     }
 
+    /**
+     * Claims the reward. On 920011300 an Agent asks Minerva, then waits out ACTION_RETRY_MS; if it is still there when
+     * the window has passed (her script warps a rewarded Agent to Wonky; a full bag is refused and stays), that ask
+     * counts as a refusal. At REWARD_REFUSALS_MAX it stops asking and leaves through the event's own exit, unrewarded.
+     */
     private static void tickRewardMember(AgentOpqSession session, AgentRuntimeEntry entry,
                                          Character agent, long nowMs) {
+        AgentOpqMemberState member = session.member(agent.getId());
+        // Off the reward map nothing is waiting to be judged (a warp that landed after the run was a reward).
+        if (member != null && agent.getMapId() != AgentOpqDefinition.CLEAR_MAP) member.clearRewardAsk();
         if (agent.getMapId() == AgentOpqDefinition.CENTER_MAP && propertyInt(agent, "statusStg8") == 1) {
             if (runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) session.markProgress(nowMs);
             return;
         }
-        if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP
-                && runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) {
+        if (agent.getMapId() != AgentOpqDefinition.CLEAR_MAP || member == null) return;
+        if (member.rewardAskPending()) {
+            member.clearRewardAsk();
+            if (member.recordRewardRefusal() == REWARD_REFUSALS_MAX) {
+                refuseReward(session, agent);
+                return;
+            }
+        }
+        if (member.rewardRefusals() >= REWARD_REFUSALS_MAX) return; // it gave up; its exit was tried once
+        if (runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) {
             session.markProgress(nowMs);
-            // Minerva's script ran to its end; a rewarded Agent is warped to Wonky, a refused one (a full bag) stays.
-            if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP) rewardRefused(session, agent);
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
+            if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP) member.markRewardAsked();
         }
     }
 
     /**
-     * Counts a refused reward; at REWARD_REFUSALS_MAX the Agent leaves through the event's own exit, unrewarded, so it
-     * stops asking and the claims can end ('OPQ reward refused: session= member= attempts=').
+     * Minerva refused this Agent's reward REWARD_REFUSALS_MAX times: it leaves through the event's own exit, unrewarded,
+     * so it stops asking and the claims can end ('OPQ reward refused: session= member= attempts=', once).
      */
-    private static void rewardRefused(AgentOpqSession session, Character agent) {
-        AgentOpqMemberState member = session.member(agent.getId());
-        if (member == null) return;
-        int attempts = member.recordRewardRefusal();
-        if (attempts < REWARD_REFUSALS_MAX) return;
+    private static void refuseReward(AgentOpqSession session, Character agent) {
         log.warn("OPQ reward refused: session={} member={} attempts={}", session.sessionId(), agent.getName(),
-                attempts);
+                REWARD_REFUSALS_MAX);
         EventInstanceManager event = session.eventInstance();
         if (event == null) return;
         try {

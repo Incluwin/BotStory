@@ -32,6 +32,7 @@ public final class AgentOpqMemberState {
     private int bossObjectId;
     private int bossHp = -1;
     private int rewardRefusals;
+    private boolean rewardAskPending;
 
     public AgentOpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) throw new IllegalArgumentException("valid OPQ member required");
@@ -137,4 +138,10 @@ public final class AgentOpqMemberState {
 
     /** Counts one more refusal of this member's reward (still on the reward map after Minerva ran); the new count. */
     int recordRewardRefusal() { return ++rewardRefusals; }
+    int rewardRefusals() { return rewardRefusals; }
+
+    /** Minerva ran for this member and it was still on the reward map: the next check after its retry window judges it. */
+    void markRewardAsked() { rewardAskPending = true; }
+    void clearRewardAsk() { rewardAskPending = false; }
+    boolean rewardAskPending() { return rewardAskPending; }
 }
