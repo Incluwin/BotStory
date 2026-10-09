@@ -23,6 +23,8 @@ import server.maps.Reactor;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Natural-action PPQ coordinator: clear, collect, optional chests, doors, boss. */
@@ -63,6 +65,7 @@ public final class AgentPpqCoordinator {
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
         logStage(session, leader, nowMs);
+        observeProgress(session, nowMs);
         if (session.eventInstance() != null && session.eventInstance().isEventCleared()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
             logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
@@ -399,6 +402,7 @@ public final class AgentPpqCoordinator {
         AgentPpqSession.StageChange change =
                 session.observeStage(AgentPpqDefinition.stageOf(leader.getMapId()), nowMs);
         if (change == null) return;
+        session.markProgress(nowMs);
         String wave = session.eventInstance() == null ? "-" : partyQuest().property(leader, "stage2");
         log.info("PPQ stage: session={} {}->{} stageMs={} runMs={} medalWave={} companionRun={}", session.sessionId(),
                 change.from(), change.to(), change.stageMs(), change.runMs(), wave == null ? "-" : wave,
@@ -408,6 +412,35 @@ public final class AgentPpqCoordinator {
     private static int parseInt(String value) {
         try { return Integer.parseInt(value); } catch (RuntimeException ignored) { return 0; }
     }
+    /**
+     * Marks the progress the stock stages make outside the coordinator's own steps: a kill on any member's map, a
+     * member's medals or keys changing hands (humans included), a door or chest reactor changing state. Everything is
+     * read here, outside the session's monitor; the session compares it with the last pass.
+     */
+    private static void observeProgress(AgentPpqSession session, long nowMs) {
+        Map<Integer, Integer> mobs = new HashMap<>();
+        Map<String, Integer> items = new HashMap<>();
+        Map<String, Integer> reactors = new HashMap<>();
+        for (AgentPpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character == null) continue;
+            int mapId = character.getMapId();
+            if (AgentPpqDefinition.isEventMap(mapId) && !mobs.containsKey(mapId)) {
+                mobs.put(mapId, actions().liveMonsterCount(character, AgentPpqDefinition.COMBAT_MOBS));
+                if (mapId == AgentPpqDefinition.DOOR_MAP || mapId == AgentPpqDefinition.CHEST_ONE_MAP
+                        || mapId == AgentPpqDefinition.CHEST_TWO_MAP) {
+                    for (Reactor reactor : actions().reactors(character)) {
+                        if (reactor != null) reactors.put(mapId + ":" + reactor.getObjectId(), (int) reactor.getState());
+                    }
+                }
+            }
+            for (int itemId : AgentPpqDefinition.PROGRESS_ITEMS) {
+                items.put(member.characterId() + ":" + itemId, character.getItemQuantity(itemId, false));
+            }
+        }
+        session.observeProgress(mobs, items, reactors, nowMs);
+    }
+
     private static boolean near(Point first, Point second) {
         return first != null && second != null && first.distanceSq(second) <= (long) INTERACTION_RADIUS * INTERACTION_RADIUS;
     }

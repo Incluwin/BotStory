@@ -35,6 +35,9 @@ public final class AgentPpqDefinition {
     /** PiratePQ.js minPlayers: the event ends when a departure would leave fewer registered. */
     public static final int STOCK_FLOOR = 3;
     public static final Set<Integer> MEDALS = Set.of(ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL);
+    /** The items whose count changing in a member's bag is progress: the medals and both keys. */
+    public static final Set<Integer> PROGRESS_ITEMS =
+            Set.of(ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL, OLD_METAL_KEY, CHEST_KEY);
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(
             ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL, OLD_METAL_KEY, CHEST_KEY);
     public static final Set<Integer> DOOR_REACTORS = Set.of(2_519_000, 2_519_001, 2_519_002, 2_519_003);

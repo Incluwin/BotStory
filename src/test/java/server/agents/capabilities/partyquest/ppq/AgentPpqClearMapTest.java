@@ -89,6 +89,7 @@ class AgentPpqClearMapTest {
     @Test
     void pinAnUnclearedRunStallsAfterTenIdleMinutes() {
         try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.DECK_ONE_MAP)) {
+            run.tick(1_000L); // the leader's first stage, at the start
             run.tick(1_000L + 10 * MINUTE);
 
             assertEquals("PPQ stalled", run.session.failure());

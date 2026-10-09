@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * PPQ Step 1 (plan 4.5): every phase change and every stage the leader steps onto is logged ('PPQ phase:', 'PPQ
- * stage:'), in every mode, and neither marks progress yet.
+ * stage:'), in every mode. Since Step 1b.3 a stage change is also progress for the stall watch.
  */
 class AgentPpqPhaseLogTest {
     @Test
@@ -30,11 +30,10 @@ class AgentPpqPhaseLogTest {
     }
 
     @Test
-    void theLeadersStageIsLoggedAndMarksNoProgressYet() {
+    void theLeadersStageIsLoggedAndMarksProgress() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.MEDAL_MAP);
              PpqLogLines lines = new PpqLogLines(AgentPpqCoordinator.class)) {
             run.properties.put("stage2", "1");
-            long before = run.session.lastProgressAtMs();
 
             run.tick(5_000L);
 
@@ -42,7 +41,7 @@ class AgentPpqPhaseLogTest {
             assertEquals(1, stage.size(), stage.toString());
             assertEquals("PPQ stage: session=" + run.session.sessionId()
                     + " LOBBY->MEDALS stageMs=4000 runMs=4000 medalWave=1 companionRun=true", stage.getFirst());
-            assertEquals(before, run.session.lastProgressAtMs(), "a stage change is not progress yet");
+            assertEquals(5_000L, run.session.lastProgressAtMs(), "a stage change is progress (1b.3)");
             run.tick(6_000L);
             assertEquals(1, lines.startingWith("PPQ stage:").size(), "the same stage is said once");
         }

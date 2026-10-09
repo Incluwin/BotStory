@@ -68,6 +68,9 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Set<String> narrated = new HashSet<>();
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private Map<Integer, Integer> lastMobCounts = Map.of();
+    private Map<String, Integer> lastItemCounts = Map.of();
+    private Map<String, Integer> lastReactorStates = Map.of();
 
     public AgentPpqSession(Mode mode, long seed, int operatorId, boolean skipChestRooms, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid PPQ session required");
@@ -192,6 +195,32 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
 
     /** True the first time a line's key is used in this run. */
     synchronized boolean narrateOnce(String key) { return key != null && !key.isBlank() && narrated.add(key); }
+
+    /**
+     * One pass's readings against the last pass's: progress when a map's live mob count dropped (a kill; a respawn is
+     * not one), a member's medal or key count changed, or a reactor changed state. Only consecutive readings are
+     * compared: the first pass, and a map or member the last pass did not read, only set the baseline. True when it
+     * marked progress.
+     */
+    synchronized boolean observeProgress(Map<Integer, Integer> mobCounts, Map<String, Integer> itemCounts,
+                                         Map<String, Integer> reactorStates, long nowMs) {
+        boolean progress = mobCounts.entrySet().stream().anyMatch(count -> {
+            Integer before = lastMobCounts.get(count.getKey());
+            return before != null && count.getValue() < before;
+        }) || changed(lastItemCounts, itemCounts) || changed(lastReactorStates, reactorStates);
+        lastMobCounts = Map.copyOf(mobCounts);
+        lastItemCounts = Map.copyOf(itemCounts);
+        lastReactorStates = Map.copyOf(reactorStates);
+        if (progress) markProgress(nowMs);
+        return progress;
+    }
+
+    private static boolean changed(Map<String, Integer> before, Map<String, Integer> now) {
+        return now.entrySet().stream().anyMatch(entry -> {
+            Integer last = before.get(entry.getKey());
+            return last != null && !last.equals(entry.getValue());
+        });
+    }
 
     /** Records the stage the leader stands on; the change, or null when it is the same. Marks no progress. */
     synchronized StageChange observeStage(AgentPpqStage stage, long nowMs) {
