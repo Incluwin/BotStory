@@ -896,8 +896,10 @@ living_world:
     # over"): RESTOCK_ENABLED gives every companion out with its owner, or waiting outside a run for them, a standing
     # duty to carry the party-quest standard (agent-engine.yaml AgentSupplyReadiness: 20 HP, 25 MP potions); short in
     # a town near a shop it walks there, buys, and comes back, and Lakelis shows it as gone to the store. false = the
-    # kill switch, everything as before. ASK_EVERY_MS: a companion that cannot afford its potions says so on its own
-    # at most this often. BOSS_MAPS: party-boss gates (Papulatus, King Pepe) reach no shop; a short companion says so
+    # kill switch, everything as before. ASK_EVERY_MS: a companion that cannot afford its potions asks its owner for
+    # them or mesos at most this often, and answers a gift that still falls short (agent-engine.yaml
+    # AgentSupplyReadiness.STILL_SHORT_EVERY_MS) only this long after asking. BOSS_MAPS: party-boss gates (Papulatus,
+    # King Pepe) reach no shop; a short companion says so
     # once as its owner comes in, and entry is never refused.
     COMPANION_RESTOCK_ENABLED: true
     COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
@@ -945,15 +947,23 @@ living_world:
     # Up to ROSTER_MAX - 5 of their benched companions travel down (the recall ETA, at most RECALL_MAX_ETA_MS on
     # Victoria), come in at the top of her stairs, sign up, fight in their own bot party and go back to their bench
     # duty after the run. The server holds at most EXPEDITION_BURST_MAX of them at once, split evenly between owners.
-    # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them.
+    # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them. "easy_balrog" ships on
+    # for its live checks (2026-10-08, user OK); set "" to turn bench allies off again.
     # OWNERS_MAX: owners whose companions may sign up for one expedition (1 = Part A's one-owner rule).
     # HUMAN_SEATS: seats of the list's 30 that companions always leave free for players.
     # ALLY_WALK_OUT_MS: how long an ally walks to the room's way out after the run (Mu Young to the outPerrion portal
     # is about 1,300 px) before it goes where it stands.
-    COMPANION_BOSS_ALLY_TYPES: ""
+    COMPANION_BOSS_ALLY_TYPES: "easy_balrog"
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
+    # Boss clears are not party-quest clears (2026-10-08): the game calls clearPQ for every event clear, boss
+    # expeditions too. For the event scripts listed here (scripts/event file names without .js, a comma list) the
+    # clear marks no companion party-quest run, advances no "clear a party quest" quest step and gives no friendship
+    # PQ points; the server logs "Boss event cleared: script= instance= players=" instead. Friendship boss points
+    # (each boss kill) and companion boss-run records stay as they are. Party quests (KPQ, HPQ, LPQ, CWKPQ, ...) are
+    # never listed. Empty = every clear counts as a party-quest clear, as before.
+    BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
@@ -976,6 +986,8 @@ population:
     LIFE_DAYS_MIN: 60
     LIFE_DAYS_MAX: 400
     SEED_BACKDATE_DAYS: 180
+    SHUTDOWN_LOGOUT_THREADS: 4
+    SHUTDOWN_LOGOUT_BUDGET_MS: 45000
     CHATTER_ENABLED: true
     CHATTER_TOWN_LINES_PER_MINUTE: 18
     CHATTER_CITIZEN_COOLDOWN_MS: 45000

@@ -115,6 +115,12 @@ final class AgentEpqCompanionPlay {
     /** E14w: a companion starts drinking up on the golem's map before the golem. */
     static final String DRINKING_UP = "sec, drinking up first.";
 
+    /** E15r: a companion backs off from the golem to drink up (once a run each). */
+    static final String BACKING_OFF = "backing off to pot up, be right back.";
+
+    /** E15d: a companion out of HP potions hangs back from the golem (once a run each). */
+    static final String OUT_OF_POTS = "out of pots, i'll hang back till i get some.";
+
     /** E14: the companions are ready for the golem. */
     static String altarReadyLine(String leader) {
         return "ready when you are, " + leader + ". drop the purple stone right under the altar.";
@@ -583,6 +589,7 @@ final class AgentEpqCompanionPlay {
                 marblesNudgeLine(leader), MARBLES_RECOLLECTED, MARBLES_HELD, marblesHandInLine(leader),
                 marblesByEllinLine(leader), LEAVING_MARBLES, CLIMB, STONE_FOUND, stoneBySpriteLine(leader),
                 stoneNudgeLine(leader), STONE_RECOLLECTED, stoneHeldLine(leader), LEAVING_STONE, DRINKING_UP,
+                BACKING_OFF, OUT_OF_POTS,
                 altarReadyLine(leader), altarNudgeLine(leader), stoneOnTheFloorLine(leader), clearedLine(leader),
                 clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN,
                 golemMarbleLeftLine(leader), WAIT_OUTSIDE, FOUNTAIN_DROPPED, fountainHintLine(leader),

@@ -7,6 +7,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSide;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.hpq.AgentHpqMemberState;
 import server.agents.capabilities.partyquest.hpq.AgentHpqSession;
@@ -304,6 +305,8 @@ final class CompanionPqFixture implements AutoCloseable {
         // slot: ppq
 
         // slot: rjpq
+        entrances.put("rjpq", new RjpqFixtureEntrance(AgentRjpqSide.ZENUMIST));
+        entrances.put("rjpqj", new RjpqFixtureEntrance(AgentRjpqSide.ALCADNO));
         return entrances;
     }
 

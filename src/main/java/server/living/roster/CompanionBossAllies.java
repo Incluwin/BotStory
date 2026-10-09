@@ -271,7 +271,7 @@ final class CompanionBossAllies {
                 if (ally.getClient() == null) {
                     return true;
                 }
-                ally.saveCharToDB(); // first, so its next load (a bench slice, a call) sees what it gained here
+                // the unload saves it in full, so its next load (a bench slice, a call) sees what it gained here
                 ally.getClient().forceDisconnect();
                 return true;
             }

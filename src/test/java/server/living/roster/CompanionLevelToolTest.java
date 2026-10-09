@@ -331,6 +331,7 @@ class CompanionLevelToolTest {
         assertTrue(use("Yara", Ask.keepIt()).contains("keeps level"));
         assertEquals(List.of(), agents.dispatched);
         assertFalse(world.gmLevelHolds().held(YARA, "yara"));
+        assertTrue(world.gmLevelHolds().kept(YARA, "yara"), "a never-shaped persona is shaped at the level it keeps");
     }
 
     @Test

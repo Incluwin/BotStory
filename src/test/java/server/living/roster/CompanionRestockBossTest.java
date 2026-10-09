@@ -609,7 +609,9 @@ class CompanionRestockBossTest {
                     new AgentSupplyReadiness.Shortfall(40, 20), 50_000);
             drain();
             assertEquals(1, said.size(), "once: " + said);
-            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE).contains(said.getFirst()));
+            assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE).stream()
+                    .map(line -> CompanionRestockLines.filled(line, "potions")).toList().contains(said.getFirst()),
+                    said.toString());
         }
 
         private void drain() {

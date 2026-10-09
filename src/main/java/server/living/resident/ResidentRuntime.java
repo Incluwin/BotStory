@@ -405,7 +405,7 @@ public final class ResidentRuntime {
     /**
      * Shapes the character to its persona (recipe and loadout) when it was shaped to another version. Not while a GM
      * level set holds it (GmLevelHolds): shaping levels it to its persona's level, so it waits until the set is restored
-     * or kept, and is shaped the next time it materializes.
+     * or kept, and is shaped the next time it materializes. One a GM kept at its level is shaped at that level.
      */
     void shapeIfNeeded(Session session, Character agent) {
         LivingStore.PersonaState state = world.store().personaState(session.persona.id());
@@ -418,13 +418,22 @@ public final class ResidentRuntime {
             log.info("Resident {}: not shaped while a GM level set holds it", session.persona.id());
             return;
         }
-        shape(session.persona, session.characterId, agent, state, loadoutId, "");
+        boolean kept = keptAtGmLevel(agent, session.persona);
+        shape(session.persona, session.characterId, agent, state, loadoutId, kept, kept ? " at its kept level" : "");
     }
 
-    /** Shapes the character to its persona and loadout {@code loadoutId}, and records that version on {@code state}. */
+    /**
+     * Shapes the character to its persona and loadout {@code loadoutId} ({@code keepLevel}: at the level it has, not
+     * its persona's), and records that version on {@code state}.
+     */
     private void shape(Persona persona, int characterId, Character agent, LivingStore.PersonaState state, String loadoutId,
-                       String how) {
-        ResidentShaper.shape(agent, persona, world.content().loadout(loadoutId), persona.id().hashCode());
+                       boolean keepLevel, String how) {
+        Loadout loadout = world.content().loadout(loadoutId);
+        if (keepLevel) {
+            ResidentShaper.shapeKeepingLevel(agent, persona, loadout, world.content().loadouts().values());
+        } else {
+            ResidentShaper.shape(agent, persona, loadout, persona.id().hashCode());
+        }
         world.store().savePersonaState(state.withCharacter(characterId).withShaped(shapedVersion(loadoutId)));
         world.store().event(0, persona.id(), "persona.shaped", "level " + agent.getLevel() + " job " + agent.getJob()
                 + (loadoutId == null ? "" : " loadout " + loadoutId) + how);
@@ -476,8 +485,10 @@ public final class ResidentRuntime {
      * did had its character made at its first call, a level-1 beginner with the creator's sword (found live 2026-10-07:
      * Flint, a Gunslinger, fought Easy Balrog with it). Not reshaped here: a companion shaped to any version (it has grown
      * since), one a GM level set holds (shaped once the set is restored or kept), a hired citizen (its gear is its own).
-     * Registered, it is shaped on its own mailbox, which its next tick drains before it acts; loaded and not registered
-     * yet, right here. A character not live now is shaped when it next loads.
+     * One a GM kept at its level ({@code !setlevel <name> keep}, GmLevelHolds.kept) is shaped at that level: its job,
+     * AP, skills and loadout follow and its level stays. Registered, it is shaped on its own mailbox, which its next
+     * tick drains before it acts; loaded and not registered yet, right here. A character not live now is shaped when it
+     * next loads.
      */
     public void prepareCompanion(Character agent, Persona persona, boolean loading) {
         if (agent != null && persona != null && !LivingContent.isHire(persona.id())
@@ -516,7 +527,9 @@ public final class ResidentRuntime {
                 log.info("Companion {}: not shaped while a GM level set holds it", persona.id());
                 return;
             }
-            shape(persona, agent.getId(), agent, state, currentLoadoutId(persona), " as a companion");
+            boolean kept = keptAtGmLevel(agent, persona);
+            shape(persona, agent.getId(), agent, state, currentLoadoutId(persona), kept,
+                    kept ? " as a companion at its kept level" : " as a companion");
         } catch (RuntimeException failure) {
             log.warn("Companion {}: shaping failed", persona.id(), failure);
         }
@@ -577,6 +590,12 @@ public final class ResidentRuntime {
     private boolean heldAtGmLevel(Character agent, Persona persona) {
         server.living.roster.GmLevelHolds holds = world.gmLevelHolds();
         return holds != null && agent != null && persona != null && holds.held(agent.getId(), persona.id());
+    }
+
+    /** True when a GM kept the character at the level it has ({@code !setlevel <name> keep}, GmLevelHolds.kept). */
+    private boolean keptAtGmLevel(Character agent, Persona persona) {
+        server.living.roster.GmLevelHolds holds = world.gmLevelHolds();
+        return holds != null && agent != null && persona != null && holds.kept(agent.getId(), persona.id());
     }
 
     /** The pieces made for the persona so far, or null while the ledger cannot be read (nothing is cached then). */
@@ -701,8 +720,7 @@ public final class ResidentRuntime {
         }
         AgentRuntimeCleanupService.removeAgentByCharacterId(session.characterId);
         if (agent != null && agent.getClient() != null) {
-            agent.saveCharToDB();
-            agent.getClient().forceDisconnect();
+            agent.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
         }
         world.leases().release(session.characterId, CompanionLeases.Kind.RESIDENT); // saved first, so the next load sees it
         log.info("Resident {} to standby: {}", session.persona.id(), reason);

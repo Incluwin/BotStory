@@ -120,6 +120,10 @@ class AgentSupplyReadinessRuntimeTest {
     private int hpPickPrice = 320;
     /** What AgentShopService.coveragePickPrice answers for MP: a Blue Potion, the cheapest. */
     private int mpPickPrice = BLUE;
+    /** What AgentShopService.coveragePickRecovery answers for HP: a White Potion's 300 HP. */
+    private int hpPickRecovery = 300;
+    /** What AgentShopService.coveragePickRecovery answers for MP: a Blue Potion's 100 MP. */
+    private int mpPickRecovery = 100;
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -168,6 +172,8 @@ class AgentSupplyReadinessRuntimeTest {
                 .thenAnswer(inv -> hpStackRoom.getOrDefault(((Character) inv.getArgument(0)).getId(), 0));
         shopService.when(() -> AgentShopService.coveragePickPrice(any(), any(), anyBoolean()))
                 .thenAnswer(inv -> (boolean) inv.getArgument(2) ? hpPickPrice : mpPickPrice);
+        shopService.when(() -> AgentShopService.coveragePickRecovery(any(), any(), anyBoolean()))
+                .thenAnswer(inv -> (boolean) inv.getArgument(2) ? hpPickRecovery : mpPickRecovery);
         shopService.when(() -> AgentShopService.readinessPickRoom(any(), any(), anyBoolean(), anyInt(), anyLong()))
                 .thenAnswer(inv -> {
                     boolean forHp = inv.getArgument(2);
@@ -209,6 +215,12 @@ class AgentSupplyReadinessRuntimeTest {
             public void refused(int id, AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Refusal why,
                                 AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
                 calls.add("refused " + id + " " + why + " " + missingMesos);
+            }
+
+            @Override
+            public void stillShort(int id, AgentSupplyReadiness.Activity activity,
+                                   AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+                calls.add("still short " + id + " " + missingMesos);
             }
 
             @Override
@@ -418,6 +430,33 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(AgentSupplyProcurementState.Phase.SHOPPING, execution.phase(), "no travel");
         assertTrue(execution.resumeFollow(), "it follows its owner again after");
         assertEquals(List.of("started 544 25000"), calls, "no hop: 25 s");
+    }
+
+    /**
+     * User decision 2 (2026-10-08): Easy Balrog's standard is HP and MP points (130,000 / 32,000), so the trip's checks
+     * price what a companion's potions lack in the store's picks (Unagi, 1,000 HP for 1,100 mesos; Pure Water, 800 MP
+     * for 1,650): 130 and 40 of them, 209,000 mesos, and its request counts Unagi, not HP points.
+     */
+    @Test
+    void aBossTripPricesThePointsItLacksInTheStoresPicks() {
+        hpPickPrice = 1_100;
+        hpPickRecovery = 1_000;
+        mpPickPrice = 1_650;
+        mpPickRecovery = 800;
+        fieldStores.add(ANT_TUNNEL_PARK);
+        Character isolde = companion(548, "Isolde", Job.CLERIC, 60, 40, 209_000 - 1); // no recovery in her bag
+        stand(isolde, ANT_TUNNEL_PARK, false);
+        activities.put(548, EASY_BALROG);
+        AgentRuntimeEntry entry = following(isolde);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, isolde, 1_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 548 CANNOT_AFFORD 1"), calls, "130 Unagi and 40 Pure Water cost 209,000");
+
+        purses.put(548, 209_000); // its purse grew by what it lacked
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, isolde, 6_000L));
+        assertEquals(130, readinessRequest(entry).quantity(), "Unagi, not HP points");
+        assertEquals(MOBILE_STORE, execution(entry).supplierNpcId());
     }
 
     @Test
@@ -1041,6 +1080,122 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
         assertTrue(execution(entry).requestId().startsWith("readiness:HP_POTION:"));
         assertEquals("started 532 50000", calls.getLast());
+    }
+
+    // ---- taking its owner's help (user decision 2026-10-09) ------------------------------------------
+    // Live 2026-10-08 06:34 at the Ellin desk: Kestrel (165 mesos), Halvard (49) and Lioren (17) could not pay for
+    // EPQ's 350/350 standard. Its words name no amount, so an owner's first gift may fall short: the companion says
+    // so, and sets off the moment what it was given pays for the trip.
+
+    @Test
+    void aBrokeCompanionGivenPartOfWhatItLacksSaysItIsStillShortWithoutLookingAtTheShopAgain() {
+        Character fenna = companion(560, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        int missing = 19 * RED - 155;
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 560 CANNOT_AFFORD " + missing), calls);
+
+        purses.put(560, 155 + 300); // her owner's coin: part of it
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        assertEquals(List.of("refused 560 CANNOT_AFFORD " + missing, "still short 560 " + (missing - 300)), calls);
+        assertFalse(execution(entry).isActive());
+        verify(shops, times(1)).findForNpc(anyInt()); // what it still lacks is known from its purse
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        assertEquals(2, calls.size(), "nothing new, nothing said: " + calls);
+
+        purses.put(560, 155 + missing); // the rest
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+        assertEquals("started 560 50000", calls.getLast(), "its go line, no still-short line: " + calls);
+        assertEquals(3, calls.size(), calls.toString());
+    }
+
+    @Test
+    void potionsGivenThatStillLeaveItShortAreToldWithWhatTheRestCosts() {
+        Character fenna = companion(561, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        potions.put(561, new int[]{9, 30}); // eight handed over: eleven short, still more than her purse buys
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        assertEquals(List.of("refused 561 CANNOT_AFFORD " + (19 * RED - 155), "still short 561 " + (11 * RED - 155)),
+                calls, "one refusal: the verdict did not change, the gift did");
+    }
+
+    @Test
+    void aGiftThatCoversEverythingIsNeitherStillShortNorATrip() {
+        Character fenna = companion(562, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        potions.put(562, new int[]{20, 30});
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        potions.put(562, new int[]{1, 30}); // a run later it is short again, as poor as before
+        purses.put(562, 155);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+
+        assertEquals(List.of("refused 562 CANNOT_AFFORD " + (19 * RED - 155),
+                "refused 562 CANNOT_AFFORD " + (19 * RED - 155)), calls, "asked afresh, nothing still short");
+    }
+
+    @Test
+    void aPurseThatGrowsOnAnotherMapOrOutOnAFieldIsNoGift() {
+        Character fenna = companion(563, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        stand(fenna, FIELD, false); // out hunting with its owner: loot
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        purses.put(563, 255);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        stand(fenna, KERNING, true); // back in town, richer by its own hunt
+        purses.put(563, 355);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+
+        assertEquals(List.of("refused 563 CANNOT_AFFORD " + (19 * RED - 155)), calls);
+    }
+
+    @Test
+    void aGiftThatPaidForATripIsSpentByItAndNeverToldAfterwards() {
+        Character kettle = companion(565, "Kettle", Job.CLERIC, 15, 30, 100);
+        AgentRuntimeEntry entry = following(kettle);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        purses.put(565, 150);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 6_000L));
+        assertEquals("still short 565 " + (5 * RED - 150), calls.getLast());
+
+        purses.put(565, 5 * RED); // the rest, within STILL_SHORT_EVERY_MS of the first gift
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 11_000L));
+        assertEquals("started 565 50000", calls.getLast());
+        purses.put(565, 100); // something else took its purse on the way
+        shopCompletes(entry, kettle, 15, 30);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 12_000L));
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 12_100L);
+        assertEquals("finished 565 SHORT_MESOS", calls.getLast());
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 100_000L));
+        assertEquals("finished 565 SHORT_MESOS", calls.getLast(), "no gift since: nothing still short");
+    }
+
+    @Test
+    void giftsWithinStillShortEveryMsAreToldOnceTogether() {
+        Character fenna = companion(564, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        int missing = 19 * RED - 155;
+        long every = config.AgentTuning.longValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.STILL_SHORT_EVERY_MS");
+        assertTrue(every > 10_000L, "the shipped value spans more than two checks: " + every);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        purses.put(564, 255);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        purses.put(564, 355);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        assertEquals(List.of("refused 564 CANNOT_AFFORD " + missing, "still short 564 " + (missing - 100)), calls);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L + every));
+        assertEquals("still short 564 " + (missing - 200), calls.getLast(), "the second gift, told once it may be");
+        assertEquals(3, calls.size(), calls.toString());
     }
 
     @Test

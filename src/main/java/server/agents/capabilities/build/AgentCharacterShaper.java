@@ -5,6 +5,8 @@ import client.HpMpGrowthPolicy;
 import client.Job;
 import client.JobProgressionPolicy;
 import client.Skill;
+import client.Stat;
+import client.processor.stat.AssignAPProcessor;
 import constants.game.GameConstants;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 
@@ -126,6 +128,20 @@ public final class AgentCharacterShaper {
         if (remaining < expectedRemaining) {
             agent.gainSp(expectedRemaining - remaining, book, true);
         }
+    }
+
+    /**
+     * Back to the job's stat floors (AssignAPProcessor.getMinStatFloor): every point above them returns to the AP pool.
+     * False, with the stats untouched, when they cannot be set there.
+     */
+    public static boolean resetToStatFloors(Character agent) {
+        Job job = agent.getJob();
+        int minStr = AssignAPProcessor.getMinStatFloor(job, Stat.STR);
+        int minDex = AssignAPProcessor.getMinStatFloor(job, Stat.DEX);
+        int minInt = AssignAPProcessor.getMinStatFloor(job, Stat.INT);
+        int minLuk = AssignAPProcessor.getMinStatFloor(job, Stat.LUK);
+        return agent.assignStrDexIntLuk(minStr - agent.getStr(), minDex - agent.getDex(), minInt - agent.getInt(),
+                minLuk - agent.getLuk());
     }
 
     /** Spends remaining AP by job archetype unless {@code stats} pins explicit str/dex/int/luk shares. */

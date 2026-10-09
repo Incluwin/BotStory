@@ -7,8 +7,9 @@ import server.agents.runtime.state.AgentCapabilityStateKey;
 /**
  * The standing readiness duty's memory (AgentSupplyReadinessRuntime): when the Agent next looks at its potions, the
  * readiness trip under way, the last time it could not go (on which map, and how many mesos it lacked), the cooldown
- * that keeps it from trying again too soon, how many trips from one town in a row were cut short, and the last
- * affordability check of a critical potion trip. Written on the Agent tick; a host only asks for an early look
+ * that keeps it from trying again too soon, how many trips from one town in a row were cut short, the last
+ * affordability check of a critical potion trip, and what it was given while it could not pay (its last look at its
+ * purse and shortfall). Written on the Agent tick; a host only asks for an early look
  * ({@link #checkSoon}) and reads it.
  */
 public final class AgentSupplyReadinessState {
@@ -65,6 +66,11 @@ public final class AgentSupplyReadinessState {
     private int interruptedInARow;
     private int interruptedMapId;
     private CriticalCheck criticalCheck;
+    private int lookMapId;
+    private int lookMesos;
+    private AgentSupplyReadiness.Shortfall lookShortfall;
+    private boolean givenPending;
+    private long stillShortToldAtMs = -1L;
 
     synchronized long nextCheckAtMs() {
         return nextCheckAtMs;
@@ -258,6 +264,48 @@ public final class AgentSupplyReadinessState {
     synchronized void resetInterrupted() {
         interruptedInARow = 0;
         interruptedMapId = 0;
+    }
+
+    // ---- what it was given while it could not pay ------------------------------------------------
+
+    /**
+     * One check's look at its purse and its shortfall on {@code mapId}. While a meso cooldown holds it back
+     * (CANNOT_AFFORD, SHORT_MESOS) and it stands on {@code restockGround} (a town or a monster-free map, where no
+     * monster drops a coin), a purse grown or fewer potions or projectiles lacking since the last look on this same
+     * map is something it was given; that stays to be told until {@link #toldStillShort} or {@link #clearGiven}.
+     * Another map forgets it.
+     */
+    synchronized void look(int mapId, int mesos, AgentSupplyReadiness.Shortfall shortfall, boolean restockGround) {
+        boolean sameMap = lookShortfall != null && mapId == lookMapId;
+        if (!sameMap) {
+            givenPending = false;
+        } else if (restockGround && (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS)
+                && (mesos > lookMesos || shortfall.hp() < lookShortfall.hp() || shortfall.mp() < lookShortfall.mp()
+                || shortfall.ammo() < lookShortfall.ammo())) {
+            givenPending = true;
+        }
+        lookMapId = mapId;
+        lookMesos = mesos;
+        lookShortfall = shortfall;
+    }
+
+    /**
+     * True when something it was given is still to be told and the last still-short news is at least {@code everyMs}
+     * old (or none was told yet).
+     */
+    synchronized boolean givenToTell(long nowMs, long everyMs) {
+        return givenPending && (stillShortToldAtMs < 0L || nowMs - stillShortToldAtMs >= everyMs);
+    }
+
+    /** Its host heard that what it was given still does not pay for the trip. */
+    synchronized void toldStillShort(long nowMs) {
+        givenPending = false;
+        stillShortToldAtMs = nowMs;
+    }
+
+    /** What it was given needs no news: it sets off, needs nothing more, or cannot go for another reason. */
+    synchronized void clearGiven() {
+        givenPending = false;
     }
 
     // ---- the critical path's affordability check -------------------------------------------------

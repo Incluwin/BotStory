@@ -137,6 +137,19 @@ class ResidentKitGateTest {
     }
 
     @Test
+    void aCompanionAGmKeptAtItsLevelIsShapedAtThatLevelAsAResident() {
+        // '!setlevel Yara 25' then 'keep', then back in town: still level 25, not its persona's 30
+        when(store.personaState("yara")).thenReturn(new LivingStore.PersonaState("yara", YARA_CHARACTER, null, 0, 0));
+        when(holds.kept(YARA_CHARACTER, "yara")).thenReturn(true);
+        ResidentRuntime.Session session = new ResidentRuntime.Session(YARA, YARA_CHARACTER);
+        try (MockedStatic<ResidentShaper> shaper = mockStatic(ResidentShaper.class)) {
+            runtime.shapeIfNeeded(session, yara);
+            shaper.verify(() -> ResidentShaper.shape(any(), any(), any(), anyInt()), never());
+            shaper.verify(() -> ResidentShaper.shapeKeepingLevel(eq(yara), eq(YARA), any(), any()));
+        }
+    }
+
+    @Test
     void aHeldCompanionIsDressedWithoutItsQuestGear() throws Exception {
         Method dress = ResidentRuntime.class.getDeclaredMethod("dress", Persona.class, Character.class);
         dress.setAccessible(true);

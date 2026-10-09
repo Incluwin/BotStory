@@ -16,12 +16,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * What a companion says in party chat about a boss run (P7, Mu Young's Easy Balrog), in its own lower-case player
- * voice: signed up, why it could not sign up, a missed start, going down, everyone down, seeing the run through for a
- * friend, gg, and off to the shop from the boss's entrance. A persona's arc or dialogue may have its own lines for
- * each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's name,
- * "{n}" whole minutes, "{ammo}" a projectile word and "{eta}" a bench ally's recall ETA (RecallTravel.describe). A
- * bench ally (Part B, "boss.ally.*": on its way down, here, back to camp) leads itself in a party of bots, so it tells
- * its owner where the owner hears it ({@link #tell}). P8: a boss whose place the generic lines do not fit (Zakum:
+ * voice: signed up, nobody heals, why it could not sign up, a missed start, going down, everyone down, seeing the run
+ * through for a friend, gg, and off to the shop from the boss's entrance. A persona's arc or dialogue may have its own
+ * lines for each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's
+ * name, "{n}" whole minutes, "{ammo}" a projectile word and "{eta}" a bench ally's recall ETA (RecallTravel.describe).
+ * A bench ally (Part B, "boss.ally.*": on its way down, here, back to camp) leads itself in a party of bots, so it
+ * tells its owner where the owner hears it ({@link #tell}). P8: a boss whose place the generic lines do not fit (Zakum:
  * Adobis, the Door to Zakum, El Nath) has its own lines for those intents ({@link #BY_BOSS}), read by the boss key a
  * caller passes or its run's. Said on companion-ops.
  */
@@ -39,6 +39,11 @@ final class BossRunLines {
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
+    /**
+     * Decision 3 (2026-10-08): before Start, once per party, nobody of the owner's party who goes in can cast Heal
+     * (CompanionBossRuns.warnIfNoHealer). A warning only: nobody stays out for it.
+     */
+    static final String NO_HEALER = "boss.noheal";
     /**
      * Off to the shop from the boss's entrance for potions, saying about when it will be back ("{n}" minutes). With
      * {@link #GO_AMMO}, the one approved exception to the no-digits rule for companion speech (P7 decision 7: the
@@ -131,6 +136,11 @@ final class BossRunLines {
                     "gg!",
                     "gg, nice one.",
                     "we did it! gg.")),
+            Map.entry(NO_HEALER, List.of(
+                    "no heals this run? i'll be chugging pots.",
+                    "nobody's healing, so watch your hp out there.",
+                    "no priest with us. keep your pots handy.",
+                    "no healer this time. pot early, ok?")),
             Map.entry(GO, List.of(
                     "low on pots for balrog, running to the shop. back in ~{n} min.",
                     "gonna grab potions first. back in ~{n} min.")),

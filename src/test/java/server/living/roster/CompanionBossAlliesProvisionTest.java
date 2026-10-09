@@ -55,9 +55,11 @@ import static server.living.roster.BossAllyHarness.isLine;
  * never pass Ant Tunnel Park, so an ally short of the Easy Balrog standard (its potions, and the projectiles for its
  * weapon) buys what it lacks before it says it is here: from its own purse less its wallet reserve, at the 24 Hr Mobile
  * Store's (1061001) prices and with the picks a readiness trip's counter makes there (the same shop code path, with no
- * walk), on toward BUY_TO_PERCENT of the standard. Still short, it says the lowpots line, and a low-ammo line when its
- * projectiles fall short. A stocked ally buys nothing; with COMPANION_BOSS_ALLY_TYPES not listing the boss nothing is
- * bought and it says what it said before. The store's stock here is its potions and projectiles as
+ * walk), on toward BUY_TO_PERCENT of the standard. Since user decision 2 (2026-10-08) its potions are measured in HP
+ * and MP points (BOSS_RECOVERY_STANDARDS, 130,000 / 32,000), so the counter buys the store's Unagi and Pure Water to
+ * the points it lacks, however many weak potions it carries. Still short, it says the lowpots line, and a low-ammo
+ * line when its projectiles fall short. A stocked ally buys nothing; with COMPANION_BOSS_ALLY_TYPES not listing the
+ * boss nothing is bought and it says what it said before. The store's stock here is its potions and projectiles as
  * 102-shopitems-data.sql lists them (its food is left out); the shop gateway, item effects and stack sizes are stubs.
  */
 class CompanionBossAlliesProvisionTest {
@@ -66,6 +68,8 @@ class CompanionBossAlliesProvisionTest {
     private static final int STORE = 1_061_001;
     private static final int UNAGI = 2_022_003;
     private static final int PURE_WATER = 2_022_000;
+    /** Not sold at the store: 300 HP each. */
+    private static final int WHITE = 2_000_002;
     private static final int BULLET = 2_330_000;
     private static final int SUBI = 2_070_000;
     private static final int BRONZE_BOLT = 2_061_001;
@@ -137,6 +141,7 @@ class CompanionBossAlliesProvisionTest {
 
         effects.put(UNAGI, effect(1_000, 0));
         effects.put(PURE_WATER, effect(0, 800));
+        effects.put(WHITE, effect(300, 0));
         Shop store = mock(Shop.class);
         List<ShopItem> items = new ArrayList<>();
         for (int[] row : STOCK) {
@@ -189,15 +194,17 @@ class CompanionBossAlliesProvisionTest {
     @Test
     void aShortAllyBuysTowardTheStandardAtTheStoresPricesAndPaysBeforeItSaysItIsHere() {
         carry(10, 10);
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(EASY_BALROG);
+        AgentSupplyReadiness.RecoveryStandard standard = AgentSupplyReadiness.recoveryStandard(EASY_BALROG);
 
         h.game.runDueTimers();
 
         int[] after = potions();
-        assertTrue(after[0] >= standard.hp() && after[1] >= standard.mp(), after[0] + "/" + after[1]);
-        assertTrue(after[0] <= AgentSupplyReadiness.buyTarget(EASY_BALROG, orrin, true)
-                && after[1] <= AgentSupplyReadiness.buyTarget(EASY_BALROG, orrin, false), after[0] + "/" + after[1]);
-        assertTrue(after[0] > standard.hp() || after[1] > standard.mp(),
+        long hp = after[0] * 1_000L;
+        long mp = after[1] * 800L;
+        assertTrue(hp >= standard.hp() && mp >= standard.mp(), after[0] + "/" + after[1]);
+        assertTrue(hp <= AgentSupplyReadiness.recoveryBuyTarget(EASY_BALROG, orrin, true)
+                && mp <= AgentSupplyReadiness.recoveryBuyTarget(EASY_BALROG, orrin, false), after[0] + "/" + after[1]);
+        assertTrue(hp > standard.hp() || mp > standard.mp(),
                 "on past the standard toward BUY_TO_PERCENT of it: " + transactions);
         assertEquals(1_000_000 - (after[0] - 10) * 1_100 - (after[1] - 10) * 1_650, purse,
                 "it paid the store's prices from its own purse");
@@ -216,7 +223,7 @@ class CompanionBossAlliesProvisionTest {
         int reserve = AgentSupplyRecoveryPolicy.minimumWalletReserve(orrin);
         assertTrue(reserve > 0, "the fixture: an ally keeps a journey reserve");
         purse = reserve + 30_000;
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(EASY_BALROG);
+        AgentSupplyReadiness.RecoveryStandard standard = AgentSupplyReadiness.recoveryStandard(EASY_BALROG);
 
         h.game.runDueTimers();
 
@@ -224,16 +231,30 @@ class CompanionBossAlliesProvisionTest {
         assertTrue(purse >= reserve, "never into its reserve: " + purse);
         assertTrue(purse - reserve < 1_100, "spent all it could: " + purse + " " + transactions);
         int[] after = potions();
-        assertTrue(after[0] < standard.hp() || after[1] < standard.mp(), after[0] + "/" + after[1]);
+        assertTrue(after[0] * 1_000L < standard.hp() || after[1] * 800L < standard.mp(), after[0] + "/" + after[1]);
         assertEquals(2, h.mapChat.size(), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_LOW_POTS, null, said(1)), h.mapChat.toString());
     }
 
     @Test
+    void anAllyWithThreeHundredSeventeenWhitePotionsBuysTheHpPointsItLacksInUnagi() {
+        // 317 White Potions are 95,100 HP: plenty by count (BOSS_STANDARDS asks 100), 34,900 short of the points
+        stacks(WHITE, 317);
+        stacks(PURE_WATER, 40);
+
+        h.game.runDueTimers();
+
+        assertEquals(List.of("35 x " + UNAGI, "40 x " + PURE_WATER), transactions,
+                "35 Unagi to the HP points; no HP top-up past its 352 potions; Pure Water toward 64,000 MP");
+        assertTrue(AgentSupplyReadiness.shortfall(orrin, EASY_BALROG).none());
+        assertEquals(1, h.mapChat.size(), "stocked now: only that it is here " + h.mapChat);
+        assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
+    }
+
+    @Test
     void aStockedAllyBuysNothing() {
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(EASY_BALROG);
-        carry(standard.hp(), standard.mp());
+        carryTheStandard();
 
         h.game.runDueTimers();
 
@@ -247,8 +268,7 @@ class CompanionBossAlliesProvisionTest {
     @EnumSource(value = WeaponType.class, names = {"BOW", "CROSSBOW", "CLAW", "GUN"})
     void aRangedAllyBuysTheProjectilesForItsWeapon(WeaponType weapon) {
         ranged(weapon);
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(EASY_BALROG);
-        carry(standard.hp(), standard.mp()); // its potions are fine: only its projectiles are short
+        carryTheStandard(); // its potions are fine: only its projectiles are short
 
         h.game.runDueTimers();
 
@@ -268,8 +288,7 @@ class CompanionBossAlliesProvisionTest {
     @Test
     void aRangedAllyThatCannotAffordItsProjectilesSaysItWillMakeThemLast() {
         ranged(WeaponType.BOW);
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(EASY_BALROG);
-        carry(standard.hp(), standard.mp());
+        carryTheStandard();
         purse = AgentSupplyRecoveryPolicy.minimumWalletReserve(orrin); // nothing to spend
 
         h.game.runDueTimers();
@@ -395,9 +414,16 @@ class CompanionBossAlliesProvisionTest {
         stacks(PURE_WATER, pureWater);
     }
 
+    /** Orrin carries exactly Easy Balrog's points standard: 130 Unagi (130,000 HP) and 40 Pure Water (32,000 MP). */
+    private void carryTheStandard() {
+        AgentSupplyReadiness.RecoveryStandard standard = AgentSupplyReadiness.recoveryStandard(EASY_BALROG);
+        carry((int) (standard.hp() / 1_000), (int) (standard.mp() / 800));
+    }
+
     private void stacks(int itemId, int count) {
-        for (int left = count; left > 0; left -= STACKS.get(itemId)) {
-            use.addItem(Items.itemWithQuantity(itemId, Math.min(left, STACKS.get(itemId))));
+        int perSlot = STACKS.getOrDefault(itemId, 100);
+        for (int left = count; left > 0; left -= perSlot) {
+            use.addItem(Items.itemWithQuantity(itemId, Math.min(left, perSlot)));
         }
     }
 

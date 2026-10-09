@@ -281,7 +281,7 @@ public final class AgentEpqCoordinator {
             actions().clearHorizontalBoundary(entry);
         }
         if (member.bossResting() && agent.getMapId() != AgentEpqDefinition.BOSS_MAP) {
-            endBossRest(session, agent, member, null); // EPQ base fix 7: the rest belongs to the golem's map
+            endBossRest(session, agent, member, null, "left-map"); // EPQ base fix 7: the rest belongs to the golem's map
         }
         if (leftEvent(session, agent)) {
             // EPQ base fix 3: the event no longer holds this Agent (its respawn walked it out, or it pressed OK). It
@@ -720,14 +720,14 @@ public final class AgentEpqCoordinator {
         }
         if (actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0) {
             if (member.topUpActive()) endTopUp(session, agent, member, "golem", false);
-            if (bossRest(session, entry, agent, member)) return;
+            if (bossRest(session, entry, agent, member, nowMs)) return;
             actions().grind(entry, AgentEpqDefinition.BOSS_COMBAT_TARGETS);
             return;
         }
         // The golem chain revives (9300180 -> 9300181 -> 9300182) after each die animation, so for a moment no golem
         // lives: a rest lasts through that gap and ends with the clear (or once the member leaves this map).
         if (member.bossResting() && AgentEpqTerminationService.pastTheClear(session.eventInstance())) {
-            endBossRest(session, agent, member, null);
+            endBossRest(session, agent, member, null, "clear");
         }
         if (session.eventInstance() == null || !session.eventInstance().isEventCleared()) {
             // Before the golem: a member under its top-up drinks first (an Agent leader before its altar drop).
@@ -767,17 +767,20 @@ public final class AgentEpqCoordinator {
     }
 
     /**
-     * EPQ base fix 7: while a golem lives, a living member with fewer than POT_STOP HP potions and HP under
-     * REST_HP_FRACTION of its maximum rests out of the golem's reach (AgentEpqRecoveryPolicy), so a companion out of
-     * potions is no longer sent back to its owner at the golem's feet. Away from its rest point (or airborne) it walks
-     * there; there, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still
-     * (passive regen; the generic potion share still asks the party). It rejoins at RESUME_HP_FRACTION or once it
-     * holds POT_STOP potions; the rest lasts through the golem's revive gap and otherwise ends only with the clear or
-     * when it leaves the golem's map. 'EPQ boss rest:' START, END and every change of rest point (MOVE). True while
-     * the rest owns this pass.
+     * EPQ base fix 7, as the golem rest fix of 2026-10-09 changed it: while a golem lives, a living member whose HP
+     * falls under REST_HP_FRACTION of its maximum (with or without potions), or that holds fewer than POT_STOP HP
+     * potions, rests (AgentEpqRecoveryPolicy): it backs off on its own side of the golem, never across it, or holds its
+     * spot when it already stands out of reach. While under RESUME_HP_FRACTION it drinks one HP potion (the autopot's
+     * choice for its deficit) every TOP_UP_INTERVAL_MS, on the way too. Away from its rest point (or airborne) it walks
+     * there; there, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still (the
+     * generic potion share still asks the party). It rejoins only at RESUME_HP_FRACTION with POT_STOP potions; the rest
+     * lasts through the golem's revive gap and otherwise ends only with the clear or when it leaves the golem's map.
+     * 'EPQ boss rest:' START (why=hp or why=pots), END and every change of rest point (MOVE); a companion run's rester
+     * says once a run that it backs off (E15r) and once that it is out of potions (E15d). True while the rest owns this
+     * pass.
      */
     private static boolean bossRest(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
-                                     AgentEpqMemberState member) {
+                                     AgentEpqMemberState member, long nowMs) {
         Point position = agent.getPosition();
         Monster golem = position == null ? null : AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive)
@@ -787,21 +790,28 @@ public final class AgentEpqCoordinator {
                 .orElse(null);
         if (golem == null) return false;
         int potions = actions().hpPotionCount(agent);
+        int potStop = server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP;
         boolean wasResting = member.bossResting();
-        boolean rest = AgentEpqRecoveryPolicy.resting(wasResting, potions,
-                server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getCurrentMaxHp(),
-                AgentEpqRecoveryPolicy.REST_HP_FRACTION, AgentEpqRecoveryPolicy.RESUME_HP_FRACTION);
+        boolean rest = AgentEpqRecoveryPolicy.resting(wasResting, potions, potStop, agent.getHp(),
+                agent.getCurrentMaxHp(), AgentEpqRecoveryPolicy.REST_HP_FRACTION,
+                AgentEpqRecoveryPolicy.RESUME_HP_FRACTION);
         Point golemAt = golem.getPosition();
         if (!rest) {
-            if (wasResting) endBossRest(session, agent, member, golemAt);
+            if (wasResting) endBossRest(session, agent, member, golemAt, "safe");
             return false;
         }
         Point stored = member.bossRestPoint();
         Point restPoint = AgentEpqRecoveryPolicy.restPoint(golemAt, position, stored, AgentEpqDefinition.BOSS_FLOOR,
                 AgentEpqRecoveryPolicy.FLOOR_EDGE_MARGIN_PX, AgentEpqRecoveryPolicy.REACH_PX);
         member.restAt(restPoint);
-        if (!wasResting) logBossRest(session, agent, "START", restPoint, golemAt);
-        else if (!restPoint.equals(stored)) logBossRest(session, agent, "MOVE", restPoint, golemAt);
+        String why = potions < potStop ? "pots" : "hp";
+        if (!wasResting) {
+            logBossRest(session, agent, member, "START", why, restPoint, golemAt);
+            if (session.companionAdopted()) AgentEpqCompanionRun.backingOff(session, agent, potions < potStop);
+        } else if (!restPoint.equals(stored)) {
+            logBossRest(session, agent, member, "MOVE", why, restPoint, golemAt);
+        }
+        drinkWhileResting(agent, member, potions, nowMs);
         if (!nearWithin(position, restPoint, AgentEpqRecoveryPolicy.REST_ARRIVAL_PX) || !actions().grounded(agent)) {
             actions().navigate(entry, restPoint, true);
         } else if (Math.abs(position.x - golemAt.x) > AgentEpqRecoveryPolicy.REACH_PX
@@ -817,20 +827,34 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
+    /**
+     * A resting member under RESUME_HP_FRACTION with an HP potion drinks the autopot's choice for its deficit, at most
+     * one every TOP_UP_INTERVAL_MS, wherever it stands: a player backing off presses its potion key on the way.
+     */
+    private static void drinkWhileResting(Character agent, AgentEpqMemberState member, int potions, long nowMs) {
+        if (potions <= 0 || nowMs < member.nextBossRestDrinkAtMs()
+                || agent.getHp() >= agent.getCurrentMaxHp() * AgentEpqRecoveryPolicy.RESUME_HP_FRACTION) {
+            return;
+        }
+        var choice = AgentPotionService.selectAutopotForCurrentDeficit(agent, true);
+        boolean drank = choice != null && actions().useItem(agent, choice.itemId());
+        member.recordBossRestDrink(nowMs + AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS, drank);
+    }
+
     private static void endBossRest(AgentEpqSession session, Character agent, AgentEpqMemberState member,
-                                    Point golem) {
-        Point restPoint = member.bossRestPoint();
+                                    Point golem, String why) {
+        logBossRest(session, agent, member, "END", why, member.bossRestPoint(), golem);
         member.clearBossRest();
-        logBossRest(session, agent, "END", restPoint, golem);
     }
 
     /** 'EPQ boss rest:' in every mode; never throws. */
-    private static void logBossRest(AgentEpqSession session, Character agent, String state, Point restPoint,
-                                    Point golem) {
+    private static void logBossRest(AgentEpqSession session, Character agent, AgentEpqMemberState member, String state,
+                                    String why, Point restPoint, Point golem) {
         try {
-            log.info("EPQ boss rest: session={} member={} state={} hp={}/{} hpPots={} restPoint={} golem={}",
-                    session.sessionId(), agent.getName(), state, agent.getHp(), agent.getCurrentMaxHp(),
-                    actions().hpPotionCount(agent), xy(restPoint), xy(golem));
+            log.info("EPQ boss rest: session={} member={} state={} why={} hp={}/{} hpPots={} drinks={} restPoint={} "
+                            + "golem={}", session.sessionId(), agent.getName(), state, why, agent.getHp(),
+                    agent.getCurrentMaxHp(), actions().hpPotionCount(agent), member.bossRestDrinks(), xy(restPoint),
+                    xy(golem));
         } catch (RuntimeException e) {
             log.warn("EPQ boss rest line failed: session={}", session.sessionId(), e);
         }

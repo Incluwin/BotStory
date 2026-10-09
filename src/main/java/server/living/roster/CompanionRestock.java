@@ -24,7 +24,9 @@ import java.util.function.LongSupplier;
  * on its way, away on an errand, on a live bench slice, in a run or with the kill switch off has no duty. The Agent
  * decides when and where it goes; this only says what it says about it: setting off and back
  * (an ACTIVE one; a held one goes and comes back quietly, back to the spot it waits at), and, at most once per
- * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions or that a boss's gate has no shop. In a boss's
+ * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions (asking its owner for them or for mesos, user
+ * decision 2026-10-09) or that a boss's gate has no shop; handed part of what it lacks after asking, that it is still
+ * short. In a boss's
  * entry NPC's room (Mu Young's, while COMPANION_BOSS_ENABLED_TYPES lists Easy Balrog) it keeps that boss's standard,
  * says about when it will be back as it sets off, and says when no shop is in reach (P7, user decision 7). A trip for
  * projectiles alone (its potions are fine; 2026-10-07) says the same things in its ammo lines, naming what it shoots;
@@ -186,9 +188,10 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     /**
-     * It did not set off: too broke says so, and short at a boss's entrance with no shop in reach (an ACTIVE companion)
-     * says there is none out here; each at most once per COMPANION_RESTOCK_ASK_EVERY_MS, in its ammo words when only
-     * projectiles are short (one memory per news: a potion and an ammo broke line never both within it).
+     * It did not set off: too broke asks its owner for what it lacks or mesos (user decision 2026-10-09), and short at
+     * a boss's entrance with no shop in reach (an ACTIVE companion) says there is none out here; each at most once per
+     * COMPANION_RESTOCK_ASK_EVERY_MS, in its ammo words when only projectiles are short (one memory per news: a potion
+     * and an ammo broke line never both within it).
      */
     @Override
     public void refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
@@ -196,9 +199,10 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         String word = ammoOnly(shortfall) ? CompanionRestockLines.ammoWord(bot(agentCharacterId)) : null;
         if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
+            String need = CompanionRestockLines.need(bot(agentCharacterId), shortfall);
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, word != null ? CompanionRestockLines.BROKE_AMMO
-                            : CompanionRestockLines.BROKE, word));
+                            : CompanionRestockLines.BROKE, word != null ? word : need));
         } else if (why == AgentSupplyReadiness.Refusal.NO_SUPPLIER && boss(activity) && unheld(agentCharacterId)
                 && mayAsk(agentCharacterId, CompanionRestockLines.NO_SHOP,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
@@ -232,10 +236,31 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         } else if (outcome == AgentSupplyReadiness.Outcome.SHORT_MESOS
                 && mayAsk(agentCharacterId, CompanionRestockLines.BROKE, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             String broke = word != null ? word : ammoWordAtTheEnd(agentCharacterId, activity);
+            String need = broke != null ? broke : CompanionRestockLines.need(bot(agentCharacterId),
+                    AgentSupplyReadiness.shortfall(bot(agentCharacterId), activity));
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, broke != null ? CompanionRestockLines.BROKE_AMMO
-                            : CompanionRestockLines.BROKE, broke));
+                            : CompanionRestockLines.BROKE, need));
         }
+    }
+
+    /**
+     * Someone handed it mesos or supplies after its broke line, and they still do not pay for its trip: it says it is
+     * still short of what it lacks ("{need}"), its own news, once per report (the Agent spaces them by
+     * STILL_SHORT_EVERY_MS). Only while its broke line (its own or the desk's) is less than
+     * COMPANION_RESTOCK_ASK_EVERY_MS old: a pot share it never asked for gets no answer. Held or not: its owner
+     * may hand it coin as they come out of the run.
+     */
+    @Override
+    public void stillShort(int agentCharacterId, AgentSupplyReadiness.Activity activity,
+                           AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+        if (!askedWithin(agentCharacterId, CompanionRestockLines.BROKE,
+                world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
+            return;
+        }
+        String need = CompanionRestockLines.need(bot(agentCharacterId), shortfall);
+        world.executor().submit("companion.restock.still_short " + agentCharacterId,
+                () -> say(agentCharacterId, CompanionRestockLines.STILL_SHORT, need));
     }
 
     /**
@@ -354,6 +379,12 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return now;
         });
         return fresh[0];
+    }
+
+    /** True when the companion said {@code intent} less than {@code everyMs} ago ({@link #mayAsk} remembered it). */
+    private boolean askedWithin(int agentCharacterId, String intent, long everyMs) {
+        Long last = askedAt.get(agentCharacterId + " " + intent);
+        return last != null && clock.getAsLong() - last < everyMs;
     }
 
     private void say(int agentCharacterId, String intent) {

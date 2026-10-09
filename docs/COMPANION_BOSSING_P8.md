@@ -129,7 +129,10 @@ With zakum off: no visible change for players. GMs get `!bossgear` and `!bossmir
 
 All keys start with `server.agents.capabilities.`. Value edits:
 - `supplies.AgentSupplyReadiness.BOSS_STANDARDS` is `'easy_balrog=100/60,zakum=500/400'`.
-- `supplies.AgentSupplyReadiness.AMMO_STANDARDS` is `'lpq=1600,epq=1600,zakum=4000'`.
+- `supplies.AgentSupplyReadiness.AMMO_STANDARDS` is `'lpq=1600,epq=1600,easy_balrog=2000,zakum=4000'`
+  (easy_balrog=2000 came from live 30abc1405).
+- `supplies.AgentSupplyReadiness.BOSS_RECOVERY_STANDARDS` stays `'easy_balrog=130000/32000'` (live 30abc1405).
+  Zakum is not listed, so Zakum companions count potions against 500/400 (user decision 2026-10-08).
 - The Values line of `AgentBossRunSession.START_GRACE_MS` now says that the Start warps members one at a time while
   the run already ticks. The value 5000 is unchanged.
 
@@ -369,9 +372,13 @@ Rollback: set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_
 - The mirror trusts the controller's client. MP use and the dedup window bound it.
 - Server CPU with 9 parts and up to 13 companions is not measured. Measure tick and GC at each stage.
 - Allies from Victoria take about 3 min. Call them in the first minute.
-- Side effects still open in docs/BOT_MANAGEMENT_PLAN.md (plan decisions 2 and 23): the PQ-clear hook writes a
-  'Zakum<channel>' record, and BOSS points come per boss kill (cap 3 a day). Companions also get quest 100200
-  completed when they leave after the clear.
+- Side effects still open in docs/BOT_MANAGEMENT_PLAN.md (plan decisions 2 and 23): BOSS points come per boss kill
+  (cap 3 a day). Companions also get quest 100200 completed when they leave after the clear. Since the merge of live
+  30abc1405, `living_world.BOSS_EVENT_SCRIPTS` lists ZakumBattle, so the PQ-clear hook only logs "Boss event cleared"
+  for a Zakum clear and writes no 'Zakum<channel>' party-quest record.
+- Since the merge of live 30abc1405, two Easy Balrog additions also apply to Zakum runs: the no-healer warning
+  (`BossRunLines.NO_HEALER`, generic words, once per party before Start) and the supplies on the "Boss run member
+  down" line (`AgentBossRunPorts.supplies`). The Zakum vitals line does not show supplies yet.
 - The quota cache lives in memory. After a living-world restart mid-run, members take the stock path with a WARN.
   They are still charged exactly once.
 - The GM trial binds the map at `trial on` and holds it until `trial off`. It does nothing with

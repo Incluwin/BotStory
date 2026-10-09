@@ -19,9 +19,26 @@ public final class AgentOpqLobbyProfile {
             new AgentPartyQuestLobbyProfile.MemberRequirement("pirate", 1, c -> c.getJob() != null && c.getJob().isA(client.Job.PIRATE))),
             List.of("Looking for an OPQ party.", "Tower of Goddess party forming."),
             900L, 2_400L);
+    private static final AgentPartyQuestLobbyProfile COMPANION_PROFILE = companion(PROFILE);
 
     private AgentOpqLobbyProfile() { }
     public static AgentPartyQuestLobbyProfile profile() { return PROFILE; }
+
+    /**
+     * A companion run's lobby (AgentOpqAdmissionService.admit): the stock event's party rule, up to six members with
+     * no per-branch seats; everything else is {@link #profile()}'s.
+     */
+    public static AgentPartyQuestLobbyProfile companionProfile() { return COMPANION_PROFILE; }
+
+    private static AgentPartyQuestLobbyProfile companion(AgentPartyQuestLobbyProfile stock) {
+        return new AgentPartyQuestLobbyProfile(
+                stock.questKey(), stock.mapId(), stock.entryNpcId(),
+                stock.minimumLevel(), stock.maximumLevel(),
+                stock.maximumPartySize(), stock.minimumXOffset(), stock.maximumXOffset(), stock.phrases(),
+                List.of(),
+                stock.waiterMessages(),
+                stock.inviteResponseMinimumMs(), stock.inviteResponseMaximumMs());
+    }
 
     private static List<AgentPartyQuestLobbyProfile.Phrase> phrases() {
         List<AgentPartyQuestLobbyProfile.Phrase> result = new ArrayList<>();

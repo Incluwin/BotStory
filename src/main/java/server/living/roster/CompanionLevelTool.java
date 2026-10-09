@@ -188,7 +188,8 @@ public final class CompanionLevelTool {
                 return new Answer(bot.getName() + " has no record to keep (a plain Agent has none).", false);
             }
             return original == null ? new Answer(bot.getName() + " has no record to keep.", false)
-                    : new Release(target, "keep", bot.getName() + " keeps level " + bot.getLevel() + " for good.");
+                    : new Release(target, GmLevelHolds.KEEP,
+                            bot.getName() + " keeps level " + bot.getLevel() + " for good.");
         }
         LevelSetPlan.Request request;
         if (ask.restore()) {

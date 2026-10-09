@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.opq;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.auth.AgentAuthorityService;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -16,6 +17,7 @@ import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
@@ -34,7 +36,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** GM-only six-Agent OPQ observation harness. Test provisioning ends at the lobby. */
+/**
+ * GM-only OPQ harness: the six-Agent observation run ('start'; its provisioning ends at the lobby), and a companion
+ * run of the operator's own party ('party prod', admitted through the public admit), with its checkpoints.
+ */
 public final class AgentOpqTestService {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqTestService.class);
     private static final AgentSpawnCommandExecutor PROVISIONING = new AgentSpawnCommandExecutor();
@@ -50,6 +55,8 @@ public final class AgentOpqTestService {
         try {
             return switch (params[0].toLowerCase()) {
                 case "start" -> start(operator, params.length > 1 ? Long.parseLong(params[1]) : nowMs, nowMs);
+                case "party", "adopt" -> adoptCurrentParty(operator, adoptOptions(params, 1, nowMs), nowMs);
+                case "checkpoint" -> checkpoint(operator, params, nowMs);
                 case "status" -> status(operator);
                 case "pause" -> pause(operator, true);
                 case "resume" -> pause(operator, false);
@@ -63,13 +70,20 @@ public final class AgentOpqTestService {
     }
 
     private static List<String> start(Character operator, long seed, long nowMs) throws Exception {
+        // His own companion run is never replaced, or '!opqtest stop' would lose it: a live one needs that stop first,
+        // a finished one makes way.
+        Run own = RUNS.get(operator.getId());
+        if (own != null && own.flow == Flow.ADOPTED) {
+            if (!finished(own)) return List.of("Stop the current OPQ companion run first.");
+            RUNS.remove(operator.getId(), own);
+        }
         if (operator.getMapId() != AgentOpqDefinition.RECRUIT_MAP) return List.of("Stand at the OPQ entrance (200080101) first.");
         if (AgentPartyGatewayRuntime.party().snapshot(operator) != null) return List.of("Leave your current party before starting OPQ test.");
         if (RUNS.containsKey(operator.getId())) stop(operator, "replaced by a new OPQ test", nowMs);
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
                 "opq", AgentPartyQuestEngagement.Mode.TEST_OBSERVATION,
                 seed, operator.getId(), AgentOpqDefinition.PARTY_SIZE, nowMs);
-        Run run = new Run(operator, engagement, seed);
+        Run run = new Run(operator, engagement, seed, Flow.FIXTURE);
         RUNS.put(operator.getId(), run);
         AgentPartyQuestEngagementRegistry.register(engagement);
         engagement.beginLobby("opq-test-" + operator.getId(), nowMs);
@@ -82,6 +96,126 @@ public final class AgentOpqTestService {
         }
         return List.of("Six OPQ Agents are being prepared at level 65 with all-job coverage.",
                 "Eye, face-accessory, and medal slots are enforced empty. Use !opqtest status.");
+    }
+
+    /**
+     * "party prod [seed]": the operator's own party at Wonky (his companions, any humans) becomes a companion run
+     * through the public admit, as a companion host would enter it. Nothing is spawned, loaded, invited or joined, so a
+     * companion owner can run it with his own companions; the run is kept here only for status, checkpoint and stop.
+     * It runs on the GM command thread.
+     */
+    private static synchronized List<String> adoptCurrentParty(Character operator, AdoptOptions options, long nowMs) {
+        if (!options.production()) {
+            return List.of("OPQ adopts a party only as a companion run: !opqtest party prod [seed].");
+        }
+        if (operator.getMapId() != AgentOpqDefinition.RECRUIT_MAP) {
+            return List.of("Stand at the Unknown Tower entrance (200080101) before adopting a party.");
+        }
+        // A finished companion run keeps its entry here with nothing left to clean up; any other run needs a stop.
+        Run existing = RUNS.get(operator.getId());
+        if (existing != null && existing.flow == Flow.ADOPTED && finished(existing)) {
+            RUNS.remove(operator.getId(), existing);
+        }
+        if (RUNS.containsKey(operator.getId())) {
+            return List.of("Stop the current OPQ test before adopting another party.");
+        }
+        AgentPartySnapshot snapshot = AgentPartyGatewayRuntime.party().snapshot(operator);
+        if (snapshot == null) return List.of("Create the desired party before using !opqtest party prod.");
+        List<Character> online = AgentPartyGatewayRuntime.party().onlineMembers(operator).stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (online.size() != snapshot.members().size()) {
+            return List.of("Every party member must be online on this channel before the companion run starts.");
+        }
+        boolean leads = snapshot.members().stream().anyMatch(member -> member != null
+                && member.id() == operator.getId() && member.leader());
+        if (!leads) {
+            return List.of("Lead the party yourself for a companion run: the public admit keys the run by its leader.");
+        }
+        AgentOpqAdmissionService.AdmissionResult result =
+                AgentOpqAdmissionService.admit(operator, operator, online, options.seed(), nowMs);
+        if (!result.success()) return List.of("Could not adopt the party: " + result.message());
+        result.session().setMemberCoordinationChatEnabled(true);
+        Run run = new Run(operator, result.engagement(), options.seed(), Flow.ADOPTED);
+        run.session = result.session();
+        run.leaderId = operator.getId();
+        RUNS.put(operator.getId(), run);
+        return List.of("Adopted as a companion run. Talk to Wonky now; the run waits up to "
+                + minutes(AgentOpqCoordinator.phaseTimeoutMs()) + " for you.");
+    }
+
+    private static String minutes(long ms) {
+        long minutes = Math.max(1L, ms / 60_000L);
+        return minutes + (minutes == 1L ? " minute" : " minutes");
+    }
+
+    /**
+     * A party prod companion run with nothing left for a stop to do: its session has ended and its engagement is gone,
+     * failed or closed. An engagement still held (a handback deferred while a companion is in the event or down) keeps
+     * the run, so '!opqtest stop' can still recover it.
+     */
+    private static boolean finished(Run run) {
+        if (run.session != null && !run.session.terminal()) return false;
+        AgentPartyQuestEngagement engagement = run.engagement;
+        if (AgentPartyQuestEngagementRegistry.byId(engagement.engagementId()) != engagement) return true;
+        AgentPartyQuestEngagement.State state = engagement.state();
+        return state == AgentPartyQuestEngagement.State.FAILED || state == AgentPartyQuestEngagement.State.CLOSED;
+    }
+
+    /**
+     * "checkpoint <center|garden>": a party prod companion run already inside OPQ goes forward for a live check of a
+     * later part, by the event's own team warp after the stage flags Eak would have set: the centre (the entrance
+     * cleared) or the garden (the entrance and the six rooms cleared, the scars still empty: the Root restores Minerva
+     * without them). statusStg7 is left as it is (only the centre Eak reads it). No item, monster or reactor is
+     * touched; the coordinator then moves the run on as in a real run. It runs on the GM command thread.
+     */
+    private static List<String> checkpoint(Character operator, String[] params, long nowMs) {
+        Run run = RUNS.get(operator.getId());
+        AgentOpqSession session = run == null ? null : run.session;
+        if (run == null || run.flow != Flow.ADOPTED || session == null) {
+            return List.of("Checkpoints are for a companion run: !opqtest party prod first.");
+        }
+        synchronized (session) {
+            if (session.terminal() || session.terminationStarted()) {
+                return List.of("Checkpoints are for a companion run: !opqtest party prod first.");
+            }
+            AgentOpqSession.Phase from = session.phase();
+            EventInstanceManager event = session.eventInstance();
+            if (from == AgentOpqSession.Phase.PREPARING || from == AgentOpqSession.Phase.ENTERING
+                    || event == null || event.isEventDisposed()) {
+                return List.of("The OPQ party has not entered yet.");
+            }
+            String target = params.length < 2 ? "" : params[1].toLowerCase();
+            boolean garden = "garden".equals(target);
+            if (!garden && !"center".equals(target)) return List.of("Syntax: !opqtest checkpoint <center|garden>");
+            String place = garden ? "the garden" : "the center";
+            boolean ahead = from == AgentOpqSession.Phase.ENTRANCE
+                    || garden && from == AgentOpqSession.Phase.SPLIT_ROOMS;
+            if (!ahead || event.isEventCleared()) return List.of("The party is already at or past " + place + ".");
+            List<Character> members = membersInside(session, event);
+            if (members == null) return List.of("Every member must be inside the OPQ instance first.");
+            int stagesCleared = garden ? 6 : 0;
+            for (int stage = 0; stage <= stagesCleared; stage++) event.setProperty("statusStg" + stage, "1");
+            int targetMap = garden ? AgentOpqDefinition.GARDEN_MAP : AgentOpqDefinition.CENTER_MAP;
+            event.warpEventTeam(targetMap);
+            session.markProgress(nowMs);
+            log.info("OPQ checkpoint: session={} from={} to={} members={}", session.sessionId(), from, targetMap,
+                    members.stream().map(Character::getId).toList());
+            return List.of("OPQ checkpoint: everyone is in " + place + ".");
+        }
+    }
+
+    /** The run's members, each online and inside {@code event} on one of its maps; null when any one is not. */
+    private static List<Character> membersInside(AgentOpqSession session, EventInstanceManager event) {
+        List<Character> members = new ArrayList<>();
+        for (AgentOpqMemberState state : session.members()) {
+            Character member = online(state.characterId());
+            if (member == null || member.getEventInstance() != event
+                    || !AgentOpqDefinition.isEventMap(member.getMapId())) {
+                return null;
+            }
+            members.add(member);
+        }
+        return members;
     }
 
     private static void launch(Run run, String name, int ordinal) {
@@ -192,6 +326,7 @@ public final class AgentOpqTestService {
         session.setLeadership(run.leaderId, run.leaderId);
         run.engagement.reserveEntry(nowMs);
         AgentOpqSessionRegistry.registerComplete(session);
+        AgentOpqWatchdogRuntime.ensureStarted();
         run.engagement.activateSession(session.sessionId(), nowMs);
         run.session = session;
         run.operator.dropMessage(6, "Six-Agent OPQ activated. Every in-PQ movement now uses authored navigation and portals.");
@@ -208,11 +343,23 @@ public final class AgentOpqTestService {
         if (run.session.phase() == AgentOpqSession.Phase.ENTRANCE) {
             lines.add(entranceStatus(run.session));
         }
+        if (run.flow == Flow.ADOPTED) {
+            // A companion run: every member, the human leader included, by name.
+            run.session.members().forEach(member -> lines.add(adoptedMemberStatus(member)));
+            return List.copyOf(lines);
+        }
         run.session.members().stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(java.util.Comparator.comparingInt(AgentOpqMemberState::characterId))
                 .forEach(member -> lines.add(memberStatus(member)));
         return List.copyOf(lines);
+    }
+
+    private static String adoptedMemberStatus(AgentOpqMemberState member) {
+        Character character = online(member.characterId());
+        if (character == null) return "member " + member.characterId() + ": offline role=" + member.role();
+        return "member " + character.getName() + ": map=" + character.getMapId() + " role=" + member.role()
+                + " room=" + member.assignedRoom();
     }
 
     private static String entranceStatus(AgentOpqSession session) {
@@ -261,6 +408,10 @@ public final class AgentOpqTestService {
     private static List<String> stop(Character operator, String reason, long nowMs) {
         Run run = RUNS.remove(operator.getId());
         if (run == null) return List.of("No OPQ test is active.");
+        if (run.flow == Flow.ADOPTED) {
+            stopAdopted(run, reason, nowMs);
+            return List.of("OPQ test stopped safely.");
+        }
         if (run.session != null) AgentOpqTerminationService.release(run.session, reason, nowMs, true);
         if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
             AgentPartyQuestLifecycleRuntime.closeTest(run.engagement, nowMs);
@@ -272,12 +423,32 @@ public final class AgentOpqTestService {
     private static void fail(Run run, String reason) {
         if (run == null || !RUNS.remove(run.operator.getId(), run)) return;
         long now = System.currentTimeMillis();
+        if (run.flow == Flow.ADOPTED) {
+            stopAdopted(run, reason, now);
+            run.operator.dropMessage(6, "OPQ stopped safely: " + reason);
+            return;
+        }
         if (run.session != null) AgentOpqTerminationService.release(run.session, reason, now, true);
         if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
             AgentPartyQuestLifecycleRuntime.closeTest(run.engagement, now);
         }
         run.agents.forEach(AgentOpqTestService::disconnect);
         run.operator.dropMessage(6, "OPQ stopped safely: " + reason);
+    }
+
+    /**
+     * Stops a party prod companion run. A live session is ended as the companion run it is (the party kept; after the
+     * clear the event is left to the humans); without one, an engagement still registered is recovered, its
+     * companions handed back to their owner (closing it would drop them with no handback). Nobody is logged out.
+     */
+    private static void stopAdopted(Run run, String reason, long nowMs) {
+        AgentOpqSession session = run.session;
+        if (session != null && AgentOpqSessionRegistry.forOperator(run.operator.getId()) == session) {
+            AgentOpqTerminationService.fail(session, reason, nowMs);
+        } else if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
+            run.engagement.beginRecovery(reason, nowMs);
+            AgentPartyQuestLifecycleRuntime.recover(run.engagement, nowMs);
+        }
     }
 
     private static void disconnect(int id) {
@@ -291,19 +462,37 @@ public final class AgentOpqTestService {
         return agent != null ? agent : AgentCharacterGatewayRuntime.characters().findOnlineCharacterById(id);
     }
     private static List<String> help() {
-        return List.of("!opqtest start [seed]", "!opqtest status | pause | resume | stop");
+        return List.of("!opqtest start [seed]",
+                "!opqtest party prod [seed] (adopt your own party as a companion run; you lead)",
+                "!opqtest checkpoint <center|garden> (party prod runs only)",
+                "!opqtest status | pause | resume | stop");
     }
+
+    /** "party [prod] [seed]", read as the other harnesses read it: the prod token comes before the seed. */
+    static AdoptOptions adoptOptions(String[] params, int firstOptionIndex, long fallbackSeed) {
+        boolean production = params != null && params.length > firstOptionIndex
+                && "prod".equalsIgnoreCase(params[firstOptionIndex]);
+        int seedIndex = firstOptionIndex + (production ? 1 : 0);
+        long seed = params != null && params.length > seedIndex ? Long.parseLong(params[seedIndex]) : fallbackSeed;
+        return new AdoptOptions(production, seed);
+    }
+
+    /** FIXTURE: the six OPQers of 'start'. ADOPTED: the operator's own party as a companion run. */
+    private enum Flow { FIXTURE, ADOPTED }
+
+    record AdoptOptions(boolean production, long seed) { }
 
     private static final class Run {
         final Object lock = new Object();
         final Character operator;
         final AgentPartyQuestEngagement engagement;
         final long seed;
+        final Flow flow;
         final Set<Integer> agents = new LinkedHashSet<>();
         volatile int leaderId;
         volatile AgentOpqSession session;
-        Run(Character operator, AgentPartyQuestEngagement engagement, long seed) {
-            this.operator = operator; this.engagement = engagement; this.seed = seed;
+        Run(Character operator, AgentPartyQuestEngagement engagement, long seed, Flow flow) {
+            this.operator = operator; this.engagement = engagement; this.seed = seed; this.flow = flow;
         }
     }
 }

@@ -62,7 +62,7 @@ public class AutobanManager {
         }
         if (YamlConfig.config.server.USE_AUTOBAN_LOG) {
             // Lets log every single point too.
-            log.info("Autoban - chr {} caused {} {}", Character.makeMapleReadable(chr.getName()), fac.name(), reason);
+            AutobanSignals.log(log, chr, "Autoban - chr {} caused {} {}", Character.makeMapleReadable(chr.getName()), fac.name(), reason);
         }
     }
 

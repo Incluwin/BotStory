@@ -724,7 +724,7 @@ tuning:
     server.agents.capabilities.combat.AgentCombatAlertRuntime.ALERT_DURATION_MS: '5000'
     # Values: a finite non-negative integer. Recommended: 250-1000 around the tested baseline 500; benchmark or observe behavior before moving outside this band.
     # Purpose: Sets when ammo low warn triggers. Higher values let more pressure build before Agents or safeguards react; lower values make them react sooner.
-    # Technical: the "combat config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values. Coupled: AMMO_LOW_WARN x AgentShopService.AMMO_TARGET_THRESHOLD bounds the AgentSupplyReadiness.AMMO_STANDARDS and PARTY_QUEST_AMMO counts at startup (AgentEngineConfigValidator; 250 x 5 = 1250 would refuse the shipped lpq=1600,epq=1600), and AMMO_LOW_WARN + 1 floors AgentSupplyReadiness.ammoTarget, so a restocked companion never warns "running low" at its first throw.
+    # Technical: the "combat config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values. Coupled: AMMO_LOW_WARN x AgentShopService.AMMO_TARGET_THRESHOLD bounds the AgentSupplyReadiness.AMMO_STANDARDS and PARTY_QUEST_AMMO counts at startup (AgentEngineConfigValidator; 250 x 5 = 1250 would refuse the shipped lpq=1600,epq=1600,easy_balrog=2000), and AMMO_LOW_WARN + 1 floors AgentSupplyReadiness.ammoTarget, so a restocked companion never warns "running low" at its first throw.
     server.agents.capabilities.supplies.AgentSupplyConfig.AMMO_LOW_WARN: '500'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 10-40 around the tested baseline 20; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for area-of-effect reposition arrival horizontal. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
@@ -1321,10 +1321,10 @@ tuning:
     # Technical: Only AgentEpqRecoveryPolicy reads this, for EPQ map 930000000 and for 930000600 while no golem lives and the event is not cleared; the generic autopot is unchanged, a potion-less member never tops up, and a drink that raises no HP ends the episode.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION: '0.9'
     # Values: 300-2000 milliseconds. Recommended: 600 so a top-up looks like a player's quick potion presses without draining a stack in one tick.
-    # Purpose: Spaces one EPQ Agent's HP top-up drinks on the entrance map and before the golem fight.
-    # Technical: Stored on the member's own EPQ state; one AgentPotionService-selected HP potion per interval through the primitive gateway's useItem.
+    # Purpose: Spaces one EPQ Agent's HP top-up drinks on the entrance map and before the golem fight, and its drinks while it rests from a golem.
+    # Technical: Stored on the member's own EPQ state; one AgentPotionService-selected HP potion per interval through the primitive gateway's useItem. AgentEpqCoordinator spaces a golem rester's drinks with it too (map 930000600, while under RESUME_HP_FRACTION, on the walk to its rest point as well).
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS: '600'
-    # Values: 460-650 map pixels: at least 9300182 attack1's 500-px reach, above MobSkill 120 level 3's 450, and, with FLOOR_EDGE_MARGIN_PX at most 150, below half the usable boss floor so a rest point always exists. Recommended: 500.
+    # Values: 460-650 map pixels: at least 9300182 attack1's 500-px reach, above MobSkill 120 level 3's 450, and, with FLOOR_EDGE_MARGIN_PX at most 150, below half the usable boss floor so one floor end is always out of reach. Recommended: 500.
     # Purpose: Sets how far from a golem a resting EPQ member must stand, the golem's reach.
     # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600 (floor AgentEpqDefinition.BOSS_FLOOR, Map.wz footholds 1-18, x -540 to 1080, y 150). WZ sources: Mob.wz 9300180 attack1 lt.x -420, 9300181 attack1/attack2 -420/-440, 9300182 attack1/attack2 -500/-460, MobSkill.img 120 level 3 lt/rb x -450/450; AgentEpqBossRestTest pins it. 9300182's attack3 rain (type 3, about 1150 px either side) still reaches every point of the floor.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REACH_PX: '500'
@@ -1340,14 +1340,14 @@ tuning:
     # Purpose: Sets how near a golem add (9300177, 9300178, 9300179) must be before a resting EPQ member fights it from its rest point, and before a companion on 930000600 after the clear fights it ahead of its golem's-marble errand.
     # Technical: Compared along both axes; the resting member fights only the adds (never the golem) through the gateway's anchored grind, and only while it stands out of the golem's reach. After the clear AgentEpqCompanionRun.afterClearMember (companion runs only) reads it: an add this near comes before the work Agent's walk to the golem's marble and the holder's walk to the leader; adds farther away are fought only after that errand.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.ADD_THREAT_PX: '100'
-    # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold.
-    # Purpose: Sets the HP fraction under which an EPQ golem-fight member with fewer than POT_STOP HP potions backs off to rest.
-    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600 while a golem lives; an unknown potion count never rests, and members with POT_STOP or more potions keep the autopot and fight.
-    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_HP_FRACTION: '0.4'
-    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested member rejoins with room for a golem hit.
-    # Purpose: Sets the HP fraction at which a resting EPQ golem-fight member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
-    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600. Resting heals by passive regen only, and the rest ends when no golem lives.
-    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 0.2-0.6 of maximum HP, below RESUME_HP_FRACTION. Recommended: 0.5 so a member backs off while a golem hit or two still leaves it standing and before the autopot drains its stock in melee (live 2026-10-08: Kestrel, 2928 maximum HP, went down from 501 HP in one hit; was 0.4 with no potions only).
+    # Purpose: Sets the HP fraction under which an EPQ golem-fight member backs off out of the golem's reach to drink up, with or without potions.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600 while a golem lives; a member with fewer than POT_STOP HP potions (server.agents.runtime.AgentRuntimeConfig.POT_STOP) rests at any HP, and an unknown potion count never rests. The rester backs off on its own side of the golem (never across it) and drinks one HP potion every TOP_UP_INTERVAL_MS while under RESUME_HP_FRACTION.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_HP_FRACTION: '0.5'
+    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.8 so a rested member rejoins with room for a golem hit, above the autopot's own 0.7 alert (was 0.7, and any POT_STOP potions ended the rest at any HP).
+    # Purpose: Sets the HP fraction a resting EPQ golem-fight member drinks up to and must reach, holding POT_STOP HP potions, before it rejoins the fight.
+    # Technical: Only AgentEpqRecoveryPolicy and AgentEpqCoordinator read this, for map 930000600. A rester under it drinks one HP potion every TOP_UP_INTERVAL_MS (passive regen when it has none); a stack shared at low HP does not end the rest, and the rest lasts through the golem's revive gap and ends with the clear or when the member leaves the map.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION: '0.8'
     # Values: 5000-120000 milliseconds. Recommended: 30000, the "within 30 seconds" the adoption reply and the desk promise.
     # Purpose: Bounds how long a companion run waits for its human leader to take the party into EPQ, and then for every member to be inside, before it gives up without a word or goes on without the absent members.
     # Technical: AgentEpqCompanionRun reads this in tickSession: from admission while no event is bound, and from the leader's entry for members never seen inside, in any phase; absent members are ejected only while at least four are inside (EllinPQ.js minPlayers 4). Companion runs only.
@@ -1505,10 +1505,43 @@ tuning:
     # Purpose: Spaces creation of the six dedicated OPQ observation fixtures.
     # Technical: The GM-only harness consumes this value before PQ entry; active OPQ travel and room ticks do not use it.
     server.agents.capabilities.partyquest.opq.AgentOpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 250-5000 milliseconds. Recommended: 1000 for timely OPQ liveness checks with modest scheduler overhead.
+    # Purpose: Scans active OPQ sessions for an expired or dead coordinator lease holder and for the loss of every loaded Agent.
+    # Technical: AgentOpqWatchdogRuntime iterates only AgentOpqSessionRegistry; the first live Agent (or, while every loaded Agent is dead, the lowest-id one) takes an expired or dead holder's lease and ticks the coordinator, and a session with no loaded Agent fails through the OPQ termination path.
+    server.agents.capabilities.partyquest.opq.AgentOpqWatchdogRuntime.PERIOD_MS: '1000'
+    # Values: 1-10 refusals. Recommended: 3 so a companion whose bag is full gives up the reward instead of asking Minerva forever.
+    # Purpose: Bounds how often an OPQ Agent asks Minerva for its reward while its inventory cannot take it.
+    # Technical: tickRewardMember counts a refusal when the Agent is still on 920011300 once the retry window after Minerva's script has passed; at this count it stops asking and leaves through the event's own exit, unrewarded, so the claims can end.
+    server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX: '3'
+    # Values: 1000-30000 milliseconds. Recommended: 5000 so OrbisPQ.js has registered and warped the whole party before a member it never held counts as gone.
+    # Purpose: Bounds how long after the OPQ run binds its event a member the event has not registered yet is still treated as entering.
+    # Technical: AgentOpqCoordinator.observeDepartures marks a member the bound event never held as departed (logged, its Agent handed back) once this long has passed since the bind; a member held and then lost departs at once, whatever this value.
+    server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
+
     # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
     # Technical: Read only by the GM-only LMPQ observation harness between fixture launches; production LMPQ admission and coordination never read this value.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 0-30000 milliseconds. Recommended: 5000 so LudiMazePQ.js's own 15-minute timeout ends a slow run first and the run then reports the event as ended.
+    # Purpose: Pads the LMPQ run's own event timer, which runs from its first FARMING entry, past the event script's timer.
+    # Technical: AgentLmpqCoordinator adds it to the catalog eventTimerMs (900000, LudiMazePQ.js eventTime) and stops checking once the event reports its clear; it never ends a run before the event's own timeout.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TIMEOUT_SLACK_MS: '5000'
+    # Values: 1-10 claims. Recommended: 3 so a slow claim is retried but an Agent with a full bag does not click Rolly until the run times out.
+    # Purpose: Bounds how often an LMPQ Agent claims at the reward Rolly while it stays on the reward map before it leaves unrewarded.
+    # Technical: AgentLmpqCoordinator counts claims per member on 809050016; past the limit the Agent leaves once through the event's own exit to 809050017, and the event is disposed when it was the last player.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX: '3'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 so the companions' claims and exits fit and a run nobody finishes after the clear ends within two minutes.
+    # Purpose: Ends an LMPQ run that makes no progress in its REWARD phase, after the clear, in every mode.
+    # Technical: AgentLmpqCoordinator fails the run as "LMPQ reward stalled"; past the clear the release only takes the Agents out through the event's exit and disposes the event only when no player is left, so a human keeps his claim.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS: '120000'
+    # Values: 1000-30000 milliseconds. Recommended: 5000 so every member LudiMazePQ.js registers is seen held, since the event registers and warps a party one member at a time.
+    # Purpose: Bounds how long after the LMPQ run binds to its event a member the event has not registered still counts as entering.
+    # Technical: AgentLmpqCoordinator marks such a member departed ('LMPQ departed: ... reason=never-registered') once this long has passed since the bind, so the rendezvous and the coupons stop waiting for a member the event started without.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
+    # Values: 250-5000 milliseconds. Recommended: 1000 for timely LMPQ liveness checks with modest scheduler overhead.
+    # Purpose: Scans active LMPQ runs for an expired or dead coordinator lease, or the loss of every loaded Agent, so each run still ticks, fails or completes.
+    # Technical: AgentLmpqWatchdogRuntime iterates only AgentLmpqSessionRegistry, ticks a run through its first live Agent when the lease has run out, and releases a run that ended through the idempotent LMPQ termination path.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqWatchdogRuntime.PERIOD_MS: '1000'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
 
@@ -4519,18 +4552,18 @@ tuning:
     # Purpose: MP potions an Agent that fights with skills (any job past a beginner's) goes into a party quest with, so it never asks for some mid-run.
     # Technical: AgentSupplyReadiness.standard validates it against POT_STOP; at or below it the value is clamped to POT_STOP + 1 with one WARN instead of throwing, because a critical MP request would otherwise start the moment the run begins.
     server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_MP_POTIONS: '25'
-    # Values: comma-separated key=HP/MP pairs (lowercase party quest keys, whole potion counts, MP above POT_STOP; every stack of a kind takes a free Use slot); never blank (the loader refuses a blank value), so it lists at least one party quest. Recommended: lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350 (agreed 2026-10-03 for 30-45 minute runs against Lv43-85 monsters; epq raised 2026-10-06 after one live golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion, mostly White and Blue; epq HP raised to 350 on 2026-10-07 by user decision after three of five companions ran dry of HP potions in one golem fight at 250; retune from the per-run potion counts the desks log).
+    # Values: comma-separated key=HP/MP pairs (lowercase party quest keys, whole potion counts, MP above POT_STOP; every stack of a kind takes a free Use slot); never blank (the loader refuses a blank value), so it lists at least one party quest. Recommended: lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50 (agreed 2026-10-03 for 30-45 minute runs against Lv43-85 monsters; rjpqj, Juliet's side of RJPQ, added 2026-10-09 with rjpq's standard; epq raised 2026-10-06 after one live golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion, mostly White and Blue; epq HP raised to 350 on 2026-10-07 by user decision after three of five companions ran dry of HP potions in one golem fight at 250; retune from the per-run potion counts the desks log).
     # Purpose: Gives the longer, harder party quests a bigger potion standard than KPQ and HPQ, so their desks and their companions' standing duty agree on what to carry in.
     # Technical: AgentSupplyReadiness.standard(Activity.partyQuest(key)) reads this at every call; a key not listed (kpq, hpq) or a malformed pair keeps PARTY_QUEST_HP_POTIONS / PARTY_QUEST_MP_POTIONS, and an MP count at or under POT_STOP is clamped to POT_STOP + 1 with one WARN. BUY_TO_PERCENT applies to it as to the default. A count above MAX_CARRIED_QUANTITY or MAX_PURCHASE_QUANTITY_PER_VISIT raises those limits to itself for the readiness floor only (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it, and nothing buys past the larger of it and MAX_CARRIED_QUANTITY; AgentSupplyReadinessRuntime.useSlotsNeeded then asks one free Use slot per stack (AgentShopService.potionStackSize).
-    server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS: 'lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350'
+    server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS: 'lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50'
     # Values: a whole projectile count from 0 to 5000 (AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD; the loader refuses anything else); 0 turns the check off for every activity AMMO_STANDARDS does not list. Recommended: 500, what the integration session proposed after a claw companion entered LPQ with no throwing stars (2026-10-05); AMMO_STANDARDS raises it per party quest or boss; retune from the "readiness restock ... ammo" log lines.
     # Purpose: Projectiles a companion that fights with a claw, bow, crossbow or gun goes into a party quest or boss run with at least, unless AMMO_STANDARDS lists that activity; the desk keeps one below it waiting "low on ammo", and its standing readiness duty walks to the store for them as it does for potions, at a party quest desk and in an ordinary town.
     # Technical: AgentSupplyReadiness.ammoStandard returns it for an activity AMMO_STANDARDS does not list; ammoShortfall measures AgentAmmoService.carriedProjectiles (the stacks for the equipped weapon, Soul Arrow and Shadow Claw ignored; Integer.MAX_VALUE for no ammo weapon) against it. CompanionPartyQuestService.waitingReason checks it after the potions, AgentSupplyReadinessRuntime.select starts a readiness trip for it, and the trip's counter tops it up after the potions at any potion supplier (AgentShopService.buyReadinessAmmo).
     server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO: '500'
-    # Values: comma-separated key=count pairs (lowercase party quest or boss keys, whole projectile counts from 0 to 5000, the most arrows one Victoria visit buys: AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD); never blank (the loader refuses a blank value). Recommended: lpq=1600,epq=1600 (2026-10-07: a claw companion used 800 throwing stars, a whole Ilbi stack, in one EPQ golem fight, and another reached LPQ stage 7 with none and stalled the run; two stacks cover a run; retune from the "readiness restock ... ammo" log lines), zakum=4000 (user decision 2026-10-08, P8: a 35-45 minute fight against about 482M HP; Glibber on Ice Valley II sells bullets, Subi, arrows and bolts, and two stacks of arrows or bolts or five sets of bullets hold it; retune from the first live Zakum "readiness restock ... ammo" and "Boss ally provisioned" lines).
+    # Values: comma-separated key=count pairs (lowercase party quest or boss keys, whole projectile counts from 0 to 5000, the most arrows one Victoria visit buys: AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD); never blank (the loader refuses a blank value). Recommended: lpq=1600,epq=1600,easy_balrog=2000 (2026-10-07: a claw companion used 800 throwing stars, a whole Ilbi stack, in one EPQ golem fight, and another reached LPQ stage 7 with none and stalled the run; two stacks cover a run; easy_balrog by user decision on 2026-10-08: in that day's lost Easy Balrog run Flint, a gunner, stopped attacking at 20:01:39 with full MP while every combat decision line read NO_CANDIDATES, most likely out of bullets; Double Shot uses 2 bullets per cast and the body phase lasted 15 minutes; retune from the "readiness restock ... ammo" log lines), zakum=4000 (user decision 2026-10-08, P8: a 35-45 minute fight against about 482M HP; Glibber on Ice Valley II sells bullets, Subi, arrows and bolts, and two stacks of arrows or bolts or five sets of bullets hold it; retune from the first live Zakum "readiness restock ... ammo" and "Boss ally provisioned" lines).
     # Purpose: Gives a party quest or boss whose fights burn through projectiles a bigger ammo standard than PARTY_QUEST_AMMO, so its desk and its companions' standing duty agree on how many stars, arrows, bolts or bullets to carry in.
     # Technical: AgentSupplyReadiness.ammoStandard(Activity) reads this with config.AgentTuning.stringValue at every call; a key not listed or a malformed pair keeps PARTY_QUEST_AMMO; AgentEngineConfigValidator refuses anything but key=count pairs with counts up to AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD. On a readiness trip AgentShopService.buyReadinessAmmo runs after the potions: it refills the stacks the companion owns, then buys sets of the shop's cheapest star or bullet (claw, gun) or arrows (bow, crossbow) until AgentCombatAmmoCounter.countCarried reaches AgentSupplyReadiness.ammoTarget, never into the last free Use slot, and its last step buys on toward AMMO_BUY_TO_PERCENT of it with what is left; AgentShopService.readinessAmmoPlan prices and sizes that for the trip's checks. CompanionPartyQuestService.waitingReason and the standing readiness duty (AgentSupplyReadiness.shortfall) measure AgentAmmoService.carriedProjectiles against it.
-    server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS: 'lpq=1600,epq=1600,zakum=4000'
+    server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS: 'lpq=1600,epq=1600,easy_balrog=2000,zakum=4000'
     # Values: a percentage from 100 to 500. Recommended: 200 (40 HP / 50 MP potions), about one shop trip per two KPQ runs.
     # Purpose: How far past the readiness standard a shop visit buys while the Agent keeps a standing duty, so back-to-back runs do not send it to the shop every time.
     # Technical: AgentSupplyReadiness.buyTarget rounds standard x this / 100 up; AgentShopService.buyPotionStock buys by count (AgentShopPotionPolicy.selectForCount) first up to the standard, then runs the reserve-bar passes, then tops up toward this target with what is left (on a readiness trip its ammo standard, AgentShopService.buyReadinessAmmo, is bought after the critical reserve pass and before the ordinary reserve pass and this top-up, so neither spends the money priced for its projectiles), within MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT. A standard above those limits raises them to itself, so one visit reaches it, and nothing buys past the larger of it and MAX_CARRIED_QUANTITY.
@@ -4563,6 +4596,10 @@ tuning:
     # Purpose: Quiet period after a readiness trip was cut short or could not begin, before the standing duty sets off again.
     # Technical: AgentSupplyReadinessRuntime sets an INTERRUPTED cooldown until now plus this on a failed begin, an abandoned trip and an owner's movement order mid-trip (AgentSupplyProcurementRuntime.ownerCalledBack); the second such trip in a row from one town gives that town up until the Agent has stood on another map. SHORT_MESOS and SHORT_SPACE record it too but lift only when the purse grows by what was lacking, a Use slot frees, or it lacks fewer potions.
     server.agents.capabilities.supplies.AgentSupplyReadiness.SHORT_TRIP_COOLDOWN_MS: '300000'
+    # Values: milliseconds from 0 to 600000. Recommended: 30000, so an owner handing over coin a few times in a row hears one still-short line, not one per gift.
+    # Purpose: How often at most a companion that could not pay for its potions says that what it was just given is still not enough.
+    # Technical: AgentSupplyReadinessRuntime.select looks at the purse and the shortfall at every check (AgentSupplyReadinessState.look); while a CANNOT_AFFORD or SHORT_MESOS cooldown holds it on a town or monster-free map, a purse grown or fewer potions or projectiles lacking since the last look on that map is a gift. One that still does not pay for the trip calls Rule.stillShort with what is still missing (from the purse while the meso cooldown holds, else from a fresh assessment), at most once per this; gifts in between are told together at the first check after it. A gift that pays for the trip starts it, one that leaves nothing lacking is not told, and another map forgets it.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.STILL_SHORT_EVERY_MS: '30000'
     # Values: milliseconds from 0 to 120000. Recommended: 25000, the walk to a shop on the same map plus the purchase steps; retune from live start to rejoin times.
     # Purpose: The fixed part of the time a host shows for a companion gone to the store ("Gone to the store: X (~N s)").
     # Technical: AgentSupplyReadinessRuntime.select stores etaAt as now plus this plus hops x TRIP_ETA_PER_HOP_MS; AgentSupplyReadiness.status reports the time left (another potion trip uses its supplier hop budget instead of hops).
@@ -4573,8 +4610,12 @@ tuning:
     server.agents.capabilities.supplies.AgentSupplyReadiness.TRIP_ETA_PER_HOP_MS: '25000'
     # Values: comma-separated key=HP/MP pairs (lowercase boss keys, whole potion counts, MP above POT_STOP); never blank (the loader refuses a blank value). Recommended: easy_balrog=100/60 (user decision 8, 2026-10-06, was 40/50; raised after the live run of 2026-10-07, where Lv70 companions drank 20-36 HP potions per minute with White Potions and ran out in 2-3 minutes; with BUY_TO_PERCENT 200 a shop tops up toward 200/120; retune from the "PQ potions ... pq=easy_balrog" lines), zakum=500/400 (user decision 2026-10-08, P8: a 35-45 minute fight needs far more than the 200-potion carry limit; five stacks of HP and four of MP potions, which a companion buys at Glibber on Ice Valley II in one visit and an ally on arrival; from empty about 1.26M mesos in Unagi and Pure Water at Glibber's prices, and a smaller purse buys cheaper potions to the same counts; tuned from the first live Zakum "PQ potions ... pq=zakum" lines).
     # Purpose: The potion standard a companion keeps for a boss expedition (Easy Balrog at Mu Young's room; Zakum in Adobis's room and at Glibber on the way), kept apart from the party quest standards.
-    # Technical: AgentSupplyReadiness.standard(Activity.partyQuest(key)) reads it after PARTY_QUEST_STANDARDS at every call; a key listed there wins, a key in neither keeps PARTY_QUEST_HP_POTIONS / PARTY_QUEST_MP_POTIONS; BUY_TO_PERCENT and the POT_STOP clamp apply as to the default. A count above MAX_CARRIED_QUANTITY or MAX_PURCHASE_QUANTITY_PER_VISIT (zakum's) raises those limits to itself for the readiness floor only (AgentPotionPurchasePolicy.floorQuantity, also in AgentShopProvisioning for an ally), so one visit reaches it and the BUY_TO_PERCENT top-up buys nothing past it; AgentSupplyReadinessRuntime.useSlotsNeeded then asks one free Use slot per stack and the one a run keeps free.
+    # Technical: AgentSupplyReadiness.standard(Activity.partyQuest(key)) reads it after PARTY_QUEST_STANDARDS at every call; a key listed there wins, a key in neither keeps PARTY_QUEST_HP_POTIONS / PARTY_QUEST_MP_POTIONS; BUY_TO_PERCENT and the POT_STOP clamp apply as to the default. A count above MAX_CARRIED_QUANTITY or MAX_PURCHASE_QUANTITY_PER_VISIT (zakum's) raises those limits to itself for the readiness floor only (AgentPotionPurchasePolicy.floorQuantity, also in AgentShopProvisioning for an ally), so one visit reaches it and the BUY_TO_PERCENT top-up buys nothing past it; AgentSupplyReadinessRuntime.useSlotsNeeded then asks one free Use slot per stack and the one a run keeps free. BOSS_RECOVERY_STANDARDS wins for a key listed in both (easy_balrog since 2026-10-08): the companions' own count, their trips and their shop visits then measure HP and MP points, and this pair applies again only if that one is removed or malformed. zakum is listed here only, so it keeps counting potions (user decision 2026-10-08).
     server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_STANDARDS: 'easy_balrog=100/60,zakum=500/400'
+    # Values: comma-separated key=HP/MP pairs (lowercase boss keys, whole HP and MP points from 0 to 999999999 each); never blank (the loader refuses a blank value and anything but key=HP/MP pairs). Recommended: easy_balrog=130000/32000 (user decision 2, 2026-10-08, sized for a 20-minute fight: in that day's lost Easy Balrog run there was no healer, a member on the melee station took about 6.5k HP a minute through a 17-19 minute fight, and Ingrid's 65 MP potions ran dry at 20:01:47; that is 130 Unagi and 40 Pure Water at Ant Tunnel Park's 24 Hr Mobile Store; retune from the "PQ potions ... pq=easy_balrog" lines). zakum is not listed: its companions count potions against BOSS_STANDARDS 500/400 (user decision 2026-10-08, P8).
+    # Purpose: Measures a boss's potion standard in the HP and MP a companion's recovery potions restore instead of how many it carries, so a bag of weak potions no longer passes for a long boss fight and a short companion buys enough strong ones to last it.
+    # Technical: AgentSupplyReadiness.recoveryStandard(Activity) reads this at every call; for a key it lists, AgentSupplyReadiness.shortfall(Character, Activity) measures AgentPotionInventoryPolicy.recoveryCapacity at the Agent's current maximum HP and MP (MP for a skill user only) against these points instead of AgentPotionService.countPotions against BOSS_STANDARDS, so the standing duty in Mu Young's room and at Ant Tunnel Park (CompanionRestock), the owner's sign-up check (CompanionBossRuns) and the bench allies' store visit (CompanionBossAllies) all read points. At a shop a gap becomes a count of the potion the visit picks for that kind (AgentShopService.coveragePickRecovery), rounded up: AgentSupplyReadinessRuntime prices and slots the trip by it, and AgentShopService's readiness floor buys it within AgentPotionPurchasePolicy.floorQuantity, the bag's count at the standard standing for the standard (so one visit reaches it past MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT); its top-up buys toward BUY_TO_PERCENT of the points within those limits. A key not listed or a malformed pair keeps counting potions, and the desk's count overload never reads this.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_RECOVERY_STANDARDS: 'easy_balrog=130000/32000'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 50-200 around the tested baseline 100; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for interaction distance. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "victoria quest pack runtime" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
@@ -5810,3 +5851,173 @@ tuning:
     # Purpose: Spaces the attacks of companions fighting inside a boss run, so fewer attack effects and sounds reach the players' game clients on the boss map.
     # Technical: AgentCombatAttackRuntime raises the attack cooldown after each committed attack to at least this long (AgentBossClientLoad.attackFloorMs) while the Agent is an INSIDE member on its boss run's battle map, in every boss run; an attack whose own cooldown is longer keeps it. 0 changes nothing. The same attacks are counted per run as botAttacks= in the boss mirror's summary line.
     server.agents.capabilities.expedition.boss.AgentBossClientLoad.ATTACK_INTERVAL_FLOOR_MS: '0'
+
+    # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
+    # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.
+    # Purpose: Bounds how long one companion keeps the right to run an RJPQ run's shared tick before another companion or the watchdog may take it over.
+    # Technical: Read by AgentRjpqRuntime when a companion claims the session's execution lease after its own member tick, and by AgentRjpqWatchdogRuntime, which takes over only a lease that has expired (every companion dead or unloaded).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqRuntime.COORDINATOR_LEASE_MS: '3000'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the time '!rjpqtest party prod' tells the leader to talk to Romeo or Juliet in.
+    # Purpose: Ends an admitted RJPQ companion run whose leader never starts the event, so the companions are handed back instead of standing in the hidden room.
+    # Technical: AgentRjpqCoordinator.tickSession counts it from the session's admission while no event is bound; the run fails with 'The RJPQ leader did not start the event in time' and its release recovers every companion.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 1000-30000 milliseconds. Recommended: 5000.
+    # Purpose: How often the RJPQ watchdog looks at every run, so a run whose companions all lie dead or are unloaded still ticks and a finished run is released.
+    # Technical: AgentRjpqWatchdogRuntime registers one scheduler task at the first admission; each pass takes an expired coordinator lease for the run's first standing companion, runs AgentRjpqCoordinator.tickSession and releases a terminal run.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqWatchdogRuntime.PERIOD_MS: '5000'
+    # Values: 300-5000 milliseconds. Recommended: 900, the pause EPQ companions take after an action.
+    # Purpose: How long an RJPQ companion waits after it reads a book, drops a liquid or takes a portal before its next action, so it acts at a player's pace and the server has applied the last action.
+    # Technical: AgentRjpqStagePlay defers the member's next stage action by this much after runNpcObject, a liquid drop or enterPortal; AgentRjpqCoordinator.tickMember skips stage play until then.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ACTION_RETRY_MS: '900'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion keeps a book on stage one to itself while it walks there, so the companions split the books instead of crowding the same one.
+    # Technical: AgentRjpqStagePlay.books renews the claim on each tick it walks to the book (AgentRjpqSession.claimBook); the other companions skip a book with a live claim; a checked book drops its claim.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.BOOK_CLAIM_MS: '15000'
+    # Values: 30-150 pixels. Recommended: 80, EPQ's NPC radius.
+    # Purpose: How close an RJPQ companion stands to a book before it reads it, so it reads from beside the book as a player clicks one in reach.
+    # Technical: AgentRjpqStagePlay.books walks to the ground under the book until the companion is grounded within this distance, then stops and calls PartyQuestGateway.runNpcObject.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.NPC_REACH_PX: '80'
+    # Values: 20-80 pixels. Recommended: 45, EPQ's portal radius.
+    # Purpose: How close an RJPQ companion stands to a stage's exit portal before it takes it, so it walks onto the portal as a player does.
+    # Technical: AgentRjpqStagePlay.leave walks to portal pt00 until the companion is grounded within this distance, then stops and calls PartyQuestGateway.enterPortal.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.PORTAL_REACH_PX: '45'
+    # Values: 20-120 pixels. Recommended: 60.
+    # Purpose: How close an RJPQ companion stands to a drop (a liquid on stage three) before it picks it up.
+    # Technical: AgentRjpqStagePlay.pickUp walks to the drop until within this distance, then calls PrimitiveCapabilityGateway.lootItem with this distance as its limit.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.LOOT_REACH_PX: '60'
+    # Values: 5-40 pixels. Recommended: 20, well inside a beaker's 50-pixel-wide item area.
+    # Purpose: How close an RJPQ companion stands to the target beaker's spot before it drops a liquid, so the liquid lands in the beaker and is not lost on the floor.
+    # Technical: AgentRjpqStagePlay.pour drops one liquid only when the companion is grounded within this distance of the ground under the beaker and predictDropLanding (or its feet) lies inside the beaker's item area.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DROP_REACH_PX: '20'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion carrying a card key keeps a closed Dark Lab door to itself, so two carriers do not spend two keys on the same door.
+    # Technical: AgentRjpqStagePlay.keys renews the claim on each tick it carries a key to the door (AgentRjpqSession.claimDoor); another carrier picks the other closed door or keeps its key; an opened door is no longer a target.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.DOOR_CLAIM_MS: '15000'
+    # Values: 0-200 pixels. Recommended: 30.
+    # Purpose: How far beyond Yulete's 310-pixel rule an RJPQ companion stands while the leader may still want to meet Yulete alone in his office, so no companion spoils it by standing at the edge.
+    # Technical: AgentRjpqStagePlay.office walks a companion within 310 + this many pixels of Yulete (252,243) back to the office spawn while npcShocked is 1 and yuleteTalked is not -1.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.YULETE_CLEAR_MARGIN_PX: '30'
+    # Values: 3000-60000 milliseconds. Recommended: 15000.
+    # Purpose: How long one RJPQ companion keeps a free Lab Unit room to itself while it walks to the room's door, so two companions do not head for the same room and none takes the room left for the leader.
+    # Technical: AgentRjpqStagePlay.hallway renews the claim on each tick it walks to the room (AgentRjpqSession.claimRoom); the others count a claimed room as taken; the event's statusStg5 marks it taken once entered.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ROOM_CLAIM_MS: '15000'
+    # Values: 10000-300000 milliseconds. Recommended: 60000.
+    # Purpose: How long an RJPQ companion may stay on one Lab Unit row before it refreshes its way around the room once, in case its route there went stale.
+    # Technical: AgentRjpqStagePlay.room calls PrimitiveCapabilityGateway.refreshNavigation once per stuck spell when the member's standing row has not changed for this long, and logs 'RJPQ units: stuck'; a row change starts a new spell.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.UNIT_STUCK_MS: '60000'
+    # Values: 40-250 pixels. Recommended: 110.
+    # Purpose: How far apart the RJPQ companions' guard posts stand around the captive in the Center Lab.
+    # Technical: AgentRjpqCompanionPlay.guardPosts puts posts at the captive's x plus 0, minus and plus this many pixels, each on the ground there; a post whose ground is off the captive's ledge falls back to the captive's spot.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_SPREAD_PX: '110'
+    # Values: 10-200 pixels. Recommended: 60.
+    # Purpose: How far a Center Lab guard post's ground may lie above or below the captive before the post is taken as off her ledge.
+    # Technical: AgentRjpqCompanionPlay.guardPosts replaces a post whose ground lies farther than this above or below the captive with the captive's own spot.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_POST_MAX_DY_PX: '60'
+    # Values: 10-100 pixels. Recommended: 30.
+    # Purpose: How close an RJPQ guard stands to its post before it stops and waits there.
+    # Technical: AgentRjpqStagePlay.guard navigates to its Center Lab post until within this distance, then stops there until a Neo Huroid wakes it.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.GUARD_ARRIVAL_PX: '30'
+    # Values: 80-500 pixels. Recommended: 220.
+    # Purpose: How near a Neo Huroid must come to an RJPQ guard before the guard leaves its post to fight it.
+    # Technical: AgentRjpqStagePlay.guard calls grindFromAnchor at the post for Neo Huroids when one is within this distance of the guard (or near the captive, ESCORT_THREAT_RADIUS_PX).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.WAKE_RADIUS_PX: '220'
+    # Values: 80-600 pixels. Recommended: 260.
+    # Purpose: How near a Neo Huroid must come to the captive before every RJPQ guard goes for it.
+    # Technical: AgentRjpqStagePlay.guard wakes for a Neo Huroid within this distance of the captive (the escort mob, else her ledge).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_THREAT_RADIUS_PX: '260'
+    # Values: 0-15000 milliseconds. Recommended: 4000.
+    # Purpose: How long the RJPQ companion who calls the boss waits after its warning line before it talks to Yulete, so the party can get ready.
+    # Technical: AgentRjpqStagePlay.callBoss says C1 when it reaches Yulete (AgentRjpqSession.warnBossCall) and runs Yulete's script headless this long after.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.BOSS_CALL_DELAY_MS: '4000'
+    # Values: 5000-120000 milliseconds. Recommended: 30000.
+    # Purpose: The least time between two "she's getting hit" calls by the RJPQ captive's guard, so it speaks up now and then, not on every hit.
+    # Technical: AgentRjpqSession.observeEscortHp allows a C3 line only this long after the last one, when the escort mob's HP fell since the last look.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_EVERY_MS: '30000'
+    # Values: 0-10. Recommended: 3.
+    # Purpose: How many times in a run the RJPQ captive's guard calls out that she is being hit.
+    # Technical: AgentRjpqSession.observeEscortHp counts the C3 lines of the run and stops allowing them after this many; 0 keeps the guard silent.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ESCORT_HURT_LINE_MAX: '3'
+    # Values: 1-10. Recommended: 3.
+    # Purpose: How many times an RJPQ companion asks one claim NPC (the marble, the traces, the reward) before it gives that claim up.
+    # Technical: AgentRjpqStagePlay.claim counts its tries per map in the member state; from the second try a full tab first loses its cheapest item (E2 once); past this many it logs 'RJPQ claim skipped' and stands, and the release takes it out through the event.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.CLAIM_RETRY_MAX: '3'
+    # Values: 1000-30000 milliseconds. Recommended: 6000, a little more than the RJPQ watchdog period.
+    # Purpose: How close to the end of its 45-minute timer an RJPQ event must have been at the run's last look for its end to count as the timer running out.
+    # Technical: AgentRjpqCompanionRun.pass stores the event's getTimeLeft on every pass; when the event ends before the clear and the last read was at most this, AgentRjpqParting.endedCause names TIMEOUT ("out of time... yulete got away.").
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.TIMEOUT_SLACK_MS: '6000'
+    # Values: 120000-1800000 milliseconds. Recommended: 600000.
+    # Purpose: How long an RJPQ companion run may go without progress before its companions call it off, so a run stuck on a stage does not hold them for the rest of the timer.
+    # Technical: AgentRjpqCompanionRun.pass fails the run TOO_LONG before the clear when AgentRjpqSession.lastProgressAtMs is this old (phase changes, books, drops, Lab Unit rows, the boss call, the files in and the leader's map changes are progress).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.STALL_TIMEOUT_MS: '600000'
+    # Values: 60000-900000 milliseconds. Recommended: 300000.
+    # Purpose: How long after the boss an RJPQ companion run waits for its companions to finish their claims before it ends and takes out any still inside.
+    # Technical: AgentRjpqCompanionRun.pass completes the run once no companion stands in the event or this long after the clear; the release then exits any companion still in the event (AgentRjpqTerminationService).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for stage one, the companions finding the pass among the twenty-six books.
+    # Technical: AgentRjpqPaceProfile.priors "books" (a COMPANION Fixed segment); AgentPqPaceCalibration replaces it with the fitted time once runs are recorded under the side's key (rjpq, rjpqj).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BOOKS_MS: '120000'
+    # Values: 0.05-1.0. Recommended: 0.30, EPQ's tree clear.
+    # Purpose: The share of a party's raw damage that lands while it clears the RJPQ dark tunnel (walking, finding the last ones, overkill).
+    # Technical: AgentRjpqPaceProfile.priors "tunnel", the efficiency of the Clear of the tunnel's Map.wz census (Homun 9300145 and Cyti 9300146) that every member fights.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.TUNNEL_EFFICIENCY: '0.30'
+    # Values: 60000-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for stage three, the companions filling the three beakers one after another.
+    # Technical: AgentRjpqPaceProfile.priors "beakers" (a COMPANION Fixed segment); the liquid always drops, so the stage is bound by carrying and the beakers' timing, not by damage.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BEAKERS_MS: '240000'
+    # Values: 500-30000 milliseconds. Recommended: 4000; the Special Lab keeps 23 Neo Huroids, refilled every 15 seconds.
+    # Purpose: The RJPQ clear-time estimate's prior for how long a member walks to its next Neo Huroid while the party fights for the card keys.
+    # Technical: AgentRjpqPaceProfile.priors "keys.seek", the seek term of the "keys" Quota: each kill costs this plus the Neo Huroid's HP over the member's damage at "keys.combat".
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.KEYS_SEEK_MS: '4000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it fights Neo Huroids for the two card keys on the Special Lab.
+    # Technical: AgentRjpqPaceProfile.priors "keys.combat", the efficiency of the Quota of Neo Huroid 9300148 kills drawn from AgentRjpqPaceProfile.keyKills (two keys at a 30% drop).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.KEYS_EFFICIENCY: '0.30'
+    # Values: 0.0-1.0. Recommended: 0.5.
+    # Purpose: How much of a human leader's own kill rate counts toward the RJPQ card keys, since he spends part of the stage on the doors and the labs.
+    # Technical: AgentRjpqPaceProfile builds the "keys" Quota with this leader credit; every companion counts in full.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.LEADER_KEY_CREDIT: '0.5'
+    # Values: 60000-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the Dark Labs, which the leader plays himself until the first live test shows how a companion reaches the boxes.
+    # Technical: AgentRjpqPaceProfile.priors "labs" (a LEADER Fixed segment, learned per leader); the span runs from both doors open to both files in the leader's bag.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.LABS_MS: '240000'
+    # Values: 5000-300000 milliseconds. Recommended: 40000.
+    # Purpose: The RJPQ clear-time estimate's prior for the leader handing both files to Romeo or Juliet once he holds them.
+    # Technical: AgentRjpqPaceProfile.priors "handin" (a LEADER Fixed segment); the span runs from both files in his bag to statusStg4 at 1.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.HANDIN_MS: '40000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it clears the thirty Mutae Yulete leaves in his office.
+    # Technical: AgentRjpqPaceProfile.priors "office", the efficiency of the Clear of fifteen Iron Mutae 9300143 and fifteen Mithril Mutae 9300144 that every member fights.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.OFFICE_EFFICIENCY: '0.30'
+    # Values: 60000-900000 milliseconds. Recommended: 300000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the companions climbing their Lab Units, learning each row by trying its portals.
+    # Technical: AgentRjpqPaceProfile.priors "units" (a COMPANION Fixed segment); the span runs from the first one in the Lab Units to every standing companion out of them.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.UNITS_MS: '300000'
+    # Values: 0-900000 milliseconds. Recommended: 240000 until the first live runs measure it.
+    # Purpose: The RJPQ clear-time estimate's prior for the leader finishing his own Lab Unit after his companions are out, helped by their row hints.
+    # Technical: AgentRjpqPaceProfile.priors "unitsLeader" (a LEADER Fixed segment, learned per leader); the span runs from the companions out to the leader out.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.UNITS_LEADER_MS: '240000'
+    # Values: 0.05-1.0. Recommended: 0.25.
+    # Purpose: The share of a party's raw damage that lands on Frankenroid while it also keeps the captive safe and waits for the boss call.
+    # Technical: AgentRjpqPaceProfile.priors "boss", the efficiency of the Clear of the side's normal boss (9300139 or 9300151) that every member fights, the leader included.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.BOSS_EFFICIENCY: '0.25'
+    # Values: 1-50. Recommended: 7.
+    # Purpose: Below how many touches of the RJPQ boss a member is named fragile in the clear-time estimate's weaknesses.
+    # Technical: AgentRjpqPaceProfile.thresholds fragileTouches; AgentPqPaceEstimator compares each member's touchesToDown against the side's normal boss.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6.
+    # Purpose: Below what chance to hit the RJPQ boss a member is named as missing it in the clear-time estimate's weaknesses.
+    # Technical: AgentRjpqPaceProfile.thresholds weakHitChance; AgentPqPaceEstimator compares each member's hit chance on the boss against it.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when an RJPQ pace change lands.
+    # Purpose: Keeps RJPQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentRjpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for rjpq and rjpqj.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 1000-30000 milliseconds. Recommended: 5000, OPQ's and LMPQ's value, so MagatiaPQ has registered and warped the whole party.
+    # Purpose: Bounds how long after an RJPQ run binds its event a member the event has not registered yet still counts as entering, so a member the event started without departs instead of stalling the run.
+    # Technical: AgentRjpqCompanionRun.observeDepartures marks a member the bound event never held as departed ('RJPQ departed: ... reason=never-registered', its Agent handed back) once this long has passed since the bind; one held and then lost departs after LEFT_CONFIRM_MS.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.ENTRY_HOLD_GRACE_MS: '5000'
+    # Values: 0-10000 milliseconds. Recommended: 2000, longer than MagatiaPQ_Z.js's end() takes to walk every player out before it disposes the event.
+    # Purpose: How long a member the bound RJPQ event held may be missing from it before the run counts it as departed, so the stock end walking players out one by one is not taken for companions leaving.
+    # Technical: AgentRjpqCompanionRun.observeDepartures marks a member the event held and no longer holds as departed ('RJPQ departed: ... reason=left', its Agent handed back) once AgentRjpqSession.missingFor reaches this; until then a disposed event ends the run first (its parting line in a companion's words) and AgentRjpqTerminationService.humansCarryOn waits for the departures.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.LEFT_CONFIRM_MS: '2000'

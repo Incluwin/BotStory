@@ -2,13 +2,17 @@ package server.agents.capabilities.expedition.balrog;
 
 import client.Character;
 import client.inventory.WeaponType;
+import client.status.MonsterStatus;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
+import server.agents.capabilities.combat.AgentCombatDecisionTraceState;
 import server.agents.capabilities.expedition.AgentBossFight;
+import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
 import server.agents.field.AgentBalrogTestFixtureService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
@@ -17,6 +21,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.Monster;
 import server.maps.MapleMap;
+import testutil.LogLines;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -247,6 +252,94 @@ class AgentEasyBalrogCompanionFightTest {
             anchor.getAllValues().forEach(point -> anchors.put(id, point));
         });
         return anchors;
+    }
+
+    /**
+     * Live run 3 (2026-10-08) was lost to empty potion bags, and Flint's last 9 minutes read only NO_CANDIDATES: the
+     * 30 s fight logs now show each member's HP/MP potions, a shooter's carried projectiles and noAmmo flag, how old
+     * each combat decision is, and the body's HP and reflect, still once per 30 s.
+     */
+    @Test
+    void theThirtySecondFightLogsShowSuppliesAmmoDecisionAgeAndTheBody() {
+        AgentEasyBalrogScenario fight = AgentEasyBalrogScenario.forCompanions();
+        MapleMap map = mock(MapleMap.class);
+        Monster body = mock(Monster.class);
+        when(body.isAlive()).thenReturn(true);
+        when(body.getId()).thenReturn(AgentBalrogDefinition.BODY_MOB);
+        when(body.getHp()).thenReturn(1_605_000L);
+        when(body.getMaxHp()).thenReturn(3_210_000L);
+        PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+        when(gateway.groundPoint(any(), any())).thenAnswer(invocation -> invocation.getArgument(1));
+        Character flint = fighter(9_001, "Flint", map, 4_806, 6_089, 2_379, 3_801, new Point(-2, -86));
+        Character thane = fighter(9_002, "Thane", map, 7_271, 11_617, 1_157, 1_878, new Point(198, -86));
+        when(gateway.hpPotionCount(flint)).thenReturn(120);
+        when(gateway.mpPotionCount(flint)).thenReturn(14);
+        when(gateway.hpPotionCount(thane)).thenReturn(130);
+        when(gateway.mpPotionCount(thane)).thenReturn(40);
+        AgentRuntimeEntry flintEntry = new AgentRuntimeEntry(flint, null, null);
+        AgentRuntimeEntry thaneEntry = new AgentRuntimeEntry(thane, null, null);
+        AgentAmmoStateRuntime.setNoAmmo(flintEntry, true);
+        flintEntry.capabilityStates().require(AgentCombatDecisionTraceState.STATE_KEY).record(
+                AgentCombatDecisionTraceState.Mode.GRIND, AgentCombatDecisionTraceState.Outcome.NO_CANDIDATES,
+                98_500L, 0, 0, 0, 0, 0, false, false, 0, 0);
+
+        try (MockedStatic<AgentPrimitiveCapabilityGatewayRuntime> primitives =
+                     Mockito.mockStatic(AgentPrimitiveCapabilityGatewayRuntime.class);
+             MockedStatic<AgentRuntimeRegistry> registry = Mockito.mockStatic(AgentRuntimeRegistry.class);
+             MockedStatic<AgentCombatBuffRuntime> ignored = Mockito.mockStatic(AgentCombatBuffRuntime.class);
+             MockedStatic<AgentMapPerception> perception = Mockito.mockStatic(AgentMapPerception.class);
+             MockedStatic<AgentAttackExecutionProvider> execution = Mockito.mockStatic(
+                     AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentCombatAmmoCounter> ammo = Mockito.mockStatic(
+                     AgentCombatAmmoCounter.class, Mockito.CALLS_REAL_METHODS);
+             LogLines lines = new LogLines(AgentEasyBalrogScenario.class)) {
+            primitives.when(AgentPrimitiveCapabilityGatewayRuntime::gateway).thenReturn(gateway);
+            registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(9_001)).thenReturn(flintEntry);
+            registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(9_002)).thenReturn(thaneEntry);
+            perception.when(() -> AgentMapPerception.monsters(map)).thenReturn(List.of(body));
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(flint)).thenReturn(WeaponType.GUN);
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(thane))
+                    .thenReturn(WeaponType.SPEAR_STAB);
+            ammo.when(() -> AgentCombatAmmoCounter.countCarried(flint, WeaponType.GUN)).thenReturn(0);
+            fight.adopt(9_001, 0);
+            fight.adopt(9_002, 1);
+
+            fight.tick(List.of(flint, thane), null, 100_000L);
+            fight.tick(List.of(flint, thane), null, 110_000L); // inside the 30 s: no new lines
+            when(body.getHp()).thenReturn(1_500_000L);
+            when(body.isBuffed(MonsterStatus.WEAPON_REFLECT)).thenReturn(true);
+            fight.tick(List.of(flint, thane), null, 130_000L);
+
+            String vitals = "Easy Balrog party vitals phase=BODY [Flint=4806/6089hp,2379/3801mp pots=120/14 ammo=0 "
+                    + "noAmmo=true@(-2,-86), Thane=7271/11617hp,1157/1878mp pots=130/40@(198,-86)]";
+            assertEquals(List.of(vitals, vitals), lines.startingWith("Easy Balrog party vitals"));
+            assertEquals(List.of(
+                    "Easy Balrog combat decisions phase=BODY [Flint=GRIND/NO_CANDIDATES candidates=0/0 target=0:0 "
+                            + "age=1500ms, Thane=none]",
+                    "Easy Balrog combat decisions phase=BODY [Flint=GRIND/NO_CANDIDATES candidates=0/0 target=0:0 "
+                            + "age=31500ms, Thane=none]"),
+                    lines.startingWith("Easy Balrog combat decisions"));
+            assertEquals(List.of(
+                    "Easy Balrog body status phase=BODY body=8830007 hp=1605000/3210000 (50.0%) reflect=false",
+                    "Easy Balrog body status phase=BODY body=8830007 hp=1500000/3210000 (46.7%) reflect=true"),
+                    lines.startingWith("Easy Balrog body status"));
+        }
+    }
+
+    private static Character fighter(int id, String name, MapleMap map,
+                                     int hp, int maxHp, int mp, int maxMp, Point position) {
+        Character member = mock(Character.class);
+        when(member.getId()).thenReturn(id);
+        when(member.getName()).thenReturn(name);
+        when(member.getMap()).thenReturn(map);
+        when(member.getMapId()).thenReturn(AgentBalrogDefinition.BATTLE_MAP);
+        when(member.getHp()).thenReturn(hp);
+        when(member.getCurrentMaxHp()).thenReturn(maxHp);
+        when(member.getMp()).thenReturn(mp);
+        when(member.getCurrentMaxMp()).thenReturn(maxMp);
+        when(member.getPosition()).thenReturn(position);
+        when(member.getBuffedValue(any())).thenReturn(null); // no Magic Guard
+        return member;
     }
 
     @Test

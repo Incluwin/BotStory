@@ -111,7 +111,10 @@ public class PlayerStorage {
     }
 
     public final void disconnectAll() {
-        List<Character> chrList = currentSnapshot().allCharacters();
+        // players first: each disconnect saves, and a channel's shutdown is timed, so a player never waits behind bots
+        Snapshot current = currentSnapshot();
+        List<Character> chrList = new ArrayList<>(current.realPlayers());
+        chrList.addAll(current.agents());
 
         for (Character mc : chrList) {
             Client client = mc.getClient();

@@ -20,6 +20,8 @@ import server.agents.capabilities.partyquest.opq.AgentOpqDefinition;
 import server.agents.capabilities.partyquest.opq.AgentOpqSessionRegistry;
 import server.agents.capabilities.partyquest.ppq.AgentPpqDefinition;
 import server.agents.capabilities.partyquest.ppq.AgentPpqSessionRegistry;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqDefinition;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSessionRegistry;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardGracePolicy;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.runtime.AgentSessionLifecycleRuntime;
@@ -115,6 +117,9 @@ public final class AgentLootEligibility {
                 && !AgentPpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
 
         // slot: rjpq
+        if ((AgentRjpqDefinition.EXCLUSIVE_ITEM_IDS.contains(itemId)
+                || AgentRjpqSessionRegistry.forMember(bot.getId()) != null)
+                && !AgentRjpqSessionRegistry.canLoot(bot, drop)) return false;
         int kpqCouponTarget = AgentPqRuntime.kpqCouponTarget(entry);
         if (itemId == KPQ_COUPON && (AgentPartyQuestHooks.shouldSkipCouponLoot(entry)
                 || (kpqCouponTarget > 0 && bot.getItemQuantity(KPQ_COUPON, false) >= kpqCouponTarget))) {

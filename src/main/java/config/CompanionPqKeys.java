@@ -31,6 +31,8 @@ public final class CompanionPqKeys {
         // slot: ppq
 
         // slot: rjpq
+        keys.add("rjpq");
+        keys.add("rjpqj");
         return List.copyOf(keys);
     }
 

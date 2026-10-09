@@ -9,6 +9,7 @@ import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
 import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
+import testutil.LogLines;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -124,6 +125,25 @@ class AgentBossRunSessionExitTest {
     void tearDown() {
         AgentBossRunHost.install(null);
         AgentBossRunRegistry.resetForTest();
+    }
+
+    /**
+     * Review fix (2026-10-09): a dead member leaves the 30 s vitals line and its ammo check stops, so the member-down
+     * line carries what its bag still holds (ports.supplies): "ran dry, then died" shows in the log.
+     */
+    @Test
+    void theMemberDownLineShowsWhatItsBagStillHolds() {
+        AgentBossRunSession session = fighting(THANE, ISOLDE);
+        ports.supplies.put(THANE, " pots=0/12 ammo=0 noAmmo=true");
+
+        try (LogLines lines = new LogLines(AgentBossRunSession.class)) {
+            ports.dead.add(THANE);
+            session.tick(ports, host, FIGHT + 500L);
+            session.tick(ports, host, FIGHT + 1_000L);
+
+            assertEquals(List.of("Boss run member down: session=" + SESSION_ID + " boss=easy_balrog member=" + THANE
+                    + " deaths=1 pots=0/12 ammo=0 noAmmo=true"), lines.startingWith("Boss run member down"));
+        }
     }
 
     @Test

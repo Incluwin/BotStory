@@ -14,6 +14,7 @@ import server.agents.capabilities.expedition.AgentExpeditionPreparedMember;
 import server.agents.capabilities.expedition.AgentExpeditionScenario;
 import server.agents.capabilities.expedition.AgentExpeditionSpec;
 import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.capabilities.supplies.AgentSupplyLogFields;
 import server.agents.field.AgentBalrogTestFixtureService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -28,6 +29,7 @@ import java.awt.Point;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -253,6 +255,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                     members.stream().map(AgentEasyBalrogScenario::vitals).toList());
             log.info("Easy Balrog combat decisions phase={} {}", combatPhase,
                     members.stream().map(member -> combatDecision(member, nowMs)).toList());
+            log.info("Easy Balrog body status phase={} {}", combatPhase, bodyStatus(monsters));
         }
     }
 
@@ -615,10 +618,15 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         return maximum > 0 && (long) current * 100L <= (long) maximum * RECOVERY_THRESHOLD_PERCENT;
     }
 
+    /**
+     * HP, MP, Magic Guard, the potions it carries (HP/MP), a shooter's projectiles and noAmmo flag
+     * (AgentSupplyLogFields), and where.
+     */
     private static String vitals(Character member) {
         return member.getName() + "=" + member.getHp() + '/' + member.getCurrentMaxHp()
                 + "hp," + member.getMp() + '/' + member.getCurrentMaxMp() + "mp"
                 + (member.getBuffedValue(BuffStat.MAGIC_GUARD) == null ? "" : ",MG")
+                + AgentSupplyLogFields.of(member)
                 + "@(" + member.getPosition().x + ',' + member.getPosition().y + ')';
     }
 
@@ -629,7 +637,25 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 ? "none"
                 : decision.mode() + "/" + decision.outcome()
                 + " candidates=" + decision.objectiveCandidates() + '/' + decision.scoredCandidates()
-                + " target=" + decision.selectedMobId() + ':' + decision.selectedObjectId());
+                + " target=" + decision.selectedMobId() + ':' + decision.selectedObjectId()
+                + " age=" + Math.max(0L, nowMs - decision.recordedAtMs()) + "ms");
+    }
+
+    /** The body's HP, its share of max HP and whether it reflects; the real body before the claw-phase fake. */
+    private static String bodyStatus(List<Monster> monsters) {
+        return monsters.stream()
+                .filter(mob -> mob.isAlive() && mob.getId() == AgentBalrogDefinition.BODY_MOB)
+                .min(Comparator.comparing(Monster::isFake))
+                .map(body -> "body=" + body.getId() + (body.isFake() ? "(fake)" : "")
+                        + " hp=" + body.getHp() + '/' + body.getMaxHp()
+                        + " (" + String.format(Locale.ROOT, "%.1f",
+                        body.getMaxHp() <= 0L ? 0.0 : body.getHp() * 100.0 / body.getMaxHp()) + "%)"
+                        + " reflect=" + reflecting(body))
+                .orElse("body=none");
+    }
+
+    private static boolean reflecting(Monster mob) {
+        return mob.isBuffed(MonsterStatus.WEAPON_REFLECT) || mob.isBuffed(MonsterStatus.MAGIC_REFLECT);
     }
 
     @Override
@@ -646,8 +672,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 .map(mob -> mob.getId() + (mob.isFake() ? "(fake)" : "")
                         + (ServerMobAutonomyService.isActiveInstance(mob)
                         ? "(server)" : "(client)")
-                        + ((mob.isBuffed(MonsterStatus.WEAPON_REFLECT)
-                        || mob.isBuffed(MonsterStatus.MAGIC_REFLECT)) ? "(reflect)" : "")
+                        + (reflecting(mob) ? "(reflect)" : "")
                         + "=" + mob.getHp() + '/' + mob.getMaxHp()
                         + "@" + (mob.getPosition() == null
                         ? "(?,?)" : '(' + Integer.toString(mob.getPosition().x)

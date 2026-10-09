@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.capabilities.looting.AgentLootEligibility;
@@ -11,6 +12,9 @@ import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.perception.AgentMapPerception;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -34,8 +38,11 @@ import java.util.Set;
  */
 final class AgentOpqCoordinator {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqCoordinator.class);
-    private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway OPQ = AgentPartyQuestGatewayRuntime.partyQuest();
+    // Resolved per call (AgentOpqGateways): each is one adapter singleton, and a test can stand in for it.
+    private static final PrimitiveCapabilityGateway ACTIONS = AgentOpqGateways.perCall(
+            PrimitiveCapabilityGateway.class, AgentPrimitiveCapabilityGatewayRuntime::gateway);
+    private static final PartyQuestGateway OPQ = AgentOpqGateways.perCall(
+            PartyQuestGateway.class, AgentPartyQuestGatewayRuntime::partyQuest);
     private static final long ACTION_RETRY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ACTION_RETRY_MS");
     private static final long PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
@@ -46,6 +53,10 @@ final class AgentOpqCoordinator {
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.NAVIGATION_STALL_MS");
     private static final int NPC_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.NPC_RADIUS");
+    private static final int REWARD_REFUSALS_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX");
+    private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS");
     private static final int LOOT_RADIUS = server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
     private static final Point ENTRANCE_HANDOFF = new Point(170, 96);
     private static final Point ENTRANCE_EAK = new Point(377, 66);
@@ -63,20 +74,64 @@ final class AgentOpqCoordinator {
 
     private AgentOpqCoordinator() { }
 
+    /** How long a run may go without progress before it is ended; a human-led run waits this long for its entry. */
+    static long phaseTimeoutMs() {
+        return PHASE_TIMEOUT_MS;
+    }
+
     static void tickSession(AgentOpqSession session, long nowMs) {
+        coordinate(session, nowMs);
+        // P6h OB7: a departed Agent is handed back after the pass, outside the session monitor (the hand-back moves
+        // it and changes its activity).
+        for (int id : session.takeHandBacks()) handBack(session, id, nowMs);
+    }
+
+    private static void coordinate(AgentOpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
+            // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
+            if (session.companionAdopted() && session.terminationStarted()) return;
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
-                AgentOpqTerminationService.release(session, "No legal OPQ progress before timeout", nowMs, true);
+                AgentOpqTerminationService.fail(session, "No legal OPQ progress before timeout", nowMs);
                 return;
             }
             session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);
             Character leader = character(session.eventLeaderId());
-            if (leader == null || leader.getHp() <= 0) {
-                AgentOpqTerminationService.release(session, "OPQ leader unavailable", nowMs, true);
+            EventInstanceManager bound = session.eventInstance();
+            if (leader == null || bound == null && leader.getHp() <= 0) {
+                AgentOpqTerminationService.fail(session, "OPQ leader unavailable", nowMs);
                 return;
             }
-            if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));
+            if (bound != null && bound.isEventDisposed() && !AgentOpqTerminationService.pastTheClear(session)) {
+                // P6h OB7: OrbisPQ.js ends the event when a departure leaves it at its floor; the run ends at once,
+                // with that reason rather than the leader's exit the ending caused.
+                AgentOpqTerminationService.fail(session, "OPQ event ended before the clear", nowMs);
+                return;
+            }
+            if (bound != null && leader.getEventInstance() != bound) {
+                // Before the clear the stock event ends when its leader leaves; after it he may claim and go.
+                if (!AgentOpqTerminationService.pastTheClear(session)) {
+                    AgentOpqTerminationService.fail(session, "OPQ leader left the event", nowMs);
+                    return;
+                }
+            } else if (bound != null && leader.getHp() <= 0 && !AgentOpqTerminationService.pastTheClear(session)) {
+                // A dead leader still in the event is no failure: the stock event ends on his revive, and the next
+                // pass sees him out of it. After the clear the pass goes on, so he never holds up the claims.
+                return;
+            }
+            if (session.eventInstance() == null && OPQ.event(leader) != null) {
+                session.bindEventInstance(OPQ.event(leader));
+                session.noteBoundAt(nowMs);
+            }
+            EventInstanceManager held = session.eventInstance();
+            if (held != null && session.phase().ordinal() >= AgentOpqSession.Phase.ENTRANCE.ordinal()
+                    && !AgentOpqTerminationService.pastTheClear(session)) {
+                observeDepartures(session, held, nowMs);
+                // P6h review: the last companion has departed and humans stay in the tower: they carry on without
+                // the run (its queued hand-backs still run after this pass).
+                if (AgentOpqTerminationService.humansCarryOn(session, nowMs)) return;
+            }
+            noteClear(session, nowMs);
             synchronizePhase(session, leader, nowMs);
             switch (session.phase()) {
                 case PREPARING -> session.transition(AgentOpqSession.Phase.ENTERING, nowMs);
@@ -98,6 +153,7 @@ final class AgentOpqCoordinator {
     static void tickMember(AgentOpqSession session, AgentRuntimeEntry entry,
                            Character agent, long nowMs) {
         if (session == null || entry == null || agent == null || session.terminal()) return;
+        if (session.companionAdopted() && session.terminationStarted()) return;
         AgentOpqMemberState member = session.member(agent.getId());
         if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT
                 || nowMs < member.nextActionAtMs()) return;
@@ -133,12 +189,11 @@ final class AgentOpqCoordinator {
     private static void synchronizePhase(AgentOpqSession session, Character leader, long nowMs) {
         if (leader.getMapId() == AgentOpqDefinition.ENTRANCE_MAP && OPQ.event(leader) != null
                 && session.phase().ordinal() <= AgentOpqSession.Phase.ENTRANCE.ordinal()) {
-            session.bindEventInstance(OPQ.event(leader));
-            session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
+            beginEntrance(session, OPQ.event(leader), nowMs);
         }
         if (leader.getMapId() == AgentOpqDefinition.CENTER_MAP
                 && session.phase() == AgentOpqSession.Phase.ENTRANCE
-                && session.members().stream()
+                && counted(session).stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .map(member -> character(member.characterId()))
                 .allMatch(member -> member != null
@@ -158,6 +213,43 @@ final class AgentOpqCoordinator {
         }
         if (leader.getMapId() == AgentOpqDefinition.CLEAR_MAP) {
             session.transition(AgentOpqSession.Phase.CLAIMING_REWARD, nowMs);
+        }
+    }
+
+    /**
+     * The party is in the entrance (this runs on every coordinator pass while the leader stands there): a companion
+     * run logs its companions' potions once ('OPQ potions: session= start=') and keeps them for the release's end line;
+     * a failure to read them is logged once and never keeps the run from its entrance. Then the event is bound and
+     * the phase is ENTRANCE, as before.
+     */
+    static void beginEntrance(AgentOpqSession session, EventInstanceManager event, long nowMs) {
+        synchronized (session) {
+            if (session.companionAdopted() && session.potionsAtEntry() == null) {
+                try {
+                    String potions = AgentOpqTerminationService.potions(session);
+                    session.setPotionsAtEntry(potions);
+                    log.info("OPQ potions: session={} start={}", session.sessionId(), potions);
+                } catch (RuntimeException failure) {
+                    session.setPotionsAtEntry("unavailable");
+                    log.warn("OPQ potions failed: session={}", session.sessionId(), failure);
+                }
+            }
+            session.bindEventInstance(event);
+            session.transition(AgentOpqSession.Phase.ENTRANCE, nowMs);
+        }
+    }
+
+    /**
+     * Records the first pass that saw the clear (the event cleared, or Minerva freed: statusStg8, read as text), for the
+     * run's pace. Reading only; a failure to read is not the clear.
+     */
+    private static void noteClear(AgentOpqSession session, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null || session.clearSeenAtMs() != 0L) return;
+        try {
+            if (event.isEventCleared() || "1".equals(event.getProperty("statusStg8"))) session.markClearSeen(nowMs);
+        } catch (RuntimeException ignored) {
+            // not seen this pass
         }
     }
 
@@ -227,7 +319,7 @@ final class AgentOpqCoordinator {
                     // exclusive-item collector pick the offering back up on the next tick,
                     // trapping the entrance in a drop/pickup loop even though the leader is
                     // standing legally beside Eak.
-                    if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) {
+                    if (runEak(session, entry, agent, EakKind.ENTRANCE, 0)) {
                         session.markProgress(nowMs);
                     }
                     member.deferUntil(nowMs + ACTION_RETRY_MS);
@@ -239,7 +331,7 @@ final class AgentOpqCoordinator {
             if (leader != null && propertyInt(leader, "statusStg0") != 1
                     && partyItemCount(session, AgentOpqDefinition.CLOUD_PIECE) == 0
                     && !cloudDropRemaining) {
-                runNearbyNpc(entry, leader, AgentOpqDefinition.EAK_NPC);
+                runEak(session, entry, leader, EakKind.ENTRANCE, 0);
             }
         }
     }
@@ -262,7 +354,7 @@ final class AgentOpqCoordinator {
                                                   AgentOpqMemberState member,
                                                   List<Reactor> clouds) {
         if (session == null || member == null || clouds == null || clouds.isEmpty()) return List.of();
-        List<Integer> agents = session.members().stream()
+        List<Integer> agents = counted(session).stream()
                 .filter(candidate -> candidate.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .map(AgentOpqMemberState::characterId)
                 .sorted()
@@ -280,6 +372,9 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignSplitRooms(AgentOpqSession session, long nowMs) {
+        // The fixed six-Agent layout below assigns nothing with fewer than six. It keeps counting every member, a
+        // departed one included (its room then waits), so the leader's hand-ins and the lounge runners are still
+        // assigned after a departure; the lounge subrooms themselves go only to runners the event still holds.
         List<AgentOpqMemberState> agents = session.members().stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
@@ -288,7 +383,7 @@ final class AgentOpqCoordinator {
         List<AgentOpqMemberState> others = agents.stream()
                 .filter(m -> m.characterId() != session.eventLeaderId()).toList();
         if (!session.rooms().complete(AgentOpqDefinition.Room.SEALED)) {
-            session.rooms().claim(AgentOpqDefinition.Room.SEALED, leader.characterId(), nowMs);
+            claimRoom(session, AgentOpqDefinition.Room.SEALED, leader.characterId(), nowMs);
             leader.assign(AgentOpqMemberState.Role.LEADER, AgentOpqDefinition.Room.SEALED, 0);
             for (int i = 0; i < 3; i++) {
                 others.get(i).assign(AgentOpqMemberState.Role.SEALED_PLATFORM, AgentOpqDefinition.Room.SEALED, 0);
@@ -334,12 +429,36 @@ final class AgentOpqCoordinator {
                                    AgentOpqDefinition.Room room, AgentOpqMemberState.Role role, long nowMs) {
         if (session.rooms().complete(room)) return;
         AgentOpqRoomLedger.Lease lease = session.rooms().lease(room);
-        if (lease == null) session.rooms().claim(room, member.characterId(), nowMs);
+        if (lease == null) claimRoom(session, room, member.characterId(), nowMs);
         member.assign(role, room, member.assignedSubroomMapId());
     }
 
+    /** The room ledger's claim, with an 'OPQ room:' line when it changed the room's owner or state. */
+    private static void claimRoom(AgentOpqSession session, AgentOpqDefinition.Room room, int ownerId, long nowMs) {
+        AgentOpqRoomLedger.Lease before = session.rooms().lease(room);
+        session.rooms().claim(room, ownerId, nowMs);
+        logRoomChange(session, room, before, nowMs);
+    }
+
+    /**
+     * 'OPQ room: session= room= state= owner= runMs=' once per change of a room's lease (a claim, a completion), in
+     * every mode. Logging only.
+     */
+    private static void logRoomChange(AgentOpqSession session, AgentOpqDefinition.Room room,
+                                      AgentOpqRoomLedger.Lease before, long nowMs) {
+        try {
+            AgentOpqRoomLedger.Lease after = session.rooms().lease(room);
+            if (after == null || before != null && before.ownerId() == after.ownerId()
+                    && before.state() == after.state()) return;
+            log.info("OPQ room: session={} room={} state={} owner={} runMs={}", session.sessionId(), room,
+                    after.state(), after.ownerId(), Math.max(0L, nowMs - session.startedAtMs()));
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
+    }
+
     private static void assignLoungeSubrooms(AgentOpqSession session) {
-        List<AgentOpqMemberState> runners = session.members().stream()
+        List<AgentOpqMemberState> runners = counted(session).stream()
                 .filter(m -> m.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER).toList();
         Set<Integer> occupied = runners.stream().map(AgentOpqMemberState::assignedSubroomMapId)
                 .filter(id -> id > 0 && !session.loungeSubroomComplete(id))
@@ -408,7 +527,7 @@ final class AgentOpqCoordinator {
         int held = agent.getItemQuantity(AgentOpqDefinition.WALKWAY_FRAGMENT, false);
         Character leader = character(session.eventLeaderId());
         if (agent.getId() == session.eventLeaderId() && held >= 30) {
-            runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC);
+            runEak(session, entry, agent, EakKind.WALKWAY, 0);
         } else if (held >= 30 && leader != null && leader.getMapId() == AgentOpqDefinition.WALKWAY_MAP) {
             if (!moveTo(entry, agent, WALKWAY_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             dropItem(entry, InventoryType.ETC,
@@ -449,7 +568,7 @@ final class AgentOpqCoordinator {
         }
         if (navigateLobbyLpAscent(entry, agent)) return;
         if (propertyInt(agent, "statusStg3") == 0 && agent.getId() == session.eventLeaderId()) {
-            if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
+            if (runEak(session, entry, agent, EakKind.LOBBY, 0)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
         List<Reactor> target = activeReactors(agent).stream()
@@ -490,7 +609,7 @@ final class AgentOpqCoordinator {
                 .map(m -> character(m.characterId())).filter(java.util.Objects::nonNull).toList();
         if (holders.size() != 3 || !sealedFormationReady(session, holders)) return;
         if (nowMs - session.sealedCheckedAtMs() < 1_500L) return;
-        if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) {
+        if (runEak(session, entry, agent, EakKind.SEALED, session.sealedAttempt() + 1)) {
             if (propertyInt(agent, "statusStg4") != 1) session.advanceSealedAttempt(nowMs);
             else session.markProgress(nowMs);
             session.markSealedChecked(nowMs);
@@ -523,9 +642,7 @@ final class AgentOpqCoordinator {
             enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
             return;
         }
-        int partyFragments = session.members().stream().map(m -> character(m.characterId()))
-                .filter(java.util.Objects::nonNull)
-                .mapToInt(c -> c.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false)).sum();
+        int partyFragments = partyItemCount(session, AgentOpqDefinition.LOUNGE_FRAGMENT);
         if (partyFragments >= 40) {
             Character leader = character(session.eventLeaderId());
             if (agent.getId() != session.eventLeaderId()) {
@@ -537,7 +654,7 @@ final class AgentOpqCoordinator {
                 }
             } else if (collectGroundItem(entry, agent, AgentOpqDefinition.LOUNGE_FRAGMENT, false, nowMs)) return;
             else if (agent.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false) >= 40) {
-                runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC);
+                runEak(session, entry, agent, EakKind.LOUNGE, 0);
             }
             return;
         }
@@ -683,7 +800,7 @@ final class AgentOpqCoordinator {
                 hitNearestLegalReactor(entry, leader, member, List.of(levers.get(i)), nowMs); return;
             }
         }
-        if (runNearbyNpc(entry, leader, AgentOpqDefinition.EAK_NPC)) session.advanceWayUpLeverAttempt(nowMs);
+        if (runEak(session, entry, leader, EakKind.WAY_UP, attempt + 1)) session.advanceWayUpLeverAttempt(nowMs);
     }
 
     private static void synchronizeRoomCompletion(AgentOpqSession session, Character leader, long nowMs) {
@@ -693,7 +810,10 @@ final class AgentOpqCoordinator {
             boolean pieceSecured = partyItemCount(session, AgentOpqDefinition.statuePiece(room)) > 0;
             boolean complete = solved && pieceSecured;
             AgentOpqRoomLedger.Lease lease = session.rooms().lease(room);
-            if (complete && lease != null) session.rooms().advance(room, lease.ownerId(), AgentOpqRoomLedger.State.COMPLETE, nowMs);
+            if (complete && lease != null) {
+                session.rooms().advance(room, lease.ownerId(), AgentOpqRoomLedger.State.COMPLETE, nowMs);
+                logRoomChange(session, room, lease, nowMs);
+            }
         }
     }
 
@@ -705,7 +825,7 @@ final class AgentOpqCoordinator {
                 if (reactor == null || reactor.getState() < 1) { complete = false; break; }
             }
         } else complete = false;
-        if (complete && runNearbyNpc(entry(leader.getId()), leader, AgentOpqDefinition.EAK_NPC)) {
+        if (complete && runEak(session, entry(leader.getId()), leader, EakKind.STATUE, 0)) {
             session.markProgress(nowMs);
         }
     }
@@ -724,6 +844,7 @@ final class AgentOpqCoordinator {
             if (!moveTo(entry, agent, target, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             if (dropItem(entry, InventoryType.ETC, piece, (short) 1)) {
                 session.loot().delivered(piece, agent.getId(), nowMs);
+                logStatue(session, scar, piece, agent);
                 member.deferUntil(nowMs + ACTION_RETRY_MS);
             }
             return;
@@ -732,7 +853,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignGarden(AgentOpqSession session, long nowMs) {
-        List<AgentOpqMemberState> agents = session.members().stream()
+        List<AgentOpqMemberState> agents = counted(session).stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
         boolean papaPixieAlive = agents.stream().map(agent -> character(agent.characterId()))
@@ -923,20 +1044,68 @@ final class AgentOpqCoordinator {
         }
     }
 
+    /**
+     * The claims are done when every Agent member has claimed (back at Wonky) or is out of the event; a human is never
+     * waited for (he may stay for the jail bonus or claim later). The completed run is released here, as LPQ and HPQ
+     * release theirs; nothing else in the tick would.
+     */
     private static void tickReward(AgentOpqSession session, long nowMs) {
-        boolean allOutside = session.members().stream().map(m -> character(m.characterId()))
-                .filter(java.util.Objects::nonNull).allMatch(c -> c.getMapId() == AgentOpqDefinition.RECRUIT_MAP);
-        if (allOutside) session.complete(nowMs);
+        EventInstanceManager event = session.eventInstance();
+        boolean agentsOut = session.members().stream()
+                .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
+                .map(m -> character(m.characterId()))
+                .filter(java.util.Objects::nonNull)
+                .allMatch(c -> c.getMapId() == AgentOpqDefinition.RECRUIT_MAP
+                        || event == null || c.getEventInstance() != event);
+        if (agentsOut) AgentOpqTerminationService.complete(session, nowMs);
     }
 
+    /**
+     * Claims the reward. On 920011300 an Agent asks Minerva, then waits out ACTION_RETRY_MS; if it is still there when
+     * the window has passed (her script warps a rewarded Agent to Wonky; a full bag is refused and stays), that ask
+     * counts as a refusal. At REWARD_REFUSALS_MAX it stops asking and leaves through the event's own exit, unrewarded.
+     */
     private static void tickRewardMember(AgentOpqSession session, AgentRuntimeEntry entry,
                                          Character agent, long nowMs) {
+        AgentOpqMemberState member = session.member(agent.getId());
+        // Off the reward map nothing is waiting to be judged (a warp that landed after the run was a reward).
+        if (member != null && agent.getMapId() != AgentOpqDefinition.CLEAR_MAP) member.clearRewardAsk();
         if (agent.getMapId() == AgentOpqDefinition.CENTER_MAP && propertyInt(agent, "statusStg8") == 1) {
             if (runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) session.markProgress(nowMs);
             return;
         }
-        if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP
-                && runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) session.markProgress(nowMs);
+        if (agent.getMapId() != AgentOpqDefinition.CLEAR_MAP || member == null) return;
+        if (member.rewardAskPending()) {
+            member.clearRewardAsk();
+            if (member.recordRewardRefusal() == REWARD_REFUSALS_MAX) {
+                refuseReward(session, agent);
+                return;
+            }
+        }
+        if (member.rewardRefusals() >= REWARD_REFUSALS_MAX) return; // it gave up; its exit was tried once
+        if (runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) {
+            session.markProgress(nowMs);
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
+            if (agent.getMapId() == AgentOpqDefinition.CLEAR_MAP) member.markRewardAsked();
+        }
+    }
+
+    /**
+     * Minerva refused this Agent's reward REWARD_REFUSALS_MAX times: it leaves through the event's own exit, unrewarded,
+     * so it stops asking and the claims can end ('OPQ reward refused: session= member= attempts=', once).
+     */
+    private static void refuseReward(AgentOpqSession session, Character agent) {
+        log.warn("OPQ reward refused: session={} member={} attempts={}", session.sessionId(), agent.getName(),
+                REWARD_REFUSALS_MAX);
+        EventInstanceManager event = session.eventInstance();
+        if (event == null) return;
+        try {
+            event.exitPlayer(agent);
+            AgentOpqTerminationService.disposeIfEmpty(session, event);
+        } catch (RuntimeException failure) {
+            log.warn("OPQ refused reward exit failed: session={} member={}", session.sessionId(), agent.getId(),
+                    failure);
+        }
     }
 
     private static boolean collectReservedDrop(AgentOpqSession session, AgentRuntimeEntry entry,
@@ -1071,6 +1240,45 @@ final class AgentOpqCoordinator {
         if (portal != null) enterAuthoredPortal(entry, agent, portal, nowMs, member);
     }
 
+    /** Which of Eak's stages a coordinator run talked to, and the event property that stage writes. */
+    enum EakKind {
+        ENTRANCE("statusStg0"), WALKWAY("statusStg1"), LOBBY("statusStg3"), SEALED("statusStg4"),
+        LOUNGE("statusStg5"), WAY_UP("statusStg6"), STATUE("statusStg7");
+
+        private final String property;
+
+        EakKind(String property) {
+            this.property = property;
+        }
+    }
+
+    /**
+     * Eak's script run by the coordinator, as runNearbyNpc runs it, with an 'OPQ eak:' line when it ran (every mode):
+     * the talker, the stage, the puzzle attempt it judged (1-based; 0 for a stage without one) and the stage's event
+     * property as the run left it.
+     */
+    private static boolean runEak(AgentOpqSession session, AgentRuntimeEntry entry, Character talker, EakKind kind,
+                                  int attempt) {
+        if (!runNearbyNpc(entry, talker, AgentOpqDefinition.EAK_NPC)) return false;
+        try {
+            log.info("OPQ eak: session={} map={} talker={} kind={} attempt={} result={}", session.sessionId(),
+                    talker.getMapId(), talker.getName(), kind, attempt, propertyInt(talker, kind.property));
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
+        return true;
+    }
+
+    /** 'OPQ statue: session= scar= piece= by=' when a carrier drops a statue piece on its scar (every mode). */
+    private static void logStatue(AgentOpqSession session, String scar, int piece, Character carrier) {
+        try {
+            log.info("OPQ statue: session={} scar={} piece={} by={}", session.sessionId(), scar, piece,
+                    carrier.getName());
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
+    }
+
     private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId) {
         if (entry == null || agent == null) return false;
         Point npc = ACTIONS.npcPosition(agent, npcId);
@@ -1137,8 +1345,73 @@ final class AgentOpqCoordinator {
         try { return Integer.parseInt(value); } catch (NumberFormatException ignored) { return -1; }
     }
 
+    /**
+     * P6h OB7: the members the run counts now, in session order: not departed and, once the run is bound, held by its
+     * event (a dead member the event still holds is down and still counted) or not held yet (the event registers a
+     * party one member at a time, so it is still entering). Before the binding, every member that has not departed.
+     */
+    private static List<AgentOpqMemberState> counted(AgentOpqSession session) {
+        EventInstanceManager bound = session.eventInstance();
+        Set<Integer> held = bound == null ? null : heldIds(bound);
+        return session.members().stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .filter(member -> held == null || held.contains(member.characterId())
+                        || !session.seenHeld(member.characterId()))
+                .toList();
+    }
+
+    private static Set<Integer> heldIds(EventInstanceManager event) {
+        return event.getPlayers().stream().filter(java.util.Objects::nonNull).map(Character::getId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
+     * P6h OB7: a member the bound event no longer holds (a dead Agent its respawn took to 920011200, a disconnected
+     * human) has departed rather than failed the run: it is logged once ('OPQ departed:') and the run goes on without
+     * counting it; the event itself ends the run when a departure leaves it at its floor. A member the event held
+     * before and no longer holds departs; one it has not held yet is still entering (the run binds while OrbisPQ.js is
+     * still registering the party one member at a time) until ENTRY_HOLD_GRACE_MS after the bind, when one it never
+     * held (a human who walked off or disconnected before the start) departs too. A departed Agent is handed back at
+     * once, in every mode, and stays in the session for the run's counts and lines. Nothing is marked while the run is
+     * being released.
+     */
+    private static void observeDepartures(AgentOpqSession session, EventInstanceManager bound, long nowMs) {
+        if (session.terminationStarted()) return;
+        Set<Integer> held = heldIds(bound);
+        session.noteHeld(held);
+        boolean entryOver = nowMs - session.noteBoundAt(nowMs) >= ENTRY_HOLD_GRACE_MS;
+        for (AgentOpqMemberState state : session.members()) {
+            int id = state.characterId();
+            if (held.contains(id) || !session.seenHeld(id) && !entryOver || !session.markDeparted(id)) continue;
+            if (state.memberType() == AgentOpqMemberState.MemberType.AGENT) session.queueHandBack(id);
+            Character member = character(id);
+            log.info("OPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
+                    session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
+                    member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
+                    session.companionAdopted());
+        }
+    }
+
+    /**
+     * P6h OB7: hands a departed Agent back at once, in every mode (EPQ's departMember without the event exit: it is
+     * already out). The run no longer routes it (session and engagement indexes) and the lifecycle rehomes it; it
+     * stays in the session, marked departed.
+     */
+    private static void handBack(AgentOpqSession session, int id, long nowMs) {
+        try {
+            AgentOpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+            if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "opq", nowMs);
+            session.markHandedBack(id);
+        } catch (RuntimeException failure) {
+            log.warn("OPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
+        }
+    }
+
+    /** What the members the run counts hold of {@code itemId} (a departed member's items left with it). */
     private static int partyItemCount(AgentOpqSession session, int itemId) {
-        return session.members().stream().map(member -> character(member.characterId()))
+        return counted(session).stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .mapToInt(character -> character.getItemQuantity(itemId, false)).sum();
     }

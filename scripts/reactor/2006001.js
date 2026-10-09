@@ -25,6 +25,7 @@
  */
 
 function act() {
+    var eim = rm.getEventInstance();
     rm.spawnNpc(2013002);
     rm.getEventInstance().clearPQ();
 

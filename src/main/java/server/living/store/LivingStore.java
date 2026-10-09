@@ -1412,24 +1412,36 @@ public final class LivingStore {
         }
     }
 
-    /** One living_event_log row's kind and detail. */
-    public record EventRow(String kind, String detail) {
+    /**
+     * One living_event_log row's kind and detail; read as a GM level record ({@link #latestGmLevel}), {@code kept} is
+     * true when any release of that record was a keep (a {@code gm.level.release} row with the detail {@code keep}).
+     */
+    public record EventRow(String kind, String detail, boolean kept) {
+        public EventRow(String kind, String detail) {
+            this(kind, detail, false);
+        }
     }
 
     /**
      * The character's latest GM level event with this persona ({@code gm.level.hold} or {@code gm.level.release}, the
-     * GmLevelHolds record): empty when there is none, null when the read fails. The table is indexed by character
-     * (idx_living_event_character), so this reads that character's audit rows and keeps the newest match; GmLevelHolds
-     * caches the answer, so it runs once per character and persona a boot.
+     * GmLevelHolds record) and whether any release of that record was a keep ({@link EventRow#kept}: a later set that
+     * was not applied or was restored leaves it kept): empty when there is none, null when the read fails. The table is
+     * indexed by character (idx_living_event_character), so this reads that character's audit rows and keeps the newest
+     * match; GmLevelHolds caches the answer, so it runs once per character and persona a boot.
      */
     public java.util.Optional<EventRow> latestGmLevel(int characterId, String personaId) {
-        String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ?"
+        String sql = "SELECT kind, detail, EXISTS (SELECT 1 FROM living_event_log k WHERE k.character_id = ?"
+                + " AND k.persona_id = ? AND k.kind = 'gm.level.release' AND k.detail = 'keep')"
+                + " FROM living_event_log WHERE character_id = ? AND persona_id = ?"
                 + " AND kind IN ('gm.level.hold', 'gm.level.release') ORDER BY id DESC LIMIT 1";
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, personaId);
+            ps.setInt(3, characterId);
+            ps.setString(4, personaId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? java.util.Optional.of(new EventRow(rs.getString(1), rs.getString(2)))
+                return rs.next()
+                        ? java.util.Optional.of(new EventRow(rs.getString(1), rs.getString(2), rs.getBoolean(3)))
                         : java.util.Optional.empty();
             }
         } catch (SQLException | RuntimeException failure) {

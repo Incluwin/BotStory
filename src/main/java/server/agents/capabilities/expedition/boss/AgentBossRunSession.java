@@ -376,8 +376,9 @@ public final class AgentBossRunSession {
                 memberOut(host, member, AgentBossRunHost.Out.GONE);
             } else if (!agent.isAlive()) {
                 if (member.died()) {
-                    log.info("Boss run member down: session={} boss={} member={} deaths={}", sessionId,
-                            definition.key(), member.agentId(), member.deaths());
+                    // its bag still answers: the vitals line leaves a dead member out and its ammo check stops
+                    log.info("Boss run member down: session={} boss={} member={} deaths={}{}", sessionId,
+                            definition.key(), member.agentId(), member.deaths(), ports.supplies(agent));
                 }
             } else if (agent.getEventInstance() != event) {
                 handBack(ports, host, member, true);

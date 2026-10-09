@@ -1,17 +1,26 @@
 package server.agents.capabilities.partyquest.opq;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 /** OPQ aggregate root. All mutable party/room/item ownership is session scoped. */
-public final class AgentOpqSession {
+public final class AgentOpqSession implements AgentCompanionRunSession {
+    private static final Logger log = LoggerFactory.getLogger(AgentOpqSession.class);
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_ASSISTED }
     public enum Phase {
         PREPARING, ENTERING, ENTRANCE, SPLIT_ROOMS, RESTORING_STATUE,
@@ -21,6 +30,7 @@ public final class AgentOpqSession {
     private final Mode mode;
     private final long seed;
     private final int operatorId;
+    private final int requestedPartySize;
     private final long startedAtMs;
     private final Map<Integer, AgentOpqMemberState> members = new LinkedHashMap<>();
     private final AgentOpqRoomLedger rooms = new AgentOpqRoomLedger();
@@ -43,19 +53,42 @@ public final class AgentOpqSession {
     private final Set<Integer> completedLoungeSubrooms = new LinkedHashSet<>();
     private boolean papaPixieEngaged;
     private boolean papaPixieDefeated;
+    private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private AgentPqPaceCalibration paceCalibration;
+    private String potionsAtEntry;
+    private long clearSeenAtMs;
+    private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
+    private final Set<Integer> departed = new LinkedHashSet<>();
+    private final Set<Integer> seenHeld = new LinkedHashSet<>();
+    private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<Integer> handBacks = new LinkedHashSet<>();
+    private final Set<Integer> handedBack = new LinkedHashSet<>();
+    private long boundAtMs;
 
+    /** A session of the stock six members (every Agent-run and fixture run). */
     public AgentOpqSession(Mode mode, long seed, int operatorId, long nowMs) {
-        if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid OPQ session required");
+        this(mode, seed, operatorId, AgentOpqDefinition.PARTY_SIZE, nowMs);
+    }
+
+    /** A session of {@code requestedPartySize} members, within the catalog's OPQ party sizes (five or six). */
+    public AgentOpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
+        if (mode == null || operatorId <= 0 || nowMs < 0L
+                || !AgentPartyQuestCatalog.require("opq").acceptsPartySize(requestedPartySize)) {
+            throw new IllegalArgumentException("valid OPQ session required");
+        }
         this.mode = mode;
         this.seed = seed;
         this.operatorId = operatorId;
+        this.requestedPartySize = requestedPartySize;
         this.startedAtMs = nowMs;
         this.lastProgressAtMs = nowMs;
         this.phaseEnteredAtMs = nowMs;
     }
 
     public synchronized void addMember(int id, AgentOpqMemberState.MemberType type) {
-        if (members.size() >= AgentOpqDefinition.PARTY_SIZE || members.putIfAbsent(id, new AgentOpqMemberState(id, type)) != null) {
+        if (members.size() >= requestedPartySize || members.putIfAbsent(id, new AgentOpqMemberState(id, type)) != null) {
             throw new IllegalStateException("invalid or duplicate OPQ member");
         }
     }
@@ -65,31 +98,99 @@ public final class AgentOpqSession {
         executionAgentId = executionId;
     }
     public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs) {
-        if (id != executionAgentId && nowMs < executionLeaseUntilMs) return false;
-        if (nowMs >= executionLeaseUntilMs || id == executionAgentId) {
-            executionAgentId = id;
-            executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
-            return true;
-        }
-        return false;
+        return claimExecutionTick(id, nowMs, leaseMs, holder -> true);
     }
+
+    /**
+     * As {@link #claimExecutionTick(int, long, long)}, except that a holder for which {@code holderAlive} is false
+     * (dead, or no longer loaded) loses its lease at once: a dead Agent's tick never reaches the OPQ runtime, so its
+     * lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps it until it expires. A
+     * departed member (handed back, no longer the run's) never claims the lease and never keeps it.
+     */
+    public synchronized boolean claimExecutionTick(int id, long nowMs, long leaseMs, IntPredicate holderAlive) {
+        if (departed.contains(id)) return false;
+        if (id != executionAgentId && nowMs < executionLeaseUntilMs && holderStands(holderAlive)) return false;
+        executionAgentId = id;
+        executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
+        return true;
+    }
+
+    /**
+     * The watchdog's claim: an Agent member takes the lease only when it has expired or its holder is dead, with the
+     * same dead-holder rule as {@link #claimExecutionTick(int, long, long, IntPredicate)}.
+     */
+    public synchronized boolean claimExpiredExecutionTick(int id, long nowMs, long leaseMs,
+                                                          IntPredicate holderAlive) {
+        AgentOpqMemberState member = members.get(id);
+        if (member == null || member.memberType() != AgentOpqMemberState.MemberType.AGENT || departed.contains(id)
+                || (nowMs < executionLeaseUntilMs && holderStands(holderAlive))) return false;
+        executionAgentId = id;
+        executionLeaseUntilMs = nowMs + Math.max(1L, leaseMs);
+        return true;
+    }
+    /** The lease holder can still drive the run: alive by {@code holderAlive}, and not departed (P6h review). */
+    private boolean holderStands(IntPredicate holderAlive) {
+        return !departed.contains(executionAgentId) && holderAlive.test(executionAgentId);
+    }
+
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
-        if (next != phase) { phase = next; phaseEnteredAtMs = nowMs; }
+        if (next != phase) {
+            firstEntries.putIfAbsent(next, nowMs);
+            logPhaseChange(next, nowMs);
+            phase = next;
+            phaseEnteredAtMs = nowMs;
+        }
         markProgress(nowMs);
     }
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
-    public synchronized void fail(String reason, long nowMs) { failure = reason == null ? "OPQ failed" : reason; phase = Phase.FAILED; markProgress(nowMs); }
-    public synchronized void complete(long nowMs) { phase = Phase.COMPLETED; markProgress(nowMs); }
+
+    /** True once a release has begun (a companion run's tick reads it: a run on its way out is not ticked). */
+    public synchronized boolean terminationStarted() { return terminating; }
+    public synchronized void fail(String reason, long nowMs) {
+        failure = reason == null ? "OPQ failed" : reason;
+        firstEntries.putIfAbsent(Phase.FAILED, nowMs);
+        if (phase != Phase.FAILED) logPhaseChange(Phase.FAILED, nowMs);
+        phase = Phase.FAILED;
+        markProgress(nowMs);
+    }
+    public synchronized void complete(long nowMs) {
+        firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
+        if (phase != Phase.COMPLETED) logPhaseChange(Phase.COMPLETED, nowMs);
+        phase = Phase.COMPLETED;
+        markProgress(nowMs);
+    }
+
+    /**
+     * The phase line every PQ logs (HPQ/KPQ shape), for stock and companion runs alike: once per phase change, the time
+     * spent in the phase it leaves and in the run so far. Logging only; it never throws into the state machine.
+     */
+    private void logPhaseChange(Phase next, long nowMs) {
+        try {
+            log.info("OPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", sessionId, phase, next,
+                    Math.max(0L, nowMs - phaseEnteredAtMs), Math.max(0L, nowMs - startedAtMs), companionAdopted);
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
+    }
+
+    /** When the run first entered {@code phase} (a later entry keeps the first), or 0 when it never did. */
+    synchronized long firstEnteredAtMs(Phase phase) {
+        Long at = phase == null ? null : firstEntries.get(phase);
+        return at == null ? 0L : at;
+    }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
 
+    @Override
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
     public int operatorId() { return operatorId; }
+    public int requestedPartySize() { return requestedPartySize; }
     public long startedAtMs() { return startedAtMs; }
     public synchronized Phase phase() { return phase; }
+    @Override
     public synchronized int eventLeaderId() { return eventLeaderId; }
     public synchronized int executionAgentId() { return executionAgentId; }
     public synchronized long lastProgressAtMs() { return lastProgressAtMs; }
@@ -131,4 +232,139 @@ public final class AgentOpqSession {
     }
     public synchronized boolean papaPixieEngaged() { return papaPixieEngaged; }
     public synchronized boolean papaPixieDefeated() { return papaPixieDefeated; }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentOpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock, background and '!opqtest start' fixture runs leave it false.
+     */
+    @Override
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** The leader's clear-time calibration, kept for the run's pace; null until a host hands one. */
+    synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+        paceCalibration = calibration;
+    }
+
+    /** The companions' potions as 'OPQ potions:' logged them at the entrance; null when that line was never logged. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** When the coordinator first saw the clear (Minerva freed or the event cleared), or 0 when it never did. */
+    synchronized long clearSeenAtMs() { return clearSeenAtMs; }
+
+    /** Records the first tick that saw the clear; a later one keeps the first. */
+    synchronized void markClearSeen(long nowMs) {
+        if (clearSeenAtMs == 0L && nowMs > 0L) clearSeenAtMs = nowMs;
+    }
+
+    /**
+     * Marks a member the bound event no longer holds as departed (P6h OB7): true the first time only, and never for
+     * someone who is not a member.
+     */
+    synchronized boolean markDeparted(int characterId) {
+        return members.containsKey(characterId) && departed.add(characterId);
+    }
+
+    /** True once the member was marked departed; the run no longer counts it. */
+    synchronized boolean departed(int characterId) { return departed.contains(characterId); }
+
+    /**
+     * When the run was first seen bound to its event (the coordinator's bind, or its first look at a bound event):
+     * the first call keeps {@code nowMs} and every later one answers it.
+     */
+    synchronized long noteBoundAt(long nowMs) {
+        if (boundAtMs == 0L && nowMs > 0L) boundAtMs = nowMs;
+        return boundAtMs;
+    }
+
+    /** Queues a departed Agent for its hand-back, which runs outside this monitor. */
+    synchronized void queueHandBack(int characterId) { handBacks.add(characterId); }
+
+    /** Records that a departed member's hand-back ran: it belongs to its owner's activity from now on. */
+    synchronized void markHandedBack(int characterId) {
+        if (departed.contains(characterId)) handedBack.add(characterId);
+    }
+
+    /** True once a departed member was handed back; the release leaves its Agent's activity alone. */
+    synchronized boolean handedBack(int characterId) { return handedBack.contains(characterId); }
+
+    /** The departed Agents queued for their hand-back since the last call, each once. */
+    synchronized List<Integer> takeHandBacks() {
+        List<Integer> taken = List.copyOf(handBacks);
+        handBacks.clear();
+        return taken;
+    }
+
+    /** Notes the members the bound event holds now: each of them has been held from then on. */
+    synchronized void noteHeld(Collection<Integer> ids) {
+        for (int id : ids) if (members.containsKey(id)) seenHeld.add(id);
+    }
+
+    /**
+     * True once the bound event was seen holding the member. OrbisPQ.js registers and warps a party one member at a
+     * time, so a member not seen held yet is still entering, not leaving.
+     */
+    synchronized boolean seenHeld(int characterId) { return seenHeld.contains(characterId); }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold.
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (OrbisPQ.js ends the event when a member leaves at the floor). registeredIds is
+     * read here, under this monitor, so a departure that has just finished is seen as gone; the event's read lock
+     * nests inside this monitor, as when the coordinator reads the event's players.
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        if (staying > floor) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
+
+    /** Takes a member out of the run (a companion that tapped out); the event leader is never taken out. */
+    public synchronized void removeMember(int characterId) {
+        if (characterId == eventLeaderId) {
+            throw new IllegalArgumentException("the OPQ event leader cannot be removed from his run");
+        }
+        members.remove(characterId);
+    }
 }

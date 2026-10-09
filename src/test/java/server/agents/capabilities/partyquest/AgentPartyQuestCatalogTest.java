@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentPartyQuestCatalogTest {
     @Test
     void catalogsLocalEntryContractsWithoutSharingStageBehavior() {
-        assertEquals(List.of("hpq", "kpq", "lpq", "lmpq", "opq", "epq", "ppq"),
+        assertEquals(List.of("hpq", "kpq", "lpq", "lmpq", "opq", "epq", "ppq", "rjpq", "rjpqj"),
                 AgentPartyQuestCatalog.definitions().stream()
                         .map(AgentPartyQuestDefinition::questKey).toList());
 
@@ -42,6 +42,24 @@ class AgentPartyQuestCatalogTest {
         assertEquals("opq", AgentPartyQuestRuntime.requireSystem("opq").definition().questKey());
         assertEquals("epq", AgentPartyQuestRuntime.requireSystem("epq").definition().questKey());
         assertEquals("ppq", AgentPartyQuestRuntime.requireSystem("ppq").definition().questKey());
+        assertEquals("rjpq", AgentPartyQuestRuntime.requireSystem("rjpq").definition().questKey());
+        assertEquals("rjpqj", AgentPartyQuestRuntime.requireSystem("rjpqj").definition().questKey());
+    }
+
+    @Test
+    void bothRomeoAndJulietSidesAreCatalogued() {
+        AgentPartyQuestDefinition zenumist = AgentPartyQuestCatalog.require("rjpq");
+        AgentPartyQuestDefinition alcadno = AgentPartyQuestCatalog.require("rjpqj");
+        assertEquals("MagatiaPQ_Z", zenumist.eventManagerName());
+        assertEquals("MagatiaPQ_A", alcadno.eventManagerName());
+        assertEquals(261_000_011, zenumist.recruitMapId());
+        assertEquals(261_000_021, alcadno.recruitMapId());
+        assertTrue(zenumist.acceptsPartySize(4));
+        assertFalse(zenumist.acceptsPartySize(3));
+        assertFalse(zenumist.acceptsPartySize(5));
+        assertTrue(alcadno.acceptsLevel(71));
+        assertFalse(alcadno.acceptsLevel(86));
+        assertEquals(2_700_000L, zenumist.eventTimerMs());
     }
 
     @Test

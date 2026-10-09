@@ -106,6 +106,7 @@ class AgentSupplyReadinessTest {
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpqj"), "Juliet's side: rjpq's standard");
         assertEquals(new AgentSupplyReadiness.Standard(350, 350), standardFor("EPQ "), "keys are trimmed, any case");
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
     }
@@ -264,10 +265,11 @@ class AgentSupplyReadinessTest {
     }
 
     @Test
-    void ammoStandardsListLpqAndEpqAtSixteenHundredAndEveryOtherKeyKeepsPartyQuestAmmo() {
+    void ammoStandardsListLpqAndEpqAtSixteenHundredEasyBalrogAtTwoThousandZakumAtFourThousandAndOtherKeysKeepPartyQuestAmmo() {
         // live 2026-10-07: a claw companion used 800 stars in one EPQ golem fight; another reached LPQ stage 7 with none
         // P8 (user decision 2026-10-08): Zakum's fight is far longer, 4000 projectiles
-        assertEquals("lpq=1600,epq=1600,zakum=4000", AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000",
+                AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
         assertEquals(4000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("zakum")));
         int partyQuestAmmo = config.AgentTuning.intValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
@@ -275,9 +277,11 @@ class AgentSupplyReadinessTest {
         assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("lpq")));
         assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("kpq")));
         assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("hpq")));
+        assertEquals(2000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
+                "its own since 2026-10-08, bought at Ant Tunnel Park on the way down");
         assertEquals(partyQuestAmmo,
-                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
-                "no shop is reachable from Mu Young's room: no standard of its own");
+                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("horntail")),
+                "an unlisted boss");
         assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(PQ));
         assertEquals(0, AgentSupplyReadiness.ammoStandard(null), "no activity");
 

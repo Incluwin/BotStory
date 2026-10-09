@@ -49,6 +49,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     final Set<Integer> broken = new HashSet<>();
     final List<Runnable> scheduled = new ArrayList<>();
     final List<Long> scheduledDelays = new ArrayList<>();
+    /** What {@link #supplies} answers per Agent; nothing by default. */
+    final Map<Integer, String> supplies = new HashMap<>();
     boolean stillTheChannels = true;
     boolean adoptionAnswer = true;
     RunNpc runNpc = (agent, npcId, selections) -> true;
@@ -212,6 +214,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     public void schedule(Runnable action, long delayMs) {
         scheduled.add(action);
         scheduledDelays.add(delayMs);
+    }
+
+    @Override
+    public String supplies(Character agent) {
+        return supplies.getOrDefault(agent.getId(), "");
     }
 
     /** A host that writes each callback to the shared call list and keeps every ended run. */

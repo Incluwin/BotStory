@@ -2,7 +2,9 @@ package server.agents.capabilities.partyquest.lmpq;
 
 import client.Character;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 /** LMPQ facade over independent member work and one short coordinator lease. */
 public final class AgentLmpqRuntime {
@@ -17,12 +19,40 @@ public final class AgentLmpqRuntime {
         }
         if (session.paused()) return true;
         AgentLmpqCoordinator.tickMember(session, entry, agent, nowMs);
-        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS)) {
-            AgentLmpqCoordinator.tickSession(session, nowMs);
+        if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS, AgentLmpqRuntime::holderAlive)) {
+            coordinate(session, nowMs);
         }
-        if (session.terminal()) AgentLmpqTerminationService.release(
+        if (session.terminal()) AgentLmpqTerminationService.finish(
                 session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
         return true;
+    }
+
+    /**
+     * Runs one coordinator pass, unless another is under way: the lease holder's tick and the watchdog can both hold
+     * the lease, so the pass itself is claimed, and released even when it throws.
+     */
+    static void coordinate(AgentLmpqSession session, long nowMs) {
+        if (!session.tryBeginCoordinating()) return;
+        try {
+            AgentLmpqCoordinator.tickSession(session, nowMs);
+        } finally {
+            session.endCoordinating();
+        }
+    }
+
+    /**
+     * Whether an LMPQ coordinator lease holder can still drive the run: its Agent is loaded and has HP left (the
+     * watchdog's own live test). A dead or unloaded holder hands the lease over at once.
+     */
+    static boolean holderAlive(int characterId) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
+        Character holder = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+        return holder != null && holder.getHp() > 0;
+    }
+
+    /** The coordinator lease an Agent's tick takes, for the watchdog's claim. */
+    static long coordinatorLeaseMs() {
+        return COORDINATOR_LEASE_MS;
     }
 
     public static boolean requestStop(int id, String reason, long nowMs) {
@@ -32,7 +62,7 @@ public final class AgentLmpqRuntime {
             return AgentPartyQuestLifecycleRuntime.requestStop(id, reason, nowMs);
         }
         if (!session.terminal()) return false;
-        AgentLmpqTerminationService.release(session, reason, nowMs, false);
+        AgentLmpqTerminationService.finish(session, reason, nowMs, false);
         return true;
     }
 
@@ -41,7 +71,7 @@ public final class AgentLmpqRuntime {
         if (session == null) {
             AgentLmpqLobbyAdmissionRuntime.releaseTracking(id);
             AgentPartyQuestLifecycleRuntime.forceStop(id, reason, nowMs);
-        } else AgentLmpqTerminationService.release(session, reason, nowMs, true);
+        } else AgentLmpqTerminationService.finish(session, reason, nowMs, true);
     }
 
     public static void runtimeRemoved(int id, long nowMs) {

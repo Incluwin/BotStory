@@ -218,7 +218,7 @@ public final class SetLevelCommand extends Command {
                 return new Answer(name + " has no record (the living world is off).");
             }
             return existing.isEmpty() ? new Answer(name + " has no record.")
-                    : new Release("keep", name + " keeps level " + target.getLevel() + " for good.");
+                    : new Release(GmLevelHolds.KEEP, name + " keeps level " + target.getLevel() + " for good.");
         }
         String busy = busy(world, target);
         if (busy != null) {

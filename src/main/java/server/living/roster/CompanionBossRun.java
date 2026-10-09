@@ -36,6 +36,11 @@ final class CompanionBossRun {
      * coming too" when the owner left before the clear and the marker line ("drop the eye") as the first goes in.
      */
     volatile boolean signedUpSaid;
+    /**
+     * A companion of this run said that nobody of the party heals (CompanionBossRuns.warnIfNoHealer): once per party,
+     * so no run of an owner in the same party says it again.
+     */
+    volatile boolean noHealerSaid;
     volatile boolean regroupSaid;
     volatile boolean handoffSaid;
     volatile boolean ggSaid;

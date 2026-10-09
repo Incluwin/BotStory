@@ -1152,8 +1152,7 @@ public final class BenchDutyDispatcher {
         boolean offline = agent == null || agent.getClient() == null;
         if (!offline) {
             try {
-                agent.saveCharToDB();
-                agent.getClient().forceDisconnect();
+                agent.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
                 offline = true;
             } catch (RuntimeException failure) {
                 log.warn("bench slice of {} failed to unload; it keeps its lease and is unloaded again next tick",
