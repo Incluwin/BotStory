@@ -231,6 +231,98 @@ class GmLevelHoldsTest {
         verify(residents).prepareCompanion(bot, yara, false);
     }
 
+    /** A keep chose the level it has: a never-shaped persona is shaped there (ResidentRuntime), not while held. */
+    @Test
+    void aKeepIsKnownFromTheReleaseAndNotWhileANewSetHoldsIt() {
+        noCompanionLoaded();
+        assertFalse(holds.kept(901, "yara"));
+        holds.hold(901, "yara", new Original(1, Job.BEGINNER, null));
+        holds.release(901, "yara", GmLevelHolds.KEEP);
+        assertTrue(holds.kept(901, "yara"));
+        assertFalse(holds.held(901, "yara"));
+
+        holds.hold(901, "yara", new Original(25, Job.PIRATE, null));
+        assertFalse(holds.kept(901, "yara"));
+        assertTrue(holds.held(901, "yara"));
+    }
+
+    /**
+     * A later set that ends back at the kept level leaves it kept: one that was not applied ('not applied') and one set
+     * back to it ('restored'). Found by review 2026-10-08: the hold cleared the keep for good, so a later town reshape
+     * (a recipe bump, an arc chapter's loadout) levelled the companion to its persona's range.
+     */
+    @Test
+    void aSetNotAppliedOrRestoredToTheKeptLevelLeavesItKept() {
+        noCompanionLoaded();
+        holds.hold(901, "yara", new Original(1, Job.BEGINNER, null));
+        holds.release(901, "yara", GmLevelHolds.KEEP); // kept at 25
+
+        Pending refused = holds.begin(901, "yara", holds.record(901, "yara"), new Original(25, Job.PIRATE, null), false,
+                true, 30, Job.GUNSLINGER);
+        refused.settle(false);
+        assertTrue(holds.kept(901, "yara"), "not applied: still at its kept level");
+
+        Pending raised = holds.begin(901, "yara", holds.record(901, "yara"), new Original(25, Job.PIRATE, null), false,
+                true, 30, Job.GUNSLINGER);
+        raised.settle(true);
+        assertFalse(holds.kept(901, "yara"), "held at 30");
+        Pending restore = holds.begin(901, "yara", holds.record(901, "yara"), new Original(30, Job.GUNSLINGER, null),
+                true, true, 25, Job.PIRATE);
+        restore.settle(true);
+        assertTrue(holds.kept(901, "yara"), "restored to its kept level");
+    }
+
+    @Test
+    void aRestoreOfARecordNeverKeptIsNoKeep() {
+        noCompanionLoaded();
+        holds.hold(902, "flint", new Original(1, Job.BEGINNER, null));
+        holds.release(902, "flint", "restored");
+        assertFalse(holds.kept(902, "flint"), "back at its original level 1: shaped to its persona");
+        holds.hold(902, "flint", new Original(1, Job.BEGINNER, null));
+        holds.release(902, "flint", "not applied");
+        assertFalse(holds.kept(902, "flint"));
+    }
+
+    /**
+     * After a boot the newest row may be a 'not applied' or 'restored' release, or a hold: the read also says whether
+     * any release of the record was a keep (LivingStore.latestGmLevel).
+     */
+    @Test
+    void aKeepBeforeTheNewestRowIsReadAfterABoot() {
+        noCompanionLoaded();
+        when(store.latestGmLevel(905, "flint"))
+                .thenReturn(Optional.of(new LivingStore.EventRow(GmLevelHolds.RELEASE, "not applied", true)));
+        when(store.latestGmLevel(906, "isolde"))
+                .thenReturn(Optional.of(new LivingStore.EventRow(GmLevelHolds.HOLD, "lv=25 job=500 exp=0", true)));
+
+        assertTrue(holds.kept(905, "flint"));
+        assertFalse(holds.kept(906, "isolde"), "held at its set level");
+        holds.release(906, "isolde", "restored");
+        assertTrue(holds.kept(906, "isolde"), "restored to the level it was kept at");
+    }
+
+    private void noCompanionLoaded() {
+        when(world.content()).thenReturn(mock(LivingContent.class)); // a release prepares the companion: none loaded
+        when(world.roster()).thenReturn(mock(RosterService.class));
+    }
+
+    @Test
+    void aKeepIsReadFromItsReleaseRowAfterABoot() {
+        when(store.latestGmLevel(901, "yara"))
+                .thenReturn(Optional.of(new LivingStore.EventRow(GmLevelHolds.RELEASE, GmLevelHolds.KEEP)));
+        when(store.latestGmLevel(902, "flint"))
+                .thenReturn(Optional.of(new LivingStore.EventRow(GmLevelHolds.RELEASE, "restored")));
+        when(store.latestGmLevel(903, "isolde"))
+                .thenReturn(Optional.of(new LivingStore.EventRow(GmLevelHolds.HOLD, "lv=1 job=0 exp=0")));
+        when(store.latestGmLevel(904, "cobb")).thenReturn(null);
+
+        assertTrue(holds.kept(901, "yara"));
+        assertFalse(holds.kept(902, "flint"));
+        assertFalse(holds.kept(903, "isolde"));
+        assertFalse(holds.kept(904, "cobb"), "a record that cannot be read is held, not kept");
+        assertTrue(holds.held(904, "cobb"));
+    }
+
     @Test
     void anOwnerIsBusyOnlyWhileMarked() {
         assertFalse(holds.busy(CREWFRIEND));

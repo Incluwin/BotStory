@@ -32,13 +32,17 @@ import java.util.regex.Pattern;
  * {@linkplain #settling settling} and another use of the same record waits for it. While a record holds a companion,
  * its Resident quest gear is not applied (ResidentRuntime.kitAllowed) and it is not shaped as a Resident or as a
  * companion; a release prepares it again (ResidentRuntime.prepareCompanion: a never-shaped persona is shaped, then its
- * gear is refreshed). No timer.</p>
+ * gear is refreshed). A companion released with {@value #KEEP} is shaped at the level it has, not its persona's
+ * ({@link #kept}), and stays kept: any later release gives back the original its hold recorded, the kept level. No
+ * timer.</p>
  */
 public final class GmLevelHolds {
     public static final String HOLD = "gm.level.hold";
     public static final String RELEASE = "gm.level.release";
     /** The persona id a human's own record is kept under. */
     public static final String SELF = "gm:self";
+    /** A release's detail when the GM keeps the level it has ({@code !setlevel <name> keep}). */
+    public static final String KEEP = "keep";
     private static final Logger log = LoggerFactory.getLogger(GmLevelHolds.class);
     /** How long a use may stay {@linkplain #settling settling} before the next use stops waiting for it. */
     static final long SETTLING_STALE_MS = 120_000L;
@@ -94,8 +98,8 @@ public final class GmLevelHolds {
     }
 
     private final LivingWorld world;
-    /** "characterId personaId" -> its record (empty: none). */
-    private final Map<String, Optional<Original>> records = new ConcurrentHashMap<>();
+    /** "characterId personaId" -> its record as known. */
+    private final Map<String, Known> records = new ConcurrentHashMap<>();
     /** Owners a party set is running for (CrewRotation leaves their crew alone meanwhile). */
     private final Set<Integer> busyOwners = ConcurrentHashMap.newKeySet();
     /** "characterId personaId" -> the use that is settling on it. */
@@ -104,6 +108,10 @@ public final class GmLevelHolds {
     private final LongSupplier clock;
 
     private record Ticket(long id, long sinceMs) {
+    }
+
+    /** A record (empty: none) and whether any release of it was a {@value #KEEP} ({@link #kept}). */
+    private record Known(Optional<Original> original, boolean kept) {
     }
 
     public GmLevelHolds(LivingWorld world) {
@@ -117,8 +125,32 @@ public final class GmLevelHolds {
 
     /** The record: empty for none, null while it cannot be read (nothing is cached then). */
     public Optional<Original> record(int characterId, String personaId) {
+        Known known = known(characterId, personaId);
+        return known == null ? null : known.original();
+    }
+
+    /**
+     * True when a release of the record was a {@value #KEEP} and nothing holds the character now: the GM chose the
+     * level it has, so it is shaped at that level (ResidentRuntime: a never-shaped companion, a reshaped Resident). A
+     * later set that was not applied, or was restored or set back to its original, ends at that kept level, so it stays
+     * kept (found by review 2026-10-08: the next hold cleared it for good, and a town reshape then levelled it to its
+     * persona). False while a set holds it and while the record cannot be read ({@link #held} is true then).
+     */
+    public boolean kept(int characterId, String personaId) {
+        Known known = known(characterId, personaId);
+        return known != null && known.original().isEmpty() && known.kept();
+    }
+
+    /** Whether any release of the record so far was a {@value #KEEP}; false while it cannot be read. */
+    private boolean keptSoFar(int characterId, String personaId) {
+        Known known = known(characterId, personaId);
+        return known != null && known.kept();
+    }
+
+    /** The record as known, read once and cached; null while it cannot be read (nothing is cached then). */
+    private Known known(int characterId, String personaId) {
         String key = key(characterId, personaId);
-        Optional<Original> known = records.get(key);
+        Known known = records.get(key);
         if (known != null) {
             return known;
         }
@@ -126,8 +158,9 @@ public final class GmLevelHolds {
         if (row == null) {
             return null;
         }
-        Optional<Original> read = row.filter(r -> HOLD.equals(r.kind())).map(r -> Original.parse(r.detail()));
-        Optional<Original> raced = records.putIfAbsent(key, read);
+        Known read = new Known(row.filter(r -> HOLD.equals(r.kind())).map(r -> Original.parse(r.detail())),
+                row.filter(r -> r.kept() || RELEASE.equals(r.kind()) && KEEP.equals(r.detail())).isPresent());
+        Known raced = records.putIfAbsent(key, read);
         return raced != null ? raced : read;
     }
 
@@ -230,18 +263,24 @@ public final class GmLevelHolds {
         }
     }
 
-    /** Records {@code original} (in memory at once); completes false when its row could not be written. */
+    /**
+     * Records {@code original} (in memory at once; a keep before it is remembered for its release); completes false
+     * when its row could not be written.
+     */
     public CompletableFuture<Boolean> hold(int characterId, String personaId, Original original) {
-        records.put(key(characterId, personaId), Optional.of(original));
+        records.put(key(characterId, personaId), new Known(Optional.of(original), keptSoFar(characterId, personaId)));
         return write(characterId, personaId, HOLD, original.detail());
     }
 
     /**
      * Releases the record (in memory at once; {@code why} is the row's detail) and prepares a companion again (shaped if
-     * it never was, then its quest gear); completes false when its row could not be written.
+     * it never was, at the level it has when it is {@link #kept}, then its quest gear); completes false when its row
+     * could not be written. A {@value #KEEP} keeps it at the level it has; any other release gives back the original
+     * the hold recorded, so a keep before that hold is kept too.
      */
     public CompletableFuture<Boolean> release(int characterId, String personaId, String why) {
-        records.put(key(characterId, personaId), Optional.empty());
+        boolean kept = KEEP.equals(why) || keptSoFar(characterId, personaId);
+        records.put(key(characterId, personaId), new Known(Optional.empty(), kept));
         CompletableFuture<Boolean> written = write(characterId, personaId, RELEASE, why);
         if (!SELF.equals(personaId)) {
             prepareCompanion(personaId);
