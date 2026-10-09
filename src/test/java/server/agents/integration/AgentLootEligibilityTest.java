@@ -14,15 +14,19 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardGracePolicy;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardClaimRegistry;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
+import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.agents.capabilities.partyquest.hpq.AgentHpqDefinition;
 import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 
 import java.awt.*;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -253,6 +257,43 @@ class AgentLootEligibilityTest {
             assertFalse(AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, cake));
             hpq.verify(() -> AgentHpqSessionRegistry.canLootRiceCake(bot, cake));
         }
+    }
+
+    /**
+     * P8: a boss run's marker (Zakum's Eye of Fire, which the altar must take) stays on the floor for its members;
+     * whether a run keeps a drop there is the registry's answer. Every other drop is decided as before.
+     */
+    @Test
+    void aMarkerTheBossRunKeepsOnTheFloorIsRefusedAndOtherDropsAreDecidedAsBefore() {
+        Character bot = mock(Character.class);
+        when(bot.getId()).thenReturn(88);
+        when(bot.needQuestItem(anyInt(), anyInt())).thenReturn(true);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), null);
+        long dropTime = System.currentTimeMillis() - 16_000L;
+        MapItem eye = mockItem(1, AgentZakumDefinition.EYE_ITEM_ID, dropTime);
+        MapItem coupon = mockItem(2, AgentLootEligibility.KPQ_COUPON, dropTime);
+        MapItem pass = mockItem(3, AgentLootEligibility.KPQ_PASS, dropTime);
+        boolean couponBefore = AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, coupon);
+        boolean passBefore = AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, pass);
+        assertTrue(AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, eye),
+                "outside a boss run the Eye is loot like any other");
+
+        try (MockedStatic<AgentBossRunRegistry> runs = mockStatic(AgentBossRunRegistry.class)) {
+            runs.when(() -> AgentBossRunRegistry.preservesMarker(bot, eye)).thenReturn(true);
+
+            assertFalse(AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, eye));
+            assertEquals(couponBefore, AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, coupon));
+            assertEquals(passBefore, AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, pass));
+            runs.verify(() -> AgentBossRunRegistry.preservesMarker(bot, eye));
+        }
+    }
+
+    /** A player-dropped item (no meso) of {@code itemId}. */
+    private static MapItem mockItem(int objectId, int itemId, long dropTime) {
+        MapItem drop = mockLoot(objectId, 77, true, dropTime);
+        when(drop.getItemId()).thenReturn(itemId);
+        when(drop.getMeso()).thenReturn(0);
+        return drop;
     }
 
     private static MapItem mockLoot(int objectId, int ownerId, boolean playerDrop, long dropTime) {

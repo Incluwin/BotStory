@@ -13,6 +13,7 @@ import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillCacheStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSummonRuntime;
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
+import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.agents.integration.AgentClientGateway;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentCombatGatewayRuntime;
@@ -47,8 +48,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * Players cannot summon on Easy Balrog's battle map (its fieldLimit has the SUMMON bit), and the server never checks
- * that bit, so a companion fighting there must not summon either. PQ maps carry the bit too (KPQ stages, LPQ's
- * boss map); Agents outside boss runs keep summoning there as before. Field limits are read from the tracked WZ.
+ * that bit, so a companion fighting there must not summon either; Zakum's altar carries it too. PQ maps carry the bit
+ * too (KPQ stages, LPQ's boss map); Agents outside boss runs keep summoning there as before. Field limits are read
+ * from the tracked WZ.
  */
 class AgentBossRunNoSummonTest {
     private static final int OWNER = 1;
@@ -62,6 +64,7 @@ class AgentBossRunNoSummonTest {
     private static final int CLEAR_MAP = AgentBalrogDefinition.CLEAR_MAP;
     private static final int KPQ_STAGE_MAP = 103_000_800;
     private static final int LPQ_BOSS_MAP = 922_010_800;
+    private static final int ZAKUM_ALTAR = AgentZakumDefinition.BATTLE_MAP_ID;
     private static final Pattern FIELD_LIMIT = Pattern.compile("<int name=\"fieldLimit\" value=\"(\\d+)\"/>");
 
     private final CombatGateway combat = mock(CombatGateway.class);
@@ -129,6 +132,18 @@ class AgentBossRunNoSummonTest {
     }
 
     @Test
+    void insideZakumMemberOnTheAltarNeverSummons() throws Exception {
+        assertTrue(FieldLimit.SUMMON.check(fieldLimit(ZAKUM_ALTAR)), "the altar forbids summons to players too");
+        inside(openRun(AgentBossRunCatalog.ZAKUM), ISOLDE);
+        Character isolde = agent(ISOLDE, ZAKUM_ALTAR);
+
+        assertEquals(0, AgentCombatSummonRuntime.tickSummons(entry, isolde, skillId -> true));
+        assertEquals(AgentCombatSummonRuntime.SummonResult.BARRED,
+                AgentCombatSummonRuntime.trySummon(entry, isolde, SUMMON_DRAGON));
+        verify(combat, never()).dispatchSummonSpecialMove(any(), anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
     void insideMemberInTheRewardRoomNeverSummonsEither() throws Exception {
         inside(openRun(), ISOLDE);
 
@@ -188,7 +203,11 @@ class AgentBossRunNoSummonTest {
     }
 
     private static AgentBossRunSession openRun() {
-        AgentBossRunSession session = new AgentBossRunSession(7L, AgentBossRunCatalog.EASY_BALROG,
+        return openRun(AgentBossRunCatalog.EASY_BALROG);
+    }
+
+    private static AgentBossRunSession openRun(AgentBossRunDefinition definition) {
+        AgentBossRunSession session = new AgentBossRunSession(7L, definition,
                 mock(Expedition.class), new FakeBossRunPorts.Fight(), NOW);
         AgentBossRunRegistry.put(session);
         return session;

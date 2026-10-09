@@ -2,7 +2,9 @@ package server.agents.capabilities.combat;
 
 import client.Character;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.StatEffect;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.life.Monster;
 import server.life.MonsterStats;
 import server.maps.MapleMap;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentCombatTargetSelectorTest {
@@ -43,6 +46,46 @@ class AgentCombatTargetSelectorTest {
                 List.of(far, dead, primary, outside, friendly, near));
 
         assertEquals(List.of(primary, near, far), targets);
+    }
+
+    /** P8: Zakum's run never takes its fake body (F8); a fake no run names is taken as before (Easy's body). */
+    @Test
+    void aFakePartTheBossRunNeverTargetsIsNoSecondaryTarget() {
+        Monster primary = monster(1, new Point(100, 100), true, false);
+        Monster fakeBody = monster(2, new Point(105, 100), true, false);
+        Monster arm = monster(3, new Point(140, 100), true, false);
+        when(fakeBody.isFake()).thenReturn(true);
+        Rectangle hitBox = new Rectangle(0, 0, 250, 250);
+
+        try (MockedStatic<AgentBossRunRegistry> runs = mockStatic(AgentBossRunRegistry.class)) {
+            runs.when(() -> AgentBossRunRegistry.neverTarget(fakeBody)).thenReturn(true);
+
+            assertEquals(List.of(primary, arm), AgentCombatTargetSelector.collectTargetsInHitBox(
+                    primary, hitBox, 3, List.of(fakeBody, primary, arm)));
+        }
+        assertEquals(List.of(primary, fakeBody, arm), AgentCombatTargetSelector.collectTargetsInHitBox(
+                primary, hitBox, 3, List.of(fakeBody, primary, arm)), "no run names it: today's path");
+    }
+
+    @Test
+    void aFakePartTheBossRunNeverTargetsIsNoProjectileTarget() {
+        Monster fallback = monster(1, new Point(500, 100), true, false);
+        Monster fakeBody = monster(2, new Point(170, 100), true, false);
+        Monster arm = monster(3, new Point(220, 100), true, false);
+        when(fakeBody.isFake()).thenReturn(true);
+        Point origin = new Point(100, 100);
+        Rectangle forward = new Rectangle(150, 50, 120, 100);
+
+        try (MockedStatic<AgentBossRunRegistry> runs = mockStatic(AgentBossRunRegistry.class)) {
+            runs.when(() -> AgentBossRunRegistry.neverTarget(fakeBody)).thenReturn(true);
+
+            assertEquals(arm, AgentCombatTargetSelector.resolveEffectivePrimary(
+                    origin, fallback, forward, List.of(fakeBody, arm)));
+            assertEquals(fallback, AgentCombatTargetSelector.resolveEffectivePrimary(
+                    origin, fallback, forward, List.of(fakeBody)));
+        }
+        assertEquals(fakeBody, AgentCombatTargetSelector.resolveEffectivePrimary(
+                origin, fallback, forward, List.of(fakeBody, arm)), "no run names it: today's path");
     }
 
     @Test

@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import server.StatEffect;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.life.Monster;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
@@ -34,6 +35,7 @@ public final class AgentCombatTargetSelector {
         List<Monster> secondaryTargets = new ArrayList<>();
         for (Monster monster : candidates) {
             if (!AgentCombatTargetEligibilityPolicy.isHostileLivingMonster(monster)
+                    || AgentBossRunRegistry.neverTarget(monster)
                     || monster.getObjectId() == primaryTarget.getObjectId()) {
                 continue;
             }
@@ -82,6 +84,7 @@ public final class AgentCombatTargetSelector {
         double closestDistSq = Double.MAX_VALUE;
         for (Monster monster : candidates) {
             if (!AgentCombatTargetEligibilityPolicy.isHostileLivingMonster(monster)
+                    || AgentBossRunRegistry.neverTarget(monster)
                     || !AgentCombatHitboxIntersection.intersectsMonster(hitBox, monster)) {
                 continue;
             }

@@ -485,16 +485,19 @@ public final class AgentBossRunSession {
         return agent != null && agent.isAlive();
     }
 
-    /** The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls. */
+    /**
+     * The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls.
+     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}).
+     */
     private void leave(AgentBossRunPorts ports, AgentBossRunMember member, AgentBossRunHost.Out reason, long nowMs) {
         int agentId = member.agentId();
         if (!cleared) {
             ports.stop(agentId);
             ports.clearBoundary(agentId);
-            if (!exitNpcPrepared) {
-                exitNpcPrepared = true;
-                ports.prepareScripts(definition.exitNpcId());
-            }
+        }
+        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared) {
+            exitNpcPrepared = true;
+            ports.prepareScripts(definition.exitNpcId());
         }
         member.leaving(reason, nowMs);
         log.info("Boss run member leaving: session={} boss={} member={} reason={} anchor={}", sessionId,
@@ -524,7 +527,9 @@ public final class AgentBossRunSession {
      * One step out. In the reward room the member takes the stock exit portal; on the battle map before the clear it
      * talks to the exit NPC, whose yes then warps only the talker to the recruit map. After the clear that NPC warps
      * the whole team into the reward room, so a member still on the battle map then, one on any other map of the
-     * event, and one still inside after EXIT_TIMEOUT_MS are moved straight to the recruit map.
+     * event, and one still inside after EXIT_TIMEOUT_MS are moved straight to the recruit map. A boss with no reward
+     * room (exitNpcAfterClear, Zakum's Amon) keeps the exit NPC as the way out after the clear too: its yes then still
+     * warps only the talker.
      */
     private void walkOut(AgentBossRunPorts ports, AgentBossRunMember member, Character agent, long nowMs) {
         int agentId = member.agentId();
@@ -542,7 +547,7 @@ public final class AgentBossRunSession {
             } else {
                 ports.navigate(agentId, portal, true);
             }
-        } else if (mapId == definition.battleMapId() && !clearedNow) {
+        } else if (mapId == definition.battleMapId() && (!clearedNow || definition.exitNpcAfterClear())) {
             Point npc = ports.npcPosition(agent, definition.exitNpcId());
             if (npc == null) {
                 moveOut(ports, agent);
