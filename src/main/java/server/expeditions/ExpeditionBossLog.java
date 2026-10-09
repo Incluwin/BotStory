@@ -204,6 +204,13 @@ public class ExpeditionBossLog {
             return false;
         }
 
+        // P8: a companion its boss run already asked about answers from memory (no JDBC inside the NPC script lock);
+        // its entry is logged as it enters the fight (recordEntry). Null for every player: the stock count and log.
+        Boolean answer = server.living.LivingWorldHooks.bossQuota(cid, exped, log);
+        if (answer != null) {
+            return answer;
+        }
+
         if (countPlayerEntries(cid, boss) >= boss.entries) {
             return false;
         }
@@ -212,6 +219,25 @@ public class ExpeditionBossLog {
             insertPlayerEntry(cid, boss);
         }
         return true;
+    }
+
+    /**
+     * Logs one entry of {@code type}'s boss for the character with the stock insert (P8: a companion's entry, logged
+     * once as it enters the fight). Nothing for a boss with no entry log (Easy Balrog) or with daily expeditions off.
+     * True when it sent the row (a database failure is logged, as the stock insert logs it).
+     */
+    public static boolean recordEntry(int cid, ExpeditionType type) {
+        if (!limits(type)) {
+            return false;
+        }
+        insertPlayerEntry(cid, BossLogEntry.getBossEntryByName(type.name()));
+        return true;
+    }
+
+    /** True when entries of {@code type}'s boss are counted: daily expeditions on, and the boss keeps an entry log. */
+    public static boolean limits(ExpeditionType type) {
+        return type != null && YamlConfig.config.server.USE_ENABLE_DAILY_EXPEDITIONS
+                && BossLogEntry.getBossEntryByName(type.name()) != null;
     }
 
     /**

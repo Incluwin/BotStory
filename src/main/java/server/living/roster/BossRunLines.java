@@ -66,6 +66,11 @@ final class BossRunLines {
     static final String ALLY_GOOD_FIGHT = "boss.ally.goodfight";
     static final String ALLY_NEXT_TIME = "boss.ally.nexttime";
     static final String ALLY_GOODBYE = "boss.ally.goodbye";
+    /**
+     * P8: no entry of the boss left today (its daily entry log, ExpeditionBossLog: Zakum), so it was not signed up; a
+     * party companion says it in party chat, a bench ally whispers it. Every boss with an entry log.
+     */
+    static final String QUOTA = "boss.refused.quota";
 
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
@@ -157,7 +162,11 @@ final class BossRunLines {
             Map.entry(ALLY_NEXT_TIME, List.of(
                     "we'll get him next time. back to camp.",
                     "rough one. heading back to camp.")),
-            Map.entry(ALLY_GOODBYE, List.of("heading back to camp. see ya.")));
+            Map.entry(ALLY_GOODBYE, List.of("heading back to camp. see ya.")),
+            Map.entry(QUOTA, List.of(
+                    "already went in today. i'll wait out here.",
+                    "used up my run for today, i'll hang back.",
+                    "can't go in again today. good luck in there!")));
 
     private static final AtomicInteger counter = new AtomicInteger();
 

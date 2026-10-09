@@ -9,8 +9,9 @@ import java.util.List;
 
 /**
  * Per-run boss seam. The Agent layer stays owner-free: a boss run tells the host (the living world) when a member is
- * tied to the run, signed up, refused, out of the run, and when the run ended, and the host installs the rule that
- * keeps commitments, lines and records. With nothing installed a seat is always granted and every report is dropped.
+ * tied to the run, signed up, refused, went into the fight, out of the run, and when the run ended, and the host
+ * installs the rule that keeps commitments, lines, entries and records. With nothing installed a seat is always granted
+ * and every report is dropped.
  */
 public final class AgentBossRunHost {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunHost.class);
@@ -115,6 +116,13 @@ public final class AgentBossRunHost {
          */
         default Point standAt(Seat seat, MapleMap map, int ordinal) {
             return null;
+        }
+
+        /**
+         * The member went into the fight: the run adopted it, once per member and run (never for one that missed the
+         * start). The host logs its boss entry then.
+         */
+        default void entered(Seat seat) {
         }
     }
 
@@ -237,6 +245,19 @@ public final class AgentBossRunHost {
             } catch (RuntimeException failure) {
                 log.warn("boss-run stand-at rule failed for {} (ordinal {})", seat, ordinal, failure);
                 return null;
+            }
+        }
+
+        @Override
+        public void entered(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.entered(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run entered rule failed for {}", seat, failure);
             }
         }
     }

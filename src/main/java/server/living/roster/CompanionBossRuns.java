@@ -399,6 +399,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final Map<String, CompanionBossRun> runs;
     /** P7 Part B: the owners' bench allies, each on its trip from its call to its unload. */
     private final CompanionBossAllies allies;
+    /** P8: the companions' daily boss entries (Zakum), shared with the bench allies' calls. */
+    private final CompanionBossQuota quota;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -417,10 +419,14 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.potions = potions;
         this.supplies = supplies;
         this.runs = new ConcurrentHashMap<>();
-        this.allies = new CompanionBossAllies(world, open, runs);
+        this.quota = new CompanionBossQuota(open);
+        this.allies = new CompanionBossAllies(world, open, runs, quota);
     }
 
-    /** The bench allies a test builds (their game and clock faked) over {@code runs}, the map they keep lines in. */
+    /**
+     * The bench allies a test builds (their game and clock faked) over {@code runs}, the map they keep lines in; the
+     * daily entries are theirs ({@link CompanionBossAllies#quota}).
+     */
     CompanionBossRuns(LivingWorld world, OpenRuns open, IntFunction<int[]> potions, Supplies supplies,
                       Map<String, CompanionBossRun> runs, CompanionBossAllies allies) {
         this.world = world;
@@ -429,6 +435,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.supplies = supplies;
         this.runs = runs;
         this.allies = allies;
+        this.quota = allies.quota();
     }
 
     /**
@@ -475,7 +482,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * On companion-ops: the owner's companions that can sign up, asked again (five at most, in party order), are
      * enlisted in the run for the expedition, the owner being on her list (they joined it or lead it). Each walks up to
      * her and signs up through her own window on the run's tick; one short of the boss's potion standard looks at its
-     * potions at once, so a shop trip comes first. The owner's part of the run is kept from here on.
+     * potions at once, so a shop trip comes first. The owner's part of the run is kept from here on. P8: for a boss
+     * with a daily entry log (Zakum), one with no entry left today says so and is not enlisted (CompanionBossQuota).
      */
     void registerParty(int ownerId, String bossKey) {
         long now = System.currentTimeMillis();
@@ -486,7 +494,20 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return;
         }
         String key = offer.definition().key();
-        Enlisted enlisted = open.enlist(owner, offer.definition(), offer.expedition(), offer.companions(), now);
+        List<Integer> admitted = new ArrayList<>();
+        for (int id : offer.companions()) {
+            if (quota.admit(offer.definition(), offer.expedition(), id)) {
+                admitted.add(id);
+            } else {
+                BossRunLines.say(world, bot(id), BossRunLines.QUOTA, null, 0);
+            }
+        }
+        if (admitted.isEmpty()) {
+            log.info("boss sign-up {} for owner {}: nobody to enlist, no entry left today", key, ownerId);
+            return;
+        }
+        Enlisted enlisted = open.enlist(owner, offer.definition(), offer.expedition(), admitted, now);
+        quota.enlisted(offer.expedition(), enlisted, admitted);
         if (enlisted.sessionId() == 0L || enlisted.accepted().isEmpty()) {
             log.info("boss sign-up {} for owner {}: nobody enlisted, refused {}", key, ownerId, enlisted.refused());
             return;
@@ -802,6 +823,27 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * P8, on the run's tick, from memory: the member went into the fight. A companion this run allowed for a boss with
+     * a daily entry log (CompanionBossQuota: Zakum) has its entry logged on companion-ops, once; every other member
+     * (Easy Balrog's, one the stock count let in) hands nothing over.
+     */
+    @Override
+    public void entered(Seat seat) {
+        if (quota.counts(seat)) {
+            world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
+        }
+    }
+
+    /**
+     * P8, the boss log's question (LivingWorldHooks.bossQuota, from memory, on the asking thread): TRUE for a
+     * companion this run allowed for {@code expedition} (its sign-up and the Start count and log nothing for it);
+     * null, the stock count and log, for everyone else (CompanionBossQuota.answer).
+     */
+    public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {
+        return quota.answer(characterId, expedition, logEntry);
+    }
+
+    /**
      * P7 Part B, on the run's tick, from memory: where a member waiting to sign up stands on the entry NPC's map, its
      * own spot beside her by its ordinal in the run (BossEntrance.spot), so a bench ally (which leads itself) walks up
      * to it. Null while the ally switch leaves the boss out, so Part A's sign-ups stay exactly as they were.
@@ -925,9 +967,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * and each owner's part of it is taken out, once; every bench ally of it still here says how it went and goes back
      * to its bench duty, a list that never started too. A run that started then writes one record per companion that
      * went in (an owner's part taken out here: a second end of the same run writes nothing), logs the potion line, and
-     * when it cleared each owner online hears one gg.
+     * when it cleared each owner online hears one gg. P8: the run's allowed daily entries are forgotten.
      */
     void finish(RunEnded ended) {
+        quota.runEnded(ended.sessionId());
         Set<Integer> owners = new LinkedHashSet<>();
         for (MemberResult member : ended.members()) {
             owners.add(member.enlistedBy());

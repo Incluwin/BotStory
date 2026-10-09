@@ -3,9 +3,14 @@ package server.living.roster;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
+import server.expeditions.ExpeditionBossLog;
+import server.expeditions.ExpeditionType;
+import server.living.LivingWorld;
 import server.living.roster.CompanionBossAllies.State;
+import testutil.BossLogDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -234,6 +240,72 @@ class CompanionBossAlliesCallTest {
         send("bryn");
         assertEquals(5, h.game.leases.count(CompanionLeases.Kind.EXPEDITION));
         assertEquals(5, h.bossRuns.expeditionPeak(), "every EXPEDITION lease held counts: the server's own peak");
+    }
+
+    // ---- P8 step 11: a bench ally's daily Zakum entry ------------------------------------------------------------
+
+    @Test
+    void aCappedAllyWhispersItWentInTodayAndNeverTravels() {
+        atAdobis();
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            db.counts.put(ORRIN, 1); // Orrin went in today
+
+            assertEquals(List.of("Orrin"), sendTo("zakum", "orrin"), "the picker cannot know: he is called");
+
+            assertNull(h.allies.trip("orrin"));
+            assertNull(h.game.leases.holder(ORRIN), "no lease taken");
+            assertEquals(List.of(), h.open.calls, "never enlisted");
+            assertNull(h.game.commitments.keyOf(ORRIN));
+            assertEquals(List.of(), h.game.timers, "no arrival");
+            assertEquals(List.of("count " + ORRIN + " ZAKUM"), db.statements, "the stock count, on companion-ops");
+            List<String> said = h.said("Orrin");
+            assertEquals(1, said.size(), h.whispers.toString());
+            assertTrue(isLine(BossRunLines.QUOTA, null, said.get(0)), h.whispers.toString());
+        }
+    }
+
+    @Test
+    void anAllyWithAnEntryLeftTravelsAndItsSignUpRunsNoJdbc() {
+        atAdobis();
+        try (BossLogDatabase db = new BossLogDatabase();
+             MockedStatic<LivingWorld> living = mockStatic(LivingWorld.class)) {
+            living.when(LivingWorld::get).thenReturn(h.game.world);
+            when(h.game.world.bossRuns()).thenReturn(h.bossRuns);
+
+            sendTo("zakum", "orrin");
+
+            assertEquals(State.TRAVELLING, h.allies.trip("orrin").state);
+            assertEquals(List.of("enlistSelfLed " + ANN + " [" + ORRIN + "]"), h.open.calls);
+            assertEquals(List.of("count " + ORRIN + " ZAKUM"), db.statements);
+            db.clear();
+            // At Adobis, his sign-up runs inside the NPC script: answered from memory.
+            assertTrue(ExpeditionBossLog.attemptBoss(ORRIN, BossAllyHarness.CHANNEL, h.expedition, false));
+            assertEquals(0, db.connections());
+        }
+    }
+
+    @Test
+    void easyBalrogAlliesAreNeverCounted() {
+        try (BossLogDatabase db = new BossLogDatabase()) {
+            send("orrin");
+
+            assertEquals(State.TRAVELLING, h.allies.trip("orrin").state);
+            assertEquals(0, db.connections(), "Easy Balrog keeps no entry log");
+        }
+    }
+
+    /** Ann leads a Zakum list at Adobis instead, both switches listing zakum; the list closes in 30 min. */
+    private void atAdobis() {
+        h.game.config.COMPANION_BOSS_ENABLED_TYPES = "zakum";
+        h.game.config.COMPANION_BOSS_ALLY_TYPES = "zakum";
+        when(h.game.ann.getClient().getChannelServer().getExpedition(ExpeditionType.ZAKUM)).thenReturn(h.expedition);
+        when(h.expedition.getType()).thenReturn(ExpeditionType.ZAKUM);
+        when(h.expedition.getMaxSize()).thenReturn(ExpeditionType.ZAKUM.getMaxSize());
+        h.closesIn(1_800_000L);
+    }
+
+    private List<String> sendTo(String bossKey, String... personaIds) {
+        return h.allies.send(h.game.ann, bossKey, List.of(personaIds), h.now);
     }
 
     private List<String> send(String... personaIds) {

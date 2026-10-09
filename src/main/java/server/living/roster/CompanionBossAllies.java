@@ -300,6 +300,8 @@ final class CompanionBossAllies {
     private final Map<String, CompanionBossRun> runs;
     private final Ports ports;
     private final LongSupplier clock;
+    /** P8: the companions' daily boss entries (Zakum): asked on companion-ops before an ally is enlisted. */
+    private final CompanionBossQuota quota;
     /** Persona id -> its trip; one trip per persona. Reserved under this object's lock, moved on companion-ops. */
     private final Map<String, Trip> trips = new ConcurrentHashMap<>();
     /** Run key -> that owner's party of allies in the run, as formed here; companion-ops only. */
@@ -325,17 +327,30 @@ final class CompanionBossAllies {
         }
     }
 
-    CompanionBossAllies(LivingWorld world, CompanionBossRuns.OpenRuns open, Map<String, CompanionBossRun> runs) {
-        this(world, open, runs, Ports.LIVE, System::currentTimeMillis);
+    CompanionBossAllies(LivingWorld world, CompanionBossRuns.OpenRuns open, Map<String, CompanionBossRun> runs,
+                        CompanionBossQuota quota) {
+        this(world, open, runs, quota, Ports.LIVE, System::currentTimeMillis);
+    }
+
+    /** A test's allies: their game and clock faked, the daily entries the boss log's own (CompanionBossQuota.Ports). */
+    CompanionBossAllies(LivingWorld world, CompanionBossRuns.OpenRuns open, Map<String, CompanionBossRun> runs,
+                        Ports ports, LongSupplier clock) {
+        this(world, open, runs, new CompanionBossQuota(open), ports, clock);
     }
 
     CompanionBossAllies(LivingWorld world, CompanionBossRuns.OpenRuns open, Map<String, CompanionBossRun> runs,
-                        Ports ports, LongSupplier clock) {
+                        CompanionBossQuota quota, Ports ports, LongSupplier clock) {
         this.world = world;
         this.open = open;
         this.runs = runs;
+        this.quota = quota;
         this.ports = ports;
         this.clock = clock;
+    }
+
+    /** The companions' daily boss entries these calls ask before an ally is enlisted (CompanionBossRuns' too). */
+    CompanionBossQuota quota() {
+        return quota;
     }
 
     /** True while {@code personaId} has a trip, in any state (memory, any thread): bench duty and its ledger wait. */
@@ -577,6 +592,8 @@ final class CompanionBossAllies {
      * denial changes nothing and the ally whispers there is no room; then its live slice ends, its EXPEDITION lease is
      * taken, it is enlisted in the run as a member that leads itself, and it is committed under its owner's run key.
      * It whispers its recall ETA and arrives at that ETA plus a stagger. Any later failure undoes, last step first.
+     * P8: for a boss with a daily entry log (Zakum), an ally with no entry left today (CompanionBossQuota, asked once
+     * its character is known) whispers so and does not travel: no lease, no enlist.
      */
     void call(Trip trip) {
         if (trips.get(trip.personaId) != trip || trip.state != State.CALLING) {
@@ -607,12 +624,19 @@ final class CompanionBossAllies {
             world.benchDuty().endFor(persona.id(), CALLED);
             int id = world.residents().ensureCharacter(persona);
             trip.characterId = id;
+            if (id != 0 && !quota.admit(context.definition(), trip.expedition, id)) {
+                log.info("boss ally call of {} for owner {} undone: no entry left today", persona.id(), trip.ownerId);
+                undo(trip);
+                whisper(trip, persona, BossRunLines.QUOTA, null);
+                return;
+            }
             if (id == 0 || !world.leases().tryAcquire(id, CompanionLeases.Kind.EXPEDITION, trip.ownerId)) {
                 cantCome(trip, persona, "its lease is held");
                 return;
             }
             peak.accumulateAndGet(world.leases().count(CompanionLeases.Kind.EXPEDITION), Math::max);
             Enlisted enlisted = open.enlistSelfLed(owner, context.definition(), trip.expedition, List.of(id), now);
+            quota.enlisted(trip.expedition, enlisted, List.of(id));
             if (enlisted.sessionId() == 0L || !enlisted.accepted().contains(id)) {
                 cantCome(trip, persona, "the run refused it");
                 return;

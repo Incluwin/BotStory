@@ -647,6 +647,7 @@ public final class AgentBossRunSession {
                 }
                 fight.adopt(agentId, member.ordinal());
                 member.adopted();
+                host.entered(member.seat(definition.key(), sessionId));
                 log.info("Boss run member inside: session={} boss={} member={} ordinal={}", sessionId,
                         definition.key(), agentId, member.ordinal());
                 return;
