@@ -62,6 +62,11 @@ class CompanionRestockTest {
     private static final int PAPULATUS_GATE = 220_080_000;
     private static final int HENESYS = 100_000_000;
     private static final int HENESYS_PARK = 100_000_200;
+    /** Adobis's room behind the Door to Zakum: no shop in reach, and no route leads back into it (P8). */
+    private static final int ADOBIS_ROOM = 211_042_400;
+    private static final int MU_YOUNGS_ROOM = 105_100_100;
+    /** Ice Valley II, Glibber's field on the way to the door. */
+    private static final int ICE_VALLEY_II = 211_040_200;
     /** Kerning City is KPQ's desk: a companion there keeps KPQ's standard. */
     private static final AgentSupplyReadiness.Activity KPQ = AgentSupplyReadiness.Activity.partyQuest("kpq");
     private static final AgentSupplyReadiness.Activity LPQ = AgentSupplyReadiness.Activity.partyQuest("lpq");
@@ -192,6 +197,58 @@ class CompanionRestockTest {
         assertFalse(restock.restocksFrom(FENNA, PAPULATUS_GATE),
                 "a boss gate keeps its no-shop line: restocking before bosses is P7's");
         assertTrue(restock.restocksFrom(FENNA, KERNING));
+    }
+
+    @Test
+    void adobissRoomHoldsATripOnlyWhileTheSwitchListsZakum() {
+        when(world.bossRuns()).thenReturn(new CompanionBossRuns(world));
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+        assertFalse(restock.restocksFrom(FENNA, ADOBIS_ROOM),
+                "no shop in reach and no way back in: even a critical trip stays (it only asks the party)");
+        assertTrue(restock.restocksFrom(FENNA, MU_YOUNGS_ROOM), "Mu Young's room is unchanged");
+        assertTrue(restock.restocksFrom(FENNA, ICE_VALLEY_II), "Glibber's field is the way there, not the room");
+        assertTrue(restock.restocksFrom(FENNA, KERNING));
+        assertFalse(restock.restocksFrom(FENNA, PAPULATUS_GATE), "a boss gate stays a boss gate");
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertTrue(restock.restocksFrom(FENNA, ADOBIS_ROOM), "the switch off: as before P8");
+        assertTrue(restock.restocksFrom(FENNA, MU_YOUNGS_ROOM));
+        config.COMPANION_BOSS_ENABLED_TYPES = "";
+        assertTrue(restock.restocksFrom(FENNA, ADOBIS_ROOM));
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+        when(world.bossRuns()).thenReturn(null);
+        assertTrue(restock.restocksFrom(FENNA, ADOBIS_ROOM), "no boss runs");
+        assertFalse(restock.restocksFrom(FENNA, PAPULATUS_GATE));
+    }
+
+    @Test
+    void inARoomThatHoldsTripsACompanionShortOfTheBossStandardSaysThereIsNoShop() {
+        // P8: the hold keeps it from setting off, so its own NO_SUPPLIER refusal (and its line) never comes
+        AgentSupplyReadiness.Activity zakum = AgentSupplyReadiness.Activity.partyQuest("zakum");
+        when(fenna.getMapId()).thenReturn(ADOBIS_ROOM);
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(FENNA);
+        when(member.isBot()).thenReturn(true);
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(member));
+        when(ann.getParty()).thenReturn(party);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            // 300 HP / 300 MP potions: plenty for a party quest, short of Zakum's 500/400
+            readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                    any(AgentSupplyReadiness.Activity.class))).thenAnswer(inv -> zakum.equals(inv.getArgument(1))
+                    ? new AgentSupplyReadiness.Shortfall(200, 100) : AgentSupplyReadiness.Shortfall.NONE);
+            restock.bossGate(ANN, ADOBIS_ROOM);
+            assertEquals(List.of(), said, "measured against the party quest standard: nothing short");
+
+            restock.bossGate(ANN, ADOBIS_ROOM, zakum);
+            restock.bossGate(ANN, ADOBIS_ROOM, zakum);
+        }
+        assertEquals(1, said.size(), "the no-shop line, once in the window: " + said);
+        assertTrue(CompanionRestockLines.GENERIC.get(CompanionRestockLines.NO_SHOP).contains(said.getFirst()),
+                said.toString());
     }
 
     @Test

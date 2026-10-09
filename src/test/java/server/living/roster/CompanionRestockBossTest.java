@@ -40,6 +40,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.HENESYS;
@@ -57,6 +59,8 @@ class CompanionRestockBossTest {
     private static final int MU_YOUNGS_ROOM = 105_100_100;
     /** On the walk down from Sleepywood: a hunting field with the 24 Hr Mobile Store on it (fix L7). */
     private static final int ANT_TUNNEL_PARK = 105_070_001;
+    /** Adobis's room behind the Door to Zakum: its entrance holds a companion's trip out while zakum is on (P8). */
+    private static final int ADOBIS_ROOM = 211_042_400;
     private static final AgentSupplyReadiness.Activity EASY_BALROG =
             AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
 
@@ -336,6 +340,35 @@ class CompanionRestockBossTest {
             game.config.COMPANION_BOSS_ENABLED_TYPES = "";
             runs.ownerArrived(ANN, MU_YOUNGS_ROOM);
             assertEquals(List.of(), checkedSoon, "the switch off");
+        }
+
+        @Test
+        void inAdobissRoomHerShortCompanionsSayThereIsNoShopInsteadOfLookingForOne() {
+            // P8: no trip leaves that room while zakum is on (CompanionRestock.restocksFrom), so a look would find
+            // nothing to do and its own no-shop refusal never comes: the readiness rule says the line at once
+            CompanionRestock restock = mock(CompanionRestock.class);
+            when(game.world.restock()).thenReturn(restock);
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+
+            runs.ownerArrived(ANN, ADOBIS_ROOM);
+
+            verify(restock).bossGate(ANN, ADOBIS_ROOM, AgentSupplyReadiness.Activity.partyQuest("zakum"));
+            assertEquals(List.of(), checkedSoon, "nobody looks for a shop it may not walk to");
+
+            runs.ownerArrived(ANN, MU_YOUNGS_ROOM);
+            assertEquals(List.of(THANE, SORREL), checkedSoon, "Mu Young's room as before");
+            verifyNoMoreInteractions(restock);
+
+            checkedSoon.clear();
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+            runs.ownerArrived(ANN, ADOBIS_ROOM);
+            assertEquals(List.of(), checkedSoon, "the switch off");
+            verifyNoMoreInteractions(restock);
+
+            game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+            when(game.world.restock()).thenReturn(null);
+            runs.ownerArrived(ANN, ADOBIS_ROOM); // the readiness rule not running: nothing to say it with
+            assertEquals(List.of(), checkedSoon);
         }
 
         @Test

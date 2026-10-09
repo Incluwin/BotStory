@@ -120,12 +120,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     /**
-     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS): it keeps its no-shop line, and the companion stays put
-     * however short it is (a critical request only asks the party). Memory only.
+     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS), nor from a boss's entry NPC room that holds its trips
+     * while the switch lists that boss (CompanionBossRuns.holdsTripsAt: Adobis's room for Zakum, P8, where no shop is in
+     * reach and no route leads back in): it keeps its no-shop line, and the companion stays put however short it is (a
+     * critical request only asks the party). Memory only.
      */
     @Override
     public boolean restocksFrom(int agentCharacterId, int mapId) {
-        return !world.config().companionRestockBossMap(mapId);
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return !world.config().companionRestockBossMap(mapId) && (bossRuns == null || !bossRuns.holdsTripsAt(mapId));
     }
 
     /**
@@ -273,6 +276,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * Entry is never held up.
      */
     void bossGate(int ownerId, int mapId) {
+        bossGate(ownerId, mapId, AgentSupplyReadiness.Activity.PARTY_QUEST);
+    }
+
+    /**
+     * {@link #bossGate(int, int)} measured against {@code activity}'s standard: a boss's entry NPC room that holds its
+     * companions' trips (CompanionBossRuns.ownerArrived, Adobis's room for Zakum, P8), where none can set off for the
+     * boss's standard and so never hears its own no-shop refusal.
+     */
+    void bossGate(int ownerId, int mapId, AgentSupplyReadiness.Activity activity) {
         Character owner = world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
@@ -287,8 +299,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                     || bot.getMapId() != mapId && !AgentModeStateRuntime.following(runtime)) {
                 continue;
             }
-            AgentSupplyReadiness.Shortfall lacking =
-                    AgentSupplyReadiness.shortfall(bot, AgentSupplyReadiness.Activity.PARTY_QUEST);
+            AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(bot, activity);
             if (!lacking.none()
                     && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
                 if (lacking.potionsNone()) {

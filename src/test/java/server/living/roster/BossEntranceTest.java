@@ -1,8 +1,10 @@
 package server.living.roster;
 
+import config.LivingWorldConfig;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.life.NPC;
+import server.living.LivingWorld;
 import server.maps.GenericPortal;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -32,7 +34,9 @@ import static org.mockito.Mockito.when;
  * for each next one, on the ground below. A bench ally (Part B) comes in at the top of her stairs, where players
  * coming down land (top00), and leaves by the room's way out to Perion (outPerrion). P8: Zakum's entrance is Adobis's
  * room behind the Door to Zakum (211042400); its companions top up at Glibber on Ice Valley II (211040200) on the way,
- * and allies come in and leave by west00, the way to the door.
+ * and allies come in and leave by west00, the way to the door. While the switch lists zakum, Ice Valley II keeps
+ * Zakum's standard and Adobis's room holds a companion's trip out (CompanionBossRuns.holdsTripsAt); with it off,
+ * neither does, and Easy Balrog's maps keep what they had.
  */
 class BossEntranceTest {
     private static final int MU_YOUNG = 1061014;
@@ -131,6 +135,34 @@ class BossEntranceTest {
         assertNull(BossEntrance.atApproachMap(211042400), "Adobis's room is the entrance, not its approach");
         assertNull(BossEntrance.atApproachMap(211000000), "El Nath town is not the approach");
         assertEquals(2030009, BossEntrance.ZAKUM.approachStoreNpcId(), "Glibber on Ice Valley II");
+    }
+
+    @Test
+    void iceValleyTwoKeepsZakumsStandardAndAdobissRoomHoldsTripsOnlyWhileTheSwitchListsZakum() {
+        LivingWorld world = mock(LivingWorld.class);
+        LivingWorldConfig config = new LivingWorldConfig();
+        when(world.config()).thenReturn(config);
+        CompanionBossRuns runs = new CompanionBossRuns(world);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";
+        assertEquals("zakum", runs.approachKeyAt(211040200), "Glibber's field on the way");
+        assertEquals("zakum", runs.restockKeyAt(211042400), "Adobis's room");
+        assertTrue(runs.holdsTripsAt(211042400), "no trip leaves Adobis's room");
+        assertFalse(runs.holdsTripsAt(211040200), "Ice Valley II is the approach: its store is right there");
+        assertFalse(runs.holdsTripsAt(211042300), "the Door to Zakum is no entrance");
+        assertEquals("easy_balrog", runs.approachKeyAt(105070001), "Ant Tunnel Park unchanged");
+        assertFalse(runs.holdsTripsAt(105100100), "a trip out of Mu Young's room stays as it is");
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertNull(runs.approachKeyAt(211040200), "the switch off");
+        assertNull(runs.restockKeyAt(211042400));
+        assertFalse(runs.holdsTripsAt(211042400), "the switch off: no hold");
+        assertEquals("easy_balrog", runs.approachKeyAt(105070001));
+        assertEquals("easy_balrog", runs.restockKeyAt(105100100));
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "zakum";
+        assertNull(runs.approachKeyAt(105070001), "Easy Balrog's own switch");
+        assertTrue(runs.holdsTripsAt(211042400));
     }
 
     @Test

@@ -688,15 +688,35 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * True on a boss's entry NPC room whose entrance holds a companion's potion trips there
+     * (BossEntrance.holdsTripsAtEntry: Adobis's, 211042400, for Zakum, where no shop is in reach and no route leads back
+     * in) while the switch lists that boss ({@link #restockKeyAt}); false anywhere else, in Mu Young's room and with the
+     * switch off. Memory only, any thread (CompanionRestock.restocksFrom asks it, P8).
+     */
+    boolean holdsTripsAt(int mapId) {
+        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
+        return entrance != null && entrance.holdsTripsAtEntry() && restockKeyAt(mapId) != null;
+    }
+
+    /**
      * On companion-ops: the owner came into a boss's entry NPC room ({@code mapId}, RosterService.ownerEnteredMap).
      * Each companion of theirs in their party that is short of that boss's potion standard looks at its potions on its
      * next tick instead of its next check, so one that can reach a shop sets off (and says when it will be back), and
-     * one that cannot says there is no shop out here, before it is asked to sign up. First, a bench ally of theirs down
-     * from the fight and waiting there says goodbye and goes back to its bench duty (CompanionBossAllies).
+     * one that cannot says there is no shop out here, before it is asked to sign up. In a room that holds its trips
+     * ({@link #holdsTripsAt}: Adobis's, P8) none can set off, so its own no-shop refusal never comes: the readiness rule
+     * has each one short of the boss's standard say so at once instead (CompanionRestock.bossGate). First, a bench ally
+     * of theirs down from the fight and waiting there says goodbye and goes back to its bench duty (CompanionBossAllies).
      */
     void ownerArrived(int ownerId, int mapId) {
         allies.ownerArrived(ownerId, mapId);
         String bossKey = restockKeyAt(mapId);
+        if (bossKey != null && holdsTripsAt(mapId)) {
+            CompanionRestock restock = world.restock();
+            if (restock != null) {
+                restock.bossGate(ownerId, mapId, AgentSupplyReadiness.Activity.partyQuest(bossKey));
+            }
+            return;
+        }
         Character owner = bossKey == null ? null : world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
