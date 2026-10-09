@@ -29,10 +29,13 @@ import server.living.quest.BossGearPlanner.Wearer;
 import server.living.quest.FriendForge;
 import server.living.quest.FriendForge.Catalog;
 import server.living.roster.CompanionDirectory.Relation;
+import server.living.roster.OwnGearRefit.Move;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.RosterState;
+import server.living.store.LivingStore.WearStats;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
 /**
@@ -59,9 +63,10 @@ import java.util.function.IntPredicate;
  *
  * <p>A kit stays with the GM's own test crew: {@code remove} ({@link #remove}) takes every boss piece back from the GM
  * or one of their own companions out with them, and RosterService takes it off any companion it lets go (owner,
- * contract end, owner deleted, the inactivity sweep) as the release unloads it ({@link #takeBossGear} on a loaded one,
- * {@link #takeStoredBossGear} on one nothing has loaded), so no later owner and no Resident at home gets it. Only the
- * pieces tagged {@value BossGearPlanner#OWNER_TAG} go.</p>
+ * contract end, owner deleted, the inactivity sweep) as the release unloads it ({@link #takeBossGearOnRelease} on a
+ * loaded one, {@link #takeStoredBossGear} on one nothing has loaded), so no later owner and no Resident at home gets it;
+ * it wears its own carried gear again where a boss piece left a slot empty (OwnGearRefit). Only the pieces tagged
+ * {@value BossGearPlanner#OWNER_TAG} go.</p>
  */
 public final class CompanionGearTool {
     public static final long ANSWER_TIMEOUT_MS = 10_000L;
@@ -464,9 +469,10 @@ public final class CompanionGearTool {
     /**
      * Takes every boss piece off {@code chr}, worn and carried, and nothing else: a piece is boss gear by its tag alone
      * ({@link #bossPiece}), so its own quest gear, a gift, loot and what it wore before all stay. A worn piece leaves its
-     * slot empty (its look and stats follow while it stands on a map) for the Agent gear optimizer, its quest kit or its
-     * wardrobe to dress again. Not saved here. Only where the inventory is safely writable: the companion's own
-     * mailbox, companion-ops once nothing ticks it, the GM's own command. How many pieces left it.
+     * slot empty (its look and stats follow while it stands on a map) for the Agent gear optimizer ({@link #removeKit})
+     * or its own carried gear ({@link #takeBossGearOnRelease}) to dress again. Not saved here. Only where the inventory
+     * is safely writable: the companion's own mailbox, companion-ops once nothing ticks it, the GM's own command. How
+     * many pieces left it.
      */
     static int takeBossGear(Character chr) {
         int taken = 0;
@@ -500,8 +506,75 @@ public final class CompanionGearTool {
     }
 
     /**
+     * A released companion's strip (RosterService, on companion-ops once nothing ticks it): its boss gear comes off
+     * ({@link #takeBossGear}), and each slot a boss piece left empty takes its own carried piece back
+     * ({@link OwnGearRefit}: what the kit swapped into its bag, such as its own shield), never a new one. Not saved
+     * here. How many boss pieces left it.
+     */
+    static int takeBossGearOnRelease(Character chr) {
+        Map<Short, Integer> taken = new HashMap<>();
+        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
+            if (bossPiece(item)) {
+                taken.put(item.getPosition(), item.getItemId());
+            }
+        }
+        int count = takeBossGear(chr);
+        if (!taken.isEmpty()) {
+            try {
+                wearOwnGear(chr, taken);
+            } catch (RuntimeException failure) {
+                log.warn("bossgear: {} did not put its own gear back on", chr.getName(), failure);
+            }
+        }
+        return count;
+    }
+
+    private static void wearOwnGear(Character chr, Map<Short, Integer> taken) {
+        Map<Short, Item> worn = new HashMap<>();
+        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
+            worn.put(item.getPosition(), item);
+        }
+        WearStats wearer = chr.getJob() == null ? null : new WearStats(chr.getJob().getId(), chr.getLevel(),
+                chr.getGender(), chr.getStr(), chr.getDex(), chr.getInt(), chr.getLuk(), chr.getFame());
+        boolean straight = false;
+        Collection<Item> carried = chr.getInventory(InventoryType.EQUIP).list();
+        for (Move move : OwnGearRefit.plan(wearer, taken, worn, carried, facts())) {
+            straight |= wear(chr, move.piece(), move.slot());
+        }
+        if (straight && chr.getMap() != null) {
+            chr.equipChanged();
+        }
+    }
+
+    /**
+     * Onto its worn slot the way the game equips (its client hears of it; the game's own wear check runs again), or for
+     * a character with no client of its own straight in. True when it went straight in.
+     */
+    private static boolean wear(Character chr, Item piece, short slot) {
+        Client client = chr.getClient();
+        if (client != null && client.getPlayer() == chr) {
+            InventoryManipulator.equip(client, piece.getPosition(), slot);
+            return false;
+        }
+        chr.getInventory(InventoryType.EQUIP).removeSlot(piece.getPosition());
+        piece.setPosition(slot);
+        if (piece instanceof Equip equip) {
+            chr.equippedItem(equip);
+        }
+        chr.getInventory(InventoryType.EQUIPPED).addItemFromDB(piece);
+        return true;
+    }
+
+    /** Item facts from the server knowledge published now; a piece it has no fact for never moves. */
+    private static IntFunction<ItemFact> facts() {
+        WorldKnowledge k = WorldKnowledge.current();
+        return id -> k.item(id).orElse(null);
+    }
+
+    /**
      * Takes every boss piece out of the saved inventory of a character nothing has loaded (a released companion's),
-     * under the maintenance lock offline loads hold (CosmicAgentOfflineLoader), so no load reads it half-written. One
+     * under the maintenance lock offline loads hold (CosmicAgentOfflineLoader), so no load reads it half-written; in
+     * the same rewrite each slot a boss piece left empty takes its own carried piece back ({@link OwnGearRefit}). One
      * {@code online} now (loaded for anything, registered as an Agent or not) saves its own inventory over the store, so
      * it is left alone. How many pieces left it; -1 when it is online or the store failed (nothing changed).
      */
@@ -510,7 +583,26 @@ public final class CompanionGearTool {
             return 0;
         }
         try (var ignored = AgentCharacterMaintenanceRuntime.acquire(characterId)) {
-            return online.test(characterId) ? -1 : store.dropStoredItems(characterId, CompanionGearTool::bossPiece);
+            return online.test(characterId) ? -1 : store.dropStoredItems(characterId, CompanionGearTool::bossPiece,
+                    (takenWorn, worn, carried) -> redressStored(store, characterId, takenWorn, worn, carried));
+        }
+    }
+
+    /** The stored rewrite's re-dress: each carried piece that goes back on takes its worn slot as its position. */
+    private static void redressStored(LivingStore store, int characterId, List<Item> takenWorn, List<Item> worn,
+                                      List<Item> carried) {
+        if (takenWorn.isEmpty()) {
+            return;
+        }
+        try {
+            Map<Short, Integer> taken = new HashMap<>();
+            takenWorn.forEach(item -> taken.put(item.getPosition(), item.getItemId()));
+            Map<Short, Item> wearing = new HashMap<>();
+            worn.forEach(item -> wearing.put(item.getPosition(), item));
+            List<Move> moves = OwnGearRefit.plan(store.wearStats(characterId), taken, wearing, carried, facts());
+            moves.forEach(move -> move.piece().setPosition(move.slot()));
+        } catch (RuntimeException failure) {
+            log.warn("bossgear: character {} did not put its own gear back on", characterId, failure);
         }
     }
 

@@ -3170,7 +3170,10 @@ public final class RosterService {
     /**
      * Saves the companion and takes it off the server as a player logging off, with its COMPANION lease. {@code
      * leaveParty}: it leaves its party first; else it stays in it as an offline member (the stock log-off, under the
-     * caller's cause token).
+     * caller's cause token). The lease goes only once it has logged off, whose save is in the store then (as
+     * ResidentRuntime.standby and BenchDutyDispatcher.unload): a released companion is nobody's while it walks out,
+     * so a Resident tick or a citizen session could load it in between from a store that still holds its old kit. A
+     * log-off that fails still gives the lease back.
      */
     private void unload(RosterEntry entry, String reason, boolean leaveParty) {
         leaving.remove(entry.personaId()); // a walk-out in progress ends here
@@ -3188,10 +3191,16 @@ public final class RosterService {
             if (released) {
                 takeBossGearOff(entry, bot, characterId); // nothing ticks it now, and it keeps its lease meanwhile
             }
-            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
         }
-        if (bot != null && bot.getClient() != null) {
-            bot.getClient().forceDisconnect();
+        try {
+            if (bot != null && bot.getClient() != null) {
+                bot.getClient().forceDisconnect(); // the unload saves it in full (Client.disconnectInternal)
+            }
+        } finally {
+            if (characterId != 0) {
+                // saved first, so the next load sees it
+                world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+            }
         }
         log.info("companion {} despawned: {}", entry.personaId(), reason);
     }
@@ -3201,14 +3210,15 @@ public final class RosterService {
      * unloads it, every piece tagged as boss gear leaves it, worn and carried, and nothing else does. Loaded, they come
      * off right here on companion-ops (out of the registry, nothing ticks it) and it is saved; its unload then saves it
      * in full. Not loaded, they leave its saved inventory, unless its character is online now (it saves its own over
-     * the store). Its kit, wardrobe or gear optimizer dresses the empty slots at its next load. Never in the way of the
-     * release: a failure is logged.
+     * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: what
+     * the kit swapped into its bag, such as its own shield), since no load path dresses a carried shield again. Never
+     * in the way of the release: a failure is logged.
      */
     private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
         try {
             int taken;
             if (bot != null) {
-                taken = CompanionGearTool.takeBossGear(bot);
+                taken = CompanionGearTool.takeBossGearOnRelease(bot);
                 if (taken > 0) {
                     bot.saveCharToDB();
                 }

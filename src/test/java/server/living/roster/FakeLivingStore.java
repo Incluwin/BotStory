@@ -41,7 +41,8 @@ import static org.mockito.Mockito.when;
  * runs and clears in an activity), and fails as the database would while {@link #performanceUnreadable} or
  * {@link #performanceUnwritable}. pq_run_pace is {@link #paces} (savePqRunPace appends with the next id; pqRunPaces
  * reads a quest's epoch newest first, up to its limit), failing while {@link #pacesUnreadable} or
- * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems}.
+ * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems} (a position
+ * below 0 is worn, above 0 in the Equip tab) and lets its redress move carried ones onto worn slots first.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -325,14 +326,19 @@ final class FakeLivingStore {
         when(store.worldFlags()).thenAnswer(inv -> new java.util.LinkedHashSet<>(flags.keySet()));
         doAnswer(inv -> flags.putIfAbsent(inv.getArgument(0), inv.getArgument(1))).when(store).setWorldFlag(anyString(), anyInt());
         doAnswer(inv -> flags.remove((String) inv.getArgument(0))).when(store).clearWorldFlag(anyString());
-        when(store.dropStoredItems(anyInt(), any())).thenAnswer(inv -> {
+        when(store.dropStoredItems(anyInt(), any(), any())).thenAnswer(inv -> {
             List<client.inventory.Item> items = storedItems.get((int) inv.getArgument(0));
             java.util.function.Predicate<client.inventory.Item> drop = inv.getArgument(1);
             if (items == null || items.stream().noneMatch(drop)) {
                 return 0;
             }
             int before = items.size();
+            List<client.inventory.Item> takenWorn = items.stream()
+                    .filter(item -> drop.test(item) && item.getPosition() < 0).toList();
             items.removeIf(drop);
+            LivingStore.Redress redress = inv.getArgument(2);
+            redress.apply(takenWorn, items.stream().filter(item -> item.getPosition() < 0).toList(),
+                    items.stream().filter(item -> item.getPosition() > 0).toList());
             storedWrites.add(inv.getArgument(0));
             return before - items.size();
         });
