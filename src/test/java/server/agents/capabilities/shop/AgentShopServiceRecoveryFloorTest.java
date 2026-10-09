@@ -16,6 +16,8 @@ import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.capabilities.supplies.AgentSupplyReadinessRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.ShopGateway;
@@ -23,6 +25,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import testutil.Items;
 
 import java.awt.Point;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +50,8 @@ import static org.mockito.Mockito.when;
  */
 class AgentShopServiceRecoveryFloorTest {
     private static final int RED = 2_000_000;
+    /** Fried Chicken: 200 HP for 220 mesos at Ant Tunnel Park's store too (102-shopitems-data.sql). */
+    private static final int FRIED_CHICKEN = 2_020_001;
     private static final int WHITE = 2_000_002;
     private static final int BLUE = 2_000_003;
     private static final int PURE_WATER = 2_022_000;
@@ -75,11 +80,13 @@ class AgentShopServiceRecoveryFloorTest {
         effects.put(BLUE, effect(0, 100));
         effects.put(PURE_WATER, effect(0, 800));
         effects.put(UNAGI, effect(1_000, 0));
+        effects.put(FRIED_CHICKEN, effect(200, 0));
         prices.put(RED, 50);
         prices.put(WHITE, 320);
         prices.put(BLUE, 200);
         prices.put(PURE_WATER, 1_650);
         prices.put(UNAGI, 1_100);
+        prices.put(FRIED_CHICKEN, 220);
         ingrid = mock(Character.class);
         when(ingrid.getId()).thenReturn(1_009);
         when(ingrid.getJob()).thenReturn(client.Job.DRAGONKNIGHT);
@@ -185,6 +192,52 @@ class AgentShopServiceRecoveryFloorTest {
         assertEquals(80, AgentPotionService.countPotions(ingrid)[1]);
     }
 
+    /**
+     * Review fix (2026-10-09): at the last free Use slot, with no room on its Unagi stack, the counter buys the points
+     * gap onto the carried stack of a weaker potion the store sells (Fried Chicken, 200 HP), so the trip's gate counts
+     * the gap in that potion. 20,000 HP is 20 Unagi, but 100 Fried Chicken, and the chicken stack has 50 places: the gate
+     * asks for a slot past them and the run's one, so the trip does not go (NO_SPACE). Before, it counted 20 Unagi onto
+     * those 50 places, let the trip go, and the counter bought 50 and said the bag was full.
+     */
+    @Test
+    void atTheLastFreeSlotTheGateCountsTheGapInTheWeakerCarriedStackTheCounterBuysOnto() throws Exception {
+        carryIn(4, UNAGI, 100, FRIED_CHICKEN, 50, PURE_WATER, 40); // 110,000 HP of 130,000; one Use slot free
+        Shop store = shop(List.of(PURE_WATER, UNAGI, FRIED_CHICKEN));
+
+        assertEquals(2, useSlotsNeeded(store), "a slot for the 50 chicken past the stack's room, and the run's one");
+        assertTrue(use.getNumFreeSlot() < 2, "the trip does not go: NO_SPACE");
+
+        floor(store, false); // what the counter would have done
+        assertEquals(List.of("50 x " + FRIED_CHICKEN), transactions);
+        assertEquals(new AgentSupplyReadiness.Shortfall(10_000, 0, 0),
+                AgentSupplyReadiness.shortfall(ingrid, EASY_BALROG), "it would have come back short");
+    }
+
+    @Test
+    void atTheLastFreeSlotAGapTheCarriedStackHoldsGoesAndReachesTheStandard() throws Exception {
+        carryIn(5, UNAGI, 100, FRIED_CHICKEN, 100, FRIED_CHICKEN, 25, PURE_WATER, 40); // 125,000 HP; one slot free
+        Shop store = shop(List.of(PURE_WATER, UNAGI, FRIED_CHICKEN));
+
+        assertEquals(0, useSlotsNeeded(store), "25 chicken fit the 75 places of its stack");
+
+        floor(store, false);
+        assertEquals(List.of("25 x " + FRIED_CHICKEN), transactions);
+        assertTrue(AgentSupplyReadiness.shortfall(ingrid, EASY_BALROG).none(), "it reached the standard");
+        assertEquals(1, use.getNumFreeSlot(), "the run's slot stays free");
+    }
+
+    /** The readiness gate's real slot count for Ingrid's shortfall now (AgentSupplyReadinessRuntime.useSlotsNeeded). */
+    private int useSlotsNeeded(Shop shop) throws Exception {
+        Method gate = AgentSupplyReadinessRuntime.class.getDeclaredMethod("useSlotsNeeded", Character.class,
+                Shop.class, AgentSupplyReadiness.Activity.class, AgentSupplyReadiness.Shortfall.class, long.class);
+        gate.setAccessible(true);
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            return (int) gate.invoke(null, ingrid, shop, EASY_BALROG,
+                    AgentSupplyReadiness.shortfall(ingrid, EASY_BALROG), (long) purse);
+        }
+    }
+
     /** One readiness floor pass of a counter with no visit under way (AgentShopProvisioning's). */
     private AgentShopPurchaseSequence<AgentRuntimeEntry> floor(Shop shop, boolean topUp) {
         return AgentShopService.buyReadinessFloor(new AgentShopPurchaseSequence<>(null, ingrid, slotMax, new Point(),
@@ -193,7 +246,12 @@ class AgentShopServiceRecoveryFloorTest {
 
     /** Ingrid's Use tab of 24 slots holds these {item, count} stacks. */
     private void carry(int... stacks) {
-        use = new Inventory(ingrid, InventoryType.USE, (byte) 24);
+        carryIn(24, stacks);
+    }
+
+    /** Ingrid's Use tab of {@code slots} slots holds these {item, count} stacks. */
+    private void carryIn(int slots, int... stacks) {
+        use = new Inventory(ingrid, InventoryType.USE, (byte) slots);
         for (int i = 0; i + 1 < stacks.length; i += 2) {
             use.addItem(Items.itemWithQuantity(stacks[i], stacks[i + 1]));
         }

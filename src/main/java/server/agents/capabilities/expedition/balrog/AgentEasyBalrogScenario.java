@@ -2,14 +2,11 @@ package server.agents.capabilities.expedition.balrog;
 
 import client.BuffStat;
 import client.Character;
-import client.inventory.WeaponType;
 import client.status.MonsterStatus;
 import net.server.services.task.channel.ServerMobAutonomyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
-import server.agents.capabilities.combat.AgentAttackExecutionProvider;
-import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatPolicyDiagnostics;
 import server.agents.capabilities.expedition.AgentBossFight;
@@ -17,7 +14,7 @@ import server.agents.capabilities.expedition.AgentExpeditionPreparedMember;
 import server.agents.capabilities.expedition.AgentExpeditionScenario;
 import server.agents.capabilities.expedition.AgentExpeditionSpec;
 import server.agents.capabilities.looting.AgentLootEligibility;
-import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
+import server.agents.capabilities.supplies.AgentSupplyLogFields;
 import server.agents.field.AgentBalrogTestFixtureService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -621,24 +618,16 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         return maximum > 0 && (long) current * 100L <= (long) maximum * RECOVERY_THRESHOLD_PERCENT;
     }
 
-    /** HP, MP, Magic Guard, the potions it carries (HP/MP), a shooter's projectiles and noAmmo flag, and where. */
+    /**
+     * HP, MP, Magic Guard, the potions it carries (HP/MP), a shooter's projectiles and noAmmo flag
+     * (AgentSupplyLogFields), and where.
+     */
     private static String vitals(Character member) {
         return member.getName() + "=" + member.getHp() + '/' + member.getCurrentMaxHp()
                 + "hp," + member.getMp() + '/' + member.getCurrentMaxMp() + "mp"
                 + (member.getBuffedValue(BuffStat.MAGIC_GUARD) == null ? "" : ",MG")
-                + " pots=" + AgentPrimitiveCapabilityGatewayRuntime.gateway().hpPotionCount(member)
-                + '/' + AgentPrimitiveCapabilityGatewayRuntime.gateway().mpPotionCount(member)
-                + ammo(member)
+                + AgentSupplyLogFields.of(member)
                 + "@(" + member.getPosition().x + ',' + member.getPosition().y + ')';
-    }
-
-    /** " ammo=N noAmmo=B" for a bow, crossbow, claw or gun (the bag's count, whatever buff is up); else nothing. */
-    private static String ammo(Character member) {
-        WeaponType weapon = AgentAttackExecutionProvider.getEquippedWeaponType(member);
-        if (!AgentCombatAmmoCounter.isRangedAmmoWeapon(weapon)) return "";
-        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
-        return " ammo=" + AgentCombatAmmoCounter.countCarried(member, weapon)
-                + " noAmmo=" + (entry == null ? "?" : Boolean.toString(AgentAmmoStateRuntime.noAmmo(entry)));
     }
 
     private static String combatDecision(Character member, long nowMs) {

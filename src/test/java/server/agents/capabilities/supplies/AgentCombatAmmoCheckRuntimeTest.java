@@ -264,6 +264,44 @@ class AgentCombatAmmoCheckRuntimeTest {
         }
     }
 
+    /**
+     * Review fix (2026-10-09): a member already dry in Mu Young's room (a REGISTERED member is not inside the run yet,
+     * so its check set noAmmo there and logged nothing) logs its one line as it goes in, with its in-run dry line.
+     */
+    @Test
+    void aMemberThatGoesInAlreadyDryLogsOneLineInside() {
+        try (Scene scene = new Scene(WeaponType.GUN, 0);
+             LogLines lines = new LogLines(AgentCombatAmmoCheckRuntime.class)) {
+            scene.tick(); // registered in Mu Young's room: not inside yet
+            assertTrue(AgentAmmoStateRuntime.noAmmo(scene.entry));
+            assertEquals(List.of(), lines.startingWith("Agent out of ammo"));
+
+            scene.bossRun = true; // the warp in
+            scene.tick();
+            scene.tick();
+
+            assertEquals(List.of("Agent out of ammo in a run: agent=Flint id=77 map=922010700 weapon=GUN"),
+                    lines.startingWith("Agent out of ammo"));
+            assertEquals(1, scene.said.stream().filter(inRunLines("bullets")::contains).count(), scene.said.toString());
+        }
+    }
+
+    @Test
+    void aMemberOfARunThatSaysItsOwnDryLineStillLogsEachDryEpisodeOnce() {
+        try (Scene scene = new Scene(WeaponType.CLAW, 0);
+             LogLines lines = new LogLines(AgentCombatAmmoCheckRuntime.class)) {
+            scene.companionRun = true;
+            scene.ownsDryLine = true;
+
+            scene.tick();
+            scene.tick();
+
+            assertEquals(1, lines.startingWith("Agent out of ammo").size());
+            assertEquals(List.of(), scene.said.stream().filter(inRunLines("stars")::contains).toList(),
+                    "the run says it");
+        }
+    }
+
     @Test
     void aStockMemberThatRunsDryLogsNothing() {
         try (Scene scene = new Scene(WeaponType.CLAW, 0);

@@ -1648,6 +1648,32 @@ public final class AgentShopService {
     }
 
     /**
+     * The potion a points floor pass buys at the last free Use slot ({@link #recoveryFloorItem}): {@code recovery},
+     * what one of it restores for the bot, the potion the pass counts the gap in; {@code room}, the places left on the
+     * stacks of it carried, all the pass may buy of it beside the run's slot (AgentSupplyReadinessRuntime.useSlotsNeeded
+     * counts the gap in the same potion).
+     */
+    public record RecoveryFloorStack(int recovery, int room) {
+    }
+
+    /**
+     * {@link RecoveryFloorStack} of the HP (or MP) potion a points floor pass at {@code shop} buys with at most one Use
+     * slot free: the coverage pick, or with no room on its stacks the strongest carried stack of the kind this shop
+     * sells that has room. Null when the shop sells no potion of the kind.
+     */
+    public static RecoveryFloorStack recoveryFloorStack(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return null;
+        }
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
+        ShopSlotItem item = recoveryFloorItem(shop, bot, findPotionItem(shop, bot, forHp), forHp, inventory);
+        if (item == null || item.recovery == null || item.recovery.primary() <= 0) {
+            return null;
+        }
+        return new RecoveryFloorStack(item.recovery.primary(), stackRoom(bot, item.shopItem.getItemId(), inventory));
+    }
+
+    /**
      * How many of {@code item} a floor pass may buy and still leave free the Use slot a party quest keeps for its
      * items and rewards. A {@code standard} of at most one stack: no limit ({@link #floorItem} keeps that slot). A
      * larger one: the room of the stacks of it carried, and a full stack in every free slot but one (the slots its

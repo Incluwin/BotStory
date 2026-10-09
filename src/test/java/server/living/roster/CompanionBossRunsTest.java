@@ -14,6 +14,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.RunEnded;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
@@ -69,6 +70,9 @@ class CompanionBossRunsTest {
     private static final int ORRIN = 911;
     private static final int MAGNA = 912;
     private static final int GUNNAR = 913;
+    /** A friend of Ann's in her party (a second owner, COMPANION_BOSS_OWNERS_MAX above 1) and his party companion. */
+    private static final int BOB = 20;
+    private static final int BRANNOCK = 921;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final FakeRuns open = new FakeRuns();
@@ -302,6 +306,87 @@ class CompanionBossRunsTest {
         assertEquals(1, game.partyChat.stream()
                 .filter(line -> BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(line))).count(),
                 game.partyChat.toString());
+    }
+
+    @Test
+    void aPriestTheLeaderTakesOffTheListAfterTheSignedUpLineBringsTheWarningThen() {
+        healer(ISOLDE, 30);
+        allThreeSignUp();
+        assertEquals(1, game.partyChat.size(), "Isolde heals: no warning yet " + game.partyChat);
+
+        // live run 3: Isolde registered at 19:50:31, the last one at 19:51:32, and the leader took her off at 19:53:18
+        runs.refused(seat(ISOLDE), Refusal.BANNED);
+
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Isolde", BossRunLines.REFUSED_BANNED, game.partyChat.get(1));
+        String warning = game.partyChat.get(2);
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(warning)), warning);
+        assertTrue(warning.startsWith("Thane: ") || warning.startsWith("Sorrel: "), "one who goes in: " + warning);
+
+        runs.refused(seat(THANE), Refusal.BANNED);
+        assertEquals(1, game.partyChat.stream()
+                .filter(line -> BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(line))).count(),
+                "once: " + game.partyChat);
+    }
+
+    @Test
+    void aPartyThatSignsUpAfterItsBenchAlliesStillHearsTheWarning() {
+        healer(ISOLDE, 0);
+        ally();
+        runs.registered(seat(ORRIN)); // Ann called her bench first: Orrin whispers that they are all signed up
+        assertEquals(List.of(), game.partyChat);
+
+        open.waiting.add(SID + ":" + ANN); // then "My party will register too." for Thane and Sorrel
+        signUp(THANE);
+        open.waiting.clear();
+        signUp(SORREL);
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        String warning = game.partyChat.get(0);
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(warning)), warning);
+        assertTrue(warning.startsWith("Thane: ") || warning.startsWith("Sorrel: "), warning);
+    }
+
+    @Test
+    void aPriestOfAnotherOwnerInTheSamePartyCountsOnceHeSignsUp() {
+        game.config.COMPANION_BOSS_OWNERS_MAX = 2;
+        healer(ISOLDE, 0);
+        bobsPriestInAnnsParty(30);
+        open.waiting.add(SID + ":" + BOB); // Brannock still walks up to Mu Young
+        assertTrue(runs.seat(bobsSeat()));
+
+        open.waiting.add(SID + ":" + ANN);
+        signUp(ISOLDE, THANE);
+        open.waiting.remove(SID + ":" + ANN);
+        signUp(SORREL);
+        assertEquals(1, game.partyChat.size(), "no warning while Bob's Priest walks up: " + game.partyChat);
+        assertSays("Sorrel", BossRunLines.SIGNED_UP, game.partyChat.get(0));
+
+        open.waiting.remove(SID + ":" + BOB);
+        runs.registered(bobsSeat());
+
+        assertEquals(2, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Brannock", BossRunLines.SIGNED_UP, game.partyChat.get(1));
+    }
+
+    @Test
+    void twoOwnersInOnePartyWithNoHealUserHearOneWarning() {
+        game.config.COMPANION_BOSS_OWNERS_MAX = 2;
+        healer(ISOLDE, 0);
+        bobsPriestInAnnsParty(0);
+        open.waiting.add(SID + ":" + BOB);
+        assertTrue(runs.seat(bobsSeat()));
+        open.waiting.add(SID + ":" + ANN);
+        signUp(ISOLDE, THANE);
+        open.waiting.remove(SID + ":" + ANN);
+        signUp(SORREL);
+        open.waiting.remove(SID + ":" + BOB);
+        runs.registered(bobsSeat());
+
+        assertEquals(1, game.partyChat.stream()
+                .filter(line -> BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(line))).count(),
+                game.partyChat.toString());
+        assertEquals(3, game.partyChat.size(), "two signed-up lines and one warning: " + game.partyChat);
     }
 
     @Test
@@ -921,6 +1006,28 @@ class CompanionBossRunsTest {
     /** The loaded companion {@code id} knows Heal (Cleric.HEAL) at {@code level}; 0: it cannot cast it. */
     private void healer(int id, int level) {
         when(game.bots.get(id).getSkillLevel(Cleric.HEAL)).thenReturn(level);
+    }
+
+    /**
+     * Bob, a human friend of Ann's, in her party with his own party companion Brannock (Heal at {@code healLevel}),
+     * loaded beside them and following Bob.
+     */
+    private void bobsPriestInAnnsParty(int healLevel) {
+        Character bob = mock(Character.class);
+        when(bob.getId()).thenReturn(BOB);
+        when(bob.getName()).thenReturn("Bob");
+        when(bob.getParty()).thenReturn(game.party);
+        when(Server.getInstance().getWorld(0).getPlayerStorage().getCharacterById(BOB)).thenReturn(bob);
+        game.humans.add(BOB);
+        game.members.add(BOB);
+        Persona brannock = game.companionOf(BOB, "brannock", "Brannock", BRANNOCK, RosterState.ACTIVE, 105100100);
+        game.outWithAnn(brannock);
+        game.registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(BRANNOCK)).thenReturn(BOB);
+        healer(BRANNOCK, healLevel);
+    }
+
+    private static Seat bobsSeat() {
+        return new Seat("easy_balrog", SID, BRANNOCK, BOB);
     }
 
     /** Isolde and Thane sign up while Sorrel still walks up; then Sorrel signs up last, and nobody waits any more. */

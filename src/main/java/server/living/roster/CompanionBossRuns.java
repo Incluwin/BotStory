@@ -37,6 +37,7 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -866,13 +867,24 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * when it is 0, not loaded or a bench ally, another on the list) says they are all signed up, in the owner's party
      * when a companion of it is on the list; with only bench allies on it, one of them tells the owner where they hear
      * it (a party of bots has nobody to hear it). After Start it says nothing: the owner is on the way into the fight.
-     * In the owner's party, a warning that nobody heals may follow it ({@link #warnIfNoHealer}).
+     * Then, and at every later sign-up or refusal while the list is open (a party that signed up after its bench allies
+     * said it, a Heal user the leader took off the list), the owner's party is checked for a Heal user
+     * ({@link #warnIfNoHealer}).
      */
     private void allSignedUp(CompanionBossRun run, int speaker) {
-        if (run.signedUpSaid || run.signedUp.isEmpty() || !open.registering(run.sessionId)
-                || open.waiting(run.sessionId, run.ownerId) || allies.calling(run.ownerId)) {
+        if (!open.registering(run.sessionId) || open.waiting(run.sessionId, run.ownerId)
+                || allies.calling(run.ownerId)) {
             return;
         }
+        Character saidIt = run.signedUpSaid || run.signedUp.isEmpty() ? null : saySignedUp(run, speaker);
+        warnIfNoHealer(run, saidIt);
+    }
+
+    /**
+     * The signed-up line of {@link #allSignedUp}, once per owner; the party companion that said it in the owner's
+     * party, else null (a bench ally told the owner, or none of them is loaded).
+     */
+    private Character saySignedUp(CompanionBossRun run, int speaker) {
         Character bot = follows(speaker, run.ownerId) ? bot(speaker) : null;
         Character ally = null;
         for (Iterator<Integer> listed = run.signedUp.iterator(); bot == null && listed.hasNext(); ) {
@@ -887,20 +899,24 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (bot != null) {
             run.signedUpSaid = true;
             BossRunLines.say(world, bot, BossRunLines.SIGNED_UP, null, 0);
-            warnIfNoHealer(run, bot);
-        } else if (ally != null) {
+            return bot;
+        }
+        if (ally != null) {
             run.signedUpSaid = true;
             BossRunLines.tell(world, ally, BossRunLines.SIGNED_UP, null, null, run, run.ownerId);
         }
+        return null;
     }
 
     /**
-     * Decision 3 (2026-10-08), right after the signed-up line in the owner's party, so once per owner's part of a run
-     * and before Start: when nobody of the owner's party who goes in can cast Heal ({@link #healer}: the owner, another
-     * human of their party online, or a party companion of theirs on the list; one the entry NPC refused stays
-     * outside), one of their party companions on the list warns in party chat, another than {@code saidSignedUp} when
-     * there is one. A warning only: nobody is held back or refused for it. Heal reaches only the caster's own party, so
-     * a bench ally (a party of bots) neither counts nor is checked.
+     * Decision 3 (2026-10-08), while the list is open and none of the owner's companions waits ({@link #allSignedUp}):
+     * once per party and boss run, before Start, when nobody of the owner's party who goes in can cast Heal
+     * ({@link #healer}: the owner, another human of their party online, or a party companion on the list of any owner
+     * of the party in this run; one the entry NPC refused, or the leader took off the list, stays outside), a party
+     * companion on the list warns in party chat, another than {@code saidSignedUp} (who just said the signed-up line;
+     * may be null) when there is one, the owner's own first. While another owner of the party still has companions
+     * walking up, it waits for their last sign-up, which checks again. A warning only: nobody is held back or refused
+     * for it. Heal reaches only the caster's own party, so a bench ally (a party of bots) neither counts nor is checked.
      */
     private void warnIfNoHealer(CompanionBossRun run, Character saidSignedUp) {
         Character owner = world.roster().onlineCharacter(run.ownerId);
@@ -908,23 +924,45 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (party == null || healer(owner)) {
             return;
         }
+        Set<Integer> memberIds = new HashSet<>();
         for (PartyCharacter member : party.getMembers()) {
             int id = member.getId();
+            memberIds.add(id);
             if (id != run.ownerId && !member.isBot() && member.isOnline()
                     && healer(world.roster().onlineCharacter(id))) {
                 return;
             }
         }
-        Character speaker = saidSignedUp;
-        for (int id : run.signedUp) {
-            Character listed = follows(id, run.ownerId) ? bot(id) : null;
-            if (healer(listed)) {
-                return;
-            }
-            if (listed != null && speaker == saidSignedUp && id != saidSignedUp.getId()) {
-                speaker = listed;
+        List<CompanionBossRun> partyRuns = new ArrayList<>();
+        partyRuns.add(run); // the owner's own companions speak first
+        for (CompanionBossRun other : runs.values()) {
+            if (other != run && other.sessionId == run.sessionId && memberIds.contains(other.ownerId)) {
+                partyRuns.add(other);
             }
         }
+        Character speaker = null;
+        for (CompanionBossRun partyRun : partyRuns) {
+            if (partyRun.noHealerSaid
+                    || partyRun != run && open.waiting(partyRun.sessionId, partyRun.ownerId)) {
+                return; // said for the party already, or another owner's companions still walk up
+            }
+            for (int id : partyRun.signedUp) {
+                Character listed = follows(id, partyRun.ownerId) ? bot(id) : null;
+                if (healer(listed)) {
+                    return;
+                }
+                if (listed != null && speaker == null && (saidSignedUp == null || id != saidSignedUp.getId())) {
+                    speaker = listed;
+                }
+            }
+        }
+        if (speaker == null) {
+            speaker = saidSignedUp;
+        }
+        if (speaker == null) {
+            return; // no party companion goes in
+        }
+        run.noHealerSaid = true;
         BossRunLines.say(world, speaker, BossRunLines.NO_HEALER, null, 0);
     }
 

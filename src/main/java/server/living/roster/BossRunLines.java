@@ -38,8 +38,8 @@ final class BossRunLines {
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
     /**
-     * Decision 3 (2026-10-08): right after the signed-up line, nobody of the owner's party who goes in can cast Heal. A
-     * warning only: nobody stays out for it.
+     * Decision 3 (2026-10-08): before Start, once per party, nobody of the owner's party who goes in can cast Heal
+     * (CompanionBossRuns.warnIfNoHealer). A warning only: nobody stays out for it.
      */
     static final String NO_HEALER = "boss.noheal";
     /**

@@ -33,6 +33,11 @@ final class CompanionBossRun {
     final Set<Integer> signedUp = ConcurrentHashMap.newKeySet();
     /** Once per owner: "we're all signed up", "let's regroup outside", the logout handoff line, "gg". */
     volatile boolean signedUpSaid;
+    /**
+     * A companion of this run said that nobody of the party heals (CompanionBossRuns.warnIfNoHealer): once per party,
+     * so no run of an owner in the same party says it again.
+     */
+    volatile boolean noHealerSaid;
     volatile boolean regroupSaid;
     volatile boolean handoffSaid;
     volatile boolean ggSaid;

@@ -27,7 +27,8 @@ import server.agents.runtime.AgentRuntimeEntry;
  * unless the run says it itself (AgentPartyQuestRuntime.ownsDryLine); any projectile it gets back lets it shoot again
  * at once. That news is said again only after a run ends (the next run hears it too) or once its bag holds
  * AMMO_LOW_WARN again; Soul Arrow's endless count is no refill. Each time a run member runs dry the server log gets one
- * INFO line, since its words reach only map chat.
+ * INFO line, since its words reach only map chat; a member that goes in already dry (its check outside the run, in the
+ * entry NPC's room, found it so) gets it with its in-run dry line.
  */
 public final class AgentCombatAmmoCheckRuntime {
     private static final Logger log = LoggerFactory.getLogger(AgentCombatAmmoCheckRuntime.class);
@@ -69,6 +70,7 @@ public final class AgentCombatAmmoCheckRuntime {
             AgentAmmoStateRuntime.setNoAmmo(entry, false);
         }
 
+        boolean logged = false;
         AgentCombatAmmoPolicy.AmmoCheckDecision decision = AgentCombatAmmoPolicy.ammoCheckDecision(
                 mage,
                 rangedAmmoWeapon,
@@ -93,8 +95,8 @@ public final class AgentCombatAmmoCheckRuntime {
             case PROJECTILE_NO_AMMO -> {
                 AgentAmmoStateRuntime.setNoAmmo(entry, true);
                 if (inRun) { // its words go to map chat only; the server log gets each dry episode once
-                    log.info("Agent out of ammo in a run: agent={} id={} map={} weapon={}",
-                            bot.getName(), bot.getId(), bot.getMapId(), weaponType);
+                    logOutOfAmmo(bot, weaponType);
+                    logged = true;
                 }
                 if (!inRun && AgentModeStateRuntime.grinding(entry)) { // in a run it keeps its post
                     AgentMovementCommandRuntime.followConfiguredTarget(entry);
@@ -110,10 +112,18 @@ public final class AgentCombatAmmoCheckRuntime {
         }
         if (inRun && ammo <= 0 && !AgentAmmoStateRuntime.dryLineSaid(entry)
                 && !AgentPartyQuestRuntime.ownsDryLine(bot.getId(), bot.getMapId())) {
+            if (!logged) { // it went in dry: noAmmo was set outside the run, where nothing is logged
+                logOutOfAmmo(bot, weaponType);
+            }
             AgentProjectileKind kind = AgentProjectileKind.of(weaponType);
             AgentCombatRuntime.sayMapNow(bot, AgentDialogueCatalog.inRunAmmoOutLine(
                     kind == null ? "ammo" : kind.word()));
             AgentAmmoStateRuntime.setDryLineSaid(entry, true);
         }
+    }
+
+    private static void logOutOfAmmo(Character bot, WeaponType weaponType) {
+        log.info("Agent out of ammo in a run: agent={} id={} map={} weapon={}",
+                bot.getName(), bot.getId(), bot.getMapId(), weaponType);
     }
 }
