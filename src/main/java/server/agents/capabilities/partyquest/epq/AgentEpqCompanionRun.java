@@ -940,6 +940,15 @@ final class AgentEpqCompanionRun {
         coordinate(session, agent, "boss-topup", AgentEpqCompanionPlay.DRINKING_UP);
     }
 
+    /**
+     * E15r and E15d, from a companion's own tick as its golem rest starts: once a run each, that it backs off to drink
+     * up, and that it is out of HP potions and hangs back ({@code dry}).
+     */
+    static void backingOff(AgentEpqSession session, Character agent, boolean dry) {
+        if (dry) coordinate(session, agent, "boss-rest-dry-" + agent.getId(), AgentEpqCompanionPlay.OUT_OF_POTS);
+        else coordinate(session, agent, "boss-rest-" + agent.getId(), AgentEpqCompanionPlay.BACKING_OFF);
+    }
+
     /** E7, from a companion's own tick as it reaches maze Ellin first. */
     static void mazeFound(AgentEpqSession session, Character agent) {
         coordinate(session, agent, "maze-found", AgentEpqCompanionPlay.MAZE_FOUND);
