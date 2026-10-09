@@ -336,6 +336,18 @@ public class LivingWorldConfig {
     /** How long an ally walks to the room's way out after the run before it goes where it stands. */
     public int COMPANION_BOSS_ALLY_WALK_OUT_MS = 20000;
 
+    // Boss clears are not party-quest clears (2026-10-08)
+    /**
+     * Event scripts (scripts/event file names without ".js", a comma list) whose clear is a boss kill, not a party
+     * quest clear: EventInstanceManager.clearPQ runs for both, and for a listed script the living world marks no
+     * companion PQ run as cleared, advances no "clear a party quest" step and gives no friendship PQ points; it logs
+     * "Boss event cleared" instead. Friendship boss points and companion boss-run records do not depend on it.
+     * Empty = every clear counts as a party-quest clear, as before.
+     */
+    public String BOSS_EVENT_SCRIPTS = "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,"
+            + "ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,"
+            + "TD_Battle5";
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -386,6 +398,19 @@ public class LivingWorldConfig {
         }
         for (String entry : COMPANION_BOSS_ALLY_TYPES.split(",")) {
             if (!entry.isBlank() && entry.trim().equalsIgnoreCase(bossKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when BOSS_EVENT_SCRIPTS lists event script {@code scriptName} (any case, spaces around it ignored). */
+    public boolean bossEventScript(String scriptName) {
+        if (scriptName == null || BOSS_EVENT_SCRIPTS == null) {
+            return false;
+        }
+        for (String entry : BOSS_EVENT_SCRIPTS.split(",")) {
+            if (!entry.isBlank() && entry.trim().equalsIgnoreCase(scriptName.trim())) {
                 return true;
             }
         }
@@ -591,6 +616,12 @@ public class LivingWorldConfig {
         }
         if (COMPANION_BOSS_ALLY_WALK_OUT_MS < 1000 || COMPANION_BOSS_ALLY_WALK_OUT_MS > 120000) {
             throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_WALK_OUT_MS must be within 1000..120000");
+        }
+        for (String script : BOSS_EVENT_SCRIPTS == null ? new String[0] : BOSS_EVENT_SCRIPTS.split(",")) {
+            if (!script.isBlank() && !script.trim().matches("[A-Za-z0-9_]+")) {
+                throw new IllegalArgumentException("living_world.BOSS_EVENT_SCRIPTS must list event script names"
+                        + " (scripts/event, without .js), not \"" + script.trim() + "\"");
+            }
         }
     }
 }
