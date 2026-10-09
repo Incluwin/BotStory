@@ -41,7 +41,8 @@ public final class AgentPpqTestService {
     private static final Logger log = LoggerFactory.getLogger(AgentPpqTestService.class);
     private static final AgentSpawnCommandExecutor PROVISIONING = new AgentSpawnCommandExecutor();
     private static final ConcurrentHashMap<Integer, Run> RUNS = new ConcurrentHashMap<>();
-    private static final long SPAWN_STAGGER_MS = 500L;
+    private static final long SPAWN_STAGGER_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqTestService.SPAWN_STAGGER_MS");
     private AgentPpqTestService() { }
 
     public static List<String> execute(Character operator, String[] params, long nowMs) {
@@ -98,7 +99,7 @@ public final class AgentPpqTestService {
             AgentSchedulerRuntime.schedule(() -> launch(run, name, ordinal), SPAWN_STAGGER_MS * index);
         }
         return List.of((agentCount == 6 ? "Six" : "Five")
-                        + " level-67 PPQ Agents are being prepared with complete AP/SP builds and distinct class hats.",
+                        + " level-" + AgentPpqTestFixtureService.LEVEL + " PPQ Agents are being prepared with complete AP/SP builds and distinct class hats.",
                 flow == Flow.HUMAN_LEADER ? "You are the event leader; the Agents will join your party."
                         : flow == Flow.HUMAN_MEMBER ? "The first Agent is event leader; you will join as the human member."
                         : "The run is fully Agent-controlled.",

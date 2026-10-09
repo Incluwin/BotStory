@@ -6,7 +6,8 @@ import server.agents.runtime.AgentRuntimeEntry;
 
 /** PPQ facade over independent member work and one short coordinator lease. */
 public final class AgentPpqRuntime {
-    private static final long COORDINATOR_LEASE_MS = 3_000L;
+    private static final long COORDINATOR_LEASE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqRuntime.COORDINATOR_LEASE_MS");
     private AgentPpqRuntime() { }
     public static boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentPpqSession session = AgentPpqSessionRegistry.forMember(agent.getId());

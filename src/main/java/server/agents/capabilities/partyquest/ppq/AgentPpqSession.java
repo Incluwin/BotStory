@@ -12,6 +12,8 @@ import java.util.UUID;
 public final class AgentPpqSession {
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_MEMBER, HUMAN_LEADER }
     public enum Phase { PREPARING, ENTERING, ACTIVE, CLEARING, EXITING, COMPLETED, FAILED }
+    private static final long MIN_LEASE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqSession.MIN_LEASE_MS");
     private final String sessionId = UUID.randomUUID().toString();
     private final Mode mode;
     private final long seed;
@@ -54,7 +56,7 @@ public final class AgentPpqSession {
         AgentPpqMemberState member = members.get(id);
         if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT) return false;
         if (id != executionAgentId && nowMs < executionLeaseUntilMs) return false;
-        executionAgentId = id; executionLeaseUntilMs = nowMs + Math.max(250L, leaseMs); return true;
+        executionAgentId = id; executionLeaseUntilMs = nowMs + Math.max(MIN_LEASE_MS, leaseMs); return true;
     }
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;

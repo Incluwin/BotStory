@@ -1544,6 +1544,38 @@ tuning:
     server.agents.capabilities.partyquest.lmpq.AgentLmpqWatchdogRuntime.PERIOD_MS: '1000'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
+    # Values: 1800000-7200000 milliseconds. Recommended: 1800000 until the PPQ base fixes raise it to the stock timers' worst case.
+    # Purpose: The longest a PPQ run may last from its admission before the coordinator fails it, a cap over PiratePQ.js's own stage timers.
+    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ event timer expired" once this long has passed since AgentPpqSession.startedAtMs; it was the coordinator's constant 30 minutes before the move.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS: '1800000'
+    # Values: 120000-1800000 milliseconds. Recommended: 600000, longer than the medal stage's eight minutes.
+    # Purpose: How long a PPQ run may go without progress before the coordinator calls it stalled, so a stuck run hands its party back.
+    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ stalled" when AgentPpqSession.lastProgressAtMs is this old; progress is marked by phase changes, hand-ins, pickups, chest and door drops.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.STALL_TIMEOUT_MS: '600000'
+    # Values: 300-5000 milliseconds. Recommended: 900, the pause the other party quests' coordinators take after an action.
+    # Purpose: How long a PPQ Agent waits after an NPC talk, a portal or an item drop before its next action, so the server has applied the last one.
+    # Technical: AgentPpqCoordinator defers the member's next action by this much (AgentPpqMemberState.deferUntil) after runNpc, enterPortal and the chest and door key drops.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.RETRY_MS: '900'
+    # Values: 30-150 pixels. Recommended: 70.
+    # Purpose: How close a PPQ Agent stands to an NPC, a portal or a floor drop before it talks, enters or picks up, so it acts from beside it.
+    # Technical: AgentPpqCoordinator.near compares the Agent's position with the target's by Euclidean distance against this radius before runNpc, enterPortal and pickupItem.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.INTERACTION_RADIUS: '70'
+    # Values: 1000-10000 milliseconds. Recommended: 3000, the lease the other party quests use.
+    # Purpose: Bounds how long one PPQ Agent keeps the right to run the run's shared coordinator tick before another member may take it over.
+    # Technical: AgentPpqRuntime.tick claims AgentPpqSession.claimExecutionTick with this lease after the member's own tick; the holder renews it on each of its ticks.
+    server.agents.capabilities.partyquest.ppq.AgentPpqRuntime.COORDINATOR_LEASE_MS: '3000'
+    # Values: 50-1000 milliseconds. Recommended: 250.
+    # Purpose: The shortest coordinator lease a PPQ session grants, whatever a caller asks for, so the shared tick never changes hands on every Agent tick.
+    # Technical: AgentPpqSession.claimExecutionTick sets the lease to the larger of the caller's lease and this floor.
+    server.agents.capabilities.partyquest.ppq.AgentPpqSession.MIN_LEASE_MS: '250'
+    # Values: 0-5000 milliseconds. Recommended: 500.
+    # Purpose: The gap between two fixture Agents the '!ppqtest' fixture spawns, so a test party does not land on the server all at once.
+    # Technical: AgentPpqTestService schedules each fixture Agent's launch this many milliseconds times its ordinal after the command (AgentSchedulerRuntime.schedule).
+    server.agents.capabilities.partyquest.ppq.AgentPpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 55-100. Recommended: 67, inside PiratePQ.js's level band with second-job skills learned.
+    # Purpose: The level of the '!ppqtest' fixture's Agents, a legal Pirate PQ roster for observation runs while production Agents keep their real levels.
+    # Technical: AgentPpqTestFixtureService.LEVEL reads it; the fixture applies it through the second-job build pipeline and '!ppqtest start' names it in its reply.
+    server.agents.field.AgentPpqTestFixtureService.PPQ_START_LEVEL: '67'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 
