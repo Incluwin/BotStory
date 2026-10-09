@@ -86,6 +86,12 @@ public final class AgentLmpqCoordinator {
             session.bindEventInstance(leader.getEventInstance());
             beginFarming(session, nowMs);
         }
+        // A companion run waits at Rolly for its leader no longer than its harness and host promise him.
+        if (session.companionAdopted() && session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING) == 0L
+                && nowMs - session.startedAtMs() >= humanIdleLimitMs()) {
+            fail(session, "LMPQ was never entered", nowMs);
+            return;
+        }
         EventInstanceManager bound = session.eventInstance();
         if (bound != null && !AgentLmpqTerminationService.pastTheClear(session)) {
             // LMPQ base fix 3: before the clear, an event that ended, or a leader it no longer holds (LudiMazePQ.js
@@ -175,13 +181,16 @@ public final class AgentLmpqCoordinator {
 
     /**
      * LMPQ base fix 1: the run's clock is the event's. LudiMazePQ.js starts its timer (the catalog's eventTimerMs) as
-     * the party enters the maze and stops it at the clear, so the run's own timer runs from its first FARMING entry,
-     * with TIMEOUT_SLACK_MS so the event's own timeout ends a slow run first, and never after the clear.
+     * the party enters the maze and stops it at the clear, so once inside the run's own timer runs from its first
+     * FARMING entry, with TIMEOUT_SLACK_MS so the event's own timeout ends a slow run first, and never after the
+     * clear. Before the entry the same cap runs from admission, as the run's timer always did, so a run that never
+     * enters is still bounded.
      */
     static boolean eventTimerExpired(AgentLmpqSession session, long nowMs) {
+        if (AgentLmpqTerminationService.pastTheClear(session)) return false;
         long enteredAt = session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING);
-        if (enteredAt == 0L || AgentLmpqTerminationService.pastTheClear(session)) return false;
-        return nowMs - enteredAt >= AgentPartyQuestCatalog.require("lmpq").eventTimerMs() + TIMEOUT_SLACK_MS;
+        long from = enteredAt == 0L ? session.startedAtMs() : enteredAt;
+        return nowMs - from >= AgentPartyQuestCatalog.require("lmpq").eventTimerMs() + TIMEOUT_SLACK_MS;
     }
 
     public static void tickMember(
@@ -600,6 +609,9 @@ public final class AgentLmpqCoordinator {
 
     private static long progressSignature(AgentLmpqSession session) {
         long signature = session.phase().ordinal();
+        // Before the maze entry only a phase change is progress: members walking around town (the human leader
+        // wandering, an Agent refused at Rolly) must not keep a run that never enters alive.
+        if (session.eventInstance() == null) return signature;
         for (AgentLmpqMemberState state : active(session)) {
             Character member = character(state.characterId());
             signature = signature * 31L + state.characterId();
