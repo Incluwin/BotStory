@@ -118,6 +118,8 @@ public final class AgentLmpqCoordinator {
                 return;
             }
             observeDepartures(session, bound, nowMs);
+            // P6h review: the last companion has departed and humans stay in the maze: they carry on without the run.
+            if (AgentLmpqTerminationService.humansCarryOn(session, nowMs)) return;
         }
         if (session.eventInstance() != null) updateHumanOccupancy(session, nowMs);
         int expired = session.rooms().releaseExpired(nowMs, ROOM_LEASE_MS);

@@ -13,8 +13,10 @@ import java.util.concurrent.ScheduledFuture;
  * LMPQ-only coordinator failover and orphan watchdog (LMPQ base fix 8, after LPQ's). A run is ticked by its Agents'
  * own ticks; when none of them holds a live lease (its holder died, unloaded or stopped ticking) the watchdog ticks
  * it through its first live Agent, or, while every loaded Agent is dead (each respawns on its own death tick),
- * through the lowest-id one, so the run's own rules (timer, departures, stall, leader) decide. Only a run with no
- * Agent loaded at all is failed here. Every run still ticks, fails or completes and is released.
+ * through the lowest-id one, so the run's own rules (timer, departures, stall, leader) decide. A run whose Agents
+ * all departed lets its humans carry on (released, nothing disposed) while its event still holds one, and is failed
+ * otherwise; a run whose remaining Agents are none of them loaded is failed. Every run still ticks, fails or completes
+ * and is released.
  */
 final class AgentLmpqWatchdogRuntime {
     private static ScheduledFuture<?> task;
@@ -41,16 +43,23 @@ final class AgentLmpqWatchdogRuntime {
             return;
         }
         if (session.paused()) return;
-        List<Character> loaded = session.members().stream()
+        List<AgentLmpqMemberState> remaining = session.members().stream()
                 .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT)
                 .filter(member -> !session.departed(member.characterId())) // handed back: no longer the run's
                 .sorted(Comparator.comparingInt(AgentLmpqMemberState::characterId))
+                .toList();
+        List<Character> loaded = remaining.stream()
                 .map(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .map(AgentRuntimeIdentityRuntime::bot)
                 .filter(java.util.Objects::nonNull)
                 .toList();
-        if (loaded.isEmpty()) {
+        if (remaining.isEmpty()) {
+            // Every companion departed: humans still in the maze carry on without the run (released, nothing
+            // disposed); a run whose event holds nobody is failed as before.
+            if (AgentLmpqTerminationService.humansCarryOn(session, nowMs)) return;
+            AgentLmpqCoordinator.fail(session, "Every LMPQ Agent departed", nowMs);
+        } else if (loaded.isEmpty()) {
             AgentLmpqCoordinator.fail(session, "No LMPQ Agent is loaded", nowMs);
         } else {
             Character agent = loaded.stream().filter(candidate -> candidate.getHp() > 0).findFirst()
