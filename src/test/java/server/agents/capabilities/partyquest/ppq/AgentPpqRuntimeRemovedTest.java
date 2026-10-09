@@ -94,6 +94,26 @@ class AgentPpqRuntimeRemovedTest {
     }
 
     @Test
+    void anAgentThatJustDepartedIsNotTheWholeRun() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.DECK_ONE_MAP);
+             MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle = mockStatic(AgentPartyQuestLifecycleRuntime.class)) {
+            AgentPpqSessionRegistry.registerComplete(run.session);
+            try {
+                // The departure pass took Tobi out of the session; its hand-back has not unindexed it yet.
+                run.session.departAgent(TOBI);
+
+                AgentPpqRuntime.runtimeRemoved(TOBI, 5_000L);
+
+                assertFalse(run.session.terminal(), run.session.failure());
+                assertFalse(run.session.terminationStarted());
+                assertNull(AgentPpqSessionRegistry.forMember(TOBI));
+            } finally {
+                AgentPpqSessionRegistry.remove(run.session);
+            }
+        }
+    }
+
+    @Test
     void pinForceStopOfOneAgentReleasesTheWholeRun() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.DECK_ONE_MAP);
              MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle = mockStatic(AgentPartyQuestLifecycleRuntime.class)) {

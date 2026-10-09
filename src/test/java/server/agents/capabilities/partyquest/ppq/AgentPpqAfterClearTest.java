@@ -67,6 +67,19 @@ class AgentPpqAfterClearTest {
     }
 
     @Test
+    void aFullFeatherStackWithNoFreeSlotIsNoRoom() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
+            PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 0);
+            when(run.character(MIRA).getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false)).thenReturn(200);
+
+            AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
+
+            verify(run.actions, never()).npcPosition(any(), eq(AgentPpqDefinition.RESCUE_NPC));
+            verify(run.maps).changeMapNear(eq(run.character(MIRA)), eq(run.recruit), any());
+        }
+    }
+
+    @Test
     void pinACompanionWithRoomAsksWuYangForItsFeather() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
             PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 1);

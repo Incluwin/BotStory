@@ -190,6 +190,14 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         return true;
     }
 
+    /** Whether {@code id} is the run's only Agent member (and not its event leader). */
+    public synchronized boolean lastAgent(int id) {
+        AgentPpqMemberState member = members.get(id);
+        return member != null && member.memberType() == AgentPpqMemberState.MemberType.AGENT && id != eventLeaderId
+                && members.values().stream().noneMatch(other -> other.characterId() != id
+                        && other.memberType() == AgentPpqMemberState.MemberType.AGENT);
+    }
+
     /** Takes a member out of the session; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
 
