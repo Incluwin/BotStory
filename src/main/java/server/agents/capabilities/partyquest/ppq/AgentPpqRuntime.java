@@ -1,11 +1,16 @@
 package server.agents.capabilities.partyquest.ppq;
 
 import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 
 /** PPQ facade over independent member work and one short coordinator lease. */
 public final class AgentPpqRuntime {
+    private static final Logger log = LoggerFactory.getLogger(AgentPpqRuntime.class);
     private static final long COORDINATOR_LEASE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqRuntime.COORDINATOR_LEASE_MS");
     private AgentPpqRuntime() { }
@@ -40,5 +45,21 @@ public final class AgentPpqRuntime {
             AgentPartyQuestLifecycleRuntime.forceStop(id, reason, nowMs);
         } else AgentPpqTerminationService.release(session, reason, nowMs, true);
     }
-    public static void runtimeRemoved(int id, long nowMs) { forceStop(id, "Agent runtime removed", nowMs); }
+    /**
+     * One Agent's runtime went away (a logout, a cleanup): it leaves the run, and the run goes on without it. The
+     * whole run is released only when that Agent was the event leader or the last Agent in it; forceStop stays the
+     * whole-run release.
+     */
+    public static void runtimeRemoved(int id, long nowMs) {
+        AgentPpqSession session = AgentPpqSessionRegistry.forMember(id);
+        if (session == null || session.terminal() || session.terminationStarted() || !session.departAgent(id)) {
+            forceStop(id, "Agent runtime removed", nowMs);
+            return;
+        }
+        AgentPpqSessionRegistry.unindexMember(session, id);
+        AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(id);
+        if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+        log.info("PPQ member left: session={} member={} reason=runtime-removed members={} companionRun={}",
+                session.sessionId(), id, session.memberCount(), session.companionAdopted());
+    }
 }

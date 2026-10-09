@@ -155,6 +155,31 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
 
     synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
 
+    /**
+     * An Agent member leaves the run for good (its runtime went away): true when it left, false (nothing changed) for
+     * the event leader, a human, a stranger or the last Agent. It never holds the coordinator lease again: a lease it
+     * held passes to the next Agent at once.
+     */
+    public synchronized boolean departAgent(int id) {
+        AgentPpqMemberState member = members.get(id);
+        if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT || id == eventLeaderId) {
+            return false;
+        }
+        Integer next = members.values().stream()
+                .filter(other -> other.characterId() != id
+                        && other.memberType() == AgentPpqMemberState.MemberType.AGENT)
+                .map(AgentPpqMemberState::characterId).findFirst().orElse(null);
+        if (next == null) return false;
+        members.remove(id);
+        departuresInFlight.remove(id);
+        heldSinceMs.remove(id);
+        if (executionAgentId == id) {
+            executionAgentId = next;
+            executionLeaseUntilMs = 0L;
+        }
+        return true;
+    }
+
     /** Takes a member out of the session; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
 
