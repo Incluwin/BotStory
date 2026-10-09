@@ -35,13 +35,30 @@ final class AgentOpqTerminationService {
     }
 
     /**
-     * The run completed (every member claimed and left): it is released as a completion, with no exit and no dispose.
-     * The release is claimed before the session is marked complete, so a release already under way wins.
+     * The run completed (every Agent claimed and left): it is released as a completion, with no exit. An event its
+     * Agents' exits left with no player is disposed (disposeIfEmpty); one a human is still in stays his. The release is
+     * claimed before the session is marked complete, so a release already under way wins.
      */
     static void complete(AgentOpqSession session, long nowMs) {
         if (session == null || !session.beginTermination()) return;
         session.complete(nowMs);
+        disposeIfEmpty(session, session.eventInstance());
         release(session, "completed", nowMs, false, true);
+    }
+
+    /**
+     * Past the clear an exit can leave the event with no player, and the event does not end itself then: an exit
+     * unregisters its player before OrbisPQ's changedMap could end the event, and an empty instance never disposes
+     * itself. Every such exit calls this; an event already disposed, or with a player left, is not touched. Never
+     * throws.
+     */
+    static void disposeIfEmpty(AgentOpqSession session, EventInstanceManager event) {
+        if (event == null) return;
+        try {
+            if (!event.isEventDisposed() && event.getPlayers().isEmpty()) event.dispose();
+        } catch (RuntimeException failure) {
+            log.warn("OPQ empty event dispose failed: session={}", session.sessionId(), failure);
+        }
     }
 
     /**
@@ -64,13 +81,7 @@ final class AgentOpqTerminationService {
         if (session == null || !session.beginTermination()) return;
         EventInstanceManager event = session.eventInstance();
         exitAgentsOnly(session);
-        if (event != null) {
-            try {
-                if (event.getPlayers().isEmpty()) event.dispose();
-            } catch (RuntimeException failure) {
-                log.warn("OPQ empty event dispose failed: session={}", session.sessionId(), failure);
-            }
-        }
+        disposeIfEmpty(session, event);
         release(session, reason, nowMs, false, true);
     }
 

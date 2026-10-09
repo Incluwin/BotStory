@@ -1071,6 +1071,7 @@ final class AgentOpqCoordinator {
         if (event == null) return;
         try {
             event.exitPlayer(agent);
+            AgentOpqTerminationService.disposeIfEmpty(session, event);
         } catch (RuntimeException failure) {
             log.warn("OPQ refused reward exit failed: session={} member={}", session.sessionId(), agent.getId(),
                     failure);
