@@ -1,5 +1,7 @@
 package server.agents.capabilities.partyquest;
 
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqSide;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,8 @@ public final class AgentPartyQuestCatalog {
                 925_100_700, 251_010_404, 55, 100, 3, 6));
 
         // slot: rjpq
+        add(definitions, AgentRjpqSide.ZENUMIST.definition());
+        add(definitions, AgentRjpqSide.ALCADNO.definition());
         return Collections.unmodifiableMap(definitions);
     }
 
