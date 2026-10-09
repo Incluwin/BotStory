@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import server.agents.field.AgentPpqTestFixtureService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * PPQ Step 1 (plan 4.2): the coordinator's, runtime's, session's and fixture's numbers moved to agent-engine.yaml with
@@ -24,5 +25,7 @@ class AgentPpqTuningTest {
         assertEquals(250L, AgentTuning.longValue(PP + "AgentPpqSession.MIN_LEASE_MS"));
         assertEquals(500L, AgentTuning.longValue(PP + "AgentPpqTestService.SPAWN_STAGGER_MS"));
         assertEquals(67, AgentPpqTestFixtureService.LEVEL);
+        assertTrue(AgentPpqTestFixtureService.LEVEL >= 55 && AgentPpqTestFixtureService.LEVEL < 70,
+                "PiratePQ.js admits 55-100; the second-job fixture build refuses 70 and above");
     }
 }

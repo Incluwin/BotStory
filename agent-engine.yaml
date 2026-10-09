@@ -1572,7 +1572,7 @@ tuning:
     # Purpose: The gap between two fixture Agents the '!ppqtest' fixture spawns, so a test party does not land on the server all at once.
     # Technical: AgentPpqTestService schedules each fixture Agent's launch this many milliseconds times its ordinal after the command (AgentSchedulerRuntime.schedule).
     server.agents.capabilities.partyquest.ppq.AgentPpqTestService.SPAWN_STAGGER_MS: '500'
-    # Values: 55-100. Recommended: 67, inside PiratePQ.js's level band with second-job skills learned.
+    # Values: 55-69: PiratePQ.js admits 55-100, and the second-job fixture build (AgentFieldObservationFixtureService.prepareSecondJobFixture) refuses level 70 and above. Recommended: 67, with second-job skills learned.
     # Purpose: The level of the '!ppqtest' fixture's Agents, a legal Pirate PQ roster for observation runs while production Agents keep their real levels.
     # Technical: AgentPpqTestFixtureService.LEVEL reads it; the fixture applies it through the second-job build pipeline and '!ppqtest start' names it in its reply.
     server.agents.field.AgentPpqTestFixtureService.PPQ_START_LEVEL: '67'
