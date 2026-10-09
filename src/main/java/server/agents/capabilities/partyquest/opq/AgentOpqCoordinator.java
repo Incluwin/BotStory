@@ -127,6 +127,9 @@ final class AgentOpqCoordinator {
             if (held != null && session.phase().ordinal() >= AgentOpqSession.Phase.ENTRANCE.ordinal()
                     && !AgentOpqTerminationService.pastTheClear(session)) {
                 observeDepartures(session, held, nowMs);
+                // P6h review: the last companion has departed and humans stay in the tower: they carry on without
+                // the run (its queued hand-backs still run after this pass).
+                if (AgentOpqTerminationService.humansCarryOn(session, nowMs)) return;
             }
             noteClear(session, nowMs);
             synchronizePhase(session, leader, nowMs);
