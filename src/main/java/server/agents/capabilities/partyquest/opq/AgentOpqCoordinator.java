@@ -1400,6 +1400,7 @@ final class AgentOpqCoordinator {
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
             AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "opq", nowMs);
+            session.markHandedBack(id);
         } catch (RuntimeException failure) {
             log.warn("OPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
         }

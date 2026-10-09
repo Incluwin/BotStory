@@ -64,6 +64,7 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private final Set<Integer> handBacks = new LinkedHashSet<>();
+    private final Set<Integer> handedBack = new LinkedHashSet<>();
     private long boundAtMs;
 
     /** A session of the stock six members (every Agent-run and fixture run). */
@@ -285,6 +286,14 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
 
     /** Queues a departed Agent for its hand-back, which runs outside this monitor. */
     synchronized void queueHandBack(int characterId) { handBacks.add(characterId); }
+
+    /** Records that a departed member's hand-back ran: it belongs to its owner's activity from now on. */
+    synchronized void markHandedBack(int characterId) {
+        if (departed.contains(characterId)) handedBack.add(characterId);
+    }
+
+    /** True once a departed member was handed back; the release leaves its Agent's activity alone. */
+    synchronized boolean handedBack(int characterId) { return handedBack.contains(characterId); }
 
     /** The departed Agents queued for their hand-back since the last call, each once. */
     synchronized List<Integer> takeHandBacks() {

@@ -16,11 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -28,7 +31,8 @@ import static org.mockito.Mockito.when;
  * disconnected before Wonky's start) is not counted forever: ENTRY_HOLD_GRACE_MS after the bind it departs, while a
  * member the event holds a moment after the bind (the bind race) never does. A departed Agent is handed back at once,
  * in every mode: the run stops routing it (its session and engagement indexes) and the lifecycle rehomes it, and it
- * stays in the session, marked departed, for the run's counts and lines.
+ * stays in the session, marked departed, for the run's counts and lines; the run's release then leaves its activity
+ * alone (no stop), in every mode, while a stock release still takes it out of the party as before.
  */
 class AgentOpqDepartedHandBackTest {
     private static final long GRACE_MS = config.AgentTuning.longValue(
@@ -182,5 +186,55 @@ class AgentOpqDepartedHandBackTest {
         assertTrue(session.departed(ann.getId()));
         run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(anyInt(), anyString(),
                 anyLong()), never());
+    }
+
+    /** A six-member run in which Kes departed and was handed back; every invocation before the release is forgotten. */
+    private AgentOpqSession kesHandedBack(boolean companionRun) {
+        Character ivy = run.companion(6, "Ivy");
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, companionRun,
+                AgentOpqSession.Phase.SPLIT_ROOMS, ben, mira, kes, pel, hal, ivy);
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+        when(kes.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP);
+        when(kes.getEventInstance()).thenReturn(null);
+        holds(ben, mira, pel, hal, ivy);
+        AgentOpqCoordinator.tickSession(session, 4_000L);
+        assertTrue(session.handedBack(kes.getId()));
+        clearInvocations(run.actions, run.party);
+        return session;
+    }
+
+    @Test
+    void theReleaseLeavesAHandedBackAgentsActivityAlone() {
+        AgentOpqSession session = kesHandedBack(true);
+
+        AgentOpqTerminationService.fail(session, "OPQ stopped by operator", 5_000L);
+
+        verify(run.actions, never()).stop(run.entries.get(kes.getId()));
+        verify(run.actions, times(1)).stop(run.entries.get(mira.getId()));
+        verify(run.party, never()).leaveCurrentParty(any());
+    }
+
+    @Test
+    void aStockReleaseStillTakesAHandedBackAgentOutOfTheParty() {
+        AgentOpqSession session = kesHandedBack(false);
+
+        AgentOpqTerminationService.fail(session, "OPQ stopped by operator", 5_000L);
+
+        verify(run.actions, never()).stop(run.entries.get(kes.getId()));
+        verify(run.actions, times(1)).stop(run.entries.get(pel.getId()));
+        verify(run.party, times(1)).leaveCurrentParty(kes);
+        verify(run.party, times(1)).leaveCurrentParty(pel);
+    }
+
+    @Test
+    void aDepartedAgentNotHandedBackYetIsStillStopped() {
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
+                AgentOpqSession.Phase.SPLIT_ROOMS, ben, mira, kes, pel, hal);
+        session.noteHeld(List.of(ben.getId(), mira.getId(), kes.getId(), pel.getId(), hal.getId()));
+        assertTrue(session.markDeparted(kes.getId())); // its hand-back has not run yet
+
+        AgentOpqTerminationService.fail(session, "OPQ stopped by operator", 5_000L);
+
+        verify(run.actions, times(1)).stop(run.entries.get(kes.getId()));
     }
 }

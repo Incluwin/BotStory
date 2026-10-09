@@ -144,6 +144,8 @@ final class AgentOpqTerminationService {
         }
         // Each member's step on its own: one that throws never leaves the run registered behind the tick guard.
         session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
+            // P6h OB7: a departed Agent already handed back belongs to its owner's activity; a stop would cancel it.
+            if (session.handedBack(member.characterId())) return;
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
         }));
