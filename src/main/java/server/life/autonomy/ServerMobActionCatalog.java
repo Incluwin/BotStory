@@ -1,9 +1,11 @@
 package server.life.autonomy;
 
 import provider.Data;
+import provider.DataEntity;
 import provider.DataProvider;
 import provider.DataProviderFactory;
 import provider.DataTool;
+import provider.wz.DataType;
 import provider.wz.WZFiles;
 import server.life.MobSkill;
 import server.life.MobSkillFactory;
@@ -20,6 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ServerMobActionCatalog {
     private static final DataProvider MOB_DATA = DataProviderFactory.getDataProvider(WZFiles.MOB);
     private static final Map<Integer, MonsterActions> CACHE = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<Integer>> RESOLVED_ANIMATIONS =
+            new ConcurrentHashMap<>();
+    private static final Map<Integer, List<Boolean>> JUMP_ATTACKS = new ConcurrentHashMap<>();
+    /** A UOL frame that still points at a UOL after this many steps counts as no frame. */
+    private static final int MAX_UOL_HOPS = 8;
 
     private ServerMobActionCatalog() {
     }
@@ -50,7 +57,8 @@ public final class ServerMobActionCatalog {
             Point rb = DataTool.getPoint("range/rb", info, null);
             if (lt == null || rb == null) {
                 Point center = DataTool.getPoint("range/sp", info, null);
-                int radius = DataTool.getIntConvert("range/r", info, 0);
+                // 8800010 attack2 (r=-1000) is the only negative radius in Mob.wz; its size counts.
+                int radius = Math.abs(DataTool.getIntConvert("range/r", info, 0));
                 if (center != null && radius > 0) {
                     lt = new Point(center.x - radius, center.y - radius);
                     rb = new Point(center.x + radius, center.y + radius);
@@ -122,6 +130,91 @@ public final class ServerMobActionCatalog {
 
     private static Point copy(Point point) {
         return point == null ? null : new Point(point);
+    }
+
+    /**
+     * The full length of attack{index+1}'s animation, with UOL frames resolved to the frames they
+     * point at. {@link BossAction#animationTimeMs()} adds only frames that carry their own delay,
+     * so it stays as it is for the server-owned action locks. 0 for an unknown mob or attack.
+     */
+    public static int resolvedAnimationMs(int mobId, int index) {
+        List<Integer> times = RESOLVED_ANIMATIONS.computeIfAbsent(
+                mobId, ServerMobActionCatalog::loadResolvedAnimations);
+        return index >= 0 && index < times.size() ? times.get(index) : 0;
+    }
+
+    /** True when attack{index+1} has info/jumpAttack set (a target in the air is not hit). */
+    public static boolean jumpAttack(int mobId, int index) {
+        List<Boolean> flags = JUMP_ATTACKS.computeIfAbsent(
+                mobId, ServerMobActionCatalog::loadJumpAttacks);
+        return index >= 0 && index < flags.size() && flags.get(index);
+    }
+
+    private static List<Integer> loadResolvedAnimations(int mobId) {
+        List<Integer> times = new ArrayList<>();
+        for (Data attack : attackData(mobId)) {
+            times.add(resolvedAnimationTime(attack));
+        }
+        return List.copyOf(times);
+    }
+
+    private static List<Boolean> loadJumpAttacks(int mobId) {
+        List<Boolean> flags = new ArrayList<>();
+        for (Data attack : attackData(mobId)) {
+            flags.add(DataTool.getIntConvert("info/jumpAttack", attack, 0) != 0);
+        }
+        return List.copyOf(flags);
+    }
+
+    private static List<Data> attackData(int mobId) {
+        Data mob = MOB_DATA.getData(StringUtil.getLeftPaddedStr(mobId + ".img", '0', 11));
+        if (mob == null) {
+            return List.of();
+        }
+        Data actionSource = linkedActionSource(mob);
+        List<Data> attacks = new ArrayList<>();
+        for (int index = 0; ; index++) {
+            Data attack = actionSource.getChildByPath("attack" + (index + 1));
+            if (attack == null) {
+                return attacks;
+            }
+            attacks.add(attack);
+        }
+    }
+
+    private static int resolvedAnimationTime(Data animation) {
+        int total = 0;
+        for (Data frame : animation.getChildren()) {
+            Data resolved = resolveUol(frame);
+            if (resolved != null) {
+                total += Math.max(0, DataTool.getIntConvert("delay", resolved, 0));
+            }
+        }
+        return total;
+    }
+
+    /** Follows a UOL (a path relative to its own directory, such as "../stand/0") to its frame. */
+    private static Data resolveUol(Data frame) {
+        Data current = frame;
+        for (int hop = 0; current != null && current.getType() == DataType.UOL; hop++) {
+            if (hop == MAX_UOL_HOPS || !(current.getData() instanceof String path)) {
+                return null;
+            }
+            current = relative(current.getParent(), path);
+        }
+        return current;
+    }
+
+    /** Walks a relative path one segment at a time, so a ".." above the image root gives null. */
+    private static Data relative(DataEntity directory, String path) {
+        DataEntity current = directory;
+        for (String segment : path.split("/")) {
+            if (!(current instanceof Data data)) {
+                return null;
+            }
+            current = segment.equals("..") ? data.getParent() : data.getChildByPath(segment);
+        }
+        return current instanceof Data resolved ? resolved : null;
     }
 
     public record MonsterActions(
