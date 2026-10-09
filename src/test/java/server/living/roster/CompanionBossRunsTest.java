@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import constants.skills.Cleric;
 import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,6 +86,7 @@ class CompanionBossRunsTest {
         game.outWithAnn(isolde);
         game.outWithAnn(thane);
         game.outWithAnn(sorrel);
+        healer(ISOLDE, 30); // Bossfriend's Cleric: with her on the list nobody warns that no one heals (decision 3)
         open.open.add(SID);
         open.registering.add(SID); // Mu Young's list is open until the leader presses Start
         runs = new CompanionBossRuns(game.world, open, potions::get);
@@ -209,6 +211,105 @@ class CompanionBossRunsTest {
 
         assertEquals(1, game.partyChat.size(), game.partyChat.toString());
         assertSays("Thane", BossRunLines.REFUSED_LATE, game.partyChat.get(0));
+    }
+
+    // ---- the healer warning (decision 3, 2026-10-08) ---------------------------------------------
+
+    @Test
+    void aPartyWithNoHealUserHearsOneWarningFromAnotherCompanionRightAfterTheSignedUpLine() {
+        healer(ISOLDE, 0);
+        allThreeSignUp();
+
+        assertEquals(2, game.partyChat.size(), game.partyChat.toString());
+        String signedUp = game.partyChat.get(0);
+        assertTrue(signedUp.startsWith("Sorrel: "), signedUp);
+        assertSays("Sorrel", BossRunLines.SIGNED_UP, signedUp);
+        String warning = game.partyChat.get(1);
+        assertFalse(warning.startsWith("Sorrel: "), "another companion warns: " + warning);
+        assertTrue(warning.startsWith("Isolde: ") || warning.startsWith("Thane: "), warning);
+        assertSays(warning.substring(0, warning.indexOf(':')), BossRunLines.NO_HEALER, warning);
+    }
+
+    @Test
+    void aPriestCompanionOnTheListMeansNoWarning() {
+        healer(ISOLDE, 30);
+        allThreeSignUp();
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Sorrel", BossRunLines.SIGNED_UP, game.partyChat.get(0));
+    }
+
+    @Test
+    void anOwnerWhoIsAClericWithHealCounts() {
+        healer(ISOLDE, 0);
+        when(game.ann.getSkillLevel(Cleric.HEAL)).thenReturn(20);
+        allThreeSignUp();
+
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Sorrel", BossRunLines.SIGNED_UP, game.partyChat.get(0));
+    }
+
+    @Test
+    void aPriestCompanionMuYoungRefusedDoesNotCountSheStaysOutside() {
+        healer(ISOLDE, 30);
+        open.waiting.add(SID + ":" + ANN);
+        signUp(THANE, SORREL);
+        assertTrue(runs.seat(seat(ISOLDE)));
+        open.waiting.clear();
+        runs.refused(seat(ISOLDE), Refusal.BANNED); // live run 3: the healer stayed off the list
+
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Isolde", BossRunLines.REFUSED_BANNED, game.partyChat.get(0));
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.SIGNED_UP).contains(said(game.partyChat.get(1))),
+                game.partyChat.get(1));
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(game.partyChat.get(2))),
+                game.partyChat.get(2));
+        assertFalse(game.partyChat.get(2).startsWith("Isolde: "), "she is not going in: " + game.partyChat);
+    }
+
+    @Test
+    void aBenchAllysHealIsNotTheOwnersPartysHeal() {
+        healer(ISOLDE, 0);
+        ally();
+        healer(ORRIN, 30); // a separate party of bots: Heal does not cross parties
+        open.waiting.add(SID + ":" + ANN);
+        signUp(THANE, ORRIN);
+        open.waiting.clear();
+        signUp(SORREL);
+
+        assertEquals(2, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Sorrel", BossRunLines.SIGNED_UP, game.partyChat.get(0));
+        assertSays("Thane", BossRunLines.NO_HEALER, game.partyChat.get(1));
+    }
+
+    @Test
+    void aSecondRegistrationInTheSameRunDoesNotRepeatTheWarning() {
+        healer(ISOLDE, 0);
+        allThreeSignUp();
+        assertEquals(2, game.partyChat.size(), game.partyChat.toString());
+
+        // Ann picks "My party will register too." again for Ingrid, who joined her party since
+        Persona ingrid = game.companion("ingrid", "Ingrid", INGRID, RosterState.ACTIVE, 105100100);
+        game.outWithAnn(ingrid);
+        open.waiting.add(SID + ":" + ANN);
+        assertTrue(runs.seat(seat(INGRID)));
+        open.waiting.clear();
+        runs.registered(seat(INGRID));
+        runs.refused(seat(SORREL), Refusal.WITHDRAWN);
+
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Sorrel", BossRunLines.REFUSED_OTHER, game.partyChat.get(2));
+        assertEquals(1, game.partyChat.stream()
+                .filter(line -> BossRunLines.GENERIC.get(BossRunLines.NO_HEALER).contains(said(line))).count(),
+                game.partyChat.toString());
+    }
+
+    @Test
+    void theWarningSoundsLikeAPlayerInThreeOrFourWordings() {
+        List<String> wordings = BossRunLines.GENERIC.get(BossRunLines.NO_HEALER);
+        assertTrue(wordings != null && wordings.size() >= 3 && wordings.size() <= 4, String.valueOf(wordings));
+        assertEquals(wordings.size(), Set.copyOf(wordings).size(), wordings.toString());
+        assertTrue(wordings.contains("no heals this run? i'll be chugging pots."), wordings.toString());
     }
 
     @Test
@@ -810,6 +911,25 @@ class CompanionBossRunsTest {
     private static String wording(String name, String line) {
         assertTrue(line.startsWith(name + ": "), line);
         return line.substring(name.length() + 2);
+    }
+
+    /** The words of party chat line {@code line} ("Name: words"), whoever said it. */
+    private static String said(String line) {
+        return line.substring(line.indexOf(": ") + 2);
+    }
+
+    /** The loaded companion {@code id} knows Heal (Cleric.HEAL) at {@code level}; 0: it cannot cast it. */
+    private void healer(int id, int level) {
+        when(game.bots.get(id).getSkillLevel(Cleric.HEAL)).thenReturn(level);
+    }
+
+    /** Isolde and Thane sign up while Sorrel still walks up; then Sorrel signs up last, and nobody waits any more. */
+    private void allThreeSignUp() {
+        open.waiting.add(SID + ":" + ANN);
+        signUp(ISOLDE, THANE);
+        assertEquals(List.of(), game.partyChat, "Sorrel still walks up");
+        open.waiting.clear();
+        signUp(SORREL);
     }
 
     private static Seat seat(int agentId) {

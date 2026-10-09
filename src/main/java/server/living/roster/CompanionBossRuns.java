@@ -3,6 +3,7 @@ package server.living.roster;
 import client.Character;
 import client.Client;
 import config.LivingWorldConfig;
+import constants.skills.Cleric;
 import net.server.channel.Channel;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -60,7 +61,8 @@ import java.util.function.IntFunction;
  *
  * <p>How a run starts: the entry NPC (Mu Young) offers an owner who creates or joins the expedition "My party will
  * register too.", that pick enlists the owner's party companions in the Agent layer's run, and each one still waiting
- * to sign up walks to its own spot beside her (the follow guard asks {@link #waitsAt}).</p>
+ * to sign up walks to its own spot beside her (the follow guard asks {@link #waitsAt}). Once none of them waits, one
+ * says they are all signed up, and one warns when nobody of the party who goes in can cast Heal (decision 3).</p>
  *
  * <p>P7 Part B: an owner's bench allies (CompanionBossAllies) are members of the same run that lead themselves. Her
  * window offers an owner on her list "Call allies from my bench..." ({@link #alliesOffered}) and a picker of their
@@ -864,6 +866,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * when it is 0, not loaded or a bench ally, another on the list) says they are all signed up, in the owner's party
      * when a companion of it is on the list; with only bench allies on it, one of them tells the owner where they hear
      * it (a party of bots has nobody to hear it). After Start it says nothing: the owner is on the way into the fight.
+     * In the owner's party, a warning that nobody heals may follow it ({@link #warnIfNoHealer}).
      */
     private void allSignedUp(CompanionBossRun run, int speaker) {
         if (run.signedUpSaid || run.signedUp.isEmpty() || !open.registering(run.sessionId)
@@ -884,10 +887,50 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (bot != null) {
             run.signedUpSaid = true;
             BossRunLines.say(world, bot, BossRunLines.SIGNED_UP, null, 0);
+            warnIfNoHealer(run, bot);
         } else if (ally != null) {
             run.signedUpSaid = true;
             BossRunLines.tell(world, ally, BossRunLines.SIGNED_UP, null, null, run, run.ownerId);
         }
+    }
+
+    /**
+     * Decision 3 (2026-10-08), right after the signed-up line in the owner's party, so once per owner's part of a run
+     * and before Start: when nobody of the owner's party who goes in can cast Heal ({@link #healer}: the owner, another
+     * human of their party online, or a party companion of theirs on the list; one the entry NPC refused stays
+     * outside), one of their party companions on the list warns in party chat, another than {@code saidSignedUp} when
+     * there is one. A warning only: nobody is held back or refused for it. Heal reaches only the caster's own party, so
+     * a bench ally (a party of bots) neither counts nor is checked.
+     */
+    private void warnIfNoHealer(CompanionBossRun run, Character saidSignedUp) {
+        Character owner = world.roster().onlineCharacter(run.ownerId);
+        Party party = owner == null ? null : owner.getParty();
+        if (party == null || healer(owner)) {
+            return;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            if (id != run.ownerId && !member.isBot() && member.isOnline()
+                    && healer(world.roster().onlineCharacter(id))) {
+                return;
+            }
+        }
+        Character speaker = saidSignedUp;
+        for (int id : run.signedUp) {
+            Character listed = follows(id, run.ownerId) ? bot(id) : null;
+            if (healer(listed)) {
+                return;
+            }
+            if (listed != null && speaker == saidSignedUp && id != saidSignedUp.getId()) {
+                speaker = listed;
+            }
+        }
+        BossRunLines.say(world, speaker, BossRunLines.NO_HEALER, null, 0);
+    }
+
+    /** True when {@code character} can cast Heal (Cleric.HEAL at a level above 0: a Cleric, Priest or Bishop). */
+    static boolean healer(Character character) {
+        return character != null && character.getSkillLevel(Cleric.HEAL) > 0;
     }
 
     /**
