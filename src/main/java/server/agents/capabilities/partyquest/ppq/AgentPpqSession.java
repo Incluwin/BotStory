@@ -68,6 +68,7 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Set<String> narrated = new HashSet<>();
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<Integer> seenHeld = new HashSet<>();
     private Map<Integer, Integer> lastMobCounts = Map.of();
     private long clearedAtMs = -1L;
     private long enteredAtMs = -1L;
@@ -265,6 +266,15 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
                 registered.size(), othersInFlight);
     }
+
+    /** The members the bound event holds now; once seen held, a member it no longer holds may have left it. */
+    synchronized void noteHeld(Set<Integer> held) {
+        for (int id : held) {
+            if (members.containsKey(id)) seenHeld.add(id);
+        }
+    }
+
+    synchronized boolean seenHeld(int id) { return seenHeld.contains(id); }
 
     /** When the run first saw its clear: set by the first call, the same time on every later one. */
     synchronized long observeCleared(long nowMs) {

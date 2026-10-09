@@ -4,6 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.BEN;
 
@@ -25,7 +29,9 @@ class AgentPpqEntryCapTest {
 
     @Test
     void theCapCountsFromEntry() {
-        try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.DECK_TWO_MAP)) {
+        try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.DECK_TWO_MAP,
+                AgentPpqSession.Mode.HUMAN_MEMBER)) {
+            when(run.character(BEN).getEventInstance()).thenReturn(null); // only Agents inside: the cap applies
             run.session.clearEventInstance();
             run.tick(1_000L + 9 * MINUTE); // Guon at nine minutes: the bind
             for (int minute = 10; minute <= 83; minute++) {
@@ -40,6 +46,20 @@ class AgentPpqEntryCapTest {
             run.tick(now);
 
             assertEquals("PPQ event timer expired", run.session.failure());
+        }
+    }
+
+    @Test
+    void aHumanInsideKeepsTheRunPastTheCap() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.DOOR_MAP)) {
+            for (int minute = 1; minute <= 90; minute++) {
+                long now = 1_000L + minute * MINUTE;
+                run.session.markProgress(now);
+                run.tick(now);
+            }
+
+            assertFalse(run.session.terminal(), "PiratePQ.js's own timers end a run a human is in: "
+                    + run.session.failure());
         }
     }
 
@@ -101,6 +121,46 @@ class AgentPpqEntryCapTest {
             run.tick(2_000L);
 
             assertFalse(run.session.terminal(), run.session.failure());
+        }
+    }
+
+    @Test
+    void anAgentLeaderDownInsideTheEventIsGone() {
+        try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.DECK_ONE_MAP,
+                AgentPpqSession.Mode.HUMAN_MEMBER)) {
+            when(run.character(PpqRunFixture.MIRA).getHp()).thenReturn(0);
+
+            run.tick(2_000L);
+
+            assertEquals("PPQ event leader is unavailable", run.session.failure());
+        }
+    }
+
+    @Test
+    void afterTheClearALeaderWhoLoggedOutLeavesTheRunToTheAfterClearRules() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
+            when(run.event.isEventCleared()).thenReturn(true);
+            run.tick(2_000L);
+            when(run.online.findOnlineCharacterById(BEN)).thenReturn(null);
+            for (int id : PpqRunFixture.AGENTS) run.onMap(id, AgentPpqDefinition.RECRUIT_MAP);
+
+            run.tick(3_000L);
+
+            assertEquals(AgentPpqSession.Phase.COMPLETED, run.session.phase(), run.session.failure());
+        }
+    }
+
+    @Test
+    void afterTheClearADeadAgentLeaderOnTheBossMapTalksToNobody() {
+        try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.BOSS_MAP,
+                AgentPpqSession.Mode.HUMAN_MEMBER)) {
+            when(run.event.isEventCleared()).thenReturn(true);
+            when(run.character(PpqRunFixture.MIRA).getHp()).thenReturn(0);
+
+            run.tick(2_000L);
+
+            assertFalse(run.session.terminal(), run.session.failure());
+            verify(run.actions, never()).npcPosition(any(), eq(AgentPpqDefinition.RESCUE_NPC));
         }
     }
 

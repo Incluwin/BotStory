@@ -30,6 +30,7 @@ class AgentPpqClearMapTest {
             when(run.event.isEventCleared()).thenReturn(true);
             Character mira = run.character(MIRA);
             when(mira.getEventInstance()).thenReturn(null);
+            PpqAdmitFixture.room(mira, client.inventory.InventoryType.ETC, 1); // room for the Feather
             Point wuYang = new Point(120, 60);
             when(mira.getPosition()).thenReturn(wuYang);
             when(run.actions.npcPosition(mira, AgentPpqDefinition.RESCUE_NPC)).thenReturn(wuYang);

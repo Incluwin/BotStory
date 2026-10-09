@@ -4,16 +4,21 @@ import client.Character;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentClientGateway;
+import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
+import server.agents.integration.MapGateway;
 import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +27,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -43,6 +49,8 @@ final class PpqRunFixture implements AutoCloseable {
     final PartyGateway party = mock(PartyGateway.class);
     final CharacterGateway online = mock(CharacterGateway.class);
     final EventInstanceManager event = mock(EventInstanceManager.class);
+    final MapGateway maps = mock(MapGateway.class);
+    final MapleMap recruit = mock(MapleMap.class);
     final AgentPpqSession session;
     final Map<Integer, Character> characters = new HashMap<>();
     final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
@@ -61,6 +69,10 @@ final class PpqRunFixture implements AutoCloseable {
                 .thenReturn(partyQuest);
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
+        open(AgentMapGatewayRuntime.class).when(AgentMapGatewayRuntime::map).thenReturn(maps);
+        open(AgentClientGatewayRuntime.class).when(AgentClientGatewayRuntime::clients)
+                .thenReturn(mock(AgentClientGateway.class));
+        when(maps.resolveMap(anyInt(), anyInt(), eq(AgentPpqDefinition.RECRUIT_MAP))).thenReturn(recruit);
         MockedStatic<AgentRuntimeRegistry> registry = open(AgentRuntimeRegistry.class);
         MockedStatic<AgentRuntimeIdentityRuntime> identity = open(AgentRuntimeIdentityRuntime.class);
         session = new AgentPpqSession(mode, 1L, BEN, false, 1_000L);
