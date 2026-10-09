@@ -1,5 +1,16 @@
 package server.agents.capabilities.partyquest.opq;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import server.agents.integration.InventoryGateway;
+import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
+import org.mockito.MockedStatic;
+import client.inventory.Item;
+import client.inventory.InventoryType;
+import client.inventory.Inventory;
 import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -123,5 +134,34 @@ class AgentOpqRoomEakLineTest {
         when(leader.getMapId()).thenReturn(mapId);
         when(leader.getPosition()).thenReturn(new Point(0, 0));
         when(run.actions.npcPosition(leader, AgentOpqDefinition.EAK_NPC)).thenReturn(new Point(20, 0));
+    }
+
+    @Test
+    void aPlacedStatuePieceIsLogged() {
+        AgentOpqSession session = sixAgents(AgentOpqSession.Phase.RESTORING_STATUE);
+        int piece = AgentOpqDefinition.STATUE_PIECES.get(0); // the walkway piece goes on scar4
+        when(mira.getItemQuantity(piece, false)).thenReturn(1);
+        when(mira.getPosition()).thenReturn(new Point(AgentOpqDefinition.STATUE_SCAR_POSITION.get("scar4")));
+        Item held = mock(Item.class);
+        when(held.getQuantity()).thenReturn((short) 1);
+        when(held.getPosition()).thenReturn((short) 3);
+        Inventory etc = mock(Inventory.class);
+        when(etc.findById(piece)).thenReturn(held);
+        when(mira.getInventory(InventoryType.ETC)).thenReturn(etc);
+        InventoryGateway inventory = mock(InventoryGateway.class);
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class);
+             OpqLogLines lines = new OpqLogLines(AgentOpqCoordinator.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
+            reservations.when(() -> AgentInventoryReservationRuntime.mayConsume(any(), any(), anyLong()))
+                    .thenReturn(true);
+
+            AgentOpqCoordinator.tickMember(session, run.entries.get(12), mira, 10_000L);
+
+            verify(inventory).dropItem(mira, InventoryType.ETC, (short) 3, (short) 1);
+            assertEquals(List.of("OPQ statue: session=" + session.sessionId() + " scar=scar4 piece=4001044 by=Mira"),
+                    lines.startingWith("OPQ statue:"));
+        }
     }
 }

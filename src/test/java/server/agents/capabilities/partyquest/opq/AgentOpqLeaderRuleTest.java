@@ -111,4 +111,18 @@ class AgentOpqLeaderRuleTest {
         assertEquals(AgentOpqSession.Phase.CLAIMING_REWARD, session.phase());
         assertSame(session, AgentOpqSessionRegistry.forMember(mira.getId()));
     }
+
+    @Test
+    void anOfflineLeaderAfterTheClearLetsOnlyTheCompanionsGo() {
+        AgentOpqSession session = benLeads(AgentOpqSession.Phase.RESTORING_MINERVA);
+        when(run.event.getProperty("statusStg8")).thenReturn("1");
+        when(run.characters.findOnlineCharacterById(ben.getId())).thenReturn(null);
+
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+
+        assertEquals("OPQ leader unavailable", session.failure());
+        verify(run.event).exitPlayer(mira);
+        verify(run.event, never()).exitPlayer(ben);
+        verify(run.event, never()).dispose();
+    }
 }

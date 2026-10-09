@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,19 +30,24 @@ class AgentOpqMinervaRefusalTest {
             AgentOpqSession.Phase.CLAIMING_REWARD, ben, mira, run.companion(3, "Kes"), run.companion(4, "Pel"),
             run.companion(5, "Hal"));
     private final AtomicInteger miraMap = new AtomicInteger(AgentOpqDefinition.CLEAR_MAP);
+    private final AtomicBoolean rewards = new AtomicBoolean();
 
     @AfterEach
     void tearDown() {
         run.close();
     }
 
-    /** Mira stands by Minerva on the reward map; her script runs, and {@code rewarded} says whether it warps her out. */
+    /**
+     * Mira stands by Minerva on the reward map; her script runs, and {@link #rewards} says whether it rewards her (and
+     * warps her to Wonky) or refuses her full bag (she stays). Stubbed once: a second stubbing would run this answer.
+     */
     private void besideMinerva(boolean rewarded) {
+        rewards.set(rewarded);
         when(mira.getMapId()).thenAnswer(call -> miraMap.get());
         when(mira.getPosition()).thenReturn(new Point(0, 0));
         when(run.actions.npcPosition(mira, AgentOpqDefinition.MINERVA_NPC)).thenReturn(new Point(20, 0));
         when(run.partyQuest.runNpc(mira, AgentOpqDefinition.MINERVA_NPC)).thenAnswer(call -> {
-            if (rewarded) miraMap.set(AgentOpqDefinition.RECRUIT_MAP);
+            if (rewards.get()) miraMap.set(AgentOpqDefinition.RECRUIT_MAP);
             return true;
         });
     }
@@ -70,14 +76,19 @@ class AgentOpqMinervaRefusalTest {
     @Test
     void aRewardedClaimIsNotARefusal() {
         besideMinerva(true);
-
         tick(10_000L);
-        miraMap.set(AgentOpqDefinition.CLEAR_MAP); // say she came back in: the earlier claim did not count
-        besideMinerva(false);
+        assertEquals(AgentOpqDefinition.RECRUIT_MAP, miraMap.get(), "rewarded and warped to Wonky");
+
+        // Say she came back in with a full bag: the rewarded claim did not count, so two refusals do not end it ...
+        rewards.set(false);
+        miraMap.set(AgentOpqDefinition.CLEAR_MAP);
         tick(11_000L);
         tick(12_000L);
-
         verify(run.event, never()).exitPlayer(any());
+
+        // ... and the third does.
+        tick(13_000L);
+        verify(run.event).exitPlayer(mira);
     }
 
     @Test

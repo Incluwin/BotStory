@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.opq;
 
+import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.pace.AgentPqPace;
 
@@ -111,6 +112,25 @@ class AgentOpqPaceReportTest {
                     "OPQ pace span: session=" + session.sessionId()
                             + " key=rooms seconds=27.5 theorySeconds=-1 complete=false why=open"),
                     lines.startingWith("OPQ pace span:"));
+        }
+    }
+
+    @Test
+    void theCoordinatorRecordsTheFirstPassThatSawTheClear() {
+        try (OpqRunFixture run = new OpqRunFixture()) {
+            AgentOpqSession session = run.session(AgentOpqSession.Mode.AUTONOMOUS,
+                    AgentOpqSession.Phase.RESTORING_MINERVA, run.companion(11, "Lea"), run.companion(12, "Mira"),
+                    run.companion(13, "Kes"), run.companion(14, "Pel"), run.companion(15, "Hal"),
+                    run.companion(16, "Gus"));
+
+            AgentOpqCoordinator.tickSession(session, 10_000L);
+            assertEquals(0L, session.clearSeenAtMs(), "Minerva not yet free");
+            when(run.event.getProperty("statusStg8")).thenReturn("1");
+            AgentOpqCoordinator.tickSession(session, 11_000L);
+            AgentOpqCoordinator.tickSession(session, 12_000L);
+
+            assertEquals(11_000L, session.clearSeenAtMs());
+            assertEquals(11_000L, AgentOpqPaceReport.of(session, 13_000L).clearedAtMs());
         }
     }
 }

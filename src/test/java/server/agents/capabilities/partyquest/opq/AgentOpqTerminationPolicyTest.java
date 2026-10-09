@@ -264,4 +264,16 @@ class AgentOpqTerminationPolicyTest {
         AgentOpqCoordinator.tickMember(leaving, run.entries.get(mira.getId()), mira, 20_000_000L);
         verify(run.actions, times(1)).refreshNavigation(any(), any());
     }
+
+    @Test
+    void theTicksStallAfterTheClearLetsOnlyTheCompanionsGo() {
+        AgentOpqSession session = companionRun(AgentOpqSession.Phase.RESTORING_MINERVA);
+        minervaFreed();
+
+        AgentOpqCoordinator.tickSession(session, 2_000L + 720_001L); // no progress since 2 000 ms
+
+        assertEquals("No legal OPQ progress before timeout", session.failure());
+        verifyCompanionsOnlyLeft();
+        verify(run.party, never()).leaveCurrentParty(any());
+    }
 }
