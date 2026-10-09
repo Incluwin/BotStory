@@ -6,12 +6,14 @@ import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGateway;
 import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
+import server.agents.integration.InventoryGateway;
 import server.agents.integration.MapGateway;
 import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
@@ -50,6 +52,7 @@ final class PpqRunFixture implements AutoCloseable {
     final CharacterGateway online = mock(CharacterGateway.class);
     final EventInstanceManager event = mock(EventInstanceManager.class);
     final MapGateway maps = mock(MapGateway.class);
+    final InventoryGateway inventory = mock(InventoryGateway.class);
     final MapleMap recruit = mock(MapleMap.class);
     final AgentPpqSession session;
     final Map<Integer, Character> characters = new HashMap<>();
@@ -70,6 +73,8 @@ final class PpqRunFixture implements AutoCloseable {
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         open(AgentMapGatewayRuntime.class).when(AgentMapGatewayRuntime::map).thenReturn(maps);
+        open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
+        when(inventory.getSlotMax(any(), eq(AgentPpqDefinition.WU_YANG_FEATHER))).thenReturn((short) 200);
         open(AgentClientGatewayRuntime.class).when(AgentClientGatewayRuntime::clients)
                 .thenReturn(mock(AgentClientGateway.class));
         when(maps.resolveMap(anyInt(), anyInt(), eq(AgentPpqDefinition.RECRUIT_MAP))).thenReturn(recruit);

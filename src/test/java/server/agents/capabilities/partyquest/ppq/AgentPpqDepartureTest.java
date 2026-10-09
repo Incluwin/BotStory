@@ -9,12 +9,18 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.BEN;
+import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.MIRA;
 import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.TOBI;
 import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.UNA;
 
@@ -46,6 +52,30 @@ class AgentPpqDepartureTest {
             assertEquals(List.of("PPQ departed: session=" + run.session.sessionId() + " member=" + TOBI
                             + " map=" + AgentPpqDefinition.EXIT_MAP + " registered=3 companionRun=true"),
                     lines.startingWith("PPQ departed:"));
+        }
+    }
+
+    @Test
+    void theLastCompanionOfAHumanLedRunGoesHomeAndTheHumansCarryOn() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.DECK_TWO_MAP);
+             MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle = mockStatic(AgentPartyQuestLifecycleRuntime.class);
+             PpqLogLines lines = new PpqLogLines(AgentPpqCoordinator.class)) {
+            // Ben's party had more humans than companions: Mira is the run's only companion.
+            run.session.removeMember(TOBI);
+            run.session.removeMember(UNA);
+            run.tick(2_000L);
+            respawnedOut(run, MIRA);
+
+            run.tick(2_500L);
+
+            assertEquals(AgentPpqTerminationService.HUMANS_CARRY_ON, run.session.failure());
+            assertTrue(run.session.terminationStarted());
+            verify(run.event, never()).dispose();
+            verify(run.event, never()).exitPlayer(run.character(BEN));
+            lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(eq(run.session.sessionId()),
+                    eq(false), eq(AgentPpqTerminationService.HUMANS_CARRY_ON), eq(2_500L), any()));
+            assertEquals(1, lines.startingWith("PPQ departed:").size());
+            assertTrue(lines.startingWith("PPQ departed:").getFirst().endsWith("last=true"));
         }
     }
 

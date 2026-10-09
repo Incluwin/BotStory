@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
  */
 public final class AgentPpqTerminationService {
     private static final Logger log = LoggerFactory.getLogger(AgentPpqTerminationService.class);
+    /** The release reason when a companion run's last companion left and its humans go on without it. */
+    static final String HUMANS_CARRY_ON = "every companion left; the humans carry on";
 
     private AgentPpqTerminationService() { }
 

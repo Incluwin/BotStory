@@ -52,6 +52,11 @@ public final class AgentPpqRuntime {
      */
     public static void runtimeRemoved(int id, long nowMs) {
         AgentPpqSession session = AgentPpqSessionRegistry.forMember(id);
+        if (session != null && !session.terminal() && !session.terminationStarted() && session.member(id) == null) {
+            // It departed a moment ago (its hand-back is under way): nothing of the run is left to stop.
+            AgentPpqSessionRegistry.unindexMember(session, id);
+            return;
+        }
         if (session == null || session.terminal() || session.terminationStarted() || !session.departAgent(id)) {
             forceStop(id, "Agent runtime removed", nowMs);
             return;

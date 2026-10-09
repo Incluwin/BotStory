@@ -9,6 +9,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -159,6 +160,13 @@ public final class AgentPpqCoordinator {
                     || !session.seenHeld(id)) continue;
             Character agent = character(id);
             if (agent != null && AgentPpqDefinition.isEventMap(agent.getMapId())) continue;
+            if (session.companionAdopted() && session.lastAgent(id)) {
+                // A human-led run needs no Agent to go on: its last companion goes home with the release.
+                log.info("PPQ departed: session={} member={} map={} registered={} companionRun=true last=true",
+                        session.sessionId(), id, agent == null ? "-" : String.valueOf(agent.getMapId()), held.size());
+                AgentPpqTerminationService.release(session, AgentPpqTerminationService.HUMANS_CARRY_ON, nowMs, false);
+                return;
+            }
             if (!session.departAgent(id)) continue;
             log.info("PPQ departed: session={} member={} map={} registered={} companionRun={}", session.sessionId(), id,
                     agent == null ? "-" : String.valueOf(agent.getMapId()), held.size(), session.companionAdopted());
@@ -583,11 +591,13 @@ public final class AgentPpqCoordinator {
         session.observeProgress(mobs, items, reactors, nowMs);
     }
 
-    /** Room for Wu Yang's Feather: a free Etc slot, or a Feather stack it already carries. */
+    /** Room for Wu Yang's Feather: a free Etc slot, or a Feather stack it carries that is not full. */
     static boolean roomForFeather(Character agent) {
-        if (agent.getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false) > 0) return true;
         var etc = agent.getInventory(InventoryType.ETC);
-        return etc != null && etc.getNumFreeSlot() > 0;
+        if (etc != null && etc.getNumFreeSlot() > 0) return true;
+        int feathers = agent.getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false);
+        int slotMax = AgentInventoryGatewayRuntime.inventory().getSlotMax(agent, AgentPpqDefinition.WU_YANG_FEATHER);
+        return feathers > 0 && slotMax > 0 && feathers % slotMax != 0;
     }
 
     private static boolean near(Point first, Point second) {
