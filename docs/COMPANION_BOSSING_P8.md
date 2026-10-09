@@ -102,7 +102,8 @@ With zakum off: no visible change for players. GMs get `!bossgear` and `!bossmir
 
 `config.yaml` (living_world): no new keys.
 - `COMPANION_BOSS_ENABLED_TYPES` stays `"easy_balrog"`. `"easy_balrog,zakum"` turns Zakum on.
-- `COMPANION_BOSS_ALLY_TYPES` stays `""`. `"zakum"` lets Zakum owners call bench allies. The boss must be on both lists.
+- `COMPANION_BOSS_ALLY_TYPES` stays `"easy_balrog"`, as live ships it for Easy Balrog bench allies.
+  `"easy_balrog,zakum"` also lets Zakum owners call bench allies. The boss must be on both lists.
 - One comment line above `COMPANION_BOSS_ENABLED_TYPES` says zakum stays off until its memory checks pass.
 
 `agent-engine.yaml` (appended, each with Values/Purpose/Technical lines):
@@ -216,7 +217,8 @@ Not changed: `AgentDeathTickCoordinator`, ZakumBattle.js, Zakum05.js, 2111001.js
 2. After the merge, run `tools\knowledge-export.bat`. Until then
    `KnowledgeLintTest.installOfflineReadsTheFileAndTheSeed` fails, because 2030013.js changed. Do not regenerate
    server-knowledge.json on the branch.
-3. Deploy as shipped. Zakum is off: `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_ALLY_TYPES: ""`.
+3. Deploy as shipped. Zakum is off: `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and
+   `COMPANION_BOSS_ALLY_TYPES: "easy_balrog"`. Easy Balrog bench allies stay on, as live has them.
 4. Live at deploy even with zakum off:
    - the GM6 commands `!bossgear` and `!bossmirror`,
    - the mirror, installed with the living world. It acts only in open companion runs of listed types and in the GM
@@ -227,14 +229,17 @@ Not changed: `AgentDeathTickCoordinator`, ZakumBattle.js, Zakum05.js, 2111001.js
 5. To turn Zakum on (recipe Stage 2), set `"easy_balrog,zakum"`. In the same commit, update
    `LivingWorldConfigBossTest.configYamlShipsEasyBalrogOnWithServerAuthorityAndSaysWhy`. It pins the value and the
    yaml line.
-6. For allies (recipe Run 5), set `COMPANION_BOSS_ALLY_TYPES: "zakum"`. Update
-   `LivingWorldConfigBossTest.allyKeysShipOffWithOneOwner` in the same commit.
+6. For allies (recipe Run 5), set `COMPANION_BOSS_ALLY_TYPES: "easy_balrog,zakum"`. Keep easy_balrog in the list.
+   Without it, Easy Balrog bench allies turn off. In the same commit, update
+   `LivingWorldConfigBossTest.allyKeysAreOffInCodeAndShipEasyBalrogOnWithOneOwner` (the value) and
+   `LivingWorldConfigBossTest.theYamlCarriesTheFourKeys` (the yaml line).
 7. If a stage stops on the client-memory rule, set `ATTACK_INTERVAL_FLOOR_MS` to 900 or `MAX_SHOWN_HITS` to 3.
    `AgentBossClientLoadTest.theShippedFloorIsZeroAndChangesNothing` pins the floor at 0. Nothing pins MAX_SHOWN_HITS.
 8. Other tests that pin shipped P8 values: `AgentBossScopeTest.theYamlShipsTheScopeOnForZakumWithNoListedIds`
    (ENABLED, EXPEDITION_TYPES, BOSS_IDS), `AgentZakumAnchorReachTest` (PLATFORM_ANCHORS),
    `AgentSupplyReadinessBossStandardTest` (BOSS_STANDARDS) and `AgentSupplyReadinessTest` (AMMO_STANDARDS).
-9. Rollback: set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_ALLY_TYPES: ""`, then restart.
+9. Rollback: set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_ALLY_TYPES: "easy_balrog"`, then
+   restart. Do not set the ally list to `""`: that turns Easy Balrog bench allies off.
 10. Merge with P11 by appending after the `// slot: zakum` comments in CompanionBossKeys, AgentBossRunCatalog,
     BossEntrance and BossRunLines.BY_BOSS. AdobisHookScriptTest pins the seven 2030013.js blocks and the stock
     SHA-256. Any later edit of 2030013.js must update it.
@@ -339,7 +344,7 @@ Run 4, owner leaves early:
     Expect one owner-left line in party chat when the first one is out.
 
 Run 5, the P8 exit run with at least 8 companions:
-40. Warn players. Set `COMPANION_BOSS_ALLY_TYPES: "zakum"` and restart. Reset every quota.
+40. Warn players. Set `COMPANION_BOSS_ALLY_TYPES: "easy_balrog,zakum"` and restart. Reset every quota.
 41. Create the expedition and register your party. In the first minute, call all three allies through "Call allies
     from my bench...". Expect ETA whispers, arrival at west00, "Boss ally provisioned ... store=2030009" lines and
     sign-up. `!expeditions` lists 9.
@@ -349,7 +354,8 @@ Run 6, logout: log out mid-fight. Expect your party companions to park, and your
 
 Regression: `!balrogtest quick`, the Easy Balrog Part A windows, one KPQ desk run and one HPQ desk run.
 
-Rollback: set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_ALLY_TYPES: ""`, then restart.
+Rollback: set `COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"` and `COMPANION_BOSS_ALLY_TYPES: "easy_balrog"`, then
+restart.
 
 ## Limits and unconfirmed points
 
