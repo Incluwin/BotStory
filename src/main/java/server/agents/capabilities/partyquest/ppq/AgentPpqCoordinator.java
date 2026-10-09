@@ -40,6 +40,10 @@ public final class AgentPpqCoordinator {
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.INTERACTION_RADIUS");
     private static final long AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.AFTER_CLEAR_LIMIT_MS");
+    private static final long COMPANION_ENTRY_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_ENTRY_WAIT_MS");
+    private static final long PRE_ENTRY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.PRE_ENTRY_TIMEOUT_MS");
 
     private AgentPpqCoordinator() { }
 
@@ -55,16 +59,19 @@ public final class AgentPpqCoordinator {
 
     public static void tickSession(AgentPpqSession session, long nowMs) {
         if (session.terminal() || session.terminationStarted() || session.paused()) return;
-        if (!cleared(session) && nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
-            session.fail("PPQ event timer expired", nowMs); return;
-        }
         Character leader = character(session.eventLeaderId());
-        if (leader == null || leader.getHp() <= 0) { session.fail("PPQ event leader is unavailable", nowMs); return; }
+        if (leader == null) { session.fail("PPQ event leader is unavailable", nowMs); return; }
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
-            session.bindEventInstance(leader.getEventInstance());
+            session.bindEventInstance(leader.getEventInstance(), nowMs);
             session.setPotionsAtEntry(AgentPpqTerminationService.potions(session));
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
+        }
+        if (capReached(session, nowMs)) return;
+        // A leader down in the bound event is PiratePQ.js's to judge (his OK ends the event); anywhere else he is gone.
+        if (leader.getHp() <= 0 && (session.eventInstance() == null
+                || leader.getEventInstance() != session.eventInstance())) {
+            session.fail("PPQ event leader is unavailable", nowMs); return;
         }
         logStage(session, leader, nowMs);
         observeProgress(session, nowMs);
@@ -109,6 +116,32 @@ public final class AgentPpqCoordinator {
         if (!cleared(session) && nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
             session.fail("PPQ stalled", nowMs);
         }
+    }
+
+    /**
+     * The run's time caps, none after the clear. From entry, EVENT_TIMEOUT_MS ("PPQ event timer expired"); before it,
+     * COMPANION_ENTRY_WAIT_MS for a companion run (its human leader clicks Guon himself) and PRE_ENTRY_TIMEOUT_MS for
+     * every run, so a slow start never shortens the stages. True when it failed the run.
+     */
+    private static boolean capReached(AgentPpqSession session, long nowMs) {
+        if (cleared(session)) return false;
+        if (session.eventInstance() == null) {
+            long waitedMs = nowMs - session.startedAtMs();
+            if (session.companionAdopted() && waitedMs >= COMPANION_ENTRY_WAIT_MS) {
+                session.fail("The PPQ leader did not start the event in time", nowMs);
+                return true;
+            }
+            if (waitedMs >= PRE_ENTRY_TIMEOUT_MS) {
+                session.fail("PPQ entry timed out", nowMs);
+                return true;
+            }
+            return false;
+        }
+        if (nowMs - session.enteredAtMs() >= EVENT_TIMEOUT_MS) {
+            session.fail("PPQ event timer expired", nowMs);
+            return true;
+        }
+        return false;
     }
 
     /**

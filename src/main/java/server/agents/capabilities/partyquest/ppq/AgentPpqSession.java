@@ -70,6 +70,7 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private Map<Integer, Integer> lastMobCounts = Map.of();
     private long clearedAtMs = -1L;
+    private long enteredAtMs = -1L;
     private Map<String, Integer> lastItemCounts = Map.of();
     private Map<String, Integer> lastReactorStates = Map.of();
 
@@ -292,6 +293,15 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     public synchronized String failure() { return failure; }
     public synchronized EventInstanceManager eventInstance() { return eventInstance; }
     public synchronized void bindEventInstance(EventInstanceManager value) { eventInstance = value; }
+
+    /** Binds the run's event as its leader enters it (the coordinator binds once); the cap counts from here. */
+    public synchronized void bindEventInstance(EventInstanceManager value, long nowMs) {
+        eventInstance = value;
+        enteredAtMs = nowMs;
+    }
+
+    /** When the run entered its event; the start for a session bound without a time. */
+    public synchronized long enteredAtMs() { return enteredAtMs >= 0L ? enteredAtMs : startedAtMs; }
     public synchronized void clearEventInstance() { eventInstance = null; }
     public synchronized AgentPpqMemberState member(int id) { return members.get(id); }
     public synchronized Collection<AgentPpqMemberState> members() { return List.copyOf(members.values()); }
