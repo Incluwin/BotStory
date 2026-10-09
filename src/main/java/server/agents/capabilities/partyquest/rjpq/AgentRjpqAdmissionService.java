@@ -230,6 +230,14 @@ public final class AgentRjpqAdmissionService {
         return placementProblem(side == null ? AgentRjpqSide.ZENUMIST : side, member);
     }
 
+    /** What keeps {@code member} out of a run on {@code side}'s desk, in that NPC's words; "" when nothing does. */
+    public static String memberProblem(AgentRjpqSide side, Character member) {
+        if (member == null || side == null) {
+            return "";
+        }
+        return placementProblem(side, member);
+    }
+
     private static String placementProblem(AgentRjpqSide side, Character member) {
         if (member.getMapId() != side.recruitMapId()) {
             return member.getName() + " is not beside " + (side == AgentRjpqSide.ZENUMIST ? "Romeo." : "Juliet.");

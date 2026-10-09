@@ -34,6 +34,8 @@ final class AgentRjpqCompanionRun {
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.COMPANION_AFTER_CLEAR_LIMIT_MS");
     private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.ENTRY_HOLD_GRACE_MS");
+    private static final long LEFT_CONFIRM_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.rjpq.AgentRjpqCompanionRun.LEFT_CONFIRM_MS");
 
     private AgentRjpqCompanionRun() {
     }
@@ -136,11 +138,12 @@ final class AgentRjpqCompanionRun {
     }
 
     /**
-     * A member the bound event held and no longer holds (a disconnect, a walk-out), or one it never held once
-     * ENTRY_HOLD_GRACE_MS has passed since the bind (the event started without it), has departed instead of stalling
-     * the run: it is logged once ('RJPQ departed:'), the run stops counting it, and a departed Agent is handed back to
-     * its owner at once. A dead member the event still holds has not departed (its gate holds it). Before the clear
-     * only.
+     * A member the bound event held and has not held for LEFT_CONFIRM_MS (a disconnect, a walk-out), or one it never
+     * held once ENTRY_HOLD_GRACE_MS has passed since the bind (the event started without it), has departed instead of
+     * stalling the run: it is logged once ('RJPQ departed:'), the run stops counting it, and a departed Agent is handed
+     * back to its owner at once. The wait keeps MagatiaPQ's own end, which walks the players out one by one before it
+     * disposes the event, from passing for departures: the disposal ends the run first, in a companion's words. A dead
+     * member the event still holds has not departed (its gate holds it). Before the clear only.
      */
     private static void observeDepartures(AgentRjpqSession session, EventInstanceManager event, long nowMs) {
         if (session.terminationStarted()) {
@@ -156,7 +159,11 @@ final class AgentRjpqCompanionRun {
         boolean entryOver = nowMs - session.enteredEventAtMs() >= ENTRY_HOLD_GRACE_MS;
         for (AgentRjpqMemberState member : session.members()) {
             int id = member.characterId();
-            if (held.contains(id) || !session.seenHeld(id) && !entryOver || !session.markDeparted(id)) {
+            if (held.contains(id) || session.departed(id)) {
+                continue;
+            }
+            boolean gone = session.seenHeld(id) ? session.missingFor(id, nowMs) >= LEFT_CONFIRM_MS : entryOver;
+            if (!gone || !session.markDeparted(id)) {
                 continue;
             }
             Character character = AgentRjpqCoordinator.character(id);
