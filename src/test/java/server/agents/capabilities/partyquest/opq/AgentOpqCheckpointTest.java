@@ -3,13 +3,17 @@ package server.agents.capabilities.partyquest.opq;
 import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,6 +39,12 @@ class AgentOpqCheckpointTest {
         gm.inside(phase, mapId);
     }
 
+    /** No member's inventory was read or changed, and the inventory gateway was never asked. */
+    private void verifyNoInventoryChange(MockedStatic<AgentInventoryGatewayRuntime> inventories) {
+        inventories.verifyNoInteractions();
+        for (Character member : gm.party) verify(member, never()).getInventory(any());
+    }
+
     /** The event saw only the reads the checks make, these property writes and the one team warp. */
     private void verifyOnly(int warpTo, String... properties) {
         verify(gm.event).isEventDisposed();
@@ -49,9 +59,11 @@ class AgentOpqCheckpointTest {
         adoptAndEnter(AgentOpqSession.Phase.ENTRANCE, AgentOpqDefinition.ENTRANCE_MAP);
         long progressBefore = gm.session.lastProgressAtMs();
 
-        try (OpqLogLines lines = new OpqLogLines(AgentOpqTestService.class)) {
+        try (OpqLogLines lines = new OpqLogLines(AgentOpqTestService.class);
+             MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
             assertEquals(List.of("OPQ checkpoint: everyone is in the center."),
                     gm.opqtest(gm.crew, 5_000L, "checkpoint", "center"));
+            verifyNoInventoryChange(inventories);
             assertEquals(List.of("OPQ checkpoint: session=" + gm.session.sessionId() + " from=ENTRANCE to=920010100"
                             + " members=[753200, 753201, 753202, 753203, 753204, 753205]"),
                     lines.startingWith("OPQ checkpoint:"));
@@ -66,8 +78,11 @@ class AgentOpqCheckpointTest {
     void theGardenCheckpointClearsTheEntranceAndTheSixRoomsButNotTheStatue() {
         adoptAndEnter(AgentOpqSession.Phase.SPLIT_ROOMS, AgentOpqDefinition.CENTER_MAP);
 
-        assertEquals(List.of("OPQ checkpoint: everyone is in the garden."),
-                gm.opqtest(gm.crew, 5_000L, "checkpoint", "garden"));
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            assertEquals(List.of("OPQ checkpoint: everyone is in the garden."),
+                    gm.opqtest(gm.crew, 5_000L, "checkpoint", "garden"));
+            verifyNoInventoryChange(inventories);
+        }
 
         verify(gm.event, never()).setProperty("statusStg7", "1");
         verify(gm.event, never()).setProperty("statusStg8", "1");

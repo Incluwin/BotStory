@@ -14,8 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ScheduledFuture;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -153,8 +155,20 @@ class AgentOpqWatchdogTest {
                     run.companion(14, "Pel"), run.companion(15, "Hal"), run.companion(16, "Gus"));
             session.setPaused(true);
             AgentOpqWatchdogRuntime.tick(session, 5_000L);
-            assertEquals(AgentOpqSession.Phase.PREPARING, session.phase());
-            AgentOpqWatchdogRuntime.tick(null, 5_000L);
+            assertEquals(AgentOpqSession.Phase.PREPARING, session.phase(), "a paused run is not ticked");
+
+            // An ended run (failed, its release still to come) with no live Agent left is not failed again.
+            Character[] agents = {run.companion(21, "Ann"), run.companion(22, "Bo"), run.companion(23, "Cy"),
+                    run.companion(24, "Di"), run.companion(25, "Ed"), run.companion(26, "Fy")};
+            AgentOpqSession ended = run.session(AgentOpqSession.Mode.AUTONOMOUS, AgentOpqSession.Phase.GARDEN, agents);
+            ended.fail("OPQ leader unavailable", 4_000L);
+            for (Character agent : agents) when(agent.getHp()).thenReturn(0);
+            AgentOpqWatchdogRuntime.tick(ended, 5_000L);
+            assertEquals("OPQ leader unavailable", ended.failure(), "an ended run is not ticked");
+            assertSame(ended, AgentOpqSessionRegistry.forMember(21));
+            verify(run.event, never()).dispose();
+
+            assertDoesNotThrow(() -> AgentOpqWatchdogRuntime.tick(null, 5_000L), "no session, nothing to do");
         }
     }
 

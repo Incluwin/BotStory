@@ -270,7 +270,8 @@ class AgentOpqTerminationPolicyTest {
         AgentOpqSession session = companionRun(AgentOpqSession.Phase.RESTORING_MINERVA);
         minervaFreed();
 
-        AgentOpqCoordinator.tickSession(session, 2_000L + 720_001L); // no progress since 2 000 ms
+        // No progress since 2 000 ms, one millisecond past the coordinator's phase timeout.
+        AgentOpqCoordinator.tickSession(session, 2_000L + AgentOpqCoordinator.phaseTimeoutMs() + 1L);
 
         assertEquals("No legal OPQ progress before timeout", session.failure());
         verifyCompanionsOnlyLeft();
