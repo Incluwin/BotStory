@@ -386,8 +386,9 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
             return stats;
         }
         pruneClosedRuns();
-        return runStats.computeIfAbsent(key, ignored -> new RunStats(
-                key instanceof AgentBossRunSession session ? "session=" + session.sessionId() : "session=trial", now));
+        return runStats.computeIfAbsent(key, ignored -> key instanceof AgentBossRunSession session
+                ? new RunStats("session=" + session.sessionId(), session, now)
+                : new RunStats("session=trial", null, now));
     }
 
     private void pruneClosedRuns() {
@@ -530,9 +531,14 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         private long predictedNotReported;
     }
 
-    /** One run's (or the trial's) counters since it began; any thread. */
+    /**
+     * One run's (or the trial's) counters since it began; any thread. A run's line ends with botAttacks=, the attacks
+     * its members committed on the battle map (AgentBossClientLoad); the trial is no run and has no such count.
+     */
     private static final class RunStats {
         private final String label;
+        /** The run, or null for the trial. */
+        private final AgentBossRunSession session;
         private final AtomicLong lastSummaryMs;
         private final AtomicLong attacks = new AtomicLong();
         private final AtomicLong mirrored = new AtomicLong();
@@ -545,8 +551,9 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         private final AtomicLong regionsMask = new AtomicLong();
         private final AtomicLong regionsSampled = new AtomicLong();
 
-        private RunStats(String label, long createdAtMs) {
+        private RunStats(String label, AgentBossRunSession session, long createdAtMs) {
             this.label = label;
+            this.session = session;
             this.lastSummaryMs = new AtomicLong(createdAtMs);
         }
 
@@ -558,7 +565,8 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
             return label + " attacks=" + attacks.get() + " mirrored=" + mirrored.get()
                     + " dispatched=" + dispatched.get() + " applied=" + applied.get() + " shown=" + shown.get()
                     + " window=" + window.get() + " airborne=" + airborne.get() + " unengaged=" + unengaged.get()
-                    + " regionsMask=" + regionsMask.get() + " regionsSampled=" + regionsSampled.get();
+                    + " regionsMask=" + regionsMask.get() + " regionsSampled=" + regionsSampled.get()
+                    + (session == null ? "" : " botAttacks=" + AgentBossClientLoad.attacks(session));
         }
     }
 }

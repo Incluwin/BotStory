@@ -1,6 +1,7 @@
 package server.agents.capabilities.combat;
 
 import server.agents.capabilities.combat.learning.AgentCombatLearner;
+import server.agents.capabilities.expedition.boss.AgentBossClientLoad;
 import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
 
 import client.Character;
@@ -158,6 +159,9 @@ public final class AgentCombatAttackRuntime {
                 bot.getId(), committedAtMs, bot.getMapId(), attack.targets.size(),
                 hitLines, totalLines - hitLines));
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, attackPlan.cooldownMs);
+        // on a boss run's battle map: counted for the mirror summary and spaced by the client-load floor (0 is off)
+        AgentBossClientLoad.attackCommitted(bot);
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, AgentBossClientLoad.attackFloorMs(bot));
         entry.capabilityStates().require(AgentCombatSpecialMoveState.STATE_KEY).countAttack();
         // Which skill actually swung, and for how much: the measured rotation is this histogram,
         // and the same number is the learner's reward for the decision.

@@ -142,6 +142,7 @@ class AgentBossAttackMirrorTest {
         defenses.close();
         AgentBossScope.endTrial();
         AgentBossRunRegistry.resetForTest();
+        AgentBossClientLoad.resetForTest();
         AgentRuntimeRegistry.clear();
         shipped.forEach((key, value) -> {
             if (value == null) {
@@ -540,6 +541,8 @@ class AgentBossAttackMirrorTest {
         now += 10_000;
         attack(spawned, otherGm, 0);
         assertEquals(0, impacts.size(), "only the trial GM's reports count");
+        assertTrue(mirror.statusLines().stream().anyMatch(line -> line.startsWith("Run session=trial attacks=")
+                && !line.contains("botAttacks=")), "the trial is no run, so it has no botAttacks count");
     }
 
     @Test
@@ -592,9 +595,13 @@ class AgentBossAttackMirrorTest {
     @Test
     void theSummaryLineCountsTheRunOncePerSummaryInterval() {
         tune(MAX_SHOWN_HITS, "1");
-        member(THANE, IN_RANGE);
+        Character thane = member(THANE, IN_RANGE);
         member(ISOLDE, IN_RANGE);
         AgentCombatCooldownStateRuntime.setMobHitCooldownMs(entries.get(ISOLDE), 1_500);
+        // the members' own attacks on the altar, counted by AgentBossClientLoad (botAttacks=)
+        when(thane.getMapId()).thenReturn(AgentBossRunCatalog.ZAKUM.battleMapId());
+        AgentBossClientLoad.attackCommitted(thane);
+        AgentBossClientLoad.attackCommitted(thane);
 
         try (LogLines lines = new LogLines(AgentBossAttackMirror.class)) {
             attack(part, owner, 0);
@@ -607,7 +614,8 @@ class AgentBossAttackMirrorTest {
             attack(part, owner, 0);
             List<String> summaries = lines.startingWith("Boss mirror summary");
             assertEquals(List.of("Boss mirror summary session=7 attacks=3 mirrored=2 dispatched=2 applied=1"
-                    + " shown=1 window=1 airborne=0 unengaged=0 regionsMask=0 regionsSampled=0"), summaries);
+                    + " shown=1 window=1 airborne=0 unengaged=0 regionsMask=0 regionsSampled=0 botAttacks=2"),
+                    summaries);
         }
     }
 
