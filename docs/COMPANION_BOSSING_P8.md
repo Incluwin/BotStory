@@ -399,6 +399,9 @@ restart.
   `AgentBossScope.ENABLED: 'false'`, and mirrors nothing while the living world is off.
 - `!bossgear` gives the highest pieces the game has, not Lv160 gear. A Lv160 Hero gets Lv100 armour, a Lv85 cape and
   Lv120 weapons.
+- `!bossgear <me|name> remove` takes every boss piece back, worn and carried. A companion that is let go (by its
+  owner, a contract end, its owner's deletion or the 14-day inactivity sweep) loses its boss pieces as it is unloaded,
+  so the kit never goes home with a Resident or on to another owner. Its other gear stays.
 - Zakum's level and not-here refusals have one wording each, so two companions refused alike say the same words.
 - The javadocs of `LivingWorldHooks.bossParty*`/`bossAlly*` and `CompanionBossRuns.offers` still say "Mu Young's Easy
   window". Adobis uses them too.

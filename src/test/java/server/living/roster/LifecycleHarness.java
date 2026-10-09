@@ -125,6 +125,11 @@ final class LifecycleHarness implements AutoCloseable {
     MockedStatic<Party> parties;
     /** The mocked Agent spawns and registrations, for a test that stubs more of them (a bench slice's registration). */
     MockedStatic<AgentInteractionRuntime> interaction;
+    /**
+     * The mocked Server (deep stubs: world 0 lists a stand-in for any character but Ann), for a test that says a
+     * character is offline.
+     */
+    Server server;
 
     private final Map<Integer, MapleMap> botMaps = new HashMap<>();
     private final Map<Integer, Point> botPositions = new HashMap<>();
@@ -276,6 +281,7 @@ final class LifecycleHarness implements AutoCloseable {
         Server instance = mock(Server.class, RETURNS_DEEP_STUBS);
         when(instance.getWorld(0).getPlayerStorage().getCharacterById(ANN)).thenAnswer(inv -> annOnline ? ann : null);
         server.when(Server::getInstance).thenReturn(instance);
+        this.server = instance;
     }
 
     /** A companion of Ann's (character id {@code characterId}) in {@code state}, camping at {@code campMapId}. */

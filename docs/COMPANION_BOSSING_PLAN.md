@@ -716,6 +716,7 @@ Rules for every item:
 
 - `!bossgear <me|name> [preview]` forges one piece per slot with every upgrade slot holding a passed 60% scroll (`FriendForge.recipe` with `ScrollRecipe(60, REST)`, FriendForge.java:117-147).
 - Its items are untradeable and tagged "bossgear" (P8 question 9 default).
+- `!bossgear <me|name> remove` takes the tagged pieces back. A companion that is let go loses them as it is unloaded (RosterService.letGo, all release paths), so the kit never goes home or to another owner.
 - It follows the same owner rule as `!setlevel`. ohboy uses it for his own companions while he is GM6 (decision 1).
 - GM scrolling is not realistic, because `USE_PERFECT_GM_SCROLL` is true (config.yaml:349).
 

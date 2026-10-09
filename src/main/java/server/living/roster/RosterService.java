@@ -137,6 +137,8 @@ public final class RosterService {
     private final Set<Integer> goodbyeSaid = ConcurrentHashMap.newKeySet();
     /** Deleted owners with a companion still finishing a run for a friend: it is released, not parked, after it. */
     private final Set<Integer> releasedAfterRun = ConcurrentHashMap.newKeySet();
+    /** Persona ids let go whose unload (at once, or at the end of their walk-out) takes their boss gear off. */
+    private final Set<String> bossGearOff = ConcurrentHashMap.newKeySet();
     private final CompanionChannelFollow channelFollow;
     private final InstanceLogoutHandoff handoff;
     /** Each companion's own settings (P3b), applied on every path below that loads or seats it. */
@@ -719,7 +721,8 @@ public final class RosterService {
      * nearest portal when it stands on its online owner's map (else it is unloaded), one parked with its owner leaves
      * their party, its seat and any wait for room go back, and the row is written RELEASED and deleted; nobody employs
      * the persona any more. A hired citizen then goes back to the population ({@link #installHiredHandRelease}),
-     * whatever let it go: its owner, a contract end or its owner's deletion.
+     * whatever let it go: its owner, a contract end or its owner's deletion. Its unload takes any boss gear off
+     * ({@link #takeBossGearOff}), so the kit never goes home or on to its next owner.
      */
     private void letGo(RosterEntry entry, String reason) {
         int ownerId = entry.characterId();
@@ -728,6 +731,7 @@ public final class RosterService {
         leaveOfflineParty(entry); // parked with its owner: it leaves their party too
         Character owner = onlineCharacter(ownerId);
         Character bot = companion(entry);
+        bossGearOff.add(personaId); // its unload below takes any !bossgear kit off (takeBossGearOff)
         if (owner != null && bot != null && bot.getMap() != null && bot.getMap() == owner.getMap()) {
             walkOut(owner, entry); // no pop-out: it keeps its lease until it is gone at the portal
         } else {
@@ -3170,6 +3174,7 @@ public final class RosterService {
      */
     private void unload(RosterEntry entry, String reason, boolean leaveParty) {
         leaving.remove(entry.personaId()); // a walk-out in progress ends here
+        boolean released = bossGearOff.remove(entry.personaId());
         Character bot = companion(entry);
         int characterId = world.residents().characterIdOf(entry.personaId());
         if (bot != null) {
@@ -3180,12 +3185,48 @@ public final class RosterService {
         }
         if (characterId != 0) {
             AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
+            if (released) {
+                takeBossGearOff(entry, bot, characterId); // nothing ticks it now, and it keeps its lease meanwhile
+            }
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
         }
         if (bot != null && bot.getClient() != null) {
             bot.getClient().forceDisconnect();
         }
         log.info("companion {} despawned: {}", entry.personaId(), reason);
+    }
+
+    /**
+     * A companion let go never takes a !bossgear kit home or on to its next owner (CompanionGearTool): as its release
+     * unloads it, every piece tagged as boss gear leaves it, worn and carried, and nothing else does. Loaded, they come
+     * off right here on companion-ops (out of the registry, nothing ticks it) and it is saved; its unload then saves it
+     * in full. Not loaded, they leave its saved inventory, unless its character is online now (it saves its own over
+     * the store). Its kit, wardrobe or gear optimizer dresses the empty slots at its next load. Never in the way of the
+     * release: a failure is logged.
+     */
+    private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
+        try {
+            int taken;
+            if (bot != null) {
+                taken = CompanionGearTool.takeBossGear(bot);
+                if (taken > 0) {
+                    bot.saveCharToDB();
+                }
+            } else {
+                taken = CompanionGearTool.takeStoredBossGear(world.store(), characterId,
+                        id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null);
+            }
+            if (taken > 0) {
+                world.store().event(entry.characterId(), entry.personaId(), "bossgear.removed", "released: " + taken
+                        + (taken == 1 ? " piece" : " pieces"));
+                log.info("companion {} let go: {} boss gear pieces taken off", entry.personaId(), taken);
+            } else if (taken < 0) {
+                log.warn("companion {} let go: its boss gear could not be taken off (its character {} is online, or the"
+                        + " store failed)", entry.personaId(), characterId);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("companion {} let go: taking its boss gear off failed", entry.personaId(), failure);
+        }
     }
 
     /**

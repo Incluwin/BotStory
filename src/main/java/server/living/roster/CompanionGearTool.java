@@ -1,7 +1,9 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import client.LevelSetPlan;
+import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
@@ -9,10 +11,12 @@ import client.inventory.manipulator.InventoryManipulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.runtime.AgentCharacterMaintenanceRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -25,6 +29,7 @@ import server.living.quest.BossGearPlanner.Wearer;
 import server.living.quest.FriendForge;
 import server.living.quest.FriendForge.Catalog;
 import server.living.roster.CompanionDirectory.Relation;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.ArrayList;
@@ -35,6 +40,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.IntPredicate;
 
 /**
  * The companion side of {@code !bossgear} (GM 6, docs/COMPANION_BOSSING_PLAN.md G13): a level-fitting kit
@@ -48,6 +56,12 @@ import java.util.concurrent.TimeoutException;
  * for each worn piece a new one pushes off: pants under an overall, a shield beside a new weapon type). A slot that
  * already wears that boss piece is skipped. {@code preview} gives nothing. Each use writes one {@code gm bossgear}
  * line.</p>
+ *
+ * <p>A kit stays with the GM's own test crew: {@code remove} ({@link #remove}) takes every boss piece back from the GM
+ * or one of their own companions out with them, and RosterService takes it off any companion it lets go (owner,
+ * contract end, owner deleted, the inactivity sweep) as the release unloads it ({@link #takeBossGear} on a loaded one,
+ * {@link #takeStoredBossGear} on one nothing has loaded), so no later owner and no Resident at home gets it. Only the
+ * pieces tagged {@value BossGearPlanner#OWNER_TAG} go.</p>
  */
 public final class CompanionGearTool {
     public static final long ANSWER_TIMEOUT_MS = 10_000L;
@@ -85,6 +99,9 @@ public final class CompanionGearTool {
 
         /** Forges the kit into the GM's own Equip tab; the pieces that went in. */
         int give(Character gm, List<Piece> kit);
+
+        /** On the companion's mailbox: its boss gear comes off ({@link #removeKit}); the pieces taken. */
+        CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner);
     }
 
     static final Game LIVE = new Game() {
@@ -122,6 +139,11 @@ public final class CompanionGearTool {
                 }
             }
             return given;
+        }
+
+        @Override
+        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner) {
+            return AgentMailboxRuntime.dispatch(runtime, entry -> removeKit(entry, owner));
         }
     };
 
@@ -202,31 +224,46 @@ public final class CompanionGearTool {
 
     private CompletableFuture<String> dispatch(Character gm, Target target, List<Piece> kit, int need, String pieces,
                                                long startedMs) {
-        Character bot = target.chr();
-        CompletableFuture<Outcome> raw;
+        return await(gm, target.chr(), runtime -> game.wear(runtime, kit, need),
+                (outcome, failure) -> answer(gm, target, kit, pieces, outcome, failure, startedMs),
+                "the gear still goes on at its next tick.");
+    }
+
+    /**
+     * The reply once the companion's mailbox answered {@code work}: {@code answer} makes it on companion-ops from the
+     * answer or the failure. At the answer timeout the GM hears that it did not answer yet ({@code later}: what still
+     * happens at its next tick), and a late answer follows as "(late)". Never completes exceptionally.
+     */
+    private <T> CompletableFuture<String> await(Character gm, Character bot,
+                                                Function<AgentRuntimeEntry, CompletableFuture<T>> work,
+                                                BiFunction<T, Throwable, String> answer, String later) {
+        CompletableFuture<T> raw;
         try {
             AgentRuntimeEntry runtime = game.runtime(bot.getId());
             raw = runtime == null ? CompletableFuture.failedFuture(new IllegalStateException("not running"))
-                    : game.wear(runtime, kit, need);
+                    : work.apply(runtime);
         } catch (RuntimeException failure) {
             raw = CompletableFuture.failedFuture(failure);
         }
         CompletableFuture<String> line = new CompletableFuture<>();
-        raw.whenComplete((outcome, failure) -> world.executor().submit("gm.bossgear answer " + bot.getName(),
-                () -> answer(gm, target, kit, pieces, outcome, failure, startedMs, line)));
+        raw.whenComplete((outcome, failure) -> world.executor().submit("gm.bossgear answer " + bot.getName(), () -> {
+            String text = answer.apply(outcome, failure);
+            if (!line.complete(text)) {
+                gm.yellowMessage("(late) " + text); // the timeout line went out first
+            }
+        }));
         raw.copy().orTimeout(answerTimeoutMs, TimeUnit.MILLISECONDS).whenComplete((outcome, failure) -> {
             if (unwrap(failure) instanceof TimeoutException) {
                 world.executor().submit("gm.bossgear timeout " + bot.getName(), () -> line.complete(bot.getName()
-                        + " did not answer within " + answerTimeoutMs / 1000 + " s; the gear still goes on at its next"
-                        + " tick."));
+                        + " did not answer within " + answerTimeoutMs / 1000 + " s; " + later));
             }
         });
         return line;
     }
 
-    /** On companion-ops, once the mailbox answered: the log line and the reply. */
-    private void answer(Character gm, Target target, List<Piece> kit, String pieces, Outcome outcome, Throwable failure,
-                        long startedMs, CompletableFuture<String> line) {
+    /** On companion-ops, once the mailbox answered a gift: the log line, and the reply. */
+    private String answer(Character gm, Target target, List<Piece> kit, String pieces, Outcome outcome, Throwable failure,
+                          long startedMs) {
         Character bot = target.chr();
         String text;
         if (outcome != null) {
@@ -246,9 +283,7 @@ public final class CompanionGearTool {
             log.warn("gm bossgear: gm={} target={} ({}) did not apply", gm.getName(), bot.getName(), bot.getId(), cause);
             text = bot.getName() + " could not be geared (" + (cause == null ? "no answer" : cause.getMessage()) + ").";
         }
-        if (!line.complete(text)) {
-            gm.yellowMessage("(late) " + text); // the timeout line went out first
-        }
+        return text;
     }
 
     /** The target {@code name} names for {@code gm}, or the refusal to reply. */
@@ -371,6 +406,136 @@ public final class CompanionGearTool {
         return new Outcome(given, worn, skipped);
     }
 
+    // ---- taking boss gear off -------------------------------------------------------------
+
+    /**
+     * {@code !bossgear <me|name> remove}, on companion-ops (or on the command's thread for "me" while the living world
+     * is off): every boss piece leaves the GM ("me": worn and carried) or one of their own companions out with them (on
+     * its own mailbox, {@link #removeKit}: it then wears its own gear again). Refused where a gift is (anyone else's
+     * companion, one not out or not loaded, one busy, in a party quest or a boss run); knowledge is not needed.
+     * Completes with the line to reply once the mailbox answered, or at the answer timeout; never exceptionally. Each use
+     * writes one {@code gm bossgear} line.
+     */
+    public CompletableFuture<String> remove(Character gm, String name) {
+        try {
+            return removeChecked(gm, name);
+        } catch (RuntimeException failure) {
+            log.warn("gm bossgear: removing {} failed for {}", name, gm.getName(), failure);
+            return done(name + ": the boss gear could not be taken off (" + failure.getMessage() + ").");
+        }
+    }
+
+    private CompletableFuture<String> removeChecked(Character gm, String name) {
+        long startedMs = System.currentTimeMillis();
+        if (name.equalsIgnoreCase("me")) {
+            int taken = takeBossGear(gm);
+            if (taken > 0) {
+                gm.saveCharToDB();
+            }
+            logRemove(gm, new Target(gm, null), taken, startedMs);
+            return done(taken == 0 ? "You have no boss gear." : taken == 1 ? "1 boss piece was taken from you."
+                    : taken + " boss pieces were taken from you.");
+        }
+        Object found = target(gm, name);
+        if (found instanceof String refusal) {
+            return refused(gm, name, refusal);
+        }
+        Target target = (Target) found;
+        Character bot = target.chr();
+        return await(gm, bot, runtime -> game.remove(runtime, gm), (taken, failure) -> {
+            if (taken == null) {
+                Throwable cause = unwrap(failure);
+                log.warn("gm bossgear: gm={} target={} ({}) did not remove", gm.getName(), bot.getName(), bot.getId(),
+                        cause);
+                return bot.getName() + " could not give the boss gear back ("
+                        + (cause == null ? "no answer" : cause.getMessage()) + ").";
+            }
+            logRemove(gm, target, taken, startedMs);
+            return taken == 0 ? bot.getName() + " has no boss gear." : bot.getName() + " gave back " + taken
+                    + (taken == 1 ? " boss piece" : " boss pieces") + " and wears its own gear again.";
+        }, "its boss gear still comes off at its next tick.");
+    }
+
+    /** A piece of a {@code !bossgear} kit: an equip tagged {@value BossGearPlanner#OWNER_TAG} (BossGearPlanner.forge). */
+    static boolean bossPiece(Item item) {
+        return item instanceof Equip && BossGearPlanner.OWNER_TAG.equals(item.getOwner());
+    }
+
+    /**
+     * Takes every boss piece off {@code chr}, worn and carried, and nothing else: a piece is boss gear by its tag alone
+     * ({@link #bossPiece}), so its own quest gear, a gift, loot and what it wore before all stay. A worn piece leaves its
+     * slot empty (its look and stats follow while it stands on a map) for the Agent gear optimizer, its quest kit or its
+     * wardrobe to dress again. Not saved here. Only where the inventory is safely writable: the companion's own
+     * mailbox, companion-ops once nothing ticks it, the GM's own command. How many pieces left it.
+     */
+    static int takeBossGear(Character chr) {
+        int taken = 0;
+        boolean worn = false;
+        for (InventoryType type : List.of(InventoryType.EQUIPPED, InventoryType.EQUIP)) {
+            for (Item item : chr.getInventory(type).list()) {
+                if (bossPiece(item)) {
+                    take(chr, type, item);
+                    taken++;
+                    worn |= type == InventoryType.EQUIPPED;
+                }
+            }
+        }
+        if (worn && chr.getMap() != null) {
+            chr.equipChanged();
+        }
+        return taken;
+    }
+
+    /** Out of its inventory the way the game removes an item: its client hears of it (a character with none does not). */
+    private static void take(Character chr, InventoryType type, Item item) {
+        Client client = chr.getClient();
+        if (client != null && client.getPlayer() == chr) {
+            InventoryManipulator.removeFromSlot(client, type, item.getPosition(), item.getQuantity(), false);
+            return;
+        }
+        if (type == InventoryType.EQUIPPED && item instanceof Equip equip) {
+            chr.unequippedItem(equip);
+        }
+        chr.getInventory(type).removeSlot(item.getPosition());
+    }
+
+    /**
+     * Takes every boss piece out of the saved inventory of a character nothing has loaded (a released companion's),
+     * under the maintenance lock offline loads hold (CosmicAgentOfflineLoader), so no load reads it half-written. One
+     * {@code online} now (loaded for anything, registered as an Agent or not) saves its own inventory over the store, so
+     * it is left alone. How many pieces left it; -1 when it is online or the store failed (nothing changed).
+     */
+    static int takeStoredBossGear(LivingStore store, int characterId, IntPredicate online) {
+        if (characterId <= 0) {
+            return 0;
+        }
+        try (var ignored = AgentCharacterMaintenanceRuntime.acquire(characterId)) {
+            return online.test(characterId) ? -1 : store.dropStoredItems(characterId, CompanionGearTool::bossPiece);
+        }
+    }
+
+    /**
+     * On the companion's mailbox: its boss gear comes off ({@link #takeBossGear}), it puts its own gear back on (the
+     * Agent gear optimizer, as after a contract hands it its kept items) and it is saved. The pieces taken; with none,
+     * nothing changes.
+     */
+    static int removeKit(AgentRuntimeEntry entry, Character owner) {
+        Character bot = entry.bot();
+        if (bot == null) {
+            return 0;
+        }
+        int taken = takeBossGear(bot);
+        if (taken > 0) {
+            try {
+                AgentEquipmentService.autoEquip(bot, owner, null, true);
+            } catch (RuntimeException failure) {
+                log.debug("gm bossgear: {} did not put its own gear back on", bot.getName(), failure);
+            }
+            bot.saveCharToDB();
+        }
+        return taken;
+    }
+
     private CompletableFuture<String> refused(Character gm, String name, String line) {
         log.info("gm bossgear: gm={} target={} refused: {}", gm.getName(), name, line);
         return done(line);
@@ -384,6 +549,13 @@ public final class CompanionGearTool {
                         + " ms={} items={}", gm.getName(), chr.getName(), chr.getId(),
                 target.personaId() == null ? "self" : target.personaId(), chr.getJob().getId(), chr.getLevel(), preview,
                 kit.size(), given, worn, startedMs == 0L ? 0L : System.currentTimeMillis() - startedMs, ids);
+    }
+
+    private static void logRemove(Character gm, Target target, int taken, long startedMs) {
+        Character chr = target.chr();
+        log.info("gm bossgear: gm={} target={} ({}) persona={} remove taken={} ms={}", gm.getName(), chr.getName(),
+                chr.getId(), target.personaId() == null ? "self" : target.personaId(), taken,
+                System.currentTimeMillis() - startedMs);
     }
 
     /** "Name (Lv120), ..." in kit order. */
