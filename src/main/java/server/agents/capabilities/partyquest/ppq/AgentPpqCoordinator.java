@@ -174,12 +174,16 @@ public final class AgentPpqCoordinator {
         }
     }
 
-    /** Hands a departed Agent back to its owner: the run no longer routes it and the lifecycle rehomes it. */
+    /**
+     * Hands a departed Agent back to its owner: the run no longer routes it and the lifecycle rehomes it. The engagement
+     * lets go before the session index, so a runtime removal in between still finds the session (and, the member
+     * already gone from it, only unindexes it) instead of force-stopping an engagement it still belonged to.
+     */
     private static void handBack(AgentPpqSession session, int id, long nowMs) {
         try {
-            AgentPpqSessionRegistry.unindexMember(session, id);
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(id);
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPpqSessionRegistry.unindexMember(session, id);
             AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "ppq", nowMs);
         } catch (RuntimeException failure) {
             log.warn("PPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
@@ -591,13 +595,17 @@ public final class AgentPpqCoordinator {
         session.observeProgress(mobs, items, reactors, nowMs);
     }
 
-    /** Room for Wu Yang's Feather: a free Etc slot, or a Feather stack it carries that is not full. */
+    /**
+     * Room for Wu Yang's Feather as his canHold sees it: a free Etc slot, or a Feather stack that is not full and carries
+     * no owner tag (a GM's '!giveitem' stack is tagged with the GM's name and never takes another Feather).
+     */
     static boolean roomForFeather(Character agent) {
         var etc = agent.getInventory(InventoryType.ETC);
-        if (etc != null && etc.getNumFreeSlot() > 0) return true;
-        int feathers = agent.getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false);
+        if (etc == null) return false;
+        if (etc.getNumFreeSlot() > 0) return true;
         int slotMax = AgentInventoryGatewayRuntime.inventory().getSlotMax(agent, AgentPpqDefinition.WU_YANG_FEATHER);
-        return feathers > 0 && slotMax > 0 && feathers % slotMax != 0;
+        return etc.listById(AgentPpqDefinition.WU_YANG_FEATHER).stream()
+                .anyMatch(item -> item.getQuantity() < slotMax && "".equals(item.getOwner()));
     }
 
     private static boolean near(Point first, Point second) {

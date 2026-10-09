@@ -53,11 +53,20 @@ class AgentPpqAfterClearTest {
         }
     }
 
+    /** A full Etc tab holding Feather stacks of these sizes and owner tags. */
+    private static void fullTabWithFeathers(PpqRunFixture run, int id, short quantity, String owner) {
+        PpqAdmitFixture.room(run.character(id), client.inventory.InventoryType.ETC, 0);
+        client.inventory.Item stack = org.mockito.Mockito.mock(client.inventory.Item.class);
+        when(stack.getQuantity()).thenReturn(quantity);
+        when(stack.getOwner()).thenReturn(owner);
+        when(run.character(id).getInventory(client.inventory.InventoryType.ETC)
+                .listById(AgentPpqDefinition.WU_YANG_FEATHER)).thenReturn(List.of(stack));
+    }
+
     @Test
     void aFullEtcTabWithAFeatherStackStillHasRoomForOneMore() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
-            PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 0);
-            when(run.character(MIRA).getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false)).thenReturn(3);
+            fullTabWithFeathers(run, MIRA, (short) 3, "");
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
@@ -69,8 +78,19 @@ class AgentPpqAfterClearTest {
     @Test
     void aFullFeatherStackWithNoFreeSlotIsNoRoom() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
-            PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 0);
-            when(run.character(MIRA).getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false)).thenReturn(200);
+            fullTabWithFeathers(run, MIRA, (short) 200, "");
+
+            AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
+
+            verify(run.actions, never()).npcPosition(any(), eq(AgentPpqDefinition.RESCUE_NPC));
+            verify(run.maps).changeMapNear(eq(run.character(MIRA)), eq(run.recruit), any());
+        }
+    }
+
+    @Test
+    void aGmTaggedFeatherStackIsNoRoom() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
+            fullTabWithFeathers(run, MIRA, (short) 199, "Crewfriend"); // '!giveitem' tags the stack with the GM's name
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
