@@ -7,6 +7,8 @@ import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.navigation.AgentRouteOutcome;
+import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveJournalEntry;
@@ -21,6 +23,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -132,6 +135,44 @@ class AgentSupplyTravelWatchdogTest {
         assertFalse(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit));
         assertFalse(trip.execution.isActive());
         assertEquals(AgentObjectiveStatus.FAILED, lastStatus(trip));
+    }
+
+    @Test
+    void itsNextTripsAvoidTheHopTheStalledWalkCouldNotCross() {
+        Character agent = companion(306, ANOTHER_ENTRANCE);
+        Trip trip = travelling(agent, AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, STAIRWAY);
+        long limit = AgentSupplyRecoveryPolicy.travelNoProgressMs();
+        long blockMs = AgentSupplyRecoveryPolicy.stalledHopBlockMs();
+
+        // Two refused-portal ticks only: the router's own block needs three failures, so a block here is the
+        // watchdog's.
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START));
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit));
+        assertTrue(trip.execution.abandoned());
+
+        // The next trip toward Ant Tunnel Park does not head for 105090100 again until the block has run out.
+        AgentRouteOutcome during = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, ANT_TUNNEL_PARK, START + limit + blockMs - 1);
+        assertNotEquals(OTHER_MAP, during.nextMapId());
+        AgentRouteOutcome after = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, ANT_TUNNEL_PARK, START + limit + blockMs);
+        assertEquals(OTHER_MAP, after.nextMapId());
+    }
+
+    @Test
+    void aWalkBackThatStalledKeepsItsRouteOffThatHopToo() {
+        Character agent = companion(307, ANOTHER_ENTRANCE);
+        Trip trip = travelling(agent, AgentSupplyProcurementState.Phase.RETURNING, OTHER_MAP);
+        AgentRelationshipRuntime.setFollowTarget(trip.entry, null);
+        long limit = AgentSupplyRecoveryPolicy.travelNoProgressMs();
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START));
+        assertFalse(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit));
+
+        // The resumed plan heads for 105090100 by another way, or finds no route, instead of the same hold.
+        AgentRouteOutcome next = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, OTHER_MAP, START + limit + 1);
+        assertNotEquals(OTHER_MAP, next.nextMapId());
     }
 
     private record Trip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution, Character leader,

@@ -426,6 +426,7 @@ public final class AgentSupplyProcurementRuntime {
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
             String stuck = noProgress(agent, execution, outcome, "the supplier", nowMs);
             if (stuck != null) {
+                avoidStalledHop(entry, agent, outcome, nowMs);
                 recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
                         stuck, nowMs);
                 stall(entry, agent, planning, execution, stuck, nowMs);
@@ -522,6 +523,22 @@ public final class AgentSupplyProcurementRuntime {
     private static boolean stalledHop(Character agent, AgentRouteOutcome outcome) {
         return outcome.sourceMapId() == agent.getMapId() && outcome.nextMapId() >= 0
                 && outcome.nextMapId() != outcome.sourceMapId();
+    }
+
+    /**
+     * Keeps this Agent's route off the hop it stood before for STALLED_HOP_BLOCK_MS, so its next trip after the
+     * cooldown takes another supplier or way, or asks its party when none is left, instead of walking into the same
+     * hold again (a walk out, TRAVEL_NO_PROGRESS_MS standing, a warp back and a party ask, over and over).
+     */
+    private static void avoidStalledHop(AgentRuntimeEntry entry,
+                                        Character agent,
+                                        AgentRouteOutcome outcome,
+                                        long nowMs) {
+        if (!stalledHop(agent, outcome)) {
+            return;
+        }
+        AgentVictoriaRouteRuntime.avoidHop(entry, outcome.sourceMapId(), outcome.nextMapId(),
+                nowMs + AgentSupplyRecoveryPolicy.stalledHopBlockMs());
     }
 
     /**
@@ -677,6 +694,7 @@ public final class AgentSupplyProcurementRuntime {
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
             String stuck = noProgress(agent, execution, outcome, "the suspended plan", nowMs);
             if (stuck != null) {
+                avoidStalledHop(entry, agent, outcome, nowMs);
                 return resumeWhereItStands(entry, agent, planning, execution, stuck, nowMs);
             }
             return true;

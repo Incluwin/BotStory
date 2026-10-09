@@ -85,6 +85,11 @@ final class AgentVictoriaRouteState {
         }
     }
 
+    /** Blocks this edge until untilMs at least: a block that already lasts longer stays. */
+    synchronized void blockEdge(long edge, long untilMs) {
+        blockedEdgesUntilMs.merge(edge, untilMs, Math::max);
+    }
+
     synchronized boolean recordFailure(long edge, long nowMs, long blockDurationMs) {
         if (failingEdge == edge && nowMs - lastFailureAtMs < EDGE_FAILURE_MEMORY_MS) {
             return false;

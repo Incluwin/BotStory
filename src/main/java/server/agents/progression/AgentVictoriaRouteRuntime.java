@@ -206,6 +206,19 @@ public final class AgentVictoriaRouteRuntime {
         return AgentVictoriaTrainingRouteCatalog.distance(sourceMapId, destinationMapId, blockedEdges);
     }
 
+    /**
+     * Keeps this Agent's route off the hop from sourceMapId to nextMapId until untilMs, as if its portal had kept
+     * refusing entry (FAILED_EDGE_BLOCK_MS): travelStatus and routeHops walk around it, or find no route. For a caller
+     * that saw the Agent fail to cross it some other way: a resupply walk that stood on sourceMapId too long.
+     */
+    public static void avoidHop(AgentRuntimeEntry entry, int sourceMapId, int nextMapId, long untilMs) {
+        if (entry == null) {
+            return;
+        }
+        entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY)
+                .blockEdge(AgentVictoriaTrainingRouteCatalog.edgeKey(sourceMapId, nextMapId), untilMs);
+    }
+
     /** True only while a Victoria plan is physically crossing this map toward another map. */
     public static boolean activeInterMapTravel(AgentRuntimeEntry entry, int currentMapId) {
         if (entry == null) {

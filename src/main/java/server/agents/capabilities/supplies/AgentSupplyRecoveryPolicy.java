@@ -30,6 +30,7 @@ public final class AgentSupplyRecoveryPolicy {
     private static final long FAILED_PROCUREMENT_COOLDOWN_MS = tuningLong("FAILED_PROCUREMENT_COOLDOWN_MS");
     private static final long PARTY_SUPPLY_WAIT_MS = tuningLong("PARTY_SUPPLY_WAIT_MS");
     private static final long TRAVEL_NO_PROGRESS_MS = tuningLong("TRAVEL_NO_PROGRESS_MS");
+    private static final long STALLED_HOP_BLOCK_MS = tuningLong("STALLED_HOP_BLOCK_MS");
 
     private AgentSupplyRecoveryPolicy() {
     }
@@ -114,6 +115,11 @@ public final class AgentSupplyRecoveryPolicy {
     /** How long a resupply walk may stand on one map without crossing to the next before it is ended. */
     public static long travelNoProgressMs() {
         return TRAVEL_NO_PROGRESS_MS;
+    }
+
+    /** How long an Agent's route avoids the hop a resupply walk stood before until TRAVEL_NO_PROGRESS_MS ended it. */
+    public static long stalledHopBlockMs() {
+        return STALLED_HOP_BLOCK_MS;
     }
 
     public static Optional<RecoveryMap> selectRecoveryMap(Character agent) {
