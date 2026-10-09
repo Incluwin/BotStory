@@ -106,6 +106,24 @@ class AgentOpqDepartedHandBackTest {
     }
 
     @Test
+    void aNeverRegisteredMemberInAnotherInstanceDepartsAfterTheGraceWithoutFailingTheRun() {
+        // OPQ has no "left the active event" failure (unlike LMPQ): such a member is only never-registered.
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, false,
+                AgentOpqSession.Phase.ENTRANCE, ben, mira, kes, pel, hal, ann);
+        when(ben.getMapId()).thenReturn(AgentOpqDefinition.ENTRANCE_MAP);
+        when(ann.getMapId()).thenReturn(922_000_010); // a Doll House instance, started before Wonky's start
+        when(ann.getEventInstance()).thenReturn(org.mockito.Mockito.mock(scripting.event.EventInstanceManager.class));
+        holds(ben, mira, kes, pel, hal);
+
+        AgentOpqCoordinator.tickSession(session, 10_000L);
+        assertFalse(session.terminal(), session.failure());
+        AgentOpqCoordinator.tickSession(session, 10_000L + GRACE_MS);
+
+        assertFalse(session.terminal(), session.failure());
+        assertTrue(session.departed(ann.getId()));
+    }
+
+    @Test
     void aMemberHeldAMomentAfterTheBindNeverDeparts() {
         AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
                 AgentOpqSession.Phase.ENTRANCE, ben, mira, kes, pel, hal);
