@@ -424,6 +424,12 @@ public final class AgentSupplyProcurementRuntime {
             return true;
         }
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
+            String stuck = noProgress(agent, execution, outcome, "the supplier", nowMs);
+            if (stuck != null) {
+                recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
+                        stuck, nowMs);
+                stall(entry, agent, planning, execution, stuck, nowMs);
+            }
             return true;
         }
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
@@ -490,6 +496,53 @@ public final class AgentSupplyProcurementRuntime {
         recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
                 reason, nowMs);
         stall(entry, agent, planning, execution, reason, nowMs);
+        return false;
+    }
+
+    /**
+     * Why the walk counts as stuck: it has stood on one map for TRAVEL_NO_PROGRESS_MS without crossing to another
+     * (live 2026-10-09: four companions held at Another Entrance's arrival portal for 8+ minutes, the router walking
+     * them toward a portal their navigation could not reach, with no line logged). Null while it still has time.
+     */
+    private static String noProgress(Character agent,
+                                     AgentSupplyProcurementState execution,
+                                     AgentRouteOutcome outcome,
+                                     String toward,
+                                     long nowMs) {
+        long stalledMs = execution.travelStalledMs(agent.getMapId(), nowMs);
+        if (stalledMs < AgentSupplyRecoveryPolicy.travelNoProgressMs()) {
+            return null;
+        }
+        return "no progress toward " + toward + ": " + stalledMs + " ms on map " + agent.getMapId()
+                + " without reaching " + (stalledHop(agent, outcome)
+                ? "its portal to map " + outcome.nextMapId() : "its next portal");
+    }
+
+    /** True when the route named the next map it was walking this map's portal to. */
+    private static boolean stalledHop(Character agent, AgentRouteOutcome outcome) {
+        return outcome.sourceMapId() == agent.getMapId() && outcome.nextMapId() >= 0
+                && outcome.nextMapId() != outcome.sourceMapId();
+    }
+
+    /**
+     * The walk back stood on one map for TRAVEL_NO_PROGRESS_MS: the plan resumes where the Agent stands. After a
+     * purchase the trip still succeeded, so it neither waits out a cooldown nor asks the party for potions it carries;
+     * a trip already given up ends as one.
+     */
+    private static boolean resumeWhereItStands(AgentRuntimeEntry entry,
+                                               Character agent,
+                                               AgentResourcePlanningState planning,
+                                               AgentSupplyProcurementState execution,
+                                               String stuck,
+                                               long nowMs) {
+        log.warn("Agent '{}' stopped walking back to map {} after its {} resupply ({}): {}",
+                agent.getName(), execution.returnMapId(), execution.category(),
+                execution.abandoned() ? "not restocked" : "restocked", stuck);
+        if (execution.abandoned()) {
+            return finishAbandoned(entry, agent, planning, execution, nowMs);
+        }
+        finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
+                "shop transaction completed; plan resumed where it stands: " + stuck, nowMs);
         return false;
     }
 
@@ -622,6 +675,10 @@ public final class AgentSupplyProcurementRuntime {
             return true;
         }
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
+            String stuck = noProgress(agent, execution, outcome, "the suspended plan", nowMs);
+            if (stuck != null) {
+                return resumeWhereItStands(entry, agent, planning, execution, stuck, nowMs);
+            }
             return true;
         }
         if (execution.abandoned()) {

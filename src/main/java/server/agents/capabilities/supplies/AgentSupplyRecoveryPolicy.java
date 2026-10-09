@@ -29,6 +29,7 @@ public final class AgentSupplyRecoveryPolicy {
     private static final long SHOP_RETRY_DELAY_MS = tuningLong("SHOP_RETRY_DELAY_MS");
     private static final long FAILED_PROCUREMENT_COOLDOWN_MS = tuningLong("FAILED_PROCUREMENT_COOLDOWN_MS");
     private static final long PARTY_SUPPLY_WAIT_MS = tuningLong("PARTY_SUPPLY_WAIT_MS");
+    private static final long TRAVEL_NO_PROGRESS_MS = tuningLong("TRAVEL_NO_PROGRESS_MS");
 
     private AgentSupplyRecoveryPolicy() {
     }
@@ -108,6 +109,11 @@ public final class AgentSupplyRecoveryPolicy {
     /** How long a following Agent waits for its party to share a supply before it leaves to shop. */
     public static long partySupplyWaitMs() {
         return PARTY_SUPPLY_WAIT_MS;
+    }
+
+    /** How long a resupply walk may stand on one map without crossing to the next before it is ended. */
+    public static long travelNoProgressMs() {
+        return TRAVEL_NO_PROGRESS_MS;
     }
 
     public static Optional<RecoveryMap> selectRecoveryMap(Character agent) {
