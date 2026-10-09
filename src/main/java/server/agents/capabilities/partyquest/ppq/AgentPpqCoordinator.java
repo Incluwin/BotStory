@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
@@ -50,7 +51,7 @@ public final class AgentPpqCoordinator {
 
     public static void tickSession(AgentPpqSession session, long nowMs) {
         if (session.terminal() || session.paused()) return;
-        if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
+        if (!cleared(session) && nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
             session.fail("PPQ event timer expired", nowMs); return;
         }
         Character leader = character(session.eventLeaderId());
@@ -95,7 +96,18 @@ public final class AgentPpqCoordinator {
         }
         // The authored medal stage allows six minutes and uses probabilistic drops.  Do not
         // declare a legal, still-attacking party stalled before that stage can naturally finish.
-        if (nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) session.fail("PPQ stalled", nowMs);
+        if (!cleared(session) && nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
+            session.fail("PPQ stalled", nowMs);
+        }
+    }
+
+    /**
+     * Whether the bound event reported its clear. From then on neither the cap nor the stall fails the run; it
+     * completes by the stock rule (nobody left on 925100600).
+     */
+    static boolean cleared(AgentPpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        return event != null && event.isEventCleared();
     }
 
     public static void tickMember(AgentPpqSession session, AgentRuntimeEntry entry,
@@ -103,8 +115,9 @@ public final class AgentPpqCoordinator {
         AgentPpqMemberState member = session.member(agent.getId());
         if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT
                 || nowMs < member.nextActionAtMs()) return;
+        // No instance is not another instance: the clear warps everyone to 925100600 and ends the event under them.
         if (session.eventInstance() != null && AgentPpqDefinition.isEventMap(agent.getMapId())
-                && agent.getEventInstance() != session.eventInstance()) {
+                && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
             session.fail("PPQ member entered a different event instance", nowMs); return;
         }
         int mapId = agent.getMapId();
