@@ -90,6 +90,12 @@ final class AgentOpqCoordinator {
                 AgentOpqTerminationService.fail(session, "OPQ leader unavailable", nowMs);
                 return;
             }
+            if (bound != null && bound.isEventDisposed() && !AgentOpqTerminationService.pastTheClear(session)) {
+                // P6h OB7: OrbisPQ.js ends the event when a departure leaves it at its floor; the run ends at once,
+                // with that reason rather than the leader's exit the ending caused.
+                AgentOpqTerminationService.fail(session, "OPQ event ended before the clear", nowMs);
+                return;
+            }
             if (bound != null && leader.getEventInstance() != bound) {
                 // Before the clear the stock event ends when its leader leaves; after it he may claim and go.
                 if (!AgentOpqTerminationService.pastTheClear(session)) {
@@ -102,6 +108,11 @@ final class AgentOpqCoordinator {
                 return;
             }
             if (session.eventInstance() == null && OPQ.event(leader) != null) session.bindEventInstance(OPQ.event(leader));
+            EventInstanceManager held = session.eventInstance();
+            if (held != null && session.phase().ordinal() >= AgentOpqSession.Phase.ENTRANCE.ordinal()
+                    && !AgentOpqTerminationService.pastTheClear(session)) {
+                observeDepartures(session, held, nowMs);
+            }
             noteClear(session, nowMs);
             synchronizePhase(session, leader, nowMs);
             switch (session.phase()) {
@@ -164,7 +175,7 @@ final class AgentOpqCoordinator {
         }
         if (leader.getMapId() == AgentOpqDefinition.CENTER_MAP
                 && session.phase() == AgentOpqSession.Phase.ENTRANCE
-                && session.members().stream()
+                && counted(session).stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .map(member -> character(member.characterId()))
                 .allMatch(member -> member != null
@@ -237,7 +248,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignEntrance(AgentOpqSession session) {
-        session.members().forEach(member -> member.assign(
+        counted(session).forEach(member -> member.assign(
                 AgentOpqMemberState.Role.ENTRANCE_COLLECTOR, null, 0));
     }
 
@@ -325,7 +336,7 @@ final class AgentOpqCoordinator {
                                                   AgentOpqMemberState member,
                                                   List<Reactor> clouds) {
         if (session == null || member == null || clouds == null || clouds.isEmpty()) return List.of();
-        List<Integer> agents = session.members().stream()
+        List<Integer> agents = counted(session).stream()
                 .filter(candidate -> candidate.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .map(AgentOpqMemberState::characterId)
                 .sorted()
@@ -343,7 +354,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignSplitRooms(AgentOpqSession session, long nowMs) {
-        List<AgentOpqMemberState> agents = session.members().stream()
+        List<AgentOpqMemberState> agents = counted(session).stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
         if (agents.size() < 6) return;
@@ -426,7 +437,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignLoungeSubrooms(AgentOpqSession session) {
-        List<AgentOpqMemberState> runners = session.members().stream()
+        List<AgentOpqMemberState> runners = counted(session).stream()
                 .filter(m -> m.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER).toList();
         Set<Integer> occupied = runners.stream().map(AgentOpqMemberState::assignedSubroomMapId)
                 .filter(id -> id > 0 && !session.loungeSubroomComplete(id))
@@ -610,9 +621,7 @@ final class AgentOpqCoordinator {
             enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
             return;
         }
-        int partyFragments = session.members().stream().map(m -> character(m.characterId()))
-                .filter(java.util.Objects::nonNull)
-                .mapToInt(c -> c.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false)).sum();
+        int partyFragments = partyItemCount(session, AgentOpqDefinition.LOUNGE_FRAGMENT);
         if (partyFragments >= 40) {
             Character leader = character(session.eventLeaderId());
             if (agent.getId() != session.eventLeaderId()) {
@@ -823,7 +832,7 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignGarden(AgentOpqSession session, long nowMs) {
-        List<AgentOpqMemberState> agents = session.members().stream()
+        List<AgentOpqMemberState> agents = counted(session).stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
         boolean papaPixieAlive = agents.stream().map(agent -> character(agent.characterId()))
@@ -1315,8 +1324,51 @@ final class AgentOpqCoordinator {
         try { return Integer.parseInt(value); } catch (NumberFormatException ignored) { return -1; }
     }
 
+    /**
+     * P6h OB7: the members the run counts now, in session order: not departed and, once the run is bound, held by its
+     * event (a dead member the event still holds is down and still counted) or not held yet (the event registers a
+     * party one member at a time, so it is still entering). Before the binding, every member that has not departed.
+     */
+    private static List<AgentOpqMemberState> counted(AgentOpqSession session) {
+        EventInstanceManager bound = session.eventInstance();
+        Set<Integer> held = bound == null ? null : heldIds(bound);
+        return session.members().stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .filter(member -> held == null || held.contains(member.characterId())
+                        || !session.seenHeld(member.characterId()))
+                .toList();
+    }
+
+    private static Set<Integer> heldIds(EventInstanceManager event) {
+        return event.getPlayers().stream().filter(java.util.Objects::nonNull).map(Character::getId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
+     * P6h OB7: a member the bound event no longer holds (a dead Agent its respawn took to 920011200, a disconnected
+     * human) has departed rather than failed the run: it is logged once ('OPQ departed:') and the run goes on without
+     * counting it; the event itself ends the run when a departure leaves it at its floor. Only a member the event held
+     * before and no longer holds departs (the run binds while OrbisPQ.js is still registering the party one member at
+     * a time). Nothing is marked while the run is being released.
+     */
+    private static void observeDepartures(AgentOpqSession session, EventInstanceManager bound, long nowMs) {
+        if (session.terminationStarted()) return;
+        Set<Integer> held = heldIds(bound);
+        session.noteHeld(held);
+        for (AgentOpqMemberState state : session.members()) {
+            int id = state.characterId();
+            if (held.contains(id) || !session.seenHeld(id) || !session.markDeparted(id)) continue;
+            Character member = character(id);
+            log.info("OPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
+                    session.sessionId(), member == null ? "-" : member.getName(), id, state.memberType(),
+                    member == null ? "-" : String.valueOf(member.getMapId()), session.phase(), held.size(),
+                    session.companionAdopted());
+        }
+    }
+
+    /** What the members the run counts hold of {@code itemId} (a departed member's items left with it). */
     private static int partyItemCount(AgentOpqSession session, int itemId) {
-        return session.members().stream().map(member -> character(member.characterId()))
+        return counted(session).stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .mapToInt(character -> character.getItemQuantity(itemId, false)).sum();
     }

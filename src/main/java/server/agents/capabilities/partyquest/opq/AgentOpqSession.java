@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -58,6 +59,10 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     private String potionsAtEntry;
     private long clearSeenAtMs;
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
+    private final Set<Integer> departed = new LinkedHashSet<>();
+    private final Set<Integer> seenHeld = new LinkedHashSet<>();
+    private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
 
     /** A session of the stock six members (every Agent-run and fixture run). */
     public AgentOpqSession(Mode mode, long seed, int operatorId, long nowMs) {
@@ -255,6 +260,68 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     synchronized void markClearSeen(long nowMs) {
         if (clearSeenAtMs == 0L && nowMs > 0L) clearSeenAtMs = nowMs;
     }
+
+    /**
+     * Marks a member the bound event no longer holds as departed (P6h OB7): true the first time only, and never for
+     * someone who is not a member.
+     */
+    synchronized boolean markDeparted(int characterId) {
+        return members.containsKey(characterId) && departed.add(characterId);
+    }
+
+    /** True once the member was marked departed; the run no longer counts it. */
+    synchronized boolean departed(int characterId) { return departed.contains(characterId); }
+
+    /** Notes the members the bound event holds now: each of them has been held from then on. */
+    synchronized void noteHeld(Collection<Integer> ids) {
+        for (int id : ids) if (members.containsKey(id)) seenHeld.add(id);
+    }
+
+    /**
+     * True once the bound event was seen holding the member. OrbisPQ.js registers and warps a party one member at a
+     * time, so a member not seen held yet is still entering, not leaving.
+     */
+    synchronized boolean seenHeld(int characterId) { return seenHeld.contains(characterId); }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold.
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (OrbisPQ.js ends the event when a member leaves at the floor). registeredIds is
+     * read here, under this monitor, so a departure that has just finished is seen as gone; the event's read lock
+     * nests inside this monitor, as when the coordinator reads the event's players.
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        if (staying > floor) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
 
     /** Takes a member out of the run (a companion that tapped out); the event leader is never taken out. */
     public synchronized void removeMember(int characterId) {
