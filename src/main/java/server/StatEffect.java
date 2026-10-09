@@ -979,8 +979,21 @@ public class StatEffect {
         return applyTo(chr, chr, true, pos, false, 1);
     }
 
-    // primary: the player caster of the buff
+    /**
+     * The autopot heal. It checks that {@code chr} is alive before it takes the potion, but a lethal hit on another
+     * thread can still land before the heal. A heal from HP 0 would revive {@code chr} with its death still pending, so
+     * this refuses a dead character. Other item effects and Resurrection keep the stock heal on a dead character.
+     */
+    public boolean applyToIfAlive(Character chr) {
+        return applyTo(chr, chr, true, null, false, 1, true);
+    }
+
     private boolean applyTo(Character applyfrom, Character applyto, boolean primary, Point pos, boolean useMaxRange, int affectedPlayers) {
+        return applyTo(applyfrom, applyto, primary, pos, useMaxRange, affectedPlayers, false);
+    }
+
+    // primary: the player caster of the buff
+    private boolean applyTo(Character applyfrom, Character applyto, boolean primary, Point pos, boolean useMaxRange, int affectedPlayers, boolean onlyIfAlive) {
         if (skill && (sourceid == GM.HIDE || sourceid == SuperGM.HIDE)) {
             applyto.toggleHide(false);
             return true;
@@ -1018,7 +1031,7 @@ public class StatEffect {
          AutobanFactory.MPCON.addPoint(applyfrom.getAutobanManager(), "mpCon hack for skill:" + sourceid + "; Player MP: " + applyto.getMp() + " MP Needed: " + getMpCon());
          } */
 
-        if (!applyto.applyHpMpChange(hpCon, hpchange, mpchange)) {
+        if (!applyto.applyHpMpChange(hpCon, hpchange, mpchange, onlyIfAlive)) {
             applyto.sendPacket(PacketCreator.enableActions());
             return false;
         }

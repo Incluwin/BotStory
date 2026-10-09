@@ -182,7 +182,7 @@ public class PetAutopotProcessor {
 
             if (stat != null) {
                 for (int i = 0; i < useCount; i++) {
-                    stat.applyTo(chr);
+                    stat.applyToIfAlive(chr);
                 }
             }
 
