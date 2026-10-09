@@ -366,7 +366,8 @@ public final class AgentLmpqCoordinator {
         // A click is not progress (LMPQ base fix 1): Rolly answers a full bag with a refusal and the run would never
         // stall. A claim warps the Agent out, and that map change is the progress.
         if (runNearbyNpc(entry, agent, AgentLmpqDefinition.REWARD_NPC, 1)) {
-            member.noteRewardAttempt();
+            // Rolly's reward warps the Agent out inside the NPC run: one still on the reward map was refused.
+            if (agent.getMapId() == AgentLmpqDefinition.REWARD_MAP) member.noteRewardAttempt();
             member.deferUntil(nowMs + ACTION_RETRY_MS);
         }
     }

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,6 +84,22 @@ class AgentLmpqRewardRefusalTest {
         assertEquals(List.of(ben, kes, pel), held);
         verify(run.event, never()).dispose();
         assertTrue(!session.terminal(), "the run goes on for those who can claim");
+    }
+
+    @Test
+    void aClaimThatTookTheAgentOutIsNotARefusal() {
+        AgentLmpqSession session = atRolly();
+        AtomicInteger map = new AtomicInteger(AgentLmpqDefinition.REWARD_MAP);
+        when(mira.getMapId()).thenAnswer(call -> map.get());
+        when(run.partyQuests.runNpc(mira, AgentLmpqDefinition.REWARD_NPC, 1)).thenAnswer(call -> {
+            map.set(AgentLmpqDefinition.EXIT_MAP); // Rolly rewarded her and warped her out
+            return true;
+        });
+
+        ticks(session, 10_000L, 2);
+
+        verify(run.partyQuests, times(1)).runNpc(mira, AgentLmpqDefinition.REWARD_NPC, 1);
+        assertEquals(0, session.member(mira.getId()).rewardAttempts());
     }
 
     @Test
