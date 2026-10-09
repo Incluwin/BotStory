@@ -1,6 +1,7 @@
 package server.living;
 
 import client.Character;
+import config.LivingWorldConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.integration.AgentPresence;
@@ -280,13 +281,27 @@ public final class LivingWorldHooks {
         }
     }
 
-    /** A party quest instance was cleared by these players. */
+    /** A party quest instance was cleared by these players; its event script is not known. */
     public static void partyQuestCleared(java.util.List<Character> players, String eventName) {
+        partyQuestCleared(players, null, eventName);
+    }
+
+    /**
+     * Event instance {@code eventName} of event script {@code scriptName} (EventInstanceManager.clearPQ) was cleared by
+     * these players. A script that living_world.BOSS_EVENT_SCRIPTS lists is a boss kill, not a party quest clear
+     * (2026-10-08): it is logged and nothing else; its friendship boss points come with the boss's death (mobKilled).
+     */
+    public static void partyQuestCleared(java.util.List<Character> players, String scriptName, String eventName) {
         LivingWorld world = LivingWorld.get();
         if (world == null || players == null) {
             return;
         }
         try {
+            LivingWorldConfig settings = world.config();
+            if (settings != null && settings.bossEventScript(scriptName)) {
+                log.info("Boss event cleared: script={} instance={} players={}", scriptName, eventName, names(players));
+                return;
+            }
             // first, and memory only: a companion run's stage-5 clear is on its companions' records as cleared, and a
             // quest that fails to count it must not keep it off them. Tap-outs stop because the coordinator ignores
             // downed members once it reads the clear itself, not because of this mark
@@ -301,6 +316,16 @@ public final class LivingWorldHooks {
         } catch (RuntimeException failure) {
             log.warn("living world partyQuestCleared hook failed", failure);
         }
+    }
+
+    private static String names(java.util.List<Character> players) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (Character chr : players) {
+            if (chr != null) {
+                names.add(chr.getName());
+            }
+        }
+        return String.join(",", names);
     }
 
     /** {@code giver} famed ({@code delta} 1) or defamed (-1) {@code target}; a Resident remembers it (friendship). */

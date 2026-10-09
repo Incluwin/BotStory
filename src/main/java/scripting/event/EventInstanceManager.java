@@ -863,7 +863,9 @@ public class EventInstanceManager {
     }
 
     public void clearPQ() {
-        server.living.LivingWorldHooks.partyQuestCleared(getPlayers(), getName());
+        EventManager manager = em; // let go a minute after dispose: no script name then
+        String script = manager == null ? null : manager.getName();
+        server.living.LivingWorldHooks.partyQuestCleared(getPlayers(), script, getName());
         try {
             invokeScriptFunction("clearPQ", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {

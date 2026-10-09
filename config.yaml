@@ -953,6 +953,13 @@ living_world:
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
+    # Boss clears are not party-quest clears (2026-10-08): the game calls clearPQ for every event clear, boss
+    # expeditions too. For the event scripts listed here (scripts/event file names without .js, a comma list) the
+    # clear marks no companion party-quest run, advances no "clear a party quest" quest step and gives no friendship
+    # PQ points; the server logs "Boss event cleared: script= instance= players=" instead. Friendship boss points
+    # (each boss kill) and companion boss-run records stay as they are. Party quests (KPQ, HPQ, LPQ, CWKPQ, ...) are
+    # never listed. Empty = every clear counts as a party-quest clear, as before.
+    BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
