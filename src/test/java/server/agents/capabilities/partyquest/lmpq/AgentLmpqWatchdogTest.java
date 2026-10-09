@@ -143,6 +143,32 @@ class AgentLmpqWatchdogTest {
     }
 
     @Test
+    void aRunThatEndedUnreleasedIsReleased() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
+                ben, mira, kes, pel);
+        session.fail("LMPQ stalled in FARMING", 9_000L); // its Agents stopped ticking before they released it
+
+        AgentLmpqWatchdogRuntime.tick(session, 10_000L);
+
+        assertNull(AgentLmpqSessionRegistry.forMember(mira.getId()), "released");
+        verify(run.event).dispose();
+        assertEquals("LMPQ stalled in FARMING", session.failure());
+    }
+
+    @Test
+    void aReleaseUnderWayIsLeftToIt() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
+                ben, mira, kes, pel);
+        session.fail("LMPQ stalled in FARMING", 9_000L);
+        assertTrue(session.beginTermination()); // an Agent's tick is releasing it
+
+        AgentLmpqWatchdogRuntime.tick(session, 10_000L);
+
+        verify(run.event, never()).dispose();
+        verify(run.event, never()).exitPlayer(any());
+    }
+
+    @Test
     void aPausedOrEndedRunIsLeftAlone() {
         AgentLmpqSession paused = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
                 ben, mira, kes, pel);

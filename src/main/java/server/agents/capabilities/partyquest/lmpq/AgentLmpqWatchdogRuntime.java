@@ -32,7 +32,15 @@ final class AgentLmpqWatchdogRuntime {
     }
 
     static void tick(AgentLmpqSession session, long nowMs) {
-        if (session == null || session.paused() || session.terminal()) return;
+        if (session == null) return;
+        if (session.terminal()) {
+            // A run that ended but was never released (no Agent ticked it after its end) is released here. finish is
+            // idempotent: a release already under way keeps it.
+            if (!session.terminationStarted()) AgentLmpqTerminationService.finish(
+                    session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
+            return;
+        }
+        if (session.paused()) return;
         List<Character> loaded = session.members().stream()
                 .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentLmpqMemberState::characterId))
