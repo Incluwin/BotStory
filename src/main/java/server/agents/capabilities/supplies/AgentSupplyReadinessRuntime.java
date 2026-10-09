@@ -71,12 +71,13 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * {@code stop}: the supplier ({@code hops} away); {@code spendable}: the purse less its wallet reserve;
-     * {@code missingMesos}: what the trip lacks (CANNOT_AFFORD).
+     * {@code missingMesos}: what the trip lacks (CANNOT_AFFORD); {@code potions}: the shortfall in potions at that
+     * supplier ({@link #potionsAt}; null without one).
      */
     record Assessment(Assessed kind, AgentCareerShopCatalog.ShopStop stop, int hops, int spendable,
-                      int missingMesos) {
+                      int missingMesos, AgentSupplyReadiness.Shortfall potions) {
         static Assessment of(Assessed kind) {
-            return new Assessment(kind, null, -1, 0, 0);
+            return new Assessment(kind, null, -1, 0, 0, null);
         }
     }
 
@@ -128,9 +129,10 @@ public final class AgentSupplyReadinessRuntime {
         // one visit fills potions and ammo; the trip is judged by the readiness standard (judged)
         AgentResourceCategory category = shortfall.hp() > 0 || shortfall.mp() <= 0
                 ? AgentResourceCategory.HP_POTION : AgentResourceCategory.MP_POTION;
+        AgentSupplyReadiness.Shortfall potions = assessment.potions(); // a points standard's gap in that shop's potions
         AgentProcurementRequest request = new AgentProcurementRequest(
                 REQUEST_PREFIX + category + ':' + nowMs, category,
-                shortfall.hp() > 0 ? shortfall.hp() : shortfall.mp() > 0 ? shortfall.mp() : shortfall.ammo(),
+                potions.hp() > 0 ? potions.hp() : potions.mp() > 0 ? potions.mp() : potions.ammo(),
                 Math.max(0, assessment.spendable()),
                 List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.CRITICAL, "",
                 nowMs + AgentSupplyReadiness.requestTtlMs(assessment.hops()));
@@ -235,34 +237,86 @@ public final class AgentSupplyReadinessRuntime {
             return Assessment.of(Assessed.NO_SUPPLIER);
         }
         Shop shop = AgentShopGatewayRuntime.shop().findForNpc(stop.npcId());
-        int hpPrice = shortfall.hp() > 0 && shop != null ? AgentShopService.cheapestRecoveryPrice(agent, shop, true) : 0;
-        int mpPrice = shortfall.mp() > 0 && shop != null ? AgentShopService.cheapestRecoveryPrice(agent, shop, false) : 0;
+        int hpPrice = shortfall.hp() > 0 && shop != null ? potionPrice(agent, shop, activity, true) : 0;
+        int mpPrice = shortfall.mp() > 0 && shop != null ? potionPrice(agent, shop, activity, false) : 0;
         if (shop == null || hpPrice < 0 || mpPrice < 0) {
             return Assessment.of(Assessed.NO_SUPPLIER);
         }
+        AgentSupplyReadiness.Shortfall potions = potionsAt(agent, shop, activity, shortfall);
         long ammo = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(stop.mapId())
                 ? AgentShopService.plannedAmmoSpend(agent, shop) : 0L;
         boolean ammoOnly = shortfall.potionsNone() && shortfall.ammo() > 0;
         AgentShopService.ReadinessAmmoPlan readinessAmmo = ammoOnly
                 ? AgentShopService.readinessAmmoPlan(agent, shop, stop.mapId(), activity) : null;
         if (readinessAmmo != null && readinessAmmo.projected() < AgentSupplyReadiness.ammoStandard(activity)) {
-            return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0); // this supplier cannot bring it there
+            // this supplier cannot bring it there
+            return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0, potions);
         }
-        long spend = ammo + (long) shortfall.hp() * hpPrice + (long) shortfall.mp() * mpPrice
+        long spend = ammo + (long) potions.hp() * hpPrice + (long) potions.mp() * mpPrice
                 + (readinessAmmo == null ? 0L : readinessAmmo.spend());
         long spendable = (long) mesos(agent) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
         if (spend > spendable) {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
-                    (int) Math.min(Integer.MAX_VALUE, spend - spendable));
+                    (int) Math.min(Integer.MAX_VALUE, spend - spendable), potions);
         }
-        if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
-            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0);
+        if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, potions, spendable - ammo)) {
+            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
         if (readinessAmmo != null && readinessAmmo.newStacks() > 0
                 && freeUseSlots(agent) < readinessAmmo.newStacks() + 1) {
-            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0); // the run's slot stays free
+            // the run's slot stays free
+            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
-        return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0);
+        return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0, potions);
+    }
+
+    /**
+     * What a readiness trip's checks price one potion of the kind at: for a count standard the cheapest {@code shop}
+     * sells (the floor's last resort, so a purse that covers it reaches the standard); for a points standard
+     * (AgentSupplyReadiness.recoveryStandard) the visit's pick (AgentShopService.coveragePickPrice), the potion its
+     * floor buys the points in. -1 when it sells none.
+     */
+    private static int potionPrice(Character agent, Shop shop, AgentSupplyReadiness.Activity activity, boolean forHp) {
+        if (AgentSupplyReadiness.recoveryStandard(activity) == null) {
+            return AgentShopService.cheapestRecoveryPrice(agent, shop, forHp);
+        }
+        return AgentShopService.coveragePickRecovery(agent, shop, forHp) > 0
+                ? AgentShopService.coveragePickPrice(agent, shop, forHp) : -1;
+    }
+
+    /**
+     * {@code shortfall} (AgentSupplyReadiness.shortfall) in potions at {@code shop}: as it is for a count standard; for
+     * a points standard each kind's points in the potion the visit picks for it
+     * (AgentShopService.coveragePickRecovery), rounded up, as its floor buys them.
+     */
+    private static AgentSupplyReadiness.Shortfall potionsAt(Character agent, Shop shop,
+                                                            AgentSupplyReadiness.Activity activity,
+                                                            AgentSupplyReadiness.Shortfall shortfall) {
+        if (shop == null || AgentSupplyReadiness.recoveryStandard(activity) == null) {
+            return shortfall;
+        }
+        return new AgentSupplyReadiness.Shortfall(
+                AgentSupplyReadiness.potionsFor(shortfall.hp(),
+                        AgentShopService.coveragePickRecovery(agent, shop, true)),
+                AgentSupplyReadiness.potionsFor(shortfall.mp(),
+                        AgentShopService.coveragePickRecovery(agent, shop, false)),
+                shortfall.ammo());
+    }
+
+    /**
+     * {@code activity}'s potion standard in potions at {@code shop}: AgentSupplyReadiness.standard for a count
+     * standard; for a points standard each kind's points in the potion the visit picks for it, rounded up.
+     */
+    private static AgentSupplyReadiness.Standard standardAt(Character agent, Shop shop,
+                                                            AgentSupplyReadiness.Activity activity) {
+        AgentSupplyReadiness.RecoveryStandard points = AgentSupplyReadiness.recoveryStandard(activity);
+        if (points == null) {
+            return AgentSupplyReadiness.standard(activity);
+        }
+        return new AgentSupplyReadiness.Standard(
+                AgentSupplyReadiness.potionsFor(points.hp(), AgentShopService.coveragePickRecovery(agent, shop, true)),
+                AgentSupplyReadiness.potionsFor(points.mp(),
+                        AgentShopService.coveragePickRecovery(agent, shop, false)));
     }
 
     /**
@@ -270,16 +324,16 @@ public final class AgentSupplyReadinessRuntime {
      * more than one stack, one per stack of what it does not surely put on a carried stack; otherwise one unless it
      * carries a stack of that kind this shop sells that still has room), plus, when it needs any, the one a party
      * quest keeps free for its items and rewards (KPQ and EPQ admission refuse a member without it).
-     * {@code spendable}: what the counter has for potions (the purse less its wallet reserve and the ammo it buys
-     * first).
+     * {@code shortfall}: in potions at this shop ({@link #potionsAt}); {@code spendable}: what the counter has for
+     * potions (the purse less its wallet reserve and the ammo it buys first).
      */
     static int useSlotsNeeded(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
                               AgentSupplyReadiness.Shortfall shortfall, long spendable) {
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        AgentSupplyReadiness.Standard standard = standardAt(agent, shop, activity);
         int fresh = slotsFor(agent, shop, true, shortfall.hp(), standard.hp(),
-                () -> hpFloorBudget(agent, shop, shortfall, spendable))
+                () -> hpFloorBudget(agent, shop, activity, shortfall, spendable))
                 + slotsFor(agent, shop, false, shortfall.mp(), standard.mp(),
-                () -> mpFloorBudget(agent, shop, shortfall, spendable));
+                () -> mpFloorBudget(agent, shop, activity, shortfall, spendable));
         return fresh == 0 ? 0 : fresh + (activity != null ? 1 : 0); // every activity is a party quest
     }
 
@@ -306,12 +360,13 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * What the counter's first HP pass may spend (AgentShopService.buyReadinessFloor): the potion money less what
-     * the mana potions it lacks cost at their cheapest.
+     * the mana potions it lacks cost at their cheapest (for a points standard in the visit's pick:
+     * {@link #potionPrice}).
      */
-    private static long hpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Shortfall shortfall,
-                                      long spendable) {
+    private static long hpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
+                                      AgentSupplyReadiness.Shortfall shortfall, long spendable) {
         long heldForMana = shortfall.mp() <= 0 ? 0L
-                : (long) shortfall.mp() * Math.max(0, AgentShopService.cheapestRecoveryPrice(agent, shop, false));
+                : (long) shortfall.mp() * Math.max(0, potionPrice(agent, shop, activity, false));
         return Math.max(0L, spendable - heldForMana);
     }
 
@@ -320,11 +375,11 @@ public final class AgentSupplyReadinessRuntime {
      * HP coverage pick's whole count when that fits the HP budget (the pass then buys only that), else at most that
      * budget.
      */
-    private static long mpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Shortfall shortfall,
-                                      long spendable) {
+    private static long mpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
+                                      AgentSupplyReadiness.Shortfall shortfall, long spendable) {
         long hpSpend = 0L;
         if (shortfall.hp() > 0) {
-            long hpBudget = hpFloorBudget(agent, shop, shortfall, spendable);
+            long hpBudget = hpFloorBudget(agent, shop, activity, shortfall, spendable);
             int price = AgentShopService.coveragePickPrice(agent, shop, true);
             long coverage = (long) price * shortfall.hp();
             hpSpend = price >= 0 && coverage <= hpBudget ? coverage : hpBudget;
@@ -472,10 +527,12 @@ public final class AgentSupplyReadinessRuntime {
         Shop shop = null;
         if (!shortfall.none() && execution.supplierNpcId() > 0) {
             shop = AgentShopGatewayRuntime.shop().findForNpc(execution.supplierNpcId());
-            int hpPrice = shop == null || shortfall.hp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, true);
-            int mpPrice = shop == null || shortfall.mp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, false);
+            AgentSupplyReadiness.Activity activity = activityOf(entry);
+            AgentSupplyReadiness.Shortfall potions = potionsAt(agent, shop, activity, shortfall);
+            int hpPrice = shop == null || shortfall.hp() <= 0 ? 0 : potionPrice(agent, shop, activity, true);
+            int mpPrice = shop == null || shortfall.mp() <= 0 ? 0 : potionPrice(agent, shop, activity, false);
             long needed = !shortfall.potionsNone() || shop == null
-                    ? (long) shortfall.hp() * Math.max(0, hpPrice) + (long) shortfall.mp() * Math.max(0, mpPrice)
+                    ? (long) potions.hp() * Math.max(0, hpPrice) + (long) potions.mp() * Math.max(0, mpPrice)
                     : AgentShopService.readinessAmmoPlan(agent, shop, execution.supplierMapId(), activityOf(entry))
                     .spend();
             long spendable = (long) mesos - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
@@ -508,7 +565,7 @@ public final class AgentSupplyReadinessRuntime {
         if (shop == null) {
             return false;
         }
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        AgentSupplyReadiness.Standard standard = standardAt(agent, shop, activity);
         int hpStack = shortfall.hp() > 0 ? AgentShopService.potionStackSize(agent, shop, true) : 0;
         int mpStack = shortfall.mp() > 0 ? AgentShopService.potionStackSize(agent, shop, false) : 0;
         return hpStack > 0 && standard.hp() > hpStack || mpStack > 0 && standard.mp() > mpStack;

@@ -357,8 +357,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
         /**
          * A companion short of {@code bossKey}'s potion and ammo standards (AgentSupplyReadiness.BOSS_STANDARDS,
-         * AMMO_STANDARDS) looks at its supplies on its next tick instead of its next check, so one that can reach a
-         * shop sets off before it signs up.
+         * AMMO_STANDARDS; HP and MP points for a key BOSS_RECOVERY_STANDARDS lists) looks at its supplies on its next
+         * tick instead of its next check, so one that can reach a shop sets off before it signs up.
          */
         void checkIfShort(int agentId, String bossKey);
 
@@ -655,7 +655,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     // ---- potions at the entrance (decision 7) ----------------------------------------------------
 
     /**
-     * The boss whose potion standard (AgentSupplyReadiness.BOSS_STANDARDS) a companion keeps on {@code mapId}: the
+     * The boss whose potion standard (AgentSupplyReadiness.BOSS_STANDARDS, or BOSS_RECOVERY_STANDARDS in HP and MP
+     * points) a companion keeps on {@code mapId}: the
      * boss's key on its entry NPC's room (easy_balrog in Mu Young's, 105100100) while the switch lists it; null
      * anywhere else or with the switch off. Memory only, any thread (CompanionRestock.standing asks it).
      */

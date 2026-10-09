@@ -451,7 +451,7 @@ public final class AgentShopService {
             return Integer.MAX_VALUE;
         }
         AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
-        if (activity == null || !aboveOneStack(bot, shop, AgentSupplyReadiness.standard(activity),
+        if (activity == null || !aboveOneStack(bot, shop, readinessStandard(bot, shop, activity),
                 sequence.inventory())) {
             return Integer.MAX_VALUE;
         }
@@ -1322,14 +1322,14 @@ public final class AgentShopService {
 
         if (needsHp) {
             String intent = potionPurchaseIntent(bot, hpPotion, true, sequence.inventory(),
-                    reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
+                    reserveRoomBesideTheRunsSlot(sequence, shop, hpPotion, true));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
         }
         if (needsMp) {
             String intent = potionPurchaseIntent(bot, mpPotion, false, sequence.inventory(),
-                    reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
+                    reserveRoomBesideTheRunsSlot(sequence, shop, mpPotion, false));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
@@ -1348,7 +1348,7 @@ public final class AgentShopService {
                 false,
                 minimumMesoReserve,
                 Integer.MAX_VALUE,
-                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
+                reserveRoomBesideTheRunsSlot(sequence, shop, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "critical HP pots");
 
@@ -1362,7 +1362,7 @@ public final class AgentShopService {
                 false,
                 minimumMesoReserve,
                 Integer.MAX_VALUE,
-                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
+                reserveRoomBesideTheRunsSlot(sequence, shop, mpPotion, false));
         mpBought += report.quantity();
         bought[0] += hpBought;
         bought[1] += mpBought;
@@ -1401,7 +1401,7 @@ public final class AgentShopService {
                 true,
                 minimumMesoReserve,
                 hpBudget,
-                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
+                reserveRoomBesideTheRunsSlot(sequence, shop, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "HP pots", quiet);
 
@@ -1415,7 +1415,7 @@ public final class AgentShopService {
                 true,
                 minimumMesoReserve,
                 Integer.MAX_VALUE,
-                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
+                reserveRoomBesideTheRunsSlot(sequence, shop, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "MP pots", quiet);
         bought[0] = hpBought;
@@ -1433,7 +1433,8 @@ public final class AgentShopService {
      * budget pays for. {@link #floorItem} picks the potion. Nothing without a duty; {@code bought} counts this visit's
      * purchases per kind (HP, MP) against the per-visit limit. A standard above the carry or per-visit limit raises
      * that limit to itself (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it, and nothing buys
-     * past the larger of it and MAX_CARRIED_QUANTITY.
+     * past the larger of it and MAX_CARRIED_QUANTITY. A standard of HP and MP points (a boss's,
+     * AgentSupplyReadiness.recoveryStandard) buys in its own passes ({@link #buyRecoveryFloor}).
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
@@ -1477,6 +1478,11 @@ public final class AgentShopService {
         Character bot = sequence.bot();
         if (activity == null) {
             return sequence;
+        }
+        AgentSupplyReadiness.RecoveryStandard points = AgentSupplyReadiness.recoveryStandard(activity);
+        if (points != null) {
+            return buyRecoveryFloor(sequence, shop, hpPick, mpPick, minimumMesoReserve, bought, topUp, activity,
+                    points);
         }
         AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
         int hpGoal = topUp ? AgentSupplyReadiness.buyTarget(activity, bot, true) : standard.hp();
@@ -1522,6 +1528,26 @@ public final class AgentShopService {
         if (item == null) {
             return current;
         }
+        return buyFloorItem(current, shop, item, forHp, want, budget, minimumMesoReserve, bought, topUp, standard);
+    }
+
+    /**
+     * {@link #buyFloor} once its potion is picked: {@code want} of {@code item} within {@code budget}, a top-up only
+     * what the budget pays for, never past the room beside the run's slot ({@code standard}: the kind's standard in
+     * potions of it).
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyFloorItem(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> current,
+            Shop shop,
+            ShopSlotItem item,
+            boolean forHp,
+            int want,
+            long budget,
+            int minimumMesoReserve,
+            int[] bought,
+            boolean topUp,
+            int standard) {
+        Character bot = current.bot();
         int quantity = want;
         if (topUp) {
             int price = item.shopItem.getPrice();
@@ -1539,6 +1565,86 @@ public final class AgentShopService {
         }
         bought[forHp ? 0 : 1] += report.quantity();
         return appendBuyReport(current, report, forHp ? "HP pots" : "MP pots");
+    }
+
+    /**
+     * The readiness floor of a standard of HP and MP points (AgentSupplyReadiness.recoveryStandard, a boss's), in the
+     * same two passes: each kind's points gap, to the standard or topping up toward its buy target
+     * (AgentSupplyReadiness.recoveryBuyTarget), turned into a count of the potion the visit picks for that kind
+     * ({@link #recoveryFloorItem}), rounded up ({@link #recoveryWant}). HP first, within the purse less what the mana
+     * gap costs in its pick, then MP. Within the floor's limits: a limit or a purse that stops it short leaves it
+     * short, and the trip's checks and its host's lines say so.
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyRecoveryFloor(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            ShopSlotItem hpPick,
+            ShopSlotItem mpPick,
+            int minimumMesoReserve,
+            int[] bought,
+            boolean topUp,
+            AgentSupplyReadiness.Activity activity,
+            AgentSupplyReadiness.RecoveryStandard points) {
+        Character bot = sequence.bot();
+        int[] carried = AgentPotionService.countPotions(bot);
+        int mpWant = !AgentSupplyReadiness.needsManaPotions(bot) ? 0
+                : recoveryWant(bot, activity, points, mpPick, false, carried[1], bought[1], topUp);
+        AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
+        ShopSlotItem hpItem = recoveryFloorItem(shop, bot, hpPick, true, current.inventory());
+        int hpWant = recoveryWant(bot, activity, points, hpItem, true, carried[0], bought[0], topUp);
+        if (hpWant > 0) {
+            long heldForMana = mpWant <= 0 ? 0L : (long) mpWant * mpPick.shopItem.getPrice();
+            current = buyFloorItem(current, shop, hpItem, true, hpWant,
+                    Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp,
+                    AgentSupplyReadiness.potionsFor(points.hp(), hpItem.recovery.primary()));
+        }
+        if (mpWant > 0) {
+            ShopSlotItem mpItem = recoveryFloorItem(shop, bot, mpPick, false, current.inventory());
+            int want = recoveryWant(bot, activity, points, mpItem, false, carried[1], bought[1], topUp);
+            if (want > 0) {
+                current = buyFloorItem(current, shop, mpItem, false, want, spendable(bot, minimumMesoReserve),
+                        minimumMesoReserve, bought, topUp,
+                        AgentSupplyReadiness.potionsFor(points.mp(), mpItem.recovery.primary()));
+            }
+        }
+        return current;
+    }
+
+    /**
+     * How many of {@code item} a points floor pass buys: what the kind's recovery
+     * (AgentSupplyReadiness.recoveryCarried) lacks of the standard, or topping up of its buy target, in that potion,
+     * rounded up; within AgentPotionPurchasePolicy.floorQuantity, with the bag's count at the standard
+     * ({@code carried} and what the standard still lacks in that potion) as the standard, so one visit reaches it past
+     * the carry and per-visit limits while a top-up stays within them. 0 without a potion.
+     */
+    private static int recoveryWant(Character bot, AgentSupplyReadiness.Activity activity,
+                                    AgentSupplyReadiness.RecoveryStandard points, ShopSlotItem item, boolean forHp,
+                                    int carried, int boughtThisVisit, boolean topUp) {
+        if (item == null || item.recovery == null) {
+            return 0;
+        }
+        int perPotion = item.recovery.primary();
+        long recovery = AgentSupplyReadiness.recoveryCarried(bot, forHp);
+        long standard = forHp ? points.hp() : points.mp();
+        long goal = topUp ? AgentSupplyReadiness.recoveryBuyTarget(activity, bot, forHp) : standard;
+        long atStandard = (long) Math.max(0, carried) + AgentSupplyReadiness.potionsFor(standard - recovery, perPotion);
+        long atGoal = (long) Math.max(0, carried) + AgentSupplyReadiness.potionsFor(goal - recovery, perPotion);
+        return AgentPotionPurchasePolicy.floorQuantity((int) Math.min(Integer.MAX_VALUE, atGoal), carried,
+                boughtThisVisit, (int) Math.min(Integer.MAX_VALUE, atStandard));
+    }
+
+    /**
+     * The potion a points floor pass buys: the visit's pick for the kind ({@link #findPotionItem}), the one its gap is
+     * counted in; with at most one Use slot free and no room on its stacks, a stack of the kind it carries that this
+     * shop sells ({@link #floorItem}'s rule), so the slot a run keeps stays free. Null when the shop sells none.
+     */
+    private static ShopSlotItem recoveryFloorItem(Shop shop, Character bot, ShopSlotItem pick, boolean forHp,
+                                                  InventoryGateway inventory) {
+        if (pick == null || freeUseSlots(bot) > 1 || stackRoom(bot, pick.shopItem.getItemId(), inventory) > 0) {
+            return pick;
+        }
+        ShopSlotItem carried = carriedStack(shop, bot, forHp, inventory);
+        return carried != null ? carried : pick;
     }
 
     /**
@@ -1562,9 +1668,10 @@ public final class AgentShopService {
      * How many of {@code potion} a reserve-bar pass of buyPotionStock may buy and still leave free the Use slot a
      * party quest keeps (the floor's rule, {@link #roomBesideTheRunsSlot}): limited only under a duty whose standard
      * of the kind is above one stack, so a floor pass held back by that slot is not undone by the passes after it.
-     * No duty, or a standard of at most one stack: no limit.
+     * No duty, or a standard of at most one stack: no limit. A points standard counts in the potions of this shop
+     * ({@link #readinessStandard}).
      */
-    private static int reserveRoomBesideTheRunsSlot(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+    private static int reserveRoomBesideTheRunsSlot(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop,
                                                     ShopSlotItem potion, boolean forHp) {
         if (potion == null) {
             return Integer.MAX_VALUE;
@@ -1574,7 +1681,7 @@ public final class AgentShopService {
         if (activity == null) {
             return Integer.MAX_VALUE;
         }
-        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        AgentSupplyReadiness.Standard standard = readinessStandard(bot, shop, activity);
         return roomBesideTheRunsSlot(bot, potion, forHp ? standard.hp() : standard.mp(), sequence.inventory());
     }
 
@@ -1681,6 +1788,34 @@ public final class AgentShopService {
         }
         ShopSlotItem pick = findPotionItem(shop, bot, forHp);
         return pick == null ? -1 : pick.shopItem.getPrice();
+    }
+
+    /**
+     * What one of the HP (or MP) potion a visit picks for coverage ({@link #findPotionItem}) restores for the bot: the
+     * potion a points standard's gap is counted in (AgentSupplyReadiness.potionsFor); 0 when the shop sells none.
+     */
+    public static int coveragePickRecovery(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return 0;
+        }
+        ShopSlotItem pick = findPotionItem(shop, bot, forHp);
+        return pick == null || pick.recovery == null ? 0 : pick.recovery.primary();
+    }
+
+    /**
+     * {@code activity}'s potion standard in potions at {@code shop}: AgentSupplyReadiness.standard for a count
+     * standard; for a points standard (AgentSupplyReadiness.recoveryStandard) each kind's points in the potion a visit
+     * picks for it ({@link #coveragePickRecovery}), rounded up.
+     */
+    private static AgentSupplyReadiness.Standard readinessStandard(Character bot, Shop shop,
+                                                                   AgentSupplyReadiness.Activity activity) {
+        AgentSupplyReadiness.RecoveryStandard points = AgentSupplyReadiness.recoveryStandard(activity);
+        if (points == null) {
+            return AgentSupplyReadiness.standard(activity);
+        }
+        return new AgentSupplyReadiness.Standard(
+                AgentSupplyReadiness.potionsFor(points.hp(), coveragePickRecovery(bot, shop, true)),
+                AgentSupplyReadiness.potionsFor(points.mp(), coveragePickRecovery(bot, shop, false)));
     }
 
     /** The strongest HP (or MP) recovery potion this shop sells of which the bot carries a stack with room; or null. */

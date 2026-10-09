@@ -120,6 +120,10 @@ class AgentSupplyReadinessRuntimeTest {
     private int hpPickPrice = 320;
     /** What AgentShopService.coveragePickPrice answers for MP: a Blue Potion, the cheapest. */
     private int mpPickPrice = BLUE;
+    /** What AgentShopService.coveragePickRecovery answers for HP: a White Potion's 300 HP. */
+    private int hpPickRecovery = 300;
+    /** What AgentShopService.coveragePickRecovery answers for MP: a Blue Potion's 100 MP. */
+    private int mpPickRecovery = 100;
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -168,6 +172,8 @@ class AgentSupplyReadinessRuntimeTest {
                 .thenAnswer(inv -> hpStackRoom.getOrDefault(((Character) inv.getArgument(0)).getId(), 0));
         shopService.when(() -> AgentShopService.coveragePickPrice(any(), any(), anyBoolean()))
                 .thenAnswer(inv -> (boolean) inv.getArgument(2) ? hpPickPrice : mpPickPrice);
+        shopService.when(() -> AgentShopService.coveragePickRecovery(any(), any(), anyBoolean()))
+                .thenAnswer(inv -> (boolean) inv.getArgument(2) ? hpPickRecovery : mpPickRecovery);
         shopService.when(() -> AgentShopService.readinessPickRoom(any(), any(), anyBoolean(), anyInt(), anyLong()))
                 .thenAnswer(inv -> {
                     boolean forHp = inv.getArgument(2);
@@ -418,6 +424,33 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(AgentSupplyProcurementState.Phase.SHOPPING, execution.phase(), "no travel");
         assertTrue(execution.resumeFollow(), "it follows its owner again after");
         assertEquals(List.of("started 544 25000"), calls, "no hop: 25 s");
+    }
+
+    /**
+     * User decision 2 (2026-10-08): Easy Balrog's standard is HP and MP points (130,000 / 32,000), so the trip's checks
+     * price what a companion's potions lack in the store's picks (Unagi, 1,000 HP for 1,100 mesos; Pure Water, 800 MP
+     * for 1,650): 130 and 40 of them, 209,000 mesos, and its request counts Unagi, not HP points.
+     */
+    @Test
+    void aBossTripPricesThePointsItLacksInTheStoresPicks() {
+        hpPickPrice = 1_100;
+        hpPickRecovery = 1_000;
+        mpPickPrice = 1_650;
+        mpPickRecovery = 800;
+        fieldStores.add(ANT_TUNNEL_PARK);
+        Character isolde = companion(548, "Isolde", Job.CLERIC, 60, 40, 209_000 - 1); // no recovery in her bag
+        stand(isolde, ANT_TUNNEL_PARK, false);
+        activities.put(548, EASY_BALROG);
+        AgentRuntimeEntry entry = following(isolde);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, isolde, 1_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 548 CANNOT_AFFORD 1"), calls, "130 Unagi and 40 Pure Water cost 209,000");
+
+        purses.put(548, 209_000); // its purse grew by what it lacked
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, isolde, 6_000L));
+        assertEquals(130, readinessRequest(entry).quantity(), "Unagi, not HP points");
+        assertEquals(MOBILE_STORE, execution(entry).supplierNpcId());
     }
 
     @Test

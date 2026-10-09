@@ -89,6 +89,14 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.BOSS_RECOVERY_STANDARDS")) {
+                // its own branch: a false from validNonNumericTuning would let a bare number pass the numeric check
+                if (!validRecoveryStandards(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be key=HP/MP pairs of whole points from 0 to 999999999");
+                }
+                continue;
+            }
             if (validNonNumericTuning(key, value)) {
                 continue;
             }
@@ -177,6 +185,14 @@ final class AgentEngineConfigValidator {
             }
         }
         return true;
+    }
+
+    /**
+     * True for "key=HP/MP[,key=HP/MP...]" with lower-case keys and whole HP and MP points of at most nine digits, so
+     * AgentSupplyReadiness.recoveryStandard reads every pair as listed instead of falling back to counting potions.
+     */
+    static boolean validRecoveryStandards(String value) {
+        return value != null && value.matches("[a-z0-9_]+=\\d{1,9}/\\d{1,9}(,[a-z0-9_]+=\\d{1,9}/\\d{1,9})*");
     }
 
     private static boolean validNonNumericTuning(String key, String value) {
