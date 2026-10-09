@@ -30,12 +30,19 @@ class OwnGearRefitTest {
     private static final int BOSS_SWORD = 1302059;
     private static final int BOSS_TWO_HANDED = 1402011;
     private static final int BOSS_OVERALL = 1050000;
+    /** Tamsin's own Red Shark (a female coat) and the female overall her !bossgear kit put on (live, 2026-10-09). */
+    private static final int RED_SHARK = 1041024;
+    private static final int BLUE_ENGRIT = 1051012;
+    /** A female pair of pants (the gender digit 1). */
+    private static final int RED_MINISKIRT = 1061020;
     private static final short TOP = -5;
     private static final short PANTS = -6;
     private static final short SHIELD = -10;
     private static final short WEAPON = -11;
     /** Garrick: a Lv70 Fighter, male, STR 250. */
     private static final WearStats GARRICK = new WearStats(110, 70, 0, 250, 20, 4, 4, 0);
+    /** Tamsin: a Lv38 Page, female, STR 150; made with the male beginner set (BotCreator), so she wore 1060002. */
+    private static final WearStats TAMSIN = new WearStats(120, 38, 1, 150, 40, 4, 4, 0);
     private static final Map<Integer, ItemFact> FACTS = new HashMap<>();
 
     static {
@@ -46,6 +53,8 @@ class OwnGearRefitTest {
         fact(MYSTIC_SHIELD, "Mystic Shield", "shield", 22, 2, 0, 68);
         fact(UNDERSHIRT, "White Undershirt", "coat", 0, 0, 0, 0);
         fact(JEAN_SHORTS, "Blue Jean Shorts", "pants", 0, 0, 0, 0);
+        fact(RED_SHARK, "Red Shark", "coat", 25, 1, 80, 0);
+        fact(RED_MINISKIRT, "Red Miniskirt", "pants", 20, 0, 0, 0);
     }
 
     private static void fact(int id, String name, String category, int level, int job, int str, int int_) {
@@ -143,6 +152,23 @@ class OwnGearRefitTest {
                 List.of(at(JEAN_SHORTS, 1), at(UNDERSHIRT, 2)));
 
         assertEquals(List.of(UNDERSHIRT + "@2 -> -5", JEAN_SHORTS + "@1 -> -6"), moves(moves));
+    }
+
+    @Test
+    void tamsinsBlueJeanShortsTheBossOverallPushedOffGoBackOnThoughTheyAreAMansPair() {
+        List<Move> moves = plan(TAMSIN, Map.of(TOP, BLUE_ENGRIT), wears(),
+                List.of(at(UNDERSHIRT, 2), at(RED_SHARK, 9), at(JEAN_SHORTS, 10)));
+
+        assertEquals(List.of(RED_SHARK + "@9 -> -5", JEAN_SHORTS + "@10 -> -6"), moves(moves),
+                "she wore them under her coat before the kit; the game never holds an equip to the gender in its id");
+    }
+
+    @Test
+    void itsOwnGendersPieceWinsOverAHigherOneOfTheOtherGender() {
+        List<Move> moves = plan(GARRICK, Map.of(TOP, BOSS_OVERALL), wears(),
+                List.of(at(RED_MINISKIRT, 1), at(JEAN_SHORTS, 2)));
+
+        assertEquals(List.of(JEAN_SHORTS + "@2 -> -6"), moves(moves), "a man's own shorts over a Lv20 miniskirt");
     }
 
     @Test

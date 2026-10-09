@@ -27,11 +27,14 @@ import java.util.function.ToIntFunction;
  *
  * <p>The weapon is dressed first and the shield last, the top before the pants. A piece fits a slot by its knowledge
  * category (cap, coat or overall, pants, shoes, glove, cape, shield, weapon; never a cash piece). It is wearable by its
- * level, its job mask (as every Agent is held to), the gender in its id, fame, and the main stat the server holds the
- * job to (STR for a warrior, INT a magician, DEX a bowman, LUK a thief: base plus what it wears). A shield goes on only
- * beside a worn one-handed weapon, and beside a worn shield only a one-handed weapon does. An overall goes on only with
- * no pants on, and pants only under a coat. Best: for the weapon the boss weapon's type first (the kit keeps the worn
- * type), then the highest required level, then the first bag slot. A piece with no knowledge fact never moves.</p>
+ * level, its job mask (as every Agent is held to), fame, and the main stat the server holds the job to (STR for a
+ * warrior, INT a magician, DEX a bowman, LUK a thief: base plus what it wears), as the game's own wear check
+ * (ItemInformationProvider.canWearEquipment) is. Like that check, the gender in its id never rules a piece out: every
+ * persona is made in the male beginner set (BotCreator), so Tamsin wore a man's Blue Jean Shorts under her coat. A
+ * shield goes on only beside a worn one-handed weapon, and beside a worn shield only a one-handed weapon does. An
+ * overall goes on only with no pants on, and pants only under a coat. Best: for the weapon the boss weapon's type first
+ * (the kit keeps the worn type), then a piece of its own gender (or for both), then the highest required level, then
+ * the first bag slot. A piece with no knowledge fact never moves.</p>
  */
 final class OwnGearRefit {
     private static final short CAP = -1;
@@ -100,7 +103,8 @@ final class OwnGearRefit {
                         || !wearable(wearer, fact, wearing)) {
                     continue;
                 }
-                if (best == null || better(piece, fact, best, bestFact, slot == WEAPON ? bossType : 0)) {
+                if (best == null || better(piece, fact, best, bestFact, slot == WEAPON ? bossType : 0,
+                        wearer.gender())) {
                     best = piece;
                     bestFact = fact;
                 }
@@ -169,10 +173,6 @@ final class OwnGearRefit {
         if (fact.reqJob() != 0 && (fact.reqJob() & FriendForge.jobMask(wearer.jobId())) == 0) {
             return false;
         }
-        int gender = fact.id() / GENDER_DIGIT % DIGIT;
-        if ((gender == MALE || gender == FEMALE) && gender != wearer.gender()) {
-            return false;
-        }
         if (fact.reqPop() > 0 && fact.reqPop() > wearer.fame()) {
             return false;
         }
@@ -183,6 +183,12 @@ final class OwnGearRefit {
             case THIEF -> fact.reqLuk() <= wearer.luk() + bonus(wearing, Equip::getLuk);
             default -> true;
         };
+    }
+
+    /** The gender digit of the id ({@code id / 1000 % 10}: 0 male, 1 female, anything else both) fits {@code gender}. */
+    private static boolean fitsGender(int itemId, int gender) {
+        int digit = itemId / GENDER_DIGIT % DIGIT;
+        return digit != MALE && digit != FEMALE || digit == gender;
     }
 
     /** What the pieces it wears add to one stat. */
@@ -196,12 +202,19 @@ final class OwnGearRefit {
         return sum;
     }
 
-    /** {@code prefer}: the weapon type that wins first (0: none); then the higher level, then the earlier bag slot. */
-    private static boolean better(Item piece, ItemFact fact, Item best, ItemFact bestFact, int prefer) {
+    /**
+     * {@code prefer}: the weapon type that wins first (0: none); then a piece for the wearer's {@code gender} (or for
+     * both), then the higher level, then the earlier bag slot.
+     */
+    private static boolean better(Item piece, ItemFact fact, Item best, ItemFact bestFact, int prefer, int gender) {
         boolean preferred = prefer != 0 && piece.getItemId() / WEAPON_TYPE == prefer;
         boolean bestPreferred = prefer != 0 && best.getItemId() / WEAPON_TYPE == prefer;
         if (preferred != bestPreferred) {
             return preferred;
+        }
+        boolean fits = fitsGender(piece.getItemId(), gender);
+        if (fits != fitsGender(best.getItemId(), gender)) {
+            return fits;
         }
         if (fact.reqLevel() != bestFact.reqLevel()) {
             return fact.reqLevel() > bestFact.reqLevel();

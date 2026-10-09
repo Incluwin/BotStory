@@ -261,4 +261,85 @@ class BossGearReleaseTest {
             assertEquals(List.of(QUEST_GLOVES + "@1", GLADIUS + "@-11"), placed(saved));
         }
     }
+
+    // ---- Tamsin, live 2026-10-09: her kit, benched with it, then released offline -------------------
+
+    private static final int TAMSIN_ID = 837;
+    /** A Lv38 Page, female; made with the male beginner set (BotCreator), so her own pants are a man's pair. */
+    private static final WearStats PAGE = new WearStats(120, 38, 1, 150, 40, 4, 4, 0);
+    /** Her kit: cap, overall, shoes, glove, sword, shield. */
+    private static final int KIT_CAP = 1002055;
+    private static final int KIT_OVERALL = 1051012;
+    private static final int KIT_SHOES = 1072041;
+    private static final int KIT_GLOVE = 1082006;
+    private static final int KIT_SWORD = 1302003;
+    private static final int KIT_SHIELD = 1092002;
+    /** What she wore before the kit, and what she carried. */
+    private static final int STEEL_SHARP_HELM = 1002027;
+    private static final int RED_SHARK = 1041024;
+    private static final int BLUE_JEAN_SHORTS = 1060002;
+    private static final int MITHRIL_GRIEVES = 1072039;
+    private static final int RAGGED_CAPE = 1102082;
+    private static final int MAPLE_SWORD = 1302020;
+    private static final int JOUSTING_HELMET = 1002023;
+    private static final int WHITE_UNDERSHIRT = 1040002;
+    private static final int RED_DUKE = 1002025;
+    private static final int IRON_CHAIN_BOOTS = 1072033;
+    private static final int RED_RUBBER_BOOTS = 1072001;
+    private static final int STEEL_GRIEVES = 1072009;
+    private static final int CONTRA_AXE = 1312016;
+    private static final int BROWN_BANDAGE = 1082078;
+    private static final int LINEN_TROUSERS = 1062096;
+
+    private final Persona tamsin = game.companion("tamsin", "Tamsin", TAMSIN_ID, RosterState.BENCHED, LITH);
+
+    /**
+     * Her saved inventory as her bench save left it: the six kit pieces worn beside her cape and two cosmetic pieces,
+     * and in her bag her carried gear (1-7) and then what each kit piece swapped out, in kit order (the overall pushed
+     * her pants into the next free slot before her coat swapped into its own).
+     */
+    private static List<Item> tamsinsKitInventory() {
+        return new ArrayList<>(List.of(Equip.restored(BROWN_BANDAGE, (short) -108),
+                Equip.restored(LINEN_TROUSERS, (short) -106), boss(KIT_SWORD, WEAPON), boss(KIT_SHIELD, SHIELD),
+                Equip.restored(RAGGED_CAPE, (short) -9), boss(KIT_GLOVE, (short) -8), boss(KIT_SHOES, (short) -7),
+                boss(KIT_OVERALL, (short) -5), boss(KIT_CAP, CAP),
+                Equip.restored(JOUSTING_HELMET, (short) 1), Equip.restored(WHITE_UNDERSHIRT, (short) 2),
+                Equip.restored(RED_DUKE, (short) 3), Equip.restored(IRON_CHAIN_BOOTS, (short) 4),
+                Equip.restored(RED_RUBBER_BOOTS, (short) 5), Equip.restored(STEEL_GRIEVES, (short) 6),
+                Equip.restored(CONTRA_AXE, (short) 7), Equip.restored(STEEL_SHARP_HELM, (short) 8),
+                Equip.restored(RED_SHARK, (short) 9), Equip.restored(BLUE_JEAN_SHORTS, (short) 10),
+                Equip.restored(MITHRIL_GRIEVES, (short) 11), Equip.restored(MAPLE_SWORD, (short) 12),
+                Equip.restored(STEEL_SHIELD, (short) 13)));
+    }
+
+    private List<Item> tamsinOffline() {
+        List<Item> saved = tamsinsKitInventory();
+        game.store.storedItems.put(TAMSIN_ID, saved);
+        offline(TAMSIN_ID);
+        when(game.store.store.wearStats(TAMSIN_ID)).thenReturn(PAGE);
+        return saved;
+    }
+
+    /** The item at a worn slot, or 0. */
+    private static int at(List<Item> items, short slot) {
+        return items.stream().filter(item -> item.getPosition() == slot).mapToInt(Item::getItemId).findFirst()
+                .orElse(0);
+    }
+
+    @Test
+    void tamsinsOfflineReleaseWearsTheBlueJeanShortsHerBossOverallPushedOff() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = tamsinOffline();
+            game.roster();
+
+            game.roster().release(game.ann, tamsin, "dismissed");
+
+            assertEquals(List.of(TAMSIN_ID), game.store.storedWrites, "one rewrite");
+            assertEquals(RED_SHARK, at(saved, (short) -5), placed(saved).toString());
+            assertEquals(BLUE_JEAN_SHORTS, at(saved, (short) -6), "slot -6 is not left empty: " + placed(saved));
+            assertEquals(1, saved.stream().filter(item -> item.getItemId() == BLUE_JEAN_SHORTS).count(),
+                    "the same pair, out of her bag");
+            assertEquals(16, saved.size(), "the six kit pieces went, nothing was made");
+        }
+    }
 }
