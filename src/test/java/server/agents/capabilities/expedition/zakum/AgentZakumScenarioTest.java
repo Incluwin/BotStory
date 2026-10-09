@@ -12,6 +12,7 @@ import scripting.event.EventInstanceManager;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
+import server.maps.Foothold;
 import server.maps.FootholdTree;
 import server.maps.MapleMap;
 import server.maps.Reactor;
@@ -71,10 +72,7 @@ class AgentZakumScenarioTest {
 
     @BeforeEach
     void setUp() {
-        FootholdTree footholds = mock(FootholdTree.class);
-        when(footholds.getMinDropX()).thenReturn(MIN_X);
-        when(footholds.getMaxDropX()).thenReturn(MAX_X);
-        when(map.getFootholds()).thenReturn(footholds);
+        when(map.getFootholds()).thenReturn(floor(MIN_X, MAX_X));
         when(gateway.groundPoint(any(), any())).thenAnswer(invocation -> new Point(invocation.<Point>getArgument(1)));
         Reactor altar = mock(Reactor.class);
         when(altar.getId()).thenReturn(ALTAR_REACTOR);
@@ -160,10 +158,7 @@ class AgentZakumScenarioTest {
 
     @Test
     void theBoundaryComesFromTheFootholds() {
-        FootholdTree narrow = mock(FootholdTree.class);
-        when(narrow.getMinDropX()).thenReturn(-100);
-        when(narrow.getMaxDropX()).thenReturn(100);
-        when(map.getFootholds()).thenReturn(narrow);
+        when(map.getFootholds()).thenReturn(floor(-100, 100));
         Character member = member(1, 0, Job.HERO, new Point(0, -204));
 
         fight.tick(List.of(member), event, 0L);
@@ -389,6 +384,18 @@ class AgentZakumScenarioTest {
         for (int arm = 8_800_003; arm <= 8_800_010; arm++) {
             part(arm);
         }
+    }
+
+    /**
+     * A real foothold tree with one flat floor at the altar's height; insert() sets the drop walls to its ends. Real
+     * objects, not mocks: a mocked Foothold/FootholdTree slows every later graph build (FootholdMockingGuardTest).
+     */
+    private static FootholdTree floor(int minX, int maxX) {
+        FootholdTree footholds = new FootholdTree(new Point(-2_000, -2_000), new Point(2_000, 2_000));
+        footholds.insert(new Foothold(new Point(minX, ALTAR.y), new Point(maxX, ALTAR.y), 1));
+        assertEquals(minX, footholds.getMinDropX());
+        assertEquals(maxX, footholds.getMaxDropX());
+        return footholds;
     }
 
     private Monster part(int mobId) {
