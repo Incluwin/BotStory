@@ -142,10 +142,11 @@ final class AgentOpqTerminationService {
                     session.sessionId(), session.phase(), reason, pastTheClear(session), companionRun,
                     session.memberCount()));
         }
-        session.members().forEach(member -> {
+        // Each member's step on its own: one that throws never leaves the run registered behind the tick guard.
+        session.members().forEach(member -> quietly(session, "stop-" + member.characterId(), () -> {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
-        });
+        }));
         if (companionRun) {
             quietly(session, "log-potions", () -> log.info("OPQ potions: session={} start={} end={}",
                     session.sessionId(), session.potionsAtEntry(), potions(session)));
@@ -161,9 +162,12 @@ final class AgentOpqTerminationService {
             // Only the Agents leave: a human in the run (HUMAN_ASSISTED) keeps his own party, in every mode.
             session.members().stream()
                     .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
-                    .map(member -> AgentOpqCoordinator.character(member.characterId()))
-                    .filter(java.util.Objects::nonNull).filter(AgentPartyGatewayRuntime.party()::hasParty)
-                    .forEach(AgentPartyGatewayRuntime.party()::leaveCurrentParty);
+                    .forEach(member -> quietly(session, "leave-party-" + member.characterId(), () -> {
+                        Character character = AgentOpqCoordinator.character(member.characterId());
+                        if (character != null && AgentPartyGatewayRuntime.party().hasParty(character)) {
+                            AgentPartyGatewayRuntime.party().leaveCurrentParty(character);
+                        }
+                    }));
         }
         session.clearEventInstance();
         boolean completed = session.phase() == AgentOpqSession.Phase.COMPLETED;

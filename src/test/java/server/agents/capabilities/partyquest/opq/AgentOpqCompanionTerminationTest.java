@@ -168,4 +168,39 @@ class AgentOpqCompanionTerminationTest {
         verify(run.event).exitPlayer(hal);
         verify(run.event, never()).exitPlayer(ben);
     }
+
+    @Test
+    void aMemberWhoseStopThrowsStillLetsTheRunBeReleased() {
+        AgentOpqSession session = fiveMemberRun(true, AgentOpqSession.Phase.GARDEN);
+        var kesEntry = run.entries.get(kes.getId());
+        doThrow(new IllegalStateException("runtime gone")).when(run.actions).stop(kesEntry);
+
+        try (OpqLogLines lines = new OpqLogLines(AgentOpqTerminationService.class)) {
+            AgentOpqTerminationService.fail(session, "OPQ leader unavailable", 5_000L);
+
+            assertEquals(List.of("OPQ cleanup failed but release will continue: session=" + session.sessionId()
+                    + " operation=stop-3"), lines.startingWith("OPQ cleanup failed"));
+        }
+        verify(run.actions).stop(run.entries.get(pel.getId())); // the members after him are still stopped
+        assertEquals(AgentOpqSession.Phase.FAILED, session.phase());
+        assertNull(AgentOpqSessionRegistry.forMember(mira.getId()));
+        run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
+                eq(session.sessionId()), eq(false), eq("OPQ leader unavailable"), eq(5_000L), any()));
+    }
+
+    @Test
+    void aMemberWhosePartyLeaveThrowsStillLetsTheRunBeReleased() {
+        AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, false,
+                AgentOpqSession.Phase.SPLIT_ROOMS, ben, mira, kes, pel, hal, run.companion(6, "Gus"));
+        doThrow(new IllegalStateException("party busy")).when(run.party).leaveCurrentParty(kes);
+
+        AgentOpqTerminationService.fail(session, "No legal OPQ progress before timeout", 5_000L);
+
+        verify(run.party).leaveCurrentParty(pel); // the members after him still leave
+        verify(run.party).leaveCurrentParty(hal);
+        assertEquals(AgentOpqSession.Phase.FAILED, session.phase());
+        assertNull(AgentOpqSessionRegistry.forMember(mira.getId()));
+        run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
+                eq(session.sessionId()), eq(false), anyString(), eq(5_000L), any()));
+    }
 }
