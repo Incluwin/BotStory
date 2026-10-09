@@ -275,6 +275,8 @@ public final class AgentLmpqTestService {
     }
 
     private static void activate(Run run, long nowMs) {
+        // Started before the run is registered: a start that throws leaves nothing for a release to find.
+        AgentLmpqWatchdogRuntime.ensureStarted();
         AgentLmpqSession session = new AgentLmpqSession(
                 AgentLmpqSession.Mode.TEST_OBSERVATION, run.options.seed(), run.operator.getId(),
                 run.options.partySize(), nowMs);
@@ -283,7 +285,6 @@ public final class AgentLmpqTestService {
         session.setRendezvousRoom(run.options.rendezvousRoom());
         run.engagement.reserveEntry(nowMs);
         AgentLmpqSessionRegistry.registerComplete(session);
-        AgentLmpqWatchdogRuntime.ensureStarted();
         run.engagement.activateSession(session.sessionId(), nowMs);
         run.session = session;
         run.operator.dropMessage(6, run.options.partySize()

@@ -159,8 +159,8 @@ public final class AgentLmpqAdmissionService {
             lobby.reserve(nowMs);
             engagement.reserveEntry(nowMs);
             AgentLmpqSessionRegistry.registerComplete(session);
+            published = true; // from here a failure removes the run it registered
             AgentLmpqWatchdogRuntime.ensureStarted();
-            published = true;
             lobby.beginHandoff(nowMs);
             engagement.activateSession(session.sessionId(), nowMs);
             validation.agentMembers().forEach(agent -> {

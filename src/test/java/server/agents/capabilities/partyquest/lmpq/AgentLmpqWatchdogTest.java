@@ -27,8 +27,8 @@ import static org.mockito.Mockito.when;
  * LMPQ base fix 8 (all modes), the watchdog: a run whose Agents no longer tick it (its lease ran out, or its holder
  * is dead) is ticked through its first live Agent, so it still fails or completes and is released; while every
  * loaded Agent is dead the run is ticked through the lowest-id one and its own rules decide; only a run with no Agent
- * loaded fails at once; a live lease is left alone. The admission starts the watchdog once,
- * every PERIOD_MS (1000 ms).
+ * loaded fails at once; a live lease is left alone. It starts once, every PERIOD_MS (1000 ms);
+ * AgentLmpqWatchdogStartTest pins who starts it.
  */
 class AgentLmpqWatchdogTest {
     private final LmpqRunFixture run = new LmpqRunFixture();
@@ -153,14 +153,5 @@ class AgentLmpqWatchdogTest {
         AgentLmpqWatchdogRuntime.tick(null, 10_000L);
 
         assertFalse(paused.terminal());
-    }
-
-    @Test
-    void everyRegistrationStartsIt() throws Exception {
-        // The admission and the GM fixture harness each start it right after they register a run.
-        String start = "\\bregisterComplete\\s*\\(\\s*session\\s*\\)\\s*;\\s*"
-                + "AgentLmpqWatchdogRuntime\\s*\\.\\s*ensureStarted\\s*\\(\\s*\\)";
-        assertEquals(1, LmpqSource.of("AgentLmpqAdmissionService").count(start));
-        assertEquals(1, LmpqSource.of("AgentLmpqTestService").count(start));
     }
 }
