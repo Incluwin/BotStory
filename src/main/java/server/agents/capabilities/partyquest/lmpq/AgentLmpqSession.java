@@ -47,6 +47,7 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private int couponsAtClearing;
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
     private final java.util.Set<Integer> departed = new java.util.LinkedHashSet<>();
+    private final java.util.Set<Integer> seenHeld = new java.util.LinkedHashSet<>();
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -246,6 +247,17 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
 
     /** True once the member was marked departed; the run no longer counts it. */
     synchronized boolean departed(int characterId) { return departed.contains(characterId); }
+
+    /** Notes the members the bound event holds now: each of them has been held from then on. */
+    synchronized void noteHeld(java.util.Collection<Integer> ids) {
+        for (int id : ids) if (members.containsKey(id)) seenHeld.add(id);
+    }
+
+    /**
+     * True once the bound event was seen holding the member. LudiMazePQ.js registers and warps a party one member at
+     * a time, so a member not seen held yet is still entering, not leaving.
+     */
+    synchronized boolean seenHeld(int characterId) { return seenHeld.contains(characterId); }
 
     /** The coupons the leader held when the run moved to Pietri (CLEARING); 0 until then. */
     synchronized int couponsAtClearing() { return couponsAtClearing; }

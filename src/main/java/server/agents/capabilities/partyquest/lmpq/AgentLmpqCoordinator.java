@@ -495,15 +495,17 @@ public final class AgentLmpqCoordinator {
 
     /**
      * LMPQ base fix 3: the members the run counts now, in session order: not departed and, once the run is bound,
-     * held by its event (a dead member the event still holds is down and still counted). Before the binding, every
-     * member that has not departed.
+     * held by its event (a dead member the event still holds is down and still counted) or not held yet (the event
+     * registers a party one member at a time, so it is still entering). Before the binding, every member that has
+     * not departed.
      */
     private static List<AgentLmpqMemberState> active(AgentLmpqSession session) {
         EventInstanceManager bound = session.eventInstance();
         Set<Integer> held = bound == null ? null : heldIds(bound);
         return session.members().stream()
                 .filter(member -> !session.departed(member.characterId()))
-                .filter(member -> held == null || held.contains(member.characterId()))
+                .filter(member -> held == null || held.contains(member.characterId())
+                        || !session.seenHeld(member.characterId()))
                 .toList();
     }
 
@@ -529,9 +531,12 @@ public final class AgentLmpqCoordinator {
     private static void observeDepartures(AgentLmpqSession session, EventInstanceManager bound, long nowMs) {
         if (session.terminationStarted()) return;
         Set<Integer> held = heldIds(bound);
+        session.noteHeld(held);
         for (AgentLmpqMemberState state : session.members()) {
             int id = state.characterId();
-            if (held.contains(id) || !session.markDeparted(id)) continue;
+            // Only a member the event held and no longer holds has departed: the run binds as soon as its leader is
+            // inside, while EventInstanceManager.registerParty is still registering the others one by one.
+            if (held.contains(id) || !session.seenHeld(id) || !session.markDeparted(id)) continue;
             session.rooms().releaseOwner(id, nowMs);
             state.clearTargetRoom();
             Character member = character(id);

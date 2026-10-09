@@ -39,6 +39,11 @@ class AgentLmpqDepartedNotFailedTest {
                 ben, mira, kes, pel, ann);
     }
 
+    /** A first pass while the event holds every member (each has entered the maze). */
+    private static void heldOnce(AgentLmpqSession session) {
+        AgentLmpqCoordinator.tickSession(session, 9_000L);
+    }
+
     /** Kes died and his respawn took him to the exit map: the event unregistered him. */
     private void kesRespawnedOutside() {
         when(kes.getMapId()).thenReturn(AgentLmpqDefinition.EXIT_MAP);
@@ -50,6 +55,7 @@ class AgentLmpqDepartedNotFailedTest {
         AgentLmpqSession session = farming();
         session.rooms().reserve(6, kes.getId(), 5_000L);
         session.member(kes.getId()).assignTargetRoom(6);
+        heldOnce(session);
         kesRespawnedOutside();
         run.livePlayers(ben, mira, pel, ann);
         try (LmpqLogLines lines = new LmpqLogLines(AgentLmpqCoordinator.class)) {
@@ -69,6 +75,7 @@ class AgentLmpqDepartedNotFailedTest {
     @Test
     void aDisconnectedHumanDepartsToo() {
         AgentLmpqSession session = farming();
+        heldOnce(session);
         when(run.characters.findOnlineCharacterById(ann.getId())).thenReturn(null);
         run.livePlayers(ben, mira, kes, pel);
         try (LmpqLogLines lines = new LmpqLogLines(AgentLmpqCoordinator.class)) {
@@ -95,6 +102,7 @@ class AgentLmpqDepartedNotFailedTest {
     @Test
     void anAgentWithNoInstanceOnAMazeMapDoesNotFailTheRun() {
         AgentLmpqSession session = farming();
+        heldOnce(session);
         when(kes.getEventInstance()).thenReturn(null); // unregistered, its respawn has not moved it yet
         run.livePlayers(ben, mira, pel, ann);
 
@@ -146,6 +154,8 @@ class AgentLmpqDepartedNotFailedTest {
             when(member.getMapId()).thenReturn(AgentLmpqDefinition.mapForRoom(session.rendezvousRoom()));
         }
         when(ben.getItemQuantity(AgentLmpqDefinition.COUPON, false)).thenReturn(30);
+        heldOnce(session);
+        assertEquals(AgentLmpqSession.Phase.REGROUPING, session.phase(), "Kes is still in Room 3");
         kesRespawnedOutside();
         run.livePlayers(ben, mira, pel, ann);
 
@@ -157,6 +167,7 @@ class AgentLmpqDepartedNotFailedTest {
     @Test
     void aDepartedAgentsCouponsAreNotCounted() {
         AgentLmpqSession session = farming();
+        heldOnce(session);
         when(kes.getItemQuantity(AgentLmpqDefinition.COUPON, false)).thenReturn(40); // gone with him
         kesRespawnedOutside();
         run.livePlayers(ben, mira, pel, ann);
