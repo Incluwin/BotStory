@@ -64,14 +64,23 @@ class RjpqEntranceTest {
     }
 
     @Test
-    void aMembersProblemIsRjpqAdmissionsOwnWords() {
+    void eachDeskChecksItsMembersAgainstItsOwnSide() {
         Character mira = mock(Character.class);
-        try (MockedStatic<AgentRjpqAdmissionService> rjpq = mockStatic(AgentRjpqAdmissionService.class)) {
-            rjpq.when(() -> AgentRjpqAdmissionService.memberProblem(mira)).thenReturn("Mira is not beside Romeo.");
+        when(mira.getName()).thenReturn("Mira");
+        when(mira.getLevel()).thenReturn(75);
 
-            assertEquals("Mira is not beside Romeo.", PqEntrance.of("rjpq").memberProblem(mira, false));
-            assertEquals("Mira is not beside Romeo.", PqEntrance.of("rjpqj").memberProblem(mira, true));
-        }
+        when(mira.getMapId()).thenReturn(261_000_000);
+        assertEquals("Mira is not beside Romeo.", PqEntrance.of("rjpq").memberProblem(mira, false));
+        assertEquals("Mira is not beside Juliet.", PqEntrance.of("rjpqj").memberProblem(mira, false));
+
+        when(mira.getMapId()).thenReturn(AgentRjpqSide.ZENUMIST.recruitMapId());
+        assertEquals("", PqEntrance.of("rjpq").memberProblem(mira, false));
+        assertEquals("Mira is not beside Juliet.", PqEntrance.of("rjpqj").memberProblem(mira, true),
+                "Romeo's room is not Juliet's: refused at the desk, before the leader says yes");
+
+        when(mira.getMapId()).thenReturn(AgentRjpqSide.ALCADNO.recruitMapId());
+        assertEquals("Mira is not beside Romeo.", PqEntrance.of("rjpq").memberProblem(mira, false));
+        assertEquals("", PqEntrance.of("rjpqj").memberProblem(mira, false));
     }
 
     @Test

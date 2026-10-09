@@ -74,6 +74,7 @@ final class RjpqStageFixture implements AutoCloseable {
     final List<String> said = new ArrayList<>();
     final MockedStatic<AgentLootEligibility> loot;
     final CharacterGateway online = mock(CharacterGateway.class);
+    final MockedStatic<AgentRuntimeRegistry> registry;
     private final List<MockedStatic<?>> statics = new ArrayList<>();
 
     RjpqStageFixture(AgentRjpqSide side, int zenumistStageMap) {
@@ -84,7 +85,7 @@ final class RjpqStageFixture implements AutoCloseable {
         open(AgentPacketGatewayRuntime.class).when(AgentPacketGatewayRuntime::packets).thenReturn(packets);
         open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
         open(AgentModeStateRuntime.class);
-        open(AgentRuntimeRegistry.class);
+        registry = open(AgentRuntimeRegistry.class);
         when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         MockedStatic<AgentMapPerception> perception = open(AgentMapPerception.class);

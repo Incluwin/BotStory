@@ -8,7 +8,9 @@ import server.agents.runtime.simulation.AgentSimulationState;
  * An RJPQ companion simulates at full rate while it stands in its run's event: it is often alone on a map no player
  * sees (a Dark Lab, a Lab Unit, a stage ahead of its leader), where the background cadence would slow its climb and
  * its fights. The hold is the run's own (kept in the session, applied by each companion for itself), it lets go when
- * the companion leaves the event or the run ends, and it never clears a requirement something else set.
+ * the companion leaves the event or the run ends, and it never clears a requirement something else set. A hold and
+ * a let-go each happen under the run's monitor, so a release that has begun refuses a new hold and one that begins
+ * later finds every hold taken before it.
  */
 final class AgentRjpqFullRateSimulation {
     private AgentRjpqFullRateSimulation() {
@@ -20,14 +22,18 @@ final class AgentRjpqFullRateSimulation {
         if (session == null || state == null) {
             return;
         }
-        if (wanted) {
-            session.holdFullRate(agentId, state.fullRateSimulationRequired());
-            state.requireFullRateSimulation();
-            return;
-        }
-        Boolean requiredBefore = session.releaseFullRate(agentId);
-        if (requiredBefore != null && !requiredBefore) {
-            state.clearFullRateSimulationRequirement();
+        synchronized (session) {
+            if (wanted) {
+                if (!session.terminationStarted()) {
+                    session.holdFullRate(agentId, state.fullRateSimulationRequired());
+                    state.requireFullRateSimulation();
+                }
+                return;
+            }
+            Boolean requiredBefore = session.releaseFullRate(agentId);
+            if (requiredBefore != null && !requiredBefore) {
+                state.clearFullRateSimulationRequirement();
+            }
         }
     }
 

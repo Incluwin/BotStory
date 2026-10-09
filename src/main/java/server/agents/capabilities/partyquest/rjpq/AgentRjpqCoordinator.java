@@ -46,11 +46,12 @@ final class AgentRjpqCoordinator {
 
     /**
      * One companion's own tick: never FOLLOW inside a run, full rate while it stands in the run's event, and its stage
-     * play there while it lives.
+     * play there while it lives. A run that ended or whose release began (a stop off the central tick thread) does
+     * nothing more.
      */
     static void tickMember(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentRjpqMemberState member = session.member(agent.getId());
-        if (member == null || !member.agent() || session.terminal()) {
+        if (member == null || !member.agent() || session.terminal() || session.terminationStarted()) {
             return;
         }
         if (AgentModeStateRuntime.following(entry)) {
@@ -68,7 +69,7 @@ final class AgentRjpqCoordinator {
 
     /** The run's own tick, on the lease holder. */
     static void tickSession(AgentRjpqSession session, long nowMs) {
-        if (session.terminal() || session.paused()) {
+        if (session.terminal() || session.terminationStarted() || session.paused()) {
             return;
         }
         Character leader = character(session.eventLeaderId());

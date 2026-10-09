@@ -17,6 +17,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
 import static server.agents.capabilities.partyquest.rjpq.RjpqStageFixture.BEN;
 import static server.agents.capabilities.partyquest.rjpq.RjpqStageFixture.MIRA;
 import static server.agents.capabilities.partyquest.rjpq.RjpqStageFixture.TOBI;
@@ -24,9 +26,10 @@ import static server.agents.capabilities.partyquest.rjpq.RjpqStageFixture.UNA;
 
 /**
  * Departures (the P6h review rules): a member the event never registered departs after the entry grace instead of
- * stalling the run, one it held and lost departs at once, a departed companion is handed back and never holds the
- * coordinator lease, and once every companion is gone a human still in the event carries on: the run is released
- * without taking him out or disposing his event.
+ * stalling the run, one it held and lost departs once it stays missing for LEFT_CONFIRM_MS (2 s), a departed companion
+ * is handed back and never holds the coordinator lease, and once every companion is gone a human still in the event
+ * carries on: the run is released without taking him out or disposing his event. MagatiaPQ's own end, which walks the
+ * players out one by one before it disposes the event, is not a carry-on: the disposal ends the run in its words.
  */
 class AgentRjpqDepartureTest {
     private final RjpqStageFixture fixture =
@@ -61,14 +64,51 @@ class AgentRjpqDepartureTest {
     }
 
     @Test
-    void aMemberTheEventHeldAndLostDepartsAtOnce() {
+    void aMemberTheEventHeldAndLostDepartsOnceItStaysMissing() {
         tick(2_000L);
         when(fixture.character(TOBI).getEventInstance()).thenReturn(null);
 
         tick(2_500L);
+        tick(4_499L);
+        assertFalse(fixture.session.departed(TOBI), "missing for less than 2 s");
 
+        tick(4_500L);
         assertTrue(fixture.session.departed(TOBI));
         assertFalse(fixture.session.departed(MIRA));
+    }
+
+    @Test
+    void aMemberBackInTheEventStartsItsWaitAgain() {
+        tick(2_000L);
+        when(fixture.character(TOBI).getEventInstance()).thenReturn(null);
+        tick(2_500L);
+        when(fixture.character(TOBI).getEventInstance()).thenReturn(fixture.event);
+        tick(3_000L);
+        when(fixture.character(TOBI).getEventInstance()).thenReturn(null);
+
+        tick(4_600L);
+        assertFalse(fixture.session.departed(TOBI), "missing since 4.6 s, not 2.5 s");
+        tick(6_600L);
+        assertTrue(fixture.session.departed(TOBI));
+    }
+
+    @Test
+    void theStockEndWalkingThePlayersOutIsNotACarryOn() {
+        when(fixture.event.getTimeLeft()).thenReturn(900L);
+        tick(2_000L);
+        // MagatiaPQ_Z.js end(): playerExit for each player in turn, then dispose. Ben is still registered.
+        for (int id : RjpqStageFixture.COMPANIONS) {
+            when(fixture.character(id).getEventInstance()).thenReturn(null);
+        }
+        tick(2_500L);
+        assertFalse(fixture.session.terminal(), fixture.session.failure());
+        assertFalse(fixture.session.departed(MIRA));
+
+        when(fixture.event.isEventDisposed()).thenReturn(true);
+        tick(3_000L);
+
+        assertEquals("The RJPQ event ended before the clear", fixture.session.failure());
+        assertEquals(List.of("out of time... yulete got away."), fixture.said);
     }
 
     @Test
@@ -79,6 +119,8 @@ class AgentRjpqDepartureTest {
         }
 
         tick(2_500L);
+        assertFalse(fixture.session.terminal(), "not yet: the stock end may be walking them out");
+        tick(4_500L);
 
         assertTrue(fixture.session.terminal());
         assertEquals(AgentRjpqTerminationService.HUMANS_CARRY_ON, fixture.session.failure());

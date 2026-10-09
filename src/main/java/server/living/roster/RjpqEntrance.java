@@ -39,7 +39,7 @@ final class RjpqEntrance {
         return new PqEntrance(side.key(), side.entryNpcId(),
                 new PqEntrance.SeatRules(AgentRjpqSide.PARTY_SIZE, AgentRjpqSide.PARTY_SIZE, AgentRjpqSide.PARTY_SIZE),
                 DPS_MOBS, RjpqLines.voice(side),
-                (member, eventLeader) -> AgentRjpqAdmissionService.memberProblem(member),
+                (member, eventLeader) -> AgentRjpqAdmissionService.memberProblem(side, member),
                 AgentRjpqSessionRegistry::registrationBlocker, () -> AgentRjpqPaceProfile.load(side),
                 AgentRjpqSessionRegistry::forOperator, AgentRjpqSessionRegistry::forMember, false,
                 () -> false, zenumist ? LEFT_OF_ROMEOS_STEP : LEFT_OF_JULIETS_LEDGE,

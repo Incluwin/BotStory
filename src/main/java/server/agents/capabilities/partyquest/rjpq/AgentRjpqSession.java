@@ -65,6 +65,7 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private final Map<String, Claim> claims = new LinkedHashMap<>();
     private final Set<Integer> departed = new LinkedHashSet<>();
     private final Set<Integer> seenHeld = new HashSet<>();
+    private final Map<Integer, Long> missingSinceMs = new HashMap<>();
     private int beakerTarget = -1;
     private final Map<Integer, int[]> unitKnown = new HashMap<>();
     private final Map<Integer, Set<Integer>> unitTried = new HashMap<>();
@@ -493,8 +494,18 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
         for (int id : held) {
             if (members.containsKey(id)) {
                 seenHeld.add(id);
+                missingSinceMs.remove(id);
             }
         }
+    }
+
+    /**
+     * How long a member the event held has been missing from it, from the first pass that missed it (0 on that pass);
+     * a pass that finds it held again forgets it.
+     */
+    synchronized long missingFor(int id, long nowMs) {
+        Long since = missingSinceMs.putIfAbsent(id, nowMs);
+        return since == null ? 0L : Math.max(0L, nowMs - since);
     }
 
     synchronized boolean seenHeld(int id) {
