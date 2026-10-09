@@ -91,7 +91,8 @@ Going down and leaving:
 - If the owner leaves the fight before the clear (by Amon, or by reviving in El Nath), the owner's party companions
   leave too. One says "you're out? we're coming too." or "heading out with you." when the first one is out.
 - Each party companion that leaves with its owner is free at once. It takes orders, follows a channel change, can be
-  benched and restocks again, even while another human fights on. A dead companion stays the run's until it ends.
+  benched and restocks again, even while another human fights on. A dead companion stays the run's while its owner
+  fights on. When its owner leaves the fight before the clear, it is free at once too, by the same rule.
 - That rule waits until the owner was seen in the fight, or 5 s after the Start. A dead owner who still lies on the
   altar counts as in the fight. Allies stay while any human stands.
 - When no living human is left in the fight for 3 s, companions leave by Amon. One says "everyone's down... let's
@@ -399,6 +400,9 @@ restart.
   `AgentBossScope.ENABLED: 'false'`, and mirrors nothing while the living world is off.
 - `!bossgear` gives the highest pieces the game has, not Lv160 gear. A Lv160 Hero gets Lv100 armour, a Lv85 cape and
   Lv120 weapons.
+- `!bossgear <me|name> remove` takes every boss piece back, worn and carried. A companion that is let go (by its
+  owner, a contract end, its owner's deletion or the 14-day inactivity sweep) loses its boss pieces as it is unloaded,
+  so the kit never goes home with a Resident or on to another owner. Its other gear stays.
 - Zakum's level and not-here refusals have one wording each, so two companions refused alike say the same words.
 - The javadocs of `LivingWorldHooks.bossParty*`/`bossAlly*` and `CompanionBossRuns.offers` still say "Mu Young's Easy
   window". Adobis uses them too.

@@ -1,9 +1,13 @@
 package server.living.store;
 
+import client.inventory.InventoryType;
+import client.inventory.Item;
+import client.inventory.ItemFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.living.config.Content.BondStage;
 import tools.DatabaseConnection;
+import tools.Pair;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * JDBC access to the living_* tables (029-living-world.sql). Plain statements, one method per
@@ -1005,6 +1010,42 @@ public final class LivingStore {
         } catch (SQLException failure) {
             log.warn("living_stall_stock write failed for {}/{}", characterId, personaId, failure);
             return false;
+        }
+    }
+
+    /**
+     * Takes the items {@code drop} picks out of the saved inventory of a character nothing has loaded (a released
+     * companion's boss gear, CompanionGearTool): its items are read and, when {@code drop} picks any, written back
+     * without them in one transaction, the way the game saves an inventory (ItemFactory). A loaded character saves its
+     * own inventory over this, so it is only for one that is not loaded; the caller holds the maintenance lock that
+     * offline loads take. Returns how many items were taken (0: nothing was written), or -1 when the read or the write
+     * failed (nothing changed).
+     */
+    public int dropStoredItems(int characterId, Predicate<Item> drop) {
+        try {
+            List<Pair<Item, InventoryType>> items = ItemFactory.INVENTORY.loadItems(characterId, false);
+            List<Pair<Item, InventoryType>> kept = items.stream().filter(pair -> !drop.test(pair.getLeft())).toList();
+            int dropped = items.size() - kept.size();
+            if (dropped == 0) {
+                return 0;
+            }
+            try (Connection con = DatabaseConnection.getConnection()) {
+                boolean autoCommit = con.getAutoCommit();
+                con.setAutoCommit(false);
+                try {
+                    ItemFactory.INVENTORY.saveItems(kept, characterId, con);
+                    con.commit();
+                } catch (SQLException | RuntimeException failure) {
+                    con.rollback();
+                    throw failure;
+                } finally {
+                    con.setAutoCommit(autoCommit);
+                }
+            }
+            return dropped;
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("inventory rewrite failed for character {}", characterId, failure);
+            return -1;
         }
     }
 

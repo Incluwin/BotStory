@@ -280,6 +280,101 @@ class AgentBossRunSessionOwnerLeftTest {
     }
 
     @Test
+    void aCompanionDownInElNathIsReportedOnceWhenItsOwnerLeavesAndNotWhileTheOwnerFightsOn() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, List.of(THANE, ISOLDE), List.of(ORRIN));
+        players.put(FRIEND, ports.human(FRIEND)); // another human fights on, beside the owner's bench ally
+        AgentBossRunHost.Rule guarded = AgentBossRunHost.guarded(host); // the installed rule's guard passes it on
+        // Thane falls on the altar and comes to in El Nath: out DIED while his owner still fights.
+        ports.dead.add(THANE);
+        session.tick(ports, guarded, FIGHT + 500L);
+        ports.dead.remove(THANE);
+        outOfTheEvent(THANE, EL_NATH);
+        session.tick(ports, guarded, FIGHT + 6_000L);
+        assertEquals(AgentBossRunHost.Out.DIED, session.member(THANE).out());
+        long grace = AgentBossRunSession.humanGoneGraceMs();
+        long at = FIGHT + 6_500L;
+        for (; at <= FIGHT + 6_500L + 2L * grace; at += 500L) {
+            session.tick(ports, guarded, at);
+        }
+        assertEquals(List.of(), host.ownerLeftWhileDown, "its owner still fights: it waits in el nath for them");
+
+        // The owner walks out by Amon, still logged in.
+        players.remove(OWNER);
+        session.tick(ports, guarded, at);
+
+        assertEquals(List.of(THANE), host.ownerLeftWhileDown, "nobody it waits for is in the fight any more");
+        assertEquals(AgentBossRunHost.Out.OWNER_LEFT, session.member(ISOLDE).leavingFor());
+        for (long later = at + 500L; later <= at + 2L * grace; later += 500L) {
+            session.tick(ports, guarded, later);
+        }
+        assertEquals(List.of(THANE), host.ownerLeftWhileDown, "once");
+        assertEquals(AgentBossRunHost.Out.DIED, session.member(THANE).out(), "its own way out stays a death");
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(ORRIN).phase());
+        assertEquals(List.of(), host.ended, "the fight goes on for the ally and the other human");
+    }
+
+    @Test
+    void aCompanionLyingDeadWhenItsOwnerLeavesIsReportedAsItComesToOutside() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, List.of(THANE, ISOLDE), List.of(ORRIN));
+        players.put(FRIEND, ports.human(FRIEND));
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 500L);
+
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT + 1_000L);
+        assertEquals(List.of(), host.ownerLeftWhileDown, "still lying on the altar: still in the run");
+
+        // The stock respawn: alive again in El Nath, out of the event, with its owner already gone.
+        ports.dead.remove(THANE);
+        outOfTheEvent(THANE, EL_NATH);
+        session.tick(ports, host, FIGHT + 6_000L);
+
+        assertEquals(AgentBossRunHost.Out.DIED, session.member(THANE).out());
+        assertEquals(List.of(THANE), host.ownerLeftWhileDown);
+    }
+
+    @Test
+    void easyBalrogKeepsADownCompanionInTheRunWhenItsOwnerLeaves() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.EASY_BALROG, List.of(THANE, ISOLDE), List.of());
+        players.put(FRIEND, ports.human(FRIEND));
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 500L);
+        ports.dead.remove(THANE);
+        outOfTheEvent(THANE, AgentBossRunCatalog.EASY_BALROG.recruitMapId());
+        session.tick(ports, host, FIGHT + 6_000L);
+        assertEquals(AgentBossRunHost.Out.DIED, session.member(THANE).out());
+
+        players.remove(OWNER);
+        long grace = AgentBossRunSession.humanGoneGraceMs();
+        for (long at = FIGHT + 6_500L; at <= FIGHT + 6_500L + 3L * grace; at += 500L) {
+            session.tick(ports, host, at);
+        }
+
+        assertEquals(List.of(), host.ownerLeftWhileDown, "P7's rule: it stays the run's until the run ends");
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(ISOLDE).phase());
+    }
+
+    @Test
+    void afterTheClearADownZakumCompanionStaysInTheRunWhenItsOwnerLeaves() {
+        AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, List.of(THANE, ISOLDE), List.of(ORRIN));
+        players.put(FRIEND, ports.human(FRIEND));
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 500L);
+        ports.dead.remove(THANE);
+        outOfTheEvent(THANE, EL_NATH);
+        session.tick(ports, host, FIGHT + 6_000L);
+        cleared = true;
+        session.tick(ports, host, FIGHT + 6_500L);
+        assertEquals(AgentBossRunSession.Phase.POST_CLEAR, session.phase());
+
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT + 7_000L);
+
+        assertEquals(AgentBossRunHost.Out.EXITED, session.member(ISOLDE).leavingFor(), "P7's walk-out after the clear");
+        assertEquals(List.of(), host.ownerLeftWhileDown, "after the clear it stays the run's, as living ones do (P7)");
+    }
+
+    @Test
     void afterTheClearZakumMembersStillLeaveWithTheirAnchorAsExitedAndTheAllyToo() {
         AgentBossRunSession session = fighting(AgentBossRunCatalog.ZAKUM, List.of(THANE), List.of(ORRIN));
         cleared = true;

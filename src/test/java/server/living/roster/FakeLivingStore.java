@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
  * runs and clears in an activity), and fails as the database would while {@link #performanceUnreadable} or
  * {@link #performanceUnwritable}. pq_run_pace is {@link #paces} (savePqRunPace appends with the next id; pqRunPaces
  * reads a quest's epoch newest first, up to its limit), failing while {@link #pacesUnreadable} or
- * {@link #pacesUnwritable}.
+ * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems}.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -84,6 +84,12 @@ final class FakeLivingStore {
     final Set<String> yourCall = new java.util.LinkedHashSet<>();
     /** Character id -> the item ids in its saved USE tab (a test seeds the ones it wants). */
     final Map<Integer, Set<Integer>> usable = new HashMap<>();
+    /**
+     * Character id -> the items in its saved inventory (a test seeds the ones it wants), as dropStoredItems reads and
+     * rewrites them; each character it rewrote is in {@link #storedWrites}, in order.
+     */
+    final Map<Integer, List<client.inventory.Item>> storedItems = new HashMap<>();
+    final List<Integer> storedWrites = new ArrayList<>();
     /** owner:persona keys whose settings_json the database cannot read, or write, right now. */
     final Set<String> unreadable = new java.util.HashSet<>();
     final Set<String> unwritable = new java.util.HashSet<>();
@@ -319,6 +325,17 @@ final class FakeLivingStore {
         when(store.worldFlags()).thenAnswer(inv -> new java.util.LinkedHashSet<>(flags.keySet()));
         doAnswer(inv -> flags.putIfAbsent(inv.getArgument(0), inv.getArgument(1))).when(store).setWorldFlag(anyString(), anyInt());
         doAnswer(inv -> flags.remove((String) inv.getArgument(0))).when(store).clearWorldFlag(anyString());
+        when(store.dropStoredItems(anyInt(), any())).thenAnswer(inv -> {
+            List<client.inventory.Item> items = storedItems.get((int) inv.getArgument(0));
+            java.util.function.Predicate<client.inventory.Item> drop = inv.getArgument(1);
+            if (items == null || items.stream().noneMatch(drop)) {
+                return 0;
+            }
+            int before = items.size();
+            items.removeIf(drop);
+            storedWrites.add(inv.getArgument(0));
+            return before - items.size();
+        });
     }
 
     void seed(RosterEntry entry) {

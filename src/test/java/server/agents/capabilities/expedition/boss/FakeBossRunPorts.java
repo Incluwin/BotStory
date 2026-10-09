@@ -231,6 +231,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         /** The members the run reported as gone into the fight (entered), in order; apart from the call list. */
         final List<Integer> entered = new ArrayList<>();
         /**
+         * The members the run reported as down outside when their owner left before the clear (ownerLeftWhileDown), in
+         * order; apart from the call list.
+         */
+        final List<Integer> ownerLeftWhileDown = new ArrayList<>();
+        /**
          * The seats of the list a companion leaves free for players (roomFor, logged as "room id listed/max"); below 0
          * (the default) the host does not answer it, as a rule that leaves every seat to the stock list.
          */
@@ -283,6 +288,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         @Override
         public void entered(AgentBossRunHost.Seat seat) {
             entered.add(seat.agentCharacterId());
+        }
+
+        @Override
+        public void ownerLeftWhileDown(AgentBossRunHost.Seat seat) {
+            ownerLeftWhileDown.add(seat.agentCharacterId());
         }
     }
 

@@ -2,6 +2,7 @@ package server.living.quest;
 
 import client.inventory.Item;
 import constants.inventory.ItemConstants;
+import server.agents.capabilities.equipment.AgentEquipmentOwnerTags;
 import server.knowledge.GearPicks;
 import server.knowledge.ItemFact;
 import server.knowledge.WorldKnowledge;
@@ -25,8 +26,11 @@ import java.util.function.IntPredicate;
  * (a new type may be two-handed). Pure: nothing is given or worn here.
  */
 public final class BossGearPlanner {
-    /** The owner tag every boss-gear piece carries; with UNTRADEABLE it marks a GM test kit, never trade goods. */
-    public static final String OWNER_TAG = "bossgear";
+    /**
+     * The owner tag every boss-gear piece carries; with UNTRADEABLE it marks a GM test kit, never trade goods. The Agent
+     * engine reads the same text, so its look-diversity filter never takes a worn kit piece off.
+     */
+    public static final String OWNER_TAG = AgentEquipmentOwnerTags.BOSS_GEAR;
     /** Every upgrade slot takes a 60% scroll, and every scroll passes. */
     static final List<ScrollRecipe> RECIPE = List.of(new ScrollRecipe(60, ScrollRecipe.REST));
     /** Bands are tried from the character's own level band down in these steps (GearPicks spans 20 levels a band). */

@@ -8,11 +8,13 @@ import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
 import client.inventory.manipulator.InventoryManipulator;
+import constants.inventory.ItemConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.knowledge.KnowledgeTestKit;
 import server.living.LivingWorld;
@@ -38,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -84,6 +88,10 @@ class CompanionGearToolTest {
         final List<List<Piece>> worn = new ArrayList<>();
         final List<List<Piece>> given = new ArrayList<>();
         final List<Integer> needs = new ArrayList<>();
+        /** The owner of every mailbox removal, in order. */
+        final List<Character> removals = new ArrayList<>();
+        /** The runtime every lookup finds: its bot is the companion under test. */
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
         boolean engaged;
         boolean inBossRun;
         /** The mailbox finds every piece worn already (a use planned before the last kit went on). */
@@ -91,7 +99,7 @@ class CompanionGearToolTest {
 
         @Override
         public AgentRuntimeEntry runtime(int characterId) {
-            return mock(AgentRuntimeEntry.class);
+            return entry;
         }
 
         @Override
@@ -139,6 +147,13 @@ class CompanionGearToolTest {
             given.add(kit);
             return kit.size();
         }
+
+        /** The mailbox runs the removal at once, as LIVE's does on the companion's tick. */
+        @Override
+        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner) {
+            removals.add(owner);
+            return CompletableFuture.completedFuture(CompanionGearTool.removeKit(runtime, owner));
+        }
     }
 
     @BeforeEach
@@ -163,6 +178,7 @@ class CompanionGearToolTest {
         when(flint.getInventory(InventoryType.EQUIPPED)).thenReturn(flintWears);
         bag(24);
         when(roster.loaded("flint")).thenReturn(flint);
+        when(game.entry.bot()).thenReturn(flint);
         companion(RosterState.ACTIVE);
         tool = new CompanionGearTool(world, game, CATALOG, 50L);
     }
@@ -367,5 +383,110 @@ class CompanionGearToolTest {
     private void assertNothingGiven() {
         assertEquals(List.of(), game.worn);
         assertEquals(List.of(), game.given);
+    }
+
+    // ---- !bossgear <me|name> remove ----------------------------------------------------------
+
+    private static final int BOSS_GUN = 1492013;
+    private static final int BOSS_CAPE = 1102084;
+    private static final int PLAIN_CAP = 1002004;
+    private static final int QUEST_GLOVES = 1082149;
+    private static final short CAP = -1;
+
+    /** A piece of a !bossgear kit, as BossGearPlanner.forge tags it. */
+    private static Item boss(int itemId, short position) {
+        Item item = Equip.restored(itemId, position);
+        item.setOwner(BossGearPlanner.OWNER_TAG);
+        item.setFlag((short) (item.getFlag() | ItemConstants.UNTRADEABLE));
+        return item;
+    }
+
+    /** Flint wears the boss gun and a plain cap, and carries the boss cape, plain shorts and its own quest gloves. */
+    private Inventory flintCarriesAKit() {
+        flintWears.removeSlot(WEAPON);
+        flintWears.addItemFromDB(boss(BOSS_GUN, WEAPON));
+        flintWears.addItemFromDB(Equip.restored(PLAIN_CAP, CAP));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(boss(BOSS_CAPE, (short) 1));
+        bag.addItemFromDB(Equip.restored(BLUE_JEAN_SHORTS, (short) 2));
+        Item gloves = Equip.restored(QUEST_GLOVES, (short) 3);
+        gloves.setOwner("Flint"); // its own Resident quest piece: tagged, but not boss gear
+        bag.addItemFromDB(gloves);
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        return bag;
+    }
+
+    private static List<Integer> ids(Inventory inventory) {
+        return inventory.list().stream().map(Item::getItemId).sorted().toList();
+    }
+
+    @Test
+    void removeTakesEveryBossPieceOffItsMailboxKeepsTheRestAndItWearsItsOwnGearAgain() throws Exception {
+        Inventory bag = flintCarriesAKit();
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class)) {
+            String reply = tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS);
+
+            assertEquals("Flint gave back 2 boss pieces and wears its own gear again.", reply);
+            assertEquals(List.of(gm), game.removals, "on its own mailbox");
+            assertEquals(List.of(PLAIN_CAP), ids(flintWears), "the boss gun is gone, the plain cap stays on");
+            assertEquals(List.of(BLUE_JEAN_SHORTS, QUEST_GLOVES).stream().sorted().toList(), ids(bag),
+                    "the boss cape is gone; the shorts and its own tagged quest gloves stay");
+            equipment.verify(() -> AgentEquipmentService.autoEquip(flint, gm, null, true));
+            verify(flint).saveCharToDB();
+        }
+    }
+
+    @Test
+    void removeForTheGmTakesTheBossPiecesOutOfTheirOwnInventory() throws Exception {
+        Inventory worn = gm.getInventory(InventoryType.EQUIPPED);
+        Inventory bag = gm.getInventory(InventoryType.EQUIP);
+        worn.addItemFromDB(boss(BOSS_GUN, WEAPON));
+        worn.addItemFromDB(Equip.restored(PLAIN_CAP, CAP));
+        bag.addItemFromDB(boss(BOSS_CAPE, (short) 1));
+
+        String reply = tool.remove(gm, "me").get(5, TimeUnit.SECONDS);
+
+        assertEquals("2 boss pieces were taken from you.", reply);
+        assertEquals(List.of(PLAIN_CAP), ids(worn));
+        assertEquals(List.of(), ids(bag));
+        verify(gm).saveCharToDB();
+        assertEquals(List.of(), game.removals, "the GM's own: no mailbox");
+    }
+
+    @Test
+    void removeLeavesACompanionWithoutBossGearAsItIs() throws Exception {
+        flintWears.addItemFromDB(Equip.restored(PLAIN_CAP, CAP));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(BLUE_JEAN_SHORTS, (short) 1));
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class)) {
+            String reply = tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS);
+
+            assertEquals("Flint has no boss gear.", reply);
+            assertEquals(List.of(PLAIN_CAP, BEGINNER_SWORD), ids(flintWears));
+            assertEquals(List.of(BLUE_JEAN_SHORTS), ids(bag));
+            equipment.verifyNoInteractions();
+            verify(flint, never()).saveCharToDB();
+        }
+        assertEquals("You have no boss gear.", tool.remove(gm, "me").get(5, TimeUnit.SECONDS));
+        verify(gm, never()).saveCharToDB();
+    }
+
+    @Test
+    void removeIsRefusedWhereAGiftIs() throws Exception {
+        flintCarriesAKit();
+        when(directory.resolveName(gm, "Lakelis")).thenReturn(new Relation.Resident("lakelis"));
+
+        game.inBossRun = true;
+        assertTrue(tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS).contains("companion boss run"));
+        game.inBossRun = false;
+        assertTrue(tool.remove(gm, "Lakelis").get(5, TimeUnit.SECONDS).contains("is a Resident"));
+        companion(RosterState.BENCHED);
+        assertTrue(tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS).contains("not out with you"));
+
+        assertEquals(List.of(), game.removals);
+        assertEquals(2, flintWears.list().size(), "nothing came off");
     }
 }

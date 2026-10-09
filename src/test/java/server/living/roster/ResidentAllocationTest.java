@@ -1,5 +1,8 @@
 package server.living.roster;
 
+import client.inventory.Equip;
+import client.inventory.Item;
+import constants.inventory.ItemConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.living.bond.BondService;
@@ -8,6 +11,7 @@ import server.living.config.Content;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.quest.BossGearPlanner;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.ContractState;
@@ -50,6 +54,7 @@ import static server.living.roster.LifecycleHarness.LITH;
 class ResidentAllocationTest {
     private static final int BOB = 20;
     private static final String CONTRACT = "resident-standard";
+    private static final int PLAIN_CAP = 1002004;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final BondService bonds = mock(BondService.class);
@@ -234,6 +239,23 @@ class ResidentAllocationTest {
     }
 
     @Test
+    void theSweepTakesTheBossGearOffEveryCompanionItLetsGoAndKeepsTheRest() {
+        hirePersona("hire:777", "Mira");
+        when(game.residents.characterIdOf("hire:777")).thenReturn(777); // a hired citizen is its own character
+        List<Item> olwens = savedBossKit(900);
+        List<Item> miras = savedBossKit(777);
+        game.roster();
+        game.annOnline = false;
+        when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(15));
+
+        assertEquals(4, allocation.sweep());
+
+        assertEquals(List.of(PLAIN_CAP), itemIds(olwens), "Olwen goes home without the boss sword and cape");
+        assertEquals(List.of(PLAIN_CAP), itemIds(miras), "Mira goes back to the population without them");
+        assertEquals(List.of(900, 777), game.store.storedWrites);
+    }
+
+    @Test
     void aFriendBackFromAwayHearsOnceWhoWentHome() {
         RosterService roster = game.roster();
         game.store.rows.clear(); // the sweep let them go while she was away
@@ -291,5 +313,26 @@ class ResidentAllocationTest {
 
     private static long daysAgo(int days) {
         return System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+    }
+
+    /**
+     * The saved inventory of a character nothing has loaded: a !bossgear sword worn and cape carried (tagged as
+     * BossGearPlanner.forge tags them) beside a plain cap.
+     */
+    private List<Item> savedBossKit(int characterId) {
+        List<Item> saved = new ArrayList<>();
+        for (Item item : List.of(Equip.restored(1302059, (short) -11), Equip.restored(1102084, (short) 1))) {
+            item.setOwner(BossGearPlanner.OWNER_TAG);
+            item.setFlag((short) (item.getFlag() | ItemConstants.UNTRADEABLE));
+            saved.add(item);
+        }
+        saved.add(Equip.restored(PLAIN_CAP, (short) -1));
+        game.store.storedItems.put(characterId, saved);
+        when(game.server.getWorld(0).getPlayerStorage().getCharacterById(characterId)).thenReturn(null);
+        return saved;
+    }
+
+    private static List<Integer> itemIds(List<Item> items) {
+        return items.stream().map(Item::getItemId).sorted().toList();
     }
 }
