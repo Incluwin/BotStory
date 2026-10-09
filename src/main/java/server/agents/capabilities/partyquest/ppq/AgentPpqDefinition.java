@@ -26,6 +26,8 @@ public final class AgentPpqDefinition {
     public static final int VETERAN_MEDAL = 4_001_122;
     public static final int OLD_METAL_KEY = 4_001_117;
     public static final int CHEST_KEY = 4_031_437;
+    /** Wu Yang's Feather, his reward on 925100600; he refuses it to an Etc tab with no room. */
+    public static final int WU_YANG_FEATHER = 4_001_158;
     public static final int MEDALS_PER_WAVE = 20;
     /** Free Etc slots an Agent needs for the clear: its Perfect Pitch (setEventCleared) and Wu Yang's Feather. */
     public static final int CLEAR_ETC_SLOTS = 2;

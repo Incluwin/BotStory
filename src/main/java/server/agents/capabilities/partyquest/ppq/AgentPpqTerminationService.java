@@ -6,11 +6,15 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.pace.AgentPqPace;
+import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.maps.MapleMap;
+import server.maps.Portal;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -21,8 +25,9 @@ import java.util.stream.Collectors;
  * Idempotent PPQ cleanup. A stock run is released as it always was: with {@code dispose} everyone exits and the event
  * is disposed, and every member leaves the party. A companion run keeps the owner's party, and only its companions leave
  * the event: no release takes a human out of his event or disposes one that still holds him (an Agents-only exit
- * unregisters first, so the stock end never runs); an event left with no player is disposed. After the clear, in every
- * mode, an Agent still in the event (Wu Yang's room has no exit) is walked out through the stock exit.
+ * unregisters first, so the stock end never runs); an event left with no player is disposed. After the clear nobody
+ * is in the event (clearPQ's warp to 925100600, past PiratePQ.js's maxMapId, unregisters everyone), so in every mode an
+ * Agent still in Wu Yang's room, which has no exit, is taken to Guon's map as his exit would.
  */
 public final class AgentPpqTerminationService {
     private static final Logger log = LoggerFactory.getLogger(AgentPpqTerminationService.class);
@@ -39,7 +44,7 @@ public final class AgentPpqTerminationService {
         EventInstanceManager event = session.eventInstance();
         if (companionRun) {
             logPotions(session);
-            if (event != null) {
+            if (event != null && !cleared(event)) {
                 exitAgentsOnly(session, event);
                 disposeIfEmpty(session, event);
             }
@@ -48,8 +53,14 @@ public final class AgentPpqTerminationService {
                 try { event.exitPlayer(participant); } catch (RuntimeException ignored) { }
             }
             try { event.dispose(); } catch (RuntimeException ignored) { }
-        } else if (event != null && cleared(event)) {
-            exitAgentsOnly(session, event);
+        }
+        if (event != null && cleared(event)) {
+            session.members().stream()
+                    .filter(member -> member.memberType() == AgentPpqMemberState.MemberType.AGENT)
+                    .map(member -> AgentPpqCoordinator.character(member.characterId()))
+                    .filter(Objects::nonNull)
+                    .filter(agent -> agent.getMapId() == AgentPpqDefinition.CLEAR_MAP)
+                    .forEach(agent -> leaveWuYangsRoom(session, agent));
         }
         boolean completed = session.phase() == AgentPpqSession.Phase.COMPLETED;
         if (!keepPartyAfterRelease(session.mode(), completed, companionRun)) {
@@ -119,6 +130,23 @@ public final class AgentPpqTerminationService {
                 log.warn("PPQ companion exit failed: session={} member={}", session.sessionId(), participant.getId(),
                         failure);
             }
+        }
+    }
+
+    /**
+     * Takes an Agent out of Wu Yang's room to Guon's map (251010404), where his own exit sends players: the room has no
+     * exit portal, and after the clear there is no event left to exit. Never throws.
+     */
+    static void leaveWuYangsRoom(AgentPpqSession session, Character agent) {
+        try {
+            MapleMap recruit = AgentMapGatewayRuntime.map().resolveMap(agent.getWorld(),
+                    AgentClientGatewayRuntime.clients().channel(agent), AgentPpqDefinition.RECRUIT_MAP);
+            if (recruit == null) return;
+            Portal portal = recruit.getPortal(0);
+            AgentMapGatewayRuntime.map().changeMapNear(agent, recruit, portal == null ? null : portal.getPosition());
+        } catch (RuntimeException failure) {
+            log.warn("PPQ Wu Yang room exit failed: session={} member={}", session.sessionId(), agent.getId(),
+                    failure);
         }
     }
 

@@ -1546,7 +1546,7 @@ tuning:
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
     # Values: 1800000-7200000 milliseconds. Recommended: 4500000, PiratePQ.js's stage timers end to end (about 54 minutes without the chest rooms, about 70 with both) plus slack.
     # Purpose: The longest a PPQ run may last from entering its event before the coordinator fails it, a cap over PiratePQ.js's own stage timers that never cuts a run the stock timers still allow.
-    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ event timer expired" once this long has passed since AgentPpqSession.enteredAtMs (the bind), never after the bound event reports its clear; before entry PRE_ENTRY_TIMEOUT_MS and COMPANION_ENTRY_WAIT_MS apply instead. It was the coordinator's constant 30 minutes from admission before the move.
+    # Technical: AgentPpqCoordinator.tickSession fails the session with "PPQ event timer expired" once this long has passed since AgentPpqSession.enteredAtMs (the bind), never after the bound event reports its clear and never while it still holds a human member (PiratePQ.js's own timers end that run; a chest-room entry restarts them for each member); before entry PRE_ENTRY_TIMEOUT_MS and COMPANION_ENTRY_WAIT_MS apply instead. It was the coordinator's constant 30 minutes from admission before the move.
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EVENT_TIMEOUT_MS: '4500000'
     # Values: 120000-1800000 milliseconds. Recommended: 600000, longer than the medal stage's eight minutes.
     # Purpose: How long a PPQ run may go without progress before the coordinator calls it stalled, so a stuck run hands its party back.
@@ -1578,7 +1578,7 @@ tuning:
     server.agents.field.AgentPpqTestFixtureService.PPQ_START_LEVEL: '67'
     # Values: 60000-900000 milliseconds. Recommended: 300000, LPQ's and RJPQ's after-clear limit, time for every member to talk to Wu Yang and take his Feather.
     # Purpose: Bounds how long a cleared PPQ run waits for its members to leave Wu Yang's room, which has no exit, so a member that cannot take its Feather never holds the run open.
-    # Technical: AgentPpqCoordinator.tickSession completes a CLEARING session once no member it waits for (a companion run's companions, every member otherwise) stands on a PPQ map, or once this long has passed since it first saw the clear ('PPQ after clear:'); AgentPpqTerminationService.release then walks any Agent still in the cleared event out through the stock exit.
+    # Technical: AgentPpqCoordinator.tickSession completes a CLEARING session once no member it waits for (a companion run's companions, every member otherwise) stands on a PPQ map, or once this long has passed since it first saw the clear ('PPQ after clear:'); AgentPpqTerminationService.release then takes any Agent still on 925100600 to Guon's map (251010404), as Wu Yang's exit would.
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.AFTER_CLEAR_LIMIT_MS: '300000'
     # Values: 10000-120000 milliseconds. Recommended: 30000, HPQ's, LPQ's, EPQ's and RJPQ's entry wait, which the '!ppqtest party prod' reply promises.
     # Purpose: How long a PPQ companion run waits for its human leader to click Guon and enter, so companions never stand frozen beside Guon when nobody goes in.

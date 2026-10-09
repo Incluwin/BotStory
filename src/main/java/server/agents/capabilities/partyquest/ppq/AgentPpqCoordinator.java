@@ -5,6 +5,9 @@ import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
@@ -24,6 +27,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -60,7 +64,13 @@ public final class AgentPpqCoordinator {
     public static void tickSession(AgentPpqSession session, long nowMs) {
         if (session.terminal() || session.terminationStarted() || session.paused()) return;
         Character leader = character(session.eventLeaderId());
-        if (leader == null) { session.fail("PPQ event leader is unavailable", nowMs); return; }
+        if (leader == null) {
+            if (!cleared(session)) { session.fail("PPQ event leader is unavailable", nowMs); return; }
+            // The run is won: a leader who logged out after the clear leaves it to the after-clear rules.
+            logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
+            afterClear(session, nowMs);
+            return;
+        }
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance(), nowMs);
@@ -68,11 +78,14 @@ public final class AgentPpqCoordinator {
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
         if (capReached(session, nowMs)) return;
-        // A leader down in the bound event is PiratePQ.js's to judge (his OK ends the event); anywhere else he is gone.
-        if (leader.getHp() <= 0 && (session.eventInstance() == null
-                || leader.getEventInstance() != session.eventInstance())) {
+        // A human leader down in the bound event is PiratePQ.js's to judge (his OK ends the event); an Agent leader
+        // down, or a leader down anywhere else, is gone. After the clear the run is won and nobody is failed.
+        boolean humanDownInside = !isAgent(leader) && session.eventInstance() != null
+                && leader.getEventInstance() == session.eventInstance();
+        if (leader.getHp() <= 0 && !humanDownInside && !cleared(session)) {
             session.fail("PPQ event leader is unavailable", nowMs); return;
         }
+        observeDepartures(session, nowMs);
         logStage(session, leader, nowMs);
         observeProgress(session, nowMs);
         if (session.eventInstance() != null && session.eventInstance().isEventCleared()
@@ -95,22 +108,15 @@ public final class AgentPpqCoordinator {
         if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) guideHumanLeader(session, leader);
         if (leader.getMapId() == AgentPpqDefinition.BOSS_MAP
                 && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
-            if (isAgent(leader)) runNpc(entry(leader.getId()), leader, AgentPpqDefinition.RESCUE_NPC);
+            if (isAgent(leader) && leader.getHp() > 0) {
+                runNpc(entry(leader.getId()), leader, AgentPpqDefinition.RESCUE_NPC);
+            }
             else announce(session, "human-clear", leader.getName() + ", talk to Wu Yang after Lord Pirate falls.");
         }
         if (leader.getMapId() == AgentPpqDefinition.CLEAR_MAP) {
             logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
-        if (session.phase() == AgentPpqSession.Phase.CLEARING) {
-            long afterClearMs = nowMs - session.observeCleared(nowMs);
-            boolean waiting = stillInside(session);
-            if (!waiting || afterClearMs >= AFTER_CLEAR_LIMIT_MS) {
-                log.info("PPQ after clear: session={} stillInside={} afterClearMs={} companionRun={}",
-                        session.sessionId(), waiting, afterClearMs, session.companionAdopted());
-                session.complete(nowMs);
-                return;
-            }
-        }
+        if (afterClear(session, nowMs)) return;
         // The authored medal stage allows six minutes and uses probabilistic drops.  Do not
         // declare a legal, still-attacking party stalled before that stage can naturally finish.
         if (!cleared(session) && nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
@@ -119,9 +125,76 @@ public final class AgentPpqCoordinator {
     }
 
     /**
-     * The run's time caps, none after the clear. From entry, EVENT_TIMEOUT_MS ("PPQ event timer expired"); before it,
-     * COMPANION_ENTRY_WAIT_MS for a companion run (its human leader clicks Guon himself) and PRE_ENTRY_TIMEOUT_MS for
-     * every run, so a slow start never shortens the stages. True when it failed the run.
+     * A CLEARING run completes once nobody it waits for is left on a PPQ map, or AFTER_CLEAR_LIMIT_MS after it first saw
+     * the clear ('PPQ after clear:'). True when it completed the run.
+     */
+    private static boolean afterClear(AgentPpqSession session, long nowMs) {
+        if (session.phase() != AgentPpqSession.Phase.CLEARING) return false;
+        long afterClearMs = nowMs - session.observeCleared(nowMs);
+        boolean waiting = stillInside(session);
+        if (waiting && afterClearMs < AFTER_CLEAR_LIMIT_MS) return false;
+        log.info("PPQ after clear: session={} stillInside={} afterClearMs={} companionRun={}",
+                session.sessionId(), waiting, afterClearMs, session.companionAdopted());
+        session.complete(nowMs);
+        return true;
+    }
+
+    /**
+     * An Agent the bound event held and no longer holds, and that stands off the PPQ maps (its death gate let it go and
+     * the respawn took it to 925100700, or it walked out), has left the run: it leaves the session and is handed back to
+     * its owner at once ('PPQ departed:'). A dead Agent the event still holds has not left (its gate holds it), nor has
+     * one between two PPQ maps. Before the clear only: clearPQ's warp unregisters everyone.
+     */
+    private static void observeDepartures(AgentPpqSession session, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null || session.terminationStarted() || cleared(session) || event.isEventDisposed()) return;
+        Set<Integer> held = new HashSet<>();
+        for (Character player : event.getPlayers()) {
+            if (player != null) held.add(player.getId());
+        }
+        session.noteHeld(held);
+        for (AgentPpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (member.memberType() != AgentPpqMemberState.MemberType.AGENT || held.contains(id)
+                    || !session.seenHeld(id)) continue;
+            Character agent = character(id);
+            if (agent != null && AgentPpqDefinition.isEventMap(agent.getMapId())) continue;
+            if (!session.departAgent(id)) continue;
+            log.info("PPQ departed: session={} member={} map={} registered={} companionRun={}", session.sessionId(), id,
+                    agent == null ? "-" : String.valueOf(agent.getMapId()), held.size(), session.companionAdopted());
+            handBack(session, id, nowMs);
+        }
+    }
+
+    /** Hands a departed Agent back to its owner: the run no longer routes it and the lifecycle rehomes it. */
+    private static void handBack(AgentPpqSession session, int id, long nowMs) {
+        try {
+            AgentPpqSessionRegistry.unindexMember(session, id);
+            AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(id);
+            if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "ppq", nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("PPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
+        }
+    }
+
+    /** Whether the bound event still holds a human member of the run. */
+    private static boolean holdsAHuman(AgentPpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null) return false;
+        for (Character player : event.getPlayers()) {
+            AgentPpqMemberState member = player == null ? null : session.member(player.getId());
+            if (member != null && member.memberType() == AgentPpqMemberState.MemberType.HUMAN) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The run's time caps, none after the clear. From entry, EVENT_TIMEOUT_MS ("PPQ event timer expired"), but never
+     * while the bound event still holds a human: PiratePQ.js's own timers end such a run (a chest-room entry restarts
+     * them for each member). Before entry, COMPANION_ENTRY_WAIT_MS for a companion run (its human leader clicks Guon
+     * himself) and PRE_ENTRY_TIMEOUT_MS for every run, so a slow start never shortens the stages. True when it failed
+     * the run.
      */
     private static boolean capReached(AgentPpqSession session, long nowMs) {
         if (cleared(session)) return false;
@@ -137,7 +210,7 @@ public final class AgentPpqCoordinator {
             }
             return false;
         }
-        if (nowMs - session.enteredAtMs() >= EVENT_TIMEOUT_MS) {
+        if (nowMs - session.enteredAtMs() >= EVENT_TIMEOUT_MS && !holdsAHuman(session)) {
             session.fail("PPQ event timer expired", nowMs);
             return true;
         }
@@ -187,6 +260,14 @@ public final class AgentPpqCoordinator {
         if (mapId == AgentPpqDefinition.DOOR_MAP) { doors(session, entry, agent, member, nowMs); return; }
         if (mapId == AgentPpqDefinition.BOSS_MAP) { boss(session, entry, agent); return; }
         if (mapId == AgentPpqDefinition.CLEAR_MAP) {
+            if (!roomForFeather(agent)) {
+                // Wu Yang refuses the Feather to a full Etc tab, and his room has no exit: it leaves without it.
+                log.info("PPQ feather skipped: session={} member={} reason=no-etc-room", session.sessionId(),
+                        agent.getId());
+                AgentPpqTerminationService.leaveWuYangsRoom(session, agent);
+                member.deferUntil(nowMs + RETRY_MS);
+                return;
+            }
             if (runNpc(entry, agent, AgentPpqDefinition.RESCUE_NPC, 0)) member.deferUntil(nowMs + RETRY_MS);
             return;
         }
@@ -500,6 +581,13 @@ public final class AgentPpqCoordinator {
             }
         }
         session.observeProgress(mobs, items, reactors, nowMs);
+    }
+
+    /** Room for Wu Yang's Feather: a free Etc slot, or a Feather stack it already carries. */
+    static boolean roomForFeather(Character agent) {
+        if (agent.getItemQuantity(AgentPpqDefinition.WU_YANG_FEATHER, false) > 0) return true;
+        var etc = agent.getInventory(InventoryType.ETC);
+        return etc != null && etc.getNumFreeSlot() > 0;
     }
 
     private static boolean near(Point first, Point second) {
