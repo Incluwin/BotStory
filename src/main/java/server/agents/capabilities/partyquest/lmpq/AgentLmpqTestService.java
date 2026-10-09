@@ -347,7 +347,8 @@ public final class AgentLmpqTestService {
         }
         if (run.session != null) {
             statusLinesToLog(run);
-            if (!run.session.terminal()) AgentLmpqCoordinator.fail(run.session, reason, nowMs);
+            // The line only: the release below claims the run on this thread, as before the line existed.
+            if (!run.session.terminal()) AgentLmpqCoordinator.logFailure(run.session, reason);
             AgentLmpqTerminationService.release(run.session, reason, nowMs, true);
         }
         if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
@@ -392,7 +393,7 @@ public final class AgentLmpqTestService {
             stopAdopted(run, reason, now);
         } else {
             if (run.session != null) {
-                if (!run.session.terminal()) AgentLmpqCoordinator.fail(run.session, reason, now);
+                if (!run.session.terminal()) AgentLmpqCoordinator.logFailure(run.session, reason);
                 AgentLmpqTerminationService.release(run.session, reason, now, true);
             }
             if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {

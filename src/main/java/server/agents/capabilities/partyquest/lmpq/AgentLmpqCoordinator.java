@@ -48,9 +48,17 @@ public final class AgentLmpqCoordinator {
      * (read before the fail, which moves it to FAILED), the reason, its size and whether it is a companion run.
      */
     static void fail(AgentLmpqSession session, String reason, long nowMs) {
+        logFailure(session, reason);
+        session.fail(reason, nowMs);
+    }
+
+    /**
+     * The 'LMPQ session failure:' line alone, the phase left as it is: for a caller that releases the run itself and
+     * must keep the release (the GM fixture harness), since a run marked FAILED is released by the next member tick.
+     */
+    static void logFailure(AgentLmpqSession session, String reason) {
         log.warn("LMPQ session failure: session={} phase={} reason={} members={} companionRun={}",
                 session.sessionId(), session.phase(), reason, session.memberCount(), session.companionAdopted());
-        session.fail(reason, nowMs);
     }
 
     public static void tickSession(AgentLmpqSession session, long nowMs) {
