@@ -67,7 +67,7 @@ class AgentPpqClearMapTest {
     }
 
     @Test
-    void aClearedRunWithAMemberStillByWuYangNeverStalls() {
+    void aClearedRunWithAMemberStillByWuYangNeverStallsAndEndsAtTheAfterClearLimit() {
         try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.CLEAR_MAP)) {
             when(run.event.isEventCleared()).thenReturn(true);
             run.tick(2_000L);
@@ -77,12 +77,11 @@ class AgentPpqClearMapTest {
             run.onMap(TOBI, AgentPpqDefinition.EXIT_MAP);
             run.onMap(UNA, AgentPpqDefinition.EXIT_MAP);
 
-            run.tick(2_000L + 11 * MINUTE);
-
+            run.tick(2_000L + 4 * MINUTE);
             assertFalse(run.session.terminal(), run.session.failure());
-            run.onMap(MIRA, AgentPpqDefinition.EXIT_MAP);
-            run.tick(2_000L + 12 * MINUTE);
-            assertEquals(AgentPpqSession.Phase.COMPLETED, run.session.phase(), "the stock completion still holds");
+
+            run.tick(2_000L + 5 * MINUTE);
+            assertEquals(AgentPpqSession.Phase.COMPLETED, run.session.phase(), "bounded: completed, never failed");
         }
     }
 

@@ -189,7 +189,7 @@ final class PpqAdmitFixture implements AutoCloseable {
         return mocked;
     }
 
-    /** A level-70 adventurer beside Guon with room for Wu Yang's Feather: one ETC slot free. */
+    /** A level-70 adventurer beside Guon with room for the clear: two Etc slots free (Perfect Pitch, Feather). */
     static Character member(int id, String name, Job job) {
         Character member = mock(Character.class);
         when(member.getId()).thenReturn(id);
@@ -198,7 +198,7 @@ final class PpqAdmitFixture implements AutoCloseable {
         when(member.getLevel()).thenReturn(70);
         when(member.getJob()).thenReturn(job);
         when(member.getHp()).thenReturn(5_000);
-        room(member, InventoryType.ETC, 1);
+        room(member, InventoryType.ETC, AgentPpqDefinition.CLEAR_ETC_SLOTS);
         return member;
     }
 

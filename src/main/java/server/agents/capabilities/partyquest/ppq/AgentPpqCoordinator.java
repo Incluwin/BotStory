@@ -38,6 +38,8 @@ public final class AgentPpqCoordinator {
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.RETRY_MS");
     private static final int INTERACTION_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.INTERACTION_RADIUS");
+    private static final long AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.AFTER_CLEAR_LIMIT_MS");
 
     private AgentPpqCoordinator() { }
 
@@ -92,10 +94,15 @@ public final class AgentPpqCoordinator {
         if (leader.getMapId() == AgentPpqDefinition.CLEAR_MAP) {
             logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
         }
-        if (session.phase() == AgentPpqSession.Phase.CLEARING
-                && session.members().stream().map(member -> character(member.characterId()))
-                .filter(java.util.Objects::nonNull).noneMatch(member -> member.getMapId() == AgentPpqDefinition.CLEAR_MAP)) {
-            session.complete(nowMs);
+        if (session.phase() == AgentPpqSession.Phase.CLEARING) {
+            long afterClearMs = nowMs - session.observeCleared(nowMs);
+            boolean waiting = stillInside(session);
+            if (!waiting || afterClearMs >= AFTER_CLEAR_LIMIT_MS) {
+                log.info("PPQ after clear: session={} stillInside={} afterClearMs={} companionRun={}",
+                        session.sessionId(), waiting, afterClearMs, session.companionAdopted());
+                session.complete(nowMs);
+                return;
+            }
         }
         // The authored medal stage allows six minutes and uses probabilistic drops.  Do not
         // declare a legal, still-attacking party stalled before that stage can naturally finish.
@@ -105,8 +112,22 @@ public final class AgentPpqCoordinator {
     }
 
     /**
+     * Whether a member the run waits for after the clear still stands on a PPQ map: the boss map until clearPQ's warp,
+     * then Wu Yang's room, which has no exit. A companion run waits for its companions only, never a human; every other
+     * mode waits for every member.
+     */
+    static boolean stillInside(AgentPpqSession session) {
+        boolean companionRun = session.companionAdopted();
+        return session.members().stream()
+                .filter(member -> !companionRun || member.memberType() == AgentPpqMemberState.MemberType.AGENT)
+                .map(member -> character(member.characterId()))
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(member -> AgentPpqDefinition.isEventMap(member.getMapId()));
+    }
+
+    /**
      * Whether the bound event reported its clear. From then on neither the cap nor the stall fails the run; it
-     * completes by the stock rule (nobody left on 925100600).
+     * completes once nobody it waits for is left inside, or AFTER_CLEAR_LIMIT_MS after the clear.
      */
     static boolean cleared(AgentPpqSession session) {
         EventInstanceManager event = session.eventInstance();

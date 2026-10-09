@@ -69,6 +69,7 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private Map<Integer, Integer> lastMobCounts = Map.of();
+    private long clearedAtMs = -1L;
     private Map<String, Integer> lastItemCounts = Map.of();
     private Map<String, Integer> lastReactorStates = Map.of();
 
@@ -258,6 +259,12 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         Long since = heldSinceMs.putIfAbsent(id, nowMs);
         return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
                 registered.size(), othersInFlight);
+    }
+
+    /** When the run first saw its clear: set by the first call, the same time on every later one. */
+    synchronized long observeCleared(long nowMs) {
+        if (clearedAtMs < 0L) clearedAtMs = nowMs;
+        return clearedAtMs;
     }
 
     /** Ends a reserved departure (its respawn ran or threw). */

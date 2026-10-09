@@ -1576,6 +1576,10 @@ tuning:
     # Purpose: The level of the '!ppqtest' fixture's Agents, a legal Pirate PQ roster for observation runs while production Agents keep their real levels.
     # Technical: AgentPpqTestFixtureService.LEVEL reads it; the fixture applies it through the second-job build pipeline and '!ppqtest start' names it in its reply.
     server.agents.field.AgentPpqTestFixtureService.PPQ_START_LEVEL: '67'
+    # Values: 60000-900000 milliseconds. Recommended: 300000, LPQ's and RJPQ's after-clear limit, time for every member to talk to Wu Yang and take his Feather.
+    # Purpose: Bounds how long a cleared PPQ run waits for its members to leave Wu Yang's room, which has no exit, so a member that cannot take its Feather never holds the run open.
+    # Technical: AgentPpqCoordinator.tickSession completes a CLEARING session once no member it waits for (a companion run's companions, every member otherwise) stands on a PPQ map, or once this long has passed since it first saw the clear ('PPQ after clear:'); AgentPpqTerminationService.release then walks any Agent still in the cleared event out through the stock exit.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.AFTER_CLEAR_LIMIT_MS: '300000'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 

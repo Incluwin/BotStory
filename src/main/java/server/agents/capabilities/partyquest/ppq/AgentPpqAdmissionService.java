@@ -47,8 +47,8 @@ public final class AgentPpqAdmissionService {
         List<Character> agents = validation.members().stream().filter(AgentPpqAdmissionService::isAgent).toList();
         for (Character agent : agents) {
             Inventory etc = agent.getInventory(InventoryType.ETC);
-            if (etc == null || etc.getNumFreeSlot() < 1) {
-                return AdmissionResult.failure(agent.getName() + " needs a free etc slot.");
+            if (etc == null || etc.getNumFreeSlot() < AgentPpqDefinition.CLEAR_ETC_SLOTS) {
+                return AdmissionResult.failure(agent.getName() + " needs two free etc slots.");
             }
         }
         String blocker = AgentPpqSessionRegistry.registrationBlocker(

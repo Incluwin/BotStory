@@ -99,14 +99,15 @@ class AgentPpqAdoptSeamTest {
 
     @Test
     void aCompanionWithAFullEtcTabIsRefusedInItsOwnWordsAHumanIsNot() {
-        room(fx.tobi, client.inventory.InventoryType.ETC, 0);
+        // One slot is not enough: setEventCleared gives a Perfect Pitch, then Wu Yang a Feather.
+        room(fx.tobi, client.inventory.InventoryType.ETC, 1);
         AgentPpqAdmissionService.AdmissionResult refused =
                 fx.keep(AgentPpqAdmissionService.admit(fx.ben, fx.ben, fx.party(), 7L, 1_000L));
         assertFalse(refused.success());
-        assertEquals("Tobi needs a free etc slot.", refused.message());
+        assertEquals("Tobi needs two free etc slots.", refused.message());
         assertNull(AgentPpqSessionRegistry.forOperator(BEN));
 
-        room(fx.tobi, client.inventory.InventoryType.ETC, 1);
+        room(fx.tobi, client.inventory.InventoryType.ETC, 2);
         room(fx.ben, client.inventory.InventoryType.ETC, 0);
         assertTrue(fx.keep(AgentPpqAdmissionService.admit(fx.ben, fx.ben, fx.party(), 7L, 1_000L)).success());
     }

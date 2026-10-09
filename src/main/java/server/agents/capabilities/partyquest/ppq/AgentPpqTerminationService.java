@@ -19,10 +19,10 @@ import java.util.stream.Collectors;
 
 /**
  * Idempotent PPQ cleanup. A stock run is released as it always was: with {@code dispose} everyone exits and the event
- * is disposed, and every member leaves the party. A companion run keeps the owner's party, and before the clear only
- * its companions leave the event: no release takes a human out of his event or disposes one that still holds him (an
- * Agents-only exit unregisters first, so the stock end never runs); an event left with no player is disposed. After the
- * clear there is nothing to exit (the clear warps everyone out and the instance ends).
+ * is disposed, and every member leaves the party. A companion run keeps the owner's party, and only its companions leave
+ * the event: no release takes a human out of his event or disposes one that still holds him (an Agents-only exit
+ * unregisters first, so the stock end never runs); an event left with no player is disposed. After the clear, in every
+ * mode, an Agent still in the event (Wu Yang's room has no exit) is walked out through the stock exit.
  */
 public final class AgentPpqTerminationService {
     private static final Logger log = LoggerFactory.getLogger(AgentPpqTerminationService.class);
@@ -39,7 +39,7 @@ public final class AgentPpqTerminationService {
         EventInstanceManager event = session.eventInstance();
         if (companionRun) {
             logPotions(session);
-            if (event != null && !cleared(event)) {
+            if (event != null) {
                 exitAgentsOnly(session, event);
                 disposeIfEmpty(session, event);
             }
@@ -48,6 +48,8 @@ public final class AgentPpqTerminationService {
                 try { event.exitPlayer(participant); } catch (RuntimeException ignored) { }
             }
             try { event.dispose(); } catch (RuntimeException ignored) { }
+        } else if (event != null && cleared(event)) {
+            exitAgentsOnly(session, event);
         }
         boolean completed = session.phase() == AgentPpqSession.Phase.COMPLETED;
         if (!keepPartyAfterRelease(session.mode(), completed, companionRun)) {
