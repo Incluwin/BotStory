@@ -45,7 +45,9 @@ import java.util.function.LongSupplier;
  * top-up at a Victoria supplier plus the potions to the standard at the supplier's cheapest potion, and for a trip
  * short of ammo alone the readiness ammo at the supplier, against its purse less its wallet reserve) or when its Use
  * tab has no room for a new kind of potion or the new ammo stacks; it tells the host once and waits until its purse
- * grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Trips from one town cut short twice
+ * grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Mesos or supplies it is given
+ * meanwhile on that map that still do not pay for the trip, it tells the host with what it still lacks
+ * (Rule.stillShort, at most once per STILL_SHORT_EVERY_MS). Trips from one town cut short twice
  * in a row (its owner called it back, the shop failed) end its tries there until it has been elsewhere.
  *
  * <p>A duty holder's critical resupply ({@link #criticalGate}) passes a lighter check: it needs only the critical
@@ -100,20 +102,29 @@ public final class AgentSupplyReadinessRuntime {
         settleOrphan(agent, state, nowMs);
         AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.standing(agent.getId());
         if (activity == null) {
+            state.clearGiven();
             state.clearVerdict();
             return null;
         }
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(agent, activity);
+        int mesos = mesos(agent);
+        state.look(agent.getMapId(), mesos, shortfall, restockGround(agent));
         if (shortfall.none()) {
+            state.clearGiven();
             state.clearVerdict();
             state.clearSpendCooldown();
             return null;
         }
-        if (state.cooldownInForce(nowMs, mesos(agent), freeUseSlots(agent), shortfall, agent.getMapId()) != null
-                || !free(entry, agent, activity)) {
+        if (state.cooldownInForce(nowMs, mesos, freeUseSlots(agent), shortfall, agent.getMapId()) != null) {
+            // given part of the coin it lacked: what is left is known from its purse, no shop is looked at
+            stillShort(agent, state, activity, shortfall, state.cooldownMissingMesos(mesos), nowMs);
+            return null;
+        }
+        if (!free(entry, agent, activity)) {
             return null;
         }
         if (!AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId())) {
+            state.clearGiven();
             state.clearVerdict(); // a boss's gate: the host says its own no-shop line
             return null;
         }
@@ -121,9 +132,15 @@ public final class AgentSupplyReadinessRuntime {
                 ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
         Assessment assessment = assess(entry, agent, activity, shortfall, maxHops, nowMs);
         if (assessment.kind() != Assessed.GO) {
-            record(agent, state, activity, shortfall, assessment, nowMs);
+            boolean told = record(agent, state, activity, shortfall, assessment, nowMs);
+            if (assessment.kind() == Assessed.CANNOT_AFFORD && !told) {
+                stillShort(agent, state, activity, shortfall, assessment.missingMesos(), nowMs);
+            } else {
+                state.clearGiven();
+            }
             return null;
         }
+        state.clearGiven();
         state.clearVerdict();
         // an ammo-only trip still asks for the potion category: procurement picks the potion supplier by it, and that
         // one visit fills potions and ammo; the trip is judged by the readiness standard (judged)
@@ -421,11 +438,11 @@ public final class AgentSupplyReadinessRuntime {
     /**
      * A readiness trip that cannot go: the verdict on this map, and a cooldown for CANNOT_AFFORD and NO_SPACE (until
      * the purse grows by what it lacked, a slot frees, or it lacks fewer potions); the host hears it when the verdict
-     * changed.
+     * changed (true then).
      */
-    private static void record(Character agent, AgentSupplyReadinessState state,
-                               AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
-                               Assessment assessment, long nowMs) {
+    private static boolean record(Character agent, AgentSupplyReadinessState state,
+                                  AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
+                                  Assessment assessment, long nowMs) {
         AgentSupplyReadinessState.Verdict verdict = switch (assessment.kind()) {
             case CANNOT_AFFORD -> AgentSupplyReadinessState.Verdict.CANNOT_AFFORD;
             case NO_SPACE -> AgentSupplyReadinessState.Verdict.NO_SPACE;
@@ -441,7 +458,7 @@ public final class AgentSupplyReadinessRuntime {
                     shortfall, agent.getMapId());
         }
         if (!state.verdict(verdict, agent.getMapId(), assessment.missingMesos(), nowMs)) {
-            return;
+            return false;
         }
         if (verdict != AgentSupplyReadinessState.Verdict.NO_SUPPLIER) {
             log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {},"
@@ -454,6 +471,29 @@ public final class AgentSupplyReadinessRuntime {
             case NO_SPACE -> AgentSupplyReadiness.Refusal.NO_SPACE;
             case NO_SUPPLIER -> AgentSupplyReadiness.Refusal.NO_SUPPLIER;
         }, shortfall, assessment.missingMesos());
+        return true;
+    }
+
+    /**
+     * What it was given while it could not pay (AgentSupplyReadinessState.look) still leaves the trip
+     * {@code missingMesos} short: the host hears it (Rule.stillShort), at most once per STILL_SHORT_EVERY_MS; gifts
+     * in between stay to be told together at the first check after it.
+     */
+    private static void stillShort(Character agent, AgentSupplyReadinessState state,
+                                   AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
+                                   int missingMesos, long nowMs) {
+        if (missingMesos <= 0) {
+            state.clearGiven();
+            return;
+        }
+        if (!state.givenToTell(nowMs, AgentSupplyReadiness.stillShortEveryMs())) {
+            return;
+        }
+        state.toldStillShort(nowMs);
+        log.info("Agent '{}' was given mesos or supplies on map {} that still do not pay for its restock for a {}"
+                        + " (short hp {} mp {} ammo {}, mesos {}, missing {})", agent.getName(), agent.getMapId(),
+                activity, shortfall.hp(), shortfall.mp(), shortfall.ammo(), mesos(agent), missingMesos);
+        AgentSupplyReadiness.stillShort(agent.getId(), activity, shortfall, missingMesos);
     }
 
     /** The readiness trip began: the host hears it set off, about how long until it is back. */

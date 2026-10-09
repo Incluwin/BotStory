@@ -27,7 +27,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * town map whose supplier is close (AgentSupplyReadinessRuntime) when it lacks either; one visit fills both, potions
  * first, buying toward {@code BUY_TO_PERCENT} of the potion standard ({@link #buyTarget}) and toward
  * {@link #ammoTarget} projectiles; it never goes when it cannot afford the trip, and says so through the rule instead
- * of asking its party. With nothing installed, nothing here changes what an Agent does.</p>
+ * of asking its party; given mesos or supplies there that still do not pay for it, it tells the rule what it still
+ * lacks ({@link Rule#stillShort}), and a gift that pays for it starts the trip. With nothing installed, nothing here
+ * changes what an Agent does.</p>
  *
  * <p>The host's reads ({@link #status}, {@link #restockPending}, {@link #carriedBy}, {@link #checkSoon},
  * {@link #resumeFollowAfterTrip}) touch memory only and may run on any thread; the rule's callbacks run on the Agent
@@ -144,6 +146,17 @@ public final class AgentSupplyReadiness {
         }
 
         /**
+         * After it could not pay for its trip ({@link #refused} CANNOT_AFFORD, or a trip that ended SHORT_MESOS), it
+         * was given mesos, potions or projectiles where it stands (a trade, a drop it picked up, a host's gift), and
+         * what it has still does not pay for the trip: {@code missingMesos} more ({@code shortfall}: what it lacks
+         * now). At most once per STILL_SHORT_EVERY_MS; gifts in between are told together. A gift that pays for it
+         * starts the trip ({@link #started}) instead, and one that leaves it lacking nothing is not told. On the
+         * Agent tick.
+         */
+        default void stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
+        }
+
+        /**
          * Whether the Agent may set off for a shop from {@code mapId} at all; false keeps it there whatever it lacks
          * (a boss's gate: its critical request only asks the party). Memory only, any thread.
          */
@@ -242,6 +255,18 @@ public final class AgentSupplyReadiness {
             current.finished(agentCharacterId, activity, outcome);
         } catch (RuntimeException failure) {
             log.warn("readiness rule failed on an end for Agent {}", agentCharacterId, failure);
+        }
+    }
+
+    static void stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
+        Rule current = rule;
+        if (current == null) {
+            return;
+        }
+        try {
+            current.stillShort(agentCharacterId, activity, shortfall, missingMesos);
+        } catch (RuntimeException failure) {
+            log.warn("readiness rule failed on a gift short of the trip for Agent {}", agentCharacterId, failure);
         }
     }
 
@@ -681,6 +706,10 @@ public final class AgentSupplyReadiness {
 
     static long shortTripCooldownMs() {
         return tuningLong("SHORT_TRIP_COOLDOWN_MS");
+    }
+
+    static long stillShortEveryMs() {
+        return tuningLong("STILL_SHORT_EVERY_MS");
     }
 
     static long tripEtaBaseMs() {

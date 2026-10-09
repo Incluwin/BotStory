@@ -420,8 +420,9 @@ public final class CompanionPartyQuestService {
 
     /**
      * Before entry: a companion the lineup leaves waiting for potions or ammo asks for some in party chat, in the
-     * Agents' own words (mana, HP, or ammo); one that cannot afford them says so in its own voice (its ammo broke line
-     * names what it shoots). At most once per {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops. One
+     * Agents' own words (mana, HP, or ammo); one that cannot afford them asks for them or mesos in its own voice, in
+     * the desk's words for what it lacks (mana potions or potions; its ammo broke line names what it shoots). At most
+     * once per {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops. One
      * whose own restock decides on its next tick (AgentSupplyReadiness.restockPending: the click just asked it to
      * look) asks nothing: it sets off, or says why not, itself. The broke line shares its memory with the companion's
      * own (CompanionRestock.mayAsk, one key for a potion and an ammo broke line), so it is never said twice within
@@ -466,7 +467,9 @@ public final class CompanionPartyQuestService {
                     CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE_AMMO,
                             CompanionRestockLines.ammoWord(bot));
                 } else if (broke) {
-                    CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE);
+                    CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE,
+                            DeskLines.LOW_ON_MANA_BROKE.equals(reason) ? CompanionRestockLines.MANA_POTIONS
+                                    : CompanionRestockLines.POTIONS);
                 } else {
                     world.roster().sayInParty(bot, AgentDialogueSelector.randomReply(shotless
                             ? AgentDialogueCatalog.combatAmmoLowReplies() : mana

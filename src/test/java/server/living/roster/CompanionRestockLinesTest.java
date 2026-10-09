@@ -2,6 +2,7 @@ package server.living.roster;
 
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.supplies.AgentProjectileKind;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.living.LivingWorld;
 import server.living.arc.ArcService;
 import server.living.config.Content.Persona;
@@ -36,7 +37,9 @@ class CompanionRestockLinesTest {
             CompanionRestockLines.BROKE, CompanionRestockLines.NO_SHOP);
     private static final List<String> AMMO_INTENTS = List.of(CompanionRestockLines.GO_AMMO,
             CompanionRestockLines.BACK_AMMO, CompanionRestockLines.BROKE_AMMO, CompanionRestockLines.NO_SHOP_AMMO);
-    private static final List<String> INTENTS = concat(POTION_INTENTS, AMMO_INTENTS);
+    /** Its owner (or anyone) handed it mesos or potions after its broke line, not enough yet (2026-10-09). */
+    private static final List<String> HELP_INTENTS = List.of(CompanionRestockLines.STILL_SHORT);
+    private static final List<String> INTENTS = concat(concat(POTION_INTENTS, AMMO_INTENTS), HELP_INTENTS);
 
     @Test
     void everyGenericLineIsInAPlayersVoice() {
@@ -44,9 +47,59 @@ class CompanionRestockLinesTest {
             List<String> lines = CompanionRestockLines.GENERIC.get(intent);
             assertNotNull(lines, intent);
             assertFalse(lines.isEmpty(), intent);
-            lines.forEach(line -> inVoice(intent, CompanionRestockLines.withAmmo(line, "stars")));
+            lines.forEach(line -> inVoice(intent, CompanionRestockLines.filled(line, "stars")));
         }
         assertEquals(INTENTS.size(), CompanionRestockLines.GENERIC.size());
+    }
+
+    // ---- asking its owner (user decision 2026-10-09: "asks its owner in party chat for potions or mesos") ------
+
+    @Test
+    void theBrokeLinesAskForPotionsOrMesosAndNameWhatIsShort() {
+        for (String template : CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE)) {
+            assertTrue(template.contains("{need}"), "names what it lacks: " + template);
+            for (String need : List.of("potions", "mana potions")) {
+                String line = CompanionRestockLines.filled(template, need);
+                inVoice("broke", line);
+                assertTrue(line.contains(need), line);
+                String lower = line.toLowerCase(Locale.ROOT);
+                assertTrue(lower.contains("mesos") || lower.contains("coin"), "mesos would do too: " + line);
+                assertEquals(lower, line, "lower case: " + line);
+                assertTrue(line.length() <= 100, "fits a chat line: " + line);
+                assertFalse(line.chars().anyMatch(java.lang.Character::isDigit), "no counts: " + line);
+                assertFalse(line.contains("{"), line);
+            }
+        }
+    }
+
+    @Test
+    void whatItLacksIsManaPotionsWhenOnlyManaIsShortItsAmmoWhenOnlyProjectilesAreAndPotionsOtherwise() {
+        assertEquals("potions", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(5, 0, 0)));
+        assertEquals("potions", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(5, 10, 500)),
+                "as the desk says it: low on potions");
+        assertEquals("mana potions", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(0, 10, 0)));
+        assertEquals("ammo", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(0, 0, 500)),
+                "no weapon known");
+        assertEquals("potions", CompanionRestockLines.need(null, null));
+        assertEquals("potions", CompanionRestockLines.filled("{need}", null), "nothing named: potions");
+        assertEquals("ammo", CompanionRestockLines.filled("{ammo}", null));
+    }
+
+    @Test
+    void aStillShortLineNamesWhatItStillLacksAndLeavesTheThanksToTheGift() {
+        // the trade window's completion ("ty!") and the card's coin ("thanks. that'll keep me in potions.") thank
+        // already: the still-short line that follows them within seconds does not thank a second time
+        for (String template : CompanionRestockLines.GENERIC.get(CompanionRestockLines.STILL_SHORT)) {
+            assertTrue(template.contains("{need}"), template);
+            String lower = template.toLowerCase(Locale.ROOT);
+            assertFalse(lower.contains("thank") || lower.startsWith("ty"), template);
+            for (String need : List.of("potions", "mana potions", "stars", "arrows")) {
+                String line = CompanionRestockLines.filled(template, need);
+                inVoice("still short", line);
+                assertTrue(line.contains(need) && line.length() <= 100, line);
+                assertFalse(line.chars().anyMatch(java.lang.Character::isDigit), "no counts: " + line);
+            }
+        }
     }
 
     @Test
@@ -158,11 +211,14 @@ class CompanionRestockLinesTest {
         for (String id : List.of("fenna", "garrick", "brannock")) {
             Persona persona = content.persona(id);
             assertNotNull(persona, id);
-            for (String intent : POTION_INTENTS) {
+            for (String intent : concat(POTION_INTENTS, HELP_INTENTS)) {
                 List<String> own = CompanionRestockLines.lines(world, persona, intent);
                 assertFalse(own.isEmpty(), id + " " + intent);
                 assertFalse(own.equals(CompanionRestockLines.GENERIC.get(intent)), id + " has " + intent + " of its own");
-                own.forEach(line -> inVoice(id + " " + intent, line));
+                own.forEach(line -> {
+                    inVoice(id + " " + intent, CompanionRestockLines.filled(line, "potions"));
+                    assertTrue(line.length() <= 100 && line.chars().noneMatch(java.lang.Character::isDigit), line);
+                });
             }
         }
         Persona fenna = content.persona("fenna");
