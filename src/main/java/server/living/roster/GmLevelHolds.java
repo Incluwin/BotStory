@@ -35,6 +35,11 @@ import java.util.regex.Pattern;
  * gear is refreshed). A companion released with {@value #KEEP} is shaped at the level it has, not its persona's
  * ({@link #kept}), and stays kept: any later release gives back the original its hold recorded, the kept level. No
  * timer.</p>
+ *
+ * <p>A companion let go goes back to its own level (user decision 2026-10-09): every real release of it
+ * (RosterService.letGo) restores its hold in its stored rows as {@code !setlevel <name> restore} would and releases it
+ * with the detail {@code restored on release} (ReleasedLevelRestore). Holds on companions that stay owned, and a
+ * human's own record, are never released that way; bench, park, logout and channel follow keep a hold.</p>
  */
 public final class GmLevelHolds {
     public static final String HOLD = "gm.level.hold";

@@ -1099,6 +1099,176 @@ public final class LivingStore {
     }
 
     /**
+     * A character's stored level as a released companion's level restore reads it (ReleasedLevelRestore): from its
+     * characters row the level, job, EXP, base STR/DEX/INT/LUK, unspent AP, unspent SP of each skill book, the AP it put
+     * into HP/MP, its GM level and its Equip tab size; its skill rows; the items it wears (a position below 0) and the
+     * ones in its Equip tab.
+     */
+    public record StoredLevel(int level, int jobId, int exp, int str, int dex, int intel, int luk, int ap, int[] sp,
+                              int hpMpUsed, int gmLevel, int equipSlots, List<StoredSkill> skills, List<Item> worn,
+                              List<Item> carried) { }
+
+    /** One skills row: the skill, its level, its master level and its expiration (-1: none). */
+    public record StoredSkill(int skillId, int level, int masterLevel, long expiration) { }
+
+    /**
+     * What a stored level rewrite writes: the characters row's level, job, EXP, base stats, unspent AP and SP, HP/MP and
+     * their maximums; every skill row (a row not listed is deleted); and each worn piece that comes off, its worn
+     * position to the Equip tab position it goes to.
+     */
+    public record LevelRewrite(int level, int jobId, int exp, int str, int dex, int intel, int luk, int ap, int[] sp,
+                               int hp, int mp, int maxHp, int maxMp, List<StoredSkill> skills,
+                               Map<Short, Short> unequip) { }
+
+    /**
+     * Rewrites the stored level of a character nothing has loaded (a released companion's GM level hold,
+     * ReleasedLevelRestore) in one transaction: its {@link StoredLevel} is read, {@code plan} decides the
+     * {@link LevelRewrite} (null: nothing to write) and its characters row, its skill rows and, when pieces come off, its
+     * inventory (ItemFactory, as {@link #dropStoredItems}) are written. A loaded character saves its own over this, so it
+     * is only for one that is not loaded; the caller holds the maintenance lock that offline loads take. Returns 1 when
+     * written, 0 when there was nothing to write (no characters row, or {@code plan} said null), -1 when the read or the
+     * write failed (nothing changed).
+     */
+    public int rewriteStoredLevel(int characterId, java.util.function.Function<StoredLevel, LevelRewrite> plan) {
+        try {
+            List<Pair<Item, InventoryType>> items = ItemFactory.INVENTORY.loadItems(characterId, false);
+            try (Connection con = DatabaseConnection.getConnection()) {
+                boolean autoCommit = con.getAutoCommit();
+                con.setAutoCommit(false);
+                try {
+                    StoredLevel stored = storedLevel(con, characterId, items);
+                    LevelRewrite rewrite = stored == null ? null : plan.apply(stored);
+                    if (rewrite == null) {
+                        con.rollback();
+                        return 0;
+                    }
+                    writeLevel(con, characterId, rewrite);
+                    writeSkills(con, characterId, rewrite.skills());
+                    if (!rewrite.unequip().isEmpty()) {
+                        ItemFactory.INVENTORY.saveItems(unequipped(items, rewrite.unequip()), characterId, con);
+                    }
+                    con.commit();
+                    return 1;
+                } catch (SQLException | RuntimeException failure) {
+                    con.rollback();
+                    throw failure;
+                } finally {
+                    con.setAutoCommit(autoCommit);
+                }
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("stored level rewrite failed for character {}", characterId, failure);
+            return -1;
+        }
+    }
+
+    private static StoredLevel storedLevel(Connection con, int characterId, List<Pair<Item, InventoryType>> items)
+            throws SQLException {
+        StoredLevel row;
+        try (PreparedStatement ps = con.prepareStatement("SELECT level, job, exp, str, dex, `int`, luk, ap, sp, hpMpUsed,"
+                + " gm, equipslots FROM characters WHERE id = ? FOR UPDATE")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                row = new StoredLevel(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5), rs.getInt(6),
+                        rs.getInt(7), rs.getInt(8), skillPoints(rs.getString(9)), rs.getInt(10), rs.getInt(11),
+                        rs.getInt(12), List.of(), tab(items, InventoryType.EQUIPPED), tab(items, InventoryType.EQUIP));
+            }
+        }
+        List<StoredSkill> skills = new ArrayList<>();
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT skillid, skilllevel, masterlevel, expiration FROM skills WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    skills.add(new StoredSkill(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getLong(4)));
+                }
+            }
+        }
+        return new StoredLevel(row.level(), row.jobId(), row.exp(), row.str(), row.dex(), row.intel(), row.luk(),
+                row.ap(), row.sp(), row.hpMpUsed(), row.gmLevel(), row.equipSlots(), List.copyOf(skills), row.worn(),
+                row.carried());
+    }
+
+    /** The sp column ("3,0,0,0,0,0,0,0,0,0", one per skill book) as Character.loadCharSkillPoints reads it. */
+    private static int[] skillPoints(String column) {
+        String[] parts = column == null || column.isBlank() ? new String[0] : column.split(",");
+        int[] points = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            points[i] = Integer.parseInt(parts[i].trim());
+        }
+        return points;
+    }
+
+    private static void writeLevel(Connection con, int characterId, LevelRewrite rewrite) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET level = ?, job = ?, exp = ?, str = ?,"
+                + " dex = ?, `int` = ?, luk = ?, ap = ?, sp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ? WHERE id = ?")) {
+            ps.setInt(1, rewrite.level());
+            ps.setInt(2, rewrite.jobId());
+            ps.setInt(3, rewrite.exp());
+            ps.setInt(4, rewrite.str());
+            ps.setInt(5, rewrite.dex());
+            ps.setInt(6, rewrite.intel());
+            ps.setInt(7, rewrite.luk());
+            ps.setInt(8, rewrite.ap());
+            StringBuilder sp = new StringBuilder();
+            for (int points : rewrite.sp()) {
+                sp.append(sp.isEmpty() ? "" : ",").append(points);
+            }
+            ps.setString(9, sp.toString());
+            ps.setInt(10, rewrite.hp());
+            ps.setInt(11, rewrite.mp());
+            ps.setInt(12, rewrite.maxHp());
+            ps.setInt(13, rewrite.maxMp());
+            ps.setInt(14, characterId);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("character " + characterId + " is gone");
+            }
+        }
+    }
+
+    /** Every skill row as listed, the way the game saves skills (Character.saveCharToDB): the old rows go first. */
+    private static void writeSkills(Connection con, int characterId, List<StoredSkill> skills) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("DELETE FROM skills WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            ps.executeUpdate();
+        }
+        if (skills.isEmpty()) {
+            return;
+        }
+        try (PreparedStatement ps = con.prepareStatement("INSERT INTO skills (characterid, skillid, skilllevel,"
+                + " masterlevel, expiration) VALUES (?, ?, ?, ?, ?)")) {
+            for (StoredSkill skill : skills) {
+                ps.setInt(1, characterId);
+                ps.setInt(2, skill.skillId());
+                ps.setInt(3, skill.level());
+                ps.setInt(4, skill.masterLevel());
+                ps.setLong(5, skill.expiration());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    /** The inventory with each worn piece {@code unequip} names in the Equip tab at its new position. */
+    private static List<Pair<Item, InventoryType>> unequipped(List<Pair<Item, InventoryType>> items,
+                                                              Map<Short, Short> unequip) {
+        List<Pair<Item, InventoryType>> out = new ArrayList<>();
+        for (Pair<Item, InventoryType> pair : items) {
+            Short to = pair.getRight() == InventoryType.EQUIPPED ? unequip.get(pair.getLeft().getPosition()) : null;
+            if (to == null) {
+                out.add(pair);
+            } else {
+                pair.getLeft().setPosition(to);
+                out.add(new Pair<>(pair.getLeft(), InventoryType.EQUIP));
+            }
+        }
+        return out;
+    }
+
+    /**
      * The item ids in the USE tab a character nothing has loaded carries (its saved inventory, quantity above 0), for a
      * bench companion's potions (CrewRotation).
      *
