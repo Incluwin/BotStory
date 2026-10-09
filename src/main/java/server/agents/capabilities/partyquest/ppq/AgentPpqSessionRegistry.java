@@ -12,8 +12,18 @@ public final class AgentPpqSessionRegistry {
     private static final Map<Integer, String> BY_MEMBER = new ConcurrentHashMap<>();
     private static final Map<Integer, String> BY_OPERATOR = new ConcurrentHashMap<>();
     private AgentPpqSessionRegistry() { }
+    /**
+     * Publishes a complete session: six members for every stock mode, four to six for a companion run (its flag is set
+     * before this call).
+     */
     public static synchronized void registerComplete(AgentPpqSession session) {
-        if (session == null || session.memberCount() != AgentPpqDefinition.PARTY_SIZE) {
+        if (session == null) throw new IllegalArgumentException("complete six-member PPQ session required");
+        if (session.companionAdopted()) {
+            if (session.memberCount() < AgentPpqDefinition.COMPANION_MIN_PARTY_SIZE
+                    || session.memberCount() > AgentPpqDefinition.COMPANION_MAX_PARTY_SIZE) {
+                throw new IllegalArgumentException("a PPQ companion run needs four to six members");
+            }
+        } else if (session.memberCount() != AgentPpqDefinition.PARTY_SIZE) {
             throw new IllegalArgumentException("complete six-member PPQ session required");
         }
         if (BY_OPERATOR.containsKey(session.operatorId())) throw new IllegalStateException("operator already owns PPQ");
@@ -26,6 +36,23 @@ public final class AgentPpqSessionRegistry {
     public static AgentPpqSession forMember(int id) { String key = BY_MEMBER.get(id); return key == null ? null : SESSIONS.get(key); }
     public static AgentPpqSession forOperator(int id) { String key = BY_OPERATOR.get(id); return key == null ? null : SESSIONS.get(key); }
     public static boolean active(int id) { return forMember(id) != null; }
+
+    /**
+     * What already holds an admission's operator or members: "operator-session", "member-<id>" for the first member
+     * another session holds, or "" when nothing does.
+     */
+    public static synchronized String registrationBlocker(int operatorId, Collection<Integer> characterIds) {
+        if (BY_OPERATOR.containsKey(operatorId)) return "operator-session";
+        for (int id : characterIds) {
+            if (BY_MEMBER.containsKey(id)) return "member-" + id;
+        }
+        return "";
+    }
+
+    /** Stops routing one member to the session (a departed or removed Agent); the session keeps its record. */
+    public static synchronized void unindexMember(AgentPpqSession session, int characterId) {
+        if (session != null) BY_MEMBER.remove(characterId, session.sessionId());
+    }
     public static Collection<AgentPpqSession> sessions() { return List.copyOf(SESSIONS.values()); }
     public static synchronized void remove(AgentPpqSession session) {
         if (session == null || !SESSIONS.remove(session.sessionId(), session)) return;

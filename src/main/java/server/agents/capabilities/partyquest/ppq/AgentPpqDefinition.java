@@ -26,6 +26,11 @@ public final class AgentPpqDefinition {
     public static final int MEDALS_PER_WAVE = 20;
     public static final int DOOR_COUNT = 4;
     public static final int PARTY_SIZE = 6;
+    /** A companion run seats four to six (the user's stock party sizes; PiratePQ.js admits three to six). */
+    public static final int COMPANION_MIN_PARTY_SIZE = 4;
+    public static final int COMPANION_MAX_PARTY_SIZE = 6;
+    /** PiratePQ.js minPlayers: the event ends when a departure would leave fewer registered. */
+    public static final int STOCK_FLOOR = 3;
     public static final Set<Integer> MEDALS = Set.of(ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL);
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(
             ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL, OLD_METAL_KEY, CHEST_KEY);
