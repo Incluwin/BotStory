@@ -4,7 +4,6 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
-import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 
@@ -40,19 +39,19 @@ final class AgentOpqWatchdogRuntime {
 
     static void tick(AgentOpqSession session, long nowMs) {
         if (session == null || session.paused() || session.terminal()) return;
-        AgentRuntimeEntry entry = session.members().stream()
+        // The body found here is the one used below: reading it again could find the Agent unloaded meanwhile.
+        Character agent = session.members().stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId))
                 .map(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()))
-                .filter(java.util.Objects::nonNull).filter(candidate -> {
-                    Character agent = AgentRuntimeIdentityRuntime.bot(candidate);
-                    return agent != null && agent.getHp() > 0;
-                }).findFirst().orElse(null);
-        if (entry == null) {
+                .filter(java.util.Objects::nonNull)
+                .map(AgentRuntimeIdentityRuntime::bot)
+                .filter(candidate -> candidate != null && candidate.getHp() > 0)
+                .findFirst().orElse(null);
+        if (agent == null) {
             AgentOpqTerminationService.fail(session, "No live Agent remains", nowMs);
             return;
         }
-        Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         long lease = AgentOpqRuntime.coordinatorLeaseMs();
         if (session.claimExpiredExecutionTick(agent.getId(), nowMs, lease, AgentOpqRuntime::holderAlive)) {
             AgentOpqCoordinator.tickSession(session, nowMs);

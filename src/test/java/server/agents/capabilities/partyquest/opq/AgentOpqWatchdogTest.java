@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentSchedulerRuntime;
 
 import java.lang.reflect.Field;
@@ -183,5 +184,24 @@ class AgentOpqWatchdogTest {
                 .replaceAll("\\s+", " ");
         assertTrue(harness.contains("AgentOpqSessionRegistry.registerComplete(session); "
                 + "AgentOpqWatchdogRuntime.ensureStarted();"));
+    }
+
+    @Test
+    void anAgentThatUnloadsWhileTheWatchdogWorksIsReadOnce() {
+        try (OpqRunFixture run = new OpqRunFixture()) {
+            Character ben = run.human(1, "Ben");
+            Character mira = run.companion(2, "Mira");
+            AgentOpqSession session = run.session(AgentOpqSession.Mode.HUMAN_ASSISTED, true,
+                    AgentOpqSession.Phase.PREPARING, ben, mira, run.companion(3, "Kes"), run.companion(4, "Pel"),
+                    run.companion(5, "Hal"));
+            var entry = run.entries.get(mira.getId());
+            // Mira is loaded when the watchdog looks, and gone the next time anyone reads her body.
+            run.identity.when(() -> AgentRuntimeIdentityRuntime.bot(entry)).thenReturn(mira, (Character) null);
+
+            AgentOpqWatchdogRuntime.tick(session, 5_000L);
+
+            assertEquals(mira.getId(), session.executionAgentId());
+            assertEquals(AgentOpqSession.Phase.ENTERING, session.phase());
+        }
     }
 }
