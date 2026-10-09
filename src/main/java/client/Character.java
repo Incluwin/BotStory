@@ -10692,11 +10692,23 @@ public class Character extends AbstractCharacterObject {
     }
 
     public boolean applyHpMpChange(int hpCon, int hpchange, int mpchange) {
+        return applyHpMpChange(hpCon, hpchange, mpchange, false);
+    }
+
+    /**
+     * With {@code onlyIfAlive}, a dead character refuses the whole change. The check runs under the stat lock that
+     * every HP write takes, so a lethal hit on another thread cannot land between the check and the heal.
+     */
+    public boolean applyHpMpChange(int hpCon, int hpchange, int mpchange, boolean onlyIfAlive) {
         boolean zombify = hasDisease(Disease.ZOMBIFY);
 
         effLock.lock();
         statWlock.lock();
         try {
+            if (onlyIfAlive && hp <= 0) {
+                return false;
+            }
+
             int nextHp = hp + hpchange, nextMp = mp + mpchange;
             boolean cannotApplyHp = hpchange != 0 && nextHp <= 0 && (!zombify || hpCon > 0);
             boolean cannotApplyMp = mpchange != 0 && nextMp < 0;
