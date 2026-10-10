@@ -1414,6 +1414,29 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void aGiftAfterAFirstBrokeLineFromTheCriticalPathIsToldStillShort() {
+        // sixth review: the critical gate's broke line sets no readiness cooldown, so a coin before the next readiness
+        // check was taken for the baseline; its refusal recorded on this map now counts as being held for mesos
+        Character fenna = companion(597, "Fenna", Job.HUNTER, 1, 30, 155);
+        stand(fenna, FIELD, false); // out with its owner: no readiness refusal, only a party ask
+        AgentRuntimeEntry entry = following(fenna);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("party ask 597"), calls);
+
+        stand(fenna, KERNING, true); // back in town between two readiness checks
+        potions.put(597, new int[]{2, 30}); // a potion from a party member: the critical gate looks again
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 2_000L));
+        assertEquals("refused 597 CANNOT_AFFORD " + (8 * RED - 155), calls.getLast(), "its first broke line");
+        purses.put(597, 205); // its owner's coin a second later, still short
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 3_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        assertEquals(List.of("party ask 597", "refused 597 CANNOT_AFFORD " + (8 * RED - 155),
+                "still short 597 " + (18 * RED - 205)), calls, "the coin gets its answer");
+    }
+
+    @Test
     void stillShortNewsItsHostKeptQuietDoesNotHoldBackTheNextGift() {
         // fifth review: the spacing counts from a still-short line that was said
         Character fenna = companion(596, "Fenna", Job.HUNTER, 1, 30, 155);

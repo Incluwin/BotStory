@@ -271,10 +271,11 @@ public final class AgentSupplyReadinessState {
 
     /**
      * One check's look at its purse and its shortfall on {@code mapId}, once {@code shopVisits} shop visits of its own
-     * have ended (AgentShopStateRuntime.shopVisitGeneration). While a meso cooldown holds it back (CANNOT_AFFORD,
-     * SHORT_MESOS) and it stands on {@code giftGround} (a town or a monster-free map, where no monster drops a coin,
-     * that it may set off from), a purse grown or fewer potions or projectiles lacking since the last look on this
-     * same map is something it was given; that stays to be told until {@link #toldStillShort} or {@link #clearGiven}.
+     * have ended (AgentShopStateRuntime.shopVisitGeneration). While it is held back for mesos (a CANNOT_AFFORD or
+     * SHORT_MESOS cooldown, or a CANNOT_AFFORD refusal on this map: the critical path's sets no cooldown) and it
+     * stands on {@code giftGround} (a town or a monster-free map, where no monster drops a coin, that it may set off
+     * from), a purse grown or fewer potions or projectiles lacking since the last look on this same map is something
+     * it was given; that stays to be told until {@link #toldStillShort} or {@link #clearGiven}.
      * Another map, or a shop visit of its own that ended since (it bought or sold there itself), forgets it, as
      * {@link #forgetLook} does.
      */
@@ -283,7 +284,8 @@ public final class AgentSupplyReadinessState {
         boolean sameMap = lookShortfall != null && mapId == lookMapId && shopVisits == lookShopVisits;
         if (!sameMap) {
             givenPending = false;
-        } else if (giftGround && (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS)
+        } else if (giftGround && (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS
+                || verdict == Verdict.CANNOT_AFFORD && verdictMapId == mapId)
                 && (mesos > lookMesos || shortfall.hp() < lookShortfall.hp() || shortfall.mp() < lookShortfall.mp()
                 || shortfall.ammo() < lookShortfall.ammo())) {
             givenPending = true;
