@@ -43,7 +43,10 @@ import static org.mockito.Mockito.when;
  * holds fewer than POT_STOP HP potions at any HP; it backs off on its own side of the golem (never across it, never
  * toward it), holds its spot when it already stands out of the golem's reach, drinks an HP potion every
  * TOP_UP_INTERVAL_MS while under RESUME_HP_FRACTION, and rejoins only at RESUME_HP_FRACTION with POT_STOP potions. Out
- * of reach it fights a golem add that reaches it, never the golem. Everyone else keeps today's grind.
+ * of reach it fights a golem add that reaches it, never the golem. Pinned in reach (its rest point in the golem's
+ * reach), it fights an add that reaches it, and a dry one hits the golem from there while its HP is at least
+ * REST_HP_FRACTION. A dry rester asks its party for HP potions every DRY_ASK_INTERVAL_MS. Everyone else keeps today's
+ * grind.
  */
 class AgentEpqBossRestTest {
     private static final int POT_STOP = 10;
@@ -244,6 +247,18 @@ class AgentEpqBossRestTest {
         assertSame(pinned, restPoint(-400, -500, pinned), "a pinned rester keeps the farther point it already has");
         assertEquals(new Point(-480, 150), restPoint(-100, -300, new Point(-380, 150)),
                 "a stored point the golem walked onto: the end of its side");
+    }
+
+    @Test
+    void aRestPointInsideTheGolemsReachIsPinned() {
+        Point golem = new Point(-230, 150);
+        int reach = AgentEpqRecoveryPolicy.REACH_PX;
+        assertTrue(AgentEpqRecoveryPolicy.pinned(new Point(-540, 150), golem, reach), "Halvard and Kestrel's wall");
+        assertTrue(AgentEpqRecoveryPolicy.pinned(new Point(-230 + reach, 150), golem, reach), "at the reach itself");
+        assertFalse(AgentEpqRecoveryPolicy.pinned(new Point(-230 + reach + 1, 150), golem, reach));
+        assertFalse(AgentEpqRecoveryPolicy.pinned(new Point(1_020, 150), golem, reach), "the far end of its side");
+        assertFalse(AgentEpqRecoveryPolicy.pinned(null, golem, reach));
+        assertFalse(AgentEpqRecoveryPolicy.pinned(new Point(-540, 150), null, reach));
     }
 
     @Test
@@ -517,6 +532,160 @@ class AgentEpqBossRestTest {
 
         verify(run.actions, never()).grindFromAnchor(any(), any(), any(), any());
         verify(run.actions).stop(entry);
+    }
+
+    // ---- a pinned or dry rester (review of the golem rest fix) ----
+
+    private static String ask(AgentEpqSession session, String result, int asks, String hp, int potions) {
+        return "EPQ boss rest ask: session=" + session.sessionId() + " member=Tobi result=" + result + " asks=" + asks
+                + " hp=" + hp + " hpPots=" + potions;
+    }
+
+    /**
+     * Halvard's layout (golem x -230, member at the wall x -540) with fewer than POT_STOP potions at full HP: the rest
+     * stood it idle in the golem's reach, hitting nothing, where before the fix it fought down to 40 %. Pinned and dry,
+     * it hits whatever its attacks reach from the wall, the golem too, while its HP is at least REST_HP_FRACTION; under
+     * that it holds, as before. It never walks.
+     */
+    @Test
+    void aDryMemberPinnedAtTheWallKeepsHittingTheGolemFromThereWhileItsHpIsHigh() {
+        AgentEpqSession session = boss();
+        golemAt(-230);
+        vitals(tobi, -540, 5_904, 5_904, 0);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        Point wall = new Point(-540, 150);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            verify(run.actions).grindFromAnchor(entry, wall, AgentEpqDefinition.BOSS_COMBAT_TARGETS, Set.of());
+
+            vitals(tobi, -540, 2_952, 5_904, 0); // exactly REST_HP_FRACTION: it still fights
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+            verify(run.actions, times(2)).grindFromAnchor(entry, wall, AgentEpqDefinition.BOSS_COMBAT_TARGETS,
+                    Set.of());
+            verify(run.actions, never()).stop(entry);
+
+            vitals(tobi, -540, 2_951, 5_904, 0); // under it: it holds
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 4_000L);
+            verify(run.actions).stop(entry);
+            verify(run.actions, times(2)).grindFromAnchor(entry, wall, AgentEpqDefinition.BOSS_COMBAT_TARGETS,
+                    Set.of());
+
+            verify(run.actions, never()).navigate(eq(entry), any(), anyBoolean());
+            verify(run.actions, never()).grind(eq(entry), any());
+            assertTrue(session.member(tobi.getId()).bossResting(), "it rests until it holds POT_STOP potions again");
+            assertEquals(List.of(rest(session, "START", "pots", "5904/5904", 0, 0, "(-540,150)", "(-230,150)")),
+                    lines.startingWith("EPQ boss rest:"));
+        }
+    }
+
+    /**
+     * Pinned in the golem's reach, a rester fights an add that reaches it from the wall, with or without potions, and
+     * the one with potions drinks as it does; under REST_HP_FRACTION neither hits the golem.
+     */
+    @Test
+    void aPinnedResterFightsAnAddOnItFromTheWall() {
+        AgentEpqSession session = boss();
+        golemAt(-230);
+        Monster add = run.monster(9_300_177);
+        when(add.getPosition()).thenReturn(new Point(-500, 150));
+        vitals(tobi, -540, 2_070, 5_904, 0); // dry, 35 %
+        vitals(una, -540, 1_000, 4_400, 200); // stocked, 23 %
+        Point wall = new Point(-540, 150);
+
+        AgentEpqCoordinator.tickMember(session, run.entry(tobi), tobi, 2_000L);
+        AgentEpqCoordinator.tickMember(session, run.entry(una), una, 2_000L);
+
+        verify(run.actions).grindFromAnchor(run.entry(tobi), wall, AgentEpqDefinition.BOSS_ADDS, Set.of());
+        verify(run.actions).grindFromAnchor(run.entry(una), wall, AgentEpqDefinition.BOSS_ADDS, Set.of());
+        verify(run.actions).useItem(una, WHITE_POTION);
+        verify(run.actions, never()).grindFromAnchor(any(), any(), eq(AgentEpqDefinition.BOSS_COMBAT_TARGETS), any());
+        verify(run.actions, never()).stop(any());
+        verify(run.actions, never()).navigate(any(), any(), anyBoolean());
+    }
+
+    /** A pinned rester with potions holds and drinks up to RESUME_HP_FRACTION: only a dry one hits the golem. */
+    @Test
+    void aStockedPinnedResterHoldsAndDrinksUp() {
+        AgentEpqSession session = boss();
+        golemAt(-230);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        vitals(tobi, -540, 2_000, 5_904, 200); // 34 %: START
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+        vitals(tobi, -540, 3_600, 5_904, 199); // 61 %: still drinking up
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+
+        verify(run.actions, times(2)).stop(entry);
+        verify(run.actions, times(2)).useItem(tobi, WHITE_POTION);
+        verify(run.actions, never()).grindFromAnchor(any(), any(), any(), any());
+        verify(run.actions, never()).grind(eq(entry), any());
+        potions.verify(() -> AgentPotionService.requestPotShare(any(), any(), anyBoolean()), never());
+    }
+
+    /** Out of the golem's reach a dry rester still hangs back at full HP: only a pinned one hits the golem. */
+    @Test
+    void aDryResterOutOfReachHangsBackAtFullHp() {
+        AgentEpqSession session = boss();
+        golemAt(392);
+        vitals(tobi, 1_020, 4_400, 3);
+        AgentRuntimeEntry entry = run.entry(tobi);
+
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+
+        verify(run.actions).stop(entry);
+        verify(run.actions, never()).grindFromAnchor(any(), any(), any(), any());
+        verify(run.actions, never()).grind(eq(entry), any());
+    }
+
+    /**
+     * A dry rester stands or walks, so the generic potion check (grind or follow mode only) never asked the party
+     * again: in an Agent-only run it sat out the fight. It asks as the dry rest starts and then every
+     * DRY_ASK_INTERVAL_MS while dry, through the generic potion share; once it holds POT_STOP potions it asks no more.
+     */
+    @Test
+    void aDryResterAsksThePartyForPotionsEveryDryAskInterval() {
+        AgentEpqSession session = boss();
+        golemAt(392);
+        vitals(tobi, 1_020, 4_400, 3); // dry at full HP, out of reach: no drink
+        AgentRuntimeEntry entry = run.entry(tobi);
+        potions.when(() -> AgentPotionService.requestPotShare(any(), any(), eq(true))).thenReturn(true, false);
+        long interval = AgentEpqRecoveryPolicy.DRY_ASK_INTERVAL_MS;
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + interval - 1);
+            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(1));
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + interval);
+            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+
+            vitals(tobi, 1_020, 3_000, 40); // a share landed: it drinks up to RESUME_HP_FRACTION and asks no more
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + 3 * interval);
+            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+            assertTrue(session.member(tobi.getId()).bossResting());
+
+            assertEquals(List.of(ask(session, "sent", 1, "4400/4400", 3), ask(session, "held", 2, "4400/4400", 3)),
+                    lines.startingWith("EPQ boss rest ask:"));
+        }
+        potions.verify(() -> AgentPotionService.requestPotShare(any(), any(), eq(false)), never());
+    }
+
+    /** A rest that ended and a new dry rest: it asks at once, its count starting over. */
+    @Test
+    void aNewDryRestAsksAtOnce() {
+        AgentEpqSession session = boss();
+        golemAt(392);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            vitals(tobi, 1_020, 4_400, 3);
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            vitals(tobi, 1_020, 4_400, 40); // refilled at full HP: END
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+            assertFalse(session.member(tobi.getId()).bossResting());
+            vitals(tobi, 1_020, 4_400, 3); // dry again before the old interval ran out
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 4_000L);
+
+            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+            assertEquals(List.of(ask(session, "held", 1, "4400/4400", 3), ask(session, "held", 1, "4400/4400", 3)),
+                    lines.startingWith("EPQ boss rest ask:"));
+        }
     }
 
     @Test
