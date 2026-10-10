@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -110,6 +111,20 @@ class CompanionGearToolTest {
         boolean inBossRun;
         /** The mailbox finds every piece worn already (a use planned before the last kit went on). */
         boolean woreAlready;
+        /**
+         * The companion's mailbox: null runs each action at once (a prompt tick); else each waits here, in order, until
+         * the test runs it (a slow tick), and completes as it runs, as AgentActionMailbox does.
+         */
+        List<Runnable> mailbox;
+
+        private <T> CompletableFuture<T> onMailbox(Supplier<T> action) {
+            if (mailbox == null) {
+                return CompletableFuture.completedFuture(action.get());
+            }
+            CompletableFuture<T> result = new CompletableFuture<>();
+            mailbox.add(() -> result.complete(action.get()));
+            return result;
+        }
 
         @Override
         public AgentRuntimeEntry runtime(int characterId) {
@@ -152,8 +167,9 @@ class CompanionGearToolTest {
         public CompletableFuture<Outcome> wear(AgentRuntimeEntry runtime, List<Piece> kit, int need) {
             worn.add(kit);
             needs.add(need);
-            return CompletableFuture.completedFuture(woreAlready ? new Outcome(0, 0, kit.size())
-                    : new Outcome(kit.size(), kit.size(), 0, displaced, ontoAKit));
+            Outcome outcome = woreAlready ? new Outcome(0, 0, kit.size())
+                    : new Outcome(kit.size(), kit.size(), 0, displaced, ontoAKit);
+            return onMailbox(() -> outcome);
         }
 
         @Override
@@ -162,13 +178,18 @@ class CompanionGearToolTest {
             return kit.size();
         }
 
-        /** The mailbox runs the removal at once, as LIVE's does on the companion's tick. */
+        /** The mailbox runs the removal (at once, or as the test runs it), as LIVE's does on the companion's tick. */
         @Override
         public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
                                                  Map<Short, Integer> displaced) {
             removals.add(owner);
             removedWith.add(displaced);
-            return CompletableFuture.completedFuture(CompanionGearTool.removeKit(runtime, owner, displaced));
+            return onMailbox(() -> CompanionGearTool.removeKit(runtime, owner, displaced));
+        }
+
+        @Override
+        public CompletableFuture<?> settle(AgentRuntimeEntry runtime) {
+            return onMailbox(() -> Boolean.TRUE);
         }
     }
 
@@ -689,6 +710,83 @@ class CompanionGearToolTest {
                     "its one-handed sword, not the Lv40 axe the warrior mask also lets it wear");
             assertEquals(List.of(BLUE_COUNTER), ids(bag));
             equipment.verifyNoInteractions();
+        }
+    }
+
+    // ---- remove typed while a gift is still on its way: the record is read after the gift wrote it ---------
+
+    /**
+     * Flint wears the boss cap a gift puts on (FakeGame.wear only answers) and carries its own bandana the kit
+     * displaced and a higher Bone Helm; companion-ops keeps each command in {@code ops} until the test runs it.
+     */
+    private Item aGiftOnItsWay(List<Runnable> ops) {
+        flintWears.addItemFromDB(boss(BOSS_CAP, CAP));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(BONE_HELM, (short) 1));
+        Item bandana = Equip.restored(WHITE_BANDANA, (short) 2);
+        bag.addItemFromDB(bandana);
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        CompanionExecutor queued = DirectExecutor.queued(ops); // stubs inside: not within another when()
+        when(world.executor()).thenReturn(queued);
+        game.displaced = Map.of(CAP, WHITE_BANDANA);
+        tool = new CompanionGearTool(world, game, CATALOG, 60_000L);
+        return bandana;
+    }
+
+    /** Runs the mailbox and companion-ops, each in its own order, until both are idle. */
+    private void runUntilIdle(List<Runnable> ops) {
+        List<Runnable> mailbox = game.mailbox == null ? List.of() : game.mailbox;
+        while (!mailbox.isEmpty() || !ops.isEmpty()) {
+            while (!mailbox.isEmpty()) {
+                mailbox.remove(0).run();
+            }
+            while (!ops.isEmpty()) {
+                ops.remove(0).run();
+            }
+        }
+    }
+
+    private void assertTheRemovalUsedTheGiftsRecord(Item bandana, CompletableFuture<String> removal) throws Exception {
+        assertEquals(List.of(Map.of(CAP, WHITE_BANDANA)), game.removedWith,
+                "the gift's record reached its mailbox, not the empty one from before the gift");
+        assertEquals(bandana, flintWears.getItem(CAP), "its own bandana, not the higher Bone Helm");
+        assertEquals("Flint gave back 1 boss piece and wears its own gear again.", removal.get(5, TimeUnit.SECONDS));
+        assertEquals(List.of(BOSSFRIEND + " flint bossgear.worn displaced: -1:" + WHITE_BANDANA, BOSSFRIEND
+                + " flint bossgear.removed remove: 1 piece"), store.events.stream()
+                .filter(line -> line.contains(" bossgear.")).toList(), "the record, then its end");
+        assertEquals(Map.of(), record());
+    }
+
+    @Test
+    void removeTypedWhileCompanionOpsStillOwesTheGiftsAnswerUsesTheRecordThatAnswerWrites() throws Exception {
+        List<Runnable> ops = DirectExecutor.queue();
+        Item bandana = aGiftOnItsWay(ops);
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            tool.use(gm, "Flint", false); // its mailbox answered at once: the answer waits on companion-ops
+            CompletableFuture<String> removal = tool.remove(gm, "Flint");
+            runUntilIdle(ops);
+
+            assertTheRemovalUsedTheGiftsRecord(bandana, removal);
+        }
+    }
+
+    @Test
+    void removeTypedWhileItsMailboxStillOwesTheGiftUsesTheRecordTheGiftLeaves() throws Exception {
+        List<Runnable> ops = DirectExecutor.queue();
+        Item bandana = aGiftOnItsWay(ops);
+        game.mailbox = new ArrayList<>(); // a slow tick: the kit is not on yet
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            tool.use(gm, "Flint", false);
+            CompletableFuture<String> removal = tool.remove(gm, "Flint");
+            runUntilIdle(ops);
+
+            assertTheRemovalUsedTheGiftsRecord(bandana, removal);
         }
     }
 }

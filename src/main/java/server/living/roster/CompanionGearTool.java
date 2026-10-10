@@ -120,6 +120,12 @@ public final class CompanionGearTool {
          * ({@link #removeKit}); the pieces taken.
          */
         CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner, Map<Short, Integer> displaced);
+
+        /**
+         * On the companion's mailbox: nothing; completes once each action queued on it before has run (a gift's kit
+         * going on, whose answer has then gone to companion-ops).
+         */
+        CompletableFuture<?> settle(AgentRuntimeEntry runtime);
     }
 
     static final Game LIVE = new Game() {
@@ -163,6 +169,11 @@ public final class CompanionGearTool {
         public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
                                                  Map<Short, Integer> displaced) {
             return AgentMailboxRuntime.dispatch(runtime, entry -> removeKit(entry, owner, displaced));
+        }
+
+        @Override
+        public CompletableFuture<?> settle(AgentRuntimeEntry runtime) {
+            return AgentMailboxRuntime.dispatch(runtime, entry -> Boolean.TRUE);
         }
     };
 
@@ -504,8 +515,7 @@ public final class CompanionGearTool {
         }
         Target target = (Target) found;
         Character bot = target.chr();
-        Map<Short, Integer> displaced = BossGearRecord.read(world.store(), gm.getId(), target.personaId());
-        return await(gm, bot, runtime -> game.remove(runtime, gm, displaced), (taken, failure) -> {
+        return await(gm, bot, runtime -> removeAfterGifts(gm, target, runtime), (taken, failure) -> {
             if (taken == null) {
                 Throwable cause = unwrap(failure);
                 log.warn("gm bossgear: gm={} target={} ({}) did not remove", gm.getName(), bot.getName(), bot.getId(),
@@ -521,6 +531,37 @@ public final class CompanionGearTool {
             return taken == 0 ? bot.getName() + " has no boss gear." : bot.getName() + " gave back " + taken
                     + (taken == 1 ? " boss piece" : " boss pieces") + " and wears its own gear again.";
         }, "its boss gear still comes off at its next tick.");
+    }
+
+    /**
+     * The removal on the companion's mailbox ({@link #removeKit}) with its BossGearRecord, read on companion-ops only
+     * once its mailbox ran every action queued before this one: a gift still on its way has then put its kit on and
+     * sent its answer, which writes the record, to companion-ops first, so the read after it finds what that kit
+     * displaced. The pieces taken.
+     */
+    private CompletableFuture<Integer> removeAfterGifts(Character gm, Target target, AgentRuntimeEntry runtime) {
+        return game.settle(runtime).thenCompose(settled -> {
+            CompletableFuture<Integer> taken = new CompletableFuture<>();
+            world.executor().submit("gm.bossgear record " + target.chr().getName(), () -> {
+                try {
+                    Map<Short, Integer> displaced = BossGearRecord.read(world.store(), gm.getId(), target.personaId());
+                    game.remove(runtime, gm, displaced).whenComplete((count, failure) -> {
+                        if (failure != null) {
+                            taken.completeExceptionally(failure);
+                        } else {
+                            taken.complete(count);
+                        }
+                    });
+                } catch (RuntimeException failure) {
+                    taken.completeExceptionally(failure);
+                }
+            }).whenComplete((ran, failure) -> {
+                if (failure != null) { // companion-ops refused it (stopping)
+                    taken.completeExceptionally(failure);
+                }
+            });
+            return taken;
+        });
     }
 
     /** A piece of a {@code !bossgear} kit: an equip tagged {@value BossGearPlanner#OWNER_TAG} (BossGearPlanner.forge). */
