@@ -677,6 +677,10 @@ public final class PresenceScheduler {
                 if (current == null || !sessions.containsKey(session.characterId)) {
                     return;
                 }
+                if (asked != session.latestMove) { // a newer move was asked during this one's pause: that one stands
+                    log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), asked.mapId());
+                    return;
+                }
                 if (onSupplyTrip(session)) { // it ran low while the move waited
                     waitForSupplyTrip(session, current, asked);
                     return;
@@ -721,7 +725,7 @@ public final class PresenceScheduler {
             log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), move.mapId());
             return;
         }
-        session.waitingMove = move;
+        session.waitingMove.set(move);
         log.info("citizen {} stays on map {} for its supply trip; its move to {} waits until the trip ends",
                 session.name(), agent.getMapId(), move.mapId());
     }
@@ -729,18 +733,21 @@ public final class PresenceScheduler {
     /**
      * Makes the move that waited for the citizen's supply trip, unless a newer move was asked since (that one stands);
      * the move's activity starts on arrival as after any move (Market.onArrive for a shopper, a grind for TRAIN). A
-     * session that ended is never swept again. True when the move was made, so this sweep does nothing else.
+     * session that ended is never swept again. True when the move was made, so this sweep does nothing else. The move
+     * counts as its plan, as a re-plan's move does: a re-plan the trip held back would otherwise run at the next sweep,
+     * while this move is still on its pause (audit 2026-10-10: two moves in flight).
      */
     private boolean moveAfterSupplyTrip(CitizenSession session, long now) {
-        CitizenSession.Move waiting = session.waitingMove;
+        // taken and cleared in one step: a delayed move on the timer thread may set a newer one meanwhile
+        CitizenSession.Move waiting = session.waitingMove.getAndSet(null);
         if (waiting == null) {
             return false;
         }
-        session.waitingMove = null;
         if (waiting != session.latestMove) {
             return false;
         }
         log.info("citizen {} moves on to map {} after its supply trip", session.name(), waiting.mapId());
+        session.lastPlanAtMs = now;
         travel(session, waiting.activity(), waiting.mapId(), now);
         return true;
     }

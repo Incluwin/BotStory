@@ -295,6 +295,69 @@ class PresenceSchedulerSupplyTripTest {
     }
 
     @Test
+    void anOlderDelayedMoveWhosePauseEndsAfterTheTripGivesWayToo() {
+        // audit 2026-10-10: a short trip started and ended inside the older move's pause; the older move was still
+        // made, then the move that waited, so the citizen made two moves and the first was one it no longer wanted
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        scheduler.travel(session, CitizenSession.Activity.TOWN, TOWN, System.currentTimeMillis());
+        Runnable older = scheduledMove();
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        trip.clear();
+
+        older.run();
+        scheduler.sweep();
+        scheduledMove().run();
+
+        verify(agent, never()).changeMap(town, townSpawn);
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
+    void anOlderMoveThatLandsAfterANewerOneIsNotMade() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        scheduler.travel(session, CitizenSession.Activity.TOWN, TOWN, System.currentTimeMillis());
+        Runnable older = scheduledMove();
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        Runnable newer = scheduledMove();
+
+        newer.run(); // its pause was the shorter one
+        older.run();
+
+        verify(agent).changeMap(partyField, partySpawn);
+        verify(agent, never()).changeMap(town, townSpawn);
+        assertEquals(PARTY_FIELD, session.mapId);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
+    void theMoveMadeAfterTheTripIsItsPlanSoNoRePlanFollowsWhileItIsOnItsPause() {
+        // audit 2026-10-10: a re-plan that came due during the trip ran at the sweep after the one that made the move
+        // that waited, while that move was still on its pause (up to 90 s; a sweep is 60 s): two moves in flight
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        session.lastPlanAtMs = 0L; // its re-plan came due during the trip
+
+        trip.clear();
+        scheduler.sweep(); // the move that waited is made
+        scheduler.sweep(); // it is still on its pause
+
+        verify(timers, times(1)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), any(Runnable.class), anyLong());
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        verify(agent, never()).changeMap(town, townSpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
     void aMoveAskedAfterTheTripEndsReplacesTheOneThatWaited() {
         PresenceScheduler scheduler = scheduler();
         Character agent = loaded(scheduler);
