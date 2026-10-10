@@ -20,7 +20,8 @@ import java.sql.SQLException;
 /**
  * Makes sure a Persona has a backing character: an Agent-only account locked against
  * interactive login, a level-1 character with the Persona's name, and a durable Agent identity
- * (the same recipe {@code !spawnbot <name> confirm} uses, without needing a GM online).
+ * (the same recipe {@code !spawnbot <name> confirm} uses, without needing a GM online). The character
+ * starts in the gender its look gives it (ResidentLooks) and that gender's beginner clothes.
  */
 final class ResidentProvisioner {
     private static final Logger log = LoggerFactory.getLogger(ResidentProvisioner.class);
@@ -64,7 +65,8 @@ final class ResidentProvisioner {
             Client creation = AgentClientGatewayRuntime.clients().createHeadlessClient(world.config().WORLD, world.config().CHANNEL);
             creation.setAccID(account.accountId());
             creation.setAccountName(persona.name());
-            int characterId = AgentClientGatewayRuntime.clients().createBackingCharacter(creation, persona.name());
+            int characterId = AgentClientGatewayRuntime.clients().createBackingCharacter(creation, persona.name(),
+                    ResidentLooks.gender(persona));
             if (characterId == -1) {
                 log.warn("Persona {}: character creation for '{}' failed (name invalid or taken)", persona.id(), persona.name());
                 return 0;

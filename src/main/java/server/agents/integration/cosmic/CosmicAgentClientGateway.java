@@ -23,6 +23,11 @@ public enum CosmicAgentClientGateway implements AgentClientGateway {
     }
 
     @Override
+    public int createBackingCharacter(Client client, String name, int gender) {
+        return BotCreator.createCharacter(client, name, gender);
+    }
+
+    @Override
     public Character loadBackingCharacter(int characterId, Client client) throws SQLException {
         return Character.loadCharFromDB(characterId, client, true);
     }

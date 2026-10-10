@@ -20,9 +20,26 @@ import server.ItemInformationProvider;
 public class BotCreator extends CharacterFactory {
     private static final Logger log = LoggerFactory.getLogger(BotCreator.class);
 
+    /** A starting look: face, hair and the beginner clothes and weapon. */
+    private record StarterLook(int face, int hair, int top, int bottom, int shoes, int weapon) { }
+
+    /**
+     * Each gender's starting look; the clothes and weapon are stock creation choices of that gender (Etc.wz
+     * MakeCharInfo Info/CharMale, Info/CharFemale), so a woman never starts in the men's White Undershirt and Blue
+     * Jean Shorts. Female: White Tubetop, Red Miniskirt, the first female face and hair.
+     */
+    private static final StarterLook MALE_START = new StarterLook(20100, 30020, 1040002, 1060002, 1072001, 1302000);
+    private static final StarterLook FEMALE_START = new StarterLook(21000, 31000, 1041002, 1061002, 1072001, 1302000);
+
     public static int createCharacter(Client c, String name) {
-        return createCharacter(c, name, 20100, 30020, 0, 0,
-                1040002, 1060002, 1072001, 1302000);
+        return createCharacter(c, name, 0);
+    }
+
+    /** A character of this gender (0 male, 1 female) in that gender's starting look. */
+    public static int createCharacter(Client c, String name, int gender) {
+        StarterLook look = gender == 1 ? FEMALE_START : MALE_START;
+        return createCharacter(c, name, look.face(), look.hair(), 0, gender,
+                look.top(), look.bottom(), look.shoes(), look.weapon());
     }
 
     public static int createCharacter(Client c,

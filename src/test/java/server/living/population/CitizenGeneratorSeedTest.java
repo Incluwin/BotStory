@@ -24,8 +24,10 @@ import server.living.resident.ResidentRuntime;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,6 +55,7 @@ class CitizenGeneratorSeedTest {
     private final Population population = mock(Population.class);
     private final List<Citizen> saved = new ArrayList<>();
     private final AtomicInteger characters = new AtomicInteger(5000);
+    private final List<Object[]> created = new ArrayList<>();
     private final List<MockedStatic<?>> statics = new ArrayList<>();
 
     @BeforeEach
@@ -86,7 +89,10 @@ class CitizenGeneratorSeedTest {
         names.when(() -> Character.canCreateChar(anyString())).thenReturn(true);
         MockedStatic<BotCreator> creator = track(mockStatic(BotCreator.class));
         creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt())).thenAnswer(inv -> characters.incrementAndGet());
+                anyInt(), anyInt())).thenAnswer(inv -> {
+                    created.add(inv.getArguments());
+                    return characters.incrementAndGet();
+                });
     }
 
     @AfterEach
@@ -159,6 +165,27 @@ class CitizenGeneratorSeedTest {
                 "GrumpyCat evening-na orbis warrior-fighter restless-v1 playful-caps 1.400174025793 -58 2 [] life342",
                 "xKeisx student-afternoon aquarium magician-fire explorer-v1 proper-friendly 0.661406023888 45 2 [recruiter] life390",
                 "LittleAngel nightowl warrior-page orbis"), births);
+    }
+
+    /** A citizen starts in its own gender's clothes: gender digit ({@code id / 1000 % 10}) 0 male only, 1 female only, else both. */
+    @Test
+    void aCitizenStartsInItsOwnGendersClothes() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        Set<Integer> genders = new HashSet<>();
+        for (int i = 0; i < 40; i++) {
+            generator.birth(null, 0);
+        }
+        assertEquals(40, created.size());
+        for (Object[] call : created) {
+            int gender = (Integer) call[5];
+            genders.add(gender);
+            for (int slot = 6; slot < 10; slot++) {
+                int itemId = (Integer) call[slot];
+                int digit = itemId / 1000 % 10;
+                assertTrue(digit > 1 || digit == gender, call[1] + " (gender " + gender + ") starts in " + itemId);
+            }
+        }
+        assertEquals(Set.of(0, 1), genders, "40 births cover both genders");
     }
 
     @Test
