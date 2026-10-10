@@ -270,9 +270,10 @@ public final class AgentEquipmentReservePolicy {
     }
 
     /**
-     * The owned equips the Agent keeps for its current or future build. Of copies of one item that tie (same id and
-     * requirements, same relevant stats, same useful stat sum and upgrade slots) only one is kept: the one that comes
-     * first in {@code ownedItems}. The collectors here list worn pieces first, then the bag by slot.
+     * The owned equips the Agent keeps for its current or future build. Of copies of one item with the same relevant
+     * stats (same id and requirements) only one is kept: the better roll (exact useful stat sum, then the sum of all
+     * raw stats, then upgrade slots left), and of copies that tie on all of these the one that comes first in
+     * {@code ownedItems}. The collectors here list worn pieces first, then the bag by slot.
      */
     public static Set<Equip> selectOwnedItemsForSelfReserve(Character agent, SelfReserveHooks hooks,
                                                             Collection<Equip> ownedItems) {
@@ -320,6 +321,32 @@ public final class AgentEquipmentReservePolicy {
                 + equip.getAcc() + equip.getAvoid() + equip.getSpeed()
                 + (equip.getHp() + equip.getMp()) * 0.1;
         return (int) Math.round(sum);
+    }
+
+    /**
+     * {@link #usefulStatSum} times 20 with nothing rounded away: at this scale 0.1 per HP/MP, 0.25 per W.DEF/M.DEF and
+     * 1.1 per INT are whole numbers, so two rolls compare exactly. Keep the weights in step with usefulStatSum.
+     */
+    static long usefulStatSumTwentieths(Equip equip, Job job) {
+        if (equip == null) return 0L;
+        long hpmp = 2L * (equip.getHp() + equip.getMp());
+        if (AgentWeaponCompatibilityPolicy.isMageJob(job)) {
+            return 20L * (equip.getInt() * 5L + equip.getMatk() * 4L + equip.getLuk() + equip.getMdef()) + hpmp;
+        }
+        return 20L * ((long) equip.getStr() + equip.getDex() + equip.getLuk()
+                + equip.getAcc() + equip.getAvoid() + equip.getSpeed())
+                + 22L * equip.getInt()
+                + 80L * equip.getWatk()
+                + 5L * (equip.getWdef() + equip.getMdef())
+                + hpmp;
+    }
+
+    /** Every stat a copy can roll, counted one per point, whether or not the Agent's job uses it. */
+    private static int rawStatSum(Equip equip) {
+        return equip.getStr() + equip.getDex() + equip.getInt() + equip.getLuk()
+                + equip.getHp() + equip.getMp() + equip.getWatk() + equip.getMatk()
+                + equip.getWdef() + equip.getMdef() + equip.getAcc() + equip.getAvoid()
+                + equip.getHands() + equip.getSpeed() + equip.getJump();
     }
 
     public static String textSlotKey(ItemInformationProvider ii, Equip equip) {
@@ -396,13 +423,18 @@ public final class AgentEquipmentReservePolicy {
     }
 
     /**
-     * Ranks two copies of one item with the same relevant stats: the higher useful stat sum, then more upgrade slots
-     * left; a full tie goes to the copy that comes first, so of identical copies exactly one is kept.
+     * Ranks two copies of one item with the same relevant stats by their roll: the higher exact useful stat sum, then
+     * the higher sum of all raw stats (so a stat the job ignores, such as JUMP, still makes the better roll), then
+     * more upgrade slots left. Only a tie on all three goes to the copy that comes first, so of identical copies
+     * exactly one is kept.
      */
     private static boolean duplicateRanksAbove(Job job, Equip better, Equip worse, boolean betterComesFirst) {
-        int betterSum = usefulStatSum(better, job);
-        int worseSum = usefulStatSum(worse, job);
-        if (betterSum != worseSum) return betterSum > worseSum;
+        long betterUseful = usefulStatSumTwentieths(better, job);
+        long worseUseful = usefulStatSumTwentieths(worse, job);
+        if (betterUseful != worseUseful) return betterUseful > worseUseful;
+        int betterRaw = rawStatSum(better);
+        int worseRaw = rawStatSum(worse);
+        if (betterRaw != worseRaw) return betterRaw > worseRaw;
         if (better.getUpgradeSlots() != worse.getUpgradeSlots()) {
             return better.getUpgradeSlots() > worse.getUpgradeSlots();
         }
