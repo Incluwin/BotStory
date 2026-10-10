@@ -176,7 +176,7 @@ class CosmicOpenChatSaleServiceTest {
         CosmicNegotiatedTradeExecutor executor = mock(CosmicNegotiatedTradeExecutor.class);
         when(executor.executeExactItem(anyString(), eq("buyer"), eq(400_000L), eq("seller"),
                 eq(1302000), anyString(), eq(1))).thenReturn(
-                new server.agents.economy.social.TradeExecutionGateway.Result(true, "trade-1", "settled"));
+                new server.agents.economy.social.TradeExecutionGateway.Result(true, "trade-1", "settled", true));
         CosmicOpenChatSaleService.ReservationGateway reservations =
                 mock(CosmicOpenChatSaleService.ReservationGateway.class);
         CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
@@ -376,10 +376,10 @@ class CosmicOpenChatSaleServiceTest {
         CosmicNegotiatedTradeExecutor executor = mock(CosmicNegotiatedTradeExecutor.class);
         when(executor.executeExactItem(anyString(), eq("buyer"), eq(400_000L), eq("seller"),
                 eq(1302000), anyString(), eq(1))).thenReturn(new TradeExecutionGateway.Result(false,
-                "open-chat:sale", "Cosmic exact-item trade did not settle"));
+                "open-chat:sale", "Cosmic exact-item trade did not settle", true));
         when(executor.executeExactItem(anyString(), eq("other"), eq(400_000L), eq("seller"),
                 eq(1302000), anyString(), eq(1))).thenReturn(new TradeExecutionGateway.Result(true,
-                "open-chat:sale", "Cosmic exact-item PLAYER_TRADE committed"));
+                "open-chat:sale", "Cosmic exact-item PLAYER_TRADE committed", true));
         CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
                 config(), new NamedRandomStreams(1), participants, economy, mock(EconomyEvidenceJournal.class),
                 executor, mock(CosmicOpenChatSaleService.ReservationGateway.class), (itemId, quantity) -> 100_000,
@@ -406,6 +406,182 @@ class CosmicOpenChatSaleServiceTest {
         verify(executor, times(1)).executeExactItem(anyString(), eq("buyer"), anyLong(), anyString(),
                 anyInt(), anyString(), anyInt());
         assertTrue(service.views().isEmpty());
+    }
+
+    /**
+     * Deploy review 2026-10-10 (on 91c58c607): every failed Agent trade put the buyer on the offer's refused list, also
+     * one that failed because the seller was busy, before any trade opened. A human who invites the seller holds it
+     * busy (handleManualTrade keeps that trade up to the PT2M negotiation timeout), so one busy moment shut the Agent
+     * buyer out for the offer's whole lifetime, after both had said their lines into the busy seller. Here a human
+     * invites the seller, then trades with it: the buyer leaves the offer alone without a word, and buys it once the
+     * human's trade closed.
+     */
+    @Test
+    void anAgentBuyerLeavesASellerInAHumansTradeAloneAndBuysOnceItIsFree() {
+        UUID runId = UUID.randomUUID();
+        Instant at = Instant.parse("2026-01-01T00:00:00Z");
+        MapleMap room = mock(MapleMap.class);
+        Character seller = trader(940_101, room);
+        Character buyer = trader(940_102, room);
+        Character human = trader(940_103, room);
+        swordIn(seller);
+        EconomyParticipantRegistry participants = new EconomyParticipantRegistry(id -> null);
+        participants.admitted(profile("seller"), seller);
+        participants.admitted(profile("buyer"), buyer);
+        List<String> chat = new ArrayList<>();
+        CosmicNegotiatedTradeExecutor executor = settlesBetweenFreeTraders(buyer, seller);
+        CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
+                config(), new NamedRandomStreams(1), participants, echoingEconomy(runId),
+                mock(EconomyEvidenceJournal.class), executor,
+                mock(CosmicOpenChatSaleService.ReservationGateway.class), (itemId, quantity) -> 100_000,
+                (speaker, text) -> chat.add(text),
+                (shopper, target) -> CosmicCounterpartyApproachService.Status.ARRIVED);
+        service.prepare(seller, profile("seller"), swordPlan(), at);
+        service.progressSeller(seller, profile("seller"), at.plusSeconds(5)); // its first advertisement
+        chat.clear();
+
+        try (MockedStatic<PacketCreator> ignoredPackets = mockStatic(PacketCreator.class)) {
+            Trade.startTrade(human);
+            Trade.inviteTrade(human, seller); // the human's invite waits for the seller's answer
+            var invited = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)),
+                    at.plusSeconds(6));
+            Trade.visitTrade(seller, human); // the seller takes the human's trade
+            var trading = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)),
+                    at.plusSeconds(11));
+            Trade.cancelTrade(human, Trade.TradeResult.NO_RESPONSE); // the human walks away without a deal
+
+            assertAll(
+                    () -> assertFalse(invited.attempted(), invited.outcome()),
+                    () -> assertFalse(trading.attempted(), trading.outcome()),
+                    () -> assertTrue(chat.isEmpty(), "no lines into a busy seller: " + chat),
+                    () -> verify(executor, never()).executeExactItem(anyString(), anyString(), anyLong(),
+                            anyString(), anyInt(), anyString(), anyInt()),
+                    () -> verify(buyer, never()).setTrade(argThat(Objects::nonNull)));
+        }
+
+        var free = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(16));
+
+        assertTrue(free.sold(), free.outcome());
+        assertEquals("AGENT_TRADE_SETTLED", free.outcome());
+        assertTrue(service.views().isEmpty());
+    }
+
+    /**
+     * The race past that check: a human invites the seller while the buyer walks up. The executor finds the seller
+     * already trading, and no trade opened, so the buyer is not held to it: it buys once the human's trade closed.
+     */
+    @Test
+    void aSellerAHumanInvitesJustBeforeTheTradeDoesNotShutTheBuyerOut() {
+        UUID runId = UUID.randomUUID();
+        Instant at = Instant.parse("2026-01-01T00:00:00Z");
+        MapleMap room = mock(MapleMap.class);
+        Character seller = trader(940_111, room);
+        Character buyer = trader(940_112, room);
+        Character human = trader(940_113, room);
+        swordIn(seller);
+        EconomyParticipantRegistry participants = new EconomyParticipantRegistry(id -> null);
+        participants.admitted(profile("seller"), seller);
+        participants.admitted(profile("buyer"), buyer);
+        AtomicInteger approaches = new AtomicInteger();
+        CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
+                config(), new NamedRandomStreams(1), participants, echoingEconomy(runId),
+                mock(EconomyEvidenceJournal.class), settlesBetweenFreeTraders(buyer, seller),
+                mock(CosmicOpenChatSaleService.ReservationGateway.class), (itemId, quantity) -> 100_000,
+                (speaker, text) -> { }, (shopper, target) -> {
+                    if (approaches.getAndIncrement() == 0) { // the human gets there first
+                        Trade.startTrade(human);
+                        Trade.inviteTrade(human, target);
+                    }
+                    return CosmicCounterpartyApproachService.Status.ARRIVED;
+                });
+        service.prepare(seller, profile("seller"), swordPlan(), at);
+        service.progressSeller(seller, profile("seller"), at.plusSeconds(5));
+
+        try (MockedStatic<PacketCreator> ignoredPackets = mockStatic(PacketCreator.class)) {
+            var raced = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)),
+                    at.plusSeconds(6));
+
+            assertEquals("counterparty is already trading", raced.outcome());
+            assertFalse(raced.sold());
+            verify(buyer, never()).setTrade(argThat(Objects::nonNull)); // no trade opened
+            Trade.cancelTrade(human, Trade.TradeResult.NO_RESPONSE);
+        }
+
+        var free = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(11));
+
+        assertTrue(free.sold(), free.outcome());
+        assertEquals(2, approaches.get());
+    }
+
+    /**
+     * Deploy review 2026-10-10: when the seller had left the offer's room (or the buyer had no Agent runtime), the
+     * approach came back UNAVAILABLE on every revisit, and the buyer stayed on that offer until the seller came back or
+     * the offer expired. Now the buyer leaves that offer alone for the seller's minimum repeat delay (PT1M here), other
+     * buyers may still try it, and after the delay the buyer tries it again.
+     */
+    @Test
+    void aBuyerThatCannotReachTheSellerLeavesThatOfferAloneForAWhile() {
+        UUID runId = UUID.randomUUID();
+        Instant at = Instant.parse("2026-01-01T00:00:00Z");
+        MapleMap room = mock(MapleMap.class);
+        Character seller = trader(77, room);
+        Character buyer = trader(88, room);
+        Character other = trader(99, room);
+        swordIn(seller);
+        EconomyParticipantRegistry participants = new EconomyParticipantRegistry(id -> null);
+        participants.admitted(profile("seller"), seller);
+        participants.admitted(profile("buyer"), buyer);
+        participants.admitted(profile("other"), other);
+        List<Character> approachedBy = new ArrayList<>();
+        CosmicNegotiatedTradeExecutor executor = mock(CosmicNegotiatedTradeExecutor.class);
+        CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
+                config(), new NamedRandomStreams(1), participants, echoingEconomy(runId),
+                mock(EconomyEvidenceJournal.class), executor,
+                mock(CosmicOpenChatSaleService.ReservationGateway.class), (itemId, quantity) -> 100_000,
+                (speaker, text) -> { }, (shopper, target) -> {
+                    approachedBy.add(shopper);
+                    return CosmicCounterpartyApproachService.Status.UNAVAILABLE;
+                });
+        service.prepare(seller, profile("seller"), swordPlan(), at);
+        service.progressSeller(seller, profile("seller"), at.plusSeconds(5));
+
+        var unreachable = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(6));
+        var another = service.attemptPurchase(other, profile("other"), List.of(swordNeed(at)), at.plusSeconds(7));
+        var within = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(65));
+        var after = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(66));
+
+        assertAll(
+                () -> assertEquals("APPROACH_UNAVAILABLE", unreachable.outcome()),
+                () -> assertEquals(Boolean.FALSE, unreachable.evidence().get("externalActionPending")),
+                () -> assertFalse(within.attempted(), within.outcome()),
+                () -> assertEquals("APPROACH_UNAVAILABLE", another.outcome(), "other buyers may still try it"),
+                () -> assertEquals("APPROACH_UNAVAILABLE", after.outcome(), "after the delay it tries again"),
+                () -> assertEquals(List.of(buyer, other, buyer), approachedBy),
+                () -> verifyNoInteractions(executor),
+                () -> assertEquals(1, service.views().size()));
+    }
+
+    /**
+     * The real executor, except that a trade between the two when both are free settles: the settlement itself needs
+     * the database (anAgentBuyerRefusedForItsFullBag... runs the real trade up to its refusal).
+     */
+    private static CosmicNegotiatedTradeExecutor settlesBetweenFreeTraders(Character buyer, Character seller) {
+        CosmicNegotiatedTradeExecutor executor = spy(new CosmicNegotiatedTradeExecutor(
+                id -> "buyer".equals(id) ? buyer : seller, 160));
+        doAnswer(call -> buyer.getTrade() == null && seller.getTrade() == null
+                ? new TradeExecutionGateway.Result(true, call.getArgument(0),
+                        "Cosmic exact-item PLAYER_TRADE committed", true)
+                : call.callRealMethod()).when(executor).executeExactItem(anyString(), anyString(), anyLong(),
+                anyString(), anyInt(), anyString(), anyInt());
+        return executor;
+    }
+
+    private static void swordIn(Character seller) {
+        Inventory equips = mock(Inventory.class);
+        Item sword = new Item(1302000, (short) 2, (short) 1);
+        when(seller.getInventory(InventoryType.EQUIP)).thenReturn(equips);
+        when(equips.getItem((short) 2)).thenReturn(sword);
+        when(equips.listById(1302000)).thenReturn(List.of(sword));
     }
 
     private static CosmicAgentEconomyFacade echoingEconomy(UUID runId) {

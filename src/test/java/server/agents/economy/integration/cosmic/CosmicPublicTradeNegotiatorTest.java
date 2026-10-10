@@ -175,7 +175,7 @@ class CosmicPublicTradeNegotiatorTest {
     void publiclyAcceptsClosesRealStallAndUsesRealTradeGateway() {
         when(closer.close(seller, "NEGOTIATED_DIRECT_TRADE")).thenReturn(true);
         when(trades.execute(anyString(), eq("buyer"), any(), eq("seller"), any()))
-                .thenReturn(new TradeExecutionGateway.Result(true, "tx-1", "committed"));
+                .thenReturn(new TradeExecutionGateway.Result(true, "tx-1", "committed", true));
         CosmicPublicTradeNegotiator negotiator = negotiator(profile("seller", 1));
 
         AutonomousFreeMarketBehavior.NegotiationBehavior.Result result = negotiator.attempt(
@@ -209,7 +209,7 @@ class CosmicPublicTradeNegotiatorTest {
         when(buyerEtc.countById(4000001)).thenReturn(1);
         when(closer.close(seller, "NEGOTIATED_DIRECT_TRADE")).thenReturn(true);
         when(trades.execute(anyString(), eq("buyer"), any(), eq("seller"), any()))
-                .thenReturn(new TradeExecutionGateway.Result(true, "tx-barter", "committed"));
+                .thenReturn(new TradeExecutionGateway.Result(true, "tx-barter", "committed", true));
         CommerceParticipant sellerProfile = profile("seller", 0);
         CosmicPublicTradeNegotiator.Participant participant =
                 new CosmicPublicTradeNegotiator.Participant(seller, sellerProfile);

@@ -248,7 +248,10 @@ public final class AutonomousFreeMarketBehavior implements CosmicEconomyWorldAda
             if (publicSale.attempted()) {
                 appendOpenChatDecision(profile, logicalAt, "OPEN_CHAT_PURCHASE", publicSale);
                 if (publicSale.sold()) return revisit(logicalAt, false);
-                if (publicSale.outcome().startsWith("APPROACH_")) return revisit(logicalAt,
+                // an unreachable seller (it left the room) is left alone for a while by the sale service, so the buyer
+                // goes on with its stall trip in this tick instead of waiting on the offer (deploy review 2026-10-10)
+                if (publicSale.outcome().startsWith("APPROACH_")
+                        && !"APPROACH_UNAVAILABLE".equals(publicSale.outcome())) return revisit(logicalAt,
                         Boolean.TRUE.equals(publicSale.evidence().get("externalActionPending")));
             }
             PhysicalMarketTrip.Step step = state.trip.tick(agent, profile.agentId(), logicalAt,

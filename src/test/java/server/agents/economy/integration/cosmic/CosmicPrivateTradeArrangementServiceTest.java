@@ -47,7 +47,7 @@ class CosmicPrivateTradeArrangementServiceTest {
         CosmicNegotiatedTradeExecutor trades = mock(CosmicNegotiatedTradeExecutor.class);
         when(trades.executeExactItem(agreement.arrangementId().toString(), "buyer", 250_000,
                 "seller", 1302013, "exact-kfan", 1)).thenReturn(
-                new TradeExecutionGateway.Result(true, "tx-exact", "settled"));
+                new TradeExecutionGateway.Result(true, "tx-exact", "settled", true));
 
         var result = new CosmicPrivateTradeArrangementService(run, store, participants, physical,
                 sellerGateway, trades).progress(buyer, buyerProfile, at);

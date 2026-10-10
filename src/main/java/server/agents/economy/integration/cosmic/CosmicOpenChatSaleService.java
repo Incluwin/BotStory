@@ -3,6 +3,7 @@ package server.agents.economy.integration.cosmic;
 import client.Character;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import net.server.coordinator.world.InviteCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
@@ -211,7 +212,9 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                 .filter(offer -> !offer.sellerAgentId.equals(profile.agentId())
                         && offer.advertisements > 0 && offer.mapId == buyer.getMapId()
                         && logicalAt.isBefore(offer.expiresAt)
-                        && !offer.refusedBuyers.contains(profile.agentId())) // nor the approach to its seller
+                        && !offer.refusedBuyers.contains(profile.agentId()) // nor the approach to its seller
+                        && !sellerBusy(offer) // for now: no lines into a seller in a human's trade or invite
+                        && !logicalAt.isBefore(offer.unreachableUntil.getOrDefault(profile.agentId(), Instant.MIN)))
                 .flatMap(offer -> needs.stream().filter(need -> need.deficit() >= offer.quantity
                                 && (need.itemId() == offer.itemId || need.substitutes().contains(offer.itemId)))
                         .map(need -> purchaseCandidate(offer, need, liquidityBudget)))
@@ -222,6 +225,12 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         Character seller = participants.admittedCharacter(offer.sellerAgentId);
         if (seller == null) return Result.none();
         CosmicCounterpartyApproachService.Status proximity = approach.request(buyer, seller);
+        if (proximity == CosmicCounterpartyApproachService.Status.UNAVAILABLE)
+            // the seller left the offer's room, or the buyer cannot walk: it goes back to the stalls and leaves this
+            // offer alone until the seller could call it out again (deploy review 2026-10-10). Other buyers may still
+            // try it. Not checkpointed: after a restore the buyer may look for the seller once more.
+            offer.unreachableUntil.put(profile.agentId(),
+                    logicalAt.plus(Duration.parse(config.minimumRepeatDelay)));
         if (proximity != CosmicCounterpartyApproachService.Status.ARRIVED)
             return new Result(true, false, false, "APPROACH_" + proximity.name(),
                     offer.offerId.toString(), offer.itemId, selected.payment(),
@@ -251,12 +260,14 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                 "OPEN_CHAT_SELLER_ACCEPT", sellerText, payment, acceptance.intentId());
         TradeExecutionResult execution = executeAgentTrade(buyer, profile, seller, offer, payment, logicalAt);
         if (!execution.success()) {
-            // the trade did not go through: refused (the buyer's bag or one-of-a-kind limit, the seller's meso room or
-            // daily meso limit) or never opened. server.Trade does not say whose refusal it was, so the offer stays up
-            // for other buyers and only this buyer leaves it alone. Its need is unchanged, so it would open the same
-            // trade on every revisit and walk back to the seller from any stall (deploy review 2026-10-10). FAILED is
-            // this attempt's state, not a dead offer: a dead one leaves 'offers' through close().
-            offer.refusedBuyers.add(profile.agentId());
+            // a trade that opened and did not go through was refused (the buyer's bag or one-of-a-kind limit, the
+            // seller's meso room or daily meso limit). server.Trade does not say whose refusal it was, so the offer
+            // stays up for other buyers and only this buyer leaves it alone. Its need is unchanged, so it would open
+            // the same trade on every revisit and walk back to the seller from any stall. A trade that never opened
+            // (a human took the seller first) is no refusal: the busy-seller check skips the offer until the seller
+            // is free (deploy review 2026-10-10). FAILED is this attempt's state, not a dead offer: a dead one leaves
+            // 'offers' through close().
+            if (execution.tradeOpened()) offer.refusedBuyers.add(profile.agentId());
             offer.state = OfferState.FAILED;
             economy.resolveIntent(profile.agentId(), buyerOffer.intentId(), EconomicIntent.Status.CANCELLED,
                     logicalAt, execution.outcome());
@@ -447,7 +458,18 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         var result = EconomyOperationContext.with(metadata, () -> trades.executeExactItem(
                 "open-chat:" + offer.offerId, buyerProfile.agentId(), payment,
                 offer.sellerAgentId, offer.itemId, offer.fingerprint, offer.quantity));
-        return new TradeExecutionResult(result.succeeded(), result.evidence());
+        return new TradeExecutionResult(result.succeeded(), result.evidence(), result.tradeOpened());
+    }
+
+    /**
+     * True while the seller is in a trade or a trade invite waits for its answer: a human who invites it holds it for
+     * up to the negotiation timeout (handleManualTrade). Skipping is not a refusal, so nothing is recorded against the
+     * buyer, and it may buy once the seller is free (deploy review 2026-10-10).
+     */
+    private boolean sellerBusy(Offer offer) {
+        Character seller = participants.admittedCharacter(offer.sellerAgentId);
+        return seller != null && (seller.getTrade() != null
+                || InviteCoordinator.hasInvite(InviteCoordinator.InviteType.TRADE, seller.getId()));
     }
 
     private CandidatePurchase purchaseCandidate(Offer offer, AgentNeed need, long liquidityBudget) {
@@ -547,7 +569,7 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
     private record Candidate(int index, AgentFreeMarketStallService.Listing listing, Item item,
                              EconomyItemEvidence.Description description) { }
     private record CandidatePurchase(Offer offer, long payment, double score) { }
-    private record TradeExecutionResult(boolean success, String outcome) { }
+    private record TradeExecutionResult(boolean success, String outcome, boolean tradeOpened) { }
 
     interface ReservationGateway {
         void reserve(Character seller, UUID offerId, int itemId, int quantity, Duration lifetime);
@@ -583,7 +605,8 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         private long tradeStartedAtMs;
         private boolean reservationActive = true;
         private OfferState state = OfferState.OPEN;
-        private final Set<String> refusedBuyers = new HashSet<>(); // Agent buyers whose trade for it did not go through
+        private final Set<String> refusedBuyers = new HashSet<>(); // Agent buyers whose opened trade for it was refused
+        private final Map<String, Instant> unreachableUntil = new HashMap<>(); // Agent buyer -> when it looks again
 
         private Offer(UUID offerId, UUID intentId, String sellerAgentId, int sellerCharacterId,
                       InventoryType inventoryType, short slot, int itemId, String fingerprint,
