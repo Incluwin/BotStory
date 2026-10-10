@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -195,11 +196,11 @@ class AgentWhisperCommandServiceTest {
              MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class);
              MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class)) {
             // the whispered line waits on its judgment; the owner's party line is taken at once
-            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), any(), any(), any(), any())).thenAnswer(call -> {
-                if (!"u got pots".equals(call.getArgument(1))) {
+            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), anyInt(), any(), any(), any(), any())).thenAnswer(call -> {
+                if (!"u got pots".equals(call.getArgument(2))) {
                     return CompletableFuture.completedFuture(true);
                 }
-                judging.add(call.getArgument(4));
+                judging.add(call.getArgument(5));
                 return new CompletableFuture<Boolean>();
             });
 
@@ -369,7 +370,7 @@ class AgentWhisperCommandServiceTest {
                      mockStatic(AgentSchedulerRuntime.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
             scheduler.when(() -> AgentSchedulerRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(),
                     any(Runnable.class))).thenAnswer(call -> delayed.add(call.getArgument(2)));
-            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), any(), any(), any(), any()))
+            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), anyInt(), any(), any(), any(), any()))
                     .thenReturn(CompletableFuture.completedFuture(false));
             chat.when(() -> AgentChatRuntime.handleChat(eq("heals off"), any())).thenAnswer(call -> {
                 AgentControlRuntime.toggleCallbacks(entry).setHeals(false);

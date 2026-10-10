@@ -800,12 +800,16 @@ public final class ResidentDialogue {
      * tamsin" or "sell your junk tamsin" reached every companion out. A line the phrase packs read as an Agent command
      * goes to the named companion's Agent alone, as the line with the name first does (CompanionChatVerbs.toAgent).
      * To a companion that is not out with its owner it reaches no companion out: a sell-now command is the job SELL,
-     * as "sell junk tamsin" is, and any other is nobody's. "follow &lt;name&gt;" and "dismiss &lt;name&gt;" stay the
-     * Agent routes' own.
+     * as "sell junk tamsin" is, and any other is nobody's: the owner is told it is not out (third deploy review
+     * 2026-10-10: the line went nowhere, unanswered). "follow &lt;name&gt;" and "dismiss &lt;name&gt;" stay the
+     * Agent routes' own. The phrase packs read the whole line, the name one of its unknown trailing words, as the
+     * untargeted route read it (third deploy review 2026-10-10: the line without the name freed one more, and "here you
+     * go tamsin" became "move here", "stop being silly tamsin" "stop"); so this takes exactly the lines that reached
+     * every companion out as a command, and every other line keeps its social path.
      */
     private boolean agentCommandFor(Character owner, Persona persona, String command, String line) {
         PhraseMatcher phrases = world.phrases();
-        String canonical = phrases == null ? null : phrases.commandFor(command);
+        String canonical = phrases == null ? null : phrases.commandFor(line);
         if (canonical == null || AgentChatCommandClassifier.matchFollowTarget(line) != null
                 || AgentDismissCommandService.dismissTarget(line) != null) {
             return false;
@@ -815,6 +819,8 @@ public final class ResidentDialogue {
             world.chatVerbs().toAgent(owner, persona, command);
         } else if (SELL_NOW.contains(canonical)) {
             rosterCommandFor(owner, persona, canonical, false);
+        } else {
+            world.chatVerbs().say(owner, "roster.not_out", () -> persona.name() + " is not out with you right now.");
         }
         return true;
     }

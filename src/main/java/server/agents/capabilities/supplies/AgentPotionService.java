@@ -498,7 +498,7 @@ public final class AgentPotionService {
         if (selfSustaining(entry)) {
             return OwnerPotShareResult.BLOCKED;
         }
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null || owner.getTrade() != null) {
             return OwnerPotShareResult.BLOCKED;
         }

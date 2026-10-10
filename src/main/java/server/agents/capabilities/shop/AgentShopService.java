@@ -714,8 +714,11 @@ public final class AgentShopService {
                 AgentQuestItemDispositionRuntime.collectShopSaleCandidates(
                         sequence.entry(), sequence.bot(), sequence.inventory(),
                         System.currentTimeMillis());
+        // the request this sale takes ends with its plan: one made during the sale ("i'll sell the junk after this")
+        // stays, and the visit's next step sells what came meanwhile at the same counter (third deploy review
+        // 2026-10-10: the sale cleared it as it finished, and that junk was never sold)
+        AgentShopStateRuntime.setShopSellTrashPending(sequence.entry(), false);
         if (items.isEmpty() && etcPlan.isEmpty()) {
-            AgentShopStateRuntime.setShopSellTrashPending(sequence.entry(), false);
             AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopNoTrashEquipsReply());
             afterSale.run();
             return;
@@ -890,7 +893,6 @@ public final class AgentShopService {
             List<String> bought,
             AgentShopBuyReport firstShortfall,
             Runnable afterSale) {
-        AgentShopStateRuntime.setShopSellTrashPending(entry, false);
         if (tally.anySold()) {
             AgentShopRuntime.sayMapNow(bot,
                     AgentDialogueCatalog.shopSoldTrashReply(tally.equipsSold(), tally.etcStacksSold()));

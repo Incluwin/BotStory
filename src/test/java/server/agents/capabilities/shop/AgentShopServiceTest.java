@@ -261,6 +261,92 @@ class AgentShopServiceTest {
         assertFalse(AgentShopStateRuntime.shopSellTrashPending(entry));
     }
 
+    /**
+     * Third deploy review 2026-10-10: "sell junk" while a sale at the counter is under way got "i'll sell the junk
+     * after this, one sec.", and the sale under way, whose plan was fixed when it started, cleared the request as it
+     * finished: the junk handed over meanwhile was never sold, and the visit closed. The request a sale takes is
+     * cleared when that sale fixes its plan, so one made during it sells at the same counter next.
+     */
+    @Test
+    void sellTrashDuringASaleAtTheCounterSellsWhatCameMeanwhile() {
+        Character bot = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        NPC npc = shopNpc(new Point(20, 0));
+        Shop shop = mock(Shop.class);
+        ShopGateway gateway = mock(ShopGateway.class);
+        Item first = mock(Item.class);
+        Item second = mock(Item.class);
+        when(first.getPosition()).thenReturn((short) 1);
+        when(second.getPosition()).thenReturn((short) 2);
+        List<Item> carried = new java.util.concurrent.CopyOnWriteArrayList<>(List.of(first));
+        when(bot.getMap()).thenReturn(map);
+        when(bot.getPosition()).thenReturn(new Point(0, 0));
+        when(bot.getInventory(InventoryType.USE)).thenReturn(new Inventory(bot, InventoryType.USE, (byte) 24));
+        when(bot.getBuffedValue(any(BuffStat.class))).thenReturn(null);
+        when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+        when(shop.getItems()).thenReturn(List.of());
+        when(gateway.findForNpc(npc.getId())).thenReturn(shop);
+        when(gateway.sell(any(), any(), any(), anyShort(), anyShort())).thenAnswer(sale -> {
+            short position = sale.getArgument(3);
+            carried.removeIf(item -> item.getPosition() == position);
+            return null;
+        });
+        InventoryGateway inventory = inventoryGateway();
+        List<Runnable> scheduled = new ArrayList<>();
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks =
+                     mockStatic(AgentAttackExecutionProvider.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+             MockedStatic<server.agents.capabilities.supplies.AgentCombatAmmoCheckRuntime> ammo =
+                     mockStatic(server.agents.capabilities.supplies.AgentCombatAmmoCheckRuntime.class);
+             MockedStatic<AgentShopGatewayRuntime> shops = mockStatic(AgentShopGatewayRuntime.class);
+             MockedStatic<AgentShopRuntime> runtime = mockStatic(AgentShopRuntime.class);
+             MockedStatic<AgentInventorySellTrashService> trash = mockStatic(AgentInventorySellTrashService.class);
+             MockedStatic<AgentQuestItemDispositionRuntime> etc = mockStatic(AgentQuestItemDispositionRuntime.class);
+             MockedStatic<AgentInventoryItemPolicy> items =
+                     mockStatic(AgentInventoryItemPolicy.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            shops.when(AgentShopGatewayRuntime::shop).thenReturn(gateway);
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.SWORD1H);
+            potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{9999, 9999});
+            runtime.when(() -> AgentShopRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(), any(Runnable.class)))
+                    .thenAnswer(invocation -> scheduled.add(invocation.getArgument(2)));
+            trash.when(() -> AgentInventorySellTrashService.collectSellTrashEquips(
+                    any(AgentRuntimeEntry.class), any(Character.class), any(InventoryGateway.class)))
+                    .thenAnswer(collect -> List.copyOf(carried));
+            etc.when(() -> AgentQuestItemDispositionRuntime.collectShopSaleCandidates(any(), any(), any(), anyLong()))
+                    .thenReturn(List.of());
+            items.when(() -> AgentInventoryItemPolicy.hasItem(eq(bot), any(Item.class)))
+                    .thenAnswer(held -> carried.contains(held.<Item>getArgument(1)));
+
+            // a restock visit bought potions, and "sell junk" came as it closed: the close sells first
+            assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, npc.getId()));
+            AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
+            assertTrue(AgentShopService.tickShopVisit(entry, bot, inventory));
+            scheduled.remove(0).run();
+            scheduled.clear(); // its purchase steps are done
+            AgentShopService.finishPurchaseSequence(new AgentShopPurchaseSequence<>(entry, bot, inventory,
+                    new Point(20, 0), List.of(), new ArrayList<>(List.of("50 red potions")), null), true);
+            AgentShopService.requestSellTrashVisit(entry, bot, inventory);
+            scheduled.remove(0).run(); // the close: its sale fixes its plan, the first junk
+            assertEquals(1, scheduled.size(), "the sale's first step waits");
+
+            // during that sale its owner hands over more junk, and asks again
+            carried.add(second);
+            AgentShopService.requestSellTrashVisit(entry, bot, inventory);
+
+            for (int step = 0; step < 50 && !scheduled.isEmpty(); step++) {
+                scheduled.remove(0).run();
+            }
+            runtime.verify(() -> AgentShopRuntime.replyNow(entry, "i'll sell the junk after this, one sec."),
+                    org.mockito.Mockito.times(2));
+        }
+
+        assertEquals(List.of(), carried, "both pieces of junk were sold");
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "the visit closed after the sales");
+        assertFalse(AgentShopStateRuntime.shopSellTrashPending(entry));
+    }
+
     @Test
     void shouldNotTriggerClawShopVisitWhenBestStarIsAboveThreshold() {
         Character bot = clawBotWithStars(800, 1000, 1000, 1000, 1000, 1000); // 5800 of the best star

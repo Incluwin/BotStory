@@ -71,7 +71,7 @@ public final class AgentInventoryTransferService {
 
     public static void startTradeTransfer(String category, AgentRuntimeEntry entry, Character agent) {
         long startedAt = AgentTradeCommandProfiler.profileCategory(category) ? System.nanoTime() : 0L;
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
 
         AgentTradeTransferRouter.routeCategoryTransfer(
                 category,
@@ -163,7 +163,7 @@ public final class AgentInventoryTransferService {
         List<Item> collected = AgentTradeItemCollectionService.collectItems(
                 category,
                 agent,
-                AgentRelationshipRuntime.interactionTarget(entry),
+                AgentRelationshipRuntime.requester(entry),
                 AgentTradeItemCollectionService.TradeItemCollectionCallbacks.of(
                         () -> recommendedItems(entry, agent),
                         () -> classifyEquipTradeGroups(entry, agent),
@@ -221,7 +221,7 @@ public final class AgentInventoryTransferService {
     }
 
     private static void startTradeMesoTransfer(String category, AgentRuntimeEntry entry, Character agent) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         AgentMesoTradeService.MesoTradeStartDecision decision = AgentMesoTradeService.decideStart(
                 category,
                 owner != null,
@@ -256,7 +256,7 @@ public final class AgentInventoryTransferService {
                 () -> recommendedItems(entry, agent),
                 () -> classifyEquipTradeGroups(entry, agent),
                 () -> classifyAmmoTradeGroups(agent),
-                AgentRelationshipRuntime.interactionTarget(entry),
+                AgentRelationshipRuntime.requester(entry),
                 inventory());
     }
 
@@ -289,7 +289,7 @@ public final class AgentInventoryTransferService {
     }
 
     private static List<Item> recommendedItems(AgentRuntimeEntry entry, Character agent) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null) {
             return List.of();
         }

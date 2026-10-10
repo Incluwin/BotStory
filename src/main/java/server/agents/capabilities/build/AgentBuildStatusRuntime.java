@@ -4,6 +4,7 @@ import server.agents.capabilities.equipment.AgentEquipRecommendation;
 
 import client.Character;
 import server.agents.capabilities.dialogue.AgentChatStatusRuntime;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
@@ -45,9 +46,14 @@ public final class AgentBuildStatusRuntime {
                 return AgentBuildService.buildApPrompt(entry, bot);
             }
 
+            /**
+             * The job, SP and AP prompts are the owner's decisions, and the owner's next line answers them: no line's
+             * route, though a whispered "hi" or "grind" raised them, so an administrator's greeting does not take the
+             * owner's job prompt (third deploy review 2026-10-10); the reply channel is read when it is sent.
+             */
             @Override
             public void queueReply(String message) {
-                AgentDialogueTransportRuntime.queueReply(entry, message);
+                AgentDialogueTransportRuntime.queueReply(entry, message, (AgentReplyRoute) null);
             }
 
             @Override

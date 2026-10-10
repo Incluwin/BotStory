@@ -193,6 +193,60 @@ class CompanionSellNowTest {
         }
     }
 
+    /**
+     * Third deploy review 2026-10-10: the roster read the line with the name taken off, which frees one of the two
+     * unknown trailing words the phrase packs allow, so "here you go tamsin" (an owner handing over the supplies its
+     * companion asked for) became "move here" for Tamsin alone, "stop being silly tamsin" "stop" and "trade you later
+     * tamsin" "trade". With the name these lines are no command, as the untargeted Agent route read them before: the
+     * roster leaves them, and no Agent is given a command.
+     */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"here you go tamsin", "here take these tamsin", "here it is tamsin",
+            "stop being silly tamsin", "trade you later tamsin"})
+    void aSocialLineEndingWithTheNameIsNoCommand(String said) {
+        installPhrasePacks();
+        List<String> heard = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class)) {
+            // each Agent records each line its chat flow is given, the whole line or a canonical command
+            chat.when(() -> AgentChatRuntime.handleChat(any(), any())).thenAnswer(call -> {
+                heard.add(call.getArgument(0));
+                return false;
+            });
+
+            assertFalse(dialogue.onMapChat(alice, said), "the roster leaves a line that is no command");
+            mapChat(said);
+            drainAll(tamsin);
+            drainAll(hadrik);
+        }
+
+        assertEquals(List.of(said, said), heard, "each companion out was given the whole line, and no command");
+    }
+
+    /**
+     * Third deploy review 2026-10-10: a command with the name last to a companion that is not out went to no Agent
+     * and said nothing. Before, it reached the companions out (and one of them answered); now the owner is told.
+     */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"where are you tamsin", "stop tamsin"})
+    void aPackCommandWithTheNameLastToABenchedCompanionIsAnswered(String said) {
+        installPhrasePacks();
+        when(roster.entry(ALICE, "tamsin")).thenReturn(row("tamsin", RosterState.BENCHED));
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(ALICE, hadrik);
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class)) {
+            mapChat(said);
+            drainAll(hadrik);
+
+            chat.verify(() -> AgentChatRuntime.handleChat(any(), any()), never());
+        }
+
+        verify(alice, timeout(2_000)).dropMessage(5, "Tamsin is not out with you right now.");
+    }
+
     /** Map chat as GeneralChatHandler routes it: the living world first, then the Agent routes when it took nothing. */
     private void mapChat(String said) {
         if (!dialogue.onMapChat(alice, said)) {

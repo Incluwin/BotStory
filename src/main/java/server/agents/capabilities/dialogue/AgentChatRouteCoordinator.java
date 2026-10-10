@@ -387,7 +387,9 @@ public final class AgentChatRouteCoordinator {
      * {@code speaker}: whom a whispered line's answers go back to. The judge's own answers ("did you mean ...?") come
      * after its judgment, so they keep the line's route (deploy review 2026-10-10); so do the answers the line's flows
      * say or schedule while the Agent handles it, and those of the canonical command the judge re-dispatches (second
-     * deploy review 2026-10-10: AgentChatMailboxAction puts the route in scope).
+     * deploy review 2026-10-10: AgentChatMailboxAction puts the route in scope). The judge's "did you mean ...?" is
+     * the speaker's to answer: a party or map line comes from the leader the Agent runs under (third deploy review
+     * 2026-10-10: the owner's party "ok" confirmed an administrator's whispered ask).
      */
     private static CompletionStage<Boolean> handleAgentChat(
             AgentRuntimeEntry entry,
@@ -395,6 +397,8 @@ public final class AgentChatRouteCoordinator {
             AgentReplyChannel channel,
             Character speaker) {
         AgentReplyRoute route = AgentReplyRoute.of(channel, speaker);
+        int speakerId = speaker != null ? speaker.getId()
+                : AgentRuntimeRegistry.leaderIdForAgentCharacter(AgentRuntimeIdentityRuntime.botId(entry));
         AgentChatIntentRuntime.Redispatch dispatch = (handled, line, lineChannel) ->
                 AgentChatMailboxDispatcher.handleChat(handled, line, lineChannel, speaker);
         // Deterministic classifiers first; only a miss is offered to the TypeSafe intent judge,
@@ -404,6 +408,7 @@ public final class AgentChatRouteCoordinator {
                         ? CompletableFuture.completedFuture(true)
                         : AgentChatIntentRuntime.judgeUnmatched(
                                 entry,
+                                speakerId,
                                 message,
                                 channel,
                                 dispatch,
