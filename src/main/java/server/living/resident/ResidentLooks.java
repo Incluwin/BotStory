@@ -56,18 +56,34 @@ public final class ResidentLooks {
     public Resolved resolve(Persona persona) {
         Look look = persona.look();
         // every draw happens in a fixed order so setting one field never reshuffles the others
-        SplittableRandom random = new SplittableRandom(0x9E3779B97F4A7C15L ^ persona.id().hashCode());
+        SplittableRandom random = draws(persona);
         int genderDraw = random.nextInt(2);
         int skinDraw = random.nextInt(SKINS.length);
         int faceDraw = random.nextInt(Integer.MAX_VALUE);
         int eyeDraw = random.nextInt(Integer.MAX_VALUE);
         int hairDraw = random.nextInt(Integer.MAX_VALUE);
         int colorDraw = random.nextInt(Integer.MAX_VALUE);
-        int gender = look.gender() == null ? genderDraw : look.gender().equals("female") ? 1 : 0;
+        int gender = gender(look, genderDraw);
         int skin = look.skin() >= 0 ? look.skin() : SKINS[skinDraw];
         int face = look.face() > 0 ? look.face() : pick(faces, faceStyles(gender), faceDraw, eyeDraw, 100, 9);
         int hair = look.hair() > 0 ? look.hair() : pick(hairs, hairStyles(gender), hairDraw, colorDraw, 1, 8);
         return new Resolved(gender, skin, face, hair);
+    }
+
+    /**
+     * The gender {@link #resolve} gives the persona (0 male, 1 female), without reading Character.wz: the provisioner
+     * creates the character in that gender's starting clothes.
+     */
+    static int gender(Persona persona) {
+        return gender(persona.look(), draws(persona).nextInt(2));
+    }
+
+    private static int gender(Look look, int genderDraw) {
+        return look.gender() == null ? genderDraw : look.gender().equals("female") ? 1 : 0;
+    }
+
+    private static SplittableRandom draws(Persona persona) {
+        return new SplittableRandom(0x9E3779B97F4A7C15L ^ persona.id().hashCode());
     }
 
     /** Regular faces of a gender in their first eye color: 20000-20099 male, 21000-21099 female. */
