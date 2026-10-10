@@ -46,8 +46,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -841,6 +844,26 @@ class CompanionGearToolTest {
 
             assertEquals(own, flintWears.getItem(CAP), "its scrolled bandana, not the plain one it looted into slot 1");
             assertEquals(List.of(looted), bag.list().stream().toList());
+        }
+    }
+
+    // ---- a record that cannot be read is never written over -------------------------------------------
+
+    @Test
+    void aKitOntoAKitWhoseRecordCannotBeReadLeavesTheEarlierRecordAsItIs() throws Exception {
+        game.displaced = Map.of(CAP, WHITE_BANDANA);
+        use("Flint", false);
+        doReturn(null).when(store.store).latestEvent(anyInt(), anyString(), any()); // the database read fails
+        game.displaced = Map.of(PANTS, BLUE_JEAN_SHORTS);
+        game.ontoAKit = true;
+
+        try (LivingLogLines log = new LivingLogLines(CompanionGearTool.class)) {
+            String reply = use("Flint", false);
+
+            assertTrue(reply.startsWith("Flint now wears"), "the gift itself still goes on: " + reply);
+            assertEquals(List.of(BOSSFRIEND + " flint bossgear.worn displaced: -1:" + WHITE_BANDANA),
+                    store.events(BossGearRecord.WORN), "the first kit's row stays the newest; no row with only pants");
+            assertEquals(1, log.startingWith("gm bossgear: Flint's record could not be read").size());
         }
     }
 }

@@ -323,17 +323,22 @@ public final class CompanionGearTool {
 
     /**
      * On companion-ops: logs what this kit displaced as the companion's record (BossGearRecord), after the entries of
-     * the kit it went onto, so the kit coming off puts those pieces back on. A failure never fails the gift.
+     * the kit it went onto, so the kit coming off puts those pieces back on. When the record of the kit it went onto
+     * cannot be read, nothing is written (that record stays, rather than one of this kit's entries alone). A failure
+     * never fails the gift.
      */
     private void recordDisplaced(Character gm, Target target, Outcome outcome) {
         try {
             LivingStore store = world.store();
             Map<Short, Displaced> record = BossGearRecord.slots();
             if (outcome.ontoAKit()) {
-                record.putAll(BossGearRecord.read(store, gm.getId(), target.personaId()));
+                record.putAll(BossGearRecord.current(store, gm.getId(), target.personaId()));
             }
             record.putAll(outcome.displaced());
             BossGearRecord.write(store, gm.getId(), target.personaId(), record);
+        } catch (LivingStore.ReadFailed unread) {
+            log.warn("gm bossgear: {}'s record could not be read, so this kit's is not written over it",
+                    target.chr().getName(), unread);
         } catch (RuntimeException failure) {
             log.warn("gm bossgear: what {} wore before the kit was not recorded", target.chr().getName(), failure);
         }

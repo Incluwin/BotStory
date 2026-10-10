@@ -4,13 +4,19 @@ import client.inventory.Equip;
 import client.inventory.Item;
 import org.junit.jupiter.api.Test;
 import server.living.roster.BossGearRecord.Displaced;
+import server.living.store.LivingStore;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 
 /**
  * The record of what a companion's !bossgear kit displaced, as the living event log keeps it (BossGearRecord): slot,
@@ -93,5 +99,16 @@ class BossGearRecordTest {
 
         BossGearRecord.write(store.store, 870, "tamsin", Map.of(PANTS, Displaced.of(1060002)));
         assertEquals(Map.of(PANTS, Displaced.of(1060002)), BossGearRecord.read(store.store, 870, "tamsin"));
+    }
+
+    @Test
+    void aFailedReadIsNoRecordForTheRefitButNeverReadsAsNone() {
+        FakeLivingStore store = new FakeLivingStore();
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, Displaced.of(1002027)));
+        doReturn(null).when(store.store).latestEvent(anyInt(), anyString(), any()); // the database read fails
+
+        assertEquals(Map.of(), BossGearRecord.read(store.store, 870, "tamsin"), "the refit puts the best pieces on");
+        assertThrows(LivingStore.ReadFailed.class, () -> BossGearRecord.current(store.store, 870, "tamsin"),
+                "a kit going onto a kit must not take it for no record");
     }
 }

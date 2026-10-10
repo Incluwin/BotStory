@@ -74,11 +74,28 @@ final class BossGearRecord {
 
     /**
      * The record of the companion of {@code ownerId}'s persona {@code personaId}, by worn slot: empty when it has none
-     * (no kit on, or the last one came off) or the read failed.
+     * (no kit on, or the last one came off) or the read failed (the refit then puts on the best pieces it carries).
      */
     static Map<Short, Displaced> read(LivingStore store, int ownerId, String personaId) {
+        try {
+            return current(store, ownerId, personaId);
+        } catch (LivingStore.ReadFailed unread) {
+            return slots();
+        }
+    }
+
+    /**
+     * {@link #read}, but a failed read is never taken for no record: a kit going onto a kit must not write a record of
+     * its own entries alone over the one it could not read.
+     *
+     * @throws LivingStore.ReadFailed when the read failed
+     */
+    static Map<Short, Displaced> current(LivingStore store, int ownerId, String personaId) {
         Optional<EventRow> latest = store.latestEvent(ownerId, personaId, List.of(WORN, REMOVED));
-        if (latest == null || latest.isEmpty() || !WORN.equals(latest.get().kind())) {
+        if (latest == null) {
+            throw new LivingStore.ReadFailed("bossgear record of " + ownerId + "/" + personaId, null);
+        }
+        if (latest.isEmpty() || !WORN.equals(latest.get().kind())) {
             return slots();
         }
         return parse(latest.get().detail());
