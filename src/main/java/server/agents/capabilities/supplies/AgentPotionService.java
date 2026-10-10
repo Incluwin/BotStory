@@ -255,7 +255,7 @@ public final class AgentPotionService {
         // A party quest whose own rest holds the member for its potions (the EPQ golem rest, whose fight from its rest
         // point is grind mode) owns its moves and words: no stop, no "walking to you" line.
         if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getMaxHp() * 0.4f
-                && !AgentPartyQuestRuntime.ownsPotionRest(bot.getId())
+                && !AgentPartyQuestRuntime.ownsPotionRest(bot.getId(), bot.getMapId())
                 && AgentPotionReserve.tripNeeded(bot, AgentResourceCategory.HP_POTION,
                 AgentSupplyReadiness.standing(bot.getId()) != null)) {
             if (AgentRelationshipRuntime.followTarget(entry) != null) {

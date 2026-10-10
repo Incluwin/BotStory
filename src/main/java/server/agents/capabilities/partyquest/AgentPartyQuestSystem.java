@@ -45,10 +45,11 @@ public interface AgentPartyQuestSystem {
     }
 
     /**
-     * True while this quest's own rest rule holds the member back for its HP potions (the EPQ golem rest), so the
-     * generic out-of-potions grind stop leaves its moves and words to the quest. Memory only.
+     * True while this quest's own play holds the member on {@code mapId} while it is low on HP potions (the EPQ golem
+     * rest, and its after-clear add fight), so the generic out-of-potions grind stop leaves its moves and words to the
+     * quest. Memory only.
      */
-    default boolean ownsPotionRest(int characterId) {
+    default boolean ownsPotionRest(int characterId, int mapId) {
         return false;
     }
 }

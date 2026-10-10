@@ -685,16 +685,20 @@ class AgentEpqBossRestTest {
         AgentEpqSession session = boss();
         golemAt(-230);
         AgentRuntimeEntry entry = run.entry(tobi);
-        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "fighting");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP), "fighting");
 
         vitals(tobi, -540, 2_070, 5_904, 0); // dry, pinned
         AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
-        assertTrue(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "resting");
-        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(una.getId()), "another member, not resting");
+        assertTrue(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP), "resting");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.REWARD_MAP),
+                "off the golem's map");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(una.getId(), AgentEpqDefinition.BOSS_MAP),
+                "another member, not resting");
 
         vitals(tobi, -540, 5_904, 5_904, 200); // a share landed at full HP: END
         AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
-        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "back in the fight");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP),
+                "back in the fight");
     }
 
     /** A rest that ended and a new dry rest: it asks at once, its count starting over. */

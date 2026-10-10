@@ -47,8 +47,8 @@ class AgentPartyQuestRuntimeCompanionRunTest {
             AgentPartyQuestSystem system = AgentPartyQuestRuntime.requireSystem(key);
             assertFalse(system.companionRun(742_999), key);
             assertFalse(system.ownsDryLine(742_999, 922_010_700), key);
-            assertFalse(system.ownsPotionRest(742_999), key);
+            assertFalse(system.ownsPotionRest(742_999, 930_000_600), key);
         }
-        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(742_999), "in no run");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(742_999, 930_000_600), "in no run");
     }
 }
