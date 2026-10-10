@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Shared policy surface used by every capability that may consume or protect inventory. */
 public final class AgentInventoryReservationRuntime {
@@ -26,12 +27,17 @@ public final class AgentInventoryReservationRuntime {
         return entry.capabilityStates().require(AgentInventoryReservationLedger.STATE_KEY);
     }
 
+    /** Id view: true when any reservation counts this item id, a kept equipment copy included (loot targeting). */
     public static boolean isReserved(AgentRuntimeEntry entry, int itemId, long nowMs) {
         return entry != null && itemId > 0 && ledger(entry).reservedQuantity(itemId, nowMs) > 0;
     }
 
+    /**
+     * Item view: false when a reservation holds this exact item. Id reservations (objectives, sale offers) hold every
+     * copy of their id; a kept equipment piece holds only itself, so its other copies stay free.
+     */
     public static boolean mayConsume(AgentRuntimeEntry entry, Item item, long nowMs) {
-        return item != null && !isReserved(entry, item.getItemId(), nowMs);
+        return item != null && (entry == null || !ledger(entry).reservesItem(item, nowMs));
     }
 
     public static List<Item> unreservedItems(AgentRuntimeEntry entry, List<Item> items, long nowMs) {
@@ -67,15 +73,19 @@ public final class AgentInventoryReservationRuntime {
         }
     }
 
-    /** Publishes equipment self-keep decisions into the cross-capability reservation ledger. */
+    /**
+     * Publishes equipment self-keep decisions into the cross-capability reservation ledger. Each kept piece holds only
+     * itself ({@link #mayConsume}); the id view still counts the kept copies of each id ({@link #isReserved}).
+     */
     public static void refreshEquipmentReservations(AgentRuntimeEntry entry,
                                                     Character agent,
                                                     long nowMs) {
         if (entry == null || agent == null) {
             return;
         }
+        Set<Item> kept = AgentEquipmentReservePolicy.collectPotentialSelfUpgradeItems(agent);
         Map<Integer, Integer> quantities = new LinkedHashMap<>();
-        for (Item item : AgentEquipmentReservePolicy.collectPotentialSelfUpgradeItems(agent)) {
+        for (Item item : kept) {
             quantities.merge(item.getItemId(), 1, Integer::sum);
         }
         List<AgentInventoryReservation> reservations = new ArrayList<>(quantities.size());
@@ -83,6 +93,6 @@ public final class AgentInventoryReservationRuntime {
                 EQUIPMENT_CAPABILITY + ':' + itemId, itemId, quantity,
                 AgentDisposition.BUILD_RESERVE, EQUIPMENT_CAPABILITY,
                 "candidate for the Agent's current or future build", 500, 0L)));
-        ledger(entry).replaceCapabilityReservations(EQUIPMENT_CAPABILITY, reservations);
+        ledger(entry).replaceCapabilityItemReservations(EQUIPMENT_CAPABILITY, reservations, kept);
     }
 }

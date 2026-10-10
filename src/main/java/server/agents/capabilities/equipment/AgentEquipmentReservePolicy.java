@@ -15,6 +15,7 @@ import server.agents.integration.InventoryGateway;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -268,6 +269,11 @@ public final class AgentEquipmentReservePolicy {
         return selectOwnedItemsForSelfReserve(agent, SelfReserveHooks.from(ii), ownedItems);
     }
 
+    /**
+     * The owned equips the Agent keeps for its current or future build. Of copies of one item that tie (same id and
+     * requirements, same relevant stats, same useful stat sum and upgrade slots) only one is kept: the one that comes
+     * first in {@code ownedItems}. The collectors here list worn pieces first, then the bag by slot.
+     */
     public static Set<Equip> selectOwnedItemsForSelfReserve(Character agent, SelfReserveHooks hooks,
                                                             Collection<Equip> ownedItems) {
         EnumSet<RelevantStat> relevant = relevantStatsFor(agent.getJob());
@@ -283,11 +289,14 @@ public final class AgentEquipmentReservePolicy {
 
         Set<Equip> keep = Collections.newSetFromMap(new IdentityHashMap<>());
         for (List<Equip> trackItems : byTrack.values()) {
-            for (Equip candidate : trackItems) {
+            for (int candidateIndex = 0; candidateIndex < trackItems.size(); candidateIndex++) {
+                Equip candidate = trackItems.get(candidateIndex);
                 boolean dominated = false;
-                for (Equip other : trackItems) {
+                for (int otherIndex = 0; otherIndex < trackItems.size(); otherIndex++) {
+                    Equip other = trackItems.get(otherIndex);
                     if (other == candidate) continue;
-                    if (dominatesForSelfReserve(hooks, relevant, agent, other, candidate)) {
+                    if (dominatesForSelfReserve(hooks, relevant, agent, other, candidate,
+                            otherIndex < candidateIndex)) {
                         dominated = true;
                         break;
                     }
@@ -317,23 +326,25 @@ public final class AgentEquipmentReservePolicy {
         return textSlotKey(EquipUsefulnessHooks.from(ii), equip);
     }
 
+    /** Worn pieces first, then the bag by slot: of identical copies the worn one, else the earliest slot, is kept. */
     private static List<Equip> collectOwnedEquips(Character agent, ItemInformationProvider ii) {
         List<Equip> owned = new ArrayList<>();
-        owned.addAll(collectOwnedBagEquips(agent, ii));
         Inventory equippedInv = agent.getInventory(InventoryType.EQUIPPED);
         for (Item item : equippedInv.list()) {
             if (item instanceof Equip equip && !ii.isCash(equip.getItemId())) owned.add(equip);
         }
+        owned.addAll(collectOwnedBagEquips(agent, ii));
         return owned;
     }
 
+    /** Worn pieces first, then the bag by slot: of identical copies the worn one, else the earliest slot, is kept. */
     private static List<Equip> collectOwnedEquips(Character agent, InventoryGateway inventory) {
         List<Equip> owned = new ArrayList<>();
-        owned.addAll(collectOwnedBagEquips(agent, inventory));
         Inventory equippedInv = agent.getInventory(InventoryType.EQUIPPED);
         for (Item item : equippedInv.list()) {
             if (item instanceof Equip equip && !inventory.isCashItem(equip.getItemId())) owned.add(equip);
         }
+        owned.addAll(collectOwnedBagEquips(agent, inventory));
         return owned;
     }
 
@@ -343,6 +354,7 @@ public final class AgentEquipmentReservePolicy {
         for (Item item : equipInv.list()) {
             if (item instanceof Equip equip && !ii.isCash(equip.getItemId())) owned.add(equip);
         }
+        owned.sort(Comparator.comparingInt(Equip::getPosition));
         return owned;
     }
 
@@ -352,6 +364,7 @@ public final class AgentEquipmentReservePolicy {
         for (Item item : equipInv.list()) {
             if (item instanceof Equip equip && !inventory.isCashItem(equip.getItemId())) owned.add(equip);
         }
+        owned.sort(Comparator.comparingInt(Equip::getPosition));
         return owned;
     }
 
@@ -368,17 +381,32 @@ public final class AgentEquipmentReservePolicy {
     }
 
     private static boolean dominatesForSelfReserve(SelfReserveHooks hooks, EnumSet<RelevantStat> relevant,
-                                                   Character agent, Equip better, Equip worse) {
+                                                   Character agent, Equip better, Equip worse,
+                                                   boolean betterComesFirst) {
         boolean relevantDominates = paretoDominates(relevant, better, worse);
         boolean duplicateTieBreakDominates = sameRequirementSignature(hooks, better, worse)
                 && better.getItemId() == worse.getItemId()
                 && relevantStatsEqual(relevant, better, worse)
-                && usefulStatSum(better, agent.getJob()) > usefulStatSum(worse, agent.getJob());
+                && duplicateRanksAbove(agent.getJob(), better, worse, betterComesFirst);
         if (!relevantDominates && !duplicateTieBreakDominates) return false;
         if (!reqsAtLeastAsEasy(hooks, better, worse)
                 && !hooks.meetsReqs(better, agent.getJob(), agent.getLevel(),
                 agent.getStr(), agent.getDex(), agent.getInt(), agent.getLuk(), agent.getFame())) return false;
         return true;
+    }
+
+    /**
+     * Ranks two copies of one item with the same relevant stats: the higher useful stat sum, then more upgrade slots
+     * left; a full tie goes to the copy that comes first, so of identical copies exactly one is kept.
+     */
+    private static boolean duplicateRanksAbove(Job job, Equip better, Equip worse, boolean betterComesFirst) {
+        int betterSum = usefulStatSum(better, job);
+        int worseSum = usefulStatSum(worse, job);
+        if (betterSum != worseSum) return betterSum > worseSum;
+        if (better.getUpgradeSlots() != worse.getUpgradeSlots()) {
+            return better.getUpgradeSlots() > worse.getUpgradeSlots();
+        }
+        return betterComesFirst;
     }
 
     private static boolean hasPositiveRelevant(EnumSet<RelevantStat> relevant, Equip equip) {
