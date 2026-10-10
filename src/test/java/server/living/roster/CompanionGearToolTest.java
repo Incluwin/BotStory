@@ -9,6 +9,7 @@ import client.inventory.Item;
 import client.inventory.WeaponType;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
+import constants.skills.Fighter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -659,5 +660,35 @@ class CompanionGearToolTest {
         assertEquals(List.of(BOSSFRIEND + " flint bossgear.removed remove: 1 piece"),
                 store.events(BossGearRecord.REMOVED));
         assertEquals(Map.of(), record(), "the record ended");
+    }
+
+    // ---- a weapon its build fights with (AgentWeaponCompatibilityPolicy) ------------------------------
+
+    private static final int BOSS_TWO_HANDED = 1402011;
+    private static final int GLADIUS = 1302008;
+    private static final int BLUE_COUNTER = 1312007;
+
+    @Test
+    void removeWearsTheSwordASwordFighterFightsWithNotAHigherAxeItsJobMaskAllows() throws Exception {
+        when(flint.getJob()).thenReturn(Job.FIGHTER);
+        when(flint.getSkillLevel(Fighter.SWORD_MASTERY)).thenReturn(1);
+        flintWears.removeSlot(WEAPON);
+        flintWears.addItemFromDB(boss(BOSS_TWO_HANDED, WEAPON)); // its own two-handed sword was sold meanwhile
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(GLADIUS, (short) 1));
+        bag.addItemFromDB(Equip.restored(BLUE_COUNTER, (short) 2));
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            String reply = tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS);
+
+            assertEquals("Flint gave back 1 boss piece and wears its own gear again.", reply);
+            assertEquals(GLADIUS, flintWears.getItem(WEAPON).getItemId(),
+                    "its one-handed sword, not the Lv40 axe the warrior mask also lets it wear");
+            assertEquals(List.of(BLUE_COUNTER), ids(bag));
+            equipment.verifyNoInteractions();
+        }
     }
 }

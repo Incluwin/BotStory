@@ -13,6 +13,8 @@ import constants.skills.Rogue;
 import constants.skills.Spearman;
 import constants.skills.WhiteKnight;
 
+import java.util.function.IntUnaryOperator;
+
 public final class AgentWeaponCompatibilityPolicy {
     private AgentWeaponCompatibilityPolicy() {
     }
@@ -28,20 +30,30 @@ public final class AgentWeaponCompatibilityPolicy {
         if (weaponType == null || weaponType == WeaponType.NOT_A_WEAPON) {
             return true;
         }
+        return isWeaponCompatible(agent.getJob(), agent::getSkillLevel, weaponType);
+    }
 
-        Job job = agent.getJob();
+    /**
+     * As {@link #isWeaponCompatible(Character, WeaponType)}, for a job and the level of each skill it holds (one
+     * nothing has loaded: its stored skills).
+     */
+    public static boolean isWeaponCompatible(Job job, IntUnaryOperator skillLevel, WeaponType weaponType) {
+        if (weaponType == null || weaponType == WeaponType.NOT_A_WEAPON) {
+            return true;
+        }
+
         if (job == Job.THIEF) {
-            if (agent.getSkillLevel(Rogue.LUCKY_SEVEN) > 0) {
+            if (skillLevel.applyAsInt(Rogue.LUCKY_SEVEN) > 0) {
                 return weaponType == WeaponType.CLAW;
             }
-            if (agent.getSkillLevel(Rogue.DOUBLE_STAB) > 0) {
+            if (skillLevel.applyAsInt(Rogue.DOUBLE_STAB) > 0) {
                 return isThiefDagger(weaponType);
             }
         }
         if (job == Job.PIRATE) {
-            boolean gunBuild = agent.getSkillLevel(Pirate.DOUBLE_SHOT) > 0;
-            boolean knuckleBuild = agent.getSkillLevel(Pirate.FLASH_FIST) > 0
-                    || agent.getSkillLevel(Pirate.SOMERSAULT_KICK) > 0;
+            boolean gunBuild = skillLevel.applyAsInt(Pirate.DOUBLE_SHOT) > 0;
+            boolean knuckleBuild = skillLevel.applyAsInt(Pirate.FLASH_FIST) > 0
+                    || skillLevel.applyAsInt(Pirate.SOMERSAULT_KICK) > 0;
             if (gunBuild && !knuckleBuild) {
                 return weaponType == WeaponType.GUN;
             }
@@ -53,39 +65,39 @@ public final class AgentWeaponCompatibilityPolicy {
 
         return switch (job) {
             case BOWMAN -> weaponType == WeaponType.BOW || weaponType == WeaponType.CROSSBOW;
-            case FIGHTER -> matchesWarriorWeaponFamily(agent,
+            case FIGHTER -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{Fighter.SWORD_MASTERY, Fighter.SWORD_BOOSTER},
                     new int[]{Fighter.AXE_MASTERY, Fighter.AXE_BOOSTER});
-            case CRUSADER -> matchesWarriorWeaponFamily(agent,
+            case CRUSADER -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{Crusader.SWORD_COMA, Crusader.SWORD_PANIC},
                     new int[]{Crusader.AXE_COMA, Crusader.AXE_PANIC});
-            case HERO -> matchesWarriorWeaponFamily(agent,
+            case HERO -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{Crusader.SWORD_COMA, Crusader.SWORD_PANIC},
                     new int[]{Crusader.AXE_COMA, Crusader.AXE_PANIC});
-            case PAGE -> matchesWarriorWeaponFamily(agent,
+            case PAGE -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{Page.SWORD_MASTERY, Page.SWORD_BOOSTER},
                     new int[]{Page.BW_MASTERY, Page.BW_BOOSTER});
-            case WHITEKNIGHT -> matchesWarriorWeaponFamily(agent,
+            case WHITEKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{WhiteKnight.SWORD_FIRE_CHARGE, WhiteKnight.SWORD_ICE_CHARGE, WhiteKnight.SWORD_LIT_CHARGE},
                     new int[]{WhiteKnight.BW_FIRE_CHARGE, WhiteKnight.BW_ICE_CHARGE, WhiteKnight.BW_LIT_CHARGE});
-            case PALADIN -> matchesWarriorWeaponFamily(agent,
+            case PALADIN -> matchesWarriorWeaponFamily(skillLevel,
                     isSword(weaponType), isGeneralWeapon(weaponType),
                     new int[]{Paladin.SWORD_HOLY_CHARGE},
                     new int[]{Paladin.BW_HOLY_CHARGE});
-            case SPEARMAN -> matchesWarriorWeaponFamily(agent,
+            case SPEARMAN -> matchesWarriorWeaponFamily(skillLevel,
                     isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
                     new int[]{Spearman.SPEAR_MASTERY, Spearman.SPEAR_BOOSTER},
                     new int[]{Spearman.POLEARM_MASTERY, Spearman.POLEARM_BOOSTER});
-            case DRAGONKNIGHT -> matchesWarriorWeaponFamily(agent,
+            case DRAGONKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
                     isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
                     new int[]{DragonKnight.SPEAR_CRUSHER, DragonKnight.SPEAR_DRAGON_FURY},
                     new int[]{DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY});
-            case DARKKNIGHT -> matchesWarriorWeaponFamily(agent,
+            case DARKKNIGHT -> matchesWarriorWeaponFamily(skillLevel,
                     isSpearWeapon(weaponType), isPolearmWeapon(weaponType),
                     new int[]{DragonKnight.SPEAR_CRUSHER, DragonKnight.SPEAR_DRAGON_FURY},
                     new int[]{DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY});
@@ -135,13 +147,13 @@ public final class AgentWeaponCompatibilityPolicy {
         };
     }
 
-    private static boolean matchesWarriorWeaponFamily(Character agent,
+    private static boolean matchesWarriorWeaponFamily(IntUnaryOperator skillLevel,
                                                       boolean firstFamilyMatch,
                                                       boolean secondFamilyMatch,
                                                       int[] firstFamilySkills,
                                                       int[] secondFamilySkills) {
-        boolean firstFamilyChosen = hasAnySkill(agent, firstFamilySkills);
-        boolean secondFamilyChosen = hasAnySkill(agent, secondFamilySkills);
+        boolean firstFamilyChosen = hasAnySkill(skillLevel, firstFamilySkills);
+        boolean secondFamilyChosen = hasAnySkill(skillLevel, secondFamilySkills);
         if (firstFamilyChosen && !secondFamilyChosen) {
             return firstFamilyMatch;
         }
@@ -151,9 +163,9 @@ public final class AgentWeaponCompatibilityPolicy {
         return firstFamilyMatch || secondFamilyMatch;
     }
 
-    private static boolean hasAnySkill(Character agent, int... skillIds) {
+    private static boolean hasAnySkill(IntUnaryOperator skillLevel, int... skillIds) {
         for (int skillId : skillIds) {
-            if (agent.getSkillLevel(skillId) > 0) {
+            if (skillLevel.applyAsInt(skillId) > 0) {
                 return true;
             }
         }

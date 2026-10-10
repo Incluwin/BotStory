@@ -7,6 +7,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import constants.inventory.ItemConstants;
+import constants.skills.Fighter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.knowledge.KnowledgeTestKit;
@@ -468,5 +469,53 @@ class BossGearReleaseTest {
         assertEquals(List.of(), game.store.storedWrites);
         assertEquals(List.of(PLAIN_CAP + "@-1", PLAIN_SWORD + "@1"), placed(saved));
         verify(game.store.store, never()).latestEvent(anyInt(), anyString(), any());
+    }
+
+    // ---- a weapon its build fights with (AgentWeaponCompatibilityPolicy) ------------------------------
+
+    /** A Lv40 one-handed axe: the warrior job mask lets a sword Fighter wear it, its build does not fight with it. */
+    private static final int BLUE_COUNTER = 1312007;
+
+    @Test
+    void aSwordFighterReleasedOutWithItsOwnerWearsItsSwordNotAHigherAxe() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            Character bot = game.bot(hadrik);
+            when(bot.getJob()).thenReturn(Job.FIGHTER);
+            when(bot.getLevel()).thenReturn(FIGHTER.level());
+            when(bot.getStr()).thenReturn(FIGHTER.str());
+            when(bot.getSkillLevel(Fighter.SWORD_MASTERY)).thenReturn(1);
+            Inventory worn = new Inventory(bot, InventoryType.EQUIPPED, (byte) 100);
+            worn.addItemFromDB(boss(BOSS_TWO_HANDED, WEAPON)); // its own two-handed sword was sold meanwhile
+            Inventory bag = new Inventory(bot, InventoryType.EQUIP, (byte) 24);
+            bag.addItemFromDB(Equip.restored(GLADIUS, (short) 1));
+            bag.addItemFromDB(Equip.restored(BLUE_COUNTER, (short) 2));
+            when(bot.getInventory(InventoryType.EQUIPPED)).thenReturn(worn);
+            when(bot.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+            game.store.seed(game.row(hadrik).with(RosterState.ACTIVE, 1_000L));
+            game.roster();
+            game.outWithAnn(hadrik);
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+            game.runTimers();
+
+            assertEquals(List.of(GLADIUS + "@-11"), placed(worn.list()), "its one-handed sword, not the Lv40 axe");
+            assertEquals(List.of(BLUE_COUNTER + "@2"), placed(bag.list()));
+        }
+    }
+
+    @Test
+    void aSwordFightersSavedInventoryWearsItsSwordNotAHigherAxeByItsStoredSkills() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = savedAsAFighter(boss(BOSS_TWO_HANDED, WEAPON), Equip.restored(GLADIUS, (short) 1),
+                    Equip.restored(BLUE_COUNTER, (short) 2));
+            when(game.store.store.skillLevels(HADRIK)).thenReturn(Map.of(Fighter.SWORD_MASTERY, 1));
+            game.roster();
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+
+            assertEquals(List.of(HADRIK), game.store.storedWrites, "one rewrite");
+            assertEquals(List.of(GLADIUS + "@-11", BLUE_COUNTER + "@2"), placed(saved),
+                    "as a loaded one: its one-handed sword, not the Lv40 axe");
+        }
     }
 }

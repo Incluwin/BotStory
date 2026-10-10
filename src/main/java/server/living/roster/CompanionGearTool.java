@@ -2,6 +2,7 @@ package server.living.roster;
 
 import client.Character;
 import client.Client;
+import client.Job;
 import client.LevelSetPlan;
 import client.inventory.Equip;
 import client.inventory.Inventory;
@@ -48,6 +49,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -604,7 +606,8 @@ public final class CompanionGearTool {
                 chr.getGender(), chr.getStr(), chr.getDex(), chr.getInt(), chr.getLuk(), chr.getFame());
         boolean straight = false;
         Collection<Item> carried = chr.getInventory(InventoryType.EQUIP).list();
-        for (Move move : OwnGearRefit.plan(wearer, taken, displaced, worn, carried, facts())) {
+        for (Move move : OwnGearRefit.plan(wearer, taken, displaced, worn, carried, facts(),
+                type -> AgentWeaponCompatibilityPolicy.isWeaponCompatible(chr, type))) {
             straight |= wear(chr, move.piece(), move.slot());
         }
         if (straight && chr.getMap() != null) {
@@ -668,8 +671,9 @@ public final class CompanionGearTool {
             takenWorn.forEach(item -> taken.put(item.getPosition(), item.getItemId()));
             Map<Short, Item> wearing = new HashMap<>();
             worn.forEach(item -> wearing.put(item.getPosition(), item));
-            List<Move> moves = OwnGearRefit.plan(store.wearStats(characterId), taken, displaced.get(), wearing, carried,
-                    facts());
+            WearStats wearer = store.wearStats(characterId);
+            List<Move> moves = OwnGearRefit.plan(wearer, taken, displaced.get(), wearing, carried, facts(),
+                    storedFights(store, characterId, wearer));
             moves.forEach(move -> move.piece().setPosition(move.slot()));
         } catch (RuntimeException failure) {
             log.warn("bossgear: character {} did not put its own gear back on", characterId, failure);
@@ -677,10 +681,28 @@ public final class CompanionGearTool {
     }
 
     /**
+     * The weapon types a character nothing has loaded fights with, by its job and stored skills
+     * (AgentWeaponCompatibilityPolicy, as a loaded one is held to); with its skills unread, by its job alone; with its
+     * job unknown, any.
+     */
+    private static Predicate<WeaponType> storedFights(LivingStore store, int characterId, WearStats wearer) {
+        Job job = wearer == null ? null : Job.getById(wearer.jobId());
+        if (job == null) {
+            return type -> true;
+        }
+        Map<Integer, Integer> stored = store.skillLevels(characterId);
+        Map<Integer, Integer> skills = stored == null ? Map.of() : stored;
+        return type -> AgentWeaponCompatibilityPolicy.isWeaponCompatible(job, skill -> skills.getOrDefault(skill, 0),
+                type);
+    }
+
+    /**
      * On the companion's mailbox: its boss gear comes off ({@link #takeBossGear}), it puts its own gear back on as a
      * released one does ({@link OwnGearRefit}: first what the kit {@code displaced}, else the best it carries) and it
      * is saved. Only with no weapon of its own back on does the Agent gear optimizer dress it (it would otherwise trade
-     * the very pieces it wore before for others). The pieces taken; with none, nothing changes.
+     * the very pieces it wore before for others); the refit already puts on a weapon its build fights with whenever it
+     * carries one (AgentWeaponCompatibilityPolicy), as the optimizer would. The pieces taken; with none, nothing
+     * changes.
      */
     static int removeKit(AgentRuntimeEntry entry, Character owner, Map<Short, Integer> displaced) {
         Character bot = entry.bot();
