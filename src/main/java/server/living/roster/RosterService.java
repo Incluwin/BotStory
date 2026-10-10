@@ -3308,7 +3308,7 @@ public final class RosterService {
             Supplier<BossGearRecord.Found> record = ownerId > 0
                     ? () -> new BossGearRecord.Found(ownerId, BossGearRecord.read(world.store(), ownerId, personaId))
                     : BossGearRecord.byPersonaOnce(world.store(), personaId);
-            Supplier<Map<Short, Integer>> displaced = () -> record.get().slots();
+            Supplier<Map<Short, BossGearRecord.Displaced>> displaced = () -> record.get().slots();
             if (bot != null) {
                 taken = CompanionGearTool.takeBossGearOnRelease(bot, displaced);
                 if (taken > 0) {

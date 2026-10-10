@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import server.knowledge.KnowledgeTestKit;
 import server.living.bond.ContractService;
 import server.living.quest.BossGearPlanner;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.LevelRewrite;
 import server.living.store.LivingStore.PersonaState;
@@ -339,9 +340,10 @@ class ReleasedLevelRestoreAtStartTest {
             List<Item> saved = savedCapKit(HADRIK);
             offline(HADRIK);
             LivingStore store = game.store.store;
-            BossGearRecord.write(store, BO, "hadrik", Map.of(CAP, JOUSTING_HELMET)); // Bo's kit, long gone
+            // Bo's kit, long gone, then Ann's, as it went on
+            BossGearRecord.write(store, BO, "hadrik", Map.of(CAP, Displaced.of(JOUSTING_HELMET)));
             store.event(BO, "hadrik", BossGearRecord.REMOVED, "released: 1 piece");
-            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, STEEL_SHARP_HELM)); // Ann's, as it went on
+            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, Displaced.of(STEEL_SHARP_HELM)));
             RosterService roster = roster();
 
             try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
@@ -357,6 +359,41 @@ class ReleasedLevelRestoreAtStartTest {
                     "ended under Ann, whose record it was");
             assertEquals(Map.of(), BossGearRecord.read(store, ANN, "hadrik"), "Ann's record ended");
             assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store, "hadrik"));
+            assertNull(game.leases.holder(HADRIK));
+        }
+    }
+
+    @Test
+    void ofTwoCopiesOfTheDisplacedIdItsRecordInTheNewFormPutsBackTheVeryOneByItsPrint() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
+            Equip scrolled = Equip.restored(STEEL_SHARP_HELM, (short) 3); // the helm Ann's kit took off it
+            scrolled.setWdef((short) 33);
+            scrolled.setLevel((byte) 3);
+            Equip plain = Equip.restored(STEEL_SHARP_HELM, (short) 1); // a plain copy, in the first bag slot
+            List<Item> saved = new ArrayList<>(List.of(Equip.restored(GLADIUS, WEAPON), boss(KIT_CAP, CAP), plain,
+                    Equip.restored(JOUSTING_HELMET, (short) 2), scrolled));
+            game.store.storedItems.put(HADRIK, saved);
+            when(game.store.store.wearStats(HADRIK)).thenReturn(FIGHTER);
+            offline(HADRIK);
+            LivingStore store = game.store.store;
+            // Ann's kit put the scrolled helm in bag slot 1; its bag was rearranged since, so the plain one lies there
+            store.event(ANN, "hadrik", BossGearRecord.WORN, "displaced: " + CAP + ":" + STEEL_SHARP_HELM + "@1#"
+                    + Integer.toHexString(BossGearRecord.print(scrolled)));
+            RosterService roster = roster();
+
+            try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
+                roster.finishReleaseCleanupAtStart();
+
+                assertEquals(List.of(LINE + ": stripped=1 restored=0 skipped=0"), lines.startingWith(LINE));
+            }
+            assertEquals(CAP, scrolled.getPosition(), "the very helm Ann's kit displaced, by its print: "
+                    + placed(saved));
+            assertEquals(1, plain.getPosition(), "the plain copy stays in its bag");
+            assertEquals(JOUSTING_HELMET, at(saved, (short) 2), "the higher helm too");
+            assertEquals(4, saved.size(), "the kit's cap went, nothing was made");
+            assertEquals(List.of(ANN + " hadrik bossgear.removed released: 1 piece"),
+                    game.store.events("bossgear.removed"), "ended under Ann, whose record it was");
             assertNull(game.leases.holder(HADRIK));
         }
     }
@@ -390,7 +427,7 @@ class ReleasedLevelRestoreAtStartTest {
             List<Item> saved = savedCapKit(HADRIK);
             offline(HADRIK);
             LivingStore store = game.store.store;
-            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, STEEL_SHARP_HELM));
+            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, Displaced.of(STEEL_SHARP_HELM)));
             doReturn(null).when(store).latestPersonaEvent(anyString(), any()); // the read fails
             RosterService roster = roster();
 
@@ -401,7 +438,7 @@ class ReleasedLevelRestoreAtStartTest {
             }
             assertEquals(JOUSTING_HELMET, at(saved, CAP), "its best carried cap: " + placed(saved));
             assertEquals(List.of("0 hadrik bossgear.removed released: 1 piece"), game.store.events("bossgear.removed"));
-            assertEquals(Map.of(CAP, STEEL_SHARP_HELM), BossGearRecord.read(store, ANN, "hadrik"),
+            assertEquals(Map.of(CAP, Displaced.of(STEEL_SHARP_HELM)), BossGearRecord.read(store, ANN, "hadrik"),
                     "whose record it is was not read: it stays");
             assertEquals(List.of(HADRIK + " lv40 job110 exp1234"), rewrites, "its level still goes back");
             assertNull(game.leases.holder(HADRIK));

@@ -1099,6 +1099,27 @@ public final class LivingStore {
     }
 
     /**
+     * The level of each skill a character holds, by skill id, from its skills rows (what weapon a released companion's
+     * build fights with, CompanionGearTool); empty for none, null when the read fails.
+     */
+    public Map<Integer, Integer> skillLevels(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT skillid, skilllevel FROM skills WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            Map<Integer, Integer> levels = new HashMap<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    levels.put(rs.getInt(1), rs.getInt(2));
+                }
+            }
+            return levels;
+        } catch (SQLException failure) {
+            log.warn("character skill levels lookup failed for {}", characterId, failure);
+            return null;
+        }
+    }
+
+    /**
      * A character's stored level as a released companion's level restore reads it (ReleasedLevelRestore): from its
      * characters row the level, job, EXP, base STR/DEX/INT/LUK, unspent AP, unspent SP of each skill book, the AP it put
      * into HP/MP, its GM level and its Equip tab size; its skill rows; the items it wears (a position below 0) and the

@@ -9,6 +9,7 @@ import client.inventory.Item;
 import client.inventory.WeaponType;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
+import constants.skills.Fighter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import server.living.quest.FriendForge;
 import server.living.quest.FriendForge.Catalog;
 import server.living.quest.FriendForge.Scroll;
 import server.living.quest.FriendForge.Use;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.roster.CompanionGearTool.Outcome;
 import server.living.store.LivingStore;
@@ -32,18 +34,23 @@ import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -98,9 +105,9 @@ class CompanionGearToolTest {
         final List<Integer> needs = new ArrayList<>();
         /** The owner of every mailbox removal, in order. */
         final List<Character> removals = new ArrayList<>();
-        /** The record of what the kit displaced each mailbox removal was handed, in order. */
+        /** The record of what the kit displaced each mailbox removal was handed (by item id), in order. */
         final List<Map<Short, Integer>> removedWith = new ArrayList<>();
-        /** What the next mailbox wear says the kit displaced, and whether it went onto a kit. */
+        /** What the next mailbox wear says the kit displaced (each by its id alone), and if it went onto a kit. */
         Map<Short, Integer> displaced = Map.of();
         boolean ontoAKit;
         /** The runtime every lookup finds: its bot is the companion under test. */
@@ -109,6 +116,20 @@ class CompanionGearToolTest {
         boolean inBossRun;
         /** The mailbox finds every piece worn already (a use planned before the last kit went on). */
         boolean woreAlready;
+        /**
+         * The companion's mailbox: null runs each action at once (a prompt tick); else each waits here, in order, until
+         * the test runs it (a slow tick), and completes as it runs, as AgentActionMailbox does.
+         */
+        List<Runnable> mailbox;
+
+        private <T> CompletableFuture<T> onMailbox(Supplier<T> action) {
+            if (mailbox == null) {
+                return CompletableFuture.completedFuture(action.get());
+            }
+            CompletableFuture<T> result = new CompletableFuture<>();
+            mailbox.add(() -> result.complete(action.get()));
+            return result;
+        }
 
         @Override
         public AgentRuntimeEntry runtime(int characterId) {
@@ -151,8 +172,9 @@ class CompanionGearToolTest {
         public CompletableFuture<Outcome> wear(AgentRuntimeEntry runtime, List<Piece> kit, int need) {
             worn.add(kit);
             needs.add(need);
-            return CompletableFuture.completedFuture(woreAlready ? new Outcome(0, 0, kit.size())
-                    : new Outcome(kit.size(), kit.size(), 0, displaced, ontoAKit));
+            Outcome outcome = woreAlready ? new Outcome(0, 0, kit.size())
+                    : new Outcome(kit.size(), kit.size(), 0, byId(displaced), ontoAKit);
+            return onMailbox(() -> outcome);
         }
 
         @Override
@@ -161,13 +183,18 @@ class CompanionGearToolTest {
             return kit.size();
         }
 
-        /** The mailbox runs the removal at once, as LIVE's does on the companion's tick. */
+        /** The mailbox runs the removal (at once, or as the test runs it), as LIVE's does on the companion's tick. */
         @Override
         public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
-                                                 Map<Short, Integer> displaced) {
+                                                 Map<Short, Displaced> displaced) {
             removals.add(owner);
-            removedWith.add(displaced);
-            return CompletableFuture.completedFuture(CompanionGearTool.removeKit(runtime, owner, displaced));
+            removedWith.add(ids(displaced));
+            return onMailbox(() -> CompanionGearTool.removeKit(runtime, owner, displaced));
+        }
+
+        @Override
+        public CompletableFuture<?> settle(AgentRuntimeEntry runtime) {
+            return onMailbox(() -> Boolean.TRUE);
         }
     }
 
@@ -516,8 +543,22 @@ class CompanionGearToolTest {
     private static final int BOSS_OVERALL = 1052075;
     private static final short CAPE = -9;
 
+    /** The record, by worn slot: each piece's item id. */
     private Map<Short, Integer> record() {
-        return BossGearRecord.read(store.store, BOSSFRIEND, "flint");
+        return ids(BossGearRecord.read(store.store, BOSSFRIEND, "flint"));
+    }
+
+    private static Map<Short, Integer> ids(Map<Short, Displaced> displaced) {
+        Map<Short, Integer> out = new HashMap<>();
+        displaced.forEach((slot, piece) -> out.put(slot, piece.itemId()));
+        return out;
+    }
+
+    /** A record that knows each piece by its id alone. */
+    private static Map<Short, Displaced> byId(Map<Short, Integer> ids) {
+        Map<Short, Displaced> out = new HashMap<>();
+        ids.forEach((slot, itemId) -> out.put(slot, Displaced.of(itemId)));
+        return out;
     }
 
     @Test
@@ -620,7 +661,12 @@ class CompanionGearToolTest {
 
             assertEquals(3, outcome.worn(), outcome.toString());
             assertEquals(Map.of(CAP, WHITE_BANDANA, TOP, UNDERSHIRT, PANTS, BLUE_JEAN_SHORTS, WEAPON, BEGINNER_SWORD),
-                    outcome.displaced());
+                    ids(outcome.displaced()));
+            outcome.displaced().forEach((slot, piece) -> {
+                assertTrue(piece.exact(), slot + ": " + piece);
+                assertEquals(Displaced.of(bag.getItem(piece.bagSlot())), piece,
+                        slot + ": the very piece in that bag slot");
+            });
             assertFalse(outcome.ontoAKit());
 
             Outcome second = CompanionGearTool.wearKit(entry, List.of(piece(CAP, "cap", BOSS_CAP + 1),
@@ -640,7 +686,7 @@ class CompanionGearToolTest {
         Item bandana = Equip.restored(WHITE_BANDANA, (short) 2);
         bag.addItemFromDB(bandana);
         when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
-        BossGearRecord.write(store.store, BOSSFRIEND, "flint", Map.of(CAP, WHITE_BANDANA));
+        BossGearRecord.write(store.store, BOSSFRIEND, "flint", byId(Map.of(CAP, WHITE_BANDANA)));
 
         try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
              MockedStatic<AgentInventoryReservationRuntime> reservations =
@@ -659,5 +705,165 @@ class CompanionGearToolTest {
         assertEquals(List.of(BOSSFRIEND + " flint bossgear.removed remove: 1 piece"),
                 store.events(BossGearRecord.REMOVED));
         assertEquals(Map.of(), record(), "the record ended");
+    }
+
+    // ---- a weapon its build fights with (AgentWeaponCompatibilityPolicy) ------------------------------
+
+    private static final int BOSS_TWO_HANDED = 1402011;
+    private static final int GLADIUS = 1302008;
+    private static final int BLUE_COUNTER = 1312007;
+
+    @Test
+    void removeWearsTheSwordASwordFighterFightsWithNotAHigherAxeItsJobMaskAllows() throws Exception {
+        when(flint.getJob()).thenReturn(Job.FIGHTER);
+        when(flint.getSkillLevel(Fighter.SWORD_MASTERY)).thenReturn(1);
+        flintWears.removeSlot(WEAPON);
+        flintWears.addItemFromDB(boss(BOSS_TWO_HANDED, WEAPON)); // its own two-handed sword was sold meanwhile
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(GLADIUS, (short) 1));
+        bag.addItemFromDB(Equip.restored(BLUE_COUNTER, (short) 2));
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            String reply = tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS);
+
+            assertEquals("Flint gave back 1 boss piece and wears its own gear again.", reply);
+            assertEquals(GLADIUS, flintWears.getItem(WEAPON).getItemId(),
+                    "its one-handed sword, not the Lv40 axe the warrior mask also lets it wear");
+            assertEquals(List.of(BLUE_COUNTER), ids(bag));
+            equipment.verifyNoInteractions();
+        }
+    }
+
+    // ---- remove typed while a gift is still on its way: the record is read after the gift wrote it ---------
+
+    /**
+     * Flint wears the boss cap a gift puts on (FakeGame.wear only answers) and carries its own bandana the kit
+     * displaced and a higher Bone Helm; companion-ops keeps each command in {@code ops} until the test runs it.
+     */
+    private Item aGiftOnItsWay(List<Runnable> ops) {
+        flintWears.addItemFromDB(boss(BOSS_CAP, CAP));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(BONE_HELM, (short) 1));
+        Item bandana = Equip.restored(WHITE_BANDANA, (short) 2);
+        bag.addItemFromDB(bandana);
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        CompanionExecutor queued = DirectExecutor.queued(ops); // stubs inside: not within another when()
+        when(world.executor()).thenReturn(queued);
+        game.displaced = Map.of(CAP, WHITE_BANDANA);
+        tool = new CompanionGearTool(world, game, CATALOG, 60_000L);
+        return bandana;
+    }
+
+    /** Runs the mailbox and companion-ops, each in its own order, until both are idle. */
+    private void runUntilIdle(List<Runnable> ops) {
+        List<Runnable> mailbox = game.mailbox == null ? List.of() : game.mailbox;
+        while (!mailbox.isEmpty() || !ops.isEmpty()) {
+            while (!mailbox.isEmpty()) {
+                mailbox.remove(0).run();
+            }
+            while (!ops.isEmpty()) {
+                ops.remove(0).run();
+            }
+        }
+    }
+
+    private void assertTheRemovalUsedTheGiftsRecord(Item bandana, CompletableFuture<String> removal) throws Exception {
+        assertEquals(List.of(Map.of(CAP, WHITE_BANDANA)), game.removedWith,
+                "the gift's record reached its mailbox, not the empty one from before the gift");
+        assertEquals(bandana, flintWears.getItem(CAP), "its own bandana, not the higher Bone Helm");
+        assertEquals("Flint gave back 1 boss piece and wears its own gear again.", removal.get(5, TimeUnit.SECONDS));
+        assertEquals(List.of(BOSSFRIEND + " flint bossgear.worn displaced: -1:" + WHITE_BANDANA, BOSSFRIEND
+                + " flint bossgear.removed remove: 1 piece"), store.events.stream()
+                .filter(line -> line.contains(" bossgear.")).toList(), "the record, then its end");
+        assertEquals(Map.of(), record());
+    }
+
+    @Test
+    void removeTypedWhileCompanionOpsStillOwesTheGiftsAnswerUsesTheRecordThatAnswerWrites() throws Exception {
+        List<Runnable> ops = DirectExecutor.queue();
+        Item bandana = aGiftOnItsWay(ops);
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            tool.use(gm, "Flint", false); // its mailbox answered at once: the answer waits on companion-ops
+            CompletableFuture<String> removal = tool.remove(gm, "Flint");
+            runUntilIdle(ops);
+
+            assertTheRemovalUsedTheGiftsRecord(bandana, removal);
+        }
+    }
+
+    @Test
+    void removeTypedWhileItsMailboxStillOwesTheGiftUsesTheRecordTheGiftLeaves() throws Exception {
+        List<Runnable> ops = DirectExecutor.queue();
+        Item bandana = aGiftOnItsWay(ops);
+        game.mailbox = new ArrayList<>(); // a slow tick: the kit is not on yet
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            tool.use(gm, "Flint", false);
+            CompletableFuture<String> removal = tool.remove(gm, "Flint");
+            runUntilIdle(ops);
+
+            assertTheRemovalUsedTheGiftsRecord(bandana, removal);
+        }
+    }
+
+    // ---- the very copy the kit displaced, of two carried with its id (BossGearRecord.Displaced) ----------
+
+    @Test
+    void ofTwoBandanasItCarriesTheOneTheKitTookOffGoesBackOn() throws Exception {
+        Equip own = Equip.restored(WHITE_BANDANA, CAP); // scrolled: three passed
+        own.setWdef((short) 21);
+        own.setLevel((byte) 3);
+        flintWears.addItemFromDB(own);
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        Item looted = Equip.restored(WHITE_BANDANA, (short) 1);
+        bag.addItemFromDB(looted);
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        when(entry.bot()).thenReturn(flint);
+
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class);
+             MockedStatic<BossGearPlanner> forge = mockStatic(BossGearPlanner.class);
+             MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            playsLikeTheGame(inventory, flintWears, bag);
+            forge.when(() -> BossGearPlanner.forge(any())).thenAnswer(inv -> boss(((Piece) inv.getArgument(0))
+                    .itemId(), (short) 0));
+            Outcome outcome = CompanionGearTool.wearKit(entry, List.of(piece(CAP, "cap", BOSS_CAP)), 1);
+            assertEquals(own, bag.getItem((short) 2), "the boss cap went to slot 2, and its bandana swapped in there");
+
+            CompanionGearTool.removeKit(entry, gm, outcome.displaced());
+
+            assertEquals(own, flintWears.getItem(CAP), "its scrolled bandana, not the plain one it looted into slot 1");
+            assertEquals(List.of(looted), bag.list().stream().toList());
+        }
+    }
+
+    // ---- a record that cannot be read is never written over -------------------------------------------
+
+    @Test
+    void aKitOntoAKitWhoseRecordCannotBeReadLeavesTheEarlierRecordAsItIs() throws Exception {
+        game.displaced = Map.of(CAP, WHITE_BANDANA);
+        use("Flint", false);
+        doReturn(null).when(store.store).latestEvent(anyInt(), anyString(), any()); // the database read fails
+        game.displaced = Map.of(PANTS, BLUE_JEAN_SHORTS);
+        game.ontoAKit = true;
+
+        try (LivingLogLines log = new LivingLogLines(CompanionGearTool.class)) {
+            String reply = use("Flint", false);
+
+            assertTrue(reply.startsWith("Flint now wears"), "the gift itself still goes on: " + reply);
+            assertEquals(List.of(BOSSFRIEND + " flint bossgear.worn displaced: -1:" + WHITE_BANDANA),
+                    store.events(BossGearRecord.WORN), "the first kit's row stays the newest; no row with only pants");
+            assertEquals(1, log.startingWith("gm bossgear: Flint's record could not be read").size());
+        }
     }
 }

@@ -2,9 +2,11 @@ package server.living.roster;
 
 import client.inventory.Equip;
 import client.inventory.Item;
+import client.inventory.WeaponType;
 import constants.inventory.ItemConstants;
 import server.knowledge.ItemFact;
 import server.living.quest.FriendForge;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.store.LivingStore.WearStats;
 
 import java.util.ArrayList;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -22,9 +25,10 @@ import java.util.function.ToIntFunction;
  * loaded and in its saved inventory while nothing has it loaded, and at {@code !bossgear remove}). Each slot a boss
  * piece left empty takes a piece for that slot it carries in its Equip tab and can wear: first the very piece the kit
  * displaced from that slot (BossGearRecord: Tamsin's own Steel Sharp Helm, not the higher Jousting Helmet she also
- * carries), else the best one. A piece only ever moves out of its bag; nothing is made. A slot a boss piece pushed off
- * counts too: the pants under a boss overall, and the shield beside a two-handed boss weapon. Pure: it only says which
- * piece goes where.
+ * carries; of two Steel Sharp Helms she carries, the one the kit took off her, by its stats and bag slot), else the
+ * best one. A piece only ever moves out of its bag; nothing is made. A slot a boss piece pushed off counts too: the
+ * pants under a boss overall, and the shield beside a two-handed boss weapon. Pure: it only says which piece goes
+ * where.
  *
  * <p>The weapon is dressed first and the shield last, the top before the pants. A piece fits a slot by its knowledge
  * category (cap, coat or overall, pants, shoes, glove, cape, shield, weapon; never a cash piece). It is wearable by its
@@ -33,10 +37,12 @@ import java.util.function.ToIntFunction;
  * (ItemInformationProvider.canWearEquipment) is. Like that check, the gender in its id never rules a piece out: every
  * persona is made in the male beginner set (BotCreator), so Tamsin wore a man's Blue Jean Shorts under her coat. A
  * shield goes on only beside a worn one-handed weapon, and beside a worn shield only a one-handed weapon does. An
- * overall goes on only with no pants on, and pants only under a coat. The piece the kit displaced from the slot goes on
- * when it is still carried and wearable; else the best: for the weapon the boss weapon's type first (the kit keeps the
- * worn type), then a piece of its own gender (or for both), then the highest required level, then the first bag slot.
- * A piece with no knowledge fact never moves.</p>
+ * overall goes on only with no pants on, and pants only under a coat. A weapon its build fights with comes first
+ * (AgentWeaponCompatibilityPolicy, as the Agent combat and gear optimizer hold every Agent to: a sword Fighter's
+ * one-handed sword, not a higher axe its warrior mask also allows); with none carried, one its job mask allows still
+ * goes on. Then the piece the kit displaced from the slot goes on when it is still carried and wearable; else the best:
+ * for the weapon the boss weapon's type first (the kit keeps the worn type), then a piece of its own gender (or for
+ * both), then the highest required level, then the first bag slot. A piece with no knowledge fact never moves.</p>
  */
 final class OwnGearRefit {
     private static final short CAP = -1;
@@ -74,12 +80,14 @@ final class OwnGearRefit {
 
     /**
      * The moves, in dressing order. {@code wearer}: the character now (null: unknown, nothing moves); {@code taken}:
-     * the worn slot and item id of every boss piece that came off; {@code displaced}: the worn slot and item id of each
-     * own piece the kit displaced (BossGearRecord; empty when unknown); {@code worn}: what it still wears, by slot;
-     * {@code carried}: its Equip tab; {@code facts}: an item's knowledge fact, or null when unknown. Changes nothing.
+     * the worn slot and item id of every boss piece that came off; {@code displaced}: by worn slot, each own piece the
+     * kit displaced (BossGearRecord; empty when unknown); {@code worn}: what it still wears, by slot; {@code carried}:
+     * its Equip tab; {@code facts}: an item's knowledge fact, or null when unknown; {@code fights}: the weapon types
+     * its build fights with (AgentWeaponCompatibilityPolicy). Changes nothing.
      */
-    static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Integer> displaced,
-                           Map<Short, Item> worn, Collection<Item> carried, IntFunction<ItemFact> facts) {
+    static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Displaced> displaced,
+                           Map<Short, Item> worn, Collection<Item> carried, IntFunction<ItemFact> facts,
+                           Predicate<WeaponType> fights) {
         List<Move> moves = new ArrayList<>();
         if (wearer == null || taken.isEmpty()) {
             return moves;
@@ -98,19 +106,22 @@ final class OwnGearRefit {
             if (!open.contains(slot) || wearing.containsKey(slot) || !takesAPiece(slot, wearing)) {
                 continue;
             }
-            int own = displaced.getOrDefault(slot, 0);
+            Displaced own = displaced.get(slot);
             Item best = null;
             ItemFact bestFact = null;
+            boolean bestFights = false;
             for (Item piece : bag) {
                 ItemFact fact = piece instanceof Equip ? facts.apply(piece.getItemId()) : null;
                 if (fact == null || slotOf(fact) != slot || !besideTheRest(slot, piece, wearing)
                         || !wearable(wearer, fact, wearing)) {
                     continue;
                 }
-                if (best == null || better(piece, fact, best, bestFact, own, slot == WEAPON ? bossType : 0,
-                        wearer.gender())) {
+                boolean fightsWith = slot != WEAPON || fights.test(weaponType(piece.getItemId()));
+                if (best == null || (fightsWith != bestFights ? fightsWith : better(piece, fact, best, bestFact, own,
+                        slot == WEAPON ? bossType : 0, wearer.gender()))) {
                     best = piece;
                     bestFact = fact;
+                    bestFights = fightsWith;
                 }
             }
             if (best != null) {
@@ -126,6 +137,30 @@ final class OwnGearRefit {
     static boolean twoHanded(int itemId) {
         int type = itemId / WEAPON_TYPE;
         return type >= FIRST_TWO_HANDED && type <= LAST_WEAPON;
+    }
+
+    /**
+     * The weapon type of an item id, as ItemInformationProvider.getWeaponType reads it from the id's category (that
+     * provider loads WZ and the database as it starts, so it is not used here); NOT_A_WEAPON for anything else.
+     */
+    static WeaponType weaponType(int itemId) {
+        return switch (itemId / WEAPON_TYPE) {
+            case 130 -> WeaponType.SWORD1H;
+            case 131, 132 -> WeaponType.GENERAL1H_SWING;
+            case 133 -> WeaponType.DAGGER_OTHER;
+            case 137 -> WeaponType.WAND;
+            case 138 -> WeaponType.STAFF;
+            case 140 -> WeaponType.SWORD2H;
+            case 141, 142 -> WeaponType.GENERAL2H_SWING;
+            case 143 -> WeaponType.SPEAR_STAB;
+            case 144 -> WeaponType.POLE_ARM_SWING;
+            case 145 -> WeaponType.BOW;
+            case 146 -> WeaponType.CROSSBOW;
+            case 147 -> WeaponType.CLAW;
+            case 148 -> WeaponType.KNUCKLE;
+            case 149 -> WeaponType.GUN;
+            default -> WeaponType.NOT_A_WEAPON;
+        };
     }
 
     /** A shield only beside a worn one-handed weapon; pants only when the top is not an overall. */
@@ -207,15 +242,26 @@ final class OwnGearRefit {
     }
 
     /**
-     * {@code own}: the item id the kit displaced from this slot, which wins first (0: none); {@code prefer}: the weapon
-     * type that wins next (0: none); then a piece for the wearer's {@code gender} (or for both), then the higher level,
-     * then the earlier bag slot.
+     * {@code own}: the piece the kit displaced from this slot, whose id wins first (null: none), and of two copies of
+     * the id the one with its print, then the one in its bag slot (a record that knows them); {@code prefer}: the
+     * weapon type that wins next (0: none); then a piece for the wearer's {@code gender} (or for both), then the
+     * higher level, then the earlier bag slot.
      */
-    private static boolean better(Item piece, ItemFact fact, Item best, ItemFact bestFact, int own, int prefer,
+    private static boolean better(Item piece, ItemFact fact, Item best, ItemFact bestFact, Displaced own, int prefer,
                                   int gender) {
-        boolean was = own != 0 && piece.getItemId() == own;
-        if (was != (own != 0 && best.getItemId() == own)) {
+        boolean was = own != null && piece.getItemId() == own.itemId();
+        if (was != (own != null && best.getItemId() == own.itemId())) {
             return was;
+        }
+        if (was && own.exact()) { // two carried copies of the id: the very one, by its print, then by its bag slot
+            boolean same = BossGearRecord.print(piece) == own.print();
+            if (same != (BossGearRecord.print(best) == own.print())) {
+                return same;
+            }
+            boolean there = piece.getPosition() == own.bagSlot();
+            if (there != (best.getPosition() == own.bagSlot())) {
+                return there;
+            }
         }
         boolean preferred = prefer != 0 && piece.getItemId() / WEAPON_TYPE == prefer;
         boolean bestPreferred = prefer != 0 && best.getItemId() / WEAPON_TYPE == prefer;
