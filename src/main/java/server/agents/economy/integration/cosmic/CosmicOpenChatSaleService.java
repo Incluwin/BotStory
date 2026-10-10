@@ -330,7 +330,10 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                 offer.offerId.toString(), offer.intentId.toString(), configHash, catalogVersion,
                 "OPEN_CHAT_SALE", true, participants.isBoundCharacter(buyer.getId()));
         EconomyOperationContext.with(metadata, () -> Trade.completeTrade(seller));
-        if (seller.getTrade() == null) close(offer, EconomicIntent.Status.SETTLED,
+        // a refusal (either side's bag or meso room, one-of-a-kind, the daily meso limit) closes the trade too, so only
+        // the Trade held across the press tells a sale; a refused one goes the way of a cancel on the next tick (the
+        // closed-trade branch above), and the offer stays up (deploy review 2026-10-10)
+        if (trade.isSettled()) close(offer, EconomicIntent.Status.SETTLED,
                 "HUMAN_TRADE_SETTLED", at, true);
         return true;
     }

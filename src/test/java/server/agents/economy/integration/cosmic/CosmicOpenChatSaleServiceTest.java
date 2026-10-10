@@ -4,7 +4,10 @@ import client.Character;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import client.inventory.manipulator.InventoryManipulator;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.Trade;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.economy.communication.EconomicIntent;
 import server.agents.economy.decision.AgentNeed;
@@ -13,6 +16,7 @@ import server.agents.economy.persistence.EconomyEvidenceJournal;
 import server.agents.economy.scenario.EconomyEngineConfig;
 import server.agents.economy.scenario.NamedRandomStreams;
 import server.agents.economy.session.CommerceParticipant;
+import server.maps.MapleMap;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -191,6 +196,100 @@ class CosmicOpenChatSaleServiceTest {
                 any(), anyString());
         verify(reservations).release(77);
         assertTrue(service.views().isEmpty());
+    }
+
+    /**
+     * Deploy review 2026-10-10: a human buyer's trade closed the offer SETTLED ("HUMAN_TRADE_SETTLED") whenever the
+     * seller's trade was gone after its press, and a refusal closes it too. Here the real server.Trade refuses the trade
+     * because the buyer's bag has no room for the item. That is no sale: as after a cancel, the offer stays up, its
+     * intent stays open and its reservation stays held.
+     */
+    @Test
+    void aHumanTradeRefusedForTheBuyersFullBagIsNoSale() {
+        UUID runId = UUID.randomUUID();
+        Instant at = Instant.parse("2026-01-01T00:00:00Z");
+        MapleMap room = mock(MapleMap.class);
+        Character seller = trader(77, room);
+        Character buyer = trader(88, room);
+        Inventory equips = mock(Inventory.class);
+        Item sword = new Item(1302000, (short) 2, (short) 1);
+        when(seller.getInventory(InventoryType.EQUIP)).thenReturn(equips);
+        when(equips.getItem((short) 2)).thenReturn(sword);
+        when(equips.listById(1302000)).thenReturn(List.of(sword));
+        EconomyParticipantRegistry participants = new EconomyParticipantRegistry(id -> null);
+        participants.admitted(profile("seller"), seller);
+        CosmicAgentEconomyFacade economy = mock(CosmicAgentEconomyFacade.class);
+        when(economy.publishIntent(anyString(), anyString(), any(), anyInt(), anyString(), anyInt(),
+                anyLong(), anyInt(), anyString(), anyMap(), any(), any())).thenAnswer(call -> new EconomicIntent(
+                UUID.randomUUID(), runId, call.getArgument(0), call.getArgument(1), call.getArgument(2),
+                call.getArgument(3), call.getArgument(4), call.getArgument(5), call.getArgument(6),
+                call.getArgument(7), call.getArgument(8), call.getArgument(9), call.getArgument(10),
+                call.<Instant>getArgument(10).plus(call.<Duration>getArgument(11)), EconomicIntent.Status.OPEN));
+        CosmicOpenChatSaleService.ReservationGateway reservations =
+                mock(CosmicOpenChatSaleService.ReservationGateway.class);
+        CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
+                config(), new NamedRandomStreams(1), participants, economy,
+                mock(EconomyEvidenceJournal.class), mock(CosmicNegotiatedTradeExecutor.class), reservations,
+                (itemId, quantity) -> 100_000, (speaker, text) -> { });
+        service.prepare(seller, profile("seller"), new MarketSellerPlan(List.of(), List.of(
+                new AgentFreeMarketStallService.Listing(InventoryType.EQUIP,
+                        (short) 2, (short) 1, (short) 1, 400_000)), 910000001, "shop"), at);
+        Trade buyerTrade = new Trade((byte) 0, buyer);
+        Trade sellerTrade = new Trade((byte) 1, seller);
+        buyer.setTrade(buyerTrade);
+        seller.setTrade(sellerTrade);
+        buyerTrade.setPartner(sellerTrade);
+        sellerTrade.setPartner(buyerTrade);
+        buyerTrade.setFullTrade(true);
+        sellerTrade.setFullTrade(true);
+
+        try (MockedStatic<Inventory> bags = mockStatic(Inventory.class);
+             MockedStatic<InventoryManipulator> ignoredDrops = mockStatic(InventoryManipulator.class);
+             MockedStatic<CosmicTradeOfferPlacer> placer = mockStatic(CosmicTradeOfferPlacer.class)) {
+            bags.when(() -> Inventory.checkSpotsAndOwnership(eq(buyer), anyList())).thenReturn(false);
+            bags.when(() -> Inventory.checkSpotsAndOwnership(eq(seller), anyList())).thenReturn(true);
+            placer.when(() -> CosmicTradeOfferPlacer.placeExact(eq(seller), eq(InventoryType.EQUIP), eq((short) 2),
+                    eq(1302000), anyString(), eq(1), eq((byte) 1))).thenAnswer(invocation -> {
+                        Item offered = sword.copy();
+                        offered.setPosition((short) 1);
+                        return sellerTrade.addItem(offered);
+                    });
+
+            assertTrue(service.handleManualTrade(seller)); // the seller puts the sword in
+            buyerTrade.setMeso(400_000); // the buyer pays the ask and presses Trade
+            Trade.completeTrade(buyer);
+            assertTrue(service.handleManualTrade(seller)); // the seller presses Trade: refused, buyer's bag is full
+
+            verify(buyer).message("There is not enough inventory space to complete the trade.");
+            assertNull(seller.getTrade(), "the refusal closed the trade");
+            assertFalse(service.handleManualTrade(seller)); // its next tick: the closed trade, as after a cancel
+        }
+
+        verify(economy, never()).resolveIntent(anyString(), any(), eq(EconomicIntent.Status.SETTLED),
+                any(), anyString());
+        verify(economy, never()).resolveIntent(anyString(), any(), any(), any(), eq("HUMAN_TRADE_SETTLED"));
+        verify(reservations, never()).release(anyInt());
+        assertEquals(1, service.views().size(), "the offer is still up");
+    }
+
+    /** A free-market character with a real trade slot (server.Trade sets it). */
+    private static Character trader(int id, MapleMap room) {
+        Character character = mock(Character.class);
+        AtomicReference<Trade> trade = new AtomicReference<>();
+        when(character.getId()).thenReturn(id);
+        when(character.getName()).thenReturn("trader" + id);
+        when(character.getLevel()).thenReturn(70);
+        when(character.getMeso()).thenReturn(5_000_000);
+        when(character.canHoldMeso(anyInt())).thenReturn(true);
+        when(character.canHoldUniques(anyList())).thenReturn(true);
+        when(character.getMap()).thenReturn(room);
+        when(character.getMapId()).thenReturn(910000000);
+        when(character.getTrade()).thenAnswer(invocation -> trade.get());
+        doAnswer(invocation -> {
+            trade.set(invocation.getArgument(0));
+            return null;
+        }).when(character).setTrade(any());
+        return character;
     }
 
     private static EconomyEngineConfig.OpenChatSelling config() {
