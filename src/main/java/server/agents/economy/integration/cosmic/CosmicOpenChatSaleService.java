@@ -210,7 +210,8 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         CandidatePurchase selected = offers.values().stream()
                 .filter(offer -> !offer.sellerAgentId.equals(profile.agentId())
                         && offer.advertisements > 0 && offer.mapId == buyer.getMapId()
-                        && logicalAt.isBefore(offer.expiresAt))
+                        && logicalAt.isBefore(offer.expiresAt)
+                        && !offer.refusedBuyers.contains(profile.agentId())) // nor the approach to its seller
                 .flatMap(offer -> needs.stream().filter(need -> need.deficit() >= offer.quantity
                                 && (need.itemId() == offer.itemId || need.substitutes().contains(offer.itemId)))
                         .map(need -> purchaseCandidate(offer, need, liquidityBudget)))
@@ -250,6 +251,12 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                 "OPEN_CHAT_SELLER_ACCEPT", sellerText, payment, acceptance.intentId());
         TradeExecutionResult execution = executeAgentTrade(buyer, profile, seller, offer, payment, logicalAt);
         if (!execution.success()) {
+            // the trade did not go through: refused (the buyer's bag or one-of-a-kind limit, the seller's meso room or
+            // daily meso limit) or never opened. server.Trade does not say whose refusal it was, so the offer stays up
+            // for other buyers and only this buyer leaves it alone. Its need is unchanged, so it would open the same
+            // trade on every revisit and walk back to the seller from any stall (deploy review 2026-10-10). FAILED is
+            // this attempt's state, not a dead offer: a dead one leaves 'offers' through close().
+            offer.refusedBuyers.add(profile.agentId());
             offer.state = OfferState.FAILED;
             economy.resolveIntent(profile.agentId(), buyerOffer.intentId(), EconomicIntent.Status.CANCELLED,
                     logicalAt, execution.outcome());
@@ -393,6 +400,7 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                     value.put("lastLogicalAt", offer.lastLogicalAt.toString());
                     value.put("advertisements", offer.advertisements);
                     value.put("state", offer.state.name());
+                    value.put("refusedBuyers", offer.refusedBuyers.stream().sorted().toList());
                     return value;
                 }).toList();
         return Map.of("schemaVersion", 1, "offers", encoded, "eligibility", Map.copyOf(eligibility));
@@ -423,6 +431,8 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
             offer.lastLogicalAt = Instant.parse(value.get("lastLogicalAt").toString());
             offer.advertisements = ((Number) value.get("advertisements")).intValue();
             offer.state = OfferState.valueOf(value.getOrDefault("state", "OPEN").toString());
+            if (value.get("refusedBuyers") instanceof List<?> refused) // absent in checkpoints before 2026-10-10
+                refused.forEach(agentId -> offer.refusedBuyers.add(agentId.toString()));
             offer.reservationActive = false;
             offers.put(offer.sellerAgentId, offer);
         }
@@ -573,6 +583,7 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         private long tradeStartedAtMs;
         private boolean reservationActive = true;
         private OfferState state = OfferState.OPEN;
+        private final Set<String> refusedBuyers = new HashSet<>(); // Agent buyers whose trade for it did not go through
 
         private Offer(UUID offerId, UUID intentId, String sellerAgentId, int sellerCharacterId,
                       InventoryType inventoryType, short slot, int itemId, String fingerprint,
