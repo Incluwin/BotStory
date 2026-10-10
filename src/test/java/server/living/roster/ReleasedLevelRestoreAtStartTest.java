@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -49,7 +50,8 @@ import static server.living.roster.LifecycleHarness.LITH;
  * walk-out ends, so a stop in between left a persona nobody employs with its GM level hold or its boss pieces, and no
  * later release to take them off. At start such a persona gets exactly an offline release's cleanup: its boss pieces
  * leave its saved inventory and its own carried gear goes back on, then its hold is restored in its stored rows and
- * released. A crew member (a roster row), a human's own record and kit, a character online and one loaded for anything
+ * released. Nobody knows then who let it go, so the record of what its kit displaced (BossGearRecord) is the persona's
+ * newest under any owner, and its removal ends it under that owner. A crew member (a roster row), a human's own record and kit, a character online and one loaded for anything
  * else are never touched; with nothing found nothing is logged.
  */
 class ReleasedLevelRestoreAtStartTest {
@@ -239,6 +241,7 @@ class ReleasedLevelRestoreAtStartTest {
         assertEquals(Optional.empty(), holds.record(HADRIK, "hadrik"), "its hold is released");
         assertEquals(List.of(HADRIK + " hadrik " + GmLevelHolds.RELEASE + " " + ReleasedLevelRestore.WHY), gmWrites);
         assertEquals(List.of(RosterService.RELEASE_CLEANUP_AT_START_MAX), limits, "one bounded read");
+        verify(game.store.store, never()).latestPersonaEvent(anyString(), any()); // no boss gear: no record read
     }
 
     @Test
@@ -302,6 +305,107 @@ class ReleasedLevelRestoreAtStartTest {
         verify(game.store.store, never()).dropStoredItems(anyInt(), any(), any());
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.RESIDENT, 0), game.leases.holder(HADRIK));
         assertTrue(holds.record(HADRIK, "hadrik").isPresent());
+    }
+
+    // ---- its boss gear record, under the owner who let it go --------------------------------------
+
+    /** Bo, who employed Hadrik before Ann. */
+    private static final int BO = 11;
+    private static final short CAP = -1;
+    /** The kit's cap; the Steel Sharp Helm it swapped out, and the higher Jousting Helmet Hadrik also carries. */
+    private static final int KIT_CAP = 1002055;
+    private static final int STEEL_SHARP_HELM = 1002027;
+    private static final int JOUSTING_HELMET = 1002023;
+
+    /** Its saved inventory: its Gladius and the kit's cap worn; in its bag its Jousting Helmet and Steel Sharp Helm. */
+    private List<Item> savedCapKit(int characterId) {
+        List<Item> saved = new ArrayList<>(List.of(Equip.restored(GLADIUS, WEAPON), boss(KIT_CAP, CAP),
+                Equip.restored(JOUSTING_HELMET, (short) 1), Equip.restored(STEEL_SHARP_HELM, (short) 2)));
+        game.store.storedItems.put(characterId, saved);
+        when(game.store.store.wearStats(characterId)).thenReturn(FIGHTER);
+        return saved;
+    }
+
+    /** The item at a worn slot or bag position, or 0. */
+    private static int at(List<Item> items, short position) {
+        return items.stream().filter(item -> item.getPosition() == position).mapToInt(Item::getItemId).findFirst()
+                .orElse(0);
+    }
+
+    @Test
+    void itsRecordUnderTheOwnerWhoLetItGoPutsBackWhatTheKitDisplacedAndEndsThere() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
+            List<Item> saved = savedCapKit(HADRIK);
+            offline(HADRIK);
+            LivingStore store = game.store.store;
+            BossGearRecord.write(store, BO, "hadrik", Map.of(CAP, JOUSTING_HELMET)); // Bo's kit, long gone
+            store.event(BO, "hadrik", BossGearRecord.REMOVED, "released: 1 piece");
+            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, STEEL_SHARP_HELM)); // Ann's, as it went on
+            RosterService roster = roster();
+
+            try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
+                roster.finishReleaseCleanupAtStart();
+
+                assertEquals(List.of(LINE + ": stripped=1 restored=0 skipped=0"), lines.startingWith(LINE));
+            }
+            assertEquals(STEEL_SHARP_HELM, at(saved, CAP), "the very helm Ann's kit displaced: " + placed(saved));
+            assertEquals(JOUSTING_HELMET, at(saved, (short) 1), "the higher helm stays in its bag");
+            assertEquals(3, saved.size(), "the kit's cap went, nothing was made");
+            assertEquals(List.of(BO + " hadrik bossgear.removed released: 1 piece",
+                    ANN + " hadrik bossgear.removed released: 1 piece"), game.store.events("bossgear.removed"),
+                    "ended under Ann, whose record it was");
+            assertEquals(Map.of(), BossGearRecord.read(store, ANN, "hadrik"), "Ann's record ended");
+            assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store, "hadrik"));
+            assertNull(game.leases.holder(HADRIK));
+        }
+    }
+
+    @Test
+    void withNoRecordItWearsTheBestItCarriesAsBefore() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
+            List<Item> saved = savedCapKit(HADRIK);
+            offline(HADRIK);
+            RosterService roster = roster();
+
+            try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
+                roster.finishReleaseCleanupAtStart();
+
+                assertEquals(List.of(LINE + ": stripped=1 restored=0 skipped=0"), lines.startingWith(LINE));
+            }
+            assertEquals(JOUSTING_HELMET, at(saved, CAP), "its best carried cap: " + placed(saved));
+            assertEquals(STEEL_SHARP_HELM, at(saved, (short) 2));
+            assertEquals(List.of("0 hadrik bossgear.removed released: 1 piece"), game.store.events("bossgear.removed"),
+                    "nobody known: under owner 0, as before");
+        }
+    }
+
+    @Test
+    void aRecordThatCannotBeReadLeavesTheBestItCarriesAndTheCleanupStillFinishes() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
+            held(HADRIK, "hadrik", HADRIK_HELD);
+            setToCrusaderSeventy(HADRIK);
+            List<Item> saved = savedCapKit(HADRIK);
+            offline(HADRIK);
+            LivingStore store = game.store.store;
+            BossGearRecord.write(store, ANN, "hadrik", Map.of(CAP, STEEL_SHARP_HELM));
+            doReturn(null).when(store).latestPersonaEvent(anyString(), any()); // the read fails
+            RosterService roster = roster();
+
+            try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
+                roster.finishReleaseCleanupAtStart();
+
+                assertEquals(List.of(LINE + ": stripped=1 restored=1 skipped=0"), lines.startingWith(LINE));
+            }
+            assertEquals(JOUSTING_HELMET, at(saved, CAP), "its best carried cap: " + placed(saved));
+            assertEquals(List.of("0 hadrik bossgear.removed released: 1 piece"), game.store.events("bossgear.removed"));
+            assertEquals(Map.of(CAP, STEEL_SHARP_HELM), BossGearRecord.read(store, ANN, "hadrik"),
+                    "whose record it is was not read: it stays");
+            assertEquals(List.of(HADRIK + " lv40 job110 exp1234"), rewrites, "its level still goes back");
+            assertNull(game.leases.holder(HADRIK));
+        }
     }
 
     // ---- nothing else is touched ------------------------------------------------------------------

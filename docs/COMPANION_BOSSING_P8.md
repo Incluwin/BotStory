@@ -413,9 +413,12 @@ restart.
   finishes such a release when it starts (`RosterService.finishReleaseCleanupAtStart`, on companion-ops right after
   the boot reconciliation). One bounded query finds each persona on nobody's roster that still has a hold or a boss
   piece. Each one gets the same strip, refit and restore as an offline release, with the same online checks and logs.
-  One INFO line `Release cleanup at start: stripped= restored= skipped=` follows, only when it found one. Personas on
-  a roster, a human's own record and characters online or loaded stay as they are. A skipped persona waits for the
-  next start.
+  Nobody knows then who let it go, so the refit reads the persona's newest `bossgear.worn` or `bossgear.removed` row
+  under any owner (`LivingStore.latestPersonaEvent`). A `bossgear.worn` row puts back what the kit displaced, and the
+  `bossgear.removed` row goes under that row's owner, so the record ends. With no record, or when the read fails, it
+  wears the best piece it carries, and the removal goes under owner 0. One INFO line
+  `Release cleanup at start: stripped= restored= skipped=` follows, only when it found one. Personas on a roster, a
+  human's own record and characters online or loaded stay as they are. A skipped persona waits for the next start.
 - Zakum's level and not-here refusals have one wording each, so two companions refused alike say the same words.
 - The javadocs of `LivingWorldHooks.bossParty*`/`bossAlly*` and `CompanionBossRuns.offers` still say "Mu Young's Easy
   window". Adobis uses them too.

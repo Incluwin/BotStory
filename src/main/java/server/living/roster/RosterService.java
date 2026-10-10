@@ -3227,9 +3227,11 @@ public final class RosterService {
      * its boss pieces, and no later release to take them off. Each persona nobody employs that still has either
      * (LivingStore.releaseCleanupCandidates: one bounded query) gets exactly an offline release's cleanup
      * ({@link #takeBossGearOff}, then {@link #restoreOwnLevel}) with their online checks, refusals and logs, under a
-     * COMPANION lease charged to nobody, so no Resident tick or citizen session loads it meanwhile. A persona on anyone's
-     * roster (a crew keeps its test levels and kit), a human's own record, and a character leased or online now are
-     * never touched; one left as it is waits for the next start. One INFO line when any was found.
+     * COMPANION lease charged to nobody, so no Resident tick or citizen session loads it meanwhile. Who let it go is not
+     * known then, so its boss-gear record (what the kit displaced) is the persona's newest under any owner, and its
+     * removal is logged under that owner. A persona on anyone's roster (a crew keeps its test levels and kit), a human's
+     * own record, and a character leased or online now are never touched; one left as it is waits for the next start.
+     * One INFO line when any was found.
      */
     public void finishReleaseCleanupAtStart() {
         Map<String, Integer> candidates = world.store().releaseCleanupCandidates(BossGearPlanner.OWNER_TAG,
@@ -3255,6 +3257,7 @@ public final class RosterService {
                 continue;
             }
             try {
+                // who let it go is not known now: its boss-gear record is found by persona, and ends where it lies
                 int taken = takeBossGearOff(0, personaId, null, characterId);
                 ReleasedLevelRestore.Result level = restoreOwnLevel(personaId, characterId);
                 stripped += taken > 0 ? 1 : 0;
@@ -3292,14 +3295,20 @@ public final class RosterService {
      * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: first
      * the very one the kit displaced, by its BossGearRecord, such as its own shield), since no load path dresses a
      * carried shield again; the removal event ends that record. Never in the way of the release: a failure is logged.
-     * {@code ownerId} is who let it go (0 at start: nobody known). How many pieces left it; -1 when they could not be
-     * taken off.
+     * {@code ownerId} is who let it go: its record is read under that owner and the removal logged there. At start
+     * (0: nobody known) the record is the persona's newest under any owner (BossGearRecord.readByPersona), and the
+     * removal is logged under the owner whose record it was, so it ends where it lies; with none found or a failed
+     * read, it wears the best it carries and the removal goes under 0. How many pieces left it; -1 when they could not
+     * be taken off.
      */
     private int takeBossGearOff(int ownerId, String personaId, Character bot, int characterId) {
         try {
             int taken;
-            // read only when a worn boss piece comes off
-            Supplier<Map<Short, Integer>> displaced = () -> BossGearRecord.read(world.store(), ownerId, personaId);
+            // read only when a boss piece comes off (a release's owner needs no read for its removal event)
+            Supplier<BossGearRecord.Found> record = ownerId > 0
+                    ? () -> new BossGearRecord.Found(ownerId, BossGearRecord.read(world.store(), ownerId, personaId))
+                    : BossGearRecord.byPersonaOnce(world.store(), personaId);
+            Supplier<Map<Short, Integer>> displaced = () -> record.get().slots();
             if (bot != null) {
                 taken = CompanionGearTool.takeBossGearOnRelease(bot, displaced);
                 if (taken > 0) {
@@ -3310,7 +3319,8 @@ public final class RosterService {
                         displaced);
             }
             if (taken > 0) {
-                world.store().event(ownerId, personaId, BossGearRecord.REMOVED, "released: " + taken
+                int recordOwner = ownerId > 0 ? ownerId : record.get().ownerId();
+                world.store().event(recordOwner, personaId, BossGearRecord.REMOVED, "released: " + taken
                         + (taken == 1 ? " piece" : " pieces"));
                 log.info("companion {} let go: {} boss gear pieces taken off", personaId, taken);
             } else if (taken < 0) {

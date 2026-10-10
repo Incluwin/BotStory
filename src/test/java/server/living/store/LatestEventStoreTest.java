@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -77,5 +78,40 @@ class LatestEventStoreTest {
 
         when(statement.executeQuery()).thenThrow(new SQLException("gone"));
         assertNull(new LivingStore().latestEvent(870, "tamsin", List.of("bossgear.worn")));
+    }
+
+    // ---- by persona alone (LivingStore.latestPersonaEvent: the start's cleanup, owner unknown) -------
+
+    @Test
+    void thePersonasNewestRowOfTheKindsUnderAnyCharacterWithThatCharacter() throws SQLException {
+        when(rows.next()).thenReturn(true);
+        when(rows.getInt(1)).thenReturn(870);
+        when(rows.getString(2)).thenReturn("bossgear.worn");
+        when(rows.getString(3)).thenReturn("displaced: -1:1002027");
+
+        Optional<LivingStore.LoggedEvent> row = new LivingStore().latestPersonaEvent("tamsin",
+                List.of("bossgear.worn", "bossgear.removed"));
+
+        assertEquals(Optional.of(new LivingStore.LoggedEvent(870, "bossgear.worn", "displaced: -1:1002027")), row);
+        String query = sql.get(0);
+        assertTrue(query.startsWith("SELECT character_id, kind, detail FROM living_event_log"), query);
+        assertTrue(query.contains("WHERE persona_id = ? AND kind IN (?,?)"), query);
+        assertFalse(query.contains("character_id = ?"), "under any character: " + query);
+        assertTrue(query.contains("ORDER BY id DESC LIMIT 1"), query);
+        verify(statement).setString(1, "tamsin");
+        verify(statement).setString(2, "bossgear.worn");
+        verify(statement).setString(3, "bossgear.removed");
+    }
+
+    @Test
+    void byPersonaNoRowsIsEmptyAndAFailedReadIsNull() throws SQLException {
+        when(rows.next()).thenReturn(false);
+        assertEquals(Optional.empty(), new LivingStore().latestPersonaEvent("tamsin", List.of("bossgear.worn")));
+
+        when(statement.executeQuery()).thenThrow(new SQLException("gone"));
+        assertNull(new LivingStore().latestPersonaEvent("tamsin", List.of("bossgear.worn")));
+
+        database.when(DatabaseConnection::getConnection).thenThrow(new IllegalStateException("no pool"));
+        assertNull(new LivingStore().latestPersonaEvent("tamsin", List.of("bossgear.worn")));
     }
 }

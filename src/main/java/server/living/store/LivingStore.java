@@ -1776,6 +1776,40 @@ public final class LivingStore {
         }
     }
 
+    /** One living_event_log row: the character it was logged under (0 for none), its kind and its detail. */
+    public record LoggedEvent(int characterId, String kind, String detail) {
+    }
+
+    /**
+     * The persona's newest event of one of these {@code kinds} under any character, with the character it was logged
+     * under (a released companion's boss-gear record at start, when who let it go is no longer known:
+     * BossGearRecord.readByPersona): empty when there is none, null when the read fails. No index covers the persona,
+     * so it reads the log back from the newest row until one matches: only the start's cleanup of a release a stop cut
+     * short calls it, for a persona whose boss gear comes off.
+     */
+    public java.util.Optional<LoggedEvent> latestPersonaEvent(String personaId, List<String> kinds) {
+        if (kinds.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String sql = "SELECT character_id, kind, detail FROM living_event_log WHERE persona_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ") ORDER BY id DESC LIMIT 1";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setString(at++, personaId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next()
+                        ? java.util.Optional.of(new LoggedEvent(rs.getInt(1), rs.getString(2), rs.getString(3)))
+                        : java.util.Optional.empty();
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("living_event_log latest read failed for persona {} {}", personaId, kinds, failure);
+            return null;
+        }
+    }
+
     /** The details of every {@code kind} event logged for this persona (with or without a character); null when the read fails. */
     public List<String> personaEventDetails(String personaId, String kind) {
         List<String> out = new ArrayList<>();

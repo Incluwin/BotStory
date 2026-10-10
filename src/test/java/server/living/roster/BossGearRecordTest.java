@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 
 /**
  * The record of what a companion's !bossgear kit displaced, as the living event log keeps it (BossGearRecord): slot and
@@ -46,5 +49,33 @@ class BossGearRecordTest {
 
         BossGearRecord.write(store.store, 870, "tamsin", Map.of(PANTS, 1060002));
         assertEquals(Map.of(PANTS, 1060002), BossGearRecord.read(store.store, 870, "tamsin"));
+    }
+
+    @Test
+    void byPersonaTheNewestRowUnderAnyOwnerSaysWhoseRecordItIs() {
+        FakeLivingStore store = new FakeLivingStore();
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"),
+                "none");
+
+        BossGearRecord.write(store.store, 871, "tamsin", Map.of(PANTS, 1060002));
+        store.store.event(871, "tamsin", BossGearRecord.REMOVED, "released: 6 pieces");
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, 1002027));
+        assertEquals(new BossGearRecord.Found(870, Map.of(CAP, 1002027)),
+                BossGearRecord.readByPersona(store.store, "tamsin"), "the newest owner's, not the earlier one's");
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "hadrik"),
+                "another persona's");
+
+        store.store.event(0, "tamsin", BossGearRecord.REMOVED, "released: 1 piece"); // an earlier start's
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"),
+                "a newer removal under any owner ended it");
+    }
+
+    @Test
+    void byPersonaAFailedReadIsNoRecord() {
+        FakeLivingStore store = new FakeLivingStore();
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, 1002027));
+        doReturn(null).when(store.store).latestPersonaEvent(anyString(), any());
+
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"));
     }
 }
