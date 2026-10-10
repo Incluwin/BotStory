@@ -105,6 +105,20 @@ public final class PhraseMatcher {
         return match(compiled, normalized);
     }
 
+    /**
+     * What {@link #resolve} reads {@code message} as (a canonical command, or {@code reply:<text>} for a planned one),
+     * the command the Agents' prejudge would act on, or null; nothing is recorded (a learned phrase's hit counts when
+     * the Agent resolves it).
+     */
+    public String commandFor(String message) {
+        String normalized = normalize(message);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String remembered = learned.get(normalized);
+        return remembered != null ? remembered : match(compiled, normalized);
+    }
+
     /** Pack resolution only (no learned phrases): canonical, {@code reply:...}, or null. */
     static String match(List<Compiled> commands, String normalized) {
         String[] words = normalized.split(" ");

@@ -27,11 +27,15 @@ public final class AgentDialogueTransportRuntime {
         AgentChatReplyRuntime.queueSay(state(entry), message, dispatcher(entry));
     }
 
+    /**
+     * A reply on the route of the line being handled, if any (AgentReplyRoute.current): one that waits in a busy queue
+     * still goes where that line asks (second deploy review 2026-10-10); else the Agent's reply channel when sent.
+     */
     public static void queueReply(AgentRuntimeEntry entry, String message) {
         if (!transportEnabled()) {
             return;
         }
-        AgentChatReplyRuntime.queueReply(state(entry), message, dispatcher(entry));
+        AgentChatReplyRuntime.queueReply(state(entry), message, AgentReplyRoute.current(entry), dispatcher(entry));
     }
 
     public static long queueSayWithEstimatedDelay(AgentRuntimeEntry entry, String message) {
@@ -65,21 +69,24 @@ public final class AgentDialogueTransportRuntime {
      * channel, never this reply. Null reads the channel now.
      */
     public static void replyNow(AgentRuntimeEntry entry, String message, AgentReplyRoute route) {
-        if (route == null) {
-            replyNow(entry, message);
+        if (!transportEnabled()) {
             return;
         }
-        if (!transportEnabled()) {
+        if (route == null) {
+            send(entry, message, AgentReplyChannelStateRuntime.replyChannel(entry), null);
             return;
         }
         send(entry, message, route.channel(), route.whisperTo());
     }
 
+    /**
+     * A reply on the route of the line being handled (AgentReplyRoute.current), which an answer scheduled for later
+     * carries (AgentSchedulerRuntime.afterRandomDelay), so "heals off" whispered by an administrator is answered to the
+     * administrator after its companion went back to its owner (second deploy review 2026-10-10); outside a line, the
+     * Agent's reply channel now.
+     */
     public static void replyNow(AgentRuntimeEntry entry, String message) {
-        if (!transportEnabled()) {
-            return;
-        }
-        send(entry, message, AgentReplyChannelStateRuntime.replyChannel(entry), null);
+        replyNow(entry, message, AgentReplyRoute.current(entry));
     }
 
     /** {@code whisperTo} null: a whisper goes to the Agent's interaction target. */

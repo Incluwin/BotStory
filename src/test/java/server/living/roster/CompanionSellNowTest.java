@@ -5,26 +5,39 @@ import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import config.LivingWorldConfig;
 import server.agents.capabilities.dialogue.AgentChatOrchestrator;
+import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
 import server.agents.capabilities.dialogue.AgentChatRuntime;
 import server.agents.capabilities.dialogue.AgentChatUtilityFlow;
+import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.capabilities.shop.AgentShopService;
+import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
+import server.agents.social.conversation.AgentSocialDialogueRuntime;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.config.ContentLoader;
 import server.living.config.LivingContent;
+import server.living.phrases.PhraseMatcher;
 import server.living.resident.ResidentDialogue;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -32,6 +45,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -44,6 +59,8 @@ class CompanionSellNowTest {
     private static final int ALICE = 10;
     private static final Persona TAMSIN = CompanionChatVerbsTest.persona("tamsin", "Tamsin");
     private static final Persona HADRIK = CompanionChatVerbsTest.persona("hadrik", "Hadrik");
+    /** The whole commands the Agents carry out here (each one a phrase pack's canonical). */
+    private static final Set<String> CANONICAL = Set.of("sell trash", "stop", "heals off");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final RosterService roster = mock(RosterService.class);
@@ -81,6 +98,8 @@ class CompanionSellNowTest {
     void unwire() {
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = oldOperators;
         AgentRuntimeRegistry.clear();
+        AgentChatIntentRuntime.installPrejudge(null);
+        AgentChatIntentRuntime.installLearner(null);
         executor.shutdown();
     }
 
@@ -108,6 +127,91 @@ class CompanionSellNowTest {
         }
     }
 
+    /**
+     * Second deploy review 2026-10-10: the fix above took only the four exact sell-now lines. Any other line the phrase
+     * packs read as an Agent command ("sell your junk", "dump your junk", "stop", "heals off") with the name last still
+     * went on to the untargeted Agent route, whose phrase packs allow two unknown trailing words, so every companion
+     * out did it. Such a line now goes to the named companion's Agent alone, as the line with the name first does.
+     */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"sell your junk tamsin, sell trash", "sell the junk Tamsin, sell trash",
+            "dump your junk tamsin, sell trash", "sell your trash tamsin, sell trash", "stop tamsin, stop",
+            "heals off tamsin, heals off",
+            "Tamsin sell your junk, sell trash"})
+    void aPackCommandWithTheNameLastReachesOnlyThatCompanion(String said, String command) {
+        installPhrasePacks();
+        List<String> done = new java.util.concurrent.CopyOnWriteArrayList<>();
+        String[] draining = {""};
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class)) {
+            // each Agent carries out a whole canonical command and misses the rest, which the phrase packs then read
+            chat.when(() -> AgentChatRuntime.handleChat(any(), any())).thenAnswer(call -> {
+                String line = call.getArgument(0);
+                return CANONICAL.contains(line) && done.add(draining[0] + ":" + line);
+            });
+
+            mapChat(said);
+            draining[0] = "Tamsin";
+            drainAll(tamsin);
+            draining[0] = "Hadrik";
+            drainAll(hadrik);
+        }
+
+        assertEquals(List.of("Tamsin:" + command), done);
+    }
+
+    /**
+     * The same line to a companion that is not out with its owner reaches no companion: the line names it, and the
+     * Agents out are not it. A sell-now line to it is the bench job SELL, as "sell junk tamsin" is; "follow tamsin"
+     * stays the Agent routes' own "follow &lt;player&gt;".
+     */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"stop tamsin", "heals off tamsin", "sell your junk tamsin"})
+    void aPackCommandWithTheNameLastToABenchedCompanionReachesNoCompanionOut(String said) {
+        installPhrasePacks();
+        when(roster.entry(ALICE, "tamsin")).thenReturn(row("tamsin", RosterState.BENCHED));
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(ALICE, hadrik);
+        List<String> done = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class)) {
+            chat.when(() -> AgentChatRuntime.handleChat(any(), any())).thenAnswer(call -> {
+                String line = call.getArgument(0);
+                return CANONICAL.contains(line) && done.add("Hadrik:" + line);
+            });
+
+            mapChat(said);
+            drainAll(hadrik);
+            assertFalse(dialogue.onMapChat(alice, "follow tamsin"), "follow <player> stays the Agent routes' own");
+        }
+
+        assertEquals(List.of(), done);
+        if (said.startsWith("sell")) {
+            verify(roster, timeout(2_000)).assign(alice, TAMSIN, Assignment.SELL, 0, 0);
+        }
+    }
+
+    /** Map chat as GeneralChatHandler routes it: the living world first, then the Agent routes when it took nothing. */
+    private void mapChat(String said) {
+        if (!dialogue.onMapChat(alice, said)) {
+            AgentChatRouteCoordinator.handleChat(alice, said, AgentReplyChannel.MAP,
+                    (leaderId, leader, name) -> null, (leaderId, leader, name, target) -> null,
+                    (leaderId, name) -> false);
+        }
+    }
+
+    /** The real phrase packs, installed as the living world installs them (PhraseMatcher.reload: the prejudge). */
+    private void installPhrasePacks() {
+        when(world.store()).thenReturn(mock(LivingStore.class));
+        when(world.config()).thenReturn(new LivingWorldConfig());
+        when(content.phrases()).thenReturn(ContentLoader.load(Path.of("scripts/config/living-world")).phrases());
+        PhraseMatcher phrases = new PhraseMatcher(world);
+        phrases.reload();
+        when(world.phrases()).thenReturn(phrases);
+    }
+
     private static void drainAll(AgentRuntimeEntry entry) {
         for (int pass = 0; pass < 10 && AgentMailboxRuntime.drain(entry) > 0; pass++) {
             // each pass may queue the next step (the reply channel, then the chat)
@@ -115,7 +219,11 @@ class CompanionSellNowTest {
     }
 
     private static RosterEntry row(String personaId) {
-        return new RosterEntry(ALICE, personaId, RosterState.ACTIVE, Assignment.TRAIN, 0, 0, 104000000, 0L, 0L, 0L, 1L,
+        return row(personaId, RosterState.ACTIVE);
+    }
+
+    private static RosterEntry row(String personaId, RosterState state) {
+        return new RosterEntry(ALICE, personaId, state, Assignment.TRAIN, 0, 0, 104000000, 0L, 0L, 0L, 1L,
                 1L, 1L, 0, null);
     }
 

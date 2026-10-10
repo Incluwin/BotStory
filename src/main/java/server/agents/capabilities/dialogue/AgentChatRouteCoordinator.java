@@ -165,7 +165,8 @@ public final class AgentChatRouteCoordinator {
      * or map line naming that Agent takes, so a line no fixed pattern matches still reaches the phrase packs, the
      * intent judge and the social reply, and every answer goes back on {@code channel} (the whisper). The line is its
      * owner's last command only when the speaker is the leader it runs under ({@link #runsUnder}): an administrator's
-     * whisper to another player's Agent is not (deploy review 2026-10-10). Completes once the line is answered.
+     * whisper to another player's Agent is not (deploy review 2026-10-10). Completes once the line is handled; the
+     * answers its flows send later keep its route (AgentReplyRoute), whoever the Agent answers by then.
      */
     public static CompletionStage<Boolean> handleWhisperChat(Character speaker,
                                                              AgentRuntimeEntry entry,
@@ -384,7 +385,9 @@ public final class AgentChatRouteCoordinator {
 
     /**
      * {@code speaker}: whom a whispered line's answers go back to. The judge's own answers ("did you mean ...?") come
-     * after its judgment, so they keep the line's route (deploy review 2026-10-10).
+     * after its judgment, so they keep the line's route (deploy review 2026-10-10); so do the answers the line's flows
+     * say or schedule while the Agent handles it, and those of the canonical command the judge re-dispatches (second
+     * deploy review 2026-10-10: AgentChatMailboxAction puts the route in scope).
      */
     private static CompletionStage<Boolean> handleAgentChat(
             AgentRuntimeEntry entry,
@@ -392,16 +395,18 @@ public final class AgentChatRouteCoordinator {
             AgentReplyChannel channel,
             Character speaker) {
         AgentReplyRoute route = AgentReplyRoute.of(channel, speaker);
+        AgentChatIntentRuntime.Redispatch dispatch = (handled, line, lineChannel) ->
+                AgentChatMailboxDispatcher.handleChat(handled, line, lineChannel, speaker);
         // Deterministic classifiers first; only a miss is offered to the TypeSafe intent judge,
         // which re-dispatches a canonical phrase through this same dispatcher when confident.
-        return AgentChatMailboxDispatcher.handleChat(entry, message, channel)
+        return dispatch.handle(entry, message, channel)
                 .thenCompose(handled -> Boolean.TRUE.equals(handled)
                         ? CompletableFuture.completedFuture(true)
                         : AgentChatIntentRuntime.judgeUnmatched(
                                 entry,
                                 message,
                                 channel,
-                                AgentChatMailboxDispatcher::handleChat,
+                                dispatch,
                                 (judged, reply) -> queueReply(judged, reply, route)));
     }
 

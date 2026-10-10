@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.TimerManager;
+import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.commands.AgentDismissCommandService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.integration.AgentPresence;
@@ -784,10 +786,37 @@ public final class ResidentDialogue {
             }
             persona = ownedPersona(owner, words[words.length - 1]);
             if (persona != null) {
-                return rosterCommandFor(owner, persona, normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim(), false);
+                String command = normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim();
+                return rosterCommandFor(owner, persona, command, false)
+                        || agentCommandFor(owner, persona, command, normalized);
             }
         }
         return false;
+    }
+
+    /**
+     * "&lt;Agent command&gt; &lt;name&gt;" in map chat (second deploy review 2026-10-10): the Agent routes take a name
+     * only as the first word, and their phrase packs allow two unknown trailing words, so "stop tamsin", "heals off
+     * tamsin" or "sell your junk tamsin" reached every companion out. A line the phrase packs read as an Agent command
+     * goes to the named companion's Agent alone, as the line with the name first does (CompanionChatVerbs.toAgent).
+     * To a companion that is not out with its owner it reaches no companion out: a sell-now command is the job SELL,
+     * as "sell junk tamsin" is, and any other is nobody's. "follow &lt;name&gt;" and "dismiss &lt;name&gt;" stay the
+     * Agent routes' own.
+     */
+    private boolean agentCommandFor(Character owner, Persona persona, String command, String line) {
+        PhraseMatcher phrases = world.phrases();
+        String canonical = phrases == null ? null : phrases.commandFor(command);
+        if (canonical == null || AgentChatCommandClassifier.matchFollowTarget(line) != null
+                || AgentDismissCommandService.dismissTarget(line) != null) {
+            return false;
+        }
+        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        if (entry != null && entry.state() == RosterState.ACTIVE) {
+            world.chatVerbs().toAgent(owner, persona, command);
+        } else if (SELL_NOW.contains(canonical)) {
+            rosterCommandFor(owner, persona, canonical, false);
+        }
+        return true;
     }
 
     /** Companion-directed roster commands: assignments, camp, haul; {@code whispered}: the owner whispered the line to it. */

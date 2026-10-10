@@ -42,7 +42,8 @@ import java.util.function.Supplier;
  *   "dismiss", "disown" or "release" &lt;name&gt; benches it instead of unregistering it and leaving it online, and a
  *   confirmed "logout" benches it instead of disconnecting it. A plain GM Agent keeps the Agent route.</li>
  *   <li>"sell junk" to one companion out with its owner in map chat ({@link #sellNow}): the Agent's own sell-now
- *   command, given to that one companion's Agent.</li>
+ *   command, given to that one companion's Agent; any other Agent command with its name last too ({@link #toAgent}).
+ *   </li>
  * </ul>
  * Recruit, transfer, "follow &lt;other player&gt;" and whispers ask the claim guard themselves. ChatVerbBoundaryTest lists
  * every leader-level intent and where it goes.
@@ -179,6 +180,17 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
      * owner may not command it (AgentAuthorityService.mayOperate, AgentClaimGuard.mayControl), as on the Agent route.
      */
     public void sellNow(Character owner, Persona persona) {
+        toAgent(owner, persona, SELL_NOW);
+    }
+
+    /**
+     * The owner's map line {@code command} to one companion out with them, its name last (second deploy review
+     * 2026-10-10: "stop tamsin", "sell your junk tamsin" and "heals off tamsin" reached every companion out through
+     * the phrase packs, which allow two unknown trailing words): "&lt;name&gt; &lt;command&gt;", the line with the
+     * name first, over exactly that companion, as {@link #sellNow} does. Nothing happens while its Agent is not out
+     * with the owner yet, or the owner may not command it.
+     */
+    public void toAgent(Character owner, Persona persona, String command) {
         AgentRuntimeEntry runtime = null;
         for (AgentRuntimeEntry entry : AgentRuntimeRegistry.entriesForLeader(owner.getId())) {
             if (AgentRuntimeIdentityRuntime.botNameEquals(entry, persona.name())) {
@@ -190,7 +202,7 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
                 || !AgentClaimGuard.mayControl(owner, AgentRuntimeIdentityRuntime.botId(runtime))) {
             return;
         }
-        AgentChatRouteCoordinator.handleChat(owner, AgentRuntimeIdentityRuntime.botName(runtime) + " " + SELL_NOW,
+        AgentChatRouteCoordinator.handleChat(owner, AgentRuntimeIdentityRuntime.botName(runtime) + " " + command,
                 AgentReplyChannel.MAP, Map.of(owner.getId(), List.of(runtime)),
                 (leaderId, leader, name) -> null, (leaderId, leader, name, target) -> null, (leaderId, name) -> false,
                 AgentFormationRuntime.defaultFormationState(), AgentRuntimeConfig.cfg.FOLLOW_STAGGER,

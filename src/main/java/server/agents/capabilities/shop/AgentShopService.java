@@ -655,25 +655,17 @@ public final class AgentShopService {
         return null;
     }
 
-    private static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+    /**
+     * After the purchase steps: says what it bought and closes one shop step later ({@link #closeVisit}), else at
+     * once.
+     */
+    static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
         if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
             abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
             return;
         }
 
-        Runnable finish = () -> {
-            if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
-                abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
-                return;
-            }
-            String closing = closingLine(sequence, announceIfEmpty);
-            if (closing != null) {
-                AgentShopRuntime.sayMapNow(sequence.bot(), closing);
-            }
-            AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
-                    System.currentTimeMillis());
-            clearShopState(sequence.entry());
-        };
+        Runnable finish = () -> closeVisit(sequence, announceIfEmpty);
 
         if (sequence.boughtAnything()) {
             if (!sequence.bought().isEmpty()) {
@@ -687,6 +679,30 @@ public final class AgentShopService {
         }
 
         finish.run();
+    }
+
+    /**
+     * The visit's last step at the counter: its closing line, then the visit ends. A visit that bought something
+     * closes one shop step after its "bought ..." line, and "sell junk" in that step ("i'll sell the junk after
+     * this") comes after the purchase steps' own check (runPurchaseStep): it sells here first, at the same counter,
+     * then closes (second deploy review 2026-10-10: the close cleared the flag and nothing was sold).
+     */
+    private static void closeVisit(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+        if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
+            abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
+            return;
+        }
+        if (AgentShopStateRuntime.shopSellTrashPending(sequence.entry())) {
+            startSellTrashSequence(sequence, () -> closeVisit(sequence, announceIfEmpty));
+            return;
+        }
+        String closing = closingLine(sequence, announceIfEmpty);
+        if (closing != null) {
+            AgentShopRuntime.sayMapNow(sequence.bot(), closing);
+        }
+        AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
+                System.currentTimeMillis());
+        clearShopState(sequence.entry());
     }
 
     private static void startSellTrashSequence(

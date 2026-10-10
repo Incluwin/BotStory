@@ -46,8 +46,10 @@ public final class CosmicAgentWhisperCommandBridge {
     /**
      * True when the whisper lends a claimed Agent to someone it does not run under (an administrator whispering
      * another player's companion): its interaction target is whom it follows when told to follow, whom its whispered
-     * replies and supply asks go to, so its owner gets it back once the line is answered (deploy review 2026-10-10). Its
-     * owner, the leader of a plain Agent and anyone whispering an Agent the host does not claim keep the stock behaviour.
+     * replies and supply asks go to, so its owner gets it back once the line is handled (deploy review 2026-10-10). The
+     * answers the line's flows send later still go to the administrator: they keep the line's route (AgentReplyRoute,
+     * second deploy review 2026-10-10). Its owner, the leader of a plain Agent and anyone whispering an Agent the host
+     * does not claim keep the stock behaviour.
      */
     private static boolean lent(AgentRuntimeEntry entry, Character sender, Character before) {
         return before != null && before.getId() != sender.getId()

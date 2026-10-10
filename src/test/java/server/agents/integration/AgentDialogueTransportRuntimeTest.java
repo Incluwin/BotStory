@@ -10,12 +10,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import config.YamlConfig;
 import org.mockito.MockedStatic;
+import server.agents.commands.AgentMessageQueueStateRuntime;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.commands.AgentReplyChannelStateRuntime;
 import server.agents.commands.AgentReplyRoute;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.maps.MapleMap;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -151,5 +153,44 @@ class AgentDialogueTransportRuntimeTest {
             AgentDialogueTransportRuntime.replyNow(entry, "no route", null);
             verify(map).broadcastMessage(any(Packet.class)); // the party channel now, and no party: the map
         }
+    }
+
+    /**
+     * Second deploy review 2026-10-10: a reply said or queued while its line is handled, with no route of its own (the
+     * command flows' plain replyNow and queueReply), keeps the route of that line: a reply that waits in a busy queue
+     * goes by whisper to the one who whispered, though the channel and the interaction target have moved since.
+     */
+    @Test
+    void aPlainReplyQueuedWhileItsLineIsHandledKeepsThatLinesRouteInABusyQueue() {
+        Character bot = mock(Character.class);
+        Character owner = mock(Character.class);
+        Character admin = mock(Character.class);
+        Client botClient = mock(Client.class);
+        MapleMap map = mock(MapleMap.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
+        AgentReplyChannelStateRuntime.setReplyChannel(entry, AgentReplyChannel.WHISPER);
+        when(bot.getName()).thenReturn("agent");
+        when(bot.getId()).thenReturn(7);
+        when(bot.getClient()).thenReturn(botClient);
+        when(botClient.getChannel()).thenReturn(1);
+        when(bot.getMap()).thenReturn(map);
+        when(map.isObservedByPlayer()).thenReturn(true);
+        when(owner.getClient()).thenReturn(mock(Client.class));
+        when(admin.getClient()).thenReturn(mock(Client.class));
+        AgentReplyRoute whisper = new AgentReplyRoute(AgentReplyChannel.WHISPER, admin);
+        AgentMessageQueueStateRuntime.setSending(entry, true); // a reply is being typed
+
+        AgentReplyRoute.within(entry, whisper, () -> {
+            AgentDialogueTransportRuntime.queueReply(entry, "on it");
+            return null;
+        });
+        AgentReplyChannelStateRuntime.setReplyChannel(entry, AgentReplyChannel.PARTY); // the owner's party line
+
+        AgentReplyRoute queued = AgentMessageQueueStateRuntime.poll(entry).route();
+        assertEquals(whisper, queued);
+        AgentDialogueTransportRuntime.replyNow(entry, "on it", queued);
+        verify(admin).sendPacket(any(Packet.class));
+        verify(owner, never()).sendPacket(any(Packet.class));
+        verify(map, never()).broadcastMessage(any(Packet.class));
     }
 }

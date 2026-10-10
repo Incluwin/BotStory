@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -275,6 +276,125 @@ class AgentWhisperCommandServiceTest {
         } finally {
             AgentClaimGuard.install(null);
             config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = operators;
+            AgentRuntimeRegistry.clear();
+        }
+    }
+
+    /**
+     * Second deploy review 2026-10-10: the bridge gives an administrator's whisper target back to its owner once the
+     * line is classified, but most command answers come later (here "heals off", sent 500-700 ms on as setHeals does
+     * it) and read the interaction target when sent: the owner got the whisper meant for the administrator, and the
+     * administrator got nothing. The answer keeps the route of the line it answers.
+     */
+    @Test
+    void anAdministratorsWhisperedCommandIsAnsweredToTheAdministratorAfterTheCompanionGoesBack() {
+        Character admin = character(1, mock(Client.class));
+        Character owner = mock(Character.class);
+        when(owner.getId()).thenReturn(3);
+        when(owner.getName()).thenReturn("Ohboy");
+        when(owner.getClient()).thenReturn(mock(Client.class));
+        Character target = character(2, new BotClient(0, 0));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(target, owner, null);
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(owner.getId(), entry);
+        String operators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES;
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = "Ohboy";
+        boolean transport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return actor.getId() == admin.getId() || actor.getId() == owner.getId(); // an administrator, its owner
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return agentCharacterId == target.getId(); // Ohboy's companion
+            }
+        });
+        List<Runnable> delayed = new ArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentSchedulerRuntime> scheduler =
+                     mockStatic(AgentSchedulerRuntime.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            scheduler.when(() -> AgentSchedulerRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(),
+                    any(Runnable.class))).thenAnswer(call -> delayed.add(call.getArgument(2)));
+            // the toggle flow, as the orchestrator runs it for "heals off": the answer is scheduled, not said
+            chat.when(() -> AgentChatRuntime.handleChat(eq("heals off"), any())).thenAnswer(call -> {
+                AgentControlRuntime.toggleCallbacks(entry).setHeals(false);
+                return true;
+            });
+
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(admin, target, "heals off");
+            drainAll(entry);
+            assertSame(owner, AgentRelationshipRuntime.interactionTarget(entry), "its owner's again once classified");
+
+            assertEquals(1, delayed.size());
+            delayed.remove(0).run();
+
+            verify(admin).sendPacket(any(Packet.class));
+            verify(owner, never()).sendPacket(any(Packet.class));
+        } finally {
+            AgentClaimGuard.install(null);
+            config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = operators;
+            config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = transport;
+            AgentRuntimeRegistry.clear();
+        }
+    }
+
+    /**
+     * Second deploy review 2026-10-10: a whispered command's answer that waits (here "heals off", scheduled as setHeals
+     * schedules it) read the reply channel when sent, so a party line from the owner in between sent the private
+     * answer to the party. It keeps the whisper it answers.
+     */
+    @Test
+    void aWhisperedCommandsDelayedAnswerStillGoesByWhisperAfterAPartyLineFromTheOwner() {
+        Character leader = character(1, mock(Client.class));
+        Character target = character(2, new BotClient(0, 0));
+        MapleMap map = mock(MapleMap.class);
+        when(target.getMap()).thenReturn(map);
+        when(map.isObservedByPlayer()).thenReturn(true);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(target, leader, null);
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(leader.getId(), entry);
+        boolean transport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
+        List<Runnable> delayed = new ArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentChatIntentRuntime> intent = mockStatic(AgentChatIntentRuntime.class,
+                     org.mockito.Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class);
+             MockedStatic<AgentSchedulerRuntime> scheduler =
+                     mockStatic(AgentSchedulerRuntime.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            scheduler.when(() -> AgentSchedulerRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(),
+                    any(Runnable.class))).thenAnswer(call -> delayed.add(call.getArgument(2)));
+            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), any(), any(), any(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(false));
+            chat.when(() -> AgentChatRuntime.handleChat(eq("heals off"), any())).thenAnswer(call -> {
+                AgentControlRuntime.toggleCallbacks(entry).setHeals(false);
+                return true;
+            });
+
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(leader, target, "heals off");
+            drainAll(entry);
+            AgentChatRouteCoordinator.handleChat(leader, "brb", AgentReplyChannel.PARTY, Map.of(leader.getId(), List.of(entry)),
+                    (leaderId, commandLeader, agentName) -> null,
+                    (leaderId, commandLeader, agentName, targetName) -> null,
+                    (leaderId, agentName) -> false,
+                    new AgentFormationService.FormationState(AgentFormationService.FormationType.STAGGER, 60, 0),
+                    60,
+                    120);
+            drainAll(entry);
+            assertEquals(AgentReplyChannel.PARTY, AgentReplyChannelStateRuntime.replyChannel(entry));
+
+            assertEquals(1, delayed.size());
+            delayed.remove(0).run();
+
+            verify(leader).sendPacket(any(Packet.class));
+            verify(map, never()).broadcastMessage(any(Packet.class));
+        } finally {
+            config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = transport;
             AgentRuntimeRegistry.clear();
         }
     }
