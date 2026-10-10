@@ -37,6 +37,8 @@ public final class AgentSupplyProcurementState {
     private boolean resumeFollow;
     private boolean resumeGrind;
     private int supplierHopBudget = -1;
+    private int travelMapId = -1;
+    private long travelOnMapSinceMs;
     // Survives clear(): a category the Agent just failed to restock stays quiet for a while so
     // the next low-supply observation does not immediately pull it away from its party again.
     private final Map<AgentResourceCategory, Long> suppressedUntilMs =
@@ -54,6 +56,24 @@ public final class AgentSupplyProcurementState {
         RESTING,
         INCOME_RECOVERY,
         STALLED
+    }
+
+    /**
+     * How long this walk (to the supplier, or back) has stood on {@code mapId} without crossing to another map: 0 on
+     * the first look at a map, which starts its clock. A new walk phase starts the clock again.
+     */
+    public synchronized long travelStalledMs(int mapId, long nowMs) {
+        if (travelMapId != mapId) {
+            travelMapId = mapId;
+            travelOnMapSinceMs = nowMs;
+            return 0L;
+        }
+        return Math.max(0L, nowMs - travelOnMapSinceMs);
+    }
+
+    private void restartTravelClock() {
+        travelMapId = -1;
+        travelOnMapSinceMs = 0L;
     }
 
     public synchronized boolean isActive() {
@@ -272,6 +292,7 @@ public final class AgentSupplyProcurementState {
         this.supplierNpcId = supplierNpcId;
         this.returnMapId = returnMapId;
         this.phase = phase;
+        restartTravelClock();
         this.quantityBefore = Math.max(0, quantityBefore);
         this.mesosBefore = Math.max(0, mesosBefore);
         shopRequested = false;
@@ -298,10 +319,12 @@ public final class AgentSupplyProcurementState {
     public synchronized void markShopRequested() {
         shopRequested = true;
         phase = Phase.SHOPPING;
+        restartTravelClock();
     }
 
     public synchronized void markReturning() {
         phase = Phase.RETURNING;
+        restartTravelClock();
     }
 
     public synchronized void beginRecovery(
@@ -331,6 +354,7 @@ public final class AgentSupplyProcurementState {
     public synchronized void retrySupplier(boolean supplierIsCurrentMap) {
         shopRequested = false;
         phase = supplierIsCurrentMap ? Phase.SHOPPING : Phase.TRAVEL_TO_SUPPLIER;
+        restartTravelClock();
         // The trip restarts from wherever recovery left the Agent.
         supplierHopBudget = -1;
     }
@@ -346,6 +370,7 @@ public final class AgentSupplyProcurementState {
         shopRequested = false;
         shopRetryAtMs = retryAtMs;
         phase = supplierIsCurrentMap ? Phase.SHOPPING : Phase.TRAVEL_TO_SUPPLIER;
+        restartTravelClock();
         supplierHopBudget = -1;
     }
 
@@ -368,6 +393,7 @@ public final class AgentSupplyProcurementState {
         abandonedReason = reason == null || reason.isBlank() ? "resupply abandoned" : reason.trim();
         shopRequested = false;
         phase = Phase.RETURNING;
+        restartTravelClock();
     }
 
     public synchronized void clear() {
@@ -376,6 +402,7 @@ public final class AgentSupplyProcurementState {
         category = null;
         shopRequested = false;
         phase = Phase.IDLE;
+        restartTravelClock();
         supplierMapId = 0;
         supplierNpcId = 0;
         returnMapId = 0;

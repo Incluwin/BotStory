@@ -225,7 +225,9 @@ public final class AgentShopState {
             workflow.transition(AgentShopWorkflowPhase.CANCELLED, "legacy shop state cleared",
                     Math.max(System.currentTimeMillis(), workflow.updatedAtMs()));
         }
-        visitGeneration.incrementAndGet();
+        if (visitPending || sequenceActive) {
+            visitGeneration.incrementAndGet(); // a visit ends; a clear with none open (a movement command) ends none
+        }
         visitPending = false;
         npcPosition = null;
         targetPosition = null;

@@ -471,9 +471,11 @@ public final class CompanionPartyQuestService {
                             DeskLines.LOW_ON_MANA_BROKE.equals(reason) ? CompanionRestockLines.MANA_POTIONS
                                     : CompanionRestockLines.POTIONS);
                 } else {
-                    world.roster().sayInParty(bot, AgentDialogueSelector.randomReply(shotless
+                    String line = AgentDialogueSelector.randomReply(shotless
                             ? AgentDialogueCatalog.combatAmmoLowReplies() : mana
-                            ? AgentDialogueCatalog.potRequestMpReplies() : AgentDialogueCatalog.potRequestHpReplies()));
+                            ? AgentDialogueCatalog.potRequestMpReplies() : AgentDialogueCatalog.potRequestHpReplies());
+                    CompanionRestockLines.logSaid(bot, "desk." + reason,
+                            world.roster().sayInParty(bot, line) ? "party" : null, line);
                 }
             });
         }

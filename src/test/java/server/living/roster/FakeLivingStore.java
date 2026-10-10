@@ -42,7 +42,8 @@ import static org.mockito.Mockito.when;
  * {@link #performanceUnwritable}. pq_run_pace is {@link #paces} (savePqRunPace appends with the next id; pqRunPaces
  * reads a quest's epoch newest first, up to its limit), failing while {@link #pacesUnreadable} or
  * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems} (a position
- * below 0 is worn, above 0 in the Equip tab) and lets its redress move carried ones onto worn slots first.
+ * below 0 is worn, above 0 in the Equip tab) and lets its redress move carried ones onto worn slots first. latestEvent
+ * reads the newest of {@link #events} with that owner, persona and one of the kinds.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -315,6 +316,17 @@ final class FakeLivingStore {
         }).when(store).removeHaul(anyInt(), anyString(), anyInt(), anyInt());
         doAnswer(inv -> events.add(inv.getArgument(0) + " " + inv.getArgument(1) + " " + inv.getArgument(2) + " " + inv.getArgument(3)))
                 .when(store).event(anyInt(), any(), anyString(), any());
+        when(store.latestEvent(anyInt(), anyString(), any())).thenAnswer(inv -> {
+            String who = inv.getArgument(0) + " " + inv.getArgument(1);
+            List<String> kinds = inv.getArgument(2);
+            for (int i = events.size() - 1; i >= 0; i--) {
+                String[] row = events.get(i).split(" ", 4);
+                if ((row[0] + " " + row[1]).equals(who) && kinds.contains(row[2])) {
+                    return java.util.Optional.of(new LivingStore.EventRow(row[2], row.length > 3 ? row[3] : null));
+                }
+            }
+            return java.util.Optional.empty();
+        });
         when(store.characterLevel(anyInt())).thenAnswer(inv -> levels.getOrDefault((int) inv.getArgument(0), 0));
         when(store.personaState(anyString())).thenAnswer(inv -> personaStates.getOrDefault((String) inv.getArgument(0),
                 new PersonaState(inv.getArgument(0), 0, null, 0, 0)));

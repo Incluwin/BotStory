@@ -387,6 +387,24 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
       state=END why=safe'. A why=pots rest needs a companion that runs its stock down (record "not seen" if none
       does).
       Extra grep: grep -E "EPQ boss (hp|rest)|EPQ member down|EPQ down detail|key=boss-rest" logs/cosmic-log.log
+   m) [Review of the golem rest fix, 2026-10-09] A dry companion pinned at the wall, and its asks for potions. GM-first:
+      1. Before the run, say 'pots' to each companion. Pick one with fewer than 10 HP potions (a newly granted persona
+         or one that ran dry before). If none has fewer than 10, record "not forced" and use L1b l's natural drain.
+      2. Put the dry companion and at least one companion with more than 300 HP potions in the party.
+      3. Run '!epqtest party prod', '!item 4001163 1', then '!epqtest checkpoint boss'.
+      4. Stand at the left wall (x about -540, '!pos') so the companions gather there, then drop the stone.
+      Pass, dry companion pinned ('EPQ boss rest: ... state=START why=pots restPoint=(-540,150) golem=(x,150)' with x
+      at most -40): at full HP it attacks from the wall (a ranged class hits the golem, a melee class hits what comes
+      into its reach) and never walks right of the golem. Then '!hpmp <name> <a value under half its max HP>' (this
+      sets MP too): it stops hitting the golem but still hits an add that reaches it. '!healagent <name>': it hits the
+      golem again.
+      Pass, asks: 'EPQ boss rest ask: ... result=sent asks=1' at START, then one line about every 30 s while hpPots
+      stays under 10 (result=held while the share's 30 s cooldown or 10-minute no-donor backoff holds it). A donor
+      with more than 300 HP potions says its offer line in map chat, the stack lands, the ask lines stop, and the rest
+      ends with 'state=END why=safe' at 80 % HP or more.
+      Fail: the pinned companion walks right of the golem; it stands idle at full HP while an add hits it; ask lines
+      come more often than every 30 s, or go on after hpPots reaches 10.
+      Extra grep: grep -E "EPQ boss rest|EPQ member down" logs/cosmic-log.log
 Switch flip (integrator's own commit "kpq,hpq,epq" plus the LivingWorldConfigCompanionPqTest pin), deploy, then:
 L2 "kpq,hpq" -> stock Ellin; "kpq,hpq,epq" -> Ellin's lineup window.
 L3 'Let me choose...'; a 7th member -> "Six is the most the forest can take. Take someone out first."

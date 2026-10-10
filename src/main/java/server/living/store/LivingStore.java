@@ -1748,6 +1748,34 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * The character's newest event with this persona of one of these {@code kinds}, as its kind and detail (a
+     * companion's boss-gear record, BossGearRecord): empty when there is none, null when the read fails. Reads through
+     * the character index (idx_living_event_character).
+     */
+    public java.util.Optional<EventRow> latestEvent(int characterId, String personaId, List<String> kinds) {
+        if (kinds.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ") ORDER BY id DESC LIMIT 1";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            ps.setString(at++, personaId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? java.util.Optional.of(new EventRow(rs.getString(1), rs.getString(2)))
+                        : java.util.Optional.empty();
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log latest read failed for {}/{} {}", characterId, personaId, kinds, failure);
+            return null;
+        }
+    }
+
     /** The details of every {@code kind} event logged for this persona (with or without a character); null when the read fails. */
     public List<String> personaEventDetails(String personaId, String kind) {
         List<String> out = new ArrayList<>();

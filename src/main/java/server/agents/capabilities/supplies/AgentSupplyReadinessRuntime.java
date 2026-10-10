@@ -47,8 +47,10 @@ import java.util.function.LongSupplier;
  * tab has no room for a new kind of potion or the new ammo stacks; it tells the host once and waits until its purse
  * grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Mesos or supplies it is given
  * meanwhile on that map that still do not pay for the trip, it tells the host with what it still lacks
- * (Rule.stillShort, at most once per STILL_SHORT_EVERY_MS). Trips from one town cut short twice
- * in a row (its owner called it back, the shop failed) end its tries there until it has been elsewhere.
+ * (Rule.stillShort, at most once per STILL_SHORT_EVERY_MS); what it buys or earns itself (a supply trip or shop visit
+ * of its own, time without a duty) is no gift, and on a map it may not set off from nothing is. Trips from one town
+ * cut short twice in a row (its owner called it back, the shop failed) end its tries there until it has been
+ * elsewhere.
  *
  * <p>A duty holder's critical resupply ({@link #criticalGate}) passes a lighter check: it needs only the critical
  * deficit (back to POT_STOP) at the supplier's cheapest potion, without the ammo top-up. When even that cannot be
@@ -102,13 +104,18 @@ public final class AgentSupplyReadinessRuntime {
         settleOrphan(agent, state, nowMs);
         AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.standing(agent.getId());
         if (activity == null) {
-            state.clearGiven();
+            state.forgetLook(); // hunting on its own, a bench slice, a run: what it earns meanwhile is its own
             state.clearVerdict();
             return null;
         }
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(agent, activity);
         int mesos = mesos(agent);
-        state.look(agent.getMapId(), mesos, shortfall, restockGround(agent));
+        if (AgentShopStateRuntime.hasActiveShopTransition(entry)) {
+            state.forgetLook(); // its own shop visit under way (selling its loot): what changes now is its own doing
+        } else {
+            state.look(agent.getMapId(), mesos, shortfall, giftGround(agent),
+                    AgentShopStateRuntime.shopVisitGeneration(entry));
+        }
         if (shortfall.none()) {
             state.clearGiven();
             state.clearVerdict();
@@ -132,12 +139,15 @@ public final class AgentSupplyReadinessRuntime {
                 ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
         Assessment assessment = assess(entry, agent, activity, shortfall, maxHops, nowMs);
         if (assessment.kind() != Assessed.GO) {
-            boolean told = record(agent, state, activity, shortfall, assessment, nowMs);
-            if (assessment.kind() == Assessed.CANNOT_AFFORD && !told) {
+            if (assessment.kind() == Assessed.CANNOT_AFFORD) {
+                // what it was given is told before a refusal the same look finds (a cooldown its potions lifted, after
+                // a trip that ran out of mesos or on another map than the last refusal): its host's broke line, said
+                // already, then holds, and the gift still gets its answer
                 stillShort(agent, state, activity, shortfall, assessment.missingMesos(), nowMs);
             } else {
                 state.clearGiven();
             }
+            record(agent, state, activity, shortfall, assessment, nowMs);
             return null;
         }
         state.clearGiven();
@@ -438,11 +448,11 @@ public final class AgentSupplyReadinessRuntime {
     /**
      * A readiness trip that cannot go: the verdict on this map, and a cooldown for CANNOT_AFFORD and NO_SPACE (until
      * the purse grows by what it lacked, a slot frees, or it lacks fewer potions); the host hears it when the verdict
-     * changed (true then).
+     * changed, and what it was given before that is not told after it.
      */
-    private static boolean record(Character agent, AgentSupplyReadinessState state,
-                                  AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
-                                  Assessment assessment, long nowMs) {
+    private static void record(Character agent, AgentSupplyReadinessState state,
+                               AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
+                               Assessment assessment, long nowMs) {
         AgentSupplyReadinessState.Verdict verdict = switch (assessment.kind()) {
             case CANNOT_AFFORD -> AgentSupplyReadinessState.Verdict.CANNOT_AFFORD;
             case NO_SPACE -> AgentSupplyReadinessState.Verdict.NO_SPACE;
@@ -458,8 +468,9 @@ public final class AgentSupplyReadinessRuntime {
                     shortfall, agent.getMapId());
         }
         if (!state.verdict(verdict, agent.getMapId(), assessment.missingMesos(), nowMs)) {
-            return false;
+            return;
         }
+        state.clearGiven(); // the refusal is the news now: a gift from before it is not told after it
         if (verdict != AgentSupplyReadinessState.Verdict.NO_SUPPLIER) {
             log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {},"
                             + " mesos {}, missing {}, free use slots {})", agent.getName(), activity, verdict,
@@ -471,7 +482,6 @@ public final class AgentSupplyReadinessRuntime {
             case NO_SPACE -> AgentSupplyReadiness.Refusal.NO_SPACE;
             case NO_SUPPLIER -> AgentSupplyReadiness.Refusal.NO_SUPPLIER;
         }, shortfall, assessment.missingMesos());
-        return true;
     }
 
     /**
@@ -494,6 +504,14 @@ public final class AgentSupplyReadinessRuntime {
                         + " (short hp {} mp {} ammo {}, mesos {}, missing {})", agent.getName(), agent.getMapId(),
                 activity, shortfall.hp(), shortfall.mp(), shortfall.ammo(), mesos(agent), missingMesos);
         AgentSupplyReadiness.stillShort(agent.getId(), activity, shortfall, missingMesos);
+    }
+
+    /**
+     * A supply trip of its own set off or is over (procurement's begin and finish, a critical trip's too): what it buys
+     * or earns on the way is no gift, so the next look starts afresh (AgentSupplyReadinessState.forgetLook).
+     */
+    static void ownTrip(AgentRuntimeEntry entry) {
+        entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).forgetLook();
     }
 
     /** The readiness trip began: the host hears it set off, about how long until it is back. */
@@ -731,6 +749,15 @@ public final class AgentSupplyReadinessRuntime {
         MapleMap map = agent.getMap();
         return map != null && (map.isTown() || !AgentTravelLegCatalog.station(map.getId())
                 && map.getMonsterSpawn().isEmpty() && map.countMonsters() == 0);
+    }
+
+    /**
+     * Where more in its purse or bag can only have been given (AgentSupplyReadinessState.look): its
+     * {@link #restockGround}, where no monster drops a coin, if the host lets it set off from there; never a boss's
+     * gate, where no trip follows a gift and it has its own no-shop line.
+     */
+    private static boolean giftGround(Character agent) {
+        return restockGround(agent) && AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId());
     }
 
     /** A party quest's recruit map (AgentPartyQuestCatalog): its desk may send a companion DESK_MAX_HOPS away. */

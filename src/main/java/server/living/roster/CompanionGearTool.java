@@ -4,6 +4,7 @@ import client.Character;
 import client.Client;
 import client.LevelSetPlan;
 import client.inventory.Equip;
+import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
@@ -47,6 +48,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 
 /**
  * The companion side of {@code !bossgear} (GM 6, docs/COMPANION_BOSSING_PLAN.md G13): a level-fitting kit
@@ -65,8 +67,9 @@ import java.util.function.IntPredicate;
  * or one of their own companions out with them, and RosterService takes it off any companion it lets go (owner,
  * contract end, owner deleted, the inactivity sweep) as the release unloads it ({@link #takeBossGearOnRelease} on a
  * loaded one, {@link #takeStoredBossGear} on one nothing has loaded), so no later owner and no Resident at home gets it;
- * it wears its own carried gear again where a boss piece left a slot empty (OwnGearRefit). Only the pieces tagged
- * {@value BossGearPlanner#OWNER_TAG} go.</p>
+ * it wears its own carried gear again where a boss piece left a slot empty (OwnGearRefit), first the very pieces the
+ * kit displaced: each kit that goes on records them with the companion (BossGearRecord), and the kit coming off ends
+ * that record. Only the pieces tagged {@value BossGearPlanner#OWNER_TAG} go.</p>
  */
 public final class CompanionGearTool {
     public static final long ANSWER_TIMEOUT_MS = 10_000L;
@@ -79,9 +82,14 @@ public final class CompanionGearTool {
 
     /**
      * What the companion's mailbox did: pieces put in its bag, of those the pieces it wears, and the pieces it skipped
-     * because their slot wore that boss piece by then.
+     * because their slot wore that boss piece by then; {@code displaced}: the worn slot and item id of each own piece
+     * the kit put in its bag (BossGearRecord); {@code ontoAKit}: it wore boss gear before (this kit adds to that one).
      */
-    public record Outcome(int given, int worn, int skipped) {
+    public record Outcome(int given, int worn, int skipped, Map<Short, Integer> displaced, boolean ontoAKit) {
+        public Outcome(int given, int worn, int skipped) {
+            this(given, worn, skipped, Map.of(), false);
+        }
+
         public Outcome(int given, int worn) {
             this(given, worn, 0);
         }
@@ -105,8 +113,11 @@ public final class CompanionGearTool {
         /** Forges the kit into the GM's own Equip tab; the pieces that went in. */
         int give(Character gm, List<Piece> kit);
 
-        /** On the companion's mailbox: its boss gear comes off ({@link #removeKit}); the pieces taken. */
-        CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner);
+        /**
+         * On the companion's mailbox: its boss gear comes off and what the kit {@code displaced} goes back on
+         * ({@link #removeKit}); the pieces taken.
+         */
+        CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner, Map<Short, Integer> displaced);
     }
 
     static final Game LIVE = new Game() {
@@ -147,8 +158,9 @@ public final class CompanionGearTool {
         }
 
         @Override
-        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner) {
-            return AgentMailboxRuntime.dispatch(runtime, entry -> removeKit(entry, owner));
+        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
+                                                 Map<Short, Integer> displaced) {
+            return AgentMailboxRuntime.dispatch(runtime, entry -> removeKit(entry, owner, displaced));
         }
     };
 
@@ -266,13 +278,16 @@ public final class CompanionGearTool {
         return line;
     }
 
-    /** On companion-ops, once the mailbox answered a gift: the log line, and the reply. */
+    /** On companion-ops, once the mailbox answered a gift: the log line, the kit's BossGearRecord, and the reply. */
     private String answer(Character gm, Target target, List<Piece> kit, String pieces, Outcome outcome, Throwable failure,
                           long startedMs) {
         Character bot = target.chr();
         String text;
         if (outcome != null) {
             logUse(gm, target, kit, false, outcome.given(), outcome.worn(), startedMs);
+            if (outcome.given() > 0) {
+                recordDisplaced(gm, target, outcome);
+            }
             int planned = kit.size() - outcome.skipped(); // the rest it wore by then (an earlier use went on first)
             if (outcome.given() == 0) {
                 text = planned == 0 ? bot.getName() + " already wears boss gear in every slot it has a piece for."
@@ -289,6 +304,24 @@ public final class CompanionGearTool {
             text = bot.getName() + " could not be geared (" + (cause == null ? "no answer" : cause.getMessage()) + ").";
         }
         return text;
+    }
+
+    /**
+     * On companion-ops: logs what this kit displaced as the companion's record (BossGearRecord), after the entries of
+     * the kit it went onto, so the kit coming off puts those pieces back on. A failure never fails the gift.
+     */
+    private void recordDisplaced(Character gm, Target target, Outcome outcome) {
+        try {
+            LivingStore store = world.store();
+            Map<Short, Integer> record = BossGearRecord.slots();
+            if (outcome.ontoAKit()) {
+                record.putAll(BossGearRecord.read(store, gm.getId(), target.personaId()));
+            }
+            record.putAll(outcome.displaced());
+            BossGearRecord.write(store, gm.getId(), target.personaId(), record);
+        } catch (RuntimeException failure) {
+            log.warn("gm bossgear: what {} wore before the kit was not recorded", target.chr().getName(), failure);
+        }
     }
 
     /** The target {@code name} names for {@code gm}, or the refusal to reply. */
@@ -378,7 +411,8 @@ public final class CompanionGearTool {
      * AgentEquipmentService.equipInSlot would: a plain copy of the same id may sit in the bag, and the same id worn
      * would count as done); what it wore swaps into the freed slot. A piece whose slot wears that boss piece by now is
      * skipped (a second use planned on companion-ops before the first kit went on), and then the free slots it needs
-     * are counted again. Nothing is given unless {@code need} slots are free.
+     * are counted again. Nothing is given unless {@code need} slots are free. The outcome names each own piece the kit
+     * put in its bag by the slot it wore it on, the pants an overall pushed off among them (BossGearRecord).
      */
     static Outcome wearKit(AgentRuntimeEntry entry, List<Piece> kit, int need) {
         Character bot = entry.bot();
@@ -390,6 +424,15 @@ public final class CompanionGearTool {
         if (left.isEmpty() || bot.getInventory(InventoryType.EQUIP).getNumFreeSlot()
                 < (skipped == 0 ? need : need(bot, left))) {
             return new Outcome(0, 0, skipped);
+        }
+        Map<Short, Item> before = new HashMap<>();
+        boolean ontoAKit = false;
+        for (Item item : bot.getInventory(InventoryType.EQUIPPED).list()) {
+            if (bossPiece(item)) {
+                ontoAKit = true;
+            } else {
+                before.put(item.getPosition(), item);
+            }
         }
         int given = 0;
         int worn = 0;
@@ -408,7 +451,19 @@ public final class CompanionGearTool {
             AgentInventoryReservationRuntime.refreshEquipmentReservations(entry, bot, System.currentTimeMillis());
             bot.saveCharToDB();
         }
-        return new Outcome(given, worn, skipped);
+        return new Outcome(given, worn, skipped, displaced(bot, before), ontoAKit);
+    }
+
+    /** Each piece it wore ({@code before}, by slot) that is in its bag now: what the kit displaced, by that slot. */
+    private static Map<Short, Integer> displaced(Character bot, Map<Short, Item> before) {
+        Map<Short, Integer> displaced = BossGearRecord.slots();
+        Inventory bag = bot.getInventory(InventoryType.EQUIP);
+        before.forEach((slot, item) -> {
+            if (item.getPosition() > 0 && bag.getItem(item.getPosition()) == item) {
+                displaced.put(slot, item.getItemId());
+            }
+        });
+        return displaced;
     }
 
     // ---- taking boss gear off -------------------------------------------------------------
@@ -416,10 +471,10 @@ public final class CompanionGearTool {
     /**
      * {@code !bossgear <me|name> remove}, on companion-ops (or on the command's thread for "me" while the living world
      * is off): every boss piece leaves the GM ("me": worn and carried) or one of their own companions out with them (on
-     * its own mailbox, {@link #removeKit}: it then wears its own gear again). Refused where a gift is (anyone else's
-     * companion, one not out or not loaded, one busy, in a party quest or a boss run); knowledge is not needed.
-     * Completes with the line to reply once the mailbox answered, or at the answer timeout; never exceptionally. Each use
-     * writes one {@code gm bossgear} line.
+     * its own mailbox, {@link #removeKit}: it then wears its own gear again, first what the kit displaced, by its
+     * BossGearRecord, which then ends). Refused where a gift is (anyone else's companion, one not out or not loaded,
+     * one busy, in a party quest or a boss run); knowledge is not needed. Completes with the line to reply once the
+     * mailbox answered, or at the answer timeout; never exceptionally. Each use writes one {@code gm bossgear} line.
      */
     public CompletableFuture<String> remove(Character gm, String name) {
         try {
@@ -447,7 +502,8 @@ public final class CompanionGearTool {
         }
         Target target = (Target) found;
         Character bot = target.chr();
-        return await(gm, bot, runtime -> game.remove(runtime, gm), (taken, failure) -> {
+        Map<Short, Integer> displaced = BossGearRecord.read(world.store(), gm.getId(), target.personaId());
+        return await(gm, bot, runtime -> game.remove(runtime, gm, displaced), (taken, failure) -> {
             if (taken == null) {
                 Throwable cause = unwrap(failure);
                 log.warn("gm bossgear: gm={} target={} ({}) did not remove", gm.getName(), bot.getName(), bot.getId(),
@@ -456,6 +512,10 @@ public final class CompanionGearTool {
                         + (cause == null ? "no answer" : cause.getMessage()) + ").";
             }
             logRemove(gm, target, taken, startedMs);
+            if (taken > 0) { // the kit is off: its record ends
+                world.store().event(gm.getId(), target.personaId(), BossGearRecord.REMOVED, "remove: " + taken
+                        + (taken == 1 ? " piece" : " pieces"));
+            }
             return taken == 0 ? bot.getName() + " has no boss gear." : bot.getName() + " gave back " + taken
                     + (taken == 1 ? " boss piece" : " boss pieces") + " and wears its own gear again.";
         }, "its boss gear still comes off at its next tick.");
@@ -469,10 +529,9 @@ public final class CompanionGearTool {
     /**
      * Takes every boss piece off {@code chr}, worn and carried, and nothing else: a piece is boss gear by its tag alone
      * ({@link #bossPiece}), so its own quest gear, a gift, loot and what it wore before all stay. A worn piece leaves its
-     * slot empty (its look and stats follow while it stands on a map) for the Agent gear optimizer ({@link #removeKit})
-     * or its own carried gear ({@link #takeBossGearOnRelease}) to dress again. Not saved here. Only where the inventory
-     * is safely writable: the companion's own mailbox, companion-ops once nothing ticks it, the GM's own command. How
-     * many pieces left it.
+     * slot empty (its look and stats follow while it stands on a map) for its own carried gear ({@link #removeKit},
+     * {@link #takeBossGearOnRelease}) to dress again. Not saved here. Only where the inventory is safely writable: the
+     * companion's own mailbox, companion-ops once nothing ticks it, the GM's own command. How many pieces left it.
      */
     static int takeBossGear(Character chr) {
         int taken = 0;
@@ -508,20 +567,16 @@ public final class CompanionGearTool {
     /**
      * A released companion's strip (RosterService, on companion-ops once nothing ticks it): its boss gear comes off
      * ({@link #takeBossGear}), and each slot a boss piece left empty takes its own carried piece back
-     * ({@link OwnGearRefit}: what the kit swapped into its bag, such as its own shield), never a new one. Not saved
-     * here. How many boss pieces left it.
+     * ({@link OwnGearRefit}): first the one the kit displaced from it ({@code displaced}, its BossGearRecord, read only
+     * when it wears boss gear), else the best it carries; never a new one. Not saved here. How many boss pieces left
+     * it.
      */
-    static int takeBossGearOnRelease(Character chr) {
-        Map<Short, Integer> taken = new HashMap<>();
-        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
-            if (bossPiece(item)) {
-                taken.put(item.getPosition(), item.getItemId());
-            }
-        }
+    static int takeBossGearOnRelease(Character chr, Supplier<Map<Short, Integer>> displaced) {
+        Map<Short, Integer> taken = wornBossPieces(chr);
         int count = takeBossGear(chr);
         if (!taken.isEmpty()) {
             try {
-                wearOwnGear(chr, taken);
+                wearOwnGear(chr, taken, displaced.get());
             } catch (RuntimeException failure) {
                 log.warn("bossgear: {} did not put its own gear back on", chr.getName(), failure);
             }
@@ -529,7 +584,18 @@ public final class CompanionGearTool {
         return count;
     }
 
-    private static void wearOwnGear(Character chr, Map<Short, Integer> taken) {
+    /** The worn slot and item id of each boss piece {@code chr} wears. */
+    private static Map<Short, Integer> wornBossPieces(Character chr) {
+        Map<Short, Integer> taken = new HashMap<>();
+        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
+            if (bossPiece(item)) {
+                taken.put(item.getPosition(), item.getItemId());
+            }
+        }
+        return taken;
+    }
+
+    private static void wearOwnGear(Character chr, Map<Short, Integer> taken, Map<Short, Integer> displaced) {
         Map<Short, Item> worn = new HashMap<>();
         for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
             worn.put(item.getPosition(), item);
@@ -538,7 +604,7 @@ public final class CompanionGearTool {
                 chr.getGender(), chr.getStr(), chr.getDex(), chr.getInt(), chr.getLuk(), chr.getFame());
         boolean straight = false;
         Collection<Item> carried = chr.getInventory(InventoryType.EQUIP).list();
-        for (Move move : OwnGearRefit.plan(wearer, taken, worn, carried, facts())) {
+        for (Move move : OwnGearRefit.plan(wearer, taken, displaced, worn, carried, facts())) {
             straight |= wear(chr, move.piece(), move.slot());
         }
         if (straight && chr.getMap() != null) {
@@ -574,23 +640,26 @@ public final class CompanionGearTool {
     /**
      * Takes every boss piece out of the saved inventory of a character nothing has loaded (a released companion's),
      * under the maintenance lock offline loads hold (CosmicAgentOfflineLoader), so no load reads it half-written; in
-     * the same rewrite each slot a boss piece left empty takes its own carried piece back ({@link OwnGearRefit}). One
-     * {@code online} now (loaded for anything, registered as an Agent or not) saves its own inventory over the store, so
-     * it is left alone. How many pieces left it; -1 when it is online or the store failed (nothing changed).
+     * the same rewrite each slot a boss piece left empty takes its own carried piece back ({@link OwnGearRefit}: first
+     * the one the kit displaced from it, {@code displaced}, read only when a worn boss piece comes off). One {@code
+     * online} now (loaded for anything, registered as an Agent or not) saves its own inventory over the store, so it is
+     * left alone. How many pieces left it; -1 when it is online or the store failed (nothing changed).
      */
-    static int takeStoredBossGear(LivingStore store, int characterId, IntPredicate online) {
+    static int takeStoredBossGear(LivingStore store, int characterId, IntPredicate online,
+                                  Supplier<Map<Short, Integer>> displaced) {
         if (characterId <= 0) {
             return 0;
         }
         try (var ignored = AgentCharacterMaintenanceRuntime.acquire(characterId)) {
             return online.test(characterId) ? -1 : store.dropStoredItems(characterId, CompanionGearTool::bossPiece,
-                    (takenWorn, worn, carried) -> redressStored(store, characterId, takenWorn, worn, carried));
+                    (takenWorn, worn, carried) -> redressStored(store, characterId, displaced, takenWorn, worn,
+                            carried));
         }
     }
 
     /** The stored rewrite's re-dress: each carried piece that goes back on takes its worn slot as its position. */
-    private static void redressStored(LivingStore store, int characterId, List<Item> takenWorn, List<Item> worn,
-                                      List<Item> carried) {
+    private static void redressStored(LivingStore store, int characterId, Supplier<Map<Short, Integer>> displaced,
+                                      List<Item> takenWorn, List<Item> worn, List<Item> carried) {
         if (takenWorn.isEmpty()) {
             return;
         }
@@ -599,7 +668,8 @@ public final class CompanionGearTool {
             takenWorn.forEach(item -> taken.put(item.getPosition(), item.getItemId()));
             Map<Short, Item> wearing = new HashMap<>();
             worn.forEach(item -> wearing.put(item.getPosition(), item));
-            List<Move> moves = OwnGearRefit.plan(store.wearStats(characterId), taken, wearing, carried, facts());
+            List<Move> moves = OwnGearRefit.plan(store.wearStats(characterId), taken, displaced.get(), wearing, carried,
+                    facts());
             moves.forEach(move -> move.piece().setPosition(move.slot()));
         } catch (RuntimeException failure) {
             log.warn("bossgear: character {} did not put its own gear back on", characterId, failure);
@@ -607,19 +677,29 @@ public final class CompanionGearTool {
     }
 
     /**
-     * On the companion's mailbox: its boss gear comes off ({@link #takeBossGear}), it puts its own gear back on (the
-     * Agent gear optimizer, as after a contract hands it its kept items) and it is saved. The pieces taken; with none,
-     * nothing changes.
+     * On the companion's mailbox: its boss gear comes off ({@link #takeBossGear}), it puts its own gear back on as a
+     * released one does ({@link OwnGearRefit}: first what the kit {@code displaced}, else the best it carries) and it
+     * is saved. Only with no weapon of its own back on does the Agent gear optimizer dress it (it would otherwise trade
+     * the very pieces it wore before for others). The pieces taken; with none, nothing changes.
      */
-    static int removeKit(AgentRuntimeEntry entry, Character owner) {
+    static int removeKit(AgentRuntimeEntry entry, Character owner, Map<Short, Integer> displaced) {
         Character bot = entry.bot();
         if (bot == null) {
             return 0;
         }
+        Map<Short, Integer> worn = wornBossPieces(bot);
         int taken = takeBossGear(bot);
         if (taken > 0) {
             try {
-                AgentEquipmentService.autoEquip(bot, owner, null, true);
+                if (!worn.isEmpty()) {
+                    wearOwnGear(bot, worn, displaced);
+                }
+                if (bot.getInventory(InventoryType.EQUIPPED).getItem(WEAPON) == null) {
+                    AgentEquipmentService.autoEquip(bot, owner, null, true);
+                } else {
+                    AgentInventoryReservationRuntime.refreshEquipmentReservations(entry, bot,
+                            System.currentTimeMillis());
+                }
             } catch (RuntimeException failure) {
                 log.debug("gm bossgear: {} did not put its own gear back on", bot.getName(), failure);
             }

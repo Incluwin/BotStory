@@ -15,11 +15,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.equipment.AgentEquipmentService;
+import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.knowledge.KnowledgeTestKit;
 import server.living.LivingWorld;
 import server.living.quest.BossGearPlanner;
 import server.living.quest.BossGearPlanner.Piece;
+import server.living.quest.FriendForge;
 import server.living.quest.FriendForge.Catalog;
 import server.living.quest.FriendForge.Scroll;
 import server.living.quest.FriendForge.Use;
@@ -38,6 +40,10 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -79,6 +85,8 @@ class CompanionGearToolTest {
     private final Character gm = mock(Character.class);
     private final Character flint = mock(Character.class);
     private final FakeGame game = new FakeGame();
+    /** The living event log the record of what a kit displaced lives in (BossGearRecord). */
+    private final FakeLivingStore store = new FakeLivingStore();
     private Inventory flintWears;
     private AutoCloseable seed;
     private CompanionGearTool tool;
@@ -90,6 +98,11 @@ class CompanionGearToolTest {
         final List<Integer> needs = new ArrayList<>();
         /** The owner of every mailbox removal, in order. */
         final List<Character> removals = new ArrayList<>();
+        /** The record of what the kit displaced each mailbox removal was handed, in order. */
+        final List<Map<Short, Integer>> removedWith = new ArrayList<>();
+        /** What the next mailbox wear says the kit displaced, and whether it went onto a kit. */
+        Map<Short, Integer> displaced = Map.of();
+        boolean ontoAKit;
         /** The runtime every lookup finds: its bot is the companion under test. */
         AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
         boolean engaged;
@@ -139,7 +152,7 @@ class CompanionGearToolTest {
             worn.add(kit);
             needs.add(need);
             return CompletableFuture.completedFuture(woreAlready ? new Outcome(0, 0, kit.size())
-                    : new Outcome(kit.size(), kit.size()));
+                    : new Outcome(kit.size(), kit.size(), 0, displaced, ontoAKit));
         }
 
         @Override
@@ -150,9 +163,11 @@ class CompanionGearToolTest {
 
         /** The mailbox runs the removal at once, as LIVE's does on the companion's tick. */
         @Override
-        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner) {
+        public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
+                                                 Map<Short, Integer> displaced) {
             removals.add(owner);
-            return CompletableFuture.completedFuture(CompanionGearTool.removeKit(runtime, owner));
+            removedWith.add(displaced);
+            return CompletableFuture.completedFuture(CompanionGearTool.removeKit(runtime, owner, displaced));
         }
     }
 
@@ -163,6 +178,7 @@ class CompanionGearToolTest {
         when(world.roster()).thenReturn(roster);
         when(world.benchDuty()).thenReturn(bench);
         when(world.partyQuests()).thenReturn(pq);
+        when(world.store()).thenReturn(store.store);
         CompanionExecutor inline = DirectExecutor.inline(); // stubs inside: not within another when()
         when(world.executor()).thenReturn(inline);
         when(gm.getId()).thenReturn(BOSSFRIEND);
@@ -469,6 +485,7 @@ class CompanionGearToolTest {
             assertEquals(List.of(BLUE_JEAN_SHORTS), ids(bag));
             equipment.verifyNoInteractions();
             verify(flint, never()).saveCharToDB();
+            assertEquals(List.of(), store.events(BossGearRecord.REMOVED), "no kit came off: nothing ends");
         }
         assertEquals("You have no boss gear.", tool.remove(gm, "me").get(5, TimeUnit.SECONDS));
         verify(gm, never()).saveCharToDB();
@@ -488,5 +505,159 @@ class CompanionGearToolTest {
 
         assertEquals(List.of(), game.removals);
         assertEquals(2, flintWears.list().size(), "nothing came off");
+    }
+
+    // ---- what the kit displaced (BossGearRecord) ------------------------------------------------------
+
+    private static final int WHITE_BANDANA = 1002019;
+    private static final int BONE_HELM = 1002006;
+    private static final int UNDERSHIRT = 1040002;
+    private static final int BOSS_CAP = 1002357;
+    private static final int BOSS_OVERALL = 1052075;
+    private static final short CAPE = -9;
+
+    private Map<Short, Integer> record() {
+        return BossGearRecord.read(store.store, BOSSFRIEND, "flint");
+    }
+
+    @Test
+    void aKitThatGoesOnRecordsWhatItDisplacedWithTheCompanion() throws Exception {
+        game.displaced = Map.of(CAP, WHITE_BANDANA, PANTS, BLUE_JEAN_SHORTS);
+
+        use("Flint", false);
+
+        assertEquals(List.of(BOSSFRIEND + " flint bossgear.worn displaced: -1:" + WHITE_BANDANA + " -6:"
+                + BLUE_JEAN_SHORTS), store.events(BossGearRecord.WORN));
+        assertEquals(Map.of(CAP, WHITE_BANDANA, PANTS, BLUE_JEAN_SHORTS), record());
+    }
+
+    @Test
+    void aKitAddedToTheOneItWearsKeepsTheFirstRecordAndAFreshKitStartsANewOne() throws Exception {
+        game.displaced = Map.of(CAP, WHITE_BANDANA);
+        use("Flint", false);
+        game.displaced = Map.of(PANTS, BLUE_JEAN_SHORTS);
+        game.ontoAKit = true;
+        use("Flint", false);
+
+        assertEquals(Map.of(CAP, WHITE_BANDANA, PANTS, BLUE_JEAN_SHORTS), record(),
+                "the second kit went onto the first");
+
+        game.displaced = Map.of(TOP, UNDERSHIRT);
+        game.ontoAKit = false;
+        use("Flint", false);
+
+        assertEquals(Map.of(TOP, UNDERSHIRT), record(), "the old kit came off some other way: a new record");
+    }
+
+    @Test
+    void theGmsOwnKitAndAMailboxThatGaveNothingRecordNothing() throws Exception {
+        use("me", false);
+        game.woreAlready = true;
+        use("Flint", false);
+
+        assertEquals(List.of(), store.events(BossGearRecord.WORN));
+    }
+
+    /** A kit piece as BossGearPlanner plans it (the forge is stubbed: no WZ). */
+    private static Piece piece(short position, String category, int itemId) {
+        return new Piece(position, category, new FriendForge.Plan(itemId, 7, List.of()));
+    }
+
+    /**
+     * InventoryManipulator as the game runs it for Flint (no client): a drop goes in the next free bag slot, and an
+     * equip swaps what the slot wore into the piece's bag slot, an overall first pushing worn pants into the next free
+     * slot (InventoryManipulator.equip).
+     */
+    private static void playsLikeTheGame(MockedStatic<InventoryManipulator> inventory, Inventory worn, Inventory bag) {
+        inventory.when(() -> InventoryManipulator.addFromDrop(any(), any(Item.class), anyBoolean()))
+                .thenAnswer(inv -> bag.addItem(inv.getArgument(1)) != -1);
+        inventory.when(() -> InventoryManipulator.equip(any(), anyShort(), anyShort())).thenAnswer(inv -> {
+            short src = inv.getArgument(1);
+            short dst = inv.getArgument(2);
+            Item piece = bag.getItem(src);
+            Item pants = worn.getItem(PANTS);
+            if (dst == TOP && pants != null && ItemConstants.isOverall(piece.getItemId())) {
+                worn.removeSlot(PANTS);
+                pants.setPosition(bag.getNextFreeSlot());
+                bag.addItemFromDB(pants);
+            }
+            bag.removeSlot(src);
+            Item old = worn.getItem(dst);
+            if (old != null) {
+                worn.removeSlot(dst);
+                old.setPosition(src);
+                bag.addItemFromDB(old);
+            }
+            piece.setPosition(dst);
+            worn.addItemFromDB(piece);
+            return null;
+        });
+    }
+
+    @Test
+    void onItsMailboxTheKitNamesEachOwnPieceItPutInTheBagThePantsTheOverallPushedOffAmongThem() throws Exception {
+        flintWears.addItemFromDB(Equip.restored(WHITE_BANDANA, CAP));
+        flintWears.addItemFromDB(Equip.restored(UNDERSHIRT, TOP));
+        flintWears.addItemFromDB(Equip.restored(BLUE_JEAN_SHORTS, PANTS));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(BONE_HELM, (short) 1));
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        int gun = 1492013;
+        List<Piece> kit = List.of(piece(CAP, "cap", BOSS_CAP), piece(TOP, "longcoat", BOSS_OVERALL),
+                piece(WEAPON, "weapon", gun));
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        when(entry.bot()).thenReturn(flint);
+
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class);
+             MockedStatic<BossGearPlanner> forge = mockStatic(BossGearPlanner.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            playsLikeTheGame(inventory, flintWears, bag);
+            forge.when(() -> BossGearPlanner.forge(any())).thenAnswer(inv -> boss(((Piece) inv.getArgument(0))
+                    .itemId(), (short) 0));
+
+            Outcome outcome = CompanionGearTool.wearKit(entry, kit, 4);
+
+            assertEquals(3, outcome.worn(), outcome.toString());
+            assertEquals(Map.of(CAP, WHITE_BANDANA, TOP, UNDERSHIRT, PANTS, BLUE_JEAN_SHORTS, WEAPON, BEGINNER_SWORD),
+                    outcome.displaced());
+            assertFalse(outcome.ontoAKit());
+
+            Outcome second = CompanionGearTool.wearKit(entry, List.of(piece(CAP, "cap", BOSS_CAP + 1),
+                    piece(CAPE, "cape", BOSS_CAPE)), 2);
+
+            assertEquals(2, second.worn(), second.toString());
+            assertEquals(Map.of(), second.displaced(), "a boss cap swapped for another is no piece of its own");
+            assertTrue(second.ontoAKit());
+        }
+    }
+
+    @Test
+    void removeWearsWhatTheKitDisplacedFirstAndEndsTheRecord() throws Exception {
+        flintWears.addItemFromDB(boss(BOSS_CAP, CAP));
+        Inventory bag = new Inventory(flint, InventoryType.EQUIP, (byte) 24);
+        bag.addItemFromDB(Equip.restored(BONE_HELM, (short) 1));
+        Item bandana = Equip.restored(WHITE_BANDANA, (short) 2);
+        bag.addItemFromDB(bandana);
+        when(flint.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+        BossGearRecord.write(store.store, BOSSFRIEND, "flint", Map.of(CAP, WHITE_BANDANA));
+
+        try (MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentInventoryReservationRuntime> reservations =
+                     mockStatic(AgentInventoryReservationRuntime.class)) {
+            String reply = tool.remove(gm, "Flint").get(5, TimeUnit.SECONDS);
+
+            assertEquals("Flint gave back 1 boss piece and wears its own gear again.", reply);
+            assertEquals(List.of(Map.of(CAP, WHITE_BANDANA)), game.removedWith, "the record went to its mailbox");
+            assertEquals(bandana, flintWears.getItem(CAP), "its own bandana, not the Lv42 Bone Helm it also carries");
+            assertEquals(List.of(BONE_HELM), ids(bag));
+            equipment.verifyNoInteractions(); // it wears a weapon: the optimizer would trade the bandana away
+            reservations.verify(() -> AgentInventoryReservationRuntime.refreshEquipmentReservations(any(), any(),
+                    anyLong()));
+            verify(flint).saveCharToDB();
+        }
+        assertEquals(List.of(BOSSFRIEND + " flint bossgear.removed remove: 1 piece"),
+                store.events(BossGearRecord.REMOVED));
+        assertEquals(Map.of(), record(), "the record ended");
     }
 }

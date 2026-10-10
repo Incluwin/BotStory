@@ -12,6 +12,7 @@ import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentPotionThresholds;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
 import server.agents.runtime.AgentMailboxAction;
@@ -310,6 +311,46 @@ class CompanionManagerSettingsTest {
         assertEquals(List.of(EconomyOperationKind.COMPANION_GIFT), committed);
         assertEquals(List.of(ANN + " mira roster.coin 250 meso, stored"), h.store.events("roster.coin"));
         verify(h.residents).reply(mira, h.ann, CompanionManager.COIN_THANKS);
+    }
+
+    @Test
+    void coinForOneShortOfItsPotionsThanksWithoutSayingItIsEnough() {
+        // review of 2026-10-09: "thanks. that'll keep me in potions." and five seconds later its restock's "that
+        // helps, but i'm still short for my potions." when the coin fell short
+        h.outWithAnn(hadrik);
+        Character bot = h.bot(hadrik);
+        when(h.ann.getMeso()).thenReturn(10_000);
+        when(bot.canHoldMeso(500)).thenReturn(true);
+        AgentSupplyReadiness.install(id -> id == bot.getId() ? AgentSupplyReadiness.Activity.PARTY_QUEST : null);
+        try {
+            assertTrue(manager.giveCoin(h.ann, hadrik, 500).ok());
+        } finally {
+            AgentSupplyReadiness.install(null);
+        }
+
+        verify(h.residents).reply(hadrik, h.ann, CompanionManager.COIN_THANKS_SHORT);
+        verify(h.residents, never()).reply(hadrik, h.ann, CompanionManager.COIN_THANKS);
+        String lower = CompanionManager.COIN_THANKS_SHORT.toLowerCase(java.util.Locale.ROOT);
+        assertFalse(lower.contains("potion") || lower.contains("enough") || lower.contains("keep me"),
+                "its restock says next whether it is enough: " + CompanionManager.COIN_THANKS_SHORT);
+    }
+
+    @Test
+    void coinForOneThatHasItsPotionsKeepsItInPotions() {
+        h.outWithAnn(hadrik);
+        Character bot = h.bot(hadrik);
+        when(h.ann.getMeso()).thenReturn(10_000);
+        when(bot.canHoldMeso(500)).thenReturn(true);
+        when(bot.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
+        potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{500, 500});
+        AgentSupplyReadiness.install(id -> id == bot.getId() ? AgentSupplyReadiness.Activity.PARTY_QUEST : null);
+        try {
+            assertTrue(manager.giveCoin(h.ann, hadrik, 500).ok());
+        } finally {
+            AgentSupplyReadiness.install(null);
+        }
+
+        verify(h.residents).reply(hadrik, h.ann, CompanionManager.COIN_THANKS);
     }
 
     @Test

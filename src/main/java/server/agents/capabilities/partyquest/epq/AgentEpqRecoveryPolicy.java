@@ -12,7 +12,10 @@ import java.util.List;
  * <p>EPQ base fix 7 (LPQ base fix 6's rule), as the golem rest fix of 2026-10-09 changed it: while a golem lives, a
  * member with HP under REST_HP_FRACTION, or with fewer than POT_STOP HP potions, backs off on its own side of the golem
  * (REACH_PX covers every ordinary golem attack and its Seal), drinks up to RESUME_HP_FRACTION and rejoins only at
- * RESUME_HP_FRACTION with POT_STOP potions; there it fights only a golem add that reaches it.
+ * RESUME_HP_FRACTION with POT_STOP potions; there it fights only a golem add that reaches it. The review of that fix:
+ * a pinned rester (its rest point itself in the golem's reach) fights an add that reaches it there too, a dry one also
+ * hits the golem from there while its HP is at least REST_HP_FRACTION, and a dry rester asks its party for HP potions
+ * every DRY_ASK_INTERVAL_MS.
  */
 final class AgentEpqRecoveryPolicy {
     static final double TOP_UP_HP_FRACTION = config.AgentTuning.doubleValue(
@@ -31,6 +34,8 @@ final class AgentEpqRecoveryPolicy {
             "server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_HP_FRACTION");
     static final double RESUME_HP_FRACTION = config.AgentTuning.doubleValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION");
+    static final long DRY_ASK_INTERVAL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.DRY_ASK_INTERVAL_MS");
 
     private AgentEpqRecoveryPolicy() { }
 
@@ -88,6 +93,15 @@ final class AgentEpqRecoveryPolicy {
             if (storedOnSide && Math.abs(stored.x - golem.x) >= Math.abs(x - golem.x)) return stored;
         }
         return new Point(x, floor.y());
+    }
+
+    /**
+     * Whether a rest point is itself within {@code reachPx} of the golem: the member's side of the floor has no spot out
+     * of reach (live 2026-10-08: golem at x -230, Halvard and Kestrel at the wall, x -540). Holding still there spares it
+     * no golem hit.
+     */
+    static boolean pinned(Point restPoint, Point golem, int reachPx) {
+        return restPoint != null && golem != null && Math.abs(restPoint.x - golem.x) <= reachPx;
     }
 
     /** Whether a golem add stands within {@code threatPx} of this position, both ways. */

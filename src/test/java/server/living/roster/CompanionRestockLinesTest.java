@@ -75,6 +75,30 @@ class CompanionRestockLinesTest {
     }
 
     @Test
+    void fennaGarrickAndBrannockAskForWhatTheyLackOrMesosInTheirOwnBrokeLines() throws Exception {
+        // review of 2026-10-09: "broke. potions cost money." and "potions cost money and i have, um, none." asked
+        // the owner for nothing; the user's decision holds for the named companions too
+        LivingContent content = ContentLoader.load(Path.of("scripts/config/living-world"));
+        LivingWorld world = world();
+        for (String id : List.of("fenna", "garrick", "brannock")) {
+            for (String template : CompanionRestockLines.lines(world, content.persona(id), CompanionRestockLines.BROKE)) {
+                assertTrue(template.contains("{need}"), id + " names what it lacks: " + template);
+                assertTrue(template.contains("?"), id + " asks: " + template);
+                for (String need : List.of("potions", "mana potions")) {
+                    String line = CompanionRestockLines.filled(template, need);
+                    inVoice(id + " broke", line);
+                    String lower = line.toLowerCase(Locale.ROOT);
+                    assertTrue(lower.contains("mesos") || lower.contains("coin"), id + ", mesos would do too: " + line);
+                    assertEquals(lower, line, "lower case: " + line);
+                    assertTrue(line.length() <= 100, "fits a chat line: " + line);
+                    assertFalse(line.chars().anyMatch(java.lang.Character::isDigit), "no counts: " + line);
+                    assertFalse(line.contains("{"), line);
+                }
+            }
+        }
+    }
+
+    @Test
     void whatItLacksIsManaPotionsWhenOnlyManaIsShortItsAmmoWhenOnlyProjectilesAreAndPotionsOtherwise() {
         assertEquals("potions", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(5, 0, 0)));
         assertEquals("potions", CompanionRestockLines.need(null, new AgentSupplyReadiness.Shortfall(5, 10, 500)),
@@ -89,8 +113,8 @@ class CompanionRestockLinesTest {
 
     @Test
     void aStillShortLineNamesWhatItStillLacksAndLeavesTheThanksToTheGift() {
-        // the trade window's completion ("ty!") and the card's coin ("thanks. that'll keep me in potions.") thank
-        // already: the still-short line that follows them within seconds does not thank a second time
+        // the trade window's completion ("ty!") and the card's coin ("ty! appreciate it." from a companion short of
+        // its potions) thank already: the still-short line that follows them within seconds does not thank again
         for (String template : CompanionRestockLines.GENERIC.get(CompanionRestockLines.STILL_SHORT)) {
             assertTrue(template.contains("{need}"), template);
             String lower = template.toLowerCase(Locale.ROOT);

@@ -24,6 +24,8 @@ public final class AgentEpqMemberState {
     private java.awt.Point bossRestPoint;
     private long nextBossRestDrinkAtMs;
     private int bossRestDrinks;
+    private long nextBossRestAskAtMs;
+    private int bossRestAsks;
     private int handOverItemId;
     private long handOverStartedAtMs;
     private boolean handOverToNpc;
@@ -136,11 +138,19 @@ public final class AgentEpqMemberState {
     /** The HP potions the open rest has drunk. */
     int bossRestDrinks() { return bossRestDrinks; }
 
-    /** Rests at this point; a new rest starts with no drinks and may drink at once. */
+    /** When the rest's next ask for HP potions may go out. */
+    long nextBossRestAskAtMs() { return nextBossRestAskAtMs; }
+
+    /** The asks for HP potions the open rest has tried. */
+    int bossRestAsks() { return bossRestAsks; }
+
+    /** Rests at this point; a new rest starts with no drinks or asks and may drink and ask at once. */
     void restAt(java.awt.Point point) {
         if (!bossResting) {
             nextBossRestDrinkAtMs = 0L;
             bossRestDrinks = 0;
+            nextBossRestAskAtMs = 0L;
+            bossRestAsks = 0;
         }
         bossResting = true;
         bossRestPoint = point == null ? null : new java.awt.Point(point);
@@ -152,12 +162,20 @@ public final class AgentEpqMemberState {
         if (drank) bossRestDrinks++;
     }
 
+    /** One ask for HP potions tried while resting dry; the next may follow at {@code nextAtMs}. */
+    void recordBossRestAsk(long nextAtMs) {
+        nextBossRestAskAtMs = Math.max(0L, nextAtMs);
+        bossRestAsks++;
+    }
+
     /** Back in the fight, the event cleared, or the member left the golem's map. */
     void clearBossRest() {
         bossResting = false;
         bossRestPoint = null;
         nextBossRestDrinkAtMs = 0L;
         bossRestDrinks = 0;
+        nextBossRestAskAtMs = 0L;
+        bossRestAsks = 0;
     }
 
     // A companion run's hand-over at the leader's feet (Step 2.7), owned by this member's own tick.
