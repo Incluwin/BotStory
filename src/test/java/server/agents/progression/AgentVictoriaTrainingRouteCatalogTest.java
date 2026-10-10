@@ -1,11 +1,20 @@
 package server.agents.progression;
 
 import org.junit.jupiter.api.Test;
+import scripting.AbstractScriptManager;
+import scripting.portal.PortalPlayerInteraction;
+import scripting.portal.PortalScript;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class AgentVictoriaTrainingRouteCatalogTest {
     @Test
@@ -34,6 +43,38 @@ class AgentVictoriaTrainingRouteCatalogTest {
         assertEquals(103000000, AgentVictoriaTrainingRouteCatalog.nextHop(103000002, 103000003));
         assertEquals(120000100, AgentVictoriaTrainingRouteCatalog.nextHop(120000101, 120000200));
         assertEquals(120000100, AgentVictoriaTrainingRouteCatalog.nextHop(120000200, 120000101));
+    }
+
+    @Test
+    void kerningSubwayCampsWalkBackFromThePharmacy() {
+        // Live 2026-10-09: a benched companion camped on Line 2 <Area 1> (103000200) walked to the Kerning City Pharmacy
+        // (103000002) and logged "no return route from map 103000002". A player walks back with no ticket: the Subway
+        // Ticketing Booth's in00 (portal 2, script subway_in2) warps to Line 1 <Area 1> with no check. The generated
+        // graph drops every scripted portal, so the way in is the authored entry.
+        assertEquals(5, AgentVictoriaTrainingRouteCatalog.distance(103000200, 103000002));
+        assertEquals(5, AgentVictoriaTrainingRouteCatalog.distance(103000002, 103000200));
+        assertEquals(2, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(103000100, 103000101));
+    }
+
+    /** The router presses that portal with no ticket and no quest, so the script must check nothing. */
+    @Test
+    void theTicketBoothEntranceWarpsAnyoneToLine1() throws Exception {
+        ScriptEngine engine = new Loader().load("portal/subway_in2.js");
+        assertNotNull(engine, "the script evaluates");
+        PortalPlayerInteraction pi = mock(PortalPlayerInteraction.class);
+
+        assertTrue(((Invocable) engine).getInterface(PortalScript.class).enter(pi));
+
+        verify(pi).playPortalSound();
+        verify(pi).warp(103000101, 3);
+        verifyNoMoreInteractions(pi);
+    }
+
+    /** Loads a script the way the portal script manager does (Graal.js with host access). */
+    private static final class Loader extends AbstractScriptManager {
+        ScriptEngine load(String path) {
+            return getInvocableScriptEngine(path);
+        }
     }
 
     @Test
