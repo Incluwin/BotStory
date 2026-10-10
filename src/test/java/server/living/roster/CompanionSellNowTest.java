@@ -18,6 +18,8 @@ import server.agents.capabilities.shop.AgentShopService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.integration.typesafe.JevClient;
+import server.agents.integration.typesafe.TypeSafeSettings;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.social.conversation.AgentSocialDialogueRuntime;
@@ -71,9 +73,16 @@ class CompanionSellNowTest {
     private final AgentRuntimeEntry hadrik = new AgentRuntimeEntry(agent(901, "Hadrik"), alice, null);
     private ResidentDialogue dialogue;
     private String oldOperators;
+    private JevClient oldJev;
 
     @BeforeEach
     void wire() {
+        oldJev = JevClient.runtime();
+        // No API key: a line the judge would read stays on this thread, so no SystemOne call outlives the test.
+        JevClient.installRuntime(new JevClient(new TypeSafeSettings("", TypeSafeSettings.DEFAULT_ENDPOINT,
+                TypeSafeSettings.DEFAULT_MODEL, 1000), (request, settings) -> {
+            throw new AssertionError("no SystemOne call in this test");
+        }));
         when(world.roster()).thenReturn(roster);
         when(world.content()).thenReturn(content);
         when(world.executor()).thenReturn(executor);
@@ -96,6 +105,7 @@ class CompanionSellNowTest {
 
     @AfterEach
     void unwire() {
+        JevClient.installRuntime(oldJev);
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = oldOperators;
         AgentRuntimeRegistry.clear();
         AgentChatIntentRuntime.installPrejudge(null);
