@@ -120,6 +120,20 @@ public final class AgentShopService {
         }
     }
 
+    /**
+     * The Agent arrived on a map (the map-change hooks): as {@link #onMapChange}, except that one its readiness duty
+     * holds back for mesos (AgentSupplyReadiness.heldForMesos: a broke companion that followed its owner into a store)
+     * starts no visit of its own. What it cannot pay for its readiness says, and what its owner hands it there stays
+     * a gift it can answer. A supply trip that begins here still opens its visit ({@link #onMapChange}).
+     */
+    public static void onArrival(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
+        if (AgentSupplyReadiness.heldForMesos(entry, System.currentTimeMillis())) {
+            clearShopState(entry);
+            return;
+        }
+        onMapChange(entry, bot, inventory);
+    }
+
     public static void onMapChange(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         clearShopState(entry);
         if (bot == null || bot.getMap() == null) {

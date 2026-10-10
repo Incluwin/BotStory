@@ -132,6 +132,42 @@ class AgentShopServiceTest {
     }
 
     @Test
+    void aCompanionHeldBackForMesosStartsNoVisitOfItsOwnWhenItArrivesAtAShop() {
+        // second review of the ask-owner change: a broke companion that followed its owner into a store started its
+        // own visit, and the owner's gift during it could not be told from what it bought itself
+        for (boolean held : new boolean[]{true, false}) {
+            Character bot = clawBotWithStars(800, 1000, 1000); // 2800 of the best star: a visit would open
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+            MapleMap map = bot.getMap();
+            NPC npc = shopNpc(new Point(20, 0));
+            Shop shop = mock(Shop.class);
+            when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+            when(shop.getItems()).thenReturn(List.of());
+            InventoryGateway inventory = starStatsInventory();
+            try (MockedStatic<AgentAttackExecutionProvider> attacks =
+                         mockStatic(AgentAttackExecutionProvider.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+                 MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+                 MockedStatic<ShopFactory> shops = mockStatic(ShopFactory.class);
+                 MockedStatic<server.agents.capabilities.supplies.AgentSupplyReadiness> readiness = mockStatic(
+                         server.agents.capabilities.supplies.AgentSupplyReadiness.class,
+                         org.mockito.Mockito.CALLS_REAL_METHODS)) {
+                ShopFactory factory = mock(ShopFactory.class);
+                shops.when(ShopFactory::getInstance).thenReturn(factory);
+                when(factory.getShopForNPC(npc.getId())).thenReturn(shop);
+                attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.CLAW);
+                potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{9999, 9999});
+                readiness.when(() -> server.agents.capabilities.supplies.AgentSupplyReadiness.heldForMesos(
+                        org.mockito.ArgumentMatchers.eq(entry), anyLong())).thenReturn(held);
+
+                AgentShopService.onArrival(entry, bot, inventory);
+            }
+
+            assertEquals(!held, AgentShopStateRuntime.shopVisitPending(entry),
+                    held ? "what it cannot pay for its readiness says" : "as on any map change");
+        }
+    }
+
+    @Test
     void aShopStepLeftFromAnEarlierVisitDoesNotAbortTheNextVisit() {
         // Live 2026-09-21..10-06: a supply trip started (begin() re-runs onMapChange) while a transaction's
         // purchase step was scheduled. The step then ran against the new visit and aborted it with

@@ -448,7 +448,7 @@ public final class AgentSupplyReadinessRuntime {
     /**
      * A readiness trip that cannot go: the verdict on this map, and a cooldown for CANNOT_AFFORD and NO_SPACE (until
      * the purse grows by what it lacked, a slot frees, or it lacks fewer potions); the host hears it when the verdict
-     * changed.
+     * changed, and what it was given before that is not told after it.
      */
     private static void record(Character agent, AgentSupplyReadinessState state,
                                AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Shortfall shortfall,
@@ -470,6 +470,7 @@ public final class AgentSupplyReadinessRuntime {
         if (!state.verdict(verdict, agent.getMapId(), assessment.missingMesos(), nowMs)) {
             return;
         }
+        state.clearGiven(); // the refusal is the news now: a gift from before it is not told after it
         if (verdict != AgentSupplyReadinessState.Verdict.NO_SUPPLIER) {
             log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {},"
                             + " mesos {}, missing {}, free use slots {})", agent.getName(), activity, verdict,
