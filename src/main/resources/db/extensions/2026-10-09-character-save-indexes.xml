@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Character.saveCharToDB rewrites each section as DELETE ... WHERE characterid = ? then INSERT, in one
+         transaction. These tables had no index on that column (the Cosmic schema never added one), so each DELETE
+         scanned the whole table, and the cash shop's account-keyed item DELETE scanned all of inventoryitems
+         (live 2026-10-09: 113,698 rows, 292 ms on average). A scanning DELETE also waits for every row another
+         open save has written, so concurrent saves ran one at a time: at the 21:41 restart four unload threads
+         saved at the rate of one (1.35 s per save instead of 0.37 s), and 101 citizens were left to their
+         channel's serial shutdown. With an index each DELETE touches only its own character's rows. -->
+
+    <changeSet id="2026-10-09-idx-inventoryitems-accountid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="inventoryitems" indexName="idx_inventoryitems_accountid"/></not>
+        </preConditions>
+        <createIndex tableName="inventoryitems" indexName="idx_inventoryitems_accountid">
+            <column name="accountid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-keymap-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="keymap" indexName="idx_keymap_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="keymap" indexName="idx_keymap_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-skillmacros-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="skillmacros" indexName="idx_skillmacros_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="skillmacros" indexName="idx_skillmacros_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-savedlocations-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="savedlocations" indexName="idx_savedlocations_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="savedlocations" indexName="idx_savedlocations_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-trocklocations-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="trocklocations" indexName="idx_trocklocations_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="trocklocations" indexName="idx_trocklocations_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-buddies-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="buddies" indexName="idx_buddies_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="buddies" indexName="idx_buddies_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-area-info-charid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="area_info" indexName="idx_area_info_charid"/></not>
+        </preConditions>
+        <createIndex tableName="area_info" indexName="idx_area_info_charid">
+            <column name="charid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-queststatus-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="queststatus" indexName="idx_queststatus_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="queststatus" indexName="idx_queststatus_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-questprogress-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="questprogress" indexName="idx_questprogress_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="questprogress" indexName="idx_questprogress_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-medalmaps-characterid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="medalmaps" indexName="idx_medalmaps_characterid"/></not>
+        </preConditions>
+        <createIndex tableName="medalmaps" indexName="idx_medalmaps_characterid">
+            <column name="characterid"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026-10-09-idx-wishlists-charid" author="ganre">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists tableName="wishlists" indexName="idx_wishlists_charid"/></not>
+        </preConditions>
+        <createIndex tableName="wishlists" indexName="idx_wishlists_charid">
+            <column name="charid"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
