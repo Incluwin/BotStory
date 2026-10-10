@@ -543,9 +543,9 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     /**
-     * The walk back stood on one map for TRAVEL_NO_PROGRESS_MS: the plan resumes where the Agent stands. After a
-     * purchase the trip still succeeded, so it neither waits out a cooldown nor asks the party for potions it carries;
-     * a trip already given up ends as one.
+     * The walk back stood on one map for TRAVEL_NO_PROGRESS_MS, or a restocked one found no route back: the plan
+     * resumes where the Agent stands. After a purchase the trip still succeeded, so it neither waits out a cooldown nor
+     * asks the party for potions it carries; a trip already given up ends as one.
      */
     private static boolean resumeWhereItStands(AgentRuntimeEntry entry,
                                                Character agent,
@@ -686,11 +686,11 @@ public final class AgentSupplyProcurementRuntime {
                 // Nothing left to try: hand the foreground back where the Agent stands.
                 return finishAbandoned(entry, agent, planning, execution, nowMs);
             }
-            recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
-                    "supplier visit completed but no return route reaches the suspended plan", nowMs);
-            stall(entry, agent, planning, execution,
-                    "supplier visit completed but no return route reaches the suspended plan", nowMs);
-            return true;
+            // It holds what it bought, so no way back is no failure: no cooldown, no party ask for potions it
+            // carries. Seen with a hop its own stalled walk back blocked (105090200 -> 105090300 for a Drake-side
+            // citizen) and from the Balrog stairway (105100000), which no route edge enters.
+            return resumeWhereItStands(entry, agent, planning, execution,
+                    "no return route from map " + agent.getMapId(), nowMs);
         }
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
             String stuck = noProgress(agent, execution, outcome, "the suspended plan", nowMs);
