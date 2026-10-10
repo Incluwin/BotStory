@@ -30,6 +30,14 @@ public final class CitizenSession {
     public final java.util.Deque<String> recentIntents = new java.util.ArrayDeque<>();
     /** Virtual sessions have no character loaded; they exist for the ledger and social bookkeeping. */
     public volatile boolean virtual;
+    /** The latest move asked of it (PresenceScheduler.travel); compared by identity, as two asks are two moves. */
+    volatile Move latestMove;
+    /** A move that waited for its own supply trip, made at the first presence sweep after the trip; null when none. */
+    volatile Move waitingMove;
+
+    /** A move to another map and the activity it starts there. */
+    record Move(Activity activity, int mapId) {
+    }
 
     CitizenSession(Citizen citizen, long startedAtMs, long endsAtMs, boolean virtual) {
         this.characterId = citizen.characterId();
