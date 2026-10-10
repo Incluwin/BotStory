@@ -29,12 +29,14 @@
     { "corridorId": "kerning-training", "mapIds": [103000003, 103000000, 103010000] },
     { "corridorId": "kerning-stump-training", "mapIds": [103000000, 102050000, 102040000, 102030000, 102020000] },
     { "corridorId": "kerning-shop", "mapIds": [103000000, 103000002] },
-    { "corridorId": "nautilus-training-and-shop", "mapIds": [120000101, 120000100, 120000200, 120000000, 120010000] }
+    { "corridorId": "nautilus-training-and-shop", "mapIds": [120000101, 120000100, 120000200, 120000000, 120010000] },
+    { "corridorId": "kerning-subway", "mapIds": [103000100, 103000101] }
   ],
   "scriptedPortals": [
     { "sourceMapId": 101000000, "destinationMapId": 101000003, "portalId": 26 },
     { "sourceMapId": 101000003, "destinationMapId": 101000000, "portalId": 8 },
-    { "sourceMapId": 100000200, "destinationMapId": 100000201, "portalId": 9 }
+    { "sourceMapId": 100000200, "destinationMapId": 100000201, "portalId": 9 },
+    { "sourceMapId": 103000100, "destinationMapId": 103000101, "portalId": 2 }
   ],
   "returnScrolls": [
     { "townMapId": 100000000, "itemId": 2030001, "shopNpcId": 1001100, "shopMapId": 100000102, "unitPrice": 500 },

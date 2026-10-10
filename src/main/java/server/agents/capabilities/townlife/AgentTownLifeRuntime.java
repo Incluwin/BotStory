@@ -106,6 +106,13 @@ public final class AgentTownLifeRuntime {
         request(entry, AgentTownLifeVisitRequest.leisure(townMapId), nowMs, identitySeed);
     }
 
+    public static void startAfterShipArrival(AgentRuntimeEntry entry,
+                                             int townMapId,
+                                             long nowMs,
+                                             int identitySeed) {
+        request(entry, AgentTownLifeVisitRequest.shipArrival(townMapId), nowMs, identitySeed);
+    }
+
     public static void request(AgentRuntimeEntry entry,
                                AgentTownLifeVisitRequest request,
                                long nowMs,

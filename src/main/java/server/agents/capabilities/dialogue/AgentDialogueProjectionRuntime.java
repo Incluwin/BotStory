@@ -91,8 +91,8 @@ public final class AgentDialogueProjectionRuntime {
                     : progress + " - almost done.";
         }
         if (AgentResourceDialogueReactionService.INVENTORY_FULL_INTENT.equals(intent.intentKey())) {
-            String inventoryType = intent.parameters().getOrDefault("inventoryType", "").toLowerCase();
-            return inventoryType.isBlank() ? "inventory is full!" : inventoryType + " inventory is full!";
+            // a player's words, not the bag's name + " inventory is full!" (deploy review 2026-10-10)
+            return AgentDialogueSelector.randomReply(AgentDialogueCatalog.nearbyBagFullReplies());
         }
         if (AgentResourceDialogueReactionService.SCROLL_INTENT.equals(intent.intentKey())) {
             return switch (intent.parameters().getOrDefault("result", "")) {
@@ -114,7 +114,7 @@ public final class AgentDialogueProjectionRuntime {
                     "nice day to hang around town.",
                     "taking a break before heading out.",
                     "this place is pretty lively today.",
-                    "just checking out the harbor."));
+                    "just seeing who's around."));
         }
         if (AgentTownLifeDialogueReactionService.SPARRING_INTENT.equals(intent.intentKey())) {
             return variant(intent, List.of(
@@ -124,11 +124,22 @@ public final class AgentDialogueProjectionRuntime {
                     "okay, one more swing."));
         }
         if (AgentTownLifeDialogueReactionService.ARRIVAL_INTENT.equals(intent.intentKey())) {
+            if (Boolean.parseBoolean(intent.parameters().getOrDefault("shipArrival", "false"))) {
+                return variant(intent, List.of(
+                        "I've reached Lith Harbor. I'll look around town for a while.",
+                        "Made it to Victoria Island. Time to explore Lith Harbor.",
+                        "I'm going to finish my errand, then spend some time around town.",
+                        "The ship made it! I'll head into Lith Harbor and see what's happening."));
+            }
+            String town = intent.parameters().getOrDefault("townName", "").trim();
+            if (town.isBlank()) {
+                town = "town";
+            }
             return variant(intent, List.of(
-                    "I've reached Lith Harbor. I'll look around town for a while.",
-                    "Made it to Victoria Island. Time to explore Lith Harbor.",
+                    "I've reached " + town + ". I'll look around for a while.",
+                    "Made it to " + town + ". Time to explore.",
                     "I'm going to finish my errand, then spend some time around town.",
-                    "The ship made it! I'll head into Lith Harbor and see what's happening."));
+                    "Time to see what's happening around " + town + "."));
         }
         if (AgentTownLifeTestNarrationService.ACTIVITY_INTENT.equals(intent.intentKey())) {
             String activity = friendly(intent.parameters().getOrDefault("activity", "activity"));

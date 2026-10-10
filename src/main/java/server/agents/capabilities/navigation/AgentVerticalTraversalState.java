@@ -79,10 +79,23 @@ public final class AgentVerticalTraversalState {
     }
 
     void complete(long nowMs, long reentryBlockMs, int nudgePx) {
+        rememberExit(nowMs, reentryBlockMs, selectExitNudgeTarget(graph, exitEdge, nudgePx));
+    }
+
+    /**
+     * Completes a rope-to-rope exit once the destination rope is caught. The jump back stays
+     * blocked for the same guard, but a rope has no step-off spot, so there is no nudge target:
+     * a target on the caught rope is climbed to at once.
+     */
+    void completeOnCaughtRope(long nowMs, long reentryBlockMs) {
+        rememberExit(nowMs, reentryBlockMs, null);
+    }
+
+    private void rememberExit(long nowMs, long reentryBlockMs, Point nudgeTarget) {
         recentExitGraph = graph;
         recentExitRopeRegionId = exitEdge.fromRegionId;
         recentExitGroundRegionId = exitEdge.toRegionId;
-        recentExitNudgeTarget = selectExitNudgeTarget(graph, exitEdge, nudgePx);
+        recentExitNudgeTarget = nudgeTarget;
         recentExitGuardUntilMs = nowMs + Math.max(1L, reentryBlockMs);
         clearActive();
     }

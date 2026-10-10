@@ -2,8 +2,7 @@ package server.agents.capabilities.trade;
 
 /**
  * One manual trade window's bookkeeping on its Agent: the join delay, the idle wait (restarted whenever the partner puts
- * something new in, {@link #observeOffer}), the time the window may still stay open whatever is added, and whether the
- * last completion was refused because the Agent's bag had no room ({@link #takeRefusedForSpace}).
+ * something new in, {@link #observeOffer}), and the time the window may still stay open whatever is added.
  */
 public final class AgentManualTradeState {
     private int acceptDelayMs = 0;
@@ -14,7 +13,6 @@ public final class AgentManualTradeState {
     private int openLeftMs = 0;
     private int offerItems = 0;
     private int offerMeso = 0;
-    private volatile boolean refusedForSpace = false;
 
     public int acceptDelayMs() {
         return acceptDelayMs;
@@ -106,18 +104,6 @@ public final class AgentManualTradeState {
         }
     }
 
-    /** The trade's completion was refused because the Agent's bag had no room (server.Trade's space check). */
-    public void markRefusedForSpace() {
-        refusedForSpace = true;
-    }
-
-    /** True once after {@link #markRefusedForSpace}: the trade the Agent just completed did not go through. */
-    public boolean takeRefusedForSpace() {
-        boolean refused = refusedForSpace;
-        refusedForSpace = false;
-        return refused;
-    }
-
     public void clear() {
         acceptDelayMs = 0;
         tradeRef = null;
@@ -127,6 +113,5 @@ public final class AgentManualTradeState {
         openLeftMs = 0;
         offerItems = 0;
         offerMeso = 0;
-        refusedForSpace = false;
     }
 }

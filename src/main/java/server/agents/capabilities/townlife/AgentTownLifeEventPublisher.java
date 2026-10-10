@@ -23,7 +23,9 @@ final class AgentTownLifeEventPublisher {
                 .require(state.townMapId());
         AgentSessionEventRuntime.bus(entry).publish(new AgentTownLifeArrivalEvent(
                 agent.getId(), nowMs, state.townMapId(), profile.profileId(),
-                state.visitPurpose(), state.visitReason()), AgentEventPriority.AMBIENT);
+                state.visitPurpose(), state.visitReason(),
+                agent.getMapId() == state.townMapId() && agent.getMap() != null
+                        ? agent.getMap().getMapName() : ""), AgentEventPriority.AMBIENT);
     }
 
     static void lifecycle(AgentRuntimeEntry entry,

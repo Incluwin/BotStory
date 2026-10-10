@@ -30,4 +30,10 @@ public interface AgentTradeWindow {
     int meso();
 
     boolean hasAnyOffer();
+
+    /**
+     * True once this trade went through: both sides' items and mesos moved. A refused or cancelled trade never is. It
+     * stays readable after the trade closed, so a window held across a press of Trade can say what came of it.
+     */
+    boolean isSettled();
 }

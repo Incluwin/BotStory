@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
-import server.agents.capabilities.trade.AgentManualTradeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 
@@ -61,7 +60,8 @@ class AgentBagFullSpeechTest {
     }
 
     @Test
-    void aTradeRefusedForSpaceGetsOneLineFromAnOwnedCompanionAndNoThanks() {
+    void aTradeRefusedForSpaceGetsOneLineFromAnOwnedCompanion() {
+        // no thanks after it: the trade never settles (AgentTradeSettlementThanksTest)
         Character hadrik = character(5101, "Hadrik");
         AgentRuntimeEntry entry = new AgentRuntimeEntry(hadrik, null, null);
         AgentBagFullSpeech.install(agent -> agent == hadrik);
@@ -74,13 +74,11 @@ class AgentBagFullSpeechTest {
 
             assertEquals(1, said.size(), said.toString());
             assertTrue(AgentDialogueCatalog.tradeBagFullReplies().contains(said.get(0)), said.get(0));
-            assertTrue(AgentManualTradeStateRuntime.takeRefusedForSpace(entry), "its completion must not thank");
-            assertFalse(AgentManualTradeStateRuntime.takeRefusedForSpace(entry), "once");
         }
     }
 
     @Test
-    void aCitizenWhoseTradeIsRefusedSaysNothingButDoesNotThankEither() {
+    void aCitizenWhoseTradeIsRefusedSaysNothing() {
         Character citizen = character(5102, "Marlo");
         AgentRuntimeEntry entry = new AgentRuntimeEntry(citizen, null, null);
         AgentBagFullSpeech.install(agent -> false);
@@ -92,7 +90,6 @@ class AgentBagFullSpeechTest {
             AgentBagFullSpeech.tradeRefused(citizen);
 
             assertEquals(List.of(), said);
-            assertTrue(AgentManualTradeStateRuntime.takeRefusedForSpace(entry));
         }
     }
 

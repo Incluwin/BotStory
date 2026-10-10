@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
@@ -79,8 +80,13 @@ public final class PresenceScheduler {
     private volatile int forcedOnline;
 
     PresenceScheduler(Population population) {
+        this(population, new Random(population.config().SEED ^ 0x5eedL));
+    }
+
+    /** Tests choose the draws (whether a due re-plan goes AFK, which activity it picks). */
+    PresenceScheduler(Population population, Random random) {
         this.population = population;
-        this.random = new Random(population.config().SEED ^ 0x5eedL);
+        this.random = random;
     }
 
     public Collection<CitizenSession> sessions() {
@@ -596,6 +602,11 @@ public final class PresenceScheduler {
     }
 
     private void maybeReplan(CitizenSession session, long now) {
+        if (onSupplyTrip(session)) {
+            // no AFK, stroll or re-plan while its own shop trip runs: a re-plan that is due stays due for the next sweep
+            log.debug("citizen {} is on a supply trip; its re-plan waits", session.name());
+            return;
+        }
         if (session.afkUntilMs > now) {
             return;
         }
@@ -638,6 +649,10 @@ public final class PresenceScheduler {
         if (agent == null || target == null) {
             return;
         }
+        if (onSupplyTrip(session)) {
+            waitForSupplyTrip(session, agent, mapId);
+            return;
+        }
         AgentRuntimeEntry entry = session.entry;
         if (entry != null && AgentTownLifeRuntime.active(entry)) {
             AgentTownLifeRuntime.stop(entry, agent);
@@ -654,6 +669,10 @@ public final class PresenceScheduler {
                 if (current == null || !sessions.containsKey(session.characterId)) {
                     return;
                 }
+                if (onSupplyTrip(session)) { // it ran low while the move waited
+                    waitForSupplyTrip(session, current, target.getId());
+                    return;
+                }
                 if (current.getMapId() != target.getId()) {
                     current.changeMap(target, target.getPortal(0));
                 }
@@ -667,5 +686,26 @@ public final class PresenceScheduler {
         boolean observed = Population.humansIn(agent.getMap()) > 0 || Population.humansIn(target) > 0;
         long delay = observed ? Math.min(90_000L, Math.max(4_000L, server.living.roster.RecallTravel.etaMs(agent.getMapId(), target.getId()) / 4)) : 1_000L;
         TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, move, delay);
+    }
+
+    /**
+     * True while the citizen's running Agent is on its own supply trip (a resupply or a readiness restock, any phase):
+     * a re-plan or a move then would pull it off the shop map or its walk back (live, iNeedFox shopped on Aqua Road at
+     * 22:52:28 and stood in Leafre at 22:52:53, so its walk back found no route). The wait is bounded by the trip: the
+     * supply watchdog ends a walk that stands on one map for TRAVEL_NO_PROGRESS_MS (300 s), a shop visit times out
+     * (SHOP_VISIT_TIMEOUT_MS, one retry), and the session's end logs the citizen off whatever it is doing. A citizen
+     * with no running Agent entry is never on one.
+     */
+    private static boolean onSupplyTrip(CitizenSession session) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(session.characterId);
+        return entry != null && entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::isActive).orElse(false);
+    }
+
+    /** The move waits for the supply trip: the citizen re-plans at the first sweep after the trip ends. */
+    private void waitForSupplyTrip(CitizenSession session, Character agent, int mapId) {
+        session.lastPlanAtMs = 0L;
+        log.info("citizen {} stays on map {} for its supply trip; its move to {} waits for the next re-plan",
+                session.name(), agent.getMapId(), mapId);
     }
 }

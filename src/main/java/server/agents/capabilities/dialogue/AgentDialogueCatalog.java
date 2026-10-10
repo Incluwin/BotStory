@@ -254,6 +254,16 @@ public final class AgentDialogueCatalog {
             "bag's full, leaving that one.",
             "no room in my bag, gotta leave that.",
             "my bag's full, can't pick that up.");
+    /**
+     * Any other Agent (a citizen, a Resident, a bench slice) telling nearby players a bag is full, at most once per
+     * AgentResourceDialogueReactionService.INVENTORY_COOLDOWN_MS for each bag. Until 2026-10-10 it said
+     * "equip inventory is full!" (the bag's name + " inventory is full!").
+     */
+    private static final List<String> NEARBY_BAG_FULL_REPLIES = List.of(
+            "bag's full.",
+            "my bag's full.",
+            "ugh, bag's full again.",
+            "no room in my bag.");
     private static final List<String> TRADE_RESERVED_FOR_OTHER_REPLIES = List.of(
             "these might be needed by others, maybe don't sell them",
             "careful with these, they could be for someone else",
@@ -736,6 +746,10 @@ public final class AgentDialogueCatalog {
 
     public static List<String> lootBagFullReplies() {
         return LOOT_BAG_FULL_REPLIES;
+    }
+
+    public static List<String> nearbyBagFullReplies() {
+        return NEARBY_BAG_FULL_REPLIES;
     }
 
     public static List<String> tradeReservedForOtherReplies() {

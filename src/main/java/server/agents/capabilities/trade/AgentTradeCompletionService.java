@@ -18,6 +18,11 @@ public final class AgentTradeCompletionService {
     private AgentTradeCompletionService() {
     }
 
+    /**
+     * Presses the Agent's Trade button and reacts to what came of it ({@link AgentTradeOutcome}): a happy face and a
+     * thanks line only for a gift that settled, no reaction at all to a trade that closed with nothing moved, and the
+     * occasional freebie line for what it gave away, once the gift settled.
+     */
     public static void completeAndReact(AgentRuntimeEntry entry,
                                         Character agent,
                                         Iterable<Item> partnerItems,
@@ -35,21 +40,37 @@ public final class AgentTradeCompletionService {
             }
         }
 
-        AgentTradeGatewayRuntime.trade().completeTrade(agent);
-        if (AgentManualTradeStateRuntime.takeRefusedForSpace(entry)) {
-            return; // its bag had no room, so the trade did not go through: nothing to thank for (it said so already)
+        AgentTradeWindow window = AgentTradeGatewayRuntime.trade().currentWindow(agent); // held across the press
+        AgentTradeOutcome outcome = AgentTradeGatewayRuntime.trade().completeTrade(agent);
+        if (outcome == AgentTradeOutcome.CANCELLED) {
+            // refused (bag or meso room, one-of-a-kind, daily meso limit) or cancelled: nothing moved, so no reaction;
+            // an owned companion with no bag room already said so (AgentBagFullSpeech.tradeRefused)
+            return;
         }
         long replyDelay = replyDelayMs.getAsLong();
         if (receivedSomething) {
-            agent.changeFaceExpression(AgentEmote.HAPPY.getValue());
-            AgentInventoryRuntime.afterDelay(entry, replyDelay, () ->
-                    AgentInventoryRuntime.visibleSayNow(entry, thanksReply.get()));
+            if (outcome == AgentTradeOutcome.SETTLED) { // still waiting for the partner's press: nothing arrived yet
+                agent.changeFaceExpression(AgentEmote.HAPPY.getValue());
+                AgentInventoryRuntime.afterDelay(entry, replyDelay, () ->
+                        AgentInventoryRuntime.visibleSayNow(entry, thanksReply.get()));
+            }
         } else if (freebieRoll.getAsInt() < 20) {
-            agent.changeFaceExpression(glareExpression.getAsBoolean()
-                    ? AgentEmote.GLARE.getValue()
-                    : AgentEmote.ANNOYED.getValue());
-            AgentInventoryRuntime.afterDelay(entry, replyDelay, () ->
-                    AgentInventoryRuntime.visibleSayNow(entry, freebieReply.get()));
+            int face = glareExpression.getAsBoolean() ? AgentEmote.GLARE.getValue() : AgentEmote.ANNOYED.getValue();
+            if (outcome == AgentTradeOutcome.SETTLED) {
+                agent.changeFaceExpression(face);
+                AgentInventoryRuntime.afterDelay(entry, replyDelay, () ->
+                        AgentInventoryRuntime.visibleSayNow(entry, freebieReply.get()));
+            } else {
+                // WAITING_FOR_PARTNER: a giver whose Agent partner presses Trade on its own tick. That press can still
+                // refuse the gift, so the face and the line wait until the line is due and come only if the trade
+                // settled by then (deploy review 2026-10-10: it said "enjoy" for gifts its partner refused)
+                AgentInventoryRuntime.afterDelay(entry, replyDelay, () -> {
+                    if (window != null && window.isSettled()) {
+                        agent.changeFaceExpression(face);
+                        AgentInventoryRuntime.visibleSayNow(entry, freebieReply.get());
+                    }
+                });
+            }
         }
     }
 }

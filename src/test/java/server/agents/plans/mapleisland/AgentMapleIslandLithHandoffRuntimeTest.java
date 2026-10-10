@@ -13,6 +13,7 @@ import server.agents.plans.amherst.MapleIslandSouthperryQuestCatalog;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeState;
+import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,6 +47,8 @@ class AgentMapleIslandLithHandoffRuntimeTest {
         assertTrue(AgentTownLifeRuntime.active(entry));
         assertEquals(AgentTownLifeState.Stage.SETTLING,
                 entry.capabilityStates().require(AgentTownLifeState.STATE_KEY).stage());
+        assertEquals(AgentTownLifeVisitRequest.SHIP_ARRIVAL_REASON,
+                entry.capabilityStates().require(AgentTownLifeState.STATE_KEY).visitReason());
         assertEquals(AgentMapleIslandLithHandoffState.Stage.COMPLETE, handoff.stage());
         assertTrue(entry.capabilityStates()
                 .find(AgentSouthperryLithTransferState.STATE_KEY).isEmpty());

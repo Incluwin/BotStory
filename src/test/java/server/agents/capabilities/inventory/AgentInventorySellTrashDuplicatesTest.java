@@ -16,13 +16,17 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+import static server.agents.capabilities.inventory.KeptCopyFixture.mageShoes;
+import static server.agents.capabilities.inventory.KeptCopyFixture.mageWithBag;
 import static server.agents.capabilities.inventory.KeptCopyFixture.overall;
 import static server.agents.capabilities.inventory.KeptCopyFixture.scrolledOverall;
 import static server.agents.capabilities.inventory.KeptCopyFixture.warriorWithBag;
 
 /**
  * What a shop visit sells when the bag holds several copies of one own-class overall: the kept copy protects only
- * itself, and every other copy is judged by the normal trash rules.
+ * itself, and every other copy is judged by the normal trash rules. Of copies that tie on the relevant stats the better
+ * raw roll is the kept one.
  */
 class AgentInventorySellTrashDuplicatesTest {
 
@@ -70,6 +74,34 @@ class AgentInventorySellTrashDuplicatesTest {
 
         assertEquals(identitySet(), sold(warriorWithBag(kept, goodRoll)),
                 "a 10 STR roll is protected by the sell-trash rule, not by the kept copy's id");
+    }
+
+    @Test
+    void ofTwoMageShoesWithEqualIntTheExtraJumpCopyStaysAndTheOtherIsSold() {
+        Equip plain = mageShoes(1, 4, 2, 2);
+        Equip extraJump = mageShoes(2, 4, 2, 3);
+
+        assertEquals(identitySet(plain), sold(mageWithBag(plain, extraJump)),
+                "the better roll stays even in the later slot; the plain copy is trash");
+    }
+
+    @Test
+    void ofTwoIdenticalMageShoesTheEarliestSlotStaysAndTheOtherIsSold() {
+        Equip first = mageShoes(1, 4, 2, 2);
+        Equip second = mageShoes(2, 4, 2, 2);
+
+        assertEquals(identitySet(second), sold(mageWithBag(second, first)),
+                "only a truly identical copy falls to slot order");
+    }
+
+    @Test
+    void ofTwoOverallsTiedOnTheRoundedSumTheExtraWeaponDefenseCopyStays() {
+        Equip plain = overall(1, 3, 2);
+        Equip moreDefense = overall(2, 3, 2);
+        when(moreDefense.getWdef()).thenReturn((short) 33);
+
+        assertEquals(identitySet(plain), sold(warriorWithBag(plain, moreDefense)),
+                "+3 W.DEF rounds away in the useful sum but still makes the better roll");
     }
 
     private static Set<Item> sold(Character warrior) {

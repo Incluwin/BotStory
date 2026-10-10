@@ -460,8 +460,8 @@ public final class MapleIslandCohortRuntime {
                     .forceStart(agent, southperryBiggsId);
             AgentSpawnPlacementCoordinator.normalizeSpawnedAgentWithoutParty(entry);
             AgentBehaviorRuntime.configure(entry, false);
-            AgentTownLifeRuntime.start(entry, LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID,
-                    System.currentTimeMillis(), agent.getId());
+            AgentTownLifeRuntime.startAfterShipArrival(entry,
+                    LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID, System.currentTimeMillis(), agent.getId());
             agent.equipChanged();
             AgentCharacterGatewayRuntime.characters().save(agent, false);
             pool.markActive(pooled.characterId(), context.sessionId(), System.currentTimeMillis());

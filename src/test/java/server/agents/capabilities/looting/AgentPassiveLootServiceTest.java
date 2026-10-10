@@ -8,9 +8,15 @@ import constants.id.ItemId;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
+import server.agents.capabilities.dialogue.AgentDialogueIntentEvent;
 import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.inventory.AgentInventoryRuntime;
+import server.agents.events.AgentEvent;
+import server.agents.events.AgentEventSubscription;
+import server.agents.runtime.AgentEventDispatchRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.AgentSessionEventRuntime;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.MapObject;
@@ -182,6 +188,41 @@ class AgentPassiveLootServiceTest {
             voice.verify(() -> AgentInventoryRuntime.visibleSayNow(any(), any()), never());
             assertFalse(callbacks.pickedUp.get());
         } finally {
+            AgentBagFullSpeech.install(null);
+        }
+    }
+
+    @Test
+    void anOwnedCompanionsFullBagOnPassiveLootGetsOnlyItsOwnLine() {
+        // deploy review 2026-10-10: the same tick also published the inventory FULL fact, and the resource reaction
+        // said "equip inventory is full!" to the map beside the new line (and again every minute after)
+        Character agent = agentWithAFullEquipBagBesideACap(5143);
+        AgentRuntimeEntry entry = entry(agent);
+        TraceCallbacks callbacks = new TraceCallbacks();
+        callbacks.warnAllowed = true; // the FULL fact goes out, as it does live
+        AgentBagFullSpeech.install(companion -> companion == agent);
+        boolean dialogueTransport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true; // agent-engine.yaml ships it on
+        AgentRuntimeRegistry.registerEntry(entry);
+        List<String> said = new ArrayList<>();
+        List<AgentEvent> reactions = new ArrayList<>();
+        AgentEventSubscription subscription = AgentSessionEventRuntime.bus(entry)
+                .subscribe(AgentDialogueIntentEvent.TYPE, reactions::add);
+        try (MockedStatic<AgentInventoryRuntime> voice = mockStatic(AgentInventoryRuntime.class)) {
+            voice.when(() -> AgentInventoryRuntime.visibleSayNow(eq(entry), any()))
+                    .thenAnswer(inv -> said.add(inv.getArgument(1)));
+
+            AgentPassiveLootService.tickPassiveLoot(entry, agent, callbacks);
+            assertTrue(AgentEventDispatchRuntime.drain(entry) > 0, "the FULL fact was published");
+
+            assertEquals(1, said.size(), said.toString());
+            assertTrue(AgentDialogueCatalog.lootBagFullReplies().contains(said.getFirst()), said.getFirst());
+            assertEquals(List.of(), reactions, "the old inventory-full reaction says nothing");
+        } finally {
+            subscription.close();
+            AgentSessionEventRuntime.close(entry);
+            AgentRuntimeRegistry.unregisterEntry(entry);
+            config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = dialogueTransport;
             AgentBagFullSpeech.install(null);
         }
     }

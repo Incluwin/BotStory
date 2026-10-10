@@ -1,16 +1,24 @@
 package server.agents.capabilities.dialogue;
 
 import org.junit.jupiter.api.Test;
+import server.agents.events.AgentEventBus;
 import server.agents.progression.events.AgentProgressionDialogueReactionService;
 import server.agents.progression.events.AgentQuestProgressDialogueReactionService;
+import server.agents.resources.events.AgentInventoryThresholdChangedEvent;
 import server.agents.resources.events.AgentResourceDialogueReactionService;
 import server.agents.operations.events.AgentOperationalDialogueReactionService;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AgentDialogueProjectionRuntimeTest {
     @Test
@@ -110,8 +118,37 @@ class AgentDialogueProjectionRuntimeTest {
                 AgentDialogueAudience.NEARBY_REAL_PLAYER, "scroll", 1_000L,
                 Map.of("result", "SUCCESS"));
 
-        assertEquals("use inventory is full!", AgentDialogueProjectionRuntime.render(inventory));
+        String bagFull = AgentDialogueProjectionRuntime.render(inventory);
+        assertTrue(AgentDialogueCatalog.nearbyBagFullReplies().contains(bagFull),
+                bagFull + " (was \"use inventory is full!\" until 2026-10-10)");
         assertEquals("the scroll worked!", AgentDialogueProjectionRuntime.render(scroll));
+    }
+
+    @Test
+    void anAgentsFullBagIsSaidInAPlayersWordsAtMostOncePerCooldown() {
+        // deploy review 2026-10-10: "equip inventory is full!" read like a system notice. An Agent that is not an owned
+        // companion out with its owner still tells nearby players, in a player's words, at most once per
+        // INVENTORY_COOLDOWN_MS (agent-engine.yaml) for each bag
+        AgentEventBus bus = mock(AgentEventBus.class);
+        List<AgentDialogueIntentEvent> intents = new ArrayList<>();
+        when(bus.publish(any(), any())).thenAnswer(inv -> intents.add(inv.getArgument(0)));
+        AgentResourceDialogueReactionService reaction = new AgentResourceDialogueReactionService(bus, () -> false);
+        List<String> said = new ArrayList<>();
+        AgentDialogueProjectionService projection = new AgentDialogueProjectionService(
+                (agentId, audience) -> true, intent -> said.add(AgentDialogueProjectionRuntime.render(intent)));
+
+        for (long atMs : new long[]{1_000L, 2_000L, 61_000L}) {
+            reaction.onAgentEvent(new AgentInventoryThresholdChangedEvent(7, atMs, "EQUIP", 0, 96, "FULL", ""));
+        }
+        intents.forEach(projection::onAgentEvent);
+
+        assertEquals(2, said.size(), "once per cooldown: " + said);
+        assertTrue(AgentDialogueCatalog.nearbyBagFullReplies().containsAll(said), said.toString());
+        for (String line : AgentDialogueCatalog.nearbyBagFullReplies()) {
+            assertEquals(line.toLowerCase(Locale.ROOT), line, line);
+            assertFalse(line.contains("inventory"), line);
+            assertFalse(line.chars().anyMatch(java.lang.Character::isDigit), line);
+        }
     }
 
     @Test

@@ -28,10 +28,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * Of identical copies of a kept piece (same id, same stats, same slots) the Agent keeps exactly one: the worn one, else
- * the one in the earliest bag slot. A copy that ties on the useful stats keeps the one with more upgrade slots left.
+ * the one in the earliest bag slot. Of copies with the same relevant stats the better roll is kept: the higher exact
+ * useful stat sum, then the higher sum of all raw stats, then more upgrade slots left.
  */
 class AgentEquipmentReserveDuplicatesTest {
     private static final int OVERALL = 1051014;
+    private static final int MAGE_SHOES = 1072420;
 
     @Test
     void threeIdenticalOwnClassOverallsKeepOnlyOne() {
@@ -111,6 +113,68 @@ class AgentEquipmentReserveDuplicatesTest {
     }
 
     @Test
+    void mageShoesWithEqualIntKeepTheCopyWithTheExtraJumpWhateverTheSlot() {
+        Character mage = mage();
+        Equip plain = mageShoes(1, 4, 2, 2);
+        Equip extraJump = mageShoes(2, 4, 2, 3);
+
+        Set<Equip> keep = AgentEquipmentReservePolicy.selectOwnedItemsForSelfReserve(mage, mageShoesHooks(),
+                List.of(plain, extraJump));
+
+        assertEquals(Set.of(extraJump), Set.copyOf(keep),
+                "the mage's useful sum ignores JUMP, so the raw roll decides: the +1 JMP copy is kept");
+    }
+
+    @Test
+    void warriorCopiesThatTieOnTheRoundedSumKeepTheOneWithMoreWeaponDefense() {
+        Character warrior = warrior();
+        Equip plain = overall(1, 3, 2);
+        Equip moreDefense = overall(2, 3, 2);
+        when(moreDefense.getWdef()).thenReturn((short) 33);
+
+        Set<Equip> keep = AgentEquipmentReservePolicy.selectOwnedItemsForSelfReserve(warrior, hooks(),
+                List.of(plain, moreDefense));
+
+        assertEquals(AgentEquipmentReservePolicy.usefulStatSum(plain, Job.FIGHTER),
+                AgentEquipmentReservePolicy.usefulStatSum(moreDefense, Job.FIGHTER),
+                "precondition: +3 W.DEF (0.75) rounds away in the useful sum");
+        assertEquals(Set.of(moreDefense), Set.copyOf(keep), "the +3 W.DEF copy is the better roll and is kept");
+    }
+
+    @Test
+    void theExactUsefulSumOutranksTheRawStatSum() {
+        Character warrior = warrior();
+        Equip moreJump = overall(1, 3, 2);
+        when(moreJump.getJump()).thenReturn((short) 5);
+        Equip moreDefense = overall(2, 3, 2);
+        when(moreDefense.getWdef()).thenReturn((short) 33);
+
+        Set<Equip> keep = AgentEquipmentReservePolicy.selectOwnedItemsForSelfReserve(warrior, hooks(),
+                List.of(moreJump, moreDefense));
+
+        assertEquals(Set.of(moreDefense), Set.copyOf(keep),
+                "+3 W.DEF is useful to a warrior and +5 JMP is not, though the JMP copy has the larger raw sum");
+    }
+
+    @Test
+    void theExactUsefulSumUsesTheSameWeightsAsTheRoundedOne() {
+        Equip mageRoll = mageShoes(1, 5, 1, 3);
+        when(mageRoll.getMdef()).thenReturn((short) 7);
+        when(mageRoll.getHp()).thenReturn((short) 15);
+        Equip warriorRoll = overall(1, 4, 3);
+        when(warriorRoll.getInt()).thenReturn((short) 2);
+        when(warriorRoll.getWatk()).thenReturn((short) 1);
+        when(warriorRoll.getMdef()).thenReturn((short) 9);
+        when(warriorRoll.getMp()).thenReturn((short) 30);
+        when(warriorRoll.getSpeed()).thenReturn((short) 2);
+
+        assertEquals(AgentEquipmentReservePolicy.usefulStatSum(mageRoll, Job.MAGICIAN),
+                Math.round(AgentEquipmentReservePolicy.usefulStatSumTwentieths(mageRoll, Job.MAGICIAN) / 20.0d));
+        assertEquals(AgentEquipmentReservePolicy.usefulStatSum(warriorRoll, Job.FIGHTER),
+                Math.round(AgentEquipmentReservePolicy.usefulStatSumTwentieths(warriorRoll, Job.FIGHTER) / 20.0d));
+    }
+
+    @Test
     void differentItemsWithEqualStatsAreBothStillKept() {
         Character warrior = warrior();
         Equip overall = overall(1, 3, 2);
@@ -147,6 +211,35 @@ class AgentEquipmentReserveDuplicatesTest {
         when(warrior.getJob()).thenReturn(Job.FIGHTER);
         when(warrior.getLevel()).thenReturn(30);
         return warrior;
+    }
+
+    private static Character mage() {
+        Character mage = mock(Character.class);
+        when(mage.getJob()).thenReturn(Job.MAGICIAN);
+        when(mage.getLevel()).thenReturn(30);
+        return mage;
+    }
+
+    /** A copy of the mage shoes in bag {@code position}: base INT 4, SPD 2 and JMP 2 roll as given. */
+    private static Equip mageShoes(int position, int int_, int speed, int jump) {
+        Equip equip = mock(Equip.class);
+        when(equip.getItemId()).thenReturn(MAGE_SHOES);
+        when(equip.getPosition()).thenReturn((short) position);
+        when(equip.getInventoryType()).thenReturn(InventoryType.EQUIP);
+        when(equip.getInt()).thenReturn((short) int_);
+        when(equip.getSpeed()).thenReturn((short) speed);
+        when(equip.getJump()).thenReturn((short) jump);
+        when(equip.getUpgradeSlots()).thenReturn((byte) 8);
+        return equip;
+    }
+
+    private static AgentEquipmentReservePolicy.SelfReserveHooks mageShoesHooks() {
+        AgentEquipmentReservePolicy.SelfReserveHooks hooks = hooks();
+        when(hooks.getEquipmentSlot(anyInt())).thenReturn("So");
+        when(hooks.getEquipLevelReq(anyInt())).thenReturn(15);
+        when(hooks.getEquipStats(anyInt())).thenReturn(Map.of(
+                "reqJob", 2, "reqSTR", 0, "reqDEX", 0, "reqINT", 0, "reqLUK", 0, "reqPOP", 0, "INT", 4));
+        return hooks;
     }
 
     private static Character warriorHolding(List<Equip> worn, List<Equip> bag) {

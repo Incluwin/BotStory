@@ -86,6 +86,8 @@ public class Trade {
     private final byte number;
     private boolean fullTrade = false;
     private String settlementId = "trade:" + UUID.randomUUID();
+    /** Set on both sides only once the trade's economy transaction committed (completeTrade's commit path). */
+    private volatile boolean settled = false;
 
     public Trade(byte number, Character chr) {
         this.chr = chr;
@@ -182,6 +184,14 @@ public class Trade {
 
     public boolean isLocked() {
         return locked.get();
+    }
+
+    /**
+     * True once this trade went through: both sides' items and mesos moved. A refused trade (no bag or meso room, the
+     * one-of-a-kind limit, the daily meso limit under level 15) or a cancelled one never sets it.
+     */
+    public boolean isSettled() {
+        return settled;
     }
 
     public int getMeso() {
@@ -381,6 +391,8 @@ public class Trade {
                         local.completeTrade();
                         partner.completeTrade();
                     });
+            local.settled = true; // the items and mesos moved; every refusal above returned without this
+            partner.settled = true;
 
             partner.getChr().setTrade(null);
             chr.setTrade(null);

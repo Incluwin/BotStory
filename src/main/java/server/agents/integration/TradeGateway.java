@@ -1,6 +1,7 @@
 package server.agents.integration;
 
 import client.Character;
+import server.agents.capabilities.trade.AgentTradeOutcome;
 import server.agents.capabilities.trade.AgentTradeWindow;
 
 @AgentGatewayAffinity(
@@ -13,7 +14,8 @@ public interface TradeGateway {
 
     void cancelNoResponse(Character agent);
 
-    void completeTrade(Character agent);
+    /** Presses the Agent's Trade button and says what came of it (read from the trade itself, after the press). */
+    AgentTradeOutcome completeTrade(Character agent);
 
     void visitTrade(Character agent, Character inviter);
 

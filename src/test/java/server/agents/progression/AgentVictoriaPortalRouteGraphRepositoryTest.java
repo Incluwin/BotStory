@@ -2,6 +2,7 @@ package server.agents.progression;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -26,7 +27,17 @@ class AgentVictoriaPortalRouteGraphRepositoryTest {
 
     @Test
     void doesNotInventScriptedEntryPolicy() {
+        // The generated graph keeps standard portals only: the Subway Ticketing Booth's in00 runs subway_in2.
+        assertFalse(AgentVictoriaPortalRouteGraphRepository.defaultRepository().graph().edges()
+                .contains(new AgentVictoriaPortalRouteGraph.Edge(103000100, 103000101)));
         assertNull(AgentVictoriaTrainingRouteCatalog.nextHop(100000000, 100020100));
-        assertNull(AgentVictoriaTrainingRouteCatalog.nextHop(103000000, 103000101));
+    }
+
+    @Test
+    void scriptedEntrancesComeInAsAuthoredCatalogEntries() {
+        // victoria-level15-mvp-catalog.json names the scripted portal to press, as for the job-instructor rooms.
+        assertEquals(2, AgentVictoriaTrainingRouteCatalog.scriptedPortalId(103000100, 103000101));
+        assertEquals(103000100, AgentVictoriaTrainingRouteCatalog.nextHop(103000000, 103000101));
+        assertEquals(103000101, AgentVictoriaTrainingRouteCatalog.nextHop(103000100, 103000101));
     }
 }

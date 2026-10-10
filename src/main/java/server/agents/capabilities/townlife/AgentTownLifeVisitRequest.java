@@ -7,6 +7,9 @@ public record AgentTownLifeVisitRequest(
         String reason,
         long freeTimeBudgetMs) {
 
+    /** Reason for a visit that starts where a ship crossing has just landed the Agent. */
+    public static final String SHIP_ARRIVAL_REASON = "arrived by ship";
+
     public enum Purpose {
         PROGRESSION,
         SUPPLIES,
@@ -24,5 +27,9 @@ public record AgentTownLifeVisitRequest(
 
     public static AgentTownLifeVisitRequest leisure(int townMapId) {
         return new AgentTownLifeVisitRequest(townMapId, Purpose.LEISURE, "", 0L);
+    }
+
+    public static AgentTownLifeVisitRequest shipArrival(int townMapId) {
+        return new AgentTownLifeVisitRequest(townMapId, Purpose.LEISURE, SHIP_ARRIVAL_REASON, 0L);
     }
 }
