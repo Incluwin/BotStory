@@ -242,7 +242,7 @@ public final class AgentShopService {
 
         // a quiet sale on its way (every visit sells, AgentJunkSale) is no sale the owner asked for: it joins it, and
         // the sale is announced from now on
-        boolean alreadySelling = AgentShopStateRuntime.shopSaleAsked(entry);
+        boolean alreadySelling = AgentShopStateRuntime.shopSellTrashPending(entry);
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
             // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so. One
