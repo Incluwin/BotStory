@@ -69,6 +69,11 @@ public final class CosmicAgentTradeWindow implements AgentTradeWindow {
     }
 
     @Override
+    public int meso() {
+        return trade.getMeso();
+    }
+
+    @Override
     public boolean hasAnyOffer() {
         return trade.hasAnyOffer();
     }

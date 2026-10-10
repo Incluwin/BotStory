@@ -21,6 +21,54 @@ public final class AgentManualTradeStateRuntime {
         }
     }
 
+    /** A new window whose idle wait restarts on every new offer, open at most {@code maxOpenMs} in all. */
+    public static void beginTrade(AgentRuntimeEntry entry, Object trade, int idleMs, int maxOpenMs) {
+        AgentManualTradeState state = state(entry);
+        if (state != null) {
+            state.begin(trade, idleMs, maxOpenMs);
+        }
+    }
+
+    /** What the partner holds in the window now: true when it changed since the last look. */
+    public static boolean observeOffer(AgentRuntimeEntry entry, int items, int meso) {
+        AgentManualTradeState state = state(entry);
+        return state != null && state.observeOffer(items, meso);
+    }
+
+    public static void restartIdle(AgentRuntimeEntry entry) {
+        AgentManualTradeState state = state(entry);
+        if (state != null) {
+            state.restartIdle();
+        }
+    }
+
+    public static int openLeftMs(AgentRuntimeEntry entry) {
+        AgentManualTradeState state = state(entry);
+        return state == null ? 0 : state.openLeftMs();
+    }
+
+    public static void setOpenLeftMs(AgentRuntimeEntry entry, int openLeftMs) {
+        AgentManualTradeState state = state(entry);
+        if (state != null) {
+            state.setOpenLeftMs(openLeftMs);
+        }
+    }
+
+    public static int openedForMs(AgentRuntimeEntry entry) {
+        AgentManualTradeState state = state(entry);
+        return state == null ? 0 : state.openedForMs();
+    }
+
+    public static int offerItems(AgentRuntimeEntry entry) {
+        AgentManualTradeState state = state(entry);
+        return state == null ? 0 : state.offerItems();
+    }
+
+    public static int offerMeso(AgentRuntimeEntry entry) {
+        AgentManualTradeState state = state(entry);
+        return state == null ? 0 : state.offerMeso();
+    }
+
     public static int timeoutMs(AgentRuntimeEntry entry) {
         AgentManualTradeState state = state(entry);
         return state == null ? 0 : state.timeoutMs();

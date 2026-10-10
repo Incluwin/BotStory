@@ -235,6 +235,12 @@ public final class AgentDialogueCatalog {
             "sup",
             "ooh what is it",
             "what's up");
+    /** A companion closing a trade window that stayed idle (or open too long) by its own clock. */
+    private static final List<String> MANUAL_TRADE_TIMEOUT_REPLIES = List.of(
+            "ok, trade me again when you're ready.",
+            "nvm, just trade me again when you're ready.",
+            "closing this for now, trade me again whenever.",
+            "gonna close this, send me another trade when you're ready.");
     private static final List<String> TRADE_RESERVED_FOR_OTHER_REPLIES = List.of(
             "these might be needed by others, maybe don't sell them",
             "careful with these, they could be for someone else",
@@ -690,6 +696,10 @@ public final class AgentDialogueCatalog {
 
     public static List<String> manualTradeGreetingReplies() {
         return MANUAL_TRADE_GREETING_REPLIES;
+    }
+
+    public static List<String> manualTradeTimeoutReplies() {
+        return MANUAL_TRADE_TIMEOUT_REPLIES;
     }
 
     public static List<String> tradeReservedForOtherReplies() {

@@ -26,5 +26,8 @@ public interface AgentTradeWindow {
 
     List<Item> items();
 
+    /** The mesos this side has put into the window so far (a trade window only ever adds to them). */
+    int meso();
+
     boolean hasAnyOffer();
 }
