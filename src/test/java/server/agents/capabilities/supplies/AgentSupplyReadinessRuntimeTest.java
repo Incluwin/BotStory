@@ -1437,6 +1437,28 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void aGiftUnderANoSpaceHoldIsToldWhatTheShopStillWants() {
+        // seventh review: under a hold that is not about mesos, what a gift still lacks came from that hold's old purse
+        Character fenna = companion(598, "Fenna", Job.HUNTER, 15, 30, 300);
+        freeSlots.put(598, 0); // a full Use tab: five potions short, and room for none
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 598 NO_SPACE 0"), calls);
+
+        standWithoutSpawns(fenna, LPQ_DESK, 0); // later, at a party quest's desk, its potions drunk
+        potions.put(598, new int[]{1, 30});
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 2_000L)); // the critical gate's broke line
+        assertEquals("refused 598 CANNOT_AFFORD " + (9 * RED - 300), calls.getLast(), calls.toString());
+        purses.put(598, 350); // its owner's coin, short of everything
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 3_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        assertEquals(List.of("refused 598 NO_SPACE 0", "refused 598 CANNOT_AFFORD " + (9 * RED - 300),
+                "still short 598 " + (19 * RED - 350)), calls, "what the shop still wants for its standard");
+    }
+
+    @Test
     void stillShortNewsItsHostKeptQuietDoesNotHoldBackTheNextGift() {
         // fifth review: the spacing counts from a still-short line that was said
         Character fenna = companion(596, "Fenna", Job.HUNTER, 1, 30, 155);

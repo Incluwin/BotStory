@@ -122,9 +122,22 @@ public final class AgentSupplyReadinessRuntime {
             state.clearSpendCooldown();
             return null;
         }
-        if (state.cooldownInForce(nowMs, mesos, freeUseSlots(agent), shortfall, agent.getMapId()) != null) {
+        AgentSupplyReadinessState.Cooldown held =
+                state.cooldownInForce(nowMs, mesos, freeUseSlots(agent), shortfall, agent.getMapId());
+        if (held == AgentSupplyReadinessState.Cooldown.CANNOT_AFFORD
+                || held == AgentSupplyReadinessState.Cooldown.SHORT_MESOS) {
             // given part of the coin it lacked: what is left is known from its purse, no shop is looked at
             stillShort(agent, state, activity, shortfall, state.cooldownMissingMesos(mesos), nowMs);
+            return null;
+        }
+        if (held != null) {
+            // given something under another hold (no room, a cut-short trip) after a broke line on this map: that hold
+            // knows nothing of mesos, so what it still lacks is the shop's answer, looked at only when it may be told
+            if (state.givenToTell(nowMs, AgentSupplyReadiness.stillShortEveryMs())) {
+                Assessment assessment = assess(entry, agent, activity, shortfall, maxHops(agent), nowMs);
+                stillShort(agent, state, activity, shortfall,
+                        assessment.kind() == Assessed.CANNOT_AFFORD ? assessment.missingMesos() : 0, nowMs);
+            }
             return null;
         }
         if (!free(entry, agent, activity)) {
@@ -135,9 +148,7 @@ public final class AgentSupplyReadinessRuntime {
             state.clearVerdict(); // a boss's gate: the host says its own no-shop line
             return null;
         }
-        int maxHops = partyQuestDesk(agent.getMapId())
-                ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
-        Assessment assessment = assess(entry, agent, activity, shortfall, maxHops, nowMs);
+        Assessment assessment = assess(entry, agent, activity, shortfall, maxHops(agent), nowMs);
         if (assessment.kind() != Assessed.GO) {
             if (assessment.kind() == Assessed.CANNOT_AFFORD) {
                 // what it was given is told before a refusal the same look finds (a cooldown its potions lifted, after
@@ -779,6 +790,12 @@ public final class AgentSupplyReadinessRuntime {
      */
     private static boolean giftGround(Character agent) {
         return restockGround(agent) && AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId());
+    }
+
+    /** How far its nearest supplier may be from where it stands: DESK_MAX_HOPS on a party quest's recruit map. */
+    private static int maxHops(Character agent) {
+        return partyQuestDesk(agent.getMapId())
+                ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
     }
 
     /** A party quest's recruit map (AgentPartyQuestCatalog): its desk may send a companion DESK_MAX_HOPS away. */
