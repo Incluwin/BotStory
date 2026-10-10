@@ -66,6 +66,41 @@ class AgentVerticalTraversalServiceTest {
     }
 
     @Test
+    void caughtDestinationRopeCompletesARopeToRopeExitOnTheNextAiTick() {
+        AgentNavigationGraph.Region ground = new AgentNavigationGraph.Region(1, List.of(
+                new AgentNavigationGraph.Segment(new Foothold(new Point(0, 300), new Point(200, 300), 1))));
+        AgentNavigationGraph.Region ropeA = new AgentNavigationGraph.Region(2, 100, 100, 300, false);
+        AgentNavigationGraph.Region ropeB = new AgentNavigationGraph.Region(4, 120, 0, 150, false);
+        AgentNavigationGraph.Edge entryEdge = edge(1, 2, new Point(100, 300), new Point(100, 300));
+        AgentNavigationGraph.Edge transfer = edge(2, 4, new Point(100, 200), new Point(120, 150));
+        AgentNavigationGraph.Edge jumpBack = edge(4, 2, new Point(120, 150), new Point(100, 200));
+        AgentNavigationGraph graph = new AgentNavigationGraph(
+                910000300, 1,
+                List.of(ground, ropeA, ropeB),
+                Map.of(1, ground, 2, ropeA, 4, ropeB),
+                Map.of(),
+                Map.of(1, List.of(entryEdge), 2, List.of(transfer), 4, List.of(jumpBack)),
+                Set.of());
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        assertTrue(AgentVerticalTraversalService.beginIfRopeEntry(
+                graph, entry, bot, entryEdge, 4, new Point(120, 50),
+                (activeGraph, candidate, startPosition, startRegionId, targetRegionId, targetPosition) -> transfer));
+        AgentClimbStateRuntime.setClimbingOnRope(entry, mock(Rope.class));
+
+        assertSame(transfer, resolve(graph, entry, bot, 2, true).edge());
+        assertSame(transfer, resolve(graph, entry, bot, 4, false).edge(),
+                "an observation tick on the caught rope keeps the transfer");
+        assertNull(resolve(graph, entry, bot, 4, true),
+                "the AI tick on the caught rope completes the transfer instead of validating it again");
+        assertFalse(AgentVerticalTraversalStateRuntime.active(entry));
+        long nowMs = System.currentTimeMillis();
+        assertTrue(AgentVerticalTraversalService.blocksRecentInverseEntry(graph, entry, jumpBack, nowMs));
+        assertNull(AgentVerticalTraversalService.recentExitNudgeTarget(graph, entry, 4, nowMs),
+                "a rope has no step-off spot to nudge toward");
+    }
+
+    @Test
     void navigationResetCancelsTraversalTransaction() {
         Fixture fixture = fixture();
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
@@ -84,9 +119,17 @@ class AgentVerticalTraversalServiceTest {
                                                                              Character bot,
                                                                              int currentRegionId,
                                                                              boolean runAiTick) {
+        return resolve(fixture.graph, entry, bot, currentRegionId, runAiTick);
+    }
+
+    private static AgentVerticalTraversalService.TraversalDirective resolve(AgentNavigationGraph graph,
+                                                                             AgentRuntimeEntry entry,
+                                                                             Character bot,
+                                                                             int currentRegionId,
+                                                                             boolean runAiTick) {
         return AgentVerticalTraversalService.resolve(
-                fixture.graph, entry, bot, currentRegionId, runAiTick,
-                (graph, candidate, edge) -> true);
+                graph, entry, bot, currentRegionId, runAiTick,
+                (activeGraph, candidate, edge) -> true);
     }
 
     private static Fixture fixture() {

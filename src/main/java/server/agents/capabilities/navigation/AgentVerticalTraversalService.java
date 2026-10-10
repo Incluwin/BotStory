@@ -79,7 +79,8 @@ public final class AgentVerticalTraversalService {
 
     /**
      * Returns the edge owned by the active transaction. A single grounded AI hand-off is held at
-     * the destination so the same resolve call cannot immediately plan back onto the rope.
+     * the destination so the same resolve call cannot immediately plan back onto the rope. A
+     * rope-to-rope exit completes on the first AI tick spent on the caught destination rope.
      */
     public static TraversalDirective resolve(AgentNavigationGraph graph,
                                              AgentRuntimeEntry entry,
@@ -107,6 +108,13 @@ public final class AgentVerticalTraversalService {
 
         AgentNavigationGraph.Edge committedEdge;
         if (AgentClimbStateRuntime.climbing(entry)) {
+            if (runAiTick && caughtExitRope(graph, exitEdge, currentRegionId)) {
+                // A rope-to-rope exit is done once the Agent hangs on the destination rope. Kept
+                // as the committed edge, the finished jump was validated from its own destination,
+                // rejected as "unexpected-source-region" and charged a reliability failure.
+                state.completeOnCaughtRope(System.currentTimeMillis(), POST_EXIT_REENTRY_BLOCK_MS);
+                return null;
+            }
             committedEdge = exitEdge;
         } else if (AgentMovementStateRuntime.inAir(entry)) {
             committedEdge = state.ropeAttachmentObserved() ? exitEdge : entryEdge;
@@ -195,6 +203,13 @@ public final class AgentVerticalTraversalService {
                                                 boolean holdGroundedExit) {
         return new TraversalDirective(
                 edge, state.targetPosition(), state.targetRegionId(), holdGroundedExit);
+    }
+
+    private static boolean caughtExitRope(AgentNavigationGraph graph,
+                                          AgentNavigationGraph.Edge exitEdge,
+                                          int currentRegionId) {
+        AgentNavigationGraph.Region destination = graph.getRegion(exitEdge.toRegionId);
+        return currentRegionId == exitEdge.toRegionId && destination != null && destination.isRopeRegion;
     }
 
     private static boolean isMatchingExit(AgentNavigationGraph.Edge entryEdge,
