@@ -708,9 +708,15 @@ public final class AgentSupplyProcurementRuntime {
         }
         // One line when the walk back arrives: before it a restocked trip ended in silence (live, the citizen
         // AngryWarrior shopped in Kerning at 07:11:18 and nothing more was logged), so a live check could not tell
-        // a walk back that arrived from one still under way.
-        log.info("Agent '{}' walked back to map {} after its {} resupply", agent.getName(), execution.returnMapId(),
-                execution.category());
+        // a walk back that arrived from one still under way. A shop on the map it left had no walk back to make
+        // (review 2026-10-10: a TOWN citizen in Ariant 260000000 at NPC 2100004 "walked back" to the map it stood on).
+        if (execution.supplierMapId() == execution.returnMapId()) {
+            log.info("Agent '{}' finished its {} resupply on map {}", agent.getName(), execution.category(),
+                    execution.returnMapId());
+        } else {
+            log.info("Agent '{}' walked back to map {} after its {} resupply", agent.getName(), execution.returnMapId(),
+                    execution.category());
+        }
         finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                 "shop transaction completed and plan location restored", nowMs);
         return false;
