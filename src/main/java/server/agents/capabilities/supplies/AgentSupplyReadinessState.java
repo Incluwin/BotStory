@@ -295,6 +295,18 @@ public final class AgentSupplyReadinessState {
     }
 
     /**
+     * Takes what it holds now on {@code mapId} as its last look, with nothing given left to tell: what changed before
+     * this was answered already (a broke line said between two looks), and only what changes after it is a gift.
+     */
+    synchronized void rebaseLook(int mapId, int mesos, AgentSupplyReadiness.Shortfall shortfall, long shopVisits) {
+        lookMapId = mapId;
+        lookMesos = mesos;
+        lookShortfall = shortfall;
+        lookShopVisits = shopVisits;
+        givenPending = false;
+    }
+
+    /**
      * Forgets the last look and anything given not told yet: what it buys or earns on its own (a supply trip, a shop
      * visit under way, time without its duty) is no gift, and the next look starts afresh.
      */
@@ -314,10 +326,15 @@ public final class AgentSupplyReadinessState {
         return givenPending && (stillShortToldAtMs < 0L || nowMs - stillShortToldAtMs >= everyMs);
     }
 
-    /** Its host heard that what it was given still does not pay for the trip. */
-    synchronized void toldStillShort(long nowMs) {
+    /**
+     * Its host heard that what it was given still does not pay for the trip; {@code said}: and said a line, from which
+     * the spacing counts (news it kept quiet holds back no later gift).
+     */
+    synchronized void toldStillShort(long nowMs, boolean said) {
         givenPending = false;
-        stillShortToldAtMs = nowMs;
+        if (said) {
+            stillShortToldAtMs = nowMs;
+        }
     }
 
     /** What it was given needs no news: it sets off, needs nothing more, or cannot go for another reason. */

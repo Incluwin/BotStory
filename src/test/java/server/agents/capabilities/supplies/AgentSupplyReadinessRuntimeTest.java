@@ -129,6 +129,8 @@ class AgentSupplyReadinessRuntimeTest {
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
     /** What the rule answers for a refusal: true, its host said its line; false, it kept quiet (said too recently). */
     private boolean refusalsSaid = true;
+    /** What the rule answers for still-short news: true, its host said its line; false, it kept quiet. */
+    private boolean stillShortSaid = true;
     /** Maps the rule keeps companions on (a boss's gate): no shop trip from there. */
     private final java.util.Set<Integer> noShopMaps = new java.util.HashSet<>();
     /** Hunting fields the rule opens to a duty holder of Easy Balrog's standard (a store on the way down there). */
@@ -221,9 +223,10 @@ class AgentSupplyReadinessRuntimeTest {
             }
 
             @Override
-            public void stillShort(int id, AgentSupplyReadiness.Activity activity,
-                                   AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+            public boolean stillShort(int id, AgentSupplyReadiness.Activity activity,
+                                      AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
                 calls.add("still short " + id + " " + missingMesos);
+                return stillShortSaid;
             }
 
             @Override
@@ -1386,6 +1389,49 @@ class AgentSupplyReadinessRuntimeTest {
             }
             assertEquals(expected, calls, said ? "one line for the gift: the broke line" : "one line: still short");
         }
+    }
+
+    @Test
+    void aGiftAfterTheCriticalPathsBrokeLineIsStillToldStillShort() {
+        // fifth review: the critical gate's broke line answers the potions before it, not a coin handed after it
+        Character fenna = companion(595, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        stand(fenna, KERNING_SHOP, true);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        potions.put(595, new int[]{5, 30});
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 7_000L)); // the critical gate's broke line
+        assertEquals("refused 595 CANNOT_AFFORD " + (5 * RED - 155), calls.getLast(), calls.toString());
+
+        purses.put(595, 205); // a coin a second later: still short even of the potions back to POT_STOP
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 8_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+
+        assertEquals(List.of("refused 595 CANNOT_AFFORD " + (19 * RED - 155),
+                "refused 595 CANNOT_AFFORD " + (5 * RED - 155), "still short 595 " + (15 * RED - 205)), calls,
+                "the coin after the broke line gets its answer");
+    }
+
+    @Test
+    void stillShortNewsItsHostKeptQuietDoesNotHoldBackTheNextGift() {
+        // fifth review: the spacing counts from a still-short line that was said
+        Character fenna = companion(596, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        stand(fenna, KERNING_SHOP, true);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        stillShortSaid = false; // its broke line is more than half an hour old: its host keeps the news quiet
+        potions.put(596, new int[]{9, 30});
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L)); // and says the new map's broke line
+        stillShortSaid = true;
+        potions.put(596, new int[]{13, 30}); // four more potions a few seconds later
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+
+        assertEquals(List.of("refused 596 CANNOT_AFFORD " + (19 * RED - 155), "still short 596 " + (11 * RED - 155),
+                "refused 596 CANNOT_AFFORD " + (11 * RED - 155), "still short 596 " + (7 * RED - 155)), calls,
+                "the second gift is answered at once, not half a minute later");
     }
 
     @Test
