@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -166,12 +167,16 @@ final class AgentAdaptiveQuestHuntSelector {
     }
 
     /**
-     * Levels by which a map's strongest monster (catalog max-mob evidence) exceeds the Agent's level plus
-     * LEVEL_WINDOW_ABOVE, the training-field window; 0 inside the window or without evidence.
+     * Levels by which a map's strongest monster exceeds the Agent's level plus LEVEL_WINDOW_ABOVE; 0 inside
+     * the window. A map without evidence for this objective (an authored hunt map) takes its strongest monster
+     * from the rest of the hunt index; a map the index never lists ranks after every map whose level is known.
      */
-    private static int levelsAboveWindow(DeficitChoice choice, int agentLevel) {
-        return choice.evidence() == null ? 0
-                : Math.max(0, choice.evidence().maxMobLevel() - agentLevel - LEVEL_WINDOW_ABOVE);
+    private int levelsAboveWindow(DeficitChoice choice, int agentLevel) {
+        OptionalInt strongest = choice.evidence() != null
+                ? OptionalInt.of(choice.evidence().maxMobLevel())
+                : indexRepository.maxMobLevel(choice.map().mapId());
+        return strongest.isEmpty() ? Integer.MAX_VALUE
+                : Math.max(0, strongest.getAsInt() - agentLevel - LEVEL_WINDOW_ABOVE);
     }
 
     private static DeficitChoice evaluate(

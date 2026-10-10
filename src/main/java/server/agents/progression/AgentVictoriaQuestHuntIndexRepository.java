@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
 final class AgentVictoriaQuestHuntIndexRepository {
@@ -19,6 +20,7 @@ final class AgentVictoriaQuestHuntIndexRepository {
     private final AgentVictoriaQuestHuntIndex index;
     private final Map<Integer, AgentVictoriaQuestHuntIndex.Entry> byQuestId;
     private final Map<Integer, AgentVictoriaQuestHuntIndex.MobEntry> byMobId;
+    private final Map<Integer, Integer> maxMobLevelByMapId;
 
     AgentVictoriaQuestHuntIndexRepository(AgentVictoriaQuestHuntIndex index) {
         this.index = index;
@@ -36,6 +38,21 @@ final class AgentVictoriaQuestHuntIndexRepository {
             }
         }
         byMobId = Map.copyOf(mobs);
+        Map<Integer, Integer> maxMobLevels = new HashMap<>();
+        index.entries().forEach(entry -> entry.objectives().forEach(objective -> objective.candidates()
+                .forEach(candidate -> maxMobLevels.merge(candidate.mapId(), candidate.maxMobLevel(), Math::max))));
+        index.mobEntries().forEach(entry -> entry.candidates()
+                .forEach(candidate -> maxMobLevels.merge(candidate.mapId(), candidate.maxMobLevel(), Math::max)));
+        maxMobLevelByMapId = Map.copyOf(maxMobLevels);
+    }
+
+    /**
+     * The strongest monster level on a map, from any index candidate for it; empty when the index never
+     * lists the map. Lets a hunt map that has no evidence for the current objective still be judged by level.
+     */
+    OptionalInt maxMobLevel(int mapId) {
+        Integer level = maxMobLevelByMapId.get(mapId);
+        return level == null ? OptionalInt.empty() : OptionalInt.of(level);
     }
 
     List<AgentVictoriaQuestHuntIndex.Candidate> findCandidatesForMobs(
