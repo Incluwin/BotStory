@@ -9,21 +9,26 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
+import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
+import server.living.arc.ArcService;
 import server.living.config.Content;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.roster.CompanionLeases;
 import server.living.store.LivingStore;
 import server.maps.MapleMap;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -117,6 +122,35 @@ class ResidentLoadGuardTest {
 
         loader.verify(() -> CosmicAgentOfflineLoader.loadOfflineAgent(eq(OLWEN_CHARACTER), anyInt(), anyInt(), eq(town), any()));
         assertNull(leases.holder(OLWEN_CHARACTER));
+    }
+
+    /** The shaper and the wardrobe then see only its own gender's starter clothes (ResidentStarterSwapTest). */
+    @Test
+    void aMaterializedResidentSwapsItsStarterClothesBeforeItIsShapedAndDressed() {
+        Character agent = mock(Character.class);
+        loader.when(() -> CosmicAgentOfflineLoader.loadOfflineAgent(eq(OLWEN_CHARACTER), anyInt(), anyInt(), eq(town), any()))
+                .thenReturn(agent);
+        when(world.dialogue()).thenReturn(mock(ResidentDialogue.class));
+        when(world.content()).thenReturn(mock(LivingContent.class));
+        when(world.arcs()).thenReturn(mock(ArcService.class));
+        List<String> calls = new ArrayList<>();
+        try (MockedStatic<AgentInteractionRuntime> interaction = mockStatic(AgentInteractionRuntime.class);
+             MockedStatic<ResidentShaper> shaper = mockStatic(ResidentShaper.class);
+             MockedStatic<ResidentKit> kit = mockStatic(ResidentKit.class);
+             MockedStatic<ResidentWardrobe> wardrobe = mockStatic(ResidentWardrobe.class);
+             MockedStatic<ResidentStarterSwap> starterSwap = mockStatic(ResidentStarterSwap.class)) {
+            interaction.when(() -> AgentInteractionRuntime.registerDirectorIdleAgent(agent))
+                    .thenReturn(mock(AgentRuntimeEntry.class));
+            shaper.when(() -> ResidentShaper.shape(any(), any(), any(), anyInt())).thenAnswer(inv -> calls.add("shape"));
+            kit.when(() -> ResidentKit.apply(any(), any(), any(), any(), any(), any())).thenAnswer(inv -> calls.add("kit"));
+            wardrobe.when(() -> ResidentWardrobe.dress(any(), any(), any(), any(), any(), any()))
+                    .thenAnswer(inv -> calls.add("wardrobe"));
+            starterSwap.when(() -> ResidentStarterSwap.swap(any(), any())).thenAnswer(inv -> calls.add("swap"));
+
+            assertNotNull(runtime.materialize(OLWEN, town, null, 1_000L));
+        }
+
+        assertEquals(List.of("swap", "shape", "kit", "wardrobe"), calls);
     }
 
     @Test

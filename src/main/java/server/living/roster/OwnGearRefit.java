@@ -34,8 +34,9 @@ import java.util.function.ToIntFunction;
  * category (cap, coat or overall, pants, shoes, glove, cape, shield, weapon; never a cash piece). It is wearable by its
  * level, its job mask (as every Agent is held to), fame, and the main stat the server holds the job to (STR for a
  * warrior, INT a magician, DEX a bowman, LUK a thief: base plus what it wears), as the game's own wear check
- * (ItemInformationProvider.canWearEquipment) is. Like that check, the gender in its id never rules a piece out: every
- * persona is made in the male beginner set (BotCreator), so Tamsin wore a man's Blue Jean Shorts under her coat. A
+ * (ItemInformationProvider.canWearEquipment) is. Like that check, the gender in its id never rules a piece out: Residents
+ * made before 2026-10-10 started in the male beginner set (BotCreator), so Tamsin wore a man's Blue Jean Shorts under
+ * her coat; ResidentStarterSwap now swaps those plain pieces when they load. A
  * shield goes on only beside a worn one-handed weapon, and beside a worn shield only a one-handed weapon does. An
  * overall goes on only with no pants on, and pants only under a coat. A weapon its build fights with comes first
  * (AgentWeaponCompatibilityPolicy, as the Agent combat and gear optimizer hold every Agent to: a sword Fighter's
