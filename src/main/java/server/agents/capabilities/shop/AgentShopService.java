@@ -214,8 +214,12 @@ public final class AgentShopService {
             return;
         }
 
+        boolean alreadySelling = AgentShopStateRuntime.shopSellTrashPending(entry);
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
+            // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so
+            AgentShopRuntime.replyNow(entry, alreadySelling
+                    ? AgentDialogueCatalog.shopSellTrashAgainReply() : AgentDialogueCatalog.shopSellTrashJoinReply());
             return;
         }
 

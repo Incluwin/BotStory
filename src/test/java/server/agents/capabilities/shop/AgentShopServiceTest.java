@@ -75,6 +75,37 @@ class AgentShopServiceTest {
         }
     }
 
+    /**
+     * Live 2026-10-10: "sell my junk" while a visit to Luna was already open (a restock on arrival) joined that visit
+     * and said nothing. It still joins it (the visit sells first), and now says so.
+     */
+    @Test
+    void sellTrashWhileAVisitIsPendingJoinsItAndSaysSo() {
+        Character bot = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        when(bot.getMap()).thenReturn(map);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(20, 0), new Point(20, 0), 0, 1_000L);
+
+        try (MockedStatic<AgentInventorySellTrashService> inventories = mockStatic(AgentInventorySellTrashService.class);
+             MockedStatic<AgentShopRuntime> replies = mockStatic(AgentShopRuntime.class)) {
+            inventories.when(() -> AgentInventorySellTrashService.collectSellTrashEquips(
+                            any(AgentRuntimeEntry.class), any(Character.class), any(InventoryGateway.class)))
+                    .thenReturn(List.of(mock(Item.class)));
+
+            AgentShopService.requestSellTrashVisit(entry, bot, inventoryGateway());
+            replies.verify(() -> AgentShopRuntime.replyNow(entry, "already heading to the shop, i'll sell the junk too."));
+
+            // asked again on the same trip: it is already selling there
+            AgentShopService.requestSellTrashVisit(entry, bot, inventoryGateway());
+            replies.verify(() -> AgentShopRuntime.replyNow(entry, "already on it, heading to the shop now."));
+        }
+
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+        assertTrue(AgentShopStateRuntime.shopSellTrashPending(entry));
+        assertEquals(new Point(20, 0), AgentShopStateRuntime.shopNpcPosition(entry));
+    }
+
     @Test
     void shouldNotTriggerClawShopVisitWhenBestStarIsAboveThreshold() {
         Character bot = clawBotWithStars(800, 1000, 1000, 1000, 1000, 1000); // 5800 of the best star
