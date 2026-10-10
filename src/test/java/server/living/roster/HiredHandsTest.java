@@ -328,6 +328,21 @@ class HiredHandsTest {
     }
 
     @Test
+    void aCitizenSavedPastTheMushroomCastleGatesCampsAtItsHomeTownOnceHired() {
+        // user decision 2026-10-10: nobody camps on the nine closed castle fields (FieldCatalog.closed)
+        int skyscraper6 = 106021300;
+        when(game.store.store.characterRow(MIRA))
+                .thenReturn(new CharacterRow("Mira", 1, 2, 21001, 31002, 30, HUNTER, skyscraper6));
+        when(population.fields().closed(skyscraper6)).thenReturn(true);
+
+        HiredHands.Outcome hired = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+
+        assertTrue(hired.hired(), hired.toString());
+        assertEquals(HENESYS, game.store.row(ANN, HIRE).campMapId(), "its home town, not the castle map it was saved on");
+        assertTrue(game.calls.get(0).startsWith("spawn Mira at " + HENESYS + " "), game.calls.toString());
+    }
+
+    @Test
     void theFirstHireHandsOverTheAdventurersRoster() {
         miraIsAnnsGuest();
         game.config.ROSTER_BOOK_ITEM_ID = 2430011;

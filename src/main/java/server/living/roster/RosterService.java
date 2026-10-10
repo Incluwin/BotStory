@@ -90,6 +90,8 @@ public final class RosterService {
     /** A bench, swap or errand refused while the companion is committed to a run (Commitments). */
     static final String AFTER_THE_RUN_LINE = "after the run.";
     private static final String CANT_GET_AWAY_LINE = "i can't get away right now. try again in a bit.";
+    /** A camp or a 'go <duty> here' refused on a field closed to camps (FieldCatalog.closed: past the castle gates). */
+    private static final String CLOSED_CAMP_LINE = "not here. i'd never get back in past the gate on my own.";
     /** The goodbye one companion says in party chat when its owner logs off (decision 8a), unless it has its own. */
     static final String GOODBYE_LINE = "gn!";
     /** The login whisper names this many companions and counts the rest. */
@@ -910,9 +912,21 @@ public final class RosterService {
         return spawnCompanion(owner, persona, entry, standing);
     }
 
-    /** Where a benched companion camps: its row's camp, else its home town. */
-    private static int campOf(RosterEntry entry, Persona persona) {
-        return entry.campMapId() == 0 ? server.living.resident.ResidentSpots.townMapId(persona.homeTown()) : entry.campMapId();
+    /**
+     * Where a benched companion camps: its row's camp, else its home town. A camp on a field closed since
+     * (FieldCatalog.closed) is the field its bench slices load at instead (BenchDutyDispatcher.fieldCamp), else its home
+     * town: it is never loaded there.
+     */
+    private int campOf(RosterEntry entry, Persona persona) {
+        int town = server.living.resident.ResidentSpots.townMapId(persona.homeTown());
+        if (entry.campMapId() == 0) {
+            return town;
+        }
+        if (!BenchDutyDispatcher.closed(entry.campMapId())) {
+            return entry.campMapId();
+        }
+        int field = fieldCampFor(persona, entry.campMapId());
+        return field != 0 ? field : town;
     }
 
     /**
@@ -1759,6 +1773,9 @@ public final class RosterService {
         if (entry == null) {
             return new RosterResult.NotOwned();
         }
+        if (BenchDutyDispatcher.closed(mapId)) {
+            return new RosterResult.Failed(persona.name() + ": " + CLOSED_CAMP_LINE);
+        }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                 entry.assignmentItem(), entry.assignmentCount(), mapId, entry.accruedExp(), entry.haulMeso(),
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
@@ -1868,6 +1885,9 @@ public final class RosterService {
         }
         if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
             return refuseOwnErrand(persona);
+        }
+        if (mapId != 0 && BenchDutyDispatcher.closed(mapId)) { // 'go <duty> here' would set a camp there
+            return new RosterResult.Failed(persona.name() + ": " + CLOSED_CAMP_LINE);
         }
         int workMap = mapId != 0 ? mapId : entry.campMapId() != 0 ? entry.campMapId() : server.living.resident.ResidentSpots.townMapId(persona.homeTown());
         String movedLine = null;

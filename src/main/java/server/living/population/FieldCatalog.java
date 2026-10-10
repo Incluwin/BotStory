@@ -47,6 +47,15 @@ public final class FieldCatalog {
         return false;
     }
 
+    /**
+     * A field listed with no room (not a town, capacity 0: the Mushroom Castle fields past their quest gates, say):
+     * nobody trains or camps there, so a camp stored there from before is no camp now.
+     */
+    public boolean closed(int mapId) {
+        Field field = population.content().field(mapId);
+        return field != null && !field.town() && field.capacity() <= 0;
+    }
+
     public Lobby lobbyAt(int mapId) {
         for (Region region : population.content().regions().values()) {
             for (Lobby lobby : region.lobbies()) {

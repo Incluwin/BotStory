@@ -10,14 +10,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import server.living.LivingWorld;
 import server.living.bond.BondService;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.living.population.Population;
+import server.living.population.ShippedFields;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
+import server.living.roster.BenchDutyChooser;
 import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.BenchStallForm;
@@ -72,6 +76,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -792,6 +797,42 @@ class CompanionCardScreensTest {
         verify(manager, never()).setCamp(any(), any(), anyInt());
         assertTrue(lastTalk().text().startsWith("Mira: i don't know a good spot for my level. pick a camp for me?\r\n"),
                 lastTalk().text());
+    }
+
+    @Test
+    void aCampPastTheCastleGatesIsNeitherWhereItsFieldDutiesRunNorAYourCallCandidate() {
+        // user decision 2026-10-10 (FieldCatalog.closed): the card reads the population's catalog as the bench does
+        int skyscraper6 = 106021300;
+        RosterEntry castle = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, skyscraper6, 0L, 0L,
+                0L, 0L, 0L, 0L, 0, null);
+        rows.add(castle);
+        when(roster.entry(ANN, "mira")).thenReturn(castle);
+        menus.cards().catalog = new CompanionCardScreens.GameCatalog(world);
+        List<Integer> offered = new ArrayList<>();
+        Population population = ShippedFields.population();
+        try (MockedStatic<Population> populations = mockStatic(Population.class);
+             MockedConstruction<BenchDutyChooser> choosers = mockConstruction(BenchDutyChooser.class, (chooser, context) ->
+                     when(chooser.choose(any(), any(), any(), anyInt(), anyInt(), anyInt(), any())).thenAnswer(inv -> {
+                         List<BenchDutyChooser.Camp> camps = inv.getArgument(6);
+                         camps.forEach(camp -> offered.add(camp.mapId()));
+                         return null;
+                     }))) {
+            populations.when(Population::get).thenReturn(population);
+            menus.card(owner, castle);
+            pick("What you do at camp...");
+
+            ArgumentCaptor<Integer> at = ArgumentCaptor.forClass(Integer.class);
+            verify(bench, atLeastOnce()).rates(eq(mira), any(), anyInt(), anyInt(), anyInt(), eq(Assignment.TRAIN), at.capture());
+            assertTrue(at.getAllValues().stream().noneMatch(ShippedFields.PAST_THE_CASTLE_GATES::contains),
+                    "its field duties' hour is read at " + at.getAllValues());
+
+            pick("Your call");
+
+            assertEquals(1, choosers.constructed().size());
+            assertFalse(offered.isEmpty());
+            assertTrue(offered.stream().noneMatch(ShippedFields.PAST_THE_CASTLE_GATES::contains), "offered " + offered);
+        }
+        verify(manager, never()).setCamp(any(), any(), eq(skyscraper6));
     }
 
     // ---- P5: the bench card's live state -----------------------------------------------------------
