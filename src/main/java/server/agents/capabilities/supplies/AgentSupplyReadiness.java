@@ -160,9 +160,11 @@ public final class AgentSupplyReadiness {
          * map it may not set off from ({@link #restocksFrom} false), and never for what it bought or earned itself (a
          * supply trip or shop visit of its own, time without a duty). When the same check finds a new refusal
          * ({@link #refused} CANNOT_AFFORD: the potions it was given lifted the cooldown, or it stands on another map
-         * than the last refusal), this comes first. On the Agent tick.
+         * than the last refusal), this comes first. True when the host said a line: STILL_SHORT_EVERY_MS counts from a
+         * said one, so news it kept quiet holds back no later gift. On the Agent tick.
          */
-        default void stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
+        default boolean stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
+            return false;
         }
 
         /**
@@ -268,15 +270,16 @@ public final class AgentSupplyReadiness {
         }
     }
 
-    static void stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
+    static boolean stillShort(int agentCharacterId, Activity activity, Shortfall shortfall, int missingMesos) {
         Rule current = rule;
         if (current == null) {
-            return;
+            return false;
         }
         try {
-            current.stillShort(agentCharacterId, activity, shortfall, missingMesos);
+            return current.stillShort(agentCharacterId, activity, shortfall, missingMesos);
         } catch (RuntimeException failure) {
             log.warn("readiness rule failed on a gift short of the trip for Agent {}", agentCharacterId, failure);
+            return false;
         }
     }
 

@@ -257,18 +257,19 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * COMPANION_RESTOCK_ASK_EVERY_MS old: a pot share it never asked for gets no answer. Held or not: its owner
      * may hand it coin as they come out of the run. The Agent reports this before a refusal the same check finds, whose
      * broke line, said already, then keeps quiet; a gift it holds back for STILL_SHORT_EVERY_MS stays to be told
-     * unless that refusal's line is said ({@link #refused} true).
+     * unless that refusal's line is said ({@link #refused} true). True when it says the line.
      */
     @Override
-    public void stillShort(int agentCharacterId, AgentSupplyReadiness.Activity activity,
-                           AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+    public boolean stillShort(int agentCharacterId, AgentSupplyReadiness.Activity activity,
+                              AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
         if (!askedWithin(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
-            return;
+            return false;
         }
         String need = CompanionRestockLines.need(bot(agentCharacterId), shortfall);
         world.executor().submit("companion.restock.still_short " + agentCharacterId,
                 () -> say(agentCharacterId, CompanionRestockLines.STILL_SHORT, need));
+        return true;
     }
 
     /**

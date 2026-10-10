@@ -392,6 +392,17 @@ class CompanionRestockTest {
     }
 
     @Test
+    void stillShortNewsTellsTheAgentWhetherItsLineWasSaid() {
+        // fifth review: the Agent spaces still-short news from a line that was said, not from one kept quiet
+        AgentSupplyReadiness.Shortfall short19 = new AgentSupplyReadiness.Shortfall(19, 0);
+        assertFalse(restock.stillShort(FENNA, KPQ, short19, 300), "no broke line yet: a gift it never asked for");
+        restock.refused(FENNA, KPQ, AgentSupplyReadiness.Refusal.CANNOT_AFFORD, short19, 795);
+        assertTrue(restock.stillShort(FENNA, KPQ, short19, 300), "after its broke line");
+        now += config.COMPANION_RESTOCK_ASK_EVERY_MS;
+        assertFalse(restock.stillShort(FENNA, KPQ, short19, 300), "its broke line is half an hour old");
+    }
+
+    @Test
     void theBrokeLineIsLimitedAndInterruptedShortSpaceAndTheOtherRefusalsAreSilent() {
         restock.finished(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Outcome.SHORT_MESOS);
         restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,

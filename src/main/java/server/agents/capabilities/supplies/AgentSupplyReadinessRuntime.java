@@ -205,12 +205,13 @@ public final class AgentSupplyReadinessRuntime {
                 // in a town the desk shows it; a readiness verdict found here already (what the standard lacks) stays
                 if (restockGround(agent) && state.verdictOn(agent.getMapId()) == null && state.verdict(
                         AgentSupplyReadinessState.Verdict.CANNOT_AFFORD, agent.getMapId(), missing, nowMs)) {
+                    AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(agent, activity);
                     if (AgentSupplyReadiness.refused(agent.getId(), activity,
-                            AgentSupplyReadiness.Refusal.CANNOT_AFFORD, AgentSupplyReadiness.shortfall(agent, activity),
-                            missing)) {
-                        // said between two looks (it was handed potions, still too few): the next look starts
-                        // afresh, so that gift is not told as still short after this broke line
-                        state.forgetLook();
+                            AgentSupplyReadiness.Refusal.CANNOT_AFFORD, lacking, missing)) {
+                        // said between two looks (it was handed potions, still too few): what it holds now is the
+                        // next look's baseline, so that gift is not told as still short after this broke line,
+                        // and a gift after it still is
+                        rebaseLook(entry, agent, state, lacking);
                     }
                 }
             }
@@ -506,11 +507,10 @@ public final class AgentSupplyReadinessRuntime {
         if (!state.givenToTell(nowMs, AgentSupplyReadiness.stillShortEveryMs())) {
             return;
         }
-        state.toldStillShort(nowMs);
         log.info("Agent '{}' was given mesos or supplies on map {} that still do not pay for its restock for a {}"
                         + " (short hp {} mp {} ammo {}, mesos {}, missing {})", agent.getName(), agent.getMapId(),
                 activity, shortfall.hp(), shortfall.mp(), shortfall.ammo(), mesos(agent), missingMesos);
-        AgentSupplyReadiness.stillShort(agent.getId(), activity, shortfall, missingMesos);
+        state.toldStillShort(nowMs, AgentSupplyReadiness.stillShort(agent.getId(), activity, shortfall, missingMesos));
     }
 
     /**
@@ -519,6 +519,20 @@ public final class AgentSupplyReadinessRuntime {
      */
     static void ownTrip(AgentRuntimeEntry entry) {
         entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).forgetLook();
+    }
+
+    /**
+     * What it holds now on its map becomes its last look (AgentSupplyReadinessState.rebaseLook), with nothing given
+     * left to tell; while a shop visit of its own is under way the look is forgotten instead, as {@link #select} does.
+     */
+    private static void rebaseLook(AgentRuntimeEntry entry, Character agent, AgentSupplyReadinessState state,
+                                   AgentSupplyReadiness.Shortfall shortfall) {
+        if (AgentShopStateRuntime.hasActiveShopTransition(entry)) {
+            state.forgetLook();
+        } else {
+            state.rebaseLook(agent.getMapId(), mesos(agent), shortfall,
+                    AgentShopStateRuntime.shopVisitGeneration(entry));
+        }
     }
 
     /** The readiness trip began: the host hears it set off, about how long until it is back. */
