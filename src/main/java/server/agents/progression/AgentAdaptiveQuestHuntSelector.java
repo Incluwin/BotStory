@@ -111,16 +111,17 @@ final class AgentAdaptiveQuestHuntSelector {
                 population.apply(request.agent(), routeEligibleMapIds));
         AgentProgressionProfile profile = AgentProgressionProfileRuntime.profile(request.entry());
         int agentLevel = request.agent().getLevel();
-        // Maps inside the level window all rank 0 here, so cost decides among them; with none inside,
-        // the map whose strongest monster is the least above the window wins and the quest is not stranded.
+        // A map that covers no remaining objective ranks after every map that covers one. Maps inside the
+        // level window then all rank 0, so cost decides among them; with none inside, the map whose
+        // strongest monster is the least above the window wins and the quest is not stranded.
         List<DeficitChoice> choices = builders.values().stream()
                 .map(DeficitCandidateBuilder::build)
                 .filter(choice -> routeEligibleMapIds.contains(choice.map().mapId()))
                 .filter(choice -> occupancy.getOrDefault(choice.map().mapId(), 0)
                         < choice.map().maximumAgents())
                 .map(choice -> evaluate(request, choice, occupancy, profile))
-                .sorted(Comparator.comparingInt(
-                                (DeficitChoice choice) -> levelsAboveWindow(choice, agentLevel))
+                .sorted(Comparator.comparing((DeficitChoice choice) -> choice.coveredObjectives() == 0)
+                        .thenComparingInt(choice -> levelsAboveWindow(choice, agentLevel))
                         .thenComparingLong(DeficitChoice::completionCost)
                         .thenComparingInt(choice -> choice.map().rank())
                         .thenComparingInt(choice -> choice.map().mapId()))

@@ -33,7 +33,8 @@ import static org.mockito.Mockito.when;
  * Quest hunts keep to the training-field level window: a hunt map's strongest monster may be at most
  * LEVEL_WINDOW_ABOVE levels above the Agent. When no reachable map fits, the Agent takes the map whose
  * strongest monster is the least above it, so the quest is never stranded. A leased map gives way only when the
- * switch is worth REPLAN_SWITCH_MARGIN_COST, and the Agent does not count itself on the map it stands on.
+ * switch is worth REPLAN_SWITCH_MARGIN_COST, and the Agent does not count itself on the map it stands on. A map
+ * that covers no remaining objective never ranks ahead of a map that covers one, whatever their window.
  */
 class AgentAdaptiveQuestHuntLevelWindowTest {
     private static final int EUREK_QUEST = 6000;
@@ -52,6 +53,8 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
     private static final int SWAMP_OF_THE_JR_NECKI = 107000001;
     private static final int LEAVES_QUEST = 28281;
     private static final int LEAF = 4000005;
+    private static final int PERION = 102000000;
+    private static final int PERION_DEPARTMENT_STORE = 102000002;
     private static final int PERION_STREET_CORNER = 101040000;
     private static final int EAST_ROCKY_MOUNTAIN_I = 101030400;
     private static final int EAST_ROCKY_MOUNTAIN_II = 101030401;
@@ -181,6 +184,19 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
         assertEquals(FOREST_SOUTH_OF_ELLINIA, fresh.map().mapId(),
                 "without a lease the map inside the window wins");
         assertEquals(EAST_ROCKY_MOUNTAIN_III, afterReopen.map().mapId());
+    }
+
+    @Test
+    void leavesAtLevel12WithEveryDarkStumpMapFailedTakeAMapWithDarkStumpsNotPerionStreetCorner() {
+        // Perion Street Corner (4) is the pack's snail and Stump hunt map: inside the window, but no Leaves.
+        // East Rocky Mountain III (17) has Dark Stumps two levels above the window.
+        for (int originMapId : List.of(PERION, PERION_DEPARTMENT_STORE)) {
+            AgentAdaptiveQuestHuntSelector.Selection selection = selectLeaves(
+                    newSelector(), 9614, 12, originMapId, DARK_STUMP_MAPS, 100L);
+
+            assertEquals(EAST_ROCKY_MOUNTAIN_III, selection.map().mapId(),
+                    () -> "from " + originMapId + " took " + selection.map().mapId());
+        }
     }
 
     @Test

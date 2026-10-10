@@ -4354,7 +4354,7 @@ tuning:
     server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_GAP_COST: '2000'
     # Values: 0-10 character levels. Recommended: 3, the same number as LEVEL_ABOVE in FieldCatalog's training-field band (trainingField and the companion camp picker). That band bounds a field's spawn-weighted mean monster level; this window bounds the strongest monster, so it is stricter.
     # Purpose: Keeps quest hunts on maps whose strongest monster is at most this many levels above the Agent, as a player would. When no reachable hunt map fits, the Agent takes the map whose strongest monster is the least above it, with no upper limit, so the quest is never stranded.
-    # Technical: AgentAdaptiveQuestHuntSelector ranks deficit-aware hunt choices first by how many levels the map's strongest monster exceeds Agent level plus this window (0 inside it), then by completion cost. The level comes from the objective's hunt-index evidence or, for an authored map without it, from any hunt-index candidate for that map; a map the index never lists ranks last. A lease gives way to a choice further inside the window only when the levels gained, at LEVEL_GAP_COST each, exceed REPLAN_SWITCH_MARGIN_COST (2 levels at the defaults). The fixed preferred map without deficit authority is unchanged.
+    # Technical: AgentAdaptiveQuestHuntSelector ranks deficit-aware hunt choices first by whether the map covers any remaining objective (a map covering none ranks last, whatever its level), then by how many levels the map's strongest monster exceeds Agent level plus this window (0 inside it), then by completion cost. The level comes from the objective's hunt-index evidence or, for an authored map without it, from any hunt-index candidate for that map; a map the index never lists ranks last. A lease gives way to a choice further inside the window only when the levels gained, at LEVEL_GAP_COST each, exceed REPLAN_SWITCH_MARGIN_COST (2 levels at the defaults). The fixed preferred map without deficit authority is unchanged.
     server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_WINDOW_ABOVE: '3'
     # Values: a finite non-negative integer. Recommended: 500-4000 around the tested baseline 1500.
     # Purpose: Gives tested or authored preferred maps a modest stability advantage without allowing them to dominate bad runtime evidence.
@@ -4374,7 +4374,7 @@ tuning:
     server.agents.progression.AgentVictoriaSharedQuestPackRuntime.ROUTE_HARVEST_MAX_PROGRESS: '5'
     # Values: a positive integer. Recommended: 50000-250000 around the tested baseline 100000.
     # Purpose: Strongly discourages maps that cannot advance every currently combined objective unless no complete-coverage map is reachable.
-    # Technical: AgentAdaptiveQuestHuntSelector adds this cost for each unresolved demand lacking candidate yield evidence on the evaluated map.
+    # Technical: AgentAdaptiveQuestHuntSelector adds this cost for each unresolved demand lacking candidate yield evidence on the evaluated map. A map that covers no unresolved demand ranks after every map that covers one, before the LEVEL_WINDOW_ABOVE window is compared.
     server.agents.progression.AgentAdaptiveQuestHuntSelector.MISSING_OBJECTIVE_COST: '100000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 5000-15000 around the tested baseline 8000.
     # Purpose: Prevents a newly entered hunt map from being judged before its mobs and navigation state have settled.
