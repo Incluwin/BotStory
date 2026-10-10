@@ -46,9 +46,10 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
             Character buyer = characters.apply(buyerAgentId);
             Character seller = characters.apply(sellerAgentId);
             if (!canInteract(buyer, seller))
-                return new Result(false, "", "counterparties are not physically nearby");
+                return new Result(false, "", "counterparties are not physically nearby", false);
             if (buyer.getTrade() != null || seller.getTrade() != null)
-                return new Result(false, "", "counterparty is already trading");
+                return new Result(false, "", "counterparty is already trading", false);
+            boolean opened = false;
             try {
                 Trade.startTrade(buyer, idempotencyKey);
                 Trade.inviteTrade(buyer, seller);
@@ -56,12 +57,13 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
                 if (buyer.getTrade() == null || seller.getTrade() == null
                         || !buyer.getTrade().isFullTrade() || !seller.getTrade().isFullTrade()) {
                     cancel(buyer);
-                    return new Result(false, "", "Cosmic trade invitation was rejected");
+                    return new Result(false, "", "Cosmic trade invitation was rejected", false);
                 }
+                opened = true;
                 if (!placeOffer(buyer, new TradeOffer(buyerMesos, Map.of()))
                         || !placeExactItem(seller, itemId, fingerprint, quantity)) {
                     cancel(buyer);
-                    return new Result(false, "", "exact offered holding changed before settlement");
+                    return new Result(false, "", "exact offered holding changed before settlement", true);
                 }
                 buyer.getTrade().chat("Offer placed.");
                 seller.getTrade().chat("Offer accepted.");
@@ -70,11 +72,11 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
                 boolean success = settled(trade);
                 return new Result(success, idempotencyKey,
                         success ? "Cosmic exact-item PLAYER_TRADE committed"
-                                : "Cosmic exact-item trade did not settle");
+                                : "Cosmic exact-item trade did not settle", true);
             } catch (RuntimeException failure) {
                 cancel(buyer);
                 return new Result(false, idempotencyKey, failure.getMessage() == null
-                        ? failure.getClass().getSimpleName() : failure.getMessage());
+                        ? failure.getClass().getSimpleName() : failure.getMessage(), opened);
             }
         });
     }
@@ -83,9 +85,11 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
                                      String secondAgentId, TradeOffer secondOffer) {
         Character first = characters.apply(firstAgentId);
         Character second = characters.apply(secondAgentId);
-        if (!canInteract(first, second)) return new Result(false, "", "counterparties are not physically nearby");
+        if (!canInteract(first, second))
+            return new Result(false, "", "counterparties are not physically nearby", false);
         if (first.getTrade() != null || second.getTrade() != null)
-            return new Result(false, "", "counterparty is already trading");
+            return new Result(false, "", "counterparty is already trading", false);
+        boolean opened = false;
         try {
             Trade.startTrade(first, idempotencyKey);
             Trade.inviteTrade(first, second);
@@ -93,11 +97,12 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
             if (first.getTrade() == null || second.getTrade() == null
                     || !first.getTrade().isFullTrade() || !second.getTrade().isFullTrade()) {
                 cancel(first);
-                return new Result(false, "", "Cosmic trade invitation was rejected");
+                return new Result(false, "", "Cosmic trade invitation was rejected", false);
             }
+            opened = true;
             if (!placeOffer(first, firstOffer) || !placeOffer(second, secondOffer)) {
                 cancel(first);
-                return new Result(false, "", "offered holdings changed before settlement");
+                return new Result(false, "", "offered holdings changed before settlement", true);
             }
             first.getTrade().chat("Offer placed.");
             second.getTrade().chat("Offer accepted.");
@@ -106,11 +111,11 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
             Trade.completeTrade(second);
             boolean success = settled(trade);
             return new Result(success, idempotencyKey,
-                    success ? "Cosmic PLAYER_TRADE committed" : "Cosmic trade did not settle");
+                    success ? "Cosmic PLAYER_TRADE committed" : "Cosmic trade did not settle", true);
         } catch (RuntimeException failure) {
             cancel(first);
             return new Result(false, idempotencyKey, failure.getMessage() == null
-                    ? failure.getClass().getSimpleName() : failure.getMessage());
+                    ? failure.getClass().getSimpleName() : failure.getMessage(), opened);
         }
     }
 

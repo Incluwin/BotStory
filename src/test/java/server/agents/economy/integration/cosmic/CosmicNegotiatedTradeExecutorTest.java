@@ -6,6 +6,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
+import net.server.coordinator.world.InviteCoordinator;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.Trade;
@@ -127,10 +128,46 @@ class CosmicNegotiatedTradeExecutorTest {
 
             assertFalse(result.succeeded(), result.evidence());
             assertEquals("Cosmic exact-item trade did not settle", result.evidence());
+            assertTrue(result.tradeOpened(), "the trade's own refusal");
         }
         assertNull(buyer.getTrade(), "the refusal closed the trade");
         assertNull(seller.getTrade());
         verify(buyer).message("There is not enough inventory space to complete the trade.");
+    }
+
+    /**
+     * Deploy review 2026-10-10: a seller busy with a human is no refusal of the buyer. The result says no trade opened,
+     * both when the seller is already in the human's trade and when only the human's invite waits for its answer.
+     */
+    @Test
+    void anExactItemSaleToASellerBusyWithAHumanOpensNoTrade() {
+        MapleMap room = mock(MapleMap.class);
+        Character buyer = trader(940_031, room);
+        Character seller = trader(940_032, room);
+        Character human = trader(940_033, room);
+        var executor = new CosmicNegotiatedTradeExecutor(id -> "buyer".equals(id) ? buyer : seller, 120);
+
+        try (MockedStatic<PacketCreator> ignoredPackets = mockStatic(PacketCreator.class)) {
+            Trade.startTrade(human);
+            Trade.inviteTrade(human, seller);
+            var trading = executor.executeExactItem("open-chat:sale-2", "buyer", 400_000, "seller",
+                    4000000, "fingerprint", 5);
+            Trade.cancelTrade(human, Trade.TradeResult.NO_RESPONSE);
+            InviteCoordinator.createInvite(InviteCoordinator.InviteType.TRADE, human, human.getId(), seller.getId());
+            try {
+                var invited = executor.executeExactItem("open-chat:sale-3", "buyer", 400_000, "seller",
+                        4000000, "fingerprint", 5);
+
+                assertEquals("counterparty is already trading", trading.evidence());
+                assertFalse(trading.tradeOpened());
+                assertEquals("Cosmic trade invitation was rejected", invited.evidence());
+                assertFalse(invited.tradeOpened());
+            } finally {
+                InviteCoordinator.removeInvite(InviteCoordinator.InviteType.TRADE, seller.getId());
+            }
+        }
+        assertNull(buyer.getTrade());
+        assertNull(seller.getTrade());
     }
 
     /** The commit path itself needs the item data (its trade log), so the settlement is the stubbed press here. */
