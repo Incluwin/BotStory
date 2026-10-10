@@ -150,7 +150,8 @@ public final class AgentChatRouteCoordinator {
                         entries,
                         text,
                         replyChannel,
-                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat, replyChannel)),
+                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat, replyChannel,
+                                AgentRelationshipRuntime::interactionTarget)),
                 (commandLeader, entries, text, replyChannel) -> AgentUntargetedChatRouteService.handleUntargetedChat(
                         commandLeader,
                         entries,
@@ -162,27 +163,42 @@ public final class AgentChatRouteCoordinator {
     /**
      * A whisper to one Agent the whisper bridge already resolved (after mayOperate and mayControl): the chain a party
      * or map line naming that Agent takes, so a line no fixed pattern matches still reaches the phrase packs, the
-     * intent judge and the social reply, and every answer goes back on {@code channel} (the whisper).
+     * intent judge and the social reply, and every answer goes back on {@code channel} (the whisper). The line is its
+     * owner's last command only when the speaker is the leader it runs under ({@link #runsUnder}): an administrator's
+     * whisper to another player's Agent is not (deploy review 2026-10-10). Completes once the line is answered.
      */
-    public static void handleWhisperChat(Character speaker,
-                                         AgentRuntimeEntry entry,
-                                         String message,
-                                         AgentReplyChannel channel) {
-        AgentTargetedChatRouteService.handleAgentLine(
+    public static CompletionStage<Boolean> handleWhisperChat(Character speaker,
+                                                             AgentRuntimeEntry entry,
+                                                             String message,
+                                                             AgentReplyChannel channel) {
+        return AgentTargetedChatRouteService.handleAgentLine(
                 speaker,
                 entry,
                 message,
                 channel,
                 targetedChatHooks((whispered, line, replyChannel) -> handleWhisperedAgentChat(
-                        whispered, line, replyChannel, speaker), channel));
+                        whispered, line, replyChannel, speaker), channel,
+                        whispered -> runsUnder(whispered, speaker) ? speaker : null));
+    }
+
+    /**
+     * True when {@code speaker} is the leader {@code entry} runs under: a companion out with its owner runs under its
+     * owner, a plain Agent under whoever leads it (the seam CompanionDirectory.mayControl asks for a plain Agent). An
+     * administrator, who may command any Agent, is not, though the whisper bridge makes them its interaction target.
+     */
+    public static boolean runsUnder(AgentRuntimeEntry entry, Character speaker) {
+        return speaker != null
+                && AgentRuntimeRegistry.leaderIdForAgentCharacter(AgentRuntimeIdentityRuntime.botId(entry)) == speaker.getId();
     }
 
     /**
      * {@code channel}: the line's own, which the social reply keeps however long it takes (deploy review 2026-10-10).
+     * {@code owner}: whose line is the Agent's last owner command.
      */
     private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks(
             AgentTargetedChatRouteService.AgentChatHandler<E> agentChatHandler,
-            AgentReplyChannel channel) {
+            AgentReplyChannel channel,
+            AgentTargetedChatRouteService.LeaderResolver<E> owner) {
         return new AgentTargetedChatRouteService.Hooks<>(
                 (entries, message) -> {
                     var match = AgentCommandTargetResolver.resolveTargetedAgent(entries, message);
@@ -196,7 +212,7 @@ public final class AgentChatRouteCoordinator {
                 AgentChatRouteCoordinator::queueReply,
                 agentChatHandler,
                 System::currentTimeMillis,
-                AgentRelationshipRuntime::interactionTarget,
+                owner,
                 AgentActivityStateRuntime::recordLastOwnerCommand,
                 AgentSocialDialogueRuntime::enabled,
                 (entry, sender, text) -> AgentSocialDialogueRuntime.maybeRespond(

@@ -8,7 +8,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
+import server.agents.capabilities.follow.AgentActivityStateRuntime;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.commands.AgentReplyChannelStateRuntime;
@@ -17,6 +19,7 @@ import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeHandle;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.social.conversation.AgentSocialDialogueRuntime;
@@ -28,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -219,6 +223,58 @@ class AgentWhisperCommandServiceTest {
             verify(map, never()).broadcastMessage(any(Packet.class));
         } finally {
             config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = transport;
+            AgentRuntimeRegistry.clear();
+        }
+    }
+
+    /**
+     * Deploy review 2026-10-10: an administrator's whisper to another player's companion was stored as the companion's
+     * last owner command (the owner was read from the interaction target the bridge had just pointed at the
+     * administrator), and the companion kept the administrator as the one it answers and falls back to following.
+     * Neither happens now; its owner's own whisper is still its last owner command.
+     */
+    @Test
+    void anAdministratorsWhisperToAnotherPlayersCompanionIsNotItsOwnersCommand() {
+        Character admin = character(1, mock(Client.class));
+        Character owner = mock(Character.class);
+        when(owner.getId()).thenReturn(3);
+        when(owner.getName()).thenReturn("Ohboy");
+        when(owner.getClient()).thenReturn(mock(Client.class));
+        Character target = character(2, new BotClient(0, 0));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(target, owner, null);
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(owner.getId(), entry);
+        String operators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES;
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = "Ohboy";
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return actor.getId() == admin.getId() || actor.getId() == owner.getId(); // an administrator, its owner
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return agentCharacterId == target.getId(); // Ohboy's companion
+            }
+        });
+        String before = AgentActivityStateRuntime.lastOwnerCommand(entry);
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class)) {
+            chat.when(() -> AgentChatRuntime.handleChat(any(), any())).thenReturn(true);
+
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(admin, target, "stop");
+            drainAll(entry);
+            chat.verify(() -> AgentChatRuntime.handleChat(eq("stop"), any()));
+            assertEquals(before, AgentActivityStateRuntime.lastOwnerCommand(entry), "not its owner's command");
+            assertSame(owner, AgentRelationshipRuntime.interactionTarget(entry), "its owner's again once answered");
+
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(owner, target, "follow me");
+            drainAll(entry);
+            assertEquals("follow me", AgentActivityStateRuntime.lastOwnerCommand(entry));
+            assertSame(owner, AgentRelationshipRuntime.interactionTarget(entry));
+        } finally {
+            AgentClaimGuard.install(null);
+            config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = operators;
             AgentRuntimeRegistry.clear();
         }
     }

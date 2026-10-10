@@ -6,6 +6,7 @@ import server.agents.commands.AgentTargetedCommandMatch;
 import server.agents.runtime.AgentRuntimeHandle;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
@@ -114,9 +115,10 @@ public final class AgentTargetedChatRouteService {
     /**
      * One line for one Agent: its reply channel, the typo hint, then the Agent's chat chain (the deterministic
      * classifiers, then the phrase packs and the intent judge) and, when nothing took the line, the social reply. A
-     * named chat line ends here once its Agent is found; a whisper to the Agent starts here.
+     * named chat line ends here once its Agent is found; a whisper to the Agent starts here. Completes once the line
+     * is answered (the owner command recorded, the social reply asked for).
      */
-    public static <E extends AgentRuntimeHandle> void handleAgentLine(Character leader,
+    public static <E extends AgentRuntimeHandle> CompletionStage<Boolean> handleAgentLine(Character leader,
                                                                    E entry,
                                                                    String commandText,
                                                                    AgentReplyChannel channel,
@@ -126,11 +128,11 @@ public final class AgentTargetedChatRouteService {
             String typo = hooks.typoSuggester().suggest(commandText);
             if (typo != null) {
                 hooks.agentReplyQueue().queue(entry, "did you mean '" + typo + "'?");
-                return;
+                return CompletableFuture.completedFuture(true);
             }
         }
 
-        hooks.agentChatHandler().handle(entry, commandText, channel).whenComplete((matched, failure) -> {
+        return hooks.agentChatHandler().handle(entry, commandText, channel).whenComplete((matched, failure) -> {
             boolean handled = failure == null && Boolean.TRUE.equals(matched);
             Character owner = hooks.leaderResolver().resolve(entry);
             if (handled && owner != null && leader.getId() == owner.getId()) {
