@@ -1,4 +1,4 @@
-# Records the MapleStory client window (title "MapleCommons") to an MP4 with ffmpeg (gdigrab).
+# Records the MapleStory client window (title "BotStory") to an MP4 with ffmpeg (gdigrab).
 #   powershell -File tools\video\record-client.ps1 -Out <file.mp4> [-Seconds 60] [-Fps 30]
 # Stops at -Seconds, or earlier when "<file.mp4>.stop" appears next to the output
 # (ffmpeg gets a clean 'q' on stdin so the MP4 is finalized either way).
@@ -9,7 +9,7 @@ if (-not $ff) { throw "ffmpeg not found (winget install Gyan.FFmpeg)" }
 $stop = "$Out.stop"; Remove-Item $stop -ErrorAction SilentlyContinue
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $ff
-$psi.Arguments = "-y -hide_banner -loglevel error -f gdigrab -framerate $Fps -draw_mouse 0 -i title=MapleCommons -t $Seconds -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -vf ""pad=ceil(iw/2)*2:ceil(ih/2)*2"" ""$Out"""
+$psi.Arguments = "-y -hide_banner -loglevel error -f gdigrab -framerate $Fps -draw_mouse 0 -i title=BotStory -t $Seconds -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -vf ""pad=ceil(iw/2)*2:ceil(ih/2)*2"" ""$Out"""
 $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.CreateNoWindow = $true
 $p = [System.Diagnostics.Process]::Start($psi)
 while (-not $p.HasExited) { Start-Sleep -Milliseconds 500; if (Test-Path $stop) { break } }

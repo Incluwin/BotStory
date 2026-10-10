@@ -47,7 +47,7 @@ public final class CompanionProbeService {
     public static final int DEFAULT_NPC_ID = 9010000;
     /**
      * Imitated-NPC template ids. All 5600 ids here have an Npc.wz image with {@code info/imitate=1}
-     * in the server wz and in the MapleCommons client, whose String.wz also names them (checked
+     * in the server wz and in the BotStory client, whose String.wz also names them (checked
      * 2026-09-27; the clean v83 client only has blocks of 9901000-9901909). An id with a String.wz
      * name but no Npc.wz image (the client's 9999999 "test") crashes the v83 client, and a
      * non-imitate template has no avatar to draw, so imitate refuses anything outside this range.

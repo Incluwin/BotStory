@@ -13,11 +13,11 @@ client files or player data; do on the test server only).
 
 | Piece | How |
 |---|---|
-| Build | `mvnw.cmd -q -o package -DskipTests` in `FriendServer/MapleCommons v83 Server` |
+| Build | `mvnw.cmd -q -o package -DskipTests` in `FriendServer/BotStory Server` |
 | Secrets | `FriendServer/.env`: `DB_USER`, `DB_PASS`, `ADMIN_CONTROL_TOKEN`, `TYPESAFE_API_KEY` (never paste values into docs, chat or commits) |
 | Start | `start_all.bat` / `launch.bat`, or manually: load `.env`, then `java -Dagents.scheduler.mode=central-sequential -Dwz-path=wz -jar target/Cosmic.jar` |
 | Patch server | `patch-server\serve.bat` (port 8485) or `python patch-server/serve.py --root "<Game Files>" --port 8485`; the launcher shows a Yes/No dialog when it is down |
-| Client | `MapleCommons Client\Game Files\Launch Game.exe`; kaentake DLL; GM account with gm level 5+ |
+| Client | `BotStory Client\Game Files\Launch Game.exe`; kaentake DLL; GM account with gm level 5+ |
 | Admin port | `http://127.0.0.1:8480`, header `Authorization: Bearer <ADMIN_CONTROL_TOKEN>`; e.g. `curl -s -H "Authorization: Bearer $T" http://127.0.0.1:8480/runtime/living` |
 | MapleEdit | `MapleEdit\start.bat`, `http://localhost:5050`, Cosmic SSO login; `cosmic_root` set on the Deploy page; `ADMIN_CONTROL_TOKEN` in its environment for the status panels |
 | Logs | `logs/cosmic-log.log` (grep `resident.`, `citizen`, `bench session`, `[typesafe-`, `[phrase]`, `[chatter]` at debug), `logs/typesafe-usage.csv`, `logs/gc/gc.log` |

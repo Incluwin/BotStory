@@ -103,7 +103,7 @@ public abstract class CharacterFactory {
         // ItemMoveHandler.isLockedEquippedItem prevents drop/move.
         //
         // GATED: leave commented until install_monster_book_medal.py has been run.
-        // Stock v83 WZ has medalTag=95 on this img, which crashes the FriendStory
+        // Stock v83 WZ has medalTag=95 on this img, which crashes the BotStory
         // client ~3s after spawn. The install script zeros it. Mirror the gate in
         // PlayerLoggedinHandler — re-enable both together.
         // try {

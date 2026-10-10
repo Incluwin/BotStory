@@ -10,7 +10,7 @@ the evidence media).
 |---|---|---|
 | server, `integration/cosmic-agents` | `2ec394c9e` | Living-world UI WIP (looks, outfits, portraits, quest markers). It is the build that had been running since 10:35. |
 | server | `5746de0f8` | The plan. `feat/companion-manager` branches here. |
-| kaentake, `friendstory/checkpoint-2026-09-27` | `2b14c0d` | All FriendStory sources. Nothing was rebuilt or deployed. |
+| kaentake, `botstory/checkpoint-2026-09-27` | `2b14c0d` | All BotStory sources. Nothing was rebuilt or deployed. |
 
 - **Deployed vs built DLL.** `Game Files/Kaentake.dll` has sha256 `6f135ec7e692e07f...`, is 176,128 B and was built 2026-04-27 12:55. Friends run this one. `build/Release/Kaentake.dll` has sha256 `e341d2b9922dc660...`, is 198,656 B and was built 2026-04-27 14:25. It was never deployed.
 - **Custom.wz.** `src/Custom.wz` and the live copy are identical (`2bcffb884c8d486d...`).

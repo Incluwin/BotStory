@@ -1,4 +1,4 @@
-# The populated server: making FriendStory feel like official MapleStory
+# The populated server: making BotStory feel like official MapleStory
 
 Companion to `docs/LIVING_RPG_PLAN.md` (hand-authored Residents, quests, companions) and the
 Agent engine docs under `docs/agents/`. This plan covers the other half of the goal: hundreds to
