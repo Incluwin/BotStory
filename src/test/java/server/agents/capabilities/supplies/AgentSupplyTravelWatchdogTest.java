@@ -7,7 +7,9 @@ import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
+import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.objectives.AgentObjectiveDefinition;
@@ -18,7 +20,9 @@ import server.agents.objectives.AgentObjectiveState;
 import server.agents.objectives.AgentObjectiveStatus;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,8 +36,10 @@ import static org.mockito.Mockito.when;
 /**
  * A resupply walk that stands on one map for TRAVEL_NO_PROGRESS_MS is ended. Live 2026-10-09: four companions on a
  * critical HP potion trip from the Balrog stairway stood at Another Entrance's arrival portal (105090200) from about
- * 01:58 to 02:06 and later, phase TRAVEL_TO_SUPPLIER, with no line logged. The Agents here stand on 105090200 with no
- * live map, so no portal resolves and the walk never leaves it.
+ * 01:58 to 02:06 and later, phase TRAVEL_TO_SUPPLIER, with no line logged. Most Agents here stand on 105090200 with no
+ * live map, so no portal resolves (PORTAL_UNAVAILABLE) and the walk never leaves it. The live walk was MOVING every
+ * tick instead (the portal resolved, navigation held the Agent in place): the Agents on the map's real geometry pin
+ * that case.
  */
 class AgentSupplyTravelWatchdogTest {
     private static final int ANOTHER_ENTRANCE = 105090200;
@@ -41,6 +47,10 @@ class AgentSupplyTravelWatchdogTest {
     private static final int ANT_TUNNEL_PARK = 105070001;
     private static final int STAIRWAY = 105100000;
     private static final long START = 1_000L;
+    /** Where the temple's under00 portal sets an Agent down on 105090200's bottom floor (live 2026-10-09). */
+    private static final Point UNDER00_LANDING = new Point(222, 1602);
+    /** Where 105090200's west01 portal sets an Agent down on 105090100 (its east01 portal). */
+    private static final Point EAST01_ARRIVAL = new Point(1873, 2213);
 
     @Test
     void aCompanionStuckOnOneMapGivesTheTripUpAndFollowsItsOwnerAgain() {
@@ -175,6 +185,72 @@ class AgentSupplyTravelWatchdogTest {
         assertNotEquals(OTHER_MAP, next.nextMapId());
     }
 
+    @Test
+    void aWalkThatKeepsMovingWithoutLeavingTheMapIsGivenUpTheSameWay() {
+        Character agent = companionOnLiveMap(308, ANOTHER_ENTRANCE, UNDER00_LANDING);
+        Trip trip = travelling(agent, AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, STAIRWAY);
+        long limit = AgentSupplyRecoveryPolicy.travelNoProgressMs();
+
+        // As live: the portal to 105090100 resolves and the walk reports MOVING, but the Agent never gets there.
+        AgentRouteOutcome walk = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, ANT_TUNNEL_PARK, START);
+        assertEquals(AgentRouteStatus.MOVING, walk.status());
+        assertEquals(OTHER_MAP, walk.nextMapId());
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START));
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit - 1));
+        assertEquals(AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, trip.execution.phase());
+        assertFalse(trip.execution.abandoned());
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit));
+        assertTrue(trip.execution.abandoned());
+        assertTrue(trip.execution.abandonedReason().startsWith("no progress toward the supplier: " + limit
+                + " ms on map " + ANOTHER_ENTRANCE + " without reaching its portal to map " + OTHER_MAP),
+                trip.execution.abandonedReason());
+        assertTrue(trip.execution.suppressed(AgentResourceCategory.HP_POTION, START + limit));
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit + 1));
+        assertFalse(trip.execution.isActive());
+        assertNull(AgentObjectiveKernel.active(trip.entry));
+        assertEquals(AgentObjectiveStatus.FAILED, lastStatus(trip));
+        assertTrue(AgentModeStateRuntime.following(trip.entry));
+        assertEquals(trip.leader, AgentRelationshipRuntime.followTarget(trip.entry));
+
+        // The hop it could not cross is blocked for its next trips, as for a walk whose portal never resolved.
+        AgentRouteOutcome next = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, ANT_TUNNEL_PARK, START + limit + 2);
+        assertNotEquals(OTHER_MAP, next.nextMapId());
+    }
+
+    @Test
+    void aMovingWalkThatCrossesToTheNextMapBeforeTheLimitKeepsGoing() {
+        Character agent = companionOnLiveMap(309, ANOTHER_ENTRANCE, UNDER00_LANDING);
+        Trip trip = travelling(agent, AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, STAIRWAY);
+        long limit = AgentSupplyRecoveryPolicy.travelNoProgressMs();
+        long crossed = START + limit / 2;
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START));
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, crossed - 1));
+        standOnLiveMap(agent, OTHER_MAP, EAST01_ARRIVAL);
+        AgentRouteOutcome walk = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
+                trip.entry, agent, ANT_TUNNEL_PARK, crossed);
+        assertEquals(AgentRouteStatus.MOVING, walk.status());
+        assertEquals(OTHER_MAP, walk.sourceMapId());
+
+        // More than the limit since the trip left, less than the limit on this map: still walking.
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, crossed));
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit));
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, crossed + limit - 1));
+        assertEquals(AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, trip.execution.phase());
+        assertFalse(trip.execution.abandoned());
+
+        // A full limit on the new map still ends it.
+        assertTrue(AgentSupplyProcurementRuntime.tick(trip.entry, agent, crossed + limit));
+        assertTrue(trip.execution.abandoned());
+        assertTrue(trip.execution.abandonedReason().startsWith("no progress toward the supplier: " + limit
+                + " ms on map " + OTHER_MAP + " "), trip.execution.abandonedReason());
+    }
+
     private record Trip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution, Character leader,
                         String maintenanceId) {
     }
@@ -186,6 +262,23 @@ class AgentSupplyTravelWatchdogTest {
         when(agent.getMapId()).thenReturn(mapId);
         when(agent.getChair()).thenReturn(-1);
         return agent;
+    }
+
+    /**
+     * A companion on {@code mapId}'s real geometry at {@code position}, far from every portal: the router resolves
+     * the portal and sends it walking (MOVING), and a mocked Agent never moves.
+     */
+    private static Character companionOnLiveMap(int id, int mapId, Point position) {
+        Character agent = companion(id, mapId);
+        standOnLiveMap(agent, mapId, position);
+        return agent;
+    }
+
+    private static void standOnLiveMap(Character agent, int mapId, Point position) {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        when(agent.getMapId()).thenReturn(mapId);
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getPosition()).thenReturn(new Point(position));
     }
 
     /** How the trip's maintenance objective ended (the last journal line for it). */
