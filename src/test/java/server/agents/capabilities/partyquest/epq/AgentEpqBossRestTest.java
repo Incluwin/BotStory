@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.agents.capabilities.supplies.AgentAutopotPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.runtime.AgentModeService;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -618,7 +620,8 @@ class AgentEpqBossRestTest {
         verify(run.actions, times(2)).useItem(tobi, WHITE_POTION);
         verify(run.actions, never()).grindFromAnchor(any(), any(), any(), any());
         verify(run.actions, never()).grind(eq(entry), any());
-        potions.verify(() -> AgentPotionService.requestPotShare(any(), any(), anyBoolean()), never());
+        potions.verify(() -> AgentPotionService.requestPotShareAt(any(), any(), anyBoolean(), anyLong()),
+                never());
     }
 
     /** Out of the golem's reach a dry rester still hangs back at full HP: only a pinned one hits the golem. */
@@ -647,24 +650,51 @@ class AgentEpqBossRestTest {
         golemAt(392);
         vitals(tobi, 1_020, 4_400, 3); // dry at full HP, out of reach: no drink
         AgentRuntimeEntry entry = run.entry(tobi);
-        potions.when(() -> AgentPotionService.requestPotShare(any(), any(), eq(true))).thenReturn(true, false);
+        potions.when(() -> AgentPotionService.requestPotShareAt(any(), any(), eq(true), anyLong()))
+                .thenReturn(true, false);
         long interval = AgentEpqRecoveryPolicy.DRY_ASK_INTERVAL_MS;
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
             AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
             AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + interval - 1);
-            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(1));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(entry, tobi, true, 2_000L));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(eq(entry), eq(tobi), eq(true), anyLong()),
+                    times(1));
             AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + interval);
-            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(entry, tobi, true, 2_000L + interval),
+                    times(1)); // on its tick's own clock, the one the share's cooldown is set from
 
             vitals(tobi, 1_020, 3_000, 40); // a share landed: it drinks up to RESUME_HP_FRACTION and asks no more
             AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L + 3 * interval);
-            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(eq(entry), eq(tobi), eq(true), anyLong()),
+                    times(2));
             assertTrue(session.member(tobi.getId()).bossResting());
 
             assertEquals(List.of(ask(session, "sent", 1, "4400/4400", 3), ask(session, "held", 2, "4400/4400", 3)),
                     lines.startingWith("EPQ boss rest ask:"));
         }
-        potions.verify(() -> AgentPotionService.requestPotShare(any(), any(), eq(false)), never());
+        potions.verify(() -> AgentPotionService.requestPotShareAt(any(), any(), eq(false), anyLong()), never());
+    }
+
+    /**
+     * The anchored rest fight is grind mode, where the generic out-of-potions stop said "low on pots!! walking to you"
+     * to a pinned dry rester that never walks. While it rests the run owns its potion rest
+     * (AgentPartyQuestRuntime.ownsPotionRest), which keeps that stop quiet; once the rest ends it does not.
+     */
+    @Test
+    void theRunOwnsAResterPotionRestUntilTheRestEnds() {
+        AgentEpqSession session = boss();
+        golemAt(-230);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "fighting");
+
+        vitals(tobi, -540, 2_070, 5_904, 0); // dry, pinned
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+        assertTrue(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "resting");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(una.getId()), "another member, not resting");
+
+        vitals(tobi, -540, 5_904, 5_904, 200); // a share landed at full HP: END
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId()), "back in the fight");
     }
 
     /** A rest that ended and a new dry rest: it asks at once, its count starting over. */
@@ -682,7 +712,8 @@ class AgentEpqBossRestTest {
             vitals(tobi, 1_020, 4_400, 3); // dry again before the old interval ran out
             AgentEpqCoordinator.tickMember(session, entry, tobi, 4_000L);
 
-            potions.verify(() -> AgentPotionService.requestPotShare(entry, tobi, true), times(2));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(entry, tobi, true, 2_000L));
+            potions.verify(() -> AgentPotionService.requestPotShareAt(entry, tobi, true, 4_000L));
             assertEquals(List.of(ask(session, "held", 1, "4400/4400", 3), ask(session, "held", 1, "4400/4400", 3)),
                     lines.startingWith("EPQ boss rest ask:"));
         }
@@ -775,9 +806,9 @@ class AgentEpqBossRestTest {
     }
 
     /**
-     * Today's fact, recorded: the anchored add fight puts the Agent in grind mode, the generic out-of-potions stop's
-     * condition (AgentPotionService.tickPotionCheck), which can send a resting companion toward its owner while an add
-     * is on it; the next coordinator pass re-issues the rest order (LPQ base fix 6 accepted the same).
+     * Recorded: the anchored rest fight puts the Agent in grind mode, the generic out-of-potions stop's condition
+     * (AgentPotionService.tickPotionCheck). LPQ base fix 6 accepted that stop; for EPQ the run owns a rester's potion
+     * rest (theRunOwnsAResterPotionRestUntilTheRestEnds), which keeps the stop and its "walking to you" line quiet.
      */
     @Test
     void theAnchoredAddFightIsGrindMode() throws Exception {

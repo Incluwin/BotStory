@@ -158,6 +158,19 @@ public final class AgentPartyQuestRuntime {
     }
 
     /**
+     * True while the member's run holds it back for its HP potions by its own rest rule
+     * (AgentPartyQuestSystem.ownsPotionRest). Memory only.
+     */
+    public static boolean ownsPotionRest(int characterId) {
+        for (AgentPartyQuestSystem system : SYSTEMS) {
+            if (system.ownsPotionRest(characterId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * True for a session a host adopted for a human leader and his companions. Typed as Object: a quest whose session
      * does not implement AgentCompanionRunSession yet (LMPQ, OPQ, PPQ) answers false until it does.
      */
@@ -514,6 +527,10 @@ public final class AgentPartyQuestRuntime {
     private static final class EpqSystem implements AgentPartyQuestSystem {
         @Override public boolean companionRun(int characterId) {
             return adopted(AgentEpqSessionRegistry.forMember(characterId));
+        }
+
+        @Override public boolean ownsPotionRest(int characterId) {
+            return AgentEpqRuntime.ownsPotionRest(characterId);
         }
 
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("epq"); }

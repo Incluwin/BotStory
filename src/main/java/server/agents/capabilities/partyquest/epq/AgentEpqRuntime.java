@@ -27,6 +27,16 @@ public final class AgentEpqRuntime {
         return true;
     }
 
+    /**
+     * True while this member rests from the golem (AgentEpqCoordinator.bossRest): the rest owns its moves and words,
+     * its fight from the rest point included, so the generic out-of-potions grind stop stays quiet. Memory only.
+     */
+    public static boolean ownsPotionRest(int id) {
+        AgentEpqSession session = AgentEpqSessionRegistry.forMember(id);
+        AgentEpqMemberState member = session == null ? null : session.member(id);
+        return member != null && member.bossResting();
+    }
+
     public static boolean requestStop(int id, String reason, long nowMs) {
         AgentEpqSession session = AgentEpqSessionRegistry.forMember(id);
         if (session == null) {

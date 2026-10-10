@@ -402,6 +402,9 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
       stays under 10 (result=held while the share's 30 s cooldown or 10-minute no-donor backoff holds it). A donor
       with more than 300 HP potions says its offer line in map chat, the stack lands, the ask lines stop, and the rest
       ends with 'state=END why=safe' at 80 % HP or more.
+      [Review of a3a577489] While the pinned companion rests under 40 % HP with an add on it, map chat has no "low on
+      pots!! walking to you" from it and it does not glare. While no donor qualifies, consecutive 'result=held' lines
+      come about 30 s apart, never about 60 s apart.
       Fail: the pinned companion walks right of the golem; it stands idle at full HP while an add hits it; ask lines
       come more often than every 30 s, or go on after hpPots reaches 10.
       Extra grep: grep -E "EPQ boss rest|EPQ member down" logs/cosmic-log.log
