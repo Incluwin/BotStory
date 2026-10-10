@@ -205,8 +205,13 @@ public final class AgentSupplyReadinessRuntime {
                 // in a town the desk shows it; a readiness verdict found here already (what the standard lacks) stays
                 if (restockGround(agent) && state.verdictOn(agent.getMapId()) == null && state.verdict(
                         AgentSupplyReadinessState.Verdict.CANNOT_AFFORD, agent.getMapId(), missing, nowMs)) {
-                    AgentSupplyReadiness.refused(agent.getId(), activity, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
-                            AgentSupplyReadiness.shortfall(agent, activity), missing);
+                    if (AgentSupplyReadiness.refused(agent.getId(), activity,
+                            AgentSupplyReadiness.Refusal.CANNOT_AFFORD, AgentSupplyReadiness.shortfall(agent, activity),
+                            missing)) {
+                        // said between two looks (it was handed potions, still too few): the next look starts
+                        // afresh, so that gift is not told as still short after this broke line
+                        state.forgetLook();
+                    }
                 }
             }
         }
