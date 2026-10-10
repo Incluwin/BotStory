@@ -241,6 +241,16 @@ public final class AgentDialogueCatalog {
             "nvm, just trade me again when you're ready.",
             "closing this for now, trade me again whenever.",
             "gonna close this, send me another trade when you're ready.");
+    /** An owned companion whose bag has no room for what its owner put in a trade (the trade did not go through). */
+    private static final List<String> TRADE_BAG_FULL_REPLIES = List.of(
+            "my bag's full, can't take that.",
+            "no room in my bag for that, sorry.",
+            "bag's full, can't take it right now.");
+    /** An owned companion leaving a drop it would pick up, its bag for that kind of item full. */
+    private static final List<String> LOOT_BAG_FULL_REPLIES = List.of(
+            "bag's full, leaving that one.",
+            "no room in my bag, gotta leave that.",
+            "my bag's full, can't pick that up.");
     private static final List<String> TRADE_RESERVED_FOR_OTHER_REPLIES = List.of(
             "these might be needed by others, maybe don't sell them",
             "careful with these, they could be for someone else",
@@ -700,6 +710,14 @@ public final class AgentDialogueCatalog {
 
     public static List<String> manualTradeTimeoutReplies() {
         return MANUAL_TRADE_TIMEOUT_REPLIES;
+    }
+
+    public static List<String> tradeBagFullReplies() {
+        return TRADE_BAG_FULL_REPLIES;
+    }
+
+    public static List<String> lootBagFullReplies() {
+        return LOOT_BAG_FULL_REPLIES;
     }
 
     public static List<String> tradeReservedForOtherReplies() {

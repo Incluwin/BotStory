@@ -63,6 +63,11 @@ public final class AgentLootEligibility {
     /** Base inventory/quest eligibility used before a scenario publishes reward claims. */
     public static boolean canBotReceiveAssignedLoot(
             AgentRuntimeEntry entry, Character bot, MapItem drop) {
+        return rulesAllow(entry, bot, drop) && hasRoomFor(bot, drop);
+    }
+
+    /** Every rule of {@link #canBotReceiveAssignedLoot} but the bag's free slot, its host's loot policy last. */
+    private static boolean rulesAllow(AgentRuntimeEntry entry, Character bot, MapItem drop) {
         if (entry == null || bot == null || drop == null || !drop.canBePickedBy(bot)) {
             return false;
         }
@@ -128,9 +133,12 @@ public final class AgentLootEligibility {
         if (itemId > 0 && !bot.needQuestItem(drop.getQuest(), itemId)) {
             return false;
         }
-        if (!AgentLootPolicy.permits(bot, drop)) { // the host's per-Agent policy, after every rule above
-            return false;
-        }
+        return AgentLootPolicy.permits(bot, drop); // the host's per-Agent policy, after every rule above
+    }
+
+    /** A meso drop fills no bag; an item needs a free slot in the bag of its kind. */
+    private static boolean hasRoomFor(Character bot, MapItem drop) {
+        int itemId = drop.getItemId();
         if (drop.getMeso() <= 0 && itemId > 0) {
             InventoryType type = ItemConstants.getInventoryType(itemId);
             Inventory inv = bot.getInventory(type);
@@ -171,6 +179,17 @@ public final class AgentLootEligibility {
         }
         Inventory inventory = bot.getInventory(ItemConstants.getInventoryType(drop.getItemId()));
         return inventory != null && inventory.isFull();
+    }
+
+    /**
+     * True when the Agent leaves this drop only because its bag for the drop's kind has no free slot: every other
+     * rule of {@link #canBotLoot}, its host's loot policy and Balrog's reward grace among them, would let it pick the
+     * drop up (what AgentBagFullSpeech may mention; the loot rules themselves are unchanged).
+     */
+    static boolean leftForFullBag(AgentRuntimeEntry entry, Character bot, MapItem drop) {
+        return isInventoryFull(bot, drop)
+                && rulesAllow(entry, bot, drop)
+                && AgentEasyBalrogRewardGracePolicy.permitsAgentLoot(bot, drop, System.currentTimeMillis());
     }
 
     static long requiredTargetLootAgeMs(Character bot, MapItem drop) {

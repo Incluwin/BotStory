@@ -7,12 +7,16 @@ import client.inventory.Item;
 import constants.id.ItemId;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
+import server.agents.capabilities.inventory.AgentInventoryRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.MapObject;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,10 +27,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class AgentPassiveLootServiceTest {
@@ -135,6 +141,62 @@ class AgentPassiveLootServiceTest {
 
         assertTrue(callbacks.pickedUp.get());
         assertFalse(state.snapshot(now).killedObjectIds().contains(42));
+    }
+
+    @Test
+    void anOwnedCompanionMentionsADropItLeavesForItsFullBagAtMostOncePerInterval() {
+        Character agent = agentWithAFullEquipBagBesideACap(5141);
+        AgentRuntimeEntry entry = entry(agent);
+        TraceCallbacks callbacks = new TraceCallbacks();
+        AgentBagFullSpeech.install(companion -> companion == agent);
+        List<String> said = new ArrayList<>();
+        try (MockedStatic<AgentInventoryRuntime> voice = mockStatic(AgentInventoryRuntime.class)) {
+            voice.when(() -> AgentInventoryRuntime.visibleSayNow(eq(entry), any()))
+                    .thenAnswer(inv -> said.add(inv.getArgument(1)));
+            long t0 = callbacks.now;
+
+            AgentPassiveLootService.tickPassiveLoot(entry, agent, callbacks);
+            callbacks.now = t0 + 1_000L;
+            AgentPassiveLootService.tickPassiveLoot(entry, agent, callbacks);
+            assertEquals(1, said.size(), "two skips within the interval: one line " + said);
+
+            callbacks.now = t0 + AgentBagFullSpeech.lootLineEveryMs();
+            AgentPassiveLootService.tickPassiveLoot(entry, agent, callbacks);
+            assertEquals(2, said.size(), "after the interval: another " + said);
+            assertTrue(AgentDialogueCatalog.lootBagFullReplies().containsAll(said), said.toString());
+            assertFalse(callbacks.pickedUp.get(), "it still leaves the drop");
+        } finally {
+            AgentBagFullSpeech.install(null);
+        }
+    }
+
+    @Test
+    void aCitizenLeavesADropForItsFullBagInSilence() {
+        Character citizen = agentWithAFullEquipBagBesideACap(5142);
+        AgentRuntimeEntry entry = entry(citizen);
+        TraceCallbacks callbacks = new TraceCallbacks();
+        AgentBagFullSpeech.install(agent -> false); // the host names companions only
+        try (MockedStatic<AgentInventoryRuntime> voice = mockStatic(AgentInventoryRuntime.class)) {
+            AgentPassiveLootService.tickPassiveLoot(entry, citizen, callbacks);
+
+            voice.verify(() -> AgentInventoryRuntime.visibleSayNow(any(), any()), never());
+            assertFalse(callbacks.pickedUp.get());
+        } finally {
+            AgentBagFullSpeech.install(null);
+        }
+    }
+
+    private static Character agentWithAFullEquipBagBesideACap(int id) {
+        Character agent = agentOnMap();
+        when(agent.getId()).thenReturn(id);
+        when(agent.needQuestItem(anyInt(), anyInt())).thenReturn(true);
+        Inventory equips = mock(Inventory.class);
+        when(equips.isFull()).thenReturn(true);
+        when(agent.getInventory(InventoryType.EQUIP)).thenReturn(equips);
+        MapItem cap = itemDrop(1002000, 1, true);
+        when(agent.getMap().getDroppedItems()).thenReturn(List.of(cap));
+        when(agent.getMap().getMapObject(1)).thenReturn(cap);
+        return agent;
     }
 
     private static AgentRuntimeEntry entry(Character agent) {

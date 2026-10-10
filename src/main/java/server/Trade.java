@@ -35,6 +35,7 @@ import net.server.coordinator.world.InviteCoordinator.InviteResultType;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.trade.AgentOwnerItemNotificationService;
 import server.economy.EconomyOperationKind;
 import server.economy.EconomyTransactionCoordinator;
@@ -338,6 +339,7 @@ public class Trade {
                     cancelTrade(local.getChr(), TradeResult.UNSUCCESSFUL);
                     chr.message("There is not enough inventory space to complete the trade.");
                     partner.getChr().message("Partner does not have enough inventory space to complete the trade.");
+                    AgentBagFullSpeech.tradeRefused(local.getChr()); // an owned companion says its bag is full
                 } else {
                     cancelTrade(local.getChr(), TradeResult.UNSUCCESSFUL_UNIQUE_ITEM_LIMIT);
                     partner.getChr().message("Partner cannot hold more than one one-of-a-kind item at a time.");
@@ -348,6 +350,7 @@ public class Trade {
                     cancelTrade(partner.getChr(), TradeResult.UNSUCCESSFUL);
                     chr.message("Partner does not have enough inventory space to complete the trade.");
                     partner.getChr().message("There is not enough inventory space to complete the trade.");
+                    AgentBagFullSpeech.tradeRefused(partner.getChr()); // an owned companion says its bag is full
                 } else {
                     cancelTrade(partner.getChr(), TradeResult.UNSUCCESSFUL_UNIQUE_ITEM_LIMIT);
                     chr.message("Partner cannot hold more than one one-of-a-kind item at a time.");

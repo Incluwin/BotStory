@@ -5,6 +5,7 @@ import client.QuestStatus;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffStateRuntime;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.capabilities.movement.AgentFormationCommandService;
 import server.agents.capabilities.movement.AgentFormationHook;
@@ -55,7 +56,7 @@ import java.util.function.UnaryOperator;
  * per owner in living_crew; everyone it placed keeps to the crew's formation from then on).</p>
  */
 public final class CompanionSettingsApplier implements AgentPotionThresholds.Rule, AgentLootPolicy.Rule, AgentWalletReserve.Rule,
-        AgentChatToggleHook.Rule, AgentFormationHook.Rule {
+        AgentChatToggleHook.Rule, AgentFormationHook.Rule, AgentBagFullSpeech.Rule {
     /** How long what an owner's quests need is kept before their started quests are read again (QUEST_ONLY). */
     private static final long QUEST_NEEDS_TTL_MS = 1_000L;
 
@@ -81,13 +82,14 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         this.roster = roster;
     }
 
-    /** Installs the potion, loot, chat toggle and formation seams (LivingWorld.start). */
+    /** Installs the potion, loot, chat toggle, formation and bag-full seams (LivingWorld.start). */
     public void install() {
         AgentPotionThresholds.install(this);
         AgentLootPolicy.install(this);
         AgentWalletReserve.install(this);
         AgentChatToggleHook.install(this);
         AgentFormationHook.install(this);
+        AgentBagFullSpeech.install(this);
     }
 
     /** Takes the seams out again (LivingWorld.stop): every Agent drinks and loots as configured. */
@@ -97,6 +99,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentWalletReserve.install(null);
         AgentChatToggleHook.install(null);
         AgentFormationHook.install(null);
+        AgentBagFullSpeech.install(null);
     }
 
     /**
@@ -406,6 +409,21 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         int ownerId = at.ownerId();
         return new AgentLootPolicy.Policy(own.loot(), own.leaveBossDrops(),
                 (agent, itemId) -> questNeeds(ownerId, agent, itemId));
+    }
+
+    /**
+     * Bag-full lines (AgentBagFullSpeech: a gift trade refused for space, a drop left for a full bag): only a companion
+     * out with its owner (its runtime leader is its roster owner) and in its owner's party says them. A bench slice,
+     * a Resident, a citizen and every other Agent keep quiet. Memory only.
+     */
+    @Override
+    public boolean speaksOfFullBag(Character agent) {
+        Bound at = agent == null ? null : bound.get(agent.getId());
+        if (at == null || AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) != at.ownerId()) {
+            return false;
+        }
+        var party = agent.getParty();
+        return party != null && party.getMemberById(at.ownerId()) != null;
     }
 
     /**
