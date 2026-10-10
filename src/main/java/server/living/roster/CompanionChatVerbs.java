@@ -3,11 +3,17 @@ package server.living.roster;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.auth.AgentAuthorityService;
 import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
 import server.agents.capabilities.dialogue.AgentChatSessionRequestFlow;
 import server.agents.capabilities.dialogue.AgentPendingChatActionFlow;
+import server.agents.capabilities.movement.AgentFormationRuntime;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.commands.AgentReplyChannel;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
@@ -35,6 +41,8 @@ import java.util.function.Supplier;
  *   <li>the Agent chat routes a companion also answers, taken over through {@link AgentClaimGuard.VerbRoute}:
  *   "dismiss", "disown" or "release" &lt;name&gt; benches it instead of unregistering it and leaving it online, and a
  *   confirmed "logout" benches it instead of disconnecting it. A plain GM Agent keeps the Agent route.</li>
+ *   <li>"sell junk" to one companion out with its owner in map chat ({@link #sellNow}): the Agent's own sell-now
+ *   command, given to that one companion's Agent.</li>
  * </ul>
  * Recruit, transfer, "follow &lt;other player&gt;" and whispers ask the claim guard themselves. ChatVerbBoundaryTest lists
  * every leader-level intent and where it goes.
@@ -43,6 +51,8 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
     private static final Logger log = LoggerFactory.getLogger(CompanionChatVerbs.class);
     /** How long an untargeted "logout" waits for its "yes". */
     public static final long LOGOUT_CONFIRM_MS = 30_000L;
+    /** The Agent's own sell-now command (AgentChatUtilityFlow), which {@link #sellNow} gives one companion. */
+    static final String SELL_NOW = "sell trash";
 
     /** What an owner's map-chat line did to their untargeted "logout" question. */
     public enum LogoutTurn {
@@ -159,6 +169,32 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
             }
         }
         return false;
+    }
+
+    /**
+     * The owner's map line "sell junk" to one companion out with them, its name first or last (plan 12.2 "Supplies and
+     * loot", deploy review 2026-10-10): "&lt;name&gt; sell trash", the Agent's own sell-now command, as the owner's map
+     * line over exactly that companion (CompanionManager.crewOrder's door), so the targeted route gives it to that
+     * Agent alone and it answers in map chat. Nothing happens while its Agent is not out with the owner yet, or the
+     * owner may not command it (AgentAuthorityService.mayOperate, AgentClaimGuard.mayControl), as on the Agent route.
+     */
+    public void sellNow(Character owner, Persona persona) {
+        AgentRuntimeEntry runtime = null;
+        for (AgentRuntimeEntry entry : AgentRuntimeRegistry.entriesForLeader(owner.getId())) {
+            if (AgentRuntimeIdentityRuntime.botNameEquals(entry, persona.name())) {
+                runtime = entry;
+                break;
+            }
+        }
+        if (runtime == null || !AgentAuthorityService.mayOperate(owner)
+                || !AgentClaimGuard.mayControl(owner, AgentRuntimeIdentityRuntime.botId(runtime))) {
+            return;
+        }
+        AgentChatRouteCoordinator.handleChat(owner, AgentRuntimeIdentityRuntime.botName(runtime) + " " + SELL_NOW,
+                AgentReplyChannel.MAP, Map.of(owner.getId(), List.of(runtime)),
+                (leaderId, leader, name) -> null, (leaderId, leader, name, target) -> null, (leaderId, name) -> false,
+                AgentFormationRuntime.defaultFormationState(), AgentRuntimeConfig.cfg.FOLLOW_STAGGER,
+                AgentMovementPhysicsConfig.configuredFollowYCap());
     }
 
     /** "park &lt;name&gt;": until P2b's PARKED state it is a bench. */

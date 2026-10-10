@@ -102,6 +102,9 @@ class ClaimGuardBoundaryTest {
             // P3: a crew-wide order is the owner's chat line over exactly their own companions out with them, each one
             // past CompanionDirectory.mayControl first (the generic overload, which skips mayOperate: the owner's own)
             "server/living/roster/CompanionManager.java chat 1",
+            // deploy review 2026-10-10: "sell junk" naming one companion out with its owner (the name first or last) is
+            // the owner's map line over exactly that companion, past mayOperate and mayControl first
+            "server/living/roster/CompanionChatVerbs.java chat 1",
             // P5: every live bench slice (a field, town or stall form) loads here, behind its lease and the loaded check
             "server/living/roster/BenchDutyDispatcher.java load 1",
             // P7 Part B: a boss run's bench ally loads on its arrival, behind its EXPEDITION lease and the loaded check

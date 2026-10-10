@@ -123,7 +123,8 @@ public final class ResidentDialogue {
     private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
     /**
      * Sell-now lines (live 2026-10-10): to a companion out with its owner they are the Agent's own sell-trash command,
-     * never the bench job; "sell", "sell it all", "sell the haul" and "sell and come back" stay the job SELL.
+     * never the bench job; to a benched or away one they are the job SELL, as "sell", "sell it all", "sell the haul"
+     * and "sell and come back" always are.
      */
     private static final Set<String> SELL_NOW = Set.of("sell junk", "sell trash", "sell my junk", "sell my trash");
 
@@ -173,7 +174,7 @@ public final class ResidentDialogue {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
-        if (rosterCommandFor(speaker, persona, normalized)) {
+        if (rosterCommandFor(speaker, persona, normalized, true)) {
             return true;
         }
         if (world.roster().ownerOf(persona.id()) == speaker.getId()) {
@@ -771,18 +772,18 @@ public final class ResidentDialogue {
         if (words.length >= 2) {
             Persona persona = ownedPersona(owner, words[0]);
             if (persona != null) {
-                return rosterCommandFor(owner, persona, normalized.substring(words[0].length()).trim());
+                return rosterCommandFor(owner, persona, normalized.substring(words[0].length()).trim(), false);
             }
             persona = ownedPersona(owner, words[words.length - 1]);
             if (persona != null) {
-                return rosterCommandFor(owner, persona, normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim());
+                return rosterCommandFor(owner, persona, normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim(), false);
             }
         }
         return false;
     }
 
-    /** Companion-directed roster commands: assignments, camp, haul. */
-    private boolean rosterCommandFor(Character owner, Persona persona, String command) {
+    /** Companion-directed roster commands: assignments, camp, haul; {@code whispered}: the owner whispered the line to it. */
+    private boolean rosterCommandFor(Character owner, Persona persona, String command, boolean whispered) {
         RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return false;
@@ -806,9 +807,15 @@ public final class ResidentDialogue {
             default: break;
         }
         // "sell junk" to a companion out with its owner is the Agent's own sell-now command (plan 12.2 "Supplies and
-        // loot"), so the line goes on to the Agent routes and the bench job stays; benched or away it is the job SELL
+        // loot"), so the bench job stays; benched or away it is the job SELL (assignmentOf). A whisper goes on to the
+        // Agent bridge, which has this one companion. A map line goes to its Agent from here: the Agent routes take a
+        // name only as the first word, so a line naming it last reached every companion out (deploy review 2026-10-10)
         if (SELL_NOW.contains(command) && entry.state() == RosterState.ACTIVE) {
-            return false;
+            if (whispered) {
+                return false;
+            }
+            verbs.sellNow(owner, persona);
+            return true;
         }
         // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
         boolean go = command.startsWith("go ");
@@ -897,6 +904,7 @@ public final class ResidentDialogue {
             case "farm meso", "make money", "earn meso", "farm mesos", "farm" -> Assignment.FARM_MESO;
             case "gather", "gather for my quests", "help with my quests", "farm my quest items" -> Assignment.GATHER;
             case "sell", "sell the haul", "sell it all", "sell junk", "sell and come back" -> Assignment.SELL;
+            case "sell trash", "sell my junk", "sell my trash" -> Assignment.SELL; // SELL_NOW, to a benched or away one
             case "set up a stall", "run a stall", "open a stall", "sell in the fm" -> Assignment.STALL;
             case "rest", "do nothing", "take it easy" -> Assignment.REST;
             default -> null;
