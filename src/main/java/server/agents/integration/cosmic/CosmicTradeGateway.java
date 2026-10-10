@@ -2,6 +2,7 @@ package server.agents.integration.cosmic;
 
 import client.Character;
 import server.Trade;
+import server.agents.capabilities.trade.AgentTradeOutcome;
 import server.agents.capabilities.trade.AgentTradeWindow;
 import server.agents.integration.TradeGateway;
 
@@ -24,8 +25,16 @@ public enum CosmicTradeGateway implements TradeGateway {
     }
 
     @Override
-    public void completeTrade(Character agent) {
+    public AgentTradeOutcome completeTrade(Character agent) {
+        Trade trade = agent.getTrade();
         Trade.completeTrade(agent);
+        if (trade != null && trade.isSettled()) {
+            return AgentTradeOutcome.SETTLED;
+        }
+        // still its trade: the handshake waits for the partner's press; gone: a refusal or a cancel closed it
+        return trade != null && agent.getTrade() == trade
+                ? AgentTradeOutcome.WAITING_FOR_PARTNER
+                : AgentTradeOutcome.CANCELLED;
     }
 
     @Override

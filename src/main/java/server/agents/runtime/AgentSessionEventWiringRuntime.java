@@ -8,6 +8,8 @@ import server.agents.capabilities.dialogue.AgentFieldNarrationService;
 import server.agents.capabilities.dialogue.AgentSupplyDialogueReactionService;
 import server.agents.capabilities.dialogue.AgentTownLifeDialogueReactionService;
 import server.agents.capabilities.dialogue.AgentTownLifeTestNarrationService;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeEncounterEvent;
 import server.agents.capabilities.townlife.AgentTownLifeArrivalEvent;
 import server.agents.capabilities.townlife.AgentTownLifeActivityEvent;
@@ -123,8 +125,10 @@ public final class AgentSessionEventWiringRuntime {
                             new AgentInventoryMaintenanceEventListener(entry)));
                 }
                 if (rollout.dialogueEnabled()) {
+                    // an owned companion out with its owner says its own bag-full line instead of this reaction
                     subscriptions.add(bus.subscribe("*",
-                            new AgentResourceDialogueReactionService(bus)));
+                            new AgentResourceDialogueReactionService(bus,
+                                    () -> AgentBagFullSpeech.speaksOfFullBag(AgentRuntimeIdentityRuntime.bot(entry)))));
                 }
                 subscriptions.add(bus.subscribe("*",
                         new AgentOperationalMonitoringProjectionService(entry)));

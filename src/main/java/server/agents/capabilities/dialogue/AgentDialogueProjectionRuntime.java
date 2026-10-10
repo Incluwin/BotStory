@@ -91,8 +91,8 @@ public final class AgentDialogueProjectionRuntime {
                     : progress + " - almost done.";
         }
         if (AgentResourceDialogueReactionService.INVENTORY_FULL_INTENT.equals(intent.intentKey())) {
-            String inventoryType = intent.parameters().getOrDefault("inventoryType", "").toLowerCase();
-            return inventoryType.isBlank() ? "inventory is full!" : inventoryType + " inventory is full!";
+            // a player's words, not the bag's name + " inventory is full!" (deploy review 2026-10-10)
+            return AgentDialogueSelector.randomReply(AgentDialogueCatalog.nearbyBagFullReplies());
         }
         if (AgentResourceDialogueReactionService.SCROLL_INTENT.equals(intent.intentKey())) {
             return switch (intent.parameters().getOrDefault("result", "")) {
