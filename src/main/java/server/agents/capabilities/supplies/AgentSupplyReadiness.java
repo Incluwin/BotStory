@@ -671,6 +671,15 @@ public final class AgentSupplyReadiness {
         return anchor != null && anchor.getId() == leaderCharacterId;
     }
 
+    /**
+     * True while the Agent keeps a duty and cannot pay for its readiness trip ({@link #status} CANNOT_AFFORD: its
+     * refusal on this map, or a meso cooldown it carried here): it buys nothing on its own until its purse grows by
+     * what it lacked or it lacks fewer potions, so what it holds more of meanwhile was given. Memory only, any thread.
+     */
+    public static boolean heldForMesos(AgentRuntimeEntry entry, long nowMs) {
+        return status(entry, nowMs).cannotAfford();
+    }
+
     /** The Agent looks at its potions on its next tick instead of at its next check interval. */
     public static void checkSoon(AgentRuntimeEntry entry) {
         if (entry != null) {

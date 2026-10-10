@@ -35,7 +35,7 @@ public final class AgentMapTransitionRuntime {
                         AgentPartyQuestHooks::requiresFollow,
                         issueFollow,
                         AgentPqRuntime::resetKpqStage5Claimed,
-                        (shopEntry, shopAgent) -> AgentShopService.onMapChange(
+                        (shopEntry, shopAgent) -> AgentShopService.onArrival(
                                 shopEntry, shopAgent, AgentInventoryGatewayRuntime.inventory()),
                         AgentChatStatusOrchestrator::checkBotStatus));
         if (changed) {

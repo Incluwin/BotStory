@@ -100,7 +100,7 @@ public final class AgentMovementOnlyModeCoordinator {
                         AgentMovementPoseService::teleportTo,
                         AgentMovementStateResetService::resetEntryStateAfterTeleport,
                         AgentMovementBroadcastService::broadcastMovement,
-                        (shopEntry, shopAgent) -> AgentShopService.onMapChange(
+                        (shopEntry, shopAgent) -> AgentShopService.onArrival(
                                 shopEntry, shopAgent, AgentInventoryGatewayRuntime.inventory()),
                         AgentChatStatusOrchestrator::checkBotStatus));
     }

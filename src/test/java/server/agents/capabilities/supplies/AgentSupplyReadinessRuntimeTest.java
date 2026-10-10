@@ -1294,6 +1294,63 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void anOwnersOrderRightAfterAGiftDoesNotWipeIt() {
+        // second review: every movement command cancels the shop visit (AgentCommandModeService), even with none open
+        Character fenna = companion(588, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        potions.put(588, new int[]{9, 30}); // eight handed over
+        AgentShopStateRuntime.clearShopState(entry); // and "follow me" a moment later: no visit was open
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+        assertEquals(List.of("refused 588 CANNOT_AFFORD " + (19 * RED - 155), "still short 588 " + (11 * RED - 155)),
+                calls);
+    }
+
+    @Test
+    void aGiftHeldBackByTheSpacingIsNotToldAfterANewRefusal() {
+        // second review: the refusal on the new map is the news now; a gift from before it is not told after it
+        Character fenna = companion(589, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        long every = config.AgentTuning.longValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.STILL_SHORT_EVERY_MS");
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        purses.put(589, 255);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        stand(fenna, KERNING_SHOP, true);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        potions.put(589, new int[]{9, 30}); // within the spacing of its last still-short news
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+        assertEquals("refused 589 CANNOT_AFFORD " + (11 * RED - 255), calls.getLast(), calls.toString());
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L + every));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L + every));
+
+        assertEquals(List.of("refused 589 CANNOT_AFFORD " + (19 * RED - 155), "still short 589 " + (19 * RED - 255),
+                "refused 589 CANNOT_AFFORD " + (11 * RED - 255)), calls, "nothing still short after the refusal");
+    }
+
+    @Test
+    void aBrokeCompanionIsHeldBackForMesosUntilItsPurseGrowsByWhatItLacked() {
+        Character fenna = companion(590, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyReadiness.heldForMesos(entry, 500L), "not looked yet");
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertTrue(AgentSupplyReadiness.heldForMesos(entry, 1_000L));
+
+        stand(fenna, KERNING_SHOP, true); // it follows its owner into the store
+        assertTrue(AgentSupplyReadiness.heldForMesos(entry, 2_000L), "its hold goes along");
+        purses.put(590, 155 + 19 * RED - 155);
+        assertFalse(AgentSupplyReadiness.heldForMesos(entry, 3_000L), "paid: its own trip goes next");
+
+        Character idle = companion(591, "Idle", Job.HUNTER, 1, 30, 155);
+        duty.remove(591);
+        assertFalse(AgentSupplyReadiness.heldForMesos(following(idle), 1_000L), "no duty");
+        assertFalse(AgentSupplyReadiness.heldForMesos(null, 1_000L));
+    }
+
+    @Test
     void mesosItLootedWhileItsDutyWasOffAreNoGift() {
         Character fenna = companion(582, "Fenna", Job.HUNTER, 1, 30, 155);
         AgentRuntimeEntry entry = following(fenna);

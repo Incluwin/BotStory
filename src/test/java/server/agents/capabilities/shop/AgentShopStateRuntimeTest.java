@@ -150,4 +150,20 @@ class AgentShopStateRuntimeTest {
         assertTrue(AgentShopStateRuntime.shouldRunScheduledShopStep(
                 entry, AgentShopStateRuntime.shopVisitGeneration(entry)));
     }
+
+    @Test
+    void clearingWithNoVisitOpenEndsNoVisit() {
+        // every movement command and map change clears the shop state; only an open visit ends there
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        long before = AgentShopStateRuntime.shopVisitGeneration(entry);
+        AgentShopStateRuntime.clearShopState(entry);
+        AgentShopStateRuntime.clearShopState(entry);
+        assertEquals(before, AgentShopStateRuntime.shopVisitGeneration(entry));
+
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 1_000L);
+        AgentShopStateRuntime.clearShopState(entry);
+        assertEquals(before + 1, AgentShopStateRuntime.shopVisitGeneration(entry));
+        AgentShopStateRuntime.clearShopState(entry);
+        assertEquals(before + 1, AgentShopStateRuntime.shopVisitGeneration(entry));
+    }
 }
