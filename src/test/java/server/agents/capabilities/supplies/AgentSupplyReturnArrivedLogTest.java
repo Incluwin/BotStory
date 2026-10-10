@@ -2,6 +2,7 @@ package server.agents.capabilities.supplies;
 
 import client.Character;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
@@ -23,7 +24,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 /**
@@ -125,6 +130,53 @@ class AgentSupplyReturnArrivedLogTest {
         }
     }
 
+    @Test
+    void aTripThatGaveUpAndWalksBackSaysItArrivedWithoutRestocking() {
+        // a trip given up at its shop walked back and arrived; its only end line was "resumed its plan without
+        // restocking", the same line as a trip given up whose walk back found no route, or one its owner called back
+        Character agent = agent(505, ANOTHER_ENTRANCE);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        Trip trip = trip(entry, agent, ANT_TUNNEL_PARK, ANT_TUNNEL_SHOPKEEPER, DRAKE_FIELD, START);
+        trip.execution.markAbandoned("shop transaction ended in BLOCKED");
+
+        try (LogLines lines = new LogLines(AgentSupplyProcurementRuntime.class);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class, CALLS_REAL_METHODS)) {
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, START)); // still walking back
+            assertEquals(List.of(), lines.startingWith("Agent 'Supply505' walked back"));
+
+            when(agent.getMapId()).thenReturn(DRAKE_FIELD);
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, START + 1_000L));
+
+            assertFalse(trip.execution.isActive());
+            assertEquals(AgentObjectiveStatus.FAILED, lastStatus(entry, trip));
+            assertEquals(List.of("Agent 'Supply505' walked back to map " + DRAKE_FIELD
+                    + " without restocking its HP_POTION"), lines.startingWith("Agent 'Supply505' walked back"));
+            // it asks its party as before: one ask, with its line
+            potions.verify(() -> AgentPotionService.requestPotShare(eq(entry), eq(agent), eq(true), eq(true)),
+                    times(1));
+            assertEquals(List.of("Agent 'Supply505' resumed its plan without restocking HP_POTION and is asking the"
+                    + " party instead"), lines.startingWith("Agent 'Supply505' resumed"));
+        }
+    }
+
+    @Test
+    void aTripThatGaveUpOnTheMapItLeftSaysItFinishedThereWithoutRestocking() {
+        Character agent = agent(506, ARIANT);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        Trip trip = trip(entry, agent, ARIANT, ARIANT_SHOPKEEPER, ARIANT, START);
+        trip.execution.markAbandoned("shop transaction ended in BLOCKED");
+
+        try (LogLines lines = new LogLines(AgentSupplyProcurementRuntime.class)) {
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, START));
+
+            assertFalse(trip.execution.isActive());
+            assertEquals(AgentObjectiveStatus.FAILED, lastStatus(entry, trip));
+            assertEquals(List.of(), lines.startingWith("Agent 'Supply506' walked back"));
+            assertEquals(List.of("Agent 'Supply506' finished its HP_POTION resupply on map " + ARIANT
+                    + " without restocking"), lines.startingWith("Agent 'Supply506' finished"));
+        }
+    }
+
     private record Trip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution, String maintenanceId) {
     }
 
@@ -145,6 +197,17 @@ class AgentSupplyReturnArrivedLogTest {
     /** A critical HP potion trip from the given store whose shop leg restored the reserve: it walks back now. */
     private static Trip restockedTrip(AgentRuntimeEntry entry, Character agent, int supplierMapId, int supplierNpcId,
                                       int returnMapId, long nowMs) {
+        Trip trip = trip(entry, agent, supplierMapId, supplierNpcId, returnMapId, nowMs);
+        trip.execution.complete(new AgentSupplyProcurementOutcome(AgentSupplyProcurementOutcome.Status.RESTORED,
+                AgentResourceCategory.HP_POTION, 0, BOUGHT, 5_000, 3_000, nowMs,
+                "potion reserve restored to the restock target"));
+        trip.execution.markReturning();
+        return trip;
+    }
+
+    /** A critical HP potion trip at the given store, still at its shop. */
+    private static Trip trip(AgentRuntimeEntry entry, Character agent, int supplierMapId, int supplierNpcId,
+                             int returnMapId, long nowMs) {
         String requestId = "supply:HP_POTION:" + agent.getId() + ':' + nowMs;
         AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
                 "maintenance:resupply:" + requestId, "maintenance.resupply", 1_000,
@@ -159,10 +222,6 @@ class AgentSupplyReturnArrivedLogTest {
         execution.start(requestId, maintenance.objectiveId(), AgentResourceCategory.HP_POTION,
                 supplierMapId, supplierNpcId, returnMapId, AgentSupplyProcurementState.Phase.SHOPPING);
         execution.rememberForegroundMode(false, false);
-        execution.complete(new AgentSupplyProcurementOutcome(AgentSupplyProcurementOutcome.Status.RESTORED,
-                AgentResourceCategory.HP_POTION, 0, BOUGHT, 5_000, 3_000, nowMs,
-                "potion reserve restored to the restock target"));
-        execution.markReturning();
         return new Trip(entry, execution, maintenance.objectiveId());
     }
 
