@@ -5,6 +5,7 @@ import config.LivingWorldConfig;
 import constants.game.ExpTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.supplies.AgentSupplyProcurementOutcome;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -76,7 +77,9 @@ import java.util.function.ToLongFunction;
  * resupply runs, and only then does the slice unload and free its seat for the next one. When that shop is more than
  * BENCH_RESUPPLY_MAX_HOPS from its camp, the walk would outlast the slice: the slice ends once it has set off, and its
  * next slice is a shop slice that loads it at that shop, ends when its own shop visit there is over (never "back in
- * town") and hunts nothing; the slice after it is at its camp. A slice ends clean, each step
+ * town") and hunts nothing; the slice after it is at its camp. A walk to a nearer shop that the Agent's own trip gives
+ * up as stuck (it stood on one map too long) ends the slice the same way. At most one shop slice per
+ * BENCH_LIVE_SLICE_MS. A slice ends clean, each step
  * on its own so one failing never skips the rest: its form's last harvest, the hand-back on the Agent's own mailbox
  * (each primary activity asked to stop, the visit-lease checkpoints cleared), the field yield recorded
  * (BenchYieldModel) and the call-back report, then the unload, the save and the lease. A companion still online after
@@ -147,6 +150,8 @@ public final class BenchDutyDispatcher {
         private int startLevel;
         private long startExp;
         private int jobId = -1;
+        /** The shop map its own supply trip set off for, as a dispatcher tick last saw it (0: none seen). */
+        private int tripShopMapId;
         /** Set once its end ran its tidy-up (companion-ops): only the unload is left, retried each tick until it is done. */
         private boolean closing;
         private boolean handedBack;
@@ -272,6 +277,13 @@ public final class BenchDutyDispatcher {
      * BENCH_RESUPPLY_MAX_MS unloaded it on the way, then loaded at its camp and set off again, 530 times).
      */
     static final String SHOP_TOO_FAR = "set off for a shop too far to walk to";
+    /**
+     * A field slice whose own walk to a shop was given up by the Agent's no-progress watchdog (it stood on one map for
+     * TRAVEL_NO_PROGRESS_MS) ends, and its next slice is a shop slice there (found live 2026-10-09: Jinx, camped at
+     * 105040304, 10 maps below Henesys, stood 5 minutes on 105040302 every slice; the hop block that keeps a trip off
+     * that hop lives in the Agent's session, which each slice's unload ends).
+     */
+    static final String SHOP_STALLED = "stuck on the way to a shop";
     /** persona id -> the shop map its last field slice set off for: its next field slice is a shop slice there. */
     private final Map<String, Integer> shopTrips = new ConcurrentHashMap<>();
     /**
@@ -823,6 +835,10 @@ public final class BenchDutyDispatcher {
             return agent.getHp() > 0 ? ROUGH_HUNT : null; // it revives by stock rules in its camp's return town first
         }
         if (slice.resupplying()) {
+            noteTripShop(slice, entry);
+            if (!slice.shop && stuckOnTheWayToAShop(slice, entry, now)) {
+                return SHOP_STALLED;
+            }
             // a shop slice is over once a shop visit of its own there is, not before it began (it asks its party first)
             if (!resupplying(entry) && (!slice.shop || tripEndedSince(entry, slice.startedAtMs))) {
                 return "resupplied";
@@ -834,6 +850,7 @@ public final class BenchDutyDispatcher {
         }
         if (slice.pool == CompanionBudget.Kind.BENCH_LIVE && resupplying(entry)) {
             slice.huntEndedAtMs = now; // out of supplies: the hunt is over, its own shop visit runs, then it unloads
+            noteTripShop(slice, entry);
             world.store().event(slice.ownerId, slice.personaId, "bench.resupply", "out of supplies at map " + slice.mapId);
             return setOffForAFarShop(slice, entry, agent, now) ? SHOP_TOO_FAR : null;
         }
@@ -853,10 +870,9 @@ public final class BenchDutyDispatcher {
     private boolean setOffForAFarShop(Slice slice, AgentRuntimeEntry entry, Character agent, long now) {
         AgentSupplyProcurementState trip = entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
                 .orElse(null);
-        Long lastShop = lastShopAtMs.get(slice.personaId);
         if (trip == null || trip.phase() != AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER
                 || trip.supplierMapId() == 0 || agent.getMap() == null || agent.getMap().getId() == slice.mapId
-                || lastShop != null && now - lastShop < world.config().BENCH_LIVE_SLICE_MS) {
+                || shopSliceRecently(slice.personaId, now)) {
             return false;
         }
         int shop = trip.supplierMapId();
@@ -867,6 +883,43 @@ public final class BenchDutyDispatcher {
         log.info("bench slice: {} set off from {} for the shop at {}, too far to walk to; its next slice restocks there",
                 slice.personaId, slice.mapId, shop);
         return true;
+    }
+
+    /**
+     * True, and its next slice restocks at that shop, once the Agent's own supply trip of this slice was given up by its
+     * no-progress watchdog on the way to the shop ({@link #SHOP_STALLED}): the hop block that keeps its next trips off
+     * that hop ends with this session, so its next slice would walk into the same hold. The shop is the one the trip
+     * names while it walks back, else the one a tick saw it set off for. Unless a shop slice of this companion began
+     * within BENCH_LIVE_SLICE_MS; a trip given up for any other reason (no route, nothing it can afford, a call) ends the
+     * slice as before.
+     */
+    private boolean stuckOnTheWayToAShop(Slice slice, AgentRuntimeEntry entry, long now) {
+        AgentSupplyProcurementState trip = entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .orElse(null);
+        AgentSupplyProcurementOutcome outcome = trip == null ? null : trip.lastOutcome();
+        if (outcome == null || !outcome.stalledTowardSupplier() || outcome.occurredAtMs() < slice.startedAtMs
+                || slice.tripShopMapId == 0 || shopSliceRecently(slice.personaId, now)) {
+            return false;
+        }
+        shopTrips.put(slice.personaId, slice.tripShopMapId);
+        log.info("bench slice: {}'s walk from {} to the shop at {} got stuck ({}); its next slice restocks there",
+                slice.personaId, slice.mapId, slice.tripShopMapId, outcome.reason());
+        return true;
+    }
+
+    /** Remembers the shop the Agent's own supply trip is headed for, while one is under way. */
+    private static void noteTripShop(Slice slice, AgentRuntimeEntry entry) {
+        entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .filter(AgentSupplyProcurementState::isActive)
+                .map(AgentSupplyProcurementState::supplierMapId)
+                .filter(shop -> shop != 0)
+                .ifPresent(shop -> slice.tripShopMapId = shop);
+    }
+
+    /** True when a shop slice of this companion began within BENCH_LIVE_SLICE_MS: no second one yet. */
+    private boolean shopSliceRecently(String personaId, long now) {
+        Long lastShop = lastShopAtMs.get(personaId);
+        return lastShop != null && now - lastShop < world.config().BENCH_LIVE_SLICE_MS;
     }
 
     /** True when a supply trip of the Agent's own ended (it bought, or gave up) at or after {@code sinceMs}. */

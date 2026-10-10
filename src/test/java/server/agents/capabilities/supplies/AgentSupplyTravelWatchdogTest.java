@@ -69,6 +69,8 @@ class AgentSupplyTravelWatchdogTest {
                 + " ms on map " + ANOTHER_ENTRANCE + " without reaching its portal to map " + OTHER_MAP),
                 trip.execution.abandonedReason());
         assertTrue(trip.execution.suppressed(AgentResourceCategory.HP_POTION, START + limit));
+        assertTrue(trip.execution.lastOutcome().stalledTowardSupplier(),
+                "its outcome says the watchdog gave the walk up (a benched companion's next slice restocks at the shop)");
 
         // The ordinary abandon path: no walk back to the stairway, follow again beside the owner.
         assertFalse(AgentSupplyProcurementRuntime.tick(trip.entry, agent, START + limit + 1));
@@ -77,6 +79,25 @@ class AgentSupplyTravelWatchdogTest {
         assertEquals(AgentObjectiveStatus.FAILED, lastStatus(trip));
         assertTrue(AgentModeStateRuntime.following(trip.entry));
         assertEquals(trip.leader, AgentRelationshipRuntime.followTarget(trip.entry));
+    }
+
+    @Test
+    void onlyAWalkToTheSupplierTheWatchdogGaveUpCountsAsStalledTowardIt() {
+        assertTrue(outcome(AgentSupplyProcurementOutcome.Status.ROUTE_FAILED, "no progress toward the supplier: 300000 ms"
+                + " on map 105040302 without reaching its portal to map 105040301").stalledTowardSupplier());
+        assertFalse(outcome(AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
+                "no portal route reaches the selected supplier").stalledTowardSupplier());
+        assertFalse(outcome(AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
+                "the route to the selected supplier needs 12 portal hops, more than the 10 the trip started with")
+                .stalledTowardSupplier());
+        assertFalse(outcome(AgentSupplyProcurementOutcome.Status.SHOP_FAILED,
+                "selected supplier NPC is unavailable").stalledTowardSupplier());
+        assertFalse(outcome(AgentSupplyProcurementOutcome.Status.INSUFFICIENT_MESO,
+                "safe liquidation produced insufficient mesos for the required supply").stalledTowardSupplier());
+    }
+
+    private static AgentSupplyProcurementOutcome outcome(AgentSupplyProcurementOutcome.Status status, String reason) {
+        return new AgentSupplyProcurementOutcome(status, AgentResourceCategory.HP_POTION, 0, 0, 1_000, 1_000, START, reason);
     }
 
     @Test

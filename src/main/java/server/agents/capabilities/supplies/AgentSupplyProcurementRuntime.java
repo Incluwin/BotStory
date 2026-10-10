@@ -425,7 +425,8 @@ public final class AgentSupplyProcurementRuntime {
             return true;
         }
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
-            String stuck = noProgress(agent, execution, outcome, "the supplier", nowMs);
+            String stuck = noProgress(agent, execution, outcome,
+                    AgentSupplyProcurementOutcome.NO_PROGRESS_TOWARD_SUPPLIER, nowMs);
             if (stuck != null) {
                 avoidStalledHop(entry, agent, outcome, nowMs);
                 recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
@@ -504,18 +505,19 @@ public final class AgentSupplyProcurementRuntime {
     /**
      * Why the walk counts as stuck: it has stood on one map for TRAVEL_NO_PROGRESS_MS without crossing to another
      * (live 2026-10-09: four companions held at Another Entrance's arrival portal for 8+ minutes, the router walking
-     * them toward a portal their navigation could not reach, with no line logged). Null while it still has time.
+     * them toward a portal their navigation could not reach, with no line logged). Null while it still has time; else
+     * {@code stalled} ("no progress toward ...") and where it stood.
      */
     private static String noProgress(Character agent,
                                      AgentSupplyProcurementState execution,
                                      AgentRouteOutcome outcome,
-                                     String toward,
+                                     String stalled,
                                      long nowMs) {
         long stalledMs = execution.travelStalledMs(agent.getMapId(), nowMs);
         if (stalledMs < AgentSupplyRecoveryPolicy.travelNoProgressMs()) {
             return null;
         }
-        return "no progress toward " + toward + ": " + stalledMs + " ms on map " + agent.getMapId()
+        return stalled + ": " + stalledMs + " ms on map " + agent.getMapId()
                 + " without reaching " + (stalledHop(agent, outcome)
                 ? "its portal to map " + outcome.nextMapId() : "its next portal");
     }
@@ -693,7 +695,7 @@ public final class AgentSupplyProcurementRuntime {
                     "no return route from map " + agent.getMapId(), nowMs);
         }
         if (outcome.status() != AgentRouteStatus.ARRIVED) {
-            String stuck = noProgress(agent, execution, outcome, "the suspended plan", nowMs);
+            String stuck = noProgress(agent, execution, outcome, "no progress toward the suspended plan", nowMs);
             if (stuck != null) {
                 avoidStalledHop(entry, agent, outcome, nowMs);
                 return resumeWhereItStands(entry, agent, planning, execution, stuck, nowMs);
