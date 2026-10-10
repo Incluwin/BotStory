@@ -1711,6 +1711,44 @@ public final class LivingStore {
     }
 
     /**
+     * The personas a release's cleanup may have been cut short for (RosterService.finishReleaseCleanupAtStart): each
+     * persona's character (living_persona_state, a Resident's or a hired citizen's; never a human's) that nobody
+     * employs (no living_roster row of the persona but a RELEASED one) and that still has a GM level hold with that
+     * persona (its latest gm.level row a hold, as {@link #latestGmLevel} reads it) or an item tagged {@code gearTag}
+     * worn or in its Equip tab. One query over the persona rows, each looked up by an index (living_roster by persona,
+     * inventoryitems and living_event_log by character). Persona id to character id, by persona id, at most
+     * {@code limit}; null when the read fails.
+     */
+    public Map<String, Integer> releaseCleanupCandidates(String gearTag, int limit) {
+        String sql = "SELECT p.persona_id, p.character_id FROM living_persona_state p WHERE p.character_id > 0"
+                + " AND NOT EXISTS (SELECT 1 FROM living_roster r WHERE r.persona_id = p.persona_id"
+                + " AND r.state <> 'RELEASED')"
+                + " AND (EXISTS (SELECT 1 FROM inventoryitems i WHERE i.characterid = p.character_id AND i.type = ?"
+                + " AND i.inventorytype IN (?, ?) AND i.owner = ?)"
+                + " OR (SELECT e.kind FROM living_event_log e WHERE e.character_id = p.character_id"
+                + " AND e.persona_id = p.persona_id AND e.kind IN ('gm.level.hold', 'gm.level.release')"
+                + " ORDER BY e.id DESC LIMIT 1) = 'gm.level.hold')"
+                + " ORDER BY p.persona_id LIMIT ?";
+        Map<String, Integer> out = new LinkedHashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, ItemFactory.INVENTORY.getValue());
+            ps.setInt(2, InventoryType.EQUIPPED.getType());
+            ps.setInt(3, InventoryType.EQUIP.getType());
+            ps.setString(4, gearTag);
+            ps.setInt(5, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getInt(2));
+                }
+            }
+            return out;
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("release cleanup candidates read failed", failure);
+            return null;
+        }
+    }
+
+    /**
      * The character's newest event with this persona of one of these {@code kinds}, as its kind and detail (a
      * companion's boss-gear record, BossGearRecord): empty when there is none, null when the read fails. Reads through
      * the character index (idx_living_event_character).
@@ -1734,6 +1772,40 @@ public final class LivingStore {
             }
         } catch (SQLException failure) {
             log.warn("living_event_log latest read failed for {}/{} {}", characterId, personaId, kinds, failure);
+            return null;
+        }
+    }
+
+    /** One living_event_log row: the character it was logged under (0 for none), its kind and its detail. */
+    public record LoggedEvent(int characterId, String kind, String detail) {
+    }
+
+    /**
+     * The persona's newest event of one of these {@code kinds} under any character, with the character it was logged
+     * under (a released companion's boss-gear record at start, when who let it go is no longer known:
+     * BossGearRecord.readByPersona): empty when there is none, null when the read fails. No index covers the persona,
+     * so it reads the log back from the newest row until one matches: only the start's cleanup of a release a stop cut
+     * short calls it, for a persona whose boss gear comes off.
+     */
+    public java.util.Optional<LoggedEvent> latestPersonaEvent(String personaId, List<String> kinds) {
+        if (kinds.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String sql = "SELECT character_id, kind, detail FROM living_event_log WHERE persona_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ") ORDER BY id DESC LIMIT 1";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setString(at++, personaId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next()
+                        ? java.util.Optional.of(new LoggedEvent(rs.getInt(1), rs.getString(2), rs.getString(3)))
+                        : java.util.Optional.empty();
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("living_event_log latest read failed for persona {} {}", personaId, kinds, failure);
             return null;
         }
     }
