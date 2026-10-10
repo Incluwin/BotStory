@@ -405,6 +405,9 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
       [Review of a3a577489] While the pinned companion rests under 40 % HP with an add on it, map chat has no "low on
       pots!! walking to you" from it and it does not glare. While no donor qualifies, consecutive 'result=held' lines
       come about 30 s apart, never about 60 s apart.
+      [Review of 638f7a198] After the clear, if an add is left (or '!spawn 9300179 3', as in L1b h), run '!hpmp <name>
+      <a value under 40 % of its max HP>' on the dry companion while it fights the add. Pass: no "low on pots!!
+      walking to you" and no glare from it within the next 45 s.
       Fail: the pinned companion walks right of the golem; it stands idle at full HP while an add hits it; ask lines
       come more often than every 30 s, or go on after hpPots reaches 10.
       Extra grep: grep -E "EPQ boss rest|EPQ member down" logs/cosmic-log.log

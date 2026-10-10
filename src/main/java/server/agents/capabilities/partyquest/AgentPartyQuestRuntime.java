@@ -158,12 +158,12 @@ public final class AgentPartyQuestRuntime {
     }
 
     /**
-     * True while the member's run holds it back for its HP potions by its own rest rule
+     * True while the member's run on {@code mapId} holds it back for its HP potions by its own rest rule
      * (AgentPartyQuestSystem.ownsPotionRest). Memory only.
      */
-    public static boolean ownsPotionRest(int characterId) {
+    public static boolean ownsPotionRest(int characterId, int mapId) {
         for (AgentPartyQuestSystem system : SYSTEMS) {
-            if (system.ownsPotionRest(characterId)) {
+            if (system.ownsPotionRest(characterId, mapId)) {
                 return true;
             }
         }
@@ -529,8 +529,8 @@ public final class AgentPartyQuestRuntime {
             return adopted(AgentEpqSessionRegistry.forMember(characterId));
         }
 
-        @Override public boolean ownsPotionRest(int characterId) {
-            return AgentEpqRuntime.ownsPotionRest(characterId);
+        @Override public boolean ownsPotionRest(int characterId, int mapId) {
+            return AgentEpqRuntime.ownsPotionRest(characterId, mapId);
         }
 
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("epq"); }

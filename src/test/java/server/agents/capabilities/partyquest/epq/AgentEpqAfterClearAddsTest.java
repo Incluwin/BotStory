@@ -5,6 +5,7 @@ import client.inventory.InventoryType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.life.Monster;
 
@@ -12,6 +13,8 @@ import java.awt.Point;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -336,5 +339,34 @@ class AgentEpqAfterClearAddsTest {
 
         verify(run.map, atLeastOnce()).killMonster(dummy, null, false, (short) 0);
         for (Character agent : List.of(mira, tobi, una)) neverFights(agent);
+    }
+
+    /**
+     * Review of 638f7a198: the after-clear add fight is grind mode, where the generic out-of-potions stop (fewer than
+     * POT_STOP HP potions, under 40 % HP) said "low on pots!! walking to you" to a dry companion that never walks. Past
+     * the clear a companion run owns its members' moves on the golem's map (AgentPartyQuestRuntime.ownsPotionRest),
+     * which keeps that stop quiet; before the clear, on another map or in a stock run it does not.
+     */
+    @Test
+    void pastTheClearACompanionRunOwnsItsMembersPotionRestOnTheGolemsMap() {
+        AgentEpqSession session = companionRun();
+        add(9_300_177, 100);
+        standsAt(tobi, 120);
+        tick(session, tobi, 2_000L);
+        fights(tobi);
+
+        assertTrue(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP), "the add fight");
+        assertTrue(AgentPartyQuestRuntime.ownsPotionRest(una.getId(), AgentEpqDefinition.BOSS_MAP), "every member");
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.REWARD_MAP), "another map");
+        when(run.event.isEventCleared()).thenReturn(false);
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP),
+                "before the clear");
+    }
+
+    @Test
+    void aStockRunOwnsNoPotionRestPastTheClear() {
+        run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false, AgentEpqSession.Phase.BOSS, ben, mira, tobi, una);
+
+        assertFalse(AgentPartyQuestRuntime.ownsPotionRest(tobi.getId(), AgentEpqDefinition.BOSS_MAP));
     }
 }

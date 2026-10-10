@@ -132,6 +132,7 @@ class AgentPotionServiceTest {
         when(bot.getId()).thenReturn(id);
         when(bot.getHp()).thenReturn(300);
         when(bot.getMaxHp()).thenReturn(1_000);
+        when(bot.getMapId()).thenReturn(930_000_600);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentRelationshipRuntime.setCohortId(entry, id);
         AgentModeService.startFarmHere(entry, new Point(-540, 150), ignored -> { });
@@ -145,7 +146,7 @@ class AgentPotionServiceTest {
             potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{3, 200});
             reserve.when(() -> AgentPotionReserve.tripNeeded(eq(bot), eq(AgentResourceCategory.HP_POTION),
                     anyBoolean())).thenReturn(true);
-            partyQuests.when(() -> AgentPartyQuestRuntime.ownsPotionRest(id)).thenReturn(questOwnsRest);
+            partyQuests.when(() -> AgentPartyQuestRuntime.ownsPotionRest(id, 930_000_600)).thenReturn(questOwnsRest);
             boolean[] said = {false};
             speech.when(() -> AgentPotionRuntime.sayMapNow(eq(bot), any())).then(call -> {
                 said[0] = true;
