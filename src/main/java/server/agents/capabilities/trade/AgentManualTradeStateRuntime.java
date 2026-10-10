@@ -100,20 +100,6 @@ public final class AgentManualTradeStateRuntime {
         }
     }
 
-    /** server.Trade refused the Agent's trade for lack of bag space: its completion says no thanks for it. */
-    public static void markRefusedForSpace(AgentRuntimeEntry entry) {
-        AgentManualTradeState state = state(entry);
-        if (state != null) {
-            state.markRefusedForSpace();
-        }
-    }
-
-    /** True once after {@link #markRefusedForSpace}. */
-    public static boolean takeRefusedForSpace(AgentRuntimeEntry entry) {
-        AgentManualTradeState state = state(entry);
-        return state != null && state.takeRefusedForSpace();
-    }
-
     public static void clear(AgentRuntimeEntry entry) {
         AgentManualTradeState state = state(entry);
         if (state != null) {
