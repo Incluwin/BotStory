@@ -462,7 +462,7 @@ public final class BenchDutyDispatcher {
     }
 
     /** Whether a camp is a field the population's catalog lists with no room (FieldCatalog.closed): no camp now. */
-    private static boolean closed(int mapId) {
+    static boolean closed(int mapId) {
         Population population = Population.get();
         FieldCatalog fields = population == null ? null : population.fields();
         return fields != null && fields.closed(mapId);
