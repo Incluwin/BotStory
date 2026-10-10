@@ -127,6 +127,8 @@ class AgentSupplyReadinessRuntimeTest {
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
+    /** What the rule answers for a refusal: true, its host said its line; false, it kept quiet (said too recently). */
+    private boolean refusalsSaid = true;
     /** Maps the rule keeps companions on (a boss's gate): no shop trip from there. */
     private final java.util.Set<Integer> noShopMaps = new java.util.HashSet<>();
     /** Hunting fields the rule opens to a duty holder of Easy Balrog's standard (a store on the way down there). */
@@ -212,9 +214,10 @@ class AgentSupplyReadinessRuntimeTest {
             }
 
             @Override
-            public void refused(int id, AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Refusal why,
-                                AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+            public boolean refused(int id, AgentSupplyReadiness.Activity activity, AgentSupplyReadiness.Refusal why,
+                                   AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
                 calls.add("refused " + id + " " + why + " " + missingMesos);
+                return refusalsSaid;
             }
 
             @Override
@@ -1329,6 +1332,30 @@ class AgentSupplyReadinessRuntimeTest {
 
         assertEquals(List.of("refused 589 CANNOT_AFFORD " + (19 * RED - 155), "still short 589 " + (19 * RED - 255),
                 "refused 589 CANNOT_AFFORD " + (11 * RED - 255)), calls, "nothing still short after the refusal");
+    }
+
+    @Test
+    void aGiftHeldBackByTheSpacingIsStillToldAfterARefusalItsHostKeptQuiet() {
+        // third review: the host mutes a broke line said within COMPANION_RESTOCK_ASK_EVERY_MS, and that is exactly
+        // when it answers a still-short report: the gift must stay to be told
+        Character fenna = companion(592, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        long every = config.AgentTuning.longValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.STILL_SHORT_EVERY_MS");
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        purses.put(592, 255);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        stand(fenna, KERNING_SHOP, true);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+        refusalsSaid = false; // its broke line was said a minute ago: the new map's refusal is not said again
+        potions.put(592, new int[]{9, 30});
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L + every));
+
+        assertEquals(List.of("refused 592 CANNOT_AFFORD " + (19 * RED - 155), "still short 592 " + (19 * RED - 255),
+                "refused 592 CANNOT_AFFORD " + (11 * RED - 255), "still short 592 " + (11 * RED - 255)), calls,
+                "the potions are answered once the spacing allows");
     }
 
     @Test

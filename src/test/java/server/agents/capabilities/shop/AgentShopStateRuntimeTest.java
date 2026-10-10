@@ -161,9 +161,27 @@ class AgentShopStateRuntimeTest {
         assertEquals(before, AgentShopStateRuntime.shopVisitGeneration(entry));
 
         AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 1_000L);
+        long open = AgentShopStateRuntime.shopVisitGeneration(entry);
         AgentShopStateRuntime.clearShopState(entry);
-        assertEquals(before + 1, AgentShopStateRuntime.shopVisitGeneration(entry));
+        long ended = AgentShopStateRuntime.shopVisitGeneration(entry);
+        assertTrue(ended != open, "the open visit ended");
         AgentShopStateRuntime.clearShopState(entry);
-        assertEquals(before + 1, AgentShopStateRuntime.shopVisitGeneration(entry));
+        assertEquals(ended, AgentShopStateRuntime.shopVisitGeneration(entry));
+    }
+
+    @Test
+    void aStepScheduledAfterItsOwnVisitWasClearedNeverRunsInTheNextVisit() {
+        // third review: finishPurchaseSequence reads the generation after tickAmmoCheck, and a dry grinder's ammo
+        // check can cancel the visit first (followConfiguredTarget -> cancelShopVisit -> clear)
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 1_000L);
+        AgentShopStateRuntime.clearShopState(entry);
+        long stale = AgentShopStateRuntime.shopVisitGeneration(entry);
+
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 2_000L);
+
+        assertFalse(AgentShopStateRuntime.shouldRunScheduledShopStep(entry, stale));
+        assertTrue(AgentShopStateRuntime.shouldRunScheduledShopStep(
+                entry, AgentShopStateRuntime.shopVisitGeneration(entry)));
     }
 }

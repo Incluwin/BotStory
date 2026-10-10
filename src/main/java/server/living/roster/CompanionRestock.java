@@ -191,11 +191,13 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * It did not set off: too broke asks its owner for what it lacks or mesos (user decision 2026-10-09), and short at
      * a boss's entrance with no shop in reach (an ACTIVE companion) says there is none out here; each at most once per
      * COMPANION_RESTOCK_ASK_EVERY_MS, in its ammo words when only projectiles are short (one memory per news: a potion
-     * and an ammo broke line never both within it).
+     * and an ammo broke line never both within it). True when it says one: only then does the Agent forget a gift it
+     * has not told yet.
      */
     @Override
-    public void refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
-                        AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+    public boolean refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
+                           AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall,
+                           int missingMesos) {
         String word = ammoOnly(shortfall) ? CompanionRestockLines.ammoWord(bot(agentCharacterId)) : null;
         if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
@@ -203,13 +205,17 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, word != null ? CompanionRestockLines.BROKE_AMMO
                             : CompanionRestockLines.BROKE, word != null ? word : need));
-        } else if (why == AgentSupplyReadiness.Refusal.NO_SUPPLIER && boss(activity) && unheld(agentCharacterId)
+            return true;
+        }
+        if (why == AgentSupplyReadiness.Refusal.NO_SUPPLIER && boss(activity) && unheld(agentCharacterId)
                 && mayAsk(agentCharacterId, CompanionRestockLines.NO_SHOP,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.no_shop " + agentCharacterId,
                     () -> say(agentCharacterId, word != null ? CompanionRestockLines.NO_SHOP_AMMO
                             : CompanionRestockLines.NO_SHOP, word));
+            return true;
         }
+        return false;
     }
 
     /**
@@ -249,8 +255,9 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * still short of what it lacks ("{need}"), its own news, once per report (the Agent spaces them by
      * STILL_SHORT_EVERY_MS). Only while its broke line (its own or the desk's) is less than
      * COMPANION_RESTOCK_ASK_EVERY_MS old: a pot share it never asked for gets no answer. Held or not: its owner
-     * may hand it coin as they come out of the run. A refusal the same check finds comes after this, so its broke
-     * line, said already, holds (the gift is answered once).
+     * may hand it coin as they come out of the run. The Agent reports this before a refusal the same check finds, whose
+     * broke line, said already, then keeps quiet; a gift it holds back for STILL_SHORT_EVERY_MS stays to be told
+     * unless that refusal's line is said ({@link #refused} true).
      */
     @Override
     public void stillShort(int agentCharacterId, AgentSupplyReadiness.Activity activity,

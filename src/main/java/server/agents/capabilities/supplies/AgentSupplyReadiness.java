@@ -136,9 +136,15 @@ public final class AgentSupplyReadiness {
         default void started(int agentCharacterId, Activity activity, long etaMs) {
         }
 
-        /** It did not set off ({@code missingMesos}: how much more the trip needs, CANNOT_AFFORD only). */
-        default void refused(int agentCharacterId, Activity activity, Refusal why, Shortfall shortfall,
-                             int missingMesos) {
+        /**
+         * It did not set off ({@code missingMesos}: how much more the trip needs, CANNOT_AFFORD only). True when the
+         * host said so (a line its owner hears); false when it kept quiet (the same news said too recently, or none to
+         * say). A gift still to be told ({@link #stillShort}) is forgotten only after a refusal that was said. On the
+         * Agent tick.
+         */
+        default boolean refused(int agentCharacterId, Activity activity, Refusal why, Shortfall shortfall,
+                                int missingMesos) {
+            return false;
         }
 
         /** Its readiness trip ended. On the Agent tick. */
@@ -236,16 +242,17 @@ public final class AgentSupplyReadiness {
         }
     }
 
-    static void refused(int agentCharacterId, Activity activity, Refusal why, Shortfall shortfall,
-                        int missingMesos) {
+    static boolean refused(int agentCharacterId, Activity activity, Refusal why, Shortfall shortfall,
+                           int missingMesos) {
         Rule current = rule;
         if (current == null) {
-            return;
+            return false;
         }
         try {
-            current.refused(agentCharacterId, activity, why, shortfall, missingMesos);
+            return current.refused(agentCharacterId, activity, why, shortfall, missingMesos);
         } catch (RuntimeException failure) {
             log.warn("readiness rule failed on a refusal for Agent {}", agentCharacterId, failure);
+            return false;
         }
     }
 

@@ -373,6 +373,25 @@ class CompanionRestockTest {
     }
 
     @Test
+    void aRefusalTellsTheAgentWhetherItsLineWasSaid() {
+        // third review: the Agent forgets a gift held back by its spacing only when the refusal was really said
+        AgentSupplyReadiness.Shortfall short19 = new AgentSupplyReadiness.Shortfall(19, 0);
+        assertTrue(restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST,
+                AgentSupplyReadiness.Refusal.CANNOT_AFFORD, short19, 795), "its broke line");
+        assertFalse(restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST,
+                AgentSupplyReadiness.Refusal.CANNOT_AFFORD, short19, 795), "said too recently: kept quiet");
+        assertFalse(restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST,
+                AgentSupplyReadiness.Refusal.NO_SPACE, short19, 0), "no line for it");
+        assertFalse(restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST,
+                AgentSupplyReadiness.Refusal.NO_SUPPLIER, short19, 0), "no shop line away from a boss");
+        now += config.COMPANION_RESTOCK_ASK_EVERY_MS;
+        assertTrue(restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST,
+                AgentSupplyReadiness.Refusal.CANNOT_AFFORD, short19, 795), "half an hour later");
+        drain();
+        assertEquals(2, said.size(), said.toString());
+    }
+
+    @Test
     void theBrokeLineIsLimitedAndInterruptedShortSpaceAndTheOtherRefusalsAreSilent() {
         restock.finished(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Outcome.SHORT_MESOS);
         restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
