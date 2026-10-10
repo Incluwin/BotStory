@@ -213,7 +213,8 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
                         && offer.advertisements > 0 && offer.mapId == buyer.getMapId()
                         && logicalAt.isBefore(offer.expiresAt)
                         && !offer.refusedBuyers.contains(profile.agentId()) // nor the approach to its seller
-                        && !sellerBusy(offer)) // for now: no lines into a seller in a human's trade or invite
+                        && !sellerBusy(offer) // for now: no lines into a seller in a human's trade or invite
+                        && !logicalAt.isBefore(offer.unreachableUntil.getOrDefault(profile.agentId(), Instant.MIN)))
                 .flatMap(offer -> needs.stream().filter(need -> need.deficit() >= offer.quantity
                                 && (need.itemId() == offer.itemId || need.substitutes().contains(offer.itemId)))
                         .map(need -> purchaseCandidate(offer, need, liquidityBudget)))
@@ -224,6 +225,12 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         Character seller = participants.admittedCharacter(offer.sellerAgentId);
         if (seller == null) return Result.none();
         CosmicCounterpartyApproachService.Status proximity = approach.request(buyer, seller);
+        if (proximity == CosmicCounterpartyApproachService.Status.UNAVAILABLE)
+            // the seller left the offer's room, or the buyer cannot walk: it goes back to the stalls and leaves this
+            // offer alone until the seller could call it out again (deploy review 2026-10-10). Other buyers may still
+            // try it. Not checkpointed: after a restore the buyer may look for the seller once more.
+            offer.unreachableUntil.put(profile.agentId(),
+                    logicalAt.plus(Duration.parse(config.minimumRepeatDelay)));
         if (proximity != CosmicCounterpartyApproachService.Status.ARRIVED)
             return new Result(true, false, false, "APPROACH_" + proximity.name(),
                     offer.offerId.toString(), offer.itemId, selected.payment(),
@@ -599,6 +606,7 @@ public final class CosmicOpenChatSaleService implements AutonomousFreeMarketBeha
         private boolean reservationActive = true;
         private OfferState state = OfferState.OPEN;
         private final Set<String> refusedBuyers = new HashSet<>(); // Agent buyers whose opened trade for it was refused
+        private final Map<String, Instant> unreachableUntil = new HashMap<>(); // Agent buyer -> when it looks again
 
         private Offer(UUID offerId, UUID intentId, String sellerAgentId, int sellerCharacterId,
                       InventoryType inventoryType, short slot, int itemId, String fingerprint,

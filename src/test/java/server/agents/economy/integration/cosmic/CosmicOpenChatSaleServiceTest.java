@@ -514,6 +514,54 @@ class CosmicOpenChatSaleServiceTest {
     }
 
     /**
+     * Deploy review 2026-10-10: when the seller had left the offer's room (or the buyer had no Agent runtime), the
+     * approach came back UNAVAILABLE on every revisit, and the buyer stayed on that offer until the seller came back or
+     * the offer expired. Now the buyer leaves that offer alone for the seller's minimum repeat delay (PT1M here), other
+     * buyers may still try it, and after the delay the buyer tries it again.
+     */
+    @Test
+    void aBuyerThatCannotReachTheSellerLeavesThatOfferAloneForAWhile() {
+        UUID runId = UUID.randomUUID();
+        Instant at = Instant.parse("2026-01-01T00:00:00Z");
+        MapleMap room = mock(MapleMap.class);
+        Character seller = trader(77, room);
+        Character buyer = trader(88, room);
+        Character other = trader(99, room);
+        swordIn(seller);
+        EconomyParticipantRegistry participants = new EconomyParticipantRegistry(id -> null);
+        participants.admitted(profile("seller"), seller);
+        participants.admitted(profile("buyer"), buyer);
+        participants.admitted(profile("other"), other);
+        List<Character> approachedBy = new ArrayList<>();
+        CosmicNegotiatedTradeExecutor executor = mock(CosmicNegotiatedTradeExecutor.class);
+        CosmicOpenChatSaleService service = new CosmicOpenChatSaleService(runId, "cfg", "catalog",
+                config(), new NamedRandomStreams(1), participants, echoingEconomy(runId),
+                mock(EconomyEvidenceJournal.class), executor,
+                mock(CosmicOpenChatSaleService.ReservationGateway.class), (itemId, quantity) -> 100_000,
+                (speaker, text) -> { }, (shopper, target) -> {
+                    approachedBy.add(shopper);
+                    return CosmicCounterpartyApproachService.Status.UNAVAILABLE;
+                });
+        service.prepare(seller, profile("seller"), swordPlan(), at);
+        service.progressSeller(seller, profile("seller"), at.plusSeconds(5));
+
+        var unreachable = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(6));
+        var another = service.attemptPurchase(other, profile("other"), List.of(swordNeed(at)), at.plusSeconds(7));
+        var within = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(65));
+        var after = service.attemptPurchase(buyer, profile("buyer"), List.of(swordNeed(at)), at.plusSeconds(66));
+
+        assertAll(
+                () -> assertEquals("APPROACH_UNAVAILABLE", unreachable.outcome()),
+                () -> assertEquals(Boolean.FALSE, unreachable.evidence().get("externalActionPending")),
+                () -> assertFalse(within.attempted(), within.outcome()),
+                () -> assertEquals("APPROACH_UNAVAILABLE", another.outcome(), "other buyers may still try it"),
+                () -> assertEquals("APPROACH_UNAVAILABLE", after.outcome(), "after the delay it tries again"),
+                () -> assertEquals(List.of(buyer, other, buyer), approachedBy),
+                () -> verifyNoInteractions(executor),
+                () -> assertEquals(1, service.views().size()));
+    }
+
+    /**
      * The real executor, except that a trade between the two when both are free settles: the settlement itself needs
      * the database (anAgentBuyerRefusedForItsFullBag... runs the real trade up to its refusal).
      */
