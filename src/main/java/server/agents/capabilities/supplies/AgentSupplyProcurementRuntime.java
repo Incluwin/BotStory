@@ -677,6 +677,7 @@ public final class AgentSupplyProcurementRuntime {
             if (execution.abandoned()) {
                 return finishAbandoned(entry, agent, planning, execution, nowMs);
             }
+            log.info("Agent '{}' is rejoining its owner after its {} resupply", agent.getName(), execution.category());
             finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                     "shop transaction completed; rejoining the owner", nowMs);
             return false;
@@ -705,6 +706,11 @@ public final class AgentSupplyProcurementRuntime {
         if (execution.abandoned()) {
             return finishAbandoned(entry, agent, planning, execution, nowMs);
         }
+        // One line when the walk back arrives: before it a restocked trip ended in silence (live, the citizen
+        // AngryWarrior shopped in Kerning at 07:11:18 and nothing more was logged), so a live check could not tell
+        // a walk back that arrived from one still under way.
+        log.info("Agent '{}' walked back to map {} after its {} resupply", agent.getName(), execution.returnMapId(),
+                execution.category());
         finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                 "shop transaction completed and plan location restored", nowMs);
         return false;
