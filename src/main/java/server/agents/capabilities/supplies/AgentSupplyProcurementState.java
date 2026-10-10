@@ -71,6 +71,14 @@ public final class AgentSupplyProcurementState {
         return Math.max(0L, nowMs - travelOnMapSinceMs);
     }
 
+    /**
+     * How long this walk has stood on {@code mapId} by the clock {@link #travelStalledMs} keeps, for an observer: it
+     * never starts that clock, and is 0 when the walk's last look was at another map (or none since its phase began).
+     */
+    public synchronized long travelStoodMs(int mapId, long nowMs) {
+        return travelMapId == mapId ? Math.max(0L, nowMs - travelOnMapSinceMs) : 0L;
+    }
+
     private void restartTravelClock() {
         travelMapId = -1;
         travelOnMapSinceMs = 0L;
