@@ -13,6 +13,12 @@ public record AgentSupplyProcurementOutcome(
         long occurredAtMs,
         String reason) {
 
+    /**
+     * How the reason of a walk to the supplier that the no-progress watchdog gave up begins: it stood on one map for
+     * TRAVEL_NO_PROGRESS_MS without crossing to another.
+     */
+    public static final String NO_PROGRESS_TOWARD_SUPPLIER = "no progress toward the supplier";
+
     public enum Status {
         RESTORED,
         PARTIALLY_RESTORED,
@@ -32,6 +38,14 @@ public record AgentSupplyProcurementOutcome(
 
     public boolean restored() {
         return status == Status.RESTORED;
+    }
+
+    /**
+     * True when the no-progress watchdog gave the walk to the supplier up ({@link #NO_PROGRESS_TOWARD_SUPPLIER}); a
+     * walk with no route, a shop that sold nothing and a walk back that stalled are not.
+     */
+    public boolean stalledTowardSupplier() {
+        return status == Status.ROUTE_FAILED && reason.startsWith(NO_PROGRESS_TOWARD_SUPPLIER);
     }
 
     public boolean requiresRecoveryIncome() {
