@@ -771,13 +771,16 @@ public final class AgentEpqCoordinator {
      * falls under REST_HP_FRACTION of its maximum (with or without potions), or that holds fewer than POT_STOP HP
      * potions, rests (AgentEpqRecoveryPolicy): it backs off on its own side of the golem, never across it, or holds its
      * spot when it already stands out of reach. While under RESUME_HP_FRACTION it drinks one HP potion (the autopot's
-     * choice for its deficit) every TOP_UP_INTERVAL_MS, on the way too. Away from its rest point (or airborne) it walks
-     * there; there, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still (the
-     * generic potion share still asks the party). It rejoins only at RESUME_HP_FRACTION with POT_STOP potions; the rest
-     * lasts through the golem's revive gap and otherwise ends only with the clear or when it leaves the golem's map.
-     * 'EPQ boss rest:' START (why=hp or why=pots), END and every change of rest point (MOVE); a companion run's rester
-     * says once a run that it backs off (E15r) and once that it is out of potions (E15d). True while the rest owns this
-     * pass.
+     * choice for its deficit) every TOP_UP_INTERVAL_MS, on the way too; with fewer than POT_STOP it asks its party for
+     * HP potions as the rest starts and every DRY_ASK_INTERVAL_MS (askWhileDry). Away from its rest point (or airborne)
+     * it walks there. There, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still.
+     * Pinned (its rest point itself in the golem's reach, so holding still spares it no hit; review of 2026-10-09), it
+     * fights an add that reaches it too, and a dry one hits whatever its attacks reach from there, the golem too, while
+     * its HP is at least REST_HP_FRACTION. Every fight at the rest point is the anchored grind, which never walks toward
+     * a target. It rejoins only at RESUME_HP_FRACTION with POT_STOP potions; the rest lasts through the golem's revive
+     * gap and otherwise ends only with the clear or when it leaves the golem's map. 'EPQ boss rest:' START (why=hp or
+     * why=pots), END and every change of rest point (MOVE); a companion run's rester says once a run that it backs off
+     * (E15r) and once that it is out of potions (E15d). True while the rest owns this pass.
      */
     private static boolean bossRest(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                      AgentEpqMemberState member, long nowMs) {
@@ -812,9 +815,14 @@ public final class AgentEpqCoordinator {
             logBossRest(session, agent, member, "MOVE", why, restPoint, golemAt);
         }
         drinkWhileResting(agent, member, potions, nowMs);
+        askWhileDry(session, entry, agent, member, potions, potStop, nowMs);
+        boolean pinned = AgentEpqRecoveryPolicy.pinned(restPoint, golemAt, AgentEpqRecoveryPolicy.REACH_PX);
         if (!nearWithin(position, restPoint, AgentEpqRecoveryPolicy.REST_ARRIVAL_PX) || !actions().grounded(agent)) {
             actions().navigate(entry, restPoint, true);
-        } else if (Math.abs(position.x - golemAt.x) > AgentEpqRecoveryPolicy.REACH_PX
+        } else if (pinned && potions < potStop
+                && agent.getHp() >= agent.getCurrentMaxHp() * AgentEpqRecoveryPolicy.REST_HP_FRACTION) {
+            actions().grindFromAnchor(entry, restPoint, AgentEpqDefinition.BOSS_COMBAT_TARGETS, Set.of());
+        } else if ((pinned || Math.abs(position.x - golemAt.x) > AgentEpqRecoveryPolicy.REACH_PX)
                 && AgentEpqRecoveryPolicy.addThreat(position, AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive)
                 .filter(monster -> AgentEpqDefinition.BOSS_ADDS.contains(monster.getId()))
@@ -839,6 +847,27 @@ public final class AgentEpqCoordinator {
         var choice = AgentPotionService.selectAutopotForCurrentDeficit(agent, true);
         boolean drank = choice != null && actions().useItem(agent, choice.itemId());
         member.recordBossRestDrink(nowMs + AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS, drank);
+    }
+
+    /**
+     * A resting member with fewer than POT_STOP HP potions asks its party for HP potions as the dry rest starts and then
+     * every DRY_ASK_INTERVAL_MS: standing or walking, it is outside the grind and follow modes the generic potion check
+     * asks from (AgentPotionService.tickPotionCheck). The ask is the generic potion share's, with its cohort cooldown,
+     * no-donor backoff and donor bar. 'EPQ boss rest ask:' result=sent when the ask went out (a donor shares, says it is
+     * low itself, or none is on the map), result=held when the share's cooldown, backoff or a trade held it.
+     */
+    private static void askWhileDry(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                    AgentEpqMemberState member, int potions, int potStop, long nowMs) {
+        if (potions >= potStop || nowMs < member.nextBossRestAskAtMs()) return;
+        boolean sent = AgentPotionService.requestPotShare(entry, agent, true);
+        member.recordBossRestAsk(nowMs + AgentEpqRecoveryPolicy.DRY_ASK_INTERVAL_MS);
+        try {
+            log.info("EPQ boss rest ask: session={} member={} result={} asks={} hp={}/{} hpPots={}",
+                    session.sessionId(), agent.getName(), sent ? "sent" : "held", member.bossRestAsks(),
+                    agent.getHp(), agent.getCurrentMaxHp(), potions);
+        } catch (RuntimeException e) {
+            log.warn("EPQ boss rest ask line failed: session={}", session.sessionId(), e);
+        }
     }
 
     private static void endBossRest(AgentEpqSession session, Character agent, AgentEpqMemberState member,
