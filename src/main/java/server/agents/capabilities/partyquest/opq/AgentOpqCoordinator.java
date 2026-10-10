@@ -73,7 +73,10 @@ final class AgentOpqCoordinator {
 
     private AgentOpqCoordinator() { }
 
-    /** How long a run may go without progress before it is ended; a human-led run waits this long for its entry. */
+    /**
+     * How long a run may go without progress before it is ended; a human-led run waits this long for its entry, and
+     * once its human leader is in the event it is never timed out (humanLeaderInEvent).
+     */
     static long phaseTimeoutMs() {
         return PHASE_TIMEOUT_MS;
     }
@@ -90,7 +93,10 @@ final class AgentOpqCoordinator {
             if (session.terminal()) return;
             // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
             if (session.companionAdopted() && session.terminationStarted()) return;
-            if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
+            // The clear is read before the stall timer, so a clear seen in this pass counts (live 2026-10-09: Minerva
+            // was freed 6 s before the 720 s timer failed the run).
+            noteClear(session, nowMs);
+            if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS && !humanLeaderInEvent(session)) {
                 AgentOpqTerminationService.fail(session, "No legal OPQ progress before timeout", nowMs);
                 return;
             }
@@ -130,7 +136,6 @@ final class AgentOpqCoordinator {
                 // the run (its queued hand-backs still run after this pass).
                 if (AgentOpqTerminationService.humansCarryOn(session, nowMs)) return;
             }
-            noteClear(session, nowMs);
             synchronizePhase(session, leader, nowMs);
             switch (session.phase()) {
                 case PREPARING -> session.transition(AgentOpqSession.Phase.ENTERING, nowMs);
@@ -240,16 +245,37 @@ final class AgentOpqCoordinator {
 
     /**
      * Records the first pass that saw the clear (the event cleared, or Minerva freed: statusStg8, read as text), for the
-     * run's pace. Reading only; a failure to read is not the clear.
+     * run's pace; that first sight is progress too, so the claims get the whole stall timer. Reading only; a failure to
+     * read is not the clear.
      */
     private static void noteClear(AgentOpqSession session, long nowMs) {
         EventInstanceManager event = session.eventInstance();
         if (event == null || session.clearSeenAtMs() != 0L) return;
         try {
-            if (event.isEventCleared() || "1".equals(event.getProperty("statusStg8"))) session.markClearSeen(nowMs);
+            if (event.isEventCleared() || "1".equals(event.getProperty("statusStg8"))) {
+                session.markClearSeen(nowMs);
+                session.markProgress(nowMs);
+            }
         } catch (RuntimeException ignored) {
             // not seen this pass
         }
+    }
+
+    /**
+     * A companion run's human leader is in its bound, live event (alive or down). Only the leader can act in some phases
+     * (the climb to Minerva, the rooms and the statue hand-ins without six Agents), so the stall timer never ends such a
+     * run with the leader inside: the stock event bounds it (its 45-minute timer, then the 5-minute bonus that warps
+     * everyone to 920011300), and the leader rules end it when the leader goes offline or leaves before the clear. Down
+     * counts as in, as OB6 holds: the stock event ends the run on the leader's revive. Before the event (the entry) the
+     * stall timer still applies.
+     */
+    static boolean humanLeaderInEvent(AgentOpqSession session) {
+        if (!session.companionAdopted()) return false;
+        AgentOpqMemberState leaderState = session.member(session.eventLeaderId());
+        if (leaderState == null || leaderState.memberType() != AgentOpqMemberState.MemberType.HUMAN) return false;
+        EventInstanceManager bound = session.eventInstance();
+        Character leader = character(session.eventLeaderId());
+        return bound != null && leader != null && !bound.isEventDisposed() && leader.getEventInstance() == bound;
     }
 
     private static void tickEntry(AgentOpqSession session, Character leader, long nowMs) {

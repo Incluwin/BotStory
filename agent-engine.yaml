@@ -1487,7 +1487,7 @@ tuning:
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ACTION_RETRY_MS: '650'
     # Values: 300000-1800000 milliseconds. Recommended: 720000 to allow natural puzzle discovery while still terminating a genuinely abandoned run before the event timer.
     # Purpose: Bounds how long an OPQ session may show no authoritative progress before safe cleanup.
-    # Technical: The coordinator compares session-owned progress only and releases all OPQ leases and loot custody through the idempotent termination path.
+    # Technical: The coordinator compares session-owned progress only (the first sight of the clear counts, read before this check) and releases all OPQ leases and loot custody through the idempotent termination path. A companion run whose human leader is in its event is never timed out (AgentOpqCoordinator.humanLeaderInEvent): only the leader can act in some phases, and the stock event's timers bound the run.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.PHASE_TIMEOUT_MS: '720000'
     # Values: 30000-180000 milliseconds. Recommended: 90000 so a live split-room worker retains ownership through navigation while a vanished worker can be replaced.
     # Purpose: Prevents two Agents from owning the same OPQ room objective concurrently.
