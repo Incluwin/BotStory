@@ -125,6 +125,7 @@ public class Server {
     private static ChannelDependencies channelDependencies;
 
     private LoginServer loginServer;
+    private server.admin.AdminControlPort adminControlPort;
     private final List<Map<Integer, String>> channels = new LinkedList<>();
     private final List<World> worlds = new ArrayList<>();
     private final Properties subnetInfo = new Properties();
@@ -943,9 +944,19 @@ public class Server {
 
         OpcodeConstants.generateOpcodeNames();
         CommandsExecutor.getInstance();
+        server.set.SetItemManager.loadAllSets();
+
+        if (YamlConfig.config.server.ENABLE_ADMIN_CONTROL_PORT) {
+            adminControlPort = server.admin.AdminControlPort.start(YamlConfig.config.server.ADMIN_CONTROL_PORT);
+        }
 
         for (Channel ch : this.getAllChannels()) {
             ch.reloadEventScriptManager();
+        }
+
+        if (YamlConfig.config.server.ENABLE_GM_TEST_QUEUE) {
+            tools.test.GmTestQueueWatcher.start(
+                    java.nio.file.Paths.get("logs", "gm-command-queue.txt"));
         }
     }
 
@@ -1964,6 +1975,10 @@ public class Server {
         TimerManager.getInstance().stop();
 
         log.info("Worlds and channels are offline.");
+        if (adminControlPort != null) {
+            adminControlPort.stop();
+            adminControlPort = null;
+        }
         loginServer.stop();
         if (!restart) {  // shutdown hook deadlocks if System.exit() method is used within its body chores, thanks MIKE for pointing that out
             // We disabled log4j's shutdown hook in the config file, so we have to manually shut it down here,

@@ -1100,6 +1100,41 @@ public class AbstractPlayerInteraction {
         exped.removeChannelExpedition(getPlayer().getClient().getChannelServer());
     }
 
+    /**
+     * Daily lockout pre-check for bosses that run outside the Expedition framework
+     * (currently Papulatus). Checks every party member. Returns the name of the first
+     * member who has reached the daily cap, or null if everyone is clear.
+     */
+    public String firstPartyMemberOverBossCap(String bossName) {
+        Party party = getPlayer().getParty();
+        if (party == null) {
+            return ExpeditionBossLog.attemptBossByName(getPlayer().getId(), bossName, false)
+                    ? null : getPlayer().getName();
+        }
+        for (PartyCharacter pc : party.getMembers()) {
+            if (!ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, false)) {
+                return pc.getName();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Records a daily-lockout entry for every party member. Call this once a boss
+     * battle actually starts (symmetrical to how Expedition.registerExpeditionAttempt
+     * logs each active member).
+     */
+    public void logPartyBossAttempt(String bossName) {
+        Party party = getPlayer().getParty();
+        if (party == null) {
+            ExpeditionBossLog.attemptBossByName(getPlayer().getId(), bossName, true);
+            return;
+        }
+        for (PartyCharacter pc : party.getMembers()) {
+            ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, true);
+        }
+    }
+
     public Expedition getExpedition(ExpeditionType type) {
         return getPlayer().getClient().getChannelServer().getExpedition(type);
     }

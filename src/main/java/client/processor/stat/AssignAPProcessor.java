@@ -483,10 +483,21 @@ public class AssignAPProcessor {
         return Stat.STR;
     }
 
+    // HP and MP can neither be AP-spent nor AP-reset (Phase 0: HP washing removed at source).
+    static boolean isHpOrMpApTarget(int ap) {
+        return ap == 2048 || ap == 8192;
+    }
+
     public static boolean APResetAction(Client c, int APFrom, int APTo) {
         c.lockClient();
         try {
             Character player = c.getPlayer();
+
+            if (isHpOrMpApTarget(APFrom) || isHpOrMpApTarget(APTo)) {
+                player.message("HP and MP cannot be transferred via AP reset on this server.");
+                c.sendPacket(PacketCreator.enableActions());
+                return false;
+            }
 
             switch (APFrom) {
                 case 64: // str
@@ -616,6 +627,11 @@ public class AssignAPProcessor {
     }
 
     private static boolean addStat(Character chr, int apTo, boolean usedAPReset) {
+        if (isHpOrMpApTarget(apTo)) {
+            chr.message("HP and MP cannot be modified via AP on this server.");
+            chr.sendPacket(PacketCreator.enableActions());
+            return false;
+        }
         switch (apTo) {
             case 64:
                 if (!chr.assignStr(1)) {

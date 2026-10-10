@@ -107,6 +107,8 @@ import server.ItemInformationProvider.ScriptedItem;
 import server.Marriage;
 import server.Shop;
 import server.StatEffect;
+import server.set.SetBonusTotal;
+import server.set.SetItemManager;
 import server.Storage;
 import server.ThreadManager;
 import server.TimerManager;
@@ -228,6 +230,7 @@ public class Character extends AbstractCharacterObject {
     private long lastfametime, lastUsedCashItem, lastExpression = 0, lastHealed, lastDeathtime, jailExpiration = -1;
     private transient int localstr, localdex, localluk, localint_, localmagic, localwatk;
     private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, localchairhp, localchairmp;
+    private transient SetBonusTotal setBonus;  // recomputed inside recalcEquipStats; null until first recalc
     private int localchairrate;
     private boolean hidden, equipchanged = true, berserk, hasMerchant, hasSandboxItem = false, whiteChat = false, canRecvPartySearchInvite = true;
     private boolean equippedMesoMagnet = false, equippedItemPouch = false, equippedPetItemIgnore = false;
@@ -2845,10 +2848,16 @@ public class Character extends AbstractCharacterObject {
     public void equipChanged() {
         getMap().broadcastUpdateCharLookMessage(this, this);
         equipchanged = true;
-        updateLocalStats();
+        SetBonusTotal prevSetBonus = this.setBonus;
+        updateLocalStats();  // recalcEquipStats refreshes this.setBonus
+        SetItemManager.announceChanges(this, prevSetBonus, this.setBonus);
         if (getMessenger() != null) {
             getWorldServer().updateMessenger(getMessenger(), getName(), getWorld(), client.getChannel());
         }
+    }
+
+    public SetBonusTotal getSetBonus() {
+        return setBonus != null ? setBonus : SetBonusTotal.EMPTY;
     }
 
     public void cancelDiseaseExpireTask() {
@@ -7623,6 +7632,19 @@ public class Character extends AbstractCharacterObject {
                 //equipspeed += equip.getSpeed();
                 //equipjump += equip.getJump();
             }
+
+            // Fold in set-effect bonuses. See server.set.SetItemManager + scripts/config/set-items.yml.
+            // Only STR/DEX/INT/LUK/WATK/MATK/HP/MP flow through server combat math in v83;
+            // def / acc / avoid / speed / jump / bossDamage% are recorded on setBonus but not applied.
+            setBonus = SetItemManager.compute(this);
+            equipstr += setBonus.str;
+            equipdex += setBonus.dex;
+            equipint_ += setBonus.int_;
+            equipluk += setBonus.luk;
+            equipmagic += setBonus.matk;
+            equipwatk += setBonus.watk;
+            equipmaxhp += setBonus.hp;
+            equipmaxmp += setBonus.mp;
 
             equipchanged = false;
         }
