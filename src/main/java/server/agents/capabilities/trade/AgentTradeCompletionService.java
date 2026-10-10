@@ -36,6 +36,9 @@ public final class AgentTradeCompletionService {
         }
 
         AgentTradeGatewayRuntime.trade().completeTrade(agent);
+        if (AgentManualTradeStateRuntime.takeRefusedForSpace(entry)) {
+            return; // its bag had no room, so the trade did not go through: nothing to thank for (it said so already)
+        }
         long replyDelay = replyDelayMs.getAsLong();
         if (receivedSomething) {
             agent.changeFaceExpression(AgentEmote.HAPPY.getValue());

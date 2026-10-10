@@ -1,6 +1,7 @@
 package server.agents.capabilities.trade;
 
 import client.Character;
+import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentTradeGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 
@@ -33,7 +34,13 @@ public final class AgentManualTradeRuntimeService {
                                 entry,
                                 tradeAgent,
                                 trade,
-                                callbacks::tickDown),
+                                AgentManualTradeService.idleTimeoutMs(),
+                                AgentManualTradeService.maxOpenMs(),
+                                callbacks::tickDown,
+                                AgentManualTradeService.speakingNotice(
+                                        callbacks::isPeerAgent,
+                                        AgentTradeDialogueService::manualTradeTimeoutReply,
+                                        line -> AgentDialogueTransportRuntime.visibleSayNow(entry, line))),
                         tradeOwner -> AgentTradeGatewayRuntime.trade().currentWindow(tradeOwner),
                         (tradeAgent, tradeOwner, trade, isOwnerTrade) -> AgentManualPeerTradeService.tickPeerTrade(
                                 entry,

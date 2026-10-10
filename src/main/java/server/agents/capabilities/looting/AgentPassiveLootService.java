@@ -8,6 +8,7 @@ import client.inventory.WeaponType;
 import constants.id.ItemId;
 import constants.inventory.ItemConstants;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapItem;
 import server.agents.events.AgentEventPriority;
@@ -74,12 +75,16 @@ public final class AgentPassiveLootService {
                             now, postKill.killCount(), drop, targetAgeMs);
                     continue;
                 }
+                boolean bagFull = AgentLootEligibility.isInventoryFull(agent, drop);
                 recordLootDecision(entry,
-                        AgentLootEligibility.isInventoryFull(agent, drop)
+                        bagFull
                                 ? AgentLootDecisionTraceState.Outcome.INVENTORY_FULL
                                 : AgentLootDecisionTraceState.Outcome.INELIGIBLE,
                         now, postKill.killCount(), drop, targetAgeMs);
                 warnInventoryFullIfNeeded(entry, agent, drop, callbacks);
+                if (bagFull) {
+                    mentionFullBag(entry, agent, drop, now);
+                }
                 continue;
             }
 
@@ -90,6 +95,7 @@ public final class AgentPassiveLootService {
                     recordLootDecision(entry, AgentLootDecisionTraceState.Outcome.INVENTORY_FULL,
                             now, postKill.killCount(), drop, targetAgeMs);
                     warnInventoryFull(entry, agent, type, inventory, callbacks);
+                    mentionFullBag(entry, agent, drop, now);
                     continue;
                 }
             }
@@ -158,6 +164,15 @@ public final class AgentPassiveLootService {
         if (!hasRemainingDrop) {
             postKillState.resolveKill(dropperObjectId);
         }
+    }
+
+    /**
+     * A drop left because the bag for its kind has no free slot: an owned companion may say so, at most once per
+     * AgentBagFullSpeech.LOOT_LINE_EVERY_MS, and only for a drop its loot rules and loot setting would let it pick up.
+     */
+    private static void mentionFullBag(AgentRuntimeEntry entry, Character agent, MapItem drop, long nowMs) {
+        AgentBagFullSpeech.lootLeft(entry, agent, nowMs,
+                () -> AgentLootEligibility.leftForFullBag(entry, agent, drop));
     }
 
     private static void warnInventoryFullIfNeeded(AgentRuntimeEntry entry,

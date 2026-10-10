@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.mockito.MockedStatic;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffStateRuntime;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
+import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.capabilities.movement.AgentFormationHook;
 import server.agents.capabilities.movement.AgentFormationService;
@@ -156,6 +158,30 @@ class CompanionSettingsApplierTest {
         assertTrue(server.agents.capabilities.supplies.AgentWalletReserve.exempt(HADRIK), "installed as the seam's rule");
         game.selfLed.add(HADRIK); // a live bench slice leads itself
         assertFalse(applier().exempt(HADRIK), "self-led on the bench: the reserve applies like any Agent");
+    }
+
+    @Test
+    void onlyACompanionOutWithItsOwnerInHerPartySaysItsBagIsFull() {
+        // live 2026-10-10: six companions sat on 96/96 Equip slots in silence; citizens must keep quiet about theirs
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);
+        Character citizen = game.bot(950, "Marlo");
+        assertFalse(applier().speaksOfFullBag(citizen), "a citizen is never anyone's companion");
+
+        assertTrue(game.roster().call(game.ann, hadrik).ok());
+        applier().install();
+        Character bot = game.bot(hadrik);
+
+        assertTrue(applier().speaksOfFullBag(bot), "out with its owner, in her party");
+        assertTrue(AgentBagFullSpeech.speaksOfFullBag(bot), "installed as the seam's rule");
+        assertFalse(AgentBagFullSpeech.speaksOfFullBag(citizen));
+        game.partyless.add(HADRIK);
+        assertFalse(applier().speaksOfFullBag(bot), "not in her party");
+        game.partyless.remove(HADRIK);
+        game.selfLed.add(HADRIK); // a live bench slice leads itself
+        assertFalse(applier().speaksOfFullBag(bot), "self-led on the bench");
+        game.selfLed.remove(HADRIK);
+        CompanionSettingsApplier.uninstall();
+        assertFalse(AgentBagFullSpeech.speaksOfFullBag(bot), "taken out with the other seams");
     }
 
     @Test

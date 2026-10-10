@@ -20,6 +20,10 @@ public final class AgentTradeDialogueService {
         return AgentDialogueSelector.randomReply(AgentDialogueCatalog.manualTradeGreetingReplies());
     }
 
+    public static String manualTradeTimeoutReply() {
+        return AgentDialogueSelector.randomReply(AgentDialogueCatalog.manualTradeTimeoutReplies());
+    }
+
     public static String thanksReply() {
         return AgentDialogueSelector.randomReply(AgentDialogueCatalog.tradeThanksReplies());
     }
