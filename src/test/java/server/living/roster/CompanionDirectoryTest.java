@@ -309,7 +309,8 @@ class CompanionDirectoryTest {
     /**
      * Live 2026-10-10: Bossfriend whispered his companion and heard nothing. On a live bench slice the gate keeps her
      * from him: she now whispers why, once in a while (a second whisper right after gets nothing), and nothing else
-     * happens; a stranger's whisper still gets nothing.
+     * happens; a stranger's whisper still gets nothing. Bob (an operator who does not own her) whispers first, so the
+     * once-in-a-while gap cannot hide a line said to him, and his whisper must not use up Alice's line.
      */
     @Test
     void anOwnerWhisperingACompanionOnItsBenchSliceHearsWhyOnce() {
@@ -317,16 +318,16 @@ class CompanionDirectoryTest {
         Persona olwenPersona = whisperable();
         Character olwen = bot(OLWEN, "Olwen");
 
-        whisper(alice, olwen, "sell my junk");
-        whisper(alice, olwen, "sell my junk");
         whisper(bob, olwen, "sell my junk");
+        whisper(alice, olwen, "sell my junk");
+        whisper(alice, olwen, "sell my junk");
 
+        verify(residents, never()).whisper(any(),
+                eq(bob), any());
         ArgumentCaptor<String> said = ArgumentCaptor.forClass(String.class);
         verify(residents).whisper(eq(olwenPersona),
                 eq(alice), said.capture());
         assertTrue(ON_THE_BENCH.contains(said.getValue()), said.getValue());
-        verify(residents, never()).whisper(any(),
-                eq(bob), any());
         registry.verify(() -> AgentRuntimeRegistry.findByAgentCharacterId(OLWEN), never());
     }
 
