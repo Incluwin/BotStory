@@ -46,6 +46,10 @@ public final class AgentVerticalTraversalState {
         return active() && this.graph == graph;
     }
 
+    AgentNavigationGraph graph() {
+        return graph;
+    }
+
     AgentNavigationGraph.Edge entryEdge() {
         return entryEdge;
     }

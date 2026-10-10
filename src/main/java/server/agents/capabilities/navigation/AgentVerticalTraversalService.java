@@ -161,18 +161,21 @@ public final class AgentVerticalTraversalService {
     }
 
     /**
-     * The authored exit anchor, but only while the Agent hangs on that exit's own rope. After a
-     * rope-to-rope transfer has caught the next rope, the anchor belongs to the rope just left:
-     * climbing toward it can run off the caught rope's end (Sleepy Dungeon 105040302: exit y=374
-     * on ladder 6, below ladder 5's bottom y=358).
+     * The authored exit anchor, except while the Agent hangs on the rope a rope-to-rope exit jumps
+     * to: there the anchor belongs to the rope just left, and climbing toward it can run off the
+     * caught rope's end (Sleepy Dungeon 105040302: exit y=374 on ladder 6, below ladder 5's bottom
+     * y=358). On any other rope, such as a ladder that the region lookup puts in the exit rope's
+     * region (300020000: ladder x -201 in rope x -200's region), the Agent climbs to the anchor and
+     * the exit runs from there. Holding on that ladder waited for the attempt timeout, which
+     * charged a failure to the exit.
      */
     public static Point committedClimbExitPosition(AgentRuntimeEntry entry, Rope climbRope) {
         Point exit = committedClimbExitPosition(entry);
         if (exit == null || climbRope == null) {
             return null;
         }
-        AgentNavigationGraph.Edge exitEdge = entry.verticalTraversalState().exitEdge();
-        return isRope(climbRope, exitEdge.ropeX, exitEdge.ropeTopY, exitEdge.ropeBottomY) ? exit : null;
+        AgentVerticalTraversalState state = entry.verticalTraversalState();
+        return isExitDestination(state.graph(), state.exitEdge(), climbRope) ? null : exit;
     }
 
     public static boolean blocksRecentInverseEntry(AgentNavigationGraph graph,
@@ -210,10 +213,15 @@ public final class AgentVerticalTraversalService {
     private static boolean hangsOnExitDestination(AgentNavigationGraph graph,
                                                   AgentRuntimeEntry entry,
                                                   AgentNavigationGraph.Edge exitEdge) {
+        return isExitDestination(graph, exitEdge, AgentClimbStateRuntime.climbRope(entry));
+    }
+
+    private static boolean isExitDestination(AgentNavigationGraph graph,
+                                             AgentNavigationGraph.Edge exitEdge,
+                                             Rope rope) {
         AgentNavigationGraph.Region destination = graph.getRegion(exitEdge.toRegionId);
         return destination != null && destination.isRopeRegion
-                && isRope(AgentClimbStateRuntime.climbRope(entry),
-                        destination.minX, destination.minY, destination.maxY);
+                && isRope(rope, destination.minX, destination.minY, destination.maxY);
     }
 
     /** Matches a rope on x, top and bottom, like AgentNavigationGraphService.findRopeFromRegion. */

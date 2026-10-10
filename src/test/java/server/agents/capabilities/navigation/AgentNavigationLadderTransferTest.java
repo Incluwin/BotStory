@@ -198,6 +198,48 @@ class AgentNavigationLadderTransferTest {
         assertEquals(List.of(), transferFailures);
     }
 
+    @Test
+    void ladderInTheRopesRegionClimbsToTheRopesJumpOff() {
+        // Southern Region of Mossy Tree Forest 1 (300020000): ladder 8 (x -201, y -81..-1)
+        // resolves to rope 7 (x -200). An Agent that grabbed ladder 8 while its climb owned rope
+        // 7's jump-off at y -51 held there, because the climb steered only on the exit's own rope.
+        // The attempt timeout (about 3.5 s live, 14 background ticks) then charged a failure to
+        // the jump-off. The Agent now climbs ladder 8 to y -51 and jumps from there.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(MOSSY_TREE_FOREST);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
+        Rope rope7 = rope(map, -200);
+        Rope ladder8 = rope(map, -201);
+        int rope7Region = ropeRegion(graph, rope7);
+        assertEquals(rope7Region, graph.findRopeRegionId(new Point(-201, -40)),
+                "precondition: ladder 8 resolves to rope 7");
+        int floor = graph.findRegionId(map, new Point(-277, 90));
+        AgentNavigationGraph.Edge jumpOff = edgeAt(graph, rope7Region, floor, -51);
+        AgentNavigationGraph.Edge entryEdge = groundEntry(graph, rope7Region);
+
+        AtomicReference<Point> position = new AtomicReference<>();
+        Character agent = agentAt(map, position);
+        AgentRuntimeEntry entry = hangingWithTransfer(
+                map, graph, agent, position, ladder8, -40, entryEdge, jumpOff);
+        entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
+
+        int landedAt = -1;
+        for (int tick = 0; tick < 14; tick++) {
+            AgentStandaloneMoveTargetCoordinator.tickStandaloneMoveTarget(entry, agent, tick % 2 == 0, -1);
+            if (landedAt < 0 && !AgentClimbStateRuntime.climbing(entry) && !AgentMovementStateRuntime.inAir(entry)
+                    && graph.findRegionId(map, position.get()) == floor) {
+                landedAt = tick;
+            }
+        }
+
+        assertTrue(landedAt >= 0, "still on ladder 8 at " + position.get());
+        List<AgentNavigationEdgeReliabilityState.EdgeFailure> jumpOffFailures =
+                AgentNavigationEdgeReliabilityRuntime.snapshot(entry, System.currentTimeMillis())
+                        .edges().stream()
+                        .filter(failure -> failure.toRegionId() == floor && failure.startY() == -51)
+                        .toList();
+        assertEquals(List.of(), jumpOffFailures, "the landing counts the jump-off as done");
+    }
+
     private static AgentRuntimeEntry hangingWithTransfer(MapleMap map,
                                                          AgentNavigationGraph graph,
                                                          Character agent,
