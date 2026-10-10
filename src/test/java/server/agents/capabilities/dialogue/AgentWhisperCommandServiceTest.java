@@ -3,22 +3,29 @@ package server.agents.capabilities.dialogue;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import net.packet.Packet;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
+import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.commands.AgentReplyChannelStateRuntime;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeHandle;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.social.conversation.AgentSocialDialogueRuntime;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AgentWhisperCommandServiceTest {
@@ -143,14 +151,74 @@ class AgentWhisperCommandServiceTest {
 
             CosmicAgentWhisperCommandBridge.handleWhisperToAgent(leader, target, "follow me");
             drainAll(entry);
-            social.verify(() -> AgentSocialDialogueRuntime.maybeRespond(any(), any(), any()), never());
+            social.verify(() -> AgentSocialDialogueRuntime.maybeRespond(any(), any(), any(), any()), never());
 
             CosmicAgentWhisperCommandBridge.handleWhisperToAgent(leader, target, "how was ur day");
             drainAll(entry);
-            social.verify(() -> AgentSocialDialogueRuntime.maybeRespond(entry, leader, "how was ur day"));
+            // the reply's route is fixed now, so the small talk that comes back later still goes by whisper to Kiwi
+            social.verify(() -> AgentSocialDialogueRuntime.maybeRespond(entry, leader, "how was ur day",
+                    new AgentReplyRoute(AgentReplyChannel.WHISPER, leader)));
             assertEquals(AgentReplyChannel.WHISPER, AgentReplyChannelStateRuntime.replyChannel(entry));
         } finally {
             AgentChatIntentRuntime.installContentGate(null);
+            AgentRuntimeRegistry.clear();
+        }
+    }
+
+    /**
+     * Deploy review 2026-10-10: an answer to a whispered line that waits (here the intent judge's "did you mean",
+     * sent when the judgment comes back) read the reply channel when it was sent, so a party line from the owner in
+     * between sent the private answer to the party. It now keeps the whisper it answers.
+     */
+    @Test
+    void aWhisperedAnswerThatWaitsStillGoesByWhisperAfterAPartyLineFromTheOwner() {
+        Character leader = character(1, mock(Client.class));
+        Character target = character(2, new BotClient(0, 0));
+        MapleMap map = mock(MapleMap.class);
+        when(target.getMap()).thenReturn(map);
+        when(map.isObservedByPlayer()).thenReturn(true);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(target, leader, null);
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(leader.getId(), entry);
+        boolean transport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
+        List<AgentChatIntentRuntime.ReplyQueue> judging = new ArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentChatIntentRuntime> intent = mockStatic(AgentChatIntentRuntime.class,
+                     org.mockito.Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentSocialDialogueRuntime> social = mockStatic(AgentSocialDialogueRuntime.class);
+             MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class)) {
+            // the whispered line waits on its judgment; the owner's party line is taken at once
+            intent.when(() -> AgentChatIntentRuntime.judgeUnmatched(any(), any(), any(), any(), any())).thenAnswer(call -> {
+                if (!"u got pots".equals(call.getArgument(1))) {
+                    return CompletableFuture.completedFuture(true);
+                }
+                judging.add(call.getArgument(4));
+                return new CompletableFuture<Boolean>();
+            });
+
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(leader, target, "u got pots");
+            drainAll(entry);
+            AgentChatRouteCoordinator.handleChat(leader, "brb", AgentReplyChannel.PARTY, Map.of(leader.getId(), List.of(entry)),
+                    (leaderId, commandLeader, agentName) -> null,
+                    (leaderId, commandLeader, agentName, targetName) -> null,
+                    (leaderId, agentName) -> false,
+                    new AgentFormationService.FormationState(AgentFormationService.FormationType.STAGGER, 60, 0),
+                    60,
+                    120);
+            drainAll(entry);
+            assertEquals(AgentReplyChannel.PARTY, AgentReplyChannelStateRuntime.replyChannel(entry));
+
+            // the judgment comes back: its answer is for the whisper
+            assertEquals(1, judging.size());
+            judging.get(0).queue(entry, "did you mean 'pots'?");
+            drainAll(entry);
+
+            verify(leader).sendPacket(any(Packet.class));
+            verify(map, never()).broadcastMessage(any(Packet.class));
+        } finally {
+            config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = transport;
             AgentRuntimeRegistry.clear();
         }
     }

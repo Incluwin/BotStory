@@ -9,12 +9,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import config.YamlConfig;
+import org.mockito.MockedStatic;
+import server.agents.commands.AgentReplyChannel;
 import server.agents.commands.AgentReplyChannelStateRuntime;
+import server.agents.commands.AgentReplyRoute;
+import server.agents.runtime.AgentSchedulerRuntime;
 import server.maps.MapleMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -109,5 +115,41 @@ class AgentDialogueTransportRuntimeTest {
         verify(map, never()).broadcastMessage(any(Packet.class));
         org.junit.jupiter.api.Assertions.assertEquals(
                 0, server.agents.commands.AgentMessageQueueStateRuntime.size(entry));
+    }
+
+    /**
+     * Deploy review 2026-10-10: a reply on the route its line fixed (a whisper from the owner) goes there, though a
+     * party line moved the Agent's channel since and an administrator is its interaction target now; the reply queue
+     * keeps the route too. A reply with no route still reads the channel when it is sent.
+     */
+    @Test
+    void aRoutedReplyKeepsItsWhisperWhateverTheChannelIsWhenItIsSent() {
+        Character bot = mock(Character.class);
+        Character owner = mock(Character.class);
+        Character admin = mock(Character.class);
+        Client botClient = mock(Client.class);
+        MapleMap map = mock(MapleMap.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, admin, null);
+        AgentReplyChannelStateRuntime.setReplyChannel(entry, AgentReplyChannel.PARTY);
+        when(bot.getName()).thenReturn("agent");
+        when(bot.getId()).thenReturn(7);
+        when(bot.getClient()).thenReturn(botClient);
+        when(botClient.getChannel()).thenReturn(1);
+        when(bot.getMap()).thenReturn(map);
+        when(map.isObservedByPlayer()).thenReturn(true);
+        when(owner.getClient()).thenReturn(mock(Client.class));
+        when(admin.getClient()).thenReturn(mock(Client.class));
+        AgentReplyRoute whisper = new AgentReplyRoute(AgentReplyChannel.WHISPER, owner);
+
+        try (MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class)) {
+            AgentDialogueTransportRuntime.replyNow(entry, "ok", whisper);
+            AgentDialogueTransportRuntime.queueReply(entry, "queued too", whisper);
+            verify(owner, times(2)).sendPacket(any(Packet.class));
+            verify(admin, never()).sendPacket(any(Packet.class));
+            verify(map, never()).broadcastMessage(any(Packet.class));
+
+            AgentDialogueTransportRuntime.replyNow(entry, "no route", null);
+            verify(map).broadcastMessage(any(Packet.class)); // the party channel now, and no party: the map
+        }
     }
 }

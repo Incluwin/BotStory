@@ -20,6 +20,7 @@ import server.agents.capabilities.trade.AgentPendingOfferChatRouteService;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.commands.AgentCommandTypoSuggester;
 import server.agents.commands.AgentReplyChannel;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.capabilities.follow.AgentActivityStateRuntime;
 import server.agents.commands.AgentCommandTargetResolver;
 import server.agents.integration.AgentDialogueTransportRuntime;
@@ -149,13 +150,13 @@ public final class AgentChatRouteCoordinator {
                         entries,
                         text,
                         replyChannel,
-                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat)),
+                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat, replyChannel)),
                 (commandLeader, entries, text, replyChannel) -> AgentUntargetedChatRouteService.handleUntargetedChat(
                         commandLeader,
                         entries,
                         text,
                         replyChannel,
-                        untargetedChatHooks()));
+                        untargetedChatHooks(replyChannel)));
     }
 
     /**
@@ -172,11 +173,16 @@ public final class AgentChatRouteCoordinator {
                 entry,
                 message,
                 channel,
-                targetedChatHooks(AgentChatRouteCoordinator::handleWhisperedAgentChat));
+                targetedChatHooks((whispered, line, replyChannel) -> handleWhisperedAgentChat(
+                        whispered, line, replyChannel, speaker), channel));
     }
 
+    /**
+     * {@code channel}: the line's own, which the social reply keeps however long it takes (deploy review 2026-10-10).
+     */
     private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks(
-            AgentTargetedChatRouteService.AgentChatHandler<E> agentChatHandler) {
+            AgentTargetedChatRouteService.AgentChatHandler<E> agentChatHandler,
+            AgentReplyChannel channel) {
         return new AgentTargetedChatRouteService.Hooks<>(
                 (entries, message) -> {
                     var match = AgentCommandTargetResolver.resolveTargetedAgent(entries, message);
@@ -193,11 +199,13 @@ public final class AgentChatRouteCoordinator {
                 AgentRelationshipRuntime::interactionTarget,
                 AgentActivityStateRuntime::recordLastOwnerCommand,
                 AgentSocialDialogueRuntime::enabled,
-                AgentSocialDialogueRuntime::maybeRespond,
+                (entry, sender, text) -> AgentSocialDialogueRuntime.maybeRespond(
+                        entry, sender, text, AgentReplyRoute.of(channel, sender)),
                 Character::yellowMessage);
     }
 
-    private static <E extends AgentRuntimeEntry> AgentUntargetedChatRouteService.Hooks<E> untargetedChatHooks() {
+    private static <E extends AgentRuntimeEntry> AgentUntargetedChatRouteService.Hooks<E> untargetedChatHooks(
+            AgentReplyChannel channel) {
         return new AgentUntargetedChatRouteService.Hooks<>(
                 AgentChatCommandClassifier::matchFollowTarget,
                 AgentChatRouteCoordinator::dispatchFollowTargetCommand,
@@ -214,7 +222,8 @@ public final class AgentChatRouteCoordinator {
                 (speaker, entries, message) -> AgentSocialResponderElection.elect(
                         speaker, entries, message, AgentRuntimeIdentityRuntime::botId),
                 AgentSocialDialogueRuntime::enabled,
-                AgentSocialDialogueRuntime::maybeRespond);
+                (entry, speaker, text) -> AgentSocialDialogueRuntime.maybeRespond(
+                        entry, speaker, text, AgentReplyRoute.of(channel, speaker)));
     }
 
     private static void queueReply(
@@ -222,6 +231,17 @@ public final class AgentChatRouteCoordinator {
             String reply) {
         AgentMailboxRuntime.dispatch(entry, ignored -> {
             AgentDialogueTransportRuntime.queueReply(entry, reply);
+            return null;
+        });
+    }
+
+    /** A reply that keeps {@code route}, the route of the line it answers, however late it is sent. */
+    private static void queueReply(
+            AgentRuntimeEntry entry,
+            String reply,
+            AgentReplyRoute route) {
+        AgentMailboxRuntime.dispatch(entry, ignored -> {
+            AgentDialogueTransportRuntime.queueReply(entry, reply, route);
             return null;
         });
     }
@@ -343,6 +363,19 @@ public final class AgentChatRouteCoordinator {
             AgentRuntimeEntry entry,
             String message,
             AgentReplyChannel channel) {
+        return handleAgentChat(entry, message, channel, null);
+    }
+
+    /**
+     * {@code speaker}: whom a whispered line's answers go back to. The judge's own answers ("did you mean ...?") come
+     * after its judgment, so they keep the line's route (deploy review 2026-10-10).
+     */
+    private static CompletionStage<Boolean> handleAgentChat(
+            AgentRuntimeEntry entry,
+            String message,
+            AgentReplyChannel channel,
+            Character speaker) {
+        AgentReplyRoute route = AgentReplyRoute.of(channel, speaker);
         // Deterministic classifiers first; only a miss is offered to the TypeSafe intent judge,
         // which re-dispatches a canonical phrase through this same dispatcher when confident.
         return AgentChatMailboxDispatcher.handleChat(entry, message, channel)
@@ -353,7 +386,7 @@ public final class AgentChatRouteCoordinator {
                                 message,
                                 channel,
                                 AgentChatMailboxDispatcher::handleChat,
-                                AgentChatRouteCoordinator::queueReply));
+                                (judged, reply) -> queueReply(judged, reply, route)));
     }
 
     /**
@@ -364,8 +397,9 @@ public final class AgentChatRouteCoordinator {
     private static CompletionStage<Boolean> handleWhisperedAgentChat(
             AgentRuntimeEntry entry,
             String message,
-            AgentReplyChannel channel) {
-        return handleAgentChat(entry, message, channel)
+            AgentReplyChannel channel,
+            Character speaker) {
+        return handleAgentChat(entry, message, channel, speaker)
                 .thenApply(handled -> AgentChatIntentRuntime.actHandled(message, handled));
     }
 

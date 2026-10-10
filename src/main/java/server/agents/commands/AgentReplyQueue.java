@@ -54,10 +54,24 @@ public final class AgentReplyQueue {
         return queueMessageWithEstimatedDelay(state, message, true, dispatcher);
     }
 
+    /** A reply that goes on {@code route}, the route of the line it answers, whenever it is sent. */
+    public static long queueReply(State state, String message, AgentReplyRoute route, Dispatcher dispatcher) {
+        return queueMessageWithEstimatedDelay(state, message, true, route, dispatcher);
+    }
+
     public static long queueMessageWithEstimatedDelay(
             State state,
             String message,
             boolean ownerDirected,
+            Dispatcher dispatcher) {
+        return queueMessageWithEstimatedDelay(state, message, ownerDirected, null, dispatcher);
+    }
+
+    private static long queueMessageWithEstimatedDelay(
+            State state,
+            String message,
+            boolean ownerDirected,
+            AgentReplyRoute route,
             Dispatcher dispatcher) {
         long estimatedDelayMs;
         synchronized (state.lock()) {
@@ -68,7 +82,7 @@ public final class AgentReplyQueue {
                 AgentAsyncQueueMetrics.recordRejected("dialogue", state.size());
                 return estimatedDelayMs;
             }
-            AgentQueuedMessage queuedMessage = new AgentQueuedMessage(message, ownerDirected);
+            AgentQueuedMessage queuedMessage = new AgentQueuedMessage(message, ownerDirected, route);
             if (state.size() >= MAX_PENDING_MESSAGES) {
                 if (state.contains(queuedMessage)) {
                     AgentAsyncQueueMetrics.recordCoalesced("dialogue", state.size());

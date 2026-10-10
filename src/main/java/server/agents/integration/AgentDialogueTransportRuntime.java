@@ -7,6 +7,7 @@ import client.Character;
 import server.agents.commands.AgentQueuedMessage;
 import server.agents.commands.AgentReplyQueue;
 import server.agents.commands.AgentReplyChannel;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.commands.AgentMessageQueueStateRuntime;
 import server.agents.commands.AgentReplyChannelStateRuntime;
@@ -47,14 +48,46 @@ public final class AgentDialogueTransportRuntime {
         return AgentChatReplyRuntime.queueReplyWithEstimatedDelay(state(entry), message, dispatcher(entry));
     }
 
+    /**
+     * A reply that goes on {@code route}, the route of the line it answers (a whisper back to its speaker), when the
+     * queue sends it, whatever the Agent's reply channel is by then; null: {@link #queueReply(AgentRuntimeEntry, String)}.
+     */
+    public static void queueReply(AgentRuntimeEntry entry, String message, AgentReplyRoute route) {
+        if (!transportEnabled()) {
+            return;
+        }
+        AgentChatReplyRuntime.queueReply(state(entry), message, route, dispatcher(entry));
+    }
+
+    /**
+     * {@link #replyNow(AgentRuntimeEntry, String)} on {@code route}, the route of the line it answers, for a reply sent
+     * after a wait (a model call, a judgment, a typing delay): a party or map line in between moves the Agent's reply
+     * channel, never this reply. Null reads the channel now.
+     */
+    public static void replyNow(AgentRuntimeEntry entry, String message, AgentReplyRoute route) {
+        if (route == null) {
+            replyNow(entry, message);
+            return;
+        }
+        if (!transportEnabled()) {
+            return;
+        }
+        send(entry, message, route.channel(), route.whisperTo());
+    }
+
     public static void replyNow(AgentRuntimeEntry entry, String message) {
         if (!transportEnabled()) {
             return;
         }
-        switch (AgentReplyChannelStateRuntime.replyChannel(entry)) {
+        send(entry, message, AgentReplyChannelStateRuntime.replyChannel(entry), null);
+    }
+
+    /** {@code whisperTo} null: a whisper goes to the Agent's interaction target. */
+    private static void send(AgentRuntimeEntry entry, String message, AgentReplyChannel channel, Character whisperTo) {
+        switch (channel) {
             case PARTY -> sayPartyNow(AgentRuntimeIdentityRuntime.bot(entry), message);
             case WHISPER -> {
-                Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+                Character owner = whisperTo != null ? whisperTo : AgentRelationshipRuntime.interactionTarget(entry);
                 Character bot = AgentRuntimeIdentityRuntime.bot(entry);
                 if (owner != null && AgentClientGatewayRuntime.clients().hasClient(owner)) {
                     AgentPacketGatewayRuntime.packets().sendWhisperReceive(
@@ -159,7 +192,7 @@ public final class AgentDialogueTransportRuntime {
             @Override
             public void dispatch(AgentQueuedMessage message) {
                 if (message.ownerDirected()) {
-                    replyNow(entry, message.text());
+                    replyNow(entry, message.text(), message.route());
                 } else {
                     visibleSayNow(entry, message.text());
                 }
