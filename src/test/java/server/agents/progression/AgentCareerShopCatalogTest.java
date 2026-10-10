@@ -3,6 +3,15 @@ package server.agents.progression;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -83,6 +92,67 @@ class AgentCareerShopCatalogTest {
 
         // Mushroom Castle is one-way too, and its bots shopped before town shops elsewhere were known.
         assertNotNull(AgentCareerShopCatalog.forSupply(warrior, AgentResourceCategory.HP_POTION, 106021000));
+    }
+
+    @Test
+    void everyVictoriaFieldWalksBackFromThePotionShopItIsSentTo() throws IOException {
+        AgentCareerBuildBundle warrior = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("warrior-standard-v1").orElseThrow();
+        // The Victoria fields citizens train in and the bench chooser picks camps from (the FieldCatalog), the Kerning
+        // subway among them. Live 2026-10-09: a companion camped on Line 2 <Area 1> (103000200) walked to the Kerning
+        // City Pharmacy and logged "no return route from map 103000002".
+        Pattern victoriaField = Pattern.compile("\\{ mapId: (\\d+), .*\\bregion: victoria, town: false,");
+        List<Integer> fields = new ArrayList<>();
+        for (String line : Files.readAllLines(Path.of("scripts", "config", "population", "fields.yaml"))) {
+            Matcher field = victoriaField.matcher(line);
+            if (field.find()) {
+                fields.add(Integer.parseInt(field.group(1)));
+            }
+        }
+        assertTrue(fields.contains(103000200), "fields.yaml lists the subway camp");
+        // Mushroom Castle is quest-gated one way: back in from Deep Inside Mushroom Forest needs quest 30000 or a Poison
+        // Spore (scripts/portal/obstacle.js), past the castle gate quest 2324 (gotocastle.js), and forSupply keeps
+        // these one-way trips on purpose (onVictoriaTheOneWayTripsStayAsTheyWere).
+        Set<Integer> questGatedOneWay = Set.of(106020400, 106020401, 106020402, 106020700, 106020800,
+                106021000, 106021100, 106021200, 106021300);
+        assertTrue(fields.containsAll(questGatedOneWay), "every quest-gated exception is a Victoria field");
+
+        List<String> stranded = new ArrayList<>();
+        for (int fieldMapId : fields) {
+            AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
+                    warrior, AgentResourceCategory.HP_POTION, fieldMapId);
+            if (stop == null || questGatedOneWay.contains(fieldMapId)) {
+                continue;
+            }
+            String noWalk = noWalkBack(stop.mapId(), fieldMapId);
+            if (noWalk != null) {
+                stranded.add(fieldMapId + " (shop on " + stop.mapId() + ": " + noWalk + ")");
+            }
+        }
+        assertEquals(List.of(), stranded, "fields with no walk back from the potion shop they are sent to");
+    }
+
+    /**
+     * Why the router cannot walk from {@code shopMapId} to {@code fieldMapId}, or null when it can: a route, and on each
+     * hop a portal to press, a standard one of the generated graph or an authored scripted one.
+     */
+    private static String noWalkBack(int shopMapId, int fieldMapId) {
+        int hops = AgentVictoriaTrainingRouteCatalog.distance(shopMapId, fieldMapId);
+        if (hops < 0) {
+            return "no route";
+        }
+        Set<AgentVictoriaPortalRouteGraph.Edge> standard =
+                Set.copyOf(AgentVictoriaPortalRouteGraphRepository.defaultRepository().graph().edges());
+        int at = shopMapId;
+        for (int hop = 0; hop < hops; hop++) {
+            int next = AgentVictoriaTrainingRouteCatalog.nextHop(at, fieldMapId);
+            if (!standard.contains(new AgentVictoriaPortalRouteGraph.Edge(at, next))
+                    && AgentVictoriaTrainingRouteCatalog.scriptedPortalId(at, next) == null) {
+                return "no portal to press from " + at + " to " + next;
+            }
+            at = next;
+        }
+        return null;
     }
 
     @Test
