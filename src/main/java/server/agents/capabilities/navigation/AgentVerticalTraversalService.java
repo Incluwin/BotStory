@@ -4,6 +4,7 @@ import client.Character;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.Rope;
 
 import java.awt.Point;
 
@@ -149,6 +150,25 @@ public final class AgentVerticalTraversalService {
             return null;
         }
         return new Point(entry.verticalTraversalState().exitEdge().startPoint);
+    }
+
+    /**
+     * The authored exit anchor, but only while the Agent hangs on that exit's own rope. After a
+     * rope-to-rope transfer has caught the next rope, the anchor belongs to the rope just left:
+     * climbing toward it can run off the caught rope's end (Sleepy Dungeon 105040302: exit y=374
+     * on ladder 6, below ladder 5's bottom y=358).
+     */
+    public static Point committedClimbExitPosition(AgentRuntimeEntry entry, Rope climbRope) {
+        Point exit = committedClimbExitPosition(entry);
+        if (exit == null || climbRope == null) {
+            return null;
+        }
+        AgentNavigationGraph.Edge exitEdge = entry.verticalTraversalState().exitEdge();
+        return exitEdge.ropeX == climbRope.x()
+                && exitEdge.ropeTopY == climbRope.topY()
+                && exitEdge.ropeBottomY == climbRope.bottomY()
+                ? exit
+                : null;
     }
 
     public static boolean blocksRecentInverseEntry(AgentNavigationGraph graph,
