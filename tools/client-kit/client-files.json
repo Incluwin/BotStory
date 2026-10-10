@@ -1,0 +1,308 @@
+[
+ {
+  "path": "aossdk.dll",
+  "size": 254083,
+  "sha256": "2a4aa5b75372c7f1aff830f5937b7953442dd3856e8d93e4349a3ef76d877d42",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Base.wz",
+  "size": 6540,
+  "sha256": "83fa0a8c2e11f8cbc4e92f46b5f9e8137fb1d0f7dd4b6cdc7ea337087c854cf4",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "bz32ex.dll",
+  "size": 87536,
+  "sha256": "67ff9952d102811c89c56198e55c31d9f79c591e316303c4241d34a0c604c7e0",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Canvas.dll",
+  "size": 118784,
+  "sha256": "9a14ea054cbde05ac42838047bf5057ccf6847ef78a8551da2d0f31cfe1fbb73",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Character.wz",
+  "size": 2014707841,
+  "sha256": "ff2fe1817de4ba4fef1d87db58f015df5b2b27780fb811b5dfd80f4844dffb58",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "Custom.wz",
+  "size": 311350,
+  "sha256": "2bcffb884c8d486d81137c9e2747fc8de22177ac5a5ca6022b993f4147f2f10e",
+  "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe; Custom.wz = src/Custom.wz)"
+ },
+ {
+  "path": "Effect.wz",
+  "size": 277438744,
+  "sha256": "e8d80ff5f38cd75ca8995bc366c9abeb985002b6a3796e1adbb7ac401e591000",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "Etc.wz",
+  "size": 1803100,
+  "sha256": "6697f2c045a2a3d4c118d40820220706dabc4ca1baf9aa4eab94bc6c202177e7",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "Gr2D_DX8.dll",
+  "size": 258048,
+  "sha256": "ab1c942229af33da04d913ed1157ab322bff0812f7368bcf745d64b98698d34d",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/AhnUpCtl.dll",
+  "size": 153280,
+  "sha256": "994cf5e8e2b810ef6456c68c5129137cc907cd8effe261818de0f31696a82a5e",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/AhnUpGS.dll",
+  "size": 217186,
+  "sha256": "f293f94460a600c048758c3ffa20f6f107a1a8fceacf0aa0a82a6e4098bde43c",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/AspINet.dll",
+  "size": 37012,
+  "sha256": "197a4cd860e30facb05bb82190bbf2f7e4e2d21a3d4efd76a8502b281262f528",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/Bz32Ex.dll",
+  "size": 82060,
+  "sha256": "1fdc007d96f90d675e67550569ad3c99f88ea13d7d603e36d99d43cb4de61e4f",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/HSInst.dll",
+  "size": 188512,
+  "sha256": "1507e4391951ee5dcbeb7d5a4f8a8a495b02454af2c0b58b69855a5d171d9339",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/HSUpdate.env",
+  "size": 559,
+  "sha256": "16be7adaf3e0cdbf08279d57069d93d4bbeb57239f395a8e836c7ae945bfbd58",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/HSUpdate.exe",
+  "size": 143460,
+  "sha256": "82c0b2d827f20f4baf341fe7ae504269b2601d5789628398ad12225541b73dd8",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/hsupdate.jpg",
+  "size": 78434,
+  "sha256": "eda500587bc7de392da3086c957ede17d06ca1958c50ffb2ed7885a3dc340903",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/mspatcha.dll",
+  "size": 27136,
+  "sha256": "b173df5082cea4d34543c22c531555103719cece2cae211dcab4f17d7e59b7dd",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/splash.jpg",
+  "size": 112063,
+  "sha256": "b45f157a3ac70cfbf9e285c37db4ba82585d6066326bb4158064704d1d03532b",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/V3Hunt.dll",
+  "size": 141008,
+  "sha256": "20bb45fcd52f6e3a66c2276431deebe324c1f2ff98d239d439114dfbca11318d",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "HShield/V3InetGS.dll",
+  "size": 36964,
+  "sha256": "372bfdec19ac5619fad6f2222546a66a43f3e7972ebc383ab2aeea012043ddc5",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "ijl15.dll",
+  "size": 352256,
+  "sha256": "41d37bfb0a39017497e0aa373dc01f71ac9c5046c75f7cd269bee52112a5f3a1",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Item.wz",
+  "size": 474161845,
+  "sha256": "737341e002a76aa8673eca48e7d1d3fbd8f3185c6cdf69f8faf2dddbb16f9f0b",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "Kaentake.dll",
+  "size": 199168,
+  "sha256": "d28bc09bb9c557e35f4eef83008f5fff1fc2f3e82dadb6e1313d9ee8b42058a2",
+  "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe; Custom.wz = src/Custom.wz)"
+ },
+ {
+  "path": "l3codeca.acm",
+  "size": 290816,
+  "sha256": "2e7e5892184ff880e0f847fb590cbf78bc74b1be0738f592ff44d4125401b3b3",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Launch Game.exe",
+  "size": 75776,
+  "sha256": "43ddfbac6605017ebc1c522fe203ecd5e65ceaf13b0634b2534096cc9a835686",
+  "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe; Custom.wz = src/Custom.wz)"
+ },
+ {
+  "path": "List.wz",
+  "size": 13336,
+  "sha256": "7f9b67d010d8901f81b541b4c611f2ffa0b166001e4762d44fedab6ab7dfad8b",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "Map.wz",
+  "size": 1442051954,
+  "sha256": "f5c6308fc0b826f05aa9c99ffcca811150a1befacf0fe48ce073bb5a7e2523b9",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "MapleStory.exe",
+  "size": 4286088,
+  "sha256": "33bb280921cd93dad593080e9e44a2cfe1af507d71f76f4b64c6d80613d52e77",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "Mob.wz",
+  "size": 1432923627,
+  "sha256": "498271db2858fb682ad75295bdde2890ebd74f05b2a9521786f1cbecc349e25b",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "Morph.wz",
+  "size": 6204606,
+  "sha256": "9bf57995efcd331f23e8fd0ff818e00ec159ab1995f8d9bca7ef856e301f6782",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "mss32.dll",
+  "size": 450048,
+  "sha256": "b6cff7051614201aa0714b95e703568ebf2ba667b47986352d630a1147df1416",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "NameSpace.dll",
+  "size": 143360,
+  "sha256": "7eed6c13a60a99bd3f7c2e22ae4b9f0cdb492361260a81172703f260ab661251",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "nmcogame.dll",
+  "size": 315392,
+  "sha256": "24a3b61afed1fa928d1795a6e2e4d6fe8551089f4344401f442e93d4600854ad",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "nmconew.dll",
+  "size": 1638400,
+  "sha256": "8bc0709be19b25a2e0a22ad41d6c2a336f8459464eadec79c8041911458b0472",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Npc.wz",
+  "size": 580606400,
+  "sha256": "4e112a87460ca7a524cb41f60b728e2342ba2c668b64d30ee2021dec8b43b96b",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "PCOM.dll",
+  "size": 114688,
+  "sha256": "917181e24f3b152302f9f93adf4ac3e13baf086a68224d258f47df5bb3862cf1",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Quest.wz",
+  "size": 6110580,
+  "sha256": "09ce3df7cbf9e04e10e446452833d1a65a8d6520e09748470920496820279279",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "Reactor.wz",
+  "size": 58356511,
+  "sha256": "e844b05f2a6b4a3236af8510b623a8c998eb4e67a8ae588b22d29e995e56b977",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "ResMan.dll",
+  "size": 49152,
+  "sha256": "5e31263f9dbab4b6f161aa85485162d01038bddc859821cafe88ab805530189e",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Shape2D.dll",
+  "size": 86016,
+  "sha256": "5e9b27d392b4a373fcb21d8b188c8b6864c1fd60fc33563ae24c782b26d97e43",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "Skill.wz",
+  "size": 122792134,
+  "sha256": "19f21ac93917a2a2c295e88290c066c0ab8720692b2ce914d76398109f2998eb",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "Sound.wz",
+  "size": 631525505,
+  "sha256": "08e5139da7b3956f89ec05cf428395f7558db18538b668d0d5298e1363809b75",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "Sound_DX8.dll",
+  "size": 147456,
+  "sha256": "607a0c5840a2ed7d45236c9446b8b87df35b0c3c5a8f9161c12b80b4442662c9",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "String.wz",
+  "size": 8158240,
+  "sha256": "71db0248ddc22e0285a8e978d28de1b653956b1d050eab22bd835878a9b4a3c2",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "suipre.dll",
+  "size": 417937,
+  "sha256": "287eb2257ffd1dd3eaaab2a5a6debb1a6c80bebe04c186788e8b01498684c000",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "TamingMob.wz",
+  "size": 797,
+  "sha256": "d23604f70c25cabd83e5c30a2ed9390ba1078c0966fd7d76a4adfc03cb2cae0d",
+  "source": "Community Repack, unchanged"
+ },
+ {
+  "path": "UI.wz",
+  "size": 30972462,
+  "sha256": "5f4075f132d6677e9001640fe85cb546e1ca92be56885f4aaafa343f57c556cb",
+  "source": "client kit (apply_kit.py)"
+ },
+ {
+  "path": "v3hunt.dll",
+  "size": 131201,
+  "sha256": "f4afe407bea443adbb18387de30bf139e8ff8cd6028464f200efc55d1348cce9",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "WzFlashRenderer.dll",
+  "size": 524288,
+  "sha256": "f71d8b5b0806f0c0fd037247442811f05ce996f93ed21b3774f79b785d21af0e",
+  "source": "stock GMS v83 client, unchanged"
+ },
+ {
+  "path": "ZLZ.dll",
+  "size": 81973,
+  "sha256": "ce65505fc65b3c03c22db309c66443e9b81fc1aa8e246c3bb4757bdd66a98ce9",
+  "source": "stock GMS v83 client, unchanged"
+ }
+]
