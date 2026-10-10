@@ -28,13 +28,18 @@ public enum CosmicTradeGateway implements TradeGateway {
     public AgentTradeOutcome completeTrade(Character agent) {
         Trade trade = agent.getTrade();
         Trade.completeTrade(agent);
-        if (trade != null && trade.isSettled()) {
+        if (trade == null) {
+            return AgentTradeOutcome.CANCELLED;
+        }
+        // "still its trade?" is read before "settled?": the partner's press can commit on its own tick shard between the
+        // two reads, and a commit marks the trade settled before it closes it, so a trade seen closed here and settled
+        // next is a commit, not a refusal (deploy review 2026-10-10)
+        boolean stillOpen = agent.getTrade() == trade;
+        if (trade.isSettled()) {
             return AgentTradeOutcome.SETTLED;
         }
         // still its trade: the handshake waits for the partner's press; gone: a refusal or a cancel closed it
-        return trade != null && agent.getTrade() == trade
-                ? AgentTradeOutcome.WAITING_FOR_PARTNER
-                : AgentTradeOutcome.CANCELLED;
+        return stillOpen ? AgentTradeOutcome.WAITING_FOR_PARTNER : AgentTradeOutcome.CANCELLED;
     }
 
     @Override
