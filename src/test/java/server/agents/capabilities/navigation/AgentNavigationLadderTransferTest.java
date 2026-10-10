@@ -4,10 +4,13 @@ import client.Character;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.movement.AgentClimbMovementService;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
+import server.agents.capabilities.movement.AgentFootholdIndexService;
+import server.agents.capabilities.movement.AgentMapStateRuntime;
 import server.agents.capabilities.movement.AgentMovementPhaseService;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.movement.AgentMovementSubstepPolicy;
+import server.agents.capabilities.movement.AgentRopeMovementService;
 import server.agents.capabilities.movement.AgentStandaloneMoveTargetCoordinator;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -35,6 +38,8 @@ class AgentNavigationLadderTransferTest {
     private static final int SLEEPY_DUNGEON_302 = 105040302;
     private static final int LADDER_6_X = -414;
     private static final int LADDER_5_X = -415;
+    private static final int TORNADO_CORRIDOR = 610030011;
+    private static final int MOSSY_TREE_FOREST = 300020000;
 
     @Test
     void backgroundSubstepsAfterTheTransferStayOnTheCaughtLadder() {
@@ -108,6 +113,154 @@ class AgentNavigationLadderTransferTest {
                             .toList();
             assertEquals(List.of(), transferFailures, "phase " + phase);
         }
+    }
+
+    @Test
+    void sourceLadderResolvedToTheDestinationKeepsTheTransferUntilTheJump() {
+        // Tornado Corridor (610030011): ladder 14 (x 479, y -142..-26) and ladder 13 (x 480,
+        // y -146..-122) overlap, and the region lookup puts the top 21 px of ladder 14 in ladder
+        // 13's region. Completing the transfer by region id ended it there, before the jump: the
+        // Agent planned from ladder 13 while still on ladder 14 and climbed off ladder 14's top
+        // onto the platform instead of catching ladder 13.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(TORNADO_CORRIDOR);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
+        Rope ladder14 = rope(map, 479);
+        Rope ladder13 = rope(map, 480);
+        int ladder14Region = ropeRegion(graph, ladder14);
+        int ladder13Region = ropeRegion(graph, ladder13);
+        assertEquals(ladder13Region, graph.findRopeRegionId(new Point(479, -130)),
+                "precondition: the top of ladder 14 resolves to ladder 13");
+        AgentNavigationGraph.Edge transfer = edgeAt(graph, ladder14Region, ladder13Region, -141);
+        AgentNavigationGraph.Edge entryEdge = groundEntry(graph, ladder14Region);
+
+        // Foreground ticks of 50 ms with an AI tick every second tick; the climb starts at the
+        // bottom of ladder 14, 115 px below the jump.
+        AtomicReference<Point> position = new AtomicReference<>();
+        Character agent = agentAt(map, position);
+        AgentRuntimeEntry entry = hangingWithTransfer(
+                map, graph, agent, position, ladder14, ladder14.bottomY(), entryEdge, transfer);
+
+        boolean caught = false;
+        for (int tick = 0; tick < 200 && !caught; tick++) {
+            AgentStandaloneMoveTargetCoordinator.tickStandaloneMoveTarget(entry, agent, tick % 2 == 0, -1);
+            caught = hangsOn(entry, ladder13);
+        }
+
+        assertTrue(caught, "never caught ladder 13; ended at " + position.get());
+    }
+
+    @Test
+    void caughtLadderResolvedToTheSourceCompletesTheTransfer() {
+        // Southern Region of Mossy Tree Forest 1 (300020000): every point of ladder 8 (x -201,
+        // y -81..-1) resolves to rope 7 (x -200, y -381..22). After the jump from rope 7 caught
+        // ladder 8, the transfer never completed by region id: the Agent held on ladder 8 until
+        // the attempt timeout charged a failure to the jump that had worked.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(MOSSY_TREE_FOREST);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
+        Rope rope7 = rope(map, -200);
+        Rope ladder8 = rope(map, -201);
+        int rope7Region = ropeRegion(graph, rope7);
+        int ladder8Region = ropeRegion(graph, ladder8);
+        assertEquals(rope7Region, graph.findRopeRegionId(new Point(-201, -11)),
+                "precondition: ladder 8 resolves to rope 7");
+        AgentNavigationGraph.Edge transfer = edgeAt(graph, rope7Region, ladder8Region, -79);
+        AgentNavigationGraph.Edge entryEdge = groundEntry(graph, rope7Region);
+
+        AtomicReference<Point> position = new AtomicReference<>();
+        Character agent = agentAt(map, position);
+        AgentRuntimeEntry entry = hangingWithTransfer(
+                map, graph, agent, position, rope7, transfer.startPoint.y, entryEdge, transfer);
+        entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
+
+        int caughtAt = -1;
+        int releasedAt = -1;
+        for (int tick = 0; tick < 40 && releasedAt < 0; tick++) {
+            AgentStandaloneMoveTargetCoordinator.tickStandaloneMoveTarget(entry, agent, tick % 2 == 0, -1);
+            if (caughtAt < 0 && hangsOn(entry, ladder8)) {
+                caughtAt = tick;
+            }
+            if (caughtAt >= 0 && !AgentVerticalTraversalStateRuntime.active(entry)
+                    && AgentNavigationDebugStateRuntime.activeNavigationEdge(entry) != transfer) {
+                releasedAt = tick;
+            }
+        }
+
+        assertTrue(caughtAt >= 0, "never caught ladder 8; ended at " + position.get());
+        assertTrue(releasedAt >= 0 && releasedAt - caughtAt <= 2,
+                "caught at tick " + caughtAt + ", released at " + releasedAt);
+        assertTrue(hangsOn(entry, ladder8), "left ladder 8 for " + position.get());
+        List<AgentNavigationEdgeReliabilityState.EdgeFailure> transferFailures =
+                AgentNavigationEdgeReliabilityRuntime.snapshot(entry, System.currentTimeMillis())
+                        .edges().stream()
+                        .filter(failure -> failure.type() == AgentNavigationGraph.EdgeType.CLIMB
+                                && failure.toRegionId() == ladder8Region)
+                        .toList();
+        assertEquals(List.of(), transferFailures);
+    }
+
+    private static AgentRuntimeEntry hangingWithTransfer(MapleMap map,
+                                                         AgentNavigationGraph graph,
+                                                         Character agent,
+                                                         AtomicReference<Point> position,
+                                                         Rope source,
+                                                         int startY,
+                                                         AgentNavigationGraph.Edge entryEdge,
+                                                         AgentNavigationGraph.Edge transfer) {
+        position.set(new Point(source.x(), startY));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentMovementStateRuntime.setMovementProfile(entry, AgentMovementProfile.base());
+        AgentModeService.startMoveTo(entry, new Point(transfer.endPoint), false);
+        AgentMapStateRuntime.setMapTracking(entry, map, AgentFootholdIndexService.buildFhIndex(map));
+        AgentRopeMovementService.attachToRope(entry, agent, source, startY);
+        entry.verticalTraversalState().begin(
+                graph, entryEdge, transfer, new Point(transfer.endPoint), transfer.toRegionId);
+        entry.verticalTraversalState().observeRopeAttachment();
+        AgentNavigationDebugStateRuntime.setActiveNavigationEdge(entry, transfer);
+        AgentNavigationDebugStateRuntime.setPlannedNavigationTargetPosition(entry, new Point(transfer.endPoint));
+        AgentNavigationDebugStateRuntime.setNavTargetRegionId(entry, transfer.toRegionId);
+        return entry;
+    }
+
+    private static boolean hangsOn(AgentRuntimeEntry entry, Rope rope) {
+        Rope climbRope = AgentClimbStateRuntime.climbRope(entry);
+        return AgentClimbStateRuntime.climbing(entry) && climbRope != null
+                && climbRope.x() == rope.x()
+                && climbRope.topY() == rope.topY()
+                && climbRope.bottomY() == rope.bottomY();
+    }
+
+    private static int ropeRegion(AgentNavigationGraph graph, Rope rope) {
+        for (AgentNavigationGraph.Region region : graph.regions) {
+            if (region.isRopeRegion && region.minX == rope.x()
+                    && region.minY == rope.topY() && region.maxY == rope.bottomY()) {
+                return region.id;
+            }
+        }
+        throw new AssertionError("no region for rope x=" + rope.x());
+    }
+
+    private static AgentNavigationGraph.Edge edgeAt(AgentNavigationGraph graph, int from, int to, int startY) {
+        for (AgentNavigationGraph.Edge edge : graph.getOutgoing(from)) {
+            if (edge.toRegionId == to && edge.type == AgentNavigationGraph.EdgeType.CLIMB
+                    && edge.startPoint.y == startY) {
+                return edge;
+            }
+        }
+        throw new AssertionError("no CLIMB edge r" + from + " -> r" + to + " at y=" + startY);
+    }
+
+    private static AgentNavigationGraph.Edge groundEntry(AgentNavigationGraph graph, int ropeRegion) {
+        for (AgentNavigationGraph.Region region : graph.regions) {
+            if (region.isRopeRegion) {
+                continue;
+            }
+            for (AgentNavigationGraph.Edge edge : graph.getOutgoing(region.id)) {
+                if (edge.toRegionId == ropeRegion && edge.type == AgentNavigationGraph.EdgeType.CLIMB) {
+                    return edge;
+                }
+            }
+        }
+        throw new AssertionError("no ground entry onto r" + ropeRegion);
     }
 
     private static Out00Climb climbToOut00(int phase) {
