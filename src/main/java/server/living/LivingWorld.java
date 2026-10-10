@@ -221,6 +221,9 @@ public final class LivingWorld {
         world.hiredHands.install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
+        // then each release a crash or a hard kill cut short is finished, before anyone can recruit or grant its
+        // persona: one nobody employs loses the !bossgear kit and the GM level hold its unload never took off
+        world.executor.submit("roster.release_cleanup", world.roster::finishReleaseCleanupAtStart);
         // companions go to their instructor for their next job by themselves; after the boot reconciliation, so the
         // errands a restart cut short are carried on over reconciled rows (2026-10-05)
         world.jobErrands.install();

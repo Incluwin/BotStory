@@ -111,4 +111,38 @@ class BossGearRecordTest {
         assertThrows(LivingStore.ReadFailed.class, () -> BossGearRecord.current(store.store, 870, "tamsin"),
                 "a kit going onto a kit must not take it for no record");
     }
+
+    @Test
+    void byPersonaTheNewestRowUnderAnyOwnerSaysWhoseRecordItIs() {
+        FakeLivingStore store = new FakeLivingStore();
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"),
+                "none");
+
+        BossGearRecord.write(store.store, 871, "tamsin", Map.of(PANTS, Displaced.of(1060002)));
+        store.store.event(871, "tamsin", BossGearRecord.REMOVED, "released: 6 pieces");
+        Displaced helm = new Displaced(1002027, (short) 12, 0x5f3a01c2);
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, helm));
+        assertEquals(new BossGearRecord.Found(870, Map.of(CAP, helm)),
+                BossGearRecord.readByPersona(store.store, "tamsin"),
+                "the newest owner's, not the earlier one's, with the bag slot and print of the very copy");
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "hadrik"),
+                "another persona's");
+        store.store.event(871, "hadrik", BossGearRecord.WORN, "displaced: -1:1002027"); // from before the print
+        assertEquals(new BossGearRecord.Found(871, Map.of(CAP, Displaced.of(1002027))),
+                BossGearRecord.readByPersona(store.store, "hadrik"), "an old row reads by the id alone");
+
+        store.store.event(0, "tamsin", BossGearRecord.REMOVED, "released: 1 piece"); // an earlier start's
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"),
+                "a newer removal under any owner ended it");
+    }
+
+    @Test
+    void byPersonaAFailedReadIsNoRecord() {
+        FakeLivingStore store = new FakeLivingStore();
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, Displaced.of(1002027)));
+        doReturn(null).when(store.store).latestPersonaEvent(anyString(), any());
+
+        assertEquals(new BossGearRecord.Found(0, Map.of()), BossGearRecord.readByPersona(store.store, "tamsin"),
+                "lenient: the start's refit puts the best pieces it carries on");
+    }
 }

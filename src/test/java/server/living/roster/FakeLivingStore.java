@@ -43,7 +43,8 @@ import static org.mockito.Mockito.when;
  * reads a quest's epoch newest first, up to its limit), failing while {@link #pacesUnreadable} or
  * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems} (a position
  * below 0 is worn, above 0 in the Equip tab) and lets its redress move carried ones onto worn slots first. latestEvent
- * reads the newest of {@link #events} with that owner, persona and one of the kinds.
+ * reads the newest of {@link #events} with that owner, persona and one of the kinds; latestPersonaEvent the newest
+ * with that persona and one of the kinds, under any owner.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -323,6 +324,18 @@ final class FakeLivingStore {
                 String[] row = events.get(i).split(" ", 4);
                 if ((row[0] + " " + row[1]).equals(who) && kinds.contains(row[2])) {
                     return java.util.Optional.of(new LivingStore.EventRow(row[2], row.length > 3 ? row[3] : null));
+                }
+            }
+            return java.util.Optional.empty();
+        });
+        when(store.latestPersonaEvent(anyString(), any())).thenAnswer(inv -> {
+            String persona = inv.getArgument(0);
+            List<String> kinds = inv.getArgument(1);
+            for (int i = events.size() - 1; i >= 0; i--) {
+                String[] row = events.get(i).split(" ", 4);
+                if (row[1].equals(persona) && kinds.contains(row[2])) {
+                    return java.util.Optional.of(new LivingStore.LoggedEvent(Integer.parseInt(row[0]), row[2],
+                            row.length > 3 ? row[3] : null));
                 }
             }
             return java.util.Optional.empty();
