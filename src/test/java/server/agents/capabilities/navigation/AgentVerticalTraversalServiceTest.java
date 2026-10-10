@@ -66,6 +66,62 @@ class AgentVerticalTraversalServiceTest {
     }
 
     @Test
+    void caughtDestinationRopeCompletesARopeToRopeExitOnTheNextAiTick() {
+        RopeTransfer fixture = ropeTransfer();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        fixture.begin(entry, bot);
+
+        AgentClimbStateRuntime.setClimbingOnRope(entry, fixture.sourceRope);
+        assertSame(fixture.transfer, resolve(fixture.graph, entry, bot, 2, true).edge());
+        AgentClimbStateRuntime.setClimbingOnRope(entry, fixture.destinationRope);
+        assertSame(fixture.transfer, resolve(fixture.graph, entry, bot, 4, false).edge(),
+                "an observation tick on the caught rope keeps the transfer");
+        assertNull(resolve(fixture.graph, entry, bot, 4, true),
+                "the AI tick on the caught rope completes the transfer instead of validating it again");
+        assertFalse(AgentVerticalTraversalStateRuntime.active(entry));
+        long nowMs = System.currentTimeMillis();
+        assertTrue(AgentVerticalTraversalService.blocksRecentInverseEntry(
+                fixture.graph, entry, fixture.jumpBack, nowMs));
+        assertNull(AgentVerticalTraversalService.recentExitNudgeTarget(fixture.graph, entry, 4, nowMs),
+                "a rope has no step-off spot to nudge toward");
+    }
+
+    @Test
+    void sourceRopeResolvedToTheDestinationRegionKeepsTheRopeToRopeExit() {
+        // Overlapping ladder pairs resolve by the first rope within grab range, so the top of a
+        // source ladder can resolve to the destination ladder (Tornado Corridor 610030011: ladder
+        // x 479 at y -130 resolves to the x 480 ladder). The transfer is not done before the jump.
+        RopeTransfer fixture = ropeTransfer();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        fixture.begin(entry, bot);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, fixture.sourceRope);
+
+        assertSame(fixture.transfer, resolve(fixture.graph, entry, bot, 4, true).edge());
+        assertTrue(AgentVerticalTraversalStateRuntime.active(entry));
+        assertFalse(AgentVerticalTraversalService.blocksRecentInverseEntry(
+                fixture.graph, entry, fixture.jumpBack, System.currentTimeMillis()));
+    }
+
+    @Test
+    void caughtRopeResolvedToTheSourceRegionCompletesTheRopeToRopeExit() {
+        // The reverse case: the whole of ladder x -201 on 300020000 resolves to rope x -200, so the
+        // caught ladder reports the source region. Without completion the Agent held on the caught
+        // ladder until the attempt timeout charged a failure to the transfer that had worked.
+        RopeTransfer fixture = ropeTransfer();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        fixture.begin(entry, bot);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, fixture.destinationRope);
+
+        assertNull(resolve(fixture.graph, entry, bot, 2, true));
+        assertFalse(AgentVerticalTraversalStateRuntime.active(entry));
+        assertTrue(AgentVerticalTraversalService.blocksRecentInverseEntry(
+                fixture.graph, entry, fixture.jumpBack, System.currentTimeMillis()));
+    }
+
+    @Test
     void navigationResetCancelsTraversalTransaction() {
         Fixture fixture = fixture();
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
@@ -84,9 +140,17 @@ class AgentVerticalTraversalServiceTest {
                                                                              Character bot,
                                                                              int currentRegionId,
                                                                              boolean runAiTick) {
+        return resolve(fixture.graph, entry, bot, currentRegionId, runAiTick);
+    }
+
+    private static AgentVerticalTraversalService.TraversalDirective resolve(AgentNavigationGraph graph,
+                                                                             AgentRuntimeEntry entry,
+                                                                             Character bot,
+                                                                             int currentRegionId,
+                                                                             boolean runAiTick) {
         return AgentVerticalTraversalService.resolve(
-                fixture.graph, entry, bot, currentRegionId, runAiTick,
-                (graph, candidate, edge) -> true);
+                graph, entry, bot, currentRegionId, runAiTick,
+                (activeGraph, candidate, edge) -> true);
     }
 
     private static Fixture fixture() {
@@ -116,6 +180,38 @@ class AgentVerticalTraversalServiceTest {
         return new AgentNavigationGraph.Edge(
                 fromRegionId, toRegionId, AgentNavigationGraph.EdgeType.CLIMB,
                 start, end, start.x, start.x, 0, 0, 100, 100, 300, 100);
+    }
+
+    private static RopeTransfer ropeTransfer() {
+        AgentNavigationGraph.Region ground = new AgentNavigationGraph.Region(1, List.of(
+                new AgentNavigationGraph.Segment(new Foothold(new Point(0, 300), new Point(200, 300), 1))));
+        AgentNavigationGraph.Region ropeA = new AgentNavigationGraph.Region(2, 100, 100, 300, false);
+        AgentNavigationGraph.Region ropeB = new AgentNavigationGraph.Region(4, 120, 0, 150, false);
+        AgentNavigationGraph.Edge entryEdge = edge(1, 2, new Point(100, 300), new Point(100, 300));
+        AgentNavigationGraph.Edge transfer = edge(2, 4, new Point(100, 200), new Point(120, 150));
+        AgentNavigationGraph.Edge jumpBack = edge(4, 2, new Point(120, 150), new Point(100, 200));
+        AgentNavigationGraph graph = new AgentNavigationGraph(
+                910000300, 1,
+                List.of(ground, ropeA, ropeB),
+                Map.of(1, ground, 2, ropeA, 4, ropeB),
+                Map.of(),
+                Map.of(1, List.of(entryEdge), 2, List.of(transfer), 4, List.of(jumpBack)),
+                Set.of());
+        return new RopeTransfer(graph, entryEdge, transfer, jumpBack,
+                new Rope(100, 100, 300, false), new Rope(120, 0, 150, false));
+    }
+
+    private record RopeTransfer(AgentNavigationGraph graph,
+                                AgentNavigationGraph.Edge entryEdge,
+                                AgentNavigationGraph.Edge transfer,
+                                AgentNavigationGraph.Edge jumpBack,
+                                Rope sourceRope,
+                                Rope destinationRope) {
+        void begin(AgentRuntimeEntry entry, Character bot) {
+            assertTrue(AgentVerticalTraversalService.beginIfRopeEntry(
+                    graph, entry, bot, entryEdge, 4, new Point(120, 50),
+                    (activeGraph, candidate, startPosition, startRegionId, targetRegionId, targetPosition) -> transfer));
+        }
     }
 
     private record Fixture(AgentNavigationGraph graph,

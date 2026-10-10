@@ -39,8 +39,10 @@ public final class AgentClimbMovementService {
             // A vertical transaction owns an exact authored exit, which can be partway along a
             // rope. Converge on that waypoint instead of blindly integrating the entry direction;
             // the latter can step across a mid-rope launch height and continue to the rope head.
+            // After a rope-to-rope jump catches the next rope, that exit belongs to the rope just
+            // left, so the Agent holds instead of climbing toward it off the caught rope's end.
             if (AgentVerticalTraversalStateRuntime.active(entry)) {
-                Point committedExit = AgentVerticalTraversalService.committedClimbExitPosition(entry);
+                Point committedExit = AgentVerticalTraversalService.committedClimbExitPosition(entry, climbRope);
                 if (committedExit != null) {
                     AgentRopeMovementService.advanceClimbToward(entry, agent, committedExit.y);
                 } else {
