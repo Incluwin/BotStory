@@ -100,28 +100,24 @@ class AgentCareerShopCatalogTest {
                 .find("warrior-standard-v1").orElseThrow();
         // The Victoria fields citizens train in and the bench chooser picks camps from (the FieldCatalog), the Kerning
         // subway among them. Live 2026-10-09: a companion camped on Line 2 <Area 1> (103000200) walked to the Kerning
-        // City Pharmacy and logged "no return route from map 103000002".
-        Pattern victoriaField = Pattern.compile("\\{ mapId: (\\d+), .*\\bregion: victoria, town: false,");
+        // City Pharmacy and logged "no return route from map 103000002". A field with capacity 0 is never picked: the
+        // Mushroom Castle fields past the quest gates (scripts/portal/obstacle.js quest 30000 or a Poison Spore, then
+        // gotocastle.js quest 2324) ship that way (user decision 2026-10-10), so no field here needs an exception.
+        Pattern victoriaField = Pattern.compile("\\{ mapId: (\\d+), .*\\bregion: victoria, town: false, .*\\bcapacity: (\\d+) }");
         List<Integer> fields = new ArrayList<>();
         for (String line : Files.readAllLines(Path.of("scripts", "config", "population", "fields.yaml"))) {
             Matcher field = victoriaField.matcher(line);
-            if (field.find()) {
+            if (field.find() && Integer.parseInt(field.group(2)) > 0) {
                 fields.add(Integer.parseInt(field.group(1)));
             }
         }
         assertTrue(fields.contains(103000200), "fields.yaml lists the subway camp");
-        // Mushroom Castle is quest-gated one way: back in from Deep Inside Mushroom Forest needs quest 30000 or a Poison
-        // Spore (scripts/portal/obstacle.js), past the castle gate quest 2324 (gotocastle.js), and forSupply keeps
-        // these one-way trips on purpose (onVictoriaTheOneWayTripsStayAsTheyWere).
-        Set<Integer> questGatedOneWay = Set.of(106020400, 106020401, 106020402, 106020700, 106020800,
-                106021000, 106021100, 106021200, 106021300);
-        assertTrue(fields.containsAll(questGatedOneWay), "every quest-gated exception is a Victoria field");
 
         List<String> stranded = new ArrayList<>();
         for (int fieldMapId : fields) {
             AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
                     warrior, AgentResourceCategory.HP_POTION, fieldMapId);
-            if (stop == null || questGatedOneWay.contains(fieldMapId)) {
+            if (stop == null) {
                 continue;
             }
             String noWalk = noWalkBack(stop.mapId(), fieldMapId);

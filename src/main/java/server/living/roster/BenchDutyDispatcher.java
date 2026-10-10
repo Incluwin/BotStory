@@ -24,6 +24,7 @@ import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.LivingWorld;
 import server.living.bond.BondService;
 import server.living.config.Content.Persona;
+import server.living.population.FieldCatalog;
 import server.living.population.Population;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
@@ -434,12 +435,13 @@ public final class BenchDutyDispatcher {
 
     /**
      * Where a field duty of this row runs (the default camp): its camp when that is a field, else (no camp, or a town:
-     * a row from before P5, or a hire camping where it was hired) the FieldCatalog's top field for the companion's level
-     * near that town or its home town. Never a town; 0 when no field fits.
+     * a row from before P5, or a hire camping where it was hired; or a field closed since, FieldCatalog.closed) the
+     * FieldCatalog's top field for the companion's level near that camp or its home town. Never a town; 0 when no field
+     * fits.
      */
     public static int fieldCamp(LivingWorld world, RosterEntry entry, Persona persona) {
         int camp = entry.campMapId() != 0 ? entry.campMapId() : ResidentSpots.townMapId(persona.homeTown());
-        if (!town(world, camp)) {
+        if (!town(world, camp) && !closed(camp)) {
             return camp;
         }
         RosterService roster = world.roster();
@@ -457,6 +459,13 @@ public final class BenchDutyDispatcher {
         }
         MapleMap map = world.residents().map(mapId);
         return map == null || map.isTown();
+    }
+
+    /** Whether a camp is a field the population's catalog lists with no room (FieldCatalog.closed): no camp now. */
+    private static boolean closed(int mapId) {
+        Population population = Population.get();
+        FieldCatalog fields = population == null ? null : population.fields();
+        return fields != null && fields.closed(mapId);
     }
 
     /** EXP gained from {@code fromExp} at {@code fromLevel} to {@code toExp} at {@code toLevel} (0 for a loss). */
