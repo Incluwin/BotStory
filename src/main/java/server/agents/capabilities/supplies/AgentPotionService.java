@@ -17,6 +17,7 @@ import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.capabilities.dialogue.AgentSupplyDialogueReporter;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.agents.capabilities.movement.AgentMovementPoseService;
 import server.agents.capabilities.trade.AgentSupplyShareTradeService;
 import server.agents.capabilities.supplies.AgentAutopotPolicy.AutopotChoice;
@@ -251,7 +252,10 @@ public final class AgentPotionService {
         }
         startedAt = AgentPerformanceMonitor.start();
         // Low on HP potions by the standard an ordinary trip uses: a full reserve in a few strong potions fights on.
+        // A party quest whose own rest holds the member for its potions (the EPQ golem rest, whose fight from its rest
+        // point is grind mode) owns its moves and words: no stop, no "walking to you" line.
         if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getMaxHp() * 0.4f
+                && !AgentPartyQuestRuntime.ownsPotionRest(bot.getId())
                 && AgentPotionReserve.tripNeeded(bot, AgentResourceCategory.HP_POTION,
                 AgentSupplyReadiness.standing(bot.getId()) != null)) {
             if (AgentRelationshipRuntime.followTarget(entry) != null) {
@@ -357,7 +361,8 @@ public final class AgentPotionService {
 
         boolean alreadyRequested = AgentPotionStateRuntime.potShareRequested(entry, forHp);
         if ((alreadyRequested && !bypassShareLimits)
-                || !requestPotShare(entry, bot, forHp, bypassShareLimits, thresholdEventPublished)) {
+                || !requestPotShare(entry, bot, forHp, bypassShareLimits, thresholdEventPublished,
+                System.currentTimeMillis())) {
             return false;
         }
         AgentPotionStateRuntime.setPotShareRequested(entry, forHp, true);
@@ -394,14 +399,25 @@ public final class AgentPotionService {
     }
 
     public static boolean requestPotShare(AgentRuntimeEntry entry, Character bot, boolean forHp, boolean bypassShareLimits) {
-        return requestPotShare(entry, bot, forHp, bypassShareLimits, false);
+        return requestPotShare(entry, bot, forHp, bypassShareLimits, false, System.currentTimeMillis());
+    }
+
+    /**
+     * As {@link #requestPotShare(AgentRuntimeEntry, Character, boolean)}, with the share's cohort cooldown and no-donor
+     * backoff read and set on the caller's clock {@code nowMs} (wall-clock milliseconds). A caller that spaces its own
+     * asks by that clock (the EPQ dry golem rester) then meets the cooldown's end exactly instead of a few
+     * milliseconds short of it.
+     */
+    public static boolean requestPotShareAt(AgentRuntimeEntry entry, Character bot, boolean forHp, long nowMs) {
+        return requestPotShare(entry, bot, forHp, false, false, nowMs);
     }
 
     private static boolean requestPotShare(AgentRuntimeEntry entry,
                                            Character bot,
                                            boolean forHp,
                                            boolean bypassShareLimits,
-                                           boolean thresholdEventPublished) {
+                                           boolean thresholdEventPublished,
+                                           long now) {
         long startedAt = AgentPerformanceMonitor.start();
         if (selfSustaining(entry)) {
             AgentPerformanceMonitor.recordSince("potion-request", startedAt);
@@ -412,7 +428,6 @@ public final class AgentPotionService {
             return false;
         }
 
-        long now = System.currentTimeMillis();
         long cohortId = AgentRelationshipRuntime.cohortId(entry);
         Map<Long, Long> categoryBackoff = forHp ? potShareHpBackoffUntil : potShareMpBackoffUntil;
         if (!bypassShareLimits) {

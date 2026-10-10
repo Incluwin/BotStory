@@ -853,13 +853,15 @@ public final class AgentEpqCoordinator {
      * A resting member with fewer than POT_STOP HP potions asks its party for HP potions as the dry rest starts and then
      * every DRY_ASK_INTERVAL_MS: standing or walking, it is outside the grind and follow modes the generic potion check
      * asks from (AgentPotionService.tickPotionCheck). The ask is the generic potion share's, with its cohort cooldown,
-     * no-donor backoff and donor bar. 'EPQ boss rest ask:' result=sent when the ask went out (a donor shares, says it is
-     * low itself, or none is on the map), result=held when the share's cooldown, backoff or a trade held it.
+     * no-donor backoff and donor bar, read and set on this tick's clock (requestPotShareAt), so an ask DRY_ASK_INTERVAL_MS
+     * after its last one meets an equal cooldown's end. 'EPQ boss rest ask:' result=sent when the ask went out (a donor
+     * shares, says it is low itself, or none is on the map), result=held when the share's cooldown, backoff or a trade
+     * held it.
      */
     private static void askWhileDry(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                     AgentEpqMemberState member, int potions, int potStop, long nowMs) {
         if (potions >= potStop || nowMs < member.nextBossRestAskAtMs()) return;
-        boolean sent = AgentPotionService.requestPotShare(entry, agent, true);
+        boolean sent = AgentPotionService.requestPotShareAt(entry, agent, true, nowMs);
         member.recordBossRestAsk(nowMs + AgentEpqRecoveryPolicy.DRY_ASK_INTERVAL_MS);
         try {
             log.info("EPQ boss rest ask: session={} member={} result={} asks={} hp={}/{} hpPots={}",

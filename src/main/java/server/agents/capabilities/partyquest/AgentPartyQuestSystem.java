@@ -43,4 +43,12 @@ public interface AgentPartyQuestSystem {
     default boolean ownsDryLine(int characterId, int mapId) {
         return false;
     }
+
+    /**
+     * True while this quest's own rest rule holds the member back for its HP potions (the EPQ golem rest), so the
+     * generic out-of-potions grind stop leaves its moves and words to the quest. Memory only.
+     */
+    default boolean ownsPotionRest(int characterId) {
+        return false;
+    }
 }
