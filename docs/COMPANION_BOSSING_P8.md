@@ -415,7 +415,9 @@ restart.
   piece. Each one gets the same strip, refit and restore as an offline release, with the same online checks and logs.
   Nobody knows then who let it go, so the refit reads the persona's newest `bossgear.worn` or `bossgear.removed` row
   under any owner (`LivingStore.latestPersonaEvent`). A `bossgear.worn` row puts back what the kit displaced, and the
-  `bossgear.removed` row goes under that row's owner, so the record ends. With no record, or when the read fails, it
+  `bossgear.removed` row goes under that row's owner, so the record ends. A row that names the bag slot and print of
+  each piece puts back the very copy, as a release does, when the persona carries two of an id. A row from before the
+  bag slot and print were kept names the id alone. With no record, or when the read fails, it
   wears the best piece it carries, and the removal goes under owner 0. One INFO line
   `Release cleanup at start: stripped= restored= skipped=` follows, only when it found one. Personas on a roster, a
   human's own record and characters online or loaded stay as they are. A skipped persona waits for the next start.

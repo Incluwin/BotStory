@@ -364,6 +364,41 @@ class ReleasedLevelRestoreAtStartTest {
     }
 
     @Test
+    void ofTwoCopiesOfTheDisplacedIdItsRecordInTheNewFormPutsBackTheVeryOneByItsPrint() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
+            Equip scrolled = Equip.restored(STEEL_SHARP_HELM, (short) 3); // the helm Ann's kit took off it
+            scrolled.setWdef((short) 33);
+            scrolled.setLevel((byte) 3);
+            Equip plain = Equip.restored(STEEL_SHARP_HELM, (short) 1); // a plain copy, in the first bag slot
+            List<Item> saved = new ArrayList<>(List.of(Equip.restored(GLADIUS, WEAPON), boss(KIT_CAP, CAP), plain,
+                    Equip.restored(JOUSTING_HELMET, (short) 2), scrolled));
+            game.store.storedItems.put(HADRIK, saved);
+            when(game.store.store.wearStats(HADRIK)).thenReturn(FIGHTER);
+            offline(HADRIK);
+            LivingStore store = game.store.store;
+            // Ann's kit put the scrolled helm in bag slot 1; its bag was rearranged since, so the plain one lies there
+            store.event(ANN, "hadrik", BossGearRecord.WORN, "displaced: " + CAP + ":" + STEEL_SHARP_HELM + "@1#"
+                    + Integer.toHexString(BossGearRecord.print(scrolled)));
+            RosterService roster = roster();
+
+            try (LivingLogLines lines = new LivingLogLines(RosterService.class)) {
+                roster.finishReleaseCleanupAtStart();
+
+                assertEquals(List.of(LINE + ": stripped=1 restored=0 skipped=0"), lines.startingWith(LINE));
+            }
+            assertEquals(CAP, scrolled.getPosition(), "the very helm Ann's kit displaced, by its print: "
+                    + placed(saved));
+            assertEquals(1, plain.getPosition(), "the plain copy stays in its bag");
+            assertEquals(JOUSTING_HELMET, at(saved, (short) 2), "the higher helm too");
+            assertEquals(4, saved.size(), "the kit's cap went, nothing was made");
+            assertEquals(List.of(ANN + " hadrik bossgear.removed released: 1 piece"),
+                    game.store.events("bossgear.removed"), "ended under Ann, whose record it was");
+            assertNull(game.leases.holder(HADRIK));
+        }
+    }
+
+    @Test
     void withNoRecordItWearsTheBestItCarriesAsBefore() throws Exception {
         try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
             releasedBeforeTheStop("hadrik", "Hadrik", HADRIK);
