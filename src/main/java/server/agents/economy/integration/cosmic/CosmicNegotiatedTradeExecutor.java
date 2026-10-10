@@ -65,8 +65,9 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
                 }
                 buyer.getTrade().chat("Offer placed.");
                 seller.getTrade().chat("Offer accepted.");
+                Trade trade = buyer.getTrade(); // held across the presses: see settled()
                 Trade.completeTrade(buyer); Trade.completeTrade(seller);
-                boolean success = buyer.getTrade() == null && seller.getTrade() == null;
+                boolean success = settled(trade);
                 return new Result(success, idempotencyKey,
                         success ? "Cosmic exact-item PLAYER_TRADE committed"
                                 : "Cosmic exact-item trade did not settle");
@@ -100,9 +101,10 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
             }
             first.getTrade().chat("Offer placed.");
             second.getTrade().chat("Offer accepted.");
+            Trade trade = first.getTrade(); // held across the presses: see settled()
             Trade.completeTrade(first);
             Trade.completeTrade(second);
-            boolean success = first.getTrade() == null && second.getTrade() == null;
+            boolean success = settled(trade);
             return new Result(success, idempotencyKey,
                     success ? "Cosmic PLAYER_TRADE committed" : "Cosmic trade did not settle");
         } catch (RuntimeException failure) {
@@ -110,6 +112,15 @@ public final class CosmicNegotiatedTradeExecutor implements TradeExecutionGatewa
             return new Result(false, idempotencyKey, failure.getMessage() == null
                     ? failure.getClass().getSimpleName() : failure.getMessage());
         }
+    }
+
+    /**
+     * True when both presses settled the trade. A refusal (bag or meso room, one-of-a-kind, the daily meso limit under
+     * level 15) closes both sides just as a settlement does, so a closed trade is no sign of a commit (deploy review
+     * 2026-10-10: refusals were reported committed). Only the Trade itself knows; getTrade() is null once it closed.
+     */
+    private static boolean settled(Trade trade) {
+        return trade != null && trade.isSettled();
     }
 
     private boolean canInteract(Character first, Character second) {

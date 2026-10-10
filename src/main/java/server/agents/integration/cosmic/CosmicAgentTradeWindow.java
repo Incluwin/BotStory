@@ -77,4 +77,9 @@ public final class CosmicAgentTradeWindow implements AgentTradeWindow {
     public boolean hasAnyOffer() {
         return trade.hasAnyOffer();
     }
+
+    @Override
+    public boolean isSettled() {
+        return trade.isSettled();
+    }
 }

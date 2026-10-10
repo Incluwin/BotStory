@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -168,6 +169,61 @@ class AgentTradeSettlementThanksTest {
             verify(companion, atLeastOnce()).getMesosTraded(); // the daily limit was checked
             verify(companion, never()).addMesosTraded(anyInt()); // and it stopped the trade
             assertEquals(List.of(), said);
+            verify(companion, never()).changeFaceExpression(anyInt());
+        }
+    }
+
+    /**
+     * Deploy review 2026-10-10: a bot giving to another Agent presses Trade first (it does not wait for an Agent's
+     * confirmation), so its press only locks its side (WAITING_FOR_PARTNER) and it may say its freebie line ("enjoy",
+     * "delivered", ...). The recipient's own press then runs the real server.Trade checks. Here its bag has no room, the
+     * trade is refused and the gift goes back: the giver says no freebie line and makes no face.
+     */
+    @Test
+    void aBotGiverWhoseAgentPartnerRefusesTheGiftSaysNoFreebieLine() {
+        Character giver = character(3, "Garrick");
+        AgentRuntimeEntry giverEntry = new AgentRuntimeEntry(giver, owner, null);
+        List<Runnable> dueLater = new ArrayList<>();
+        try (MockedStatic<Inventory> bags = mockStatic(Inventory.class);
+             MockedStatic<InventoryManipulator> ignored = mockStatic(InventoryManipulator.class);
+             MockedStatic<AgentInventoryRuntime> inventory = mockStatic(AgentInventoryRuntime.class)) {
+            inventory.when(() -> AgentInventoryRuntime.afterDelay(any(), anyLong(), any(Runnable.class)))
+                    .thenAnswer(invocation -> dueLater.add(invocation.getArgument(2)));
+            inventory.when(() -> AgentInventoryRuntime.visibleSayNow(any(), anyString()))
+                    .thenAnswer(invocation -> said.add(invocation.getArgument(1)));
+            bags.when(() -> Inventory.checkSpotsAndOwnership(eq(companion), anyList())).thenReturn(false);
+            bags.when(() -> Inventory.checkSpotsAndOwnership(eq(giver), anyList())).thenReturn(true);
+            Trade giverTrade = new Trade((byte) 0, giver);
+            Trade companionTrade = new Trade((byte) 1, companion);
+            giver.setTrade(giverTrade);
+            companion.setTrade(companionTrade);
+            giverTrade.setPartner(companionTrade);
+            companionTrade.setPartner(giverTrade);
+            giverTrade.setFullTrade(true);
+            companionTrade.setFullTrade(true);
+            giverTrade.addItem(new Item(1002000, (short) 1, (short) 1));
+
+            // the giver's tick: its recipient is an Agent, so it presses Trade at once; the freebie roll comes up
+            AgentTradeLifecycleService.completeTradeAndReact(giverEntry, giver, CosmicAgentTradeWindow.wrap(giverTrade),
+                    AgentTradeLifecycleService.LifecycleCallbacks.of(
+                            (currentEntry, agent) -> { },
+                            (currentEntry, agent) -> { },
+                            currentEntry -> owner,
+                            (agent, currentOwner) -> { },
+                            (minMs, maxMs) -> 0L,
+                            () -> "ty!",
+                            () -> "enjoy",
+                            () -> 0,
+                            () -> false));
+            assertTrue(giverTrade.isLocked(), "the giver's press locked its side");
+            // the recipient's tick: the giver pressed, so it completes; its full bag refuses the gift
+            companionCompletes(CosmicAgentTradeWindow.wrap(companionTrade));
+            assertNull(giver.getTrade(), "the refusal closed the trade");
+            // the giver's line comes due
+            dueLater.forEach(Runnable::run);
+
+            assertEquals(List.of(), said, "no freebie line for a gift that went back");
+            verify(giver, never()).changeFaceExpression(anyInt());
             verify(companion, never()).changeFaceExpression(anyInt());
         }
     }

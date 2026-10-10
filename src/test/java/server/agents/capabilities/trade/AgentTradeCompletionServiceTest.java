@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -174,33 +175,66 @@ class AgentTradeCompletionServiceTest {
         }
     }
 
+    /**
+     * A giver whose recipient is an Agent presses Trade first (WAITING_FOR_PARTNER); the recipient's press on its own
+     * tick settles or refuses the gift. The giver's face and freebie line wait until the line is due and come only if
+     * the trade settled by then (deploy review 2026-10-10: before, it said "enjoy" for a gift its partner refused).
+     */
+    private static void giverPressesFirst(AgentRuntimeEntry entry, Character agent, List<Runnable> dueLater,
+                                          MockedStatic<AgentInventoryRuntime> inventory) {
+        inventory.when(() -> AgentInventoryRuntime.afterDelay(org.mockito.ArgumentMatchers.eq(entry), org.mockito.ArgumentMatchers.eq(800L), org.mockito.ArgumentMatchers.any(Runnable.class)))
+                .thenAnswer(invocation -> dueLater.add(invocation.getArgument(2)));
+
+        AgentTradeCompletionService.completeAndReact(
+                entry,
+                agent,
+                List.of(),
+                false,
+                () -> 800L,
+                () -> "thanks",
+                () -> "freebie",
+                () -> 0,
+                () -> false);
+
+        verify(agent, org.mockito.Mockito.never()).changeFaceExpression(org.mockito.ArgumentMatchers.anyInt());
+        assertEquals(1, dueLater.size(), "one line due later");
+    }
+
     @Test
-    void aGiverWaitingForItsAgentPartnersPressMayStillSayItsFreebieLine() {
-        // a giver whose recipient is an Agent presses Trade first; the recipient settles it on its own tick, as before
+    void aGiverWhosePartnersPressSettledTheGiftSaysItsFreebieLineWhenDue() {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
-        Character agent = agentWaitingForItsPartner();
+        Character agent = mock(Character.class);
+        Trade trade = mock(Trade.class);
+        AtomicBoolean settled = new AtomicBoolean();
+        when(agent.getTrade()).thenReturn(trade);
+        when(trade.isSettled()).thenAnswer(invocation -> settled.get());
+        List<Runnable> dueLater = new java.util.ArrayList<>();
 
         try (MockedStatic<Trade> ignored = mockStatic(Trade.class);
              MockedStatic<AgentInventoryRuntime> inventory = mockStatic(AgentInventoryRuntime.class)) {
-            inventory.when(() -> AgentInventoryRuntime.afterDelay(org.mockito.ArgumentMatchers.eq(entry), org.mockito.ArgumentMatchers.eq(800L), org.mockito.ArgumentMatchers.any(Runnable.class)))
-                    .thenAnswer(invocation -> {
-                        invocation.<Runnable>getArgument(2).run();
-                        return null;
-                    });
-
-            AgentTradeCompletionService.completeAndReact(
-                    entry,
-                    agent,
-                    List.of(),
-                    false,
-                    () -> 800L,
-                    () -> "thanks",
-                    () -> "freebie",
-                    () -> 0,
-                    () -> false);
+            giverPressesFirst(entry, agent, dueLater, inventory);
+            settled.set(true); // the partner's press on its own tick settled it
+            dueLater.forEach(Runnable::run);
 
             verify(agent).changeFaceExpression(AgentEmote.ANNOYED.getValue());
             inventory.verify(() -> AgentInventoryRuntime.visibleSayNow(entry, "freebie"));
+        }
+    }
+
+    @Test
+    void aGiverWhoseTradeHasNotSettledWhenTheLineIsDueSaysNothing() {
+        // the partner's press refused the gift (or has not come yet): nothing arrived, so no "enjoy" and no face
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character agent = agentWaitingForItsPartner();
+        List<Runnable> dueLater = new java.util.ArrayList<>();
+
+        try (MockedStatic<Trade> ignored = mockStatic(Trade.class);
+             MockedStatic<AgentInventoryRuntime> inventory = mockStatic(AgentInventoryRuntime.class)) {
+            giverPressesFirst(entry, agent, dueLater, inventory);
+            dueLater.forEach(Runnable::run);
+
+            verify(agent, org.mockito.Mockito.never()).changeFaceExpression(org.mockito.ArgumentMatchers.anyInt());
+            inventory.verify(() -> AgentInventoryRuntime.visibleSayNow(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()), org.mockito.Mockito.never());
         }
     }
 }
