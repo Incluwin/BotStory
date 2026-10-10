@@ -23,6 +23,10 @@ import java.util.function.BooleanSupplier;
  * {@link Rule} that names an owned companion out with its owner in its owner's party. With nothing installed nobody
  * speaks, so a citizen and every other Agent keep quiet as before. Each line said is logged at INFO (Agent party chat
  * is logged nowhere else).</p>
+ *
+ * <p>For an Agent the rule names these are its only bag-full lines: the session's inventory-full reaction
+ * (AgentResourceDialogueReactionService, which every other Agent keeps) says nothing for it, so its owner no longer
+ * hears two lines in one tick (deploy review 2026-10-10).</p>
  */
 public final class AgentBagFullSpeech {
     private static final Logger log = LoggerFactory.getLogger(AgentBagFullSpeech.class);
