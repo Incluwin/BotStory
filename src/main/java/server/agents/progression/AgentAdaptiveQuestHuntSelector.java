@@ -41,6 +41,8 @@ final class AgentAdaptiveQuestHuntSelector {
             "server.agents.progression.AgentAdaptiveQuestHuntSelector.OCCUPIED_AGENT_COST");
     private static final int LEVEL_GAP_COST = config.AgentTuning.intValue(
             "server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_GAP_COST");
+    private static final int LEVEL_WINDOW_ABOVE = config.AgentTuning.intValue(
+            "server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_WINDOW_ABOVE");
     private static final int PREFERRED_MAP_CREDIT = config.AgentTuning.intValue(
             "server.agents.progression.AgentAdaptiveQuestHuntSelector.PREFERRED_MAP_CREDIT");
     private static final int MISSING_OBJECTIVE_COST = config.AgentTuning.intValue(
@@ -96,13 +98,18 @@ final class AgentAdaptiveQuestHuntSelector {
         Map<Integer, Integer> occupancy = AgentVictoriaTrainingPopulation.snapshot(
                 request.agent(), routeEligibleMapIds);
         AgentProgressionProfile profile = AgentProgressionProfileRuntime.profile(request.entry());
+        int agentLevel = request.agent().getLevel();
+        // Maps inside the level window all rank 0 here, so cost decides among them; with none inside,
+        // the map whose strongest monster is the least above the window wins and the quest is not stranded.
         List<DeficitChoice> choices = builders.values().stream()
                 .map(DeficitCandidateBuilder::build)
                 .filter(choice -> routeEligibleMapIds.contains(choice.map().mapId()))
                 .filter(choice -> occupancy.getOrDefault(choice.map().mapId(), 0)
                         < choice.map().maximumAgents())
                 .map(choice -> evaluate(request, choice, occupancy, profile))
-                .sorted(Comparator.comparingLong(DeficitChoice::completionCost)
+                .sorted(Comparator.comparingInt(
+                                (DeficitChoice choice) -> levelsAboveWindow(choice, agentLevel))
+                        .thenComparingLong(DeficitChoice::completionCost)
                         .thenComparingInt(choice -> choice.map().rank())
                         .thenComparingInt(choice -> choice.map().mapId()))
                 .toList();
@@ -136,8 +143,9 @@ final class AgentAdaptiveQuestHuntSelector {
         DeficitChoice best = choices.getFirst();
         boolean materiallyBetter = leaseValid
                 && best.map().mapId() != leasedChoice.map().mapId()
-                && best.completionCost() + REPLAN_SWITCH_MARGIN_COST
-                < leasedChoice.completionCost();
+                && (levelsAboveWindow(best, agentLevel) < levelsAboveWindow(leasedChoice, agentLevel)
+                || best.completionCost() + REPLAN_SWITCH_MARGIN_COST
+                < leasedChoice.completionCost());
         DeficitChoice selected = !deficitHasAuthority && preferred != null
                 ? preferred : leaseValid && !materiallyBetter ? leasedChoice : best;
         if (materiallyBetter) {
@@ -155,6 +163,15 @@ final class AgentAdaptiveQuestHuntSelector {
                 selected.evidence() == null ? null
                         : new AdaptiveChoice(selected.map(), selected.evidence(),
                         -selected.completionCost())));
+    }
+
+    /**
+     * Levels by which a map's strongest monster (catalog max-mob evidence) exceeds the Agent's level plus
+     * LEVEL_WINDOW_ABOVE, the training-field window; 0 inside the window or without evidence.
+     */
+    private static int levelsAboveWindow(DeficitChoice choice, int agentLevel) {
+        return choice.evidence() == null ? 0
+                : Math.max(0, choice.evidence().maxMobLevel() - agentLevel - LEVEL_WINDOW_ABOVE);
     }
 
     private static DeficitChoice evaluate(
@@ -217,7 +234,9 @@ final class AgentAdaptiveQuestHuntSelector {
         String alternatives = choices.stream().limit(3)
                 .map(choice -> choice.map().mapId() + ":" + choice.completionCost()
                         + "(travel=" + choice.travelCost() + ",hunt=" + choice.huntCost()
-                        + ",coverage=" + choice.coveredObjectives() + ")")
+                        + ",coverage=" + choice.coveredObjectives()
+                        + ",levelsAboveWindow=" + levelsAboveWindow(
+                        choice, request.agent().getLevel()) + ")")
                 .reduce((left, right) -> left + "," + right).orElse("none");
         String remaining = request.objectives().stream()
                 .map(demand -> demand.objectiveId() + "=" + demand.remainingCount())
