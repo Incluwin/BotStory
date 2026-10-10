@@ -4,6 +4,7 @@ import client.Character;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationDebugStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.partyquest.epq.AgentEpqSessionRegistry;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.monitoring.AgentPerformanceMonitor;
@@ -106,8 +107,12 @@ public final class AgentAirborneMovementService {
             return false;
         }
 
+        Rope committedRope = committedTargetRope(entry, agent);
         for (Rope rope : agent.getMap().getRopes()) {
             if (AgentClimbMovementPolicy.sameRope(AgentClimbStateRuntime.blockedRopeGrab(entry), rope)) {
+                continue;
+            }
+            if (committedRope != null && !AgentClimbMovementPolicy.sameRope(committedRope, rope)) {
                 continue;
             }
             Point grab = AgentJumpProbeService.ropeGrabAfterTick(from, to, rope);
@@ -127,8 +132,12 @@ public final class AgentAirborneMovementService {
             return false;
         }
 
+        Rope committedRope = committedTargetRope(entry, agent);
         for (Rope rope : agent.getMap().getRopes()) {
             if (AgentClimbMovementPolicy.sameRope(AgentClimbStateRuntime.blockedRopeGrab(entry), rope)) {
+                continue;
+            }
+            if (committedRope != null && !AgentClimbMovementPolicy.sameRope(committedRope, rope)) {
                 continue;
             }
             if (Math.abs(rope.x() - agentPosition.x) > AgentMovementPhysicsConfig.configuredRopeGrabX()) {
@@ -145,6 +154,24 @@ public final class AgentAirborneMovementService {
         }
 
         return false;
+    }
+
+    /**
+     * The rope a committed rope edge (a jump onto a rope, or from one rope to another) ends on, or
+     * null. While such an edge is committed the Agent grabs only that rope, as the graph's
+     * rope-grab simulation does. The first rope within reach can be a neighbour the arc passes
+     * first: at The Road to Garden of 3 Colors (200010100) the jump from rope x148 to rope x69
+     * reaches rope x68 (bottom y -361) 30 px above the top of rope x69 (y -305).
+     */
+    private static Rope committedTargetRope(AgentRuntimeEntry entry, Character agent) {
+        if (!(AgentNavigationDebugStateRuntime.activeNavigationEdge(entry) instanceof AgentNavigationGraph.Edge edge)
+                || edge.type != AgentNavigationGraph.EdgeType.CLIMB) {
+            return null;
+        }
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(
+                agent.getMap(), AgentMovementStateRuntime.movementProfile(entry));
+        return graph == null ? null
+                : AgentNavigationGraphService.findRopeFromRegion(agent.getMap(), graph.getRegion(edge.toRegionId));
     }
 
     static boolean shouldApplyAirSteering(AgentRuntimeEntry entry) {

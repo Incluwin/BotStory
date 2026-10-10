@@ -103,7 +103,7 @@ public final class AgentNavigationEdgeReliabilityState {
             return;
         }
         attempt = new Attempt(signature, currentRegionId,
-                position.distance(signature.endPoint()), nowMs);
+                position.distance(signature.endPoint()), nowMs, false);
     }
 
     /**
@@ -116,11 +116,23 @@ public final class AgentNavigationEdgeReliabilityState {
         synchronizeMap(currentMapId);
         if (attempt != null) {
             attempt = new Attempt(attempt.edge, attempt.startedRegionId,
-                    attempt.bestDistanceToEndPx, nowMs);
+                    attempt.bestDistanceToEndPx, nowMs, attempt.airborne);
         }
     }
 
-    /** Returns the edge whose attempt timed out, or null while progress remains valid. */
+    /** Marks the attempt on {@code edge} as in the air: its next landing or rope grab ends it. */
+    public synchronized void attemptAirborne(int currentMapId, AgentNavigationGraph.Edge edge) {
+        synchronizeMap(currentMapId);
+        if (attempt != null && !attempt.airborne && attempt.edge.matches(edge)) {
+            attempt = new Attempt(attempt.edge, attempt.startedRegionId,
+                    attempt.bestDistanceToEndPx, attempt.lastProgressAtMs, true);
+        }
+    }
+
+    /**
+     * Returns the edge whose attempt timed out or landed outside its target region, or null while
+     * progress remains valid.
+     */
     public synchronized AgentNavigationGraph.Edge observeAttempt(int currentMapId,
                                                                  int currentRegionId,
                                                                  Point position,
@@ -137,10 +149,18 @@ public final class AgentNavigationEdgeReliabilityState {
             attempt = null;
             return null;
         }
+        if (attempt.airborne && currentRegionId >= 0 && currentRegionId != attempt.edge.toRegionId) {
+            // The jump, drop or rope jump landed, or grabbed a rope, outside its target region.
+            // Without this a missed arc charged nothing: the next plan began a new attempt, and
+            // Mu Lung's slope jump (250000000, speed 105) missed about 40 times in a row.
+            AgentNavigationGraph.Edge missed = attempt.edge.toEdge(attempt.startedRegionId);
+            attempt = null;
+            return missed;
+        }
         double distanceToEnd = position.distance(attempt.edge.endPoint());
         if (distanceToEnd + Math.max(0, progressTolerancePx) < attempt.bestDistanceToEndPx) {
             attempt = new Attempt(attempt.edge, attempt.startedRegionId,
-                    distanceToEnd, nowMs);
+                    distanceToEnd, nowMs, attempt.airborne);
             return null;
         }
         if (nowMs - attempt.lastProgressAtMs < Math.max(1L, timeoutMs)) {
@@ -271,7 +291,8 @@ public final class AgentNavigationEdgeReliabilityState {
     private record Attempt(EdgeSignature edge,
                            int startedRegionId,
                            double bestDistanceToEndPx,
-                           long lastProgressAtMs) {
+                           long lastProgressAtMs,
+                           boolean airborne) {
     }
 
     private record EdgeSignature(int toRegionId,

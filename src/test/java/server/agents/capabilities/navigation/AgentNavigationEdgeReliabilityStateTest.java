@@ -129,6 +129,44 @@ class AgentNavigationEdgeReliabilityStateTest {
     }
 
     @Test
+    void airborneAttemptThatLandsInAnotherRegionFailsOnce() {
+        AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+        state.attemptAirborne(100, edge);
+
+        assertNull(state.observeAttempt(100, -1, new Point(40, 60), 1_100, 3_500, 6));
+        AgentNavigationGraph.Edge missed = state.observeAttempt(100, 3, new Point(60, 300), 1_200, 3_500, 6);
+        assertNotNull(missed);
+        assertEquals(edge.toRegionId, missed.toRegionId);
+        assertEquals(edge.startPoint, missed.startPoint);
+        assertNull(state.observeAttempt(100, 3, new Point(60, 300), 1_300, 3_500, 6),
+                "the landing ends the attempt: one failure, not one per tick");
+    }
+
+    @Test
+    void airborneAttemptThatLandsOnItsTargetSucceeds() {
+        AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        state.recordFailure(100, edge, 900, 3, 30_000, 60_000, 32);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+        state.attemptAirborne(100, edge);
+
+        assertNull(state.observeAttempt(100, 2, new Point(100, 100), 1_200, 3_500, 6));
+        assertEquals(0, state.trackedEdgeCount(100, 1_200, 60_000));
+    }
+
+    @Test
+    void groundedAttemptInAnotherRegionIsNotALanding() {
+        // An attempt that never left the ground keeps the progress timeout rule.
+        AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+
+        assertNull(state.observeAttempt(100, 3, new Point(10, 100), 1_200, 3_500, 6));
+    }
+
+    @Test
     void syntheticCollapsedHandoffMatchesUnderlyingRiskyGraphEdge() {
         AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
         AgentNavigationGraph.Edge underlying = edge(2, 3, 100);

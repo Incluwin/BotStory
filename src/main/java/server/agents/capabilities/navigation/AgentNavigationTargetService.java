@@ -85,7 +85,9 @@ public final class AgentNavigationTargetService {
             progressState.observe(bot.getMapId(), pathTargetPos, startRegionId, nowMs);
             AgentNavigationGraph.Edge timedOutEdge = runAiTick
                     ? AgentNavigationEdgeReliabilityRuntime.observeAttempt(
-                            entry, bot.getMapId(), startRegionId, botPos, nowMs)
+                            entry, bot.getMapId(),
+                            AgentNavigationRegionService.hungRopeRegionId(graph, entry, startRegionId),
+                            botPos, nowMs)
                     : null;
             if (timedOutEdge != null) {
                 // Invalidate only the live step. The local pathTarget is replanned below while
@@ -512,6 +514,7 @@ public final class AgentNavigationTargetService {
                                                 AgentNavigationGraph.Edge edge,
                                                 boolean runAiTick) {
         if (!runAiTick) {
+            observeAirborneAttempt(entry, bot, edge);
             return AgentTraversalResult.deferred("observation-only");
         }
         long nowMs = System.currentTimeMillis();
@@ -532,11 +535,28 @@ public final class AgentNavigationTargetService {
             }
             return AgentTraversalResult.rejected(validation.reason());
         }
+        observeAirborneAttempt(entry, bot, edge);
         if (!validation.ready()) {
             return AgentTraversalResult.deferred(validation.reason());
         }
-        return AgentNavigationEdgeExecutor.INSTANCE.execute(
+        AgentTraversalResult result = AgentNavigationEdgeExecutor.INSTANCE.execute(
                 entry, bot, new AgentTraversalCommand(graph, edge, botPos, rawTargetPos));
+        // A launched jump can land before the next tick sees it in the air.
+        observeAirborneAttempt(entry, bot, edge);
+        return result;
+    }
+
+    /**
+     * In the air, the committed edge's attempt ends at its next landing or rope grab, and one
+     * outside the edge's target region charges one failure. Observation-only ticks count too: a
+     * background Agent that walks off its launch platform can land before the next AI tick.
+     */
+    private static void observeAirborneAttempt(AgentRuntimeEntry entry,
+                                               Character bot,
+                                               AgentNavigationGraph.Edge edge) {
+        if (AgentMovementStateRuntime.inAir(entry)) {
+            AgentNavigationEdgeReliabilityRuntime.attemptAirborne(entry, bot.getMapId(), edge);
+        }
     }
 
     private static boolean shouldUsePreciseTarget(AgentNavigationGraph graph,

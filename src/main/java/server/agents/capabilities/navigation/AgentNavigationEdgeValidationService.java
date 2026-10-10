@@ -41,7 +41,7 @@ public final class AgentNavigationEdgeValidationService {
         }
         boolean climbing = AgentClimbStateRuntime.climbing(entry);
         boolean airborne = AgentMovementStateRuntime.inAir(entry);
-        if (currentRegionId != edge.fromRegionId) {
+        if (currentRegionId != edge.fromRegionId && !inFlight(entry, currentRegionId, airborne, edge)) {
             return new Result(Status.REJECTED, "unexpected-source-region");
         }
         if (!validAnchors(graph, edge)) {
@@ -83,6 +83,22 @@ public final class AgentNavigationEdgeValidationService {
         return ready
                 ? new Result(Status.READY, "ready")
                 : new Result(Status.APPROACH, "approach-edge-anchor");
+    }
+
+    /**
+     * An airborne Agent has no region (-1), and its committed edge is the jump, drop or rope jump
+     * in flight. The branches below hold that edge until it lands or grabs a rope. Rejected here,
+     * every arc still in the air at an AI tick charged a failure and switched to air steering,
+     * which in background ticks lands the arc short of its target.
+     */
+    private static boolean inFlight(AgentRuntimeEntry entry,
+                                    int currentRegionId,
+                                    boolean airborne,
+                                    AgentNavigationGraph.Edge edge) {
+        return airborne && currentRegionId < 0
+                && AgentNavigationDebugStateRuntime.activeNavigationEdge(entry)
+                instanceof AgentNavigationGraph.Edge committed
+                && AgentNavigationCommittedEdgeService.sameEdge(committed, edge);
     }
 
     private static boolean climbReady(AgentNavigationGraph graph,

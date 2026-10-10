@@ -62,6 +62,12 @@ public final class AgentNavigationEdgeReliabilityRuntime {
         }
     }
 
+    public static void attemptAirborne(AgentRuntimeEntry entry, int mapId, AgentNavigationGraph.Edge edge) {
+        if (entry != null && AgentNavigationReliabilityConfig.tracksReliability()) {
+            state(entry).attemptAirborne(mapId, edge);
+        }
+    }
+
     public static AgentNavigationGraph.Edge observeAttempt(AgentRuntimeEntry entry,
                                                             int mapId,
                                                             int regionId,

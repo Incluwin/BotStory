@@ -2,6 +2,7 @@ package server.agents.capabilities.navigation;
 
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.Foothold;
 import server.maps.Rope;
@@ -25,6 +26,42 @@ class AgentNavigationEdgeValidationServiceTest {
         AgentNavigationEdgeValidationService.Result result =
                 AgentNavigationEdgeValidationService.validate(
                         graph, entry, 100, 2, new Point(0, 100), jump(), 1_000);
+
+        assertTrue(result.rejected());
+        assertEquals("unexpected-source-region", result.reason());
+    }
+
+    @Test
+    void airborneAgentKeepsItsCommittedJumpInProgress() {
+        // In the air the Agent's region is -1. Rejecting the committed jump there charged a
+        // failure to every jump that was still in the air at an AI tick.
+        AgentNavigationGraph graph = graph();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentNavigationGraph.Edge committed = jump();
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentNavigationDebugStateRuntime.setActiveNavigationEdge(entry, committed);
+
+        AgentNavigationEdgeValidationService.Result result =
+                AgentNavigationEdgeValidationService.validate(
+                        graph, entry, 100, -1, new Point(50, 40), committed, 1_000);
+
+        assertEquals(AgentNavigationEdgeValidationService.Status.IN_PROGRESS, result.status());
+        assertEquals("airborne-traversal", result.reason());
+    }
+
+    @Test
+    void airborneAgentStillRejectsAnEdgeItHasNotCommitted() {
+        AgentNavigationGraph graph = graph();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentNavigationDebugStateRuntime.setActiveNavigationEdge(entry, jump());
+        AgentNavigationGraph.Edge other = new AgentNavigationGraph.Edge(2, 1, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(100, 100), new Point(0, 100),
+                90, 110, 0, -1, 0, 0, 0, 100);
+
+        AgentNavigationEdgeValidationService.Result result =
+                AgentNavigationEdgeValidationService.validate(
+                        graph, entry, 100, -1, new Point(50, 40), other, 1_000);
 
         assertTrue(result.rejected());
         assertEquals("unexpected-source-region", result.reason());

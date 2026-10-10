@@ -53,6 +53,26 @@ public final class AgentNavigationRegionService {
         return preserveRegionContinuity(graph, entry, coordinateRegionId, botPos);
     }
 
+    /**
+     * The region of the rope the Agent hangs on, matched on x, top and bottom, else
+     * {@code currentRegionId}. The region lookup returns the first rope within grab range, so on
+     * overlapping ladders it can name a rope the Agent does not hang on (300020000: ladder x -201
+     * resolves to rope x -200).
+     */
+    static int hungRopeRegionId(AgentNavigationGraph graph, AgentRuntimeEntry entry, int currentRegionId) {
+        Rope rope = AgentClimbStateRuntime.climbing(entry) ? AgentClimbStateRuntime.climbRope(entry) : null;
+        if (graph == null || rope == null) {
+            return currentRegionId;
+        }
+        for (AgentNavigationGraph.Region region : graph.regions) {
+            if (region.isRopeRegion && region.minX == rope.x()
+                    && region.minY == rope.topY() && region.maxY == rope.bottomY()) {
+                return region.id;
+            }
+        }
+        return currentRegionId;
+    }
+
     static int preserveRegionContinuity(AgentNavigationGraph graph,
                                         AgentRuntimeEntry entry,
                                         int coordinateRegionId,
