@@ -1,18 +1,23 @@
 package server.living.roster;
 
+import client.BotClient;
 import client.Character;
+import config.LivingWorldConfig;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentIdentityGateway;
 import server.agents.integration.AgentIdentityGatewayRuntime;
 import server.agents.integration.AgentPersistenceGateway;
 import server.agents.integration.AgentPersistenceGatewayRuntime;
 import server.agents.integration.CharacterGateway;
+import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
 import server.agents.registry.AgentResolvedCharacter;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
@@ -35,8 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** CompanionDirectory relations and the AgentClaimGuard rule it installs (docs/BOT_MANAGEMENT_PLAN.md P1). */
@@ -282,6 +292,102 @@ class CompanionDirectoryTest {
         assertFalse(directory.isCompanionParty(party(member(alice), member(character(BRIN, "Brin")))));
         assertFalse(directory.isCompanionParty(party(member(character(OLWEN, "Olwen")), member(character(PROBE, "Probe")))));
         assertFalse(directory.isCompanionParty(null));
+    }
+
+    // ---- whisper refusals ----------------------------------------------------------------
+
+    /** The lines a companion whispers when a whisper gate turns its owner away (CompanionWhisperRefusals). */
+    private static final List<String> ON_THE_BENCH = List.of(
+            "i'm off doing my own thing right now, call me back first.",
+            "busy out here atm. call me back if u need me.",
+            "can't from out here, call me back first.");
+    private static final List<String> NOT_READY = List.of(
+            "can't right now, try again in a sec.",
+            "one sec, still getting my stuff together.",
+            "hold on, gimme a sec.");
+
+    /**
+     * Live 2026-10-10: Bossfriend whispered his companion and heard nothing. On a live bench slice the gate keeps her
+     * from him: she now whispers why, once in a while (a second whisper right after gets nothing), and nothing else
+     * happens; a stranger's whisper still gets nothing.
+     */
+    @Test
+    void anOwnerWhisperingACompanionOnItsBenchSliceHearsWhyOnce() {
+        when(bench.live("olwen")).thenReturn(true);
+        Persona olwenPersona = whisperable();
+        Character olwen = bot(OLWEN, "Olwen");
+
+        whisper(alice, olwen, "sell my junk");
+        whisper(alice, olwen, "sell my junk");
+        whisper(bob, olwen, "sell my junk");
+
+        ArgumentCaptor<String> said = ArgumentCaptor.forClass(String.class);
+        verify(residents).whisper(eq(olwenPersona),
+                eq(alice), said.capture());
+        assertTrue(ON_THE_BENCH.contains(said.getValue()), said.getValue());
+        verify(residents, never()).whisper(any(),
+                eq(bob), any());
+        registry.verify(() -> AgentRuntimeRegistry.findByAgentCharacterId(OLWEN), never());
+    }
+
+    /** Loaded but with no running Agent yet (a spawn or a relog in flight): its owner is told to try again. */
+    @Test
+    void anOwnerWhisperingACompanionWithNoRunningAgentIsToldToWait() {
+        Persona olwenPersona = whisperable();
+        Character olwen = bot(OLWEN, "Olwen");
+
+        whisper(alice, olwen, "follow me");
+        whisper(alice, olwen, "follow me");
+
+        ArgumentCaptor<String> said = ArgumentCaptor.forClass(String.class);
+        verify(residents).whisper(eq(olwenPersona),
+                eq(alice), said.capture());
+        assertTrue(NOT_READY.contains(said.getValue()), said.getValue());
+    }
+
+    /** living_world.COMPANION_WHISPER_REFUSAL_GAP_MS 0 answers every refused whisper; the lines are the class's own. */
+    @Test
+    void aZeroGapAnswersEveryRefusedWhisper() {
+        when(bench.live("olwen")).thenReturn(true);
+        Persona olwenPersona = whisperable();
+        LivingWorldConfig config = new LivingWorldConfig();
+        config.COMPANION_WHISPER_REFUSAL_GAP_MS = 0;
+        when(world.config()).thenReturn(config);
+        Character olwen = bot(OLWEN, "Olwen");
+
+        whisper(alice, olwen, "follow me");
+        whisper(alice, olwen, "follow me");
+
+        verify(residents, times(2)).whisper(eq(olwenPersona), eq(alice), any());
+        assertEquals(ON_THE_BENCH, CompanionWhisperRefusals.ON_THE_BENCH);
+        assertEquals(NOT_READY, CompanionWhisperRefusals.NOT_READY);
+    }
+
+    /** The persona Olwen whispers as, with the shipped living_world gap. */
+    private Persona whisperable() {
+        Persona olwenPersona = residents.personaOfCharacterId(OLWEN);
+        when(content.persona("olwen")).thenReturn(olwenPersona);
+        when(world.config()).thenReturn(new LivingWorldConfig());
+        return olwenPersona;
+    }
+
+    /** The stock whisper's Agent path for an operator (the names allowlist), with this directory as the claim rule. */
+    private void whisper(Character from, Character to, String text) {
+        String oldOperators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES;
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = "Alice,Bob";
+        AgentClaimGuard.install(directory);
+        try {
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(from, to, text);
+        } finally {
+            AgentClaimGuard.install(null);
+            config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = oldOperators;
+        }
+    }
+
+    private static Character bot(int id, String name) {
+        Character character = character(id, name);
+        when(character.getClient()).thenReturn(new BotClient(0, 0));
+        return character;
     }
 
     // ---- helpers -------------------------------------------------------------------------

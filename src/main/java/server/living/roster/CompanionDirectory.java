@@ -57,9 +57,11 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
     }
 
     private final LivingWorld world;
+    private final CompanionWhisperRefusals refusals;
 
     public CompanionDirectory(LivingWorld world) {
         this.world = world;
+        this.refusals = new CompanionWhisperRefusals(world, System::currentTimeMillis);
     }
 
     // ---- relations -----------------------------------------------------------------------
@@ -193,6 +195,19 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
     @Override
     public boolean isClaimed(int agentCharacterId) {
         return isCitizen(agentCharacterId) || personaIdOf(agentCharacterId) != null;
+    }
+
+    /**
+     * An owner's whisper to their own companion reached no Agent: the companion whispers why
+     * ({@link CompanionWhisperRefusals}). Anyone else's refused whisper stays unanswered, as a stranger's always was.
+     */
+    @Override
+    public void refused(Character actor, Character agent, AgentClaimGuard.Refusal refusal) {
+        String personaId = personaIdOf(agent.getId());
+        if (personaId == null || world.roster().cachedOwnerOf(personaId) != actor.getId()) {
+            return;
+        }
+        refusals.refused(actor, agent, personaId, refusal);
     }
 
     // ---- lookups -------------------------------------------------------------------------

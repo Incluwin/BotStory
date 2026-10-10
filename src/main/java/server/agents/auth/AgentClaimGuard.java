@@ -23,6 +23,21 @@ public final class AgentClaimGuard {
 
         /** True when the host claims this character, so chat may never re-point its runtime leader. */
         boolean isClaimed(int agentCharacterId);
+
+        /**
+         * A whisper gate turned {@code actor} away from this loaded Agent character. The host may let the Agent say
+         * why, to whom it chooses (its owner); by default nothing is said, as for a stranger.
+         */
+        default void refused(Character actor, Character agent, Refusal refusal) {
+        }
+    }
+
+    /** Why a whisper to a loaded Agent character reached no Agent. */
+    public enum Refusal {
+        /** The installed rule keeps the Agent from the actor ({@link Rule#mayControl} said no). */
+        KEPT,
+        /** The actor may control it, but no running Agent entry takes the line yet. */
+        NOT_RUNNING
     }
 
     /** A leader-level chat verb whose Agent route would unload or unclaim the Agent it names. */
@@ -73,5 +88,13 @@ public final class AgentClaimGuard {
     public static boolean isClaimed(int agentCharacterId) {
         Rule current = rule;
         return current != null && current.isClaimed(agentCharacterId);
+    }
+
+    /** Tells the installed host that a whisper gate turned {@code actor} away; with nothing installed, nothing. */
+    public static void refused(Character actor, Character agent, Refusal refusal) {
+        Rule current = rule;
+        if (current != null && actor != null && agent != null) {
+            current.refused(actor, agent, refusal);
+        }
     }
 }

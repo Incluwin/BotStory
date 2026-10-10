@@ -27,13 +27,28 @@ public final class CosmicAgentWhisperCommandBridge {
 
     private static AgentWhisperCommandService.Hooks<AgentRuntimeEntry> hooks(Character sender) {
         return new AgentWhisperCommandService.Hooks<>(
-                // a whisper from someone who may not control this Agent is ignored like a stranger's
-                (leader, target) -> AgentClaimGuard.mayControl(leader, target.getId())
-                        ? AgentRuntimeRegistry.findByAgentCharacterId(target.getId()) : null,
+                CosmicAgentWhisperCommandBridge::resolve,
                 // the chain a party line naming the Agent takes, so a line no fixed pattern matches still falls back
                 (entry, message, channel) -> {
                     AgentRelationshipRuntime.setInteractionTarget(entry, sender);
                     AgentChatRouteCoordinator.handleWhisperChat(sender, entry, message, channel);
                 });
+    }
+
+    /**
+     * The running Agent the whisper is for, or null. A whisper from someone who may not control this Agent is
+     * ignored like a stranger's; the host is told of each refusal (AgentClaimGuard.refused), so its own companion may
+     * say why to its owner (a live bench slice keeps it, or its Agent is not running yet).
+     */
+    private static AgentRuntimeEntry resolve(Character leader, Character target) {
+        if (!AgentClaimGuard.mayControl(leader, target.getId())) {
+            AgentClaimGuard.refused(leader, target, AgentClaimGuard.Refusal.KEPT);
+            return null;
+        }
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(target.getId());
+        if (entry == null) {
+            AgentClaimGuard.refused(leader, target, AgentClaimGuard.Refusal.NOT_RUNNING);
+        }
+        return entry;
     }
 }

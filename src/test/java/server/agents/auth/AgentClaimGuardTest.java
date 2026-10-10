@@ -147,6 +147,44 @@ class AgentClaimGuardTest {
         }
     }
 
+    @Test
+    void aRefusedWhisperTellsTheRuleWhyAndReachesNoAgent() {
+        AgentRuntimeEntry entry = register(olwen);
+        List<String> refusals = new ArrayList<>();
+        installRecording(Set.of(), refusals);
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class)) {
+            CosmicAgentWhisperCommandBridge.handleWhisperToAgent(kiwi, olwen, "sell my junk");
+            AgentMailboxRuntime.drain(entry);
+
+            chat.verify(() -> AgentChatRuntime.handleChat(any(), any()), never());
+        }
+        assertEquals(List.of("KEPT Kiwi->Olwen"), refusals);
+    }
+
+    @Test
+    void aWhisperToAnAgentWithNoRunningEntryTellsTheRuleAndOneThatArrivesTellsNothing() {
+        List<String> refusals = new ArrayList<>();
+        installRecording(Set.of(OLWEN), refusals);
+
+        CosmicAgentWhisperCommandBridge.handleWhisperToAgent(kiwi, olwen, "sell my junk");
+        assertEquals(List.of("NOT_RUNNING Kiwi->Olwen"), refusals);
+
+        AgentRuntimeEntry entry = register(olwen);
+        CosmicAgentWhisperCommandBridge.handleWhisperToAgent(kiwi, olwen, "sell my junk");
+        assertTrue(entry.actionMailbox().size() > 0, "the line is on its way to the Agent");
+        assertEquals(List.of("NOT_RUNNING Kiwi->Olwen"), refusals);
+    }
+
+    @Test
+    void withNothingInstalledARefusalSaysNothing() {
+        AgentClaimGuard.refused(kiwi, olwen, AgentClaimGuard.Refusal.KEPT); // no rule: a no-op, as for a stranger
+        install(Set.of(), Set.of()); // a rule that does not override refused: the default says nothing either
+        AgentClaimGuard.refused(kiwi, olwen, AgentClaimGuard.Refusal.NOT_RUNNING);
+        verify(kiwi, never()).yellowMessage(any());
+        verify(kiwi, never()).dropMessage(org.mockito.ArgumentMatchers.anyInt(), any());
+    }
+
     // ---- leader transfer -----------------------------------------------------------------
 
     @Test
@@ -273,6 +311,26 @@ class AgentClaimGuardTest {
             @Override
             public boolean isClaimed(int agentCharacterId) {
                 return claimed.contains(agentCharacterId);
+            }
+        });
+    }
+
+    /** A rule that controls {@code controlled} and records each refusal it is told of. */
+    private static void installRecording(Set<Integer> controlled, List<String> refusals) {
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return controlled.contains(agentCharacterId);
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return true;
+            }
+
+            @Override
+            public void refused(Character actor, Character agent, AgentClaimGuard.Refusal refusal) {
+                refusals.add(refusal + " " + actor.getName() + "->" + agent.getName());
             }
         });
     }
