@@ -45,6 +45,7 @@ import server.living.config.Content.Step;
 import server.living.config.LivingContent;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
+import server.living.quest.BossGearPlanner;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.HaulItem;
@@ -3194,8 +3195,8 @@ public final class RosterService {
         }
         if (characterId != 0) {
             AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
-            if (released) {
-                takeBossGearOff(entry, bot, characterId); // nothing ticks it now, and it keeps its lease meanwhile
+            if (released) { // nothing ticks it now, and it keeps its lease meanwhile
+                takeBossGearOff(entry.characterId(), entry.personaId(), bot, characterId);
             }
         }
         try {
@@ -3205,7 +3206,7 @@ public final class RosterService {
         } finally {
             if (characterId != 0) {
                 if (released) {
-                    restoreOwnLevel(entry, characterId); // saved and off the server, its lease still held
+                    restoreOwnLevel(entry.personaId(), characterId); // saved and off the server, its lease still held
                 }
                 // saved first, so the next load sees it
                 world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
@@ -3214,15 +3215,72 @@ public final class RosterService {
         log.info("companion {} despawned: {}", entry.personaId(), reason);
     }
 
+    /** At most this many personas one start's release cleanup looks at; any more wait for the next start. */
+    static final int RELEASE_CLEANUP_AT_START_MAX = 200;
+
+    /**
+     * At start, on companion-ops right after the boot reconciliation and before any persona is recruited or granted:
+     * finishes each release whose cleanup a stop cut short. A release drops its row at once, but its unload (the
+     * !bossgear strip, then the level restore) runs only once its walk-out ends, so a crash or a hard kill in between,
+     * or a release in the last seconds of a shutdown countdown, left a persona nobody employs with its GM level hold or
+     * its boss pieces, and no later release to take them off. Each persona nobody employs that still has either
+     * (LivingStore.releaseCleanupCandidates: one bounded query) gets exactly an offline release's cleanup
+     * ({@link #takeBossGearOff}, then {@link #restoreOwnLevel}) with their online checks, refusals and logs, under a
+     * COMPANION lease charged to nobody, so no Resident tick or citizen session loads it meanwhile. A persona on anyone's
+     * roster (a crew keeps its test levels and kit), a human's own record, and a character leased or online now are
+     * never touched; one left as it is waits for the next start. One INFO line when any was found.
+     */
+    public void finishReleaseCleanupAtStart() {
+        Map<String, Integer> candidates = world.store().releaseCleanupCandidates(BossGearPlanner.OWNER_TAG,
+                RELEASE_CLEANUP_AT_START_MAX);
+        if (candidates == null || candidates.isEmpty()) {
+            return;
+        }
+        int found = 0;
+        int stripped = 0;
+        int restored = 0;
+        int skipped = 0;
+        for (Map.Entry<String, Integer> candidate : candidates.entrySet()) {
+            String personaId = candidate.getKey();
+            int characterId = candidate.getValue() == null ? 0 : candidate.getValue();
+            if (personaId == null || characterId <= 0 || GmLevelHolds.SELF.equals(personaId) || isOwned(personaId)) {
+                continue; // a human's own record, or a persona someone employs: its hold and kit stay its owner's
+            }
+            found++;
+            if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, 0)) {
+                skipped++;
+                log.warn("Release cleanup left for the next start: id={} persona={} (its character is loaded as {})",
+                        characterId, personaId, world.leases().holder(characterId));
+                continue;
+            }
+            try {
+                int taken = takeBossGearOff(0, personaId, null, characterId);
+                ReleasedLevelRestore.Result level = restoreOwnLevel(personaId, characterId);
+                stripped += taken > 0 ? 1 : 0;
+                restored += level == ReleasedLevelRestore.Result.RESTORED ? 1 : 0;
+                skipped += taken < 0 || level == ReleasedLevelRestore.Result.HOLD_STAYS ? 1 : 0;
+            } finally {
+                world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+            }
+        }
+        if (found > 0) {
+            log.info("Release cleanup at start: stripped={} restored={} skipped={}", stripped, restored, skipped);
+        }
+    }
+
+    /** Whether the character is loaded anywhere now (online, or registered as an Agent): it saves its own rows then. */
+    private boolean loadedAnywhere(int characterId) {
+        return onlineCharacter(characterId) != null || AgentRuntimeRegistry.findByAgentCharacterId(characterId) != null;
+    }
+
     /**
      * A companion let go goes back to its own level (ReleasedLevelRestore): a GM level hold on it is restored in its
-     * stored rows, as '!setlevel <name> restore' restores it, and released. Only a release's unload calls this; one
-     * whose character is loaded anywhere now is left as it is. Never in the way of the release.
+     * stored rows, as '!setlevel <name> restore' restores it, and released. Only a release's unload (and the start's
+     * cleanup of one a stop cut short) calls this; one whose character is loaded anywhere now is left as it is. Never
+     * in the way of the release.
      */
-    private void restoreOwnLevel(RosterEntry entry, int characterId) {
-        ReleasedLevelRestore.restore(world, entry.personaId(), characterId,
-                id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null,
-                levelRestoreFacts);
+    private ReleasedLevelRestore.Result restoreOwnLevel(String personaId, int characterId) {
+        return ReleasedLevelRestore.restore(world, personaId, characterId, this::loadedAnywhere, levelRestoreFacts);
     }
 
     /**
@@ -3232,9 +3290,10 @@ public final class RosterService {
      * in full. Not loaded, they leave its saved inventory, unless its character is online now (it saves its own over
      * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: what
      * the kit swapped into its bag, such as its own shield), since no load path dresses a carried shield again. Never
-     * in the way of the release: a failure is logged.
+     * in the way of the release: a failure is logged. {@code ownerId} is who let it go (0 at start: nobody known). How
+     * many pieces left it; -1 when they could not be taken off.
      */
-    private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
+    private int takeBossGearOff(int ownerId, String personaId, Character bot, int characterId) {
         try {
             int taken;
             if (bot != null) {
@@ -3243,19 +3302,20 @@ public final class RosterService {
                     bot.saveCharToDB();
                 }
             } else {
-                taken = CompanionGearTool.takeStoredBossGear(world.store(), characterId,
-                        id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null);
+                taken = CompanionGearTool.takeStoredBossGear(world.store(), characterId, this::loadedAnywhere);
             }
             if (taken > 0) {
-                world.store().event(entry.characterId(), entry.personaId(), "bossgear.removed", "released: " + taken
+                world.store().event(ownerId, personaId, "bossgear.removed", "released: " + taken
                         + (taken == 1 ? " piece" : " pieces"));
-                log.info("companion {} let go: {} boss gear pieces taken off", entry.personaId(), taken);
+                log.info("companion {} let go: {} boss gear pieces taken off", personaId, taken);
             } else if (taken < 0) {
                 log.warn("companion {} let go: its boss gear could not be taken off (its character {} is online, or the"
-                        + " store failed)", entry.personaId(), characterId);
+                        + " store failed)", personaId, characterId);
             }
+            return taken;
         } catch (RuntimeException failure) {
-            log.warn("companion {} let go: taking its boss gear off failed", entry.personaId(), failure);
+            log.warn("companion {} let go: taking its boss gear off failed", personaId, failure);
+            return -1;
         }
     }
 

@@ -407,6 +407,15 @@ restart.
   `!setlevel <name> restore` would, gear its own level does not allow goes into its bag, and the hold is released
   (`gm.level.release` 'restored on release'). Bench, park, logout and channel follow keep the hold, so a crew keeps
   its Lv160 test levels while it stays on its owner's roster.
+- A release deletes the roster row at once, but the strip and the restore run in the unload at the end of the
+  walk-out (about 8 s). A crash or a hard kill in that window, or a release in the last seconds of a shutdown
+  countdown, used to leave the persona with its hold and its boss pieces and no roster row. The living world now
+  finishes such a release when it starts (`RosterService.finishReleaseCleanupAtStart`, on companion-ops right after
+  the boot reconciliation). One bounded query finds each persona on nobody's roster that still has a hold or a boss
+  piece. Each one gets the same strip, refit and restore as an offline release, with the same online checks and logs.
+  One INFO line `Release cleanup at start: stripped= restored= skipped=` follows, only when it found one. Personas on
+  a roster, a human's own record and characters online or loaded stay as they are. A skipped persona waits for the
+  next start.
 - Zakum's level and not-here refusals have one wording each, so two companions refused alike say the same words.
 - The javadocs of `LivingWorldHooks.bossParty*`/`bossAlly*` and `CompanionBossRuns.offers` still say "Mu Young's Easy
   window". Adobis uses them too.

@@ -56,7 +56,8 @@ import java.util.function.IntPredicate;
  * its AP and SP for that level, its HP/MP, and the gear the level does not allow off. The hold is then released
  * ({@value #WHY}). A companion with no hold is left as it is. Holds on companions that stay owned are never touched
  * here, nor is a human's own record ({@value GmLevelHolds#SELF}), and no other unload (bench, park, owner logout,
- * channel follow) restores.
+ * channel follow) restores. A release whose unload a stop cut short (a crash or a hard kill while it walked out) is
+ * finished at the next start the same way (RosterService.finishReleaseCleanupAtStart).
  *
  * <p>The restore rewrites the character's stored rows in one transaction, under the maintenance lock offline loads take
  * (LivingStore.rewriteStoredLevel), whether it was loaded when let go (its unload saved it in full first) or not:
@@ -140,35 +141,40 @@ final class ReleasedLevelRestore {
     record Refused(String reason) implements Outcome {
     }
 
+    /** What a restore came to: nothing held the companion, its hold was restored and released, or the hold stays. */
+    enum Result { NOT_HELD, RESTORED, HOLD_STAYS }
+
     /**
      * On companion-ops as a release unloads the companion (RosterService.unload), once it is saved and off the server
-     * and before its lease goes back: its GM level hold, if any, restored in its stored rows and released. {@code online}
-     * says whether its character is loaded anywhere now (then it saves its own rows over the store, so nothing is
-     * written); {@code facts} is the game data it reads (production: {@link #LIVE}). Never throws.
+     * and before its lease goes back, or at start for a release whose unload a stop cut short
+     * (RosterService.finishReleaseCleanupAtStart): its GM level hold, if any, restored in its stored rows and released.
+     * {@code online} says whether its character is loaded anywhere now (then it saves its own rows over the store, so
+     * nothing is written); {@code facts} is the game data it reads (production: {@link #LIVE}). Never throws.
      */
-    static void restore(LivingWorld world, String personaId, int characterId, IntPredicate online, Facts facts) {
+    static Result restore(LivingWorld world, String personaId, int characterId, IntPredicate online, Facts facts) {
         GmLevelHolds holds = world.gmLevelHolds();
         if (holds == null || characterId <= 0 || personaId == null || GmLevelHolds.SELF.equals(personaId)) {
-            return;
+            return Result.NOT_HELD;
         }
         try {
-            restoreHeld(world, holds, personaId, characterId, online, facts);
+            return restoreHeld(world, holds, personaId, characterId, online, facts);
         } catch (RuntimeException failure) {
             log.warn("Released companion level not restored: id={} persona={} (failed; the hold stays)", characterId,
                     personaId, failure);
+            return Result.HOLD_STAYS;
         }
     }
 
-    private static void restoreHeld(LivingWorld world, GmLevelHolds holds, String personaId, int characterId,
-                                    IntPredicate online, Facts facts) {
+    private static Result restoreHeld(LivingWorld world, GmLevelHolds holds, String personaId, int characterId,
+                                      IntPredicate online, Facts facts) {
         Optional<Original> record = holds.record(characterId, personaId);
         if (record == null) {
             log.warn("Released companion level not restored: id={} persona={} (its GM level record could not be read)",
                     characterId, personaId);
-            return;
+            return Result.HOLD_STAYS;
         }
         if (record.isEmpty()) {
-            return; // nothing holds it: it is at its own level
+            return Result.NOT_HELD; // nothing holds it: it is at its own level
         }
         Original original = record.get();
         Job personaJob = personaJob(world.content() == null ? null : world.content().persona(personaId));
@@ -178,7 +184,7 @@ final class ReleasedLevelRestore {
             if (online.test(characterId)) {
                 log.warn("Released companion level not restored: id={} persona={} (its character is online; the hold"
                         + " stays)", characterId, personaId);
-                return;
+                return Result.HOLD_STAYS;
             }
             written = world.store().rewriteStoredLevel(characterId, stored -> {
                 Outcome outcome = plan(stored, original, personaJob, facts);
@@ -190,12 +196,12 @@ final class ReleasedLevelRestore {
         if (outcome instanceof Refused refused) {
             log.warn("Released companion level not restored: id={} persona={} to={}/{} ({}; the hold stays)",
                     characterId, personaId, original.level(), original.job().getId(), refused.reason());
-            return;
+            return Result.HOLD_STAYS;
         }
         if (outcome == null || written < 0 || (outcome instanceof Rewrite && written != 1)) {
             log.warn("Released companion level not restored: id={} persona={} (its stored character could not be read"
                     + " or written; the hold stays)", characterId, personaId);
-            return;
+            return Result.HOLD_STAYS;
         }
         holds.release(characterId, personaId, WHY);
         if (outcome instanceof Rewrite rewrite) {
@@ -208,6 +214,7 @@ final class ReleasedLevelRestore {
                     characterId, already.level(), already.job().getId(), already.level(), already.job().getId(),
                     personaId);
         }
+        return Result.RESTORED;
     }
 
     /**

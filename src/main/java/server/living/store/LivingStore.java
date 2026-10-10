@@ -1710,6 +1710,44 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * The personas a release's cleanup may have been cut short for (RosterService.finishReleaseCleanupAtStart): each
+     * persona's character (living_persona_state, a Resident's or a hired citizen's; never a human's) that nobody
+     * employs (no living_roster row of the persona but a RELEASED one) and that still has a GM level hold with that
+     * persona (its latest gm.level row a hold, as {@link #latestGmLevel} reads it) or an item tagged {@code gearTag}
+     * worn or in its Equip tab. One query over the persona rows, each looked up by an index (living_roster by persona,
+     * inventoryitems and living_event_log by character). Persona id to character id, by persona id, at most
+     * {@code limit}; null when the read fails.
+     */
+    public Map<String, Integer> releaseCleanupCandidates(String gearTag, int limit) {
+        String sql = "SELECT p.persona_id, p.character_id FROM living_persona_state p WHERE p.character_id > 0"
+                + " AND NOT EXISTS (SELECT 1 FROM living_roster r WHERE r.persona_id = p.persona_id"
+                + " AND r.state <> 'RELEASED')"
+                + " AND (EXISTS (SELECT 1 FROM inventoryitems i WHERE i.characterid = p.character_id AND i.type = ?"
+                + " AND i.inventorytype IN (?, ?) AND i.owner = ?)"
+                + " OR (SELECT e.kind FROM living_event_log e WHERE e.character_id = p.character_id"
+                + " AND e.persona_id = p.persona_id AND e.kind IN ('gm.level.hold', 'gm.level.release')"
+                + " ORDER BY e.id DESC LIMIT 1) = 'gm.level.hold')"
+                + " ORDER BY p.persona_id LIMIT ?";
+        Map<String, Integer> out = new LinkedHashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, ItemFactory.INVENTORY.getValue());
+            ps.setInt(2, InventoryType.EQUIPPED.getType());
+            ps.setInt(3, InventoryType.EQUIP.getType());
+            ps.setString(4, gearTag);
+            ps.setInt(5, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getInt(2));
+                }
+            }
+            return out;
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("release cleanup candidates read failed", failure);
+            return null;
+        }
+    }
+
     /** The details of every {@code kind} event logged for this persona (with or without a character); null when the read fails. */
     public List<String> personaEventDetails(String personaId, String kind) {
         List<String> out = new ArrayList<>();
