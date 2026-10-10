@@ -35,6 +35,12 @@ class OwnGearRefitTest {
     private static final int BLUE_ENGRIT = 1051012;
     /** A female pair of pants (the gender digit 1). */
     private static final int RED_MINISKIRT = 1061020;
+    /** Tamsin's caps: the Steel Sharp Helm she wore before the kit, and two she carried (live, 2026-10-09). */
+    private static final int STEEL_SHARP_HELM = 1002027;
+    private static final int JOUSTING_HELMET = 1002023;
+    private static final int RED_DUKE = 1002025;
+    private static final int BOSS_CAP = 1002055;
+    private static final short CAP = -1;
     private static final short TOP = -5;
     private static final short PANTS = -6;
     private static final short SHIELD = -10;
@@ -55,6 +61,9 @@ class OwnGearRefitTest {
         fact(JEAN_SHORTS, "Blue Jean Shorts", "pants", 0, 0, 0, 0);
         fact(RED_SHARK, "Red Shark", "coat", 25, 1, 80, 0);
         fact(RED_MINISKIRT, "Red Miniskirt", "pants", 20, 0, 0, 0);
+        fact(STEEL_SHARP_HELM, "Steel Sharp Helm", "cap", 22, 1, 45, 0);
+        fact(JOUSTING_HELMET, "Jousting Helmet", "cap", 30, 1, 65, 0);
+        fact(RED_DUKE, "Red Duke", "cap", 40, 1, 90, 0);
     }
 
     private static void fact(int id, String name, String category, int level, int job, int str, int int_) {
@@ -75,7 +84,13 @@ class OwnGearRefitTest {
 
     private static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Item> worn,
                                    List<Item> carried) {
-        return OwnGearRefit.plan(wearer, taken, worn, carried, FACTS::get);
+        return plan(wearer, taken, Map.of(), worn, carried);
+    }
+
+    /** With the record of what the kit displaced (BossGearRecord): slot -> item id. */
+    private static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Integer> displaced,
+                                   Map<Short, Item> worn, List<Item> carried) {
+        return OwnGearRefit.plan(wearer, taken, displaced, worn, carried, FACTS::get);
     }
 
     private static List<String> moves(List<Move> moves) {
@@ -178,6 +193,49 @@ class OwnGearRefitTest {
         assertEquals(List.of(), moves(plan(null, Map.of(SHIELD, BOSS_SHIELD), wears(at(GLADIUS, WEAPON)),
                 List.of(at(STEEL_SHIELD, 1)))), "no wearer read");
         assertEquals(List.of(), moves(OwnGearRefit.plan(GARRICK, Map.of(SHIELD, BOSS_SHIELD),
-                wears(at(GLADIUS, WEAPON)), List.of(at(STEEL_SHIELD, 1)), id -> null)), "no knowledge");
+                Map.of(SHIELD, STEEL_SHIELD), wears(at(GLADIUS, WEAPON)), List.of(at(STEEL_SHIELD, 1)), id -> null)),
+                "no knowledge");
+    }
+
+    // ---- first what the kit displaced (BossGearRecord) ----------------------------------------------
+
+    @Test
+    void theCapTheKitDisplacedGoesBackOnOverAHigherOneItCarries() {
+        Item helm = at(STEEL_SHARP_HELM, 8);
+
+        List<Move> moves = plan(TAMSIN, Map.of(CAP, BOSS_CAP), Map.of(CAP, STEEL_SHARP_HELM), wears(),
+                List.of(at(JOUSTING_HELMET, 1), at(RED_DUKE, 3), helm));
+
+        assertEquals(List.of(STEEL_SHARP_HELM + "@8 -> -1"), moves(moves),
+                "the cap she wore before the kit, not the Lv30 Jousting Helmet she also carries");
+        assertEquals(helm, moves.get(0).piece());
+    }
+
+    @Test
+    void whenTheDisplacedPieceIsGoneTheBestOneItCarriesGoesOn() {
+        List<Move> moves = plan(TAMSIN, Map.of(CAP, BOSS_CAP), Map.of(CAP, STEEL_SHARP_HELM), wears(),
+                List.of(at(JOUSTING_HELMET, 1), at(RED_DUKE, 3)));
+
+        assertEquals(List.of(JOUSTING_HELMET + "@1 -> -1"), moves(moves),
+                "sold or dropped: the highest cap she can wear (the Lv40 Red Duke is over her level)");
+    }
+
+    @Test
+    void aDisplacedPieceItCannotWearNowGivesWayToTheBestOne() {
+        List<Move> moves = plan(GARRICK, Map.of(SHIELD, BOSS_SHIELD), Map.of(SHIELD, MYSTIC_SHIELD),
+                wears(at(GLADIUS, WEAPON)), List.of(at(MYSTIC_SHIELD, 1), at(STEEL_SHIELD, 2)));
+
+        assertEquals(List.of(STEEL_SHIELD + "@2 -> -10"), moves(moves), "a magician's shield stays in the bag");
+    }
+
+    @Test
+    void theRecordNeverDressesASlotTheStripDidNotEmpty() {
+        Map<Short, Integer> displaced = Map.of(CAP, STEEL_SHARP_HELM, SHIELD, STEEL_SHIELD);
+
+        List<Move> moves = plan(TAMSIN, Map.of(SHIELD, BOSS_SHIELD), displaced,
+                wears(at(GLADIUS, WEAPON), at(JOUSTING_HELMET, CAP)), List.of(at(STEEL_SHARP_HELM, 1),
+                        at(STEEL_SHIELD, 2)));
+
+        assertEquals(List.of(STEEL_SHIELD + "@2 -> -10"), moves(moves), "the cap she wears now stays on");
     }
 }

@@ -18,12 +18,19 @@ import server.living.store.LivingStore.WearStats;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.LITH;
@@ -341,5 +348,125 @@ class BossGearReleaseTest {
                     "the same pair, out of her bag");
             assertEquals(16, saved.size(), "the six kit pieces went, nothing was made");
         }
+    }
+
+    /** What she wore before the kit (the live snapshot at 19:14), by worn slot. */
+    private static final Map<Short, Integer> TAMSIN_BEFORE_KIT = Map.of((short) -108, BROWN_BANDAGE,
+            (short) -106, LINEN_TROUSERS, WEAPON, MAPLE_SWORD, SHIELD, STEEL_SHIELD, (short) -9, RAGGED_CAPE,
+            (short) -7, MITHRIL_GRIEVES, (short) -6, BLUE_JEAN_SHORTS, (short) -5, RED_SHARK, CAP, STEEL_SHARP_HELM);
+    /** Her carried gear before the kit, by bag slot. */
+    private static final Map<Short, Integer> TAMSIN_BAG = Map.of((short) 1, JOUSTING_HELMET, (short) 2,
+            WHITE_UNDERSHIRT, (short) 3, RED_DUKE, (short) 4, IRON_CHAIN_BOOTS, (short) 5, RED_RUBBER_BOOTS, (short) 6,
+            STEEL_GRIEVES, (short) 7, CONTRA_AXE);
+
+    /** The record her kit left as it went on (CompanionGearTool.wearKit): each own piece it put in her bag. */
+    private void tamsinsKitRecord() {
+        BossGearRecord.write(game.store.store, ANN, "tamsin", Map.of(CAP, STEEL_SHARP_HELM, (short) -5, RED_SHARK,
+                (short) -6, BLUE_JEAN_SHORTS, (short) -7, MITHRIL_GRIEVES, SHIELD, STEEL_SHIELD, WEAPON, MAPLE_SWORD));
+    }
+
+    /** Item id by position, of the worn ({@code worn} true) or of the carried items. */
+    private static Map<Short, Integer> byPosition(Iterable<Item> items, boolean worn) {
+        Map<Short, Integer> out = new TreeMap<>();
+        items.forEach(item -> {
+            if (item.getPosition() < 0 == worn) {
+                out.put(item.getPosition(), item.getItemId());
+            }
+        });
+        return out;
+    }
+
+    private static List<Integer> sortedIds(Map<Short, Integer> worn, Map<Short, Integer> carried) {
+        List<Integer> out = new ArrayList<>(worn.values());
+        out.addAll(carried.values());
+        return out.stream().sorted().toList();
+    }
+
+    @Test
+    void tamsinsOfflineReleaseWearsExactlyWhatHerKitDisplaced() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = tamsinOffline();
+            tamsinsKitRecord();
+            game.roster();
+
+            game.roster().release(game.ann, tamsin, "dismissed");
+
+            assertEquals(List.of(TAMSIN_ID), game.store.storedWrites, "one rewrite");
+            assertEquals(new TreeMap<>(TAMSIN_BEFORE_KIT), byPosition(saved, true),
+                    "her own Steel Sharp Helm at -1 and her Blue Jean Shorts at -6: what she wore before the kit");
+            assertEquals(new TreeMap<>(TAMSIN_BAG), byPosition(saved, false),
+                    "the Jousting Helmet stays in her bag; the kit's swap slots are empty");
+            assertEquals(sortedIds(TAMSIN_BEFORE_KIT, TAMSIN_BAG), ids(saved), "nothing made, nothing lost");
+            assertEquals(List.of(ANN + " tamsin bossgear.removed released: 6 pieces"),
+                    game.store.events("bossgear.removed"));
+            assertEquals(Map.of(), BossGearRecord.read(game.store.store, ANN, "tamsin"), "the record ended");
+        }
+    }
+
+    @Test
+    void tamsinsLoadedReleaseWearsExactlyWhatHerKitDisplacedBeforeSheIsSaved() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            Character bot = game.bot(tamsin);
+            when(bot.getJob()).thenReturn(Job.PAGE);
+            when(bot.getLevel()).thenReturn(PAGE.level());
+            when(bot.getGender()).thenReturn(PAGE.gender());
+            when(bot.getStr()).thenReturn(PAGE.str());
+            when(bot.getDex()).thenReturn(PAGE.dex());
+            Inventory worn = new Inventory(bot, InventoryType.EQUIPPED, (byte) 100);
+            Inventory bag = new Inventory(bot, InventoryType.EQUIP, (byte) 24);
+            for (Item item : tamsinsKitInventory()) {
+                (item.getPosition() < 0 ? worn : bag).addItemFromDB(item);
+            }
+            when(bot.getInventory(InventoryType.EQUIPPED)).thenReturn(worn);
+            when(bot.getInventory(InventoryType.EQUIP)).thenReturn(bag);
+            List<Map<Short, Integer>> savedWearing = new ArrayList<>();
+            doAnswer(inv -> savedWearing.add(byPosition(worn.list(), true))).when(bot).saveCharToDB();
+            tamsinsKitRecord();
+            game.store.seed(game.row(tamsin).with(RosterState.ACTIVE, 1_000L));
+            game.roster();
+            game.outWithAnn(tamsin);
+
+            game.roster().release(game.ann, tamsin, "dismissed");
+            game.runTimers();
+
+            assertEquals(new TreeMap<>(TAMSIN_BEFORE_KIT), byPosition(worn.list(), true));
+            assertEquals(new TreeMap<>(TAMSIN_BAG), byPosition(bag.list(), false));
+            assertEquals(new TreeMap<>(TAMSIN_BEFORE_KIT), savedWearing.get(savedWearing.size() - 1),
+                    "saved wearing it");
+            assertEquals(List.of(), game.store.storedWrites, "loaded: never rewritten in the store under her");
+            assertEquals(Map.of(), BossGearRecord.read(game.store.store, ANN, "tamsin"), "the record ended");
+        }
+    }
+
+    @Test
+    void whenAPieceHerKitDisplacedIsGoneTheBestSheCarriesGoesOnInItsPlace() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            List<Item> saved = tamsinOffline();
+            saved.removeIf(item -> item.getItemId() == STEEL_SHARP_HELM); // sold while she wore the kit
+            tamsinsKitRecord();
+            game.roster();
+
+            game.roster().release(game.ann, tamsin, "dismissed");
+
+            assertEquals(JOUSTING_HELMET, at(saved, CAP), "her best carried cap: " + placed(saved));
+            assertEquals(BLUE_JEAN_SHORTS, at(saved, (short) -6));
+            assertEquals(15, saved.size(), "nothing made in the sold helm's place");
+        }
+    }
+
+    @Test
+    void aReleasedCompanionWithoutBossGearIsNotRedressedAndItsRecordIsNeverRead() {
+        List<Item> saved = new ArrayList<>(List.of(Equip.restored(PLAIN_CAP, CAP),
+                Equip.restored(PLAIN_SWORD, (short) 1)));
+        game.store.storedItems.put(HADRIK, saved);
+        offline(HADRIK);
+        BossGearRecord.write(game.store.store, ANN, "hadrik", Map.of(CAP, PLAIN_SWORD)); // an old record, kit long gone
+        game.roster();
+
+        game.roster().release(game.ann, hadrik, "dismissed");
+
+        assertEquals(List.of(), game.store.storedWrites);
+        assertEquals(List.of(PLAIN_CAP + "@-1", PLAIN_SWORD + "@1"), placed(saved));
+        verify(game.store.store, never()).latestEvent(anyInt(), anyString(), any());
     }
 }

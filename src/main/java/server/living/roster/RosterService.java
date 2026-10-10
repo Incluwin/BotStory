@@ -66,6 +66,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * A player's recruited companions: who is active in the party, who is benched at a camp, slot
@@ -3210,24 +3211,27 @@ public final class RosterService {
      * unloads it, every piece tagged as boss gear leaves it, worn and carried, and nothing else does. Loaded, they come
      * off right here on companion-ops (out of the registry, nothing ticks it) and it is saved; its unload then saves it
      * in full. Not loaded, they leave its saved inventory, unless its character is online now (it saves its own over
-     * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: what
-     * the kit swapped into its bag, such as its own shield), since no load path dresses a carried shield again. Never
-     * in the way of the release: a failure is logged.
+     * the store). Either way each slot a boss piece left empty takes its own carried piece back (OwnGearRefit: first
+     * the very one the kit displaced, by its BossGearRecord, such as its own shield), since no load path dresses a
+     * carried shield again; the removal event ends that record. Never in the way of the release: a failure is logged.
      */
     private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
         try {
             int taken;
+            Supplier<Map<Short, Integer>> displaced = () -> BossGearRecord.read(world.store(), entry.characterId(),
+                    entry.personaId()); // read only when a worn boss piece comes off
             if (bot != null) {
-                taken = CompanionGearTool.takeBossGearOnRelease(bot);
+                taken = CompanionGearTool.takeBossGearOnRelease(bot, displaced);
                 if (taken > 0) {
                     bot.saveCharToDB();
                 }
             } else {
                 taken = CompanionGearTool.takeStoredBossGear(world.store(), characterId,
-                        id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null);
+                        id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null,
+                        displaced);
             }
             if (taken > 0) {
-                world.store().event(entry.characterId(), entry.personaId(), "bossgear.removed", "released: " + taken
+                world.store().event(entry.characterId(), entry.personaId(), BossGearRecord.REMOVED, "released: " + taken
                         + (taken == 1 ? " piece" : " pieces"));
                 log.info("companion {} let go: {} boss gear pieces taken off", entry.personaId(), taken);
             } else if (taken < 0) {
