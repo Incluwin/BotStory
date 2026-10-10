@@ -138,6 +138,7 @@ public final class AgentDialogueCatalog {
     private static final String SHOP_SELL_TRASH_START_REPLY = "ok gonna sell the junk";
     private static final String SHOP_SELL_TRASH_JOIN_REPLY = "already heading to the shop, i'll sell the junk too.";
     private static final String SHOP_SELL_TRASH_AGAIN_REPLY = "already on it, heading to the shop now.";
+    private static final String SHOP_SELL_TRASH_AFTER_REPLY = "i'll sell the junk after this, one sec.";
     private static final String SHOP_LOST_REPLY = "lost track of the shop, never mind";
     private static final String SHOP_REACH_TIMEOUT_REPLY = "couldn't reach shop in time";
     private static final String SHOP_SEQUENCE_TIMEOUT_REPLY = "took too long at the shop, giving up";
@@ -529,6 +530,11 @@ public final class AgentDialogueCatalog {
     /** "sell junk" again while the visit it already joined is on its way. */
     public static String shopSellTrashAgainReply() {
         return SHOP_SELL_TRASH_AGAIN_REPLY;
+    }
+
+    /** "sell junk" at the counter, past the visit's sell step: it sells there once its purchases are done. */
+    public static String shopSellTrashAfterReply() {
+        return SHOP_SELL_TRASH_AFTER_REPLY;
     }
 
     public static String shopLostReply() {

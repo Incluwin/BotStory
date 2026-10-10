@@ -12,9 +12,13 @@ import client.inventory.Item;
 import client.inventory.WeaponType;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.inventory.AgentInventoryItemPolicy;
 import server.agents.capabilities.inventory.AgentInventorySellTrashService;
+import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRuntime;
 import server.agents.capabilities.shop.AgentShopRuntime;
+import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
+import server.agents.integration.ShopGateway;
 import server.Shop;
 import server.ShopFactory;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -25,6 +29,7 @@ import testutil.Items;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,8 +38,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AgentShopServiceTest {
@@ -104,6 +112,75 @@ class AgentShopServiceTest {
         assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
         assertTrue(AgentShopStateRuntime.shopSellTrashPending(entry));
         assertEquals(new Point(20, 0), AgentShopStateRuntime.shopNpcPosition(entry));
+    }
+
+    /**
+     * Deploy review 2026-10-10: "sell junk" once the visit stood at the counter past its sell step (read once, as the
+     * transaction opens) promised "i'll sell the junk too" and sold nothing: the visit ended and cleared the flag. It
+     * now says it sells after this, and sells at that counter before the visit ends.
+     */
+    @Test
+    void sellTrashAfterTheVisitsSellStepSellsAtTheCounterBeforeTheVisitEnds() {
+        Character bot = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        NPC npc = shopNpc(new Point(20, 0));
+        Shop shop = mock(Shop.class);
+        ShopGateway gateway = mock(ShopGateway.class);
+        Item junk = mock(Item.class);
+        AtomicBoolean carried = new AtomicBoolean(true);
+        when(bot.getMap()).thenReturn(map);
+        when(bot.getPosition()).thenReturn(new Point(0, 0));
+        when(bot.getInventory(InventoryType.USE)).thenReturn(new Inventory(bot, InventoryType.USE, (byte) 24));
+        when(bot.getBuffedValue(any(BuffStat.class))).thenReturn(null);
+        when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+        when(shop.getItems()).thenReturn(List.of());
+        when(gateway.findForNpc(npc.getId())).thenReturn(shop);
+        when(gateway.sell(any(), any(), any(), anyShort(), anyShort())).thenAnswer(sale -> {
+            carried.set(false);
+            return null;
+        });
+        InventoryGateway inventory = inventoryGateway();
+        List<Runnable> scheduled = new ArrayList<>();
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks =
+                     mockStatic(AgentAttackExecutionProvider.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+             MockedStatic<AgentShopGatewayRuntime> shops = mockStatic(AgentShopGatewayRuntime.class);
+             MockedStatic<AgentShopRuntime> runtime = mockStatic(AgentShopRuntime.class);
+             MockedStatic<AgentInventorySellTrashService> trash = mockStatic(AgentInventorySellTrashService.class);
+             MockedStatic<AgentQuestItemDispositionRuntime> etc = mockStatic(AgentQuestItemDispositionRuntime.class);
+             MockedStatic<AgentInventoryItemPolicy> items =
+                     mockStatic(AgentInventoryItemPolicy.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            shops.when(AgentShopGatewayRuntime::shop).thenReturn(gateway);
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.SWORD1H);
+            potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{9999, 9999});
+            runtime.when(() -> AgentShopRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(), any(Runnable.class)))
+                    .thenAnswer(invocation -> scheduled.add(invocation.getArgument(2)));
+            trash.when(() -> AgentInventorySellTrashService.collectSellTrashEquips(
+                    any(AgentRuntimeEntry.class), any(Character.class), any(InventoryGateway.class)))
+                    .thenAnswer(collect -> carried.get() ? List.of(junk) : List.of());
+            etc.when(() -> AgentQuestItemDispositionRuntime.collectShopSaleCandidates(any(), any(), any(), anyLong()))
+                    .thenReturn(List.of());
+            items.when(() -> AgentInventoryItemPolicy.hasItem(bot, junk)).thenAnswer(held -> carried.get());
+
+            // a restock visit reaches the counter and opens its transaction, nothing to sell asked yet
+            assertTrue(AgentShopService.requestVisitAtNpc(entry, bot, npc.getId()));
+            AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
+            assertTrue(AgentShopService.tickShopVisit(entry, bot, inventory));
+            scheduled.remove(0).run();
+
+            AgentShopService.requestSellTrashVisit(entry, bot, inventory);
+            runtime.verify(() -> AgentShopRuntime.replyNow(entry, "i'll sell the junk after this, one sec."));
+
+            for (int step = 0; step < 50 && !scheduled.isEmpty(); step++) {
+                scheduled.remove(0).run();
+            }
+        }
+
+        verify(gateway).sell(eq(bot), eq(shop), eq(InventoryType.EQUIP), anyShort(), eq((short) 1));
+        assertFalse(AgentShopStateRuntime.shopVisitPending(entry), "the visit ended after the sale");
+        assertFalse(AgentShopStateRuntime.shopSellTrashPending(entry));
     }
 
     @Test

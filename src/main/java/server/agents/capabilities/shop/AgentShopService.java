@@ -217,8 +217,11 @@ public final class AgentShopService {
         boolean alreadySelling = AgentShopStateRuntime.shopSellTrashPending(entry);
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
-            // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so
-            AgentShopRuntime.replyNow(entry, alreadySelling
+            // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so. One
+            // already at the counter may be past its sell step: it sells once its purchases are done (runPurchaseStep)
+            AgentShopRuntime.replyNow(entry, AgentShopStateRuntime.shopSequenceActive(entry)
+                    ? AgentDialogueCatalog.shopSellTrashAfterReply()
+                    : alreadySelling
                     ? AgentDialogueCatalog.shopSellTrashAgainReply() : AgentDialogueCatalog.shopSellTrashJoinReply());
             return;
         }
@@ -612,6 +615,11 @@ public final class AgentShopService {
             return;
         }
         if (index >= sequence.actions().size()) {
+            if (AgentShopStateRuntime.shopSellTrashPending(sequence.entry())) {
+                // "sell junk" came after the sell step at the transaction's start: it sells here before it goes
+                startSellTrashSequence(sequence, () -> finishPurchaseSequence(sequence, true));
+                return;
+            }
             finishPurchaseSequence(sequence, true);
             return;
         }
