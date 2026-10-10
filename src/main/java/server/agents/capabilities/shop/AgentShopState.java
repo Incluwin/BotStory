@@ -7,6 +7,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * Mutable runtime state for one Agent shop visit/resupply sequence.
  */
 public final class AgentShopState {
+    /**
+     * Whether the visit sells the Agent's junk at the counter, and who wanted it. ASKED: its owner's "sell junk" or its
+     * own supply trip (the sale and its lines as before). ROUTINE: the quiet sale a companion makes at every shop visit
+     * (AgentJunkSale), gear only and said nowhere. ASKED always wins over ROUTINE.
+     */
+    public enum Sale { NONE, ROUTINE, ASKED }
+
     private final AgentShopWorkflow workflow = new AgentShopWorkflow();
     private final AtomicLong visitGeneration = new AtomicLong();
     private volatile boolean visitPending = false;
@@ -18,7 +25,11 @@ public final class AgentShopState {
     private long visitAllowanceMs = 0L;
     private long sequenceStartedAtMs = 0L;
     private long sequenceAllowanceMs = 0L;
-    private boolean sellTrashPending = false;
+    private volatile Sale sale = Sale.NONE;
+    /** A visit opened only to sell (its owner opened a shop on its map, a bench sale slice): it buys nothing. */
+    private boolean saleOnly = false;
+    /** The map whose owner-opened shop it last looked at; outlives a visit, reset on each arrival (onArrival). */
+    private int ownerShopSaleMapId = 0;
     private int minimumMesoReserve = 0;
     private int requiredItemId = 0;
     private int requiredItemCount = 0;
@@ -108,8 +119,47 @@ public final class AgentShopState {
         }
     }
 
+    /** True while the visit sells at the counter, asked or routine. */
     public boolean sellTrashPending() {
-        return sellTrashPending;
+        return sale != Sale.NONE;
+    }
+
+    public Sale sale() {
+        return sale;
+    }
+
+    /** True when its owner or its own supply trip asked for the sale. */
+    public boolean saleAsked() {
+        return sale == Sale.ASKED;
+    }
+
+    /** True when the sale is the quiet one of every visit, nobody asked for. */
+    public boolean routineSale() {
+        return sale == Sale.ROUTINE;
+    }
+
+    /** The quiet sale of every visit: NONE becomes ROUTINE; an asked sale stays asked. */
+    public void requestRoutineSale() {
+        if (sale == Sale.NONE) {
+            sale = Sale.ROUTINE;
+        }
+    }
+
+    public boolean saleOnly() {
+        return saleOnly;
+    }
+
+    /** The visit was opened only to sell: it buys nothing and says nothing of buying. */
+    public void markSaleOnly() {
+        saleOnly = true;
+    }
+
+    public int ownerShopSaleMapId() {
+        return ownerShopSaleMapId;
+    }
+
+    public void setOwnerShopSaleMapId(int mapId) {
+        ownerShopSaleMapId = mapId;
     }
 
     public int minimumMesoReserve() {
@@ -128,8 +178,9 @@ public final class AgentShopState {
         return requiredItemCount;
     }
 
+    /** true: an asked sale (its owner's "sell junk", its own supply trip); false: no sale. */
     public void setSellTrashPending(boolean pending) {
-        sellTrashPending = pending;
+        sale = pending ? Sale.ASKED : Sale.NONE;
     }
 
     public boolean hasNpcPosition() {
@@ -172,6 +223,8 @@ public final class AgentShopState {
             visitGeneration.incrementAndGet(); // a new visit: a step scheduled after the last one ended is not its own
         }
         visitPending = true;
+        // a trip or "sell junk" that reaches a sale-only visit buys and speaks as any visit; its sale stays
+        saleOnly = false;
         this.npcPosition = npcPosition == null ? null : new Point(npcPosition);
         this.targetPosition = targetPosition == null ? null : new Point(targetPosition);
         setApproachDelayMs(approachDelayMs);
@@ -243,7 +296,8 @@ public final class AgentShopState {
         visitAllowanceMs = 0L;
         sequenceStartedAtMs = 0L;
         sequenceAllowanceMs = 0L;
-        sellTrashPending = false;
+        sale = Sale.NONE;
+        saleOnly = false;
         minimumMesoReserve = 0;
         requiredItemId = 0;
         requiredItemCount = 0;

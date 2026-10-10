@@ -130,4 +130,64 @@ class AgentShopStateTest {
         state.clear();
         assertEquals(0, state.minimumMesoReserve());
     }
+
+    /**
+     * Companions sell their junk at every shop visit (2026-10-10): a sale the owner or a supply trip asked for
+     * (ASKED) always wins over the quiet one every visit makes (ROUTINE), and a clear drops both and the sale-only mark.
+     */
+    @Test
+    void askedWinsOverRoutineAndClearDropsBoth() {
+        AgentShopState state = new AgentShopState();
+        state.setSellTrashPending(true);
+        assertEquals(AgentShopState.Sale.ASKED, state.sale());
+        state.requestRoutineSale();
+        assertEquals(AgentShopState.Sale.ASKED, state.sale(), "a routine sale never downgrades an asked one");
+        assertTrue(state.saleAsked());
+        assertFalse(state.routineSale());
+
+        AgentShopState fresh = new AgentShopState();
+        assertEquals(AgentShopState.Sale.NONE, fresh.sale());
+        assertFalse(fresh.sellTrashPending());
+        fresh.requestRoutineSale();
+        assertEquals(AgentShopState.Sale.ROUTINE, fresh.sale());
+        assertTrue(fresh.routineSale());
+        assertFalse(fresh.saleAsked());
+        assertTrue(fresh.sellTrashPending(), "a routine sale is a pending sale for every current reader");
+        fresh.markSaleOnly();
+        assertTrue(fresh.saleOnly());
+
+        fresh.clear();
+        assertEquals(AgentShopState.Sale.NONE, fresh.sale());
+        assertFalse(fresh.sellTrashPending());
+        assertFalse(fresh.saleOnly());
+
+        fresh.setSellTrashPending(true);
+        fresh.setSellTrashPending(false);
+        assertEquals(AgentShopState.Sale.NONE, fresh.sale());
+    }
+
+    @Test
+    void startVisitDropsTheSaleOnlyMarkAndKeepsTheSale() {
+        AgentShopState state = new AgentShopState();
+        state.requestRoutineSale();
+        state.markSaleOnly();
+
+        // a supply trip or "sell junk" that reaches a sale-only visit buys and speaks as today
+        state.startVisit(new Point(10, 20), new Point(30, 40), 0, 0, 0, 0, 1_000L);
+
+        assertFalse(state.saleOnly());
+        assertTrue(state.routineSale(), "the sale is kept");
+    }
+
+    @Test
+    void theOwnerShopMapSurvivesAClear() {
+        AgentShopState state = new AgentShopState();
+        assertEquals(0, state.ownerShopSaleMapId());
+        state.setOwnerShopSaleMapId(100_000_100);
+        state.startVisit(new Point(10, 20), null, 0, 1_000L);
+        state.clear();
+        assertEquals(100_000_100, state.ownerShopSaleMapId(), "one look per map visit outlives the visit");
+        state.setOwnerShopSaleMapId(0);
+        assertEquals(0, state.ownerShopSaleMapId());
+    }
 }

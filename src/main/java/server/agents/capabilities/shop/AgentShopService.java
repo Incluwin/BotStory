@@ -2262,7 +2262,7 @@ public final class AgentShopService {
         log.warn("Agent '{}' shop visit failed: reason=\"{}\" phase={} map={} npc={} npcPos={} approachPos={} botPos={}"
                         + " distToNpc={} distToApproach={} visitPending={} sequenceActive={} visitAgeMs={}"
                         + " visitAllowanceMs={} sequenceAgeMs={}"
-                        + " sequenceAllowanceMs={} sellTrashPending={} mesos={}",
+                        + " sequenceAllowanceMs={} sellTrashPending={} sale={} saleOnly={} mesos={}",
                 bot == null ? "?" : bot.getName(),
                 reason,
                 state.workflow().phase(),
@@ -2280,6 +2280,8 @@ public final class AgentShopService {
                 state.sequenceStartedAtMs() > 0 ? now - state.sequenceStartedAtMs() : -1,
                 state.sequenceAllowanceMs(),
                 state.sellTrashPending(),
+                state.sale(),
+                state.saleOnly(),
                 bot == null ? -1 : bot.getMeso());
     }
 
