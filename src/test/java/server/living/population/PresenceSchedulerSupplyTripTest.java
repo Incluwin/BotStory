@@ -313,6 +313,45 @@ class PresenceSchedulerSupplyTripTest {
     }
 
     @Test
+    void aMoveChangesTheActivityOnlyWhenItIsMade() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        inTown(agent, session);
+        session.afkUntilMs = 1L; // its AFK is over: the next sweep resumes what it does where it stands
+
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        assertEquals(CitizenSession.Activity.TOWN, session.activity, "it is still in town until the move is made");
+        scheduler.sweep(); // back from AFK before the move came: a town never runs TRAIN (a grind with no mobs)
+        movement.verify(() -> AgentMovementCommandRuntime.grind(any()), never());
+
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+        movement.verify(() -> AgentMovementCommandRuntime.grind(session.entry));
+    }
+
+    @Test
+    void aMoveThatWaitsForTheTripLeavesTheActivityAsItWas() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        inTown(agent, session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        Runnable move = scheduledMove();
+
+        AgentSupplyProcurementState trip = trip(session); // it ran low before the move came
+        move.run();
+        assertEquals(CitizenSession.Activity.TOWN, session.activity, "the town it stays in keeps its town activity");
+
+        trip.clear();
+        scheduler.sweep();
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
     void aCitizenOnItsSupplyTripStillLogsOffAtTheEndOfItsSession() {
         PresenceScheduler scheduler = scheduler();
         Character agent = loaded(scheduler);
@@ -359,6 +398,13 @@ class PresenceSchedulerSupplyTripTest {
         session.mapId = HUNTING_FIELD;
         session.activity = CitizenSession.Activity.TOWN;
         return agent;
+    }
+
+    /** It strolls in town (Kerning), not on the hunting field. */
+    private void inTown(Character agent, CitizenSession session) {
+        when(agent.getMapId()).thenReturn(TOWN);
+        when(agent.getMap()).thenReturn(town);
+        session.mapId = TOWN;
     }
 
     /** Its Agent set off on a critical HP potion trip (any phase counts; this one is walking back). */

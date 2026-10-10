@@ -645,7 +645,11 @@ public final class PresenceScheduler {
         }
     }
 
-    /** Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. */
+    /**
+     * Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. Its
+     * activity changes as it arrives, never before: a move that waits (a supply trip) or is still on its pause leaves
+     * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs.
+     */
     public void travel(CitizenSession session, Activity next, int mapId, long now) {
         Character agent = session.agent();
         MapleMap target = population.map(session.channel, mapId);
@@ -667,7 +671,6 @@ public final class PresenceScheduler {
             AgentMovementCommandRuntime.stop(entry);
         }
         population.market().onLeave(session);
-        session.activity = next;
         Runnable move = () -> {
             try {
                 Character current = session.agent();
@@ -682,6 +685,7 @@ public final class PresenceScheduler {
                     current.changeMap(target, target.getPortal(0));
                 }
                 session.mapId = target.getId();
+                session.activity = next;
                 startActivity(session, target, System.currentTimeMillis());
                 population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
             } catch (RuntimeException failure) {
