@@ -403,6 +403,10 @@ restart.
 - `!bossgear <me|name> remove` takes every boss piece back, worn and carried. A companion that is let go (by its
   owner, a contract end, its owner's deletion or the 14-day inactivity sweep) loses its boss pieces as it is unloaded,
   so the kit never goes home with a Resident or on to another owner. Its other gear stays.
+- The same release then gives it back its own level (user decision 2026-10-09): its `!setlevel` hold is restored as
+  `!setlevel <name> restore` would, gear its own level does not allow goes into its bag, and the hold is released
+  (`gm.level.release` 'restored on release'). Bench, park, logout and channel follow keep the hold, so a crew keeps
+  its Lv160 test levels while it stays on its owner's roster.
 - Zakum's level and not-here refusals have one wording each, so two companions refused alike say the same words.
 - The javadocs of `LivingWorldHooks.bossParty*`/`bossAlly*` and `CompanionBossRuns.offers` still say "Mu Young's Easy
   window". Adobis uses them too.

@@ -381,6 +381,9 @@ Every expedition ends only at 1 player or fewer, and bots count (EventInstanceMa
 - A called companion walks over from its camp (RosterService.java:886-890). The level tool refuses it until it arrives, because it is not ACTIVE yet (CompanionLevelTool.java:317-318).
 - With "Keep my crew fresh" on, a set that leaves a companion 10 or more levels off its owner is refused (CompanionLevelTool.java:33, LivingWorldConfig.java:234). Set the owner first.
 - `!bossgear` follows the same owner rule as `!setlevel` (p8_plan.md section 2, `CompanionGearTool`).
+- A companion that is let go goes back to its own level (user decision 2026-10-09). Every real release (its owner, a GM, a contract end, a quest abandoned, its owner's deletion, the 14-day inactivity sweep, a hired hand) restores its `!setlevel` hold as `!setlevel <name> restore` would: the recorded level, job and EXP, the AP and SP of that level, the HP/MP, and the gear that level does not allow in its bag. The hold is then released (`gm.level.release` with the detail `restored on release`, and one INFO line `Released companion level restored: id= from= to=`). The restore writes its stored character after its unload, so nobody sees it change, and its next owner reads its own level everywhere (`ReleasedLevelRestore`). It spends the freed AP and SP by its build profiles at its next load.
+- Bench, park, owner logout and channel follow keep a hold. Crew A and crew B keep their test levels while they stay on their owner's roster. Release a crew member only when the test crew is done with it.
+- A restore that cannot be done keeps the hold and logs a WARN `Released companion level not restored`: the character is online elsewhere, or its Equip tab has no room for the gear that comes off.
 
 **How ohboy gets to a test map.** ohboy is gm 0 during a live check, so he runs no GM command then. Bossfriend moves him:
 
@@ -717,6 +720,7 @@ Rules for every item:
 - `!bossgear <me|name> [preview]` forges one piece per slot with every upgrade slot holding a passed 60% scroll (`FriendForge.recipe` with `ScrollRecipe(60, REST)`, FriendForge.java:117-147).
 - Its items are untradeable and tagged "bossgear" (P8 question 9 default).
 - `!bossgear <me|name> remove` takes the tagged pieces back. A companion that is let go loses them as it is unloaded (RosterService.letGo, all release paths), so the kit never goes home or to another owner.
+- After that strip (and its own carried gear put back on, OwnGearRefit), the same unload restores its `!setlevel` hold. Any piece its own level does not allow goes into its bag. No item is lost, and nothing stays worn above its level.
 - It follows the same owner rule as `!setlevel`. ohboy uses it for his own companions while he is GM6 (decision 1).
 - GM scrolling is not realistic, because `USE_PERFECT_GM_SCROLL` is true (config.yaml:349).
 

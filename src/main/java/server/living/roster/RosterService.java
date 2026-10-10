@@ -137,8 +137,13 @@ public final class RosterService {
     private final Set<Integer> goodbyeSaid = ConcurrentHashMap.newKeySet();
     /** Deleted owners with a companion still finishing a run for a friend: it is released, not parked, after it. */
     private final Set<Integer> releasedAfterRun = ConcurrentHashMap.newKeySet();
-    /** Persona ids let go whose unload (at once, or at the end of their walk-out) takes their boss gear off. */
+    /**
+     * Persona ids let go whose unload (at once, or at the end of their walk-out) takes their boss gear off and restores
+     * any GM level hold on them: the mark of a real release.
+     */
     private final Set<String> bossGearOff = ConcurrentHashMap.newKeySet();
+    /** The game data a released companion's level restore reads (ReleasedLevelRestore.LIVE; a test installs its own). */
+    volatile ReleasedLevelRestore.Facts levelRestoreFacts = ReleasedLevelRestore.LIVE;
     private final CompanionChannelFollow channelFollow;
     private final InstanceLogoutHandoff handoff;
     /** Each companion's own settings (P3b), applied on every path below that loads or seats it. */
@@ -722,7 +727,8 @@ public final class RosterService {
      * their party, its seat and any wait for room go back, and the row is written RELEASED and deleted; nobody employs
      * the persona any more. A hired citizen then goes back to the population ({@link #installHiredHandRelease}),
      * whatever let it go: its owner, a contract end or its owner's deletion. Its unload takes any boss gear off
-     * ({@link #takeBossGearOff}), so the kit never goes home or on to its next owner.
+     * ({@link #takeBossGearOff}), so the kit never goes home or on to its next owner, and then gives it back its own
+     * level ({@link #restoreOwnLevel}), so its next owner never gets a GM !setlevel level.
      */
     private void letGo(RosterEntry entry, String reason) {
         int ownerId = entry.characterId();
@@ -3198,11 +3204,25 @@ public final class RosterService {
             }
         } finally {
             if (characterId != 0) {
+                if (released) {
+                    restoreOwnLevel(entry, characterId); // saved and off the server, its lease still held
+                }
                 // saved first, so the next load sees it
                 world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             }
         }
         log.info("companion {} despawned: {}", entry.personaId(), reason);
+    }
+
+    /**
+     * A companion let go goes back to its own level (ReleasedLevelRestore): a GM level hold on it is restored in its
+     * stored rows, as '!setlevel <name> restore' restores it, and released. Only a release's unload calls this; one
+     * whose character is loaded anywhere now is left as it is. Never in the way of the release.
+     */
+    private void restoreOwnLevel(RosterEntry entry, int characterId) {
+        ReleasedLevelRestore.restore(world, entry.personaId(), characterId,
+                id -> onlineCharacter(id) != null || AgentRuntimeRegistry.findByAgentCharacterId(id) != null,
+                levelRestoreFacts);
     }
 
     /**
