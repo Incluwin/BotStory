@@ -71,6 +71,7 @@ public final class AgentSupplyProcurementRuntime {
         AgentSupplyMaintenanceEvaluationState evaluations = entry.capabilityStates().require(
                 AgentSupplyMaintenanceEvaluationState.STATE_KEY);
         execution.retainPartyAsks(category -> planning.procurement(category) != null);
+        execution.noteMapStoodOn(agent.getMapId());
         if (!execution.isActive()
                 && releaseInapplicableRestoredMaintenance(
                 entry, agent, planning, evaluations, nowMs)) {
@@ -718,6 +719,8 @@ public final class AgentSupplyProcurementRuntime {
      * arrived from one still under way; and a trip given up said only "resumed its plan without restocking", as one
      * whose walk back found no route, or one its owner called back, does. A shop on the map it left had no walk back to
      * make (review 2026-10-10: a TOWN citizen in Ariant 260000000 at NPC 2100004 "walked back" to the map it stood on).
+     * Nor had a trip given up before its first step (audit 2026-10-10: its request resolved, or its route failed or
+     * stood still on the map it left, and it "walked back" to 105090300 without ever leaving it).
      */
     private static void logArrived(Character agent, AgentSupplyProcurementState execution) {
         String name = agent.getName();
@@ -730,7 +733,7 @@ public final class AgentSupplyProcurementRuntime {
             } else {
                 log.info("Agent '{}' walked back to map {} after its {} resupply", name, mapId, category);
             }
-        } else if (stayed) {
+        } else if (!execution.leftReturnMap()) {
             log.info("Agent '{}' finished its {} resupply on map {} without restocking", name, category, mapId);
         } else {
             log.info("Agent '{}' walked back to map {} without restocking its {}", name, mapId, category);

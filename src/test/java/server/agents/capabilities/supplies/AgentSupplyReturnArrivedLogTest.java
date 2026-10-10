@@ -177,6 +177,29 @@ class AgentSupplyReturnArrivedLogTest {
         }
     }
 
+    @Test
+    void aTripGivenUpBeforeItLeftItsMapSaysItFinishedThereWithoutRestocking() {
+        // audit 2026-10-10: a trip toward another map's store given up before its first step (its request resolved:
+        // a party member shared potions) logged "walked back to map 105090300" though it never left Drake field. A
+        // route that fails at once, or a watchdog that fires on the map it left, ends the same way.
+        Character agent = agent(507, DRAKE_FIELD);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        Trip trip = trip(entry, agent, ANT_TUNNEL_PARK, ANT_TUNNEL_SHOPKEEPER, DRAKE_FIELD,
+                AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, START);
+        entry.capabilityStates().require(AgentResourcePlanningState.STATE_KEY).resolve(AgentResourceCategory.HP_POTION);
+
+        try (LogLines lines = new LogLines(AgentSupplyProcurementRuntime.class)) {
+            AgentSupplyProcurementRuntime.tick(entry, agent, START);
+            AgentSupplyProcurementRuntime.tick(entry, agent, START + 1_000L);
+
+            assertFalse(trip.execution.isActive());
+            assertEquals(AgentObjectiveStatus.FAILED, lastStatus(entry, trip));
+            assertEquals(List.of(), lines.startingWith("Agent 'Supply507' walked back"));
+            assertEquals(List.of("Agent 'Supply507' finished its HP_POTION resupply on map " + DRAKE_FIELD
+                    + " without restocking"), lines.startingWith("Agent 'Supply507' finished"));
+        }
+    }
+
     private record Trip(AgentRuntimeEntry entry, AgentSupplyProcurementState execution, String maintenanceId) {
     }
 
@@ -208,6 +231,13 @@ class AgentSupplyReturnArrivedLogTest {
     /** A critical HP potion trip at the given store, still at its shop. */
     private static Trip trip(AgentRuntimeEntry entry, Character agent, int supplierMapId, int supplierNpcId,
                              int returnMapId, long nowMs) {
+        return trip(entry, agent, supplierMapId, supplierNpcId, returnMapId, AgentSupplyProcurementState.Phase.SHOPPING,
+                nowMs);
+    }
+
+    /** A critical HP potion trip to the given store, in the given phase. */
+    private static Trip trip(AgentRuntimeEntry entry, Character agent, int supplierMapId, int supplierNpcId,
+                             int returnMapId, AgentSupplyProcurementState.Phase phase, long nowMs) {
         String requestId = "supply:HP_POTION:" + agent.getId() + ':' + nowMs;
         AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
                 "maintenance:resupply:" + requestId, "maintenance.resupply", 1_000,
@@ -220,7 +250,7 @@ class AgentSupplyReturnArrivedLogTest {
                         List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY, "", Long.MAX_VALUE));
         AgentSupplyProcurementState execution = entry.capabilityStates().require(AgentSupplyProcurementState.STATE_KEY);
         execution.start(requestId, maintenance.objectiveId(), AgentResourceCategory.HP_POTION,
-                supplierMapId, supplierNpcId, returnMapId, AgentSupplyProcurementState.Phase.SHOPPING);
+                supplierMapId, supplierNpcId, returnMapId, phase);
         execution.rememberForegroundMode(false, false);
         return new Trip(entry, execution, maintenance.objectiveId());
     }
