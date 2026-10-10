@@ -31,7 +31,10 @@ public final class AgentShopState {
         return visitPending;
     }
 
-    /** Changes each time a visit ends, so a step scheduled for an ended visit can tell it from the next one. */
+    /**
+     * Changes each time a visit opens and each time it ends, so a step scheduled for an ended visit (even one scheduled
+     * after it ended) can tell it from the next one. Asking for the open visit again keeps it.
+     */
     public long visitGeneration() {
         return visitGeneration.get();
     }
@@ -164,6 +167,9 @@ public final class AgentShopState {
         if (workflow.phase() == AgentShopWorkflowPhase.IDLE || workflow.phase().terminal()) {
             workflow.start("shop:" + startedAtMs, 0, startedAtMs);
             workflow.transition(AgentShopWorkflowPhase.APPROACHING, "travelling to shop NPC", startedAtMs);
+        }
+        if (!visitPending) {
+            visitGeneration.incrementAndGet(); // a new visit: a step scheduled after the last one ended is not its own
         }
         visitPending = true;
         this.npcPosition = npcPosition == null ? null : new Point(npcPosition);
