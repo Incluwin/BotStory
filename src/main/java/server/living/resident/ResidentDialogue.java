@@ -121,6 +121,11 @@ public final class ResidentDialogue {
     private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
     private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
+    /**
+     * Sell-now lines (live 2026-10-10): to a companion out with its owner they are the Agent's own sell-trash command,
+     * never the bench job; "sell", "sell it all", "sell the haul" and "sell and come back" stay the job SELL.
+     */
+    private static final Set<String> SELL_NOW = Set.of("sell junk", "sell trash", "sell my junk", "sell my trash");
 
     private final LivingWorld world;
     private final ResidentIntentJudge judge;
@@ -799,6 +804,11 @@ public final class ResidentDialogue {
             case "bank it", "deposit it", "bank the meso": verbs.say(owner, "roster.bank", () -> world.roster().bankIt(owner, persona)); return true;
             case "release", "youre free", "go home": verbs.say(owner, "roster.release", () -> world.contracts().dismiss(owner, persona)); return true;
             default: break;
+        }
+        // "sell junk" to a companion out with its owner is the Agent's own sell-now command (plan 12.2 "Supplies and
+        // loot"), so the line goes on to the Agent routes and the bench job stays; benched or away it is the job SELL
+        if (SELL_NOW.contains(command) && entry.state() == RosterState.ACTIVE) {
+            return false;
         }
         // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
         boolean go = command.startsWith("go ");
