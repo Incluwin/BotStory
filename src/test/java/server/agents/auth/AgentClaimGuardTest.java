@@ -141,7 +141,7 @@ class AgentClaimGuardTest {
 
         try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class)) {
             CosmicAgentWhisperCommandBridge.handleWhisperToAgent(kiwi, olwen, "follow me");
-            entry.actionMailbox().drain(entry, 1);
+            AgentMailboxRuntime.drain(entry); // its reply channel, then the line
 
             chat.verify(() -> AgentChatRuntime.handleChat(eq("follow me"), any()));
         }

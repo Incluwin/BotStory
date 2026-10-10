@@ -149,7 +149,7 @@ public final class AgentChatRouteCoordinator {
                         entries,
                         text,
                         replyChannel,
-                        targetedChatHooks()),
+                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat)),
                 (commandLeader, entries, text, replyChannel) -> AgentUntargetedChatRouteService.handleUntargetedChat(
                         commandLeader,
                         entries,
@@ -158,7 +158,25 @@ public final class AgentChatRouteCoordinator {
                         untargetedChatHooks()));
     }
 
-    private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks() {
+    /**
+     * A whisper to one Agent the whisper bridge already resolved (after mayOperate and mayControl): the chain a party
+     * or map line naming that Agent takes, so a line no fixed pattern matches still reaches the phrase packs, the
+     * intent judge and the social reply, and every answer goes back on {@code channel} (the whisper).
+     */
+    public static void handleWhisperChat(Character speaker,
+                                         AgentRuntimeEntry entry,
+                                         String message,
+                                         AgentReplyChannel channel) {
+        AgentTargetedChatRouteService.handleAgentLine(
+                speaker,
+                entry,
+                message,
+                channel,
+                targetedChatHooks(AgentChatRouteCoordinator::handleWhisperedAgentChat));
+    }
+
+    private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks(
+            AgentTargetedChatRouteService.AgentChatHandler<E> agentChatHandler) {
         return new AgentTargetedChatRouteService.Hooks<>(
                 (entries, message) -> {
                     var match = AgentCommandTargetResolver.resolveTargetedAgent(entries, message);
@@ -170,7 +188,7 @@ public final class AgentChatRouteCoordinator {
                 () -> false,
                 AgentCommandTypoSuggester::suggest,
                 AgentChatRouteCoordinator::queueReply,
-                AgentChatRouteCoordinator::handleAgentChat,
+                agentChatHandler,
                 System::currentTimeMillis,
                 AgentRelationshipRuntime::interactionTarget,
                 AgentActivityStateRuntime::recordLastOwnerCommand,
@@ -336,6 +354,19 @@ public final class AgentChatRouteCoordinator {
                                 channel,
                                 AgentChatMailboxDispatcher::handleChat,
                                 AgentChatRouteCoordinator::queueReply));
+    }
+
+    /**
+     * {@link #handleAgentChat} for a whisper, except that a command the Agent carried out but reports as unhandled
+     * (its legacy fall-through: "follow me", "grind", the crew window's orders) counts as answered: it gets no small
+     * talk on top of its own reply, as before whispers had a fallback.
+     */
+    private static CompletionStage<Boolean> handleWhisperedAgentChat(
+            AgentRuntimeEntry entry,
+            String message,
+            AgentReplyChannel channel) {
+        return handleAgentChat(entry, message, channel)
+                .thenApply(handled -> AgentChatIntentRuntime.actHandled(message, handled));
     }
 
     private static void setInteractionTarget(AgentRuntimeEntry entry, Character sender) {

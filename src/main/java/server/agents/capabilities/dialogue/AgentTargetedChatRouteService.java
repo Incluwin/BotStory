@@ -100,25 +100,7 @@ public final class AgentTargetedChatRouteService {
                 return true;
             }
 
-            hooks.replyChannelSetter().set(entry, channel);
-            if (hooks.typoSuggesterEnabled().getAsBoolean()) {
-                String typo = hooks.typoSuggester().suggest(commandText);
-                if (typo != null) {
-                    hooks.agentReplyQueue().queue(entry, "did you mean '" + typo + "'?");
-                    return true;
-                }
-            }
-
-            hooks.agentChatHandler().handle(entry, commandText, channel).whenComplete((matched, failure) -> {
-                boolean handled = failure == null && Boolean.TRUE.equals(matched);
-                Character owner = hooks.leaderResolver().resolve(entry);
-                if (handled && owner != null && leader.getId() == owner.getId()) {
-                    hooks.ownerCommandRecorder().record(entry, commandText, hooks.nowMs().getAsLong());
-                }
-                if (hooks.socialDialogueEnabled().getAsBoolean() && !handled) {
-                    hooks.socialDialogueResponder().maybeRespond(entry, leader, commandText);
-                }
-            });
+            handleAgentLine(leader, entry, commandText, channel, hooks);
             return true;
         }
         if (targetedAgent.feedbackMessage() != null) {
@@ -127,5 +109,36 @@ public final class AgentTargetedChatRouteService {
         }
 
         return false;
+    }
+
+    /**
+     * One line for one Agent: its reply channel, the typo hint, then the Agent's chat chain (the deterministic
+     * classifiers, then the phrase packs and the intent judge) and, when nothing took the line, the social reply. A
+     * named chat line ends here once its Agent is found; a whisper to the Agent starts here.
+     */
+    public static <E extends AgentRuntimeHandle> void handleAgentLine(Character leader,
+                                                                   E entry,
+                                                                   String commandText,
+                                                                   AgentReplyChannel channel,
+                                                                   Hooks<E> hooks) {
+        hooks.replyChannelSetter().set(entry, channel);
+        if (hooks.typoSuggesterEnabled().getAsBoolean()) {
+            String typo = hooks.typoSuggester().suggest(commandText);
+            if (typo != null) {
+                hooks.agentReplyQueue().queue(entry, "did you mean '" + typo + "'?");
+                return;
+            }
+        }
+
+        hooks.agentChatHandler().handle(entry, commandText, channel).whenComplete((matched, failure) -> {
+            boolean handled = failure == null && Boolean.TRUE.equals(matched);
+            Character owner = hooks.leaderResolver().resolve(entry);
+            if (handled && owner != null && leader.getId() == owner.getId()) {
+                hooks.ownerCommandRecorder().record(entry, commandText, hooks.nowMs().getAsLong());
+            }
+            if (hooks.socialDialogueEnabled().getAsBoolean() && !handled) {
+                hooks.socialDialogueResponder().maybeRespond(entry, leader, commandText);
+            }
+        });
     }
 }

@@ -1,7 +1,7 @@
 package server.agents.integration.cosmic;
 
 import client.Character;
-import server.agents.capabilities.dialogue.AgentChatMailboxDispatcher;
+import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
 import server.agents.capabilities.dialogue.AgentWhisperCommandService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -30,9 +30,10 @@ public final class CosmicAgentWhisperCommandBridge {
                 // a whisper from someone who may not control this Agent is ignored like a stranger's
                 (leader, target) -> AgentClaimGuard.mayControl(leader, target.getId())
                         ? AgentRuntimeRegistry.findByAgentCharacterId(target.getId()) : null,
+                // the chain a party line naming the Agent takes, so a line no fixed pattern matches still falls back
                 (entry, message, channel) -> {
                     AgentRelationshipRuntime.setInteractionTarget(entry, sender);
-                    AgentChatMailboxDispatcher.handleChat(entry, message, channel);
+                    AgentChatRouteCoordinator.handleWhisperChat(sender, entry, message, channel);
                 });
     }
 }

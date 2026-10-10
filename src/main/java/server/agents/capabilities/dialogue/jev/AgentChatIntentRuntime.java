@@ -251,9 +251,9 @@ public final class AgentChatIntentRuntime {
     /**
      * A canonical command the orchestrator carries out but reports as unhandled (its legacy
      * fall-through) still counts as acted on, so the owner-command record is updated and the
-     * social small-talk fallback stays quiet.
+     * social small-talk fallback stays quiet. The whisper route asks the same of the whispered line.
      */
-    static boolean actHandled(String canonicalCommand, Boolean handled) {
+    public static boolean actHandled(String canonicalCommand, Boolean handled) {
         return Boolean.TRUE.equals(handled) || AgentChatFallThroughCommands.handledDeterministically(canonicalCommand);
     }
 
