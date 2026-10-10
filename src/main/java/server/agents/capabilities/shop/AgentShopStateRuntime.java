@@ -55,6 +55,39 @@ public final class AgentShopStateRuntime {
         entry.shopState().setSellTrashPending(pending);
     }
 
+    /** True when its owner or its own supply trip asked for the visit's sale. */
+    public static boolean shopSaleAsked(AgentRuntimeEntry entry) {
+        return entry.shopState().saleAsked();
+    }
+
+    /** True when the visit's sale is the quiet one of every visit (AgentJunkSale). */
+    public static boolean shopRoutineSale(AgentRuntimeEntry entry) {
+        return entry.shopState().routineSale();
+    }
+
+    /** The quiet sale of every visit; an asked sale stays asked. */
+    public static void requestShopRoutineSale(AgentRuntimeEntry entry) {
+        entry.shopState().requestRoutineSale();
+    }
+
+    /** True when the visit was opened only to sell: it buys nothing. */
+    public static boolean shopSaleOnly(AgentRuntimeEntry entry) {
+        return entry.shopState().saleOnly();
+    }
+
+    public static void markShopSaleOnly(AgentRuntimeEntry entry) {
+        entry.shopState().markSaleOnly();
+    }
+
+    /** The map whose owner-opened shop it last looked at (one look per map visit). */
+    public static int ownerShopSaleMapId(AgentRuntimeEntry entry) {
+        return entry.shopState().ownerShopSaleMapId();
+    }
+
+    public static void setOwnerShopSaleMapId(AgentRuntimeEntry entry, int mapId) {
+        entry.shopState().setOwnerShopSaleMapId(mapId);
+    }
+
     public static int minimumMesoReserve(AgentRuntimeEntry entry) {
         return entry.shopState().minimumMesoReserve();
     }
