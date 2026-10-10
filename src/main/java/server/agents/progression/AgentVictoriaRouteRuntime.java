@@ -124,7 +124,7 @@ public final class AgentVictoriaRouteRuntime {
         Integer portalId = AgentVictoriaTrainingRouteCatalog.scriptedPortalId(sourceMapId, nextMap);
         boolean scriptedPortal = portalId != null;
         if (portalId == null) {
-            portalId = gateway.directPortalIdTo(agent, nextMap);
+            portalId = reachablePortalTo(entry, agent, nextMap, gateway, state);
         }
         if (portalId == null) {
             state.clearActiveTravel();
@@ -152,6 +152,46 @@ public final class AgentVictoriaRouteRuntime {
     }
 
     /**
+     * The open portal to nextMapId this Agent walks to: the one it chose on this map before, while its own navigation
+     * graph does not rule that one out; else the first, in directPortalIdTo's order, that the graph does not rule out;
+     * else directPortalIdTo's answer as before. Live 2026-10-09: on Another Entrance (105090200) the first portal to
+     * 105090100, west00, stands on the top floor that nothing below climbs to; four companions arriving at under00 on
+     * the bottom floor held still there for 8+ minutes, while west01 on the middle floor is two climbs away. The choice
+     * is kept because canReach cannot rule anything out while the Agent is in the air (a jump to the rope), and a new
+     * target mid-jump would send it back toward the first portal. It looks one hop ahead only: whether the landing on
+     * the next map reaches the portal after it is not checked.
+     */
+    private static Integer reachablePortalTo(AgentRuntimeEntry entry,
+                                             Character agent,
+                                             int nextMapId,
+                                             PrimitiveCapabilityGateway gateway,
+                                             AgentVictoriaRouteState state) {
+        List<Integer> portalIds = gateway.directPortalIdsTo(agent, nextMapId);
+        if (portalIds.isEmpty()) {
+            return gateway.directPortalIdTo(agent, nextMapId);
+        }
+        Integer kept = state.keptPortal(nextMapId);
+        if (kept != null && portalIds.contains(kept) && notRuledOut(entry, agent, kept, gateway)) {
+            return kept;
+        }
+        for (Integer portalId : portalIds) {
+            if (notRuledOut(entry, agent, portalId, gateway)) {
+                state.keepPortal(nextMapId, portalId);
+                return portalId;
+            }
+        }
+        return portalIds.get(0);
+    }
+
+    private static boolean notRuledOut(AgentRuntimeEntry entry,
+                                       Character agent,
+                                       int portalId,
+                                       PrimitiveCapabilityGateway gateway) {
+        Point portal = gateway.portalPosition(agent, portalId);
+        return portal != null && gateway.canReach(entry, agent, portal);
+    }
+
+    /**
      * Portal hops travelStatus would currently take from sourceMapId to destinationMapId,
      * honouring the edges this Agent has blocked after failed portal entries; -1 when it
      * cannot get there on foot. Walking only: supply trips measure with this, so they never
@@ -164,6 +204,19 @@ public final class AgentVictoriaRouteRuntime {
         Set<Long> blockedEdges = entry == null ? Set.of()
                 : entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY).blockedEdges(nowMs);
         return AgentVictoriaTrainingRouteCatalog.distance(sourceMapId, destinationMapId, blockedEdges);
+    }
+
+    /**
+     * Keeps this Agent's route off the hop from sourceMapId to nextMapId until untilMs, as if its portal had kept
+     * refusing entry (FAILED_EDGE_BLOCK_MS): travelStatus and routeHops walk around it, or find no route. For a caller
+     * that saw the Agent fail to cross it some other way: a resupply walk that stood on sourceMapId too long.
+     */
+    public static void avoidHop(AgentRuntimeEntry entry, int sourceMapId, int nextMapId, long untilMs) {
+        if (entry == null) {
+            return;
+        }
+        entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY)
+                .blockEdge(AgentVictoriaTrainingRouteCatalog.edgeKey(sourceMapId, nextMapId), untilMs);
     }
 
     /** True only while a Victoria plan is physically crossing this map toward another map. */

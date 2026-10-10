@@ -211,6 +211,17 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public List<Integer> directPortalIdsTo(Character agent, int destinationMapId) {
+        if (agent.getMap() == null) {
+            return List.of();
+        }
+        return agent.getMap().getPortals().stream()
+                .filter(portal -> portal.getPortalStatus() && portal.getTargetMapId() == destinationMapId)
+                .map(server.maps.Portal::getId)
+                .toList();
+    }
+
+    @Override
     public Point npcPosition(Character agent, int npcId) {
         if (agent == null || agent.getMap() == null) {
             return null;

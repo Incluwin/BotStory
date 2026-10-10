@@ -30,6 +30,18 @@ final class AgentVictoriaRouteState {
     private long npcRetryAtMs;
     private long boardingRefusedLeg;
     private long boardingRefusedSinceMs = -1L;
+    private int keptPortalNextMapId = -1;
+    private int keptPortalId = -1;
+
+    /** The portal to nextMapId this Agent chose on the map it stands on, or null (forgotten on every map change). */
+    synchronized Integer keptPortal(int nextMapId) {
+        return keptPortalNextMapId == nextMapId && keptPortalId >= 0 ? keptPortalId : null;
+    }
+
+    synchronized void keepPortal(int nextMapId, int portalId) {
+        keptPortalNextMapId = nextMapId;
+        keptPortalId = portalId;
+    }
 
     /** Until when the Agent holds still before talking to a travel NPC again (ticket seller, boarding NPC). */
     synchronized long npcRetryAtMs() {
@@ -63,12 +75,19 @@ final class AgentVictoriaRouteState {
             lastObservedMapId = mapId;
             lastMapProgressAtMs = nowMs;
             boardingRefusedSinceMs = -1L;
+            keptPortalNextMapId = -1;
+            keptPortalId = -1;
             failingEdge = 0L;
             consecutiveFailures = 0;
             lastFailureAtMs = 0L;
         } else if (lastMapProgressAtMs == 0L) {
             lastMapProgressAtMs = nowMs;
         }
+    }
+
+    /** Blocks this edge until untilMs at least: a block that already lasts longer stays. */
+    synchronized void blockEdge(long edge, long untilMs) {
+        blockedEdgesUntilMs.merge(edge, untilMs, Math::max);
     }
 
     synchronized boolean recordFailure(long edge, long nowMs, long blockDurationMs) {

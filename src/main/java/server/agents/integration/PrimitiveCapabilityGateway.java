@@ -67,6 +67,15 @@ public interface PrimitiveCapabilityGateway {
 
     Integer directPortalIdTo(Character agent, int destinationMapId);
 
+    /**
+     * Every open portal on the Agent's map to that map, in the order {@link #directPortalIdTo} looks at them (so the
+     * first is its answer); empty when there is none or the map is not loaded.
+     */
+    default List<Integer> directPortalIdsTo(Character agent, int destinationMapId) {
+        Integer portalId = directPortalIdTo(agent, destinationMapId);
+        return portalId == null ? List.of() : List.of(portalId);
+    }
+
     Point npcPosition(Character agent, int npcId);
 
     default void facePosition(Character agent, Point targetPosition) {
