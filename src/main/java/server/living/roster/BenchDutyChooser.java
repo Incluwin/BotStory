@@ -68,8 +68,8 @@ public final class BenchDutyChooser {
 
     /**
      * Your call's candidate camps for a companion of {@code level} camping at {@code campMapId}: that camp when it is a
-     * field, then the FieldCatalog's top fields for the level near it (the camp and duty pickers' own list). None while
-     * the population is not up.
+     * field still open (not FieldCatalog.closed), then the FieldCatalog's top fields for the level near it (the camp and
+     * duty pickers' own list). None while the population is not up.
      */
     public static List<Camp> camps(int level, int campMapId) {
         Population population = Population.get();
@@ -77,7 +77,7 @@ public final class BenchDutyChooser {
         if (population == null) {
             return out;
         }
-        if (campMapId > 0 && !population.fields().isTown(campMapId)) {
+        if (campMapId > 0 && !population.fields().isTown(campMapId) && !population.fields().closed(campMapId)) {
             Field own = population.content().field(campMapId);
             out.add(new Camp(campMapId, own == null ? 0 : own.mobLevel()));
         }

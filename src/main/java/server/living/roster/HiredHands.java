@@ -340,10 +340,13 @@ public final class HiredHands {
         return held != null && held.ownerId() != owner.getId();
     }
 
-    /** Where it camps once hired: the map it is on (or was saved on) when that is a field or town, else its home town. */
+    /**
+     * Where it camps once hired: the map it is on (or was saved on) when that is a field or town, else (or on a field
+     * closed to camps, FieldCatalog.closed) its home town.
+     */
     private static int camp(Population population, Citizen citizen, int mapId) {
         Field field = mapId <= 0 ? null : population.content().field(mapId);
-        return field != null ? mapId : population.fields().homeTown(citizen, null);
+        return field != null && !population.fields().closed(mapId) ? mapId : population.fields().homeTown(citizen, null);
     }
 
     private int rowMap(int characterId) {

@@ -1267,10 +1267,12 @@ final class CompanionCardScreens {
             return out;
         }
 
+        /** Not a town, and not a field closed to camps (FieldCatalog.closed), as the bench's own camp list reads it. */
         @Override
         public boolean isField(int mapId) {
             Population population = Population.get();
-            return mapId > 0 && (population == null || !population.fields().isTown(mapId));
+            return mapId > 0 && (population == null
+                    || !population.fields().isTown(mapId) && !population.fields().closed(mapId));
         }
 
         @Override

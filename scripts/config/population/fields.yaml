@@ -229,15 +229,18 @@ fields:
   - { mapId: 106020100, name: "Secluded Mushroom Forest", street: "Mushroom Castle", region: victoria, town: false, mobs: 18, mobLevel: 30, capacity: 4 }
   - { mapId: 106020200, name: "Isolated Mushroom Forest", street: "Mushroom Castle", region: victoria, town: false, mobs: 12, mobLevel: 30, capacity: 3 }
   - { mapId: 106020300, name: "Deep Inside Mushroom Forest", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 30, capacity: 3 }
-  - { mapId: 106020400, name: "Split Road of Destiny", street: "Mushroom Castle", region: victoria, town: false, mobs: 14, mobLevel: 30, capacity: 3 }
-  - { mapId: 106020401, name: "Steep Downhill 1", street: "Mushroom Castle", region: victoria, town: false, mobs: 10, mobLevel: 30, capacity: 2 }
-  - { mapId: 106020402, name: "Steep Downhill 2", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 31, capacity: 3 }
-  - { mapId: 106020700, name: "Skyscraper 1", street: "Mushroom Castle", region: victoria, town: false, mobs: 12, mobLevel: 32, capacity: 3 }
-  - { mapId: 106020800, name: "Skyscraper 2", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 32, capacity: 3 }
-  - { mapId: 106021000, name: "Skyscraper 3", street: "Mushroom Castle", region: victoria, town: false, mobs: 8, mobLevel: 32, capacity: 2 }
-  - { mapId: 106021100, name: "Secluded Mushroom Forest", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 33, capacity: 3 }
-  - { mapId: 106021200, name: "Skyscraper 5", street: "Mushroom Castle", region: victoria, town: false, mobs: 9, mobLevel: 33, capacity: 2 }
-  - { mapId: 106021300, name: "Skyscraper 6", street: "Mushroom Castle", region: victoria, town: false, mobs: 11, mobLevel: 33, capacity: 2 }
+  # Mushroom Castle past its quest gates (scripts/portal/obstacle.js: quest 30000 or a Poison Spore; gotocastle.js:
+  # quest 2324) holds nobody: citizens were placed here past gates they never passed, and from the only shop, at
+  # Mushroom Forest Field, no route led back (28 stuck trips from 2026-10-06; user decision 2026-10-10).
+  - { mapId: 106020400, name: "Split Road of Destiny", street: "Mushroom Castle", region: victoria, town: false, mobs: 14, mobLevel: 30, capacity: 0 }
+  - { mapId: 106020401, name: "Steep Downhill 1", street: "Mushroom Castle", region: victoria, town: false, mobs: 10, mobLevel: 30, capacity: 0 }
+  - { mapId: 106020402, name: "Steep Downhill 2", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 31, capacity: 0 }
+  - { mapId: 106020700, name: "Skyscraper 1", street: "Mushroom Castle", region: victoria, town: false, mobs: 12, mobLevel: 32, capacity: 0 }
+  - { mapId: 106020800, name: "Skyscraper 2", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 32, capacity: 0 }
+  - { mapId: 106021000, name: "Skyscraper 3", street: "Mushroom Castle", region: victoria, town: false, mobs: 8, mobLevel: 32, capacity: 0 }
+  - { mapId: 106021100, name: "Secluded Mushroom Forest", street: "Mushroom Castle", region: victoria, town: false, mobs: 13, mobLevel: 33, capacity: 0 }
+  - { mapId: 106021200, name: "Skyscraper 5", street: "Mushroom Castle", region: victoria, town: false, mobs: 9, mobLevel: 33, capacity: 0 }
+  - { mapId: 106021300, name: "Skyscraper 6", street: "Mushroom Castle", region: victoria, town: false, mobs: 11, mobLevel: 33, capacity: 0 }
   - { mapId: 110000000, name: "Florina Beach", street: "Florina Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 110010000, name: "A Look-Out Shed Around the Beach", street: "Florina Road", region: victoria, town: false, mobs: 63, mobLevel: 37, capacity: 6 }
   - { mapId: 110020000, name: "Lorang Lorang", street: "Florina Road", region: victoria, town: false, mobs: 40, mobLevel: 37, capacity: 6 }
