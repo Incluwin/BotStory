@@ -122,6 +122,26 @@ class AgentVerticalTraversalServiceTest {
     }
 
     @Test
+    void anotherRopeInTheExitRopesRegionClimbsTowardTheGroundExit() {
+        // Overlapping ropes resolve by the first rope within grab range, so a rope beside the
+        // exit's rope can report the exit rope's region (300020000: ladder x -201 resolves to rope
+        // x -200). Without the exit anchor the climb held there until the attempt timeout charged
+        // a failure to the exit. Climbed to the anchor, the exit runs from the rope beside.
+        Fixture fixture = fixture();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        assertTrue(AgentVerticalTraversalService.beginIfRopeEntry(
+                fixture.graph, entry, bot, fixture.entryEdge, 3, new Point(180, 100),
+                (graph, candidate, startPosition, startRegionId, targetRegionId, targetPosition) -> fixture.exitEdge));
+        Rope beside = new Rope(104, 100, 250, true);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, beside);
+
+        assertEquals(fixture.exitEdge.startPoint,
+                AgentVerticalTraversalService.committedClimbExitPosition(entry, beside));
+        assertSame(fixture.exitEdge, resolve(fixture, entry, bot, 2, true).edge());
+    }
+
+    @Test
     void navigationResetCancelsTraversalTransaction() {
         Fixture fixture = fixture();
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
