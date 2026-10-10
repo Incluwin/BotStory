@@ -169,8 +169,16 @@ public final class ResidentDialogue {
         if (!AgentPresence.isAgent(speaker) && answeredOffer(speaker, targetName, text)) {
             return true;
         }
+        if (AgentPresence.isAgent(speaker)) {
+            return false;
+        }
         Persona persona = world.content().personaByName(targetName);
-        if (persona == null || AgentPresence.isAgent(speaker)) {
+        if (persona == null) {
+            // hires are no content: the owner's hired citizen goes by its own name, as in map chat, so a whispered "come
+            // back" reaches the roster (deploy review 2026-10-10: a hire on a live bench slice said "call me back first")
+            persona = hiredHandNamed(speaker, targetName);
+        }
+        if (persona == null) {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
