@@ -1,14 +1,21 @@
 package server.living.roster;
 
+import client.inventory.Equip;
+import client.inventory.Item;
 import org.junit.jupiter.api.Test;
+import server.living.roster.BossGearRecord.Displaced;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The record of what a companion's !bossgear kit displaced, as the living event log keeps it (BossGearRecord): slot and
- * item id pairs from the cap down, read back the same; a malformed entry is left out, and the kit coming off ends it.
+ * The record of what a companion's !bossgear kit displaced, as the living event log keeps it (BossGearRecord): slot,
+ * item id, bag slot and print from the cap down, read back the same; a row from before the bag slot and print were kept
+ * reads by the id alone; a malformed entry is left out, and the kit coming off ends it.
  */
 class BossGearRecordTest {
     private static final short CAP = -1;
@@ -17,7 +24,8 @@ class BossGearRecordTest {
 
     @Test
     void theRecordReadsBackAsItWasWritten() {
-        Map<Short, Integer> tamsin = Map.of(WEAPON, 1302020, CAP, 1002027, PANTS, 1060002);
+        Map<Short, Displaced> tamsin = Map.of(WEAPON, Displaced.of(1302020), CAP, Displaced.of(1002027), PANTS,
+                Displaced.of(1060002));
 
         String detail = BossGearRecord.detail(tamsin);
 
@@ -28,23 +36,62 @@ class BossGearRecordTest {
     }
 
     @Test
+    void eachPieceReadsBackWithTheBagSlotItWentToAndItsPrint() {
+        Item helm = Equip.restored(1002027, (short) 12);
+        Map<Short, Displaced> tamsin = Map.of(CAP, Displaced.of(helm), PANTS, new Displaced(1060002, (short) 13,
+                0xfedcba98));
+
+        String detail = BossGearRecord.detail(tamsin);
+
+        assertEquals("displaced: -1:1002027@12#" + Integer.toHexString(BossGearRecord.print(helm))
+                + " -6:1060002@13#fedcba98", detail);
+        assertEquals(tamsin, BossGearRecord.parse(detail));
+        assertTrue(BossGearRecord.parse(detail).get(CAP).exact());
+    }
+
+    @Test
+    void aRowFromBeforeTheBagSlotAndPrintWereKeptReadsByTheIdAlone() {
+        Displaced helm = BossGearRecord.parse("displaced: -1:1002027").get(CAP);
+
+        assertEquals(Displaced.of(1002027), helm);
+        assertFalse(helm.exact());
+    }
+
+    @Test
     void aMalformedEntryIsLeftOutAndTheRestHolds() {
-        assertEquals(Map.of(CAP, 1002027), BossGearRecord.parse("displaced: -1:1002027 x:1 -6: 5:1060002 -7:-2"));
+        assertEquals(Map.of(CAP, Displaced.of(1002027)),
+                BossGearRecord.parse("displaced: -1:1002027 x:1 -6: 5:1060002 -7:-2"));
+        assertEquals(Map.of(CAP, Displaced.of(1002027), PANTS, Displaced.of(1060002), WEAPON, Displaced.of(1302020)),
+                BossGearRecord.parse("displaced: -1:1002027@x#1f -6:1060002@13 -11:1302020@0#1f"),
+                "a malformed bag slot or print: known by the id alone");
         assertEquals(Map.of(), BossGearRecord.parse("released: 6 pieces"));
         assertEquals(Map.of(), BossGearRecord.parse(null));
     }
 
     @Test
+    void thePrintTellsCopiesOfAnIdApartByTheirStatsAndScrollsAlone() {
+        Equip looted = Equip.restored(1002027, (short) 3);
+        Equip alike = Equip.restored(1002027, (short) 12);
+        Equip scrolled = Equip.restored(1002027, (short) 12);
+        scrolled.setWdef((short) 33);
+        scrolled.setLevel((byte) 3);
+
+        assertEquals(BossGearRecord.print(looted), BossGearRecord.print(alike), "the bag slot is no part of it");
+        assertNotEquals(BossGearRecord.print(looted), BossGearRecord.print(scrolled));
+        assertEquals(0, BossGearRecord.print(new Item(2000000, (short) 1, (short) 5)), "no equip");
+    }
+
+    @Test
     void theKitComingOffEndsTheRecordAndANewKitStartsOne() {
         FakeLivingStore store = new FakeLivingStore();
-        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, 1002027));
-        assertEquals(Map.of(CAP, 1002027), BossGearRecord.read(store.store, 870, "tamsin"));
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(CAP, Displaced.of(1002027)));
+        assertEquals(Map.of(CAP, Displaced.of(1002027)), BossGearRecord.read(store.store, 870, "tamsin"));
         assertEquals(Map.of(), BossGearRecord.read(store.store, 871, "tamsin"), "another owner's record");
 
         store.store.event(870, "tamsin", BossGearRecord.REMOVED, "released: 6 pieces");
         assertEquals(Map.of(), BossGearRecord.read(store.store, 870, "tamsin"));
 
-        BossGearRecord.write(store.store, 870, "tamsin", Map.of(PANTS, 1060002));
-        assertEquals(Map.of(PANTS, 1060002), BossGearRecord.read(store.store, 870, "tamsin"));
+        BossGearRecord.write(store.store, 870, "tamsin", Map.of(PANTS, Displaced.of(1060002)));
+        assertEquals(Map.of(PANTS, Displaced.of(1060002)), BossGearRecord.read(store.store, 870, "tamsin"));
     }
 }

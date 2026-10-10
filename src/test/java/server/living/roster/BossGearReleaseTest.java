@@ -14,6 +14,7 @@ import server.knowledge.KnowledgeTestKit;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.quest.BossGearPlanner;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.store.LivingStore.RosterState;
 import server.living.store.LivingStore.WearStats;
 
@@ -360,10 +361,20 @@ class BossGearReleaseTest {
             WHITE_UNDERSHIRT, (short) 3, RED_DUKE, (short) 4, IRON_CHAIN_BOOTS, (short) 5, RED_RUBBER_BOOTS, (short) 6,
             STEEL_GRIEVES, (short) 7, CONTRA_AXE);
 
-    /** The record her kit left as it went on (CompanionGearTool.wearKit): each own piece it put in her bag. */
+    /**
+     * The record her kit left as it went on (CompanionGearTool.wearKit): each own piece it put in her bag, by its id
+     * alone, as the live rows of 2026-10-09 have it (written before the bag slot and print were kept).
+     */
     private void tamsinsKitRecord() {
-        BossGearRecord.write(game.store.store, ANN, "tamsin", Map.of(CAP, STEEL_SHARP_HELM, (short) -5, RED_SHARK,
-                (short) -6, BLUE_JEAN_SHORTS, (short) -7, MITHRIL_GRIEVES, SHIELD, STEEL_SHIELD, WEAPON, MAPLE_SWORD));
+        BossGearRecord.write(game.store.store, ANN, "tamsin", byId(Map.of(CAP, STEEL_SHARP_HELM, (short) -5,
+                RED_SHARK, (short) -6, BLUE_JEAN_SHORTS, (short) -7, MITHRIL_GRIEVES, SHIELD, STEEL_SHIELD, WEAPON,
+                MAPLE_SWORD)));
+    }
+
+    private static Map<Short, Displaced> byId(Map<Short, Integer> ids) {
+        Map<Short, Displaced> out = new TreeMap<>();
+        ids.forEach((slot, itemId) -> out.put(slot, Displaced.of(itemId)));
+        return out;
     }
 
     /** Item id by position, of the worn ({@code worn} true) or of the carried items. */
@@ -461,7 +472,8 @@ class BossGearReleaseTest {
                 Equip.restored(PLAIN_SWORD, (short) 1)));
         game.store.storedItems.put(HADRIK, saved);
         offline(HADRIK);
-        BossGearRecord.write(game.store.store, ANN, "hadrik", Map.of(CAP, PLAIN_SWORD)); // an old record, kit long gone
+        // an old record, kit long gone
+        BossGearRecord.write(game.store.store, ANN, "hadrik", byId(Map.of(CAP, PLAIN_SWORD)));
         game.roster();
 
         game.roster().release(game.ann, hadrik, "dismissed");
@@ -516,6 +528,27 @@ class BossGearReleaseTest {
             assertEquals(List.of(HADRIK), game.store.storedWrites, "one rewrite");
             assertEquals(List.of(GLADIUS + "@-11", BLUE_COUNTER + "@2"), placed(saved),
                     "as a loaded one: its one-handed sword, not the Lv40 axe");
+        }
+    }
+
+    // ---- the very copy the kit displaced, of two carried with its id (BossGearRecord.Displaced) ----------
+
+    @Test
+    void ofTwoSteelShieldsInItsSavedInventoryTheOneTheKitTookOffGoesBackOn() throws Exception {
+        try (AutoCloseable knowledge = KnowledgeTestKit.publishSeed()) {
+            Equip own = Equip.restored(STEEL_SHIELD, (short) 2); // the kit swapped it into slot 2; scrolled twice
+            own.setWdef((short) 30);
+            own.setLevel((byte) 2);
+            Item looted = Equip.restored(STEEL_SHIELD, (short) 1);
+            List<Item> saved = savedAsAFighter(Equip.restored(GLADIUS, WEAPON), boss(BOSS_SHIELD, SHIELD), looted, own);
+            BossGearRecord.write(game.store.store, ANN, "hadrik", Map.of(SHIELD, Displaced.of(own)));
+            game.roster();
+
+            game.roster().release(game.ann, hadrik, "dismissed");
+
+            assertEquals(List.of(HADRIK), game.store.storedWrites, "one rewrite");
+            assertEquals(SHIELD, own.getPosition(), "its scrolled shield is on: " + placed(saved));
+            assertEquals(1, looted.getPosition(), "the plain one it looted stays in slot 1");
         }
     }
 }

@@ -5,6 +5,7 @@ import client.inventory.Item;
 import client.inventory.WeaponType;
 import org.junit.jupiter.api.Test;
 import server.knowledge.ItemFact;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.roster.OwnGearRefit.Move;
 import server.living.store.LivingStore.WearStats;
 
@@ -95,13 +96,20 @@ class OwnGearRefitTest {
     /** With the record of what the kit displaced (BossGearRecord): slot -> item id. */
     private static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Integer> displaced,
                                    Map<Short, Item> worn, List<Item> carried) {
-        return OwnGearRefit.plan(wearer, taken, displaced, worn, carried, FACTS::get, type -> true);
+        return OwnGearRefit.plan(wearer, taken, byId(displaced), worn, carried, FACTS::get, type -> true);
     }
 
     /** For a build that fights only with the weapon types {@code fights} names (AgentWeaponCompatibilityPolicy). */
     private static List<Move> plan(WearStats wearer, Map<Short, Integer> taken, Map<Short, Integer> displaced,
                                    List<Item> carried, Predicate<WeaponType> fights) {
-        return OwnGearRefit.plan(wearer, taken, displaced, wears(), carried, FACTS::get, fights);
+        return OwnGearRefit.plan(wearer, taken, byId(displaced), wears(), carried, FACTS::get, fights);
+    }
+
+    /** A record that knows each piece by its id alone (as one written before the bag slot and print were kept). */
+    private static Map<Short, Displaced> byId(Map<Short, Integer> displaced) {
+        Map<Short, Displaced> out = new HashMap<>();
+        displaced.forEach((slot, itemId) -> out.put(slot, Displaced.of(itemId)));
+        return out;
     }
 
     private static List<String> moves(List<Move> moves) {
@@ -204,7 +212,8 @@ class OwnGearRefitTest {
         assertEquals(List.of(), moves(plan(null, Map.of(SHIELD, BOSS_SHIELD), wears(at(GLADIUS, WEAPON)),
                 List.of(at(STEEL_SHIELD, 1)))), "no wearer read");
         assertEquals(List.of(), moves(OwnGearRefit.plan(GARRICK, Map.of(SHIELD, BOSS_SHIELD),
-                Map.of(SHIELD, STEEL_SHIELD), wears(at(GLADIUS, WEAPON)), List.of(at(STEEL_SHIELD, 1)), id -> null,
+                Map.of(SHIELD, Displaced.of(STEEL_SHIELD)), wears(at(GLADIUS, WEAPON)), List.of(at(STEEL_SHIELD, 1)),
+                id -> null,
                 type -> true)), "no knowledge");
     }
 
@@ -277,7 +286,7 @@ class OwnGearRefitTest {
     void withNoWeaponItsBuildFightsWithOneItsJobMaskAllowsStillGoesOn() {
         List<Move> moves = plan(GARRICK, Map.of(WEAPON, BOSS_SWORD), Map.of(), List.of(at(BLUE_COUNTER, 1)), SWORDS);
 
-        assertEquals(List.of(BLUE_COUNTER + "@1 -> -11"), moves(moves), "the gear optimizer has no sword for it either");
+        assertEquals(List.of(BLUE_COUNTER + "@1 -> -11"), moves(moves), "the optimizer has no sword for it either");
     }
 
     @Test
@@ -289,5 +298,58 @@ class OwnGearRefitTest {
         assertEquals(WeaponType.CROSSBOW, OwnGearRefit.weaponType(1462001));
         assertEquals(WeaponType.GUN, OwnGearRefit.weaponType(1492013));
         assertEquals(WeaponType.NOT_A_WEAPON, OwnGearRefit.weaponType(STEEL_SHARP_HELM));
+    }
+
+    // ---- the very copy the kit displaced, of two carried with its id (BossGearRecord.Displaced) ----------
+
+    /** Tamsin's own Steel Sharp Helm: three scrolls passed on it. */
+    private static Item scrolledHelm(int position) {
+        Equip helm = Equip.restored(STEEL_SHARP_HELM, (short) position);
+        helm.setWdef((short) 33);
+        helm.setLevel((byte) 3);
+        helm.setUpgradeSlots((byte) 4);
+        return helm;
+    }
+
+    private static List<Move> plan(Map<Short, Displaced> displaced, List<Item> carried) {
+        return OwnGearRefit.plan(TAMSIN, Map.of(CAP, BOSS_CAP), displaced, wears(), carried, FACTS::get, type -> true);
+    }
+
+    @Test
+    void ofTwoCarriedCopiesTheVeryHelmTheKitPutInHerBagGoesBackOn() {
+        Item own = scrolledHelm(12); // the kit's cap went to the first free slot, 12, and her helm swapped in there
+
+        List<Move> moves = plan(Map.of(CAP, Displaced.of(own)), List.of(at(STEEL_SHARP_HELM, 3), own));
+
+        assertEquals(own, moves.get(0).piece(), "her scrolled helm, not the plain copy she looted into slot 3");
+    }
+
+    @Test
+    void theVeryHelmIsKnownByItsStatsWhereItLeftTheBagSlotTheKitPutItIn() {
+        Item own = scrolledHelm(12);
+        Displaced record = Displaced.of(own);
+        own.setPosition((short) 7);
+
+        List<Move> moves = plan(Map.of(CAP, record), List.of(at(STEEL_SHARP_HELM, 3), own, at(STEEL_SHARP_HELM, 12)));
+
+        assertEquals(own, moves.get(0).piece(), "its scrolls tell it from the plain copies, one now in slot 12");
+    }
+
+    @Test
+    void ofTwoCopiesAlikeTheOneInTheBagSlotTheKitPutItInGoesBackOn() {
+        Item own = at(STEEL_SHARP_HELM, 12);
+
+        List<Move> moves = plan(Map.of(CAP, Displaced.of(own)), List.of(at(STEEL_SHARP_HELM, 3), own));
+
+        assertEquals(own, moves.get(0).piece());
+    }
+
+    @Test
+    void aRecordThatKnowsOnlyTheIdPutsTheFirstCopyOn() {
+        Item first = at(STEEL_SHARP_HELM, 3);
+
+        List<Move> moves = plan(Map.of(CAP, Displaced.of(STEEL_SHARP_HELM)), List.of(first, scrolledHelm(12)));
+
+        assertEquals(first, moves.get(0).piece(), "a row written before the bag slot and print were kept");
     }
 }

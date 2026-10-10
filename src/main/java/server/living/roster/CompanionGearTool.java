@@ -30,6 +30,7 @@ import server.living.quest.BossGearPlanner.Piece;
 import server.living.quest.BossGearPlanner.Wearer;
 import server.living.quest.FriendForge;
 import server.living.quest.FriendForge.Catalog;
+import server.living.roster.BossGearRecord.Displaced;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.roster.OwnGearRefit.Move;
 import server.living.store.LivingStore;
@@ -84,10 +85,11 @@ public final class CompanionGearTool {
 
     /**
      * What the companion's mailbox did: pieces put in its bag, of those the pieces it wears, and the pieces it skipped
-     * because their slot wore that boss piece by then; {@code displaced}: the worn slot and item id of each own piece
-     * the kit put in its bag (BossGearRecord); {@code ontoAKit}: it wore boss gear before (this kit adds to that one).
+     * because their slot wore that boss piece by then; {@code displaced}: by the worn slot, each own piece the kit put
+     * in its bag, as it lies there (BossGearRecord); {@code ontoAKit}: it wore boss gear before (this kit adds to that
+     * one).
      */
-    public record Outcome(int given, int worn, int skipped, Map<Short, Integer> displaced, boolean ontoAKit) {
+    public record Outcome(int given, int worn, int skipped, Map<Short, Displaced> displaced, boolean ontoAKit) {
         public Outcome(int given, int worn, int skipped) {
             this(given, worn, skipped, Map.of(), false);
         }
@@ -119,7 +121,7 @@ public final class CompanionGearTool {
          * On the companion's mailbox: its boss gear comes off and what the kit {@code displaced} goes back on
          * ({@link #removeKit}); the pieces taken.
          */
-        CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner, Map<Short, Integer> displaced);
+        CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner, Map<Short, Displaced> displaced);
 
         /**
          * On the companion's mailbox: nothing; completes once each action queued on it before has run (a gift's kit
@@ -167,7 +169,7 @@ public final class CompanionGearTool {
 
         @Override
         public CompletableFuture<Integer> remove(AgentRuntimeEntry runtime, Character owner,
-                                                 Map<Short, Integer> displaced) {
+                                                 Map<Short, Displaced> displaced) {
             return AgentMailboxRuntime.dispatch(runtime, entry -> removeKit(entry, owner, displaced));
         }
 
@@ -326,7 +328,7 @@ public final class CompanionGearTool {
     private void recordDisplaced(Character gm, Target target, Outcome outcome) {
         try {
             LivingStore store = world.store();
-            Map<Short, Integer> record = BossGearRecord.slots();
+            Map<Short, Displaced> record = BossGearRecord.slots();
             if (outcome.ontoAKit()) {
                 record.putAll(BossGearRecord.read(store, gm.getId(), target.personaId()));
             }
@@ -425,7 +427,8 @@ public final class CompanionGearTool {
      * would count as done); what it wore swaps into the freed slot. A piece whose slot wears that boss piece by now is
      * skipped (a second use planned on companion-ops before the first kit went on), and then the free slots it needs
      * are counted again. Nothing is given unless {@code need} slots are free. The outcome names each own piece the kit
-     * put in its bag by the slot it wore it on, the pants an overall pushed off among them (BossGearRecord).
+     * put in its bag by the slot it wore it on, the pants an overall pushed off among them, with the bag slot it went
+     * to and its print (BossGearRecord).
      */
     static Outcome wearKit(AgentRuntimeEntry entry, List<Piece> kit, int need) {
         Character bot = entry.bot();
@@ -467,13 +470,13 @@ public final class CompanionGearTool {
         return new Outcome(given, worn, skipped, displaced(bot, before), ontoAKit);
     }
 
-    /** Each piece it wore ({@code before}, by slot) that is in its bag now: what the kit displaced, by that slot. */
-    private static Map<Short, Integer> displaced(Character bot, Map<Short, Item> before) {
-        Map<Short, Integer> displaced = BossGearRecord.slots();
+    /** Each piece it wore ({@code before}, by slot) now in its bag, as it lies there: what the kit displaced. */
+    private static Map<Short, Displaced> displaced(Character bot, Map<Short, Item> before) {
+        Map<Short, Displaced> displaced = BossGearRecord.slots();
         Inventory bag = bot.getInventory(InventoryType.EQUIP);
         before.forEach((slot, item) -> {
             if (item.getPosition() > 0 && bag.getItem(item.getPosition()) == item) {
-                displaced.put(slot, item.getItemId());
+                displaced.put(slot, Displaced.of(item));
             }
         });
         return displaced;
@@ -544,7 +547,8 @@ public final class CompanionGearTool {
             CompletableFuture<Integer> taken = new CompletableFuture<>();
             world.executor().submit("gm.bossgear record " + target.chr().getName(), () -> {
                 try {
-                    Map<Short, Integer> displaced = BossGearRecord.read(world.store(), gm.getId(), target.personaId());
+                    Map<Short, Displaced> displaced = BossGearRecord.read(world.store(), gm.getId(),
+                            target.personaId());
                     game.remove(runtime, gm, displaced).whenComplete((count, failure) -> {
                         if (failure != null) {
                             taken.completeExceptionally(failure);
@@ -614,7 +618,7 @@ public final class CompanionGearTool {
      * when it wears boss gear), else the best it carries; never a new one. Not saved here. How many boss pieces left
      * it.
      */
-    static int takeBossGearOnRelease(Character chr, Supplier<Map<Short, Integer>> displaced) {
+    static int takeBossGearOnRelease(Character chr, Supplier<Map<Short, Displaced>> displaced) {
         Map<Short, Integer> taken = wornBossPieces(chr);
         int count = takeBossGear(chr);
         if (!taken.isEmpty()) {
@@ -638,7 +642,7 @@ public final class CompanionGearTool {
         return taken;
     }
 
-    private static void wearOwnGear(Character chr, Map<Short, Integer> taken, Map<Short, Integer> displaced) {
+    private static void wearOwnGear(Character chr, Map<Short, Integer> taken, Map<Short, Displaced> displaced) {
         Map<Short, Item> worn = new HashMap<>();
         for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
             worn.put(item.getPosition(), item);
@@ -690,7 +694,7 @@ public final class CompanionGearTool {
      * left alone. How many pieces left it; -1 when it is online or the store failed (nothing changed).
      */
     static int takeStoredBossGear(LivingStore store, int characterId, IntPredicate online,
-                                  Supplier<Map<Short, Integer>> displaced) {
+                                  Supplier<Map<Short, Displaced>> displaced) {
         if (characterId <= 0) {
             return 0;
         }
@@ -702,7 +706,7 @@ public final class CompanionGearTool {
     }
 
     /** The stored rewrite's re-dress: each carried piece that goes back on takes its worn slot as its position. */
-    private static void redressStored(LivingStore store, int characterId, Supplier<Map<Short, Integer>> displaced,
+    private static void redressStored(LivingStore store, int characterId, Supplier<Map<Short, Displaced>> displaced,
                                       List<Item> takenWorn, List<Item> worn, List<Item> carried) {
         if (takenWorn.isEmpty()) {
             return;
@@ -745,7 +749,7 @@ public final class CompanionGearTool {
      * carries one (AgentWeaponCompatibilityPolicy), as the optimizer would. The pieces taken; with none, nothing
      * changes.
      */
-    static int removeKit(AgentRuntimeEntry entry, Character owner, Map<Short, Integer> displaced) {
+    static int removeKit(AgentRuntimeEntry entry, Character owner, Map<Short, Displaced> displaced) {
         Character bot = entry.bot();
         if (bot == null) {
             return 0;

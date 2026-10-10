@@ -3238,8 +3238,8 @@ public final class RosterService {
     private void takeBossGearOff(RosterEntry entry, Character bot, int characterId) {
         try {
             int taken;
-            Supplier<Map<Short, Integer>> displaced = () -> BossGearRecord.read(world.store(), entry.characterId(),
-                    entry.personaId()); // read only when a worn boss piece comes off
+            Supplier<Map<Short, BossGearRecord.Displaced>> displaced = () -> BossGearRecord.read(world.store(),
+                    entry.characterId(), entry.personaId()); // read only when a worn boss piece comes off
             if (bot != null) {
                 taken = CompanionGearTool.takeBossGearOnRelease(bot, displaced);
                 if (taken > 0) {
