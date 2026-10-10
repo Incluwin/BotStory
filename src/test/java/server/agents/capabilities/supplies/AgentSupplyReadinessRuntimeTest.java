@@ -1359,6 +1359,36 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void anUnaskedGiftAnsweredByTheCriticalPathsBrokeLineIsNotAlsoToldStillShort() {
+        // fourth review: between two readiness checks the critical gate looks again at the potions it was given and
+        // says its broke line; the next look then took the same gift for news and said "still short" after it
+        for (boolean said : new boolean[]{true, false}) {
+            calls.clear();
+            refusalsSaid = true;
+            int id = said ? 593 : 594;
+            Character fenna = companion(id, "Fenna", Job.HUNTER, 1, 30, 155);
+            AgentRuntimeEntry entry = following(fenna);
+            planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+            stand(fenna, KERNING_SHOP, true); // it followed its owner out of the town it was refused in
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+
+            refusalsSaid = said; // its broke line was said over half an hour ago (true), or a minute ago (false)
+            potions.put(id, new int[]{5, 30}); // handed four potions: still under POT_STOP, the rest unaffordable
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 7_000L)); // the critical gate, between checks
+            assertEquals("refused " + id + " CANNOT_AFFORD " + (5 * RED - 155), calls.getLast(), calls.toString());
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+
+            List<String> expected = new ArrayList<>(List.of("refused " + id + " CANNOT_AFFORD " + (19 * RED - 155),
+                    "refused " + id + " CANNOT_AFFORD " + (5 * RED - 155)));
+            if (!said) {
+                expected.add("still short " + id + " " + (15 * RED - 155)); // its host kept quiet: the gift's answer
+            }
+            assertEquals(expected, calls, said ? "one line for the gift: the broke line" : "one line: still short");
+        }
+    }
+
+    @Test
     void aBrokeCompanionIsHeldBackForMesosUntilItsPurseGrowsByWhatItLacked() {
         Character fenna = companion(590, "Fenna", Job.HUNTER, 1, 30, 155);
         AgentRuntimeEntry entry = following(fenna);
