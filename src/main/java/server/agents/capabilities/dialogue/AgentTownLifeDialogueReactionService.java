@@ -3,6 +3,8 @@ package server.agents.capabilities.dialogue;
 import server.agents.capabilities.townlife.AgentTownLifeEncounterEvent;
 import server.agents.capabilities.townlife.AgentTownLifeEncounterState;
 import server.agents.capabilities.townlife.AgentTownLifeArrivalEvent;
+import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
+import server.agents.capabilities.townlife.LithHarborTownLifeCatalog;
 import server.agents.events.AgentEvent;
 import server.agents.events.AgentEventBus;
 import server.agents.events.AgentEventListener;
@@ -35,6 +37,8 @@ public final class AgentTownLifeDialogueReactionService implements AgentEventLis
                             "mapId", String.valueOf(arrival.mapId()),
                             "purpose", arrival.purpose().name(),
                             "reason", arrival.reason(),
+                            "townName", arrival.townName(),
+                            "shipArrival", String.valueOf(shipArrival(arrival)),
                             "variant", String.valueOf(variant))),
                     AgentEventPriority.AMBIENT);
             return;
@@ -59,6 +63,12 @@ public final class AgentTownLifeDialogueReactionService implements AgentEventLis
                         "peerAgentId", String.valueOf(encounter.peerAgentId()),
                         "variant", String.valueOf(variant))),
                 AgentEventPriority.AMBIENT);
+    }
+
+    /** Ship wording belongs only to the Victoria Island landing at Lith Harbor. */
+    private static boolean shipArrival(AgentTownLifeArrivalEvent arrival) {
+        return arrival.mapId() == LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID
+                && AgentTownLifeVisitRequest.SHIP_ARRIVAL_REASON.equals(arrival.reason());
     }
 
     private static boolean eligible(AgentTownLifeEncounterEvent encounter) {

@@ -112,8 +112,8 @@ public final class AgentMapleIslandLithHandoffRuntime {
 
         if (TRANSFER_PLAN_ID.equals(plan.planId())) {
             if (plan.status() == AgentPlanExecutionStatus.SUCCEEDED) {
-                AgentTownLifeRuntime.start(entry, LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID,
-                        nowMs, agent.getId());
+                AgentTownLifeRuntime.startAfterShipArrival(entry,
+                        LithHarborTownLifeCatalog.LITH_HARBOR_MAP_ID, nowMs, agent.getId());
                 entry.capabilityStates().remove(AgentSouthperryLithTransferState.STATE_KEY);
                 state.complete();
                 AgentUniversalPlanRuntime.clearDeferredSuccessor(

@@ -9,7 +9,8 @@ public record AgentTownLifeArrivalEvent(
         int mapId,
         String profileId,
         AgentTownLifeVisitRequest.Purpose purpose,
-        String reason) implements AgentContextualEvent {
+        String reason,
+        String townName) implements AgentContextualEvent {
 
     public static final String TYPE = "townlife.arrival";
 
@@ -19,6 +20,7 @@ public record AgentTownLifeArrivalEvent(
             throw new IllegalArgumentException("valid TownLife arrival event fields are required");
         }
         reason = reason == null ? "" : reason.trim();
+        townName = townName == null ? "" : townName.trim();
     }
 
     @Override
