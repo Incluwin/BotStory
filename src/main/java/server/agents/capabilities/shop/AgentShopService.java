@@ -32,10 +32,14 @@ import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.inventory.demand.AgentEtcSaleCandidate;
 import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRuntime;
+import server.agents.capabilities.movement.AgentMapStateRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.objectives.AgentObjectiveKernel;
+import server.agents.runtime.AgentModeStateRuntime;
+import server.agents.runtime.activity.AgentActivityHostState;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.progression.AgentPotionSupplierCatalog;
@@ -102,13 +106,33 @@ public final class AgentShopService {
 
     /**
      * What a sell-trash pass got rid of: trash equips one at a time, surplus ETC a stack (sale line) at a time.
-     * Kept apart so the Agent never reports ETC pieces as equips.
+     * Kept apart so the Agent never reports ETC pieces as equips. {@code routine}: the pass is the quiet sale of every
+     * visit (AgentJunkSale), fixed as the pass starts (the request it takes is cleared then, so the shop state no
+     * longer tells it); an asked pass that follows one at the same counter carries its tally on, with routine false.
      */
-    private record SaleTally(int equipsSold, int equipsFailed, int etcStacksSold, int etcStacksFailed) {
+    private record SaleTally(int equipsSold, int equipsFailed, int etcStacksSold, int etcStacksFailed,
+                             boolean routine) {
+        static SaleTally start(boolean routine) {
+            return new SaleTally(0, 0, 0, 0, routine);
+        }
+
         SaleTally withEtcSale(boolean sold) {
             return sold
-                    ? new SaleTally(equipsSold, equipsFailed, etcStacksSold + 1, etcStacksFailed)
-                    : new SaleTally(equipsSold, equipsFailed, etcStacksSold, etcStacksFailed + 1);
+                    ? new SaleTally(equipsSold, equipsFailed, etcStacksSold + 1, etcStacksFailed, routine)
+                    : new SaleTally(equipsSold, equipsFailed, etcStacksSold, etcStacksFailed + 1, routine);
+        }
+
+        SaleTally withEquipSold() {
+            return new SaleTally(equipsSold + 1, equipsFailed, etcStacksSold, etcStacksFailed, routine);
+        }
+
+        SaleTally withEquipsFailed(int failed) {
+            return new SaleTally(equipsSold, failed, etcStacksSold, etcStacksFailed, routine);
+        }
+
+        /** This tally carried into the asked pass that follows it at the same counter. */
+        SaleTally asked() {
+            return new SaleTally(equipsSold, equipsFailed, etcStacksSold, etcStacksFailed, false);
         }
 
         boolean anySold() {
@@ -124,9 +148,11 @@ public final class AgentShopService {
      * The Agent arrived on a map (the map-change hooks): as {@link #onMapChange}, except that one its readiness duty
      * holds back for mesos (AgentSupplyReadiness.heldForMesos: a broke companion that followed its owner into a store)
      * starts no visit of its own. What it cannot pay for its readiness says, and what its owner hands it there stays
-     * a gift it can answer. A supply trip that begins here still opens its visit ({@link #onMapChange}).
+     * a gift it can answer. A supply trip that begins here still opens its visit ({@link #onMapChange}). A new map
+     * visit gets one more look at a shop its owner opens there ({@link #tickOwnerShopping}).
      */
     public static void onArrival(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
+        AgentShopStateRuntime.setOwnerShopSaleMapId(entry, 0);
         if (AgentSupplyReadiness.heldForMesos(entry, System.currentTimeMillis())) {
             clearShopState(entry);
             return;
@@ -214,7 +240,9 @@ public final class AgentShopService {
             return;
         }
 
-        boolean alreadySelling = AgentShopStateRuntime.shopSellTrashPending(entry);
+        // a quiet sale on its way (every visit sells, AgentJunkSale) is no sale the owner asked for: it joins it, and
+        // the sale is announced from now on
+        boolean alreadySelling = AgentShopStateRuntime.shopSaleAsked(entry);
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
             // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so. One
@@ -235,6 +263,74 @@ public final class AgentShopService {
 
         AgentShopRuntime.replyNow(entry, AgentDialogueCatalog.shopSellTrashStartReply());
         startShopVisit(entry, bot, match);
+    }
+
+    /**
+     * Opens a visit only to sell the Agent's junk gear (decision 2026-10-10): at shopkeeper {@code npcId} on its map,
+     * or with {@code anyShop} at any shopkeeper there when that one is not (a bench sale slice). It buys nothing and
+     * says nothing; it walks after the usual 0 to SHOP_APPROACH_DELAY_MAX_MS. False, with nothing opened, while a
+     * visit is pending, when AgentJunkSale names no routine sale for it, when it carries no junk, or when no
+     * shopkeeper is found. On the Agent's own thread (the junk look refreshes its reservations).
+     */
+    public static boolean requestSaleVisit(AgentRuntimeEntry entry, Character bot, int npcId, boolean anyShop) {
+        if (entry == null || bot == null || bot.getMap() == null || AgentShopStateRuntime.shopVisitPending(entry)) {
+            return false;
+        }
+        if (!AgentJunkSale.routineSale(bot) || !AgentJunkSale.hasJunk(entry, bot)) {
+            return false;
+        }
+        NpcShopMatch match = findShopForNpc(bot, npcId);
+        if (match == null && anyShop) {
+            match = findBestShop(bot, true, AgentInventoryGatewayRuntime.inventory());
+        }
+        if (match == null) {
+            return false;
+        }
+        startShopVisit(entry, bot, match);
+        AgentShopStateRuntime.markShopSaleOnly(entry);
+        AgentShopStateRuntime.requestShopRoutineSale(entry);
+        log.info("Agent '{}' walks to NPC {} on map {} to sell its junk", bot.getName(), match.npc().getId(),
+                bot.getMapId());
+        return true;
+    }
+
+    /**
+     * Its owner opened an NPC shop window on its map (Character.getShop, set by Shop.sendShop): a following companion
+     * with junk gear walks to that shopkeeper and sells there ({@link #requestSaleVisit}, that shopkeeper only). One
+     * look per map visit (onArrival starts the next), and none while its owner is changing maps, before the arrival
+     * hook ran on this map, while a visit is pending, while it is dead, busy with an objective, a trade, a script task
+     * or an Activity Host controller, or held back for mesos (its readiness flow decides what it does in a store).
+     * Every check before the look is a field read; the preflight runs it on every Agent tick.
+     */
+    public static void tickOwnerShopping(AgentRuntimeEntry entry, Character bot, long nowMs) {
+        if (entry == null || bot == null || !AgentModeStateRuntime.following(entry)) {
+            return;
+        }
+        Character anchor = AgentJunkSale.followAnchor(entry);
+        Shop open = anchor == null ? null : anchor.getShop();
+        if (open == null || anchor.getMapId() != bot.getMapId() || anchor.isChangingMaps()) {
+            return;
+        }
+        int mapId = bot.getMapId();
+        if (!AgentMapStateRuntime.isTrackingMap(entry, mapId)
+                || AgentShopStateRuntime.ownerShopSaleMapId(entry) == mapId) {
+            return;
+        }
+        if (AgentShopStateRuntime.shopVisitPending(entry) || bot.getHp() <= 0
+                || AgentObjectiveKernel.active(entry) != null || bot.getTrade() != null
+                || entry.scriptTaskQueueState().hasTasks() || activityHostOwnsForeground(entry)) {
+            return;
+        }
+        if (AgentSupplyReadiness.heldForMesos(entry, nowMs)) {
+            return;
+        }
+        AgentShopStateRuntime.setOwnerShopSaleMapId(entry, mapId); // a refused or empty look is not repeated here
+        requestSaleVisit(entry, bot, open.getNpcId(), false);
+    }
+
+    private static boolean activityHostOwnsForeground(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().find(AgentActivityHostState.STATE_KEY)
+                .map(host -> host.controllerId() != null).orElse(false);
     }
 
     private static void startShopVisit(AgentRuntimeEntry entry, Character bot, NpcShopMatch match) {
@@ -289,12 +385,21 @@ public final class AgentShopService {
         if (!AgentShopStateRuntime.shopVisitPending(entry)) {
             return false;
         }
+        if (AgentShopStateRuntime.shopSaleOnly(entry) && !AgentShopStateRuntime.shopSequenceActive(entry)
+                && AgentJunkSale.ownerWalkedOn(entry, bot)) {
+            // a visit only to sell, not reached yet: it follows its owner out instead (the follow sync catches up)
+            log.info("Agent '{}' gave up selling on map {}: its owner left", bot.getName(), bot.getMapId());
+            clearShopState(entry);
+            return false;
+        }
         if (!AgentShopStateRuntime.hasShopNpcPosition(entry)) {
             abortShop(entry, bot, AgentDialogueCatalog.shopLostReply());
             return false;
         }
         if (AgentShopStateRuntime.visitTimedOut(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
-            AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+            if (!AgentShopStateRuntime.shopSaleOnly(entry)) {
+                AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+            }
             logShopFailure(entry, bot, "visit timeout (never reached the shop NPC)");
             clearShopState(entry);
             return false;
@@ -325,7 +430,16 @@ public final class AgentShopService {
                 // Close enough to trade: drop any committed navigation step so the Agent
                 // stands still for the transaction instead of chasing the exact approach point.
                 AgentMovementStateResetService.clearNavigationState(entry);
-                AgentShopRuntime.sayMapNow(bot, AgentDialogueSelector.randomReply(AgentDialogueCatalog.shoppingReplies()));
+                // Every visit sells a companion's junk gear first, quietly (decision 2026-10-10): claimed here, where
+                // every visit opens its transaction (an arrival restock, a trip's visit, an item-only visit, a bench
+                // shop slice). A sale already asked for (a trip, "sell junk") keeps its kind and its lines.
+                if (!AgentShopStateRuntime.shopSellTrashPending(entry) && AgentJunkSale.routineSale(bot)) {
+                    AgentShopStateRuntime.requestShopRoutineSale(entry);
+                }
+                if (!AgentShopStateRuntime.shopSaleOnly(entry)) {
+                    AgentShopRuntime.sayMapNow(bot,
+                            AgentDialogueSelector.randomReply(AgentDialogueCatalog.shoppingReplies()));
+                }
                 Point npcPos = AgentShopStateRuntime.shopNpcPosition(entry);
                 scheduleShopStep(entry, () -> executePurchases(entry, bot, inventory, npcPos));
             }
@@ -505,9 +619,12 @@ public final class AgentShopService {
             return;
         }
 
-        WeaponType wt = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        // a visit opened only to sell buys nothing
+        List<AgentShopPurchaseAction<AgentRuntimeEntry>> actions = AgentShopStateRuntime.shopSaleOnly(entry)
+                ? List.of()
+                : purchaseActions(entry, bot, inventory, AgentAttackExecutionProvider.getEquippedWeaponType(bot));
         runPurchaseStep(new AgentShopPurchaseSequence<>(entry, bot, inventory, npcPos,
-                purchaseActions(entry, bot, inventory, wt), new ArrayList<>(), null), 0);
+                actions, new ArrayList<>(), null), 0);
     }
 
     /**
@@ -615,12 +732,14 @@ public final class AgentShopService {
             return;
         }
         if (index >= sequence.actions().size()) {
+            // a visit opened only to sell never says it needed nothing here
+            boolean announceIfEmpty = !AgentShopStateRuntime.shopSaleOnly(sequence.entry());
             if (AgentShopStateRuntime.shopSellTrashPending(sequence.entry())) {
                 // "sell junk" came after the sell step at the transaction's start: it sells here before it goes
-                startSellTrashSequence(sequence, () -> finishPurchaseSequence(sequence, true));
+                startSellTrashSequence(sequence, () -> finishPurchaseSequence(sequence, announceIfEmpty));
                 return;
             }
-            finishPurchaseSequence(sequence, true);
+            finishPurchaseSequence(sequence, announceIfEmpty);
             return;
         }
 
@@ -708,43 +827,76 @@ public final class AgentShopService {
     private static void startSellTrashSequence(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             Runnable afterSale) {
+        startSellTrashSequence(sequence, afterSale, null, Set.of());
+    }
+
+    /**
+     * One sell-trash pass at the counter. Its kind is fixed here, before the request it takes is cleared: a routine
+     * pass (the quiet sale every visit makes for a companion, AgentJunkSale) sells gear only, says nothing and stops
+     * when a following Agent's owner leaves the map; an asked pass (its owner's "sell junk", its own supply trip) sells
+     * gear and ETC surplus and says how it went. {@code carried}: the tally of the routine pass this asked pass follows
+     * at the same counter ("sell junk" came during it), told in this pass's one line; {@code carriedFailed}: what that
+     * pass could not sell, not tried again.
+     */
+    private static void startSellTrashSequence(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Runnable afterSale,
+            SaleTally carried,
+            Set<Item> carriedFailed) {
+        AgentRuntimeEntry entry = sequence.entry();
+        boolean routine = AgentShopStateRuntime.shopRoutineSale(entry);
         List<Item> items = AgentInventorySellTrashService.collectSellTrashEquips(
-                sequence.entry(), sequence.bot(), sequence.inventory());
-        List<AgentEtcSaleCandidate> etcPlan =
-                AgentQuestItemDispositionRuntime.collectShopSaleCandidates(
-                        sequence.entry(), sequence.bot(), sequence.inventory(),
+                entry, sequence.bot(), sequence.inventory());
+        // a routine sale sells gear only: the ETC forecast knows the Agent's own quests, not its owner's or party's
+        List<AgentEtcSaleCandidate> etcPlan = routine
+                ? List.of()
+                : AgentQuestItemDispositionRuntime.collectShopSaleCandidates(
+                        entry, sequence.bot(), sequence.inventory(),
                         System.currentTimeMillis());
         // the request this sale takes ends with its plan: one made during the sale ("i'll sell the junk after this")
         // stays, and the visit's next step sells what came meanwhile at the same counter (third deploy review
         // 2026-10-10: the sale cleared it as it finished, and that junk was never sold)
-        AgentShopStateRuntime.setShopSellTrashPending(sequence.entry(), false);
-        if (items.isEmpty() && etcPlan.isEmpty()) {
-            AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopNoTrashEquipsReply());
+        AgentShopStateRuntime.setShopSellTrashPending(entry, false);
+        SaleTally tally = carried != null ? carried.asked() : SaleTally.start(routine);
+        Set<Item> failedItems = Collections.newSetFromMap(new IdentityHashMap<>());
+        failedItems.addAll(carriedFailed);
+        List<Item> plan = items.stream().filter(item -> !failedItems.contains(item)).toList();
+        if (plan.isEmpty() && etcPlan.isEmpty()) {
+            if (carried != null) {
+                // the quiet pass before it sold or failed something: one line tells both passes
+                finishSellTrashSequence(entry, sequence.bot(), sequence.inventory(), sequence.npcPos(),
+                        tally.withEquipsFailed(failedItems.size()), failedItems, sequence.bought(),
+                        sequence.firstShortfall(), afterSale);
+                return;
+            }
+            if (!routine) {
+                AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopNoTrashEquipsReply());
+            }
             afterSale.run();
             return;
         }
         // The sequence timeout budgets the purchases; each planned sale is one more step ahead of them,
         // so a full bag of trash must not eat the time the restock needs.
-        AgentShopStateRuntime.extendShopSequence(sequence.entry(),
-                (long) (items.size() + etcPlan.size()) * SHOP_SEQUENCE_SALE_ALLOWANCE_MS);
+        AgentShopStateRuntime.extendShopSequence(entry,
+                (long) (plan.size() + etcPlan.size()) * SHOP_SEQUENCE_SALE_ALLOWANCE_MS);
 
-        if (items.isEmpty()) {
-            scheduleShopStep(sequence.entry(), SELL_TRASH_STEP_DELAY_MS,
+        if (plan.isEmpty()) {
+            SaleTally equipsDone = tally.withEquipsFailed(failedItems.size());
+            scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
                     () -> runEtcSaleStep(
-                             sequence.entry(), sequence.bot(), sequence.npcPos(),
-                             new SaleTally(0, 0, 0, 0), 0, etcPlan, sequence.bought(), sequence.firstShortfall(),
+                             entry, sequence.bot(), sequence.npcPos(),
+                             equipsDone, 0, etcPlan, sequence.bought(), sequence.firstShortfall(),
                              sequence.inventory(), afterSale));
             return;
         }
 
-        List<Item> plan = List.copyOf(items);
-        scheduleShopStep(sequence.entry(), SELL_TRASH_STEP_DELAY_MS,
+        scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
                 () -> runSellTrashStep(
-                        sequence.entry(),
+                        entry,
                         sequence.bot(),
                         sequence.npcPos(),
-                        0,
-                        Collections.newSetFromMap(new IdentityHashMap<>()),
+                        tally,
+                        failedItems,
                         plan,
                         etcPlan,
                          sequence.bought(),
@@ -753,11 +905,16 @@ public final class AgentShopService {
                          afterSale));
     }
 
+    /**
+     * One trash equip sold. {@code tally} counts what sold so far (with a carried routine pass's); what failed is in
+     * {@code failedItems} until the gear is done. A routine pass stops here when a following Agent's owner left the
+     * map (unless "sell junk" came during it: that sale is kept and never cut); the rest waits for the next shop.
+     */
     private static void runSellTrashStep(
             AgentRuntimeEntry entry,
             Character bot,
             Point npcPos,
-            int equipsSold,
+            SaleTally tally,
             Set<Item> failedItems,
             List<Item> plan,
             List<AgentEtcSaleCandidate> etcPlan,
@@ -766,7 +923,16 @@ public final class AgentShopService {
             InventoryGateway inventory,
             Runnable afterSale) {
         if (!isShopSequenceValid(entry, bot, npcPos)) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopSellInterruptedReply());
+            // a sale nobody asked for never says it could not sell (a sale-only visit says nothing, abortShop)
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopBuyInterruptedReply() : AgentDialogueCatalog.shopSellInterruptedReply());
+            return;
+        }
+        if (tally.routine() && !AgentShopStateRuntime.shopSaleAsked(entry) && AgentJunkSale.ownerWalkedOn(entry, bot)) {
+            log.info("Agent '{}' stopped selling on map {}: its owner left ({} sold)",
+                    bot.getName(), bot.getMapId(), tally.equipsSold());
+            finishSellTrashSequence(entry, bot, inventory, npcPos, tally.withEquipsFailed(failedItems.size()),
+                    failedItems, bought, firstShortfall, afterSale);
             return;
         }
 
@@ -777,39 +943,42 @@ public final class AgentShopService {
                         entry, item, System.currentTimeMillis()))
                 .toList();
         if (items.isEmpty()) {
-            SaleTally tally = new SaleTally(equipsSold, failedItems.size(), 0, 0);
+            SaleTally equipsDone = tally.withEquipsFailed(failedItems.size());
             if (!etcPlan.isEmpty()) {
                 scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                        () -> runEtcSaleStep(entry, bot, npcPos, tally, 0, etcPlan, bought,
+                        () -> runEtcSaleStep(entry, bot, npcPos, equipsDone, 0, etcPlan, bought,
                                 firstShortfall, inventory, afterSale));
                 return;
             }
-            finishSellTrashSequence(entry, bot, inventory, npcPos, tally, bought, firstShortfall, afterSale);
+            finishSellTrashSequence(entry, bot, inventory, npcPos, equipsDone, failedItems, bought, firstShortfall,
+                    afterSale);
             return;
         }
 
         Item item = items.get(0);
         if (!AgentInventoryReservationRuntime.mayConsume(entry, item, System.currentTimeMillis())) {
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, tally, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
         if (!AgentInventoryItemPolicy.hasItem(bot, item)) {
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, tally, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
 
         NPC npc = findNpcNear(bot, npcPos);
         if (npc == null) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopKeeperGoneSellReply());
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopKeeperGoneBuyReply() : AgentDialogueCatalog.shopKeeperGoneSellReply());
             return;
         }
         Shop shop = AgentShopGatewayRuntime.shop().findForNpc(npc.getId());
         if (shop == null) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopClosedSellReply());
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopClosedBuyReply() : AgentDialogueCatalog.shopClosedSellReply());
             return;
         }
 
@@ -817,14 +986,14 @@ public final class AgentShopService {
         if (AgentInventoryItemPolicy.hasItem(bot, item)) {
             failedItems.add(item);
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, tally, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
 
-        int nextEquipsSold = equipsSold + 1;
+        SaleTally next = tally.withEquipSold();
         scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                () -> runSellTrashStep(entry, bot, npcPos, nextEquipsSold, failedItems,
+                () -> runSellTrashStep(entry, bot, npcPos, next, failedItems,
                         plan, etcPlan, bought, firstShortfall, inventory, afterSale));
     }
 
@@ -840,11 +1009,13 @@ public final class AgentShopService {
             InventoryGateway inventory,
             Runnable afterSale) {
         if (!isShopSequenceValid(entry, bot, npcPos)) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopSellInterruptedReply());
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopBuyInterruptedReply() : AgentDialogueCatalog.shopSellInterruptedReply());
             return;
         }
         if (index >= plan.size()) {
-            finishSellTrashSequence(entry, bot, inventory, npcPos, tally, bought, firstShortfall, afterSale);
+            finishSellTrashSequence(entry, bot, inventory, npcPos, tally, Set.of(), bought, firstShortfall,
+                    afterSale);
             return;
         }
 
@@ -865,12 +1036,14 @@ public final class AgentShopService {
 
         NPC npc = findNpcNear(bot, npcPos);
         if (npc == null) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopKeeperGoneSellReply());
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopKeeperGoneBuyReply() : AgentDialogueCatalog.shopKeeperGoneSellReply());
             return;
         }
         Shop shop = AgentShopGatewayRuntime.shop().findForNpc(npc.getId());
         if (shop == null) {
-            abortShop(entry, bot, AgentDialogueCatalog.shopClosedSellReply());
+            abortShop(entry, bot, tally.routine()
+                    ? AgentDialogueCatalog.shopClosedBuyReply() : AgentDialogueCatalog.shopClosedSellReply());
             return;
         }
 
@@ -884,15 +1057,34 @@ public final class AgentShopService {
                          index + 1, plan, bought, firstShortfall, inventory, afterSale));
     }
 
+    /**
+     * The end of a sell-trash pass. An asked pass says how it went, as before. A routine pass says nothing (logged at
+     * INFO) and the visit goes on; when "sell junk" came during it, the asked pass starts at once at the same counter
+     * with this pass's tally, and its one line tells both. The request flag is never written here: one made during
+     * this pass stays for the visit's next step.
+     */
     private static void finishSellTrashSequence(
             AgentRuntimeEntry entry,
             Character bot,
             InventoryGateway inventory,
             Point npcPos,
             SaleTally tally,
+            Set<Item> failedItems,
             List<String> bought,
             AgentShopBuyReport firstShortfall,
             Runnable afterSale) {
+        if (tally.routine()) {
+            if (AgentShopStateRuntime.shopSaleAsked(entry)) {
+                startSellTrashSequence(new AgentShopPurchaseSequence<>(
+                        entry, bot, inventory, npcPos, List.of(), bought, firstShortfall), afterSale, tally,
+                        failedItems);
+                return;
+            }
+            log.info("Agent '{}' sold its junk on map {}: {} equips sold, {} failed, mesos {}",
+                    bot.getName(), bot.getMapId(), tally.equipsSold(), tally.equipsFailed(), bot.getMeso());
+            afterSale.run();
+            return;
+        }
         if (tally.anySold()) {
             AgentShopRuntime.sayMapNow(bot,
                     AgentDialogueCatalog.shopSoldTrashReply(tally.equipsSold(), tally.etcStacksSold()));
@@ -2240,9 +2432,10 @@ public final class AgentShopService {
 
     // Abort the shop visit and tell the owner why. Player commands cancel via
     // cancelShopVisit (which clears shopVisitPending) and scheduleShopStep guards on
-    // that flag, so a cleared flag here means a concurrent player cancel — stay silent.
+    // that flag, so a cleared flag here means a concurrent player cancel — stay silent. A visit opened only to sell
+    // (nobody asked for it) ends quietly too; the log keeps the reason.
     private static void abortShop(AgentRuntimeEntry entry, Character bot, String reason) {
-        if (AgentShopStateRuntime.shopVisitPending(entry)) {
+        if (AgentShopStateRuntime.shopVisitPending(entry) && !AgentShopStateRuntime.shopSaleOnly(entry)) {
             AgentShopRuntime.sayMapNow(bot, reason);
         }
         logShopFailure(entry, bot, reason);
