@@ -2,15 +2,18 @@ package server.agents.progression;
 
 import client.Character;
 import client.Job;
+import client.QuestStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,7 +32,8 @@ import static org.mockito.Mockito.when;
 /**
  * Quest hunts keep to the training-field level window: a hunt map's strongest monster may be at most
  * LEVEL_WINDOW_ABOVE levels above the Agent. When no reachable map fits, the Agent takes the map whose
- * strongest monster is the least above it, so the quest is never stranded.
+ * strongest monster is the least above it, so the quest is never stranded. A leased map gives way only when the
+ * switch is worth REPLAN_SWITCH_MARGIN_COST, and the Agent does not count itself on the map it stands on.
  */
 class AgentAdaptiveQuestHuntLevelWindowTest {
     private static final int EUREK_QUEST = 6000;
@@ -45,6 +49,17 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
     private static final int SLEEPYWOOD = 105040300;
     private static final int ANT_TUNNEL_III = 105050200;
     private static final int DEEP_ANT_TUNNEL_I = 105060100;
+    private static final int SWAMP_OF_THE_JR_NECKI = 107000001;
+    private static final int LEAVES_QUEST = 28281;
+    private static final int LEAF = 4000005;
+    private static final int PERION_STREET_CORNER = 101040000;
+    private static final int EAST_ROCKY_MOUNTAIN_I = 101030400;
+    private static final int EAST_ROCKY_MOUNTAIN_II = 101030401;
+    private static final int EAST_ROCKY_MOUNTAIN_III = 101030402;
+    private static final int FOREST_SOUTH_OF_ELLINIA = 100040000;
+    /** Every Dark Stump map for the Leaves whose strongest monster is at most 15 (Dark Stump 10). */
+    private static final Set<Integer> DARK_STUMP_MAPS = Set.of(102030000, 101030100, EAST_ROCKY_MOUNTAIN_II,
+            101020003, FOREST_SOUTH_OF_ELLINIA, 101030200, 101030000, 101010102, 101020000);
     /** Strongest monster level of each map, straight from the generated WZ map facts. */
     private static final Map<Integer, Integer> MAP_FACTS_STRONGEST = mapFactsStrongestMonster();
 
@@ -103,6 +118,69 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
 
         assertEquals(JR_WRAITH_SUBWAY, leased.map().mapId());
         assertEquals(SWAMP_OF_DESPAIR_III, reopened.map().mapId());
+    }
+
+    @Test
+    void anAgentArrivingOnANearlyFullMapInsideTheWindowKeepsHuntingThere() {
+        // East Rocky Mountain II (10) is the only Leaves map left inside a level-12 window; three other
+        // characters stand on it and it holds four. East Rocky Mountain III (17) is above the window.
+        Map<Integer, Integer> others = Map.of(EAST_ROCKY_MOUNTAIN_II, 3);
+        AgentAdaptiveQuestHuntSelector selector = selectorWithOthersOn(others);
+        Set<Integer> failed = new LinkedHashSet<>(DARK_STUMP_MAPS);
+        failed.remove(EAST_ROCKY_MOUNTAIN_II);
+        failed.add(PERION_STREET_CORNER);
+
+        List<Integer> walk = List.of(EAST_ROCKY_MOUNTAIN_I, EAST_ROCKY_MOUNTAIN_II, EAST_ROCKY_MOUNTAIN_I,
+                EAST_ROCKY_MOUNTAIN_II, EAST_ROCKY_MOUNTAIN_III, EAST_ROCKY_MOUNTAIN_II);
+        List<Integer> picked = new ArrayList<>();
+        long nowMs = 100L;
+        for (int standingOn : walk) {
+            picked.add(selectLeaves(selector, 9610, 12, standingOn, failed, nowMs).map().mapId());
+            nowMs += 1_000L;
+        }
+
+        assertEquals(Collections.nCopies(walk.size(), EAST_ROCKY_MOUNTAIN_II), picked,
+                () -> "standing on " + walk + " picked " + picked);
+    }
+
+    @Test
+    void aLeaseFarAboveTheWindowGivesWayToAMapInsideIt() {
+        AgentAdaptiveQuestHuntSelector selector = newSelector();
+        Set<Integer> everySwampFailed = Set.of(107000001, 107000000, 107000100, 107000200);
+
+        AgentAdaptiveQuestHuntSelector.Selection leased = select(selector, 9611, 25,
+                SUBWAY_LINE_1_AREA_1, 2032, "2032:collect:4000034", everySwampFailed, 100L);
+        AgentAdaptiveQuestHuntSelector.Selection reopened = select(selector, 9611, 25,
+                SUBWAY_LINE_1_AREA_1, 2032, "2032:collect:4000034", Set.of(), 200L);
+
+        assertEquals(JR_WRAITH_SUBWAY, leased.map().mapId());
+        assertEquals(7, levelsAboveWindow(JR_WRAITH_SUBWAY, 25));
+        assertEquals(SWAMP_OF_THE_JR_NECKI, reopened.map().mapId());
+        assertEquals(0, levelsAboveWindow(SWAMP_OF_THE_JR_NECKI, 25));
+    }
+
+    @Test
+    void aLeaseOneLevelAboveTheWindowStaysAgainstACostlierMapInsideIt() {
+        // At level 13 East Rocky Mountain III (17) is one level above the window. The Forest South of
+        // Ellinia (10) is inside it but a long walk away: one level is not worth the switch margin.
+        AgentAdaptiveQuestHuntSelector selector = newSelector();
+        Set<Integer> everyLeavesMapFailed = new LinkedHashSet<>(DARK_STUMP_MAPS);
+        everyLeavesMapFailed.add(PERION_STREET_CORNER);
+        Set<Integer> forestReopened = new LinkedHashSet<>(everyLeavesMapFailed);
+        forestReopened.remove(FOREST_SOUTH_OF_ELLINIA);
+
+        AgentAdaptiveQuestHuntSelector.Selection leased = selectLeaves(
+                selector, 9612, 13, EAST_ROCKY_MOUNTAIN_III, everyLeavesMapFailed, 100L);
+        AgentAdaptiveQuestHuntSelector.Selection afterReopen = selectLeaves(
+                selector, 9612, 13, EAST_ROCKY_MOUNTAIN_III, forestReopened, 200L);
+        AgentAdaptiveQuestHuntSelector.Selection fresh = selectLeaves(
+                newSelector(), 9613, 13, EAST_ROCKY_MOUNTAIN_III, forestReopened, 200L);
+
+        assertEquals(EAST_ROCKY_MOUNTAIN_III, leased.map().mapId());
+        assertEquals(1, levelsAboveWindow(EAST_ROCKY_MOUNTAIN_III, 13));
+        assertEquals(FOREST_SOUTH_OF_ELLINIA, fresh.map().mapId(),
+                "without a lease the map inside the window wins");
+        assertEquals(EAST_ROCKY_MOUNTAIN_III, afterReopen.map().mapId());
     }
 
     @Test
@@ -242,6 +320,57 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
                 AgentVictoriaQuestHuntIndexRepository.defaultRepository());
     }
 
+    /** Live counts as a loaded map reports them: the other characters, plus the Agent where it stands. */
+    private static AgentAdaptiveQuestHuntSelector selectorWithOthersOn(Map<Integer, Integer> others) {
+        return new AgentAdaptiveQuestHuntSelector(
+                AgentVictoriaQuestHuntPolicyRepository.defaultRepository(),
+                AgentVictoriaQuestHuntIndexRepository.defaultRepository(),
+                (agent, mapIds) -> {
+                    Map<Integer, Integer> counts = new HashMap<>();
+                    for (int mapId : mapIds) {
+                        counts.put(mapId, others.getOrDefault(mapId, 0)
+                                + (agent.getMapId() == mapId ? 1 : 0));
+                    }
+                    return counts;
+                });
+    }
+
+    /** The perion-pre15 Leaves hunt (quest 28281) as the shared quest-pack runtime asks for it. */
+    private static AgentAdaptiveQuestHuntSelector.Selection selectLeaves(
+            AgentAdaptiveQuestHuntSelector selector,
+            int agentId,
+            int level,
+            int mapId,
+            Set<Integer> failedMaps,
+            long nowMs) {
+        AgentVictoriaSharedQuestPackCatalog.Pack pack =
+                AgentVictoriaSharedQuestPackCatalog.require("perion-pre15");
+        AgentVictoriaSharedQuestPackCatalog.Step hunt = pack.steps().stream()
+                .filter(step -> "HUNT".equals(step.type()) && step.conditions().stream()
+                        .anyMatch(condition -> condition.targetId() == LEAF))
+                .findFirst().orElseThrow();
+        Character agent = agent(agentId, level, mapId);
+        PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+        when(gateway.questStatus(agent, LEAVES_QUEST)).thenReturn(QuestStatus.Status.STARTED.getId());
+        AgentQuestPackDebtSnapshot debt = AgentQuestPackDebtSnapshot.capture(pack, agent, gateway);
+        AgentHuntObjectiveSpec objective = AgentHuntObjectiveCompiler.sharedQuestPack(
+                "shared:perion-pre15:leaves", pack, hunt, debt.demands());
+        return selector.select(new AgentHuntSelectionRequest(
+                        new AgentRuntimeEntry(agent, null, null), agent, objective, failedMaps,
+                        AgentHuntSelectionRequest.Reason.NORMAL, nowMs))
+                .orElseThrow();
+    }
+
+    private static Character agent(int agentId, int level, int mapId) {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(agentId);
+        when(agent.getName()).thenReturn("LevelWindow" + agentId);
+        when(agent.getJob()).thenReturn(Job.THIEF);
+        when(agent.getLevel()).thenReturn(level);
+        when(agent.getMapId()).thenReturn(mapId);
+        return agent;
+    }
+
     private static AgentAdaptiveQuestHuntSelector.Selection select(
             AgentAdaptiveQuestHuntSelector selector,
             int agentId,
@@ -256,12 +385,7 @@ class AgentAdaptiveQuestHuntLevelWindowTest {
                         .find(questId).orElseThrow().huntingObjectives().stream()
                         .filter(candidate -> candidate.objectiveId().equals(objectiveId))
                         .findFirst().orElseThrow();
-        Character agent = mock(Character.class);
-        when(agent.getId()).thenReturn(agentId);
-        when(agent.getName()).thenReturn("LevelWindow" + agentId);
-        when(agent.getJob()).thenReturn(Job.THIEF);
-        when(agent.getLevel()).thenReturn(level);
-        when(agent.getMapId()).thenReturn(mapId);
+        Character agent = agent(agentId, level, mapId);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
 
         return selector.select(new AgentHuntSelectionRequest(

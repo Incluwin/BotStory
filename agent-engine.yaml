@@ -4346,15 +4346,15 @@ tuning:
     server.agents.progression.AgentAdaptiveQuestHuntSelector.TOPOLOGY_COST_PERCENT: '100'
     # Values: a finite non-negative integer. Recommended: 500-5000 around the tested baseline 2000.
     # Purpose: Discourages adding another Agent to a hunt map that already contains active characters when alternatives are viable.
-    # Technical: AgentAdaptiveQuestHuntSelector multiplies the loaded-map occupancy snapshot by this cost during deficit-aware comparison.
+    # Technical: AgentAdaptiveQuestHuntSelector multiplies the loaded-map occupancy snapshot by this cost during deficit-aware comparison. The asking Agent is not counted on the map it stands on, so that map keeps the capacity it showed from off it.
     server.agents.progression.AgentAdaptiveQuestHuntSelector.OCCUPIED_AGENT_COST: '2000'
     # Values: a finite non-negative integer. Recommended: 500-5000 around the tested baseline 2000.
     # Purpose: Penalizes hunt maps whose strongest resident monster exceeds the Agent's level by more than a small safety margin.
-    # Technical: AgentAdaptiveQuestHuntSelector multiplies each hazardous level of catalog max-mob evidence by this completion-cost penalty.
+    # Technical: AgentAdaptiveQuestHuntSelector multiplies each hazardous level of catalog max-mob evidence by this completion-cost penalty. It also prices each level-window level that replacing a leased hunt map gains (see REPLAN_SWITCH_MARGIN_COST).
     server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_GAP_COST: '2000'
     # Values: 0-10 character levels. Recommended: 3, the same number as LEVEL_ABOVE in FieldCatalog's training-field band (trainingField and the companion camp picker). That band bounds a field's spawn-weighted mean monster level; this window bounds the strongest monster, so it is stricter.
     # Purpose: Keeps quest hunts on maps whose strongest monster is at most this many levels above the Agent, as a player would. When no reachable hunt map fits, the Agent takes the map whose strongest monster is the least above it, with no upper limit, so the quest is never stranded.
-    # Technical: AgentAdaptiveQuestHuntSelector ranks deficit-aware hunt choices first by how many levels the map's strongest monster exceeds Agent level plus this window (0 inside it), then by completion cost. The level comes from the objective's hunt-index evidence or, for an authored map without it, from any hunt-index candidate for that map; a map the index never lists ranks last. A lease on a map further above the window than the best choice is replaced. The fixed preferred map without deficit authority is unchanged.
+    # Technical: AgentAdaptiveQuestHuntSelector ranks deficit-aware hunt choices first by how many levels the map's strongest monster exceeds Agent level plus this window (0 inside it), then by completion cost. The level comes from the objective's hunt-index evidence or, for an authored map without it, from any hunt-index candidate for that map; a map the index never lists ranks last. A lease gives way to a choice further inside the window only when the levels gained, at LEVEL_GAP_COST each, exceed REPLAN_SWITCH_MARGIN_COST (2 levels at the defaults). The fixed preferred map without deficit authority is unchanged.
     server.agents.progression.AgentAdaptiveQuestHuntSelector.LEVEL_WINDOW_ABOVE: '3'
     # Values: a finite non-negative integer. Recommended: 500-4000 around the tested baseline 1500.
     # Purpose: Gives tested or authored preferred maps a modest stability advantage without allowing them to dominate bad runtime evidence.
@@ -4362,7 +4362,7 @@ tuning:
     server.agents.progression.AgentAdaptiveQuestHuntSelector.PREFERRED_MAP_CREDIT: '1500'
     # Values: a finite non-negative integer. Recommended: 1000-8000 around the tested baseline 3500.
     # Purpose: Prevents small score fluctuations from abandoning a still-viable hunt map immediately after objective evidence changes.
-    # Technical: A replacement quest-hunt map must improve the selector's completion-cost estimate by at least this margin before replanning.
+    # Technical: A replacement quest-hunt map must improve the selector's completion-cost estimate by at least this margin before replanning, or the levels it gains inside the LEVEL_WINDOW_ABOVE window, at LEVEL_GAP_COST each, must exceed this margin.
     server.agents.progression.AgentAdaptiveQuestHuntSelector.REPLAN_SWITCH_MARGIN_COST: '3500'
     # Values: a positive integer; unit: milliseconds. Recommended: 5000-60000 around the tested baseline 20000.
     # Purpose: Bounds how long an Agent may harvest active pack objectives encountered while travelling to its selected hunt map.

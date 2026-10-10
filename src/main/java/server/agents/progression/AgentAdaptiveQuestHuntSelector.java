@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 /**
  * Resolves fixed and generated hunt-map choices behind one rollout policy.
@@ -53,6 +54,7 @@ final class AgentAdaptiveQuestHuntSelector {
 
     private final AgentVictoriaQuestHuntPolicyRepository policyRepository;
     private final AgentVictoriaQuestHuntIndexRepository indexRepository;
+    private final BiFunction<Character, Set<Integer>, Map<Integer, Integer>> population;
     private final Map<Integer, String> lastShadowSignatureByAgent = new ConcurrentHashMap<>();
     private final Map<SharedSelectionKey, SharedSelectionLease> sharedSelectionLeases =
             new ConcurrentHashMap<>();
@@ -62,8 +64,17 @@ final class AgentAdaptiveQuestHuntSelector {
     AgentAdaptiveQuestHuntSelector(
             AgentVictoriaQuestHuntPolicyRepository policyRepository,
             AgentVictoriaQuestHuntIndexRepository indexRepository) {
+        this(policyRepository, indexRepository, AgentVictoriaTrainingPopulation::snapshot);
+    }
+
+    /** {@code population} counts the characters on each loaded map, the asking Agent included where it stands. */
+    AgentAdaptiveQuestHuntSelector(
+            AgentVictoriaQuestHuntPolicyRepository policyRepository,
+            AgentVictoriaQuestHuntIndexRepository indexRepository,
+            BiFunction<Character, Set<Integer>, Map<Integer, Integer>> population) {
         this.policyRepository = policyRepository;
         this.indexRepository = indexRepository;
+        this.population = population;
     }
 
     static AgentAdaptiveQuestHuntSelector defaultSelector() {
@@ -96,8 +107,8 @@ final class AgentAdaptiveQuestHuntSelector {
                 .filter(mapId -> AgentVictoriaTrainingRouteCatalog.canRoute(
                         request.agent().getMapId(), mapId))
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Map<Integer, Integer> occupancy = AgentVictoriaTrainingPopulation.snapshot(
-                request.agent(), routeEligibleMapIds);
+        Map<Integer, Integer> occupancy = othersOnMaps(request.agent(),
+                population.apply(request.agent(), routeEligibleMapIds));
         AgentProgressionProfile profile = AgentProgressionProfileRuntime.profile(request.entry());
         int agentLevel = request.agent().getLevel();
         // Maps inside the level window all rank 0 here, so cost decides among them; with none inside,
@@ -142,9 +153,11 @@ final class AgentAdaptiveQuestHuntSelector {
             sharedSelectionLeases.remove(leaseKey);
         }
         DeficitChoice best = choices.getFirst();
+        // Leaving a leased map must be worth REPLAN_SWITCH_MARGIN_COST, in completion cost or in the
+        // level-window levels gained at LEVEL_GAP_COST each, so a one-level gain does not abandon it.
         boolean materiallyBetter = leaseValid
                 && best.map().mapId() != leasedChoice.map().mapId()
-                && (levelsAboveWindow(best, agentLevel) < levelsAboveWindow(leasedChoice, agentLevel)
+                && (windowGainCost(leasedChoice, best, agentLevel) > REPLAN_SWITCH_MARGIN_COST
                 || best.completionCost() + REPLAN_SWITCH_MARGIN_COST
                 < leasedChoice.completionCost());
         DeficitChoice selected = !deficitHasAuthority && preferred != null
@@ -177,6 +190,27 @@ final class AgentAdaptiveQuestHuntSelector {
                 : indexRepository.maxMobLevel(choice.map().mapId());
         return strongest.isEmpty() ? Integer.MAX_VALUE
                 : Math.max(0, strongest.getAsInt() - agentLevel - LEVEL_WINDOW_ABOVE);
+    }
+
+    /** Levels a switch from one map to another moves into the level window, priced at LEVEL_GAP_COST each. */
+    private long windowGainCost(DeficitChoice from, DeficitChoice to, int agentLevel) {
+        return (long) (levelsAboveWindow(from, agentLevel) - levelsAboveWindow(to, agentLevel))
+                * LEVEL_GAP_COST;
+    }
+
+    /**
+     * A loaded map's count includes the asking Agent on the map it stands on; this drops it there. The
+     * map the Agent hunts on then keeps the capacity it showed from off the map: arriving on a map with
+     * maximumAgents-1 other characters must not make it full, or the Agent leaves and is sent back.
+     */
+    private static Map<Integer, Integer> othersOnMaps(Character agent, Map<Integer, Integer> occupancy) {
+        Integer here = occupancy.get(agent.getMapId());
+        if (here == null || here <= 0) {
+            return occupancy;
+        }
+        Map<Integer, Integer> others = new HashMap<>(occupancy);
+        others.put(agent.getMapId(), here - 1);
+        return others;
     }
 
     private static DeficitChoice evaluate(
