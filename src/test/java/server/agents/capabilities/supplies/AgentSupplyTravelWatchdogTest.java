@@ -113,6 +113,23 @@ class AgentSupplyTravelWatchdogTest {
     }
 
     @Test
+    void anObserverReadsTheWalksClockWithoutStartingIt() {
+        // the bench dispatcher reads how long a walk has stood on its map when the walk's slice runs out of time
+        AgentSupplyProcurementState execution = new AgentSupplyProcurementState();
+        execution.start("supply:HP_POTION:307", "maintenance:resupply:supply:HP_POTION:307",
+                AgentResourceCategory.HP_POTION, ANT_TUNNEL_PARK, 1061001, STAIRWAY,
+                AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER);
+        assertEquals(0L, execution.travelStoodMs(ANOTHER_ENTRANCE, START), "the walk has not looked yet");
+        assertEquals(0L, execution.travelStalledMs(ANOTHER_ENTRANCE, START + 10_000L),
+                "its own first look starts the clock, not the observer's read");
+
+        assertEquals(170_000L, execution.travelStoodMs(ANOTHER_ENTRANCE, START + 180_000L));
+        assertEquals(0L, execution.travelStoodMs(OTHER_MAP, START + 180_000L), "another map: not where it stands");
+        assertEquals(180_000L, execution.travelStalledMs(ANOTHER_ENTRANCE, START + 190_000L),
+                "reading another map left the walk's clock alone");
+    }
+
+    @Test
     void everyPhaseChangeStartsTheClockAgain() {
         AgentSupplyProcurementState execution = new AgentSupplyProcurementState();
         execution.start("supply:HP_POTION:303", "maintenance:resupply:supply:HP_POTION:303",

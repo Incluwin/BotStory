@@ -77,9 +77,12 @@ import java.util.function.ToLongFunction;
  * resupply runs, and only then does the slice unload and free its seat for the next one. When that shop is more than
  * BENCH_RESUPPLY_MAX_HOPS from its camp, the walk would outlast the slice: the slice ends once it has set off, and its
  * next slice is a shop slice that loads it at that shop, ends when its own shop visit there is over (never "back in
- * town") and hunts nothing; the slice after it is at its camp. A walk to a nearer shop that the Agent's own trip gives
- * up as stuck (it stood on one map too long) ends the slice the same way. At most one shop slice per
- * BENCH_LIVE_SLICE_MS. A slice ends clean, each step
+ * town") and hunts nothing; the slice after it is at its camp. A walk to a nearer shop that does not get there ends the
+ * slice the same way, and its next slice is a shop slice too: when the Agent's own trip gives it up as stuck (it stood
+ * on one map for TRAVEL_NO_PROGRESS_MS), or when BENCH_RESUPPLY_MAX_MS runs out while the trip still walks toward the
+ * shop ("stuck on the way to a shop" if it stood on one map since the dispatcher's last look, else "resupply took too
+ * long"). A trip that has bought and walks back, or that gave up for another reason, ends the slice with no shop slice.
+ * At most one shop slice per BENCH_LIVE_SLICE_MS. A slice ends clean, each step
  * on its own so one failing never skips the rest: its form's last harvest, the hand-back on the Agent's own mailbox
  * (each primary activity asked to stop, the visit-lease checkpoints cleared), the field yield recorded
  * (BenchYieldModel) and the call-back report, then the unload, the save and the lease. A companion still online after
@@ -281,9 +284,17 @@ public final class BenchDutyDispatcher {
      * A field slice whose own walk to a shop was given up by the Agent's no-progress watchdog (it stood on one map for
      * TRAVEL_NO_PROGRESS_MS) ends, and its next slice is a shop slice there (found live 2026-10-09: Jinx, camped at
      * 105040304, 10 maps below Henesys, stood 5 minutes on 105040302 every slice; the hop block that keeps a trip off
-     * that hop lives in the Agent's session, which each slice's unload ends).
+     * that hop lives in the Agent's session, which each slice's unload ends). So does one whose BENCH_RESUPPLY_MAX_MS
+     * runs out while its walk toward the shop has stood on one map since the dispatcher's last look (a hold it reached
+     * late on the way, before the watchdog's TRAVEL_NO_PROGRESS_MS there was over).
      */
     static final String SHOP_STALLED = "stuck on the way to a shop";
+    /**
+     * A field slice whose shop visit ran BENCH_RESUPPLY_MAX_MS ends anyway. While its walk toward the shop still crosses
+     * maps, its next slice is a shop slice there too (it could not get there in time); a shop slice, or a trip that has
+     * bought and walks back, gets none.
+     */
+    static final String RESUPPLY_TOO_LONG = "resupply took too long";
     /** persona id -> the shop map its last field slice set off for: its next field slice is a shop slice there. */
     private final Map<String, Integer> shopTrips = new ConcurrentHashMap<>();
     /**
@@ -846,7 +857,10 @@ public final class BenchDutyDispatcher {
             if (!slice.shop && setOffForAFarShop(slice, entry, agent, now)) {
                 return SHOP_TOO_FAR;
             }
-            return now - slice.huntEndedAtMs >= world.config().BENCH_RESUPPLY_MAX_MS ? "resupply took too long" : null;
+            if (now - slice.huntEndedAtMs < world.config().BENCH_RESUPPLY_MAX_MS) {
+                return null;
+            }
+            return slice.shop ? RESUPPLY_TOO_LONG : outOfTimeOnTheWayToAShop(slice, entry, agent, now);
         }
         if (slice.pool == CompanionBudget.Kind.BENCH_LIVE && resupplying(entry)) {
             slice.huntEndedAtMs = now; // out of supplies: the hunt is over, its own shop visit runs, then it unloads
@@ -898,12 +912,51 @@ public final class BenchDutyDispatcher {
                 .orElse(null);
         AgentSupplyProcurementOutcome outcome = trip == null ? null : trip.lastOutcome();
         if (outcome == null || !outcome.stalledTowardSupplier() || outcome.occurredAtMs() < slice.startedAtMs
-                || slice.tripShopMapId == 0 || shopSliceRecently(slice.personaId, now)) {
+                || !nextSliceShopsAt(slice, slice.tripShopMapId, now)) {
             return false;
         }
-        shopTrips.put(slice.personaId, slice.tripShopMapId);
         log.info("bench slice: {}'s walk from {} to the shop at {} got stuck ({}); its next slice restocks there",
                 slice.personaId, slice.mapId, slice.tripShopMapId, outcome.reason());
+        return true;
+    }
+
+    /**
+     * Why a field slice ends whose shop visit ran BENCH_RESUPPLY_MAX_MS. While the Agent's own supply trip still walks
+     * toward its shop (it has not bought), its next slice restocks at that shop as for {@link #SHOP_STALLED}, under the
+     * same cap: the walk did not get there in time, and its next slice would walk the same way. Found in review
+     * 2026-10-10: a hold reached late on a walk within BENCH_RESUPPLY_MAX_HOPS (its fifth map, at about 50 s a map) left
+     * the watchdog no time to give the walk up before this ran out, so its hop block was lost and the next slice walked
+     * into the same hold. It is {@link #SHOP_STALLED} when the walk has not crossed to another map since the
+     * dispatcher's last look (TICK_MS, more than two maps' walk), else {@link #RESUPPLY_TOO_LONG}. A trip that has
+     * bought and walks back, that gave up, or that waits at the shop ends {@link #RESUPPLY_TOO_LONG} as before.
+     */
+    private String outOfTimeOnTheWayToAShop(Slice slice, AgentRuntimeEntry entry, Character agent, long now) {
+        AgentSupplyProcurementState trip = entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .orElse(null);
+        if (trip == null || trip.phase() != AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER || trip.abandoned()) {
+            return RESUPPLY_TOO_LONG;
+        }
+        int shop = trip.supplierMapId();
+        if (!nextSliceShopsAt(slice, shop, now)) {
+            return RESUPPLY_TOO_LONG;
+        }
+        MapleMap at = agent.getMap();
+        int mapId = at == null ? -1 : at.getId();
+        long stoodMs = at == null ? 0L : trip.travelStoodMs(mapId, now);
+        log.info("bench slice: {}'s walk from {} to the shop at {} ran out of time, {} ms on map {}; its next slice"
+                + " restocks there", slice.personaId, slice.mapId, shop, stoodMs, mapId);
+        return stoodMs >= TICK_MS ? SHOP_STALLED : RESUPPLY_TOO_LONG;
+    }
+
+    /**
+     * True, and its next slice is a shop slice at {@code shop}, unless there is no shop or a shop slice of this
+     * companion began within BENCH_LIVE_SLICE_MS (then nothing is recorded).
+     */
+    private boolean nextSliceShopsAt(Slice slice, int shop, long now) {
+        if (shop == 0 || shopSliceRecently(slice.personaId, now)) {
+            return false;
+        }
+        shopTrips.put(slice.personaId, shop);
         return true;
     }
 
