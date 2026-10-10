@@ -13,6 +13,8 @@ import server.agents.capabilities.dialogue.AgentChatRuntime;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
+import server.agents.integration.typesafe.JevClient;
+import server.agents.integration.typesafe.TypeSafeSettings;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -46,9 +48,16 @@ class AgentChatIntentAskerTest {
     private final AgentRuntimeEntry entry = new AgentRuntimeEntry(target, owner, null);
     private String oldAdministrators;
     private String oldOperators;
+    private JevClient oldJev;
 
     @BeforeEach
     void setUp() {
+        oldJev = JevClient.runtime();
+        // No API key: a line the judge would read stays on this thread, so no SystemOne call outlives the test.
+        JevClient.installRuntime(new JevClient(new TypeSafeSettings("", TypeSafeSettings.DEFAULT_ENDPOINT,
+                TypeSafeSettings.DEFAULT_MODEL, 1000), (request, settings) -> {
+            throw new AssertionError("no SystemOne call in this test");
+        }));
         oldAdministrators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES;
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = "Kiwi";
         oldOperators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES;
@@ -70,6 +79,7 @@ class AgentChatIntentAskerTest {
 
     @AfterEach
     void tearDown() {
+        JevClient.installRuntime(oldJev);
         AgentClaimGuard.install(null);
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = oldAdministrators;
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = oldOperators;
