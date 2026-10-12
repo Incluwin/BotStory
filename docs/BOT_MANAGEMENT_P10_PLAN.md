@@ -186,6 +186,31 @@ GM test account Crewfriend; the user's own client keeps the shipped DLL.
 | L14 | The user's client with the shipped DLL | no HELLO from it in the server log, nothing changes |
 | L15 | `!world crewwindow off` with the window open | the window closes; U passes to the game |
 
+### Live results (2026-10-12, int/p9aq 214be98e7, test client with kaentake 9700fea, Crewfriend)
+
+Evidence: `docs/agents/evidence/cua/20261012-0815*` to `20261012-0828*`.
+
+| # | Result | Seen |
+|---|---|---|
+| L1 | PASS | WELCOME enabled 0; `HELLO from Crewfriend: protocol 1, DLL build 20261012, enabled=false`; U did nothing |
+| L2 | PASS | `!world crewwindow gm` sent WELCOME enabled 1 to the open client; U opened the window; row text equals the NPC Crew window |
+| L3 | PASS | Call Casse with a free seat: "Casse is on the way (~3 min)."; row moved to the party block "on the way (2:57)" |
+| L4 | PASS | Bench Rurik (no contract, so no Yes/No): "Rurik heads back to camp to train."; row moved to the bench block |
+| L5 | WAITS | needs the review fixes (row bits OUT / CAN_COME); the 9700fea client keeps Swap grey on 214be98e7 |
+| L6 | PASS | Call Casse with 6/6: her swap picker "your party's full. who should i take over from?" listing all five |
+| L7 | PASS | double-click Casse opened her card |
+| L8 | PASS | More opened the NPC Crew window |
+| L9 | PASS | Follow / Wait / Gather / Rebuff each got a party-chat answer; greyed while everyone was on the way (same anyoneOut rule as the NPC window) |
+| L10 | PASS | Usual and the NPC "Call my usual lineup" both answered "No room for Rurik." |
+| L11 | unit tests | see above |
+| L12 | PASS | channel 1 -> 2 in Henesys: HELLO + WELCOME again, the client re-sent OPEN, the window stayed and updated to "Ellinia" after a warp |
+| L13 | PASS | client restart + login: HELLO, WELCOME enabled 1, U opened the window |
+| L14 | PASS | the shipped DLL (10-10) has no crew code; only the test client ever sent HELLO |
+| L15 | PASS | `!world crewwindow off` closed the open window (WELCOME enabled 0); U then did nothing |
+
+Also seen: the window survives warps (Forest of Poison Haze -> Henesys -> Ellinia). Cosmetic: the stock floating party
+HP list is drawn over the Crew window after a party change (a game window, not the DLL's).
+
 ## Open decisions
 
 1. Hotkey: default `U` (unbound in the default key map). The key works only while unbound in the player's own map.
