@@ -185,6 +185,8 @@ public class Client extends ChannelInboundHandlerAdapter {
      * server sends it) clears it. A native page is drawn only while it is set, apart from how long the window idles.
      */
     private volatile boolean crewWindowOpen;
+    /** The last WELCOME this connection's client heard said enabled: only then does it open the native Crew window. */
+    private volatile boolean crewWindowEnabled;
 
     public enum Type {
         LOGIN,
@@ -218,6 +220,15 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     public void setCrewWindowOpen(boolean crewWindowOpen) {
         this.crewWindowOpen = crewWindowOpen;
+    }
+
+    /** True while the last native Crew window WELCOME sent on this connection said enabled. */
+    public boolean isCrewWindowEnabled() {
+        return crewWindowEnabled;
+    }
+
+    public void setCrewWindowEnabled(boolean crewWindowEnabled) {
+        this.crewWindowEnabled = crewWindowEnabled;
     }
 
     public Client(Type type, long sessionId, String remoteAddress, PacketProcessor packetProcessor, int world, int channel) {

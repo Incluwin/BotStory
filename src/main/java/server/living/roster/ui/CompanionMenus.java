@@ -35,9 +35,11 @@ import java.util.function.Supplier;
  * {@link CompanionCardScreens} (a companion's card and its pages) and {@link CompanionCrewScreens} (the Crew window and
  * the crew-wide pages). Each window is the answer to the player's own click (a double-click on the companion, the
  * Adventurer's Roster, a menu pick), so {@link LivingTalk} never pushes one over another, and an entry point asks
- * {@link LivingTalk#mayShow} before it reads any rows. Only the viewer's own companions are listed; every action goes
- * through {@link server.living.roster.RosterService} or {@link CompanionManager} as a command on companion-ops (plan
- * P2a). Rows and views come from the {@link CompanionViews} cache, so a render reads no database. The companion speaks
+ * {@link LivingTalk#mayShow} before it reads any rows; the one exception is the Roster on a client with the native
+ * Crew window (P10), which reads the rows to decide and then opens that window, which waits on no NPC window. Only
+ * the viewer's own companions are listed; every action goes through {@link server.living.roster.RosterService} or
+ * {@link CompanionManager} as a command on companion-ops (plan P2a). Rows and views come from the
+ * {@link CompanionViews} cache, so a render reads no database. The companion speaks
  * on its card and its pickers; what a card action did is the top line of that card, read afresh (the notes' last page
  * only when there is no card to return to), or pink text when a window cannot open by the time the command is done or
  * the command took long.

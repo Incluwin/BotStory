@@ -220,7 +220,7 @@ public final class NativeCrewPackets {
         return out;
     }
 
-    /** OPEN (reserved): the server asks the client to open its window; the client answers with OPEN. */
+    /** OPEN: the server asks the client to open its window (the Adventurer's Roster); the client answers with OPEN. */
     public static Packet open() {
         OutPacket out = OutPacket.create(SendOpcode.CREW_WINDOW);
         out.writeByte(TYPE_OPEN);

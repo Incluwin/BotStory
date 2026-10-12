@@ -312,6 +312,8 @@ public final class LivingWorld {
                 server.living.roster.ui.NativeCrewWindow.WATCH_MS, server.living.roster.ui.NativeCrewWindow.WATCH_MS));
         world.crewWindow.install(); // P10 Step 7: the native window draws the crew pages for a protocol-2 client
         instance = world;
+        // P10: a client that said HELLO before the world was there heard "not enabled": it hears WELCOME again now
+        world.crewWindow.started(onlineCharacters());
         // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
         net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
         net.server.world.PartySeatGate.install(world.slots::admitsJoin);
@@ -577,6 +579,19 @@ public final class LivingWorld {
     /** P7: boss runs with companions (Mu Young's Easy Balrog): the Agent layer's boss-run host. */
     public server.living.roster.CompanionBossRuns bossRuns() {
         return bossRuns;
+    }
+
+    /** Every character online on any channel now; empty when the game server is not up (a test's world). */
+    private static List<client.Character> onlineCharacters() {
+        List<client.Character> online = new java.util.ArrayList<>();
+        try {
+            for (net.server.world.World server : net.server.Server.getInstance().getWorlds()) {
+                online.addAll(server.getPlayerStorage().getAllCharacters());
+            }
+        } catch (RuntimeException notUp) {
+            log.debug("no online characters to tell about the native Crew window", notUp);
+        }
+        return online;
     }
 
     /** P10: the native Crew window of clients with the P10 DLL (living_world.CREW_WINDOW_NATIVE). */

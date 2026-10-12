@@ -111,6 +111,7 @@ class NativeCrewWindowTest {
     private final Map<String, Persona> personas = new HashMap<>();
     private final AtomicInteger protocol = new AtomicInteger();
     private final java.util.concurrent.atomic.AtomicBoolean windowOpen = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicBoolean windowEnabled = new java.util.concurrent.atomic.AtomicBoolean();
     private final AtomicLong now = new AtomicLong(1_000_000L);
     /** The flags that name a swap picker's partners rather than an option of the row's own card. */
     private static final int PARTNERS = NativeCrewPackets.OUT | NativeCrewPackets.CAN_COME;
@@ -144,6 +145,11 @@ class NativeCrewWindowTest {
             return null;
         }).when(client).setCrewWindowOpen(org.mockito.ArgumentMatchers.anyBoolean());
         when(client.isCrewWindowOpen()).thenAnswer(inv -> windowOpen.get());
+        doAnswer(inv -> {
+            windowEnabled.set(inv.getArgument(0));
+            return null;
+        }).when(client).setCrewWindowEnabled(org.mockito.ArgumentMatchers.anyBoolean());
+        when(client.isCrewWindowEnabled()).thenAnswer(inv -> windowEnabled.get());
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
         when(world.store()).thenReturn(store);
@@ -1056,6 +1062,44 @@ class NativeCrewWindowTest {
         menus.rosterBook(owner);
         assertTrue(crewPackets().isEmpty());
         assertEquals(1, NpcTalks.talks(sent()).size());
+    }
+
+    @Test
+    void aHelloBeforeTheWorldStartedLeavesTheRosterTheNpcWindowUntilTheWorldTellsItAgain() {
+        hadrik();
+        NativeCrewWindow.receive(client, owner, new Hello(NativeCrewPackets.PROTOCOL, 20261012), null);
+        assertArrayEquals(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, false).getBytes(), last());
+        clearInvocations(client);
+
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty(), "no OPEN a client told \"not enabled\" would ignore");
+        assertEquals(1, NpcTalks.talks(sent()).size(), "the NPC Crew window instead");
+
+        LivingTalk.forget(owner);
+        clearInvocations(client);
+        window.started(List.of(owner)); // the living world is up now
+        assertArrayEquals(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, true).getBytes(), last());
+
+        clearInvocations(client);
+        menus.rosterBook(owner);
+        assertArrayEquals(NativeCrewPackets.open().getBytes(), last());
+        assertTrue(NpcTalks.talks(sent()).isEmpty());
+    }
+
+    @Test
+    void theRosterOverAnOpenWindowWhoseWatchWentIdleWatchesItAgainWithAFreshSnapshot() {
+        hadrik();
+        openWindow();
+        now.addAndGet(NativeCrewWindow.IDLE_MS + 1);
+        window.watchOpenWindows();
+        assertFalse(window.watching(owner));
+        clearInvocations(client);
+
+        menus.rosterBook(owner);
+
+        assertTrue(window.watching(owner));
+        assertEquals(NativeCrewPackets.TYPE_SNAPSHOT, last()[2], "a fresh snapshot, never an OPEN the client ignores");
+        assertEquals(1, crewPackets().size());
     }
 
     @Test

@@ -167,6 +167,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         client.setCrewWindowProtocol(hello.protocol());
         int served = negotiated(client);
         boolean enabled = window != null && window.allows(chr);
+        client.setCrewWindowEnabled(enabled);
         client.sendPacket(NativeCrewPackets.welcome(served, enabled));
         log.info("[crew-window] HELLO from {}: protocol {}, DLL build {}, served at {}, enabled={}", chr.getName(),
                 hello.protocol(), hello.dllBuild(), served, enabled);
@@ -490,6 +491,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
                 LivingTalk.endNative(chr);
                 client.setCrewWindowOpen(false);
             }
+            client.setCrewWindowEnabled(enabled);
             int served = negotiated(client);
             client.runOnIoThread(() -> {
                 if (!enabled) {
@@ -515,15 +517,31 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
     /**
      * The Adventurer's Roster on a client that has the native window with every NPC Crew window function (protocol 2):
      * asks it to open its window (OPEN; the client answers with its own OPEN, and the crew is watched from then on),
-     * in the world and while the switch allows it. False when the NPC Crew window answers the Roster instead.
+     * in the world, while the switch allows it and once its last WELCOME said enabled (a client never opens it
+     * otherwise). A window already open is watched again and gets a fresh snapshot (the client ignores an OPEN for
+     * it). False when the NPC Crew window answers the Roster instead.
      */
     public boolean openFor(Character owner) {
         Client client = owner.getClient();
-        if (client == null || negotiated(client) < PAGES_PROTOCOL || !owner.isLoggedinWorld() || !allows(owner)) {
+        if (client == null || negotiated(client) < PAGES_PROTOCOL || !client.isCrewWindowEnabled()
+                || !owner.isLoggedinWorld() || !allows(owner)) {
             return false;
+        }
+        if (client.isCrewWindowOpen()) {
+            watch(client, owner); // its watch may have gone idle: the Roster is a click on it
+            refresh(client, owner);
+            return true;
         }
         send(client, NativeCrewPackets.open());
         return true;
+    }
+
+    /**
+     * The living world started: every client that said HELLO before it did (WELCOME then said not enabled, as the
+     * world was not there yet) hears WELCOME again with what the switch allows it now.
+     */
+    public void started(Iterable<Character> online) {
+        switchChanged(online);
     }
 
     /**
