@@ -1,5 +1,6 @@
 package server.agents.capabilities.expedition.boss;
 
+import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.maps.MapleMap;
@@ -157,6 +158,15 @@ public final class AgentBossRunHost {
          * Once per death.
          */
         default void reentering(Seat seat) {
+        }
+
+        /**
+         * P12 G11, companion boss scope case 3: true while {@code agent} is a companion on the recruit or gate map of a
+         * boss the switch lists, and the owner it follows stands on that map too (Showa's 801040004 holds monsters).
+         * Memory only, any thread. Unless answered, false.
+         */
+        default boolean besideOwnerAtBossGate(Character agent) {
+            return false;
         }
     }
 
@@ -331,6 +341,20 @@ public final class AgentBossRunHost {
                 return current.bossEnabled(key);
             } catch (RuntimeException failure) {
                 log.warn("boss-run boss-enabled rule failed for {}", key, failure);
+                return false;
+            }
+        }
+
+        @Override
+        public boolean besideOwnerAtBossGate(Character agent) {
+            Rule current = current();
+            if (current == null) {
+                return false;
+            }
+            try {
+                return current.besideOwnerAtBossGate(agent);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run beside-owner rule failed for {}", agent == null ? 0 : agent.getId(), failure);
                 return false;
             }
         }

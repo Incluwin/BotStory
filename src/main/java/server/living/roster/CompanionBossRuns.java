@@ -1086,6 +1086,27 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return config != null && config.companionBossEnabled(key);
     }
 
+    /**
+     * P12 G11, on the Agent's tick, from memory: true while {@code agent} is a companion of the human it follows (its
+     * owner) on the recruit or gate map of a boss the switch lists, and the owner stands on that map too. Its summons
+     * are then barred where the map forbids them (Showa's 801040004, which holds Male Boss and his guards).
+     */
+    @Override
+    public boolean besideOwnerAtBossGate(Character agent) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        LivingWorldConfig config = world.config();
+        if (map == null || config == null) {
+            return false;
+        }
+        int mapId = map.getId();
+        boolean gate = AgentBossRunCatalog.all().stream().anyMatch(definition ->
+                definition.recruitMapId() == mapId && config.companionBossEnabled(definition.key()));
+        int ownerId = gate ? AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) : 0;
+        Persona persona = ownerId <= 0 ? null : world.residents().personaOfCharacterId(agent.getId());
+        return persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId
+                && map.getCharacterById(ownerId) != null;
+    }
+
     public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {
         return quota.answer(characterId, expedition, logEntry);
     }

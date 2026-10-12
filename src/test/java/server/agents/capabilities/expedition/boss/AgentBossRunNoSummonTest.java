@@ -65,6 +65,9 @@ class AgentBossRunNoSummonTest {
     private static final int KPQ_STAGE_MAP = 103_000_800;
     private static final int LPQ_BOSS_MAP = 922_010_800;
     private static final int ZAKUM_ALTAR = AgentZakumDefinition.BATTLE_MAP_ID;
+    private static final int ZAKUM_ROOM = AgentZakumDefinition.RECRUIT_MAP_ID;
+    private static final int SHOWA_RECRUIT_MAP = 801_040_004;
+    private static final int HPQ_MAP = 910_010_000;
     private static final Pattern FIELD_LIMIT = Pattern.compile("<int name=\"fieldLimit\" value=\"(\\d+)\"/>");
 
     private final CombatGateway combat = mock(CombatGateway.class);
@@ -109,6 +112,7 @@ class AgentBossRunNoSummonTest {
         skills.close();
         clients.close();
         AgentBossRunRegistry.resetForTest();
+        AgentBossRunHost.install(null);
     }
 
     @Test
@@ -178,6 +182,54 @@ class AgentBossRunNoSummonTest {
         assertEquals(AgentCombatSummonRuntime.SummonResult.CAST,
                 AgentCombatSummonRuntime.trySummon(entry, lpq, SUMMON_DRAGON));
         verify(combat, times(2)).dispatchSummonSpecialMove(any(), eq(SUMMON_DRAGON), eq(1), anyInt());
+    }
+
+    @Test
+    void aRegisteredMemberInAdobissRoomNeverSummons() throws Exception {
+        assertTrue(FieldLimit.SUMMON.check(fieldLimit(ZAKUM_ROOM)), "her room forbids summons to players");
+        AgentBossRunSession session = openRun(AgentBossRunCatalog.ZAKUM);
+        session.addMember(ISOLDE, OWNER, NOW).registered();
+        Character isolde = agent(ISOLDE, ZAKUM_ROOM);
+
+        assertEquals(AgentCombatSummonRuntime.SummonResult.BARRED,
+                AgentCombatSummonRuntime.trySummon(entry, isolde, SUMMON_DRAGON));
+        assertTrue(AgentBossRunRegistry.barsSummons(ISOLDE));
+        session.member(ISOLDE).leftRun(AgentBossRunHost.Out.DIED);
+        assertFalse(AgentBossRunRegistry.barsSummons(ISOLDE), "OUT");
+    }
+
+    @Test
+    void aCompanionBesideItsOwnerOnShowasRecruitMapNeverSummonsWhileTheHostSaysSo() throws Exception {
+        assertTrue(FieldLimit.SUMMON.check(fieldLimit(SHOWA_RECRUIT_MAP)));
+        Character isolde = agent(ISOLDE, SHOWA_RECRUIT_MAP);
+        assertEquals(AgentCombatSummonRuntime.SummonResult.CAST,
+                AgentCombatSummonRuntime.trySummon(entry, isolde, SUMMON_DRAGON), "no host rule: as today");
+
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean besideOwnerAtBossGate(Character agent) {
+                return agent.getId() == ISOLDE;
+            }
+        });
+        assertEquals(AgentCombatSummonRuntime.SummonResult.BARRED,
+                AgentCombatSummonRuntime.trySummon(entry, isolde, SUMMON_DRAGON));
+        assertEquals(AgentCombatSummonRuntime.SummonResult.CAST,
+                AgentCombatSummonRuntime.trySummon(entry, agent(THANE, SHOWA_RECRUIT_MAP), SUMMON_DRAGON),
+                "a bot the host does not name");
+    }
+
+    @Test
+    void anHpqAgentStillSummonsWhileARunIsOpen() throws Exception {
+        assertTrue(FieldLimit.SUMMON.check(fieldLimit(HPQ_MAP)));
+        inside(openRun(), ISOLDE);
+
+        assertEquals(AgentCombatSummonRuntime.SummonResult.CAST,
+                AgentCombatSummonRuntime.trySummon(entry, agent(KPQ_AGENT, HPQ_MAP), SUMMON_DRAGON));
     }
 
     @Test

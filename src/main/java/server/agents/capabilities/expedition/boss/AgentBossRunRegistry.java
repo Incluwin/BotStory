@@ -129,6 +129,18 @@ public final class AgentBossRunRegistry {
     }
 
     /**
+     * P12 G11: true while the Agent is a REGISTERED, INSIDE or LEAVING member of an open run, the members whose map
+     * may bar summons (the entry NPC's room, the battle map, the way out). Memory only, any thread.
+     */
+    public static boolean barsSummons(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember member = session == null ? null : session.member(agentId);
+        AgentBossRunMember.Phase phase = member == null ? null : member.phase();
+        return phase == AgentBossRunMember.Phase.REGISTERED || phase == AgentBossRunMember.Phase.INSIDE
+                || phase == AgentBossRunMember.Phase.LEAVING;
+    }
+
+    /**
      * True when a player of {@code event} is a REGISTERED or INSIDE member of the open run for the event (forEvent):
      * a companion signed up for this very fight. Memory only (the event's player lock aside), for any thread.
      */
