@@ -833,3 +833,16 @@ The last P9 deliverable: the lineup suggestion at the party quest entry NPCs. It
 | D2 Call all | As D1 with two bench companions in her pick (bench two). | "Call X and Y." calls both; each arrives with Tory's arrival line; the proposal then lists them. |
 | D3 No pick | A bench with nobody rested in HPQ's levels. | The page is as before (no "My pick" line), no WARN line. |
 | D4 Drift | `/runtime/companions/audit` after D1-D3. | 0 drift, 0 ERROR lines. |
+
+### Live results (int/p9aw 36b9c17e5, 2026-10-12 15:33-15:41, Crewfriend Lv55 at Tory)
+Tory's preferred crew is four, so she offers the bench only while her lineup is shorter: with Rurik benched (party of five) her lineup was full and the bench was not offered, as built. Lioren and Dorran were benched too, leaving Crewfriend, Casse and Halvard.
+
+| Check | Result |
+|---|---|
+| D1 Her pick | **PASS.** "Call someone from my bench..." showed "My pick: you, Casse, Kestrel and Dorran.", the rows of Dorran and Kestrel first, then the rest of the bench (HappyWolf, IceCookie, Lioren, Pell, Rurik ...). Evidence `docs/agents/evidence/cua/20261012-153903`. |
+| D2 Call all | **PASS.** "Call Dorran and Kestrel." answered "Dorran is on the way (~60 s). Kestrel is on the way (~42 s). Talk to me again once they're here." Both joined the party at once; Dorran said "here! ready for tory when you are." on arrival. "Are they here yet?" then showed her lineup as her pick: Crewfriend, Kestrel, Casse, Dorran (Halvard waits). Evidence `20261012-153924`, `154023`, `154043`. |
+| D3 No pick | Not run live: every bench companion is in HPQ's levels and rested, so no bench without a pick exists without a DB edit. Unit-tested (LakelisDeskGoldenTest). |
+| D4 Drift | **PASS.** 0 ERROR lines since the restart, 0 `[desk] ... could not be read` lines, audit 12 runs, drift 0, repairs 0. |
+
+The three review fixes on this branch (8c23f0fbd: the click throttle, call-all only with a free seat each, no page off her map) were not live yet; the checks clicked more than a second after each window, so the throttle case did not arise.
+Crewfriend's crew after the checks: Casse, Halvard, Dorran and Kestrel out; Rurik, Lioren, Yara and the rest benched.
