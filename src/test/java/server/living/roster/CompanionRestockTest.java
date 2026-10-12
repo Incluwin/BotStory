@@ -12,6 +12,7 @@ import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk;
 import server.agents.capabilities.supplies.AgentAmmoService;
 import server.agents.capabilities.supplies.AgentProjectileKind;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
@@ -187,6 +188,25 @@ class CompanionRestockTest {
         assertNull(restock.standing(FENNA), "the kill switch");
         config.COMPANION_RESTOCK_ENABLED = true;
         assertEquals(KPQ, restock.standing(FENNA));
+    }
+
+    /**
+     * P18 follow-up (user 2026-10-12): a companion walking back into its Horntail run from Leafre keeps Horntail's
+     * standard there, though the run holds it and its owner fights on in the cave; once in, the run's hold stands.
+     */
+    @Test
+    void aCompanionWalkingBackIntoItsBossRunKeepsThatBosssStandard() {
+        commitments.commit("boss:1", ANN, FENNA);
+        try (MockedStatic<AgentBossDeathWalk> walk = mockStatic(AgentBossDeathWalk.class)) {
+            walk.when(() -> AgentBossDeathWalk.reentryRestockKey(fenna)).thenReturn("horntail");
+            assertEquals(AgentSupplyReadiness.Activity.partyQuest("horntail"), restock.standing(FENNA));
+            engaged.add(FENNA);
+            assertNull(restock.standing(FENNA), "a party quest's engagement still comes first");
+            engaged.clear();
+
+            walk.when(() -> AgentBossDeathWalk.reentryRestockKey(fenna)).thenReturn(null);
+            assertNull(restock.standing(FENNA), "committed to its run");
+        }
     }
 
     @Test
