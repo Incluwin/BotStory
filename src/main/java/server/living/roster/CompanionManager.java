@@ -327,6 +327,11 @@ public final class CompanionManager {
         return new CrewSuggestions(world).suggest(owner);
     }
 
+    /** The crew {@code pqKey}'s entry NPC would pick from the party and the rested bench; null: none (store reads). */
+    public CrewSuggestions.Suggestion suggestCrew(Character owner, String pqKey) {
+        return new CrewSuggestions(world).suggest(owner, pqKey);
+    }
+
     /**
      * "Call them" on "Who should come along?" (CrewSuggestions): of the owner's companions in a suggested crew
      * ({@code crew}), those at camp come, each to a free seat, or trading places with one out who is not in the crew when

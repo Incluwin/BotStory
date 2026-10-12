@@ -15,6 +15,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.CrewSuggestions;
 import server.living.roster.DeskLines;
 import server.living.roster.DeskVoice;
 import server.living.roster.DirectExecutor;
@@ -182,6 +183,20 @@ class LpqRedSignDeskTest {
         assertFalse(onTheWay.contains("Talk to me"), onTheWay);
     }
 
+    @Test
+    void theSignRecommendsAPartyFromTheBench() {
+        Persona ilse = benched("ilse", "Ilse", ILSE, 40);
+        desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ludibrium"), PqEntrance.of("lpq"),
+                leader -> new CrewSuggestions.Suggestion("lpq", List.of("you", "Mira", "Pip", "Tobi", "Casse", "Ilse"),
+                        List.of(ilse), List.of(ilse)));
+        desk.proposal(ben, lineup(null), null);
+        pick("Call someone from my bench...");
+
+        String bench = lastTalk().text();
+        assertTrue(bench.contains("\r\nRecommended party: you, Mira, Pip, Tobi, Casse and Ilse.\r\n"), bench);
+        assertFalse(FIRST_PERSON.matcher(bench).find(), "a sign never says I, me or my: " + bench);
+    }
+
     // ---- how a start ended -------------------------------------------------------------------
 
     @Test
@@ -218,7 +233,7 @@ class LpqRedSignDeskTest {
     @Test
     void lakelisAndToryShowEverySharedLineAsItIsAndTheSignAsANotice() {
         List<String> shared = List.of("Waiting here with me: ", " Talk to me again once they're here.", PARTY_CHANGED,
-                HOLD_ON, CATCHING_BREATH, DeskLines.RAN_TO_THE_STORE, CompanionMenus.THINGS_CHANGED);
+                HOLD_ON, CATCHING_BREATH, DeskLines.RAN_TO_THE_STORE, CompanionMenus.THINGS_CHANGED, DeskLines.MY_PICK);
         DeskVoice sign = RedSignLines.VOICE;
         for (String line : shared) {
             assertEquals(line, LakelisLines.VOICE.local(line), "Lakelis says it as it is");

@@ -354,4 +354,10 @@ class LpqRedSignLinesTest {
         return new LineupPlan("lpq", 10, List.copyOf(lineup), List.of(), List.of(), List.of(), null, false, null,
                 clearTime);
     }
+
+    @Test
+    void theSignRecommendsAPartyWhereADeskNamesHerPick() {
+        assertEquals("Recommended party: ", RedSignLines.VOICE.local(DeskLines.MY_PICK));
+        assertEquals("My pick: ", LakelisLines.VOICE.local(DeskLines.MY_PICK));
+    }
 }

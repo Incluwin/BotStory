@@ -465,7 +465,11 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
                 LivingTalk.endNative(owner);
                 client.setCrewWindowOpen(false);
                 client.setCrewWindowEnabled(false); // a CLOSE disables the client's window until its next WELCOME
-                client.runOnIoThread(() -> send(client, NativeCrewPackets.close()));
+                client.runOnIoThread(() -> {
+                    // again where the CLOSE goes out: a WELCOME that a switch flip queued meanwhile went out first
+                    client.setCrewWindowEnabled(false);
+                    send(client, NativeCrewPackets.close());
+                });
                 continue;
             }
             if (now - watch.touchedAtMs > IDLE_MS) {
