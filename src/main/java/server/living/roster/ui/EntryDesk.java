@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 /**
  * A party quest's entry NPC at her entrance, for a party leader with companions in the party (P6, flow 3; P6b HPQ
@@ -58,18 +59,22 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
     private final PqEntrance.SeatRules seats;
     /** The crew she would pick from the leader's party and rested bench (CrewSuggestions); read on companion-ops. */
     private final Function<Character, CrewSuggestions.Suggestion> picks;
+    /** The seats the leader may still fill with companions (CompanionSlots.free); read on companion-ops. */
+    private final ToIntFunction<Character> freeSeats;
 
     public EntryDesk(LivingWorld world, CompanionPartyQuestService service, CompanionMenus menus, PqEntrance entrance) {
-        this(world, service, menus, entrance, leader -> menus.manager().suggestCrew(leader, entrance.key()));
+        this(world, service, menus, entrance, leader -> menus.manager().suggestCrew(leader, entrance.key()),
+                leader -> world.slots().free(leader));
     }
 
     EntryDesk(LivingWorld world, CompanionPartyQuestService service, CompanionMenus menus, PqEntrance entrance,
-              Function<Character, CrewSuggestions.Suggestion> picks) {
+              Function<Character, CrewSuggestions.Suggestion> picks, ToIntFunction<Character> freeSeats) {
         this.world = world;
         this.service = service;
         this.menus = menus;
         this.entrance = entrance;
         this.picks = picks;
+        this.freeSeats = freeSeats;
         this.voice = entrance.voice();
         this.seats = entrance.seatRules();
     }
@@ -281,28 +286,38 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
      * The leader's benched and away companions in her quest's levels, to send for; the rest are named under them. It
      * is offered only with one to send for. Her pick of the crew is read first on companion-ops (P9 learned lineup
      * suggestions): when it takes companions from the bench, she names the crew over the rows, those rows come first,
-     * and with two or more of them one option calls them all. A pick calls the companion (join-then-travel) on
-     * companion-ops; Back is the lineup {@code shown} again, planned the way it was drawn.
+     * and with two or more of them, all with a free seat, one option calls them all. A pick calls the companion
+     * (join-then-travel) on companion-ops; Back is the lineup {@code shown} again, planned the way it was drawn. A
+     * leader who left her map while the pick was read gets no page.
      */
     private void bench(Character leader, LineupPlan shown) {
-        menus.compute(leader, "desk.bench", () -> pick(leader), pick -> bench(leader, shown, pick));
+        menus.compute(leader, "desk.bench", () -> pick(leader), pick -> {
+            if (leader.getMapId() == entrance.definition().recruitMapId()) {
+                bench(leader, shown, pick);
+            }
+        });
+    }
+
+    /** Her pick of the crew, with the seats free for it. */
+    private record Pick(CrewSuggestions.Suggestion crew, int freeSeats) {
     }
 
     /** Her pick of the crew; null when there is none, or when it cannot be read. */
-    private CrewSuggestions.Suggestion pick(Character leader) {
+    private Pick pick(Character leader) {
         try {
-            return picks.apply(leader);
+            CrewSuggestions.Suggestion crew = picks.apply(leader);
+            return crew == null ? null : new Pick(crew, freeSeats.applyAsInt(leader));
         } catch (RuntimeException e) {
             log.warn("[desk] {}'s pick for {} could not be read", leader.getName(), entrance.key(), e);
             return null; // her bench page as it was before picks
         }
     }
 
-    private void bench(Character leader, LineupPlan shown, CrewSuggestions.Suggestion pick) {
+    private void bench(Character leader, LineupPlan shown, Pick pick) {
         String pqKey = shown.pqKey();
         Set<String> picked = new HashSet<>();
         if (pick != null) {
-            pick.fromBench().forEach(persona -> picked.add(persona.id()));
+            pick.crew().fromBench().forEach(persona -> picked.add(persona.id()));
         }
         List<Benched> benched = benched(leader);
         benched.sort(Comparator.comparing(companion -> !picked.contains(companion.persona().id()))); // hers first
@@ -320,7 +335,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
                 }
             }
         }
-        if (hers.size() >= 2) {
+        if (hers.size() >= 2 && hers.size() <= pick.freeSeats()) { // each takes a free seat: a call never swaps
             options.add(0, new Option("Call " + joined(hers.stream().map(Persona::name).toList()) + ".",
                     () -> call(leader, pqKey, hers, "pq.call_pick")));
         }
@@ -329,7 +344,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
         }
         String text = voice.benchPrompt() + "\r\n";
         if (!hers.isEmpty()) {
-            text += "\r\n" + voice.local(DeskLines.MY_PICK) + joined(pick.crew()) + ".\r\n";
+            text += "\r\n" + voice.local(DeskLines.MY_PICK) + joined(pick.crew().crew()) + ".\r\n";
         }
         talk(leader).menu(text, options)
                 .back(() -> proposal(leader, service.plan(leader, pqKey, shown.picked()), null))

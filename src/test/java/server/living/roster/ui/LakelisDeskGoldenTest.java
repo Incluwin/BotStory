@@ -120,6 +120,8 @@ class LakelisDeskGoldenTest {
     /** Her pick of the crew (CrewSuggestions), as the desk reads it on companion-ops; null: none. */
     private Suggestion herPick;
     private RuntimeException pickFails;
+    /** The seats Ben may still fill (CompanionSlots.free). */
+    private int freeSeats = 2;
     private EntryDesk desk;
 
     @BeforeEach
@@ -149,7 +151,7 @@ class LakelisDeskGoldenTest {
                         throw pickFails;
                     }
                     return herPick;
-                });
+                }, leader -> freeSeats);
     }
 
     @AfterEach
@@ -291,6 +293,68 @@ class LakelisDeskGoldenTest {
                 + "\r\n\r\n#L#Are they here yet?#l\r\n#L#Never mind.#l", lastTalk());
         verify(service).noteCalledForLakelis(BEN, "rin");
         verify(service).noteCalledForLakelis(BEN, "kai");
+    }
+
+    @Test
+    void herCallForAllIsOfferedOnlyWhenEachHasAFreeSeat() {
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        Persona kai = benched("kai", "Kai", KAI, 26);
+        herPick = new Suggestion("kpq", List.of("you", "Mira (cleared 2 of 3)", "Rin", "Kai"), List.of(rin, kai),
+                List.of(rin, kai));
+        freeSeats = 1;
+        desk.proposal(ben, three(), null);
+
+        pick("Call someone from my bench...");
+        assertTrue(lastTalk().text().contains("My pick: you, Mira (cleared 2 of 3), Rin and Kai."), lastTalk().text());
+        assertEquals(List.of("Rin, Lv25 Bandit - train @ Ant Tunnel", "Kai, Lv26 Bandit - train @ Ant Tunnel", "Back"),
+                lastTalk().labels(), "one free seat: each is called on its own");
+    }
+
+    @Test
+    void herBenchPageCameBackFromTheStoreIsTheAnswerToTheClickNotRefusedByTheThrottle() {
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        herPick = new Suggestion("kpq", List.of("you", "Mira", "Pip", "Rin"), List.of(rin), List.of(rin));
+        desk.proposal(ben, three(), null);
+        List<Runnable> packetThread = new ArrayList<>();
+        doAnswer(inv -> {
+            packetThread.add(inv.getArgument(0)); // the page comes back as a new task on Ben's packet thread
+            return null;
+        }).when(client).runOnIoThread(any());
+
+        pick("Call someone from my bench...");
+        when(client.canClickNPC()).thenReturn(false); // under 500 ms since the lineup window stamped the click
+        runAll(packetThread);
+        assertTrue(lastTalk().text().startsWith("Who should I send for?"), lastTalk().text());
+
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.Travelling(40_000L, 104_000_000));
+        pick("Rin, Lv25 Bandit - train @ Ant Tunnel"); // the call's line comes back the same way
+        runAll(packetThread);
+        assertTrue(lastTalk().text().startsWith("Rin is on the way (~40 s)."), lastTalk().text());
+    }
+
+    private static void runAll(List<Runnable> queued) {
+        List<Runnable> now = new ArrayList<>(queued);
+        queued.clear();
+        now.forEach(Runnable::run);
+    }
+
+    @Test
+    void aLeaderWhoLeftHerMapWhileThePickWasReadGetsNoBenchPage() {
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        herPick = new Suggestion("kpq", List.of("you", "Mira", "Pip", "Rin"), List.of(rin), List.of(rin));
+        desk.proposal(ben, three(), null);
+        List<Runnable> packetThread = new ArrayList<>();
+        doAnswer(inv -> {
+            packetThread.add(inv.getArgument(0));
+            return null;
+        }).when(client).runOnIoThread(any());
+        int windows = talks().size();
+
+        pick("Call someone from my bench...");
+        when(ben.getMapId()).thenReturn(103_000_001); // through a portal meanwhile
+        packetThread.forEach(Runnable::run);
+
+        assertEquals(windows, talks().size(), "no window on another map");
     }
 
     @Test
