@@ -40,6 +40,9 @@ public final class CompanionBossKeys {
         keys.add("neo_aufheben");
         keys.add("neo_oberon");
         keys.add("neo_nibelung");
+
+        // slot: papulatus (P15): a party boss with a daily quota, by the same portal and event-script hook
+        keys.add("papulatus");
         return List.copyOf(keys);
     }
 

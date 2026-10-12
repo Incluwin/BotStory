@@ -955,6 +955,10 @@ living_world:
     # owner leads the party in through the stock portal; the companions inside then fight as a boss run (priority targets,
     # mirrored attacks, no summons, wait outside when down) and leave with the owner. Each stays off until its live check
     # passes (docs/COMPANION_BOSSING_P14.md).
+    # "papulatus" (P15): the same party run at the Papulatus gate. A companion with no entry left today stays before
+    # the gate, a dead one walks back to the gate from Ludibrium, and the gate allows one desk trip
+    # (COMPANION_RESTOCK_TRIP_MAPS).
+    # It stays off until its live check passes (docs/COMPANION_BOSSING_P15.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
