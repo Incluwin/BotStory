@@ -59,6 +59,10 @@ No database change.
 
 ## Tests
 
+Full suite on d8151abb3: 13,388 tests, 2 failures, 37 skipped (10:44 min). Both failures came from P12 and are fixed in
+042d029da: a yaml key the config boundary test could not see, and a test that expected no Easy Balrog rules row. Both
+classes pass after the fix.
+
 New test classes: `AgentBossRunPartyEventTest`, `CompanionBossRunsPartyEventTest`, `AgentBossRulesCatalogTest`,
 `AgentBossPriorityFightTest`, `AgentCombatCandidateProviderTest`, `CompanionBossRunsSummonGateTest`,
 `CompanionBossRunPointsTest`, `BossMirrorWzGeometryTest` (27 Pianus, Horntail and Pink Bean ids against Mob.wz), and
