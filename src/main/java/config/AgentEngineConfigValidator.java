@@ -86,7 +86,7 @@ final class AgentEngineConfigValidator {
                 continue;
             }
             // the boss attack mirror's mode, before the boolean and numeric checks too
-            if (key.endsWith("AgentBossAttackMirror.MODE")) {
+            if (key.endsWith("AgentBossAttackMirror.MODE") || key.endsWith("AgentBossAttackMirror.BLAST_MODE")) {
                 if (!validMirrorMode(value)) {
                     throw new IllegalStateException("Agent tuning key " + key + " must be OFF, OBSERVE or APPLY");
                 }

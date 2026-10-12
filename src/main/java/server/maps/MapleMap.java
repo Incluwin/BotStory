@@ -1472,6 +1472,7 @@ public class MapleMap {
         selfDestruction selfDestr = monster.getStats().selfDestruction();
         if (selfDestr != null && selfDestr.getHp() > -1) {// should work ;p
             if (monster.getHp() <= selfDestr.getHp()) {
+                server.life.autonomy.BossAttackMirrorSeam.selfDestructed(monster);
                 killMonster(monster, chr, true, selfDestr.getAction());
                 return true;
             }
@@ -2084,7 +2085,12 @@ public class MapleMap {
 
                 registerMapSchedule(removeAfterAction, SECONDS.toMillis(monster.getStats().removeAfter()));
             } else {
-                removeAfterAction = () -> killMonster(monster, null, false, selfDestruction.getAction());
+                removeAfterAction = () -> {
+                    if (monster.isAlive()) {
+                        server.life.autonomy.BossAttackMirrorSeam.selfDestructed(monster);
+                    }
+                    killMonster(monster, null, false, selfDestruction.getAction());
+                };
 
                 registerMapSchedule(removeAfterAction, SECONDS.toMillis(selfDestruction.removeAfter()));
             }

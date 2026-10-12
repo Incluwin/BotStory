@@ -70,6 +70,9 @@ class AgentBossClientLoadTest {
     private static final int EL_NATH = 211_000_000;
     /** Kerning PQ stage 1. */
     private static final int KPQ_STAGE = 103_000_800;
+    /** Mano's field, Thicket Around the Beach III, and Mano: a field boss on a map with no event. */
+    private static final int FIELD = 104_000_400;
+    private static final int MANO = 2_220_000;
 
     private String shipped;
 
@@ -182,6 +185,57 @@ class AgentBossClientLoadTest {
         assertEquals(3L, AgentBossClientLoad.attacks(zakum), "the floor does not have to be on");
         assertEquals(1L, AgentBossClientLoad.attacks(easy));
         assertEquals(0L, AgentBossClientLoad.attacks(idle));
+    }
+
+
+    @Test
+    void besideAFieldBossTheFloorActsOnlyWhileItsKeyIsOnAndNeverOnAnEventMap() {
+        tune("900");
+        AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss("field_test", "Test field", null, null, null,
+                null, List.of(MANO))));
+        boolean[] keyOn = {false};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String key) {
+                return keyOn[0] && "field_test".equals(key);
+            }
+        });
+        try {
+            Character citizen = agent(STRANGER, FIELD);
+            Monster mano = fieldBoss(citizen.getMap(), MANO);
+            when(citizen.getMap().getAllMonsters()).thenReturn(List.of(mano));
+            assertEquals(0, AgentBossClientLoad.attackFloorMs(citizen), "the field key is off");
+
+            keyOn[0] = true;
+            assertEquals(900, AgentBossClientLoad.attackFloorMs(citizen), "any Agent beside a field boss");
+            assertTrue(commitAttack(citizen) >= 900);
+
+            when(mano.isAlive()).thenReturn(false);
+            assertEquals(0, AgentBossClientLoad.attackFloorMs(citizen), "the boss is dead");
+
+            Character kpq = agent(SORREL, KPQ_STAGE);
+            scripting.event.EventInstanceManager kpqEvent = mock(scripting.event.EventInstanceManager.class);
+            Monster eventMano = fieldBoss(kpq.getMap(), MANO);
+            when(kpq.getMap().getEventInstance()).thenReturn(kpqEvent);
+            when(kpq.getMap().getAllMonsters()).thenReturn(List.of(eventMano));
+            assertEquals(0, AgentBossClientLoad.attackFloorMs(kpq), "a KPQ member keeps its own pace");
+        } finally {
+            AgentBossRules.replaceForTest(null);
+            AgentBossRunHost.install(null);
+        }
+    }
+
+    private static Monster fieldBoss(MapleMap map, int mobId) {
+        Monster boss = mock(Monster.class);
+        when(boss.getId()).thenReturn(mobId);
+        when(boss.isAlive()).thenReturn(true);
+        when(boss.getMap()).thenReturn(map);
+        return boss;
     }
 
     @Test

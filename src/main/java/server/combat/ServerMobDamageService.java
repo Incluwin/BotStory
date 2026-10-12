@@ -55,15 +55,43 @@ public final class ServerMobDamageService {
                 attack.diseaseSkill(), attack.diseaseLevel(), damagePercent, broadcast);
     }
 
+    /**
+     * P12 G1, a self-destruct blast: the same hit as {@link #applyOrdinaryAttack(Monster, Character,
+     * BossAction.OrdinaryAttack, int, boolean)} from {@code bomb} on {@code map}, where the bomb may already be dead (it
+     * blew up as it died). The target must still stand on {@code map}.
+     */
+    public static int applyBlast(
+            Monster bomb, MapleMap map, Character target, BossAction.OrdinaryAttack attack,
+            int damagePercent, boolean broadcast) {
+        if (bomb == null) {
+            return 0;
+        }
+        return roll(bomb, map, target, attack.attackIndex(), attack.magic(),
+                attack.physicalAttack(), attack.magicAttack(), attack.deadly(),
+                attack.diseaseSkill(), attack.diseaseLevel(), damagePercent, broadcast);
+    }
+
     private static int applyOrdinaryAttack(
             Monster attacker, Character target, int attackIndex, boolean magic,
             int physicalAttackOverride, int magicAttackOverride,
             boolean deadlyOverride, int diseaseSkillOverride,
             int diseaseLevelOverride, int damagePercent, boolean broadcast) {
-        if (attacker == null || target == null || !attacker.isAlive() || !target.isAlive()) {
+        if (attacker == null || !attacker.isAlive()) {
             return 0;
         }
-        MapleMap map = attacker.getMap();
+        return roll(attacker, attacker.getMap(), target, attackIndex, magic, physicalAttackOverride,
+                magicAttackOverride, deadlyOverride, diseaseSkillOverride, diseaseLevelOverride, damagePercent,
+                broadcast);
+    }
+
+    private static int roll(
+            Monster attacker, MapleMap map, Character target, int attackIndex, boolean magic,
+            int physicalAttackOverride, int magicAttackOverride,
+            boolean deadlyOverride, int diseaseSkillOverride,
+            int diseaseLevelOverride, int damagePercent, boolean broadcast) {
+        if (target == null || !target.isAlive()) {
+            return 0;
+        }
         if (map == null || target.getMap() != map
                 || (target.isChangingMaps() && !(target.getClient() instanceof BotClient))
                 || target.isHidden()) {

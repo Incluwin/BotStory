@@ -5855,6 +5855,10 @@ tuning:
     # Purpose: Lets the boss parts a player's client moves, such as Zakum's arms, hit the companions fighting beside that player, as they hit the player.
     # Technical: AgentBossAttackMirror decodes each attack the part's controller reports in MOVE_LIFE (BossAttackMirrorSeam) and, at the attack's attackAfter, hits the INSIDE members of the open companion run in its shape. OBSERVE logs the predicted targets and changes no HP. The GM's !bossmirror mode beats this value until the next restart. Only parts AgentBossScope guards count.
     server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MODE: 'APPLY'
+    # Values: OFF, OBSERVE or APPLY. Recommended: OBSERVE until a live run compares the logged blasts with a player's own hits (Papulatus, P15); then APPLY, or OFF if the box is wrong.
+    # Purpose: Lets a bomb that blows itself up, such as Papulatus's, hit the companions beside the players it hits.
+    # Technical: At a self-destruct kill (MapleMap, its HP threshold or its timer) AgentBossAttackMirror.selfDestructed takes the bomb's attack1 box (Unconfirmed: the client uses attack1) and hits, through AgentCombatDamageRuntime.applyBlastHit, the Agents its scope covers: INSIDE or LEAVING members of an open run in its event, every Agent on a field boss's map whose key is on, or the trial GM's companions. Each blast logs one line, OBSERVE included; OBSERVE changes no HP. DAMAGE_PERCENT and MAX_SHOWN_HITS apply.
+    server.agents.capabilities.expedition.boss.AgentBossAttackMirror.BLAST_MODE: 'OBSERVE'
     # Values: a positive integer; unit: milliseconds. Recommended: 4000-8000; 6000 covers the longest Zakum arm animation (attack2 of 8800009, about 5800 ms).
     # Purpose: Caps how long the mirror treats repeated reports of one attack as the same attack, so a client that repeats the action never doubles a hit.
     # Technical: AgentBossAttackMirror accepts a part's attack again only after min(DEDUP_MAX_MS, max(attackAfter, the full animation with UOL frames, ServerMobActionCatalog.resolvedAnimationMs)) since the last accepted report of that attack; keys of dead parts and keys older than this are pruned.
@@ -5905,7 +5909,7 @@ tuning:
     server.agents.capabilities.expedition.zakum.AgentZakumScenario.PLATFORM_ANCHORS: '-345,-488|-373,-556|446,-530|473,-391'
     # Values: a non-negative integer; unit: milliseconds. Recommended: 0 (off); 900 when a boss stage of the live check closes or strains the game client.
     # Purpose: Spaces the attacks of companions fighting inside a boss run, so fewer attack effects and sounds reach the players' game clients on the boss map.
-    # Technical: AgentCombatAttackRuntime raises the attack cooldown after each committed attack to at least this long (AgentBossClientLoad.attackFloorMs) while the Agent is an INSIDE member on its boss run's battle map, in every boss run; an attack whose own cooldown is longer keeps it. 0 changes nothing. The same attacks are counted per run as botAttacks= in the boss mirror's summary line.
+    # Technical: AgentCombatAttackRuntime raises the attack cooldown after each committed attack to at least this long (AgentBossClientLoad.attackFloorMs) while the Agent is an INSIDE member on its boss run's battle map, in every boss run, and (P12) while it stands on a map with no event beside a field boss whose field key is on (AgentBossField.near); an attack whose own cooldown is longer keeps it. 0 changes nothing. The same attacks are counted per run as botAttacks= in the boss mirror's summary line.
     server.agents.capabilities.expedition.boss.AgentBossClientLoad.ATTACK_INTERVAL_FLOOR_MS: '0'
 
     # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----

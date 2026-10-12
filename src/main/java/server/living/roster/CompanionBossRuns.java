@@ -1076,6 +1076,16 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * companion this run allowed for {@code expedition} (its sign-up and the Start count and log nothing for it);
      * null, the stock count and log, for everyone else (CompanionBossQuota.answer).
      */
+    /**
+     * P12 G15, from memory, any thread: true while living_world.COMPANION_BOSS_ENABLED_TYPES lists {@code key}, a boss
+     * or a field group (AgentBossRunHost.Rule.bossEnabled).
+     */
+    @Override
+    public boolean bossEnabled(String key) {
+        LivingWorldConfig config = world.config();
+        return config != null && config.companionBossEnabled(key);
+    }
+
     public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {
         return quota.answer(characterId, expedition, logEntry);
     }

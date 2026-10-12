@@ -19,17 +19,20 @@ import java.util.Map;
  * <li>{@code adds}: the boss's summons, which members also hit.</li>
  * <li>{@code neverTarget}: parts a run member never hits, not even as a secondary or projectile target
  * ({@link AgentBossRunRegistry#neverTarget}): dummies, helpers and seals whose death would change the fight.</li>
+ * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
+ * a map with no event ({@link #fieldKeyOf}); the mirror's field scope and its attack floor act on them while the key
+ * is on.</li>
  * </ul>
  */
 public final class AgentBossRules {
     private static final String RESOURCE = "/agents/catalogs/boss-rules.json";
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    private static final List<Boss> BOSSES = load();
+    private static volatile List<Boss> bosses = load();
 
     /** One boss's rules. */
     public record Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
-                       List<Integer> adds, List<Integer> neverTarget) {
+                       List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -39,6 +42,7 @@ public final class AgentBossRules {
             targetPriority = targetPriority == null ? List.of() : List.copyOf(targetPriority);
             adds = adds == null ? List.of() : List.copyOf(adds);
             neverTarget = neverTarget == null ? List.of() : List.copyOf(neverTarget);
+            fieldBosses = fieldBosses == null ? List.of() : List.copyOf(fieldBosses);
         }
 
         /** The mob id of the named part; throws when the catalog names none, so a typo fails at load. */
@@ -58,7 +62,7 @@ public final class AgentBossRules {
     }
 
     public static List<Boss> all() {
-        return BOSSES;
+        return bosses;
     }
 
     /** The rules of boss {@code key} (trimmed, any case), or null when the catalog has none. */
@@ -67,7 +71,7 @@ public final class AgentBossRules {
             return null;
         }
         String wanted = key.trim().toLowerCase(Locale.ROOT);
-        for (Boss boss : BOSSES) {
+        for (Boss boss : bosses) {
             if (boss.key().equals(wanted)) {
                 return boss;
             }
@@ -79,6 +83,24 @@ public final class AgentBossRules {
     public static boolean neverTarget(String key, int mobId) {
         Boss boss = of(key);
         return boss != null && boss.neverTarget().contains(mobId);
+    }
+
+    /**
+     * P12 G1: the key of the field group whose {@code fieldBosses} list {@code mobId} (field_victoria for Mano, say),
+     * or null when no group lists it. The answer holds only on a map with no event.
+     */
+    public static String fieldKeyOf(int mobId) {
+        for (Boss boss : bosses) {
+            if (boss.fieldBosses().contains(mobId)) {
+                return boss.key();
+            }
+        }
+        return null;
+    }
+
+    /** Replaces the catalog with {@code replacement}; tests only (null loads the shipped file again). */
+    static void replaceForTest(List<Boss> replacement) {
+        bosses = replacement == null ? load() : List.copyOf(replacement);
     }
 
     private static List<Boss> load() {

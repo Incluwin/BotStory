@@ -237,6 +237,22 @@ public final class AgentCombatDamageRuntime {
         return MirroredHit.APPLIED;
     }
 
+    /**
+     * P12 G1: applies a self-destruct blast of {@code bomb} on {@code map} (its attack1, the boss mirror's blast step),
+     * on the Agent's own mailbox. The bomb may already be dead. The Agent must still be alive, visible, on the map and
+     * in its event. A blast has no shared window and is never a jump attack.
+     */
+    public static MirroredHit applyBlastHit(AgentRuntimeEntry entry, Character bot, Monster bomb, MapleMap map,
+                                            BossAction.OrdinaryAttack attack, int damagePercent,
+                                            BooleanSupplier show) {
+        if (entry == null || bot == null || bomb == null || attack == null || map == null || !bot.isAlive()
+                || bot.isHidden() || bot.getMap() != map || bot.getEventInstance() != map.getEventInstance()) {
+            return MirroredHit.NONE;
+        }
+        ServerMobDamageService.applyBlast(bomb, map, bot, attack, damagePercent, show.getAsBoolean());
+        return MirroredHit.APPLIED;
+    }
+
     /** What one mirrored boss attack did to an Agent ({@link #applyMirroredHit}). */
     public enum MirroredHit {
         /** The hit was rolled and applied; a dodge or a 0 counts too. */

@@ -140,6 +140,15 @@ public final class AgentBossRunHost {
          */
         default void ownerLeftWhileDown(Seat seat) {
         }
+
+        /**
+         * P12 G15: true while the host's kill switch lists boss or field-group key {@code key} (a field key such as
+         * field_victoria gates the mirror's field scope and its attack floor for the bosses of its group). Memory
+         * only, any thread. Unless answered, false: no key is on.
+         */
+        default boolean bossEnabled(String key) {
+            return false;
+        }
     }
 
     private static volatile Rule rule;
@@ -287,6 +296,20 @@ public final class AgentBossRunHost {
                 current.ownerLeftWhileDown(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run owner-left-while-down rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public boolean bossEnabled(String key) {
+            Rule current = current();
+            if (current == null) {
+                return false;
+            }
+            try {
+                return current.bossEnabled(key);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run boss-enabled rule failed for {}", key, failure);
+                return false;
             }
         }
     }

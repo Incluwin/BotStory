@@ -49,6 +49,14 @@ public final class BossAttackMirrorSeam {
          * ({@code damageFrom} 0 or more, as TAKE_DAMAGE sends it).
          */
         void reportedHit(Character human, Monster attacker, int damageFrom, int damage);
+
+        /**
+         * P12 G1: {@code bomb} blows itself up, just before the map kills it (its self-destruct HP or its timer). Each
+         * human client hits its own player with the blast; the listener decides whom else it hits. On the thread that
+         * kills it.
+         */
+        default void selfDestructed(Monster bomb) {
+        }
     }
 
     /** Installs the listener (null removes it) and starts the failure log afresh. */
@@ -88,6 +96,22 @@ public final class BossAttackMirrorSeam {
             current.reportedHit(human, attacker, damageFrom, damage);
         } catch (RuntimeException failure) {
             failed("reportedHit", attacker, failure, System.currentTimeMillis());
+        }
+    }
+
+    /**
+     * P12 G1: a self-destructing monster blows up (MapleMap, just before it kills the bomb, while it is still alive).
+     * Called for every self-destruct kill; the listener filters.
+     */
+    public static void selfDestructed(Monster bomb) {
+        Listener current = listener;
+        if (current == null || bomb == null) {
+            return;
+        }
+        try {
+            current.selfDestructed(bomb);
+        } catch (RuntimeException failure) {
+            failed("selfDestructed", bomb, failure, System.currentTimeMillis());
         }
     }
 

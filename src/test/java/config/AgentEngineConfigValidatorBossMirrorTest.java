@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentEngineConfigValidatorBossMirrorTest {
     private static final String PREFIX = "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.";
     private static final String MODE = PREFIX + "MODE";
+    private static final String BLAST_MODE = PREFIX + "BLAST_MODE";
     private static final String DAMAGE_PERCENT = PREFIX + "DAMAGE_PERCENT";
 
     @Test
@@ -40,6 +41,8 @@ class AgentEngineConfigValidatorBossMirrorTest {
         assertRefusedByName(MODE, "true");
         assertRefusedByName(MODE, "2");
         assertRefusedByName(MODE, "ACTIVE");
+        assertRefusedByName(BLAST_MODE, "true");
+        assertRefusedByName(BLAST_MODE, "ON");
         assertRefusedByName(DAMAGE_PERCENT, "101");
     }
 

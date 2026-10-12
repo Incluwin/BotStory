@@ -156,7 +156,7 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         MapleMap map = part.getMap();
         EventInstanceManager event = map.getEventInstance();
         long now = ports.nowMs();
-        Scope scope = scope(map, event, controller, now);
+        Scope scope = scope(part, map, event, controller, now);
         if (scope == null) {
             return;
         }
@@ -178,8 +178,8 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         }
         MapleMap map = attacker.getMap();
         EventInstanceManager event = map.getEventInstance();
-        boolean inRun = event != null && AgentBossRunRegistry.forEvent(event) != null;
-        if (!inRun && AgentBossScope.trialMap() != map) {
+        boolean inScope = event != null ? AgentBossRunRegistry.forEvent(event) != null : AgentBossField.covers(attacker);
+        if (!inScope && AgentBossScope.trialMap() != map) {
             return;
         }
         long now = ports.nowMs();
@@ -236,15 +236,21 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
 
     // ---- an accepted attack ---------------------------------------------------------------------------------
 
-    /** The open run of the part's event (forEvent), else the trial when the trial GM reports on the trial map. */
-    private Scope scope(MapleMap map, EventInstanceManager event, Character controller, long now) {
+    /**
+     * The open run of the part's event (forEvent); on a map with no event, the field scope of a field boss whose key is
+     * on (P12, AgentBossField); else the trial when the trial GM reports on the trial map.
+     */
+    private Scope scope(Monster part, MapleMap map, EventInstanceManager event, Character controller, long now) {
         AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
         if (session != null) {
-            return new Scope(session, 0, stats(session, now));
+            return new Scope(session, 0, false, stats(session, now));
+        }
+        if (event == null && AgentBossField.covers(part)) {
+            return new Scope(null, 0, true, stats(map, now));
         }
         int trialGm = AgentBossScope.trialGm();
         if (trialGm > 0 && AgentBossScope.trialMap() == map && controller.getId() == trialGm) {
-            return new Scope(null, trialGm, stats(TRIAL, now));
+            return new Scope(null, trialGm, false, stats(TRIAL, now));
         }
         return null;
     }
@@ -352,6 +358,88 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         summarize(stats, now);
     }
 
+    // ---- the blast step (P12 G1) ----------------------------------------------------------------------------
+
+    /**
+     * A self-destructing monster blows up (BossAttackMirrorSeam.selfDestructed, on the thread that kills it, while it
+     * is still alive). Each human client hits its own player with the blast; here, while BLAST_MODE is not OFF, the
+     * bomb's attack1 box hits the Agents the bomb's scope covers: the members of an open run in its event, every Agent
+     * on a field boss's map whose key is on, or the trial GM's companions on the trial map. OBSERVE logs the bomb and
+     * whom its box holds, Agents and humans, and changes no HP. Unconfirmed: that the client's blast uses attack1.
+     */
+    @Override
+    public void selfDestructed(Monster bomb) {
+        Mode mode = blastMode();
+        MapleMap map = bomb == null ? null : bomb.getMap();
+        if (mode == Mode.OFF || map == null || !bomb.isAlive()) {
+            return;
+        }
+        EventInstanceManager event = map.getEventInstance();
+        long now = ports.nowMs();
+        Scope scope = blastScope(bomb, map, event, now);
+        List<BossAction.OrdinaryAttack> attacks = scope == null ? List.of()
+                : ServerMobActionCatalog.forMob(bomb.getId()).attacks();
+        if (attacks.isEmpty()) {
+            return;
+        }
+        BossAction.OrdinaryAttack blast = attacks.get(0);
+        Point origin = bomb.getPosition();
+        MonsterStats bombStats = bomb.getStats();
+        boolean noFlip = bombStats != null && bombStats.getFixedStance() > 0;
+        boolean facingLeft = bomb.isFacingLeft();
+        List<Integer> regions = BossMirrorGeometry.regions(blast, 0, ports.random());
+        List<Character> targets = new ArrayList<>();
+        List<Integer> humans = new ArrayList<>();
+        for (Character character : map.getAllPlayers()) {
+            if (character == null || !character.isAlive() || character.isHidden()
+                    || character.getEventInstance() != event
+                    || !BossMirrorGeometry.hits(blast, origin, character.getPosition(), noFlip, facingLeft, regions)) {
+                continue;
+            }
+            if (!(character.getClient() instanceof BotClient)) {
+                humans.add(character.getId());
+            } else if (scope.covers(character.getId())) {
+                targets.add(character);
+            }
+        }
+        log.info("Boss mirror blast {} {} mob={} oid={} origin={},{} agents={} humans={}", mode, scope.stats().label(),
+                bomb.getId(), bomb.getObjectId(), origin == null ? 0 : origin.x, origin == null ? 0 : origin.y,
+                targets.stream().map(Character::getId).toList(), humans);
+        if (mode != Mode.APPLY) {
+            return;
+        }
+        AtomicInteger shown = new AtomicInteger();
+        int maxShown = maxShownHits();
+        int percent = damagePercent();
+        RunStats stats = scope.stats();
+        for (Character bot : targets) {
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+            if (entry == null) {
+                continue;
+            }
+            stats.dispatched.incrementAndGet();
+            ports.dispatch(entry, () -> count(stats, AgentCombatDamageRuntime.applyBlastHit(entry, bot, bomb, map,
+                    blast, percent, () -> shownHit(shown, maxShown, stats))));
+        }
+    }
+
+    /**
+     * A blast's scope: the open run of the bomb's event, the field scope of a field boss's map, else the trial map. No
+     * controller is asked: every client plays the blast.
+     */
+    private Scope blastScope(Monster bomb, MapleMap map, EventInstanceManager event, long now) {
+        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
+        if (session != null) {
+            return new Scope(session, 0, false, stats(session, now));
+        }
+        if (event == null && AgentBossField.covers(bomb)) {
+            return new Scope(null, 0, true, stats(map, now));
+        }
+        int trialGm = AgentBossScope.trialGm();
+        return trialGm > 0 && AgentBossScope.trialMap() == map ? new Scope(null, trialGm, false, stats(TRIAL, now))
+                : null;
+    }
+
     /** True for the first MAX_SHOWN_HITS applied hits of one attack: those send a damage packet. */
     private static boolean shownHit(AtomicInteger shown, int maxShown, RunStats stats) {
         if (shown.getAndIncrement() >= maxShown) {
@@ -389,6 +477,7 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         pruneClosedRuns();
         return runStats.computeIfAbsent(key, ignored -> key instanceof AgentBossRunSession session
                 ? new RunStats("session=" + session.sessionId(), session, now)
+                : key instanceof MapleMap field ? new RunStats("field=" + field.getId(), null, now)
                 : new RunStats("session=trial", null, now));
     }
 
@@ -458,6 +547,12 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
                 "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MODE").trim().toUpperCase(Locale.ROOT));
     }
 
+    static Mode blastMode() {
+        return Mode.valueOf(config.AgentTuning.stringValue(
+                "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.BLAST_MODE").trim()
+                .toUpperCase(Locale.ROOT));
+    }
+
     static long dedupMaxMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.DEDUP_MAX_MS");
@@ -490,10 +585,19 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
 
     // ---- records --------------------------------------------------------------------------------------------
 
-    /** An open run (session set) or the trial (session null, led by {@code trialGmId}) and its counters. */
-    private record Scope(AgentBossRunSession session, int trialGmId, RunStats stats) {
-        /** True for an Agent the attack may hit: an INSIDE or LEAVING member, or a companion the trial GM leads. */
+    /**
+     * An open run (session set), a field boss's map ({@code field}, P12), or the trial (session null, led by {@code
+     * trialGmId}), and its counters.
+     */
+    private record Scope(AgentBossRunSession session, int trialGmId, boolean field, RunStats stats) {
+        /**
+         * True for an Agent the attack may hit: an INSIDE or LEAVING member, every Agent on a field boss's map (citizens
+         * too, decision 19), or a companion the trial GM leads.
+         */
         boolean covers(int agentId) {
+            if (field) {
+                return true;
+            }
             if (session == null) {
                 return AgentRuntimeRegistry.leaderIdForAgentCharacter(agentId) == trialGmId;
             }

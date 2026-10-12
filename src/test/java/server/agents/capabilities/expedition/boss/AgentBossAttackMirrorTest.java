@@ -65,8 +65,10 @@ class AgentBossAttackMirrorTest {
     private static final String SHARED_HIT_WINDOW = PREFIX + "SHARED_HIT_WINDOW";
     private static final String CALIBRATION_WINDOW_MS = PREFIX + "CALIBRATION_WINDOW_MS";
     private static final String SUMMARY_LOG_MS = PREFIX + "SUMMARY_LOG_MS";
+    private static final String BLAST_MODE = PREFIX + "BLAST_MODE";
+    private static final String BOSS_IDS = "server.agents.capabilities.mobcontrol.AgentBossScope.BOSS_IDS";
     private static final List<String> TUNING = List.of(MODE, DEDUP_MAX_MS, MAX_SHOWN_HITS, DAMAGE_PERCENT,
-            SHARED_HIT_WINDOW, CALIBRATION_WINDOW_MS, SUMMARY_LOG_MS,
+            SHARED_HIT_WINDOW, CALIBRATION_WINDOW_MS, SUMMARY_LOG_MS, BLAST_MODE, BOSS_IDS,
             "server.agents.capabilities.mobcontrol.AgentBossScope.ENABLED",
             "server.agents.capabilities.mobcontrol.AgentBossScope.EXPEDITION_TYPES");
 
@@ -76,6 +78,8 @@ class AgentBossAttackMirrorTest {
     private static final int REGION_ARM = 8_800_006;
     /** Right arm 3: attack1 is a jump attack, a physical box lt(-800,-250) rb(1100,0). */
     private static final int JUMP_ARM = 8_800_009;
+    /** A Papulatus bomb: self-destructs at half HP; attack1 is a physical box lt(-65,-100) rb(65,0). */
+    private static final int PAPULATUS_BOMB = 8_500_003;
     private static final int OID = 1_234;
     private static final int OWNER = 42_000_081;
     private static final int THANE = 42_000_090;
@@ -141,6 +145,8 @@ class AgentBossAttackMirrorTest {
     void tearDown() {
         defenses.close();
         AgentBossScope.endTrial();
+        AgentBossRules.replaceForTest(null);
+        AgentBossRunHost.install(null);
         AgentBossRunRegistry.resetForTest();
         AgentBossClientLoad.resetForTest();
         AgentRuntimeRegistry.clear();
@@ -617,6 +623,102 @@ class AgentBossAttackMirrorTest {
                     + " shown=1 window=1 airborne=0 unengaged=0 regionsMask=0 regionsSampled=0 botAttacks=2"),
                     summaries);
         }
+    }
+
+    // ---- P12: the field scope and the blast step -------------------------------------------
+
+    @Test
+    void aFieldBossWhoseKeyIsOnHitsEveryAgentInRangeCitizensTooAndNothingWhileItsKeyIsOff() {
+        AgentBossRunRegistry.remove(session);
+        tune(BOSS_IDS, String.valueOf(ARM));
+        MapleMap field = mapWith(null);
+        Character player = human(OWNER + 1, field, null, IN_RANGE);
+        Monster fieldBoss = part(ARM, field, player);
+        Character companion = bot(THANE, IN_RANGE, null, field, player.getId());
+        Character citizen = bot(ISOLDE, IN_RANGE, null, field, ISOLDE);
+        Character outOfRange = bot(SORREL, OUT_OF_RANGE, null, field, SORREL);
+        boolean[] keyOn = fieldGroup("field_test", ARM);
+
+        attack(fieldBoss, player, 0);
+        assertEquals(0, impacts.size(), "the field key is off");
+
+        keyOn[0] = true;
+        attack(fieldBoss, player, 0);
+        runImpacts();
+        runHits();
+
+        verify(companion).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(citizen).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(outOfRange, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+        assertTrue(mirror.statusLines().stream().anyMatch(line -> line.startsWith("Run field=")),
+                mirror.statusLines().toString());
+    }
+
+    @Test
+    void aBombsBlastLogsInObserveAndHitsTheRunsMembersInItsBoxInApplyEvenAfterItDied() {
+        Character inBox = member(THANE, new Point(30, -10));
+        Character outOfBox = member(ISOLDE, new Point(300, -10));
+        Monster bomb = part(PAPULATUS_BOMB, map, owner);
+        tune(BLAST_MODE, "OBSERVE");
+
+        try (LogLines lines = new LogLines(AgentBossAttackMirror.class)) {
+            mirror.selfDestructed(bomb);
+
+            assertEquals(0, hits.size(), "OBSERVE changes no HP");
+            List<String> blasts = lines.startingWith("Boss mirror blast");
+            assertEquals(1, blasts.size(), blasts.toString());
+            assertTrue(blasts.get(0).contains("mob=" + PAPULATUS_BOMB) && blasts.get(0).contains("agents=[" + THANE + "]"),
+                    blasts.get(0));
+        }
+
+        tune(BLAST_MODE, "APPLY");
+        mirror.selfDestructed(bomb);
+        assertEquals(1, hits.size(), "one mailbox hit: the member in the bomb's attack1 box");
+        when(bomb.isAlive()).thenReturn(false); // the map kills it before the mailbox runs the hit
+        runHits();
+        verify(inBox).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(outOfBox, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "a bomb already dead blows up no more");
+    }
+
+    @Test
+    void aBlastOutsideEveryScopeOrWithBlastModeOffDoesNothing() {
+        Character thane = member(THANE, new Point(30, -10));
+        Monster bomb = part(PAPULATUS_BOMB, map, owner);
+        tune(BLAST_MODE, "OFF");
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "OFF");
+
+        tune(BLAST_MODE, "APPLY");
+        AgentBossRunRegistry.remove(session);
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "no run in its event");
+
+        MapleMap field = mapWith(null);
+        mirror.selfDestructed(part(PAPULATUS_BOMB, field, null));
+        assertEquals(0, hits.size(), "a field with no key on and no trial");
+        verify(thane, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+    }
+
+    /** Lists {@code mobId} under field group {@code key} and installs a host whose answer for it is the returned flag. */
+    private boolean[] fieldGroup(String key, int mobId) {
+        AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss(key, "Test field", null, null, null, null,
+                List.of(mobId))));
+        boolean[] keyOn = {false};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String asked) {
+                return keyOn[0] && key.equals(asked);
+            }
+        });
+        return keyOn;
     }
 
     // ---- fixture ---------------------------------------------------------------------------
