@@ -726,7 +726,8 @@ public final class AgentSupplyReadiness {
      * trip from it may reach DESK_MAX_HOPS, both ways. Only a gate the host lets trips leave from sends one.
      */
     static boolean bossDesk(int mapId) {
-        String raw = config.AgentTuning.stringValue(TUNING_PREFIX + "BOSS_DESK_MAPS");
+        String raw = config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_DESK_MAPS");
         if (raw == null || "none".equals(raw.trim())) {
             return false;
         }

@@ -58,8 +58,9 @@ class AgentNormalBalrogFightTest {
                 EasyBalrogEncounterService.NORMAL_RELEASE_SEAL_ID), rules.neverTarget());
         assertTrue(AgentBossRules.neverTarget("balrog_normal", 8830006));
         assertTrue(!AgentBossRules.neverTarget("balrog_normal", 8830000), "the body: the fake flag decides");
-        assertTrue(!AgentBossRules.neverTarget("easy_balrog", 8830013), "Easy has no catalog entry yet");
-        assertNull(AgentBossRules.of("easy_balrog"));
+        assertTrue(!AgentBossRules.neverTarget("easy_balrog", 8830013), "Easy's row is a label only (P12 G12)");
+        assertEquals(java.util.Map.of(), AgentBossRules.of("easy_balrog").roles());
+        assertEquals(List.of(), AgentBossRules.of("easy_balrog").neverTarget());
         assertNull(AgentBossRules.of(null));
         assertThrows(IllegalStateException.class, () -> rules.role("tail"));
     }
