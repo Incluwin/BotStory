@@ -34,19 +34,19 @@ string). `version` fields are the low 32 bits of `CompanionViews` versions.
 
 | op | name | body | server does |
 |---|---|---|---|
-| 0 | HELLO | `short protocol` (=1), `int dllBuild` (yyyymmdd) | stores the protocol on the `Client`; replies WELCOME |
+| 0 | HELLO | `short protocol` (1 or 2), `int dllBuild` (yyyymmdd) | stores the protocol on the `Client`; replies WELCOME |
 | 1 | OPEN | none | replies SNAPSHOT; watches the crew while open |
 | 2 | CLOSE | none | stops watching |
 | 3 | ACTION | `byte verb`, `int ownerVersion`, `string a`, `int aVersion`, `string b`, `int bVersion` | see Verbs |
 
 HELLO is sent once per connection, after the first SET_FIELD of that connection (a channel change is a new
-connection). A HELLO with an unknown protocol gets WELCOME `enabled=0`.
+connection). WELCOME answers the lower of the client's protocol and the server's (2): a newer client is served at 2, an older one at its own; a protocol of 0 or less gets no answer (Step 7).
 
 ### Server to client (0x17A)
 
 | type | name | body |
 |---|---|---|
-| 0 | WELCOME | `short protocol` (=1), `byte enabled` |
+| 0 | WELCOME | `short protocol` (agreed: min(client, server)), `byte enabled` |
 | 1 | SNAPSHOT | see below |
 | 2 | CLOSE | none (switch turned off, or the character may no longer use it) |
 | 3 | OPEN | none (reserved: the server asks the client to open; client answers with OPEN) |

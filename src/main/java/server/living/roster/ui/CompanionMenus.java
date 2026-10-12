@@ -303,7 +303,8 @@ public final class CompanionMenus {
 
     /**
      * {@link #compute(Character, String, Supplier, Consumer)} for a page on {@code surface}. A native page waits on no
-     * NPC window, so on NATIVE only the time is checked (no page long after the click).
+     * NPC window: on NATIVE the time is checked (no page long after the click), and a native page the player opened
+     * since the click (the click's own page has closed by then) is never replaced.
      */
     <T> void compute(Character owner, String name, Supplier<T> work, Consumer<T> show, Surface surface) {
         long clickedAtMs = System.currentTimeMillis();
@@ -315,7 +316,7 @@ public final class CompanionMenus {
             }
             client.runOnIoThread(() -> {
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS
-                        && (surface == Surface.NATIVE || LivingTalk.mayShow(owner))) {
+                        && (surface == Surface.NATIVE ? !LivingTalk.nativeActive(owner) : LivingTalk.mayShow(owner))) {
                     show.accept(found);
                 }
             });

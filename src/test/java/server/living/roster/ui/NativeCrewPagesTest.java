@@ -407,6 +407,31 @@ class NativeCrewPagesTest {
     }
 
     @Test
+    void aPageThatReadsTheStoreFirstNeverReplacesAPageOpenedSinceTheClick() {
+        hadrik();
+        when(manager.namedLineups(owner)).thenReturn(Map.of());
+        List<Runnable> companionOps = new ArrayList<>();
+        CompanionExecutor queued = DirectExecutor.queued(companionOps);
+        when(world.executor()).thenReturn(queued);
+
+        menus.crews().nativeActions(owner);
+        pages.pick(owner, "My lineups...");
+        companionOps.forEach(Runnable::run);
+        companionOps.clear();
+        assertTrue(pages.last().text().startsWith("The lineups I keep:"), "drawn when nothing newer is shown");
+
+        LivingTalk.endNative(owner);
+        menus.crews().nativeActions(owner);
+        pages.pick(owner, "My lineups...");
+        menus.crews().nativeActions(owner); // the player opened the actions page again before the store answered
+        NativeTalkPage newer = pages.last();
+        companionOps.forEach(Runnable::run);
+
+        org.junit.jupiter.api.Assertions.assertSame(newer, pages.last(), "the late page is not drawn over the newer one");
+        assertTrue(LivingTalk.nativeActive(owner));
+    }
+
+    @Test
     void whoShouldComeAlongCallsTheSuggestedCrew() {
         hadrik();
         Persona mira = personas.get(add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER).personaId());
