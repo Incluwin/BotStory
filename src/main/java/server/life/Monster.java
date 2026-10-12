@@ -835,6 +835,17 @@ public class Monster extends AbstractLoadedLife {
         return LootManager.retrieveRelevantDrops(this.getId(), lootChars);
     }
 
+    /**
+     * P12 G2, the revived-form guard: a revived form of a boss part the control-steal block covers
+     * (AgentBossScope.guards) never passes to the Agent that controlled the dead form. It keeps the controller its
+     * spawn picked (aggroUpdateController skips Agents). Every other revived form goes to the previous controller, as
+     * before; EPQ's Poison Golem forms are outside the guard.
+     */
+    static boolean revivedFormStaysOffAgent(Character previousController, Monster revived) {
+        return previousController.getClient() instanceof BotClient
+                && server.agents.capabilities.mobcontrol.AgentBossScope.guards(revived);
+    }
+
     public Character killBy(final Character killer) {
         distributeExperience(killer != null ? killer.getId() : 0);
 
@@ -892,7 +903,7 @@ public class Monster extends AbstractLoadedLife {
                             for (int i = MobId.DEAD_HORNTAIL_MAX; i >= MobId.DEAD_HORNTAIL_MIN; i--) {
                                 reviveMap.killMonster(reviveMap.getMonsterById(i), killer, true, (short) 0);
                             }
-                        } else if (controller != null) {
+                        } else if (controller != null && !revivedFormStaysOffAgent(controller, mob)) {
                             mob.aggroSwitchController(controller, aggro);
                         }
 

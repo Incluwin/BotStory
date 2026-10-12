@@ -4,6 +4,7 @@ import client.BotClient;
 import client.Character;
 import net.server.services.task.channel.ServerMobAutonomyService;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 import server.life.Monster;
@@ -21,8 +22,9 @@ import java.util.Set;
  * (AbstractDealDamageHandler.checkAttackDistance).
  *
  * <p>{@link #guards} covers a part while ENABLED, when the server does not own it, no Agent controls it, and one of
- * three cases holds: a boss in an event of a listed expedition type (EXPEDITION_TYPES), a listed id on a map with no
- * event (BOSS_IDS), or a part on the GM trial map. Memory only, any thread.</p>
+ * four cases holds: a boss in an event of a listed expedition type (EXPEDITION_TYPES), a listed id on a map with no
+ * event (BOSS_IDS), a listed id in an event with an open companion run (P12: a party-instance boss such as Papulatus,
+ * or an add inside an expedition), or a part on the GM trial map. Memory only, any thread.</p>
  */
 public final class AgentBossScope {
     private static volatile Trial trial;
@@ -88,9 +90,13 @@ public final class AgentBossScope {
             if (listedId(monster.getId())) {
                 return true;
             }
-        } else if (monster.isBoss()) {
-            Expedition expedition = event.getExpedition();
+        } else {
+            Expedition expedition = monster.isBoss() ? event.getExpedition() : null;
             if (expedition != null && listedTypes().contains(expedition.getType())) {
+                return true;
+            }
+            // P12 case 4: a listed id inside an event with an open companion run (a party-instance boss, an add)
+            if (listedId(monster.getId()) && AgentBossRunRegistry.forEvent(event) != null) {
                 return true;
             }
         }
