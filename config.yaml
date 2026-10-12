@@ -808,9 +808,10 @@ living_world:
     ROSTER_BOOK_ITEM_ID: 2430011
     # Native Crew window (P10, docs/BOT_MANAGEMENT_P10_PLAN.md; NativeCrewWindow): who may open the mouse-driven crew
     # window that a client with the P10 DLL offers on its hotkey. off = nobody (a HELLO is answered "not enabled" and
-    # the client never opens it), gm = GM characters only, all = everyone. The NPC-dialog Crew window, the cards and the
-    # Roster item work as before either way. "!world crewwindow off|gm|all" changes it until the next restart and
-    # closes every open window it no longer allows.
+    # the client never opens it), gm = GM characters only, all = everyone. Where it allows the window, the Roster item
+    # opens it on a client whose window has every NPC Crew window function (protocol 2); the NPC-dialog Crew window and
+    # the cards work as before either way. "!world crewwindow off|gm|all" changes it until the next restart and closes
+    # every open window it no longer allows.
     CREW_WINDOW_NATIVE: "all"
     # Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md): companions per online human, live bench bots
     # per owner and server-wide (BENCH_LIVE_MAX above stays the bench rotation size), one expedition burst,
