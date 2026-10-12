@@ -811,7 +811,7 @@ living_world:
     # the client never opens it), gm = GM characters only, all = everyone. The NPC-dialog Crew window, the cards and the
     # Roster item work as before either way. "!world crewwindow off|gm|all" changes it until the next restart and
     # closes every open window it no longer allows.
-    CREW_WINDOW_NATIVE: "off"
+    CREW_WINDOW_NATIVE: "gm"
     # Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md): companions per online human, live bench bots
     # per owner and server-wide (BENCH_LIVE_MAX above stays the bench rotation size), one expedition burst,
     # the registered Agent ceiling and the per-owner gap between two loads. Revisit after the scheduler fix.
