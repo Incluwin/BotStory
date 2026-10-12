@@ -75,7 +75,8 @@ class AgentBossRunPartyEventTest {
     @Test
     void theFirstThreeCatalogBossesAreExpeditionsThePartyBossesAreNotAndEveryDeadOneWaitsOutside() {
         for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
-            boolean party = definition.key().equals("latanica") || definition.key().startsWith("neo_");
+            boolean party = definition.key().equals("latanica") || definition.key().startsWith("neo_")
+                    || definition.key().equals("papulatus");
             assertEquals(party, definition.partyInstance(), definition.key());
             assertEquals(AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, definition.deathMode(), definition.key());
         }

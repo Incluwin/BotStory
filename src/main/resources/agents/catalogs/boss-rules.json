@@ -73,6 +73,15 @@
       "minLevel": 70
     },
     {
+      "key": "papulatus",
+      "label": "Papulatus",
+      "targetPriority": [8500001, 8500002],
+      "adds": [8500000, 8500003, 8500004],
+      "neverTargetFakes": true,
+      "deathWaitMap": 220080000,
+      "randomSpots": true
+    },
+    {
       "key": "field_victoria",
       "label": "Victoria field bosses",
       "fieldBosses": [2220000, 3220000, 5220002, 6220000, 5220001, 5220000, 8220008, 8220009, 6130101, 6300005,

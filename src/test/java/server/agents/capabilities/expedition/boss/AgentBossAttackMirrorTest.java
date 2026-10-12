@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -80,6 +81,10 @@ class AgentBossAttackMirrorTest {
     private static final int JUMP_ARM = 8_800_009;
     /** A Papulatus bomb: self-destructs at half HP; attack1 is a physical box lt(-65,-100) rb(65,0). */
     private static final int PAPULATUS_BOMB = 8_500_003;
+    /** The Clock: attack3, its lightning, is a magic box lt(-800,-600) rb(800,250) striking at random spots. */
+    private static final int CLOCK = 8_500_001;
+    /** Zakum's body 1: attack2 also has random spots (100 px apart), but Zakum's rules leave them off. */
+    private static final int ZAKUM_BODY = 8_800_000;
     private static final int OID = 1_234;
     private static final int OWNER = 42_000_081;
     private static final int THANE = 42_000_090;
@@ -719,6 +724,60 @@ class AgentBossAttackMirrorTest {
             }
         });
         return keyOn;
+    }
+
+    /**
+     * P15: the Clock's lightning strikes only near its random spots. 30 members stand 10 px apart across one spacing
+     * (300 px) of its box; whatever the phase, the 7 or 8 of them within RANDOM_SPOT_HALF_WIDTH_PX (35) of a spot are
+     * struck, and no other.
+     */
+    @Test
+    void theClocksLightningStrikesOnlyTheMembersNearItsRandomSpots() {
+        EventInstanceManager tower = mock(EventInstanceManager.class);
+        MapleMap clockRoom = mapWith(tower);
+        Character leader = human(STRANGER, clockRoom, tower, ORIGIN);
+        Monster clock = part(CLOCK, clockRoom, leader);
+        AgentBossRunSession papulatus = new AgentBossRunSession(8L, AgentBossRunCatalog.PAPULATUS, tower,
+                new FakeBossRunPorts.Fight(), NOW);
+        AgentBossRunRegistry.put(papulatus);
+        BossAction.OrdinaryAttack lightning = ServerMobActionCatalog.forMob(CLOCK).attacks().get(2);
+        assertEquals(300, lightning.randomSpotSpacing());
+        List<Character> crew = new ArrayList<>();
+        for (int index = 0; index < 30; index++) {
+            int id = 43_000_000 + index;
+            crew.add(bot(id, new Point(ORIGIN.x + lightning.lt().x + 10 * index, 0), tower, clockRoom, STRANGER));
+            papulatus.admit(id, STRANGER, NOW, AgentBossRunMember.Kind.FOLLOWER).adopted();
+        }
+
+        mirror.controllerAttack(leader, clock, 2, false, 0, 1);
+        runImpacts();
+        runHits();
+
+        long struck = crew.stream().filter(AgentBossAttackMirrorTest::lostHp).count();
+        assertTrue(struck >= 7 && struck <= 8, struck + " struck");
+    }
+
+    /** P15: Zakum's rules leave random spots off, so its body's attack2 strikes its whole box as before. */
+    @Test
+    void zakumsAttackWithRandomSpotsStillStrikesItsWholeBox() {
+        Monster body = part(ZAKUM_BODY, map, owner);
+        BossAction.OrdinaryAttack attack2 = ServerMobActionCatalog.forMob(ZAKUM_BODY).attacks().get(1);
+        assertEquals(100, attack2.randomSpotSpacing());
+        List<Character> crew = new ArrayList<>();
+        for (int index = 0; index < 30; index++) {
+            crew.add(member(43_000_100 + index, new Point(ORIGIN.x + attack2.lt().x + 10 * index, 0)));
+        }
+
+        mirror.controllerAttack(owner, body, 1, false, 0, 1);
+        runImpacts();
+        runHits();
+
+        assertEquals(30, crew.stream().filter(AgentBossAttackMirrorTest::lostHp).count());
+    }
+
+    private static boolean lostHp(Character bot) {
+        return mockingDetails(bot).getInvocations().stream()
+                .anyMatch(invocation -> invocation.getMethod().getName().equals("addMPHPAndTriggerAutopot"));
     }
 
     // ---- fixture ---------------------------------------------------------------------------

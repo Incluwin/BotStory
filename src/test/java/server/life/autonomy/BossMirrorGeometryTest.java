@@ -14,6 +14,41 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BossMirrorGeometryTest {
+    /** P15: a box lt(-800,-600) rb(400,250) whose effect falls at random spots 300 px apart (the Clock's spacing). */
+    private static final BossAction.OrdinaryAttack LIGHTNING = new BossAction.OrdinaryAttack(2, 3, 0, 0, 0, true,
+            new Point(-800, -600), new Point(400, 250), 0, 0, 0, false, 0, 100, 0, 0, false, 300);
+
+    @Test
+    void aRandomSpotStrikesWithinHalfWidthOfASpotFromTheBoxsLeftEdgePlusThePhase() {
+        Point origin = new Point(0, 0);
+        // facing left: the box runs -800..400; phase 20 puts spots at -780, -480, -180, 120
+        assertTrue(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(-780, 0), false, true, 300, 20, 35));
+        assertTrue(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(-445, 0), false, true, 300, 20, 35));
+        assertFalse(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(-444, 0), false, true, 300, 20, 35));
+        assertFalse(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(-630, 0), false, true, 300, 20, 35));
+        // facing right the box flips to -400..800: spots at -380, -80, 220, 520
+        assertTrue(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(220, 0), false, false, 300, 20, 35));
+        assertFalse(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(120, 0), false, false, 300, 20, 35));
+        // a noFlip part reads as facing left
+        assertTrue(BossMirrorGeometry.onRandomSpot(LIGHTNING, origin, new Point(120, 0), true, false, 300, 20, 35));
+    }
+
+    @Test
+    void noSpacingMeansNoRandomSpots() {
+        assertTrue(BossMirrorGeometry.onRandomSpot(LIGHTNING, new Point(0, 0), new Point(-630, 0), false, true, 0, 20,
+                35), "a boss whose rules leave random spots off");
+        assertFalse(BossMirrorGeometry.onRandomSpot(LIGHTNING, null, new Point(-630, 0), false, true, 300, 20, 35));
+    }
+
+    @Test
+    void theCatalogReadsTheSpacingOfAnAttackWithRandomSpotsFromWz() {
+        List<BossAction.OrdinaryAttack> clock = ServerMobActionCatalog.forMob(8_500_001).attacks();
+        assertEquals(300, clock.get(2).randomSpotSpacing(), "the Clock's attack3, its lightning");
+        assertEquals(0, clock.get(0).randomSpotSpacing());
+        assertEquals(100, ServerMobActionCatalog.forMob(8_800_000).attacks().get(1).randomSpotSpacing(),
+                "Zakum attack2 has them too; its rules leave them off");
+    }
+
     /** The altar reactor spot where every Zakum part spawns. */
     private static final Point ORIGIN = new Point(-10, -204);
     /** A valid mask needs no random draw. */

@@ -66,7 +66,8 @@ class AgentPartyBossesTest {
 
     @ParameterizedTest
     @CsvSource({"LatanicaBattle, latanica", "TD_Battle1, neo_bergamot", "TD_Battle2, neo_dunas",
-            "TD_Battle3, neo_aufheben", "TD_Battle4, neo_oberon", "TD_Battle5, neo_nibelung"})
+            "TD_Battle3, neo_aufheben", "TD_Battle4, neo_oberon", "TD_Battle5, neo_nibelung",
+            "PapulatusBattle, papulatus"})
     void eachEventScriptOpensItsOwnCatalogRowsRun(String script, String key) throws Exception {
         String source = Files.readString(Path.of("scripts/event/" + script + ".js"));
         AgentBossRunDefinition definition = AgentBossRunCatalog.of(key);

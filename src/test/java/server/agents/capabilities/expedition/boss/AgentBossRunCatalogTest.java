@@ -101,7 +101,7 @@ class AgentBossRunCatalogTest {
         assertEquals(List.of(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.ZAKUM,
                 AgentBossRunCatalog.BALROG_NORMAL, AgentBossRunCatalog.LATANICA, AgentBossRunCatalog.NEO_BERGAMOT,
                 AgentBossRunCatalog.NEO_DUNAS, AgentBossRunCatalog.NEO_AUFHEBEN, AgentBossRunCatalog.NEO_OBERON,
-                AgentBossRunCatalog.NEO_NIBELUNG), AgentBossRunCatalog.all());
+                AgentBossRunCatalog.NEO_NIBELUNG, AgentBossRunCatalog.PAPULATUS), AgentBossRunCatalog.all());
         assertSame(AgentBossRunCatalog.BALROG_NORMAL, AgentBossRunCatalog.of(" Balrog_Normal "));
         assertSame(AgentBossRunCatalog.ZAKUM, AgentBossRunCatalog.of(" Zakum "));
         assertSame(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.of("easy_balrog"));

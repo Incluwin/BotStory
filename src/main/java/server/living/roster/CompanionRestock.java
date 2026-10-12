@@ -131,8 +131,20 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     @Override
     public boolean restocksFrom(int agentCharacterId, int mapId) {
         CompanionBossRuns bossRuns = world.bossRuns();
-        boolean gate = world.config().companionRestockBossMap(mapId) && !world.config().companionRestockTripMap(mapId);
+        boolean gate = world.config().companionRestockBossMap(mapId) && !tripsFromGate(world, mapId);
         return !gate && (bossRuns == null || !bossRuns.holdsTripsAt(mapId));
+    }
+
+    /**
+     * P12 G9 and P15: true when {@code mapId} is a boss gate COMPANION_RESTOCK_TRIP_MAPS lists (Papulatus's
+     * 220080000) and the switch lists a boss whose standard a companion keeps there (CompanionBossRuns.restockKeyAt):
+     * a short companion then makes a desk trip from it instead of saying there is no shop. With the boss off the gate
+     * keeps its no-shop line. Memory only.
+     */
+    static boolean tripsFromGate(LivingWorld world, int mapId) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return world.config().companionRestockTripMap(mapId) && bossRuns != null
+                && bossRuns.restockKeyAt(mapId) != null;
     }
 
     /**

@@ -567,7 +567,7 @@ public final class AgentBossRunSession {
     private void followAnchorsOut(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         boolean beforeClear = !cleared;
         for (AgentBossRunMember member : members) {
-            boolean downOutside = beforeClear && downOutside(member);
+            boolean downOutside = beforeClear && member.downOutside();
             if (!downOutside && (member.phase() != AgentBossRunMember.Phase.INSIDE
                     || beforeClear && member.kind() != AgentBossRunMember.Kind.FOLLOWER)) {
                 continue;
@@ -597,12 +597,6 @@ public final class AgentBossRunSession {
                 host.ownerLeftWhileDown(member.seat(definition.key(), sessionId));
             }
         }
-    }
-
-    /** A member that follows its owner, out of the run because it died in the fight and came to outside. */
-    private static boolean downOutside(AgentBossRunMember member) {
-        return member.kind() == AgentBossRunMember.Kind.FOLLOWER && member.phase() == AgentBossRunMember.Phase.OUT
-                && member.out() == AgentBossRunHost.Out.DIED;
     }
 
     private static boolean alive(AgentBossRunPorts ports, AgentBossRunMember member) {

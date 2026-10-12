@@ -63,6 +63,28 @@ public final class BossMirrorGeometry {
         return BossActionGeometry.contains(attack, origin, target, left);
     }
 
+    /**
+     * P15: true when the target stands where an attack whose effect falls at random spots strikes (Papulatus's Clock
+     * attack3, its lightning). The spots stand {@code spacing} px apart (the attack's randomSpotSpacing, for a boss
+     * that reads it) from the left edge of its box plus {@code phase} (one random phase per attack, 0 to the
+     * spacing), and a target within {@code halfWidth} px of one is struck. The controlling client picks the spots and
+     * never reports them, so this approximates them. True for a spacing of 0 (no random spots); check {@link #hits}
+     * as well.
+     */
+    public static boolean onRandomSpot(BossAction.OrdinaryAttack attack, Point origin, Point target, boolean noFlip,
+                                       boolean facingLeft, int spacing, int phase, int halfWidth) {
+        if (spacing <= 0) {
+            return true;
+        }
+        if (origin == null || target == null || attack.lt() == null || attack.rb() == null) {
+            return false;
+        }
+        boolean left = noFlip || facingLeft;
+        int minX = left ? origin.x + attack.lt().x : origin.x - attack.rb().x;
+        int offset = Math.floorMod(target.x - minX - phase, spacing);
+        return Math.min(offset, spacing - offset) <= halfWidth;
+    }
+
     private static boolean usesRegions(BossAction.OrdinaryAttack attack) {
         return attack.areaCount() > 0 && attack.selectedAreaCount() > 0;
     }

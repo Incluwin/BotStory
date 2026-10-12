@@ -127,6 +127,8 @@ function setup(level, lobbyid) {
 
 function afterSetup(eim) {
     updateGateState(1);
+    // P15: the companions the party took in fight as a companion boss run (nothing while the living world's key is off)
+    Java.type('server.living.LivingWorldHooks').bossPartyEntered(eim, 'papulatus');
 }
 
 function respawnStages(eim) {}

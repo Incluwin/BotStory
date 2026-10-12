@@ -288,6 +288,14 @@ public final class AgentBossRunMember {
     }
 
     /**
+     * A member that follows its owner, out of the run because it died in the fight and came to outside. Any thread:
+     * {@code out} is written before the volatile phase, and read after it.
+     */
+    public boolean downOutside() {
+        return phase == Phase.OUT && kind == Kind.FOLLOWER && out == AgentBossRunHost.Out.DIED;
+    }
+
+    /**
      * Its anchor left the event before the clear while it was down outside (out DIED; see
      * AgentBossRunSession.followAnchorsOut). True only the first time, so the host hears it once.
      */

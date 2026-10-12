@@ -28,6 +28,7 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
+import server.expeditions.ExpeditionBossLog;
 import server.integration.AgentPresence;
 import server.life.Monster;
 import server.living.LivingWorld;
@@ -445,6 +446,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final CompanionBossQuota quota;
     /** P13 G14: companions resting in town after a death beside a field boss (decision 18). */
     private final CompanionFieldBossRest fieldRest;
+    /** P15 G8: companions held off a party boss's gate while they have no entry of it left today. */
+    private final CompanionBossGateCap gateCap;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -466,6 +469,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.quota = new CompanionBossQuota(open);
         this.allies = new CompanionBossAllies(world, open, runs, quota);
         this.fieldRest = new CompanionFieldBossRest(world);
+        this.gateCap = new CompanionBossGateCap(world,
+                (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
     }
 
     /**
@@ -482,6 +487,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.allies = allies;
         this.quota = allies.quota();
         this.fieldRest = new CompanionFieldBossRest(world);
+        this.gateCap = new CompanionBossGateCap(world,
+                (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
     }
 
     /**
@@ -1110,6 +1117,38 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         Persona persona = ownerId <= 0 ? null : world.residents().personaOfCharacterId(agent.getId());
         return persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId
                 && map.getCharacterById(ownerId) != null;
+    }
+
+    /**
+     * P15 G8, from memory: the key of the party boss whose gate {@code mapId} is (its run catalog row's recruit map:
+     * Papulatus's 220080000) while the switch lists it; null anywhere else.
+     */
+    public String partyGateKeyAt(int mapId) {
+        LivingWorldConfig config = world.config();
+        if (config == null) {
+            return null;
+        }
+        for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
+            if (definition.partyInstance() && definition.recruitMapId() == mapId
+                    && config.companionBossEnabled(definition.key())) {
+                return definition.key();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * P15 G8 (RosterService.ownerEnteredMap, on the thread that moves the owner, memory only): the owner came onto
+     * party boss {@code bossKey}'s gate; a companion of theirs with no entry of it left today stays off it
+     * (CompanionBossGateCap).
+     */
+    public void ownerAtPartyGate(int ownerId, int mapId, String bossKey) {
+        gateCap.ownerEntered(ownerId, mapId, bossKey);
+    }
+
+    /** P15 G8, from memory: true while the companion is held off its owner's party boss gate (no entry left). */
+    public boolean heldOffGate(int companionId) {
+        return gateCap.holds(companionId);
     }
 
     /**

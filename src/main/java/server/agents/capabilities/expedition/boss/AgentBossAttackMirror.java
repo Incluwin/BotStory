@@ -271,8 +271,13 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         if (attack.hasDistributedRegions()) {
             (mask(regions) == (pOption & 0xFFFF) ? stats.regionsMask : stats.regionsSampled).incrementAndGet();
         }
+        // P15: an attack whose effect falls at random spots strikes near them only, for a boss whose rules say so
+        int spotSpacing = scope.session() != null && AgentBossRules.randomSpots(scope.session().definition().key())
+                ? attack.randomSpotSpacing() : 0;
+        int spotPhase = spotSpacing > 0 ? ports.random().nextInt(spotSpacing) : 0;
         Impact impact = new Impact(scope, part, part.getObjectId(), attackIndex, attack, facingLeft, regions,
-                ServerMobActionCatalog.jumpAttack(part.getId(), attackIndex), event, pOption, moveId);
+                ServerMobActionCatalog.jumpAttack(part.getId(), attackIndex), event, pOption, moveId, spotSpacing,
+                spotPhase);
         ports.schedule(() -> impact(impact), attack.impactDelayMs());
     }
 
@@ -322,7 +327,10 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
             boolean agent = character.getClient() instanceof BotClient;
             if ((agent && !hit.scope().covers(character.getId()))
                     || !BossMirrorGeometry.hits(hit.attack(), origin, character.getPosition(), noFlip,
-                    hit.facingLeft(), hit.regions())) {
+                    hit.facingLeft(), hit.regions())
+                    // P15: the Clock's lightning strikes near its spots only
+                    || !BossMirrorGeometry.onRandomSpot(hit.attack(), origin, character.getPosition(), noFlip,
+                    hit.facingLeft(), hit.spotSpacing(), hit.spotPhase(), randomSpotHalfWidth())) {
                 continue;
             }
             if (agent) {
@@ -558,6 +566,11 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
                 "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.DEDUP_MAX_MS");
     }
 
+    static int randomSpotHalfWidth() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.RANDOM_SPOT_HALF_WIDTH_PX");
+    }
+
     static int maxShownHits() {
         return config.AgentTuning.intValue(
                 "server.agents.capabilities.expedition.boss.AgentBossAttackMirror.MAX_SHOWN_HITS");
@@ -607,10 +620,13 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         }
     }
 
-    /** One accepted attack, waiting for its attackAfter; the regions and the event are fixed at the report. */
+    /**
+     * One accepted attack, waiting for its attackAfter; the regions, the event and (P15) the spacing and phase of its
+     * random spots (spacing 0: none) are fixed at the report.
+     */
     private record Impact(Scope scope, Monster part, int oid, int attackIndex, BossAction.OrdinaryAttack attack,
                           boolean facingLeft, List<Integer> regions, boolean jumpAttack, EventInstanceManager event,
-                          int pOption, int moveId) {
+                          int pOption, int moveId, int spotSpacing, int spotPhase) {
     }
 
     /** The dedup key: one attack of one part (Monster identity). */

@@ -17,6 +17,7 @@ import java.nio.file.Path;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -34,7 +35,8 @@ class PartyBossScriptsTest {
 
     @ParameterizedTest
     @CsvSource({"LatanicaBattle, latanica", "TD_Battle1, neo_bergamot", "TD_Battle2, neo_dunas",
-            "TD_Battle3, neo_aufheben", "TD_Battle4, neo_oberon", "TD_Battle5, neo_nibelung"})
+            "TD_Battle3, neo_aufheben", "TD_Battle4, neo_oberon", "TD_Battle5, neo_nibelung",
+            "PapulatusBattle, papulatus"})
     void afterSetupHandsTheInstanceToTheLivingWorldUnderItsBossKey(String script, String key) throws Exception {
         EventInstanceManager eim = mock(EventInstanceManager.class);
         try (MockedStatic<LivingWorldHooks> hooks = mockStatic(LivingWorldHooks.class)) {
@@ -50,6 +52,7 @@ class PartyBossScriptsTest {
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.allowHostAccess", true);
         bindings.put("polyglot.js.allowHostClassLookup", true);
+        bindings.put("em", mock(EventManager.class, RETURNS_DEEP_STUBS)); // PapulatusBattle's gate reactors
         engine.eval(Files.readString(Path.of("scripts/event/" + script + ".js"), StandardCharsets.US_ASCII));
         return (Invocable) engine;
     }

@@ -3040,8 +3040,13 @@ public final class RosterService {
             return;
         }
         portalFollow.entered(owner.getId(), map.getId(), at);
+        CompanionBossRuns gateRuns = world.bossRuns();
+        String gateKey = gateRuns == null ? null : gateRuns.partyGateKeyAt(map.getId());
+        if (gateKey != null) {
+            gateRuns.ownerAtPartyGate(owner.getId(), map.getId(), gateKey); // P15 G8: no capped companion follows on
+        }
         if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())
-                && !world.config().companionRestockTripMap(map.getId())) { // P12 G9: a desk trip goes instead
+                && !CompanionRestock.tripsFromGate(world, map.getId())) { // P12 G9: a desk trip goes instead
             int ownerId = owner.getId();
             int mapId = map.getId();
             world.executor().submit("companion.restock.boss_gate " + ownerId, () -> {

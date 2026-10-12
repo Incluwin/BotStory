@@ -82,8 +82,19 @@ public final class AgentBossRunCatalog {
     public static final AgentBossRunDefinition NEO_NIBELUNG = party("neo_nibelung", 240_070_602, 240_070_603,
             240_070_603, 0, 1, false);
 
+    // slot: papulatus
+    /**
+     * Papulatus (P15), a party boss with a daily quota (2 a day): the owner leads the party through Populatus00 on the
+     * gate 220080000, and PapulatusBattle.js's afterSetup opens the run. The fight is on 220080001, where fake Low
+     * Darkstars are never targets (boss-rules.json). 2041025 on that map is the way out before and after the clear, and
+     * warps only the talker; an owner who leaves takes their companions out with them. A dead companion revives in
+     * Ludibrium and waits there.
+     */
+    public static final AgentBossRunDefinition PAPULATUS = party("papulatus", 220_080_000, 220_080_001, -1, 2_041_025,
+            -1, true);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
-            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG);
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS);
 
     private AgentBossRunCatalog() {
     }

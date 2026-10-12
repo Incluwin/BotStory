@@ -77,8 +77,17 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance NEO_OBERON = party(AgentBossRunCatalog.NEO_OBERON, 240_000_000, 2_080_001);
     static final BossEntrance NEO_NIBELUNG = party(AgentBossRunCatalog.NEO_NIBELUNG, 240_000_000, 2_080_001);
 
+    // slot: papulatus
+    /**
+     * Papulatus (P15): no store on the way, so the gate (220080000) is a boss desk instead. A companion short of the
+     * Papulatus standard there makes one trip to the Path of Time shop (6 hops, P12 G9: BOSS_DESK_MAPS and
+     * COMPANION_RESTOCK_TRIP_MAPS) and comes back.
+     */
+    static final BossEntrance PAPULATUS = new BossEntrance(AgentBossRunCatalog.PAPULATUS,
+            new PqEntrance.Beside(-50, -30, true), 0, null, null, false, 0);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

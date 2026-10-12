@@ -37,6 +37,9 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (bossRuns != null && bossRuns.restsAfterFieldBoss(agentCharacterId)) {
             return true; // P13: resting in town after a death beside a field boss (decision 18)
         }
+        if (bossRuns != null && bossRuns.heldOffGate(agentCharacterId)) {
+            return true; // P15 G8: no entry of its owner's party boss left today: it stays off the gate
+        }
         RosterService roster = world.roster();
         if (!roster.keepsAnyOffFollow()) {
             return false;

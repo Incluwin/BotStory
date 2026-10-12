@@ -1,5 +1,6 @@
 package server.agents.runtime;
 
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk;
 import server.agents.capabilities.movement.AgentMovementBroadcastService;
 
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
@@ -37,6 +38,10 @@ public final class AgentTickPreflightRuntime {
                     entry, result.agent(), nowMs)) {
                 return new AgentTickPreflightService.Result(
                         true, result.agent(), result.runAiTick());
+            }
+            // P15: a member that died in a boss fight walks back to its boss's wait map before follow holds it
+            if (AgentBossDeathWalk.tick(entry, result.agent(), nowMs)) {
+                return new AgentTickPreflightService.Result(true, result.agent(), result.runAiTick());
             }
             AgentWorldDirectorObserveRuntime.tick(entry, result.agent(), nowMs);
             AgentWorldDirectorExecutionRuntime.tick(entry, result.agent(), nowMs);
