@@ -31,6 +31,7 @@ import server.expeditions.Expedition;
 import server.integration.AgentPresence;
 import server.life.Monster;
 import server.living.LivingWorld;
+import server.living.bond.Friendship;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.maps.MapleMap;
@@ -1379,13 +1380,17 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         record(ended, wentIn, taken);
         logPotions(ended, wentIn, taken);
         if (ended.cleared()) {
+            befriend(ended, wentIn, taken);
             for (CompanionBossRun run : taken.values()) {
                 sayGg(run, wentIn);
             }
         }
     }
 
-    /** One companion_performance row per companion that went in, its owner the one who enlisted it. */
+    /**
+     * One companion_performance row per companion that went in, its owner the one who enlisted it, through the records
+     * (CompanionRunRecorder.save), so its card shows the run at once (P12 G12).
+     */
     private void record(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
         int durationS = (int) Math.max(0L, (ended.endedAtMs() - ended.startedAtMs()) / 1000L);
         for (MemberResult member : wentIn) {
@@ -1394,8 +1399,41 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 log.debug("boss run {} member {} has no persona; no record", ended.sessionId(), member.agentId());
                 continue;
             }
-            world.store().saveCompanionRun(new CompanionRunRow(member.enlistedBy(), member.agentId(), personaId,
-                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize()));
+            CompanionRunRow row = new CompanionRunRow(member.enlistedBy(), member.agentId(), personaId,
+                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize());
+            CompanionPartyQuestService quests = world.partyQuests();
+            if (quests != null) {
+                quests.records().save(row);
+            } else {
+                world.store().saveCompanionRun(row);
+            }
+        }
+    }
+
+    /**
+     * P12 G12 (decision 23): a cleared run gives each owner online the friendship BOSS points once with each of their
+     * Resident companions that went in (Friendship.onBossRunCleared). The run's own boss kills gave none
+     * (LivingWorldHooks.mobKilled).
+     */
+    private void befriend(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
+        Friendship friendship = world.friendship();
+        if (friendship == null) {
+            return;
+        }
+        for (Map.Entry<Integer, CompanionBossRun> owner : taken.entrySet()) {
+            Character human = world.roster().onlineCharacter(owner.getKey());
+            List<Persona> companions = new ArrayList<>();
+            for (MemberResult member : human == null ? List.<MemberResult>of() : wentIn) {
+                String personaId = member.enlistedBy() == owner.getKey()
+                        ? personaId(owner.getValue(), member.agentId()) : null;
+                Persona persona = personaId == null ? null : world.content().persona(personaId);
+                if (persona != null) {
+                    companions.add(persona);
+                }
+            }
+            if (!companions.isEmpty()) {
+                friendship.onBossRunCleared(human, companions, ended.bossKey());
+            }
         }
     }
 

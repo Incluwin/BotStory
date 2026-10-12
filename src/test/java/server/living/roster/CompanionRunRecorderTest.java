@@ -191,6 +191,20 @@ class CompanionRunRecorderTest {
     }
 
     @Test
+    void bossRecordsAreReadAtBootGrowWithEachBossRowAndShowAfterTheQuests() {
+        // P12 G12: CompanionBossRuns writes a boss run's rows through save, so the card shows them at once
+        game.store.performance.addAll(List.of(row("zakum", 900, "cleared"), row("zakum", 900, "failed"),
+                row(900, "cleared"), row(900, "cleared"), row(900, "failed")));
+        records.load();
+        assertEquals(new CompanionRunStats(2, 1), records.stats("zakum", 900));
+        assertEquals(List.of("KPQ: cleared 2 of 3"), records.recordLines(900), "two Zakum runs are too few to show");
+
+        assertTrue(records.save(row("zakum", 900, "cleared")));
+        assertEquals(List.of("KPQ: cleared 2 of 3", "Zakum: cleared 2 of 3"), records.recordLines(900),
+                "the bosses after the quests, by their boss rules label");
+    }
+
+    @Test
     void theRecordsAreReadOnCompanionOpsAtBoot() throws IOException {
         String source = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
         String start = source.substring(source.indexOf("public static synchronized void start()"),

@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "bosses": [
     {
+      "key": "easy_balrog",
+      "label": "Easy Balrog"
+    },
+    {
       "key": "balrog_normal",
       "label": "Normal Balrog",
       "roles": {

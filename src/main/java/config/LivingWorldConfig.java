@@ -76,7 +76,10 @@ public class LivingWorldConfig {
     /** Points for a party quest cleared with the Resident in the party, counted this many times a day. */
     public int FRIENDSHIP_PQ_POINTS = 10;
     public int FRIENDSHIP_PQ_PER_DAY = 3;
-    /** Points for a boss killed with the Resident in the party on its map, counted this many times a day. */
+    /**
+     * Points for a boss killed with the Resident in the party on its map, counted this many times a day. Inside a
+     * companion boss run the kills give none: the cleared run gives them once per companion (P12 G12).
+     */
     public int FRIENDSHIP_BOSS_POINTS = 15;
     public int FRIENDSHIP_BOSS_PER_DAY = 3;
     /**

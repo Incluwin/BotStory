@@ -6,6 +6,7 @@ import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.MemberResult;
@@ -16,6 +17,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
+import server.living.bond.Friendship;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -733,6 +736,29 @@ class CompanionBossRunsTest {
                 "902 thane easy_balrog tapped_out, deaths 1, party 6, 600 s",
                 "903 sorrel easy_balrog cleared, deaths 2, party 6, 600 s"), rows());
         assertTrue(game.store.performance.stream().allMatch(row -> row.ownerCharacterId() == ANN));
+    }
+
+    @Test
+    void aClearedRunBefriendsTheOwnerOnceWithEachCompanionThatWentInAndAFailedOneDoesNot() {
+        // P12 G12 (decision 23): BOSS points once per run, at its clear; the run's boss kills gave none
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        signUp(ISOLDE, THANE, SORREL);
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 4, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                new MemberResult(THANE, ANN, true, false, 1, Out.DIED),
+                new MemberResult(SORREL, ANN, false, false, 0, Out.MISSED_START))));
+
+        ArgumentCaptor<List<Persona>> befriended = ArgumentCaptor.captor();
+        verify(friendship).onBossRunCleared(eq(game.ann), befriended.capture(), eq("easy_balrog"));
+        assertEquals(List.of("isolde", "thane"), befriended.getValue().stream()
+                .map(Persona::id).toList(), "Sorrel never went in");
+
+        signUp(ISOLDE);
+        runs.runEnded(new RunEnded(8L, "easy_balrog", true, false, "event-disposed", 1_000L, 61_000L, 2, List.of(
+                new MemberResult(ISOLDE, ANN, true, false, 0, Out.NO_HUMAN_LEFT))));
+        verify(friendship, times(1)).onBossRunCleared(any(), any(), any());
     }
 
     @Test
