@@ -149,6 +149,15 @@ public final class AgentBossRunHost {
         default boolean bossEnabled(String key) {
             return false;
         }
+
+        /**
+         * P12 G6: a member of a run whose dead members re-enter (Scarga, Horntail) came to outside after a death and
+         * is REENTERING: the host walks it back and has it talk to the recruit NPC. The run takes it back in once it
+         * stands in the event again, and gives up after REENTER_TIMEOUT_MS, at the clear, or when its anchor is gone.
+         * Once per death.
+         */
+        default void reentering(Seat seat) {
+        }
     }
 
     private static volatile Rule rule;
@@ -296,6 +305,19 @@ public final class AgentBossRunHost {
                 current.ownerLeftWhileDown(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run owner-left-while-down rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void reentering(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.reentering(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run reentering rule failed for {}", seat, failure);
             }
         }
 

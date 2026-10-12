@@ -56,11 +56,24 @@ public final class AgentDeathTickService {
                                             Character agent,
                                             int restoredHpPercent,
                                             RespawnHooks hooks) {
+        MapleMap currentMap = agent.getMap();
+        MapleMap townMap = currentMap == null ? null : currentMap.getReturnMap();
+        respawnAt(entry, agent, restoredHpPercent, townMap == null ? currentMap : townMap, hooks);
+    }
+
+    /**
+     * The same respawn into {@code townMap} (P12 G6: a revive inside a boss event passes the event's own instance of
+     * the return map); null stays on the current map.
+     */
+    public static void respawnAt(AgentRuntimeEntry entry,
+                                 Character agent,
+                                 int restoredHpPercent,
+                                 MapleMap townMap,
+                                 RespawnHooks hooks) {
         AgentDeathStateRuntime.clear(entry);
         agent.updateHp(AgentRespawnHealthPolicy.restoredHp(agent.getMaxHp(), restoredHpPercent));
 
         MapleMap currentMap = agent.getMap();
-        MapleMap townMap = currentMap == null ? null : currentMap.getReturnMap();
         if (townMap == null) {
             townMap = currentMap;
         }

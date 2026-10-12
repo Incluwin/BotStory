@@ -5531,6 +5531,10 @@ tuning:
     # Purpose: How close a self-led boss-run member (a bench ally) walks to its own spot beside the entry NPC, and how close any member counts as standing at its spot.
     # Technical: A SELF_LED WAITING member on the recruit map is navigated to Rule.standAt on each tick while farther than this. A member within this of a spot that lies farther than NPC_REACH_PX from the NPC takes its sign-up turn from there.
     server.agents.capabilities.expedition.boss.AgentBossRunSession.SPOT_REACH_PX: '40'
+    # Values: a positive integer; unit: milliseconds. Recommended: 180000-600000; 300000 lets a companion walk from town back to the recruit NPC and in.
+    # Purpose: How long a companion that died in a boss whose dead may re-enter (Scarlion and Targa, Horntail) keeps trying to get back into the fight.
+    # Technical: AgentBossRunSession keeps a member REENTERING (AgentBossRunDefinition.DeathMode.REENTER) from the tick that sees it alive outside its event after a death. It is back INSIDE once it stands alive in the event again; after this long, at the clear, or once its anchor is no player of the event, it gives up and follows its owner (out DIED). The run does not end while a member is REENTERING. No current boss uses the mode; P17 and P18 do.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TIMEOUT_MS: '300000'
     # Values: a positive integer. Recommended: 3-10; 5 tolerates a brief blip without letting a dead endpoint absorb a request per judgment.
     # Purpose: Number of consecutive failed System One requests after which the circuit breaker opens and requests are refused locally.
     # Technical: Any success resets the count; while the breaker is open every ask returns empty immediately so callers fall back to deterministic behaviour without network latency.

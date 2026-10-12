@@ -373,12 +373,15 @@ public final class AgentBossRunSession {
             log.info("Boss run fighting: session={} boss={} inside={} partySize={}", sessionId, definition.key(),
                     count(AgentBossRunMember.Phase.INSIDE), partySize);
         }
-        watchMembers(ports, host);
+        watchMembers(ports, host, nowMs);
         if (event.isEventDisposed()) {
             // A timeout, or the last player out: the stock event is gone, and with it whoever was still in it.
             for (AgentBossRunMember member : members) {
                 if (inTheRun(member)) {
                     handBack(ports, host, member, ports.agent(member.agentId()) != null);
+                } else if (member.phase() == AgentBossRunMember.Phase.REENTERING) {
+                    letGo(ports, member);
+                    memberOut(host, member, AgentBossRunHost.Out.DIED);
                 }
             }
             end(ports, host, "event-disposed", nowMs);
@@ -393,11 +396,12 @@ public final class AgentBossRunSession {
         }
         watchHumans(ports, nowMs);
         tickLeaving(ports, nowMs);
+        tickReentering(ports, host, nowMs);
         if (phase == Phase.FIGHTING) {
             tickFight(ports, nowMs);
         }
         if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
-                + count(AgentBossRunMember.Phase.REGISTERED) == 0) {
+                + count(AgentBossRunMember.Phase.REGISTERED) + count(AgentBossRunMember.Phase.REENTERING) == 0) {
             end(ports, host, "members-out", nowMs);
         }
     }
@@ -414,7 +418,7 @@ public final class AgentBossRunSession {
      * again; one raised where it fell (alive in the fight on two ticks in a row, see AgentBossRunMember.upAgain)
      * fights on; one whose runtime is gone (parked at a logout) is out with no call.
      */
-    private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
+    private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         for (AgentBossRunMember member : members) {
             if (!inTheRun(member)) {
                 continue;
@@ -429,9 +433,54 @@ public final class AgentBossRunSession {
                             definition.key(), member.agentId(), member.deaths(), ports.supplies(agent));
                 }
             } else if (agent.getEventInstance() != event) {
-                handBack(ports, host, member, true);
+                if (member.seenDead() && !cleared
+                        && definition.deathMode() == AgentBossRunDefinition.DeathMode.REENTER) {
+                    reentering(ports, host, member, nowMs);
+                } else {
+                    handBack(ports, host, member, true);
+                }
             } else {
                 member.upAgain();
+            }
+        }
+    }
+
+    /**
+     * P12 G6: a member of a re-enter run (Scarga, Horntail) died and came to outside. It stays in the run, REENTERING:
+     * it is freed from the battle walls, and the host walks it back to the recruit NPC.
+     */
+    private void reentering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                            long nowMs) {
+        ports.clearBoundary(member.agentId());
+        member.reentering(nowMs);
+        log.info("Boss run member re-entering: session={} boss={} member={} deaths={}", sessionId, definition.key(),
+                member.agentId(), member.deaths());
+        host.reentering(member.seat(definition.key(), sessionId));
+    }
+
+    /**
+     * P12 G6, each tick: a REENTERING member standing alive in the event again is back inside. One whose runtime is
+     * gone is GONE; one whose anchor is no player of the event any more, or still outside after REENTER_TIMEOUT_MS, or
+     * the boss already fell, gives up and follows its owner (out DIED).
+     */
+    private void tickReentering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.REENTERING) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent == null) {
+                memberOut(host, member, AgentBossRunHost.Out.GONE);
+            } else if (agent.isAlive() && agent.getEventInstance() == event) {
+                member.backInside();
+                log.info("Boss run member back inside: session={} boss={} member={} map={}", sessionId,
+                        definition.key(), member.agentId(), agent.getMapId());
+            } else if (cleared || event.getPlayerById(member.anchorId()) == null
+                    || nowMs - member.reenteringSinceMs() >= reenterTimeoutMs()) {
+                log.info("Boss run member gives up re-entering: session={} boss={} member={} cleared={}", sessionId,
+                        definition.key(), member.agentId(), cleared);
+                letGo(ports, member);
+                memberOut(host, member, AgentBossRunHost.Out.DIED);
             }
         }
     }
@@ -849,6 +898,12 @@ public final class AgentBossRunSession {
      */
     private void handBackStranded(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
         for (AgentBossRunMember member : members) {
+            if (member.phase() == AgentBossRunMember.Phase.REENTERING) {
+                // outside the event already: it follows its owner again (a self-led one is stopped)
+                bestEffort("letGo", member.agentId(), () -> letGo(ports, member));
+                memberOut(host, member, AgentBossRunHost.Out.DIED);
+                continue;
+            }
             if (!inTheRun(member)) {
                 continue;
             }
@@ -924,6 +979,11 @@ public final class AgentBossRunSession {
     static long exitTimeoutMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS");
+    }
+
+    static long reenterTimeoutMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TIMEOUT_MS");
     }
 
     static int spotReachPx() {
