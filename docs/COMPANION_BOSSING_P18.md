@@ -21,8 +21,9 @@ Example: `horntail` on, the owner at the Mark (240050400) with 5 companions.
 - On the altar the companions wait until the owner wakes Horntail at the reactor. Then ranged and magic companions
   take the heads, and melee companions take the legs and the tail. They never hit the dead heads or the Horntail HP
   holder (8810010-8810018).
-- A companion that dies says one line ("ugh, i'm down. heading back from leafre!"), stands in Leafre for 5 s, is moved
-  to the cave entrance, walks up to the Mark and talks to it. The Mark warps it back to 240060000, and it walks through
+- A companion that dies says one line ("ugh, i'm down. heading back from leafre!") and stands in Leafre for 5 s. If it
+  is short of Horntail's standard, it first buys at the Leafre store, as it would with its owner beside it (follow-up
+  7a6244dba). Then it is moved to the cave entrance, walks up to the Mark and talks to it. The Mark warps it back to 240060000, and it walks through
   to the altar. If it is not back in 10 minutes, or the fight ends first, it waits outside instead.
 - After the clear (or before it, if the owner leaves), the companions leave by the Crystal of Roots on their map.
 - On the way in, a short companion buys at the Leafre store when the owner passes Leafre. At the cave entrance it makes
@@ -39,10 +40,10 @@ Example: `horntail` on, the owner at the Mark (240050400) with 5 companions.
 
 ## Changes from the plan
 
-1. **No restock in Leafre on re-entry.** The plan says the companion restocks at the Leafre store before it is moved
-   back. The shared restock rule lets a following companion restock only on its owner's map
-   (AgentSupplyReadinessRuntime.free), and its owner is in the cave. Changing that rule touches every restock path, so
-   a re-entering companion goes back in with what it carries. Open item 1.
+1. **Restock in Leafre on re-entry came in a follow-up commit.** The shared restock rule lets a following companion
+   restock only on its owner's map (AgentSupplyReadinessRuntime.free), and its owner is in the cave. P18 shipped
+   without the restock. The user asked for it on 2026-10-12, and 7a6244dba (branch
+   `feat/companion-bossing-reentry-restock`, on P20) adds it. See "Re-entry restock" below.
 2. **No `BOSS_IDS` entries.** Every Horntail part and add carries the boss flag, so `HORNTAIL` in
    `AgentBossScope.EXPEDITION_TYPES` guards them all.
 3. **The intro mobs are never-targets.** 8810024-8810026 ("Summon Horntail") live for 1 s while Horntail rises. Not in
@@ -86,6 +87,14 @@ No database change.
   the unreachable recruit map. There it stands `REENTRY_WARP_AFTER_MS`, is moved to the recruit map
   (`AgentBossRunPorts.moveOut`), then walks up to the Mark. The run's tick talks it back in as for Scarga.
 - **Lines.** `BossRunLines.BY_BOSS` gives Horntail its own down, re-enter, refusal, shop, ally and gg lines.
+- **Re-entry restock (7a6244dba).** `AgentBossDeathWalk.reentryRestockKey` names the boss key while a REENTERING
+  member stands on its `reentryWarpFrom` map (only Horntail names one). `CompanionRestock.standing` then gives it that
+  boss's standard, though the run holds it. `AgentSupplyReadinessRuntime.free` lets that member shop with its owner on
+  another map; every other following companion still needs its owner on its map. The move in waits while the trip
+  is under way, or while the restock still decides on one (at most `AgentBossRunSession.VERDICT_WAIT_MS`, 12 s, of
+  the walk). The restock runs before the death walk in the tick (AgentTickPreflightRuntime), so the walk's spent tick
+  does not block it. The Leafre store map (240000002) is one portal from Leafre, well inside `REENTER_TIMEOUT_MS`
+  (5 min).
 
 ## Tests
 
@@ -94,7 +103,12 @@ No database change.
   walks to next00 and takes it at most every interval; the second pre-head map too; on the altar ranged members take
   head A and melee members the legs; nothing up there means hold; after the clear, hold.
 - `AgentBossDeathWalkTest`: a REENTERING Horntail member stands in Leafre, is moved once to 240050400 and walks up to
-  the Mark; away from Leafre it walks to Leafre.
+  the Mark; away from Leafre it walks to Leafre. 7a6244dba: in Leafre it keeps Horntail's standard (not on the store
+  map, not in another run, not once INSIDE), and the move in waits for its trip and for a pending decision.
+- `AgentSupplyReadinessRuntimeTest` (7a6244dba): with its owner on another map, a following companion makes no trip
+  unless it walks back into a boss run.
+- `CompanionRestockTest` (7a6244dba): a companion walking back in keeps Horntail's standard though the run holds it;
+  a party quest's engagement still comes first.
 - `AgentBossRunPartyEventTest`: a member on 240060000 is adopted and fights; one on the recruit map is not.
 - `AgentPartyBossesTest`: the Horntail row against HorntailBattle.js.
 - Updated pins: keys, catalog list, death modes, shipped scope types, standards; the "unlisted boss" examples move to
@@ -102,6 +116,8 @@ No database change.
 
 Full suite on ebba44486: 13,454 tests, 4 failures, 37 skipped (11:04 min). The 4 failures were the standards pins
 in the two supply tests; 989eea669 fixes them, and the supply tests pass (120).
+
+Full suite on 7a6244dba (the re-entry restock, on P20): 13,471 tests, 0 failures, 37 skipped (11:49 min).
 
 ## GM-first live check (from the plan)
 
@@ -121,13 +137,15 @@ in the two supply tests; 989eea669 fixes them, and the supply tests pass (120).
 11. Check that the companions never hit 8810010-8810018, and that melee companions stay on the legs and tail.
 12. Run `!hpmp Flint 0`. Check the `Boss death walk moved in` and `talks back in` lines, and that Flint reaches
     240060200.
-13. Never use `!killall`. It completes the fight.
-14. Repeat with the bench allies as stage 2, then with ohboy as stage 3. For stage 3, run `!warphere ohboy` from
+13. Re-entry restock: let Flint fight until it drinks a potion. One potion below 600/600 makes it short. Run
+    `!hpmp Flint 0`. Check that Flint walks to 240000002 and buys before the `Boss death walk moved in` line.
+14. Never use `!killall`. It completes the fight.
+15. Repeat with the bench allies as stage 2, then with ohboy as stage 3. For stage 3, run `!warphere ohboy` from
     Bossfriend on 240050400.
 
 ## Open items
 
-1. Restock in Leafre on re-entry (change 1 above).
+1. Restock in Leafre on re-entry: built in 7a6244dba, not live-tested (live check step 13).
 2. The scaled standard (850/850, 7000) waits for Questions 5 and 6.
 
 ## Risks
