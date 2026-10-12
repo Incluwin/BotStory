@@ -52,16 +52,27 @@ public final class CrewSuggestions {
     public List<Suggestion> suggest(Character owner) {
         List<Suggestion> out = new ArrayList<>();
         for (String pqKey : PqEntrance.keys()) {
-            if (!world.config().companionPqEnabled(pqKey)) {
-                continue;
+            Suggestion suggestion = suggest(owner, pqKey);
+            if (suggestion != null) {
+                out.add(suggestion);
             }
-            AgentPartyQuestDefinition levels = PqEntrance.of(pqKey).definition();
-            if (owner.getLevel() < levels.minimumLevel() || owner.getLevel() > levels.maximumLevel()) {
-                continue;
-            }
-            out.add(suggest(owner, pqKey, levels));
         }
         return out;
+    }
+
+    /**
+     * The crew for {@code pqKey} alone (its entry NPC's bench page); null when the quest is switched off or its levels
+     * do not take the owner.
+     */
+    public Suggestion suggest(Character owner, String pqKey) {
+        if (!world.config().companionPqEnabled(pqKey)) {
+            return null;
+        }
+        AgentPartyQuestDefinition levels = PqEntrance.of(pqKey).definition();
+        if (owner.getLevel() < levels.minimumLevel() || owner.getLevel() > levels.maximumLevel()) {
+            return null;
+        }
+        return suggest(owner, pqKey, levels);
     }
 
     private Suggestion suggest(Character owner, String pqKey, AgentPartyQuestDefinition levels) {

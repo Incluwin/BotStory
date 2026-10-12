@@ -19,6 +19,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.CrewSuggestions.Suggestion;
 import server.living.roster.DirectExecutor;
 import server.living.roster.LakelisLines;
 import server.living.roster.LineupPlan;
@@ -70,6 +71,8 @@ class LakelisDeskGoldenTest {
     private static final int RIN = 906;
     private static final int SILENTSIN = 907;
     private static final int DORRAN = 908;
+    private static final int KAI = 909;
+    private static final int LEE = 910;
     private static final int KERNING = 103_000_000;
     private static final byte MENU = 4;
     private static final String TITLE = "#e#b<Party Quest: 1st Accompaniment>#k#n\r\n";
@@ -114,6 +117,9 @@ class LakelisDeskGoldenTest {
     private final Character ben = mock(Character.class);
     private final Client client = mock(Client.class);
     private final List<RosterEntry> rows = new ArrayList<>();
+    /** Her pick of the crew (CrewSuggestions), as the desk reads it on companion-ops; null: none. */
+    private Suggestion herPick;
+    private RuntimeException pickFails;
     private EntryDesk desk;
 
     @BeforeEach
@@ -137,7 +143,13 @@ class LakelisDeskGoldenTest {
         when(world.executor()).thenReturn(ops);
         when(roster.roster(ben)).thenReturn(rows);
         when(roster.describeAssignment(any())).thenReturn("train");
-        desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"), PqEntrance.of("kpq"));
+        desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"), PqEntrance.of("kpq"),
+                leader -> {
+                    if (pickFails != null) {
+                        throw pickFails;
+                    }
+                    return herPick;
+                });
     }
 
     @AfterEach
@@ -251,6 +263,75 @@ class LakelisDeskGoldenTest {
         pick("Rin, Lv25 Bandit - train @ Ant Tunnel");
         assertWindow(MENU, "Rin is on the way (~40 s). Talk to me again once they're here.\r\n"
                 + "\r\n#L#Are they here yet?#l\r\n#L#Never mind.#l", lastTalk());
+    }
+
+    @Test
+    void herBenchNamesHerPickPutsItFirstAndCallsItInOneClick() {
+        benched("lee", "Lee", LEE, 24);
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        Persona kai = benched("kai", "Kai", KAI, 26);
+        benched("dorran", "Dorran", DORRAN, 34);
+        herPick = new Suggestion("kpq", List.of("you", "Mira (cleared 2 of 3)", "Rin", "Kai"), List.of(rin, kai),
+                List.of(rin, kai));
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.Travelling(40_000L, 104_000_000));
+        when(roster.call(ben, kai)).thenReturn(new RosterResult.Travelling(60_000L, 104_000_000));
+        desk.proposal(ben, three(), null);
+
+        pick("Call someone from my bench...");
+        assertWindow(MENU, "Who should I send for? They'll meet you here in Kerning City.\r\n"
+                + "\r\nMy pick: you, Mira (cleared 2 of 3), Rin and Kai.\r\n"
+                + "\r\n#L#Call Rin and Kai.#l"
+                + "\r\n#L#Rin, Lv25 Bandit - train @ Ant Tunnel#l"
+                + "\r\n#L#Kai, Lv26 Bandit - train @ Ant Tunnel#l"
+                + "\r\n#L#Lee, Lv24 Bandit - train @ Ant Tunnel#l"
+                + "\r\n\r\nNot ready for this: Dorran (Lv34)\r\n#L#Back#l", lastTalk());
+
+        pick("Call Rin and Kai.");
+        assertWindow(MENU, "Rin is on the way (~40 s). Kai is on the way (~60 s). Talk to me again once they're here."
+                + "\r\n\r\n#L#Are they here yet?#l\r\n#L#Never mind.#l", lastTalk());
+        verify(service).noteCalledForLakelis(BEN, "rin");
+        verify(service).noteCalledForLakelis(BEN, "kai");
+    }
+
+    @Test
+    void aPickOfOneFromTheBenchIsNamedAndListedFirstWithNoCallForAll() {
+        benched("lee", "Lee", LEE, 24);
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        herPick = new Suggestion("kpq", List.of("you", "Mira (cleared 2 of 3)", "Pip", "Rin"), List.of(rin),
+                List.of(rin));
+        desk.proposal(ben, three(), null);
+
+        pick("Call someone from my bench...");
+        assertWindow(MENU, "Who should I send for? They'll meet you here in Kerning City.\r\n"
+                + "\r\nMy pick: you, Mira (cleared 2 of 3), Pip and Rin.\r\n"
+                + "\r\n#L#Rin, Lv25 Bandit - train @ Ant Tunnel#l"
+                + "\r\n#L#Lee, Lv24 Bandit - train @ Ant Tunnel#l\r\n#L#Back#l", lastTalk());
+    }
+
+    @Test
+    void withoutAPickSheCanCallHerBenchIsAsBefore() {
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        Persona dorran = benched("dorran", "Dorran", DORRAN, 34);
+        String before = "Who should I send for? They'll meet you here in Kerning City.\r\n"
+                + "\r\n#L#Rin, Lv25 Bandit - train @ Ant Tunnel#l"
+                + "\r\n\r\nNot ready for this: Dorran (Lv34)\r\n#L#Back#l";
+
+        when(service.plan(eq(ben), eq("kpq"), any())).thenReturn(three()); // Back: the lineup again
+        pickFails = new IllegalStateException("the store is away");
+        desk.proposal(ben, three(), null);
+        pick("Call someone from my bench...");
+        assertWindow(MENU, before, lastTalk());
+
+        pickFails = null;
+        herPick = new Suggestion("kpq", List.of("you", "Mira", "Pip", "Dorran"), List.of(dorran), List.of(dorran));
+        pick("Back");
+        pick("Call someone from my bench...");
+        assertWindow(MENU, before, lastTalk()); // her pick names nobody she can send for
+
+        herPick = new Suggestion("kpq", List.of("you", "Mira", "Pip", "Rin"), List.of(rin), List.of());
+        pick("Back");
+        pick("Call someone from my bench...");
+        assertWindow(MENU, before, lastTalk()); // her pick takes nobody from the bench
     }
 
     @Test

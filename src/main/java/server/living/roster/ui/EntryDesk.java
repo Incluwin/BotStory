@@ -2,6 +2,8 @@ package server.living.roster.ui;
 
 import client.Character;
 import client.Client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -9,6 +11,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
 import server.living.roster.CompanionPartyQuestService;
 import server.living.roster.CompanionView;
+import server.living.roster.CrewSuggestions;
 import server.living.roster.DeskLines;
 import server.living.roster.DeskVoice;
 import server.living.roster.LineupPlan;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * A party quest's entry NPC at her entrance, for a party leader with companions in the party (P6, flow 3; P6b HPQ
@@ -42,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Nothing here admits or starts a run: Yes hands the lineup to the service (which admits HPQ on companion-ops).
  */
 public final class EntryDesk implements CompanionPartyQuestService.Desk {
+    private static final Logger log = LoggerFactory.getLogger(EntryDesk.class);
     /** An outcome later than this after its click is pink text: the start can take the stock 7.8 s wait for a lobby. */
     static final long ANSWER_MS = 10_000L;
 
@@ -51,12 +56,20 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
     private final PqEntrance entrance;
     private final DeskVoice voice;
     private final PqEntrance.SeatRules seats;
+    /** The crew she would pick from the leader's party and rested bench (CrewSuggestions); read on companion-ops. */
+    private final Function<Character, CrewSuggestions.Suggestion> picks;
 
     public EntryDesk(LivingWorld world, CompanionPartyQuestService service, CompanionMenus menus, PqEntrance entrance) {
+        this(world, service, menus, entrance, leader -> menus.manager().suggestCrew(leader, entrance.key()));
+    }
+
+    EntryDesk(LivingWorld world, CompanionPartyQuestService service, CompanionMenus menus, PqEntrance entrance,
+              Function<Character, CrewSuggestions.Suggestion> picks) {
         this.world = world;
         this.service = service;
         this.menus = menus;
         this.entrance = entrance;
+        this.picks = picks;
         this.voice = entrance.voice();
         this.seats = entrance.seatRules();
     }
@@ -266,27 +279,67 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
 
     /**
      * The leader's benched and away companions in her quest's levels, to send for; the rest are named under them. It
-     * is offered only with one to send for. A pick calls the companion (join-then-travel) on companion-ops; Back is
-     * the lineup {@code shown} again, planned the way it was drawn.
+     * is offered only with one to send for. Her pick of the crew is read first on companion-ops (P9 learned lineup
+     * suggestions): when it takes companions from the bench, she names the crew over the rows, those rows come first,
+     * and with two or more of them one option calls them all. A pick calls the companion (join-then-travel) on
+     * companion-ops; Back is the lineup {@code shown} again, planned the way it was drawn.
      */
     private void bench(Character leader, LineupPlan shown) {
+        menus.compute(leader, "desk.bench", () -> pick(leader), pick -> bench(leader, shown, pick));
+    }
+
+    /** Her pick of the crew; null when there is none, or when it cannot be read. */
+    private CrewSuggestions.Suggestion pick(Character leader) {
+        try {
+            return picks.apply(leader);
+        } catch (RuntimeException e) {
+            log.warn("[desk] {}'s pick for {} could not be read", leader.getName(), entrance.key(), e);
+            return null; // her bench page as it was before picks
+        }
+    }
+
+    private void bench(Character leader, LineupPlan shown, CrewSuggestions.Suggestion pick) {
         String pqKey = shown.pqKey();
+        Set<String> picked = new HashSet<>();
+        if (pick != null) {
+            pick.fromBench().forEach(persona -> picked.add(persona.id()));
+        }
+        List<Benched> benched = benched(leader);
+        benched.sort(Comparator.comparing(companion -> !picked.contains(companion.persona().id()))); // hers first
         List<Option> options = new ArrayList<>();
         List<String> notReady = new ArrayList<>();
-        for (Benched companion : benched(leader)) {
+        List<Persona> hers = new ArrayList<>();
+        for (Benched companion : benched) {
             CompanionView view = companion.view();
             if (!companion.callable()) {
                 notReady.add(view.name() + " (Lv" + view.level() + ")");
             } else {
                 options.add(new Option(CompanionMenus.benchRow(view), () -> call(leader, pqKey, companion.persona())));
+                if (picked.contains(companion.persona().id())) {
+                    hers.add(companion.persona());
+                }
             }
+        }
+        if (hers.size() >= 2) {
+            options.add(0, new Option("Call " + joined(hers.stream().map(Persona::name).toList()) + ".",
+                    () -> call(leader, pqKey, hers, "pq.call_pick")));
         }
         if (!notReady.isEmpty()) {
             options.add(Option.heading("Not ready for this: " + String.join(", ", notReady)));
         }
-        talk(leader).menu(voice.benchPrompt() + "\r\n", options)
+        String text = voice.benchPrompt() + "\r\n";
+        if (!hers.isEmpty()) {
+            text += "\r\n" + voice.local(DeskLines.MY_PICK) + joined(pick.crew()) + ".\r\n";
+        }
+        talk(leader).menu(text, options)
                 .back(() -> proposal(leader, service.plan(leader, pqKey, shown.picked()), null))
                 .show();
+    }
+
+    /** "you, Mira (cleared 2 of 3), Pip and Rin". */
+    private static String joined(List<String> names) {
+        return names.size() <= 1 ? String.join("", names)
+                : String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.get(names.size() - 1);
     }
 
     /**
@@ -295,14 +348,23 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
      * companion that joined is not left out by a pick made before it.
      */
     private void call(Character leader, String pqKey, Persona persona) {
+        call(leader, pqKey, List.of(persona), "pq.call " + persona.id());
+    }
+
+    /** {@link #call(Character, String, Persona)} for each of {@code personas} in turn, their lines one after another. */
+    private void call(Character leader, String pqKey, List<Persona> personas, String name) {
         AtomicBoolean travelling = new AtomicBoolean();
-        menus.command(leader, "pq.call " + persona.id(), () -> {
-            RosterResult called = world.roster().call(leader, persona);
-            if (called instanceof RosterResult.Travelling) {
-                travelling.set(true);
-                noteCalled(leader.getId(), persona.id());
+        menus.command(leader, name, () -> {
+            List<String> lines = new ArrayList<>();
+            for (Persona persona : personas) {
+                RosterResult called = world.roster().call(leader, persona);
+                if (called instanceof RosterResult.Travelling) {
+                    travelling.set(true);
+                    noteCalled(leader.getId(), persona.id());
+                }
+                lines.add(RosterVoice.line(persona, called));
             }
-            return RosterVoice.line(persona, called);
+            return String.join(" ", lines);
         }, line -> {
             if (travelling.get()) {
                 onTheWay(leader, pqKey, line);

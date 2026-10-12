@@ -1120,6 +1120,34 @@ class NativeCrewWindowTest {
     }
 
     @Test
+    void aWelcomeQueuedBeforeTheWatchersCloseNeverLeavesTheBitOn() {
+        hadrik();
+        config.CREW_WINDOW_NATIVE = "gm";
+        when(owner.isGM()).thenReturn(true);
+        openWindow();
+        when(owner.isGM()).thenReturn(false);
+        List<Runnable> packetThread = new ArrayList<>();
+        java.util.concurrent.atomic.AtomicBoolean flipped = new java.util.concurrent.atomic.AtomicBoolean();
+        doAnswer(inv -> {
+            if (flipped.compareAndSet(false, true)) {
+                // "!world crewwindow off" then "all" land after the watcher cleared the bit, before its CLOSE is queued
+                config.CREW_WINDOW_NATIVE = "off";
+                window.switchChanged(List.of(owner));
+                config.CREW_WINDOW_NATIVE = "all";
+                window.switchChanged(List.of(owner));
+            }
+            packetThread.add(inv.getArgument(0));
+            return null;
+        }).when(client).runOnIoThread(any());
+
+        window.watchOpenWindows();
+        packetThread.forEach(Runnable::run);
+
+        assertEquals(NativeCrewPackets.TYPE_CLOSE, last()[2], "the watcher's CLOSE went out last");
+        assertFalse(windowEnabled.get(), "after the last CLOSE the client is disabled, and so is the bit");
+    }
+
+    @Test
     void everyCloseTheServerSendsLeavesTheRosterTheNpcWindow() {
         hadrik();
         // the watcher's CLOSE: the character lost what the switch asks for while its window was open

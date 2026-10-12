@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -118,6 +119,20 @@ class CrewSuggestionsTest {
 
         clears(950 + 'Y', "hpq", 1);
         assertEquals(List.of("you", "Yara (cleared 3 of 3)", "Jinx", "Pip"), of("hpq").crew());
+    }
+
+    @Test
+    void oneQuestsCrewIsItsEntryInTheListAndNoneWhenSwitchedOffOrNotForTheOwnersLevel() {
+        benched("mira", "Mira", 950, 26, Job.FIGHTER);
+        assertEquals(of("kpq"), suggestions.suggest(game.ann, "kpq"));
+        assertEquals(of("hpq"), suggestions.suggest(game.ann, "hpq"));
+
+        game.config.COMPANION_PQ_ENABLED_KEYS = "hpq";
+        assertNull(suggestions.suggest(game.ann, "kpq"));
+
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq";
+        when(game.ann.getLevel()).thenReturn(35);
+        assertNull(suggestions.suggest(game.ann, "kpq"));
     }
 
     @Test

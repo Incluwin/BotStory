@@ -33,6 +33,11 @@ public final class DeskLines {
      * text for both, chosen with decision 3 (2026-10-07: companions restock ammo as they do potions).
      */
     public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for supplies. They won't be long.";
+    /**
+     * Over her bench page, before the crew she would pick from the party and the rested bench (P9 learned lineup
+     * suggestions, CrewSuggestions): "My pick: you, Mira (cleared 2 of 3), Pip and Rin."
+     */
+    public static final String MY_PICK = "My pick: ";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
     /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
     static final String FINISHING = "Give <name> a sec, they're finishing something.";
