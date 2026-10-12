@@ -43,6 +43,13 @@ public final class CompanionBossKeys {
 
         // slot: papulatus (P15): a party boss with a daily quota, by the same portal and event-script hook
         keys.add("papulatus");
+
+        // slot: high-level field groups (P16): Pianus, Leafre, Temple of Time, Zipangu, Masteria
+        keys.add("field_pianus");
+        keys.add("field_leafre");
+        keys.add("field_temple");
+        keys.add("field_zipangu");
+        keys.add("field_masteria");
         return List.copyOf(keys);
     }
 

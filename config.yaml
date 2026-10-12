@@ -959,6 +959,11 @@ living_world:
     # the gate, a dead one walks back to the gate from Ludibrium, and the gate allows one desk trip
     # (COMPANION_RESTOCK_TRIP_MAPS).
     # It stays off until its live check passes (docs/COMPANION_BOSSING_P15.md).
+    # High-level field groups (P16): "field_pianus" (Pianus L and R, Seruf, Bloody Boom), "field_leafre"
+    # (Leviathan, Manon, Griffey), "field_temple" (Dodo, Lilynouch, Lyka), "field_zipangu" (Black Crow, Blue Mushmom,
+    # Bamboo Warrior, Male and Female Boss), "field_masteria" (Headless Horseman, Bigfoot). The P13 rules apply. A
+    # group's add (Bloody Boom) is fair game once a player of the party has hit one of the group's bosses on its map.
+    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P16.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

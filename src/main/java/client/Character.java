@@ -3113,6 +3113,7 @@ public class Character extends AbstractCharacterObject {
                     }
                 }
             }
+            server.integration.AgentPresence.dispelled(this); // P16: an Agent puts its buffs back up
         }
     }
 

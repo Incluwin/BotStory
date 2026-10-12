@@ -10,6 +10,7 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
@@ -1177,7 +1178,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * P13 G14, on the Agent's tick, from memory, for a field group's boss whose key is on: a companion (it follows its
      * owner) may hit it once a player of its party has hit that very boss (its damage record lists one), so it joins
      * the owner's fight and a respawn waits for a player's first hit (decision 17). A citizen, or a Resident out on its
-     * own, never hits it (decision 19); the boss's attacks still reach it.
+     * own, never hits it (decision 19); the boss's attacks still reach it. P16: a group's add (Pianus's Bloody Boom,
+     * the group's {@code adds}) is fair game once a player of the party has hit one of the group's own bosses on its
+     * map, as a player clears the summons of the boss they fight.
      */
     @Override
     public boolean mayEngageFieldBoss(Character agent, Monster boss) {
@@ -1194,7 +1197,28 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 players.add(member.getId());
             }
         }
-        return !players.isEmpty() && boss.highestDamagerIdWhere(players::contains) != 0;
+        if (players.isEmpty()) {
+            return false;
+        }
+        return boss.highestDamagerIdWhere(players::contains) != 0 || groupBossHitBy(boss, players);
+    }
+
+    /**
+     * P16: true when {@code add} is its field group's add and {@code players} hit a live boss of that group on its map.
+     */
+    private static boolean groupBossHitBy(Monster add, Set<Integer> players) {
+        AgentBossRules.Boss group = AgentBossRules.of(AgentBossRules.fieldKeyOf(add.getId()));
+        MapleMap map = group == null || !group.adds().contains(add.getId()) ? null : add.getMap();
+        if (map == null) {
+            return false;
+        }
+        for (Monster other : map.getAllMonsters()) {
+            if (other != add && other.isAlive() && group.fieldBosses().contains(other.getId())
+                    && !group.adds().contains(other.getId()) && other.highestDamagerIdWhere(players::contains) != 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {

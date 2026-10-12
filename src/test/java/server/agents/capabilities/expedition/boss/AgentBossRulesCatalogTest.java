@@ -69,6 +69,27 @@ class AgentBossRulesCatalogTest {
         }
     }
 
+    /** P16: the high-level field bosses, by region; Bloody Boom is Pianus's add. */
+    @Test
+    void eachP16FieldBossBelongsToItsRegionsGroup() {
+        for (int id : List.of(8_510_000, 8_520_000, 4_220_000, 4_220_001, 8_510_100)) {
+            assertEquals("field_pianus", AgentBossRules.fieldKeyOf(id), "Pianus " + id);
+        }
+        assertEquals(List.of(8_510_100), AgentBossRules.of("field_pianus").adds(), "Bloody Boom");
+        for (int id : List.of(8_220_003, 8_180_000, 8_180_001)) {
+            assertEquals("field_leafre", AgentBossRules.fieldKeyOf(id), "Leafre " + id);
+        }
+        for (int id : List.of(8_220_004, 8_220_005, 8_220_006)) {
+            assertEquals("field_temple", AgentBossRules.fieldKeyOf(id), "Temple of Time " + id);
+        }
+        for (int id : List.of(9_400_014, 9_400_205, 6_090_002, 9_400_120, 9_400_122, 9_400_121)) {
+            assertEquals("field_zipangu", AgentBossRules.fieldKeyOf(id), "Zipangu " + id);
+        }
+        for (int id : List.of(9_400_549, 9_400_575)) {
+            assertEquals("field_masteria", AgentBossRules.fieldKeyOf(id), "Masteria " + id);
+        }
+    }
+
     @Test
     void theFirstLivePriorityPartIsPreferredAndEveryOtherLiveMonsterIsTheFallback() {
         AgentBossRules.Preferences first = AgentBossRules.preferences(CHAIN,

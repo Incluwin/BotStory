@@ -10,6 +10,7 @@ import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntPredicate;
@@ -31,6 +32,10 @@ class CompanionFieldBossTest {
     private static final int CITIZEN = 950;
     private static final int JR_BALROG_MAP = 105_090_900;
     private static final int JR_BALROG = 8_130_100;
+    private static final int PIANUS_CAVE = 230_040_420;
+    private static final int PIANUS = 8_510_000;
+    private static final int BLOODY_BOOM = 8_510_100;
+    private static final int SERUF = 4_220_000;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private CompanionBossRuns runs;
@@ -38,6 +43,7 @@ class CompanionFieldBossTest {
     private MapleMap field;
     private Monster jrBalrog;
     private boolean annHitIt;
+    private final List<Monster> hitByAnn = new ArrayList<>();
 
     @BeforeEach
     void annAndIsoldeAtJrBalrog() {
@@ -73,6 +79,37 @@ class CompanionFieldBossTest {
         assertFalse(runs.mayEngageFieldBoss(isolde, jrBalrog), "nobody of Ann's party has hit it: a fresh spawn");
         annHitIt = true;
         assertTrue(runs.mayEngageFieldBoss(isolde, jrBalrog));
+    }
+
+    /**
+     * P16 at Pianus (field_pianus): a Bloody Boom, the group's add, is fair game once Ann has hit Pianus on its map,
+     * though nobody has hit that very Boom. Seruf, one of the group's own bosses, still waits for her first hit.
+     */
+    @Test
+    void aGroupsAddIsFairGameOnceAPlayerHitOneOfItsBossesThere() {
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "field_pianus";
+        MapleMap cave = game.map(PIANUS_CAVE);
+        Monster pianus = fieldMob(PIANUS, cave);
+        Monster boom = fieldMob(BLOODY_BOOM, cave);
+        Monster seruf = fieldMob(SERUF, cave);
+        when(cave.getAllMonsters()).thenReturn(List.of(pianus, boom, seruf));
+
+        assertFalse(runs.mayEngageFieldBoss(isolde, boom), "nobody of Ann's party has hit Pianus yet");
+        hitByAnn.add(pianus);
+        assertTrue(runs.mayEngageFieldBoss(isolde, boom), "Ann fights Pianus: its Booms are fair game");
+        assertFalse(runs.mayEngageFieldBoss(isolde, seruf), "Seruf is a boss of its own: a player hits first");
+        when(pianus.isAlive()).thenReturn(false);
+        assertFalse(runs.mayEngageFieldBoss(isolde, boom), "Pianus fell: a Boom left waits for a player's hit");
+    }
+
+    private Monster fieldMob(int mobId, MapleMap on) {
+        Monster mob = mock(Monster.class);
+        when(mob.getId()).thenReturn(mobId);
+        when(mob.isAlive()).thenReturn(true);
+        when(mob.getMap()).thenReturn(on);
+        when(mob.highestDamagerIdWhere(any())).thenAnswer(invocation ->
+                hitByAnn.contains(mob) && ((IntPredicate) invocation.getArgument(0)).test(ANN) ? ANN : 0);
+        return mob;
     }
 
     @Test

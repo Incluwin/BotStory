@@ -22,7 +22,8 @@ class CompanionBossKeysTest {
     void easyBalrogThenZakumThenNormalBalrogThenTheFieldGroupsAreTheKeys() {
         assertEquals(List.of("easy_balrog", "zakum", "balrog_normal", "field_victoria", "field_ossyria", "field_ludus",
                 "field_mulung", "field_nihal", "latanica", "neo_bergamot", "neo_dunas", "neo_aufheben", "neo_oberon",
-                "neo_nibelung", "papulatus"), CompanionBossKeys.KNOWN);
+                "neo_nibelung", "papulatus", "field_pianus", "field_leafre", "field_temple", "field_zipangu",
+                "field_masteria"), CompanionBossKeys.KNOWN);
     }
 
     /** Every boss run and every field group can be switched on: P15 shipped papulatus's row before its key. */
@@ -55,7 +56,8 @@ class CompanionBossKeysTest {
     void theMessageNamesEveryKnownKey() {
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum, balrog_normal,"
                 + " field_victoria, field_ossyria, field_ludus, field_mulung, field_nihal, latanica, neo_bergamot, neo_dunas,"
-                + " neo_aufheben, neo_oberon, neo_nibelung or papulatus", CompanionBossKeys.message());
+                + " neo_aufheben, neo_oberon, neo_nibelung, papulatus, field_pianus, field_leafre, field_temple,"
+                + " field_zipangu or field_masteria", CompanionBossKeys.message());
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog",
                 CompanionBossKeys.message(List.of("easy_balrog")));
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum or balrog",
