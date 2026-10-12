@@ -124,6 +124,42 @@ class AgentBossTargetGateTest {
         assertFalse(AgentBossTargetGate.refuses(citizen, snail), "no field group lists it");
     }
 
+    @Test
+    void aFieldBossTheHostKeepsAnAgentOffIsRefusedThoughNotImmune() {
+        // P13 G14: a companion waits for a player of its party to hit the boss; a citizen never hits it
+        AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss("field_test", "Test field", null, null, null,
+                null, List.of(MANO), false, null)));
+        boolean[] keyOn = {true};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String key) {
+                return keyOn[0];
+            }
+
+            @Override
+            public boolean mayEngageFieldBoss(Character agent, Monster boss) {
+                return agent.getId() != THANE;
+            }
+        });
+        MapleMap field = mock(MapleMap.class);
+        Monster mano = monster(field);
+        when(mano.getId()).thenReturn(MANO);
+        Monster snail = monster(field);
+        Character citizen = agent(THANE, Job.FIGHTER, null);
+        Character companion = agent(THANE + 1, Job.FIGHTER, null);
+
+        assertTrue(AgentBossTargetGate.refuses(citizen, mano));
+        assertFalse(AgentBossTargetGate.refuses(companion, mano));
+        assertFalse(AgentBossTargetGate.refuses(citizen, snail), "no field group lists it");
+        keyOn[0] = false;
+        assertFalse(AgentBossTargetGate.refuses(citizen, mano), "the field key is off: as today");
+    }
+
     private Character inside(int agentId, Job job) {
         Character agent = agent(agentId, job, event);
         AgentBossRunMember member = session.addMember(agentId, 1, 0L);

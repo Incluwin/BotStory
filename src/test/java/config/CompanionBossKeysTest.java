@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompanionBossKeysTest {
 
     @Test
-    void easyBalrogThenZakumThenNormalBalrogAreTheKeys() {
-        assertEquals(List.of("easy_balrog", "zakum", "balrog_normal"), CompanionBossKeys.KNOWN);
+    void easyBalrogThenZakumThenNormalBalrogThenTheFieldGroupsAreTheKeys() {
+        assertEquals(List.of("easy_balrog", "zakum", "balrog_normal", "field_victoria", "field_ossyria", "field_ludus",
+                "field_mulung", "field_nihal"), CompanionBossKeys.KNOWN);
     }
 
     @Test
@@ -35,8 +36,8 @@ class CompanionBossKeysTest {
 
     @Test
     void theMessageNamesEveryKnownKey() {
-        assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum or balrog_normal",
-                CompanionBossKeys.message());
+        assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum, balrog_normal,"
+                + " field_victoria, field_ossyria, field_ludus, field_mulung or field_nihal", CompanionBossKeys.message());
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog",
                 CompanionBossKeys.message(List.of("easy_balrog")));
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum or balrog",

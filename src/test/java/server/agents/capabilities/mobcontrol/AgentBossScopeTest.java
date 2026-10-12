@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.TimerManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 import server.life.Monster;
@@ -189,6 +190,37 @@ class AgentBossScopeTest {
 
         MapleMap pqStage = eventMap(null);
         assertFalse(AgentBossScope.guards(boss(8_800_003, pqStage, human(pqStage))), "a listed id inside an event");
+    }
+
+    @Test
+    void aFieldGroupsBossIsGuardedOnAFieldOnlyWhileItsKeyIsOn() {
+        // P13: Jr. Balrog is in field_victoria (boss-rules.json); BOSS_IDS stays none
+        boolean[] keyOn = {false};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String key) {
+                return keyOn[0] && key.equals("field_victoria");
+            }
+        });
+        try {
+            MapleMap field = mock(MapleMap.class);
+            Character bossfriend = human(field);
+            Monster jrBalrog = boss(8_130_100, field, bossfriend);
+            assertFalse(AgentBossScope.guards(jrBalrog), "field_victoria is off");
+
+            keyOn[0] = true;
+            assertTrue(AgentBossScope.guards(jrBalrog));
+            assertFalse(AgentBossScope.guards(boss(7_220_000, field, bossfriend)), "Tae Roon: field_mulung is off");
+            MapleMap pqStage = eventMap(null);
+            assertFalse(AgentBossScope.guards(boss(8_130_100, pqStage, human(pqStage))), "inside an event");
+        } finally {
+            AgentBossRunHost.install(null);
+        }
     }
 
     @Test

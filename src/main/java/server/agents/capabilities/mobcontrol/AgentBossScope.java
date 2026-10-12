@@ -4,6 +4,7 @@ import client.BotClient;
 import client.Character;
 import net.server.services.task.channel.ServerMobAutonomyService;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
@@ -23,7 +24,7 @@ import java.util.Set;
  *
  * <p>{@link #guards} covers a part while ENABLED, when the server does not own it, no Agent controls it, and one of
  * four cases holds: a boss in an event of a listed expedition type (EXPEDITION_TYPES), a listed id on a map with no
- * event (BOSS_IDS), a listed id in an event with an open companion run (P12: a party-instance boss such as Papulatus,
+ * event (BOSS_IDS, or P13: a field group's boss whose key is on, AgentBossField), a listed id in an event with an open companion run (P12: a party-instance boss such as Papulatus,
  * or an add inside an expedition), or a part on the GM trial map. Memory only, any thread.</p>
  */
 public final class AgentBossScope {
@@ -87,7 +88,8 @@ public final class AgentBossScope {
         }
         EventInstanceManager event = map.getEventInstance();
         if (event == null) {
-            if (listedId(monster.getId())) {
+            // P13: a field group's boss whose key is on (AgentBossField) is guarded like a listed id
+            if (listedId(monster.getId()) || AgentBossField.covers(monster)) {
                 return true;
             }
         } else {

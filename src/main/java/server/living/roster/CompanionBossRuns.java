@@ -443,6 +443,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final CompanionBossAllies allies;
     /** P8: the companions' daily boss entries (Zakum), shared with the bench allies' calls. */
     private final CompanionBossQuota quota;
+    /** P13 G14: companions resting in town after a death beside a field boss (decision 18). */
+    private final CompanionFieldBossRest fieldRest;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -463,6 +465,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.runs = new ConcurrentHashMap<>();
         this.quota = new CompanionBossQuota(open);
         this.allies = new CompanionBossAllies(world, open, runs, quota);
+        this.fieldRest = new CompanionFieldBossRest(world);
     }
 
     /**
@@ -478,6 +481,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.runs = runs;
         this.allies = allies;
         this.quota = allies.quota();
+        this.fieldRest = new CompanionFieldBossRest(world);
     }
 
     /**
@@ -1106,6 +1110,52 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         Persona persona = ownerId <= 0 ? null : world.residents().personaOfCharacterId(agent.getId());
         return persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId
                 && map.getCharacterById(ownerId) != null;
+    }
+
+    /**
+     * The character died (LivingWorldHooks.playerDied, on the dying thread): its map is read here, and companion-ops
+     * decides whether a companion that died beside a field boss rests in town first (P13, CompanionFieldBossRest).
+     */
+    public void died(Character chr) {
+        MapleMap map = chr == null ? null : chr.getMap();
+        if (map == null || map.getEventInstance() != null) {
+            return;
+        }
+        int id = chr.getId();
+        long now = System.currentTimeMillis();
+        world.executor().submit("boss.field_rest " + id, () -> fieldRest.died(id, map, now));
+    }
+
+    /**
+     * P13 G14 (decision 18), from memory, on whatever thread follows: true while the companion rests in town after a
+     * death beside a field boss (CompanionFieldBossRest), so the follow guard keeps it off follow.
+     */
+    public boolean restsAfterFieldBoss(int characterId) {
+        return fieldRest.resting(characterId, System.currentTimeMillis());
+    }
+
+    /**
+     * P13 G14, on the Agent's tick, from memory, for a field group's boss whose key is on: a companion (it follows its
+     * owner) may hit it once a player of its party has hit that very boss (its damage record lists one), so it joins
+     * the owner's fight and a respawn waits for a player's first hit (decision 17). A citizen, or a Resident out on its
+     * own, never hits it (decision 19); the boss's attacks still reach it.
+     */
+    @Override
+    public boolean mayEngageFieldBoss(Character agent, Monster boss) {
+        Persona persona = agent == null || boss == null ? null : world.residents().personaOfCharacterId(agent.getId());
+        int ownerId = persona == null ? 0 : world.roster().cachedOwnerOf(persona.id());
+        Party party = ownerId <= 0 || AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) != ownerId
+                ? null : agent.getParty();
+        if (party == null) {
+            return false;
+        }
+        Set<Integer> players = new HashSet<>();
+        for (PartyCharacter member : party.getMembers()) {
+            if (!member.isBot()) {
+                players.add(member.getId());
+            }
+        }
+        return !players.isEmpty() && boss.highestDamagerIdWhere(players::contains) != 0;
     }
 
     public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {

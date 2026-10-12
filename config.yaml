@@ -945,6 +945,11 @@ living_world:
     # "zakum" (Adobis, P8) stays off until its staged client-memory checks pass (docs/COMPANION_BOSSING_P8.md).
     # "balrog_normal" (Mu Young's Normal choice, P11) stays off until its live check passes (docs/COMPANION_BOSSING_P11.md);
     # with it on, a Normal fight a companion signed up for is the server's own (stock BalrogBattle.js for every other).
+    # Field groups (P13): "field_victoria", "field_ossyria", "field_ludus", "field_mulung", "field_nihal" (their bosses:
+    # boss-rules.json fieldBosses). With a group on, its bosses on maps with no event stay with the player's client when
+    # Agents hit them, their attacks reach every Agent in range, companions join only once a player of their party has
+    # hit that very boss, citizens never attack it, and a companion that dies beside one rests in town before following.
+    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P13.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
@@ -962,6 +967,10 @@ living_world:
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
+    # A companion that dies beside a field group's boss (P13, a field key on) rests in town before it follows its owner
+    # again, until its HP and MP are back to REST_PERCENT of their maximum or REST_MAX_MS has passed since it died.
+    COMPANION_FIELD_BOSS_REST_PERCENT: 100
+    COMPANION_FIELD_BOSS_REST_MAX_MS: 120000
     # Boss clears are not party-quest clears (2026-10-08): the game calls clearPQ for every event clear, boss
     # expeditions too. For the event scripts listed here (scripts/event file names without .js, a comma list) the
     # clear marks no companion party-quest run, advances no "clear a party quest" quest step and gives no friendship

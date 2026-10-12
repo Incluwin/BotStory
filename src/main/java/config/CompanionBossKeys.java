@@ -5,7 +5,8 @@ import java.util.List;
 
 /**
  * The boss expeditions living_world.COMPANION_BOSS_ENABLED_TYPES may list: each one whose entry NPC offers an owner who
- * creates or joins the expedition "My party will register too.". A boss's branch adds its key in its own slot of
+ * creates or joins the expedition "My party will register too.", and the field groups (P13: field_victoria and the
+ * other regions, whose bosses fight on maps with no event). A boss's branch adds its key in its own slot of
  * {@link #knownKeys()}.
  */
 public final class CompanionBossKeys {
@@ -24,6 +25,13 @@ public final class CompanionBossKeys {
 
         // slot: balrog_normal
         keys.add("balrog_normal");
+
+        // slot: field groups (P13): the field bosses of a region, by the boss rules catalog's fieldBosses
+        keys.add("field_victoria");
+        keys.add("field_ossyria");
+        keys.add("field_ludus");
+        keys.add("field_mulung");
+        keys.add("field_nihal");
         return List.copyOf(keys);
     }
 

@@ -344,6 +344,13 @@ public class LivingWorldConfig {
     public int COMPANION_BOSS_HUMAN_SEATS = 2;
     /** How long an ally walks to the room's way out after the run before it goes where it stands. */
     public int COMPANION_BOSS_ALLY_WALK_OUT_MS = 20000;
+    /**
+     * P13 (decision 18): a companion that died beside a field boss rests in town until its HP and MP are back to this
+     * percent of their maximum (1-100) before it follows its owner again, or until COMPANION_FIELD_BOSS_REST_MAX_MS.
+     */
+    public int COMPANION_FIELD_BOSS_REST_PERCENT = 100;
+    /** The longest a companion rests after a death beside a field boss, from its death (0-600000 ms). */
+    public int COMPANION_FIELD_BOSS_REST_MAX_MS = 120000;
 
     // Boss clears are not party-quest clears (2026-10-08)
     /**
@@ -645,6 +652,12 @@ public class LivingWorldConfig {
         }
         if (COMPANION_BOSS_ALLY_WALK_OUT_MS < 1000 || COMPANION_BOSS_ALLY_WALK_OUT_MS > 120000) {
             throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_WALK_OUT_MS must be within 1000..120000");
+        }
+        if (COMPANION_FIELD_BOSS_REST_PERCENT < 1 || COMPANION_FIELD_BOSS_REST_PERCENT > 100) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_REST_PERCENT must be within 1..100");
+        }
+        if (COMPANION_FIELD_BOSS_REST_MAX_MS < 0 || COMPANION_FIELD_BOSS_REST_MAX_MS > 600000) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_REST_MAX_MS must be within 0..600000");
         }
         for (String script : BOSS_EVENT_SCRIPTS == null ? new String[0] : BOSS_EVENT_SCRIPTS.split(",")) {
             if (!script.isBlank() && !script.trim().matches("[A-Za-z0-9_]+")) {

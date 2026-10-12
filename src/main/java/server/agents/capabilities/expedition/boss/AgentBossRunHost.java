@@ -3,6 +3,7 @@ package server.agents.capabilities.expedition.boss;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.life.Monster;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -167,6 +168,16 @@ public final class AgentBossRunHost {
          */
         default boolean besideOwnerAtBossGate(Character agent) {
             return false;
+        }
+
+        /**
+         * P13 G14, on the Agent's tick, from memory: may {@code agent} hit {@code boss}, a field group's boss whose
+         * key is on (AgentBossField.covers)? The host answers from owner and party knowledge: a companion only once a
+         * player of its party has hit that very boss (so a respawn waits for a player's first hit), a citizen never
+         * (decision 19). Unless answered, true: every Agent hits it as before.
+         */
+        default boolean mayEngageFieldBoss(Character agent, Monster boss) {
+            return true;
         }
     }
 
@@ -355,6 +366,20 @@ public final class AgentBossRunHost {
                 return current.besideOwnerAtBossGate(agent);
             } catch (RuntimeException failure) {
                 log.warn("boss-run beside-owner rule failed for {}", agent == null ? 0 : agent.getId(), failure);
+                return false;
+            }
+        }
+
+        @Override
+        public boolean mayEngageFieldBoss(Character agent, Monster boss) {
+            Rule current = current();
+            if (current == null) {
+                return true;
+            }
+            try {
+                return current.mayEngageFieldBoss(agent, boss);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run field engagement rule failed for {}", agent == null ? 0 : agent.getId(), failure);
                 return false;
             }
         }

@@ -78,7 +78,8 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
-            if (key.endsWith("AgentBossScope.BOSS_IDS") || key.endsWith("AgentSupplyReadiness.BOSS_DESK_MAPS")) {
+            if (key.endsWith("AgentBossScope.BOSS_IDS") || key.endsWith("AgentSupplyReadiness.BOSS_DESK_MAPS")
+                    || key.endsWith("AgentFollowMapSyncService.NO_FOLLOW_MAPS")) {
                 if (!validBossIds(value)) {
                     throw new IllegalStateException("Agent tuning key " + key + " must be none, or ids"
                             + " and ascending id ranges separated by commas, such as 8800003-8800010");

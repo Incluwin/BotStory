@@ -35,6 +35,32 @@
       "label": "Pink Bean",
       "neverTarget": [8820000, 8820019, 8820020, 8820021, 8820022, 8820023],
       "markerItems": [4001193]
+    },
+    {
+      "key": "field_victoria",
+      "label": "Victoria field bosses",
+      "fieldBosses": [2220000, 3220000, 5220002, 6220000, 5220001, 5220000, 8220008, 8220009, 6130101, 6300005,
+        8130100]
+    },
+    {
+      "key": "field_ossyria",
+      "label": "Ossyria field bosses",
+      "fieldBosses": [8220000, 8220001]
+    },
+    {
+      "key": "field_ludus",
+      "label": "Ludus Lake field bosses",
+      "fieldBosses": [5220003, 6220001, 7220001]
+    },
+    {
+      "key": "field_mulung",
+      "label": "Mu Lung field bosses",
+      "fieldBosses": [7220000, 7220002, 5220004]
+    },
+    {
+      "key": "field_nihal",
+      "label": "Nihal field bosses",
+      "fieldBosses": [3220001, 8220002]
     }
   ]
 }

@@ -48,6 +48,28 @@ class AgentBossRulesCatalogTest {
     }
 
     @Test
+    void eachP13FieldBossBelongsToItsRegionsGroup() {
+        for (int id : List.of(2_220_000, 3_220_000, 5_220_002, 6_220_000, 5_220_001, 5_220_000, 8_220_008, 8_220_009,
+                6_130_101, 6_300_005, 8_130_100)) {
+            assertEquals("field_victoria", AgentBossRules.fieldKeyOf(id), "Victoria " + id);
+        }
+        assertEquals("field_ossyria", AgentBossRules.fieldKeyOf(8_220_000), "Eliza");
+        assertEquals("field_ossyria", AgentBossRules.fieldKeyOf(8_220_001), "Snowman");
+        assertEquals("field_ludus", AgentBossRules.fieldKeyOf(5_220_003), "Timer");
+        assertEquals("field_ludus", AgentBossRules.fieldKeyOf(6_220_001), "Zeno");
+        assertEquals("field_ludus", AgentBossRules.fieldKeyOf(7_220_001), "Nine-Tailed Fox");
+        assertEquals("field_mulung", AgentBossRules.fieldKeyOf(7_220_000), "Tae Roon");
+        assertEquals("field_mulung", AgentBossRules.fieldKeyOf(7_220_002), "King Sage Cat");
+        assertEquals("field_mulung", AgentBossRules.fieldKeyOf(5_220_004), "Giant Centipede");
+        assertEquals("field_nihal", AgentBossRules.fieldKeyOf(3_220_001), "Deo");
+        assertEquals("field_nihal", AgentBossRules.fieldKeyOf(8_220_002), "Kimera");
+        assertEquals(null, AgentBossRules.fieldKeyOf(8_500_001), "Papulatus is a party boss (P15)");
+        for (String key : List.of("field_victoria", "field_ossyria", "field_ludus", "field_mulung", "field_nihal")) {
+            assertTrue(config.CompanionBossKeys.known(key), key);
+        }
+    }
+
+    @Test
     void theFirstLivePriorityPartIsPreferredAndEveryOtherLiveMonsterIsTheFallback() {
         AgentBossRules.Preferences first = AgentBossRules.preferences(CHAIN,
                 List.of(9_400_120, 9_400_113, 9_400_112, 8_140_500));

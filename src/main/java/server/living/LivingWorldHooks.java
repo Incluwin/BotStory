@@ -381,6 +381,9 @@ public final class LivingWorldHooks {
             world.crewRotation().died(chr); // Keep my crew fresh swaps one that went down, even once revived
             server.living.population.PopulationHooks.died(chr);
             world.partyQuests().died(chr); // a death inside a companion run counts for its record
+            if (world.bossRuns() != null) {
+                world.bossRuns().died(chr); // beside a field boss, a companion rests in town first (P13)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
         }

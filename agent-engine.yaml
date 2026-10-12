@@ -1827,6 +1827,10 @@ tuning:
     # Purpose: Controls how long Agents remain in or wait for follow idle recheck. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "follow idle movement service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.capabilities.follow.AgentFollowIdleMovementService.FOLLOW_IDLE_RECHECK_MS: '1000'
+    # Values: none, or map ids and ascending map id ranges separated by commas, such as 677000000-677000013. Recommended: 677000000-677000013 (the Demon's Doorway maps).
+    # Purpose: Names single-character quest maps that a following Agent never warps into, so companions wait outside while their owner does a solo quest map.
+    # Technical: AgentFollowMapSyncService.mayWarpInto answers false for a listed anchor map, and the follower holds in place until its anchor leaves it (P13, plan "Not planned": the 9201128.js gates). A blank value fails startup (AgentEngineConfigValidator), so the empty list is written as none.
+    server.agents.capabilities.follow.AgentFollowMapSyncService.NO_FOLLOW_MAPS: '677000000-677000013'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 200-800 around the tested baseline 400; benchmark or observe behavior before moving outside this band.
     # Purpose: Sets the farthest distance used for rope search. Higher values allow movement or interaction from farther away; lower values keep it closer.
     # Technical: the "follow target position service" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.

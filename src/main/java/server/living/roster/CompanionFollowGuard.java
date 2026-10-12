@@ -21,7 +21,8 @@ import java.util.List;
  * crowding it (they hid her in the step 0 smoke), while her desk serves the park (the kill switch lists hpq and the
  * background population does not run it). Walking up to a boss's entry NPC (P7): a companion its owner enlisted for
  * a boss run walks to its own spot beside her until it is on her list. Plain Agents, citizens and live bench slices
- * (which lead themselves) follow as before.
+ * (which lead themselves) follow as before. Resting after a field boss (P13, decision 18): a companion that died beside
+ * a field group's boss whose key is on is kept off follow while it rests in town (CompanionFieldBossRest).
  */
 public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
     private final LivingWorld world;
@@ -32,6 +33,10 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
 
     @Override
     public boolean holdsOffFollow(int agentCharacterId) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null && bossRuns.restsAfterFieldBoss(agentCharacterId)) {
+            return true; // P13: resting in town after a death beside a field boss (decision 18)
+        }
         RosterService roster = world.roster();
         if (!roster.keepsAnyOffFollow()) {
             return false;

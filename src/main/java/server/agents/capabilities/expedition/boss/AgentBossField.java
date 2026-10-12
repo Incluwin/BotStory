@@ -27,7 +27,11 @@ public final class AgentBossField {
 
     /** True while a live boss {@link #covers} stands on the Agent's map, a map with no event. */
     public static boolean near(Character bot) {
-        MapleMap map = bot == null ? null : bot.getMap();
+        return near(bot == null ? null : bot.getMap());
+    }
+
+    /** True while a live boss {@link #covers} stands on {@code map}, a map with no event. */
+    public static boolean near(MapleMap map) {
         if (map == null || map.getEventInstance() != null) {
             return false;
         }

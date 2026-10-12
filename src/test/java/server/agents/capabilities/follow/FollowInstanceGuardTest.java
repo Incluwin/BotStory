@@ -43,6 +43,21 @@ class FollowInstanceGuardTest {
     }
 
     @Test
+    void anAgentWaitsOutsideTheDemonsDoorwayMapsAsItsAnchorGoesIn() {
+        // P13: agent-engine.yaml NO_FOLLOW_MAPS ships 677000000-677000013, single-character quest maps
+        MapleMap doorway = map(677_000_005);
+        Character soloQuester = character(doorway, 677_000_005);
+
+        assertTrue(AgentFollowMapSyncService.syncFollowMap(entry, agent, soloQuester, hooks()));
+
+        assertEquals(List.of("hold"), calls);
+        assertTrue(AgentFollowMapSyncService.noFollowMap(677_000_000));
+        assertTrue(AgentFollowMapSyncService.noFollowMap(677_000_013));
+        assertFalse(AgentFollowMapSyncService.noFollowMap(677_000_014));
+        assertFalse(AgentFollowMapSyncService.noFollowMap(KPQ_STAGE_1));
+    }
+
+    @Test
     void agentRegisteredInTheAnchorsInstanceFollowsIntoIt() {
         EventInstanceManager kpq = mock(EventInstanceManager.class);
         when(stage.getEventInstance()).thenReturn(kpq);
