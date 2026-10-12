@@ -138,6 +138,46 @@ companion-ops.
 6. **Soak**: 2 h on the user's client, rollback rehearsal through the manifest, side-by-side video.
 7. **Ship** to friends: user's OK, manifest regenerated, client kit rebuilt (`tools/client-kit`).
 
+## Status (2026-10-12)
+
+- Step 1 done: server branch `feat/crew-window-native` (2bec49767). Deviations from this spec, all deliberate:
+  clicks run on the player's packet thread like an NPC click (roster writes and snapshot reads stay on
+  companion-ops); CARD opens the card without Back; a click while an NPC window waits for its reply only refreshes;
+  orders and USUAL are refused when their snapshot flag is off; SWAP is allowed when the one out may make room
+  (SWAP_OUT) or the one at camp may swap in (SWAP_IN); an idle window (30 min) stops updating without CLOSE; the
+  runtime command `!world crewwindow off|gm|all` was added for testing.
+- Steps 2-4 done on kaentake `feat/crew-window` (aecbe7c, 7daf8d2): hooks, window, `MAPLE CREW` background in
+  Custom.wz (`UI/UIWindow.img/CrewWnd/backgrnd`, 312 x 430, built by `tools/make_crew_art.py`), parser test
+  `test/crewproto_test.cpp`. Self-test drawing checked on a private client copy: rows, HP bars, truncation,
+  selection, enabled/disabled buttons, close button, title-bar drag, hotkey toggle.
+- RE facts found on the way: the client reports a key release to `CWndMan::ProcessKey` as WM_KEYDOWN with lParam
+  bit 31 set; game keys come from DirectInput, so a posted WM_KEYDOWN never reaches the hotkey (use SendInput);
+  `CUIWnd::OnCreate` takes 2 arguments (the DLL's header declares 3); the real CWnd RTTI is 0x00BF1608 (the
+  header's 0x00C6194C is wrong); `ClearFieldUI` runs only for the Cash Shop and MTS, so the window survives portals.
+
+## Live checks (Step 5)
+
+Setup: server branch deployed with the switch off; private client copy with the test DLL (`crew_selftest` removed);
+GM test account Crewfriend; the user's own client keeps the shipped DLL.
+
+| # | Check | Pass when |
+|---|---|---|
+| L1 | Switch off | DLL log shows WELCOME enabled 0; U passes to the game; server log `[crew-window] HELLO ... enabled=false` |
+| L2 | `!world crewwindow gm` | WELCOME enabled 1; U opens the window; rows and text equal the Roster item's Crew window |
+| L3 | Call a benched companion with a free seat | pink line as in the card; the row moves to the party block "on the way" |
+| L4 | Bench one out | the bench Yes/No appears where a contract applies; the row moves to the bench block |
+| L5 | Swap by buttons, then by dragging a bench row onto a party row | one swap each, same result as the swap picker |
+| L6 | Call with a full party | the card's swap picker opens |
+| L7 | Double-click a row | the companion's card opens |
+| L8 | More | the NPC Crew window opens |
+| L9 | Follow / Wait / Gather / Rebuff | the companions answer in party chat |
+| L10 | Usual | the usual lineup is called |
+| L11 | Stale click (change the roster from the NPC window, then click the old row) | "Things changed meanwhile.", nothing else |
+| L12 | Channel change with the window open | the window stays and keeps updating |
+| L13 | Relog | HELLO again, U works again |
+| L14 | The user's client with the shipped DLL | no HELLO from it in the server log, nothing changes |
+| L15 | `!world crewwindow off` with the window open | the window closes; U passes to the game |
+
 ## Open decisions
 
 1. Hotkey: default `U` (unbound in the default key map). The key works only while unbound in the player's own map.
