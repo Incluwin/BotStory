@@ -478,7 +478,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             // Hunter's Codex: backfill + stat sync.
             // GATED: leave commented until install_monster_book_medal.py has been
             // run. The medal img 1142165 ships with medalTag=95 in stock v83 WZ,
-            // which references a title sprite missing from the MapleCommons Client
+            // which references a title sprite missing from the BotStory Client
             // and crashes the client ~3s after spawn (Connection reset, see logs
             // 2026-04-25 00:30:38–41). The install script zeros medalTag (and the
             // base inc* stats) — re-enable these two lines after running it.

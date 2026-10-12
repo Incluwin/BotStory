@@ -1,6 +1,6 @@
 # Bot Management Plan (party, bench, expeditions)
 
-> Status: exploration + plan, 2026-09-27. Nothing here is implemented yet. Built from a verified read of the roster, agent lifecycle, party/NPC/UI surfaces, PQ and expedition code, kaentake and MapleEdit, then three competing designs (playable-soonest, immersion-first, foundations-first) scored by three judges; this is the winner with the agreed grafts and two review passes applied. Facts disputed in review were re-checked in source and are marked (verified). Every class or method named here exists at the path given or is marked NEW. Paths are relative to `FriendServer/MapleCommons v83 Server` unless noted. Open questions for the user are in "Decisions for the user".
+> Status: exploration + plan, 2026-09-27. Nothing here is implemented yet. Built from a verified read of the roster, agent lifecycle, party/NPC/UI surfaces, PQ and expedition code, kaentake and MapleEdit, then three competing designs (playable-soonest, immersion-first, foundations-first) scored by three judges; this is the winner with the agreed grafts and two review passes applied. Facts disputed in review were re-checked in source and are marked (verified). Every class or method named here exists at the path given or is marked NEW. Paths are relative to `FriendServer/BotStory Server` unless noted. Open questions for the user are in "Decisions for the user".
 
 ## Summary
 
