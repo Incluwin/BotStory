@@ -1175,14 +1175,14 @@ class CompanionBossRunsTest {
                 BossRunLines.REFUSED_OTHER, "couldn't get my name down, sorry. i'll wait out here.",
                 BossRunLines.MISSED, "couldn't make it in time, i'll wait for you here.");
         for (Map.Entry<String, String> intent : kept.entrySet()) {
-            List<String> wordings = BossRunLines.GENERIC.get(intent.getKey());
+            List<String> wordings = BossAllyHarness.easyLines(intent.getKey());
             assertTrue(wordings.size() >= 2 && wordings.size() <= 3, intent.getKey() + " " + wordings);
             assertEquals(wordings.size(), Set.copyOf(wordings).size(), intent.getKey() + " " + wordings);
             assertTrue(wordings.contains(intent.getValue()), intent.getKey() + " " + wordings);
         }
-        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.REFUSED_LATE).size(),
+        assertEquals(3, BossAllyHarness.easyLines(BossRunLines.REFUSED_LATE).size(),
                 "Start can refuse three walking up at once");
-        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.MISSED).size(),
+        assertEquals(3, BossAllyHarness.easyLines(BossRunLines.MISSED).size(),
                 "the grace can count three out at once");
     }
 
@@ -1200,9 +1200,9 @@ class CompanionBossRunsTest {
 
     // ---- helpers -------------------------------------------------------------------------------
 
-    /** {@code line} is "{@code name}: " and one of the generic wordings for {@code intent}. */
+    /** {@code line} is "{@code name}: " and one of Easy Balrog's wordings for {@code intent}. */
     private static void assertSays(String name, String intent, String line) {
-        assertTrue(BossRunLines.GENERIC.get(intent).contains(wording(name, line)), intent + ": " + line);
+        assertTrue(BossAllyHarness.easyLines(intent).contains(wording(name, line)), intent + ": " + line);
     }
 
     /** What {@code name} said in party chat line {@code line} ("Name: words"). */

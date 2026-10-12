@@ -96,9 +96,9 @@ class BossRunLinesTellTest {
         assertTrue(BossRunLines.say(game.world, thane, BossRunLines.DOWN, null, 0), "say is unchanged");
 
         assertEquals(2, game.partyChat.size(), game.partyChat.toString());
-        for (String line : game.partyChat) {
-            assertSays("Thane", BossRunLines.DOWN, line);
-        }
+        assertSays("Thane", BossRunLines.DOWN, game.partyChat.get(0));
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.DOWN).contains(wording("Thane", game.partyChat.get(1))),
+                "no boss: a generic line, " + game.partyChat.get(1));
         assertEquals(List.of(), mapChat);
         assertEquals(List.of(), whispers);
     }
@@ -198,7 +198,7 @@ class BossRunLinesTellTest {
         for (String line : mapChat) {
             String words = wording("Orrin", line);
             assertTrue(words.contains("~45 s") && !words.contains("{eta}"), words);
-            assertTrue(BossRunLines.GENERIC.get(BossRunLines.ALLY_ON_MY_WAY).contains(words.replace("~45 s", "{eta}")),
+            assertTrue(BossAllyHarness.easyLines(BossRunLines.ALLY_ON_MY_WAY).contains(words.replace("~45 s", "{eta}")),
                     words);
             said.add(words);
         }
@@ -284,7 +284,7 @@ class BossRunLinesTellTest {
                         "used up my run for today, can't make it. sorry!")));
         for (Map.Entry<String, List<String>> intent : plan.entrySet()) {
             assertTrue(intent.getKey().startsWith("boss.ally."), intent.getKey());
-            assertEquals(intent.getValue(), BossRunLines.GENERIC.get(intent.getKey()), intent.getKey());
+            assertEquals(intent.getValue(), BossAllyHarness.easyLines(intent.getKey()), intent.getKey());
             for (String line : intent.getValue()) {
                 assertEquals(line.toLowerCase(Locale.ROOT), line, line);
                 assertEquals(intent.getKey().equals(BossRunLines.ALLY_ON_MY_WAY), line.contains("{eta}"), line);
@@ -313,15 +313,30 @@ class BossRunLinesTellTest {
         }
     }
 
+    /**
+     * P17: the generic lines name no boss and no place, so a Papulatus or Scarga companion never says "balrog got me".
+     * Easy and Normal Balrog keep the Mu Young and temple lines word for word as their own; no boss reads the generic.
+     */
     @Test
-    void easyBalrogKeepsEveryGenericLineAndHasNoEyeLine() {
+    void easyBalrogKeepsItsWordsTheGenericLinesNameNoBossAndItHasNoEyeLine() {
         for (Map.Entry<String, List<String>> intent : BossRunLines.GENERIC.entrySet()) {
-            assertEquals(intent.getValue(), BossRunLines.lines(game.world, null, intent.getKey(), "easy_balrog"),
-                    intent.getKey());
+            for (String line : intent.getValue()) {
+                for (String place : List.of("mu young", "balrog", "temple", "down here", "she ", "adobis", "zakum",
+                        "aldol", "made it down", "long way down", "make it down")) {
+                    assertFalse(line.contains(place), intent.getKey() + ": " + line);
+                }
+            }
             assertEquals(intent.getValue(), BossRunLines.lines(game.world, null, intent.getKey(), null),
                     "no boss: " + intent.getKey());
+            assertEquals(BossAllyHarness.easyLines(intent.getKey()),
+                    BossRunLines.lines(game.world, null, intent.getKey(), "easy_balrog"), intent.getKey());
+            assertEquals(BossRunLines.lines(game.world, null, intent.getKey(), "easy_balrog"),
+                    BossRunLines.lines(game.world, null, intent.getKey(), "balrog_normal"), "Normal: " + intent.getKey());
         }
-        assertFalse(BossRunLines.BY_BOSS.containsKey("easy_balrog"));
+        assertTrue(BossRunLines.lines(game.world, null, BossRunLines.DOWN, "easy_balrog")
+                .contains("sorry, balrog got me. waiting outside."), "the pre-P17 wording");
+        assertTrue(BossRunLines.lines(game.world, null, BossRunLines.ALLY_ON_MY_WAY, "easy_balrog")
+                .contains("omw to mu young, {eta}."));
         assertEquals(List.of(), BossRunLines.lines(game.world, null, BossRunLines.ZAKUM_EYE, "easy_balrog"));
         assertFalse(BossRunLines.say(game.world, thane, BossRunLines.ZAKUM_EYE, null, 0, run), "nothing to say");
         assertEquals(List.of(), game.partyChat);
@@ -421,9 +436,9 @@ class BossRunLinesTellTest {
         return member;
     }
 
-    /** {@code line} is "{@code name}: " and one of the generic wordings for {@code intent}. */
+    /** {@code line} is "{@code name}: " and one of Easy Balrog's wordings for {@code intent}. */
     private static void assertSays(String name, String intent, String line) {
-        assertTrue(BossRunLines.GENERIC.get(intent).contains(wording(name, line)), intent + ": " + line);
+        assertTrue(BossAllyHarness.easyLines(intent).contains(wording(name, line)), intent + ": " + line);
     }
 
     /** {@code line} is "{@code from} -> {@code to}: " and one of the generic wordings for {@code intent}. */

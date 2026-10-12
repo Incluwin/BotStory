@@ -194,14 +194,22 @@ final class BossAllyHarness implements AutoCloseable {
         when(room.getAllPlayers()).thenAnswer(inv -> game.ann.getMap() == room ? List.of(game.ann) : List.of());
     }
 
-    /** True when {@code line} is one of {@code intent}'s generic wordings, "{eta}" read as {@code eta}. */
+    /**
+     * True when {@code line} is one of Easy Balrog's wordings for {@code intent} (its own, else the generic ones: P17
+     * made the generic ones boss-neutral), "{eta}" read as {@code eta}.
+     */
     static boolean isLine(String intent, String eta, String line) {
-        for (String wording : BossRunLines.GENERIC.get(intent)) {
+        for (String wording : easyLines(intent)) {
             if (wording.replace("{eta}", eta == null ? "" : eta).equals(line)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Easy Balrog's wordings for {@code intent}: its own (BossRunLines.BY_BOSS), else the generic ones. */
+    static List<String> easyLines(String intent) {
+        return BossRunLines.BY_BOSS.get("easy_balrog").getOrDefault(intent, BossRunLines.GENERIC.get(intent));
     }
 
     @Override
