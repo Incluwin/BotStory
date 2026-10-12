@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.expeditions.Expedition;
 import server.living.config.Content.Persona;
@@ -85,6 +86,16 @@ class CompanionBossRunsPartyEventTest {
         assertEquals(Set.of(ISOLDE, THANE), run.signedUp);
         assertEquals("isolde", run.personaByCompanion.get(ISOLDE));
         assertArrayEquals(new int[]{40, 30}, run.potionsAtSignUp.get(THANE));
+    }
+
+    @Test
+    void anAdoptedCompanionIsTiedToTheBossKeySoItLeavesTheBossDropsToTheHumans() {
+        runs.admitParty(event, latanica);
+
+        // P12 G10: adoption seats the member as an expedition run's does, and NO_BOSS reads that commitment
+        // (CompanionSettingsApplier.leavesBossDropsInRun); a party companion keeps the stock drop owner.
+        assertTrue(runs.seat(new AgentBossRunHost.Seat("latanica", SID, ISOLDE, ANN)));
+        assertTrue(game.commitments.keyOf(ISOLDE).startsWith(CompanionBossRuns.KEY_PREFIX));
     }
 
     @Test
