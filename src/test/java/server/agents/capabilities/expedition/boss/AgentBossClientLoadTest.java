@@ -252,6 +252,28 @@ class AgentBossClientLoadTest {
         assertEquals(0L, AgentBossClientLoad.attacks(zakum));
     }
 
+    /**
+     * P12 G4 at the attack's commit (it shares this class's attack harness): an inside member's attack on a target that
+     * reflects its damage is refused, so no reflect damage comes back; outside the run the same attack goes through.
+     */
+    @Test
+    void anInsideMembersAttackOnAReflectingTargetIsRefusedAtCommit() {
+        AgentBossRunSession zakum = open(1L, AgentBossRunCatalog.ZAKUM);
+        Character thane = inside(zakum, THANE, ALTAR);
+        scripting.event.EventInstanceManager altarEvent = mock(scripting.event.EventInstanceManager.class);
+        when(thane.getMap().getEventInstance()).thenReturn(altarEvent);
+        when(thane.getEventInstance()).thenReturn(altarEvent);
+        Monster reflecting = target(thane.getMap());
+        when(reflecting.isBuffed(client.status.MonsterStatus.WEAPON_REFLECT)).thenReturn(true);
+
+        AgentAttackTransactionResult refused = AgentCombatAttackRuntime.attackMonster(
+                new AgentRuntimeEntry(thane, null, null), thane, plan(reflecting));
+
+        assertEquals(AgentAttackTransactionResult.Status.REJECTED, refused.status(), () -> "attack " + refused);
+        assertEquals(AgentAttackTransactionResult.Reason.TARGET_UNAVAILABLE, refused.reason());
+        assertEquals(0L, AgentBossClientLoad.attacks(zakum));
+    }
+
     // ---- fixture ---------------------------------------------------------------------------
 
     private static void tune(String floorMs) {

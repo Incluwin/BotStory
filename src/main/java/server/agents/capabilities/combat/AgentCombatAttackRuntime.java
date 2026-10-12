@@ -2,6 +2,7 @@ package server.agents.capabilities.combat;
 
 import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.expedition.boss.AgentBossClientLoad;
+import server.agents.capabilities.expedition.boss.AgentBossTargetGate;
 import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
 
 import client.Character;
@@ -79,7 +80,7 @@ public final class AgentCombatAttackRuntime {
         }
 
         int targetLimit = AgentAttackPacketPolicy.targetCount(attackPlan.targets.size());
-        List<Monster> authoritativeTargets = authoritativeTargets(attackPlan.targets, targetLimit, attackMap);
+        List<Monster> authoritativeTargets = authoritativeTargets(bot, attackPlan.targets, targetLimit, attackMap);
         if (authoritativeTargets.isEmpty() || authoritativeTargets.getFirst() != primaryTarget) {
             return AgentAttackTransactionResult.rejected(
                     AgentAttackTransactionResult.Reason.TARGET_UNAVAILABLE, bot.getMapId(), attackPlan.skillId);
@@ -127,7 +128,7 @@ public final class AgentCombatAttackRuntime {
                     AgentAttackTransactionResult.Reason.MAP_CHANGED_DURING_ATTACK,
                     bot.getMapId(), attackPlan.skillId);
         }
-        List<Monster> committedTargets = authoritativeTargets(authoritativeTargets, numAttacked, attackMap);
+        List<Monster> committedTargets = authoritativeTargets(bot, authoritativeTargets, numAttacked, attackMap);
         if (committedTargets.isEmpty() || committedTargets.getFirst() != primaryTarget) {
             return AgentAttackTransactionResult.rejected(
                     AgentAttackTransactionResult.Reason.TARGET_UNAVAILABLE, bot.getMapId(), attackPlan.skillId);
@@ -205,13 +206,20 @@ public final class AgentCombatAttackRuntime {
         return oids;
     }
 
-    private static List<Monster> authoritativeTargets(List<Monster> candidates, int limit, MapleMap attackMap) {
+    /**
+     * The plan's live targets on the attack map, in order, up to {@code limit}. In companion boss scope a target immune
+     * to the bot's damage type or reflecting it is dropped (AgentBossTargetGate, P12 G4): reflect damage lands for each
+     * listed target, secondaries too, and a dropped primary refuses the attack.
+     */
+    private static List<Monster> authoritativeTargets(Character bot, List<Monster> candidates, int limit,
+                                                      MapleMap attackMap) {
         LinkedHashMap<Integer, Monster> targets = new LinkedHashMap<>();
         for (Monster candidate : candidates) {
             if (targets.size() >= limit) {
                 break;
             }
-            if (candidate != null && candidate.isAlive() && candidate.getMap() == attackMap) {
+            if (candidate != null && candidate.isAlive() && candidate.getMap() == attackMap
+                    && !AgentBossTargetGate.refuses(bot, candidate)) {
                 targets.putIfAbsent(candidate.getObjectId(), candidate);
             }
         }
