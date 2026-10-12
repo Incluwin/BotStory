@@ -136,7 +136,7 @@ companion-ops.
 4. **Art**: Custom.wz background titled for the crew and button sprites (UserList style).
 5. **Live checks** (two clients, GM test accounts): each verb vs the NPC dialog, full party, confirm Yes/No,
    stale click, channel change, relog, stale-DLL client, switch off mid-session.
-6. **Soak**: 2 h on the user's client, rollback rehearsal through the manifest, side-by-side video.
+6. **Soak**: replaced (user, 2026-10-12) by a measured 30-minute memory run on the test client, then the user's normal play; rollback rehearsal through the manifest, side-by-side video.
 7. **Ship** to friends: user's OK, manifest regenerated, client kit rebuilt (`tools/client-kit`).
 
 ## Status (2026-10-12)
@@ -210,6 +210,21 @@ Evidence: `docs/agents/evidence/cua/20261012-0815*` to `20261012-0828*`.
 
 Also seen: the window survives warps (Forest of Poison Haze -> Henesys -> Ellinia). Cosmetic: the stock floating party
 HP list is drawn over the Crew window after a party change (a game window, not the DLL's).
+
+### Memory run (2026-10-12 09:17-09:52, int/p9ar, test client, Crewfriend + 5 companions hunting boars)
+
+Sampled every 30 s (`docs/agents/evidence/p10-soak/`). `!heal` every 2 min and a warp between 101030001 and 101040001
+every 5 min through `logs/gm-command-queue.txt`, so nothing needed the screen except one U press.
+
+| Phase | Private MB | Virtual MB | Handles | GDI | USER |
+|---|---|---|---|---|---|
+| Window closed, 5 min | 651 -> 677 (settling after login) | 3720 -> 3736 | 790-806 | 132-133 | 23-25 |
+| Window open, first 5 min (same map) | 680 -> 690 | 3750 -> 3752 | 797-803 | 139 | 24-25 |
+| Window open, 24 min after the first warp | 633-642, ends 640 | 3745-3746 | 706-800 | 139 -> 141 | 23-24 |
+
+Opening the window cost about 6 GDI objects and about 13 MB of address space once. Private memory and address space
+stayed flat for 24 minutes of live updates and 5 map changes. GDI rose by 1 after two of the five warps (cause not
+isolated; the closed baseline had no warp). The window was still open and updating at the end.
 
 ## Open decisions
 
