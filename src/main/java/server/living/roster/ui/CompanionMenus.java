@@ -55,6 +55,13 @@ public final class CompanionMenus {
     /** The line a screen re-opened by {@link #ifUnchanged} may show on top. */
     static final String THINGS_CHANGED = "Things changed meanwhile.";
 
+    /**
+     * Where a crew page is drawn (docs/BOT_MANAGEMENT_P10_PLAN.md, "Step 7: native pages"): the NPC dialog, or the native
+     * Crew window's page view ({@link LivingTalk#openNative}; the NPC dialog for a client that draws no pages). Cards
+     * are NPC dialogs on either.
+     */
+    enum Surface { NPC, NATIVE }
+
     final LivingWorld world;
     final IntFunction<String> placeNames;
     private final CompanionCardScreens cards;
@@ -291,6 +298,14 @@ public final class CompanionMenus {
      * another window waits (then the click shows nothing; the player clicks again).
      */
     <T> void compute(Character owner, String name, Supplier<T> work, Consumer<T> show) {
+        compute(owner, name, work, show, Surface.NPC);
+    }
+
+    /**
+     * {@link #compute(Character, String, Supplier, Consumer)} for a page on {@code surface}. A native page waits on no
+     * NPC window, so on NATIVE only the time is checked (no page long after the click).
+     */
+    <T> void compute(Character owner, String name, Supplier<T> work, Consumer<T> show, Surface surface) {
         long clickedAtMs = System.currentTimeMillis();
         world.executor().submit(name, () -> {
             T found = work.get();
@@ -299,7 +314,8 @@ public final class CompanionMenus {
                 return; // logged off meanwhile
             }
             client.runOnIoThread(() -> {
-                if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
+                if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS
+                        && (surface == Surface.NATIVE || LivingTalk.mayShow(owner))) {
                     show.accept(found);
                 }
             });
@@ -312,13 +328,19 @@ public final class CompanionMenus {
      * player's notes asks first, as the answer to the pick; Yes runs {@code bench}, No closes. Otherwise it runs at once.
      */
     void confirmBench(Character owner, Persona persona, Runnable bench) {
+        confirmBench(owner, persona, Surface.NPC, bench);
+    }
+
+    /** {@link #confirmBench(Character, Persona, Runnable)} asked on {@code surface} (a native page from the native window). */
+    void confirmBench(Character owner, Persona persona, Surface surface, Runnable bench) {
         ContractService contracts = world.contracts();
         String after = contracts == null ? null : contracts.benchWalkOutAfter(owner.getId(), persona);
         if (after == null) {
             bench.run();
             return;
         }
-        LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
+        (surface == Surface.NATIVE ? LivingTalk.openNative(owner, BOARD_NPC) : LivingTalk.open(owner, BOARD_NPC))
+                .speaker(NOTES_SPEAKER)
                 .yesNo(persona.name() + " won't sit at camp for long: after " + after + " on the bench, " + persona.name()
                         + " walks out for good.\r\n\r\nSend " + persona.name() + " to camp anyway?", bench, null)
                 .show();

@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
+import server.living.resident.NativeTalkPage;
+import server.living.resident.NativeTalkRenderer;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionView;
@@ -18,8 +20,10 @@ import server.living.roster.ui.NativeCrewPackets.Close;
 import server.living.roster.ui.NativeCrewPackets.Hello;
 import server.living.roster.ui.NativeCrewPackets.Op;
 import server.living.roster.ui.NativeCrewPackets.Open;
+import server.living.roster.ui.NativeCrewPackets.PageReply;
 import server.living.roster.ui.NativeCrewPackets.Row;
 import server.living.roster.ui.NativeCrewPackets.Snapshot;
+import server.living.roster.ui.NativeCrewPackets.Verb;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
@@ -40,6 +44,7 @@ import static server.living.roster.ui.NativeCrewPackets.COMMITTED;
 import static server.living.roster.ui.NativeCrewPackets.GUEST;
 import static server.living.roster.ui.NativeCrewPackets.HP_UNKNOWN;
 import static server.living.roster.ui.NativeCrewPackets.OUT;
+import static server.living.roster.ui.NativeCrewPackets.PAGES_PROTOCOL;
 import static server.living.roster.ui.NativeCrewPackets.PROTOCOL;
 import static server.living.roster.ui.NativeCrewPackets.SOMEONE_OUT;
 import static server.living.roster.ui.NativeCrewPackets.SWAP_IN;
@@ -51,9 +56,17 @@ import static server.living.roster.ui.NativeCrewPackets.USUAL_CALLABLE;
  * with the P10 DLL draws. It replaces nothing; every row, flag and click is the NPC-dialog Crew window's and the cards'
  * own code (CompanionCrewScreens, CompanionCardScreens), so both windows always say and do the same.
  *
- * <p>Safety: a connection is sent CREW_WINDOW (0x17A) only after its client said HELLO, and anything but WELCOME only
- * when it said HELLO with this server's protocol ({@link Client#getCrewWindowProtocol}); WELCOME says {@code enabled}
- * only when living_world.CREW_WINDOW_NATIVE allows the character ("gm": a GM) and the living world runs.</p>
+ * <p>Safety: a connection is sent CREW_WINDOW (0x17A) only after its client said HELLO; it is served at {@link
+ * #negotiated} = min(its HELLO's protocol, {@link NativeCrewPackets#PROTOCOL}), which WELCOME carries ({@link
+ * Client#getCrewWindowProtocol} keeps the client's own). WELCOME says {@code enabled} only when
+ * living_world.CREW_WINDOW_NATIVE allows the character ("gm": a GM) and the living world runs. Protocol 1 is the crew
+ * view; protocol 2 adds native pages: PAGE and PAGE_CLOSE go only to a connection at 2, and only it may send
+ * PAGE_REPLY or the verb ACTIONS (a protocol-1 connection's are ignored).</p>
+ *
+ * <p>Native pages (Step 7): this window draws {@link LivingTalk}'s native talks ({@link NativeTalkRenderer}, registered
+ * by {@link #install}). ACTIONS shows the NPC Crew window's actions as a native page (CompanionCrewScreens), and every
+ * page it leads to is a native talk answered through LivingTalk's own reply code ({@link LivingTalk#respondNative}) on
+ * the player's packet thread, as an NPC reply is. MORE still opens the NPC Crew window at every protocol.</p>
  *
  * <p>A SNAPSHOT is read on companion-ops (the view cache, as a render) and sent on the owner's packet thread: on OPEN,
  * after each click's answer, and while the window is open whenever its bytes changed, looked at every {@link #WATCH_MS}
@@ -68,7 +81,7 @@ import static server.living.roster.ui.NativeCrewPackets.USUAL_CALLABLE;
  * for a full party, the bench warning's Yes/No, the leader cap's OK) open exactly as from the card, and the action's
  * line is pink text, as the Crew window answers, followed by a fresh snapshot.</p>
  */
-public final class NativeCrewWindow {
+public final class NativeCrewWindow implements NativeTalkRenderer {
     private static final Logger log = LoggerFactory.getLogger(NativeCrewWindow.class);
     /** How often the open windows are read again (on companion-ops) and sent when they changed. */
     public static final long WATCH_MS = 1_000L;
@@ -122,7 +135,7 @@ public final class NativeCrewWindow {
     /**
      * A decoded CREW_WINDOW packet from {@code client} (its character {@code chr}), on its packet thread. HELLO is
      * answered even while the living world is off (WELCOME, not enabled); anything else from a connection that did not
-     * say HELLO with this server's protocol is dropped with nothing sent back.
+     * say HELLO is dropped with nothing sent back.
      */
     public static void receive(Client client, Character chr, Op op, LivingWorld world) {
         NativeCrewWindow window = world == null ? null : world.crewWindow();
@@ -130,8 +143,8 @@ public final class NativeCrewWindow {
             hello(client, chr, hello, window);
             return;
         }
-        if (client.getCrewWindowProtocol() != PROTOCOL) {
-            return; // no HELLO (a client without the DLL never sends this), or a protocol this server does not speak
+        if (negotiated(client) < 1) {
+            return; // no HELLO: a client without the DLL never sends this
         }
         if (window == null) {
             client.sendPacket(NativeCrewPackets.close()); // the living world is off: no window may be open
@@ -141,20 +154,27 @@ public final class NativeCrewWindow {
     }
 
     /**
-     * HELLO: the connection's protocol is kept on its Client (from now on it may be sent CREW_WINDOW packets) and
-     * WELCOME answers whether this character may open the window. An unknown protocol is kept and answered "not
-     * enabled", and nothing else is ever sent to it; a protocol of 0 or less is no HELLO and is not answered. HELLO is
-     * once per connection (a channel change is a new Client): a repeat is neither answered nor logged.
+     * HELLO: the client's protocol is kept on its Client (from now on it may be sent CREW_WINDOW packets) and WELCOME
+     * answers the protocol it is served at ({@link #negotiated}: a later DLL gets this server's) and whether this
+     * character may open the window. A protocol of 0 or less is no HELLO and is not answered. HELLO is once per
+     * connection (a channel change is a new Client): a repeat is neither answered nor logged.
      */
     private static void hello(Client client, Character chr, Hello hello, NativeCrewWindow window) {
         if (hello.protocol() <= 0 || client.getCrewWindowProtocol() != 0) {
             return;
         }
         client.setCrewWindowProtocol(hello.protocol());
-        boolean enabled = hello.protocol() == PROTOCOL && window != null && window.allows(chr);
-        client.sendPacket(NativeCrewPackets.welcome(enabled));
-        log.info("[crew-window] HELLO from {}: protocol {}, DLL build {}, enabled={}", chr.getName(), hello.protocol(),
-                hello.dllBuild(), enabled);
+        int served = negotiated(client);
+        boolean enabled = window != null && window.allows(chr);
+        client.sendPacket(NativeCrewPackets.welcome(served, enabled));
+        log.info("[crew-window] HELLO from {}: protocol {}, DLL build {}, served at {}, enabled={}", chr.getName(),
+                hello.protocol(), hello.dllBuild(), served, enabled);
+    }
+
+    /** The protocol {@code client} is served at: min(its HELLO's, this server's); 0 when it said no HELLO. */
+    static int negotiated(Client client) {
+        int said = client.getCrewWindowProtocol();
+        return said <= 0 ? 0 : Math.min(said, PROTOCOL);
     }
 
     /** CREW_WINDOW_NATIVE lets this character use the window ("gm": a GM character). */
@@ -165,19 +185,32 @@ public final class NativeCrewWindow {
     private void received(Client client, Character owner, Op op) {
         if (op instanceof Close) {
             watches.computeIfPresent(owner.getId(), (id, watch) -> watch.client == client ? null : watch);
+            LivingTalk.endNative(owner); // its page went with the window, unanswered
             return;
+        }
+        if (negotiated(client) < PAGES_PROTOCOL
+                && (op instanceof PageReply || op instanceof Action action && action.verb() == Verb.ACTIONS)) {
+            return; // protocol 1 has no pages: an op or verb it does not know is ignored
         }
         if (!owner.isLoggedinWorld()) {
             return; // the Cash Shop or MTS: the client closed its window on the way in, and nothing there is acted on
         }
         if (!allows(owner)) {
             watches.remove(owner.getId());
+            LivingTalk.endNative(owner);
             send(client, NativeCrewPackets.close()); // the switch or the character changed since WELCOME
             return;
         }
         watch(client, owner);
         if (op instanceof Open) {
             refresh(client, owner);
+        } else if (op instanceof PageReply reply) {
+            // a native page's click, answered by the page's own code on this packet thread, as an NPC reply is; a
+            // reply to an older page does nothing (the newer page stays)
+            LivingTalk.respondNative(owner, reply.stamp(), (byte) reply.action(), reply.selection());
+        } else if (op instanceof Action action && action.verb() == Verb.ACTIONS) {
+            // a native page, which waits on no NPC window and is never waited on by one: no NPC click rules
+            menus.crews().nativeActions(owner);
         } else if (op instanceof Action action) {
             // the player's own click, as an NPC click: refused while a window awaits its reply, and the windows it
             // opens are its answer (no click throttle)
@@ -208,7 +241,7 @@ public final class NativeCrewWindow {
                     changed(client, owner);
                     return;
                 }
-                menus.cards().takeABreak(owner, benched.persona(), quietly(client));
+                menus.cards().takeABreak(owner, benched.persona(), quietly(client), CompanionMenus.Surface.NATIVE);
             }
             case SWAP -> swap(client, owner, action);
             case USUAL -> usual(client, owner, action.ownerVersion());
@@ -263,7 +296,7 @@ public final class NativeCrewWindow {
             return;
         }
         Persona voice = inPicks ? in.persona() : out.persona();
-        menus.cards().swap(owner, out.persona(), in.persona(), voice, quietly(client));
+        menus.cards().swap(owner, out.persona(), in.persona(), voice, quietly(client), CompanionMenus.Surface.NATIVE);
     }
 
     /** "Call my usual lineup", stamped with the owner's version as the Crew window stamps it. */
@@ -394,6 +427,7 @@ public final class NativeCrewWindow {
             }
             if (!allows(owner)) {
                 watches.remove(owner.getId(), watch);
+                LivingTalk.endNative(owner);
                 client.runOnIoThread(() -> send(client, NativeCrewPackets.close()));
                 continue;
             }
@@ -425,25 +459,68 @@ public final class NativeCrewWindow {
 
     /**
      * CREW_WINDOW_NATIVE changed at runtime ({@code !world crewwindow}): every online character whose client said HELLO
-     * with this protocol hears WELCOME again with what the switch allows it now; one no longer allowed gets CLOSE first
-     * and its window is no longer watched.
+     * hears WELCOME again, at the protocol it is served at, with what the switch allows it now; one no longer allowed
+     * gets CLOSE first, its window is no longer watched and its native page is ended.
      */
     public void switchChanged(Iterable<Character> online) {
         for (Character chr : online) {
             Client client = chr.getClient();
-            if (client == null || client.getCrewWindowProtocol() != PROTOCOL) {
+            if (client == null || negotiated(client) < 1) {
                 continue;
             }
             boolean enabled = allows(chr);
             if (!enabled) {
                 watches.remove(chr.getId());
+                LivingTalk.endNative(chr);
             }
+            int served = negotiated(client);
             client.runOnIoThread(() -> {
                 if (!enabled) {
                     send(client, NativeCrewPackets.close());
                 }
-                send(client, NativeCrewPackets.welcome(enabled));
+                send(client, NativeCrewPackets.welcome(served, enabled));
             });
+        }
+    }
+
+    // ---- native pages (Step 7) -----------------------------------------------------------------------
+
+    /** LivingTalk's native pages are drawn by this window from now on: called when the living world starts. */
+    public void install() {
+        LivingTalk.nativeRenderer(this);
+    }
+
+    /** No more native pages from this window: the living world stopped. */
+    public void uninstall() {
+        LivingTalk.clearNativeRenderer(this);
+    }
+
+    /**
+     * A native page may be drawn for {@code chr}: its connection is served at protocol 2 or later, it stands in the
+     * world (not the Cash Shop or MTS) and the switch allows it. Otherwise LivingTalk shows the NPC window instead.
+     */
+    @Override
+    public boolean draws(Character chr) {
+        Client client = chr.getClient();
+        return client != null && negotiated(client) >= PAGES_PROTOCOL && chr.isLoggedinWorld() && allows(chr);
+    }
+
+    /** PAGE, to a connection at protocol 2 or later the switch still allows. */
+    @Override
+    public void page(Character chr, NativeTalkPage page) {
+        sendPage(chr, NativeCrewPackets.page(page));
+    }
+
+    /** PAGE_CLOSE, to a connection at protocol 2 or later the switch still allows. */
+    @Override
+    public void close(Character chr, int stamp) {
+        sendPage(chr, NativeCrewPackets.pageClose(stamp));
+    }
+
+    private void sendPage(Character chr, Packet packet) {
+        Client client = chr.getClient();
+        if (client != null && negotiated(client) >= PAGES_PROTOCOL && allows(chr)) {
+            client.sendPacket(packet);
         }
     }
 
@@ -552,9 +629,9 @@ public final class NativeCrewWindow {
         }
     }
 
-    /** Sends to a connection that said HELLO with this server's protocol, and to no other. */
+    /** Sends to a connection that said HELLO (served at protocol 1 or later), and to no other. */
     private static void send(Client client, Packet packet) {
-        if (client.getCrewWindowProtocol() == PROTOCOL) {
+        if (negotiated(client) >= 1) {
             client.sendPacket(packet);
         }
     }

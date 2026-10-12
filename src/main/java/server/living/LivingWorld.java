@@ -310,6 +310,7 @@ public final class LivingWorld {
         // timer hands over nothing while none is open)
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.crewWindow::tick,
                 server.living.roster.ui.NativeCrewWindow.WATCH_MS, server.living.roster.ui.NativeCrewWindow.WATCH_MS));
+        world.crewWindow.install(); // P10 Step 7: the native window draws the crew pages for a protocol-2 client
         instance = world;
         // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
         net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
@@ -328,6 +329,7 @@ public final class LivingWorld {
             return;
         }
         instance = null;
+        world.crewWindow.uninstall();
         net.server.world.PartyEvents.install(null);
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);

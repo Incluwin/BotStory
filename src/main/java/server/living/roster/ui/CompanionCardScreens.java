@@ -424,7 +424,12 @@ final class CompanionCardScreens {
      * {@link RosterService#bench} on companion-ops through {@code commands}.
      */
     void takeABreak(Character owner, Persona persona, Commands commands) {
-        menus.confirmBench(owner, persona, () -> commands.run(owner, persona, "menu.bench",
+        takeABreak(owner, persona, commands, CompanionMenus.Surface.NPC);
+    }
+
+    /** {@link #takeABreak(Character, Persona, Commands)} with its Yes/No on {@code surface} (P10: the native window's). */
+    void takeABreak(Character owner, Persona persona, Commands commands, CompanionMenus.Surface surface) {
+        menus.confirmBench(owner, persona, surface, () -> commands.run(owner, persona, "menu.bench",
                 () -> RosterVoice.line(persona, world.roster().bench(owner, persona))));
     }
 
@@ -433,7 +438,12 @@ final class CompanionCardScreens {
      * RosterService#swap}(out, in) on companion-ops through {@code commands}, its line in {@code voice}'s words.
      */
     void swap(Character owner, Persona out, Persona in, Persona voice, Commands commands) {
-        menus.confirmBench(owner, out, () -> commands.run(owner, voice, "menu.swap",
+        swap(owner, out, in, voice, commands, CompanionMenus.Surface.NPC);
+    }
+
+    /** {@link #swap(Character, Persona, Persona, Persona, Commands)} with its Yes/No on {@code surface}. */
+    void swap(Character owner, Persona out, Persona in, Persona voice, Commands commands, CompanionMenus.Surface surface) {
+        menus.confirmBench(owner, out, surface, () -> commands.run(owner, voice, "menu.swap",
                 () -> RosterVoice.line(voice, world.roster().swap(owner, out, in))));
     }
 

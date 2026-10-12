@@ -163,6 +163,21 @@ companion-ops.
   rows carry OUT and CAN_COME, so the client offers Swap only for pairs a swap picker would list
   ((out SWAP_OUT and in CAN_COME) or (in SWAP_IN and out OUT)).
 
+- Step 7 server done on `feat/crew-window-native` (95d776583), not deployed. The byte layouts are the ones in "Protocol 2"
+  below. The native actions page text is `What should my crew do?` (with `Things changed meanwhile.` and a blank line
+  on top after a stale click, and the heading `(nothing to do right now)` when the NPC window offers no action).
+  Choices the spec left open:
+  - Verb ACTIONS uses the full ACTION body (ids empty, versions ignored). It is not refused while an NPC window waits
+    for its reply, since a native page never waits on one.
+  - At protocol 2, BENCH and SWAP may answer with a YES_NO PAGE (the bench warning) instead of the NPC Yes/No.
+  - Close (255) on a native Yes/No runs nothing. The NPC End Chat runs the No action, but every native Yes/No today has
+    none.
+  - "My lineups..." and "Who should come along?" read the store first. Their PAGE comes after the PAGE_CLOSE of the
+    click that asked for it, within 1 s, even while an NPC window waits. A slower read shows nothing, as on NPC.
+  - PAGE and PAGE_CLOSE are also not sent once the switch no longer allows the character. A page is drawn only in the
+    world: in the Cash Shop or MTS the talk falls back to the NPC window.
+  - CLOSE from the client, a switch-off and a logout end the native talk. A warp keeps it.
+
 ## Live checks (Step 5)
 
 Setup: server branch deployed with the switch off; private client copy with the test DLL (`crew_selftest` removed);
@@ -225,6 +240,93 @@ every 5 min through `logs/gm-command-queue.txt`, so nothing needed the screen ex
 Opening the window cost about 6 GDI objects and about 13 MB of address space once. Private memory and address space
 stayed flat for 24 minutes of live updates and 5 map changes. GDI rose by 1 after two of the five warps (cause not
 isolated; the closed baseline had no warp). The window was still open and updating at the end.
+
+## Step 7: native pages (protocol 2)
+
+User 2026-10-12: "yes build them natively, keep cards as npc". The native window must reach every function of the NPC
+Crew window natively before the Roster item may open it. Missing today (More opens the NPC window for them): Remember
+this lineup, Formation, Everyone on the bench, Keep my crew fresh, Make room for a friend, Adventurers looking for a
+crew, My lineups, Who should come along. Cards (a companion's card, a citizen's hire terms, the card's swap picker)
+stay NPC dialogs.
+
+### Approach: LivingTalk draws natively
+
+Every one of those pages, and their Yes/No confirmations, is a `LivingTalk` (`menu(text, options).back(...)`,
+`yesNo`, `ok`). A `LivingTalk` gets a native mode: built the same way, it sends a PAGE to the Crew window instead of
+an NPC_TALK, and the window's click comes back through the same `handle`/`choose`/`finish` code. Options, labels,
+headings, paging (10 per page with "More..."), Back, stamps and every gate are therefore the NPC window's own.
+
+- Native talks live in their own map (`OPEN_NATIVE`), so a native page never blocks an NPC window or the reverse, and
+  the NPC rules for NPC windows (one window at a time, 500 ms click gap, script disposal, map check) do not apply.
+- `show()` in native mode sends PAGE through a renderer the Crew window registers; a client below protocol 2, no
+  renderer, or a NUMBER box falls back to the NPC window (none of the 8 functions uses a number box).
+- `finish`/`close` of a native talk sends PAGE_CLOSE unless the answer opened another native page; it never sends
+  enableActions (no NPC window was open).
+- `CompanionCrewScreens` takes a surface (NPC or NATIVE). On NATIVE: its pages are native talks; `answer` is the
+  pink line only (the window shows the crew again by itself and the watcher refreshes it); `render` (Back, "Things
+  changed meanwhile.") shows the native actions page with the note on top.
+- The native actions page (verb ACTIONS) is the NPC Crew window's `actions(...)` list as a native MENU: Call my usual
+  lineup, Remember this lineup, Everyone: follow/wait/gather/rebuff, Formation..., Everyone on the bench..., Keep my
+  crew fresh, Make room for a friend..., Adventurers looking for a crew..., My lineups..., Who should come along?
+  (each only when the NPC window offers it).
+- `CompanionMenus.confirmBench` takes the surface too: Bench, Swap and Make room started natively ask natively.
+- A hire list row opens the citizen's hire terms as the NPC window (a card); its Decline returns to the native list.
+
+### Protocol 2
+
+HELLO carries the DLL's protocol (2). The server keeps it and answers WELCOME with `min(client, server)`; a client
+at 1 (the trial DLL) gets 1 and is served exactly as before (MORE opens the NPC Crew window). PAGE and PAGE_CLOSE
+go only to a connection at 2 or more. The protocol-2 DLL accepts WELCOME 1 or 2 and uses More as the server's
+level allows (1: verb MORE, 2: verb ACTIONS). Deploy order: server first, then the DLL (a protocol-1 server answers
+a protocol-2 HELLO "not enabled").
+
+Server to client, new types:
+```
+4 PAGE
+  int    stamp          // LivingTalk stamp; every reply names it
+  byte   kind           // 0 OK, 1 YES_NO, 2 ACCEPT_DECLINE, 3 MENU
+  byte   flags          // bit0 has Prev (OK: an earlier say-page or a parent), bit1 has Next (OK: a later say-page)
+  string text           // the window text, with the NPC markup (#e #n #b #k #r #d #g, 
+); #L options never
+  short  entryCount     // MENU only (0 otherwise), in the NPC window's order for the current menu page
+  entry: byte type (0 heading line, 1 option), int selection (option: the NPC selection value; heading: 0), string label
+         // "More..." / "Back to the top..." / "Back" are options with their NPC selection values
+5 PAGE_CLOSE
+  int    stamp          // the page to close (0 = whatever page is shown)
+```
+Client to server, new op and verb:
+```
+op 4 PAGE_REPLY
+  int    stamp
+  byte   action         // as the NPC reply: 1 = OK / Yes / Accept / Next / an option, 0 = No / Decline / Prev, 255 = Close
+  int    selection      // the option's selection value; -1 otherwise
+verb 11 ACTIONS (ACTION, no ids, no stamp): show the native actions page
+```
+A reply whose stamp is not the open native talk's is ignored (the newer page stays). Close (255), the window's X and
+Esc end the native talk without running anything, as End Chat does.
+
+### Client page view
+
+While a page is shown it replaces the two blocks: the text (word-wrapped, #e bold, colours), then the entries
+(headings as plain lines, options as clickable lines with hover, each wrapped to the width), then buttons by kind:
+MENU Close; YES_NO Yes / No; ACCEPT_DECLINE Accept / Decline; OK Prev (bit0) and OK or Next (bit1). SNAPSHOTs keep
+arriving underneath, so the crew view is current when the page closes.
+
+### Live checks (Step 7)
+
+| # | Check | Pass when |
+|---|---|---|
+| N1 | More (protocol 2) | the native actions page lists what the NPC Crew window lists under its blocks |
+| N2 | Remember this lineup | the same pink line as the NPC option; usual lineup saved |
+| N3 | Formation... | native picker with the NPC labels; a pick sets it (companions answer or the refusal line) |
+| N4 | Everyone on the bench... | native duty picker with the same labels and rates; a pick assigns all |
+| N5 | Keep my crew fresh | the toggle flips; label shows on/off as in NPC |
+| N6 | Make room for a friend... | native picker; a contract companion asks Yes/No natively; the pick steps out |
+| N7 | Adventurers looking for a crew... | native list; a row opens the NPC hire terms; Decline returns to the native list |
+| N8 | My lineups... | native page with the three lineups; call and remember work |
+| N9 | Who should come along? | native page per PQ; Call works |
+| N10 | Back, More..., Close, stale reply | Back returns to the actions page, paging works, Close returns to the crew view, an old page's click does nothing |
+| N11 | Trial DLL (protocol 1) on the new server | unchanged: More opens the NPC Crew window |
 
 ## Open decisions
 

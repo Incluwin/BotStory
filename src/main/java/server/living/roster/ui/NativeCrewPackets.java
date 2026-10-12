@@ -5,6 +5,7 @@ import net.opcodes.SendOpcode;
 import net.packet.InPacket;
 import net.packet.OutPacket;
 import net.packet.Packet;
+import server.living.resident.NativeTalkPage;
 
 import java.util.List;
 
@@ -16,20 +17,28 @@ import java.util.List;
  * sends decodes to null, and nothing is thrown. Bytes after a well-formed body are ignored (a later DLL may add some).
  */
 public final class NativeCrewPackets {
-    /** The protocol this server speaks: HELLO and WELCOME carry it. */
-    public static final int PROTOCOL = 1;
+    /**
+     * The highest protocol this server speaks. A connection is served at {@code min(its HELLO's protocol, PROTOCOL)},
+     * which WELCOME carries: 1 is the crew view, 2 adds native pages (PAGE, PAGE_CLOSE, PAGE_REPLY, verb ACTIONS).
+     */
+    public static final int PROTOCOL = 2;
+    /** The first protocol with native pages (docs/BOT_MANAGEMENT_P10_PLAN.md, "Protocol 2"). */
+    public static final int PAGES_PROTOCOL = 2;
 
     /** Client ops (the first byte of 0x117). */
     static final int OP_HELLO = 0;
     static final int OP_OPEN = 1;
     static final int OP_CLOSE = 2;
     static final int OP_ACTION = 3;
+    static final int OP_PAGE_REPLY = 4;
 
     /** Server types (the first byte of 0x17A). */
     static final int TYPE_WELCOME = 0;
     static final int TYPE_SNAPSHOT = 1;
     static final int TYPE_CLOSE = 2;
     static final int TYPE_OPEN = 3;
+    static final int TYPE_PAGE = 4;
+    static final int TYPE_PAGE_CLOSE = 5;
 
     /** Snapshot flags: someone of the usual lineup can be called; someone is out with the owner (orders apply). */
     static final int USUAL_CALLABLE = 1;
@@ -57,7 +66,9 @@ public final class NativeCrewPackets {
 
     /** The ACTION verbs; each does what the NPC dialog does for the same click (NativeCrewWindow). */
     public enum Verb {
-        CARD(1), CALL(2), BENCH(3), SWAP(4), USUAL(5), MORE(6), FOLLOW(7), WAIT(8), GATHER(9), REBUFF(10);
+        CARD(1), CALL(2), BENCH(3), SWAP(4), USUAL(5), MORE(6), FOLLOW(7), WAIT(8), GATHER(9), REBUFF(10),
+        /** Protocol 2: the native actions page (no ids, no stamp). */
+        ACTIONS(11);
 
         private final int code;
 
@@ -80,7 +91,7 @@ public final class NativeCrewPackets {
     }
 
     /** A decoded client packet. */
-    public sealed interface Op permits Hello, Open, Close, Action { }
+    public sealed interface Op permits Hello, Open, Close, Action, PageReply { }
 
     /** Sent once per connection after its first SET_FIELD; {@code dllBuild} is yyyymmdd. */
     public record Hello(int protocol, int dllBuild) implements Op { }
@@ -96,6 +107,13 @@ public final class NativeCrewPackets {
      * the client was shown; {@code ownerVersion} stamps the snapshot itself. Versions are the low 32 bits.
      */
     public record Action(Verb verb, int ownerVersion, String a, int aVersion, String b, int bVersion) implements Op { }
+
+    /**
+     * Protocol 2: a click on the native page stamped {@code stamp}. {@code action} (0-255) as the NPC reply's: 1 = OK /
+     * Yes / Accept / Next / an option, 0 = No / Decline / Prev, 255 = Close; {@code selection} is the option's selection
+     * value, -1 otherwise.
+     */
+    public record PageReply(int stamp, int action, int selection) implements Op { }
 
     /** One row of a SNAPSHOT. */
     record Row(String personaId, int rowVersion, String name, String levelJob, String detail, int hpPercent, int flags) { }
@@ -127,6 +145,12 @@ public final class NativeCrewPackets {
                     String b = in.string();
                     int bVersion = in.intValue();
                     yield in.ok() && verb != null ? new Action(verb, ownerVersion, a, aVersion, b, bVersion) : null;
+                }
+                case OP_PAGE_REPLY -> {
+                    int stamp = in.intValue();
+                    int action = in.unsignedByte();
+                    int selection = in.intValue();
+                    yield in.ok() ? new PageReply(stamp, action, selection) : null;
                 }
                 default -> null;
             };
@@ -180,11 +204,11 @@ public final class NativeCrewPackets {
 
     // ---- server to client ------------------------------------------------------------------------
 
-    /** WELCOME: {@code short protocol} (this server's), {@code byte enabled}. */
-    public static Packet welcome(boolean enabled) {
+    /** WELCOME: {@code short protocol} (the one this connection is served at), {@code byte enabled}. */
+    public static Packet welcome(int protocol, boolean enabled) {
         OutPacket out = OutPacket.create(SendOpcode.CREW_WINDOW);
         out.writeByte(TYPE_WELCOME);
-        out.writeShort(PROTOCOL);
+        out.writeShort(protocol);
         out.writeBool(enabled);
         return out;
     }
@@ -200,6 +224,37 @@ public final class NativeCrewPackets {
     public static Packet open() {
         OutPacket out = OutPacket.create(SendOpcode.CREW_WINDOW);
         out.writeByte(TYPE_OPEN);
+        return out;
+    }
+
+    /**
+     * PAGE (protocol 2): {@code int stamp}, {@code byte kind}, {@code byte flags}, {@code string text}, {@code short
+     * entryCount} (a MENU's lines, 0 for any other kind), then each entry: {@code byte type} (0 heading, 1 option),
+     * {@code int selection} (an option's NPC selection value, 0 for a heading), {@code string label}.
+     */
+    public static Packet page(NativeTalkPage page) {
+        OutPacket out = OutPacket.create(SendOpcode.CREW_WINDOW);
+        out.writeByte(TYPE_PAGE);
+        out.writeInt(page.stamp());
+        out.writeByte(page.kind().code());
+        out.writeByte(unsignedByte(page.flags()));
+        out.writeString(page.text());
+        List<NativeTalkPage.Entry> entries = page.kind() == NativeTalkPage.Kind.MENU ? page.entries() : List.of();
+        int count = Math.min(entries.size(), Short.MAX_VALUE);
+        out.writeShort(count);
+        for (NativeTalkPage.Entry entry : entries.subList(0, count)) {
+            out.writeByte(entry.option() ? 1 : 0);
+            out.writeInt(entry.option() ? entry.selection() : 0);
+            out.writeString(entry.label());
+        }
+        return out;
+    }
+
+    /** PAGE_CLOSE (protocol 2): {@code int stamp}, the page to close (0: whatever page is shown). */
+    public static Packet pageClose(int stamp) {
+        OutPacket out = OutPacket.create(SendOpcode.CREW_WINDOW);
+        out.writeByte(TYPE_PAGE_CLOSE);
+        out.writeInt(stamp);
         return out;
     }
 
