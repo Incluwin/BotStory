@@ -127,8 +127,10 @@ public final class AgentBossRunRegistry {
     /**
      * True for a fake part (Zakum's body before its arms fall) in the event of an open run that never targets fakes:
      * a hit on it is thrown away, so the combat selector never takes it, not even as a secondary or projectile target.
-     * Memory only, any thread; false at once while no run is open. The fake flag is read last, because it takes the
-     * monster's lock and every other read here is a plain field or map read.
+     * Also true for a part the run's boss rules never let a member hit (AgentBossRules.neverTarget, P11: Normal
+     * Balrog's helpers and seal, whose death would release a claw early). Memory only, any thread; false at once while
+     * no run is open. The fake flag is read last, because it takes the monster's lock and every other read here is a
+     * plain field or map read.
      */
     public static boolean neverTarget(Monster monster) {
         if (SESSIONS.isEmpty() || monster == null) {
@@ -137,7 +139,11 @@ public final class AgentBossRunRegistry {
         MapleMap map = monster.getMap();
         EventInstanceManager event = map == null ? null : map.getEventInstance();
         AgentBossRunSession session = event == null ? null : forExpedition(event.getExpedition());
-        return session != null && session.definition().neverTargetFakes() && monster.isFake();
+        if (session == null) {
+            return false;
+        }
+        return AgentBossRules.neverTarget(session.definition().key(), monster.getId())
+                || session.definition().neverTargetFakes() && monster.isFake();
     }
 
     /**

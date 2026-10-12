@@ -19,6 +19,10 @@ import java.util.WeakHashMap;
  * 105100100, for Easy Balrog), and where each companion waiting to sign up stands beside her, by its ordinal in the
  * run, the way a lineup's extras wait beside a party quest's entry NPC (PqEntrance.Beside). Also the map on the way
  * there whose store its companions top up at ({@code approachMapId}; 0: none), since no shop is in reach of her room.
+ * Two bosses can share an entry NPC's room and an approach map (P11: Easy and Normal Balrog share Mu Young's room and
+ * Ant Tunnel Park); their entrances then share her spots too, and the living world picks the boss by the expedition
+ * type (her window's own choice) or, for potions, by the larger standard ({@link #allAtRecruitMap},
+ * {@link #allAtApproachMap}).
  * A bench ally (Part B) comes into the room at its arrival portal, where players coming down to her land, and leaves
  * by its exit portal. {@code holdsTripsAtEntry} (P8): a companion's potion trip out of the recruit map is to be held
  * there while the switch lists the boss, since the way back is too long (Zakum: no route leads back into Adobis's
@@ -45,7 +49,14 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance ZAKUM = new BossEntrance(AgentBossRunCatalog.ZAKUM,
             new PqEntrance.Beside(-50, -30, true), 211_040_200, "west00", "west00", true);
 
-    private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM);
+    // slot: balrog_normal
+    /**
+     * Normal Balrog (P11) signs up with Mu Young too: the same room, spots, approach store and portals as Easy's.
+     */
+    static final BossEntrance BALROG_NORMAL = new BossEntrance(AgentBossRunCatalog.BALROG_NORMAL,
+            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false);
+
+    private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
     /**
      * Where the entry NPC stands, by the map instance she was found on: looked for once per map (MapleMap.getNPCById
      * copies every object on it under its lock, and she never moves), not on every tick a companion walks up.
@@ -54,24 +65,24 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
 
     private record NpcSpot(int npcId, Point at) { }
 
-    /** The entrance whose entry NPC stands on {@code mapId} (its recruit map), or null on any other map. */
+    /**
+     * The first entrance whose entry NPC stands on {@code mapId} (its recruit map), or null on any other map. Entrances
+     * that share a room share the entry NPC and her spots, so any of them places a waiting companion.
+     */
     static BossEntrance atRecruitMap(int mapId) {
-        for (BossEntrance entrance : ALL) {
-            if (entrance.definition.recruitMapId() == mapId) {
-                return entrance;
-            }
-        }
-        return null;
+        List<BossEntrance> here = allAtRecruitMap(mapId);
+        return here.isEmpty() ? null : here.getFirst();
     }
 
-    /** The entrance whose approach map (the one with a store on the way there) is {@code mapId}, or null. */
-    static BossEntrance atApproachMap(int mapId) {
-        for (BossEntrance entrance : ALL) {
-            if (entrance.approachMapId > 0 && entrance.approachMapId == mapId) {
-                return entrance;
-            }
-        }
-        return null;
+    /** Every entrance whose entry NPC stands on {@code mapId}, in catalog order; empty on any other map. */
+    static List<BossEntrance> allAtRecruitMap(int mapId) {
+        return ALL.stream().filter(entrance -> entrance.definition.recruitMapId() == mapId).toList();
+    }
+
+    /** Every entrance whose approach map (the one with a store on the way there) is {@code mapId}, in catalog order. */
+    static List<BossEntrance> allAtApproachMap(int mapId) {
+        return ALL.stream().filter(entrance -> entrance.approachMapId > 0 && entrance.approachMapId == mapId)
+                .toList();
     }
 
     /**

@@ -392,6 +392,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     public static final String NO_ALLY_CAN_COME = "None of your companions on the bench can come right now.";
     /** The owner's own party companions in one run (Part A): a full party is the owner and five. */
     static final int MOST_PER_OWNER = CompanionSlots.PARTY_CAP - 1;
+    /** What one Unagi and one Pure Water restore, to weigh a count standard against a points one. */
+    private static final long UNAGI_HP = 1_000L;
+    private static final long PURE_WATER_MP = 800L;
 
     private final LivingWorld world;
     private final OpenRuns open;
@@ -682,13 +685,50 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * The boss whose potion standard (AgentSupplyReadiness.BOSS_STANDARDS, or BOSS_RECOVERY_STANDARDS in HP and MP
      * points) a companion keeps on {@code mapId}: the
      * boss's key on its entry NPC's room (easy_balrog in Mu Young's, 105100100) while the switch lists it; null
-     * anywhere else or with the switch off. Memory only, any thread (CompanionRestock.standing asks it).
+     * anywhere else or with the switch off. Where two listed bosses share the room (P11: Easy and Normal Balrog), the
+     * one with the larger standard ({@link #largerStandard}). Memory only, any thread (CompanionRestock.standing asks
+     * it).
      */
     String restockKeyAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
+        String chosen = null;
+        for (BossEntrance entrance : BossEntrance.allAtRecruitMap(mapId)) {
+            chosen = largerOf(chosen, entrance, Integer.MAX_VALUE);
+        }
+        return chosen;
+    }
+
+    /**
+     * {@code chosen}, or {@code entrance}'s boss key when the switch lists it, a companion of {@code level} meets its
+     * level gate and its standard is the larger one.
+     */
+    private String largerOf(String chosen, BossEntrance entrance, int level) {
         LivingWorldConfig config = world.config();
-        String bossKey = entrance == null ? null : entrance.definition().key();
-        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+        AgentBossRunDefinition definition = entrance.definition();
+        if (config == null || !config.companionBossEnabled(definition.key())
+                || level < definition.type().getMinLevel()) {
+            return chosen;
+        }
+        return chosen == null || largerStandard(definition.key(), chosen) ? definition.key() : chosen;
+    }
+
+    /**
+     * True when boss {@code key}'s standard asks a companion to carry more than {@code other}'s (a tie keeps
+     * {@code other}, the earlier entrance): HP plus MP points where BOSS_RECOVERY_STANDARDS lists a key, else its
+     * BOSS_STANDARDS counts at an Unagi's 1,000 HP and a Pure Water's 800 MP, what Ant Tunnel Park and the other boss
+     * stores sell. A map that serves several bosses buys the largest standard among the listed ones (G9 item 2).
+     */
+    static boolean largerStandard(String key, String other) {
+        return standardWeight(key) > standardWeight(other);
+    }
+
+    private static long standardWeight(String key) {
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.Activity.partyQuest(key);
+        AgentSupplyReadiness.RecoveryStandard points = AgentSupplyReadiness.recoveryStandard(activity);
+        if (points != null) {
+            return points.hp() + points.mp();
+        }
+        AgentSupplyReadiness.Standard counts = AgentSupplyReadiness.standard(activity);
+        return counts.hp() * UNAGI_HP + counts.mp() * PURE_WATER_MP;
     }
 
     /**
@@ -698,8 +738,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * switch off. Memory only, any thread (CompanionRestock.restocksFrom asks it, P8).
      */
     boolean holdsTripsAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
-        return entrance != null && entrance.holdsTripsAtEntry() && restockKeyAt(mapId) != null;
+        LivingWorldConfig config = world.config();
+        return config != null && BossEntrance.allAtRecruitMap(mapId).stream().anyMatch(entrance ->
+                entrance.holdsTripsAtEntry() && config.companionBossEnabled(entrance.definition().key()));
     }
 
     /**
@@ -740,13 +781,26 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * The boss whose approach map with a store {@code mapId} is (BossEntrance.approachMapId: Ant Tunnel Park,
      * 105070001, on the walk down to Easy Balrog) while the switch lists it; null anywhere else or with the switch off.
-     * Memory only, any thread.
+     * Where the map serves two listed bosses (P11: Easy and Normal Balrog), the one with the larger standard. Memory
+     * only, any thread.
      */
     String approachKeyAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atApproachMap(mapId);
-        LivingWorldConfig config = world.config();
-        String bossKey = entrance == null ? null : entrance.definition().key();
-        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+        return approachKey(mapId, Integer.MAX_VALUE, null, false);
+    }
+
+    /**
+     * The listed boss served from approach map {@code mapId} with the largest standard whose level gate {@code level}
+     * meets and, when {@code checkMeant}, that {@code owner} is on the way to (BossEntrance.approachMeantBy); null for
+     * none.
+     */
+    private String approachKey(int mapId, int level, Character owner, boolean checkMeant) {
+        String chosen = null;
+        for (BossEntrance entrance : BossEntrance.allAtApproachMap(mapId)) {
+            if (!checkMeant || entrance.definition().markerItemIds().isEmpty() || entrance.approachMeantBy(owner)) {
+                chosen = largerOf(chosen, entrance, level);
+            }
+        }
+        return chosen;
     }
 
     /**
@@ -757,19 +811,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * otherwise. The rule opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
      */
     String approachKeyFor(Character bot, int ownerId) {
-        String bossKey = bot == null ? null : approachKeyAt(bot.getMapId());
-        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
-        if (definition == null || bot.getLevel() < definition.type().getMinLevel()) {
+        if (bot == null || approachKeyAt(bot.getMapId()) == null) {
             return null;
         }
         Party party = bot.getParty();
         if (party == null || party.getMemberById(ownerId) == null) {
             return null;
         }
-        BossEntrance entrance = BossEntrance.of(bossKey);
-        boolean meant = entrance == null || definition.markerItemIds().isEmpty()
-                || entrance.approachMeantBy(world.roster().onlineCharacter(ownerId)); // no owner lookup: Easy Balrog
-        return meant ? bossKey : null;
+        // the owner is looked up only for a boss with a marker item (Zakum); Easy and Normal Balrog need none
+        boolean markers = BossEntrance.allAtApproachMap(bot.getMapId()).stream()
+                .anyMatch(entrance -> !entrance.definition().markerItemIds().isEmpty());
+        Character owner = markers ? world.roster().onlineCharacter(ownerId) : null;
+        return approachKey(bot.getMapId(), bot.getLevel(), owner, true);
     }
 
     /**
@@ -780,11 +833,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * that boss (BossEntrance.approachMeantBy: for Zakum, the Eye of Fire).
      */
     void ownerApproached(int ownerId, int mapId) {
-        String bossKey = approachKeyAt(mapId);
-        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
-        Character owner = definition == null ? null : world.roster().onlineCharacter(ownerId);
-        BossEntrance entrance = owner == null ? null : BossEntrance.of(bossKey);
-        Party party = entrance == null || !entrance.approachMeantBy(owner) ? null : owner.getParty();
+        Character owner = approachKeyAt(mapId) == null ? null : world.roster().onlineCharacter(ownerId);
+        Party party = owner == null || approachKey(mapId, Integer.MAX_VALUE, owner, true) == null ? null
+                : owner.getParty();
         if (party == null) {
             return;
         }
@@ -792,8 +843,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             int id = member.getId();
             Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
             Character bot = persona == null || world.roster().cachedOwnerOf(persona.id()) != ownerId ? null : bot(id);
-            if (bot != null && bot.getLevel() >= definition.type().getMinLevel()) {
-                supplies.checkIfShort(id, bossKey);
+            String key = bot == null ? null : approachKey(mapId, bot.getLevel(), owner, true);
+            if (key != null) {
+                supplies.checkIfShort(id, key);
             }
         }
     }
@@ -1260,18 +1312,33 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     // ---- the fight's server authority and the logout delegation ---------------------------------
 
     /**
-     * Easy Balrog's server-authority rule (EasyBalrogEncounterService), read once as the fight starts on the starting
-     * thread, from memory: true while the switch lists easy_balrog, COMPANION_BOSS_SERVER_AUTHORITY is on, and a
-     * companion signed up for this very fight is a player of {@code battleMap}'s event. The server then moves Balrog
-     * for the whole fight and its attacks reach the companions (the Poison Golem mechanism).
+     * Balrog's server-authority rule (EasyBalrogEncounterService), read once as the fight starts on the starting
+     * thread, from memory: true while COMPANION_BOSS_SERVER_AUTHORITY is on and {@link #companionFight} holds for
+     * {@code battleMap}. The server then moves Balrog for the whole fight and its attacks reach the companions (the
+     * Poison Golem mechanism).
      */
     public boolean forcesServerAuthority(MapleMap battleMap) {
         LivingWorldConfig config = world.config();
-        if (battleMap == null || config == null || !config.COMPANION_BOSS_SERVER_AUTHORITY
-                || !config.companionBossEnabled(AgentBossRunCatalog.EASY_BALROG.key())) {
+        return config != null && config.COMPANION_BOSS_SERVER_AUTHORITY && companionFight(battleMap);
+    }
+
+    /**
+     * Normal Balrog's companion-fight rule (EasyBalrogEncounterService.startNormal, P11 decision 4), and the second
+     * half of {@link #forcesServerAuthority}, read once as the fight starts, from memory: true while the switch lists
+     * the boss whose battle map {@code battleMap} is (easy_balrog on 105100400, balrog_normal on 105100300) and a
+     * companion signed up for this very fight is a player of its event.
+     */
+    public boolean companionFight(MapleMap battleMap) {
+        LivingWorldConfig config = world.config();
+        if (battleMap == null || config == null) {
             return false;
         }
-        return open.signedUpIn(battleMap.getEventInstance());
+        for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
+            if (definition.battleMapId() == battleMap.getId() && config.companionBossEnabled(definition.key())) {
+                return open.signedUpIn(battleMap.getEventInstance());
+            }
+        }
+        return false;
     }
 
     /**

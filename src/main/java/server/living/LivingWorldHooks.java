@@ -601,8 +601,9 @@ public final class LivingWorldHooks {
     }
 
     /**
-     * Mu Young's Easy window ({@code bossKey} "easy_balrog" in 1061014.js, on the clicker's I/O thread): true when she
-     * offers the owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES). False keeps her
+     * Mu Young's Easy or Normal window ({@code bossKey} "easy_balrog" or "balrog_normal" in 1061014.js, on the
+     * clicker's I/O thread): true when she offers the owner "My party will register too."
+     * (living_world.COMPANION_BOSS_ENABLED_TYPES). False keeps her
      * stock window: no living world, an Agent clicking (a companion's own headless sign-up), or any failure.
      */
     public static boolean bossPartyOffered(scripting.npc.NPCConversationManager cm, String bossKey) {
@@ -638,8 +639,8 @@ public final class LivingWorldHooks {
     }
 
     /**
-     * Mu Young's Easy window (P7 Part B, on the clicker's I/O thread): true when she offers the owner "Call allies
-     * from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES). False keeps her window as it was: no living world, an
+     * Mu Young's Easy or Normal window (P7 Part B, on the clicker's I/O thread): true when she offers the owner "Call
+     * allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES). False keeps her window as it was: no living world, an
      * Agent clicking, or any failure.
      */
     public static boolean bossAlliesOffered(scripting.npc.NPCConversationManager cm, String bossKey) {

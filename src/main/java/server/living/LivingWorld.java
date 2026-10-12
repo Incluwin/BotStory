@@ -199,9 +199,11 @@ public final class LivingWorld {
         // a boss run's asked by its own runs and a party quest's by P6's
         world.roster.installInstanceDelegation(server.living.roster.CompanionBossRuns.byKey(world.bossRuns, world.partyQuestRuns));
         // a boss run's companions are tied to it, said for and recorded by the living world (P7), and while one signed
-        // up for Easy Balrog is in the fight the server moves Balrog (living_world.COMPANION_BOSS_SERVER_AUTHORITY)
+        // up for Easy Balrog is in the fight the server moves Balrog (living_world.COMPANION_BOSS_SERVER_AUTHORITY); a
+        // Normal Balrog fight one signed up for is the server's own fight too (P11)
         server.agents.capabilities.expedition.boss.AgentBossRunHost.install(world.bossRuns);
         server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(world.bossRuns::forcesServerAuthority);
+        server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule(world.bossRuns::companionFight);
         // and a boss part a player's client moves (Zakum's arms) hits the run's companions as it hits the player (P8)
         server.life.autonomy.BossAttackMirrorSeam.install(server.agents.capabilities.expedition.boss.AgentBossAttackMirror.get());
         // each entry NPC offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS): one desk
@@ -330,6 +332,7 @@ public final class LivingWorld {
         world.roster.installInstanceDelegation(null);
         server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);
         server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(null);
+        server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule(null);
         server.life.autonomy.BossAttackMirrorSeam.install(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();

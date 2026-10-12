@@ -53,6 +53,38 @@ class AgentBossRunCatalogTest {
         assertTrue(zakum.ownerLeavingTakesParty());
     }
 
+    /**
+     * P11: Normal Balrog signs up with Mu Young's second choice, fights on 105100300 and collects in 105100301, the
+     * twins of Easy's maps; her exit NPC is the way into the reward room after the clear, not out (it moves only the
+     * talker there); the fake body is never a target; an owner who leaves before the clear takes the party out (rule
+     * B); the fight is the Easy scenario with Normal's ids.
+     */
+    @Test
+    void normalBalrogIsMuYoungsSecondChoiceWithRuleBAndNoFakeTargets() {
+        AgentBossRunDefinition normal = AgentBossRunCatalog.BALROG_NORMAL;
+
+        assertEquals("balrog_normal", normal.key());
+        assertEquals(ExpeditionType.BALROG_NORMAL, normal.type());
+        assertEquals(105100100, normal.recruitMapId());
+        assertEquals(105100300, normal.battleMapId());
+        assertEquals(105100301, normal.clearMapId());
+        assertEquals(1061014, normal.entryNpcId());
+        assertEquals(List.of(2), normal.joinSelections());
+        assertEquals(50, normal.type().getMinLevel(), "her Lv50 gate; a companion under it is refused LEVEL "
+                + "(AgentBossRunSessionRegistrationTest)");
+        assertEquals(6, normal.type().getMinSize(), "the owner plus 5");
+        assertEquals(1061018, normal.exitNpcId());
+        assertEquals(2, normal.rewardExitPortalId(), "out99, balog_end");
+        assertFalse(normal.exitNpcAfterClear());
+        assertEquals(List.of(), normal.markerItemIds());
+        assertTrue(normal.neverTargetFakes());
+        assertTrue(normal.ownerLeavingTakesParty());
+        AgentEasyBalrogScenario fight = assertInstanceOf(AgentEasyBalrogScenario.class, normal.fight().get());
+        assertEquals("Normal Balrog", fight.spec().displayName());
+        assertEquals(105100300, fight.spec().battleMapId());
+        assertNotSame(normal.fight().get(), normal.fight().get(), "a fresh fight per session");
+    }
+
     @Test
     void easyBalrogKeepsEveryP8FlagOff() {
         AgentBossRunDefinition easy = AgentBossRunCatalog.EASY_BALROG;
@@ -65,8 +97,10 @@ class AgentBossRunCatalogTest {
     }
 
     @Test
-    void theCatalogListsEasyBalrogThenZakumAndFindsEachByItsKey() {
-        assertEquals(List.of(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.ZAKUM), AgentBossRunCatalog.all());
+    void theCatalogListsEasyBalrogThenZakumThenNormalBalrogAndFindsEachByItsKey() {
+        assertEquals(List.of(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.ZAKUM,
+                AgentBossRunCatalog.BALROG_NORMAL), AgentBossRunCatalog.all());
+        assertSame(AgentBossRunCatalog.BALROG_NORMAL, AgentBossRunCatalog.of(" Balrog_Normal "));
         assertSame(AgentBossRunCatalog.ZAKUM, AgentBossRunCatalog.of(" Zakum "));
         assertSame(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.of("easy_balrog"));
         assertNull(AgentBossRunCatalog.of("balrog"));

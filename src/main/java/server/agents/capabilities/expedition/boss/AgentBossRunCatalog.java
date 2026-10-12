@@ -31,7 +31,21 @@ public final class AgentBossRunCatalog {
             AgentZakumDefinition.EXIT_NPC_ID, -1,
             AgentZakumScenario::forCompanions, true, List.of(AgentZakumDefinition.EYE_ITEM_ID), true, true);
 
-    private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM);
+    // slot: balrog_normal
+    /**
+     * Mu Young's Normal Balrog (P11): sign up with her Normal choice, fight on 105100300, collect in 105100301. The
+     * exit NPC's yes after the clear moves only the talker into the reward room, so members follow their owner there
+     * and leave with them; an owner who leaves before the clear takes their party's members out with them (rule B).
+     * The fake body is never a target, nor are the parts the boss rules catalog lists (AgentBossRules).
+     */
+    public static final AgentBossRunDefinition BALROG_NORMAL = new AgentBossRunDefinition(
+            AgentBalrogDefinition.NORMAL_KEY, ExpeditionType.BALROG_NORMAL,
+            AgentBalrogDefinition.RECRUIT_MAP, AgentBalrogDefinition.NORMAL_BATTLE_MAP_ID,
+            AgentBalrogDefinition.NORMAL_CLEAR_MAP_ID, AgentBalrogDefinition.ENTRY_NPC, List.of(2),
+            AgentBalrogDefinition.BATTLE_EXIT_NPC_ID, AgentBalrogDefinition.REWARD_EXIT_PORTAL_ID,
+            AgentEasyBalrogScenario::forNormalCompanions, false, List.of(), true, true);
+
+    private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
 
     private AgentBossRunCatalog() {
     }

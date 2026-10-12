@@ -34,12 +34,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Easy Balrog's build pool, claw/body phase policy, and battle status. */
+/**
+ * Easy Balrog's build pool, claw/body phase policy, and battle status; also Normal Balrog's companion fight (P11,
+ * {@link #forNormalCompanions}), the same phase policy in its twin arena with Normal's mob ids ({@link AgentBalrogFight}).
+ */
 public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentEasyBalrogScenario.class);
     private static final int POWER_ELIXIR_ITEM_ID = 2_000_005;
     private static final int BATTLE_EXIT_NPC = 1_061_018;
-    private static final int REWARD_REACTOR = 1_052_002;
     private static final int REWARD_EXIT_PORTAL = 2;
     private static final long POST_CLEAR_TIMEOUT_MS = 180_000L;
     private static final long REWARD_FIDGET_INITIAL_STEP_MS = 275L;
@@ -59,6 +61,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
             "Balrog07", "Balrog08", "Balrog09", "Balrog10", "Balrog11", "Balrog12");
 
     private final List<AgentBalrogTestFixtureService.Build> roster;
+    private final AgentBalrogFight fight;
     private final AgentExpeditionSpec spec;
     private final Map<Integer, Integer> memberOrdinals = new ConcurrentHashMap<>();
     private CombatPhase combatPhase;
@@ -81,25 +84,39 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
      * Power Elixirs; each member's ranged flag comes from the weapon it carries.
      */
     public static AgentEasyBalrogScenario forCompanions() {
-        return new AgentEasyBalrogScenario(List.of());
+        return new AgentEasyBalrogScenario(List.of(), AgentBalrogFight.EASY);
+    }
+
+    /** Normal Balrog's fight for adopted companions (P11), as {@link #forCompanions} is Easy's. */
+    public static AgentEasyBalrogScenario forNormalCompanions() {
+        return new AgentEasyBalrogScenario(List.of(), AgentBalrogFight.NORMAL);
     }
 
     private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster) {
+        this(roster, AgentBalrogFight.EASY);
+    }
+
+    private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster, AgentBalrogFight fight) {
         this.roster = roster;
+        this.fight = fight;
         spec = new AgentExpeditionSpec(
-                "easy-balrog-level-60",
-                "Easy Balrog",
-                ExpeditionType.BALROG_EASY,
-                AgentBalrogDefinition.RECRUIT_MAP,
-                AgentBalrogDefinition.BATTLE_MAP,
-                AgentBalrogDefinition.RECRUIT_MAP,
+                fight == AgentBalrogFight.EASY ? "easy-balrog-level-60" : "normal-balrog",
+                fight.label(),
+                fight.type(),
+                fight.recruitMapId(),
+                fight.battleMapId(),
+                fight.recruitMapId(),
                 AgentBalrogDefinition.ENTRY_NPC,
                 AgentBalrogDefinition.PARTY_CAPACITY,
                 5_000L,
                 MEMBER_NAMES,
-                List.of(1, 1),
-                List.of(1),
-                List.of(1, 2, 0));
+                fight.createSelections(),
+                fight.joinSelections(),
+                fight.startSelections());
+    }
+
+    AgentBalrogFight fight() {
+        return fight;
     }
 
     @Override
@@ -151,43 +168,45 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         List<Monster> monsters = server.agents.perception.AgentMapPerception
                 .monsters(members.getFirst().getMap());
         boolean releasedClaw = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && mob.getId() == AgentBalrogDefinition.RELEASED_CLAW_MOB);
+                && mob.getId() == fight.releasedClawMob());
         boolean initialClaw = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && mob.getId() == AgentBalrogDefinition.INITIAL_CLAW_MOB);
+                && mob.getId() == fight.initialClawMob());
         boolean liveClaw = releasedClaw || initialClaw;
         boolean realBody = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && mob.getId() == AgentBalrogDefinition.BODY_MOB && !mob.isFake());
+                && mob.getId() == fight.bodyMob() && !mob.isFake());
         boolean liveAdds = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && AgentBalrogDefinition.SUMMONED_ADDS.contains(mob.getId()));
+                && fight.adds().contains(mob.getId()));
         boolean seal = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && mob.getId() == AgentBalrogDefinition.RELEASE_SEAL_MOB);
+                && mob.getId() == fight.releaseSealMob());
         boolean reflecting = monsters.stream().anyMatch(mob -> mob.isAlive()
-                && (mob.getId() == AgentBalrogDefinition.BODY_MOB
-                || AgentBalrogDefinition.CLAW_MOBS.contains(mob.getId()))
+                && (mob.getId() == fight.bodyMob()
+                || fight.claws().contains(mob.getId()))
                 && (mob.isBuffed(MonsterStatus.WEAPON_REFLECT)
                 || mob.isBuffed(MonsterStatus.MAGIC_REFLECT)));
+        Set<Integer> clawTargets = fight.clawTargets(id -> id == fight.releasedClawMob()
+                ? releasedClaw : id == fight.initialClawMob() && initialClaw);
         CombatPhase nextPhase = liveClaw
                 ? (seal ? CombatPhase.SEALED_CLAW : CombatPhase.CLAW)
                 : (realBody ? CombatPhase.BODY : CombatPhase.TRANSITION);
         if (nextPhase != combatPhase) {
             combatPhase = nextPhase;
-            log.info("Easy Balrog combat phase={} members={} mobs={}",
-                    combatPhase, members.size(), battleStatus(members.getFirst()));
+            log.info("{} combat phase={} members={} mobs={}",
+                    fight.label(), combatPhase, members.size(), battleStatus(members.getFirst()));
         }
         for (Character member : members) {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
             if (entry == null) continue;
             AgentPrimitiveCapabilityGatewayRuntime.gateway().setHorizontalBoundary(
                     entry,
-                    AgentBalrogDefinition.BATTLE_MAP,
+                    fight.battleMapId(),
                     AgentEasyBalrogCombatPolicy.battleMinX(),
                     AgentEasyBalrogCombatPolicy.battleMaxX());
             maintainBattleResources(entry, member);
             int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
             boolean ranged = rangedFor(member, ordinal);
             Set<Integer> bossTargets = liveClaw
-                    ? AgentBalrogDefinition.CLAW_MOBS
-                    : realBody ? Set.of(AgentBalrogDefinition.BODY_MOB) : Set.of();
+                    ? clawTargets
+                    : realBody ? Set.of(fight.bodyMob()) : Set.of();
             if (reflecting && !liveAdds) {
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
                 continue;
@@ -209,8 +228,8 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                     }
                 }
                 Set<Integer> ordinaryTargets = new HashSet<>();
-                if (!reflecting) ordinaryTargets.addAll(AgentBalrogDefinition.CLAW_MOBS);
-                if (liveAdds) ordinaryTargets.addAll(AgentBalrogDefinition.SUMMONED_ADDS);
+                if (!reflecting) ordinaryTargets.addAll(clawTargets);
+                if (liveAdds) ordinaryTargets.addAll(fight.adds());
                 if (ordinaryTargets.isEmpty()) {
                     AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
                 } else {
@@ -222,7 +241,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
             if (!realBody) {
                 if (liveAdds) {
                     AgentPrimitiveCapabilityGatewayRuntime.gateway().grind(
-                            entry, AgentBalrogDefinition.SUMMONED_ADDS);
+                            entry, fight.adds());
                 } else {
                     AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
                 }
@@ -232,7 +251,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 // Adds use ordinary mobile combat. Once they are gone the next tick restores the
                 // authored upper-left head station before the body becomes eligible again.
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().grind(
-                        entry, AgentBalrogDefinition.SUMMONED_ADDS);
+                        entry, fight.adds());
                 continue;
             }
             if (bossTargets.isEmpty()) {
@@ -251,11 +270,11 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         }
         if (nowMs >= nextVitalsLogAtMs) {
             nextVitalsLogAtMs = nowMs + VITALS_LOG_INTERVAL_MS;
-            log.info("Easy Balrog party vitals phase={} {}", combatPhase,
+            log.info("{} party vitals phase={} {}", fight.label(), combatPhase,
                     members.stream().map(AgentEasyBalrogScenario::vitals).toList());
-            log.info("Easy Balrog combat decisions phase={} {}", combatPhase,
+            log.info("{} combat decisions phase={} {}", fight.label(), combatPhase,
                     members.stream().map(member -> combatDecision(member, nowMs)).toList());
-            log.info("Easy Balrog body status phase={} {}", combatPhase, bodyStatus(monsters));
+            log.info("{} body status phase={} {}", fight.label(), combatPhase, bodyStatus(monsters, fight.bodyMob()));
         }
     }
 
@@ -267,7 +286,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 .filter(java.util.Objects::nonNull)
                 .forEach(entry -> AgentPrimitiveCapabilityGatewayRuntime.gateway()
                         .clearHorizontalBoundary(entry));
-        clearRewardClaims(event);
+        clearRewardClaims(event, fight);
         postClearPhase = PostClearPhase.ENTERING_REWARD_ROOM;
         humanLootGraceEndsAtMs = 0L;
         nextRewardFidgetAtByMember.clear();
@@ -276,7 +295,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         rewardAssignmentsInitialized = false;
         rewardAssignments.clear();
         rewardCollectedCounts.clear();
-        log.info("Easy Balrog post-clear phase={} members={}", postClearPhase, members.size());
+        log.info("{} post-clear phase={} members={}", fight.label(), postClearPhase, members.size());
     }
 
     @Override
@@ -298,29 +317,29 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
     public boolean tickPostClear(
             List<Character> members, EventInstanceManager event, long nowMs) {
         if (members.stream().allMatch(
-                member -> member.getMapId() == AgentBalrogDefinition.RECRUIT_MAP)) {
-            clearRewardClaims(event);
+                member -> member.getMapId() == fight.recruitMapId())) {
+            clearRewardClaims(event, fight);
             return true;
         }
         if (members.stream().anyMatch(
-                member -> member.getMapId() == AgentBalrogDefinition.BATTLE_MAP)) {
+                member -> member.getMapId() == fight.battleMapId())) {
             stageAtBattleExitNpc(members);
             return false;
         }
         if (members.stream().anyMatch(member -> member.getMapId()
-                != AgentBalrogDefinition.CLEAR_MAP
-                && member.getMapId() != AgentBalrogDefinition.RECRUIT_MAP)) {
+                != fight.clearMapId()
+                && member.getMapId() != fight.recruitMapId())) {
             return false;
         }
 
         Character breaker = members.stream()
-                .filter(member -> member.getMapId() == AgentBalrogDefinition.CLEAR_MAP)
+                .filter(member -> member.getMapId() == fight.clearMapId())
                 .min(java.util.Comparator.comparingInt(member ->
                         memberOrdinals.getOrDefault(member.getId(), Integer.MAX_VALUE)))
                 .orElse(null);
         if (breaker == null) return false;
         Reactor reactor = AgentPrimitiveCapabilityGatewayRuntime.gateway().reactors(breaker).stream()
-                .filter(candidate -> candidate != null && candidate.getId() == REWARD_REACTOR)
+                .filter(candidate -> candidate != null && candidate.getId() == fight.rewardReactorId())
                 .filter(Reactor::isAlive).filter(Reactor::isActive)
                 .findFirst().orElse(null);
         long openedAtMs = AgentEasyBalrogRewardGracePolicy.rewardOpenedAt(event);
@@ -356,17 +375,17 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
             initializeRewardAssignments(members, breaker);
             rewardAssignmentsInitialized = true;
             postClearPhase = PostClearPhase.COLLECTING_REWARDS;
-            log.info("Easy Balrog Agent reward collection started assignments={}",
+            log.info("{} Agent reward collection started assignments={}", fight.label(),
                     rewardAssignments.size());
         }
         collectAssignedRewardsAndExit(members);
         return members.stream().allMatch(
-                member -> member.getMapId() == AgentBalrogDefinition.RECRUIT_MAP);
+                member -> member.getMapId() == fight.recruitMapId());
     }
 
     private void stageAtBattleExitNpc(List<Character> members) {
         List<Character> battleMembers = members.stream()
-                .filter(member -> member.getMapId() == AgentBalrogDefinition.BATTLE_MAP)
+                .filter(member -> member.getMapId() == fight.battleMapId())
                 .sorted(java.util.Comparator.comparingInt(member ->
                         memberOrdinals.getOrDefault(member.getId(), Integer.MAX_VALUE)))
                 .toList();
@@ -399,7 +418,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         rewardRoomWarpRequested = AgentPrimitiveCapabilityGatewayRuntime.gateway()
                 .runNpcScript(transitioner, BATTLE_EXIT_NPC);
         if (rewardRoomWarpRequested) {
-            log.info("Easy Balrog battle exit NPC used by={} members={}",
+            log.info("{} battle exit NPC used by={} members={}", fight.label(),
                     transitioner.getName(), battleMembers.size());
         }
     }
@@ -408,13 +427,13 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         humanLootGraceEndsAtMs = openedAtMs
                 + AgentEasyBalrogRewardGracePolicy.HUMAN_LOOT_GRACE_MS;
         postClearPhase = PostClearPhase.HUMAN_LOOT_GRACE;
-        log.info("Easy Balrog reward reactor opened by={} humanLootGraceMs={}",
+        log.info("{} reward reactor opened by={} humanLootGraceMs={}", fight.label(),
                 opener, AgentEasyBalrogRewardGracePolicy.HUMAN_LOOT_GRACE_MS);
     }
 
     @Override
     public void endRun(EventInstanceManager event) {
-        clearRewardClaims(event);
+        clearRewardClaims(event, fight);
         rewardAssignments.clear();
         rewardCollectedCounts.clear();
         nextRewardFidgetAtByMember.clear();
@@ -440,10 +459,10 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         endRun(event);
     }
 
-    private static void clearRewardClaims(EventInstanceManager event) {
+    private static void clearRewardClaims(EventInstanceManager event, AgentBalrogFight fight) {
         if (event != null) {
             AgentEasyBalrogRewardClaimRegistry.clear(
-                    event.getMapInstance(AgentBalrogDefinition.CLEAR_MAP));
+                    event.getMapInstance(fight.clearMapId()));
         }
     }
 
@@ -456,7 +475,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
 
     private void spreadRewardParty(List<Character> members, Character breaker) {
         for (Character member : members) {
-            if (member == breaker || member.getMapId() != AgentBalrogDefinition.CLEAR_MAP) continue;
+            if (member == breaker || member.getMapId() != fight.clearMapId()) continue;
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
             int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
             Point spread = AgentPrimitiveCapabilityGatewayRuntime.gateway().groundPoint(
@@ -470,7 +489,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
 
     private void fidgetRewardParty(List<Character> members, long nowMs) {
         for (Character member : members) {
-            if (member.getMapId() != AgentBalrogDefinition.CLEAR_MAP) continue;
+            if (member.getMapId() != fight.clearMapId()) continue;
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
             int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
             long nextAtMs = nextRewardFidgetAtByMember.computeIfAbsent(
@@ -495,7 +514,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
 
     private void initializeRewardAssignments(List<Character> members, Character source) {
         List<AgentEasyBalrogRewardPolicy.Member> rewardMembers = members.stream()
-                .filter(member -> member.getMapId() == AgentBalrogDefinition.CLEAR_MAP)
+                .filter(member -> member.getMapId() == fight.clearMapId())
                 .map(member -> {
                     int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
                     return new AgentEasyBalrogRewardPolicy.Member(
@@ -518,7 +537,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
 
     private void collectAssignedRewardsAndExit(List<Character> members) {
         var rewardMap = members.stream()
-                .filter(member -> member.getMapId() == AgentBalrogDefinition.CLEAR_MAP)
+                .filter(member -> member.getMapId() == fight.clearMapId())
                 .findFirst().map(Character::getMap).orElse(null);
         Map<Integer, MapItem> liveDrops = server.agents.perception.AgentMapPerception
                 .items(rewardMap).stream()
@@ -531,7 +550,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         Map<Integer, MapItem> activeTargets = new java.util.LinkedHashMap<>();
         Map<Integer, Integer> activeClaims = new java.util.LinkedHashMap<>();
         for (Character member : members) {
-            if (member.getMapId() != AgentBalrogDefinition.CLEAR_MAP
+            if (member.getMapId() != fight.clearMapId()
                     || rewardCollectedCounts.getOrDefault(member.getId(), 0) > collectionWave) {
                 continue;
             }
@@ -543,7 +562,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         }
         AgentEasyBalrogRewardClaimRegistry.replace(rewardMap, activeClaims);
         for (Character member : members) {
-            if (member.getMapId() != AgentBalrogDefinition.CLEAR_MAP) continue;
+            if (member.getMapId() != fight.clearMapId()) continue;
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.getId());
             if (entry == null) continue;
             MapItem target = activeTargets.get(member.getId());
@@ -559,7 +578,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                     AgentEasyBalrogRewardClaimRegistry.collected(
                             member.getMap(), target.getObjectId());
                     rewardCollectedCounts.merge(member.getId(), 1, Integer::sum);
-                    log.info("Easy Balrog reward collected agent={} item={} oid={}",
+                    log.info("{} reward collected agent={} item={} oid={}", fight.label(),
                             member.getName(), target.getItemId(), target.getObjectId());
                 }
                 continue;
@@ -642,9 +661,9 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
     }
 
     /** The body's HP, its share of max HP and whether it reflects; the real body before the claw-phase fake. */
-    private static String bodyStatus(List<Monster> monsters) {
+    private static String bodyStatus(List<Monster> monsters, int bodyMob) {
         return monsters.stream()
-                .filter(mob -> mob.isAlive() && mob.getId() == AgentBalrogDefinition.BODY_MOB)
+                .filter(mob -> mob.isAlive() && mob.getId() == bodyMob)
                 .min(Comparator.comparing(Monster::isFake))
                 .map(body -> "body=" + body.getId() + (body.isFake() ? "(fake)" : "")
                         + " hp=" + body.getHp() + '/' + body.getMaxHp()
@@ -661,14 +680,14 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
     @Override
     public List<String> battleStatus(Character leader) {
         if (leader == null || leader.getMap() == null) return List.of();
-        if (postClearPhase != null && (leader.getMapId() == AgentBalrogDefinition.CLEAR_MAP
-                || leader.getMapId() == AgentBalrogDefinition.RECRUIT_MAP)) {
-            return List.of("Easy Balrog rewards: phase=" + postClearPhase + '.');
+        if (postClearPhase != null && (leader.getMapId() == fight.clearMapId()
+                || leader.getMapId() == fight.recruitMapId())) {
+            return List.of(fight.label() + " rewards: phase=" + postClearPhase + '.');
         }
         List<String> mobs = server.agents.perception.AgentMapPerception.monsters(leader.getMap()).stream()
                 .filter(Monster::isAlive)
-                .filter(mob -> AgentBalrogDefinition.COMBAT_MOBS.contains(mob.getId())
-                        || mob.getId() == AgentBalrogDefinition.RELEASE_SEAL_MOB)
+                .filter(mob -> fight.combatMobs().contains(mob.getId())
+                        || mob.getId() == fight.releaseSealMob())
                 .map(mob -> mob.getId() + (mob.isFake() ? "(fake)" : "")
                         + (ServerMobAutonomyService.isActiveInstance(mob)
                         ? "(server)" : "(client)")
@@ -678,7 +697,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                         ? "(?,?)" : '(' + Integer.toString(mob.getPosition().x)
                         + ',' + mob.getPosition().y + ')'))
                 .toList();
-        return mobs.isEmpty() ? List.of() : List.of("Easy Balrog mobs: " + mobs);
+        return mobs.isEmpty() ? List.of() : List.of(fight.label() + " mobs: " + mobs);
     }
 
     public List<AgentBalrogTestFixtureService.Build> roster() {

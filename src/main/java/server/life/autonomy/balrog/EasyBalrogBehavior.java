@@ -15,11 +15,27 @@ import java.util.List;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
 
-/** Shared WZ selection policy for Easy Balrog's stationary combat components. */
+/** Shared WZ selection policy for the stationary combat components of Easy and Normal Balrog. */
 abstract class EasyBalrogBehavior implements BossActorBehavior {
+    private final boolean autoStart;
+
+    /** Easy Balrog's parts: the server takes them up as they spawn, as before. */
+    EasyBalrogBehavior() {
+        this(true);
+    }
+
+    /**
+     * {@code autoStart} false: only EasyBalrogEncounterService registers the part. Normal Balrog's parts (P11) are
+     * spawned by the stock BalrogBattle.js in every run without a companion, and that fight must stay exactly as it
+     * was (decision 4).
+     */
+    EasyBalrogBehavior(boolean autoStart) {
+        this.autoStart = autoStart;
+    }
+
     @Override
     public final boolean autoStartOnSpawn() {
-        return true;
+        return autoStart;
     }
 
     @Override

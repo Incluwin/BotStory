@@ -21,6 +21,9 @@ public final class CompanionBossKeys {
 
         // slot: zakum
         keys.add("zakum");
+
+        // slot: balrog_normal
+        keys.add("balrog_normal");
         return List.copyOf(keys);
     }
 

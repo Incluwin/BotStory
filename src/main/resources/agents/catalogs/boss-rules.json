@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "bosses": [
+    {
+      "key": "balrog_normal",
+      "label": "Normal Balrog",
+      "roles": {
+        "body": 8830000,
+        "releasedClaw": 8830001,
+        "initialClaw": 8830002,
+        "releaseSeal": 8830006
+      },
+      "targetPriority": [8830002, 8830001, 8830000],
+      "adds": [6400005, 6400006],
+      "neverTarget": [8830004, 8830005, 8830006]
+    }
+  ]
+}

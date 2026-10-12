@@ -1010,6 +1010,7 @@ class CompanionBossRunsTest {
         EventInstanceManager event = mock(EventInstanceManager.class);
         MapleMap battle = mock(MapleMap.class);
         when(battle.getEventInstance()).thenReturn(event);
+        when(battle.getId()).thenReturn(105100400);
         open.signedUp.add(event);
 
         game.config.COMPANION_BOSS_ENABLED_TYPES = "";
@@ -1026,6 +1027,40 @@ class CompanionBossRunsTest {
         assertFalse(runs.forcesServerAuthority(battle), "no companion signed up for this fight");
         assertFalse(runs.forcesServerAuthority(mock(MapleMap.class)), "no event");
         assertFalse(runs.forcesServerAuthority(null));
+    }
+
+    /**
+     * P11: the Normal Balrog fight is the server's (EasyBalrogEncounterService.startNormal) while the switch lists
+     * balrog_normal and a companion signed up for it is a player of its event; each boss's own key decides for its own
+     * battle map, and server authority follows the same rule with COMPANION_BOSS_SERVER_AUTHORITY on.
+     */
+    @Test
+    void eachBalrogsFightIsACompanionFightUnderItsOwnKeyOnItsOwnBattleMap() {
+        EventInstanceManager event = mock(EventInstanceManager.class);
+        MapleMap normal = mock(MapleMap.class);
+        when(normal.getEventInstance()).thenReturn(event);
+        when(normal.getId()).thenReturn(105100300);
+        MapleMap easy = mock(MapleMap.class);
+        when(easy.getEventInstance()).thenReturn(event);
+        when(easy.getId()).thenReturn(105100400);
+        open.signedUp.add(event);
+
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertFalse(runs.companionFight(normal), "Normal's own key is off: the stock fight");
+        assertTrue(runs.companionFight(easy));
+
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "balrog_normal";
+        assertTrue(runs.companionFight(normal));
+        assertFalse(runs.companionFight(easy), "Easy's own key is off");
+        game.config.COMPANION_BOSS_SERVER_AUTHORITY = true;
+        assertTrue(runs.forcesServerAuthority(normal));
+        game.config.COMPANION_BOSS_SERVER_AUTHORITY = false;
+        assertFalse(runs.forcesServerAuthority(normal), "the encounter runs, the clients drive it");
+        assertTrue(runs.companionFight(normal));
+
+        open.signedUp.clear();
+        assertFalse(runs.companionFight(normal), "no companion signed up: humans keep the stock fight");
+        assertFalse(runs.companionFight(null));
     }
 
     @Test
@@ -1068,6 +1103,8 @@ class CompanionBossRunsTest {
                 "server.agents.capabilities.expedition.boss.AgentBossRunHost.install(world.bossRuns);",
                 "server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule("
                         + "world.bossRuns::forcesServerAuthority);",
+                "server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule("
+                        + "world.bossRuns::companionFight);",
                 "world.roster.installInstanceDelegation(server.living.roster.CompanionBossRuns.byKey(world.bossRuns,"
                         + " world.partyQuestRuns));")) {
             int at = start.indexOf(installed);
@@ -1077,6 +1114,8 @@ class CompanionBossRunsTest {
         assertTrue(stop.contains("server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);"));
         assertTrue(stop.contains(
                 "server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(null);"));
+        assertTrue(stop.contains(
+                "server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule(null);"));
     }
 
     // ---- the lines -----------------------------------------------------------------------------

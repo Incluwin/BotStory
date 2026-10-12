@@ -45,24 +45,25 @@ import static org.mockito.Mockito.when;
 
 /**
  * Where Mu Young (1061014.js) offers an owner "My party will register too." (P7 Part A step 9) and "Call allies from my
- * bench..." (Part B step 9): seven insertions in her Easy branch and nothing else. Five functions ask the living world
+ * bench..." (Part B step 9): seven insertions and nothing else. Five functions ask the living world, with the key of
+ * the difficulty picked (bossKey: "easy_balrog", or "balrog_normal" since P11)
  * (its class loaded inside them, lazily, never at the top level); the leader's list gets the options as its fourth and
  * fifth choices (status 2); a member already on her list, one who just joined it and the owner who just created it get
  * them as choices 1 and 3 of a window that ends with "That's all for now." (status 30): two choices with one offer,
  * three with both. The bench picker loops at status 40 until "That's all for now." (99) or an answer with no choice.
  * Without the seven blocks her script is the stock one byte for byte (its SHA-256 at c6883f520). Run in Graal as
  * NPCScriptManager runs it: with the ally switch off every window is Part A's byte for byte, an Agent's headless
- * sign-up ([1]) and every window with no living world are the stock ones, Normal Balrog never asks, and every step of
- * every talk answers with a window or ends it.
+ * sign-up ([1] or [2]) and every window with no living world are the stock ones, Normal Balrog asks with its own key
+ * (P11), and every step of every talk answers with a window or ends it.
  */
 class MuYoungHookScriptTest {
     private static final Path SCRIPT = Path.of("scripts/npc/1061014.js");
     private static final String HOOKS = "Java.type('server.living.LivingWorldHooks').";
-    private static final String OFFERED = HOOKS + "bossPartyOffered(cm, \"easy_balrog\")";
-    private static final String REGISTER = HOOKS + "bossPartyRegister(cm, \"easy_balrog\")";
-    private static final String ALLIES_OFFERED = HOOKS + "bossAlliesOffered(cm, \"easy_balrog\")";
-    private static final String PICKER = HOOKS + "bossAllyPicker(cm, \"easy_balrog\")";
-    private static final String CALL = HOOKS + "bossAllyCall(cm, \"easy_balrog\", selection)";
+    private static final String OFFERED = HOOKS + "bossPartyOffered(cm, bossKey())";
+    private static final String REGISTER = HOOKS + "bossPartyRegister(cm, bossKey())";
+    private static final String ALLIES_OFFERED = HOOKS + "bossAlliesOffered(cm, bossKey())";
+    private static final String PICKER = HOOKS + "bossAllyPicker(cm, bossKey())";
+    private static final String CALL = HOOKS + "bossAllyCall(cm, bossKey(), selection)";
     /** 1061014.js before the hooks (c6883f520), LF line endings. */
     private static final String STOCK_SHA_256 = "b3af92700a1a6fd18c991249a412d3cbd9a28635fd5d0e917552de8685b41935";
 
@@ -71,9 +72,14 @@ class MuYoungHookScriptTest {
             + "\n"
             + "// companions: Mu Young offers an owner \"My party will register too.\" "
             + "(living_world.COMPANION_BOSS_ENABLED_TYPES)\n"
-            + "// and \"Call allies from my bench...\" (living_world.COMPANION_BOSS_ALLY_TYPES)\n"
+            + "// and \"Call allies from my bench...\" (living_world.COMPANION_BOSS_ALLY_TYPES), for the difficulty they "
+            + "chose\n"
+            + "function bossKey() {\n"
+            + "    return exped == ExpeditionType.BALROG_EASY ? \"easy_balrog\" : \"balrog_normal\";\n"
+            + "}\n"
+            + "\n"
             + "function companionOffer() {\n"
-            + "    return exped == ExpeditionType.BALROG_EASY && " + OFFERED + ";\n"
+            + "    return " + OFFERED + ";\n"
             + "}\n"
             + "\n"
             + "function companionRegister() {\n"
@@ -81,7 +87,7 @@ class MuYoungHookScriptTest {
             + "}\n"
             + "\n"
             + "function allyOffer() {\n"
-            + "    return exped == ExpeditionType.BALROG_EASY && " + ALLIES_OFFERED + ";\n"
+            + "    return " + ALLIES_OFFERED + ";\n"
             + "}\n"
             + "\n"
             + "function allyPicker() {\n"
@@ -141,9 +147,9 @@ class MuYoungHookScriptTest {
             + "                status = 30;\n"
             + "                return;\n"
             + "            }\n";
-    /** d: a member joining her Easy list, before the stock join: the join first, then her choices. */
+    /** d: a member joining her Easy or Normal list, before the stock join: the join first, then her choices. */
     private static final String JOINING = ""
-            + "            if (exped == ExpeditionType.BALROG_EASY) {\n"
+            + "            if (exped == ExpeditionType.BALROG_EASY || exped == ExpeditionType.BALROG_NORMAL) {\n"
             + "                var joined = expedition.addMember(player);\n"
             + "                var choices = expedition.contains(player) ? companionChoices() : null;\n"
             + "                if (choices != null) {\n"
@@ -207,6 +213,8 @@ class MuYoungHookScriptTest {
             + "#rBossfriend#k to begin it.";
     private static final String CREATED_LINE = "The #rEasy Balrog Expedition#k has been created.\r\n\r\nTalk to me "
             + "again to view the current team or start the fight!";
+    private static final String NORMAL_CREATED_LINE = "The #rNormal Balrog Expedition#k has been created.\r\n\r\nTalk "
+            + "to me again to view the current team or start the fight!";
     private static final String REPLY = "Very well. Have them come and speak with me before time runs out.";
     private static final String BENCH = "Who should I send word to? I close the list in about #b4 min#k, so they must "
             + "reach me before then.\r\nThere are #b5#k seats left for you.\r\n\r\n#L100#Orrin (Lv. 70 White Knight) - "
@@ -252,7 +260,7 @@ class MuYoungHookScriptTest {
     // ---- the insertions ------------------------------------------------------------------------
 
     @Test
-    void sevenBlocksInHerEasyBranchEachInItsPlace() throws IOException {
+    void sevenBlocksEachInItsPlace() throws IOException {
         String script = Files.readString(SCRIPT, StandardCharsets.US_ASCII);
 
         for (String block : BLOCKS) {
@@ -291,8 +299,10 @@ class MuYoungHookScriptTest {
         for (String line : script.split("\n")) {
             assertFalse(!line.startsWith(" ") && line.contains("Java.type('server.living"), "no top-level load: " + line);
         }
-        assertFalse(script.contains("\"zakum\"") || script.contains("(cm, \"balrog"),
-                "Easy Balrog's key, never another boss's");
+        assertFalse(script.contains("\"zakum\""), "Balrog's keys, never another boss's");
+        assertEquals(1, script.split("\"easy_balrog\"", -1).length - 1, "each key once, in bossKey()");
+        assertEquals(1, script.split("\"balrog_normal\"", -1).length - 1, "each key once, in bossKey()");
+        assertEquals(5, script.split("bossKey\\(\\)", -1).length - 1 - 1, "the five hooks pass bossKey()");
     }
 
     @Test
@@ -430,15 +440,47 @@ class MuYoungHookScriptTest {
     }
 
     @Test
-    void normalBalrogNeverAsks() throws Exception {
-        livingWorldOffers();
+    void normalBalrogAsksWithItsOwnKeyAndEasysOffersStayEasys() throws Exception {
+        livingWorldOffers(); // Easy's offers only
         benchOffered();
 
         run(2); // Normal
 
-        verify(bossRuns, never()).offers(any(), anyString());
-        verify(bossRuns, never()).alliesOffered(any(), anyString());
+        verify(bossRuns).offers(player, "balrog_normal");
+        verify(bossRuns).alliesOffered(player, "balrog_normal");
+        assertEquals(List.of("ok " + JOINED, "dispose"), windows.subList(1, windows.size()), "Normal is off: stock");
+    }
+
+    @Test
+    void normalBalrogsOwnerJoiningSeesTheOptionAndPickingItRegistersForNormal() throws Exception {
+        when(world.bossRuns()).thenReturn(bossRuns);
+        when(bossRuns.offers(player, "balrog_normal")).thenReturn(true);
+        when(bossRuns.registerFromNpc(player, "balrog_normal")).thenReturn(REPLY);
+
+        run(2, 1); // Normal, then "My party will register too."
+
+        assertEquals("simple " + JOINED + PART_A_CHOICES, windows.get(1));
+        assertEquals(List.of("ok " + REPLY, "dispose"), windows.subList(2, 4));
+        verify(bossRuns).registerFromNpc(player, "balrog_normal");
+        verify(bossRuns, never()).registerFromNpc(player, "easy_balrog");
+
+        windows.clear();
+        onTheChannel = null;
+        run(2, 1, 2); // Normal, "Lets get this going!", "That's all for now."
+        assertEquals("simple " + NORMAL_CREATED_LINE + PART_A_CHOICES, windows.get(2));
+    }
+
+    @Test
+    void anAgentsHeadlessNormalSignUpIsTheStockJoin() throws Exception {
+        when(world.bossRuns()).thenReturn(bossRuns);
+        when(bossRuns.offers(player, "balrog_normal")).thenReturn(true);
+        AgentPresence.install(chr -> chr == player); // a companion signing itself up ([2])
+
+        run(2);
+
         assertEquals(List.of("ok " + JOINED, "dispose"), windows.subList(1, windows.size()));
+        assertTrue(listed.get());
+        verify(bossRuns, never()).offers(any(), anyString());
     }
 
     // ---- run in Graal: the bench (Part B) ------------------------------------------------------
@@ -611,7 +653,7 @@ class MuYoungHookScriptTest {
         AtomicBoolean disposed = new AtomicBoolean();
         when(cm.getPlayer()).thenReturn(player);
         when(cm.getExpedition(any(ExpeditionType.class))).thenAnswer(inv -> onTheChannel);
-        when(cm.createExpedition(ExpeditionType.BALROG_EASY)).thenAnswer(inv -> {
+        when(cm.createExpedition(any(ExpeditionType.class))).thenAnswer(inv -> {
             onTheChannel = expedition;
             return 0;
         });

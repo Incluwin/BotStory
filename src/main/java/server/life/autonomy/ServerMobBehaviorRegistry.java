@@ -4,6 +4,9 @@ import server.life.autonomy.alishar.AlisharActorBehavior;
 import server.life.autonomy.balrog.EasyBalrogBodyBehavior;
 import server.life.autonomy.balrog.EasyBalrogInitialClawBehavior;
 import server.life.autonomy.balrog.EasyBalrogReleasedClawBehavior;
+import server.life.autonomy.balrog.NormalBalrogBodyBehavior;
+import server.life.autonomy.balrog.NormalBalrogInitialClawBehavior;
+import server.life.autonomy.balrog.NormalBalrogReleasedClawBehavior;
 import server.life.autonomy.papapixie.PapaPixieActorBehavior;
 import server.life.autonomy.poisongolem.PoisonGolemActorBehavior;
 import server.life.autonomy.poisongolem.PoisonGolemSummonedAddBehavior;
@@ -36,6 +39,9 @@ public final class ServerMobBehaviorRegistry {
         register(result, new EasyBalrogBodyBehavior());
         register(result, new EasyBalrogReleasedClawBehavior());
         register(result, new EasyBalrogInitialClawBehavior());
+        register(result, new NormalBalrogBodyBehavior());
+        register(result, new NormalBalrogReleasedClawBehavior());
+        register(result, new NormalBalrogInitialClawBehavior());
         PoisonGolemActorBehavior.MOB_IDS.forEach(id ->
                 register(result, new PoisonGolemActorBehavior(id)));
         PoisonGolemSummonedAddBehavior.MOB_IDS.forEach(id ->

@@ -940,6 +940,8 @@ living_world:
     # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
     # Timings: agent-engine.yaml AgentBossRunSession.
     # "zakum" (Adobis, P8) stays off until its staged client-memory checks pass (docs/COMPANION_BOSSING_P8.md).
+    # "balrog_normal" (Mu Young's Normal choice, P11) stays off until its live check passes (docs/COMPANION_BOSSING_P11.md);
+    # with it on, a Normal fight a companion signed up for is the server's own (stock BalrogBattle.js for every other).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
