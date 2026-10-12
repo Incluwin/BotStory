@@ -19,18 +19,55 @@ import java.util.function.Supplier;
  * @param markerItemIds      drops members leave on the floor inside the run (an item the boss's own script takes)
  * @param neverTargetFakes   members never target the boss's fake parts, not even as a secondary target
  * @param ownerLeavingTakesParty an owner who leaves before the clear takes their party's members out with them
+ * @param deathMode          what a member that dies in the fight does (P12 G6)
+ *
+ * <p>A party-instance boss (P12 G7: Latanica, Neo City, Papulatus) has no expedition: its {@code type} is null, its
+ * run is keyed by the party's event (AgentBossRunService.openForEvent), and it has no sign-up choices.</p>
  */
 public record AgentBossRunDefinition(String key, ExpeditionType type, int recruitMapId, int battleMapId,
                                      int clearMapId, int entryNpcId, List<Integer> joinSelections, int exitNpcId,
                                      int rewardExitPortalId, Supplier<AgentBossFight> fight,
                                      boolean exitNpcAfterClear, List<Integer> markerItemIds,
-                                     boolean neverTargetFakes, boolean ownerLeavingTakesParty) {
+                                     boolean neverTargetFakes, boolean ownerLeavingTakesParty, DeathMode deathMode) {
+    /** What a member that dies in the fight does (P12 G6). */
+    public enum DeathMode {
+        /** The stock respawn takes it outside, where it says one line and waits for its owner (P7's DIED path). */
+        WAIT_OUTSIDE,
+        /** It stays in the run, walks back from town and enters again by the recruit NPC (Scarga, Horntail). */
+        REENTER,
+        /** It revives inside the event, as a player does (Pink Bean); the death gate holds its stock respawn. */
+        REVIVE_INSIDE
+    }
+
     public AgentBossRunDefinition {
-        if (key == null || key.isBlank() || type == null || fight == null) {
-            throw new IllegalArgumentException("a boss run needs a key, an expedition type and a fight");
+        if (key == null || key.isBlank() || fight == null || deathMode == null) {
+            throw new IllegalArgumentException("a boss run needs a key, a fight and a death mode");
         }
         joinSelections = List.copyOf(joinSelections);
         markerItemIds = List.copyOf(markerItemIds);
+    }
+
+    /** An expedition boss whose dead members wait outside (P7, P8, P11). */
+    public AgentBossRunDefinition(String key, ExpeditionType type, int recruitMapId, int battleMapId,
+                                  int clearMapId, int entryNpcId, List<Integer> joinSelections, int exitNpcId,
+                                  int rewardExitPortalId, Supplier<AgentBossFight> fight,
+                                  boolean exitNpcAfterClear, List<Integer> markerItemIds,
+                                  boolean neverTargetFakes, boolean ownerLeavingTakesParty) {
+        this(key, requireType(type), recruitMapId, battleMapId, clearMapId, entryNpcId, joinSelections, exitNpcId,
+                rewardExitPortalId, fight, exitNpcAfterClear, markerItemIds, neverTargetFakes, ownerLeavingTakesParty,
+                DeathMode.WAIT_OUTSIDE);
+    }
+
+    private static ExpeditionType requireType(ExpeditionType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("an expedition boss needs an expedition type");
+        }
+        return type;
+    }
+
+    /** True for a party-instance boss: no expedition, its run keyed by the party's event. */
+    public boolean partyInstance() {
+        return type == null;
     }
 
     /** The join selections as the NPC gateway takes them. */

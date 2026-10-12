@@ -697,6 +697,24 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * P12 G7, a party-instance boss's portal (P14 and P15 scripts, on the portal's thread, right after the stock
+     * registerParty took the party into {@code event}): the companions inside are admitted into the boss's companion
+     * run on companion-ops (CompanionBossRuns.partyEntered). Nothing with no living world, and on any failure; the
+     * party's entry itself never depends on it.
+     */
+    public static void bossPartyEntered(scripting.event.EventInstanceManager event, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || event == null || world.bossRuns() == null) {
+            return;
+        }
+        try {
+            world.bossRuns().partyEntered(event, bossKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossPartyEntered hook failed", failure);
+        }
+    }
+
+    /**
      * A monster died (Monster.killBy, on the thread that landed the kill, from memory): who its drops and mesos go to,
      * {@code candidate} being its stock owner (its top damager on the map, else its killer). P7 Part B: a bench ally
      * that topped the damage in a companion boss run hands them to the human it fights for

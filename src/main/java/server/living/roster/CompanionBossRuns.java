@@ -184,6 +184,23 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return false;
         }
 
+        /**
+         * P12 G7: how many owners other than {@code ownerId} have companions in the party-instance run of {@code
+         * event} (every member, in any phase); unless implemented, 0.
+         */
+        default int otherOwnersIn(EventInstanceManager event, int ownerId) {
+            return 0;
+        }
+
+        /**
+         * P12 G7: admits the owner's companions the party's portal took into {@code event} into its party-instance run
+         * (AgentBossRunService.openForEvent). Refuses them all unless implemented.
+         */
+        default Enlisted admit(Character owner, AgentBossRunDefinition definition, EventInstanceManager event,
+                               List<Integer> agentIds, long nowMs) {
+            return new Enlisted(0L, List.of(), agentIds);
+        }
+
         OpenRuns LIVE = new OpenRuns() {
             @Override
             public boolean open(long sessionId) {
@@ -343,6 +360,24 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             public boolean cleared(long sessionId) {
                 AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
                 return session != null && session.phase() == AgentBossRunSession.Phase.POST_CLEAR;
+            }
+
+            @Override
+            public int otherOwnersIn(EventInstanceManager event, int ownerId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forEvent(event);
+                Set<Integer> others = new LinkedHashSet<>();
+                for (AgentBossRunMember member : session == null ? List.<AgentBossRunMember>of() : session.members()) {
+                    if (member.enlistedBy() != ownerId) {
+                        others.add(member.enlistedBy());
+                    }
+                }
+                return others.size();
+            }
+
+            @Override
+            public Enlisted admit(Character owner, AgentBossRunDefinition definition, EventInstanceManager event,
+                                  List<Integer> agentIds, long nowMs) {
+                return AgentBossRunService.openForEvent(owner, definition, event, agentIds, nowMs);
             }
         };
     }
@@ -563,6 +598,106 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     static boolean ownerFits(LivingWorldConfig config, OpenRuns open, Expedition expedition, int ownerId) {
         int most = config.COMPANION_BOSS_OWNERS_MAX;
         return most <= 1 ? !open.heldByAnother(expedition, ownerId) : open.otherOwners(expedition, ownerId) < most;
+    }
+
+    /**
+     * P12 G7, the owners rule for a party-instance run (memory, any thread): fewer other owners' companions in the run
+     * of {@code event} than COMPANION_BOSS_OWNERS_MAX allows (1: none at all).
+     */
+    static boolean ownerFits(LivingWorldConfig config, OpenRuns open, EventInstanceManager event, int ownerId) {
+        return open.otherOwnersIn(event, ownerId) < Math.max(1, config.COMPANION_BOSS_OWNERS_MAX);
+    }
+
+    // ---- a party-instance boss (P12 G7: the portal hook of P14 and P15) --------------------------------
+
+    /**
+     * The party-instance portal hook (LivingWorldHooks.bossPartyEntered, on the portal script's thread, after the stock
+     * registerParty took the party into {@code event}): admitting the companions inside is handed to companion-ops
+     * ({@link #admitParty}). Nothing while the switch leaves the boss out, for an unknown key or an expedition boss.
+     */
+    public void partyEntered(EventInstanceManager event, String bossKey) {
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(bossKey);
+        LivingWorldConfig config = world.config();
+        if (event == null || definition == null || !definition.partyInstance() || config == null
+                || !config.companionBossEnabled(definition.key())) {
+            return;
+        }
+        world.executor().submit("boss.party_entered " + definition.key(), () -> admitParty(event, definition));
+    }
+
+    /**
+     * On companion-ops: each human of {@code event} with companions inside admits them into the boss's party-instance
+     * run, owner by owner in the event's order, while the owners rule lets them in ({@link #ownerFits}); a companion is
+     * one of the owner's that follows them, is a player of the event, and is tied to no run (a commitment or a boss
+     * run), five at most. An admitted one is noted for its record and the potion line, as a sign-up is. The run adopts
+     * each once it stands on the battle map; one never adopted misses the start, and one not admitted fights on as any
+     * party member does, with no boss rules.
+     */
+    void admitParty(EventInstanceManager event, AgentBossRunDefinition definition) {
+        String bossKey = definition.key();
+        LivingWorldConfig config = world.config();
+        Commitments commitments = world.commitments();
+        if (config == null || commitments == null || event.isEventDisposed()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Character owner : event.getPlayers()) {
+            if (owner == null || AgentPresence.isAgent(owner) || !world.roster().hasCompanions(owner)) {
+                continue;
+            }
+            List<Integer> inside = companionsInside(owner, event, commitments);
+            if (inside.isEmpty()) {
+                continue;
+            }
+            if (!ownerFits(config, open, event, owner.getId())) {
+                log.info("boss party {} for owner {}: another owner's companions hold the run", bossKey,
+                        owner.getId());
+                continue;
+            }
+            Enlisted admitted = open.admit(owner, definition, event, inside, now);
+            if (admitted.sessionId() == 0L || admitted.accepted().isEmpty()) {
+                log.info("boss party {} for owner {}: nobody admitted, refused {}", bossKey, owner.getId(),
+                        admitted.refused());
+                continue;
+            }
+            CompanionBossRun run = runs.computeIfAbsent(
+                    CompanionBossRun.key(bossKey, admitted.sessionId(), owner.getId()),
+                    ignored -> new CompanionBossRun(bossKey, admitted.sessionId(), owner.getId()));
+            for (int id : admitted.accepted()) {
+                run.signedUp.add(id);
+                Persona persona = world.residents().personaOfCharacterId(id);
+                if (persona != null) {
+                    run.personaByCompanion.put(id, persona.id());
+                }
+                int[] carried = potions.apply(id);
+                if (carried != null) {
+                    run.potionsAtSignUp.put(id, carried);
+                }
+            }
+        }
+    }
+
+    /** The owner's companions that follow them, stand in {@code event} and are tied to no run; five at most. */
+    private List<Integer> companionsInside(Character owner, EventInstanceManager event, Commitments commitments) {
+        Party party = owner.getParty();
+        if (party == null) {
+            return List.of();
+        }
+        RosterService roster = world.roster();
+        List<Integer> ids = new ArrayList<>();
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            if (persona == null || roster.cachedOwnerOf(persona.id()) != owner.getId()
+                    || AgentRuntimeRegistry.leaderIdForAgentCharacter(id) != owner.getId()
+                    || commitments.isCommitted(id) || open.inRun(id) || event.getPlayerById(id) == null) {
+                continue;
+            }
+            if (ids.size() < MOST_PER_OWNER) {
+                ids.add(id);
+            }
+        }
+        return ids;
     }
 
     /**

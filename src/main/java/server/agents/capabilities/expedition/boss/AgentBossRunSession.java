@@ -29,6 +29,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused; one the
  * Start took in anyway is never adopted. A self-led member is adopted only while its anchor is a player of the event.
  * A member its host has no room for on the list at its turn (AgentBossRunHost.Rule.roomFor) is refused FULL.
+ *
+ * <p>P12 G7: a party-instance boss (Latanica, Neo City, Papulatus) has no expedition and no sign-up. Its run is keyed
+ * by the party's event, opens STARTING when the party goes in, and admits each companion the portal took in as
+ * REGISTERED ({@link #admit}); the rest is the same.</p>
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -45,10 +49,15 @@ public final class AgentBossRunSession {
     private final long createdAtMs;
     private final List<AgentBossRunMember> members = new CopyOnWriteArrayList<>();
     private volatile Phase phase = Phase.REGISTERING;
-    /** The expedition's event, from the first member adopted in it; null until then. */
-    private EventInstanceManager event;
+    /**
+     * The run's event: an expedition's from the first member adopted in it (null until then), a party-instance run's
+     * from its open.
+     */
+    private volatile EventInstanceManager event;
     private long startedAtMs;
     private int partySize;
+    /** A member went in: the fight was handed someone, so the end tells it. */
+    private boolean anyAdopted;
     private boolean cleared;
     /** Since when no human stands in the event; -1 while one does. */
     private long noHumanSinceMs = -1L;
@@ -66,6 +75,22 @@ public final class AgentBossRunSession {
         this.createdAtMs = nowMs;
     }
 
+    /** A party-instance run (P12 G7): keyed by the party's {@code event}, STARTING at once, with no expedition. */
+    AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, EventInstanceManager event,
+                        AgentBossFight fight, long nowMs) {
+        if (definition == null || event == null || fight == null) {
+            throw new IllegalArgumentException("a party boss run needs a definition, an event and a fight");
+        }
+        this.sessionId = sessionId;
+        this.definition = definition;
+        this.expedition = null;
+        this.event = event;
+        this.fight = fight;
+        this.createdAtMs = nowMs;
+        this.startedAtMs = nowMs;
+        this.phase = Phase.STARTING;
+    }
+
     public long sessionId() {
         return sessionId;
     }
@@ -74,8 +99,14 @@ public final class AgentBossRunSession {
         return definition;
     }
 
+    /** The run's expedition; null for a party-instance run. */
     public Expedition expedition() {
         return expedition;
+    }
+
+    /** The run's event: a party-instance run's from its open, an expedition's once a member went in; else null. */
+    public EventInstanceManager event() {
+        return event;
     }
 
     public long createdAtMs() {
@@ -125,6 +156,22 @@ public final class AgentBossRunSession {
             return null;
         }
         AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs, kind);
+        members.add(member);
+        AgentBossRunRegistry.index(this, agentId);
+        return member;
+    }
+
+    /**
+     * P12 G7: admits one companion the party's portal took into a party-instance run's event as REGISTERED, with the
+     * next ordinal, and indexes it; the next tick adopts it once it stands on the battle map. Null for an expedition
+     * run, once the fight is past its clear, or when the Agent is already a member.
+     */
+    synchronized AgentBossRunMember admit(int agentId, int enlistedBy, long nowMs, AgentBossRunMember.Kind kind) {
+        if (expedition != null || (phase != Phase.STARTING && phase != Phase.FIGHTING) || member(agentId) != null) {
+            return null;
+        }
+        AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs, kind);
+        member.registered();
         members.add(member);
         AgentBossRunRegistry.index(this, agentId);
         return member;
@@ -653,7 +700,8 @@ public final class AgentBossRunSession {
         int agentId = member.agentId();
         Character agent = ports.agent(agentId);
         EventInstanceManager memberEvent = agent == null ? null : agent.getEventInstance();
-        boolean inThisEvent = memberEvent != null && memberEvent.getExpedition() == expedition;
+        boolean inThisEvent = memberEvent != null
+                && (expedition != null ? memberEvent.getExpedition() == expedition : memberEvent == event);
         if (member.withdrawn()) {
             log.info("Boss run adoption refused: session={} boss={} member={} (withdrawn)", sessionId,
                     definition.key(), agentId);
@@ -670,7 +718,8 @@ public final class AgentBossRunSession {
                 return;
             }
             if (ports.prepareAdoption(agentId, "entering " + definition.key(), nowMs)) {
-                if (event == null) {
+                if (!anyAdopted) {
+                    anyAdopted = true;
                     event = memberEvent;
                     partySize = memberEvent.getPlayerCount();
                 }
@@ -776,7 +825,7 @@ public final class AgentBossRunSession {
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
-        if (event != null) {
+        if (anyAdopted) {
             try {
                 fight.end(event);
             } catch (RuntimeException failure) {

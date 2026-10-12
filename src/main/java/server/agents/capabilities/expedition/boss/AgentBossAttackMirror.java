@@ -41,7 +41,8 @@ import java.util.random.RandomGenerator;
  *
  * <p>An attack counts only while MODE is not OFF, for a real part (not fake) that AgentBossScope guards (so not
  * server-owned and not controlled by an Agent), reported by the part's own engaged controller, and only when the part's
- * event expedition has an open companion run, or for the GM trial (the trial GM's part on the trial map). The client
+ * event has an open companion run (AgentBossRunRegistry.forEvent: its expedition's, or a party-instance run's), or for
+ * the GM trial (the trial GM's part on the trial map). The client
  * repeats an attack's action while it plays, so one report per attack animation counts. At the attack's attackAfter,
  * on the shared timer, the part must still be alive, on its map and client-driven. Then every INSIDE or LEAVING member
  * of the run that stands in the attack's shape gets the hit on its own mailbox (in the trial: every companion the
@@ -177,7 +178,7 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
         }
         MapleMap map = attacker.getMap();
         EventInstanceManager event = map.getEventInstance();
-        boolean inRun = event != null && AgentBossRunRegistry.forExpedition(event.getExpedition()) != null;
+        boolean inRun = event != null && AgentBossRunRegistry.forEvent(event) != null;
         if (!inRun && AgentBossScope.trialMap() != map) {
             return;
         }
@@ -235,9 +236,9 @@ public final class AgentBossAttackMirror implements BossAttackMirrorSeam.Listene
 
     // ---- an accepted attack ---------------------------------------------------------------------------------
 
-    /** The open run of the part's event expedition, else the trial when the trial GM reports on the trial map. */
+    /** The open run of the part's event (forEvent), else the trial when the trial GM reports on the trial map. */
     private Scope scope(MapleMap map, EventInstanceManager event, Character controller, long now) {
-        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forExpedition(event.getExpedition());
+        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
         if (session != null) {
             return new Scope(session, 0, stats(session, now));
         }
