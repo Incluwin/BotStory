@@ -878,7 +878,8 @@ class NativeCrewWindowTest {
         window.switchChanged(List.of(owner, ben));
 
         assertEquals(List.of(Arrays.toString(NativeCrewPackets.close().getBytes()),
-                Arrays.toString(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, false).getBytes())), crewPackets().stream().map(Arrays::toString).toList());
+                Arrays.toString(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, false).getBytes())),
+                crewPackets().stream().map(Arrays::toString).toList());
         assertFalse(window.watching(owner));
         verify(benClient, never()).sendPacket(any());
 
