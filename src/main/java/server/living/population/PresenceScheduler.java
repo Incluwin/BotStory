@@ -607,6 +607,9 @@ public final class PresenceScheduler {
             log.debug("citizen {} is on a supply trip; its re-plan waits", session.name());
             return;
         }
+        if (moveAfterSupplyTrip(session, now)) {
+            return;
+        }
         if (session.afkUntilMs > now) {
             return;
         }
@@ -642,15 +645,21 @@ public final class PresenceScheduler {
         }
     }
 
-    /** Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. */
+    /**
+     * Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. Its
+     * activity changes as it arrives, never before: a move that waits (a supply trip) or is still on its pause leaves
+     * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs.
+     */
     public void travel(CitizenSession session, Activity next, int mapId, long now) {
         Character agent = session.agent();
         MapleMap target = population.map(session.channel, mapId);
         if (agent == null || target == null) {
             return;
         }
+        CitizenSession.Move asked = new CitizenSession.Move(next, mapId);
+        session.latestMove = asked;
         if (onSupplyTrip(session)) {
-            waitForSupplyTrip(session, agent, mapId);
+            waitForSupplyTrip(session, agent, asked);
             return;
         }
         AgentRuntimeEntry entry = session.entry;
@@ -662,21 +671,25 @@ public final class PresenceScheduler {
             AgentMovementCommandRuntime.stop(entry);
         }
         population.market().onLeave(session);
-        session.activity = next;
         Runnable move = () -> {
             try {
                 Character current = session.agent();
                 if (current == null || !sessions.containsKey(session.characterId)) {
                     return;
                 }
+                if (asked != session.latestMove) { // a newer move was asked during this one's pause: that one stands
+                    log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), asked.mapId());
+                    return;
+                }
                 if (onSupplyTrip(session)) { // it ran low while the move waited
-                    waitForSupplyTrip(session, current, target.getId());
+                    waitForSupplyTrip(session, current, asked);
                     return;
                 }
                 if (current.getMapId() != target.getId()) {
                     current.changeMap(target, target.getPortal(0));
                 }
                 session.mapId = target.getId();
+                session.activity = next;
                 startActivity(session, target, System.currentTimeMillis());
                 population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
             } catch (RuntimeException failure) {
@@ -702,10 +715,40 @@ public final class PresenceScheduler {
                 .map(AgentSupplyProcurementState::isActive).orElse(false);
     }
 
-    /** The move waits for the supply trip: the citizen re-plans at the first sweep after the trip ends. */
-    private void waitForSupplyTrip(CitizenSession session, Character agent, int mapId) {
-        session.lastPlanAtMs = 0L;
-        log.info("citizen {} stays on map {} for its supply trip; its move to {} waits for the next re-plan",
-                session.name(), agent.getMapId(), mapId);
+    /**
+     * The move waits for the supply trip and is made at the first sweep after it ({@link #moveAfterSupplyTrip}). A move
+     * dropped here was lost for good: SocialFabric.partyUp sends a circle party to train once, and skips a citizen that
+     * has a party. An older move whose delay ran out during the trip gives way to the newer one.
+     */
+    private void waitForSupplyTrip(CitizenSession session, Character agent, CitizenSession.Move move) {
+        if (move != session.latestMove) {
+            log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), move.mapId());
+            return;
+        }
+        session.waitingMove.set(move);
+        log.info("citizen {} stays on map {} for its supply trip; its move to {} waits until the trip ends",
+                session.name(), agent.getMapId(), move.mapId());
+    }
+
+    /**
+     * Makes the move that waited for the citizen's supply trip, unless a newer move was asked since (that one stands);
+     * the move's activity starts on arrival as after any move (Market.onArrive for a shopper, a grind for TRAIN). A
+     * session that ended is never swept again. True when the move was made, so this sweep does nothing else. The move
+     * counts as its plan, as a re-plan's move does: a re-plan the trip held back would otherwise run at the next sweep,
+     * while this move is still on its pause (audit 2026-10-10: two moves in flight).
+     */
+    private boolean moveAfterSupplyTrip(CitizenSession session, long now) {
+        // taken and cleared in one step: a delayed move on the timer thread may set a newer one meanwhile
+        CitizenSession.Move waiting = session.waitingMove.getAndSet(null);
+        if (waiting == null) {
+            return false;
+        }
+        if (waiting != session.latestMove) {
+            return false;
+        }
+        log.info("citizen {} moves on to map {} after its supply trip", session.name(), waiting.mapId());
+        session.lastPlanAtMs = now;
+        travel(session, waiting.activity(), waiting.mapId(), now);
+        return true;
     }
 }

@@ -6,6 +6,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** A citizen that is online right now: loaded as a character, or virtual (scheduled online but on the ledger). */
 public final class CitizenSession {
@@ -30,6 +31,14 @@ public final class CitizenSession {
     public final java.util.Deque<String> recentIntents = new java.util.ArrayDeque<>();
     /** Virtual sessions have no character loaded; they exist for the ledger and social bookkeeping. */
     public volatile boolean virtual;
+    /** The latest move asked of it (PresenceScheduler.travel); compared by identity, as two asks are two moves. */
+    volatile Move latestMove;
+    /** A move that waited for its own supply trip, made at the first presence sweep after the trip; null when none. */
+    final AtomicReference<Move> waitingMove = new AtomicReference<>();
+
+    /** A move to another map and the activity it starts there. */
+    record Move(Activity activity, int mapId) {
+    }
 
     CitizenSession(Citizen citizen, long startedAtMs, long endsAtMs, boolean virtual) {
         this.characterId = citizen.characterId();

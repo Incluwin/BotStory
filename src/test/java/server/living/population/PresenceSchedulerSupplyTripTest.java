@@ -41,6 +41,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +54,7 @@ import static org.mockito.Mockito.when;
 class PresenceSchedulerSupplyTripTest {
     private static final int HUNTING_FIELD = 103000101;
     private static final int TOWN = 103000000;
+    private static final int PARTY_FIELD = 103000103;
     private static final int CITIZEN = 961;
     private static final String TRIP = "supply:HP_POTION:961:1";
 
@@ -64,6 +66,10 @@ class PresenceSchedulerSupplyTripTest {
     private final MapleMap here = mock(MapleMap.class);
     private final MapleMap town = mock(MapleMap.class);
     private final Portal townSpawn = mock(Portal.class);
+    private final MapleMap partyField = mock(MapleMap.class);
+    private final Portal partySpawn = mock(Portal.class);
+    private final MapleMap fmEntrance = mock(MapleMap.class);
+    private final Portal fmSpawn = mock(Portal.class);
     private final TimerManager timers = mock(TimerManager.class);
     private final List<AgentRuntimeEntry> registered = new ArrayList<>();
     private MockedStatic<TimerManager> timerManager;
@@ -89,6 +95,12 @@ class PresenceSchedulerSupplyTripTest {
         when(town.getPortal(0)).thenReturn(townSpawn);
         when(here.getId()).thenReturn(HUNTING_FIELD);
         when(population.map(anyInt(), eq(TOWN))).thenReturn(town);
+        when(partyField.getId()).thenReturn(PARTY_FIELD);
+        when(partyField.getPortal(0)).thenReturn(partySpawn);
+        when(population.map(anyInt(), eq(PARTY_FIELD))).thenReturn(partyField);
+        when(fmEntrance.getId()).thenReturn(FieldCatalog.FM_ENTRANCE);
+        when(fmEntrance.getPortal(0)).thenReturn(fmSpawn);
+        when(population.map(anyInt(), eq(FieldCatalog.FM_ENTRANCE))).thenReturn(fmEntrance);
         when(population.citizen(anyInt())).thenAnswer(inv -> registry.get((int) inv.getArgument(0)));
         doAnswer(inv -> {
             Citizen citizen = inv.getArgument(0);
@@ -186,9 +198,8 @@ class PresenceSchedulerSupplyTripTest {
 
         verify(agent, never()).changeMap(any(MapleMap.class), any(Portal.class));
         assertEquals(HUNTING_FIELD, session.mapId);
-        assertEquals(0L, session.lastPlanAtMs, "the re-plan comes again at the first sweep after the trip");
 
-        trip.clear();
+        trip.clear(); // the move that waited is made at the first sweep after the trip
         scheduler.sweep();
         scheduledMove().run();
         verify(agent).changeMap(town, townSpawn);
@@ -200,18 +211,207 @@ class PresenceSchedulerSupplyTripTest {
         Character agent = loaded(scheduler);
         CitizenSession session = scheduler.session(CITIZEN);
         trip(session);
+        long planned = session.lastPlanAtMs;
 
         try (LogLines lines = new LogLines(PresenceScheduler.class)) {
             // the social fabric sends a circle party to train, the market walks a shopper into a room
             scheduler.travel(session, CitizenSession.Activity.TRAIN, TOWN, System.currentTimeMillis());
 
             assertEquals(List.of("citizen AngryWarrior stays on map " + HUNTING_FIELD
-                            + " for its supply trip; its move to " + TOWN + " waits for the next re-plan"),
+                            + " for its supply trip; its move to " + TOWN + " waits until the trip ends"),
                     lines.startingWith("citizen AngryWarrior"));
         }
         assertNothingMoved(session, agent);
         assertEquals(CitizenSession.Activity.TOWN, session.activity, "its activity is left as it was");
-        assertEquals(0L, session.lastPlanAtMs, "it re-plans at the first sweep after the trip");
+        assertEquals(planned, session.lastPlanAtMs, "the move waits; its own re-plan clock is left as it was");
+    }
+
+    @Test
+    void aMoveThatWaitedForTheTripIsMadeAtTheFirstSweepAfterIt() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        AgentSupplyProcurementState trip = trip(session);
+
+        try (LogLines lines = new LogLines(PresenceScheduler.class)) {
+            // SocialFabric.partyUp parties its circle and sends the party to train while it shops; it never asks again
+            // (the citizen has a party now), so a move dropped here leaves it off its party's field for good
+            scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+            scheduler.sweep(); // still on its trip
+            assertNothingMoved(session, agent);
+
+            trip.clear(); // the walk back ended
+            scheduler.sweep();
+            scheduledMove().run();
+
+            verify(agent).changeMap(partyField, partySpawn);
+            verify(agent, never()).changeMap(town, townSpawn); // no fresh re-plan rolled over the move
+            assertEquals(PARTY_FIELD, session.mapId);
+            assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+            movement.verify(() -> AgentMovementCommandRuntime.grind(session.entry));
+            assertEquals(List.of("citizen AngryWarrior stays on map " + HUNTING_FIELD + " for its supply trip; its move to "
+                            + PARTY_FIELD + " waits until the trip ends",
+                    "citizen AngryWarrior moves on to map " + PARTY_FIELD + " after its supply trip"),
+                    lines.startingWith("citizen AngryWarrior"));
+        }
+    }
+
+    @Test
+    void aNewerMoveReplacesTheOneThatWaitsAndArrivesThroughItsActivity() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        AgentSupplyProcurementState trip = trip(session);
+
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        scheduler.travel(session, CitizenSession.Activity.MARKET, FieldCatalog.FM_ENTRANCE, System.currentTimeMillis());
+        trip.clear();
+        scheduler.sweep();
+        scheduledMove().run();
+
+        verify(agent).changeMap(fmEntrance, fmSpawn);
+        verify(agent, never()).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.MARKET, session.activity);
+        verify(market).onArrive(session); // Market.onArrive walks it on into a room, as after any move
+    }
+
+    @Test
+    void anOlderDelayedMoveGivesWayToTheMoveThatWaits() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        scheduler.travel(session, CitizenSession.Activity.TOWN, TOWN, System.currentTimeMillis());
+        Runnable older = scheduledMove();
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+
+        older.run(); // it ran low before the older move came: the newer move asked during the trip stands
+        trip.clear();
+        scheduler.sweep();
+        scheduledMove().run();
+
+        verify(agent).changeMap(partyField, partySpawn);
+        verify(agent, never()).changeMap(town, townSpawn);
+    }
+
+    @Test
+    void anOlderDelayedMoveWhosePauseEndsAfterTheTripGivesWayToo() {
+        // audit 2026-10-10: a short trip started and ended inside the older move's pause; the older move was still
+        // made, then the move that waited, so the citizen made two moves and the first was one it no longer wanted
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        scheduler.travel(session, CitizenSession.Activity.TOWN, TOWN, System.currentTimeMillis());
+        Runnable older = scheduledMove();
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        trip.clear();
+
+        older.run();
+        scheduler.sweep();
+        scheduledMove().run();
+
+        verify(agent, never()).changeMap(town, townSpawn);
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
+    void anOlderMoveThatLandsAfterANewerOneIsNotMade() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        scheduler.travel(session, CitizenSession.Activity.TOWN, TOWN, System.currentTimeMillis());
+        Runnable older = scheduledMove();
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        Runnable newer = scheduledMove();
+
+        newer.run(); // its pause was the shorter one
+        older.run();
+
+        verify(agent).changeMap(partyField, partySpawn);
+        verify(agent, never()).changeMap(town, townSpawn);
+        assertEquals(PARTY_FIELD, session.mapId);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
+    void theMoveMadeAfterTheTripIsItsPlanSoNoRePlanFollowsWhileItIsOnItsPause() {
+        // audit 2026-10-10: a re-plan that came due during the trip ran at the sweep after the one that made the move
+        // that waited, while that move was still on its pause (up to 90 s; a sweep is 60 s): two moves in flight
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        session.lastPlanAtMs = 0L; // its re-plan came due during the trip
+
+        trip.clear();
+        scheduler.sweep(); // the move that waited is made
+        scheduler.sweep(); // it is still on its pause
+
+        verify(timers, times(1)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), any(Runnable.class), anyLong());
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        verify(agent, never()).changeMap(town, townSpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+    }
+
+    @Test
+    void aMoveAskedAfterTheTripEndsReplacesTheOneThatWaited() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        AgentSupplyProcurementState trip = trip(session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        trip.clear();
+
+        scheduler.travel(session, CitizenSession.Activity.MARKET, FieldCatalog.FM_ENTRANCE, System.currentTimeMillis());
+        scheduler.sweep();
+
+        verify(timers, times(1)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), any(Runnable.class), anyLong());
+        scheduledMove().run();
+        verify(agent).changeMap(fmEntrance, fmSpawn);
+        verify(agent, never()).changeMap(partyField, partySpawn);
+    }
+
+    @Test
+    void aMoveChangesTheActivityOnlyWhenItIsMade() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        inTown(agent, session);
+        session.afkUntilMs = 1L; // its AFK is over: the next sweep resumes what it does where it stands
+
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        assertEquals(CitizenSession.Activity.TOWN, session.activity, "it is still in town until the move is made");
+        scheduler.sweep(); // back from AFK before the move came: a town never runs TRAIN (a grind with no mobs)
+        movement.verify(() -> AgentMovementCommandRuntime.grind(any()), never());
+
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
+        movement.verify(() -> AgentMovementCommandRuntime.grind(session.entry));
+    }
+
+    @Test
+    void aMoveThatWaitsForTheTripLeavesTheActivityAsItWas() {
+        PresenceScheduler scheduler = scheduler();
+        Character agent = loaded(scheduler);
+        CitizenSession session = scheduler.session(CITIZEN);
+        inTown(agent, session);
+        scheduler.travel(session, CitizenSession.Activity.TRAIN, PARTY_FIELD, System.currentTimeMillis());
+        Runnable move = scheduledMove();
+
+        AgentSupplyProcurementState trip = trip(session); // it ran low before the move came
+        move.run();
+        assertEquals(CitizenSession.Activity.TOWN, session.activity, "the town it stays in keeps its town activity");
+
+        trip.clear();
+        scheduler.sweep();
+        scheduledMove().run();
+        verify(agent).changeMap(partyField, partySpawn);
+        assertEquals(CitizenSession.Activity.TRAIN, session.activity);
     }
 
     @Test
@@ -261,6 +461,13 @@ class PresenceSchedulerSupplyTripTest {
         session.mapId = HUNTING_FIELD;
         session.activity = CitizenSession.Activity.TOWN;
         return agent;
+    }
+
+    /** It strolls in town (Kerning), not on the hunting field. */
+    private void inTown(Character agent, CitizenSession session) {
+        when(agent.getMapId()).thenReturn(TOWN);
+        when(agent.getMap()).thenReturn(town);
+        session.mapId = TOWN;
     }
 
     /** Its Agent set off on a critical HP potion trip (any phase counts; this one is walking back). */

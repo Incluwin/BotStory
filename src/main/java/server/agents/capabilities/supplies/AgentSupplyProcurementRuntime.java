@@ -71,6 +71,7 @@ public final class AgentSupplyProcurementRuntime {
         AgentSupplyMaintenanceEvaluationState evaluations = entry.capabilityStates().require(
                 AgentSupplyMaintenanceEvaluationState.STATE_KEY);
         execution.retainPartyAsks(category -> planning.procurement(category) != null);
+        execution.noteMapStoodOn(agent.getMapId());
         if (!execution.isActive()
                 && releaseInapplicableRestoredMaintenance(
                 entry, agent, planning, evaluations, nowMs)) {
@@ -703,17 +704,40 @@ public final class AgentSupplyProcurementRuntime {
             }
             return true;
         }
+        logArrived(agent, execution);
         if (execution.abandoned()) {
             return finishAbandoned(entry, agent, planning, execution, nowMs);
         }
-        // One line when the walk back arrives: before it a restocked trip ended in silence (live, the citizen
-        // AngryWarrior shopped in Kerning at 07:11:18 and nothing more was logged), so a live check could not tell
-        // a walk back that arrived from one still under way.
-        log.info("Agent '{}' walked back to map {} after its {} resupply", agent.getName(), execution.returnMapId(),
-                execution.category());
         finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                 "shop transaction completed and plan location restored", nowMs);
         return false;
+    }
+
+    /**
+     * One line when the walk back arrives. Before it a restocked trip ended in silence (live, the citizen AngryWarrior
+     * shopped in Kerning at 07:11:18 and nothing more was logged), so a live check could not tell a walk back that
+     * arrived from one still under way; and a trip given up said only "resumed its plan without restocking", as one
+     * whose walk back found no route, or one its owner called back, does. A shop on the map it left had no walk back to
+     * make (review 2026-10-10: a TOWN citizen in Ariant 260000000 at NPC 2100004 "walked back" to the map it stood on).
+     * Nor had a trip given up before its first step (audit 2026-10-10: its request resolved, or its route failed or
+     * stood still on the map it left, and it "walked back" to 105090300 without ever leaving it).
+     */
+    private static void logArrived(Character agent, AgentSupplyProcurementState execution) {
+        String name = agent.getName();
+        AgentResourceCategory category = execution.category();
+        int mapId = execution.returnMapId();
+        boolean stayed = execution.supplierMapId() == mapId;
+        if (!execution.abandoned()) {
+            if (stayed) {
+                log.info("Agent '{}' finished its {} resupply on map {}", name, category, mapId);
+            } else {
+                log.info("Agent '{}' walked back to map {} after its {} resupply", name, mapId, category);
+            }
+        } else if (!execution.leftReturnMap()) {
+            log.info("Agent '{}' finished its {} resupply on map {} without restocking", name, category, mapId);
+        } else {
+            log.info("Agent '{}' walked back to map {} without restocking its {}", name, mapId, category);
+        }
     }
 
     /**

@@ -39,6 +39,7 @@ public final class AgentSupplyProcurementState {
     private int supplierHopBudget = -1;
     private int travelMapId = -1;
     private long travelOnMapSinceMs;
+    private boolean leftReturnMap;
     // Survives clear(): a category the Agent just failed to restock stays quiet for a while so
     // the next low-supply observation does not immediately pull it away from its party again.
     private final Map<AgentResourceCategory, Long> suppressedUntilMs =
@@ -82,6 +83,21 @@ public final class AgentSupplyProcurementState {
     private void restartTravelClock() {
         travelMapId = -1;
         travelOnMapSinceMs = 0L;
+    }
+
+    /** Notes the map the Agent stands on while this trip is under way: once off the map it left, it has a walk back. */
+    public synchronized void noteMapStoodOn(int mapId) {
+        if (!requestId.isBlank() && mapId != returnMapId) {
+            leftReturnMap = true;
+        }
+    }
+
+    /**
+     * True once this trip saw the Agent off the map it left ({@link #noteMapStoodOn}). A trip given up before its first
+     * step ends on that map, where the walk back arrives at once without walking anywhere.
+     */
+    public synchronized boolean leftReturnMap() {
+        return leftReturnMap;
     }
 
     public synchronized boolean isActive() {
@@ -301,6 +317,7 @@ public final class AgentSupplyProcurementState {
         this.returnMapId = returnMapId;
         this.phase = phase;
         restartTravelClock();
+        leftReturnMap = false;
         this.quantityBefore = Math.max(0, quantityBefore);
         this.mesosBefore = Math.max(0, mesosBefore);
         shopRequested = false;
@@ -411,6 +428,7 @@ public final class AgentSupplyProcurementState {
         shopRequested = false;
         phase = Phase.IDLE;
         restartTravelClock();
+        leftReturnMap = false;
         supplierMapId = 0;
         supplierNpcId = 0;
         returnMapId = 0;
