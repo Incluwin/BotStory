@@ -5,8 +5,9 @@ Parent plan: `docs/BOT_MANAGEMENT_PLAN.md`, phase P10. Started 2026-10-12 at the
 ## Goal
 
 A native v83 window that shows the crew and rotates it with the mouse: party block, bench block, select, drag to swap,
-and buttons. It replaces nothing. The NPC-dialog Crew window, the cards and the Roster item stay as they are. The
-native window covers the everyday actions and hands every other page to the NPC dialog ("More...").
+and buttons. The NPC-dialog Crew window and the cards stay as they are. Step 7 (protocol 2) draws every crew-wide page
+natively too, and from then on the Adventurer's Roster opens the native window on a client that has it (user
+2026-10-12); the cards stay NPC dialogs.
 
 Exit (from the parent plan): zero client crashes across 2 h with 2 friends, and every action has the same result as in
 the NPC dialog.
@@ -49,7 +50,7 @@ connection). WELCOME answers the lower of the client's protocol and the server's
 | 0 | WELCOME | `short protocol` (agreed: min(client, server)), `byte enabled` |
 | 1 | SNAPSHOT | see below |
 | 2 | CLOSE | none (switch turned off, or the character may no longer use it) |
-| 3 | OPEN | none (reserved: the server asks the client to open; client answers with OPEN) |
+| 3 | OPEN | none (the Adventurer's Roster: the server asks the client to open; client answers with OPEN) |
 
 SNAPSHOT:
 ```
@@ -349,5 +350,6 @@ crew-window or LivingTalk WARN/ERROR in the server log.
 
 ## Open decisions
 
-1. Hotkey: default `U` (unbound in the default key map). The key works only while unbound in the player's own map.
-2. Roster item: keep it opening the NPC Crew window (default), or open the native window when the client has it.
+Decided 2026-10-12 (user): hotkey `U` ("keep U"; it works only while unbound in the player's own key map); the Roster
+item opens the native window on a protocol-2 client ("yes roster opens native"); the window ships to friends with
+CREW_WINDOW_NATIVE "all" ("ship to friends"). None is open.
