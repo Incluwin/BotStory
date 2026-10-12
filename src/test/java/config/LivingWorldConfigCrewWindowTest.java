@@ -55,12 +55,12 @@ class LivingWorldConfigCrewWindowTest {
     }
 
     @Test
-    void configYamlShipsTheWindowOffAndItsPacketBudget() throws IOException {
-        assertEquals("off", YamlConfig.config.living_world.CREW_WINDOW_NATIVE);
+    void configYamlShipsTheWindowForGmsAndItsPacketBudget() throws IOException {
+        assertEquals("gm", YamlConfig.config.living_world.CREW_WINDOW_NATIVE);
         assertEquals(10, YamlConfig.config.server.PACKET_CREW_RATE_PER_SECOND);
 
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    CREW_WINDOW_NATIVE: \"off\"\n"));
+        assertTrue(yaml.contains("\n    CREW_WINDOW_NATIVE: \"gm\"\n"));
         assertTrue(yaml.contains("\n    PACKET_CREW_RATE_PER_SECOND: 10 "));
         String comment = yaml.substring(yaml.indexOf("# Native Crew window (P10"), yaml.indexOf("CREW_WINDOW_NATIVE:"));
         for (String said : new String[] {"gm = GM characters only", "!world crewwindow", "work as before"}) {

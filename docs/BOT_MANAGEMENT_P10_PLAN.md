@@ -136,7 +136,7 @@ companion-ops.
 4. **Art**: Custom.wz background titled for the crew and button sprites (UserList style).
 5. **Live checks** (two clients, GM test accounts): each verb vs the NPC dialog, full party, confirm Yes/No,
    stale click, channel change, relog, stale-DLL client, switch off mid-session.
-6. **Soak**: 2 h on the user's client, rollback rehearsal through the manifest, side-by-side video.
+6. **Soak**: replaced (user, 2026-10-12) by a measured 30-minute memory run on the test client, then the user's normal play; rollback rehearsal through the manifest, side-by-side video.
 7. **Ship** to friends: user's OK, manifest regenerated, client kit rebuilt (`tools/client-kit`).
 
 ## Status (2026-10-12)
@@ -185,6 +185,46 @@ GM test account Crewfriend; the user's own client keeps the shipped DLL.
 | L13 | Relog | HELLO again, U works again |
 | L14 | The user's client with the shipped DLL | no HELLO from it in the server log, nothing changes |
 | L15 | `!world crewwindow off` with the window open | the window closes; U passes to the game |
+
+### Live results (2026-10-12, int/p9aq 214be98e7, test client with kaentake 9700fea, Crewfriend)
+
+Evidence: `docs/agents/evidence/cua/20261012-0815*` to `20261012-0828*`.
+
+| # | Result | Seen |
+|---|---|---|
+| L1 | PASS | WELCOME enabled 0; `HELLO from Crewfriend: protocol 1, DLL build 20261012, enabled=false`; U did nothing |
+| L2 | PASS | `!world crewwindow gm` sent WELCOME enabled 1 to the open client; U opened the window; row text equals the NPC Crew window |
+| L3 | PASS | Call Casse with a free seat: "Casse is on the way (~3 min)."; row moved to the party block "on the way (2:57)" |
+| L4 | PASS | Bench Rurik (no contract, so no Yes/No): "Rurik heads back to camp to train."; row moved to the bench block |
+| L5 | PASS | on int/p9ar 048092d9f (08:34): Swap button with Kestrel + Rurik: "Kestrel heads back to camp to train. Rurik is on the way (~20 s)."; drag Halvard onto Yara: "Yara heads back to camp to train. Halvard is on the way (~60 s)."; one swap each |
+| L6 | PASS | Call Casse with 6/6: her swap picker "your party's full. who should i take over from?" listing all five |
+| L7 | PASS | double-click Casse opened her card |
+| L8 | PASS | More opened the NPC Crew window |
+| L9 | PASS | Follow / Wait / Gather / Rebuff each got a party-chat answer; greyed while everyone was on the way (same anyoneOut rule as the NPC window) |
+| L10 | PASS | Usual and the NPC "Call my usual lineup" both answered "No room for Rurik." |
+| L11 | unit tests | see above |
+| L12 | PASS | channel 1 -> 2 in Henesys: HELLO + WELCOME again, the client re-sent OPEN, the window stayed and updated to "Ellinia" after a warp |
+| L13 | PASS | client restart + login: HELLO, WELCOME enabled 1, U opened the window |
+| L14 | PASS | the shipped DLL (10-10) has no crew code; only the test client ever sent HELLO |
+| L15 | PASS | `!world crewwindow off` closed the open window (WELCOME enabled 0); U then did nothing |
+
+Also seen: the window survives warps (Forest of Poison Haze -> Henesys -> Ellinia). Cosmetic: the stock floating party
+HP list is drawn over the Crew window after a party change (a game window, not the DLL's).
+
+### Memory run (2026-10-12 09:17-09:52, int/p9ar, test client, Crewfriend + 5 companions hunting boars)
+
+Sampled every 30 s (`docs/agents/evidence/p10-soak/`). `!heal` every 2 min and a warp between 101030001 and 101040001
+every 5 min through `logs/gm-command-queue.txt`, so nothing needed the screen except one U press.
+
+| Phase | Private MB | Virtual MB | Handles | GDI | USER |
+|---|---|---|---|---|---|
+| Window closed, 5 min | 651 -> 677 (settling after login) | 3720 -> 3736 | 790-806 | 132-133 | 23-25 |
+| Window open, first 5 min (same map) | 680 -> 690 | 3750 -> 3752 | 797-803 | 139 | 24-25 |
+| Window open, 24 min after the first warp | 633-642, ends 640 | 3745-3746 | 706-800 | 139 -> 141 | 23-24 |
+
+Opening the window cost about 6 GDI objects and about 13 MB of address space once. Private memory and address space
+stayed flat for 24 minutes of live updates and 5 map changes. GDI rose by 1 after two of the five warps (cause not
+isolated; the closed baseline had no warp). The window was still open and updating at the end.
 
 ## Open decisions
 
