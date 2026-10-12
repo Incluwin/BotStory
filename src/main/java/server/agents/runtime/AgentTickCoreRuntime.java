@@ -9,6 +9,7 @@ import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.movement.AgentMovementTickCoordinator;
 import server.agents.capabilities.movement.AgentStandaloneMoveTargetCoordinator;
 import server.agents.capabilities.combat.AgentDeathTickCoordinator;
+import server.agents.capabilities.expedition.boss.AgentBossDisabledState;
 import server.agents.capabilities.combat.AgentLocalOpportunityAttackCoordinator;
 import server.agents.capabilities.combat.AgentLocalOpportunityAttackService;
 import server.agents.capabilities.combat.AgentAnchoredFarmCoordinator;
@@ -71,7 +72,8 @@ public final class AgentTickCoreRuntime {
                 AgentMapTransitionRuntime::groundAfterMapChange,
                 AgentStandaloneMoveTargetCoordinator::tickStandaloneMoveTarget,
                 (runtimeEntry, agent, leader) ->
-                        AgentDeathTickCoordinator.handleDeadTick(runtimeEntry, agent, leader),
+                        AgentDeathTickCoordinator.handleDeadTick(runtimeEntry, agent, leader)
+                                || AgentBossDisabledState.holds(runtimeEntry, agent),
                 AgentTargetSnapshotCoordinator::resolveFollowAnchor,
                 AgentTargetSnapshotCoordinator::captureTargetSnapshot,
                 AgentScriptTaskCoordinator::tick,

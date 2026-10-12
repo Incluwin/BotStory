@@ -28,6 +28,7 @@ import client.Client;
 import client.Disease;
 import client.command.Command;
 import client.command.CommandTargetPolicy;
+import server.life.BanishInfo;
 import server.life.MobSkill;
 import server.life.MobSkillFactory;
 import server.life.MobSkillType;
@@ -35,16 +36,21 @@ import server.maps.MapObject;
 import server.maps.MapObjectType;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Optional;
 
 public class DebuffCommand extends Command {
     {
-        setDescription("Put a debuff on all nearby players.");
+        setDescription("Put a debuff on all nearby players; GM6: !debuff <state> <companion> for one companion.");
     }
 
     @Override
     public void execute(Client c, String[] params) {
         Character player = c.getPlayer();
+        if (params.length >= 2) {
+            debuffCompanion(player, params[0], params[1]);
+            return;
+        }
         if (params.length < 1) {
             player.yellowMessage("Syntax: !debuff SLOW|SEDUCE|ZOMBIFY|CONFUSE|STUN|POISON|SEAL|DARKNESS|WEAKEN|CURSE");
             return;
@@ -53,7 +59,7 @@ public class DebuffCommand extends Command {
         Disease disease = null;
         Optional<MobSkill> skill = Optional.empty();
 
-        switch (params[0].toUpperCase()) {
+        switch (params[0].toUpperCase(Locale.ROOT)) {
             case "SLOW" -> {
                 disease = Disease.SLOW;
                 skill = MobSkillFactory.getMobSkill(MobSkillType.SLOW, 7);
@@ -108,5 +114,45 @@ public class DebuffCommand extends Command {
                 chr.giveDebuff(disease, skill.get());
             }
         }
+    }
+
+    /**
+     * P12 G5, the GM6 form {@code !debuff <state> <companion>}: puts STUN, SEDUCE or CONFUSE on the named Agent on the
+     * GM's map, or BANISHes it to the map's spawn point, as a boss's skill would; nobody else is touched.
+     */
+    private static void debuffCompanion(Character player, String stateName, String agentName) {
+        if (player.gmLevel() < CommandTargetPolicy.AGENT_CONTROL_GM_LEVEL) {
+            player.yellowMessage("Only a GM6 may debuff one companion: !debuff STUN|SEDUCE|CONFUSE|BANISH <companion>");
+            return;
+        }
+        Character target = player.getMap().getCharacterByName(agentName);
+        if (target == null || !CommandTargetPolicy.isAgent(target)) {
+            player.yellowMessage("No companion named " + agentName + " on this map.");
+            return;
+        }
+        String state = stateName.toUpperCase(Locale.ROOT);
+        if (state.equals("BANISH")) {
+            target.changeMapBanish(new BanishInfo(target.getMapId(), "sp", null));
+            player.yellowMessage("Banished " + target.getName() + " to this map's spawn point.");
+            return;
+        }
+        Disease disease = switch (state) {
+            case "STUN" -> Disease.STUN;
+            case "SEDUCE" -> Disease.SEDUCE;
+            case "CONFUSE" -> Disease.CONFUSE;
+            default -> null;
+        };
+        Optional<MobSkill> skill = switch (state) {
+            case "STUN" -> MobSkillFactory.getMobSkill(MobSkillType.STUN, 7);
+            case "SEDUCE" -> MobSkillFactory.getMobSkill(MobSkillType.SEDUCE, 7);
+            case "CONFUSE" -> MobSkillFactory.getMobSkill(MobSkillType.REVERSE_INPUT, 2);
+            default -> Optional.empty();
+        };
+        if (disease == null || skill.isEmpty()) {
+            player.yellowMessage("Syntax: !debuff STUN|SEDUCE|CONFUSE|BANISH <companion>");
+            return;
+        }
+        target.giveDebuff(disease, skill.get());
+        player.yellowMessage("Gave " + state + " to " + target.getName() + ".");
     }
 }

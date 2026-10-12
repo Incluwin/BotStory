@@ -786,8 +786,9 @@ public final class AgentBossRunSession {
                 continue;
             }
             Character agent = ports.agent(member.agentId());
+            // P12 G5: a stunned, seduced or confused member does what its state makes it do, on its own tick
             if (agent != null && agent.isAlive() && agent.getMapId() == definition.battleMapId()
-                    && agent.getEventInstance() == event) {
+                    && agent.getEventInstance() == event && !AgentBossDisabledState.disabled(agent)) {
                 fighters.add(agent);
             }
         }

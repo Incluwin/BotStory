@@ -3,6 +3,7 @@ package server.agents.integration.cosmic;
 import client.Character;
 import net.server.services.task.channel.MobPhysicsService;
 import server.agents.capabilities.combat.AgentMonsterControlService;
+import server.agents.capabilities.expedition.boss.AgentBossDisabledState;
 import server.agents.capabilities.mobcontrol.AgentMobReactionRouter;
 import server.agents.events.AgentEventPriority;
 import server.agents.operations.events.AgentMobDamagedEvent;
@@ -31,6 +32,11 @@ public enum CosmicAgentPresenceProvider implements AgentPresenceProvider {
             MobPhysicsService.releaseMapInstances(
                     map, MobPhysicsService.ReleaseReason.OBSERVER_LOSS);
         }
+    }
+
+    @Override
+    public void banished(Character agent) {
+        AgentBossDisabledState.banished(agent);
     }
 
     @Override

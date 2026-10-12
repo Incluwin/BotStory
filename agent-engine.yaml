@@ -5911,6 +5911,10 @@ tuning:
     # Purpose: Spaces the attacks of companions fighting inside a boss run, so fewer attack effects and sounds reach the players' game clients on the boss map.
     # Technical: AgentCombatAttackRuntime raises the attack cooldown after each committed attack to at least this long (AgentBossClientLoad.attackFloorMs) while the Agent is an INSIDE member on its boss run's battle map, in every boss run, and (P12) while it stands on a map with no event beside a field boss whose field key is on (AgentBossField.near); an attack whose own cooldown is longer keeps it. 0 changes nothing. The same attacks are counted per run as botAttacks= in the boss mirror's summary line.
     server.agents.capabilities.expedition.boss.AgentBossClientLoad.ATTACK_INTERVAL_FLOOR_MS: '0'
+    # Values: a positive integer; unit: pixels. Recommended: 150-300; 200 is about two seconds of walking.
+    # Purpose: How far a confused companion walks the wrong way in a boss fight, as a player's reversed keys would take them.
+    # Technical: AgentBossDisabledState starts one walk per CONFUSE state, for an INSIDE member of an open boss run or an Agent beside a field boss whose key is on: this far from where it stands, away from the nearest live boss part on its map. The walk goes through the primitive navigate (move-to mode); its run's fight gives it no orders while the state lasts.
+    server.agents.capabilities.expedition.boss.AgentBossDisabledState.CONFUSED_WALK_PX: '200'
 
     # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
     # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.

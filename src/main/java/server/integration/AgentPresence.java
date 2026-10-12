@@ -65,6 +65,17 @@ public final class AgentPresence {
         }
     }
 
+    /** A same-map banish moved {@code chr} (Character.changeMapBanish); only an Agent is told. */
+    public static void banished(Character chr) {
+        try {
+            if (chr != null && provider.isAgent(chr)) {
+                provider.banished(chr);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("Agent banish hook failed for {}", chr.getId(), failure);
+        }
+    }
+
     public static void install(AgentPresenceProvider newProvider) {
         provider = newProvider == null ? new NoopAgentPresenceProvider() : newProvider;
     }
