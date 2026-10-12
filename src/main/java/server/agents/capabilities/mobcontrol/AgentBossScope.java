@@ -95,8 +95,10 @@ public final class AgentBossScope {
                 return true;
             }
         } else {
-            Expedition expedition = monster.isBoss() ? event.getExpedition() : null;
-            if (expedition != null && listedTypes().contains(expedition.getType())) {
+            Expedition expedition = event.getExpedition();
+            // P17: in a companion run of a listed type, also a non-boss add its boss rules name (Scarga's adds)
+            if (expedition != null && listedTypes().contains(expedition.getType())
+                    && (monster.isBoss() || AgentBossRunRegistry.namedPart(event, monster.getId()))) {
                 return true;
             }
             // P12 case 4: a listed id inside an event with an open companion run (a party-instance boss, an add); P14:

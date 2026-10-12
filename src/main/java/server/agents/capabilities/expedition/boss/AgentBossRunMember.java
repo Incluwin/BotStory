@@ -62,6 +62,8 @@ public final class AgentBossRunMember {
     private AgentBossRunHost.Out out;
     /** Since when it is REENTERING; 0 while it is not. */
     private long reenteringSinceMs;
+    /** P17: when it last talked to the recruit NPC to get back in (0: not since this re-entry began). */
+    private long reenterTalkedAtMs;
     /** Its anchor left while it was down outside, and the host heard it (see {@link #ownerLeftWhileDown}). */
     private boolean ownerLeftWhileDown;
 
@@ -267,11 +269,20 @@ public final class AgentBossRunMember {
     /** P12 G6: died out of a re-enter run; it walks back in from now on. */
     void reentering(long nowMs) {
         reenteringSinceMs = nowMs;
+        reenterTalkedAtMs = 0L;
         phase = Phase.REENTERING;
     }
 
     long reenteringSinceMs() {
         return reenteringSinceMs;
+    }
+
+    long reenterTalkedAtMs() {
+        return reenterTalkedAtMs;
+    }
+
+    void reenterTalked(long nowMs) {
+        reenterTalkedAtMs = nowMs;
     }
 
     /** P12 G6: back in the fight after a re-entry; its last death is behind it. */

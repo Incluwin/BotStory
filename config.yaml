@@ -964,6 +964,9 @@ living_world:
     # Bamboo Warrior, Male and Female Boss), "field_masteria" (Headless Horseman, Bigfoot). The P13 rules apply. A
     # group's add (Bloody Boom) is fair game once a player of the party has hit one of the group's bosses on its map.
     # Each stays off until its live check passes (docs/COMPANION_BOSSING_P16.md).
+    # "scarga" (P17): Scarlion and Targa at Aldol, signed up as at Adobis. A companion that dies walks back from Kampung
+    # and talks to Aldol to get back in (agent-engine.yaml AgentBossRunSession.REENTER_*). It stays off until its live
+    # check passes (docs/COMPANION_BOSSING_P17.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

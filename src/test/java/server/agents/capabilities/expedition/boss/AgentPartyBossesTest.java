@@ -94,6 +94,29 @@ class AgentPartyBossesTest {
         assertEquals(ExpeditionType.ZAKUM.getMinLevel(), AgentBossRunCatalog.ZAKUM.minLevel(), "an expedition's own");
     }
 
+    /**
+     * P17: Scarlion and Targa is an expedition row (Aldol's list, no choices) whose maps match ScargaBattle.js, whose
+     * dead re-enter by Aldol, and whose exit NPC 9201134 on the battle map lets members out before and after the clear.
+     */
+    @Test
+    void scargaIsAnExpeditionRowWhoseDeadReenterByAldol() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/ScargaBattle.js"));
+        AgentBossRunDefinition scarga = AgentBossRunCatalog.of("scarga");
+
+        assertEquals(ExpeditionType.SCARGA, scarga.type());
+        assertFalse(scarga.partyInstance());
+        assertEquals(number(source, "entryMap"), scarga.battleMapId());
+        assertEquals(number(source, "recruitMap"), scarga.recruitMapId());
+        assertEquals(100, scarga.minLevel(), "the expedition type's Lv100");
+        assertEquals(9_270_047, scarga.entryNpcId());
+        assertEquals(List.of(), scarga.joinSelections());
+        assertEquals(9_201_134, scarga.exitNpcId());
+        assertTrue(scarga.exitNpcAfterClear());
+        assertTrue(scarga.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REENTER, scarga.deathMode());
+        assertEquals(List.of(9_420_545, 9_420_550, 9_420_531, 9_420_532), AgentBossRules.of("scarga").adds());
+    }
+
     @Test
     void anOpenPartyRunsEventNamesItsBossesPartsAndNothingElseDoes() {
         long sessionId = openLatanica(List.of(THANE));

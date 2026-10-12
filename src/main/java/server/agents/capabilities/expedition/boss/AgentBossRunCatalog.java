@@ -93,8 +93,21 @@ public final class AgentBossRunCatalog {
     public static final AgentBossRunDefinition PAPULATUS = party("papulatus", 220_080_000, 220_080_001, -1, 2_041_025,
             -1, true);
 
+    // slot: scarga
+    /**
+     * Scarlion and Targa (P17), an expedition of 6-30 at Lv100 or more, once a day: sign up with Aldol (9270047) on
+     * 551030100 with his registering window (no choices, as Adobis's), fight on 551030200 and leave by 9201134 there,
+     * before and after the clear (a yes, then the reward). The fight is the boss rules' priority fight: Targa's three
+     * forms, then Scarlion's, then the adds. A member that dies revives in Kampung, walks back and enters again by
+     * Aldol (REENTER); an owner who leaves takes their party's members out with them.
+     */
+    public static final AgentBossRunDefinition SCARGA = new AgentBossRunDefinition("scarga", ExpeditionType.SCARGA,
+            551_030_100, 551_030_200, -1, 9_270_047, List.of(), 9_201_134, -1, AgentBossPriorityFight.forKey("scarga"),
+            true, AgentBossRules.markerItems("scarga"), AgentBossRules.neverTargetFakes("scarga"), true,
+            AgentBossRunDefinition.DeathMode.REENTER);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
-            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS);
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA);
 
     private AgentBossRunCatalog() {
     }

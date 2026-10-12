@@ -50,6 +50,9 @@ public final class CompanionBossKeys {
         keys.add("field_temple");
         keys.add("field_zipangu");
         keys.add("field_masteria");
+
+        // slot: scarga (P17): Scarlion and Targa, Aldol's expedition
+        keys.add("scarga");
         return List.copyOf(keys);
     }
 

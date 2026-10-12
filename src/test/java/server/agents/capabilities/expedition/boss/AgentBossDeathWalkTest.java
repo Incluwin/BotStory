@@ -12,6 +12,9 @@ import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 
+import java.awt.Point;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,6 +39,13 @@ class AgentBossDeathWalkTest {
     private static final int THANE = 10;
     private static final int LUDIBRIUM = 220_000_000;
     private static final int GATE = 220_080_000;
+    private static final int KAMPUNG = 551_000_000;
+    private static final int SCARGA_GATE = 551_030_100;
+    private static final int ALDOL = 9_270_047;
+    /** A party-instance run with SCARGA's maps, recruit NPC and REENTER deaths (its own needs an expedition). */
+    private static final AgentBossRunDefinition REENTER_RUN = new AgentBossRunDefinition("scarga", null, SCARGA_GATE,
+            551_030_200, -1, ALDOL, List.of(), 9_201_134, -1, FakeBossRunPorts.Fight::new, true, List.of(), false, true,
+            AgentBossRunDefinition.DeathMode.REENTER);
 
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final FakeBossRunPorts.Fight fight = new FakeBossRunPorts.Fight();
@@ -153,6 +163,42 @@ class AgentBossDeathWalkTest {
 
         assertFalse(AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
+    }
+
+    /**
+     * P17: a REENTERING member of a re-enter run (Scarlion and Targa) walks from Kampung to the recruit map, then up to
+     * Aldol, and stops beside him; its run then talks it back in. A new death walks again.
+     */
+    @Test
+    void aReenteringMemberWalksBackToTheRecruitNpcOncePerDeath() {
+        AgentBossRunSession session = new AgentBossRunSession(1L, REENTER_RUN, event, fight, 0L);
+        AgentBossRunRegistry.put(session);
+        AgentBossRunMember member = session.admit(THANE, OWNER, 0L, AgentBossRunMember.Kind.FOLLOWER);
+        member.adopted();
+        member.died();
+        member.reentering(0L);
+        Character thane = agent(KAMPUNG);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        verify(gateway).travelTo(entry, thane, SCARGA_GATE, 1_000L);
+
+        when(thane.getMapId()).thenReturn(SCARGA_GATE);
+        when(thane.getPosition()).thenReturn(new Point(-400, 426));
+        when(gateway.npcPosition(thane, ALDOL)).thenReturn(new Point(1693, 353));
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 2_000L), "on the map, it walks up to Aldol");
+        verify(gateway).navigate(entry, new Point(1693, 353), true);
+
+        when(thane.getPosition()).thenReturn(new Point(1690, 353));
+        assertFalse(AgentBossDeathWalk.tick(entry, thane, 3_000L), "beside him it stops and waits");
+        verify(gateway).stop(entry);
+        assertFalse(AgentBossDeathWalk.walking(THANE));
+
+        member.backInside();
+        member.died();
+        member.reentering(4_000L);
+        when(thane.getMapId()).thenReturn(KAMPUNG);
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 5_000L), "a new death walks again");
     }
 
     private Character downOutside(AgentBossRunDefinition definition, int mapId) {

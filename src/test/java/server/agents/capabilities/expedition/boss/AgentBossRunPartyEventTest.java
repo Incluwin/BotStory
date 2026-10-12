@@ -78,7 +78,8 @@ class AgentBossRunPartyEventTest {
             boolean party = definition.key().equals("latanica") || definition.key().startsWith("neo_")
                     || definition.key().equals("papulatus");
             assertEquals(party, definition.partyInstance(), definition.key());
-            assertEquals(AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, definition.deathMode(), definition.key());
+            assertEquals(definition.key().equals("scarga") ? AgentBossRunDefinition.DeathMode.REENTER
+                    : AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, definition.deathMode(), definition.key());
         }
         assertTrue(latanica.partyInstance());
         assertThrows(IllegalArgumentException.class, () -> new AgentBossRunDefinition("x", null, 1, 2, 3, 4,

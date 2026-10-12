@@ -86,8 +86,18 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance PAPULATUS = new BossEntrance(AgentBossRunCatalog.PAPULATUS,
             new PqEntrance.Beside(-50, -30, true), 0, null, null, false, 0);
 
+    // slot: scarga
+    /**
+     * Aldol stands at 1693,353 (WZ 551030100 life) at the right end of the recruit map: companions wait beside him, as
+     * at Adobis. Players come through Trend Zone Metropolis (550000000), whose store sells potions and ammo; Kampung has
+     * none, and the gate is 11 maps from that store, past the desk limit, so a trip out of the gate is held there.
+     * Allies come in and leave by west00 (-429,426), the way in from 551030000.
+     */
+    static final BossEntrance SCARGA = new BossEntrance(AgentBossRunCatalog.SCARGA,
+            new PqEntrance.Beside(-50, -30, true), 550_000_000, "west00", "west00", true, 0);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

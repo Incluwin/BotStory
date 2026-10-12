@@ -1078,6 +1078,17 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * companion-ops it is let go as one out OWNER_LEFT is: it takes orders, can be benched and restocks again while
      * another human fights on. Its line was its down line; another run's commitment is left alone.
      */
+    /**
+     * P17: the companion died in a re-enter run (Scarlion and Targa) and walks back in by the recruit NPC
+     * (AgentBossDeathWalk, then the run's talk to Aldol): it says so once, in its boss's words, on companion-ops.
+     */
+    @Override
+    public void reentering(Seat seat) {
+        int id = seat.agentCharacterId();
+        world.executor().submit("boss.reentering " + id,
+                () -> BossRunLines.say(world, seat.bossKey(), bot(id), BossRunLines.REENTER, null, 0));
+    }
+
     @Override
     public void ownerLeftWhileDown(Seat seat) {
         int id = seat.agentCharacterId();

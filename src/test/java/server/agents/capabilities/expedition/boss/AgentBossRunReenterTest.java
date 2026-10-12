@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
 
+import java.awt.Point;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,6 +30,8 @@ class AgentBossRunReenterTest {
     private static final int TOWN = 240_000_000;
     private static final int ENTRY_MAP = 240_060_000;
     private static final int BATTLE_MAP = 240_060_200;
+    private static final int RECRUIT_MAP = 240_050_400;
+    private static final int RECRUIT_NPC = 2_083_004;
 
     private final FakeBossRunPorts ports = new FakeBossRunPorts();
     private final FakeBossRunPorts.Host host = new FakeBossRunPorts.Host(ports.calls);
@@ -117,10 +120,36 @@ class AgentBossRunReenterTest {
         assertFalse(ports.calls.contains("reentering " + THANE));
     }
 
+    /**
+     * P17: a REENTERING member alive beside the recruit NPC (AgentBossDeathWalk walked it there) talks to it to get
+     * back in, at most every REENTER_TALK_EVERY_MS; one still walking up, out of reach, does not.
+     */
+    @Test
+    void aReenteringMemberBesideTheRecruitNpcTalksBackInAtMostEveryInterval() {
+        AgentBossRunSession session = fighting(AgentBossRunDefinition.DeathMode.REENTER);
+        diesAndComesToInTown(session);
+        ports.npcs.put(RECRUIT_NPC, new Point(500, 0));
+        long reach = AgentBossRunSession.exitReachPx();
+        String talk = "runNpc " + THANE + " " + RECRUIT_NPC + " ";
+
+        ports.place(THANE, RECRUIT_MAP, 500 - (int) reach - 200, 0, 120);
+        session.tick(ports, host, NOW + 12_000L);
+        assertFalse(ports.calls.contains(talk), "still walking up: " + ports.calls);
+
+        ports.place(THANE, RECRUIT_MAP, 500 - (int) reach / 2, 0, 120);
+        session.tick(ports, host, NOW + 13_000L);
+        session.tick(ports, host, NOW + 14_000L);
+        assertEquals(1, ports.calls.stream().filter(talk::equals).count(), ports.calls.toString());
+
+        session.tick(ports, host, NOW + 13_000L + AgentBossRunSession.reenterTalkEveryMs());
+        assertEquals(2, ports.calls.stream().filter(talk::equals).count(), "again after the interval");
+        assertEquals(AgentBossRunMember.Phase.REENTERING, session.member(THANE).phase());
+    }
+
     /** A run of {@code mode} with Thane adopted on the battle map in the event and fighting. */
     private AgentBossRunSession fighting(AgentBossRunDefinition.DeathMode mode) {
-        AgentBossRunDefinition definition = new AgentBossRunDefinition("reenter_test", null, 240050400, BATTLE_MAP,
-                -1, 0, List.of(), 0, -1, () -> fight, false, List.of(), false, false, mode);
+        AgentBossRunDefinition definition = new AgentBossRunDefinition("reenter_test", null, RECRUIT_MAP, BATTLE_MAP,
+                -1, RECRUIT_NPC, List.of(), 0, -1, () -> fight, false, List.of(), false, false, mode);
         AgentBossRunSession session = new AgentBossRunSession(1L, definition, event, fight, NOW);
         AgentBossRunRegistry.put(session);
         session.admit(THANE, OWNER, NOW, AgentBossRunMember.Kind.FOLLOWER);

@@ -461,7 +461,9 @@ public final class AgentBossRunSession {
     /**
      * P12 G6, each tick: a REENTERING member standing alive in the event again is back inside. One whose runtime is
      * gone is GONE; one whose anchor is no player of the event any more, or still outside after REENTER_TIMEOUT_MS, or
-     * the boss already fell, gives up and follows its owner (out DIED).
+     * the boss already fell, gives up and follows its owner (out DIED). P17: any other one that stands alive beside the
+     * recruit NPC (AgentBossDeathWalk walked it there) talks to it, at most every REENTER_TALK_EVERY_MS, as a
+     * registered player does to get back in (Aldol: eim.registerPlayer while canJoin is 1).
      */
     private void tickReentering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         for (AgentBossRunMember member : members) {
@@ -481,8 +483,26 @@ public final class AgentBossRunSession {
                         definition.key(), member.agentId(), cleared);
                 letGo(ports, member);
                 memberOut(host, member, AgentBossRunHost.Out.DIED);
+            } else {
+                talkBackIn(ports, member, agent, nowMs);
             }
         }
+    }
+
+    /** P17: a REENTERING member alive beside the recruit NPC talks to it, at most every REENTER_TALK_EVERY_MS. */
+    private void talkBackIn(AgentBossRunPorts ports, AgentBossRunMember member, Character agent, long nowMs) {
+        if (!agent.isAlive() || agent.getMapId() != definition.recruitMapId() || definition.entryNpcId() <= 0
+                || member.reenterTalkedAtMs() > 0 && nowMs - member.reenterTalkedAtMs() < reenterTalkEveryMs()) {
+            return;
+        }
+        Point npc = ports.npcPosition(agent, definition.entryNpcId());
+        if (npc == null || !near(agent, npc, exitReachPx())) {
+            return;
+        }
+        member.reenterTalked(nowMs);
+        log.info("Boss run member talks back in: session={} boss={} member={} npc={}", sessionId, definition.key(),
+                member.agentId(), definition.entryNpcId());
+        ports.runNpc(agent, definition.entryNpcId());
     }
 
     /**
@@ -974,6 +994,11 @@ public final class AgentBossRunSession {
     static long exitTimeoutMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS");
+    }
+
+    static long reenterTalkEveryMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TALK_EVERY_MS");
     }
 
     static long reenterTimeoutMs() {

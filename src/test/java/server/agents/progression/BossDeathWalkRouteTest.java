@@ -9,22 +9,29 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * P15, decision 9: a companion that died in the Papulatus fight comes to in Ludibrium and walks back to the gate
- * (AgentBossDeathWalk). The world portal graph (worldRepository) walks it there on foot, every hop a portal a player presses.
+ * The walks back after a death in a boss fight (AgentBossDeathWalk): the world portal graph (worldRepository) walks
+ * each one on foot, every hop a portal a player presses. P15, decision 9: from Ludibrium to the Papulatus gate. P17:
+ * from Kampung to Aldol's map, to talk back into Scarlion and Targa.
  */
-class PapulatusGateRouteTest {
-    private static final int LUDIBRIUM = 220_000_000;
-    private static final int GATE = 220_080_000;
+class BossDeathWalkRouteTest {
+    @Test
+    void ludibriumReachesThePapulatusGateOnFoot() {
+        assertEquals(12, hops(220_000_000, 220_080_000));
+    }
 
     @Test
-    void ludibriumReachesTheGateOnFoot() {
+    void kampungReachesAldolsMapOnFoot() {
+        assertTrue(hops(551_000_000, 551_030_100) <= 8, "the plan counts 6 hops");
+    }
+
+    private static int hops(int from, int to) {
         Set<AgentVictoriaPortalRouteGraph.Edge> standard =
                 Set.copyOf(AgentVictoriaPortalRouteGraphRepository.worldRepository().graph().edges());
-        StringBuilder path = new StringBuilder().append(LUDIBRIUM);
-        int at = LUDIBRIUM;
+        StringBuilder path = new StringBuilder().append(from);
+        int at = from;
         int hops = 0;
-        while (at != GATE && hops < 40) {
-            Integer next = AgentVictoriaTrainingRouteCatalog.nextHop(at, GATE);
+        while (at != to && hops < 40) {
+            Integer next = AgentVictoriaTrainingRouteCatalog.nextHop(at, to);
             assertNotNull(next, "no route on from " + at + " (" + path + ")");
             assertTrue(standard.contains(new AgentVictoriaPortalRouteGraph.Edge(at, next))
                     || AgentVictoriaTrainingRouteCatalog.scriptedPortalId(at, next) != null,
@@ -33,7 +40,7 @@ class PapulatusGateRouteTest {
             hops++;
             path.append(" > ").append(at);
         }
-        assertEquals(GATE, at, path.toString());
-        assertTrue(hops <= 15, "Ludibrium to the gate took " + hops + " hops: " + path);
+        assertEquals(to, at, path.toString());
+        return hops;
     }
 }

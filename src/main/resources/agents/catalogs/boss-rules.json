@@ -82,6 +82,12 @@
       "randomSpots": true
     },
     {
+      "key": "scarga",
+      "label": "Scarlion and Targa",
+      "targetPriority": [9420542, 9420543, 9420544, 9420547, 9420548, 9420549],
+      "adds": [9420545, 9420550, 9420531, 9420532]
+    },
+    {
       "key": "field_victoria",
       "label": "Victoria field bosses",
       "fieldBosses": [2220000, 3220000, 5220002, 6220000, 5220001, 5220000, 8220008, 8220009, 6130101, 6300005,

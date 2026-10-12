@@ -172,6 +172,16 @@ public final class AgentBossRunRegistry {
     }
 
     /**
+     * P17: true when {@code event} has an open run, of any kind, whose boss rules name {@code mobId} (a role, a target
+     * priority part or an add: Scarga's Ratatula). AgentBossScope asks it for a non-boss monster in an expedition
+     * event of a listed type only. Memory only, any thread.
+     */
+    public static boolean namedPart(EventInstanceManager event, int mobId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forEvent(event);
+        return session != null && AgentBossRules.names(session.definition().key(), mobId);
+    }
+
+    /**
      * True for a fake part (Zakum's body before its arms fall) in the event of an open run that never targets fakes:
      * a hit on it is thrown away, so the combat selector never takes it, not even as a secondary or projectile target.
      * Also true for a part the run's boss rules never let a member hit (AgentBossRules.neverTarget, P11: Normal
