@@ -87,9 +87,13 @@ class CompanionBossRunPointsTest {
     void aBossKilledInsideACompanionBossRunGivesNoPointsForTheKill() {
         runs.when(() -> AgentBossRunRegistry.forEvent(event)).thenReturn(mock(AgentBossRunSession.class));
 
+        server.living.roster.CompanionBossRuns bossRuns = mock(server.living.roster.CompanionBossRuns.class);
+        when(world.bossRuns()).thenReturn(bossRuns);
+
         LivingWorldHooks.mobKilled(boss, Set.of(ANN, THANE), map);
 
         verify(friendship, never()).onBossKilled(anyInt(), anySet(), any());
+        verify(bossRuns).bossKilledInRun(map, Set.of(ANN, THANE)); // the run remembers who hit it (befriend)
     }
 
     @Test

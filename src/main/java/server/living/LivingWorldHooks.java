@@ -41,7 +41,9 @@ public final class LivingWorldHooks {
      * thread that landed the kill (a player's IO thread or the central Agent tick) inside the monster's monitor, so it
      * stays in memory and takes no map or living lock: kill credit (quest kill steps, contract proofs, quest-only drops),
      * which looks characters up and reads the store, goes to the living-kills lane, and only when a player or a Resident
-     * took part. A boss kill gives friendship points, except inside a companion boss run (inCompanionBossRun).
+     * took part. A boss kill gives friendship points, except inside a companion boss run (inCompanionBossRun):
+     * there the humans who hit it are remembered, and the run's clear befriends them once
+     * (CompanionBossRuns.bossKilledInRun).
      */
     public static void mobKilled(Monster monster, Set<Integer> attackerIds, MapleMap map) {
         LivingWorld world = LivingWorld.get();
@@ -58,6 +60,8 @@ public final class LivingWorldHooks {
                 java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
                 world.executor().submit("friendship.boss " + monster.getId(),
                         () -> world.friendship().onBossKilled(monster.getId(), attackers, map));
+            } else if (monster.isBoss() && world.bossRuns() != null) {
+                world.bossRuns().bossKilledInRun(map, attackerIds);
             }
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
             PersonalKnowledge personal = PersonalKnowledge.shared();

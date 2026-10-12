@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.MemberResult;
@@ -14,7 +15,9 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.Out;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.RunEnded;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
+import server.agents.capabilities.expedition.boss.AgentBossRunSession;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
 import server.living.bond.Friendship;
@@ -45,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -761,6 +765,54 @@ class CompanionBossRunsTest {
         verify(friendship, times(1)).onBossRunCleared(any(), any(), any());
     }
 
+    /**
+     * Deploy review 2026-10-12: before P12 a friend who hit the boss befriended the Residents of their party per kill.
+     * The once-per-run rule keeps that for a friend who hit one of the run's bosses, once, at the clear.
+     */
+    @Test
+    void aFriendWhoHitTheBossIsBefriendedOnceWithTheOwnersCompanionsInTheirParty() {
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        Character bob = friendInAnnsParty();
+        signUp(ISOLDE, THANE);
+        hitTheBoss(BOB, ISOLDE);
+        hitTheBoss(BOB); // a second kill (a Time Sphere, a bomb) adds nothing
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 4, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                new MemberResult(THANE, ANN, true, true, 0, Out.EXITED))));
+
+        ArgumentCaptor<List<Persona>> forBob = ArgumentCaptor.captor();
+        verify(friendship).onBossRunCleared(eq(bob), forBob.capture(), eq("easy_balrog"));
+        assertEquals(List.of("isolde", "thane"), forBob.getValue().stream().map(Persona::id).toList());
+        verify(friendship).onBossRunCleared(eq(game.ann), any(), eq("easy_balrog"));
+        verify(friendship, times(2)).onBossRunCleared(any(), any(), any());
+    }
+
+    @Test
+    void aFriendWhoNeverHitTheBossGetsNoRunPointsAndAFailedRunForgetsItsHitters() {
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        Character bob = friendInAnnsParty();
+        signUp(ISOLDE);
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED))));
+        verify(friendship, never()).onBossRunCleared(eq(bob), any(), any());
+
+        signUp(ISOLDE);
+        hitTheBoss(BOB);
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, false, "event-disposed", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, false, 0, Out.NO_HUMAN_LEFT))));
+        verify(friendship, never()).onBossRunCleared(eq(bob), any(), any());
+
+        signUp(ISOLDE); // the failed run's hit is forgotten: the next clear of the same session id pays Ann only
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED))));
+        verify(friendship, never()).onBossRunCleared(eq(bob), any(), any());
+        verify(friendship, times(2)).onBossRunCleared(eq(game.ann), any(), eq("easy_balrog"));
+    }
+
     @Test
     void aRunThatDidNotClearFailsItsMembersExceptTheOnesThatDied() {
         signUp(ISOLDE, THANE, SORREL);
@@ -1219,6 +1271,30 @@ class CompanionBossRunsTest {
     /** The loaded companion {@code id} knows Heal (Cleric.HEAL) at {@code level}; 0: it cannot cast it. */
     private void healer(int id, int level) {
         when(game.bots.get(id).getSkillLevel(Cleric.HEAL)).thenReturn(level);
+    }
+
+    /** Bob, a human friend of Ann's with no companion, online and in her party. */
+    private Character friendInAnnsParty() {
+        Character bob = mock(Character.class);
+        when(bob.getId()).thenReturn(BOB);
+        when(bob.getParty()).thenReturn(game.party);
+        when(Server.getInstance().getWorld(0).getPlayerStorage().getCharacterById(BOB)).thenReturn(bob);
+        game.humans.add(BOB);
+        game.members.add(BOB);
+        return bob;
+    }
+
+    /** A boss of run SID (the run's open session) dies to {@code attackerIds}. */
+    private void hitTheBoss(Integer... attackerIds) {
+        MapleMap battle = mock(MapleMap.class);
+        EventInstanceManager event = mock(EventInstanceManager.class);
+        when(battle.getEventInstance()).thenReturn(event);
+        AgentBossRunSession session = mock(AgentBossRunSession.class);
+        when(session.sessionId()).thenReturn(SID);
+        try (MockedStatic<AgentBossRunRegistry> registry = mockStatic(AgentBossRunRegistry.class)) {
+            registry.when(() -> AgentBossRunRegistry.forEvent(event)).thenReturn(session);
+            runs.bossKilledInRun(battle, Set.of(attackerIds));
+        }
     }
 
     /**
