@@ -328,6 +328,25 @@ arriving underneath, so the crew view is current when the page closes.
 | N10 | Back, More..., Close, stale reply | Back returns to the actions page, paging works, Close returns to the crew view, an old page's click does nothing |
 | N11 | Trial DLL (protocol 1) on the new server | unchanged: More opens the NPC Crew window |
 
+### Step 7 live results (2026-10-12 11:34-11:45, int/p9at 59d05c677, test client with kaentake 32842bd, Crewfriend)
+
+Evidence: `docs/agents/evidence/cua/20261012-1134*` to `20261012-1145*`. HELLO 2 got WELCOME 2 enabled 1. No
+crew-window or LivingTalk WARN/ERROR in the server log.
+
+| # | Result | Seen |
+|---|---|---|
+| N1 | PASS | More drew "What should my crew do?": Remember this lineup, the four orders, Formation..., Everyone on the bench..., Keep my crew fresh (off), Make room for a friend..., My lineups..., More... -> Who should come along?, Back to the top... (the NPC rules: no Usual with nobody of it at camp, no hire list with the roster full) |
+| N2 | PASS | "Your usual lineup: Casse, Lioren, Rurik, Halvard, Dorran." |
+| N3 | PASS | native picker Stay close / Give me room / Spread out / Keep to my left / Keep to my right; Spread out: Casse "ok, spreading out." |
+| N4 | PASS (drawn) | Train (~19% EXP/h), Farm meso (~477k meso/h together after upkeep), Gather, Sell the haul, Run a stall, Rest; no pick (it would move the whole bench; unit tests cover it) |
+| N5 | PASS | on (label "(on)" and the server's line), then "Keep my crew fresh is off." |
+| N6 | PASS (drawn) | "Who steps out for your friend?" with the five, long rows wrapped; Never mind closed; no pick (the contract Yes/No is covered by unit tests) |
+| N7 | not offered | the roster is full (10 of 10), so neither window offers the hire list |
+| N8 | PASS | "Your Hunting lineup: Casse, Lioren, Rurik, Halvard and Dorran." then the page shows it; Call: "Everyone in your Hunting lineup is out already." |
+| N9 | PASS (drawn) | HPQ / EPQ suggestions with "Call Kestrel for HPQ/EPQ"; no call (the party is full) |
+| N10 | PASS | Back returned to the actions page, More.../Back to the top... paged, Close returned to the crew view |
+| N11 | unit tests | NativeCrewWindowTest.aProtocolOneClientNeverGetsAPageAndItsActionsAndRepliesAreIgnored |
+
 ## Open decisions
 
 1. Hotkey: default `U` (unbound in the default key map). The key works only while unbound in the player's own map.

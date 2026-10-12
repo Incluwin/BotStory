@@ -147,6 +147,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             return; // no HELLO: a client without the DLL never sends this
         }
         if (window == null) {
+            client.setCrewWindowOpen(false);
             client.sendPacket(NativeCrewPackets.close()); // the living world is off: no window may be open
             return;
         }
@@ -182,11 +183,9 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         return world.config().crewWindowNative(chr.isGM());
     }
 
-    /** PAGE_REPLY's Close (255): the page ends unanswered, as End Chat ends an NPC window. */
-    private static final int CLOSE_REPLY = 255;
-
     private void received(Client client, Character owner, Op op) {
         if (op instanceof Close) {
+            client.setCrewWindowOpen(false);
             watches.computeIfPresent(owner.getId(), (id, watch) -> watch.client == client ? null : watch);
             LivingTalk.endNative(owner); // its page went with the window, unanswered
             return;
@@ -201,12 +200,16 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         if (!allows(owner)) {
             watches.remove(owner.getId());
             LivingTalk.endNative(owner);
+            client.setCrewWindowOpen(false);
             send(client, NativeCrewPackets.close()); // the switch or the character changed since WELCOME
             return;
         }
-        if (!(op instanceof PageReply reply) || reply.action() != CLOSE_REPLY && LivingTalk.nativeActive(owner)) {
-            // a reply to no page, or the Close a client sends for a page that came after its window closed, is no sign
-            // of an open window: it starts no watch
+        if (op instanceof Open) {
+            client.setCrewWindowOpen(true);
+        }
+        if (!(op instanceof PageReply) || client.isCrewWindowOpen()) {
+            // a page's reply (its Close too) touches the watch of the window it is shown in; one from a client whose
+            // window has closed is no sign of an open window and starts no watch
             watch(client, owner);
         }
         if (op instanceof Open) {
@@ -440,6 +443,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             if (!allows(owner)) {
                 watches.remove(owner.getId(), watch);
                 LivingTalk.endNative(owner);
+                client.setCrewWindowOpen(false);
                 client.runOnIoThread(() -> send(client, NativeCrewPackets.close()));
                 continue;
             }
@@ -484,6 +488,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             if (!enabled) {
                 watches.remove(chr.getId());
                 LivingTalk.endNative(chr);
+                client.setCrewWindowOpen(false);
             }
             int served = negotiated(client);
             client.runOnIoThread(() -> {
@@ -514,7 +519,8 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
     @Override
     public boolean draws(Character chr) {
         Client client = chr.getClient();
-        return client != null && negotiated(client) >= PAGES_PROTOCOL && chr.isLoggedinWorld() && allows(chr);
+        return client != null && negotiated(client) >= PAGES_PROTOCOL && client.isCrewWindowOpen() && chr.isLoggedinWorld()
+                && allows(chr);
     }
 
     /** PAGE, to a connection at protocol 2 or later the switch still allows. */
