@@ -13,6 +13,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,6 +47,13 @@ class AgentBossDeathWalkTest {
     private static final AgentBossRunDefinition REENTER_RUN = new AgentBossRunDefinition("scarga", null, SCARGA_GATE,
             551_030_200, -1, ALDOL, List.of(), 9_201_134, -1, FakeBossRunPorts.Fight::new, true, List.of(), false, true,
             AgentBossRunDefinition.DeathMode.REENTER);
+    private static final int LEAFRE = 240_000_000;
+    private static final int CAVE_ENTRANCE = 240_050_400;
+    private static final int MARK = 2_083_004;
+    /** A party-instance run with HORNTAIL's key, maps, recruit NPC and REENTER deaths. */
+    private static final AgentBossRunDefinition HORNTAIL_RUN = new AgentBossRunDefinition("horntail", null,
+            CAVE_ENTRANCE, 240_060_200, -1, MARK, List.of(), 2_083_002, -1, FakeBossRunPorts.Fight::new, true,
+            List.of(), false, true, AgentBossRunDefinition.DeathMode.REENTER);
 
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final FakeBossRunPorts.Fight fight = new FakeBossRunPorts.Fight();
@@ -199,6 +207,55 @@ class AgentBossDeathWalkTest {
         member.reentering(4_000L);
         when(thane.getMapId()).thenReturn(KAMPUNG);
         assertTrue(AgentBossDeathWalk.tick(entry, thane, 5_000L), "a new death walks again");
+    }
+
+    /**
+     * P18, plan decision 11a: no route reaches Horntail's recruit map (240050400). A REENTERING member that comes to in
+     * Leafre stands there REENTRY_WARP_AFTER_MS, is moved to the recruit map once, then walks up to the Mark of the
+     * Squad as for Scarga. Elsewhere it walks to Leafre first, never to the unreachable recruit map.
+     */
+    @Test
+    void aReenteringHorntailMemberIsMovedFromLeafreToTheCaveEntranceAndWalksUpToTheMark() {
+        List<Integer> movedTo = new ArrayList<>();
+        AgentBossDeathWalk.moverForTest((agent, mapId) -> movedTo.add(mapId));
+        reentering(HORNTAIL_RUN);
+        Character thane = agent(LEAFRE);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        long after = config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.REENTRY_WARP_AFTER_MS");
+
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L), "it stands in Leafre first");
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after - 1));
+        assertTrue(movedTo.isEmpty());
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after));
+        assertEquals(List.of(CAVE_ENTRANCE), movedTo);
+        verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
+
+        when(thane.getMapId()).thenReturn(CAVE_ENTRANCE);
+        when(thane.getPosition()).thenReturn(new Point(4, 175));
+        when(gateway.npcPosition(thane, MARK)).thenReturn(new Point(898, 260));
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 2_000L + after), "it walks up to the Mark");
+        verify(gateway).navigate(entry, new Point(898, 260), true);
+        assertEquals(List.of(CAVE_ENTRANCE), movedTo, "moved once");
+    }
+
+    @Test
+    void aReenteringHorntailMemberAwayFromLeafreWalksToLeafre() {
+        reentering(HORNTAIL_RUN);
+        Character thane = agent(240_010_000);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+
+        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        verify(gateway).travelTo(entry, thane, LEAFRE, 1_000L);
+    }
+
+    private void reentering(AgentBossRunDefinition definition) {
+        AgentBossRunSession session = new AgentBossRunSession(1L, definition, event, fight, 0L);
+        AgentBossRunRegistry.put(session);
+        AgentBossRunMember member = session.admit(THANE, OWNER, 0L, AgentBossRunMember.Kind.FOLLOWER);
+        member.adopted();
+        member.died();
+        member.reentering(0L);
     }
 
     private Character downOutside(AgentBossRunDefinition definition, int mapId) {

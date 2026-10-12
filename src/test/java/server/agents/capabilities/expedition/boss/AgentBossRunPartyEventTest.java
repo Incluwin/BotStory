@@ -78,7 +78,8 @@ class AgentBossRunPartyEventTest {
             boolean party = definition.key().equals("latanica") || definition.key().startsWith("neo_")
                     || definition.key().equals("papulatus");
             assertEquals(party, definition.partyInstance(), definition.key());
-            assertEquals(definition.key().equals("scarga") ? AgentBossRunDefinition.DeathMode.REENTER
+            assertEquals(Set.of("scarga", "horntail").contains(definition.key())
+                    ? AgentBossRunDefinition.DeathMode.REENTER
                     : AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, definition.deathMode(), definition.key());
         }
         assertTrue(latanica.partyInstance());
@@ -141,6 +142,30 @@ class AgentBossRunPartyEventTest {
         assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
         assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
         assertTrue(host.held.contains(THANE), "tied to the owner's run as it is adopted");
+    }
+
+    /**
+     * P18: a fight over several maps (boss-rules.json stageMaps: Horntail's pre-head maps) adopts and fights a member
+     * on a stage map, where the Start puts everyone; the recruit map is no fight map.
+     */
+    @Test
+    void aMemberOnAPreHeadMapOfHorntailsFightIsAdoptedAndFights() {
+        AgentBossRunDefinition horntail = new AgentBossRunDefinition("horntail", null, 240_050_400, 240_060_200, -1,
+                0, List.of(), 0, -1, () -> fight, true, List.of(), false, true,
+                AgentBossRunDefinition.DeathMode.REENTER);
+        long sessionId = AgentBossRunService.openForEvent(ports, owner, horntail, event, List.of(THANE, ISOLDE), NOW)
+                .sessionId();
+        AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+        ports.place(THANE, 240_060_000, 100, 0, 70);
+        ports.eventOf.put(THANE, event);
+        ports.place(ISOLDE, 240_050_400, 100, 0, 70);
+        ports.eventOf.put(ISOLDE, event);
+
+        session.tick(ports, host, NOW + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(ISOLDE).phase());
+        assertTrue(fight.calls.contains("tick [" + THANE + "]"), fight.calls.toString());
     }
 
     @Test

@@ -73,6 +73,14 @@ public record AgentBossRunDefinition(String key, ExpeditionType type, int recrui
         return type != null ? type.getMinLevel() : AgentBossRules.minLevel(key);
     }
 
+    /**
+     * P18: true on a map of this boss's fight: its battle map, or a stage map before it in the boss rules catalog
+     * (Horntail's pre-head maps 240060000 and 240060100). A run adopts and fights members on any of them.
+     */
+    public boolean fightMap(int mapId) {
+        return mapId == battleMapId || AgentBossRules.stageMaps(key).contains(mapId);
+    }
+
     /** True for a party-instance boss: no expedition, its run keyed by the party's event. */
     public boolean partyInstance() {
         return type == null;

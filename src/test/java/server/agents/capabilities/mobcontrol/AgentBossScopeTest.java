@@ -91,9 +91,9 @@ class AgentBossScopeTest {
     }
 
     @Test
-    void theYamlShipsTheScopeOnForZakumAndScargaWithNoListedIds() {
+    void theYamlShipsTheScopeOnForZakumScargaAndHorntailWithNoListedIds() {
         assertEquals("true", shipped.get(ENABLED));
-        assertEquals("ZAKUM,SCARGA", shipped.get(EXPEDITION_TYPES), "P17 adds SCARGA");
+        assertEquals("ZAKUM,SCARGA,HORNTAIL", shipped.get(EXPEDITION_TYPES), "P17 adds SCARGA, P18 HORNTAIL");
         assertEquals("none", shipped.get(BOSS_IDS));
     }
 
@@ -121,9 +121,9 @@ class AgentBossScopeTest {
             // a fight with a native-capable client: the part is not a server-owned actor
             assertFalse(AgentBossScope.guards(boss(id, balrogBattle, bossfriend)), id + " in a BALROG_EASY event");
         }
-        MapleMap horntailCave = eventMap(ExpeditionType.HORNTAIL);
-        assertFalse(AgentBossScope.guards(boss(8_810_002, horntailCave, human(horntailCave))),
-                "Horntail is not listed");
+        MapleMap pinkBeanTemple = eventMap(ExpeditionType.PINKBEAN);
+        assertFalse(AgentBossScope.guards(boss(8_820_001, pinkBeanTemple, human(pinkBeanTemple))),
+                "Pink Bean is not listed");
     }
 
     @Test

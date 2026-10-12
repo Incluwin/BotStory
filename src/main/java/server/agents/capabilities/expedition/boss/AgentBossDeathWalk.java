@@ -12,6 +12,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import java.awt.Point;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 /**
  * The walk back after a death. A member that died in a boss fight comes to outside, where the battle map's return map
@@ -23,6 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li>P17: in a re-enter run (DeathMode.REENTER: Scarlion and Targa), a REENTERING member walks back to the recruit
  * map (from Kampung to 551030100) and up to the recruit NPC (Aldol), where its run's tick has it talk its way back in
  * (AgentBossRunSession.tickReentering).</li>
+ * <li>P18, plan decision 11a: when the boss rules name a {@code reentryWarpFrom} map (Horntail: no route reaches
+ * 240050400, players come in by the Slate with an item companions do not carry), the member walks to that map instead
+ * (Leafre, where it comes to) and, REENTRY_WARP_AFTER_MS after its walk began, is moved to the recruit map, then walks
+ * up to the recruit NPC (the Mark of the Squad).</li>
  * </ul>
  *
  * <p>It walks while it is alive, its anchor is still in the run's event, and it is not there yet. Once there, or with
@@ -33,6 +38,8 @@ public final class AgentBossDeathWalk {
     private static final Logger log = LoggerFactory.getLogger(AgentBossDeathWalk.class);
     /** Agent id -> its walk after one death in one run: the session, the death count, when it began (stopped: -1). */
     private static final Map<Integer, Walk> WALKS = new ConcurrentHashMap<>();
+    /** P18: moves an Agent to a map beside its portal 0 (the run's own way, AgentBossRunPorts.moveOut). */
+    private static volatile BiConsumer<Character, Integer> mover = AgentBossRunPorts.LIVE::moveOut;
 
     private record Walk(long sessionId, int deaths, long startedAtMs) {
         boolean stopped() {
@@ -86,8 +93,18 @@ public final class AgentBossDeathWalk {
             stop(id, session, member, agent, target, "arrived");
             return false;
         }
-        AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(entry, agent,
-                target.mapId(), nowMs);
+        int warpFrom = reentryWarpFrom(session, member);
+        if (warpFrom > 0 && agent.getMapId() == warpFrom) {
+            if (nowMs - walk.startedAtMs() >= reentryWarpAfterMs()) {
+                log.info("Boss death walk moved in: session={} boss={} member={} from map={} to map={}",
+                        session.sessionId(), session.definition().key(), id, warpFrom, target.mapId());
+                mover.accept(agent, target.mapId());
+            }
+            return true; // it comes to and says its line before it is moved in; it stands meanwhile
+        }
+        int walkTo = warpFrom > 0 ? warpFrom : target.mapId();
+        AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(entry, agent, walkTo,
+                nowMs);
         if (outcome.status() == AgentRouteStatus.NO_ROUTE) {
             stop(id, session, member, agent, target, "no route");
             return false;
@@ -103,6 +120,27 @@ public final class AgentBossDeathWalk {
 
     static void resetForTest() {
         WALKS.clear();
+        mover = AgentBossRunPorts.LIVE::moveOut;
+    }
+
+    static void moverForTest(BiConsumer<Character, Integer> replacement) {
+        mover = replacement;
+    }
+
+    /**
+     * P18: the map a REENTERING member of a re-enter run is moved to the recruit map from (the boss rules'
+     * {@code reentryWarpFrom}: Leafre for Horntail); 0 for none.
+     */
+    private static int reentryWarpFrom(AgentBossRunSession session, AgentBossRunMember member) {
+        AgentBossRunDefinition definition = session.definition();
+        return member.phase() == AgentBossRunMember.Phase.REENTERING
+                && definition.deathMode() == AgentBossRunDefinition.DeathMode.REENTER
+                ? AgentBossRules.reentryWarpFrom(definition.key()) : 0;
+    }
+
+    private static long reentryWarpAfterMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.REENTRY_WARP_AFTER_MS");
     }
 
     /** The member's walk target now, or null for none. */

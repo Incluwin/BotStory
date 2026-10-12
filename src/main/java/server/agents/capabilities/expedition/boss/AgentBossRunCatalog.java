@@ -106,8 +106,23 @@ public final class AgentBossRunCatalog {
             true, AgentBossRules.markerItems("scarga"), AgentBossRules.neverTargetFakes("scarga"), true,
             AgentBossRunDefinition.DeathMode.REENTER);
 
+    // slot: horntail
+    /**
+     * Horntail (P18), an expedition of 6-30 at Lv100 or more, once a day: sign up with the Mark of the Squad (2083004)
+     * on 240050400 with its registering window (no choices, as Adobis's). The Start puts everyone on 240060000; the
+     * fight runs over three maps (boss-rules.json stageMaps): each pre-head map's head, then on through next00 to
+     * 240060200, where the owner wakes Horntail at the reactor. Ranged and magic members take the heads, melee members
+     * the legs and tail. The Crystal of Roots (2083002) on each map is the way out, before and after the clear, and
+     * warps only the talker. A member that dies revives in Leafre, is moved to 240050400 (plan decision 11a) and enters
+     * again by the Mark (REENTER); an owner who leaves takes their party's members out with them.
+     */
+    public static final AgentBossRunDefinition HORNTAIL = new AgentBossRunDefinition("horntail",
+            ExpeditionType.HORNTAIL, 240_050_400, 240_060_200, -1, 2_083_004, List.of(), 2_083_002, -1,
+            AgentBossPriorityFight.forKey("horntail"), true, AgentBossRules.markerItems("horntail"),
+            AgentBossRules.neverTargetFakes("horntail"), true, AgentBossRunDefinition.DeathMode.REENTER);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
-            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA);
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL);
 
     private AgentBossRunCatalog() {
     }

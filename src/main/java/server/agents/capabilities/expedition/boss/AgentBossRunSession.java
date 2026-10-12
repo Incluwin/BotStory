@@ -687,7 +687,7 @@ public final class AgentBossRunSession {
             } else {
                 ports.navigate(agentId, portal, true);
             }
-        } else if (mapId == definition.battleMapId() && (!clearedNow || definition.exitNpcAfterClear())) {
+        } else if (definition.fightMap(mapId) && (!clearedNow || definition.exitNpcAfterClear())) {
             Point npc = ports.npcPosition(agent, definition.exitNpcId());
             if (npc == null) {
                 moveOut(ports, agent);
@@ -774,7 +774,7 @@ public final class AgentBossRunSession {
         }
         boolean anchorIn = member.kind() != AgentBossRunMember.Kind.SELF_LED
                 || (inThisEvent && memberEvent.getPlayerById(member.anchorId()) != null);
-        if (inThisEvent && anchorIn && agent.getMapId() == definition.battleMapId()) {
+        if (inThisEvent && anchorIn && definition.fightMap(agent.getMapId())) {
             if (!host.seat(member.seat(definition.key(), sessionId))) {
                 log.info("Boss run adoption refused: session={} boss={} member={} (tied to another run)", sessionId,
                         definition.key(), agentId);
@@ -842,7 +842,10 @@ public final class AgentBossRunSession {
                 count(AgentBossRunMember.Phase.INSIDE));
     }
 
-    /** Ticks the fight for the alive members inside that stand on the battle map in the event; a failure is logged. */
+    /**
+     * Ticks the fight for the alive members inside that stand on a map of the fight in the event (its battle map or,
+     * P18, a stage map before it); a failure is logged.
+     */
     private void tickFight(AgentBossRunPorts ports, long nowMs) {
         List<Character> fighters = new ArrayList<>();
         for (AgentBossRunMember member : members) {
@@ -851,7 +854,7 @@ public final class AgentBossRunSession {
             }
             Character agent = ports.agent(member.agentId());
             // P12 G5: a stunned, seduced or confused member does what its state makes it do, on its own tick
-            if (agent != null && agent.isAlive() && agent.getMapId() == definition.battleMapId()
+            if (agent != null && agent.isAlive() && definition.fightMap(agent.getMapId())
                     && agent.getEventInstance() == event && !AgentBossDisabledState.disabled(agent)) {
                 fighters.add(agent);
             }

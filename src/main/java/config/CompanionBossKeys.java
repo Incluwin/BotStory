@@ -53,6 +53,9 @@ public final class CompanionBossKeys {
 
         // slot: scarga (P17): Scarlion and Targa, Aldol's expedition
         keys.add("scarga");
+
+        // slot: horntail (P18): Horntail, the Mark of the Squad's expedition
+        keys.add("horntail");
         return List.copyOf(keys);
     }
 

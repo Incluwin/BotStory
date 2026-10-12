@@ -967,6 +967,9 @@ living_world:
     # "scarga" (P17): Scarlion and Targa at Aldol, signed up as at Adobis. A companion that dies walks back from Kampung
     # and talks to Aldol to get back in (agent-engine.yaml AgentBossRunSession.REENTER_*). It stays off until its live
     # check passes (docs/COMPANION_BOSSING_P17.md).
+    # "horntail" (P18): Horntail at the Mark of the Squad, signed up as at Adobis. The run spans the two pre-head maps
+    # and the altar. A companion that dies comes to in Leafre, is moved back to the cave entrance (240050400, no route
+    # reaches it) and signs the Mark again. It stays off until its live check passes (docs/COMPANION_BOSSING_P18.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

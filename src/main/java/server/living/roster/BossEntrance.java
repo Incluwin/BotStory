@@ -96,8 +96,19 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance SCARGA = new BossEntrance(AgentBossRunCatalog.SCARGA,
             new PqEntrance.Beside(-50, -30, true), 550_000_000, "west00", "west00", true, 0);
 
+    // slot: horntail
+    /**
+     * The Mark of the Squad stands at 898,260 (WZ 240050400 life) on the Cave of Life entrance: companions wait beside
+     * it, as at Adobis. Players come through Leafre (240000000), whose store (2080001) stands on 240000002; no route
+     * leads into 240050400 (the Slate warps players in) or back out, so a trip out of it is held there. Allies come in
+     * at sp (4,175), where the Slate lands players, and leave by st00 (-185,-48) beside the Crystal of Roots, the
+     * room's way out.
+     */
+    static final BossEntrance HORNTAIL = new BossEntrance(AgentBossRunCatalog.HORNTAIL,
+            new PqEntrance.Beside(-50, -30, true), 240_000_000, "sp", "st00", true, 2_080_001);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

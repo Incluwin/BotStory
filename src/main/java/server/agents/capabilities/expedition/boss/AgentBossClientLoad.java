@@ -53,7 +53,7 @@ public final class AgentBossClientLoad {
         return attacks == null ? 0L : attacks.get();
     }
 
-    /** The open run the Agent is an INSIDE member of while it stands on that run's battle map, else null. */
+    /** The open run the Agent is an INSIDE member of while it stands on a map of that run's fight (P18), else null. */
     private static AgentBossRunSession battleRun(Character bot) {
         if (bot == null) {
             return null;
@@ -61,7 +61,7 @@ public final class AgentBossClientLoad {
         AgentBossRunSession session = AgentBossRunRegistry.forMember(bot.getId());
         AgentBossRunMember member = session == null ? null : session.member(bot.getId());
         return member != null && member.phase() == AgentBossRunMember.Phase.INSIDE
-                && bot.getMapId() == session.definition().battleMapId() ? session : null;
+                && session.definition().fightMap(bot.getMapId()) ? session : null;
     }
 
     static int attackIntervalFloorMs() {

@@ -28,7 +28,16 @@ import java.util.Set;
  * <li>{@code minLevel} (P14): the level a companion needs for a party boss, which has no expedition type.</li>
  * <li>{@code deathWaitMap} (P15, decision 9): the map a member that died in the fight walks to and waits on once it
  * comes to (Papulatus: its gate 220080000, from Ludibrium); 0 waits where it came to.</li>
- * <li>{@code randomSpots} (P15): the mirror strikes an attack whose effect falls at random spots (WZ effect0 randomPos)
+ * <li>{@code stageMaps} and {@code stagePortal} (P18): the event maps before the battle map, in order, and the
+ * portal a member takes from one to the next (Horntail: its pre-head maps 240060000 and 240060100, by next00). A run
+ * adopts and fights a member on any of them; once a stage map holds no live monster but never-targets, a member walks
+ * on through the portal (the stock script lets it through once that map's head fell).</li>
+ * <li>{@code meleePriority} (P18): the target priority of a melee member, when it differs from {@code targetPriority}
+ * (Horntail: the legs and the tail from the floor, while ranged and magic members take the heads).</li>
+ * <li>{@code reentryWarpFrom} (P18, plan decision 11a): in a re-enter run whose recruit map no route reaches (Horntail:
+ * the Slate warps players into 240050400), the map from which a member walking back is moved to the recruit map, as
+ * the waiver lets companions in without the quest item (Leafre 240000000, where it comes to); 0 for none.</li>
+ * <li>{@code randomSpots} (P15):the mirror strikes an attack whose effect falls at random spots (WZ effect0 randomPos)
  * only near a spot, not across its whole box (Papulatus's Clock attack3). Off for every boss whose mirror ran live
  * before it (Zakum's attack2), until a live fight there checks it.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
@@ -48,7 +57,8 @@ public final class AgentBossRules {
     public record Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
                        List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
                        boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
-                       boolean randomSpots) {
+                       boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                       List<Integer> meleePriority, int reentryWarpFrom) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -60,6 +70,17 @@ public final class AgentBossRules {
             neverTarget = neverTarget == null ? List.of() : List.copyOf(neverTarget);
             fieldBosses = fieldBosses == null ? List.of() : List.copyOf(fieldBosses);
             markerItems = markerItems == null ? List.of() : List.copyOf(markerItems);
+            stageMaps = stageMaps == null ? List.of() : List.copyOf(stageMaps);
+            meleePriority = meleePriority == null ? List.of() : List.copyOf(meleePriority);
+        }
+
+        /** A boss row before P18: one battle map, one target priority for every member, no re-entry warp. */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, List.of(), null, List.of(), 0);
         }
 
         /** A boss row before P15: its members wait where they come to after a death, and no random spots. */
@@ -117,8 +138,8 @@ public final class AgentBossRules {
      */
     public static boolean names(String key, int mobId) {
         Boss boss = of(key);
-        return boss != null && (boss.targetPriority().contains(mobId) || boss.adds().contains(mobId)
-                || boss.roles().containsValue(mobId));
+        return boss != null && (boss.targetPriority().contains(mobId) || boss.meleePriority().contains(mobId)
+                || boss.adds().contains(mobId) || boss.roles().containsValue(mobId));
     }
 
     /** True when boss {@code key}'s rules list {@code mobId} as a part its run members never hit. */
@@ -171,6 +192,27 @@ public final class AgentBossRules {
         return boss != null && boss.randomSpots();
     }
 
+    /** P18: the event maps before boss {@code key}'s battle map, in order; empty for a fight on one map. */
+    public static List<Integer> stageMaps(String key) {
+        Boss boss = of(key);
+        return boss == null ? List.of() : boss.stageMaps();
+    }
+
+    /** P18: the portal a member of boss {@code key}'s run takes from one stage map to the next; null for none. */
+    public static String stagePortal(String key) {
+        Boss boss = of(key);
+        return boss == null || boss.stagePortal() == null || boss.stagePortal().isBlank() ? null : boss.stagePortal();
+    }
+
+    /**
+     * P18, plan decision 11a: the map from which a member of boss {@code key}'s re-enter run, walking back, is moved
+     * to the recruit map no route reaches (Horntail: Leafre 240000000); 0 for none.
+     */
+    public static int reentryWarpFrom(String key) {
+        Boss boss = of(key);
+        return boss == null ? 0 : Math.max(0, boss.reentryWarpFrom());
+    }
+
     /** The drops boss {@code key}'s run members leave on the floor; empty when the catalog lists none. */
     public static List<Integer> markerItems(String key) {
         Boss boss = of(key);
@@ -196,12 +238,21 @@ public final class AgentBossRules {
      * preferred. Pure.
      */
     public static Preferences preferences(Boss boss, Collection<Integer> liveMobIds) {
+        return preferences(boss, liveMobIds, false);
+    }
+
+    /**
+     * P18: as {@link #preferences(Boss, Collection)}, for a melee member by the boss's {@code meleePriority} when it
+     * names one (Horntail's legs and tail first), else by {@code targetPriority}. Pure.
+     */
+    public static Preferences preferences(Boss boss, Collection<Integer> liveMobIds, boolean melee) {
         Set<Integer> live = new LinkedHashSet<>(liveMobIds);
         if (boss != null) {
             boss.neverTarget().forEach(live::remove);
         }
-        Integer first = boss == null ? null
-                : boss.targetPriority().stream().filter(live::contains).findFirst().orElse(null);
+        List<Integer> priority = boss == null ? List.of()
+                : melee && !boss.meleePriority().isEmpty() ? boss.meleePriority() : boss.targetPriority();
+        Integer first = priority.stream().filter(live::contains).findFirst().orElse(null);
         if (first == null) {
             return new Preferences(live, Set.of());
         }

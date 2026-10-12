@@ -288,6 +288,28 @@ final class BossRunLines {
                     Map.entry(GG, List.of(
                             "gg! both of them down.",
                             "we did it! gg.")))),
+            // slot: horntail (P18: the Mark of the Squad's expedition; a dead companion comes to in Leafre)
+            Map.entry("horntail", Map.ofEntries(
+                    Map.entry(REENTER, List.of(
+                            "ugh, i'm down. heading back from leafre!",
+                            "horntail got me. on my way back in, hold on.",
+                            "be right back, going back to the cave.")),
+                    Map.entry(DOWN, List.of(
+                            "couldn't get back in. i'll wait outside.",
+                            "too late to get back in... waiting in leafre.")),
+                    Map.entry(REFUSED_LEVEL, List.of("the mark won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "can't sign the mark. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to the mark in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for horntail, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for horntail, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the cave of life. {eta}.",
+                            "omw to the mark, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg! horntail's down!",
+                            "we actually did it. gg!")))),
             // slot: zakum (Adobis's room behind the Door to Zakum, the altar, El Nath)
             Map.entry("zakum", Map.ofEntries(
                     Map.entry(DOWN, List.of(

@@ -117,6 +117,33 @@ class AgentPartyBossesTest {
         assertEquals(List.of(9_420_545, 9_420_550, 9_420_531, 9_420_532), AgentBossRules.of("scarga").adds());
     }
 
+    /**
+     * P18: Horntail is an expedition row (the Mark of the Squad's list, no choices) whose maps match HorntailBattle.js:
+     * the Start puts everyone on its entry map, the first stage map; the altar is the event's last map; the recruit map
+     * is the Mark's. The Crystal of Roots is the way out, and its dead re-enter.
+     */
+    @Test
+    void horntailIsAnExpeditionRowOverTheEventsThreeMapsWhoseDeadReenterByTheMark() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/HorntailBattle.js"));
+        AgentBossRunDefinition horntail = AgentBossRunCatalog.of("horntail");
+
+        assertEquals(ExpeditionType.HORNTAIL, horntail.type());
+        assertEquals(number(source, "recruitMap"), horntail.recruitMapId());
+        assertEquals(number(source, "maxMapId"), horntail.battleMapId());
+        assertEquals(number(source, "entryMap"), AgentBossRules.stageMaps("horntail").getFirst(),
+                "the Start's map is the first stage map");
+        assertTrue(horntail.fightMap(number(source, "minMapId")));
+        assertEquals(100, horntail.minLevel(), "the expedition type's Lv100");
+        assertEquals(2_083_004, horntail.entryNpcId());
+        assertEquals(List.of(), horntail.joinSelections());
+        assertEquals(2_083_002, horntail.exitNpcId());
+        assertTrue(horntail.exitNpcAfterClear());
+        assertTrue(horntail.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REENTER, horntail.deathMode());
+        assertEquals(List.of(8_810_019, 8_810_020, 8_810_021, 8_810_022, 8_810_023),
+                AgentBossRules.of("horntail").adds());
+    }
+
     @Test
     void anOpenPartyRunsEventNamesItsBossesPartsAndNothingElseDoes() {
         long sessionId = openLatanica(List.of(THANE));
