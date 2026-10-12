@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 
@@ -27,7 +28,8 @@ import java.util.function.BiConsumer;
  * <li>P18, plan decision 11a: when the boss rules name a {@code reentryWarpFrom} map (Horntail: no route reaches
  * 240050400, players come in by the Slate with an item companions do not carry), the member walks to that map instead
  * (Leafre, where it comes to) and, REENTRY_WARP_AFTER_MS after its walk began, is moved to the recruit map, then walks
- * up to the recruit NPC (the Mark of the Squad).</li>
+ * up to the recruit NPC (the Mark of the Squad). There it first tops up at the store, as a companion with its owner
+ * would ({@link #reentryRestockKey}): the move waits while that trip is under way or still being decided.</li>
  * </ul>
  *
  * <p>It walks while it is alive, its anchor is still in the run's event, and it is not there yet. Once there, or with
@@ -95,7 +97,8 @@ public final class AgentBossDeathWalk {
         }
         int warpFrom = reentryWarpFrom(session, member);
         if (warpFrom > 0 && agent.getMapId() == warpFrom) {
-            if (nowMs - walk.startedAtMs() >= reentryWarpAfterMs()) {
+            long since = nowMs - walk.startedAtMs();
+            if (since >= reentryWarpAfterMs() && !restockHolds(entry, since, nowMs)) {
                 log.info("Boss death walk moved in: session={} boss={} member={} from map={} to map={}",
                         session.sessionId(), session.definition().key(), id, warpFrom, target.mapId());
                 mover.accept(agent, target.mapId());
@@ -125,6 +128,27 @@ public final class AgentBossDeathWalk {
 
     static void moverForTest(BiConsumer<Character, Integer> replacement) {
         mover = replacement;
+    }
+
+    /**
+     * P18 follow-up (user 2026-10-12): the boss key whose standard a REENTERING member of a re-enter run keeps while it
+     * stands on the map it is moved in from (Horntail: Leafre, where it comes to), so it tops up at the store there
+     * before it goes back in; null for every other Agent. Memory only, any thread.
+     */
+    public static String reentryRestockKey(Character agent) {
+        AgentBossRunSession session = agent == null ? null : AgentBossRunRegistry.forMember(agent.getId());
+        AgentBossRunMember member = session == null ? null : session.member(agent.getId());
+        int warpFrom = member == null ? 0 : reentryWarpFrom(session, member);
+        return warpFrom > 0 && agent.getMapId() == warpFrom ? session.definition().key() : null;
+    }
+
+    /**
+     * P18 follow-up: its own restock keeps the member on the map it is moved in from while a trip is under way, or
+     * while the restock still decides on one (at most VERDICT_WAIT_MS of its walk, as at sign-up).
+     */
+    private static boolean restockHolds(AgentRuntimeEntry entry, long sinceMs, long nowMs) {
+        return AgentSupplyReadiness.status(entry, nowMs).restocking()
+                || AgentSupplyReadiness.restockPending(entry, nowMs) && sinceMs < AgentBossRunSession.verdictWaitMs();
     }
 
     /**

@@ -3,6 +3,7 @@ package server.living.roster;
 import client.Character;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
@@ -75,6 +76,11 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (at == null || AgentPartyQuestEngagementRegistry.forMember(agentCharacterId) != null
                 || AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) != at.ownerId()) {
             return null; // not a companion, in a run, or leading itself (a bench slice)
+        }
+        String reentry = AgentBossDeathWalk.reentryRestockKey(bot(agentCharacterId));
+        if (reentry != null) {
+            // P18 follow-up: walking back into its boss run from the map it is moved in from (Horntail: Leafre)
+            return AgentSupplyReadiness.Activity.partyQuest(reentry);
         }
         if (held(at)) {
             // waiting outside its owner's run: the run commits its extras too, and it restocks meanwhile

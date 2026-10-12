@@ -16,6 +16,7 @@ import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.shop.AgentShopService;
@@ -1674,6 +1675,27 @@ class AgentSupplyReadinessRuntimeTest {
         when(owner.isChangingMaps()).thenReturn(false);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 11_000L));
         assertEquals(List.of("started 536 50000"), calls);
+    }
+
+    /**
+     * P18 follow-up: a companion walking back into its boss run (Horntail: it came to in Leafre, its owner fights on in
+     * the cave) shops in town though its owner is on another map; any other companion follows instead.
+     */
+    @Test
+    void aCompanionWalkingBackIntoABossRunShopsWhileItsOwnerFightsElsewhere() {
+        Character wren = companion(538, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        Character owner = AgentRelationshipRuntime.followTarget(entry);
+        when(owner.getMapId()).thenReturn(FIELD); // its owner is in the fight
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 1_000L), "not walking back: it follows");
+        assertFalse(execution(entry).isActive());
+
+        try (MockedStatic<AgentBossDeathWalk> walk = mockStatic(AgentBossDeathWalk.class)) {
+            walk.when(() -> AgentBossDeathWalk.reentryRestockKey(wren)).thenReturn("horntail");
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 6_000L));
+        }
+        assertEquals(List.of("started 538 50000"), calls);
     }
 
     @Test

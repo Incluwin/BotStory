@@ -8,6 +8,7 @@ import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -18,11 +19,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -247,6 +250,60 @@ class AgentBossDeathWalkTest {
 
         assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
         verify(gateway).travelTo(entry, thane, LEAFRE, 1_000L);
+    }
+
+    /**
+     * P18 follow-up: a REENTERING Horntail member in Leafre keeps Horntail's standard there (its own restock may send
+     * it to the store); away from Leafre, in another run, or still inside, it keeps none.
+     */
+    @Test
+    void aReenteringHorntailMemberInLeafreKeepsHorntailsStandard() {
+        reentering(HORNTAIL_RUN);
+        assertEquals("horntail", AgentBossDeathWalk.reentryRestockKey(agent(LEAFRE)));
+        assertNull(AgentBossDeathWalk.reentryRestockKey(agent(240_000_002)), "on the store map: no new trip");
+        assertNull(AgentBossDeathWalk.reentryRestockKey(null));
+        AgentBossRunRegistry.resetForTest();
+
+        reentering(REENTER_RUN);
+        assertNull(AgentBossDeathWalk.reentryRestockKey(agent(KAMPUNG)), "Scarga walks back with no move in");
+        AgentBossRunRegistry.resetForTest();
+
+        AgentBossRunSession session = new AgentBossRunSession(1L, HORNTAIL_RUN, event, fight, 0L);
+        AgentBossRunRegistry.put(session);
+        session.admit(THANE, OWNER, 0L, AgentBossRunMember.Kind.FOLLOWER).adopted();
+        assertNull(AgentBossDeathWalk.reentryRestockKey(agent(LEAFRE)), "an INSIDE member");
+    }
+
+    /**
+     * P18 follow-up: in Leafre the move in waits while the member's shop trip is under way, and while its restock still
+     * decides on one, at most VERDICT_WAIT_MS of its walk.
+     */
+    @Test
+    void theMoveInWaitsForTheMembersOwnRestock() {
+        List<Integer> movedTo = new ArrayList<>();
+        AgentBossDeathWalk.moverForTest((agent, mapId) -> movedTo.add(mapId));
+        reentering(HORNTAIL_RUN);
+        Character thane = agent(LEAFRE);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        long after = config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.REENTRY_WARP_AFTER_MS");
+        long verdictWait = AgentBossRunSession.verdictWaitMs();
+        AgentSupplyReadiness.Status trip = new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.RESTOCKING,
+                60_000L, 0);
+
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class)) {
+            readiness.when(() -> AgentSupplyReadiness.status(entry, 1_000L + after)).thenReturn(trip);
+            readiness.when(() -> AgentSupplyReadiness.status(eq(entry), longThat(t -> t != 1_000L + after)))
+                    .thenReturn(AgentSupplyReadiness.Status.NONE);
+            readiness.when(() -> AgentSupplyReadiness.restockPending(eq(entry), anyLong())).thenReturn(true);
+
+            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after), "a trip under way");
+            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + verdictWait - 1), "still deciding");
+            assertTrue(movedTo.isEmpty());
+            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + Math.max(after, verdictWait)));
+        }
+        assertEquals(List.of(CAVE_ENTRANCE), movedTo, "the decision waited long enough");
     }
 
     private void reentering(AgentBossRunDefinition definition) {

@@ -10,6 +10,7 @@ import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
 import server.agents.capabilities.shop.AgentShopService;
@@ -752,7 +753,8 @@ public final class AgentSupplyReadinessRuntime {
      * opens for {@code activity}, {@link AgentSupplyReadiness#restocksOnField}: a store on a boss's approach), with no
      * objective, pending shop visit, open trade, queued script task, or Activity Host controller owning its foreground
      * (an idle following Agent has none); and while it follows, its anchor stands on its map and is not changing maps
-     * (an owner heading out of town is followed, not left for the shop). Memory only.
+     * (an owner heading out of town is followed, not left for the shop), unless it walks back into a boss run from the
+     * map it is moved in from (AgentBossDeathWalk.reentryRestockKey: Horntail's Leafre). Memory only.
      */
     static boolean free(AgentRuntimeEntry entry, Character agent, AgentSupplyReadiness.Activity activity) {
         if (agent.getHp() <= 0 || agent.getEventInstance() != null || !restockGround(agent)
@@ -763,7 +765,8 @@ public final class AgentSupplyReadinessRuntime {
                 || agent.getTrade() != null || entry.scriptTaskQueueState().hasTasks()) {
             return false;
         }
-        if (AgentModeStateRuntime.following(entry)) {
+        // P18 follow-up: a member walking back into a boss run (Horntail, from Leafre) shops while its owner fights on
+        if (AgentModeStateRuntime.following(entry) && AgentBossDeathWalk.reentryRestockKey(agent) == null) {
             Character anchor = followAnchor(entry);
             if (anchor == null || anchor.getMapId() != agent.getMapId() || anchor.isChangingMaps()) {
                 return false;
