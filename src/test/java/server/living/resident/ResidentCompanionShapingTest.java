@@ -52,6 +52,7 @@ import static org.mockito.Mockito.when;
  * beginner holding the creator's sword. Found live 2026-10-07: Flint (GUNSLINGER, nautilus-gun-l33) and Isolde (CLERIC)
  * were granted to Bossfriend and never shaped (shaped_version 0); Flint fought Easy Balrog with the beginner sword. When
  * the roster or bench loads a companion, or a GM level set stops holding one, a never-shaped persona is shaped now.
+ * Before that, shaped or not, its plain starter clothes of the other gender are swapped (ResidentStarterSwapTest).
  */
 class ResidentCompanionShapingTest {
     private static final int FLINT_CHARACTER = 1010;
@@ -73,6 +74,7 @@ class ResidentCompanionShapingTest {
     private MockedConstruction<ResidentLooks> looks;
     private MockedStatic<ResidentShaper> shaper;
     private MockedStatic<ResidentKit> kit;
+    private MockedStatic<ResidentStarterSwap> starterSwap;
     private MockedStatic<AgentRuntimeRegistry> registry;
     private MockedStatic<AgentMailboxRuntime> mailbox;
 
@@ -92,12 +94,15 @@ class ResidentCompanionShapingTest {
         shaper.when(() -> ResidentShaper.shape(any(), any(), any(), anyInt())).thenAnswer(inv -> calls.add("shape"));
         kit = mockStatic(ResidentKit.class);
         kit.when(() -> ResidentKit.apply(any(), any(), any(), any(), any(), any())).thenAnswer(inv -> calls.add("kit"));
+        starterSwap = mockStatic(ResidentStarterSwap.class);
+        starterSwap.when(() -> ResidentStarterSwap.swap(any(), any())).thenAnswer(inv -> calls.add("swap"));
         registry = mockStatic(AgentRuntimeRegistry.class);
         mailbox = mockStatic(AgentMailboxRuntime.class);
     }
 
     @AfterEach
     void close() {
+        starterSwap.close();
         mailbox.close();
         registry.close();
         kit.close();
@@ -127,7 +132,8 @@ class ResidentCompanionShapingTest {
                 ResidentShaper.RECIPE_VERSION * 1000 + Math.abs(GUN_L33.hashCode() % 1000), BOSSFRIEND), saved.getValue(),
                 "shaped to its recipe and loadout, its employer kept");
         verify(store).event(eq(0), eq("flint"), eq("persona.shaped"), contains("loadout " + GUN_L33));
-        assertEquals(List.of("shape", "kit"), calls, "shaped first, then its quest gear for the level it now has");
+        assertEquals(List.of("swap", "shape", "kit"), calls,
+                "its starter clothes swapped, then shaped, then its quest gear for the level it now has");
     }
 
     @Test
@@ -137,7 +143,7 @@ class ResidentCompanionShapingTest {
         runtime.prepareCompanion(flint, FLINT, true);
 
         verifyNeverShaped();
-        assertEquals(List.of("kit"), calls);
+        assertEquals(List.of("swap", "kit"), calls); // the starter swap does not wait on shaping
     }
 
     @Test
@@ -148,6 +154,7 @@ class ResidentCompanionShapingTest {
         runtime.prepareCompanion(flint, FLINT, true);
 
         verifyNeverShaped();
+        assertEquals(List.of("swap"), calls, "its starter clothes are swapped while held; its quest gear waits");
     }
 
     /**
@@ -200,6 +207,7 @@ class ResidentCompanionShapingTest {
         runtime.prepareCompanion(flint, HIRE, true);
 
         verifyNeverShaped();
+        starterSwap.verify(() -> ResidentStarterSwap.swap(any(), any()), never()); // its clothes are its own
     }
 
     @Test
@@ -220,6 +228,7 @@ class ResidentCompanionShapingTest {
         runtime.prepareCompanion(flint, FLINT, false); // a GM hold released while it is benched
 
         verifyNeverShaped();
+        assertEquals(List.of(), calls, "nor are its starter clothes swapped");
     }
 
     /** {@code loading}: the roster's call (registered at its spawn) or a GM level set's release (live companion). */
@@ -244,7 +253,31 @@ class ResidentCompanionShapingTest {
         }
         shaper.verify(() -> ResidentShaper.shape(flint, FLINT, GUN_LOADOUT, "flint".hashCode()));
         verify(store).event(eq(0), eq("flint"), eq("persona.shaped"), anyString());
-        assertEquals(List.of("shape", "kit"), calls);
+        assertEquals(List.of("swap", "shape", "kit"), calls);
+    }
+
+    /** Shaped already (in town before it was recruited), a registered companion still swaps its starter clothes. */
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void aRegisteredCompanionAlreadyShapedSwapsItsStarterClothesOnItsMailbox(boolean loading) {
+        stored(FLINT_CHARACTER, 5231);
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        when(entry.bot()).thenReturn(flint);
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(FLINT_CHARACTER)).thenReturn(entry);
+        List<AgentMailboxAction<?>> queued = new ArrayList<>();
+        mailbox.when(() -> AgentMailboxRuntime.dispatch(eq(entry), any())).thenAnswer(inv -> {
+            queued.add(inv.getArgument(1));
+            return new CompletableFuture<>();
+        });
+
+        runtime.prepareCompanion(flint, FLINT, loading);
+        assertEquals(List.of(), calls, "nothing on the calling thread");
+
+        for (AgentMailboxAction<?> action : queued) {
+            action.execute(entry);
+        }
+        assertEquals(List.of("swap", "kit"), calls);
+        verifyNeverShaped();
     }
 
     private static Persona persona(String id, String name, String job, String loadout) {

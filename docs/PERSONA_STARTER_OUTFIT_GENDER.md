@@ -1,7 +1,7 @@
 # Persona starter outfit gender (2026-10-10)
 
-Branch `fix/persona-beginner-outfit-gender`. Decision for the user: what to do with the Residents created before
-this fix.
+Branch `fix/persona-beginner-outfit-gender`. The Residents created before this fix are repaired by option 2 (user
+decision 2026-10-10, branch `fix/resident-starter-outfit-swap`): see "Starter swap" below.
 
 ## What was wrong
 
@@ -47,3 +47,30 @@ Options:
 
 Recommendation: option 2. It needs no direct database edit, touches only plain starter pieces, and also covers
 later gender edits. If the user does not decide, nothing changes (option 1).
+
+Decision 2026-10-10: option 2. The user chose "swap starter items on next load".
+
+## Starter swap (option 2)
+
+- `ResidentStarterSwap` runs on every load. `ResidentRuntime.materialize` runs it before shaping. `prepareCompanion`
+  runs it before shaping and the quest kit, in the same mailbox action when the companion is registered. Hired citizens
+  keep their gear.
+- The gender of the loaded character decides, not the persona's look. `BotCreator.starterTwin` maps only 1040002 and
+  1041002, and 1060002 and 1061002, in both directions. Both sets share the boots and the sword.
+- A plain piece is swapped in its own key, worn or in the bag, so a full bag works. Plain means: no owner tag, no gift
+  note, and flag, expiration, scroll level, upgrade slots, vicious, ring id and anvil look equal to the fresh twin's.
+  The twin keeps the item level, item EXP and stats.
+- This rule relies on each twin pair having the same Character.wz data (tuc 7). `ResidentStarterSwapTest` pins it. If
+  the data ever differed, the swap would skip pieces.
+- Each swapped piece logs `Resident <id> swapped its starter piece <old> for <new> (worn slot|bag slot <n>)`. There is
+  no kill switch and no config key.
+- Every plain piece of the four ids is swapped, whatever its source: the starter piece, a wardrobe piece, a drop
+  (1040002, 1041002 and 1060002 are in 152-drop-data.sql), a buy or a gift. The value is the same, but a later farm haul
+  or hand-back shows the other gender's id.
+- Boss gear: a companion that loads in a `!bossgear` kit can have its displaced starter piece swapped. The
+  `BossGearRecord` id then no longer matches. Nothing is lost: `OwnGearRefit` falls back to the best piece it carries,
+  its own gender first (`OwnGearRefitTest` covers this).
+- The first summon or town load after the deploy can show one clothes change, because the swap runs after the
+  character is on the map.
+- Known gap: a bench-slice load never writes a new `look.gender`, so the swap waits until the body's gender changes.
+  That gap is in `ResidentLooks` and is out of scope.

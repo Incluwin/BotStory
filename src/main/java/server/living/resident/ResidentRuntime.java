@@ -393,6 +393,7 @@ public final class ResidentRuntime {
         session.materializedAtMs = now;
         sessions.put(persona.id(), session);
         personaByCharacter.put(characterId, persona.id());
+        swapStarterClothes(agent, session.persona);
         shapeIfNeeded(session, agent);
         world.dialogue().openKnowledge(persona, characterId, agent);
         dress(session.persona, agent);
@@ -488,27 +489,42 @@ public final class ResidentRuntime {
      * One a GM kept at its level ({@code !setlevel <name> keep}, GmLevelHolds.kept) is shaped at that level: its job,
      * AP, skills and loadout follow and its level stays. Registered, it is shaped on its own mailbox, which its next
      * tick drains before it acts; loaded and not registered yet, right here. A character not live now is shaped when it
-     * next loads.
+     * next loads. Its plain starter top and bottom of the other gender are swapped first (ResidentStarterSwap).
      */
     public void prepareCompanion(Character agent, Persona persona, boolean loading) {
-        if (agent != null && persona != null && !LivingContent.isHire(persona.id())
-                && neverShaped(world.store().personaState(persona.id()), agent)) {
+        if (agent != null && persona != null && !LivingContent.isHire(persona.id())) {
+            boolean shape = neverShaped(world.store().personaState(persona.id()), agent);
             AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
             if (runtime == null) {
                 if (loading && agent.getClient() != null) {
-                    shapeCompanion(agent, persona);
+                    swapStarterClothes(agent, persona);
+                    if (shape) {
+                        shapeCompanion(agent, persona);
+                    }
                 }
             } else {
                 server.agents.runtime.AgentMailboxRuntime.dispatch(runtime, entry -> {
                     Character live = entry.bot();
                     if (live != null && live.getId() == agent.getId() && live.getClient() != null) {
-                        shapeCompanion(live, persona);
+                        swapStarterClothes(live, persona);
+                        if (shape) {
+                            shapeCompanion(live, persona);
+                        }
                     }
                     return null;
                 });
             }
         }
         refreshKit(agent, persona, loading);
+    }
+
+    /** {@link ResidentStarterSwap#swap}: never in the way of the load. */
+    private void swapStarterClothes(Character agent, Persona persona) {
+        try {
+            ResidentStarterSwap.swap(agent, persona);
+        } catch (RuntimeException failure) {
+            log.warn("Resident {}: swapping its starter clothes failed", persona.id(), failure);
+        }
     }
 
     /** Its persona state names this character and records no shaping; a state that cannot be read names none. */

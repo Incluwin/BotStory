@@ -31,6 +31,26 @@ public class BotCreator extends CharacterFactory {
     private static final StarterLook MALE_START = new StarterLook(20100, 30020, 1040002, 1060002, 1072001, 1302000);
     private static final StarterLook FEMALE_START = new StarterLook(21000, 31000, 1041002, 1061002, 1072001, 1302000);
 
+    /**
+     * The starting top or bottom a wearer of {@code gender} (0 male, 1 female) takes for {@code itemId} when it is the
+     * other gender's starting top or bottom (MALE_START / FEMALE_START): its own set's piece for that slot. 0 for anything
+     * else: its own gender's piece, the boots and sword both sets share, any other item or gender.
+     */
+    public static int starterTwin(int itemId, int gender) {
+        if (gender != 0 && gender != 1) {
+            return 0;
+        }
+        StarterLook own = gender == 1 ? FEMALE_START : MALE_START;
+        StarterLook other = gender == 1 ? MALE_START : FEMALE_START;
+        if (itemId == other.top() && other.top() != own.top()) {
+            return own.top();
+        }
+        if (itemId == other.bottom() && other.bottom() != own.bottom()) {
+            return own.bottom();
+        }
+        return 0;
+    }
+
     public static int createCharacter(Client c, String name) {
         return createCharacter(c, name, 0);
     }
