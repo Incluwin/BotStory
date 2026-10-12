@@ -276,10 +276,12 @@ class NativeCrewWindowTest {
     @Test
     void withTheLivingWorldOffAHelloIsAnsweredNotEnabledAndAnOpenIsClosed() {
         NativeCrewWindow.receive(client, owner, new Hello(1, 20261012), null);
+        windowOpen.set(true); // a window the client opened before the living world went off
         NativeCrewWindow.receive(client, owner, new Open(), null);
 
         assertEquals(List.of(Arrays.toString(NativeCrewPackets.welcome(1, false).getBytes()),
                 Arrays.toString(NativeCrewPackets.close().getBytes())), crewPackets().stream().map(Arrays::toString).toList());
+        assertFalse(windowOpen.get(), "the CLOSE it sent closed the window");
     }
 
     @Test
@@ -287,10 +289,12 @@ class NativeCrewWindowTest {
         hello();
         config.CREW_WINDOW_NATIVE = "gm";
 
+        windowOpen.set(true);
         NativeCrewWindow.receive(client, owner, new Open(), world);
 
         assertArrayEquals(NativeCrewPackets.close().getBytes(), last());
         assertFalse(window.watching(owner));
+        assertFalse(windowOpen.get(), "the CLOSE it sent closed the window");
     }
 
     @Test
@@ -839,6 +843,7 @@ class NativeCrewWindowTest {
 
         assertArrayEquals(NativeCrewPackets.close().getBytes(), last());
         assertFalse(window.watching(owner));
+        assertFalse(windowOpen.get(), "the CLOSE it sent closed the window");
         clearInvocations(client);
         window.watchOpenWindows();
         assertTrue(crewPackets().isEmpty());
@@ -887,6 +892,7 @@ class NativeCrewWindowTest {
                 Arrays.toString(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, false).getBytes())),
                 crewPackets().stream().map(Arrays::toString).toList());
         assertFalse(window.watching(owner));
+        assertFalse(windowOpen.get(), "the CLOSE it sent closed the window");
         verify(benClient, never()).sendPacket(any());
 
         clearInvocations(client);
@@ -961,7 +967,7 @@ class NativeCrewWindowTest {
     }
 
     @Test
-    void aWindowClosedSinceItsOpenIsSentNoPage() {
+    void aWindowClosedSinceItsOpenIsSentNoPageButTheNpcWindow() {
         hadrik();
         window.install();
         openWindow();
@@ -972,6 +978,84 @@ class NativeCrewWindowTest {
 
         assertTrue(crewPages().isEmpty(), "no PAGE for a window that is not open");
         assertFalse(LivingTalk.nativeActive(owner));
+        assertEquals(1, NpcTalks.talks(sent()).size(), "the NPC window stands in for it");
+    }
+
+    @Test
+    void aStoreReadPageForAWindowClosedMeanwhileIsShownAsTheNpcWindow() {
+        hadrik();
+        when(manager.namedLineups(owner)).thenReturn(Map.of());
+        List<Runnable> companionOps = new ArrayList<>();
+        CompanionExecutor queued = DirectExecutor.queued(companionOps);
+        when(world.executor()).thenReturn(queued);
+        window.install();
+        hello();
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+        companionOps.clear();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        NativeCrewWindow.receive(client, owner,
+                new PageReply(page.stamp(), 1, NativePages.selection(page, "My lineups...")), world);
+        NativeCrewWindow.receive(client, owner, new Close(), world); // closed before the store answered
+        clearInvocations(client);
+
+        companionOps.forEach(Runnable::run);
+
+        assertTrue(crewPages().isEmpty(), "no PAGE for a window that is not open");
+        List<Talk> npc = NpcTalks.talks(sent());
+        assertEquals(1, npc.size(), "the page the click asked for, as an NPC window");
+        assertTrue(npc.get(0).text().contains("The lineups I keep:"), npc.get(0).text());
+    }
+
+    @Test
+    void aStoreReadPageForAClosedWindowWaitsForAnOpenNpcWindowAsTheNpcPageDoes() {
+        hadrik();
+        when(manager.namedLineups(owner)).thenReturn(Map.of());
+        List<Runnable> companionOps = new ArrayList<>();
+        CompanionExecutor queued = DirectExecutor.queued(companionOps);
+        when(world.executor()).thenReturn(queued);
+        window.install();
+        hello();
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+        companionOps.clear();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        NativeCrewWindow.receive(client, owner,
+                new PageReply(page.stamp(), 1, NativePages.selection(page, "My lineups...")), world);
+        NativeCrewWindow.receive(client, owner, new Close(), world);
+        LivingTalk.open(owner, 9000000).ok("a stock window the player opened").show();
+        clearInvocations(client);
+
+        companionOps.forEach(Runnable::run);
+
+        verify(client, never()).sendPacket(any()); // nothing over the NPC window that waits, as on the NPC path
+    }
+
+    @Test
+    void theRosterOpensTheNativeWindowOnAProtocolTwoClientAndTheNpcWindowOtherwise() {
+        hadrik();
+        hello();
+
+        menus.rosterBook(owner);
+
+        assertArrayEquals(NativeCrewPackets.open().getBytes(), crewPackets().get(0), "the client is asked to open");
+        assertTrue(NpcTalks.talks(sent()).isEmpty(), "no NPC Crew window");
+        verify(owner).sendPacket(org.mockito.ArgumentMatchers.argThat(packet -> Arrays.equals(packet.getBytes(),
+                tools.PacketCreator.enableActions().getBytes())));
+
+        clearInvocations(client);
+        config.CREW_WINDOW_NATIVE = "off";
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty(), "switched off: no OPEN");
+        assertEquals(1, NpcTalks.talks(sent()).size(), "the NPC Crew window");
+
+        LivingTalk.forget(owner);
+        clearInvocations(client);
+        config.CREW_WINDOW_NATIVE = "all";
+        protocol.set(1); // the trial DLL: its More opened the NPC Crew window, so the Roster stays the NPC one
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty());
+        assertEquals(1, NpcTalks.talks(sent()).size());
     }
 
     @Test

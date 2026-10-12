@@ -100,8 +100,17 @@ public final class CompanionMenus {
         cards.show(owner, persona, fromCrew, crewVoice);
     }
 
-    /** The Adventurer's Roster: the Crew window from anywhere, even with every companion benched. */
+    /**
+     * The Adventurer's Roster: the Crew window from anywhere, even with every companion benched; the native one on a
+     * client that has it with every function of this one (protocol 2), the NPC one otherwise.
+     */
     public void rosterBook(Character owner) {
+        // P10 Step 7: a client whose native Crew window does everything this one does opens that window instead
+        NativeCrewWindow window = world.crewWindow();
+        if (window != null && !rows(owner).isEmpty() && window.openFor(owner)) {
+            owner.sendPacket(PacketCreator.enableActions());
+            return;
+        }
         if (!LivingTalk.mayShow(owner)) {
             owner.sendPacket(PacketCreator.enableActions());
             return;
@@ -303,9 +312,10 @@ public final class CompanionMenus {
 
     /**
      * {@link #compute(Character, String, Supplier, Consumer)} for a page on {@code surface}. A native page waits on no
-     * NPC window: on NATIVE the time is checked (no page long after the click), the window must still draw it (it was
-     * not closed meanwhile, so no NPC window stands in for it), and a native page the player opened since the click
-     * (the click's own page has closed by then) is never replaced.
+     * NPC window: on NATIVE the time is checked (no page long after the click), and while the window draws pages a
+     * native page the player opened since the click (the click's own page has closed by then) is never replaced. A
+     * window that no longer draws them (closed or switched off meanwhile) gets the page as an NPC window, as
+     * {@link LivingTalk#show} falls back for it, so it is asked as an NPC window is.
      */
     <T> void compute(Character owner, String name, Supplier<T> work, Consumer<T> show, Surface surface) {
         long clickedAtMs = System.currentTimeMillis();
@@ -317,7 +327,7 @@ public final class CompanionMenus {
             }
             client.runOnIoThread(() -> {
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS
-                        && (surface == Surface.NATIVE ? LivingTalk.nativeDraws(owner) && !LivingTalk.nativeActive(owner)
+                        && (surface == Surface.NATIVE && LivingTalk.nativeDraws(owner) ? !LivingTalk.nativeActive(owner)
                         : LivingTalk.mayShow(owner))) {
                     show.accept(found);
                 }

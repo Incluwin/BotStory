@@ -516,6 +516,20 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
      * A native page may be drawn for {@code chr}: its connection is served at protocol 2 or later, it stands in the
      * world (not the Cash Shop or MTS) and the switch allows it. Otherwise LivingTalk shows the NPC window instead.
      */
+    /**
+     * The Adventurer's Roster on a client that has the native window with every NPC Crew window function (protocol 2):
+     * asks it to open its window (OPEN; the client answers with its own OPEN, and the crew is watched from then on),
+     * in the world and while the switch allows it. False when the NPC Crew window answers the Roster instead.
+     */
+    public boolean openFor(Character owner) {
+        Client client = owner.getClient();
+        if (client == null || negotiated(client) < PAGES_PROTOCOL || !owner.isLoggedinWorld() || !allows(owner)) {
+            return false;
+        }
+        send(client, NativeCrewPackets.open());
+        return true;
+    }
+
     @Override
     public boolean draws(Character chr) {
         Client client = chr.getClient();
