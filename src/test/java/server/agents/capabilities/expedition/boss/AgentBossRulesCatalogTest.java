@@ -47,6 +47,29 @@ class AgentBossRulesCatalogTest {
         assertFalse(AgentBossRules.neverTargetFakes("no_such_boss"));
     }
 
+    /**
+     * Deploy review 2026-10-12: fieldKeyOf runs for every hostile monster an Agent looks at, so it reads a sorted index
+     * built with the catalog. The first row that lists an id keeps it, as the old row scan did, and a replaced catalog
+     * replaces the index too.
+     */
+    @Test
+    void theFieldIndexKeepsTheFirstRowsKeyAndFollowsAReplacedCatalog() {
+        try {
+            AgentBossRules.replaceForTest(List.of(
+                    new AgentBossRules.Boss("field_b", "B", null, null, null, null, List.of(300, 100), false, null),
+                    new AgentBossRules.Boss("field_a", "A", null, null, null, null, List.of(100, 200), false, null)));
+            assertEquals("field_b", AgentBossRules.fieldKeyOf(100), "the first row listing it");
+            assertEquals("field_a", AgentBossRules.fieldKeyOf(200));
+            assertEquals("field_b", AgentBossRules.fieldKeyOf(300));
+            assertEquals(null, AgentBossRules.fieldKeyOf(150));
+            assertEquals(null, AgentBossRules.fieldKeyOf(9_300_003), "King Slime is in no field group");
+        } finally {
+            AgentBossRules.replaceForTest(null);
+        }
+        assertEquals("field_victoria", AgentBossRules.fieldKeyOf(2_220_000), "the shipped catalog again: Mano");
+        assertEquals(null, AgentBossRules.fieldKeyOf(100));
+    }
+
     @Test
     void eachP13FieldBossBelongsToItsRegionsGroup() {
         for (int id : List.of(2_220_000, 3_220_000, 5_220_002, 6_220_000, 5_220_001, 5_220_000, 8_220_008, 8_220_009,

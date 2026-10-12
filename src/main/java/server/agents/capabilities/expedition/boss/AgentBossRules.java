@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * The boss rules catalog (agents/catalogs/boss-rules.json, P11): per boss key, the mob ids its companion fight reads
@@ -59,6 +61,7 @@ public final class AgentBossRules {
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static volatile List<Boss> bosses = load();
+    private static volatile FieldIndex fieldIndex = FieldIndex.of(bosses);
 
     /** One boss's rules. */
     public record Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
@@ -186,12 +189,9 @@ public final class AgentBossRules {
      * or null when no group lists it. The answer holds only on a map with no event.
      */
     public static String fieldKeyOf(int mobId) {
-        for (Boss boss : bosses) {
-            if (boss.fieldBosses().contains(mobId)) {
-                return boss.key();
-            }
-        }
-        return null;
+        FieldIndex index = fieldIndex; // the combat candidate filter asks for every hostile monster: no scan, no boxing
+        int at = Arrays.binarySearch(index.ids(), mobId);
+        return at < 0 ? null : index.keys()[at];
     }
 
     /** True when boss {@code key}'s rules say its run members never hit a fake part. */
@@ -310,7 +310,32 @@ public final class AgentBossRules {
 
     /** Replaces the catalog with {@code replacement}; tests only (null loads the shipped file again). */
     static void replaceForTest(List<Boss> replacement) {
-        bosses = replacement == null ? load() : List.copyOf(replacement);
+        List<Boss> next = replacement == null ? load() : List.copyOf(replacement);
+        fieldIndex = FieldIndex.of(next);
+        bosses = next;
+    }
+
+    /**
+     * The field-boss ids of every row, sorted, with the key of the first row that lists each ({@link #fieldKeyOf}).
+     * Built with the catalog: the lookup is a binary search over ints.
+     */
+    private record FieldIndex(int[] ids, String[] keys) {
+        static FieldIndex of(List<Boss> rows) {
+            TreeMap<Integer, String> byId = new TreeMap<>();
+            for (Boss boss : rows) {
+                for (Integer id : boss.fieldBosses()) {
+                    byId.putIfAbsent(id, boss.key());
+                }
+            }
+            int[] ids = new int[byId.size()];
+            String[] keys = new String[byId.size()];
+            int i = 0;
+            for (Map.Entry<Integer, String> row : byId.entrySet()) {
+                ids[i] = row.getKey();
+                keys[i++] = row.getValue();
+            }
+            return new FieldIndex(ids, keys);
+        }
     }
 
     private static List<Boss> load() {
