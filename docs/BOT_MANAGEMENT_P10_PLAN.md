@@ -196,7 +196,7 @@ Evidence: `docs/agents/evidence/cua/20261012-0815*` to `20261012-0828*`.
 | L2 | PASS | `!world crewwindow gm` sent WELCOME enabled 1 to the open client; U opened the window; row text equals the NPC Crew window |
 | L3 | PASS | Call Casse with a free seat: "Casse is on the way (~3 min)."; row moved to the party block "on the way (2:57)" |
 | L4 | PASS | Bench Rurik (no contract, so no Yes/No): "Rurik heads back to camp to train."; row moved to the bench block |
-| L5 | WAITS | needs the review fixes (row bits OUT / CAN_COME); the 9700fea client keeps Swap grey on 214be98e7 |
+| L5 | PASS | on int/p9ar 048092d9f (08:34): Swap button with Kestrel + Rurik: "Kestrel heads back to camp to train. Rurik is on the way (~20 s)."; drag Halvard onto Yara: "Yara heads back to camp to train. Halvard is on the way (~60 s)."; one swap each |
 | L6 | PASS | Call Casse with 6/6: her swap picker "your party's full. who should i take over from?" listing all five |
 | L7 | PASS | double-click Casse opened her card |
 | L8 | PASS | More opened the NPC Crew window |
