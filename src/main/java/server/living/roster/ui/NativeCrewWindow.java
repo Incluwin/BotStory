@@ -35,9 +35,11 @@ import java.util.function.LongSupplier;
 
 import static server.living.roster.ui.NativeCrewPackets.BENCH;
 import static server.living.roster.ui.NativeCrewPackets.CALL;
+import static server.living.roster.ui.NativeCrewPackets.CAN_COME;
 import static server.living.roster.ui.NativeCrewPackets.COMMITTED;
 import static server.living.roster.ui.NativeCrewPackets.GUEST;
 import static server.living.roster.ui.NativeCrewPackets.HP_UNKNOWN;
+import static server.living.roster.ui.NativeCrewPackets.OUT;
 import static server.living.roster.ui.NativeCrewPackets.PROTOCOL;
 import static server.living.roster.ui.NativeCrewPackets.SOMEONE_OUT;
 import static server.living.roster.ui.NativeCrewPackets.SWAP_IN;
@@ -141,10 +143,11 @@ public final class NativeCrewWindow {
     /**
      * HELLO: the connection's protocol is kept on its Client (from now on it may be sent CREW_WINDOW packets) and
      * WELCOME answers whether this character may open the window. An unknown protocol is kept and answered "not
-     * enabled", and nothing else is ever sent to it; a protocol of 0 or less is no HELLO and is not answered.
+     * enabled", and nothing else is ever sent to it; a protocol of 0 or less is no HELLO and is not answered. HELLO is
+     * once per connection (a channel change is a new Client): a repeat is neither answered nor logged.
      */
     private static void hello(Client client, Character chr, Hello hello, NativeCrewWindow window) {
-        if (hello.protocol() <= 0) {
+        if (hello.protocol() <= 0 || client.getCrewWindowProtocol() != 0) {
             return;
         }
         client.setCrewWindowProtocol(hello.protocol());
@@ -163,6 +166,9 @@ public final class NativeCrewWindow {
         if (op instanceof Close) {
             watches.computeIfPresent(owner.getId(), (id, watch) -> watch.client == client ? null : watch);
             return;
+        }
+        if (!owner.isLoggedinWorld()) {
+            return; // the Cash Shop or MTS: the client closed its window on the way in, and nothing there is acted on
         }
         if (!allows(owner)) {
             watches.remove(owner.getId());
@@ -184,6 +190,7 @@ public final class NativeCrewWindow {
     // ---- the verbs -----------------------------------------------------------------------------------
 
     private void act(Client client, Character owner, Action action) {
+        menus.cards().forgetCrewParent(owner); // the cards this click leads to have no Back to the NPC Crew window
         switch (action.verb()) {
             case CARD -> card(client, owner, action.a());
             case MORE -> menus.crew(owner); // the NPC Crew window, in the player's notes
@@ -219,6 +226,10 @@ public final class NativeCrewWindow {
      */
     private void card(Client client, Character owner, String personaId) {
         if (!personaId.startsWith(GUEST_PREFIX)) {
+            if (rosterEntry(owner, personaId) == null) {
+                changed(client, owner); // only the owner's own rows: a made-up id is never looked up
+                return;
+            }
             menus.crews().card(owner, personaId);
             return;
         }
@@ -283,23 +294,31 @@ public final class NativeCrewWindow {
      * flags its card offers now; null when not.
      */
     private Target target(Character owner, String personaId, int stamp) {
-        Persona persona = personaId.isEmpty() ? null : world.content().persona(personaId);
-        if (persona == null || (int) menus.version(owner, personaId) != stamp) {
+        // the owner's own row first: an id the client made up ("hire:05") never reaches a persona or version lookup
+        RosterEntry entry = rosterEntry(owner, personaId);
+        if (entry == null || (int) menus.version(owner, personaId) != stamp) {
             return null;
         }
-        RosterEntry entry = null;
-        for (RosterEntry row : menus.rows(owner)) {
-            if (row.personaId().equals(personaId) && row.state() != RosterState.RELEASED) {
-                entry = row;
-                break;
-            }
-        }
-        if (entry == null) {
+        Persona persona = world.content().persona(personaId);
+        if (persona == null) {
             return null;
         }
         CompanionView view = menus.view(owner, entry);
         int flags = rowFlags(owner, persona, view, !menus.cards().swapIns(owner).isEmpty(), !menus.rows(owner, true).isEmpty());
         return new Target(persona, entry, view, flags);
+    }
+
+    /** The owner's roster row named exactly {@code personaId} (not released), or null. */
+    private RosterEntry rosterEntry(Character owner, String personaId) {
+        if (personaId.isEmpty()) {
+            return null;
+        }
+        for (RosterEntry row : menus.rows(owner)) {
+            if (row.personaId().equals(personaId) && row.state() != RosterState.RELEASED) {
+                return row;
+            }
+        }
+        return null;
     }
 
     /** The click could not act on what it was made on: pink "Things changed meanwhile.", a fresh snapshot, nothing else. */
@@ -343,7 +362,11 @@ public final class NativeCrewWindow {
             if (watch != null && watch.client == client) {
                 watch.sent = snapshot.getBytes();
             }
-            client.runOnIoThread(() -> send(client, snapshot));
+            client.runOnIoThread(() -> {
+                if (allows(owner)) { // never after the CLOSE a switch change sent meanwhile
+                    send(client, snapshot);
+                }
+            });
         });
     }
 
@@ -383,7 +406,11 @@ public final class NativeCrewWindow {
                 byte[] bytes = snapshot.getBytes();
                 if (!Arrays.equals(bytes, watch.sent)) {
                     watch.sent = bytes;
-                    client.runOnIoThread(() -> send(client, snapshot));
+                    client.runOnIoThread(() -> {
+                        if (allows(owner)) {
+                            send(client, snapshot);
+                        }
+                    });
                 }
             } catch (RuntimeException failure) {
                 log.warn("native Crew window of {} could not be read", owner.getName(), failure);
@@ -487,6 +514,13 @@ public final class NativeCrewWindow {
         if (!committed && CompanionCardScreens.offersSwapIn(state, view, anyoneOut)) {
             flags |= SWAP_IN;
         }
+        // the partners each swap picker lists: those out with the owner, and those at camp who can come at once
+        if (state == RosterState.ACTIVE) {
+            flags |= OUT;
+        }
+        if ((state == RosterState.BENCHED || state == RosterState.AWAY) && view.travelMs() <= 0) {
+            flags |= CAN_COME;
+        }
         return flags;
     }
 
@@ -507,9 +541,12 @@ public final class NativeCrewWindow {
         return view.loaded() ? Math.max(0, Math.min(100, view.hpPercent())) : HP_UNKNOWN;
     }
 
-    private static int guestId(String personaId) {
+    /** The citizen id of a guest row's id as this server writes it ("guest:5678"); 0 for any other spelling. */
+    static int guestId(String personaId) {
+        String digits = personaId.substring(GUEST_PREFIX.length());
         try {
-            return Integer.parseInt(personaId.substring(GUEST_PREFIX.length()));
+            int id = Integer.parseInt(digits);
+            return id > 0 && Integer.toString(id).equals(digits) ? id : 0;
         } catch (NumberFormatException notAnId) {
             return 0;
         }

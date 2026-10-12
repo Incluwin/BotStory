@@ -68,7 +68,8 @@ row:
   string levelJob       // "Lv31 Fighter"
   string detail         // the NPC row text after "Name, LvN Job - ": "Perion - HP 90%", "train @ Ant Tunnel I - 12% EXP banked"
   byte   hpPercent      // 0-100, 255 when not loaded
-  byte   rowFlags       // bit0 CALL, bit1 BENCH, bit2 SWAP_OUT, bit3 SWAP_IN, bit4 GUEST, bit5 COMMITTED
+  byte   rowFlags       // bit0 CALL, bit1 BENCH, bit2 SWAP_OUT, bit3 SWAP_IN, bit4 GUEST, bit5 COMMITTED,
+                        // bit6 OUT (out with the owner), bit7 CAN_COME (at camp, can come at once)
 ```
 `detail` is built with the same static methods as the NPC rows (`partyLine`, `benchLine`, `errandLine`), so both
 windows always say the same thing. Row flags mirror the options the companion's card offers right now.
@@ -155,6 +156,13 @@ companion-ops.
   `CUIWnd::OnCreate` takes 2 arguments (the DLL's header declares 3); the real CWnd RTTI is 0x00BF1608 (the
   header's 0x00C6194C is wrong); `ClearFieldUI` runs only for the Cash Shop and MTS, so the window survives portals.
 
+- Review fixes after the int/p9aq deep review (all LOW): only ids in the owner's own roster are looked up (a made-up
+  "hire:05" never reaches HiredHands); guest ids only as the server writes them; HELLO once per connection (a repeat is
+  neither answered nor logged); clicks and OPEN from the Cash Shop or MTS are not acted on; a snapshot is never sent
+  after the CLOSE of a switch change; a native click clears the card's remembered NPC Crew window, so no stale Back;
+  rows carry OUT and CAN_COME, so the client offers Swap only for pairs a swap picker would list
+  ((out SWAP_OUT and in CAN_COME) or (in SWAP_IN and out OUT)).
+
 ## Live checks (Step 5)
 
 Setup: server branch deployed with the switch off; private client copy with the test DLL (`crew_selftest` removed);
@@ -172,7 +180,7 @@ GM test account Crewfriend; the user's own client keeps the shipped DLL.
 | L8 | More | the NPC Crew window opens |
 | L9 | Follow / Wait / Gather / Rebuff | the companions answer in party chat |
 | L10 | Usual | the usual lineup is called |
-| L11 | Stale click (change the roster from the NPC window, then click the old row) | "Things changed meanwhile.", nothing else |
+| L11 | Stale click | Unit tests only (NativeCrewWindowTest): the 1 s watcher sends fresh stamps before a tester can click an old row |
 | L12 | Channel change with the window open | the window stays and keeps updating |
 | L13 | Relog | HELLO again, U works again |
 | L14 | The user's client with the shipped DLL | no HELLO from it in the server log, nothing changes |

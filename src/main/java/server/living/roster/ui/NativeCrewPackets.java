@@ -42,6 +42,10 @@ public final class NativeCrewPackets {
     static final int SWAP_IN = 1 << 3;
     static final int GUEST = 1 << 4;
     static final int COMMITTED = 1 << 5;
+    /** A party row out with the owner: one a bench row's SWAP_IN ("Swap in for...") may take over from. */
+    static final int OUT = 1 << 6;
+    /** A bench row that can come at once (benched or away, not on its way): one a SWAP_OUT row may make room for. */
+    static final int CAN_COME = 1 << 7;
 
     /** The longest persona id an ACTION may name, in bytes ("hire:2147483647" is 15; a Resident's id is a word). */
     static final int MAX_ID_BYTES = 64;
