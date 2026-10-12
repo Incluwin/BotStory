@@ -913,6 +913,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - If this slips, Zakum stays off for friends; invincible bots are never shipped.
 
 **P9: Polish and learned suggestions**
+- **Status (2026-10-12):** done and live except the desk suggestions, which are built on `feat/desk-crew-suggestions` (results: BOT_MANAGEMENT_P0_RESULTS.md, "Desk suggestions"). Not built by the user's choice: Registrar, slot lending. The buddy list uses one "Crew" group the player moves, not server-driven groups (user, 2026-10-06).
 - **Goal:** Remove the remaining friction and use recorded outcomes.
 - **Deliverables:**
   - Party Search fills from the bench (flow 11: `PartySearchStartHandler` calls NEW `CompanionManager.fillFromBench`).

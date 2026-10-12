@@ -812,6 +812,24 @@ Two restarts: `eab3e20d5` with the switch off, then `76c067fd7` with it on. Both
 The bots' own `buddies` rows are saved with the bot's character (at its unload). They were not in the DB yet at check time, so the DB side of the two-sided rows is unverified; the client side is verified.
 
 ## Open
-- Lineup suggestions in the Lakelis/Tory proposals wait for the LPQ/EPQ desk merge.
-- Companions never speak in Maple Messenger.
-- Check `SELECT * FROM buddies WHERE characterid IN (838, 659)` after Halvard and IceCookie unload: each should list Crewfriend.
+- Companions never speak in Maple Messenger (deferred by the user, 2026-10-07).
+- Done 2026-10-07: after Halvard (838) and IceCookie (659) unloaded, each `buddies` row lists Crewfriend (865), pending 0.
+
+## Desk suggestions (branch `feat/desk-crew-suggestions`, 2026-10-12)
+The last P9 deliverable: the lineup suggestion at the party quest entry NPCs. It waited for the LPQ/EPQ desk merge, which has landed.
+- **Where:** the bench page of every entry NPC ("Call someone from my bench...": Lakelis, Tory, the Red Sign, Ellin, the two RJPQ desks). The proposal window itself is unchanged.
+- **What:** on that click the desk reads her pick on companion-ops (`CrewSuggestions.suggest(owner, pqKey)`, the same LineupPlan rule as the Crew window's "Who should come along?"). When the pick takes companions from the bench:
+  - she names the crew over the rows: "My pick: you, Mira (cleared 2 of 3), Rin and Kai." The Red Sign shows "Recommended party: ...";
+  - the rows of her pick come first;
+  - with two or more of them, a first option "Call Rin and Kai." calls them all. Each call is an ordinary bench call (a free seat, never a swap), and each one that sets off gets her arrival line.
+- **Unchanged:** when the bench is offered (room in the party and the lineup short of her seats), the proposal, the single-row calls, and a pick that cannot be read (the page is drawn as before, with a WARN line `[desk] <name>'s pick for <pq> could not be read`).
+- **Tests:** LakelisDeskGoldenTest (pick of two with the call-all option, pick of one, no pick / unreadable pick / pick of nobody callable), LpqRedSignDeskTest (the sign's words, no first person), CrewSuggestionsTest (one quest's crew). 14 deliberate breaks, each failed by a named test.
+- **Also on the branch:** the Crew window watcher clears the enabled bit again where its CLOSE goes out (int/p9av review LOW).
+
+### Live checks (after deploy)
+| Check | How | Pass when |
+|---|---|---|
+| D1 Her pick | Crewfriend (Lv50) at Tory (HPQ, 100000200). Bench one of the five out so the party has room, with at least one rested bench companion in HPQ's levels. Talk to Tory, "I want to participate", then "Call someone from my bench...". | The page shows "My pick: you, ..." naming a bench companion, whose row is first. |
+| D2 Call all | As D1 with two bench companions in her pick (bench two). | "Call X and Y." calls both; each arrives with Tory's arrival line; the proposal then lists them. |
+| D3 No pick | A bench with nobody rested in HPQ's levels. | The page is as before (no "My pick" line), no WARN line. |
+| D4 Drift | `/runtime/companions/audit` after D1-D3. | 0 drift, 0 ERROR lines. |
