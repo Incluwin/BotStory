@@ -163,6 +163,21 @@ companion-ops.
   rows carry OUT and CAN_COME, so the client offers Swap only for pairs a swap picker would list
   ((out SWAP_OUT and in CAN_COME) or (in SWAP_IN and out OUT)).
 
+- Step 7 server done on `feat/crew-window-native` (95d776583), not deployed. The byte layouts are the ones in "Protocol 2"
+  below. The native actions page text is `What should my crew do?` (with `Things changed meanwhile.` and a blank line
+  on top after a stale click, and the heading `(nothing to do right now)` when the NPC window offers no action).
+  Choices the spec left open:
+  - Verb ACTIONS uses the full ACTION body (ids empty, versions ignored). It is not refused while an NPC window waits
+    for its reply, since a native page never waits on one.
+  - At protocol 2, BENCH and SWAP may answer with a YES_NO PAGE (the bench warning) instead of the NPC Yes/No.
+  - Close (255) on a native Yes/No runs nothing. The NPC End Chat runs the No action, but every native Yes/No today has
+    none.
+  - "My lineups..." and "Who should come along?" read the store first. Their PAGE comes after the PAGE_CLOSE of the
+    click that asked for it, within 1 s, even while an NPC window waits. A slower read shows nothing, as on NPC.
+  - PAGE and PAGE_CLOSE are also not sent once the switch no longer allows the character. A page is drawn only in the
+    world: in the Cash Shop or MTS the talk falls back to the NPC window.
+  - CLOSE from the client, a switch-off and a logout end the native talk. A warp keeps it.
+
 ## Live checks (Step 5)
 
 Setup: server branch deployed with the switch off; private client copy with the test DLL (`crew_selftest` removed);
