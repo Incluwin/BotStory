@@ -76,6 +76,8 @@ No database change.
 
 ## Tests
 
+Full suite on 694c570ec: 13,396 tests, 0 failures, 37 skipped (10:51 min).
+
 `CompanionFieldBossTest` (engagement, citizens, rest, follow guard), `AgentBossTargetGateTest` (the gate asks the
 host), `AgentBossScopeTest` (the guard by key), `AgentBossRulesCatalogTest` (groups), `FollowInstanceGuardTest` (door
 hold), `CompanionBossKeysTest` (keys).
