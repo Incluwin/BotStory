@@ -813,6 +813,56 @@ class CompanionBossRunsTest {
         verify(friendship, times(2)).onBossRunCleared(eq(game.ann), any(), eq("easy_balrog"));
     }
 
+    /**
+     * Deploy review 2026-10-12: the party clause pays only a human who hit one of the run's bosses. Ann hit, so she is
+     * befriended with Bob's Brannock in her party too; Bob, an owner who hit nothing, only with his own Brannock.
+     */
+    @Test
+    void anOwnerWhoHitNothingIsBefriendedOnlyWithItsOwnCompanions() {
+        game.config.COMPANION_BOSS_OWNERS_MAX = 2;
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        bobsPriestInAnnsParty(0);
+        Character bob = Server.getInstance().getWorld(0).getPlayerStorage().getCharacterById(BOB);
+        assertTrue(runs.seat(bobsSeat()));
+        runs.registered(bobsSeat());
+        signUp(ISOLDE);
+        hitTheBoss(ANN);
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 4, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                new MemberResult(BRANNOCK, BOB, true, true, 0, Out.EXITED))));
+
+        ArgumentCaptor<List<Persona>> forAnn = ArgumentCaptor.captor();
+        verify(friendship).onBossRunCleared(eq(game.ann), forAnn.capture(), eq("easy_balrog"));
+        assertEquals(List.of("isolde", "brannock"), forAnn.getValue().stream().map(Persona::id).toList());
+        ArgumentCaptor<List<Persona>> forBob = ArgumentCaptor.captor();
+        verify(friendship).onBossRunCleared(eq(bob), forBob.capture(), eq("easy_balrog"));
+        assertEquals(List.of("brannock"), forBob.getValue().stream().map(Persona::id).toList());
+    }
+
+    /**
+     * Deploy review 2026-10-12: a kill can read the run as open while the run ends, so its hit lands after finish. The
+     * hit is dropped (nothing is kept for an ended run): the next run of the same session id does not pay Bob.
+     */
+    @Test
+    void aHitThatLandsAfterItsRunEndedIsDropped() {
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        Character bob = friendInAnnsParty();
+        signUp(ISOLDE);
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED))));
+
+        hitTheBoss(BOB); // late: the run above has ended
+
+        signUp(ISOLDE);
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED))));
+        verify(friendship, never()).onBossRunCleared(eq(bob), any(), any());
+        verify(friendship, times(2)).onBossRunCleared(eq(game.ann), any(), eq("easy_balrog"));
+    }
+
     @Test
     void aRunThatDidNotClearFailsItsMembersExceptTheOnesThatDied() {
         signUp(ISOLDE, THANE, SORREL);
@@ -1047,6 +1097,27 @@ class CompanionBossRunsTest {
         runs.sweepLostRuns(now + 1_000L + CompanionPartyQuestService.LOST_RUN_AFTER_MS);
         assertFalse(game.commitments.isCommitted(ISOLDE));
         assertEquals(List.of(), rows());
+    }
+
+    /** Deploy review 2026-10-12: a lost run never reaches finish, so the sweep forgets its hitters. */
+    @Test
+    void aLostRunsHittersAreForgottenWithIt() {
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        Character bob = friendInAnnsParty();
+        signUp(ISOLDE);
+        hitTheBoss(BOB);
+        long now = 100_000L;
+        open.open.remove(SID); // no runEnded came
+        runs.sweepLostRuns(now);
+        runs.sweepLostRuns(now + CompanionPartyQuestService.LOST_RUN_AFTER_MS);
+        assertFalse(game.commitments.isCommitted(ISOLDE));
+
+        open.open.add(SID); // the same session id again (tests only: ids are never reused live)
+        signUp(ISOLDE);
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 3, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED))));
+        verify(friendship, never()).onBossRunCleared(eq(bob), any(), any());
     }
 
     @Test

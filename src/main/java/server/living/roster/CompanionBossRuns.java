@@ -1561,16 +1561,29 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
         if (!humans.isEmpty()) {
             long sessionId = session.sessionId();
-            world.executor().submit("boss.hit " + sessionId,
-                    () -> bossHitters.computeIfAbsent(sessionId, ignored -> new HashSet<>()).addAll(humans));
+            world.executor().submit("boss.hit " + sessionId, () -> hit(sessionId, humans));
+        }
+    }
+
+    /**
+     * Records {@code humans} as hitters of run {@code sessionId} while an owner's part of it is open. The run can end
+     * between the kill's registry read and this task (finish took its parts out and forgot its hitters), so a late hit
+     * is dropped and never kept. Companion-ops.
+     */
+    private void hit(long sessionId, Set<Integer> humans) {
+        for (CompanionBossRun run : runs.values()) {
+            if (run.sessionId == sessionId) {
+                bossHitters.computeIfAbsent(sessionId, ignored -> new HashSet<>()).addAll(humans);
+                return;
+            }
         }
     }
 
     /**
      * P12 G12 (decision 23): a cleared run gives the friendship BOSS points once (Friendship.onBossRunCleared) to each
      * human online who took part: each owner with each Resident companion it enlisted that went in, and each human who
-     * hit one of the run's bosses ({@code hitters}) with each such companion in its party too. The run's own boss kills
-     * gave none (LivingWorldHooks.mobKilled).
+     * hit one of the run's bosses ({@code hitters}) with each such companion in its party too. An owner who hit nothing
+     * gets only its own. The run's own boss kills gave none (LivingWorldHooks.mobKilled).
      */
     private void befriend(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken,
                           Set<Integer> hitters) {
@@ -1584,7 +1597,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             Character human = world.roster().onlineCharacter(humanId);
             List<Persona> companions = new ArrayList<>();
             for (MemberResult member : human == null ? List.<MemberResult>of() : wentIn) {
-                if (member.enlistedBy() != humanId && !sameParty(human, bot(member.agentId()))) {
+                boolean enlisted = member.enlistedBy() == humanId;
+                if (!enlisted && !(hitters.contains(humanId) && sameParty(human, bot(member.agentId())))) {
                     continue;
                 }
                 String personaId = personaId(taken.get(member.enlistedBy()), member.agentId());
@@ -1599,9 +1613,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
     }
 
+    /** Each party is read once: a party leave on another thread can clear it between two reads. */
     private static boolean sameParty(Character human, Character companion) {
-        return human.getParty() != null && companion != null && companion.getParty() != null
-                && human.getParty().getId() == companion.getParty().getId();
+        Party humans = human.getParty();
+        Party companions = companion == null ? null : companion.getParty();
+        return humans != null && companions != null && humans.getId() == companions.getId();
     }
 
     /**
@@ -1661,6 +1677,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * came; the Agent layer holds no run of that id any more) is let go once it has been gone
      * {@link CompanionPartyQuestService#LOST_RUN_AFTER_MS}, with no record. The bench allies' trips are swept too
      * (CompanionBossAllies.sweep: a lost run's allies go home, an unload that left one online is tried again).
+     * Hitters of a session no owner's part is open for any more are forgotten (a lost run never reaches finish).
      */
     public void sweepLostRuns(long nowMs) {
         for (CompanionBossRun run : List.copyOf(runs.values())) {
@@ -1677,6 +1694,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 }
             }
         }
+        bossHitters.keySet().removeIf(
+                sessionId -> runs.values().stream().noneMatch(run -> run.sessionId == sessionId));
         allies.sweep(nowMs);
     }
 
