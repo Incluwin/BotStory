@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The boss rules catalog (agents/catalogs/boss-rules.json, P11): per boss key, the mob ids its companion fight reads
@@ -15,10 +18,15 @@ import java.util.Map;
  *
  * <ul>
  * <li>{@code roles}: the fight's named parts (Normal Balrog: body, releasedClaw, initialClaw, releaseSeal).</li>
- * <li>{@code targetPriority}: the parts a member hits, first first (a part hits only once it is up).</li>
+ * <li>{@code targetPriority}: the parts a member hits, first first (a part hits only once it is up). A fight with no
+ * driver of its own reads it through {@link #preferences} (P12 G3).</li>
  * <li>{@code adds}: the boss's summons, which members also hit.</li>
- * <li>{@code neverTarget}: parts a run member never hits, not even as a secondary or projectile target
- * ({@link AgentBossRunRegistry#neverTarget}): dummies, helpers and seals whose death would change the fight.</li>
+ * <li>{@code neverTarget}: parts a run member never hits, as a primary, secondary or projectile target
+ * ({@link AgentBossRunRegistry#neverTarget}): dummies, helpers and seals whose death would change the fight, and
+ * display parts (Horntail's dead heads, Pink Bean's statues).</li>
+ * <li>{@code neverTargetFakes}: a run member never hits a fake part (Zakum's body before its arms fall).</li>
+ * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
+ * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
  * a map with no event ({@link #fieldKeyOf}); the mirror's field scope and its attack floor act on them while the key
  * is on.</li>
@@ -32,7 +40,8 @@ public final class AgentBossRules {
 
     /** One boss's rules. */
     public record Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
-                       List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses) {
+                       List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                       boolean neverTargetFakes, List<Integer> markerItems) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -43,6 +52,7 @@ public final class AgentBossRules {
             adds = adds == null ? List.of() : List.copyOf(adds);
             neverTarget = neverTarget == null ? List.of() : List.copyOf(neverTarget);
             fieldBosses = fieldBosses == null ? List.of() : List.copyOf(fieldBosses);
+            markerItems = markerItems == null ? List.of() : List.copyOf(markerItems);
         }
 
         /** The mob id of the named part; throws when the catalog names none, so a typo fails at load. */
@@ -96,6 +106,50 @@ public final class AgentBossRules {
             }
         }
         return null;
+    }
+
+    /** True when boss {@code key}'s rules say its run members never hit a fake part. */
+    public static boolean neverTargetFakes(String key) {
+        Boss boss = of(key);
+        return boss != null && boss.neverTargetFakes();
+    }
+
+    /** The drops boss {@code key}'s run members leave on the floor; empty when the catalog lists none. */
+    public static List<Integer> markerItems(String key) {
+        Boss boss = of(key);
+        return boss == null ? List.of() : boss.markerItems();
+    }
+
+    /** What a member grinds first, and what it falls back to. */
+    public record Preferences(Set<Integer> preferred, Set<Integer> fallback) {
+        public Preferences {
+            preferred = Set.copyOf(preferred);
+            fallback = Set.copyOf(fallback);
+        }
+
+        public boolean isEmpty() {
+            return preferred.isEmpty() && fallback.isEmpty();
+        }
+    }
+
+    /**
+     * P12 G3: the target priority of {@code boss} over the mob ids alive now. The first {@code targetPriority} id that
+     * is alive is preferred, and every other live id is the fallback (a later priority id, an add, any monster the
+     * list does not name). A {@code neverTarget} id is in neither. With no priority id alive, every live id is
+     * preferred. Pure.
+     */
+    public static Preferences preferences(Boss boss, Collection<Integer> liveMobIds) {
+        Set<Integer> live = new LinkedHashSet<>(liveMobIds);
+        if (boss != null) {
+            boss.neverTarget().forEach(live::remove);
+        }
+        Integer first = boss == null ? null
+                : boss.targetPriority().stream().filter(live::contains).findFirst().orElse(null);
+        if (first == null) {
+            return new Preferences(live, Set.of());
+        }
+        live.remove(first);
+        return new Preferences(Set.of(first), live);
     }
 
     /** Replaces the catalog with {@code replacement}; tests only (null loads the shipped file again). */

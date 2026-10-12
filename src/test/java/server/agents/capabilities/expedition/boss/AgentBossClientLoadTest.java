@@ -192,7 +192,7 @@ class AgentBossClientLoadTest {
     void besideAFieldBossTheFloorActsOnlyWhileItsKeyIsOnAndNeverOnAnEventMap() {
         tune("900");
         AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss("field_test", "Test field", null, null, null,
-                null, List.of(MANO))));
+                null, List.of(MANO), false, null)));
         boolean[] keyOn = {false};
         AgentBossRunHost.install(new AgentBossRunHost.Rule() {
             @Override

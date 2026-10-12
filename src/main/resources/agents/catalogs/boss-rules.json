@@ -12,7 +12,25 @@
       },
       "targetPriority": [8830002, 8830001, 8830000],
       "adds": [6400005, 6400006],
-      "neverTarget": [8830004, 8830005, 8830006]
+      "neverTarget": [8830004, 8830005, 8830006],
+      "neverTargetFakes": true
+    },
+    {
+      "key": "zakum",
+      "label": "Zakum",
+      "neverTargetFakes": true,
+      "markerItems": [4001017]
+    },
+    {
+      "key": "horntail",
+      "label": "Horntail",
+      "neverTarget": [8810010, 8810011, 8810012, 8810013, 8810014, 8810015, 8810016, 8810017, 8810018]
+    },
+    {
+      "key": "pinkbean",
+      "label": "Pink Bean",
+      "neverTarget": [8820000, 8820019, 8820020, 8820021, 8820022, 8820023],
+      "markerItems": [4001193]
     }
   ]
 }

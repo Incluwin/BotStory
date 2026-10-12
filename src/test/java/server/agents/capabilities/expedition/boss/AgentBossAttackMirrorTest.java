@@ -705,7 +705,7 @@ class AgentBossAttackMirrorTest {
     /** Lists {@code mobId} under field group {@code key} and installs a host whose answer for it is the returned flag. */
     private boolean[] fieldGroup(String key, int mobId) {
         AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss(key, "Test field", null, null, null, null,
-                List.of(mobId))));
+                List.of(mobId), false, null)));
         boolean[] keyOn = {false};
         AgentBossRunHost.install(new AgentBossRunHost.Rule() {
             @Override

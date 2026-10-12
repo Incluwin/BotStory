@@ -9,7 +9,10 @@ import server.expeditions.ExpeditionType;
 import java.util.List;
 import java.util.Locale;
 
-/** The bosses companions can sign up for. One content table: a new boss adds its row here. */
+/**
+ * The bosses companions can sign up for. One content table: a new boss adds its row here. A row's marker items and its
+ * never-target-fakes flag come from the boss rules catalog (boss-rules.json, AgentBossRules), by the row's key.
+ */
 public final class AgentBossRunCatalog {
     /** Mu Young's Easy Balrog: sign up with her Easy choice, fight on 105100400, collect in 105100401. */
     public static final AgentBossRunDefinition EASY_BALROG = new AgentBossRunDefinition(
@@ -17,19 +20,22 @@ public final class AgentBossRunCatalog {
             AgentBalrogDefinition.RECRUIT_MAP, AgentBalrogDefinition.BATTLE_MAP, AgentBalrogDefinition.CLEAR_MAP,
             AgentBalrogDefinition.ENTRY_NPC, List.of(1),
             AgentBalrogDefinition.BATTLE_EXIT_NPC_ID, AgentBalrogDefinition.REWARD_EXIT_PORTAL_ID,
-            AgentEasyBalrogScenario::forCompanions, false, List.of(), false, false);
+            AgentEasyBalrogScenario::forCompanions, false,
+            AgentBossRules.markerItems("easy_balrog"), AgentBossRules.neverTargetFakes("easy_balrog"), false);
     // slot: zakum
     /**
      * Adobis's Zakum (P8): sign up in her room behind the Door to Zakum with her registering window (no choices), fight
      * on the altar and leave by Amon, before and after the clear (no reward room, so no clear map and no exit portal).
-     * Members leave the Eye of Fire for the altar, never target the fake body, and leave with an owner who goes.
+     * Members leave the Eye of Fire for the altar and never target the fake body (both from boss-rules.json), and leave
+     * with an owner who goes.
      */
     public static final AgentBossRunDefinition ZAKUM = new AgentBossRunDefinition(
             "zakum", ExpeditionType.ZAKUM,
             AgentZakumDefinition.RECRUIT_MAP_ID, AgentZakumDefinition.BATTLE_MAP_ID, -1,
             AgentZakumDefinition.ENTRY_NPC_ID, List.of(),
             AgentZakumDefinition.EXIT_NPC_ID, -1,
-            AgentZakumScenario::forCompanions, true, List.of(AgentZakumDefinition.EYE_ITEM_ID), true, true);
+            AgentZakumScenario::forCompanions, true,
+            AgentBossRules.markerItems("zakum"), AgentBossRules.neverTargetFakes("zakum"), true);
 
     // slot: balrog_normal
     /**
@@ -43,7 +49,9 @@ public final class AgentBossRunCatalog {
             AgentBalrogDefinition.RECRUIT_MAP, AgentBalrogDefinition.NORMAL_BATTLE_MAP_ID,
             AgentBalrogDefinition.NORMAL_CLEAR_MAP_ID, AgentBalrogDefinition.ENTRY_NPC, List.of(2),
             AgentBalrogDefinition.BATTLE_EXIT_NPC_ID, AgentBalrogDefinition.REWARD_EXIT_PORTAL_ID,
-            AgentEasyBalrogScenario::forNormalCompanions, false, List.of(), true, true);
+            AgentEasyBalrogScenario::forNormalCompanions, false,
+            AgentBossRules.markerItems(AgentBalrogDefinition.NORMAL_KEY),
+            AgentBossRules.neverTargetFakes(AgentBalrogDefinition.NORMAL_KEY), true);
 
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
 
