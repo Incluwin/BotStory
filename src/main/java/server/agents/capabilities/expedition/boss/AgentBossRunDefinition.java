@@ -65,6 +65,14 @@ public record AgentBossRunDefinition(String key, ExpeditionType type, int recrui
         return type;
     }
 
+    /**
+     * The level a companion needs for this boss: its expedition type's minimum, or a party boss's minLevel in the boss
+     * rules catalog (1 when it names none).
+     */
+    public int minLevel() {
+        return type != null ? type.getMinLevel() : AgentBossRules.minLevel(key);
+    }
+
     /** True for a party-instance boss: no expedition, its run keyed by the party's event. */
     public boolean partyInstance() {
         return type == null;

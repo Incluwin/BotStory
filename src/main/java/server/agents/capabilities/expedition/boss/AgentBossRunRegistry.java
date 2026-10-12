@@ -160,6 +160,18 @@ public final class AgentBossRunRegistry {
     }
 
     /**
+     * P14: true when {@code event} has an open party-instance run (Latanica, Neo City) whose boss rules name
+     * {@code mobId} (AgentBossRules.names). Its parts are guarded from control steal there (AgentBossScope) without
+     * a BOSS_IDS entry, which would also cover the same ids on field maps (Latanica's adds roam Singapore). Memory
+     * only, any thread.
+     */
+    public static boolean partyBossPart(EventInstanceManager event, int mobId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forEvent(event);
+        return session != null && session.definition().partyInstance()
+                && AgentBossRules.names(session.definition().key(), mobId);
+    }
+
+    /**
      * True for a fake part (Zakum's body before its arms fall) in the event of an open run that never targets fakes:
      * a hit on it is thrown away, so the combat selector never takes it, not even as a secondary or projectile target.
      * Also true for a part the run's boss rules never let a member hit (AgentBossRules.neverTarget, P11: Normal

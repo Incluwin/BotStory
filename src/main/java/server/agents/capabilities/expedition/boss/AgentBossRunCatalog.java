@@ -53,13 +53,54 @@ public final class AgentBossRunCatalog {
             AgentBossRules.markerItems(AgentBalrogDefinition.NORMAL_KEY),
             AgentBossRules.neverTargetFakes(AgentBalrogDefinition.NORMAL_KEY), true);
 
-    private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
+    // slot: latanica
+    /**
+     * Capt. Latanica (P14), a party boss: the owner leads the party through captinsg00 on the gate 541010060 (with
+     * White Essence), and LatanicaBattle.js's afterSetup opens the run for the companions inside (party-instance run).
+     * The fight is on 541010100. Bob (9270033) on that map is the only way out, before and after the clear, and warps
+     * only the talker; an owner who leaves takes their companions out with them. A dead companion revives in Boat Quay
+     * Town and waits there.
+     */
+    public static final AgentBossRunDefinition LATANICA = party("latanica", 541_010_060, 541_010_100, -1, 9_270_033,
+            -1, true);
+
+    // slot: neo city
+    /**
+     * The Neo City bosses (P14), party bosses for 2-6 players at Lv70 or more: the owner leads the party through
+     * right00 (TD_Boss_enter) on each boss's gate, and TD_Battle1-5.js's afterSetup opens the run. Each battle map's
+     * only way out is its portal 1 (left00, under00 for Oberon), so the battle map is also the map members leave from
+     * (its clear map, with that portal as the way out). A dead companion revives at 240070000 and waits there.
+     */
+    public static final AgentBossRunDefinition NEO_BERGAMOT = party("neo_bergamot", 240_070_202, 240_070_203,
+            240_070_203, 0, 1, false);
+    public static final AgentBossRunDefinition NEO_DUNAS = party("neo_dunas", 240_070_302, 240_070_303,
+            240_070_303, 0, 1, false);
+    public static final AgentBossRunDefinition NEO_AUFHEBEN = party("neo_aufheben", 240_070_402, 240_070_403,
+            240_070_403, 0, 1, false);
+    public static final AgentBossRunDefinition NEO_OBERON = party("neo_oberon", 240_070_502, 240_070_503,
+            240_070_503, 0, 1, false);
+    public static final AgentBossRunDefinition NEO_NIBELUNG = party("neo_nibelung", 240_070_602, 240_070_603,
+            240_070_603, 0, 1, false);
+
+    private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG);
 
     private AgentBossRunCatalog() {
     }
 
     public static List<AgentBossRunDefinition> all() {
         return ALL;
+    }
+
+    /**
+     * A party boss (P14): no expedition, no entry NPC and no sign-up choices; its fight is the boss rules catalog's
+     * priority fight; its dead members wait outside; an owner who leaves takes their party's members out with them.
+     */
+    private static AgentBossRunDefinition party(String key, int gateMapId, int battleMapId, int leaveMapId,
+                                                int exitNpcId, int exitPortalId, boolean exitNpcAfterClear) {
+        return new AgentBossRunDefinition(key, null, gateMapId, battleMapId, leaveMapId, 0, List.of(), exitNpcId,
+                exitPortalId, AgentBossPriorityFight.forKey(key), exitNpcAfterClear, AgentBossRules.markerItems(key),
+                AgentBossRules.neverTargetFakes(key), true, AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE);
     }
 
     /** The boss with this key (trimmed, any case); null for an unknown or blank key. */

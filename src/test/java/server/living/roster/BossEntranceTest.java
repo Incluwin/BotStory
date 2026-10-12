@@ -248,6 +248,31 @@ class BossEntranceTest {
     }
 
     @Test
+    void thePartyBossesBuyOnTheirWayInAndHoldTripsAtTheirGates() {
+        // P14: Boat Quay Town for Latanica; Leafre for Neo City, the largest listed standard
+        LivingWorld world = mock(LivingWorld.class);
+        LivingWorldConfig config = new LivingWorldConfig();
+        when(world.config()).thenReturn(config);
+        CompanionBossRuns runs = new CompanionBossRuns(world);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "latanica,neo_bergamot,neo_dunas,neo_aufheben,neo_oberon,neo_nibelung";
+        assertEquals("latanica", runs.approachKeyAt(541_000_000), "Boat Quay Town");
+        assertEquals("latanica", runs.restockKeyAt(541_010_060), "the gate");
+        assertTrue(runs.holdsTripsAt(541_010_060), "9 hops back: no trip leaves the gate");
+        assertEquals("neo_nibelung", runs.approachKeyAt(240_000_000), "Leafre buys Nibelung's 250/250");
+        assertEquals("neo_dunas", runs.restockKeyAt(240_070_302), "each gate keeps its own boss's standard");
+        assertTrue(runs.holdsTripsAt(240_070_602), "no route leads back from a gate");
+        assertEquals(2_080_001, BossEntrance.NEO_OBERON.approachStoreNpcId(), "Leafre's store, on 240000002");
+        assertEquals(9_270_022, BossEntrance.LATANICA.approachStoreNpcId(), "Boat Quay Town's own supplier");
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "neo_bergamot,neo_dunas";
+        assertEquals("neo_bergamot", runs.approachKeyAt(240_000_000), "a tie keeps the earlier entrance");
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertNull(runs.approachKeyAt(240_000_000), "every party key off: Leafre as before");
+        assertFalse(runs.holdsTripsAt(541_010_060));
+    }
+
+    @Test
     void theLargerStandardWeighsPointsAndCountsAlike() {
         assertTrue(CompanionBossRuns.largerStandard("balrog_normal", "easy_balrog"));
         assertFalse(CompanionBossRuns.largerStandard("easy_balrog", "balrog_normal"));

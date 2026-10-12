@@ -57,7 +57,34 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance BALROG_NORMAL = new BossEntrance(AgentBossRunCatalog.BALROG_NORMAL,
             new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false, 0);
 
-    private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
+    // slot: latanica
+    /**
+     * Capt. Latanica (P14), a party boss with no entry NPC: the owner leads the party through the gate's portal. Players
+     * come through Boat Quay Town (541000000), where 9270022 sells potions and ammo. The gate (541010060) is 9 hops
+     * from that shop, past the desk limit, so a trip out of it is held there. No bench ally comes here (no portals).
+     */
+    static final BossEntrance LATANICA = party(AgentBossRunCatalog.LATANICA, 541_000_000, 0);
+
+    // slot: neo city
+    /**
+     * The Neo City bosses (P14), party bosses with no entry NPC. Players come through Leafre (240000000), whose store
+     * (2080001) stands on 240000002, before the Time Gate. No route leads back from a gate to Leafre, so a trip out of
+     * it is held there. Leafre buys the largest standard among the listed Neo City bosses.
+     */
+    static final BossEntrance NEO_BERGAMOT = party(AgentBossRunCatalog.NEO_BERGAMOT, 240_000_000, 2_080_001);
+    static final BossEntrance NEO_DUNAS = party(AgentBossRunCatalog.NEO_DUNAS, 240_000_000, 2_080_001);
+    static final BossEntrance NEO_AUFHEBEN = party(AgentBossRunCatalog.NEO_AUFHEBEN, 240_000_000, 2_080_001);
+    static final BossEntrance NEO_OBERON = party(AgentBossRunCatalog.NEO_OBERON, 240_000_000, 2_080_001);
+    static final BossEntrance NEO_NIBELUNG = party(AgentBossRunCatalog.NEO_NIBELUNG, 240_000_000, 2_080_001);
+
+    private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG);
+
+    /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
+    private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {
+        return new BossEntrance(definition, new PqEntrance.Beside(-50, -30, true), approachMapId, null, null, true,
+                storeNpcId);
+    }
     /**
      * Where the entry NPC stands, by the map instance she was found on: looked for once per map (MapleMap.getNPCById
      * copies every object on it under its lock, and she never moves), not on every tick a companion walks up.

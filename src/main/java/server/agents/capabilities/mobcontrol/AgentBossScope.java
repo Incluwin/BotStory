@@ -24,8 +24,10 @@ import java.util.Set;
  *
  * <p>{@link #guards} covers a part while ENABLED, when the server does not own it, no Agent controls it, and one of
  * four cases holds: a boss in an event of a listed expedition type (EXPEDITION_TYPES), a listed id on a map with no
- * event (BOSS_IDS, or P13: a field group's boss whose key is on, AgentBossField), a listed id in an event with an open companion run (P12: a party-instance boss such as Papulatus,
- * or an add inside an expedition), or a part on the GM trial map. Memory only, any thread.</p>
+ * event (BOSS_IDS, or P13: a field group's boss whose key is on, AgentBossField), a listed id in an event with an
+ * open companion run (P12: a party-instance boss such as Papulatus, or an add inside an expedition; P14: also a part
+ * the boss rules name for an open party-instance run, AgentBossRunRegistry.partyBossPart), or a part on the GM trial
+ * map. Memory only, any thread.</p>
  */
 public final class AgentBossScope {
     private static volatile Trial trial;
@@ -97,8 +99,10 @@ public final class AgentBossScope {
             if (expedition != null && listedTypes().contains(expedition.getType())) {
                 return true;
             }
-            // P12 case 4: a listed id inside an event with an open companion run (a party-instance boss, an add)
-            if (listedId(monster.getId()) && AgentBossRunRegistry.forEvent(event) != null) {
+            // P12 case 4: a listed id inside an event with an open companion run (a party-instance boss, an add); P14:
+            // or a part the boss rules name for an open party-instance run (Latanica, Neo City)
+            if (listedId(monster.getId()) && AgentBossRunRegistry.forEvent(event) != null
+                    || AgentBossRunRegistry.partyBossPart(event, monster.getId())) {
                 return true;
             }
         }

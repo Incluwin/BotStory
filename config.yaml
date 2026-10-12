@@ -950,6 +950,10 @@ living_world:
     # Agents hit them, their attacks reach every Agent in range, companions join only once a player of their party has
     # hit that very boss, citizens never attack it, and a companion that dies beside one rests in town before following.
     # Each stays off until its live check passes (docs/COMPANION_BOSSING_P13.md).
+    # Party bosses (P14): "latanica" and "neo_bergamot", "neo_dunas", "neo_aufheben", "neo_oberon", "neo_nibelung". The
+    # owner leads the party in through the stock portal; the companions inside then fight as a boss run (priority targets,
+    # mirrored attacks, no summons, wait outside when down) and leave with the owner. Each stays off until its live check
+    # passes (docs/COMPANION_BOSSING_P14.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

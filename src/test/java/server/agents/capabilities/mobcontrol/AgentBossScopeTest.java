@@ -13,6 +13,7 @@ import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 import server.life.Monster;
@@ -220,6 +221,21 @@ class AgentBossScopeTest {
             assertFalse(AgentBossScope.guards(boss(8_130_100, pqStage, human(pqStage))), "inside an event");
         } finally {
             AgentBossRunHost.install(null);
+        }
+    }
+
+    @Test
+    void aPartyBossesPartIsGuardedInsideItsOpenRunOnlyNeverOnAField() {
+        // P14: Latanica's add 9420511 roams Singapore's fields too; BOSS_IDS stays none
+        MapleMap battle = eventMap(null);
+        EventInstanceManager latanica = battle.getEventInstance();
+        MapleMap field = mock(MapleMap.class);
+        try (MockedStatic<AgentBossRunRegistry> runs = mockStatic(AgentBossRunRegistry.class)) {
+            runs.when(() -> AgentBossRunRegistry.partyBossPart(latanica, 9_420_511)).thenReturn(true);
+
+            assertTrue(AgentBossScope.guards(boss(9_420_511, battle, human(battle))), "in its run");
+            assertFalse(AgentBossScope.guards(boss(9_420_511, field, human(field))), "on a field map");
+            assertFalse(AgentBossScope.guards(boss(9_420_512, battle, human(battle))), "a part its rules do not name");
         }
     }
 

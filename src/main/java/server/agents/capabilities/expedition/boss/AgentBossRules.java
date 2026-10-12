@@ -25,6 +25,7 @@ import java.util.Set;
  * ({@link AgentBossRunRegistry#neverTarget}): dummies, helpers and seals whose death would change the fight, and
  * display parts (Horntail's dead heads, Pink Bean's statues).</li>
  * <li>{@code neverTargetFakes}: a run member never hits a fake part (Zakum's body before its arms fall).</li>
+ * <li>{@code minLevel} (P14): the level a companion needs for a party boss, which has no expedition type.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -41,7 +42,7 @@ public final class AgentBossRules {
     /** One boss's rules. */
     public record Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
                        List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
-                       boolean neverTargetFakes, List<Integer> markerItems) {
+                       boolean neverTargetFakes, List<Integer> markerItems, int minLevel) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -53,6 +54,13 @@ public final class AgentBossRules {
             neverTarget = neverTarget == null ? List.of() : List.copyOf(neverTarget);
             fieldBosses = fieldBosses == null ? List.of() : List.copyOf(fieldBosses);
             markerItems = markerItems == null ? List.of() : List.copyOf(markerItems);
+        }
+
+        /** A boss with no level of its own (minLevel 0: every boss row before P14). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems, 0);
         }
 
         /** The mob id of the named part; throws when the catalog names none, so a typo fails at load. */
@@ -89,6 +97,16 @@ public final class AgentBossRules {
         return null;
     }
 
+    /**
+     * P14: true when boss {@code key}'s rules name {@code mobId} as one of its fight's parts: a role, a target
+     * priority part or an add.
+     */
+    public static boolean names(String key, int mobId) {
+        Boss boss = of(key);
+        return boss != null && (boss.targetPriority().contains(mobId) || boss.adds().contains(mobId)
+                || boss.roles().containsValue(mobId));
+    }
+
     /** True when boss {@code key}'s rules list {@code mobId} as a part its run members never hit. */
     public static boolean neverTarget(String key, int mobId) {
         Boss boss = of(key);
@@ -112,6 +130,16 @@ public final class AgentBossRules {
     public static boolean neverTargetFakes(String key) {
         Boss boss = of(key);
         return boss != null && boss.neverTargetFakes();
+    }
+
+    /**
+     * The level a companion needs for party boss {@code key} (P14: the event script's minLevel, 70 for Neo City),
+     * 1 when the catalog names none. An expedition boss reads its expedition type instead
+     * (AgentBossRunDefinition.minLevel).
+     */
+    public static int minLevel(String key) {
+        Boss boss = of(key);
+        return boss == null || boss.minLevel() <= 0 ? 1 : boss.minLevel();
     }
 
     /** The drops boss {@code key}'s run members leave on the floor; empty when the catalog lists none. */

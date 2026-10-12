@@ -32,6 +32,14 @@ public final class CompanionBossKeys {
         keys.add("field_ludus");
         keys.add("field_mulung");
         keys.add("field_nihal");
+
+        // slot: party bosses (P14): the party enters by a portal, and the event script opens the run
+        keys.add("latanica");
+        keys.add("neo_bergamot");
+        keys.add("neo_dunas");
+        keys.add("neo_aufheben");
+        keys.add("neo_oberon");
+        keys.add("neo_nibelung");
         return List.copyOf(keys);
     }
 

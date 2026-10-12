@@ -612,7 +612,8 @@ public final class AgentBossRunSession {
 
     /**
      * The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls.
-     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}).
+     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}); a boss
+     * whose way out is a portal (P14: Neo City) has none.
      */
     private void leave(AgentBossRunPorts ports, AgentBossRunMember member, AgentBossRunHost.Out reason, long nowMs) {
         int agentId = member.agentId();
@@ -620,7 +621,7 @@ public final class AgentBossRunSession {
             ports.stop(agentId);
             ports.clearBoundary(agentId);
         }
-        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared) {
+        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared && definition.exitNpcId() > 0) {
             exitNpcPrepared = true;
             ports.prepareScripts(definition.exitNpcId());
         }

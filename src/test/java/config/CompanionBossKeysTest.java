@@ -18,7 +18,8 @@ class CompanionBossKeysTest {
     @Test
     void easyBalrogThenZakumThenNormalBalrogThenTheFieldGroupsAreTheKeys() {
         assertEquals(List.of("easy_balrog", "zakum", "balrog_normal", "field_victoria", "field_ossyria", "field_ludus",
-                "field_mulung", "field_nihal"), CompanionBossKeys.KNOWN);
+                "field_mulung", "field_nihal", "latanica", "neo_bergamot", "neo_dunas", "neo_aufheben", "neo_oberon",
+                "neo_nibelung"), CompanionBossKeys.KNOWN);
     }
 
     @Test
@@ -37,7 +38,8 @@ class CompanionBossKeysTest {
     @Test
     void theMessageNamesEveryKnownKey() {
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum, balrog_normal,"
-                + " field_victoria, field_ossyria, field_ludus, field_mulung or field_nihal", CompanionBossKeys.message());
+                + " field_victoria, field_ossyria, field_ludus, field_mulung, field_nihal, latanica, neo_bergamot, neo_dunas,"
+                + " neo_aufheben, neo_oberon or neo_nibelung", CompanionBossKeys.message());
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog",
                 CompanionBossKeys.message(List.of("easy_balrog")));
         assertEquals("living_world.COMPANION_BOSS_ENABLED_TYPES must list only easy_balrog, zakum or balrog",

@@ -128,7 +128,12 @@ class CompanionBossRunsPartyEventTest {
         runs.partyEntered(event, "easy_balrog");
         runs.partyEntered(event, "no_such_boss");
         assertEquals(0, ops.size(), "an expedition boss and an unknown key admit nothing");
-        assertTrue(AgentBossRunCatalog.of("latanica") == null, "no catalog row yet: P14 adds it");
+        runs.partyEntered(event, "latanica");
+        assertEquals(1, ops.size(), "P14's Latanica row, which the switch lists");
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        runs.partyEntered(event, "latanica");
+        assertEquals(1, ops.size(), "off the switch: nothing");
+        assertTrue(AgentBossRunCatalog.LATANICA.partyInstance());
     }
 
     /** The open runs as a test sets them; only the party-instance answers are under test here. */

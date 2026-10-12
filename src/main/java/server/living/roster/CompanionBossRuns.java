@@ -845,7 +845,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         LivingWorldConfig config = world.config();
         AgentBossRunDefinition definition = entrance.definition();
         if (config == null || !config.companionBossEnabled(definition.key())
-                || level < definition.type().getMinLevel()) {
+                || level < definition.minLevel()) {
             return chosen;
         }
         return chosen == null || largerStandard(definition.key(), chosen) ? definition.key() : chosen;

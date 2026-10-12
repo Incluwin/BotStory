@@ -127,7 +127,10 @@ function setup(level, lobbyid) {
     return eim;
 }
 
-function afterSetup(eim) {}
+function afterSetup(eim) {
+    // P14: the companions the party took in fight as a companion boss run (nothing while the living world's key is off)
+    Java.type('server.living.LivingWorldHooks').bossPartyEntered(eim, 'neo_dunas');
+}
 
 function respawnStages(eim) {}
 
