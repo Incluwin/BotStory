@@ -180,6 +180,11 @@ public class Client extends ChannelInboundHandlerAdapter {
      * 0 until then, and a connection at 0 is never sent a CREW_WINDOW packet (a client without the P10 DLL).
      */
     private volatile int crewWindowProtocol;
+    /**
+     * The native Crew window is open on this connection's client: its OPEN sets this, and its CLOSE (or a CLOSE the
+     * server sends it) clears it. A native page is drawn only while it is set, apart from how long the window idles.
+     */
+    private volatile boolean crewWindowOpen;
 
     public enum Type {
         LOGIN,
@@ -204,6 +209,15 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     public void setCrewWindowProtocol(int crewWindowProtocol) {
         this.crewWindowProtocol = crewWindowProtocol;
+    }
+
+    /** True from the native Crew window's OPEN until its CLOSE (or one the server sent) on this connection. */
+    public boolean isCrewWindowOpen() {
+        return crewWindowOpen;
+    }
+
+    public void setCrewWindowOpen(boolean crewWindowOpen) {
+        this.crewWindowOpen = crewWindowOpen;
     }
 
     public Client(Type type, long sessionId, String remoteAddress, PacketProcessor packetProcessor, int world, int channel) {

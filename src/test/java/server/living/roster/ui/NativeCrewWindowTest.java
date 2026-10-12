@@ -110,6 +110,7 @@ class NativeCrewWindowTest {
     private final List<RosterEntry> rows = new ArrayList<>();
     private final Map<String, Persona> personas = new HashMap<>();
     private final AtomicInteger protocol = new AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicBoolean windowOpen = new java.util.concurrent.atomic.AtomicBoolean();
     private final AtomicLong now = new AtomicLong(1_000_000L);
     /** The flags that name a swap picker's partners rather than an option of the row's own card. */
     private static final int PARTNERS = NativeCrewPackets.OUT | NativeCrewPackets.CAN_COME;
@@ -138,6 +139,11 @@ class NativeCrewWindowTest {
             return null;
         }).when(client).setCrewWindowProtocol(anyInt());
         when(client.getCrewWindowProtocol()).thenAnswer(inv -> protocol.get());
+        doAnswer(inv -> {
+            windowOpen.set(inv.getArgument(0));
+            return null;
+        }).when(client).setCrewWindowOpen(org.mockito.ArgumentMatchers.anyBoolean());
+        when(client.isCrewWindowOpen()).thenAnswer(inv -> windowOpen.get());
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
         when(world.store()).thenReturn(store);
@@ -938,6 +944,37 @@ class NativeCrewWindowTest {
     }
 
     @Test
+    void aPagesCloseInAWindowThatStaysOpenWatchesItAgainAfterAnIdleHalfHour() {
+        hadrik();
+        window.install();
+        openWindow();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        now.addAndGet(NativeCrewWindow.IDLE_MS + 1);
+        window.watchOpenWindows();
+        assertFalse(window.watching(owner));
+
+        NativeCrewWindow.receive(client, owner, new PageReply(page.stamp(), 255, -1), world);
+
+        assertTrue(window.watching(owner), "the window is still open: its page's Close watches it again");
+        assertArrayEquals(NativeCrewPackets.pageClose(page.stamp()).getBytes(), last());
+    }
+
+    @Test
+    void aWindowClosedSinceItsOpenIsSentNoPage() {
+        hadrik();
+        window.install();
+        openWindow();
+        NativeCrewWindow.receive(client, owner, new Close(), world);
+        clearInvocations(client);
+
+        menus.crews().nativeActions(owner); // a native page asked for after the window closed
+
+        assertTrue(crewPages().isEmpty(), "no PAGE for a window that is not open");
+        assertFalse(LivingTalk.nativeActive(owner));
+    }
+
+    @Test
     void anActionsPageThatFailsIsLoggedAndNeverThrownIntoThePacketHandler() {
         hadrik();
         window.install();
@@ -958,7 +995,9 @@ class NativeCrewWindowTest {
         when(manager.saveLineup(owner)).thenReturn(new RosterResult.Ok("Remembered."));
         window.install();
         hello();
+        NativeCrewWindow.receive(client, owner, new Open(), world);
         companionOps.clear();
+        clearInvocations(client);
         act(Verb.ACTIONS, "", "");
         NativeTalkPage page = lastPage();
         assertTrue(companionOps.isEmpty(), "the page is drawn on the packet thread");
@@ -1102,6 +1141,8 @@ class NativeCrewWindowTest {
     @Test
     void theWindowDrawsPagesOnlyForAProtocolTwoConnectionInTheWorldThatTheSwitchAllows() {
         hello();
+        assertFalse(window.draws(owner), "HELLO alone: the window is not open");
+        windowOpen.set(true); // its OPEN
         assertTrue(window.draws(owner));
         when(owner.isLoggedinWorld()).thenReturn(false);
         assertFalse(window.draws(owner), "the Cash Shop");

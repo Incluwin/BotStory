@@ -159,6 +159,12 @@ public final class LivingTalk {
         }
     }
 
+    /** True while a native page for the player would be drawn natively (the renderer draws it now), not as an NPC window. */
+    public static boolean nativeDraws(Character chr) {
+        NativeTalkRenderer renderer = NATIVE_RENDERER.get();
+        return chr != null && renderer != null && renderer.draws(chr);
+    }
+
     /** True while the player has a native page on screen awaiting its reply. */
     public static boolean nativeActive(Character chr) {
         return chr != null && liveNative(chr) != null;
