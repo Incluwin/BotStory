@@ -77,6 +77,9 @@ out; `partyBossPart`), `PartyBossScriptsTest` (Graal: each `afterSetup` calls th
 held trips, Leafre's largest standard), and the updated catalog, key and standard pins. `ScriptEvaluationTest` still
 evaluates all 1,824 scripts.
 
+Full suite on 17c6f0b5b: 13,412 tests, 1 failure, 37 skipped (10:34 min). The failure was KnowledgeLintTest: the
+knowledge file was older than the edited event scripts. 5621ab3bf regenerates it, and KnowledgeLintTest passes.
+
 ## GM-first live check (from the plan)
 
 **Before you start:** a restart disconnects everyone online.
