@@ -271,7 +271,7 @@ class AgentSupplyReadinessTest {
         // P11: Normal Balrog 2500, between Easy Balrog and Zakum
         assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000,balrog_normal=2500,latanica=1000,neo_bergamot=1000,"
                         + "neo_dunas=1000,neo_aufheben=1500,neo_oberon=1500,neo_nibelung=2000,papulatus=2500,"
-                        + "scarga=5000,horntail=4800",
+                        + "scarga=5000,horntail=4800,showa=4000",
                 AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
         assertEquals(4000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("zakum")));
         assertEquals(2500, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("balrog_normal")));

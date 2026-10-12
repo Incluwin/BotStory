@@ -342,6 +342,18 @@ class BossRunLinesTellTest {
         assertEquals(List.of(), game.partyChat);
     }
 
+    /** P19: Showa's marker item is the comb, so its marker line asks for the comb, and no Showa line names Zakum. */
+    @Test
+    void showaAsksForTheCombAndNeverNamesZakumOrItsEye() {
+        assertEquals(List.of("ready when you are. drop the comb on the machine.", "we're set, drop the comb whenever."),
+                BossRunLines.lines(game.world, null, BossRunLines.ZAKUM_EYE, "showa"));
+        for (List<String> lines : BossRunLines.BY_BOSS.get("showa").values()) {
+            for (String line : lines) {
+                assertFalse(line.contains("zakum") || line.contains("eye") || line.contains("adobis"), line);
+            }
+        }
+    }
+
     @Test
     void zakumHasThePlansOwnLinesAndEveryOtherIntentKeepsTheGenericOnes() {
         Map<String, List<String>> plan = Map.ofEntries(

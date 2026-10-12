@@ -95,6 +95,13 @@
       "adds": [9420545, 9420550, 9420531, 9420532]
     },
     {
+      "key": "showa",
+      "label": "The Boss",
+      "targetPriority": [9400112, 9400113, 9400300, 9400122],
+      "neverTarget": [9400114],
+      "markerItems": [4000138]
+    },
+    {
       "key": "field_victoria",
       "label": "Victoria field bosses",
       "fieldBosses": [2220000, 3220000, 5220002, 6220000, 5220001, 5220000, 8220008, 8220009, 6130101, 6300005,

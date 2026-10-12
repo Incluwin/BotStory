@@ -95,8 +95,9 @@ final class BossRunLines {
      */
     static final String OWNER_LEFT = "boss.owner_left";
     /**
-     * P8, Zakum only ({@link #BY_BOSS}): the first of the owner's party companions to go in says it once per run while
-     * the owner stands on the altar carrying the Eye of Fire (the run's marker item).
+     * P8, a boss with a marker item only ({@link #BY_BOSS}): the first of the owner's party companions to go in says it
+     * once per run while the owner stands on the battle map carrying the run's marker item (Zakum's Eye of Fire; P19:
+     * Showa's comb).
      */
     static final String ZAKUM_EYE = "boss.zakum.eye";
 
@@ -310,6 +311,28 @@ final class BossRunLines {
                     Map.entry(GG, List.of(
                             "gg! horntail's down!",
                             "we actually did it. gg!")))),
+            // slot: showa (P19: Konpei's expedition in the Showa hideout; the comb is the marker item)
+            Map.entry("showa", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, the boss got me. i'll wait in showa town.",
+                            "i'm down... see you back in town.",
+                            "those bodyguards hit hard. waiting in showa town.")),
+                    Map.entry(REFUSED_LEVEL, List.of("konpei won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "konpei won't let me sign. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to konpei in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for the boss, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for the boss, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the hideout. {eta}.",
+                            "omw to konpei, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg! the boss is done.",
+                            "showa's free. gg!")),
+                    Map.entry(ZAKUM_EYE, List.of(
+                            "ready when you are. drop the comb on the machine.",
+                            "we're set, drop the comb whenever.")))),
             // slot: zakum (Adobis's room behind the Door to Zakum, the altar, El Nath)
             Map.entry("zakum", Map.ofEntries(
                     Map.entry(DOWN, List.of(

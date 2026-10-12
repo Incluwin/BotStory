@@ -91,9 +91,10 @@ class AgentBossScopeTest {
     }
 
     @Test
-    void theYamlShipsTheScopeOnForZakumScargaAndHorntailWithNoListedIds() {
+    void theYamlShipsTheScopeOnForZakumScargaHorntailAndShowaWithNoListedIds() {
         assertEquals("true", shipped.get(ENABLED));
-        assertEquals("ZAKUM,SCARGA,HORNTAIL", shipped.get(EXPEDITION_TYPES), "P17 adds SCARGA, P18 HORNTAIL");
+        assertEquals("ZAKUM,SCARGA,HORNTAIL,SHOWA", shipped.get(EXPEDITION_TYPES),
+                "P17 adds SCARGA, P18 HORNTAIL, P19 SHOWA");
         assertEquals("none", shipped.get(BOSS_IDS));
     }
 

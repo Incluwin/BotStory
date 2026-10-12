@@ -56,6 +56,9 @@ public final class CompanionBossKeys {
 
         // slot: horntail (P18): Horntail, the Mark of the Squad's expedition
         keys.add("horntail");
+
+        // slot: showa (P19): The Boss, Konpei's expedition in the Showa hideout
+        keys.add("showa");
         return List.copyOf(keys);
     }
 

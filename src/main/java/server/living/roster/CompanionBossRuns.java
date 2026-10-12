@@ -1445,10 +1445,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * P8, Zakum's Eye of Fire: as the first of the owner's party companions goes in, the owner on the altar with one
-     * of the boss's marker items in their bag hears that companion say the marker line ({@link BossRunLines#ZAKUM_EYE})
-     * in party chat. Asked once per owner's run, at that first one, with or without the item; a bench ally going in
-     * first never asks (a party of bots has nobody to hear it).
+     * P8, Zakum's Eye of Fire (P19: Showa's comb too): as the first of the owner's party companions goes in, the owner
+     * on the battle map with one of the boss's marker items in their bag hears that companion say the marker line
+     * ({@link BossRunLines#ZAKUM_EYE}) in party chat. Asked once per owner's run, at that first one, with or without
+     * the item; a bench ally going in first never asks (a party of bots has nobody to hear it).
      */
     private void eyeLine(Seat seat, AgentBossRunDefinition definition) {
         CompanionBossRun run = whileOpen(seat);

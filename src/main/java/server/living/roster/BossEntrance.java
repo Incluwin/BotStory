@@ -107,8 +107,18 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance HORNTAIL = new BossEntrance(AgentBossRunCatalog.HORNTAIL,
             new PqEntrance.Beside(-50, -30, true), 240_000_000, "sp", "st00", true, 2_080_001);
 
+    // slot: showa
+    /**
+     * Konpei stands at 1402,161 (WZ 801040004 life) at the right end of the hideout's front, a hunting map with Male
+     * Boss and the gang on it: companions wait beside him, as at Adobis. Players come through Showa Town (801000000),
+     * whose store (9120002) stands on 801000300; the hideout is several maps past it, so a trip out of it is held
+     * there. Allies come in and leave by out00 (-1433,158), the way in from 801040003.
+     */
+    static final BossEntrance SHOWA = new BossEntrance(AgentBossRunCatalog.SHOWA,
+            new PqEntrance.Beside(-50, -30, true), 801_000_000, "out00", "out00", true, 9_120_002);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

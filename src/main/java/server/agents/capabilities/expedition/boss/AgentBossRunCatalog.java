@@ -121,8 +121,23 @@ public final class AgentBossRunCatalog {
             AgentBossPriorityFight.forKey("horntail"), true, AgentBossRules.markerItems("horntail"),
             AgentBossRules.neverTargetFakes("horntail"), true, AgentBossRunDefinition.DeathMode.REENTER);
 
+    // slot: showa
+    /**
+     * The Boss (P19), Showa's expedition of 3-30 at Lv100 or more, no daily quota: sign up with Konpei (9120201) on
+     * 801040004 with his registering window (no choices, as Adobis's), fight on 801040100: the gang first, then the
+     * chain Bodyguard A, Bodyguard B and The Boss once the owner drops the comb on the reactor (boss-rules.json, where
+     * the comb is a marker item members leave on the floor). Konpei (9120202) there is the way out before the clear;
+     * after it his yes moves only the talker into 801040101, still inside the run, so members follow their owner there
+     * and leave with them. A dead companion revives in Showa Town and waits there (decision 16); an owner who leaves
+     * takes their party's members out with them.
+     */
+    public static final AgentBossRunDefinition SHOWA = new AgentBossRunDefinition("showa", ExpeditionType.SHOWA,
+            801_040_004, 801_040_100, 801_040_101, 9_120_201, List.of(), 9_120_202, -1,
+            AgentBossPriorityFight.forKey("showa"), false, AgentBossRules.markerItems("showa"),
+            AgentBossRules.neverTargetFakes("showa"), true);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
-            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL);
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA);
 
     private AgentBossRunCatalog() {
     }

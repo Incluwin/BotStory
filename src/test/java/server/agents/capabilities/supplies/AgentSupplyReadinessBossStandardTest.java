@@ -63,7 +63,7 @@ class AgentSupplyReadinessBossStandardTest {
     void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
         assertEquals("easy_balrog=100/60,zakum=500/400,balrog_normal=300/300,latanica=150/100,neo_bergamot=150/100,"
                         + "neo_dunas=150/100,neo_aufheben=200/150,neo_oberon=200/150,neo_nibelung=250/250,"
-                        + "papulatus=300/300,scarga=600/500,horntail=600/600",
+                        + "papulatus=300/300,scarga=600/500,horntail=600/600,showa=600/600",
                 AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
         assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor("easy_balrog"));
         assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor(" Easy_Balrog "),
@@ -186,7 +186,7 @@ class AgentSupplyReadinessBossStandardTest {
         assertEquals(partyQuestAmmo, ammoStandardFor("chaos_horntail"), "an unlisted boss: the default");
         assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000,balrog_normal=2500,latanica=1000,neo_bergamot=1000,"
                         + "neo_dunas=1000,neo_aufheben=1500,neo_oberon=1500,neo_nibelung=2000,papulatus=2500,"
-                        + "scarga=5000,horntail=4800",
+                        + "scarga=5000,horntail=4800,showa=4000",
                 AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
         assertEquals(2500, ammoStandardFor("balrog_normal"), "P11: 25 minutes at 100 a minute");
     }

@@ -144,6 +144,34 @@ class AgentPartyBossesTest {
                 AgentBossRules.of("horntail").adds());
     }
 
+    /**
+     * P19: The Boss is an expedition row (Konpei's list, no choices) whose maps match ShowaBattle.js. Konpei on the
+     * battle map is the way out before the clear; after it his yes moves only the talker into the clear map, still in
+     * the run. The chain comes first, the slot machine is never hit, the comb stays on the floor, and the dead wait.
+     */
+    @Test
+    void showaIsAnExpeditionRowWhoseChainComesFirstAndWhoseDeadWaitOutside() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/ShowaBattle.js"));
+        AgentBossRunDefinition showa = AgentBossRunCatalog.of("showa");
+
+        assertEquals(ExpeditionType.SHOWA, showa.type());
+        assertEquals(number(source, "recruitMap"), showa.recruitMapId());
+        assertEquals(number(source, "entryMap"), showa.battleMapId());
+        assertEquals(number(source, "clearMap"), showa.clearMapId());
+        assertEquals(100, showa.minLevel(), "the expedition type's Lv100");
+        assertEquals(9_120_201, showa.entryNpcId());
+        assertEquals(List.of(), showa.joinSelections());
+        assertEquals(9_120_202, showa.exitNpcId());
+        assertFalse(showa.exitNpcAfterClear());
+        assertTrue(showa.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, showa.deathMode());
+        assertEquals(List.of(9_400_112, 9_400_113, 9_400_300, 9_400_122), AgentBossRules.of("showa").targetPriority());
+        assertTrue(AgentBossRules.neverTarget("showa", 9_400_114), "the slot machine");
+        assertEquals(List.of(4_000_138), showa.markerItemIds(), "the comb");
+        assertEquals("field_zipangu", AgentBossRules.fieldKeyOf(9_400_122),
+                "Male Boss on Konpei's map stays a field boss");
+    }
+
     @Test
     void anOpenPartyRunsEventNamesItsBossesPartsAndNothingElseDoes() {
         long sessionId = openLatanica(List.of(THANE));

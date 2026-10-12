@@ -970,6 +970,9 @@ living_world:
     # "horntail" (P18): Horntail at the Mark of the Squad, signed up as at Adobis. The run spans the two pre-head maps
     # and the altar. A companion that dies comes to in Leafre, is moved back to the cave entrance (240050400, no route
     # reaches it) and signs the Mark again. It stays off until its live check passes (docs/COMPANION_BOSSING_P18.md).
+    # "showa" (P19): The Boss at Konpei in the Showa hideout, signed up as at Adobis. List "field_zipangu" too, so
+    # companions waiting on his map leave Male Boss to the players there. A companion that dies waits in Showa Town.
+    # It stays off until its live check passes (docs/COMPANION_BOSSING_P19.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
