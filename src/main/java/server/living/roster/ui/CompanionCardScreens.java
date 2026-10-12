@@ -344,6 +344,14 @@ final class CompanionCardScreens {
         return LIVE;
     }
 
+    /**
+     * A click from the native Crew window (P10): the cards it leads to (the swap picker's, a reopened card) were not
+     * opened from the NPC Crew window, so they have no Back to it.
+     */
+    void forgetCrewParent(Character owner) {
+        crewParents.remove(owner.getId());
+    }
+
     /** The Crew window the card on screen was opened from, as its Back; null for a card opened by a double-click. */
     private Runnable crewBack(Character owner) {
         String voice = crewParents.get(owner.getId());

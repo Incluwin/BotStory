@@ -105,6 +105,8 @@ class NativeCrewWindowTest {
     private final Map<String, Persona> personas = new HashMap<>();
     private final AtomicInteger protocol = new AtomicInteger();
     private final AtomicLong now = new AtomicLong(1_000_000L);
+    /** The flags that name a swap picker's partners rather than an option of the row's own card. */
+    private static final int PARTNERS = NativeCrewPackets.OUT | NativeCrewPackets.CAN_COME;
 
     private MockedStatic<LivingWorld> livingWorld;
     private CompanionViews views;
@@ -322,10 +324,10 @@ class NativeCrewWindowTest {
         Snapshot snapshot = window.snapshot(owner);
         Map<String, Integer> flags = new HashMap<>();
         for (Row row : snapshot.party()) {
-            flags.put(row.personaId(), row.flags());
+            flags.put(row.personaId(), row.flags() & ~PARTNERS);
         }
         for (Row row : snapshot.bench()) {
-            flags.put(row.personaId(), row.flags());
+            flags.put(row.personaId(), row.flags() & ~PARTNERS);
         }
 
         int callAndSwapIn = NativeCrewPackets.CALL | NativeCrewPackets.SWAP_IN;
@@ -354,14 +356,14 @@ class NativeCrewWindowTest {
 
         Snapshot snapshot = window.snapshot(owner);
 
-        assertEquals(NativeCrewPackets.COMMITTED, snapshot.party().get(0).flags());
-        assertEquals(NativeCrewPackets.BENCH | NativeCrewPackets.SWAP_OUT, snapshot.party().get(1).flags());
-        assertEquals(NativeCrewPackets.COMMITTED | NativeCrewPackets.CALL, snapshot.bench().get(0).flags(),
+        assertEquals(NativeCrewPackets.COMMITTED, snapshot.party().get(0).flags() & ~PARTNERS);
+        assertEquals(NativeCrewPackets.BENCH | NativeCrewPackets.SWAP_OUT, snapshot.party().get(1).flags() & ~PARTNERS);
+        assertEquals(NativeCrewPackets.COMMITTED | NativeCrewPackets.CALL, snapshot.bench().get(0).flags() & ~PARTNERS,
                 "it can still be called, not swapped in");
         for (RosterEntry entry : List.copyOf(rows)) {
             int flags = (entry.personaId().equals("hadrik") ? snapshot.party().get(0)
                     : entry.personaId().equals("tobi") ? snapshot.party().get(1) : snapshot.bench().get(0)).flags();
-            assertCardOffers(entry, flags & ~NativeCrewPackets.COMMITTED);
+            assertCardOffers(entry, flags & ~NativeCrewPackets.COMMITTED & ~PARTNERS);
         }
     }
 
@@ -370,7 +372,28 @@ class NativeCrewWindowTest {
         hadrik();
         when(owner.haveItem(config.ROSTER_BOOK_ITEM_ID)).thenReturn(true);
 
-        assertEquals(NativeCrewPackets.BENCH, window.snapshot(owner).party().get(0).flags());
+        assertEquals(NativeCrewPackets.BENCH, window.snapshot(owner).party().get(0).flags() & ~PARTNERS);
+    }
+
+    @Test
+    void eachRowSaysWhomTheSwapPickersWouldPairItWith() {
+        fullCrew();
+        Snapshot snapshot = window.snapshot(owner);
+        Map<String, Integer> partners = new HashMap<>();
+        for (Row row : snapshot.party()) {
+            partners.put(row.personaId(), row.flags() & PARTNERS);
+        }
+        for (Row row : snapshot.bench()) {
+            partners.put(row.personaId(), row.flags() & PARTNERS);
+        }
+
+        assertEquals(NativeCrewPackets.OUT, partners.get("hadrik"), "out with Ann: in the 'Swap in for...' picker");
+        assertEquals(0, partners.get("tobi"), "on the way: in neither picker");
+        assertEquals(0, partners.get("vex"), "waiting outside a run: in neither picker");
+        assertEquals(0, partners.get("dorran"), "logged off with Ann: in neither picker");
+        assertEquals(0, partners.get("guest:" + KIRA));
+        assertEquals(NativeCrewPackets.CAN_COME, partners.get("mira"), "at camp: in the 'take your place' picker");
+        assertEquals(NativeCrewPackets.CAN_COME, partners.get("olwen"), "away, not on her way");
     }
 
     @Test
@@ -379,6 +402,97 @@ class NativeCrewWindowTest {
         when(store.lineupSlots(ANN)).thenReturn(Map.of("mira", 1));
 
         assertEquals(NativeCrewPackets.USUAL_CALLABLE, window.snapshot(owner).flags());
+    }
+
+    // ---- review fixes (int/p9aq review) -------------------------------------------------------------
+
+    @Test
+    void aSecondHelloOnTheSameConnectionIsNeitherAnsweredNorStored() {
+        hello();
+
+        NativeCrewWindow.receive(client, owner, new Hello(NativeCrewPackets.PROTOCOL, 20261012), world);
+        NativeCrewWindow.receive(client, owner, new Hello(NativeCrewPackets.PROTOCOL + 1, 20261012), world);
+
+        verify(client, never()).sendPacket(any());
+        assertEquals(NativeCrewPackets.PROTOCOL, protocol.get());
+    }
+
+    @Test
+    void aClickOnAnIdNotInTheRosterIsRefusedBeforeAnyPersonaLookup() {
+        hadrik();
+        openWindow();
+        clearInvocations(content);
+
+        for (Verb verb : List.of(Verb.CALL, Verb.BENCH, Verb.CARD)) {
+            NativeCrewWindow.receive(client, owner, new Action(verb, 0, "hire:05", 0, "", 0), world);
+        }
+        NativeCrewWindow.receive(client, owner, new Action(Verb.SWAP, 0, "hadrik", 0, "hire:+5", 0), world);
+
+        verify(content, never()).persona("hire:05");
+        verify(content, never()).persona("hire:+5");
+        verify(owner, org.mockito.Mockito.times(4)).dropMessage(5, CompanionMenus.THINGS_CHANGED);
+        verify(roster, never()).call(any(), any());
+        verify(roster, never()).bench(any(), any());
+        verify(roster, never()).swap(any(), any(), any());
+    }
+
+    @Test
+    void aGuestIdIsReadOnlyAsTheServerWritesIt() {
+        assertEquals(5678, NativeCrewWindow.guestId("guest:5678"));
+        assertEquals(0, NativeCrewWindow.guestId("guest:05678"));
+        assertEquals(0, NativeCrewWindow.guestId("guest:+5678"));
+        assertEquals(0, NativeCrewWindow.guestId("guest:0"));
+        assertEquals(0, NativeCrewWindow.guestId("guest:-1"));
+        assertEquals(0, NativeCrewWindow.guestId("guest:"));
+    }
+
+    @Test
+    void clicksAndOpensFromTheCashShopAreNotActedOn() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        openWindow();
+        clearInvocations(client);
+        when(owner.isLoggedinWorld()).thenReturn(false); // in the Cash Shop or MTS
+
+        act(Verb.CALL, "mira", "");
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+
+        verify(roster, never()).call(any(), any());
+        verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void aSnapshotReadBeforeTheSwitchTurnedOffIsNeverSent() {
+        hadrik();
+        openWindow();
+        clearInvocations(client);
+        List<Runnable> packetThread = new ArrayList<>();
+        doAnswer(inv -> {
+            packetThread.add(inv.getArgument(0)); // held: the switch turns off before the packet thread runs it
+            return null;
+        }).when(client).runOnIoThread(any());
+
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+        config.CREW_WINDOW_NATIVE = "off";
+        packetThread.forEach(Runnable::run);
+
+        verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void aNativeClickLeadsToCardsWithNoBackToTheNpcCrewWindow() {
+        hadrik();
+        RosterEntry mira = add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(roster.canSeat(owner, mira)).thenReturn(false);
+        when(slots.occupied(owner)).thenReturn(RosterService.PARTY_CAP);
+        menus.cards().show(owner, personas.get("mira"), true, null); // a card opened earlier from the NPC Crew window
+        LivingTalk.forget(owner);
+        openWindow();
+
+        act(Verb.CALL, "mira", ""); // a full party: the card's swap picker
+        pick("Back"); // the picker's Back reopens Mira's own card
+
+        assertFalse(lastTalk().labels().contains("Back"), lastTalk().labels().toString());
     }
 
     // ---- the verbs ---------------------------------------------------------------------------------
