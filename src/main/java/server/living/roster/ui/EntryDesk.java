@@ -381,7 +381,11 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
             }
             return String.join(" ", lines);
         }, line -> {
-            if (travelling.get()) {
+            if (leader.getMapId() != entrance.definition().recruitMapId()) {
+                if (!line.isEmpty()) {
+                    leader.dropMessage(5, line); // left her map meanwhile: no window of hers on another map
+                }
+            } else if (travelling.get()) {
                 onTheWay(leader, pqKey, line);
             } else {
                 proposal(leader, service.plan(leader, pqKey), line);

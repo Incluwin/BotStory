@@ -358,6 +358,27 @@ class LakelisDeskGoldenTest {
     }
 
     @Test
+    void aLeaderWhoLeftHerMapWhileACallWentOutHearsItAsPinkTextNotHerWindow() {
+        Persona rin = benched("rin", "Rin", RIN, 25);
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.Travelling(40_000L, 104_000_000));
+        desk.proposal(ben, three(), null);
+        pick("Call someone from my bench...");
+        List<Runnable> packetThread = new ArrayList<>();
+        doAnswer(inv -> {
+            packetThread.add(inv.getArgument(0));
+            return null;
+        }).when(client).runOnIoThread(any());
+        int windows = talks().size();
+
+        pick("Rin, Lv25 Bandit - train @ Ant Tunnel");
+        when(ben.getMapId()).thenReturn(103_000_001); // through a portal meanwhile
+        runAll(packetThread);
+
+        assertEquals(windows, talks().size(), "no window of hers on another map");
+        verify(ben).dropMessage(5, "Rin is on the way (~40 s).");
+    }
+
+    @Test
     void aPickOfOneFromTheBenchIsNamedAndListedFirstWithNoCallForAll() {
         benched("lee", "Lee", LEE, 24);
         Persona rin = benched("rin", "Rin", RIN, 25);
