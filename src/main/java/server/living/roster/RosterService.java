@@ -3040,7 +3040,8 @@ public final class RosterService {
             return;
         }
         portalFollow.entered(owner.getId(), map.getId(), at);
-        if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())) {
+        if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())
+                && !world.config().companionRestockTripMap(map.getId())) { // P12 G9: a desk trip goes instead
             int ownerId = owner.getId();
             int mapId = map.getId();
             world.executor().submit("companion.restock.boss_gate " + ownerId, () -> {

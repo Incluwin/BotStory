@@ -200,6 +200,14 @@ class CompanionRestockTest {
     }
 
     @Test
+    void aBossGateTheTripFlagListsSendsADeskTripAndTheOtherGateDoesNot() {
+        config.COMPANION_RESTOCK_TRIP_MAPS = String.valueOf(PAPULATUS_GATE); // P12 G9, the Papulatus desk trip
+
+        assertTrue(restock.restocksFrom(FENNA, PAPULATUS_GATE));
+        assertFalse(restock.restocksFrom(FENNA, 106_021_402), "King Pepe's gate keeps its no-shop line");
+    }
+
+    @Test
     void adobissRoomHoldsATripOnlyWhileTheSwitchListsZakum() {
         when(world.bossRuns()).thenReturn(new CompanionBossRuns(world));
         config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,zakum";

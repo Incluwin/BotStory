@@ -900,10 +900,13 @@ living_world:
     # them or mesos at most this often, and answers a gift that still falls short (agent-engine.yaml
     # AgentSupplyReadiness.STILL_SHORT_EVERY_MS) only this long after asking. BOSS_MAPS: party-boss gates (Papulatus,
     # King Pepe) reach no shop; a short companion says so
-    # once as its owner comes in, and entry is never refused.
+    # once as its owner comes in, and entry is never refused. TRIP_MAPS (P12, decision 10): boss gates of BOSS_MAPS a
+    # short companion may still walk to a shop from, as far as a party quest desk (agent-engine.yaml
+    # AgentSupplyReadiness.BOSS_DESK_MAPS); empty = every gate keeps its no-shop line. P15 lists 220080000.
     COMPANION_RESTOCK_ENABLED: true
     COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
     COMPANION_RESTOCK_BOSS_MAPS: "220080000,106021402"
+    COMPANION_RESTOCK_TRIP_MAPS: ""
     # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
     # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
     # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with

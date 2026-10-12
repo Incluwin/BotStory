@@ -68,6 +68,14 @@ class BossEntranceTest {
     }
 
     @Test
+    void aRowsOwnStoreNpcWinsOverTheApproachMapsSupplier() {
+        assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");
+        BossEntrance throughLeafre = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
+                new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false, 2_022_000);
+        assertEquals(2_022_000, throughLeafre.approachStoreNpcId());
+    }
+
+    @Test
     void theApproachsStoreIsTheTwentyFourHourMobileStoreAsThePotionSupplierCatalogListsIt() {
         assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");
     }

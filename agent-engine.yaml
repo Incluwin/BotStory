@@ -4636,6 +4636,10 @@ tuning:
     # Purpose: How far the nearest potion supplier may be from a party quest desk before a standing readiness duty walks there by itself; the desks outside Victoria lie farther from their town's shop than an ordinary town.
     # Technical: AgentSupplyReadinessRuntime.select uses this instead of STANDING_MAX_HOPS when the Agent stands on a recruit map of AgentPartyQuestCatalog; the trip's shown time (TRIP_ETA_PER_HOP_MS) and REQUEST_TTL_PER_HOP_MS grow with the hops.
     server.agents.capabilities.supplies.AgentSupplyReadiness.DESK_MAX_HOPS: '7'
+    # Values: none, or map ids separated by commas. Recommended: 220080000, the Papulatus gate (P12 G9, decision 10); add a boss gate only with its own trip flag.
+    # Purpose: Boss gates whose companions may walk to a shop as far as a party quest desk lets them, so a short companion can top up before the boss.
+    # Technical: AgentSupplyReadinessRuntime uses DESK_MAX_HOPS instead of STANDING_MAX_HOPS on a listed map and also requires the way back from the supplier to fit in it (AgentVictoriaRouteRuntime.routeHops both ways). A trip leaves a boss gate only while the host lets it (living_world.COMPANION_RESTOCK_TRIP_MAPS), so the list is inert until that flag lists the map. AgentEngineConfigValidator refuses a blank value.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_DESK_MAPS: '220080000'
     # Values: milliseconds from 1000 to 60000. Recommended: 5000 so a short companion sets off within seconds of reaching a town.
     # Purpose: How often an Agent with a standing readiness duty looks at its potions while no supply trip is under way.
     # Technical: AgentSupplyReadinessRuntime.select returns at once until AgentSupplyReadinessState.nextCheckAtMs; a host's AgentSupplyReadiness.checkSoon resets it to 0 (the Lakelis desk does on a click), and the RESTOCKING estimate never shows less than this.

@@ -270,6 +270,12 @@ public class LivingWorldConfig {
      * there is no shop out here (no supplier is reachable from them). Entry is never refused.
      */
     public String COMPANION_RESTOCK_BOSS_MAPS = "220080000,106021402";
+    /**
+     * P12 G9: boss gates of COMPANION_RESTOCK_BOSS_MAPS that a short companion may still walk to a shop from (the
+     * Papulatus desk trip, decision 10; agent-engine.yaml AgentSupplyReadiness.BOSS_DESK_MAPS sets its radius). Empty:
+     * no gate sends a trip, and each keeps its no-shop line.
+     */
+    public String COMPANION_RESTOCK_TRIP_MAPS = "";
 
     // Companions go for their next job by themselves (AgentJobPath, JobErrands)
     /**
@@ -359,6 +365,20 @@ public class LivingWorldConfig {
         }
         for (String entry : COMPANION_PQ_ENABLED_KEYS.split(",")) {
             if (!entry.isBlank() && entry.trim().equalsIgnoreCase(pqKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** P12 G9: true when COMPANION_RESTOCK_TRIP_MAPS lists {@code mapId} (blank entries and spaces ignored). */
+    public boolean companionRestockTripMap(int mapId) {
+        return listsMap(COMPANION_RESTOCK_TRIP_MAPS, mapId);
+    }
+
+    private static boolean listsMap(String list, int mapId) {
+        for (String entry : list == null ? new String[0] : list.split(",")) {
+            if (!entry.isBlank() && entry.trim().equals(Integer.toString(mapId))) {
                 return true;
             }
         }
@@ -587,6 +607,12 @@ public class LivingWorldConfig {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
                 throw new IllegalArgumentException(
                         "living_world.COMPANION_RESTOCK_BOSS_MAPS must list map ids, not \"" + id.trim() + "\"");
+            }
+        }
+        for (String id : COMPANION_RESTOCK_TRIP_MAPS == null ? new String[0] : COMPANION_RESTOCK_TRIP_MAPS.split(",")) {
+            if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
+                throw new IllegalArgumentException(
+                        "living_world.COMPANION_RESTOCK_TRIP_MAPS must list map ids, not \"" + id.trim() + "\"");
             }
         }
         for (String key : COMPANION_BOSS_ENABLED_TYPES == null ? new String[0]

@@ -122,7 +122,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     /**
-     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS), nor from a boss's entry NPC room that holds its trips
+     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS) unless trips may leave it (P12 G9:
+     * COMPANION_RESTOCK_TRIP_MAPS, the Papulatus desk trip), nor from a boss's entry NPC room that holds its trips
      * while the switch lists that boss (CompanionBossRuns.holdsTripsAt: Adobis's room for Zakum, P8, where no shop is in
      * reach and no route leads back in): it keeps its no-shop line, and the companion stays put however short it is (a
      * critical request only asks the party). Memory only.
@@ -130,7 +131,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     @Override
     public boolean restocksFrom(int agentCharacterId, int mapId) {
         CompanionBossRuns bossRuns = world.bossRuns();
-        return !world.config().companionRestockBossMap(mapId) && (bossRuns == null || !bossRuns.holdsTripsAt(mapId));
+        boolean gate = world.config().companionRestockBossMap(mapId) && !world.config().companionRestockTripMap(mapId);
+        return !gate && (bossRuns == null || !bossRuns.holdsTripsAt(mapId));
     }
 
     /**

@@ -26,10 +26,11 @@ import java.util.WeakHashMap;
  * A bench ally (Part B) comes into the room at its arrival portal, where players coming down to her land, and leaves
  * by its exit portal. {@code holdsTripsAtEntry} (P8): a companion's potion trip out of the recruit map is to be held
  * there while the switch lists the boss, since the way back is too long (Zakum: no route leads back into Adobis's
- * room).
+ * room). {@code storeNpcId} (P12 G9): the store a bench ally buys at on arrival when it does not stand on the approach
+ * map itself (Leafre's, on 240000002, for an approach through Leafre); 0 takes the approach map's own supplier.
  */
 record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside, int approachMapId,
-                    String arrivalPortal, String exitPortal, boolean holdsTripsAtEntry) {
+                    String arrivalPortal, String exitPortal, boolean holdsTripsAtEntry, int storeNpcId) {
     /**
      * Mu Young stands at 617,246 (WZ 105100100 life/0): her companions wait at x 567, 537, 507, 477 and 447. On the
      * walk down from Sleepywood they pass Ant Tunnel Park (105070001), where the 24 Hr Mobile Store (1061001) sells
@@ -37,7 +38,7 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
      * (105100000) land, and leave by outPerrion (-691,246), the room's way out to Perion.
      */
     static final BossEntrance EASY_BALROG = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
-            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false);
+            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false, 0);
     // slot: zakum
     /**
      * Adobis stands at -800,-236 (WZ 211042400 life/0) on one continuous floor: her companions wait at x -850, -880,
@@ -47,14 +48,14 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
      * to be held there.
      */
     static final BossEntrance ZAKUM = new BossEntrance(AgentBossRunCatalog.ZAKUM,
-            new PqEntrance.Beside(-50, -30, true), 211_040_200, "west00", "west00", true);
+            new PqEntrance.Beside(-50, -30, true), 211_040_200, "west00", "west00", true, 0);
 
     // slot: balrog_normal
     /**
      * Normal Balrog (P11) signs up with Mu Young too: the same room, spots, approach store and portals as Easy's.
      */
     static final BossEntrance BALROG_NORMAL = new BossEntrance(AgentBossRunCatalog.BALROG_NORMAL,
-            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false);
+            new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false, 0);
 
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL);
     /**
@@ -122,11 +123,15 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     }
 
     /**
-     * The store on the approach map ({@code approachMapId}): the NPC the potion supplier catalog lists on that map
-     * (Ant Tunnel Park's 24 Hr Mobile Store, 1061001, for Easy Balrog); 0 with no approach map or no supplier on it.
-     * A bench ally buys at its prices on arrival (CompanionBossAllies), as it never walks past it.
+     * The store on the approach map ({@code approachMapId}): its row's {@code storeNpcId} when it names one (P12 G9),
+     * else the NPC the potion supplier catalog lists on that map (Ant Tunnel Park's 24 Hr Mobile Store, 1061001, for
+     * Easy Balrog); 0 with no approach map or no supplier on it. A bench ally buys at its prices on arrival
+     * (CompanionBossAllies), as it never walks past it.
      */
     int approachStoreNpcId() {
+        if (storeNpcId > 0) {
+            return storeNpcId;
+        }
         if (approachMapId <= 0) {
             return 0;
         }

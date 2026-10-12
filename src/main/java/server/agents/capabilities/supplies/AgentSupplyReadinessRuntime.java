@@ -280,6 +280,13 @@ public final class AgentSupplyReadinessRuntime {
         if (stop == null || hops < 0 || hops > maxHops) {
             return Assessment.of(Assessed.NO_SUPPLIER);
         }
+        if (AgentSupplyReadiness.bossDesk(mapId)) {
+            // P12 G9: from a boss desk the way back must fit too, or a slow return would miss the entry
+            int back = AgentVictoriaRouteRuntime.routeHops(entry, stop.mapId(), mapId, nowMs);
+            if (back < 0 || back > maxHops) {
+                return Assessment.of(Assessed.NO_SUPPLIER);
+            }
+        }
         Shop shop = AgentShopGatewayRuntime.shop().findForNpc(stop.npcId());
         int hpPrice = shortfall.hp() > 0 && shop != null ? potionPrice(agent, shop, activity, true) : 0;
         int mpPrice = shortfall.mp() > 0 && shop != null ? potionPrice(agent, shop, activity, false) : 0;
@@ -792,9 +799,12 @@ public final class AgentSupplyReadinessRuntime {
         return restockGround(agent) && AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId());
     }
 
-    /** How far its nearest supplier may be from where it stands: DESK_MAX_HOPS on a party quest's recruit map. */
+    /**
+     * How far its nearest supplier may be from where it stands: DESK_MAX_HOPS on a party quest's recruit map or a boss
+     * desk (BOSS_DESK_MAPS, P12).
+     */
     private static int maxHops(Character agent) {
-        return partyQuestDesk(agent.getMapId())
+        return partyQuestDesk(agent.getMapId()) || AgentSupplyReadiness.bossDesk(agent.getMapId())
                 ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
     }
 
