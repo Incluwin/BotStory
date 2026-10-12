@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -28,8 +29,10 @@ import java.util.function.BiConsumer;
  * <li>P18, plan decision 11a: when the boss rules name a {@code reentryWarpFrom} map (Horntail: no route reaches
  * 240050400, players come in by the Slate with an item companions do not carry), the member walks to that map instead
  * (Leafre, where it comes to) and, REENTRY_WARP_AFTER_MS after its walk began, is moved to the recruit map, then walks
- * up to the recruit NPC (the Mark of the Squad). There it first tops up at the store, as a companion with its owner
- * would ({@link #reentryRestockKey}): the move waits while that trip is under way or still being decided.</li>
+ * up to the recruit NPC (the Mark of the Squad). In Leafre it first tops up at the store, as a companion with its
+ * owner would ({@link #reentryRestockKey}). A companion's restock runs only in the live tick (objective supervision),
+ * which a consumed tick here skips, so the walk leaves the tick to it while the restock still decides and while its
+ * trip is under way (on the store map too), and the move waits meanwhile.</li>
  * </ul>
  *
  * <p>It walks while it is alive, its anchor is still in the run's event, and it is not there yet. Once there, or with
@@ -96,9 +99,15 @@ public final class AgentBossDeathWalk {
             return false;
         }
         int warpFrom = reentryWarpFrom(session, member);
+        if (warpFrom > 0 && supplyTripUnderWay(entry)) {
+            return false; // its own shop trip (potions or ammo) moves it, in the live tick
+        }
         if (warpFrom > 0 && agent.getMapId() == warpFrom) {
             long since = nowMs - walk.startedAtMs();
-            if (since >= reentryWarpAfterMs() && !restockHolds(entry, since, nowMs)) {
+            if (AgentSupplyReadiness.restockPending(entry, nowMs) && since < AgentBossRunSession.verdictWaitMs()) {
+                return false; // its restock decides in the live tick, which a consumed tick would skip
+            }
+            if (since >= reentryWarpAfterMs()) {
                 log.info("Boss death walk moved in: session={} boss={} member={} from map={} to map={}",
                         session.sessionId(), session.definition().key(), id, warpFrom, target.mapId());
                 mover.accept(agent, target.mapId());
@@ -142,13 +151,10 @@ public final class AgentBossDeathWalk {
         return warpFrom > 0 && agent.getMapId() == warpFrom ? session.definition().key() : null;
     }
 
-    /**
-     * P18 follow-up: its own restock keeps the member on the map it is moved in from while a trip is under way, or
-     * while the restock still decides on one (at most VERDICT_WAIT_MS of its walk, as at sign-up).
-     */
-    private static boolean restockHolds(AgentRuntimeEntry entry, long sinceMs, long nowMs) {
-        return AgentSupplyReadiness.status(entry, nowMs).restocking()
-                || AgentSupplyReadiness.restockPending(entry, nowMs) && sinceMs < AgentBossRunSession.verdictWaitMs();
+    /** True while a supply trip of the member's own is under way (potions or ammo: the procurement is active). */
+    private static boolean supplyTripUnderWay(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::isActive).orElse(false);
     }
 
     /**

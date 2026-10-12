@@ -90,10 +90,11 @@ No database change.
 - **Re-entry restock (7a6244dba).** `AgentBossDeathWalk.reentryRestockKey` names the boss key while a REENTERING
   member stands on its `reentryWarpFrom` map (only Horntail names one). `CompanionRestock.standing` then gives it that
   boss's standard, though the run holds it. `AgentSupplyReadinessRuntime.free` lets that member shop with its owner on
-  another map; every other following companion still needs its owner on its map. The move in waits while the trip
-  is under way, or while the restock still decides on one (at most `AgentBossRunSession.VERDICT_WAIT_MS`, 12 s, of
-  the walk). The restock runs before the death walk in the tick (AgentTickPreflightRuntime), so the walk's spent tick
-  does not block it. The Leafre store map (240000002) is one portal from Leafre, well inside `REENTER_TIMEOUT_MS`
+  another map; every other following companion still needs its owner on its map. A companion's restock runs only in the
+  live tick (objective supervision), after the preflight step where the walk runs, so a consumed walk tick would skip
+  it (the first version did, found by the deploy review). The walk leaves the tick to the restock while it still decides
+  (at most `AgentBossRunSession.VERDICT_WAIT_MS`, 12 s, of the walk) and while a trip of its own is under way, on the
+  store map too, for potions or ammo. The move in waits meanwhile. The Leafre store map (240000002) is one portal from Leafre, well inside `REENTER_TIMEOUT_MS`
   (5 min).
 
 ## Tests
@@ -104,7 +105,9 @@ No database change.
   head A and melee members the legs; nothing up there means hold; after the clear, hold.
 - `AgentBossDeathWalkTest`: a REENTERING Horntail member stands in Leafre, is moved once to 240050400 and walks up to
   the Mark; away from Leafre it walks to Leafre. 7a6244dba: in Leafre it keeps Horntail's standard (not on the store
-  map, not in another run, not once INSIDE), and the move in waits for its trip and for a pending decision.
+  map, not in another run, not once INSIDE). While its restock decides, and during its trip (an ammo trip on the store
+  map too), the walk leaves the tick to the live tick and the move waits. A source-order test pins the tick order this
+  relies on (supply maintenance before follow sync).
 - `AgentSupplyReadinessRuntimeTest` (7a6244dba): with its owner on another map, a following companion makes no trip
   unless it walks back into a boss run.
 - `CompanionRestockTest` (7a6244dba): a companion walking back in keeps Horntail's standard though the run holds it;

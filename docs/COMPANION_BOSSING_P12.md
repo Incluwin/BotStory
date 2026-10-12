@@ -7,14 +7,29 @@
 ## Result
 
 P12 builds the shared rules that P13 to P20 need, behind boss keys that later phases add. Each item has unit tests.
-Live behaviour changes only in three places:
+Live behaviour changes in these places with every new key off (the list was completed after the deploy review of
+2026-10-12):
 
 1. A companion's card shows its boss records ("Zakum: cleared 1 of 3") once it has three runs of a boss.
 2. Inside a companion boss run, boss kills no longer give friendship BOSS points each. A cleared run gives its owner
-   BOSS points once with each Resident companion that went in (decision 23). This changes Easy Balrog and Zakum runs
-   now.
+   BOSS points once with each Resident companion that went in (decision 23). After the review, a friend who hit one
+   of the run's bosses also gets them once, with the companions in their party (917ca04c2). This changes Easy Balrog
+   and Zakum runs now.
 3. A never-target part (Normal Balrog's helpers and seal, Zakum's fake body) is now no primary target either. Before,
-   only secondary and projectile picks skipped it.
+   only secondary and projectile picks skipped it. Easy Balrog lists none, so its runs do not change here.
+4. In Easy Balrog runs (its key is on live), companions stop hitting a part that is immune to or reflects their damage
+   type (G4), handle stun, seduce, confuse and banish (G5: the claw's attack2 confuses), and do not summon (G11).
+5. Any mob dispel makes the dispelled Agent rebuff, everywhere (G5 dispel notice).
+6. At the Papulatus portal, a companion that is not on its party leader's map is neither checked nor logged for the
+   daily quota (G7), for every party.
+
+## Deploy review fixes (2026-10-12)
+
+- `AgentBossRules.fieldKeyOf` scanned all rows with boxed `List.contains`, and the combat candidate filter called it
+  for every hostile monster before the distance filter. It now binary-searches a sorted int index built with the
+  catalog, and the candidate filter runs the boss checks after the distance and objective filters (4fd036d9b).
+- `BOSS_DESK_MAPS` id ranges now work in the desk lookup, as the validator allowed (4fd036d9b).
+- Friends who hit a run's boss get its once-per-run BOSS points (917ca04c2, item 2 above).
 
 ## What each item does
 
@@ -95,6 +110,7 @@ Crew A on its Lv160 rung. No restart needed after deploy.
 ## Risks
 
 - Human players' boss clears inside companion runs now give BOSS points once per run, not per kill. A boss with
-  several boss=1 parts now gives one award a run, not one a part.
+  several boss=1 parts now gives one award a run, not one a part. A friend gets them only by hitting one of the
+  run's bosses, and an owner only when online at the run's end.
 - Unconfirmed: the v83 pOption region format. P8's calibration counts answer it for Zakum first.
 - Blocking physics on mobile field bosses removes bot knockback, which changes how solo bots fight them (P13).
