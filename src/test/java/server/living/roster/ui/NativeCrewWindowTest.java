@@ -1087,6 +1087,69 @@ class NativeCrewWindowTest {
     }
 
     @Test
+    void aHelloThatRacedTheWorldsStartReadsTheWorldAgainAndIsEnabled() {
+        hadrik();
+        java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+        // the first read is before the world was there; the world starts before the HELLO reads it again
+        NativeCrewWindow.receiveFrom(client, owner, new Hello(NativeCrewPackets.PROTOCOL, 20261012),
+                () -> reads.getAndIncrement() == 0 ? null : world);
+
+        assertArrayEquals(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, true).getBytes(), last());
+        assertTrue(windowEnabled.get());
+    }
+
+    @Test
+    void theEnabledBitTurnsOnOnlyWithTheWelcomeThatSaysSo() {
+        hadrik();
+        NativeCrewWindow.receive(client, owner, new Hello(NativeCrewPackets.PROTOCOL, 20261012), null);
+        clearInvocations(client);
+        List<Runnable> packetThread = new ArrayList<>();
+        doAnswer(inv -> {
+            packetThread.add(inv.getArgument(0)); // held: a Roster click is handled on this thread first
+            return null;
+        }).when(client).runOnIoThread(any());
+
+        window.started(List.of(owner));
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty(), "no OPEN before the WELCOME that enables the client");
+        assertEquals(1, NpcTalks.talks(sent()).size(), "the NPC Crew window instead");
+
+        packetThread.forEach(Runnable::run);
+        assertArrayEquals(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, true).getBytes(), last());
+        assertTrue(windowEnabled.get());
+    }
+
+    @Test
+    void everyCloseTheServerSendsLeavesTheRosterTheNpcWindow() {
+        hadrik();
+        // the watcher's CLOSE: the character lost what the switch asks for while its window was open
+        config.CREW_WINDOW_NATIVE = "gm";
+        when(owner.isGM()).thenReturn(true);
+        openWindow();
+        assertTrue(windowEnabled.get());
+        when(owner.isGM()).thenReturn(false);
+        window.watchOpenWindows();
+        assertFalse(windowEnabled.get(), "the watcher's CLOSE disabled the client");
+
+        // the CLOSE that answers an OPEN the switch no longer allows
+        windowEnabled.set(true);
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+        assertFalse(windowEnabled.get(), "the OPEN's CLOSE disabled the client");
+
+        // the CLOSE with the living world off
+        windowEnabled.set(true);
+        NativeCrewWindow.receive(client, owner, new Open(), null);
+        assertFalse(windowEnabled.get(), "the world-off CLOSE disabled the client");
+
+        LivingTalk.forget(owner);
+        clearInvocations(client);
+        when(owner.isGM()).thenReturn(true);
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty(), "no OPEN a disabled client would ignore");
+        assertEquals(1, NpcTalks.talks(sent()).size());
+    }
+
+    @Test
     void theRosterOverAnOpenWindowWhoseWatchWentIdleWatchesItAgainWithAFreshSnapshot() {
         hadrik();
         openWindow();

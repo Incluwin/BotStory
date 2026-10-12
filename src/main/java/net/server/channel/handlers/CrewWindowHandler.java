@@ -31,6 +31,6 @@ public final class CrewWindowHandler extends AbstractPacketHandler {
                     player.getName());
             return;
         }
-        NativeCrewWindow.receive(c, player, op, LivingWorld.get());
+        NativeCrewWindow.receiveFrom(c, player, op, LivingWorld::get);
     }
 }

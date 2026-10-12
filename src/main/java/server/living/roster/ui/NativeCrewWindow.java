@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import static server.living.roster.ui.NativeCrewPackets.BENCH;
 import static server.living.roster.ui.NativeCrewPackets.CALL;
@@ -138,9 +139,18 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
      * say HELLO is dropped with nothing sent back.
      */
     public static void receive(Client client, Character chr, Op op, LivingWorld world) {
+        receiveFrom(client, chr, op, () -> world);
+    }
+
+    /**
+     * {@link #receive} with the living world read from {@code worlds} (the packet handler's LivingWorld::get): HELLO
+     * reads it again once it has kept the protocol, so a HELLO that raced the world's start is never left "not enabled".
+     */
+    public static void receiveFrom(Client client, Character chr, Op op, Supplier<LivingWorld> worlds) {
+        LivingWorld world = worlds.get();
         NativeCrewWindow window = world == null ? null : world.crewWindow();
         if (op instanceof Hello hello) {
-            hello(client, chr, hello, window);
+            hello(client, chr, hello, window, worlds);
             return;
         }
         if (negotiated(client) < 1) {
@@ -148,6 +158,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         }
         if (window == null) {
             client.setCrewWindowOpen(false);
+            client.setCrewWindowEnabled(false); // a CLOSE disables the client's window until its next WELCOME
             client.sendPacket(NativeCrewPackets.close()); // the living world is off: no window may be open
             return;
         }
@@ -160,11 +171,18 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
      * character may open the window. A protocol of 0 or less is no HELLO and is not answered. HELLO is once per
      * connection (a channel change is a new Client): a repeat is neither answered nor logged.
      */
-    private static void hello(Client client, Character chr, Hello hello, NativeCrewWindow window) {
+    private static void hello(Client client, Character chr, Hello hello, NativeCrewWindow window,
+                              Supplier<LivingWorld> worlds) {
         if (hello.protocol() <= 0 || client.getCrewWindowProtocol() != 0) {
             return;
         }
         client.setCrewWindowProtocol(hello.protocol());
+        if (window == null) {
+            // the world may have started since it was read: either this read sees it, or its start (which announces
+            // to every client that said HELLO) saw the protocol just kept
+            LivingWorld now = worlds.get();
+            window = now == null ? null : now.crewWindow();
+        }
         int served = negotiated(client);
         boolean enabled = window != null && window.allows(chr);
         client.setCrewWindowEnabled(enabled);
@@ -202,6 +220,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             watches.remove(owner.getId());
             LivingTalk.endNative(owner);
             client.setCrewWindowOpen(false);
+            client.setCrewWindowEnabled(false); // a CLOSE disables the client's window until its next WELCOME
             send(client, NativeCrewPackets.close()); // the switch or the character changed since WELCOME
             return;
         }
@@ -445,6 +464,7 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
                 watches.remove(owner.getId(), watch);
                 LivingTalk.endNative(owner);
                 client.setCrewWindowOpen(false);
+                client.setCrewWindowEnabled(false); // a CLOSE disables the client's window until its next WELCOME
                 client.runOnIoThread(() -> send(client, NativeCrewPackets.close()));
                 continue;
             }
@@ -491,12 +511,17 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
                 LivingTalk.endNative(chr);
                 client.setCrewWindowOpen(false);
             }
-            client.setCrewWindowEnabled(enabled);
+            if (!enabled) {
+                client.setCrewWindowEnabled(false); // never a Roster OPEN to a window being switched off
+            }
             int served = negotiated(client);
             client.runOnIoThread(() -> {
                 if (!enabled) {
                     send(client, NativeCrewPackets.close());
                 }
+                // set where the WELCOME goes out: a Roster click on this thread before it would send an OPEN the
+                // client, still disabled, drops
+                client.setCrewWindowEnabled(enabled);
                 send(client, NativeCrewPackets.welcome(served, enabled));
             });
         }
