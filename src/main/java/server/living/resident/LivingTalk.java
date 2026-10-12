@@ -190,6 +190,26 @@ public final class LivingTalk {
     }
 
     /**
+     * Runs {@code answer} as the answer to the player's own click when it comes back from a read on companion-ops (a
+     * page or line drawn within a second of the click, on the player's I/O thread): {@link #mayShow} lets it past the
+     * 500 ms click throttle that the click's own window stamped, as {@link #respond} does for an answer drawn at once,
+     * while a window awaiting its reply still refuses it.
+     */
+    public static void answering(Character chr, Runnable answer) {
+        Integer outer = ANSWERING.get();
+        ANSWERING.set(chr.getId());
+        try {
+            answer.run();
+        } finally {
+            if (outer == null) {
+                ANSWERING.remove();
+            } else {
+                ANSWERING.set(outer);
+            }
+        }
+    }
+
+    /**
      * True while a talk or a stock NPC or quest script window awaits the player's reply: {@link #mayShow} without the
      * click throttle, for a window of another kind (the trade window) that must never open over a dialog.
      */

@@ -259,13 +259,13 @@ public final class CompanionMenus {
             if (client == null) {
                 return; // logged off meanwhile
             }
-            client.runOnIoThread(() -> {
+            client.runOnIoThread(() -> LivingTalk.answering(owner, () -> { // the answer to the click
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
                     answer.accept(line);
                 } else if (!line.isEmpty()) {
                     owner.dropMessage(5, line);
                 }
-            });
+            }));
         });
     }
 
@@ -327,13 +327,13 @@ public final class CompanionMenus {
             if (client == null) {
                 return; // logged off meanwhile
             }
-            client.runOnIoThread(() -> {
+            client.runOnIoThread(() -> LivingTalk.answering(owner, () -> { // the answer to the click
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS
                         && (surface == Surface.NATIVE && LivingTalk.nativeDraws(owner) ? !LivingTalk.nativeActive(owner)
                         : LivingTalk.mayShow(owner))) {
                     show.accept(found);
                 }
-            });
+            }));
         });
     }
 

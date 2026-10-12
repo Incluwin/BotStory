@@ -188,7 +188,7 @@ class LpqRedSignDeskTest {
         Persona ilse = benched("ilse", "Ilse", ILSE, 40);
         desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ludibrium"), PqEntrance.of("lpq"),
                 leader -> new CrewSuggestions.Suggestion("lpq", List.of("you", "Mira", "Pip", "Tobi", "Casse", "Ilse"),
-                        List.of(ilse), List.of(ilse)));
+                        List.of(ilse), List.of(ilse)), leader -> 1);
         desk.proposal(ben, lineup(null), null);
         pick("Call someone from my bench...");
 
