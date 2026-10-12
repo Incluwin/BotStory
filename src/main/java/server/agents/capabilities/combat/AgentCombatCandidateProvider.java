@@ -31,12 +31,13 @@ final class AgentCombatCandidateProvider {
         }
         return AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(AgentCombatTargetEligibilityPolicy::isHostileLivingMonster)
-                .filter(monster -> !AgentBossTargetGate.refuses(agent, monster))
-                .filter(monster -> !AgentBossRunRegistry.neverTarget(monster))
                 .filter(monster -> {
                     Point aim = AgentCombatAimPointPolicy.aimPoint(agent, monster);
                     return aim != null && aim.distanceSq(origin) <= maximumDistanceSquared;
                 })
+                // the boss checks last: only monsters in reach pay for them
+                .filter(monster -> !AgentBossTargetGate.refuses(agent, monster))
+                .filter(monster -> !AgentBossRunRegistry.neverTarget(monster))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
@@ -64,12 +65,12 @@ final class AgentCombatCandidateProvider {
         }
         return AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(AgentCombatTargetEligibilityPolicy::isHostileLivingMonster)
-                .filter(monster -> !AgentBossTargetGate.refuses(agent, monster))
-                .filter(monster -> !AgentBossRunRegistry.neverTarget(monster))
                 .filter(monster -> AgentCombatObjectiveTargetStateRuntime.allows(
                         entry, monster.getId()))
                 .filter(monster -> AgentCombatObjectiveTargetStateRuntime.prefers(
                         entry, monster.getId()) == preferred)
+                .filter(monster -> !AgentBossTargetGate.refuses(agent, monster))
+                .filter(monster -> !AgentBossRunRegistry.neverTarget(monster))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 }

@@ -335,6 +335,20 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(calls.get(0).startsWith("started 538 "), calls.toString());
     }
 
+    /** Deploy review 2026-10-12: the validator takes id ranges in BOSS_DESK_MAPS, so the desk lookup reads them too. */
+    @Test
+    void aBossDeskListedInsideAnIdRangeIsADesk() {
+        String shipped = AgentYamlConfig.config.tuning.put(BOSS_DESK_MAPS, "211042300, 220079999-220080001");
+        try {
+            assertTrue(AgentSupplyReadiness.bossDesk(PAPULATUS_GATE));
+            assertTrue(AgentSupplyReadiness.bossDesk(ZAKUM_DOOR));
+            assertFalse(AgentSupplyReadiness.bossDesk(220_080_002));
+            assertFalse(AgentSupplyReadiness.bossDesk(HERB_TOWN));
+        } finally {
+            AgentYamlConfig.config.tuning.put(BOSS_DESK_MAPS, shipped);
+        }
+    }
+
     @Test
     void thePapulatusGateNotListedAsABossDeskKeepsTheTwoHopRadius() {
         String shipped = AgentYamlConfig.config.tuning.put(BOSS_DESK_MAPS, "none");

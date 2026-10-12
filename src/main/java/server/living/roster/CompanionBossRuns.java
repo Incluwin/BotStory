@@ -40,6 +40,7 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -441,6 +442,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final Supplies supplies;
     /** Run key -> an owner's part of an open boss run: from its enlist (or first seat or report) to the run's end. */
     private final Map<String, CompanionBossRun> runs;
+    /**
+     * P12 G12 follow-up: the humans who hit a boss of each open run (session id), owners or not. A cleared run
+     * befriends each once (befriend). Companion-ops only.
+     */
+    private final Map<Long, Set<Integer>> bossHitters = new HashMap<>();
     /** P7 Part B: the owners' bench allies, each on its trip from its call to its unload. */
     private final CompanionBossAllies allies;
     /** P8: the companions' daily boss entries (Zakum), shared with the bench allies' calls. */
@@ -1475,6 +1481,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      */
     void finish(RunEnded ended) {
         quota.runEnded(ended.sessionId());
+        Set<Integer> hitters = bossHitters.remove(ended.sessionId());
         Set<Integer> owners = new LinkedHashSet<>();
         for (MemberResult member : ended.members()) {
             owners.add(member.enlistedBy());
@@ -1505,7 +1512,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         record(ended, wentIn, taken);
         logPotions(ended, wentIn, taken);
         if (ended.cleared()) {
-            befriend(ended, wentIn, taken);
+            befriend(ended, wentIn, taken, hitters == null ? Set.of() : hitters);
             for (CompanionBossRun run : taken.values()) {
                 sayGg(run, wentIn);
             }
@@ -1536,23 +1543,53 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * P12 G12 (decision 23): a cleared run gives each owner online the friendship BOSS points once with each of their
-     * Resident companions that went in (Friendship.onBossRunCleared). The run's own boss kills gave none
-     * (LivingWorldHooks.mobKilled).
+     * A boss of a companion run died (LivingWorldHooks.mobKilled, inside the monster's monitor: memory only here). The
+     * humans among {@code attackerIds} took part, so the run's clear befriends them once (befriend), a friend in an
+     * owner's party too, as the per-kill rule did before P12.
      */
-    private void befriend(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
+    public void bossKilledInRun(MapleMap map, Set<Integer> attackerIds) {
+        EventInstanceManager event = map == null ? null : map.getEventInstance();
+        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
+        if (session == null || attackerIds == null) {
+            return;
+        }
+        Set<Integer> humans = new HashSet<>();
+        for (int attackerId : attackerIds) {
+            if (AgentRuntimeRegistry.findByAgentCharacterId(attackerId) == null) {
+                humans.add(attackerId);
+            }
+        }
+        if (!humans.isEmpty()) {
+            long sessionId = session.sessionId();
+            world.executor().submit("boss.hit " + sessionId,
+                    () -> bossHitters.computeIfAbsent(sessionId, ignored -> new HashSet<>()).addAll(humans));
+        }
+    }
+
+    /**
+     * P12 G12 (decision 23): a cleared run gives the friendship BOSS points once (Friendship.onBossRunCleared) to each
+     * human online who took part: each owner with each Resident companion it enlisted that went in, and each human who
+     * hit one of the run's bosses ({@code hitters}) with each such companion in its party too. The run's own boss kills
+     * gave none (LivingWorldHooks.mobKilled).
+     */
+    private void befriend(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken,
+                          Set<Integer> hitters) {
         Friendship friendship = world.friendship();
         if (friendship == null) {
             return;
         }
-        for (Map.Entry<Integer, CompanionBossRun> owner : taken.entrySet()) {
-            Character human = world.roster().onlineCharacter(owner.getKey());
+        Set<Integer> humans = new LinkedHashSet<>(taken.keySet());
+        humans.addAll(hitters);
+        for (int humanId : humans) {
+            Character human = world.roster().onlineCharacter(humanId);
             List<Persona> companions = new ArrayList<>();
             for (MemberResult member : human == null ? List.<MemberResult>of() : wentIn) {
-                String personaId = member.enlistedBy() == owner.getKey()
-                        ? personaId(owner.getValue(), member.agentId()) : null;
+                if (member.enlistedBy() != humanId && !sameParty(human, bot(member.agentId()))) {
+                    continue;
+                }
+                String personaId = personaId(taken.get(member.enlistedBy()), member.agentId());
                 Persona persona = personaId == null ? null : world.content().persona(personaId);
-                if (persona != null) {
+                if (persona != null && !companions.contains(persona)) {
                     companions.add(persona);
                 }
             }
@@ -1560,6 +1597,11 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 friendship.onBossRunCleared(human, companions, ended.bossKey());
             }
         }
+    }
+
+    private static boolean sameParty(Character human, Character companion) {
+        return human.getParty() != null && companion != null && companion.getParty() != null
+                && human.getParty().getId() == companion.getParty().getId();
     }
 
     /**

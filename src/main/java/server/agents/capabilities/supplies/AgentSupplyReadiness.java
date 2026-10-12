@@ -724,6 +724,7 @@ public final class AgentSupplyReadiness {
     /**
      * P12 G9: a boss gate listed in BOSS_DESK_MAPS (the Papulatus gate, 220080000) is a desk like a party quest's: a
      * trip from it may reach DESK_MAX_HOPS, both ways. Only a gate the host lets trips leave from sends one.
+     * The list takes ids and id ranges, as AgentEngineConfigValidator allows.
      */
     static boolean bossDesk(int mapId) {
         String raw = config.AgentTuning.stringValue(
@@ -732,7 +733,10 @@ public final class AgentSupplyReadiness {
             return false;
         }
         for (String entry : raw.split(",")) {
-            if (entry.trim().equals(Integer.toString(mapId))) {
+            int dash = entry.indexOf('-');
+            int first = Integer.parseInt(entry.substring(0, dash < 0 ? entry.length() : dash).trim());
+            int last = dash < 0 ? first : Integer.parseInt(entry.substring(dash + 1).trim());
+            if (mapId >= first && mapId <= last) {
                 return true;
             }
         }
