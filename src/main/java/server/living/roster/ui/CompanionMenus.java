@@ -181,8 +181,13 @@ public final class CompanionMenus {
 
     /** One companion's version (its card and pages), taken before the screen reads its row; 0 without a cache. */
     long version(Character owner, Persona persona) {
+        return version(owner, persona.id());
+    }
+
+    /** {@link #version(Character, Persona)} by persona id (the native Crew window stamps rows it may not have a persona for). */
+    long version(Character owner, String personaId) {
         CompanionViews views = world.views();
-        return views == null ? 0L : views.version(owner.getId(), persona.id());
+        return views == null ? 0L : views.version(owner.getId(), personaId);
     }
 
     /**
@@ -243,6 +248,23 @@ public final class CompanionMenus {
                     owner.dropMessage(5, line);
                 }
             });
+        });
+    }
+
+    /**
+     * A command whose answer opens no window, a click on the native Crew window's (P10): as {@link #command(Character,
+     * String, Supplier, Consumer)}, but {@code answer} always gets the line on the owner's packet thread, however long
+     * the action took and whatever window waits, since what it sends (pink text, a fresh snapshot) covers none.
+     */
+    void commandQuietly(Character owner, String name, Supplier<String> action, Consumer<String> answer) {
+        world.executor().submit(name, () -> {
+            String said = action.get();
+            String line = said == null ? "" : said;
+            Client client = owner.getClient();
+            if (client == null) {
+                return; // logged off meanwhile
+            }
+            client.runOnIoThread(() -> answer.accept(line));
         });
     }
 

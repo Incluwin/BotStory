@@ -118,7 +118,11 @@ public class Client extends ChannelInboundHandlerAdapter {
     private static final Logger log = LoggerFactory.getLogger(Client.class);
     private static final int PACKET_PREVIEW_BYTES = 256;
     private static final short OBSERVER_OPCODE_FIRST = 0x113;
-    private static final short OBSERVER_OPCODE_LAST = 0x116;
+    /**
+     * The native Crew window's opcode (P10), right after the observers' 0x113..0x116: its first inbound packet per
+     * connection is logged as theirs are.
+     */
+    private static final short CREW_WINDOW_OPCODE = 0x117;
 
     public static final int LOGIN_NOTLOGGEDIN = 0;
     public static final int LOGIN_SERVER_TRANSITION = 1;
@@ -171,6 +175,11 @@ public class Client extends ChannelInboundHandlerAdapter {
     private int lang = 0;
     private volatile BossClientSimulationCapability bossSimulationCapability =
             BossClientSimulationCapability.NATIVE_MOB_SIMULATION;
+    /**
+     * The native Crew window protocol this connection's client said HELLO with (P10, docs/BOT_MANAGEMENT_P10_PLAN.md):
+     * 0 until then, and a connection at 0 is never sent a CREW_WINDOW packet (a client without the P10 DLL).
+     */
+    private volatile int crewWindowProtocol;
 
     public enum Type {
         LOGIN,
@@ -186,6 +195,15 @@ public class Client extends ChannelInboundHandlerAdapter {
         this.bossSimulationCapability = bossSimulationCapability == null
                 ? BossClientSimulationCapability.RENDER_ONLY
                 : bossSimulationCapability;
+    }
+
+    /** The native Crew window protocol of this connection's HELLO; 0 when it sent none. */
+    public int getCrewWindowProtocol() {
+        return crewWindowProtocol;
+    }
+
+    public void setCrewWindowProtocol(int crewWindowProtocol) {
+        this.crewWindowProtocol = crewWindowProtocol;
     }
 
     public Client(Type type, long sessionId, String remoteAddress, PacketProcessor packetProcessor, int world, int channel) {
@@ -271,9 +289,10 @@ public class Client extends ChannelInboundHandlerAdapter {
         final PacketHandler handler = packetProcessor.getHandler(opcode);
 
         if (opcode >= OBSERVER_OPCODE_FIRST
-                && opcode <= OBSERVER_OPCODE_LAST
+                && opcode <= CREW_WINDOW_OPCODE
                 && observedObserverOpcodes.add(opcode)) {
-            log.info("[observer] first inbound opcode={} payloadBytes={} handler={} loggedIn={} account={} player={}",
+            log.info("[{}] first inbound opcode={} payloadBytes={} handler={} loggedIn={} account={} player={}",
+                    opcode == CREW_WINDOW_OPCODE ? "crew-window" : "observer",
                     opcode,
                     packet.available(),
                     handler == null ? "none" : handler.getClass().getSimpleName(),

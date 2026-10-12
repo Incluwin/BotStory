@@ -358,7 +358,8 @@ public enum SendOpcode {
     OBSERVER_CHARACTERS(0x176),
     OBSERVER_NAV_GRAPH(0x177),
     OBSERVER_INTEREST(0x178),
-    OBSERVER_ACTION_RESULT(0x179);
+    OBSERVER_ACTION_RESULT(0x179),
+    CREW_WINDOW(0x17A);             // P10 native Crew window (Kaentake client crewwnd, docs/BOT_MANAGEMENT_P10_PLAN.md)
     private int code = -2;
 
     SendOpcode(int code) {

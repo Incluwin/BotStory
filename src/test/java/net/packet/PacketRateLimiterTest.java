@@ -14,7 +14,7 @@ class PacketRateLimiterTest {
 
     @Test
     void limitsBurstsAndRefillsByConfiguredRate() {
-        PacketRateLimiter limiter = new PacketRateLimiter(2, 2, 2, 2, 2, 2, 2, 3,
+        PacketRateLimiter limiter = new PacketRateLimiter(2, 2, 2, 2, 2, 2, 2, 2, 3,
                 new PacketRateLimiter.MobControlBudget(2, 0, 2));
 
         assertTrue(limiter.allow(MOVE_PLAYER, 1_000).allowed());
@@ -25,7 +25,7 @@ class PacketRateLimiterTest {
 
     @Test
     void repeatedViolationsRequestDisconnect() {
-        PacketRateLimiter limiter = new PacketRateLimiter(1, 1, 1, 1, 1, 1, 1, 2,
+        PacketRateLimiter limiter = new PacketRateLimiter(1, 1, 1, 1, 1, 1, 1, 1, 2,
                 new PacketRateLimiter.MobControlBudget(1, 0, 1));
         short chat = (short) RecvOpcode.GENERAL_CHAT.getValue();
 
@@ -96,6 +96,30 @@ class PacketRateLimiterTest {
         }
     }
 
+    @Test
+    void crewWindowPacketsHaveTheirOwnSmallBudgetAndLeaveTheOthersAlone() {
+        PacketRateLimiter limiter = shippedLimiter();
+        short crew = (short) RecvOpcode.CREW_WINDOW.getValue();
+        short other = (short) RecvOpcode.NPC_ACTION.getValue();
+
+        PacketRateLimiter.Decision first = limiter.allow(crew, START_MS);
+        assertEquals(PacketFamily.CREW, first.family());
+        assertEquals(10, first.familyLimit());
+        for (int burst = 1; burst < 20; burst++) {
+            assertTrue(limiter.allow(crew, START_MS).allowed(), "two seconds' worth at once: " + burst);
+        }
+        assertFalse(limiter.allow(crew, START_MS).allowed(), "a stuck client is held to 10 a second");
+        assertTrue(limiter.allow(other, START_MS).allowed(), "the other families keep their own budget");
+        assertTrue(limiter.allow(crew, START_MS + 100).allowed(), "one more each 100 ms");
+    }
+
+    @Test
+    void aStuckCrewWindowClientIsDisconnectedLikeAnyFlood() {
+        PacketRateLimiter limiter = shippedLimiter();
+
+        assertTrue(disconnectsWithin(limiter, (short) RecvOpcode.CREW_WINDOW.getValue(), 5, 0, 10_000));
+    }
+
     private static boolean disconnectsWithin(PacketRateLimiter limiter, short opcode, int intervalMs,
                                              int controlledMobs, long durationMs) {
         for (long ms = 0; ms < durationMs; ms += intervalMs) {
@@ -107,7 +131,7 @@ class PacketRateLimiterTest {
     }
 
     private static PacketRateLimiter shippedLimiter() {
-        return new PacketRateLimiter(300, 600, 120, 120, 20, 30, 200, 20,
+        return new PacketRateLimiter(300, 600, 120, 120, 20, 30, 10, 200, 20,
                 new PacketRateLimiter.MobControlBudget(120, 6, 1_200));
     }
 }

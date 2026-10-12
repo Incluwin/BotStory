@@ -536,6 +536,7 @@ server:
     PACKET_COMBAT_RATE_PER_SECOND: 120                       # Attacks, skills and damage updates allowed per second. Recommended: 60-180.
     PACKET_CHAT_RATE_PER_SECOND: 20                          # Chat-family packets allowed per second. Recommended: 8-30.
     PACKET_ECONOMY_RATE_PER_SECOND: 30                       # Shop, trade, storage, MTS and Duey actions allowed per second. Recommended: 15-60.
+    PACKET_CREW_RATE_PER_SECOND: 10                          # Native Crew window packets (CREW_WINDOW 0x117, P10) allowed per second, so a stuck client cannot flood companion-ops. Recommended: 5-20.
     PACKET_OTHER_RATE_PER_SECOND: 200                        # Remaining packet families allowed per second. Recommended: 100-300.
     PACKET_RATE_LIMIT_VIOLATIONS_BEFORE_DISCONNECT: 20       # Dropped packets in ten seconds before closing the connection. Recommended: 10-50.
     ITEMS_NEVER_EXPIRE: false                               # Explicit custom-world override. Normal item expiration is preserved by default.
@@ -805,6 +806,12 @@ living_world:
     # (p3-roster-item RUNBOOK sections 1-3) ships with the P3 deploy; if it cannot, deploy P3 with 0 here and set
     # 2430011 again once the rename is in the patcher manifest.
     ROSTER_BOOK_ITEM_ID: 2430011
+    # Native Crew window (P10, docs/BOT_MANAGEMENT_P10_PLAN.md; NativeCrewWindow): who may open the mouse-driven crew
+    # window that a client with the P10 DLL offers on its hotkey. off = nobody (a HELLO is answered "not enabled" and
+    # the client never opens it), gm = GM characters only, all = everyone. The NPC-dialog Crew window, the cards and the
+    # Roster item work as before either way. "!world crewwindow off|gm|all" changes it until the next restart and
+    # closes every open window it no longer allows.
+    CREW_WINDOW_NATIVE: "off"
     # Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md): companions per online human, live bench bots
     # per owner and server-wide (BENCH_LIVE_MAX above stays the bench rotation size), one expedition burst,
     # the registered Agent ceiling and the per-owner gap between two loads. Revisit after the scheduler fix.
