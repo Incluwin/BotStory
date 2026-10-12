@@ -100,8 +100,17 @@ public final class CompanionMenus {
         cards.show(owner, persona, fromCrew, crewVoice);
     }
 
-    /** The Adventurer's Roster: the Crew window from anywhere, even with every companion benched. */
+    /**
+     * The Adventurer's Roster: the Crew window from anywhere, even with every companion benched; the native one on a
+     * client that has it with every function of this one (protocol 2), the NPC one otherwise.
+     */
     public void rosterBook(Character owner) {
+        // P10 Step 7: a client whose native Crew window does everything this one does opens that window instead
+        NativeCrewWindow window = world.crewWindow();
+        if (window != null && !rows(owner).isEmpty() && window.openFor(owner)) {
+            owner.sendPacket(PacketCreator.enableActions());
+            return;
+        }
         if (!LivingTalk.mayShow(owner)) {
             owner.sendPacket(PacketCreator.enableActions());
             return;

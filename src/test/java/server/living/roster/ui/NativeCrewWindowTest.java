@@ -975,6 +975,33 @@ class NativeCrewWindowTest {
     }
 
     @Test
+    void theRosterOpensTheNativeWindowOnAProtocolTwoClientAndTheNpcWindowOtherwise() {
+        hadrik();
+        hello();
+
+        menus.rosterBook(owner);
+
+        assertArrayEquals(NativeCrewPackets.open().getBytes(), crewPackets().get(0), "the client is asked to open");
+        assertTrue(NpcTalks.talks(sent()).isEmpty(), "no NPC Crew window");
+        verify(owner).sendPacket(org.mockito.ArgumentMatchers.argThat(packet -> Arrays.equals(packet.getBytes(),
+                tools.PacketCreator.enableActions().getBytes())));
+
+        clearInvocations(client);
+        config.CREW_WINDOW_NATIVE = "off";
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty(), "switched off: no OPEN");
+        assertEquals(1, NpcTalks.talks(sent()).size(), "the NPC Crew window");
+
+        LivingTalk.forget(owner);
+        clearInvocations(client);
+        config.CREW_WINDOW_NATIVE = "all";
+        protocol.set(1); // the trial DLL: its More opened the NPC Crew window, so the Roster stays the NPC one
+        menus.rosterBook(owner);
+        assertTrue(crewPackets().isEmpty());
+        assertEquals(1, NpcTalks.talks(sent()).size());
+    }
+
+    @Test
     void anActionsPageThatFailsIsLoggedAndNeverThrownIntoThePacketHandler() {
         hadrik();
         window.install();
