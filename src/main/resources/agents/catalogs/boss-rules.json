@@ -40,8 +40,17 @@
     {
       "key": "pinkbean",
       "label": "Pink Bean",
+      "targetPriority": [8820002, 8820006, 8820005, 8820003, 8820004, 8820001],
+      "adds": [8820007],
       "neverTarget": [8820000, 8820019, 8820020, 8820021, 8820022, 8820023],
-      "markerItems": [4001193]
+      "markerItems": [4001193],
+      "entryItems": [],
+      "stageMaps": [270050200],
+      "stagePortal": "in00",
+      "keepOut": [
+        {"mobId": 8820003, "fromDx": -900, "toDx": -200},
+        {"mobId": 8820004, "fromDx": 200, "toDx": 900}
+      ]
     },
     {
       "key": "latanica",

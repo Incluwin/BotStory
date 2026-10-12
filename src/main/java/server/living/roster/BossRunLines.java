@@ -311,6 +311,24 @@ final class BossRunLines {
                     Map.entry(GG, List.of(
                             "gg! horntail's down!",
                             "we actually did it. gg!")))),
+            // slot: pinkbean (P20: the Temple of Time's expedition; the dead revive inside, so DOWN is a failed revive)
+            Map.entry("pinkbean", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, couldn't get back in. i'll wait outside.",
+                            "pink bean got me good... waiting outside.")),
+                    Map.entry(REFUSED_LEVEL, List.of("the temple won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "can't sign up this time. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to the temple in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for pink bean, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for pink bean, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the temple of time. {eta}.",
+                            "omw to the forgotten temple, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg!! pink bean is down!",
+                            "we beat pink bean. gg!")))),
             // slot: showa (P19: Konpei's expedition in the Showa hideout; the comb is the marker item)
             Map.entry("showa", Map.ofEntries(
                     Map.entry(DOWN, List.of(

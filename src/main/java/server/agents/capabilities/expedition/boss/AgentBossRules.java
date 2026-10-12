@@ -37,9 +37,16 @@ import java.util.Set;
  * <li>{@code reentryWarpFrom} (P18, plan decision 11a): in a re-enter run whose recruit map no route reaches (Horntail:
  * the Slate warps players into 240050400), the map from which a member walking back is moved to the recruit map, as
  * the waiver lets companions in without the quest item (Leafre 240000000, where it comes to); 0 for none.</li>
- * <li>{@code randomSpots} (P15):the mirror strikes an attack whose effect falls at random spots (WZ effect0 randomPos)
+ * <li>{@code randomSpots} (P15): the mirror strikes an attack whose effect falls at random spots (WZ effect0 randomPos)
  * only near a spot, not across its whole box (Papulatus's Clock attack3). Off for every boss whose mirror ran live
  * before it (Zakum's attack2), until a live fight there checks it.</li>
+ * <li>{@code entryItems} (P20): items the owner carries in to start the fight (Zakum's Eye of Fire, Showa's comb). A
+ * boss's approach store keeps its standard only for an owner carrying one (BossEntrance.approachMeantBy), and the
+ * marker line asks for it. Absent, it is {@code markerItems}; Pink Bean names none, since its marker item (the stage-5
+ * drop) only ever lies on the battle map's floor.</li>
+ * <li>{@code keepOut} (P20): boxes beside a part, from {@code fromDx} to {@code toDx} along x from the part, that
+ * ranged and magic members keep out of while the part lives (Solomon's deadly attack1 to his left, Rex's to his
+ * right). A box wholly to one side of its part bounds the member on that side.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -58,7 +65,8 @@ public final class AgentBossRules {
                        List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
                        boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
-                       List<Integer> meleePriority, int reentryWarpFrom) {
+                       List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                       List<KeepOut> keepOut) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -72,6 +80,19 @@ public final class AgentBossRules {
             markerItems = markerItems == null ? List.of() : List.copyOf(markerItems);
             stageMaps = stageMaps == null ? List.of() : List.copyOf(stageMaps);
             meleePriority = meleePriority == null ? List.of() : List.copyOf(meleePriority);
+            entryItems = entryItems == null ? markerItems : List.copyOf(entryItems);
+            keepOut = keepOut == null ? List.of() : List.copyOf(keepOut);
+        }
+
+        /** A boss row before P20: its entry items are its marker items, and no keep-out boxes. */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom, null,
+                    List.of());
         }
 
         /** A boss row before P18: one battle map, one target priority for every member, no re-entry warp. */
@@ -105,6 +126,18 @@ public final class AgentBossRules {
                 throw new IllegalStateException("boss rule " + key + " names no " + name);
             }
             return id;
+        }
+    }
+
+    /**
+     * P20: a box beside part {@code mobId}, from {@code fromDx} to {@code toDx} along x from the part (negative: to its
+     * left), that ranged and magic members keep out of while the part lives.
+     */
+    public record KeepOut(int mobId, int fromDx, int toDx) {
+        public KeepOut {
+            if (fromDx > toDx) {
+                throw new IllegalArgumentException("a keep-out box needs fromDx <= toDx");
+            }
         }
     }
 
@@ -211,6 +244,21 @@ public final class AgentBossRules {
     public static int reentryWarpFrom(String key) {
         Boss boss = of(key);
         return boss == null ? 0 : Math.max(0, boss.reentryWarpFrom());
+    }
+
+    /**
+     * P20: the items an owner carries in to start boss {@code key}'s fight (its {@code entryItems}, else its marker
+     * items: Zakum's Eye of Fire, Showa's comb); empty when it needs none (Easy Balrog, Pink Bean).
+     */
+    public static List<Integer> entryItems(String key) {
+        Boss boss = of(key);
+        return boss == null ? List.of() : boss.entryItems();
+    }
+
+    /** P20: the keep-out boxes of boss {@code key}; empty when it names none. */
+    public static List<KeepOut> keepOut(String key) {
+        Boss boss = of(key);
+        return boss == null ? List.of() : boss.keepOut();
     }
 
     /** The drops boss {@code key}'s run members leave on the floor; empty when the catalog lists none. */

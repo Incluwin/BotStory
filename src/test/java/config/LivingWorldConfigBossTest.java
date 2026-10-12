@@ -66,7 +66,7 @@ class LivingWorldConfigBossTest {
 
     @Test
     void anyOtherBossFailsValidation() {
-        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "zakum,pinkbean", "zakum_easy"}) {
+        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "zakum,chaos_horntail", "zakum_easy"}) {
             LivingWorldConfig config = new LivingWorldConfig();
             config.COMPANION_BOSS_ENABLED_TYPES = bad;
 
@@ -158,7 +158,7 @@ class LivingWorldConfigBossTest {
 
     @Test
     void anUnknownAllyTypeIsRejected() {
-        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "pinkbean"}) {
+        for (String bad : new String[] {"balrog", "easy_balrog,balrog", "chaos_horntail"}) {
             LivingWorldConfig config = new LivingWorldConfig();
             config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
             config.COMPANION_BOSS_ALLY_TYPES = bad;

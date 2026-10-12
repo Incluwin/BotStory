@@ -172,6 +172,32 @@ class AgentPartyBossesTest {
                 "Male Boss on Konpei's map stays a field boss");
     }
 
+    /**
+     * P20: Pink Bean is an expedition row (the Temple Manager's list, no choices) whose maps match PinkBeanBattle.js:
+     * the Start puts everyone on its entry map, the battle map, whose return map (the resurrection map) is a stage map.
+     * 2141002 is the way out before and after the clear, the dead revive inside, and Lv120 comes from the type.
+     */
+    @Test
+    void pinkBeanIsAnExpeditionRowWhoseDeadReviveInsideAndWalkBack() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/PinkBeanBattle.js"));
+        AgentBossRunDefinition pinkbean = AgentBossRunCatalog.of("pinkbean");
+
+        assertEquals(ExpeditionType.PINKBEAN, pinkbean.type());
+        assertEquals(number(source, "recruitMap"), pinkbean.recruitMapId());
+        assertEquals(number(source, "entryMap"), pinkbean.battleMapId());
+        assertTrue(pinkbean.fightMap(270_050_200), "the resurrection map, between minMapId and maxMapId");
+        assertTrue(270_050_200 > number(source, "minMapId") && 270_050_200 < number(source, "maxMapId"));
+        assertEquals(120, pinkbean.minLevel(), "the expedition type's Lv120: only the talker is checked by the NPC");
+        assertEquals(2_141_001, pinkbean.entryNpcId());
+        assertEquals(List.of(), pinkbean.joinSelections());
+        assertEquals(2_141_002, pinkbean.exitNpcId());
+        assertTrue(pinkbean.exitNpcAfterClear());
+        assertTrue(pinkbean.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REVIVE_INSIDE, pinkbean.deathMode());
+        assertEquals(List.of(4_001_193), pinkbean.markerItemIds());
+        assertEquals(List.of(8_820_007), AgentBossRules.of("pinkbean").adds(), "Mini Bean");
+    }
+
     @Test
     void anOpenPartyRunsEventNamesItsBossesPartsAndNothingElseDoes() {
         long sessionId = openLatanica(List.of(THANE));

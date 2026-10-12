@@ -136,8 +136,24 @@ public final class AgentBossRunCatalog {
             AgentBossPriorityFight.forKey("showa"), false, AgentBossRules.markerItems("showa"),
             AgentBossRules.neverTargetFakes("showa"), true);
 
+    // slot: pinkbean
+    /**
+     * Pink Bean (P20), an expedition of 6-30 at Lv120 or more, once a day: sign up with the Forgotten Temple Manager
+     * (2141001) on 270050000 with his registering window (no choices, as Adobis's), fight on 270050100: the five waves
+     * (healer Ariel first), then Pink Bean once the stage-5 drop wakes it. The statues and the 1-HP statue are never
+     * targets, and the stage-5 drop stays on the floor (boss-rules.json); ranged and magic members keep out of
+     * Solomon's and Rex's deadly boxes. 2141002 on the battle map is the way out, before and after the clear, and warps
+     * only the talker. A member that dies revives inside, on 270050200 (REVIVE_INSIDE), and walks back through in00 (a
+     * stage map); an owner who leaves takes their party's members out with them.
+     */
+    public static final AgentBossRunDefinition PINKBEAN = new AgentBossRunDefinition("pinkbean",
+            ExpeditionType.PINKBEAN, 270_050_000, 270_050_100, -1, 2_141_001, List.of(), 2_141_002, -1,
+            AgentBossPriorityFight.forKey("pinkbean"), true, AgentBossRules.markerItems("pinkbean"),
+            AgentBossRules.neverTargetFakes("pinkbean"), true, AgentBossRunDefinition.DeathMode.REVIVE_INSIDE);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
-            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA);
+            NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA,
+            PINKBEAN);
 
     private AgentBossRunCatalog() {
     }

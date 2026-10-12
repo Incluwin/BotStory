@@ -354,6 +354,19 @@ class BossRunLinesTellTest {
         }
     }
 
+    /** P20: Pink Bean's lines name Pink Bean and the temple, never another boss, and it asks for no entry item. */
+    @Test
+    void pinkBeanSpeaksForItselfAndAsksForNoItem() {
+        assertEquals(List.of(), BossRunLines.lines(game.world, null, BossRunLines.ZAKUM_EYE, "pinkbean"));
+        assertTrue(BossRunLines.lines(game.world, null, BossRunLines.GG, "pinkbean")
+                .contains("we beat pink bean. gg!"));
+        for (List<String> lines : BossRunLines.BY_BOSS.get("pinkbean").values()) {
+            for (String line : lines) {
+                assertFalse(line.contains("zakum") || line.contains("balrog") || line.contains("horntail"), line);
+            }
+        }
+    }
+
     @Test
     void zakumHasThePlansOwnLinesAndEveryOtherIntentKeepsTheGenericOnes() {
         Map<String, List<String>> plan = Map.ofEntries(

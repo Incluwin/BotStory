@@ -32,12 +32,19 @@ import java.util.function.Supplier;
  * stage map before the battle map (Horntail's pre-head maps) that holds no live monster but never-targets, a fighter
  * walks to the boss's stage portal and takes it, at most every STAGE_PORTAL_EVERY_MS; the stock portal script lets it
  * through once that map's head fell.</p>
+ *
+ * <p>P20: while a part with {@code keepOut} boxes lives (Solomon's deadly box to his left, Rex's to his right), a
+ * ranged or magic fighter keeps to the band of x past those boxes, KEEP_OUT_MARGIN_PX inside them. Outside the band it
+ * walks in first; inside it, a horizontal boundary holds it there while it fights. The boundary goes once no such
+ * part lives.</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private final String key;
     private final Ports ports;
     /** Fighter id -> when it last took the stage portal. */
     private final Map<Integer, Long> portalTries = new HashMap<>();
+    /** Fighter id -> the keep-out band its horizontal boundary holds now: {minX, maxX}. */
+    private final Map<Integer, int[]> bands = new HashMap<>();
 
     AgentBossPriorityFight(String key, Ports ports) {
         if (key == null || key.isBlank()) {
@@ -75,9 +82,13 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 advance(gateway, entry, member, rules.stagePortal(), nowMs);
                 continue;
             }
+            boolean melee = ports.melee(member);
+            if (!cleared && rules != null && !rules.keepOut().isEmpty() && !melee
+                    && keepOut(gateway, entry, member, map, keepOutBand(map, rules))) {
+                continue;
+            }
             AgentBossRules.Preferences preferences = cleared ? null
-                    : AgentBossRules.preferences(rules, liveByMap.computeIfAbsent(map, this::liveIds),
-                    ports.melee(member));
+                    : AgentBossRules.preferences(rules, liveByMap.computeIfAbsent(map, this::liveIds), melee);
             if (preferences == null || preferences.isEmpty()) {
                 gateway.stop(entry);
             } else {
@@ -88,6 +99,76 @@ public final class AgentBossPriorityFight implements AgentBossFight {
 
     @Override
     public void end(EventInstanceManager event) {
+    }
+
+    /**
+     * P20: the band of x a ranged or magic member keeps to on {@code map}, {minX, maxX}: past every keep-out box of a
+     * live part, KEEP_OUT_MARGIN_PX inside; null while no such part lives. A box to a part's left bounds the band from
+     * below, one to its right from above; when the bounds cross, the band is the point between them.
+     */
+    int[] keepOutBand(MapleMap map, AgentBossRules.Boss rules) {
+        int margin = keepOutMarginPx();
+        long low = Long.MIN_VALUE;
+        long high = Long.MAX_VALUE;
+        for (Monster monster : ports.monsters(map)) {
+            Point at = monster.isAlive() ? monster.getPosition() : null;
+            if (at == null) {
+                continue;
+            }
+            for (AgentBossRules.KeepOut box : rules.keepOut()) {
+                if (box.mobId() != monster.getId()) {
+                    continue;
+                }
+                if (box.toDx() <= 0) {
+                    low = Math.max(low, (long) at.x + box.toDx() + margin);
+                } else if (box.fromDx() >= 0) {
+                    high = Math.min(high, (long) at.x + box.fromDx() - margin);
+                }
+            }
+        }
+        if (low == Long.MIN_VALUE && high == Long.MAX_VALUE) {
+            return null;
+        }
+        if (low > high) {
+            low = high = (low + high) / 2;
+        }
+        return new int[] {(int) Math.max(low, Integer.MIN_VALUE), (int) Math.min(high, Integer.MAX_VALUE)};
+    }
+
+    /**
+     * P20: keeps a ranged or magic member to {@code band} (null: no keep-out part lives, so its boundary goes). Outside
+     * the band it walks in and spends the tick (true); inside, its horizontal boundary is set to the band, once per
+     * change, and it fights on (false).
+     */
+    private boolean keepOut(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
+                            MapleMap map, int[] band) {
+        int id = member.getId();
+        if (band == null) {
+            if (bands.remove(id) != null) {
+                gateway.clearHorizontalBoundary(entry);
+            }
+            return false;
+        }
+        Point at = member.getPosition();
+        if (at != null && (at.x < band[0] || at.x > band[1])) {
+            if (bands.remove(id) != null) {
+                gateway.clearHorizontalBoundary(entry);
+            }
+            Point inside = new Point(Math.max(band[0], Math.min(band[1], at.x)), at.y);
+            Point ground = gateway.groundPoint(map, inside);
+            gateway.navigate(entry, ground != null ? ground : inside, false);
+            return true;
+        }
+        int[] was = bands.put(id, band);
+        if (was == null || was[0] != band[0] || was[1] != band[1]) {
+            gateway.setHorizontalBoundary(entry, map.getId(), band[0], band[1]);
+        }
+        return false;
+    }
+
+    static int keepOutMarginPx() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.KEEP_OUT_MARGIN_PX");
     }
 
     /** P18: a stage map is done once no live monster but the boss's never-targets stands on it. */

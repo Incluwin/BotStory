@@ -973,6 +973,9 @@ living_world:
     # "showa" (P19): The Boss at Konpei in the Showa hideout, signed up as at Adobis. List "field_zipangu" too, so
     # companions waiting on his map leave Male Boss to the players there. A companion that dies waits in Showa Town.
     # It stays off until its live check passes (docs/COMPANION_BOSSING_P19.md).
+    # "pinkbean" (P20): Pink Bean at the Forgotten Temple Manager, signed up as at Adobis. A companion that dies revives
+    # inside, as a player does, and walks back in through the resurrection map; every death counts toward the stock
+    # 5-death wipe and costs EXP. It stays off until its live check passes (docs/COMPANION_BOSSING_P20.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in

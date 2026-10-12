@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.progression.AgentPotionSupplierCatalog;
@@ -117,8 +118,18 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance SHOWA = new BossEntrance(AgentBossRunCatalog.SHOWA,
             new PqEntrance.Beside(-50, -30, true), 801_000_000, "out00", "out00", true, 9_120_002);
 
+    // slot: pinkbean
+    /**
+     * The Forgotten Temple Manager stands at -665,-41 (WZ 270050000 life): companions wait beside him, as at Adobis.
+     * Players come through Leafre (240000000), whose store (2080001) stands on 240000002, before the dragon ride to the
+     * Temple of Time; no shop is in reach of 270050000, so a trip out of it is held there. Allies come in and leave by
+     * out00 (-1133,-42), the way in from 270040100.
+     */
+    static final BossEntrance PINKBEAN = new BossEntrance(AgentBossRunCatalog.PINKBEAN,
+            new PqEntrance.Beside(-50, -30, true), 240_000_000, "out00", "out00", true, 2_080_001);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA, PINKBEAN);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {
@@ -154,14 +165,15 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     }
 
     /**
-     * True when {@code owner}, passing the approach map, is on the way to this boss: always for a boss with no marker
-     * item (Easy Balrog: Ant Tunnel Park is on the walk down to Mu Young and nowhere else); else only while they carry
-     * one (Zakum: the Eye of Fire, which the Door to Zakum asks every player for), since Ice Valley II is also a Yeti
-     * field and the taxi stop for Sharp Cliff and the Dead Mine. Memory only.
+     * True when {@code owner}, passing the approach map, is on the way to this boss: always for a boss with no entry
+     * item (Easy Balrog: Ant Tunnel Park is on the walk down to Mu Young and nowhere else; P20: Pink Bean, whose marker
+     * item only lies on its battle map), else only while they carry one (AgentBossRules.entryItems; Zakum: the Eye of
+     * Fire, which the Door to Zakum asks every player for), since Ice Valley II is also a Yeti field and the taxi stop
+     * for Sharp Cliff and the Dead Mine. Memory only.
      */
     boolean approachMeantBy(Character owner) {
-        List<Integer> markers = definition.markerItemIds();
-        return markers.isEmpty() || owner != null && markers.stream().anyMatch(owner::haveItem);
+        List<Integer> items = AgentBossRules.entryItems(definition.key());
+        return items.isEmpty() || owner != null && items.stream().anyMatch(owner::haveItem);
     }
 
     /** The entrance of boss {@code key} (any case, spaces around it ignored), or null when there is none. */

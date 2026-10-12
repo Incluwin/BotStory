@@ -75,6 +75,24 @@ class BossEntranceTest {
         assertEquals(2_022_000, throughLeafre.approachStoreNpcId());
     }
 
+    /**
+     * P20: an owner passing Leafre is on the way to Pink Bean with nothing in the bag (its marker item only lies on its
+     * battle map), but on the way to Zakum and The Boss only while carrying their entry items (the Eye, the comb).
+     */
+    @Test
+    void anOwnerIsOnTheWayToPinkBeanWithNoItemButToZakumAndShowaOnlyCarryingTheirs() {
+        client.Character owner = mock(client.Character.class);
+        assertTrue(BossEntrance.PINKBEAN.approachMeantBy(owner));
+        assertTrue(BossEntrance.PINKBEAN.approachMeantBy(null));
+        assertFalse(BossEntrance.ZAKUM.approachMeantBy(owner));
+        assertFalse(BossEntrance.SHOWA.approachMeantBy(owner));
+        when(owner.haveItem(4_000_138)).thenReturn(true);
+        assertTrue(BossEntrance.SHOWA.approachMeantBy(owner));
+        assertEquals(List.of(BossEntrance.NEO_BERGAMOT, BossEntrance.NEO_DUNAS, BossEntrance.NEO_AUFHEBEN,
+                BossEntrance.NEO_OBERON, BossEntrance.NEO_NIBELUNG, BossEntrance.HORNTAIL, BossEntrance.PINKBEAN),
+                BossEntrance.allAtApproachMap(240_000_000), "Leafre serves seven bosses");
+    }
+
     @Test
     void theApproachsStoreIsTheTwentyFourHourMobileStoreAsThePotionSupplierCatalogListsIt() {
         assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");

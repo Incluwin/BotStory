@@ -944,7 +944,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private String approachKey(int mapId, int level, Character owner, boolean checkMeant) {
         String chosen = null;
         for (BossEntrance entrance : BossEntrance.allAtApproachMap(mapId)) {
-            if (!checkMeant || entrance.definition().markerItemIds().isEmpty() || entrance.approachMeantBy(owner)) {
+            if (!checkMeant || AgentBossRules.entryItems(entrance.definition().key()).isEmpty()
+                    || entrance.approachMeantBy(owner)) {
                 chosen = largerOf(chosen, entrance, level);
             }
         }
@@ -968,7 +969,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
         // the owner is looked up only for a boss with a marker item (Zakum); Easy and Normal Balrog need none
         boolean markers = BossEntrance.allAtApproachMap(bot.getMapId()).stream()
-                .anyMatch(entrance -> !entrance.definition().markerItemIds().isEmpty());
+                .anyMatch(entrance -> !AgentBossRules.entryItems(entrance.definition().key()).isEmpty());
         Character owner = markers ? world.roster().onlineCharacter(ownerId) : null;
         return approachKey(bot.getMapId(), bot.getLevel(), owner, true);
     }
@@ -1067,7 +1068,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
         }
         AgentBossRunDefinition definition = AgentBossRunCatalog.of(seat.bossKey());
-        if (definition != null && !definition.markerItemIds().isEmpty()) {
+        if (definition != null && !AgentBossRules.entryItems(definition.key()).isEmpty()) {
             world.executor().submit("boss.eye " + seat.agentCharacterId(), () -> eyeLine(seat, definition));
         }
     }
@@ -1459,7 +1460,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         run.eyeAsked = true;
         Character owner = world.roster().onlineCharacter(run.ownerId);
         if (owner == null || owner.getMapId() != definition.battleMapId()
-                || definition.markerItemIds().stream().noneMatch(owner::haveItem)) {
+                || AgentBossRules.entryItems(definition.key()).stream().noneMatch(owner::haveItem)) {
             return;
         }
         BossRunLines.say(world, bot(id), BossRunLines.ZAKUM_EYE, null, 0, run);

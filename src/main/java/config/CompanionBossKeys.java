@@ -59,6 +59,9 @@ public final class CompanionBossKeys {
 
         // slot: showa (P19): The Boss, Konpei's expedition in the Showa hideout
         keys.add("showa");
+
+        // slot: pinkbean (P20): Pink Bean, the Temple of Time's expedition
+        keys.add("pinkbean");
         return List.copyOf(keys);
     }
 
