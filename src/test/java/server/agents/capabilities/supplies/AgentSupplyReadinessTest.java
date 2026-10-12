@@ -268,9 +268,11 @@ class AgentSupplyReadinessTest {
     void ammoStandardsListLpqAndEpqAtSixteenHundredEasyBalrogAtTwoThousandZakumAtFourThousandAndOtherKeysKeepPartyQuestAmmo() {
         // live 2026-10-07: a claw companion used 800 stars in one EPQ golem fight; another reached LPQ stage 7 with none
         // P8 (user decision 2026-10-08): Zakum's fight is far longer, 4000 projectiles
-        assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000",
+        // P11: Normal Balrog 2500, between Easy Balrog and Zakum
+        assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000,balrog_normal=2500",
                 AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
         assertEquals(4000, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("zakum")));
+        assertEquals(2500, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("balrog_normal")));
         int partyQuestAmmo = config.AgentTuning.intValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
         assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("EPQ ")));
