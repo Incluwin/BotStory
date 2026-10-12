@@ -8,6 +8,8 @@ import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
+import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
@@ -25,7 +27,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -52,6 +53,8 @@ class AgentBossDeathWalkTest {
             AgentBossRunDefinition.DeathMode.REENTER);
     private static final int LEAFRE = 240_000_000;
     private static final int CAVE_ENTRANCE = 240_050_400;
+    /** The Leafre store map (2080001), one portal from Leafre. */
+    private static final int LEAFRE_STORE = 240_000_002;
     private static final int MARK = 2_083_004;
     /** A party-instance run with HORNTAIL's key, maps, recruit NPC and REENTER deaths. */
     private static final AgentBossRunDefinition HORNTAIL_RUN = new AgentBossRunDefinition("horntail", null,
@@ -275,11 +278,13 @@ class AgentBossDeathWalkTest {
     }
 
     /**
-     * P18 follow-up: in Leafre the move in waits while the member's shop trip is under way, and while its restock still
-     * decides on one, at most VERDICT_WAIT_MS of its walk.
+     * P18 follow-up (deploy review 2026-10-12): a companion's restock runs only in the live tick, after this preflight
+     * step, so a consumed tick here would skip it. In Leafre the walk leaves the tick to it while it still decides (at
+     * most VERDICT_WAIT_MS of the walk), and while a trip of its own is under way, on the store map too and for ammo as
+     * well as potions. The move in waits meanwhile, and the walk never pulls it back mid-trip.
      */
     @Test
-    void theMoveInWaitsForTheMembersOwnRestock() {
+    void theWalkLeavesTheTickToTheMembersOwnRestockAndTheMoveWaits() {
         List<Integer> movedTo = new ArrayList<>();
         AgentBossDeathWalk.moverForTest((agent, mapId) -> movedTo.add(mapId));
         reentering(HORNTAIL_RUN);
@@ -288,22 +293,42 @@ class AgentBossDeathWalkTest {
         long after = config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.REENTRY_WARP_AFTER_MS");
         long verdictWait = AgentBossRunSession.verdictWaitMs();
-        AgentSupplyReadiness.Status trip = new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.RESTOCKING,
-                60_000L, 0);
+        AgentSupplyProcurementState trip = entry.capabilityStates().require(AgentSupplyProcurementState.STATE_KEY);
 
         try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class)) {
-            readiness.when(() -> AgentSupplyReadiness.status(entry, 1_000L + after)).thenReturn(trip);
-            readiness.when(() -> AgentSupplyReadiness.status(eq(entry), longThat(t -> t != 1_000L + after)))
-                    .thenReturn(AgentSupplyReadiness.Status.NONE);
             readiness.when(() -> AgentSupplyReadiness.restockPending(eq(entry), anyLong())).thenReturn(true);
+            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L), "still deciding: the live tick runs it");
+            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L + verdictWait - 1), "still deciding");
 
-            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
-            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after), "a trip under way");
-            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + verdictWait - 1), "still deciding");
+            trip.start("restock-1", "objective-1", AgentResourceCategory.THROWING_STAR);
+            when(thane.getMapId()).thenReturn(LEAFRE_STORE);
+            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait),
+                    "an ammo trip under way on the store map: the trip moves it");
+            verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
             assertTrue(movedTo.isEmpty());
-            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + Math.max(after, verdictWait)));
+
+            trip.clear();
+            when(thane.getMapId()).thenReturn(LEAFRE);
+            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait));
         }
-        assertEquals(List.of(CAVE_ENTRANCE), movedTo, "the decision waited long enough");
+        assertEquals(List.of(CAVE_ENTRANCE), movedTo, "back in Leafre, with the decision past its wait");
+    }
+
+    /**
+     * The tick order the walk's hand-over relies on: the walk runs in the preflight, and a consumed preflight skips the
+     * live gates; there a companion's supply maintenance (objective supervision) runs before the recovery gate, whose
+     * follow map sync holds a companion in place while its owner is in the cave.
+     */
+    @Test
+    void theLiveTickRunsSupplyMaintenanceBeforeFollowSync() throws java.io.IOException {
+        String preflight = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/java/server/agents/runtime/AgentTickPreflightRuntime.java"));
+        assertTrue(preflight.contains("if (AgentBossDeathWalk.tick(entry, result.agent(), nowMs)) {"));
+        String gates = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/java/server/agents/runtime/AgentLiveTickGateService.java"));
+        int supervision = gates.indexOf("hooks.objectiveSupervisionTick().tick(");
+        int recovery = gates.indexOf("hooks.recoveryTick().tick(");
+        assertTrue(supervision >= 0 && recovery > supervision, "supply maintenance before follow sync");
     }
 
     private void reentering(AgentBossRunDefinition definition) {
