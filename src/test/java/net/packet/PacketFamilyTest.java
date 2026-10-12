@@ -17,6 +17,15 @@ class PacketFamilyTest {
     }
 
     @Test
+    void theNativeCrewWindowIsItsOwnFamilyAndTheObserversStayOther() {
+        assertEquals(0x117, RecvOpcode.CREW_WINDOW.getValue());
+        assertEquals(PacketFamily.CREW, PacketFamily.classify((short) 0x117));
+        assertEquals(PacketFamily.CREW, PacketFamily.classify((short) RecvOpcode.CREW_WINDOW.getValue()));
+        assertEquals(PacketFamily.OTHER, PacketFamily.classify((short) RecvOpcode.OBSERVER_ACTION.getValue()));
+        assertEquals(PacketFamily.OTHER, PacketFamily.classify((short) RecvOpcode.BOT_EQUIP.getValue()));
+    }
+
+    @Test
     void mobControlPacketsAreSeparatedFromPlayerMovement() {
         assertEquals(PacketFamily.MOB_CONTROL, PacketFamily.classify((short) 188)); // MOVE_LIFE, as logged
         assertEquals(PacketFamily.MOB_CONTROL, PacketFamily.classify((short) RecvOpcode.MOVE_LIFE.getValue()));

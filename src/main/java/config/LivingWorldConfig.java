@@ -134,6 +134,13 @@ public class LivingWorldConfig {
      * it. 0 = off. The client still names 2430011 "Agent Summon" until its String.wz / Custom.wz rename ships (P3).
      */
     public int ROSTER_BOOK_ITEM_ID = 2430011;
+    /**
+     * Who may open the native Crew window (P10, docs/BOT_MANAGEMENT_P10_PLAN.md; server.living.roster.ui.NativeCrewWindow)
+     * that a client with the P10 DLL offers on its hotkey: "off" (nobody: a HELLO is answered "not enabled"), "gm" (GM
+     * characters only) or "all". The NPC-dialog Crew window, the cards and the Roster item work as before either way.
+     * {@code !world crewwindow} changes it until the next restart; a window it no longer allows is closed.
+     */
+    public String CREW_WINDOW_NATIVE = "off";
 
     // Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md, Measurement); CompanionBudget reads these
     /** Agents one online human may have following them (their loaded companions); a party holds 5 besides them. */
@@ -352,6 +359,12 @@ public class LivingWorldConfig {
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
 
+    /** True when CREW_WINDOW_NATIVE lets a character use the native Crew window: "all", or "gm" for a GM (any case). */
+    public boolean crewWindowNative(boolean gm) {
+        String mode = CREW_WINDOW_NATIVE == null ? "" : CREW_WINDOW_NATIVE.trim();
+        return mode.equalsIgnoreCase("all") || gm && mode.equalsIgnoreCase("gm");
+    }
+
     /** True when COMPANION_PQ_ENABLED_KEYS lists {@code pqKey} (any case, spaces around it ignored). */
     public boolean companionPqEnabled(String pqKey) {
         if (pqKey == null || COMPANION_PQ_ENABLED_KEYS == null) {
@@ -473,6 +486,10 @@ public class LivingWorldConfig {
         }
         if (ROSTER_BOOK_ITEM_ID < 0) {
             throw new IllegalArgumentException("living_world.ROSTER_BOOK_ITEM_ID must be >= 0 (0 = off)");
+        }
+        if (CREW_WINDOW_NATIVE == null
+                || !java.util.List.of("off", "gm", "all").contains(CREW_WINDOW_NATIVE.trim().toLowerCase(java.util.Locale.ROOT))) {
+            throw new IllegalArgumentException("living_world.CREW_WINDOW_NATIVE must be off, gm or all");
         }
         if (!java.util.List.of("AUTHORED", "PERMANENT_ON_ROSTER", "PERMANENT_AT_SWORN").contains(ROSTER_CONTRACT_MODE)) {
             throw new IllegalArgumentException(

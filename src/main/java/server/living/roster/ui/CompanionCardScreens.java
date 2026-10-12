@@ -61,6 +61,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
 import static server.living.roster.ui.CompanionMenus.NOTES_SPEAKER;
@@ -206,18 +207,15 @@ final class CompanionCardScreens {
             options.add(new Option("Hunt here while I'm busy", () -> order(owner, persona, "menu.hunt",
                     manager -> manager.huntHere(owner, persona))));
         }
-        if (entry.state() == RosterState.HOLD) {
-            options.add(stamp.option("Come join me", () -> join(owner, persona, entry)));
+        if (offersCall(entry.state(), view)) { // waiting at a run's entrance
+            options.add(stamp.option("Come join me", () -> join(owner, persona, entry, menus::command)));
         }
-        // the last one out is benched or sent off only by someone holding the Roster, which calls anyone back; else it
-        // is rotated
-        boolean mayLeave = othersOut(owner, persona) || menus.holdsRosterBook(owner);
+        boolean mayLeave = mayLeave(owner, persona);
         if (mayLeave) {
-            options.add(unlessCommitted(committed, stamp.option("Take a break at camp", () -> menus.confirmBench(owner,
-                    persona, () -> menus.command(owner, persona, "menu.bench",
-                            () -> RosterVoice.line(persona, world.roster().bench(owner, persona)))))));
+            options.add(unlessCommitted(committed, stamp.option("Take a break at camp",
+                    () -> takeABreak(owner, persona, menus::command))));
         }
-        if (active && !swapIns(owner).isEmpty()) {
+        if (offersSwapOut(entry.state(), !swapIns(owner).isEmpty())) {
             options.add(unlessCommitted(committed, new Option("Let someone take your place...",
                     () -> swapPicker(owner, persona, true, "who takes my place?"))));
         }
@@ -268,12 +266,12 @@ final class CompanionCardScreens {
         CompanionView view = menus.view(owner, entry);
         boolean committed = view.committed();
         List<Option> options = new ArrayList<>();
-        if (view.travelMs() <= 0) {
-            options.add(stamp.option("Come join me", () -> join(owner, persona, entry)));
-            if (!menus.rows(owner, true).isEmpty()) {
-                options.add(unlessCommitted(committed, new Option("Swap in for...",
-                        () -> swapPicker(owner, persona, false, "who should i take over from?"))));
-            }
+        if (offersCall(entry.state(), view)) {
+            options.add(stamp.option("Come join me", () -> join(owner, persona, entry, menus::command)));
+        }
+        if (offersSwapIn(entry.state(), view, !menus.rows(owner, true).isEmpty())) {
+            options.add(unlessCommitted(committed, new Option("Swap in for...",
+                    () -> swapPicker(owner, persona, false, "who should i take over from?"))));
         }
         options.add(unlessCommitted(committed, new Option("What you do at camp...", () -> dutyPicker(owner, persona))));
         options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
@@ -366,12 +364,79 @@ final class CompanionCardScreens {
                 + (potions.isEmpty() ? "" : " - " + potions) + "\r\n";
     }
 
+    // ---- what a card offers, and its actions (shared with the native Crew window, P10) ------------------
+
+    /**
+     * How a card action's command runs and answers: the card's own ({@link CompanionMenus#command}: its line on top of
+     * the card), or a native Crew window click's (pink text and a fresh snapshot). The action is the same either way.
+     */
+    @FunctionalInterface
+    interface Commands {
+        void run(Character owner, Persona persona, String name, Supplier<String> action);
+    }
+
+    /** The card a row opens: the bench card for one benched, away or parked ({@link #reopen}), else the party card. */
+    private static boolean onBenchCard(RosterState state) {
+        return state == RosterState.BENCHED || state == RosterState.AWAY || state == RosterState.PARKED;
+    }
+
+    /**
+     * "Come join me": on the party card while it waits at a run's entrance (HOLD), on the bench card unless it was
+     * already called and is on its way.
+     */
+    static boolean offersCall(RosterState state, CompanionView view) {
+        return onBenchCard(state) ? view.travelMs() <= 0 : state == RosterState.HOLD;
+    }
+
+    /**
+     * "Take a break at camp" and "What you do at camp..." for one in the owner's party: the last one out is benched or
+     * sent off only by someone holding the Roster, which calls anyone back; else it is rotated.
+     */
+    boolean mayLeave(Character owner, Persona persona) {
+        return othersOut(owner, persona) || menus.holdsRosterBook(owner);
+    }
+
+    /** "Take a break at camp": on the party card (in the owner's party, not parked) when it {@link #mayLeave}. */
+    boolean offersBreak(Character owner, Persona persona, RosterState state) {
+        return !onBenchCard(state) && mayLeave(owner, persona);
+    }
+
+    /** "Let someone take your place..." (the party card): out with the owner, with someone at camp who can come at once. */
+    static boolean offersSwapOut(RosterState state, boolean anyoneToComeIn) {
+        return state == RosterState.ACTIVE && anyoneToComeIn;
+    }
+
+    /** "Swap in for..." (the bench card): not on its way already, with someone out with the owner to take over from. */
+    static boolean offersSwapIn(RosterState state, CompanionView view, boolean anyoneOut) {
+        return onBenchCard(state) && view.travelMs() <= 0 && anyoneOut;
+    }
+
+    /**
+     * "Take a break at camp": asked first where a bench can end its contract ({@link CompanionMenus#confirmBench}), then
+     * {@link RosterService#bench} on companion-ops through {@code commands}.
+     */
+    void takeABreak(Character owner, Persona persona, Commands commands) {
+        menus.confirmBench(owner, persona, () -> commands.run(owner, persona, "menu.bench",
+                () -> RosterVoice.line(persona, world.roster().bench(owner, persona))));
+    }
+
+    /**
+     * A swap picker's pick: {@code out} is asked first where a bench can end its contract, then {@link
+     * RosterService#swap}(out, in) on companion-ops through {@code commands}, its line in {@code voice}'s words.
+     */
+    void swap(Character owner, Persona out, Persona in, Persona voice, Commands commands) {
+        menus.confirmBench(owner, out, () -> commands.run(owner, voice, "menu.swap",
+                () -> RosterVoice.line(voice, world.roster().swap(owner, out, in))));
+    }
+
     /**
      * With no seat for it the companion asks whom to take over from; it is never sent for a seat that is not there.
      * In a shared party the open seats may be a friend's share (lending them is P9) or held empty by the leader's
-     * expel (the leader cap), and it says which; with the leader cap and nobody out to take over from, it stays.
+     * expel (the leader cap), and it says which; with the leader cap and nobody out to take over from, it stays. The
+     * swap picker and the leader cap's OK are the card's own windows, wherever the click came from; with a seat, the
+     * call runs through {@code commands}.
      */
-    private void join(Character owner, Persona persona, RosterEntry entry) {
+    void join(Character owner, Persona persona, RosterEntry entry, Commands commands) {
         if (!world.roster().canSeat(owner, entry)) {
             boolean full = world.slots().occupied(owner) >= RosterService.PARTY_CAP;
             boolean leaderCapped = !full && world.slots().leaderCapped(owner);
@@ -384,7 +449,7 @@ final class CompanionCardScreens {
                     : "the other seats are your friend's. who should i take over from?");
             return;
         }
-        menus.command(owner, persona, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+        commands.run(owner, persona, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
     }
 
     /**
@@ -406,9 +471,8 @@ final class CompanionCardScreens {
             CompanionView view = menus.view(owner, entry);
             Persona out = outgoing ? fixed : other;
             Persona in = outgoing ? other : fixed;
-            options.add(stamp.option(outgoing ? benchRow(view) : partyRow(view), () -> menus.confirmBench(owner, out,
-                    () -> menus.command(owner, fixed, "menu.swap",
-                            () -> RosterVoice.line(fixed, world.roster().swap(owner, out, in))))));
+            options.add(stamp.option(outgoing ? benchRow(view) : partyRow(view),
+                    () -> swap(owner, out, in, fixed, menus::command)));
         }
         if (options.isEmpty()) {
             menus.outcome(owner, "Nobody to swap with right now.");
@@ -429,7 +493,7 @@ final class CompanionCardScreens {
     }
 
     /** The owner's companions that can take a seat at once: benched or away, and not already on their way. */
-    private List<RosterEntry> swapIns(Character owner) {
+    List<RosterEntry> swapIns(Character owner) {
         List<RosterEntry> out = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner)) {
             if ((entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)

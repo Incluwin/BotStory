@@ -22,7 +22,8 @@ public class LivingWorldCommand extends Command {
     {
         setDescription("Living world ops. Usage: !world status|reload|residents|spawn <persona>|sleep|wake <town>|"
                 + "arc <persona> <chapter>|flag set|clear <flag>|bond <player> <persona> <points>|rumor play <id>|"
-                + "phrases [approve|reject <text>]|teach <canonical> <phrase>|haul <player>|events <player>|census");
+                + "phrases [approve|reject <text>]|teach <canonical> <phrase>|haul <player>|events <player>|census|"
+                + "crewwindow [off|gm|all]");
     }
 
     @Override
@@ -180,6 +181,7 @@ public class LivingWorldCommand extends Command {
                         }
                     }
                 }
+                case "crewwindow" -> crewWindow(gm, world, params);
                 default -> gm.yellowMessage(getDescription());
             }
         } catch (ContentException failure) {
@@ -187,6 +189,29 @@ public class LivingWorldCommand extends Command {
         } catch (RuntimeException failure) {
             gm.yellowMessage("Failed: " + failure.getMessage());
         }
+    }
+
+    /**
+     * {@code !world crewwindow [off|gm|all]}: shows or sets living_world.CREW_WINDOW_NATIVE until the next restart (P10).
+     * Every online client with the P10 DLL hears what it allows now, and a window it no longer allows closes.
+     */
+    private static void crewWindow(Character gm, LivingWorld world, String[] params) {
+        if (params.length < 2) {
+            gm.yellowMessage("Native Crew window: " + world.config().CREW_WINDOW_NATIVE + ". Usage: !world crewwindow off|gm|all");
+            return;
+        }
+        String mode = params[1].toLowerCase(Locale.ROOT);
+        if (!List.of("off", "gm", "all").contains(mode)) {
+            gm.yellowMessage("Usage: !world crewwindow off|gm|all");
+            return;
+        }
+        world.config().CREW_WINDOW_NATIVE = mode;
+        List<Character> online = new java.util.ArrayList<>();
+        for (net.server.world.World server : net.server.Server.getInstance().getWorlds()) {
+            online.addAll(server.getPlayerStorage().getAllCharacters());
+        }
+        world.crewWindow().switchChanged(online);
+        gm.yellowMessage("Native Crew window: " + mode + " until the next restart (config.yaml keeps its own value).");
     }
 
     private static void status(Character gm, LivingWorld world) {

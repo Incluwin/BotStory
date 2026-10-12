@@ -455,6 +455,8 @@ public final class PacketProcessor {
         registerHandler(RecvOpcode.USE_ITEMUI, new RaiseIncExpHandler());
         registerHandler(RecvOpcode.CHANGE_QUICKSLOT, new QuickslotKeyMappedModifiedHandler());
         registerHandler(RecvOpcode.BOT_EQUIP, new net.server.channel.handlers.AgentEquipHandler());
+        // P10 native Crew window: inert unless the client said HELLO and living_world.CREW_WINDOW_NATIVE allows it
+        registerHandler(RecvOpcode.CREW_WINDOW, new net.server.channel.handlers.CrewWindowHandler());
         // Keep the protocol surface registered regardless of configuration.
         // Each observer handler performs its own feature and authorization
         // checks, so a disabled observer suite remains inert. Registering the

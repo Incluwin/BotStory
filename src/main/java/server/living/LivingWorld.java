@@ -98,6 +98,7 @@ public final class LivingWorld {
     private final server.living.roster.GmLevelHolds gmLevelHolds;
     private final server.living.roster.JobErrands jobErrands;
     private final server.living.roster.CompanionBossRuns bossRuns;
+    private final server.living.roster.ui.NativeCrewWindow crewWindow;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -150,6 +151,7 @@ public final class LivingWorld {
         this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
         this.jobErrands = new server.living.roster.JobErrands(this); // companions go for their next job (2026-10-05)
         this.bossRuns = new server.living.roster.CompanionBossRuns(this); // P7: boss runs with companions
+        this.crewWindow = new server.living.roster.ui.NativeCrewWindow(this); // P10: the native Crew window
     }
 
     public static LivingWorld get() {
@@ -304,6 +306,10 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.buddies", world.companionBuddies::tick),
                 server.living.roster.CompanionBuddies.SWEEP_MS, server.living.roster.CompanionBuddies.SWEEP_MS));
+        // P10: the native Crew windows open now are read again on companion-ops and sent only when they changed (the
+        // timer hands over nothing while none is open)
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.crewWindow::tick,
+                server.living.roster.ui.NativeCrewWindow.WATCH_MS, server.living.roster.ui.NativeCrewWindow.WATCH_MS));
         instance = world;
         // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
         net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
@@ -569,6 +575,11 @@ public final class LivingWorld {
     /** P7: boss runs with companions (Mu Young's Easy Balrog): the Agent layer's boss-run host. */
     public server.living.roster.CompanionBossRuns bossRuns() {
         return bossRuns;
+    }
+
+    /** P10: the native Crew window of clients with the P10 DLL (living_world.CREW_WINDOW_NATIVE). */
+    public server.living.roster.ui.NativeCrewWindow crewWindow() {
+        return crewWindow;
     }
 
     public ResidentRuntime residents() {

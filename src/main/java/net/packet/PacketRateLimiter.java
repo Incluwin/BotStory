@@ -18,7 +18,7 @@ public final class PacketRateLimiter {
     private final Counter violationCounter = new Counter();
 
     public PacketRateLimiter(int globalRate, int globalBurst, int movementRate, int combatRate,
-                             int chatRate, int economyRate, int otherRate, int violationLimit,
+                             int chatRate, int economyRate, int crewRate, int otherRate, int violationLimit,
                              MobControlBudget mobControlBudget) {
         int safeGlobalRate = positive(globalRate);
         this.globalBucket = new TokenBucket(safeGlobalRate, Math.max(safeGlobalRate, globalBurst));
@@ -31,6 +31,7 @@ public final class PacketRateLimiter {
         familyRates.put(PacketFamily.COMBAT, combatRate);
         familyRates.put(PacketFamily.CHAT, chatRate);
         familyRates.put(PacketFamily.ECONOMY, economyRate);
+        familyRates.put(PacketFamily.CREW, crewRate);
         familyRates.put(PacketFamily.OTHER, otherRate);
         for (PacketFamily family : PacketFamily.values()) {
             familyRates.compute(family, (ignored, value) -> positive(value == null ? otherRate : value));
@@ -47,6 +48,7 @@ public final class PacketRateLimiter {
                 YamlConfig.config.server.PACKET_COMBAT_RATE_PER_SECOND,
                 YamlConfig.config.server.PACKET_CHAT_RATE_PER_SECOND,
                 YamlConfig.config.server.PACKET_ECONOMY_RATE_PER_SECOND,
+                YamlConfig.config.server.PACKET_CREW_RATE_PER_SECOND,
                 YamlConfig.config.server.PACKET_OTHER_RATE_PER_SECOND,
                 YamlConfig.config.server.PACKET_RATE_LIMIT_VIOLATIONS_BEFORE_DISCONNECT,
                 MobControlBudget.fromConfig());

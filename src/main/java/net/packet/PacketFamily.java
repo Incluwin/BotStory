@@ -11,6 +11,8 @@ public enum PacketFamily {
     COMBAT,
     CHAT,
     ECONOMY,
+    /** The native Crew window (P10): each one is read on companion-ops, so a stuck client gets its own small budget. */
+    CREW,
     OTHER;
 
     private static final Set<Integer> MOVEMENT_OPCODES = Set.of(
@@ -35,6 +37,7 @@ public enum PacketFamily {
             value(RecvOpcode.OWL_WARP), value(RecvOpcode.ITEM_MOVE), value(RecvOpcode.MESO_DROP),
             value(RecvOpcode.PLAYER_INTERACTION), value(RecvOpcode.ENTER_MTS), value(RecvOpcode.MTS_OPERATION),
             value(RecvOpcode.CASHSHOP_OPERATION), value(RecvOpcode.ITEM_PICKUP));
+    private static final Set<Integer> CREW_OPCODES = Set.of(value(RecvOpcode.CREW_WINDOW));
 
     public static PacketFamily classify(short opcode) {
         int value = Short.toUnsignedInt(opcode);
@@ -55,6 +58,9 @@ public enum PacketFamily {
         }
         if (ECONOMY_OPCODES.contains(value)) {
             return ECONOMY;
+        }
+        if (CREW_OPCODES.contains(value)) {
+            return CREW;
         }
         return OTHER;
     }

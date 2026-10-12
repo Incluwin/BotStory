@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
@@ -106,17 +107,12 @@ final class CompanionCrewScreens {
     /** {@code note}: a line above the blocks ("Things changed meanwhile."), or empty. */
     private void render(Character owner, Persona from, String note) {
         long at = menus.version(owner); // before any row is read: the options are stamped with the rows they show
-        List<CompanionView> party = new ArrayList<>();
-        List<CompanionView> bench = new ArrayList<>();
-        for (RosterEntry entry : menus.rows(owner)) {
-            if (entry.state() != RosterState.RELEASED) {
-                (inPartyBlock(entry.state()) ? party : bench).add(menus.view(owner, entry));
-            }
-        }
+        Blocks blocks = blocks(owner);
+        List<CompanionView> party = blocks.party();
+        List<CompanionView> bench = blocks.bench();
         List<Option> options = new ArrayList<>();
         for (CompanionView view : party) {
-            String errand = menus.errand(view);
-            options.add(row(owner, from, view, errand == null ? partyLine(view) : errandLine(view, errand)));
+            options.add(row(owner, from, view, partyText(view)));
         }
         for (CompanionView guest : guests(owner)) {
             // a row like the others (the v83 client draws a plain line after a #L row half a line up, over it); a
@@ -132,8 +128,7 @@ final class CompanionCrewScreens {
         options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size())
                 + " bench seats)#n"));
         for (CompanionView view : bench) {
-            String errand = menus.errand(view);
-            options.add(row(owner, from, view, errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand)));
+            options.add(row(owner, from, view, benchText(view)));
         }
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
@@ -144,11 +139,10 @@ final class CompanionCrewScreens {
             options.addAll(actions);
         }
         int seats = world.slots().occupied(owner); // the members, and the seats kept for those away or on their way
-        long away = bench.stream().filter(view -> view.state() == RosterState.AWAY).count(); // away keeps its seat
-        String kept = away == 0 ? "" : " (" + away + (away == 1 ? " seat" : " seats") + " kept)";
+        String kept = kept(bench);
         talk(owner, from)
                 .menu((note.isEmpty() ? "" : note + "\r\n\r\n") + "#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n"
-                        + kept, options)
+                        + (kept.isEmpty() ? "" : " " + kept), options)
                 .back(from == null ? null : () -> card(owner, from.id()))
                 .show();
     }
@@ -156,10 +150,9 @@ final class CompanionCrewScreens {
     /** The actions under the blocks, each offered only when it has someone to act on. */
     private List<Option> actions(Character owner, Persona from, long at, List<CompanionView> party,
                                  List<CompanionView> bench) {
-        boolean out = party.stream().anyMatch(view -> view.state() == RosterState.ACTIVE);
+        boolean out = anyoneOut(party);
         List<Option> actions = new ArrayList<>();
-        Set<String> lineup = menus.lineup(owner);
-        if (bench.stream().anyMatch(view -> view.state() == RosterState.BENCHED && lineup.contains(view.personaId()))) {
+        if (usualCallable(owner, bench)) {
             actions.add(stamped(owner, from, at, "Call my usual lineup", () -> act(owner, from, "menu.crew.call_usual",
                     manager -> manager.callUsual(owner))));
         }
@@ -486,8 +479,7 @@ final class CompanionCrewScreens {
      * the answer to the click (only the line when a window cannot open by then, or the action took long).
      */
     private void act(Character owner, Persona from, String name, Function<CompanionManager, RosterResult> action) {
-        CompanionManager manager = menus.manager();
-        menus.command(owner, name, () -> RosterVoice.line("Everyone", action.apply(manager)), line -> answer(owner, from, line));
+        menus.command(owner, name, said(menus.manager(), action), line -> answer(owner, from, line));
     }
 
     /**
@@ -495,11 +487,20 @@ final class CompanionCrewScreens {
      * party chat, as a single companion's order does); only a refusal is pink text.
      */
     private void order(Character owner, Persona from, String name, Function<CompanionManager, RosterResult> action) {
-        CompanionManager manager = menus.manager();
-        menus.command(owner, name, () -> {
+        menus.command(owner, name, ordered(menus.manager(), action), line -> answer(owner, from, line));
+    }
+
+    /** What a crew action says once it ran on companion-ops: the manager's result in everyone's words. */
+    static Supplier<String> said(CompanionManager manager, Function<CompanionManager, RosterResult> action) {
+        return () -> RosterVoice.line("Everyone", action.apply(manager));
+    }
+
+    /** What a crew-wide order says once it ran: nothing when it went out (each companion answers), else why not. */
+    static Supplier<String> ordered(CompanionManager manager, Function<CompanionManager, RosterResult> action) {
+        return () -> {
             RosterResult result = action.apply(manager);
             return result instanceof RosterResult.Ok ? "" : RosterVoice.line("Everyone", result);
-        }, line -> answer(owner, from, line));
+        };
     }
 
     private void answer(Character owner, Persona from, String line) {
@@ -525,8 +526,11 @@ final class CompanionCrewScreens {
         return new Option(label, () -> card(owner, view.personaId(), true, from));
     }
 
-    /** The card of {@code from}, this window's voice: its own Back (none, or the Crew window it came from) stays. */
-    private void card(Character owner, String personaId) {
+    /**
+     * The card of {@code from}, this window's voice: its own Back (none, or the Crew window it came from) stays. Also a
+     * native Crew window row's card (P10), which has no Back: that window stays open behind it.
+     */
+    void card(Character owner, String personaId) {
         card(owner, personaId, false, null);
     }
 
@@ -551,6 +555,50 @@ final class CompanionCrewScreens {
     }
 
     // ---- rows ------------------------------------------------------------------------------------
+
+    /** The owner's roster as the Crew window's two blocks, views in roster order (the guests are apart). */
+    record Blocks(List<CompanionView> party, List<CompanionView> bench) { }
+
+    /** The party block ({@link #inPartyBlock}) and the bench block (benched and away), read from the view cache. */
+    Blocks blocks(Character owner) {
+        List<CompanionView> party = new ArrayList<>();
+        List<CompanionView> bench = new ArrayList<>();
+        for (RosterEntry entry : menus.rows(owner)) {
+            if (entry.state() != RosterState.RELEASED) {
+                (inPartyBlock(entry.state()) ? party : bench).add(menus.view(owner, entry));
+            }
+        }
+        return new Blocks(party, bench);
+    }
+
+    /** A party block row as the Crew window lists it: {@link #partyLine}, or what it went off to do on its own. */
+    String partyText(CompanionView view) {
+        String errand = menus.errand(view);
+        return errand == null ? partyLine(view) : errandLine(view, errand);
+    }
+
+    /** A bench block row as the Crew window lists it: {@link #benchLine} with the live bench's note, or its errand. */
+    String benchText(CompanionView view) {
+        String errand = menus.errand(view);
+        return errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand);
+    }
+
+    /** "(1 seat kept)", "(2 seats kept)": the seats those away on an errand keep; empty when nobody is away. */
+    static String kept(List<CompanionView> bench) {
+        long away = bench.stream().filter(view -> view.state() == RosterState.AWAY).count(); // away keeps its seat
+        return away == 0 ? "" : "(" + away + (away == 1 ? " seat" : " seats") + " kept)";
+    }
+
+    /** "Call my usual lineup" is offered: someone of the usual lineup sits benched at camp. */
+    boolean usualCallable(Character owner, List<CompanionView> bench) {
+        Set<String> lineup = menus.lineup(owner);
+        return bench.stream().anyMatch(view -> view.state() == RosterState.BENCHED && lineup.contains(view.personaId()));
+    }
+
+    /** Someone of the party block is out with the owner (ACTIVE): the crew-wide orders reach them. */
+    static boolean anyoneOut(List<CompanionView> party) {
+        return party.stream().anyMatch(view -> view.state() == RosterState.ACTIVE);
+    }
 
     /** The party block: out with you, on the way, waiting outside a run, or logged off with you (PARKED). */
     static boolean inPartyBlock(RosterState state) {
@@ -696,7 +744,8 @@ final class CompanionCrewScreens {
         return from == null ? notes : companion;
     }
 
-    private List<CompanionView> guests(Character owner) {
+    /** The citizen guests in the owner's party (CompanionViews.guests): rows of the party block, not of the roster. */
+    List<CompanionView> guests(Character owner) {
         CompanionViews views = world.views();
         return views == null ? List.of() : views.guests(owner);
     }

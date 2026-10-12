@@ -97,6 +97,8 @@ public class ServerConfig {
     public int PACKET_COMBAT_RATE_PER_SECOND;
     public int PACKET_CHAT_RATE_PER_SECOND;
     public int PACKET_ECONOMY_RATE_PER_SECOND;
+    /** Native Crew window packets (CREW_WINDOW 0x117, P10) a connection may send per second. */
+    public int PACKET_CREW_RATE_PER_SECOND = 10;
     public int PACKET_OTHER_RATE_PER_SECOND;
     public int PACKET_RATE_LIMIT_VIOLATIONS_BEFORE_DISCONNECT;
     public boolean USE_EXP_GAIN_LOG;
