@@ -214,6 +214,7 @@ public final class LivingWorldHooks {
         }
         try {
             server.living.resident.LivingTalk.forget(chr);
+            server.living.resident.LivingTalk.endNative(chr); // its native Crew window page went with the connection
             scripting.event.EventInstanceManager instance = chr.getEventInstance(); // before the disconnect unregisters them
             // on companion-ops ahead of the owner's LOG_ONOFF, which the logout publishes right after this hook
             world.executor().submit("roster.logout " + chr.getId(), () -> {

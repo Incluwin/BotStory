@@ -4,10 +4,12 @@ import net.opcodes.RecvOpcode;
 import net.opcodes.SendOpcode;
 import net.packet.OutPacket;
 import org.junit.jupiter.api.Test;
+import server.living.resident.NativeTalkPage;
 import server.living.roster.ui.NativeCrewPackets.Action;
 import server.living.roster.ui.NativeCrewPackets.Close;
 import server.living.roster.ui.NativeCrewPackets.Hello;
 import server.living.roster.ui.NativeCrewPackets.Open;
+import server.living.roster.ui.NativeCrewPackets.PageReply;
 import server.living.roster.ui.NativeCrewPackets.Row;
 import server.living.roster.ui.NativeCrewPackets.Snapshot;
 import server.living.roster.ui.NativeCrewPackets.Verb;
@@ -39,8 +41,56 @@ class NativeCrewPacketsTest {
 
     @Test
     void welcomeIsTheProtocolAndWhetherTheWindowIsEnabled() {
-        assertArrayEquals(bytes(0x7A, 0x01, 0x00, 0x01, 0x00, 0x01), NativeCrewPackets.welcome(true).getBytes());
-        assertArrayEquals(bytes(0x7A, 0x01, 0x00, 0x01, 0x00, 0x00), NativeCrewPackets.welcome(false).getBytes());
+        assertArrayEquals(bytes(0x7A, 0x01, 0x00, 0x01, 0x00, 0x01), NativeCrewPackets.welcome(1, true).getBytes());
+        assertArrayEquals(bytes(0x7A, 0x01, 0x00, 0x01, 0x00, 0x00), NativeCrewPackets.welcome(1, false).getBytes());
+        assertArrayEquals(bytes(0x7A, 0x01, 0x00, 0x02, 0x00, 0x01), NativeCrewPackets.welcome(2, true).getBytes());
+        assertEquals(2, NativeCrewPackets.PROTOCOL);
+    }
+
+    @Test
+    void aMenuPageIsItsHeaderTextAndEntriesInTheNpcWindowsOrder() {
+        NativeTalkPage menu = new NativeTalkPage(0x01020304, NativeTalkPage.Kind.MENU, 0, "#eWho?#n\r\n", List.of(
+                NativeTalkPage.Entry.heading("(after the run)"),
+                NativeTalkPage.Entry.option(1_020_304_000 + 1, "Hadrik"),
+                NativeTalkPage.Entry.option(1_020_304_000 + 998, "Back")));
+
+        Wire expected = new Wire()
+                .u16(0x17A).u8(4) // PAGE
+                .u32(0x01020304) // stamp
+                .u8(3) // kind MENU
+                .u8(0) // flags
+                .str("#eWho?#n\r\n")
+                .u16(3) // entryCount
+                .u8(0).u32(0).str("(after the run)")
+                .u8(1).u32(1_020_304_001).str("Hadrik")
+                .u8(1).u32(1_020_304_998).str("Back");
+        assertArrayEquals(expected.bytes(), NativeCrewPackets.page(menu).getBytes());
+        // spelled out once, so the DLL side can read it against its parser
+        assertArrayEquals(bytes(0x7A, 0x01, 0x04, 0x04, 0x03, 0x02, 0x01, 0x03, 0x00, 0x0A, 0x00),
+                java.util.Arrays.copyOf(NativeCrewPackets.page(menu).getBytes(), 11));
+    }
+
+    @Test
+    void anOkYesNoOrAcceptPageCarriesItsKindFlagsAndNoEntries() {
+        NativeTalkPage ok = new NativeTalkPage(7, NativeTalkPage.Kind.OK, NativeTalkPage.HAS_PREV | NativeTalkPage.HAS_NEXT,
+                "page one", List.of());
+        assertArrayEquals(new Wire().u16(0x17A).u8(4).u32(7).u8(0).u8(0b11).str("page one").u16(0).bytes(),
+                NativeCrewPackets.page(ok).getBytes());
+
+        NativeTalkPage yesNo = new NativeTalkPage(8, NativeTalkPage.Kind.YES_NO, 0, "sure?", List.of());
+        assertArrayEquals(new Wire().u16(0x17A).u8(4).u32(8).u8(1).u8(0).str("sure?").u16(0).bytes(),
+                NativeCrewPackets.page(yesNo).getBytes());
+
+        NativeTalkPage accept = new NativeTalkPage(9, NativeTalkPage.Kind.ACCEPT_DECLINE, 0, "hire?",
+                List.of(NativeTalkPage.Entry.option(1, "ignored: not a menu")));
+        assertArrayEquals(new Wire().u16(0x17A).u8(4).u32(9).u8(2).u8(0).str("hire?").u16(0).bytes(),
+                NativeCrewPackets.page(accept).getBytes());
+    }
+
+    @Test
+    void pageCloseIsItsStamp() {
+        assertArrayEquals(bytes(0x7A, 0x01, 0x05, 0x04, 0x03, 0x02, 0x01), NativeCrewPackets.pageClose(0x01020304).getBytes());
+        assertArrayEquals(bytes(0x7A, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00), NativeCrewPackets.pageClose(0).getBytes());
     }
 
     @Test
@@ -103,9 +153,42 @@ class NativeCrewPacketsTest {
             out.writeInt(-2);
         }));
         assertEquals(new Action(Verb.FOLLOW, 0, "", 0, "", 0), decode(action(7, "", "")));
+        assertEquals(new Action(Verb.ACTIONS, 0, "", 0, "", 0), decode(action(11, "", "")));
         for (Verb verb : Verb.values()) {
             assertEquals(verb, ((Action) decode(action(verb.code(), "a", "b"))).verb());
         }
+    }
+
+    @Test
+    void aPageReplyDecodesItsStampActionAndSelection() {
+        assertEquals(new PageReply(0x01020304, 1, 123_456_789), decode(pageReply(0x01020304, 1, 123_456_789)));
+        assertEquals(new PageReply(42, 0, -1), decode(pageReply(42, 0, -1)));
+        assertEquals(new PageReply(42, 255, -1), decode(pageReply(42, 0xFF, -1)), "Close is 255, unsigned");
+        // the same bytes, spelled out
+        assertEquals(new PageReply(7, 1, 7_000_003), NativeCrewPackets.decode(Packets.buildInPacket(out -> out.writeBytes(
+                bytes(0x04, 0x07, 0x00, 0x00, 0x00, 0x01, 0xC3, 0xCF, 0x6A, 0x00)))));
+    }
+
+    @Test
+    void aMalformedPageReplyDecodesToNothing() {
+        assertNull(decode(out -> out.writeByte(4)), "a PAGE_REPLY without its body");
+        assertNull(decode(out -> {
+            out.writeByte(4);
+            out.writeInt(7);
+        }), "without its action");
+        assertNull(decode(out -> {
+            out.writeByte(4);
+            out.writeInt(7);
+            out.writeByte(1);
+            out.writeShort(3); // half of the selection
+        }), "the selection cut short");
+        assertEquals(new PageReply(7, 1, 3), decode(out -> {
+            out.writeByte(4);
+            out.writeInt(7);
+            out.writeByte(1);
+            out.writeInt(3);
+            out.writeInt(99); // a later DLL's extra bytes
+        }));
     }
 
     @Test
@@ -119,7 +202,7 @@ class NativeCrewPacketsTest {
     @Test
     void malformedPacketsDecodeToNothingAndNeverThrow() {
         assertNull(decode(out -> { }), "empty");
-        assertNull(decode(out -> out.writeByte(4)), "an unknown op");
+        assertNull(decode(out -> out.writeByte(5)), "an unknown op");
         assertNull(decode(out -> out.writeByte(0xFF)), "an unknown op");
         assertNull(decode(out -> {
             out.writeByte(0);
@@ -127,7 +210,7 @@ class NativeCrewPacketsTest {
         }), "a HELLO without its DLL build");
         assertNull(decode(out -> out.writeByte(3)), "an ACTION without its body");
         assertNull(decode(action(0, "a", "b")), "verb 0");
-        assertNull(decode(action(11, "a", "b")), "verb 11");
+        assertNull(decode(action(12, "a", "b")), "verb 12");
         assertNull(decode(out -> {
             out.writeByte(3);
             out.writeByte(2);
@@ -166,6 +249,15 @@ class NativeCrewPacketsTest {
             out.writeInt(0);
             out.writeString(b);
             out.writeInt(0);
+        };
+    }
+
+    private static Consumer<OutPacket> pageReply(int stamp, int action, int selection) {
+        return out -> {
+            out.writeByte(4);
+            out.writeInt(stamp);
+            out.writeByte(action);
+            out.writeInt(selection);
         };
     }
 

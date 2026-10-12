@@ -30,6 +30,7 @@ import server.living.roster.PqEntrance;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
+import server.living.roster.ui.CompanionMenus.Surface;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -67,8 +68,18 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * {@link CompanionManager} (the companions answer for themselves; an order that went out adds no line of its own); its
  * line is pink text, and the Crew window renders again as the answer to the click when a window may open. A pick on
  * rows that changed since the window was drawn renders it again instead ("Things changed meanwhile.").</p>
+ *
+ * <p>Native pages (P10 Step 7, docs/BOT_MANAGEMENT_P10_PLAN.md): the crew-wide pages also draw on {@link Surface#NATIVE},
+ * the native Crew window's page view, from its actions page ({@link #nativeActions}). Built by the same code, with the
+ * same options, stamps and gates; there an action's answer is its pink line alone (the window shows the crew again by
+ * itself), and Back or a stale click draws the native actions page, with the note on top. Cards and hire terms stay NPC
+ * dialogs.</p>
  */
 final class CompanionCrewScreens {
+    /** The native actions page's own line, under the note (in the player's notes voice, as the other pages). */
+    static final String ACTIONS_PAGE = "What should my crew do?";
+    /** The native actions page when the Crew window offers no action under its blocks. */
+    static final String NOTHING_TO_DO = "(nothing to do right now)";
     /** "Everyone on the bench...": a FARM_ITEM goal is each companion's own (its camp's drops, on its card). */
     static final List<Assignment> BENCH_DUTIES = List.of(Assignment.TRAIN, Assignment.FARM_MESO, Assignment.GATHER,
             Assignment.SELL, Assignment.STALL, Assignment.REST);
@@ -133,7 +144,7 @@ final class CompanionCrewScreens {
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
         }
-        List<Option> actions = actions(owner, from, at, party, bench);
+        List<Option> actions = actions(owner, from, at, party, bench, Surface.NPC);
         if (!actions.isEmpty()) {
             options.add(Option.heading("")); // a blank line under the blocks
             options.addAll(actions);
@@ -147,45 +158,76 @@ final class CompanionCrewScreens {
                 .show();
     }
 
-    /** The actions under the blocks, each offered only when it has someone to act on. */
+    /**
+     * The native Crew window's actions page (P10 Step 7, its verb ACTIONS): the actions this Crew window offers under its
+     * blocks now ({@link #actions}, read and stamped exactly as {@link #render} reads them), as a native menu with no
+     * Back (Close returns to the crew view). Each page they open is a native page too.
+     */
+    void nativeActions(Character owner) {
+        nativeActions(owner, "");
+    }
+
+    /** {@code note}: a line above the page ("Things changed meanwhile."), or empty. */
+    private void nativeActions(Character owner, String note) {
+        long at = menus.version(owner); // before any row is read: the options are stamped with the rows they act on
+        Blocks blocks = blocks(owner);
+        List<Option> options = actions(owner, null, at, blocks.party(), blocks.bench(), Surface.NATIVE);
+        if (options.isEmpty()) {
+            options.add(Option.heading(NOTHING_TO_DO));
+        }
+        talk(owner, null, Surface.NATIVE)
+                .menu((note.isEmpty() ? "" : note + "\r\n\r\n") + ACTIONS_PAGE + "\r\n", options)
+                .show();
+    }
+
+    /** The Crew window again: {@link #render(Character, Persona, String)} on NPC, the native actions page on NATIVE. */
+    private void render(Character owner, Persona from, String note, Surface surface) {
+        if (surface == Surface.NATIVE) {
+            nativeActions(owner, note);
+        } else {
+            render(owner, from, note);
+        }
+    }
+
+    /** The actions under the blocks, each offered only when it has someone to act on; their pages draw on {@code surface}. */
     private List<Option> actions(Character owner, Persona from, long at, List<CompanionView> party,
-                                 List<CompanionView> bench) {
+                                 List<CompanionView> bench, Surface surface) {
         boolean out = anyoneOut(party);
         List<Option> actions = new ArrayList<>();
         if (usualCallable(owner, bench)) {
-            actions.add(stamped(owner, from, at, "Call my usual lineup", () -> act(owner, from, "menu.crew.call_usual",
-                    manager -> manager.callUsual(owner))));
+            actions.add(stamped(owner, from, surface, at, "Call my usual lineup", () -> act(owner, from, surface,
+                    "menu.crew.call_usual", manager -> manager.callUsual(owner))));
         }
         if (!party.isEmpty()) {
-            actions.add(stamped(owner, from, at, "Remember this lineup", () -> act(owner, from, "menu.crew.save_lineup",
-                    manager -> manager.saveLineup(owner))));
+            actions.add(stamped(owner, from, surface, at, "Remember this lineup", () -> act(owner, from, surface,
+                    "menu.crew.save_lineup", manager -> manager.saveLineup(owner))));
         }
         if (out) {
             // orders reach whoever is out with you when they are given, so they need no stamp
-            actions.add(new Option("Everyone: follow me", () -> order(owner, from, "menu.crew.follow",
+            actions.add(new Option("Everyone: follow me", () -> order(owner, from, surface, "menu.crew.follow",
                     manager -> manager.followAll(owner))));
-            actions.add(new Option("Everyone: wait here", () -> order(owner, from, "menu.crew.wait",
+            actions.add(new Option("Everyone: wait here", () -> order(owner, from, surface, "menu.crew.wait",
                     manager -> manager.waitAll(owner))));
-            actions.add(new Option("Everyone: gather up", () -> order(owner, from, "menu.crew.gather",
+            actions.add(new Option("Everyone: gather up", () -> order(owner, from, surface, "menu.crew.gather",
                     manager -> manager.gatherAll(owner))));
-            actions.add(new Option("Everyone: rebuff", () -> order(owner, from, "menu.crew.rebuff",
+            actions.add(new Option("Everyone: rebuff", () -> order(owner, from, surface, "menu.crew.rebuff",
                     manager -> manager.rebuffAll(owner))));
-            actions.add(new Option("Formation...", () -> formationPicker(owner, from)));
+            actions.add(new Option("Formation...", () -> formationPicker(owner, from, surface)));
         }
         if (!bench.isEmpty()) {
-            actions.add(new Option("Everyone on the bench...", () -> benchDutyPicker(owner, from)));
+            actions.add(new Option("Everyone on the bench...", () -> benchDutyPicker(owner, from, surface)));
         }
         // decision 15 b, off until the owner turns it on; the option sets what its label offers, so a click on a window
         // drawn before a change elsewhere sets the same thing again and needs no stamp
         CrewRotation rotation = world.crewRotation();
         if (rotation != null && rotation.offered()) {
             boolean on = rotation.keepsFresh(owner.getId());
-            actions.add(new Option("Keep my crew fresh (" + (on ? "on" : "off") + ")", () -> act(owner, from,
+            actions.add(new Option("Keep my crew fresh (" + (on ? "on" : "off") + ")", () -> act(owner, from, surface,
                     "menu.crew.keep_fresh", manager -> manager.setKeepCrewFresh(owner, !on))));
         }
         // a full party cannot invite (P0 probe 12): one of yours steps out so a friend can be asked
         if (out && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {
-            actions.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner, from)));
+            actions.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner, from, surface)));
         }
         // decision 4 b: while the roster and the hire cap have room, the citizens you have met who look for a crew (a
         // world without hired hands, a test's, offers none)
@@ -193,15 +235,15 @@ final class CompanionCrewScreens {
                 .filter(view -> LivingContent.isHire(view.personaId())).count();
         if (world.hiredHands() != null && party.size() + bench.size() < world.config().ROSTER_MAX
                 && hires < world.config().HIRE_MAX_PER_OWNER) {
-            actions.add(new Option("Adventurers looking for a crew...", () -> hireList(owner, from)));
+            actions.add(new Option("Adventurers looking for a crew...", () -> hireList(owner, from, "", surface)));
         }
         // P9: the Hunting, PQ and Boss lineups, and the crew each party quest's own rule would pick (its pages read the
         // store and the rows afresh, so they need no stamp)
         if (!party.isEmpty() || !bench.isEmpty()) {
-            actions.add(new Option("My lineups...", () -> namedLineups(owner, from)));
+            actions.add(new Option("My lineups...", () -> namedLineups(owner, from, surface)));
         }
         if (PqEntrance.keys().stream().anyMatch(world.config()::companionPqEnabled)) {
-            actions.add(new Option("Who should come along?", () -> suggestions(owner, from)));
+            actions.add(new Option("Who should come along?", () -> suggestions(owner, from, surface)));
         }
         return actions;
     }
@@ -212,7 +254,7 @@ final class CompanionCrewScreens {
      * P9 named lineups (decisions 6 and 7): who each of the three keeps; calling one trades the crew out for its own,
      * and "Remember this crew as ..." keeps whoever is out with the owner now.
      */
-    private void namedLineups(Character owner, Persona from) {
+    private void namedLineups(Character owner, Persona from, Surface surface) {
         menus.compute(owner, "menu.crew.lineups", () -> menus.manager().namedLineups(owner), saved -> {
             boolean anyoneOut = menus.rows(owner).stream().anyMatch(entry -> inPartyBlock(entry.state()));
             StringBuilder text = new StringBuilder(voice(from, "The lineups I keep:", "the lineups you keep:"));
@@ -222,25 +264,25 @@ final class CompanionCrewScreens {
                 text.append("\r\n#e").append(lineup.label()).append("#n: ")
                         .append(names == null ? "(none yet)" : String.join(", ", names));
                 if (names != null) {
-                    options.add(new Option("Call the " + lineup.label() + " lineup", () -> act(owner, from,
+                    options.add(new Option("Call the " + lineup.label() + " lineup", () -> act(owner, from, surface,
                             "menu.crew.call_named", manager -> manager.callNamed(owner, lineup))));
                 }
             }
             if (anyoneOut) {
                 for (NamedLineup lineup : NamedLineup.values()) {
-                    options.add(new Option("Remember this crew as " + lineup.label(), () -> act(owner, from,
+                    options.add(new Option("Remember this crew as " + lineup.label(), () -> act(owner, from, surface,
                             "menu.crew.save_named", manager -> manager.saveNamed(owner, lineup))));
                 }
             }
-            talk(owner, from).menu(text + "\r\n", options).back(() -> render(owner, from, "")).show();
-        });
+            talk(owner, from, surface).menu(text + "\r\n", options).back(() -> render(owner, from, "", surface)).show();
+        }, surface);
     }
 
     /**
      * P9 learned lineup suggestions (decisions 4 and 5): for each party quest that takes the owner's level, the crew its
      * entry NPC's own rule picks from the party and the rested bench (CrewSuggestions), with a call for those at camp.
      */
-    private void suggestions(Character owner, Persona from) {
+    private void suggestions(Character owner, Persona from, Surface surface) {
         menus.compute(owner, "menu.crew.suggest", () -> menus.manager().suggestCrews(owner), found -> {
             StringBuilder text = new StringBuilder(voice(from, "Who should come along?", "who should come along?"));
             if (found.isEmpty()) {
@@ -253,12 +295,12 @@ final class CompanionCrewScreens {
                 text.append("\r\n#e").append(quest).append("#n: ").append(joined(suggestion.crew()));
                 if (!suggestion.fromBench().isEmpty()) {
                     List<String> names = suggestion.fromBench().stream().map(Persona::name).toList();
-                    options.add(new Option("Call " + joined(names) + " for " + quest, () -> act(owner, from,
+                    options.add(new Option("Call " + joined(names) + " for " + quest, () -> act(owner, from, surface,
                             "menu.crew.suggest_call", manager -> manager.callSuggested(owner, suggestion.own()))));
                 }
             }
-            talk(owner, from).menu(text + "\r\n", options).back(() -> render(owner, from, "")).show();
-        });
+            talk(owner, from, surface).menu(text + "\r\n", options).back(() -> render(owner, from, "", surface)).show();
+        }, surface);
     }
 
     /** "Casse, Lv37 Magician - gone to see Grendel in Ellinia", "Hadrik, Lv31 Fighter - at the store - HP 90%". */
@@ -273,19 +315,19 @@ final class CompanionCrewScreens {
     }
 
     /** The formations the menu offers (CompanionManager.FORMATIONS), for everyone out with you. */
-    private void formationPicker(Character owner, Persona from) {
+    private void formationPicker(Character owner, Persona from, Surface surface) {
         List<Option> options = new ArrayList<>();
         for (CompanionManager.Formation formation : CompanionManager.FORMATIONS) {
-            options.add(new Option(formation.label(), () -> order(owner, from, "menu.crew.formation",
+            options.add(new Option(formation.label(), () -> order(owner, from, surface, "menu.crew.formation",
                     manager -> manager.setFormation(owner, formation.token()))));
         }
-        talk(owner, from).menu(voice(from, "How should everyone stand?", "how should we stand?") + "\r\n", options)
-                .back(() -> render(owner, from, ""))
+        talk(owner, from, surface).menu(voice(from, "How should everyone stand?", "how should we stand?") + "\r\n", options)
+                .back(() -> render(owner, from, "", surface))
                 .show();
     }
 
     /** One duty for everyone on the bench (benched or away), with what the priors say each brings in. */
-    private void benchDutyPicker(Character owner, Persona from) {
+    private void benchDutyPicker(Character owner, Persona from, Surface surface) {
         long at = menus.version(owner);
         List<CompanionView> bench = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner)) {
@@ -294,24 +336,26 @@ final class CompanionCrewScreens {
             }
         }
         if (bench.isEmpty()) {
-            render(owner, from, THINGS_CHANGED); // called out since the Crew window was drawn
+            render(owner, from, THINGS_CHANGED, surface); // called out since the Crew window was drawn
             return;
         }
         List<Option> options = new ArrayList<>();
         for (Assignment duty : BENCH_DUTIES) {
-            options.add(stamped(owner, from, at, dutyLabel(owner, duty, bench), () -> act(owner, from,
+            options.add(stamped(owner, from, surface, at, dutyLabel(owner, duty, bench), () -> act(owner, from, surface,
                     "menu.crew.assign_all", manager -> manager.assignAll(owner, duty, 0, 0))));
         }
-        talk(owner, from).menu(voice(from, "What should everyone on the bench do?", "what should the bench do?") + "\r\n", options)
-                .back(() -> render(owner, from, ""))
+        talk(owner, from, surface)
+                .menu(voice(from, "What should everyone on the bench do?", "what should the bench do?") + "\r\n", options)
+                .back(() -> render(owner, from, "", surface))
                 .show();
     }
 
     /**
      * Whom of yours to step out for a friend: they bench and come back once there is room again. One tied to a run (or
-     * with its owner in one) waits for it: "(after the run)", as bench and swap do.
+     * with its owner in one) waits for it: "(after the run)", as bench and swap do. The bench warning's Yes/No asks on
+     * the same surface.
      */
-    private void makeRoomPicker(Character owner, Persona from) {
+    private void makeRoomPicker(Character owner, Persona from, Surface surface) {
         long at = menus.version(owner);
         List<Option> options = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner, true)) {
@@ -324,12 +368,11 @@ final class CompanionCrewScreens {
                 options.add(Option.heading(partyRow(view) + " (after the run)"));
                 continue;
             }
-            options.add(stamped(owner, from, at, partyRow(view), () -> menus.confirmBench(owner, persona,
-                    () -> menus.command(owner, "menu.make_room", () -> makeRoom(owner, persona),
-                            line -> answer(owner, from, line)))));
+            options.add(stamped(owner, from, surface, at, partyRow(view), () -> menus.confirmBench(owner, persona, surface,
+                    () -> run(owner, from, surface, "menu.make_room", () -> makeRoom(owner, persona)))));
         }
         options.add(new Option("Never mind", null));
-        talk(owner, from).menu("Who steps out for your friend?\r\n", options).show();
+        talk(owner, from, surface).menu("Who steps out for your friend?\r\n", options).show();
     }
 
     /** "Make room for a friend..." on companion-ops: refused while the companion or its owner is tied to a run. */
@@ -358,11 +401,14 @@ final class CompanionCrewScreens {
      * page with "More..."; Back is the Crew window. Nobody on it: one line, and Back.
      */
     void hireList(Character owner, Persona from) {
-        hireList(owner, from, "");
+        hireList(owner, from, "", Surface.NPC);
     }
 
-    /** {@code note}: a line above the list ("Things changed meanwhile."), or empty. */
-    private void hireList(Character owner, Persona from, String note) {
+    /**
+     * {@code note}: a line above the list ("Things changed meanwhile."), or empty. On NATIVE the list is a native page
+     * and its Back the native actions page; a row's terms are the NPC window either way.
+     */
+    private void hireList(Character owner, Persona from, String note, Surface surface) {
         List<Option> options = new ArrayList<>();
         Population population = Population.get();
         if (population != null) {
@@ -370,7 +416,7 @@ final class CompanionCrewScreens {
             for (int characterId : pendingHireOffers.apply(owner)) {
                 Candidate offer = lookingFor(owner, population, characterId, 0, -1, 0, null);
                 if (offer != null && listed.add(characterId)) {
-                    options.add(hireRow(owner, from, offer, HireScreens.Context.OFFER));
+                    options.add(hireRow(owner, from, offer, HireScreens.Context.OFFER, surface));
                 }
             }
             List<Candidate> met = new ArrayList<>();
@@ -387,22 +433,22 @@ final class CompanionCrewScreens {
                     .thenComparing(Comparator.comparingInt(Candidate::together).reversed())
                     .thenComparing(Candidate::name));
             for (Candidate candidate : met) {
-                options.add(hireRow(owner, from, candidate, HireScreens.Context.HIRE_LIST));
+                options.add(hireRow(owner, from, candidate, HireScreens.Context.HIRE_LIST, surface));
             }
         }
         String top = note.isEmpty() ? "" : note + "\r\n\r\n";
-        talk(owner, from).menu(top + (options.isEmpty() ? voice(from, NOBODY_LOOKING_NOTES, NOBODY_LOOKING)
+        talk(owner, from, surface).menu(top + (options.isEmpty() ? voice(from, NOBODY_LOOKING_NOTES, NOBODY_LOOKING)
                         : "#eAdventurers looking for a crew#n"), options)
-                .back(() -> render(owner, from, ""))
+                .back(() -> render(owner, from, "", surface))
                 .show();
     }
 
     /**
-     * A hire list row: it opens the citizen's terms (Decline brings the list back), unless it stopped looking since the
-     * page was drawn (hired, partied up, gone, out of level range): then the page renders again, read afresh, with
-     * "Things changed meanwhile." on top.
+     * A hire list row: it opens the citizen's terms (Decline brings the list back, on {@code surface}), unless it stopped
+     * looking since the page was drawn (hired, partied up, gone, out of level range): then the page renders again, read
+     * afresh, with "Things changed meanwhile." on top.
      */
-    private Option hireRow(Character owner, Persona from, Candidate listed, HireScreens.Context context) {
+    private Option hireRow(Character owner, Persona from, Candidate listed, HireScreens.Context context, Surface surface) {
         String job = CompanionView.jobName(listed.job());
         String label = listed.name() + ", Lv" + listed.level() + (job.isEmpty() ? "" : " " + job) + " - "
                 + (listed.where() == null ? "around" : listed.where())
@@ -411,10 +457,10 @@ final class CompanionCrewScreens {
             Population population = Population.get();
             if (population == null || lookingFor(owner, population, listed.characterId(), listed.level(), listed.job(), 0,
                     null) == null) {
-                hireList(owner, from, THINGS_CHANGED);
+                hireList(owner, from, THINGS_CHANGED, surface);
                 return;
             }
-            new HireScreens(world).terms(owner, listed.characterId(), context, () -> hireList(owner, from));
+            new HireScreens(world).terms(owner, listed.characterId(), context, () -> hireList(owner, from, "", surface));
         });
     }
 
@@ -478,16 +524,30 @@ final class CompanionCrewScreens {
      * A crew action on companion-ops through the manager: its line is pink text, then the Crew window renders again as
      * the answer to the click (only the line when a window cannot open by then, or the action took long).
      */
-    private void act(Character owner, Persona from, String name, Function<CompanionManager, RosterResult> action) {
-        menus.command(owner, name, said(menus.manager(), action), line -> answer(owner, from, line));
+    private void act(Character owner, Persona from, Surface surface, String name,
+                     Function<CompanionManager, RosterResult> action) {
+        run(owner, from, surface, name, said(menus.manager(), action));
     }
 
     /**
      * A crew-wide order: {@link #act}, but an order that went out says nothing of its own (each companion answers in
      * party chat, as a single companion's order does); only a refusal is pink text.
      */
-    private void order(Character owner, Persona from, String name, Function<CompanionManager, RosterResult> action) {
-        menus.command(owner, name, ordered(menus.manager(), action), line -> answer(owner, from, line));
+    private void order(Character owner, Persona from, Surface surface, String name,
+                       Function<CompanionManager, RosterResult> action) {
+        run(owner, from, surface, name, ordered(menus.manager(), action));
+    }
+
+    /**
+     * Runs {@code action} on companion-ops and answers its line: on NPC as {@link CompanionMenus#command} answers (the
+     * Crew window again when a window may open); on NATIVE always, as pink text alone ({@link #answer}).
+     */
+    private void run(Character owner, Persona from, Surface surface, String name, Supplier<String> action) {
+        if (surface == Surface.NATIVE) {
+            menus.commandQuietly(owner, name, action, line -> answer(owner, from, line, surface));
+        } else {
+            menus.command(owner, name, action, line -> answer(owner, from, line, surface));
+        }
     }
 
     /** What a crew action says once it ran on companion-ops: the manager's result in everyone's words. */
@@ -503,19 +563,25 @@ final class CompanionCrewScreens {
         };
     }
 
-    private void answer(Character owner, Persona from, String line) {
+    /**
+     * An action's line in pink, then on NPC the Crew window again. On NATIVE the line alone: the native window shows the
+     * crew again by itself (its page closed with the click) and its watcher sends the change.
+     */
+    private void answer(Character owner, Persona from, String line, Surface surface) {
         if (!line.isEmpty()) {
             owner.dropMessage(5, line);
         }
-        render(owner, from, "");
+        if (surface == Surface.NPC) {
+            render(owner, from, "");
+        }
     }
 
     /**
      * An option on the rows as drawn ({@code at}: the owner's view version taken before they were read): clicked after
-     * the owner's rows changed, the Crew window renders again instead.
+     * the owner's rows changed, the Crew window (the native actions page on NATIVE) renders again instead.
      */
-    private Option stamped(Character owner, Persona from, long at, String label, Runnable action) {
-        return new Option(label, menus.ifUnchanged(owner, at, action, () -> render(owner, from, THINGS_CHANGED)));
+    private Option stamped(Character owner, Persona from, Surface surface, long at, String label, Runnable action) {
+        return new Option(label, menus.ifUnchanged(owner, at, action, () -> render(owner, from, THINGS_CHANGED, surface)));
     }
 
     /**
@@ -738,6 +804,15 @@ final class CompanionCrewScreens {
     /** The companion whose card opened the window, under the portrait policy; else the player's notes. */
     private LivingTalk talk(Character owner, Persona from) {
         return from == null ? LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER) : LivingTalk.open(owner, portrait(from));
+    }
+
+    /** {@link #talk(Character, Persona)} on {@code surface}: a native page on NATIVE (the same face when it falls back). */
+    private LivingTalk talk(Character owner, Persona from, Surface surface) {
+        if (surface == Surface.NPC) {
+            return talk(owner, from);
+        }
+        return from == null ? LivingTalk.openNative(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
+                : LivingTalk.openNative(owner, portrait(from));
     }
 
     private static String voice(Persona from, String notes, String companion) {

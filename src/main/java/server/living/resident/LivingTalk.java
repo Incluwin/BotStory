@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
 
 /**
@@ -34,10 +35,23 @@ import java.util.function.IntConsumer;
  * <p>A talk whose window can no longer be on screen is dropped wherever it is looked up, so it never blocks
  * the next window or eats a stock window's reply: one left from an earlier login, one shown on a map the player
  * has since left (a window sent just before a warp), and one a stock script window has replaced.</p>
+ *
+ * <p>Native pages (docs/BOT_MANAGEMENT_P10_PLAN.md, "Step 7: native pages"): a talk opened with {@link #openNative} is
+ * built the same way, but {@link #show} hands each window to the registered {@link NativeTalkRenderer} (the native Crew
+ * window) as a {@link NativeTalkPage} instead of an NPC_TALK, and its reply comes back through {@link #respondNative}
+ * into the same {@code handle}/{@code choose}/{@code finish} code. Native talks live in their own map, so a native page
+ * never blocks an NPC window or the reverse, and the NPC window rules (one window at a time, the click throttle, script
+ * disposal, the map check) do not apply to them. Ending one never sends enableActions (no NPC window was open); the
+ * renderer closes the page unless the answer opened another native page. A number box, a missing renderer or a client
+ * that draws no pages gets the NPC window instead.</p>
  */
 public final class LivingTalk {
     private static final Logger log = LoggerFactory.getLogger(LivingTalk.class);
     private static final Map<Integer, LivingTalk> OPEN = new ConcurrentHashMap<>();
+    /** The native pages on screen, one per character; apart from {@link #OPEN}, so neither blocks the other. */
+    private static final Map<Integer, LivingTalk> OPEN_NATIVE = new ConcurrentHashMap<>();
+    /** What draws native pages: the native Crew window, once the living world started; null before and after. */
+    private static final AtomicReference<NativeTalkRenderer> NATIVE_RENDERER = new AtomicReference<>();
     /** Menu options per window; a longer menu gets a "More..." option that shows the next ones. */
     static final int MENU_PAGE_SIZE = 10;
     /**
@@ -98,6 +112,8 @@ public final class LivingTalk {
     private int stamp;
     /** The map the player stood on when the talk was shown; a warp closes the client's window. */
     private MapleMap shownOn;
+    /** Drawn as a native page ({@link #openNative}); cleared by {@link #show} when the NPC window draws it instead. */
+    private boolean nativeSurface;
 
     private LivingTalk(Character chr, int npcId) {
         this.chr = chr;
@@ -107,6 +123,45 @@ public final class LivingTalk {
     /** Starts building a talk for the player; nothing is sent (or replaced) until {@link #show}. */
     public static LivingTalk open(Character chr, int npcId) {
         return new LivingTalk(chr, npcId);
+    }
+
+    /**
+     * Starts building a talk drawn as a native page (see the class notes); {@code npcId} and the speaker are the NPC
+     * window's when it falls back to one (a number box, no renderer, a client that draws no pages).
+     */
+    public static LivingTalk openNative(Character chr, int npcId) {
+        LivingTalk talk = new LivingTalk(chr, npcId);
+        talk.nativeSurface = true;
+        return talk;
+    }
+
+    /** Native pages are drawn by {@code renderer} from now on (the native Crew window, when the living world starts). */
+    public static void nativeRenderer(NativeTalkRenderer renderer) {
+        NATIVE_RENDERER.set(renderer);
+    }
+
+    /** No more native pages from {@code renderer} (the living world stopped); another one registered since stays. */
+    public static void clearNativeRenderer(NativeTalkRenderer renderer) {
+        NATIVE_RENDERER.compareAndSet(renderer, null);
+    }
+
+    /**
+     * Drops the player's native page without a packet: the window was closed, or the player logged out. Only this
+     * character's own (a channel change's new login keeps the page it opened meanwhile).
+     */
+    public static void endNative(Character chr) {
+        if (chr == null) {
+            return;
+        }
+        LivingTalk talk = OPEN_NATIVE.get(chr.getId());
+        if (talk != null && talk.chr == chr) {
+            OPEN_NATIVE.remove(chr.getId(), talk);
+        }
+    }
+
+    /** True while the player has a native page on screen awaiting its reply. */
+    public static boolean nativeActive(Character chr) {
+        return chr != null && liveNative(chr) != null;
     }
 
     /** True while the player has a talk window on screen awaiting its reply; the stock script starters ask this first. */
@@ -185,6 +240,16 @@ public final class LivingTalk {
             return talk;
         }
         OPEN.remove(player.getId(), talk); // an earlier login, a warp since, or a stock window replaced it
+        return null;
+    }
+
+    /** The player's native page; one left from an earlier login is dropped (the window survives warps). */
+    private static LivingTalk liveNative(Character player) {
+        LivingTalk talk = OPEN_NATIVE.get(player.getId());
+        if (talk == null || talk.chr == player) {
+            return talk;
+        }
+        OPEN_NATIVE.remove(player.getId(), talk);
         return null;
     }
 
@@ -294,8 +359,19 @@ public final class LivingTalk {
      * player has another window awaiting a reply, and (unless this answers the player's click) within
      * 500 ms of the last NPC click, like stock NPC clicks. A leftover script conversation that sent no
      * window is disposed first, only on the player's own I/O thread; anywhere else it is refused.
+     *
+     * <p>A native talk ({@link #openNative}) is drawn by the renderer instead, with none of those rules; a number box,
+     * no renderer, or a client the renderer does not draw for gets the NPC window, as above.</p>
      */
     public void show() {
+        if (nativeSurface) {
+            NativeTalkRenderer renderer = NATIVE_RENDERER.get();
+            if (renderer != null && kind != Kind.NUMBER && renderer.draws(chr)) {
+                showNative(renderer);
+                return;
+            }
+            nativeSurface = false; // the NPC window draws it, by the NPC window's rules
+        }
         Client client = chr.getClient();
         if (client == null) {
             return;
@@ -315,6 +391,27 @@ public final class LivingTalk {
             log.warn("living talk for {} could not be shown", chr.getName(), failure);
             if (OPEN.remove(chr.getId(), this)) {
                 client.sendPacket(PacketCreator.enableActions()); // no window went out: nothing may wait for its reply
+            }
+        }
+    }
+
+    /**
+     * A native page: it replaces the player's native page on screen (if any) and is sent at once. Nothing to show sends
+     * nothing (the click that asked for it closes its own page).
+     */
+    private void showNative(NativeTalkRenderer renderer) {
+        if (chr.getClient() == null || (pages.isEmpty() && promptText == null)) {
+            return;
+        }
+        OPEN_NATIVE.put(chr.getId(), this);
+        page = 0;
+        menuPage = 0;
+        try {
+            render();
+        } catch (RuntimeException failure) {
+            log.warn("living talk for {} could not be shown as a native page", chr.getName(), failure);
+            if (OPEN_NATIVE.remove(chr.getId(), this)) {
+                renderer.close(chr, 0); // whatever page is on screen belonged to a talk this one replaced
             }
         }
     }
@@ -339,10 +436,14 @@ public final class LivingTalk {
     private void render() {
         Client client = chr.getClient();
         if (client == null) {
-            OPEN.remove(chr.getId(), this);
+            (nativeSurface ? OPEN_NATIVE : OPEN).remove(chr.getId(), this);
             return;
         }
         stamp = STAMPS.updateAndGet(value -> value >= MAX_STAMP ? 1 : value + 1);
+        if (nativeSurface) {
+            renderNative();
+            return;
+        }
         if (page < pages.size()) {
             boolean hasPrev = page > 0;
             boolean hasNext = page + 1 < pages.size() || promptText != null;
@@ -369,42 +470,104 @@ public final class LivingTalk {
         client.sendPacket(PacketCreator.getNPCTalk(npcId, msgType, text, end, speaker));
     }
 
+    /**
+     * The window as a native page: the same window {@link #render} would send as an NPC_TALK (the same page, prompt,
+     * buttons and, for a menu, the same lines as {@link #menuText}), handed to the renderer. The reply type it awaits is
+     * the NPC window's, so {@link #handle} reads the reply as it reads that window's.
+     */
+    private void renderNative() {
+        NativeTalkRenderer renderer = NATIVE_RENDERER.get();
+        if (renderer == null) {
+            OPEN_NATIVE.remove(chr.getId(), this); // the living world stopped: nothing draws the page any more
+            return;
+        }
+        NativeTalkPage shown;
+        if (page < pages.size()) {
+            boolean hasPrev = page > 0;
+            boolean hasNext = page + 1 < pages.size() || promptText != null;
+            awaitingType = 0;
+            shown = new NativeTalkPage(stamp, NativeTalkPage.Kind.OK, (hasPrev ? NativeTalkPage.HAS_PREV : 0)
+                    | (hasNext ? NativeTalkPage.HAS_NEXT : 0), pages.get(page), List.of());
+        } else {
+            String text = promptText == null ? "" : promptText;
+            shown = switch (kind) {
+                case OK -> {
+                    awaitingType = 0;
+                    yield new NativeTalkPage(stamp, NativeTalkPage.Kind.OK,
+                            pages.isEmpty() && back == null ? 0 : NativeTalkPage.HAS_PREV, text, List.of());
+                }
+                case YES_NO -> {
+                    awaitingType = 1;
+                    yield new NativeTalkPage(stamp, NativeTalkPage.Kind.YES_NO, 0, text, List.of());
+                }
+                case ACCEPT_DECLINE -> {
+                    awaitingType = 0x0C;
+                    yield new NativeTalkPage(stamp, NativeTalkPage.Kind.ACCEPT_DECLINE, 0, text, List.of());
+                }
+                case MENU -> {
+                    awaitingType = 4;
+                    yield new NativeTalkPage(stamp, NativeTalkPage.Kind.MENU, 0, text, menuEntries());
+                }
+                case NUMBER -> throw new IllegalStateException("a number box is never a native page");
+            };
+        }
+        renderer.page(chr, shown);
+    }
+
+    /** The NPC window's menu text: the prompt, then {@link #menuEntries} as #L options and plain lines. */
     private String menuText() {
         StringBuilder text = new StringBuilder(promptText == null ? "" : promptText);
+        boolean afterOption = false; // the last line written is a #L option
+        for (NativeTalkPage.Entry entry : menuEntries()) {
+            if (!entry.option()) {
+                // the v83 client draws a plain line right after a #L option half a line up, over that option
+                // (found live 2026-09-29/30): a blank line first keeps it on a line of its own
+                if (afterOption && !entry.label().startsWith("\r\n")) {
+                    text.append("\r\n");
+                }
+                text.append("\r\n").append(entry.label());
+                afterOption = false;
+                continue;
+            }
+            text.append("\r\n#L").append(entry.selection()).append("#").append(entry.label()).append("#l");
+            afterOption = true;
+        }
+        return text.toString();
+    }
+
+    /**
+     * The lines of the current menu page, in order: its headings and options (a heading shows on the page of the option
+     * after it), then "More..." ("Back to the top..." on the last page) while the menu pages, then "Back" with a parent.
+     * Both windows draw these: the NPC window as {@link #menuText}, a native page as its entries.
+     */
+    private List<NativeTalkPage.Entry> menuEntries() {
+        List<NativeTalkPage.Entry> entries = new ArrayList<>();
         int pageCount = menuPageCount();
         int from = menuPage * MENU_PAGE_SIZE;
         int to = pageCount > 1 ? from + MENU_PAGE_SIZE : Integer.MAX_VALUE;
         int next = 0; // position of the next selectable option; a heading shows on the page of the option after it
-        boolean afterOption = false; // the last line written is a #L option
         for (int id = 0; id < options.size(); id++) {
             Option option = options.get(id);
             boolean onPage = next >= from && next < to;
             if (!option.selectable()) {
                 if (onPage) {
-                    // the v83 client draws a plain line right after a #L option half a line up, over that option
-                    // (found live 2026-09-29/30): a blank line first keeps it on a line of its own
-                    if (afterOption && !option.label().startsWith("\r\n")) {
-                        text.append("\r\n");
-                    }
-                    text.append("\r\n").append(option.label());
-                    afterOption = false;
+                    entries.add(NativeTalkPage.Entry.heading(option.label()));
                 }
                 continue;
             }
             if (onPage) {
-                text.append("\r\n#L").append(selectionOf(id)).append("#").append(option.label()).append("#l");
-                afterOption = true;
+                entries.add(NativeTalkPage.Entry.option(selectionOf(id), option.label()));
             }
             next++;
         }
         if (pageCount > 1) { // on the last page it wraps to the first
-            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#")
-                    .append(menuPage + 1 < pageCount ? "More..." : "Back to the top...").append("#l");
+            entries.add(NativeTalkPage.Entry.option(selectionOf(MORE_ID),
+                    menuPage + 1 < pageCount ? "More..." : "Back to the top..."));
         }
         if (back != null) {
-            text.append("\r\n#L").append(selectionOf(BACK_ID)).append("#Back#l");
+            entries.add(NativeTalkPage.Entry.option(selectionOf(BACK_ID), "Back"));
         }
-        return text.toString();
+        return entries;
     }
 
     private int menuPageCount() {
@@ -444,6 +607,39 @@ public final class LivingTalk {
             talk.handle(lastMsg, action, selection);
         } catch (RuntimeException failure) {
             log.warn("living talk response failed for {}", player.getName(), failure);
+            talk.close();
+        } finally {
+            if (outer == null) {
+                ANSWERING.remove();
+            } else {
+                ANSWERING.set(outer);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * A native page's reply (the native Crew window's PAGE_REPLY), on the player's packet thread as an NPC reply is:
+     * {@code action} 1 is OK / Yes / Accept / Next / an option ({@code selection} its NPC selection value), 0 is No /
+     * Decline / Prev, anything else (Close, the window's X, Esc) ends the talk without running anything. It goes
+     * through the same code as the NPC window's reply. False, with nothing done, when {@code stamp} is not the page on
+     * screen (an older page's click: the newer page stays) or no native page is open.
+     */
+    public static boolean respondNative(Character chr, int stamp, byte action, int selection) {
+        LivingTalk talk = chr == null ? null : liveNative(chr);
+        if (talk == null || talk.stamp != stamp) {
+            return false;
+        }
+        Integer outer = ANSWERING.get();
+        ANSWERING.set(chr.getId()); // a window the answer opens (an NPC one too) is the answer to this click
+        try {
+            if (action != 0 && action != 1) {
+                talk.close();
+            } else {
+                talk.handle(talk.awaitingType, action, selection);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("living talk native response failed for {}", chr.getName(), failure);
             talk.close();
         } finally {
             if (outer == null) {
@@ -532,9 +728,12 @@ public final class LivingTalk {
         finish(chosen == null ? null : chosen.action());
     }
 
-    /** Closes this window and runs the answer, which may open the next window; otherwise the client's actions come back. */
+    /**
+     * Closes this window and runs the answer, which may open the next window; otherwise the client's actions come back
+     * (a native page: the page closes).
+     */
     private void finish(Runnable next) {
-        if (!OPEN.remove(chr.getId(), this)) {
+        if (!(nativeSurface ? OPEN_NATIVE : OPEN).remove(chr.getId(), this)) {
             return;
         }
         try {
@@ -542,12 +741,25 @@ public final class LivingTalk {
                 next.run();
             }
         } finally {
-            release();
+            if (nativeSurface) {
+                releaseNative();
+            } else {
+                release();
+            }
         }
     }
 
-    /** Ends the talk and re-enables the client's actions unless another talk was opened meanwhile. */
+    /**
+     * Ends the talk and re-enables the client's actions unless another talk was opened meanwhile. A native page closes
+     * instead (never enableActions: no NPC window was open), unless another native page was opened meanwhile.
+     */
     public void close() {
+        if (nativeSurface) {
+            if (OPEN_NATIVE.remove(chr.getId(), this)) {
+                releaseNative();
+            }
+            return;
+        }
         if (OPEN.remove(chr.getId(), this)) {
             release();
         }
@@ -557,6 +769,14 @@ public final class LivingTalk {
         Client client = chr.getClient();
         if (client != null && !OPEN.containsKey(chr.getId())) {
             client.sendPacket(PacketCreator.enableActions());
+        }
+    }
+
+    /** The native page closes, unless the answer opened another native page (it replaced this one on screen). */
+    private void releaseNative() {
+        NativeTalkRenderer renderer = NATIVE_RENDERER.get();
+        if (renderer != null && chr.getClient() != null && !OPEN_NATIVE.containsKey(chr.getId())) {
+            renderer.close(chr, stamp);
         }
     }
 }

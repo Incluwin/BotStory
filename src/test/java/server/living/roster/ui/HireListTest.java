@@ -38,6 +38,7 @@ import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapFactory;
 import server.maps.MapleMap;
+import testutil.NativePages;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
 import testutil.Packets;
@@ -310,6 +311,42 @@ class HireListTest {
         assertTrue(again.text().startsWith(CompanionMenus.THINGS_CHANGED + "\r\n\r\n#eAdventurers looking for a crew#n"),
                 again.text());
         assertEquals(List.of("Tobi, Lv31 Cleric - around", "Back"), again.labels());
+    }
+
+    // ---- the native Crew window (P10 Step 7) ---------------------------------------------------------
+
+    @Test
+    void theNativeListOpensTheNpcTermsAndDeclineReturnsToTheNativeList() {
+        loadedCitizen(MIRA, "Mira", 30, Job.HUNTER, "Kerning City", null, 0, 40);
+        when(store.characterRow(MIRA)).thenReturn(new LivingStore.CharacterRow("Mira", 1, 2, 21001, 31002, 30,
+                Job.HUNTER.getId(), KERNING));
+        NativePages pages = new NativePages().install();
+        try {
+            menus.crews().nativeActions(owner);
+            assertEquals(List.of("Adventurers looking for a crew..."), pages.labels());
+            pages.pick(owner, "Adventurers looking for a crew...");
+            assertEquals("#eAdventurers looking for a crew#n", pages.last().text());
+            assertEquals(List.of("Mira, Lv30 Hunter - Kerning City", "Back"), pages.labels());
+            int list = pages.last().stamp();
+
+            pages.pick(owner, "Mira, Lv30 Hunter - Kerning City");
+
+            Talk terms = lastTalk();
+            assertEquals(ACCEPT_DECLINE, terms.msgType(), "the hire terms stay the NPC window (a card)");
+            assertTrue(terms.text().contains("#eMira#n, Lv30 Hunter"), terms.text());
+            assertEquals(List.of(list), pages.closes, "the list page closed under the terms");
+            int drawn = pages.pages.size();
+
+            assertTrue(LivingTalk.respond(client, ACCEPT_DECLINE, (byte) 0, Packets.buildInPacket(out -> { }))); // Decline
+
+            assertEquals(drawn + 1, pages.pages.size(), "Decline: the native list again");
+            assertEquals(List.of("Mira, Lv30 Hunter - Kerning City", "Back"), pages.labels());
+            pages.pick(owner, "Back");
+            assertEquals("What should my crew do?\r\n", pages.last().text());
+        } finally {
+            pages.uninstall();
+            LivingTalk.endNative(owner);
+        }
     }
 
     // ---- the pending offers hook ---------------------------------------------------------------------

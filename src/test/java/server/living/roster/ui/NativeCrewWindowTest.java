@@ -18,6 +18,7 @@ import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.resident.LivingTalk;
+import server.living.resident.NativeTalkPage;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
@@ -34,6 +35,7 @@ import server.living.roster.ui.NativeCrewPackets.Action;
 import server.living.roster.ui.NativeCrewPackets.Close;
 import server.living.roster.ui.NativeCrewPackets.Hello;
 import server.living.roster.ui.NativeCrewPackets.Open;
+import server.living.roster.ui.NativeCrewPackets.PageReply;
 import server.living.roster.ui.NativeCrewPackets.Row;
 import server.living.roster.ui.NativeCrewPackets.Snapshot;
 import server.living.roster.ui.NativeCrewPackets.Verb;
@@ -43,10 +45,14 @@ import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
+import testutil.NativePages;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
 import testutil.Packets;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -175,7 +181,9 @@ class NativeCrewWindowTest {
 
     @AfterEach
     void close() {
+        window.uninstall();
         LivingTalk.forget(owner);
+        LivingTalk.endNative(owner);
         livingWorld.close();
     }
 
@@ -216,23 +224,39 @@ class NativeCrewWindowTest {
 
             assertEquals(1, protocol.get());
             assertEquals(1, crewPackets().size());
-            assertArrayEquals(NativeCrewPackets.welcome((Boolean) each[2]).getBytes(), crewPackets().get(0),
+            assertArrayEquals(NativeCrewPackets.welcome(1, (Boolean) each[2]).getBytes(), crewPackets().get(0),
                     each[0] + (((Boolean) each[1]) ? " GM" : " player"));
         }
     }
 
     @Test
-    void anUnknownProtocolIsNotEnabledAndHearsNothingElse() {
-        hadrik();
+    void helloIsAnsweredAtTheLowerOfTheClientsAndTheServersProtocol() {
+        int[][] cases = {{1, 1}, {2, 2}, {3, 2}, {0x7FFF, 2}};
+        for (int[] each : cases) {
+            protocol.set(0);
+            clearInvocations(client);
 
-        NativeCrewWindow.receive(client, owner, new Hello(2, 20270101), world);
+            NativeCrewWindow.receive(client, owner, new Hello(each[0], 20270101), world);
+
+            assertEquals(each[0], protocol.get(), "the client's own protocol is kept");
+            assertEquals(each[1], NativeCrewWindow.negotiated(client));
+            assertEquals(1, crewPackets().size());
+            assertArrayEquals(NativeCrewPackets.welcome(each[1], true).getBytes(), crewPackets().get(0), "HELLO " + each[0]);
+        }
+    }
+
+    @Test
+    void aLaterDllIsServedAtThisServersProtocol() {
+        hadrik();
+        when(manager.followAll(owner)).thenReturn(new RosterResult.Ok(""));
+
+        NativeCrewWindow.receive(client, owner, new Hello(3, 20270101), world);
         NativeCrewWindow.receive(client, owner, new Open(), world);
         NativeCrewWindow.receive(client, owner, new Action(Verb.FOLLOW, 0, "", 0, "", 0), world);
 
-        assertEquals(2, protocol.get());
-        assertEquals(1, crewPackets().size());
-        assertArrayEquals(NativeCrewPackets.welcome(false).getBytes(), crewPackets().get(0));
-        verify(manager, never()).followAll(any());
+        assertArrayEquals(NativeCrewPackets.welcome(2, true).getBytes(), crewPackets().get(0));
+        assertEquals(NativeCrewPackets.TYPE_SNAPSHOT, last()[2]);
+        verify(manager).followAll(owner);
     }
 
     @Test
@@ -248,7 +272,7 @@ class NativeCrewWindowTest {
         NativeCrewWindow.receive(client, owner, new Hello(1, 20261012), null);
         NativeCrewWindow.receive(client, owner, new Open(), null);
 
-        assertEquals(List.of(Arrays.toString(NativeCrewPackets.welcome(false).getBytes()),
+        assertEquals(List.of(Arrays.toString(NativeCrewPackets.welcome(1, false).getBytes()),
                 Arrays.toString(NativeCrewPackets.close().getBytes())), crewPackets().stream().map(Arrays::toString).toList());
     }
 
@@ -276,7 +300,7 @@ class NativeCrewWindowTest {
             out.writeShort(1);
             out.writeInt(20261012);
         }), client);
-        assertArrayEquals(NativeCrewPackets.welcome(true).getBytes(), last());
+        assertArrayEquals(NativeCrewPackets.welcome(1, true).getBytes(), last());
     }
 
     // ---- snapshot rows -----------------------------------------------------------------------------
@@ -854,18 +878,255 @@ class NativeCrewWindowTest {
         window.switchChanged(List.of(owner, ben));
 
         assertEquals(List.of(Arrays.toString(NativeCrewPackets.close().getBytes()),
-                Arrays.toString(NativeCrewPackets.welcome(false).getBytes())), crewPackets().stream().map(Arrays::toString).toList());
+                Arrays.toString(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, false).getBytes())), crewPackets().stream().map(Arrays::toString).toList());
         assertFalse(window.watching(owner));
         verify(benClient, never()).sendPacket(any());
 
         clearInvocations(client);
         config.CREW_WINDOW_NATIVE = "all";
         window.switchChanged(List.of(owner, ben));
-        assertEquals(List.of(Arrays.toString(NativeCrewPackets.welcome(true).getBytes())),
+        assertEquals(List.of(Arrays.toString(NativeCrewPackets.welcome(NativeCrewPackets.PROTOCOL, true).getBytes())),
                 crewPackets().stream().map(Arrays::toString).toList());
     }
 
+    // ---- native pages (protocol 2, Step 7) ---------------------------------------------------------
+
+    @Test
+    void actionsShowsTheNativeActionsPageAndItsReplyActsAndClosesThePage() {
+        hadrik();
+        when(manager.followAll(owner)).thenReturn(new RosterResult.Ok(""));
+        window.install();
+        openWindow();
+
+        act(Verb.ACTIONS, "", "");
+
+        NativeTalkPage page = lastPage();
+        assertEquals(NativeTalkPage.Kind.MENU, page.kind());
+        assertEquals("What should my crew do?\r\n", page.text());
+        assertEquals(List.of("Remember this lineup", "Everyone: follow me", "Everyone: wait here", "Everyone: gather up",
+                "Everyone: rebuff", "Formation...", "My lineups..."), NativePages.labels(page));
+        assertTrue(NpcTalks.talks(sent()).isEmpty(), "never an NPC window");
+        clearInvocations(client);
+
+        NativeCrewWindow.receive(client, owner,
+                new PageReply(page.stamp(), 1, NativePages.selection(page, "Everyone: follow me")), world);
+
+        verify(manager).followAll(owner);
+        assertArrayEquals(NativeCrewPackets.pageClose(page.stamp()).getBytes(), last());
+        assertTrue(NpcTalks.talks(sent()).isEmpty(), "the answer is pink text, never the NPC Crew window");
+        assertFalse(LivingTalk.nativeActive(owner));
+    }
+
+    @Test
+    void aPageReplyRunsOnThePlayersPacketThreadNotOnCompanionOps() {
+        hadrik();
+        List<Runnable> companionOps = new ArrayList<>();
+        CompanionExecutor queued = DirectExecutor.queued(companionOps);
+        when(world.executor()).thenReturn(queued);
+        when(manager.saveLineup(owner)).thenReturn(new RosterResult.Ok("Remembered."));
+        window.install();
+        hello();
+        companionOps.clear();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        assertTrue(companionOps.isEmpty(), "the page is drawn on the packet thread");
+
+        NativeCrewWindow.receive(client, owner,
+                new PageReply(page.stamp(), 1, NativePages.selection(page, "Remember this lineup")), world);
+
+        assertArrayEquals(NativeCrewPackets.pageClose(page.stamp()).getBytes(), last(), "answered at once");
+        verify(manager, never()).saveLineup(any()); // the roster write itself waits for companion-ops
+        companionOps.forEach(Runnable::run);
+        verify(manager).saveLineup(owner);
+        verify(owner).dropMessage(5, "Remembered.");
+    }
+
+    @Test
+    void aProtocolOneClientNeverGetsAPageAndItsActionsAndRepliesAreIgnored() {
+        hadrik();
+        add(row("tobi", RosterState.ACTIVE), "Tobi", 902, 30, Job.CLERIC);
+        ContractService contracts = mock(ContractService.class);
+        when(contracts.benchWalkOutAfter(ANN, personas.get("hadrik"))).thenReturn("an hour");
+        when(world.contracts()).thenReturn(contracts);
+        window.install();
+        NativeCrewWindow.receive(client, owner, new Hello(1, 20261012), world);
+        assertArrayEquals(NativeCrewPackets.welcome(1, true).getBytes(), last());
+        NativeCrewWindow.receive(client, owner, new Open(), world);
+        clearInvocations(client);
+
+        act(Verb.ACTIONS, "", "");
+        NativeCrewWindow.receive(client, owner, new PageReply(1, 1, 1_000), world);
+        verify(client, never()).sendPacket(any());
+
+        act(Verb.BENCH, "hadrik", ""); // the bench warning: the NPC Yes/No, as before
+        assertEquals(YES_NO, lastTalk().msgType());
+        assertTrue(LivingTalk.respond(client, YES_NO, (byte) 1, Packets.buildInPacket(out -> { })));
+        verify(roster).bench(owner, personas.get("hadrik"));
+        assertTrue(crewPages().isEmpty(), "never a PAGE at protocol 1");
+        assertTrue(crewPackets().stream().noneMatch(bytes -> bytes[2] == NativeCrewPackets.TYPE_PAGE_CLOSE));
+
+        LivingTalk.forget(owner);
+        act(Verb.MORE, "", "");
+        assertTrue(lastTalk().text().startsWith("#eParty "), "MORE: the NPC Crew window");
+    }
+
+    @Test
+    void benchAtProtocolTwoAsksTheBenchWarningNatively() {
+        hadrik();
+        add(row("tobi", RosterState.ACTIVE), "Tobi", 902, 30, Job.CLERIC);
+        ContractService contracts = mock(ContractService.class);
+        when(contracts.benchWalkOutAfter(ANN, personas.get("hadrik"))).thenReturn("an hour");
+        when(world.contracts()).thenReturn(contracts);
+        window.install();
+        openWindow();
+
+        act(Verb.BENCH, "hadrik", "");
+
+        NativeTalkPage ask = lastPage();
+        assertEquals(NativeTalkPage.Kind.YES_NO, ask.kind());
+        assertTrue(ask.text().startsWith("Hadrik won't sit at camp for long: after an hour on the bench"), ask.text());
+        assertTrue(NpcTalks.talks(sent()).isEmpty());
+        verify(roster, never()).bench(any(), any());
+
+        NativeCrewWindow.receive(client, owner, new PageReply(ask.stamp(), 1, -1), world);
+
+        verify(roster).bench(owner, personas.get("hadrik"));
+        verify(owner).dropMessage(5, "Hadrik heads back to camp to train.");
+        List<byte[]> crew = crewPackets();
+        assertEquals(NativeCrewPackets.TYPE_SNAPSHOT, crew.get(crew.size() - 2)[2], "the answer's fresh snapshot");
+        assertArrayEquals(NativeCrewPackets.pageClose(ask.stamp()).getBytes(), last());
+    }
+
+    @Test
+    void swapAtProtocolTwoAsksTheBenchWarningNatively() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        ContractService contracts = mock(ContractService.class);
+        when(contracts.benchWalkOutAfter(ANN, personas.get("hadrik"))).thenReturn("an hour");
+        when(world.contracts()).thenReturn(contracts);
+        window.install();
+        openWindow();
+
+        act(Verb.SWAP, "hadrik", "mira");
+        assertEquals(NativeTalkPage.Kind.YES_NO, lastPage().kind());
+        NativeCrewWindow.receive(client, owner, new PageReply(lastPage().stamp(), 0, -1), world); // No
+
+        verify(roster, never()).swap(any(), any(), any());
+        assertArrayEquals(NativeCrewPackets.pageClose(lastPage().stamp()).getBytes(), last());
+    }
+
+    @Test
+    void aReplyToAnOlderPageOrAfterTheWindowClosedDoesNothing() {
+        hadrik();
+        window.install();
+        openWindow();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        int follow = NativePages.selection(page, "Everyone: follow me");
+        clearInvocations(client);
+
+        NativeCrewWindow.receive(client, owner, new PageReply(page.stamp() - 1, 1, follow), world);
+        verify(client, never()).sendPacket(any());
+        assertTrue(LivingTalk.nativeActive(owner), "the newer page stays");
+
+        NativeCrewWindow.receive(client, owner, new Close(), world);
+        assertFalse(LivingTalk.nativeActive(owner), "the window took its page with it");
+        NativeCrewWindow.receive(client, owner, new PageReply(page.stamp(), 1, follow), world);
+
+        verify(manager, never()).followAll(any());
+        verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void moreStillOpensTheNpcCrewWindowAtProtocolTwo() {
+        hadrik();
+        window.install();
+        openWindow();
+
+        act(Verb.MORE, "", "");
+
+        assertTrue(lastTalk().text().startsWith("#eParty 3/6#n"), lastTalk().text());
+        assertTrue(crewPages().isEmpty());
+    }
+
+    @Test
+    void turningTheSwitchOffEndsTheNativePage() {
+        hadrik();
+        window.install();
+        openWindow();
+        act(Verb.ACTIONS, "", "");
+        assertTrue(LivingTalk.nativeActive(owner));
+        clearInvocations(client);
+
+        config.CREW_WINDOW_NATIVE = "off";
+        window.switchChanged(List.of(owner));
+
+        assertFalse(LivingTalk.nativeActive(owner));
+        assertEquals(List.of(Arrays.toString(NativeCrewPackets.close().getBytes()),
+                Arrays.toString(NativeCrewPackets.welcome(2, false).getBytes())),
+                crewPackets().stream().map(Arrays::toString).toList());
+    }
+
+    @Test
+    void theWindowDrawsPagesOnlyForAProtocolTwoConnectionInTheWorldThatTheSwitchAllows() {
+        hello();
+        assertTrue(window.draws(owner));
+        when(owner.isLoggedinWorld()).thenReturn(false);
+        assertFalse(window.draws(owner), "the Cash Shop");
+        when(owner.isLoggedinWorld()).thenReturn(true);
+        config.CREW_WINDOW_NATIVE = "off";
+        assertFalse(window.draws(owner));
+        config.CREW_WINDOW_NATIVE = "all";
+        protocol.set(1);
+        assertFalse(window.draws(owner));
+        window.page(owner, new NativeTalkPage(5, NativeTalkPage.Kind.OK, 0, "x", List.of()));
+        window.close(owner, 5);
+        verify(client, never()).sendPacket(any());
+    }
+
     // ---- helpers -----------------------------------------------------------------------------------
+
+    /** Every PAGE sent since the last clear, read back as the DLL reads it. */
+    private List<NativeTalkPage> crewPages() {
+        List<NativeTalkPage> out = new ArrayList<>();
+        for (byte[] bytes : crewPackets()) {
+            if (bytes[2] == NativeCrewPackets.TYPE_PAGE) {
+                out.add(readPage(bytes));
+            }
+        }
+        return out;
+    }
+
+    private NativeTalkPage lastPage() {
+        List<NativeTalkPage> pages = crewPages();
+        assertFalse(pages.isEmpty(), "no PAGE was sent");
+        return pages.get(pages.size() - 1);
+    }
+
+    /** PAGE: int stamp, byte kind, byte flags, string text, short entryCount, entries (byte type, int selection, string). */
+    private static NativeTalkPage readPage(byte[] bytes) {
+        ByteBuffer in = ByteBuffer.wrap(bytes, 3, bytes.length - 3).order(ByteOrder.LITTLE_ENDIAN);
+        int stamp = in.getInt();
+        NativeTalkPage.Kind kind = NativeTalkPage.Kind.values()[in.get() & 0xFF];
+        int flags = in.get() & 0xFF;
+        String text = string(in);
+        int count = in.getShort();
+        List<NativeTalkPage.Entry> entries = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            int type = in.get();
+            int selection = in.getInt();
+            String label = string(in);
+            entries.add(type == 1 ? NativeTalkPage.Entry.option(selection, label) : NativeTalkPage.Entry.heading(label));
+        }
+        assertFalse(in.hasRemaining(), "bytes after the last entry");
+        return new NativeTalkPage(stamp, kind, flags, text, entries);
+    }
+
+    private static String string(ByteBuffer in) {
+        byte[] text = new byte[in.getShort()];
+        in.get(text);
+        return new String(text, StandardCharsets.US_ASCII);
+    }
 
     /** HELLO with this server's protocol, then OPEN; the invocations so far are cleared but the window's first snapshot. */
     private void openWindow() {
