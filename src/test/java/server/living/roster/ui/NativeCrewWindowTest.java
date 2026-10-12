@@ -919,6 +919,37 @@ class NativeCrewWindowTest {
     }
 
     @Test
+    void aReplyToAPageNoWindowShowsStartsNoWatch() {
+        hadrik();
+        window.install();
+        openWindow();
+        act(Verb.ACTIONS, "", "");
+        NativeTalkPage page = lastPage();
+        NativeCrewWindow.receive(client, owner, new Close(), world);
+        assertFalse(window.watching(owner));
+
+        // the DLL ends a PAGE that arrived after X or U with Close (255)
+        NativeCrewWindow.receive(client, owner, new PageReply(page.stamp(), 255, -1), world);
+        assertFalse(window.watching(owner), "the Close of a page no window shows is no open window");
+        NativeCrewWindow.receive(client, owner,
+                new PageReply(page.stamp(), 1, NativePages.selection(page, "Remember this lineup")), world);
+        assertFalse(window.watching(owner), "a reply no native talk waits for is no open window");
+        verify(manager, never()).saveLineup(any());
+    }
+
+    @Test
+    void anActionsPageThatFailsIsLoggedAndNeverThrownIntoThePacketHandler() {
+        hadrik();
+        window.install();
+        openWindow();
+        when(owner.getParty()).thenThrow(new IllegalStateException("the party went away meanwhile"));
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> NativeCrewWindow.receive(client, owner,
+                new Action(Verb.ACTIONS, 0, "", 0, "", 0), world));
+        assertFalse(LivingTalk.nativeActive(owner));
+    }
+
+    @Test
     void aPageReplyRunsOnThePlayersPacketThreadNotOnCompanionOps() {
         hadrik();
         List<Runnable> companionOps = new ArrayList<>();

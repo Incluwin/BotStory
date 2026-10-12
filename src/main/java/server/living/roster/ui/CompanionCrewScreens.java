@@ -226,7 +226,8 @@ final class CompanionCrewScreens {
                     "menu.crew.keep_fresh", manager -> manager.setKeepCrewFresh(owner, !on))));
         }
         // a full party cannot invite (P0 probe 12): one of yours steps out so a friend can be asked
-        if (out && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {
+        Party ownerParty = owner.getParty();
+        if (out && ownerParty != null && ownerParty.getMembers().size() >= RosterService.PARTY_CAP) {
             actions.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner, from, surface)));
         }
         // decision 4 b: while the roster and the hire cap have room, the citizens you have met who look for a crew (a

@@ -182,6 +182,9 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
         return world.config().crewWindowNative(chr.isGM());
     }
 
+    /** PAGE_REPLY's Close (255): the page ends unanswered, as End Chat ends an NPC window. */
+    private static final int CLOSE_REPLY = 255;
+
     private void received(Client client, Character owner, Op op) {
         if (op instanceof Close) {
             watches.computeIfPresent(owner.getId(), (id, watch) -> watch.client == client ? null : watch);
@@ -201,7 +204,11 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             send(client, NativeCrewPackets.close()); // the switch or the character changed since WELCOME
             return;
         }
-        watch(client, owner);
+        if (!(op instanceof PageReply reply) || reply.action() != CLOSE_REPLY && LivingTalk.nativeActive(owner)) {
+            // a reply to no page, or the Close a client sends for a page that came after its window closed, is no sign
+            // of an open window: it starts no watch
+            watch(client, owner);
+        }
         if (op instanceof Open) {
             refresh(client, owner);
         } else if (op instanceof PageReply reply) {
@@ -209,8 +216,13 @@ public final class NativeCrewWindow implements NativeTalkRenderer {
             // reply to an older page does nothing (the newer page stays)
             LivingTalk.respondNative(owner, reply.stamp(), (byte) reply.action(), reply.selection());
         } else if (op instanceof Action action && action.verb() == Verb.ACTIONS) {
-            // a native page, which waits on no NPC window and is never waited on by one: no NPC click rules
-            menus.crews().nativeActions(owner);
+            // a native page, which waits on no NPC window and is never waited on by one: no NPC click rules; a failure
+            // is logged here, never thrown into the packet handler (where it would count as a malformed packet)
+            try {
+                menus.crews().nativeActions(owner);
+            } catch (RuntimeException failure) {
+                log.warn("[crew-window] the actions page for {} could not be shown", owner.getName(), failure);
+            }
         } else if (op instanceof Action action) {
             // the player's own click, as an NPC click: refused while a window awaits its reply, and the windows it
             // opens are its answer (no click throttle)
