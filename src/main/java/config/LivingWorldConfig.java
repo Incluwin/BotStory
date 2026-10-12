@@ -76,7 +76,10 @@ public class LivingWorldConfig {
     /** Points for a party quest cleared with the Resident in the party, counted this many times a day. */
     public int FRIENDSHIP_PQ_POINTS = 10;
     public int FRIENDSHIP_PQ_PER_DAY = 3;
-    /** Points for a boss killed with the Resident in the party on its map, counted this many times a day. */
+    /**
+     * Points for a boss killed with the Resident in the party on its map, counted this many times a day. Inside a
+     * companion boss run the kills give none: the cleared run gives them once per companion (P12 G12).
+     */
     public int FRIENDSHIP_BOSS_POINTS = 15;
     public int FRIENDSHIP_BOSS_PER_DAY = 3;
     /**
@@ -277,6 +280,12 @@ public class LivingWorldConfig {
      * there is no shop out here (no supplier is reachable from them). Entry is never refused.
      */
     public String COMPANION_RESTOCK_BOSS_MAPS = "220080000,106021402";
+    /**
+     * P12 G9: boss gates of COMPANION_RESTOCK_BOSS_MAPS that a short companion may still walk to a shop from (the
+     * Papulatus desk trip, decision 10; agent-engine.yaml AgentSupplyReadiness.BOSS_DESK_MAPS sets its radius). Empty:
+     * no gate sends a trip, and each keeps its no-shop line.
+     */
+    public String COMPANION_RESTOCK_TRIP_MAPS = "";
 
     // Companions go for their next job by themselves (AgentJobPath, JobErrands)
     /**
@@ -342,6 +351,13 @@ public class LivingWorldConfig {
     public int COMPANION_BOSS_HUMAN_SEATS = 2;
     /** How long an ally walks to the room's way out after the run before it goes where it stands. */
     public int COMPANION_BOSS_ALLY_WALK_OUT_MS = 20000;
+    /**
+     * P13 (decision 18): a companion that died beside a field boss rests in town until its HP and MP are back to this
+     * percent of their maximum (1-100) before it follows its owner again, or until COMPANION_FIELD_BOSS_REST_MAX_MS.
+     */
+    public int COMPANION_FIELD_BOSS_REST_PERCENT = 100;
+    /** The longest a companion rests after a death beside a field boss, from its death (0-600000 ms). */
+    public int COMPANION_FIELD_BOSS_REST_MAX_MS = 120000;
 
     // Boss clears are not party-quest clears (2026-10-08)
     /**
@@ -372,6 +388,20 @@ public class LivingWorldConfig {
         }
         for (String entry : COMPANION_PQ_ENABLED_KEYS.split(",")) {
             if (!entry.isBlank() && entry.trim().equalsIgnoreCase(pqKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** P12 G9: true when COMPANION_RESTOCK_TRIP_MAPS lists {@code mapId} (blank entries and spaces ignored). */
+    public boolean companionRestockTripMap(int mapId) {
+        return listsMap(COMPANION_RESTOCK_TRIP_MAPS, mapId);
+    }
+
+    private static boolean listsMap(String list, int mapId) {
+        for (String entry : list == null ? new String[0] : list.split(",")) {
+            if (!entry.isBlank() && entry.trim().equals(Integer.toString(mapId))) {
                 return true;
             }
         }
@@ -606,6 +636,12 @@ public class LivingWorldConfig {
                         "living_world.COMPANION_RESTOCK_BOSS_MAPS must list map ids, not \"" + id.trim() + "\"");
             }
         }
+        for (String id : COMPANION_RESTOCK_TRIP_MAPS == null ? new String[0] : COMPANION_RESTOCK_TRIP_MAPS.split(",")) {
+            if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
+                throw new IllegalArgumentException(
+                        "living_world.COMPANION_RESTOCK_TRIP_MAPS must list map ids, not \"" + id.trim() + "\"");
+            }
+        }
         for (String key : COMPANION_BOSS_ENABLED_TYPES == null ? new String[0]
                 : COMPANION_BOSS_ENABLED_TYPES.split(",")) {
             if (!key.isBlank() && !CompanionBossKeys.known(key)) {
@@ -633,6 +669,12 @@ public class LivingWorldConfig {
         }
         if (COMPANION_BOSS_ALLY_WALK_OUT_MS < 1000 || COMPANION_BOSS_ALLY_WALK_OUT_MS > 120000) {
             throw new IllegalArgumentException("living_world.COMPANION_BOSS_ALLY_WALK_OUT_MS must be within 1000..120000");
+        }
+        if (COMPANION_FIELD_BOSS_REST_PERCENT < 1 || COMPANION_FIELD_BOSS_REST_PERCENT > 100) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_REST_PERCENT must be within 1..100");
+        }
+        if (COMPANION_FIELD_BOSS_REST_MAX_MS < 0 || COMPANION_FIELD_BOSS_REST_MAX_MS > 600000) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_REST_MAX_MS must be within 0..600000");
         }
         for (String script : BOSS_EVENT_SCRIPTS == null ? new String[0] : BOSS_EVENT_SCRIPTS.split(",")) {
             if (!script.isBlank() && !script.trim().matches("[A-Za-z0-9_]+")) {

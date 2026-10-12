@@ -22,7 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
-/** Owns Easy Balrog's seal, claw, body, clear, and cleanup phase graph. */
+/**
+ * Owns Balrog's seal, claw, body, clear, and cleanup phase graph: Easy Balrog's in every run, and Normal Balrog's
+ * (P11) only in a run a companion signed up for (decision 4); every other Normal run keeps the stock BalrogBattle.js
+ * spawn. The two fights are one graph with different mob ids ({@link Variant}).
+ */
 public final class EasyBalrogEncounterService {
     public static final int BODY_ID = 8_830_007;
     public static final int RELEASED_CLAW_ID = 8_830_008;
@@ -30,12 +34,55 @@ public final class EasyBalrogEncounterService {
     public static final int RELEASED_CLAW_HELPER_ID = 8_830_011;
     public static final int INITIAL_CLAW_HELPER_ID = 8_830_012;
     public static final int RELEASE_SEAL_ID = 8_830_013;
+    public static final int NORMAL_BODY_ID = 8_830_000;
+    public static final int NORMAL_RELEASED_CLAW_ID = 8_830_001;
+    public static final int NORMAL_INITIAL_CLAW_ID = 8_830_002;
+    public static final int NORMAL_RELEASED_CLAW_HELPER_ID = 8_830_004;
+    public static final int NORMAL_INITIAL_CLAW_HELPER_ID = 8_830_005;
+    public static final int NORMAL_RELEASE_SEAL_ID = 8_830_006;
     public static final long RELEASE_DELAY_MS = 60_000L;
 
     private static final Logger log =
             LoggerFactory.getLogger(EasyBalrogEncounterService.class);
     private static final Map<MapleMap, Encounter> ENCOUNTERS = new ConcurrentHashMap<>();
     private static volatile Predicate<MapleMap> serverAuthorityRule;
+    private static volatile Predicate<MapleMap> companionFightRule;
+
+    /**
+     * The mob ids of one Balrog fight. In WZ each released claw is the seal's revive and each helper a claw's revive;
+     * the encounter suppresses those revives and spawns them itself. Easy's body never dropped anything in this
+     * encounter; Normal's keeps its stock drops (8830000's rows in 152-drop-data.sql), as the stock spawn has them.
+     * Only Easy shows one combined HP gauge for its three actors (EasyBalrogHpBarPolicy); Normal keeps the stock bars.
+     */
+    public enum Variant {
+        EASY("Easy Balrog", BODY_ID, RELEASED_CLAW_ID, INITIAL_CLAW_ID, RELEASED_CLAW_HELPER_ID,
+                INITIAL_CLAW_HELPER_ID, RELEASE_SEAL_ID, false, true),
+        NORMAL("Normal Balrog", NORMAL_BODY_ID, NORMAL_RELEASED_CLAW_ID, NORMAL_INITIAL_CLAW_ID,
+                NORMAL_RELEASED_CLAW_HELPER_ID, NORMAL_INITIAL_CLAW_HELPER_ID, NORMAL_RELEASE_SEAL_ID, true, false);
+
+        private final String label;
+        private final int bodyId;
+        private final int releasedClawId;
+        private final int initialClawId;
+        private final int releasedClawHelperId;
+        private final int initialClawHelperId;
+        private final int releaseSealId;
+        private final boolean bodyDrops;
+        private final boolean combinedHpBar;
+
+        Variant(String label, int bodyId, int releasedClawId, int initialClawId, int releasedClawHelperId,
+                int initialClawHelperId, int releaseSealId, boolean bodyDrops, boolean combinedHpBar) {
+            this.label = label;
+            this.bodyId = bodyId;
+            this.releasedClawId = releasedClawId;
+            this.initialClawId = initialClawId;
+            this.releasedClawHelperId = releasedClawHelperId;
+            this.initialClawHelperId = initialClawHelperId;
+            this.releaseSealId = releaseSealId;
+            this.bodyDrops = bodyDrops;
+            this.combinedHpBar = combinedHpBar;
+        }
+    }
 
     private EasyBalrogEncounterService() {
     }
@@ -50,17 +97,56 @@ public final class EasyBalrogEncounterService {
         serverAuthorityRule = rule;
     }
 
+    /**
+     * Installs the rule that decides, once per Normal Balrog start, whether this service runs that fight at all (P11,
+     * decision 4: the living world answers true while a companion signed up for it is a player of the battle map's
+     * event); null uninstalls it. Like the server-authority rule it runs inside the event's start, answers from memory,
+     * and a failure counts as false (the stock spawn).
+     */
+    public static void installCompanionFightRule(Predicate<MapleMap> rule) {
+        companionFightRule = rule;
+    }
+
     public static EncounterHandle start(MapleMap map, Point origin) {
         return start(map, origin, LifeFactory::getMonster);
     }
 
     static EncounterHandle start(MapleMap map, Point origin,
                                  IntFunction<Monster> monsterFactory) {
+        return start(Variant.EASY, map, origin, monsterFactory);
+    }
+
+    /**
+     * Normal Balrog (BalrogBattle.js afterSetup, P11): starts the Normal fight here and answers true when the
+     * companion-fight rule says a companion signed up for it. False with no such companion, and false when the start
+     * fails (its actors are removed again and the failure logged): the script then spawns the stock fight, so a run
+     * with only humans stays exactly as it was.
+     */
+    public static boolean startNormal(MapleMap map, Point origin) {
+        return startNormal(map, origin, LifeFactory::getMonster);
+    }
+
+    static boolean startNormal(MapleMap map, Point origin, IntFunction<Monster> monsterFactory) {
+        if (map == null || origin == null || map.getChannelServer() == null
+                || !ruleSays(companionFightRule, map, "companion fight")) {
+            return false;
+        }
+        try {
+            start(Variant.NORMAL, map, origin, monsterFactory);
+            return true;
+        } catch (RuntimeException failure) {
+            log.warn("Normal Balrog encounter start failed, stock spawn instead map={}", map.getId(), failure);
+            return false;
+        }
+    }
+
+    static EncounterHandle start(Variant variant, MapleMap map, Point origin,
+                                 IntFunction<Monster> monsterFactory) {
         if (map == null || origin == null || map.getChannelServer() == null) {
-            throw new IllegalArgumentException("Easy Balrog requires a live map and origin");
+            throw new IllegalArgumentException(variant.label + " requires a live map and origin");
         }
         stop(map, "replaced");
-        Encounter encounter = new Encounter(map, new Point(origin), monsterFactory,
+        Encounter encounter = new Encounter(variant, map, new Point(origin), monsterFactory,
                 serverAuthorityForced(map));
         ENCOUNTERS.put(map, encounter);
         try {
@@ -74,14 +160,17 @@ public final class EasyBalrogEncounterService {
     }
 
     private static boolean serverAuthorityForced(MapleMap map) {
-        Predicate<MapleMap> rule = serverAuthorityRule;
+        return ruleSays(serverAuthorityRule, map, "server authority");
+    }
+
+    private static boolean ruleSays(Predicate<MapleMap> rule, MapleMap map, String name) {
         if (rule == null) {
             return false;
         }
         try {
             return rule.test(map);
         } catch (RuntimeException | LinkageError failure) {
-            log.warn("Easy Balrog server authority rule failed map={}", map.getId(), failure);
+            log.warn("Balrog {} rule failed map={}", name, map.getId(), failure);
             return false;
         }
     }
@@ -112,7 +201,8 @@ public final class EasyBalrogEncounterService {
             return Optional.empty();
         }
         Encounter encounter = ENCOUNTERS.get(monster.getMap());
-        return encounter == null ? Optional.empty() : encounter.hpBarSnapshot(monster);
+        return encounter == null || !encounter.variant.combinedHpBar
+                ? Optional.empty() : encounter.hpBarSnapshot(monster);
     }
 
     public record HpBarSnapshot(int mobId, int currentHp, int maxHp,
@@ -145,6 +235,7 @@ public final class EasyBalrogEncounterService {
     }
 
     private static final class Encounter implements EncounterHandle {
+        private final Variant variant;
         private final MapleMap map;
         private final Point origin;
         private final IntFunction<Monster> monsterFactory;
@@ -158,8 +249,9 @@ public final class EasyBalrogEncounterService {
         private Monster initialClaw;
         private Monster seal;
 
-        private Encounter(MapleMap map, Point origin,
+        private Encounter(Variant variant, MapleMap map, Point origin,
                           IntFunction<Monster> monsterFactory, boolean forceServer) {
+            this.variant = variant;
             this.map = map;
             this.origin = origin;
             this.monsterFactory = monsterFactory;
@@ -167,10 +259,10 @@ public final class EasyBalrogEncounterService {
         }
 
         private synchronized void start() {
-            body = actor(BODY_ID, Role.BODY);
-            releasedClaw = actor(RELEASED_CLAW_ID, Role.RELEASED_CLAW);
-            initialClaw = actor(INITIAL_CLAW_ID, Role.INITIAL_CLAW);
-            seal = actor(RELEASE_SEAL_ID, Role.RELEASE_SEAL);
+            body = actor(variant.bodyId, Role.BODY);
+            releasedClaw = actor(variant.releasedClawId, Role.RELEASED_CLAW);
+            initialClaw = actor(variant.initialClawId, Role.INITIAL_CLAW);
+            seal = actor(variant.releaseSealId, Role.RELEASE_SEAL);
 
             map.spawnFakeMonsterOnGroundBelow(body, origin);
             map.spawnMonsterOnGroundBelow(initialClaw, origin);
@@ -181,17 +273,19 @@ public final class EasyBalrogEncounterService {
                     .getServiceAccess(ChannelServices.OVERALL);
             scheduler.registerOverallAction(map.getId(), this::releaseSeal,
                     RELEASE_DELAY_MS);
-            log.info("Easy Balrog encounter started map={} generation={} serverAuthorityForced={}",
-                    map.getId(), generation, forceServer);
+            log.info("{} encounter started map={} generation={} serverAuthorityForced={}",
+                    variant.label, map.getId(), generation, forceServer);
         }
 
         private Monster actor(int mobId, Role role) {
             Monster monster = monsterFactory.apply(mobId);
             if (monster == null) {
-                throw new IllegalStateException("Missing Easy Balrog mob " + mobId);
+                throw new IllegalStateException("Missing " + variant.label + " mob " + mobId);
             }
             monster.suppressRevives();
-            monster.disableDrops();
+            if (role != Role.BODY || !variant.bodyDrops) {
+                monster.disableDrops();
+            }
             monster.addListener(new EncounterMonsterListener(this, role, monster));
             return monster;
         }
@@ -251,8 +345,8 @@ public final class EasyBalrogEncounterService {
             registerCombatActor(releasedClaw);
             phase = defeated.contains(Role.INITIAL_CLAW)
                     ? Phase.ONE_CLAW : Phase.TWO_CLAWS;
-            log.info("Easy Balrog seal released map={} generation={}",
-                    map.getId(), generation);
+            log.info("{} seal released map={} generation={}",
+                    variant.label, map.getId(), generation);
         }
 
         private void spawnHelper(Role role, Monster defeatedMonster,
@@ -261,7 +355,7 @@ public final class EasyBalrogEncounterService {
                 return;
             }
             int helperId = role == Role.RELEASED_CLAW
-                    ? RELEASED_CLAW_HELPER_ID : INITIAL_CLAW_HELPER_ID;
+                    ? variant.releasedClawHelperId : variant.initialClawHelperId;
             Point position = new Point(defeatedMonster.getPosition());
             OverallService scheduler = (OverallService) map.getChannelServer()
                     .getServiceAccess(ChannelServices.OVERALL);
@@ -291,8 +385,8 @@ public final class EasyBalrogEncounterService {
             map.makeMonsterReal(body);
             int controlStops = stopStaleBodyControl();
             phase = Phase.BODY;
-            log.info("Easy Balrog body activated map={} generation={} controlStops={}",
-                    map.getId(), generation, controlStops);
+            log.info("{} body activated map={} generation={} controlStops={}",
+                    variant.label, map.getId(), generation, controlStops);
         }
 
         /**
@@ -323,8 +417,8 @@ public final class EasyBalrogEncounterService {
             phase = Phase.CLEARED;
             ENCOUNTERS.remove(map, this);
             removeHelpers();
-            log.info("Easy Balrog encounter cleared map={} generation={}",
-                    map.getId(), generation);
+            log.info("{} encounter cleared map={} generation={}",
+                    variant.label, map.getId(), generation);
         }
 
         @Override
@@ -349,8 +443,8 @@ public final class EasyBalrogEncounterService {
             removeActor(initialClaw);
             removeActor(seal);
             removeHelpers();
-            log.info("Easy Balrog encounter aborted map={} generation={} reason={}",
-                    map.getId(), generation, reason);
+            log.info("{} encounter aborted map={} generation={} reason={}",
+                    variant.label, map.getId(), generation, reason);
         }
 
         private void removeHelpers() {
@@ -385,7 +479,7 @@ public final class EasyBalrogEncounterService {
                     ? body.getStats().getTagBgColor()
                     : EasyBalrogHpBarPolicy.tagBackgroundColor();
             return Optional.of(new HpBarSnapshot(
-                    BODY_ID, currentHp, maxHp, tagColor, background, body.hashCode()));
+                    variant.bodyId, currentHp, maxHp, tagColor, background, body.hashCode()));
         }
 
         private int sumHp(java.util.function.ToIntFunction<Monster> value) {

@@ -60,7 +60,7 @@ class AgentEngineConfigValidatorRecoveryStandardsTest {
 
     @Test
     void theShippedValueIsValid() {
-        assertEquals("easy_balrog=130000/32000", AgentYamlConfig.config.tuning.get(KEY));
+        assertEquals("easy_balrog=130000/32000,balrog_normal=300000/240000", AgentYamlConfig.config.tuning.get(KEY));
         AgentEngineConfigValidator.validate(AgentYamlConfig.config);
     }
 }

@@ -2,21 +2,25 @@ package server.living.roster;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
+import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
+import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.living.LivingWorld;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.CompanionRunStats;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The companions' party-quest records (P6, companion_performance): as a run that got in ends, one row per lineup
- * companion, its activity the run's quest ("kpq", "hpq"), and each companion's runs and clears in each quest kept in
- * memory for that quest's lineup, which shows a companion's clear record and ranks by it once it has three runs
+ * The companions' party-quest and boss records (P6, companion_performance): as a run that got in ends, one row per
+ * lineup companion, its activity the run's quest ("kpq", "hpq") or boss ("zakum", P12 G12: CompanionBossRuns writes
+ * those through {@link #save}), and each companion's runs and clears in each kept in memory for that quest's lineup, which shows a companion's clear record and ranks by it once it has three runs
  * (LineupPlan). Read once at boot and written on companion-ops; read from any thread. A failed read leaves that
  * quest's records empty until the next boot, so its lineup ranks by level and job alone meanwhile.
  */
@@ -35,11 +39,11 @@ public final class CompanionRunRecorder {
     }
 
     /**
-     * Reads every entrance's records (LivingWorld.start, on companion-ops), switched on or not, so a quest switched on
-     * at the next restart ranks by them from its first lineup; a failed read leaves that quest's empty.
+     * Reads every entrance's records and every boss's (LivingWorld.start, on companion-ops), switched on or not, so a
+     * quest switched on at the next restart ranks by them from its first lineup; a failed read leaves that one's empty.
      */
     public void load() {
-        for (String pqKey : PqEntrance.keys()) {
+        for (String pqKey : activities()) {
             try {
                 stats.computeIfAbsent(pqKey, key -> new ConcurrentHashMap<>())
                         .putAll(world.store().companionRunStats(pqKey));
@@ -71,12 +75,29 @@ public final class CompanionRunRecorder {
             String outcome = run.tappedOut.contains(id) ? "tapped_out" : run.cleared ? "cleared" : "failed";
             CompanionRunRow row = new CompanionRunRow(companion.getValue(), id, run.personaByCompanion.get(id),
                     run.pqKey, outcome, durationS, run.deaths.getOrDefault(id, 0), run.partySize);
-            if (world.store().saveCompanionRun(row)) {
-                stats.computeIfAbsent(run.pqKey, key -> new ConcurrentHashMap<>()).merge(id,
-                        new CompanionRunStats(1, outcome.equals("cleared") ? 1 : 0), (known, added) ->
-                        new CompanionRunStats(known.runs() + added.runs(), known.clears() + added.clears()));
-            }
+            save(row);
         }
+    }
+
+    /**
+     * Writes one row and, once it is written, adds it to the companion's record in its activity. On companion-ops: a
+     * party quest's run end, and a boss run's (CompanionBossRuns, P12 G12).
+     */
+    boolean save(CompanionRunRow row) {
+        if (!world.store().saveCompanionRun(row)) {
+            return false;
+        }
+        stats.computeIfAbsent(row.activity(), key -> new ConcurrentHashMap<>()).merge(row.companionCharacterId(),
+                new CompanionRunStats(1, row.outcome().equals("cleared") ? 1 : 0), (known, added) ->
+                        new CompanionRunStats(known.runs() + added.runs(), known.clears() + added.clears()));
+        return true;
+    }
+
+    /** Every activity a record is kept for: the entrances' quests, then the bosses (AgentBossRunCatalog). */
+    private static List<String> activities() {
+        LinkedHashSet<String> keys = new LinkedHashSet<>(PqEntrance.keys());
+        AgentBossRunCatalog.all().forEach(definition -> keys.add(definition.key()));
+        return List.copyOf(keys);
     }
 
     /** One line for the run: each lineup companion's HP and MP potions as it was let in, and as it ends. */
@@ -113,17 +134,25 @@ public final class CompanionRunRecorder {
 
     /**
      * What the companion's card shows of its records: "KPQ: cleared 4 of 5", one line for each quest (in the order the
-     * entrances are listed) it has run as often as a lineup ranks by its record (LineupPlan.RECORD_RUNS). Any thread.
+     * entrances are listed), then "Zakum: cleared 1 of 3" for each boss (P12 G12, by its boss rules label), each one it
+     * has run as often as a lineup ranks by its record (LineupPlan.RECORD_RUNS). Any thread.
      */
     public List<String> recordLines(int companionId) {
         List<String> lines = new ArrayList<>();
         for (String pqKey : PqEntrance.keys()) {
-            CompanionRunStats record = stats(pqKey, companionId);
-            if (record.runs() >= LineupPlan.RECORD_RUNS) {
-                lines.add(pqKey.toUpperCase(Locale.ROOT) + ": cleared " + record.clears() + " of " + record.runs());
-            }
+            line(lines, pqKey.toUpperCase(Locale.ROOT), stats(pqKey, companionId));
+        }
+        for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
+            AgentBossRules.Boss rules = AgentBossRules.of(definition.key());
+            line(lines, rules == null ? definition.key() : rules.label(), stats(definition.key(), companionId));
         }
         return lines;
+    }
+
+    private static void line(List<String> lines, String label, CompanionRunStats record) {
+        if (record.runs() >= LineupPlan.RECORD_RUNS) {
+            lines.add(label + ": cleared " + record.clears() + " of " + record.runs());
+        }
     }
 
     /** The companion's record in {@code pqKey} ({@link #NONE} before its first run of it). */

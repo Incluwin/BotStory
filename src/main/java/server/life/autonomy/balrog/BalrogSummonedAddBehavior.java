@@ -14,11 +14,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
-/** Jr./Crimson Balrog chase their Agent aggro owner and cast only from WZ attack range. */
+/**
+ * Jr./Crimson Balrog chase their Agent aggro owner and cast only from WZ attack range: Easy Balrog's (6400008, 6400009)
+ * and Normal Balrog's (6400005, 6400006, P11), which only the released claws summon (MobSkill 200 levels 162/163 and
+ * 159/160; no map spawns them).
+ */
 public final class BalrogSummonedAddBehavior implements BossActorBehavior {
     public static final int JR_BALROG_ID = 6_400_008;
     public static final int CRIMSON_BALROG_ID = 6_400_009;
-    private static final Set<Integer> MOB_IDS = Set.of(JR_BALROG_ID, CRIMSON_BALROG_ID);
+    public static final int NORMAL_JR_BALROG_ID = 6_400_005;
+    public static final int NORMAL_CRIMSON_BALROG_ID = 6_400_006;
+    private static final Set<Integer> MOB_IDS = Set.of(JR_BALROG_ID, CRIMSON_BALROG_ID,
+            NORMAL_JR_BALROG_ID, NORMAL_CRIMSON_BALROG_ID);
 
     private final int mobId;
 

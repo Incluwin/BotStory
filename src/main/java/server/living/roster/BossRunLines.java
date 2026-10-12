@@ -36,6 +36,11 @@ final class BossRunLines {
     static final String REFUSED_OTHER = "boss.refused.other";
     static final String MISSED = "boss.missed";
     static final String DOWN = "boss.down";
+    /**
+     * P17: it died in a re-enter run (Scarlion and Targa) and walks back in by the recruit NPC
+     * (AgentBossRunHost.Rule.reentering); once per death.
+     */
+    static final String REENTER = "boss.reenter";
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
@@ -90,8 +95,9 @@ final class BossRunLines {
      */
     static final String OWNER_LEFT = "boss.owner_left";
     /**
-     * P8, Zakum only ({@link #BY_BOSS}): the first of the owner's party companions to go in says it once per run while
-     * the owner stands on the altar carrying the Eye of Fire (the run's marker item).
+     * P8, a boss with a marker item only ({@link #BY_BOSS}): the first of the owner's party companions to go in says it
+     * once per run while the owner stands on the battle map carrying the run's marker item (Zakum's Eye of Fire; P19:
+     * Showa's comb).
      */
     static final String ZAKUM_EYE = "boss.zakum.eye";
 
@@ -101,9 +107,8 @@ final class BossRunLines {
                     "we're all signed up. ready when you are.",
                     "names are down. let's do this.")),
             Map.entry(REFUSED_LEVEL, List.of(
-                    "mu young won't take me yet. i'll wait out here.",
-                    "too low for this one still. i'll wait out here.",
-                    "she says i'm not strong enough yet lol. waiting outside.")),
+                    "they won't take me yet. i'll wait out here.",
+                    "too low for this one still. i'll wait out here.")),
             Map.entry(REFUSED_CLOSED, List.of(
                     "sign-ups are closed already. i'll wait out here.",
                     "list's closed, missed it. i'll hang back.",
@@ -114,16 +119,14 @@ final class BossRunLines {
                     "list's full already. good luck in there!")),
             Map.entry(REFUSED_BANNED, List.of(
                     "guess i'm off the list. i'll wait out here.",
-                    "mu young won't let me sign. i'll sit this one out.",
-                    "she won't take my name... i'll wait here.")),
+                    "they won't let me sign. i'll sit this one out.")),
             Map.entry(REFUSED_LATE, List.of(
                     "not gonna make it back in time, go on without me.",
                     "won't be back in time, go ahead without me.",
                     "still too far, don't wait for me.")),
             Map.entry(REFUSED_NOT_HERE, List.of(
-                    "couldn't get to mu young in time. i'll catch up after.",
-                    "couldn't reach mu young, sorry. catch you after.",
-                    "got stuck on the way to mu young. i'll catch up later.")),
+                    "couldn't get there in time. i'll catch up after.",
+                    "got stuck on the way, sorry. catch you after.")),
             Map.entry(REFUSED_OTHER, List.of(
                     "couldn't get my name down, sorry. i'll wait out here.",
                     "no luck signing up. i'll hang back here.",
@@ -134,8 +137,12 @@ final class BossRunLines {
                     "too slow, you went in without me. i'll wait here.")),
             Map.entry(DOWN, List.of(
                     "ugh, i'm down. i'll wait out here for you.",
-                    "sorry, balrog got me. waiting outside.",
+                    "sorry, got knocked out. waiting outside.",
                     "that hurt... i'll wait out here.")),
+            Map.entry(REENTER, List.of(
+                    "ugh, i'm down. running back in!",
+                    "got knocked out, on my way back in.",
+                    "be right back, heading back in.")),
             Map.entry(REGROUP, List.of("everyone's down... let's regroup outside.")),
             Map.entry(HANDOFF, List.of("i'll see this through with you, {name}.")),
             Map.entry(GG, List.of(
@@ -148,32 +155,30 @@ final class BossRunLines {
                     "no priest with us. keep your pots handy.",
                     "no healer this time. pot early, ok?")),
             Map.entry(GO, List.of(
-                    "low on pots for balrog, running to the shop. back in ~{n} min.",
+                    "low on pots, running to the shop. back in ~{n} min.",
                     "gonna grab potions first. back in ~{n} min.")),
             Map.entry(GO_AMMO, List.of(
-                    "low on {ammo} for balrog, running to the shop. back in ~{n} min.",
+                    "low on {ammo}, running to the shop. back in ~{n} min.",
                     "gonna grab {ammo} first. back in ~{n} min.")),
             Map.entry(ALLY_ON_MY_WAY, List.of(
-                    "heading down to the temple. {eta}.",
-                    "omw to mu young, {eta}.",
+                    "on my way, {eta}.",
                     "coming! be there in {eta}.")),
-            Map.entry(ALLY_NO_ROOM, List.of("too many of us out right now, can't make it down. sorry!")),
+            Map.entry(ALLY_NO_ROOM, List.of("too many of us out right now, can't make it. sorry!")),
             Map.entry(ALLY_CANT_COME, List.of(
                     "can't get away right now, sorry.",
                     "something came up, can't make it this time.")),
             Map.entry(ALLY_HERE, List.of(
-                    "made it down. signing up.",
-                    "here! putting my name down.",
-                    "phew, long way down. where do i sign?")),
+                    "made it. signing up.",
+                    "here! putting my name down.")),
             Map.entry(ALLY_LOW_POTS, List.of(
                     "bit low on pots, i'll make it work.",
-                    "running low on pots and no shop down here. i'll manage.")),
+                    "running low on pots and no shop nearby. i'll manage.")),
             Map.entry(ALLY_LOW_AMMO, List.of(
                     "low on {ammo}, i'll make it last.",
-                    "not many {ammo} left and no shop down here. i'll make them count.")),
+                    "not many {ammo} left and no shop nearby. i'll make them count.")),
             Map.entry(ALLY_TURNED_BACK, List.of(
                     "list closed before i got there. heading back to camp.",
-                    "won't make it down in time, heading back. good luck!")),
+                    "won't make it in time, heading back. good luck!")),
             Map.entry(ALLY_NOT_LISTED, List.of(
                     "couldn't get my name down. heading back to camp.",
                     "missed the list, sorry. back to camp for me.")),
@@ -203,13 +208,151 @@ final class BossRunLines {
                     "heading out with you.")));
 
     /**
-     * P8: a boss's own lines for an intent (boss key -> intent -> lines), where the generic ones name another boss or
-     * its place (Mu Young, Balrog, her temple, "down here"), and the intents only that boss has. A persona's own lines
-     * still come first; every intent a boss has none for keeps the generic ones.
+     * Mu Young's room, Balrog, her temple "down" below Sleepywood: the Easy and Normal Balrog lines, word for word the
+     * generic lines before P17 made those boss-neutral (a Papulatus companion said "sorry, balrog got me").
      */
-    static final Map<String, Map<String, List<String>>> BY_BOSS = Map.of(
+    private static final Map<String, List<String>> BALROG = Map.ofEntries(
+            Map.entry(REFUSED_LEVEL, List.of(
+                    "mu young won't take me yet. i'll wait out here.",
+                    "too low for this one still. i'll wait out here.",
+                    "she says i'm not strong enough yet lol. waiting outside.")),
+            Map.entry(REFUSED_BANNED, List.of(
+                    "guess i'm off the list. i'll wait out here.",
+                    "mu young won't let me sign. i'll sit this one out.",
+                    "she won't take my name... i'll wait here.")),
+            Map.entry(REFUSED_NOT_HERE, List.of(
+                    "couldn't get to mu young in time. i'll catch up after.",
+                    "couldn't reach mu young, sorry. catch you after.",
+                    "got stuck on the way to mu young. i'll catch up later.")),
+            Map.entry(DOWN, List.of(
+                    "ugh, i'm down. i'll wait out here for you.",
+                    "sorry, balrog got me. waiting outside.",
+                    "that hurt... i'll wait out here.")),
+            Map.entry(GO, List.of(
+                    "low on pots for balrog, running to the shop. back in ~{n} min.",
+                    "gonna grab potions first. back in ~{n} min.")),
+            Map.entry(GO_AMMO, List.of(
+                    "low on {ammo} for balrog, running to the shop. back in ~{n} min.",
+                    "gonna grab {ammo} first. back in ~{n} min.")),
+            Map.entry(ALLY_ON_MY_WAY, List.of(
+                    "heading down to the temple. {eta}.",
+                    "omw to mu young, {eta}.",
+                    "coming! be there in {eta}.")),
+            Map.entry(ALLY_NO_ROOM, List.of("too many of us out right now, can't make it down. sorry!")),
+            Map.entry(ALLY_HERE, List.of(
+                    "made it down. signing up.",
+                    "here! putting my name down.",
+                    "phew, long way down. where do i sign?")),
+            Map.entry(ALLY_LOW_POTS, List.of(
+                    "bit low on pots, i'll make it work.",
+                    "running low on pots and no shop down here. i'll manage.")),
+            Map.entry(ALLY_LOW_AMMO, List.of(
+                    "low on {ammo}, i'll make it last.",
+                    "not many {ammo} left and no shop down here. i'll make them count.")),
+            Map.entry(ALLY_TURNED_BACK, List.of(
+                    "list closed before i got there. heading back to camp.",
+                    "won't make it down in time, heading back. good luck!")));
+
+    /**
+     * P8: a boss's own lines for an intent (boss key -> intent -> lines), where the generic ones would not name its
+     * place (Mu Young's temple "down here", Adobis's room, Aldol), and the intents only that boss has. A persona's own
+     * lines still come first; every intent a boss has none for keeps the generic (boss-neutral) ones.
+     */
+    static final Map<String, Map<String, List<String>>> BY_BOSS = Map.ofEntries(
+            // slot: easy_balrog, balrog_normal (Mu Young's room, the temple below Sleepywood)
+            Map.entry("easy_balrog", BALROG),
+            Map.entry("balrog_normal", BALROG),
+            // slot: papulatus (P15: a dead companion walks back to the gate)
+            Map.entry("papulatus", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, i'm down. i'll wait at the gate.",
+                            "the clock got me... see you at the gate.")))),
+            // slot: scarga (P17: Aldol's expedition; a dead companion walks back from Kampung)
+            Map.entry("scarga", Map.ofEntries(
+                    Map.entry(REENTER, List.of(
+                            "ugh, i'm down. running back from kampung!",
+                            "got knocked out. heading back to aldol, hold on.",
+                            "be right back, on my way back in.")),
+                    Map.entry(DOWN, List.of(
+                            "couldn't get back in. i'll wait outside.",
+                            "too late to get back in... waiting outside.")),
+                    Map.entry(REFUSED_LEVEL, List.of("aldol won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "aldol won't let me sign. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to aldol in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for scarga, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for scarga, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to spooky world. {eta}.",
+                            "omw to aldol, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg! both of them down.",
+                            "we did it! gg.")))),
+            // slot: horntail (P18: the Mark of the Squad's expedition; a dead companion comes to in Leafre)
+            Map.entry("horntail", Map.ofEntries(
+                    Map.entry(REENTER, List.of(
+                            "ugh, i'm down. heading back from leafre!",
+                            "horntail got me. on my way back in, hold on.",
+                            "be right back, going back to the cave.")),
+                    Map.entry(DOWN, List.of(
+                            "couldn't get back in. i'll wait outside.",
+                            "too late to get back in... waiting in leafre.")),
+                    Map.entry(REFUSED_LEVEL, List.of("the mark won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "can't sign the mark. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to the mark in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for horntail, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for horntail, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the cave of life. {eta}.",
+                            "omw to the mark, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg! horntail's down!",
+                            "we actually did it. gg!")))),
+            // slot: pinkbean (P20: the Temple of Time's expedition; the dead revive inside, so DOWN is a failed revive)
+            Map.entry("pinkbean", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, couldn't get back in. i'll wait outside.",
+                            "pink bean got me good... waiting outside.")),
+                    Map.entry(REFUSED_LEVEL, List.of("the temple won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "can't sign up this time. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to the temple in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for pink bean, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for pink bean, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the temple of time. {eta}.",
+                            "omw to the forgotten temple, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg!! pink bean is down!",
+                            "we beat pink bean. gg!")))),
+            // slot: showa (P19: Konpei's expedition in the Showa hideout; the comb is the marker item)
+            Map.entry("showa", Map.ofEntries(
+                    Map.entry(DOWN, List.of(
+                            "ugh, the boss got me. i'll wait in showa town.",
+                            "i'm down... see you back in town.",
+                            "those bodyguards hit hard. waiting in showa town.")),
+                    Map.entry(REFUSED_LEVEL, List.of("konpei won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "konpei won't let me sign. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to konpei in time. i'll catch up after.")),
+                    Map.entry(GO, List.of("low on pots for the boss, running to the shop. back in ~{n} min.")),
+                    Map.entry(GO_AMMO, List.of("low on {ammo} for the boss, running to the shop. back in ~{n} min.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to the hideout. {eta}.",
+                            "omw to konpei, {eta}.")),
+                    Map.entry(GG, List.of(
+                            "gg! the boss is done.",
+                            "showa's free. gg!")),
+                    Map.entry(ZAKUM_EYE, List.of(
+                            "ready when you are. drop the comb on the machine.",
+                            "we're set, drop the comb whenever.")))),
             // slot: zakum (Adobis's room behind the Door to Zakum, the altar, El Nath)
-            "zakum", Map.ofEntries(
+            Map.entry("zakum", Map.ofEntries(
                     Map.entry(DOWN, List.of(
                             "ugh, zakum got me. i'll wait in el nath.",
                             "i'm down... see you back in town.",
@@ -235,7 +378,7 @@ final class BossRunLines {
                             "we did it! gg.")),
                     Map.entry(ZAKUM_EYE, List.of(
                             "ready when you are. drop the eye on the altar.",
-                            "we're set, drop the eye whenever."))));
+                            "we're set, drop the eye whenever.")))));
 
     private static final AtomicInteger counter = new AtomicInteger();
 

@@ -30,7 +30,8 @@ function spawnJrBoss(mobObj) {
 }
 
 function hit() {
-    var mapObj = rm.getMap();
+    // the reactor's own map, not the triggering player's: the stage-5 drop names a player who may be dead elsewhere
+    var mapObj = rm.getReactor().getMap();
 
     //spawnJrBoss(mapObj.getMonsterById(8820019));
     //spawnJrBoss(mapObj.getMonsterById(8820020));

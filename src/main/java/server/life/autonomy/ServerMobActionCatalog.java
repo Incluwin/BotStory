@@ -75,7 +75,8 @@ public final class ServerMobActionCatalog {
                     DataTool.getIntConvert("MADamage", info, 0),
                     DataTool.getIntConvert("disease", info, 0),
                     DataTool.getIntConvert("level", info, 0),
-                    DataTool.getIntConvert("tremble", info, 0) != 0));
+                    DataTool.getIntConvert("tremble", info, 0) != 0,
+                    randomSpotSpacing(info)));
         }
 
         List<BossAction.Skill> skills = new ArrayList<>();
@@ -126,6 +127,17 @@ public final class ServerMobActionCatalog {
             total += Math.max(0, DataTool.getIntConvert("delay", frame, 0));
         }
         return total;
+    }
+
+    /**
+     * P15: the spacing of an attack whose effect falls at random spots (info/effect0 randomPos, its effectDistance:
+     * Papulatus's Clock attack3, 300); 0 for every other attack.
+     */
+    private static int randomSpotSpacing(Data info) {
+        if (info == null || DataTool.getIntConvert("effect0/randomPos", info, 0) == 0) {
+            return 0;
+        }
+        return Math.max(0, DataTool.getIntConvert("effect0/effectDistance", info, 0));
     }
 
     private static Point copy(Point point) {

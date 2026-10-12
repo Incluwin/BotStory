@@ -232,7 +232,7 @@ class CompanionRestockBossTest {
                 drain();
             }
             assertEquals(1, said.size(), said.toString());
-            assertTrue(BossRunLines.GENERIC.get(BossRunLines.GO_AMMO).stream()
+            assertTrue(BossAllyHarness.easyLines(BossRunLines.GO_AMMO).stream()
                     .map(line -> line.replace("{n}", "2").replace("{ammo}", "arrows")).toList()
                     .contains(said.getFirst()), said.toString());
         }
@@ -266,7 +266,7 @@ class CompanionRestockBossTest {
 
         /** The boss.go lines with "{n}" read as {@code minutes}. */
         private List<String> goLines(int minutes) {
-            return BossRunLines.GENERIC.get(BossRunLines.GO).stream()
+            return BossAllyHarness.easyLines(BossRunLines.GO).stream()
                     .map(line -> line.replace("{n}", Integer.toString(minutes))).toList();
         }
 
@@ -621,7 +621,7 @@ class CompanionRestockBossTest {
             restock.started(FENNA, EASY_BALROG, 25_000L); // no hop: TRIP_ETA_BASE_MS
             drain();
             assertEquals(1, said.size(), said.toString());
-            assertTrue(BossRunLines.GENERIC.get(BossRunLines.GO).stream()
+            assertTrue(BossAllyHarness.easyLines(BossRunLines.GO).stream()
                     .map(line -> line.replace("{n}", "1")).toList().contains(said.getFirst()), said.toString());
 
             said.clear();

@@ -62,7 +62,6 @@ class AgentConfigurationBoundaryTest {
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_FIDGET_INITIAL_STEP_MS",
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_FIDGET_MIN_PERIOD_MS",
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_FIDGET_PERIOD_VARIANCE_MS",
-            "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_REACTOR",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:ITEM_REACTOR_DROP_RADIUS",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:LOBBY_CHAT_STAGGER_MS",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:LOBBY_ENTRY_DELAY_MS",

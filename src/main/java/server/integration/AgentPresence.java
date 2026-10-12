@@ -65,6 +65,28 @@ public final class AgentPresence {
         }
     }
 
+    /** A mob's dispel took {@code chr}'s buffs (Character.dispel); only an Agent is told (P16). */
+    public static void dispelled(Character chr) {
+        try {
+            if (chr != null && provider.isAgent(chr)) {
+                provider.dispelled(chr);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("Agent dispel hook failed for {}", chr.getId(), failure);
+        }
+    }
+
+    /** A same-map banish moved {@code chr} (Character.changeMapBanish); only an Agent is told. */
+    public static void banished(Character chr) {
+        try {
+            if (chr != null && provider.isAgent(chr)) {
+                provider.banished(chr);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("Agent banish hook failed for {}", chr.getId(), failure);
+        }
+    }
+
     public static void install(AgentPresenceProvider newProvider) {
         provider = newProvider == null ? new NoopAgentPresenceProvider() : newProvider;
     }

@@ -13,13 +13,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Every open boss run, by session id, by member and by expedition (identity). Writes are synchronized; reads are
- * memory only from any thread. A member stays indexed from its enlist until its run ends, refused or not.
+ * Every open boss run, by session id, by member, by expedition (identity) and, for a party-instance run (P12 G7), by
+ * its event (identity). Writes are synchronized; reads are memory only from any thread. A member stays indexed from its
+ * enlist until its run ends, refused or not.
  */
 public final class AgentBossRunRegistry {
     private static final Map<Long, AgentBossRunSession> SESSIONS = new ConcurrentHashMap<>();
     private static final Map<Integer, Long> BY_MEMBER = new ConcurrentHashMap<>();
     private static final Map<Expedition, Long> BY_EXPEDITION = new ConcurrentHashMap<>();
+    private static final Map<EventInstanceManager, Long> BY_EVENT = new ConcurrentHashMap<>();
     private static volatile int waiting;
 
     private AgentBossRunRegistry() {
@@ -29,11 +31,16 @@ public final class AgentBossRunRegistry {
         if (session == null) {
             throw new IllegalArgumentException("a boss run session is required");
         }
-        if (BY_EXPEDITION.containsKey(session.expedition())) {
-            throw new IllegalStateException("the expedition already has a boss run");
+        Expedition expedition = session.expedition();
+        if (expedition != null ? BY_EXPEDITION.containsKey(expedition) : BY_EVENT.containsKey(session.event())) {
+            throw new IllegalStateException("the expedition or event already has a boss run");
         }
         SESSIONS.put(session.sessionId(), session);
-        BY_EXPEDITION.put(session.expedition(), session.sessionId());
+        if (expedition != null) {
+            BY_EXPEDITION.put(expedition, session.sessionId());
+        } else {
+            BY_EVENT.put(session.event(), session.sessionId());
+        }
         recount();
     }
 
@@ -49,7 +56,11 @@ public final class AgentBossRunRegistry {
         if (session == null || !SESSIONS.remove(session.sessionId(), session)) {
             return;
         }
-        BY_EXPEDITION.remove(session.expedition(), session.sessionId());
+        if (session.expedition() != null) {
+            BY_EXPEDITION.remove(session.expedition(), session.sessionId());
+        } else {
+            BY_EVENT.remove(session.event(), session.sessionId());
+        }
         session.members().forEach(member -> BY_MEMBER.remove(member.agentId(), session.sessionId()));
         recount();
     }
@@ -73,6 +84,18 @@ public final class AgentBossRunRegistry {
     public static AgentBossRunSession forExpedition(Expedition expedition) {
         Long sessionId = expedition == null ? null : BY_EXPEDITION.get(expedition);
         return sessionId == null ? null : SESSIONS.get(sessionId);
+    }
+
+    /**
+     * The open run that fights in this very event, or null: a party-instance run keyed by it (P12 G7), else the run of
+     * the event's expedition.
+     */
+    public static AgentBossRunSession forEvent(EventInstanceManager event) {
+        if (event == null) {
+            return null;
+        }
+        Long sessionId = BY_EVENT.get(event);
+        return sessionId != null ? SESSIONS.get(sessionId) : forExpedition(event.getExpedition());
     }
 
     public static Collection<AgentBossRunSession> sessions() {
@@ -106,11 +129,23 @@ public final class AgentBossRunRegistry {
     }
 
     /**
-     * True when a player of {@code event} is a REGISTERED or INSIDE member of the open run for the event's expedition:
+     * P12 G11: true while the Agent is a REGISTERED, INSIDE or LEAVING member of an open run, the members whose map
+     * may bar summons (the entry NPC's room, the battle map, the way out). Memory only, any thread.
+     */
+    public static boolean barsSummons(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember member = session == null ? null : session.member(agentId);
+        AgentBossRunMember.Phase phase = member == null ? null : member.phase();
+        return phase == AgentBossRunMember.Phase.REGISTERED || phase == AgentBossRunMember.Phase.INSIDE
+                || phase == AgentBossRunMember.Phase.LEAVING;
+    }
+
+    /**
+     * True when a player of {@code event} is a REGISTERED or INSIDE member of the open run for the event (forEvent):
      * a companion signed up for this very fight. Memory only (the event's player lock aside), for any thread.
      */
     public static boolean signedUpIn(EventInstanceManager event) {
-        AgentBossRunSession session = event == null || SESSIONS.isEmpty() ? null : forExpedition(event.getExpedition());
+        AgentBossRunSession session = event == null || SESSIONS.isEmpty() ? null : forEvent(event);
         if (session == null) {
             return false;
         }
@@ -125,10 +160,34 @@ public final class AgentBossRunRegistry {
     }
 
     /**
+     * P14: true when {@code event} has an open party-instance run (Latanica, Neo City) whose boss rules name
+     * {@code mobId} (AgentBossRules.names). Its parts are guarded from control steal there (AgentBossScope) without
+     * a BOSS_IDS entry, which would also cover the same ids on field maps (Latanica's adds roam Singapore). Memory
+     * only, any thread.
+     */
+    public static boolean partyBossPart(EventInstanceManager event, int mobId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forEvent(event);
+        return session != null && session.definition().partyInstance()
+                && AgentBossRules.names(session.definition().key(), mobId);
+    }
+
+    /**
+     * P17: true when {@code event} has an open run, of any kind, whose boss rules name {@code mobId} (a role, a target
+     * priority part or an add: Scarga's Ratatula). AgentBossScope asks it for a non-boss monster in an expedition
+     * event of a listed type only. Memory only, any thread.
+     */
+    public static boolean namedPart(EventInstanceManager event, int mobId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forEvent(event);
+        return session != null && AgentBossRules.names(session.definition().key(), mobId);
+    }
+
+    /**
      * True for a fake part (Zakum's body before its arms fall) in the event of an open run that never targets fakes:
      * a hit on it is thrown away, so the combat selector never takes it, not even as a secondary or projectile target.
-     * Memory only, any thread; false at once while no run is open. The fake flag is read last, because it takes the
-     * monster's lock and every other read here is a plain field or map read.
+     * Also true for a part the run's boss rules never let a member hit (AgentBossRules.neverTarget, P11: Normal
+     * Balrog's helpers and seal, whose death would release a claw early). Memory only, any thread; false at once while
+     * no run is open. The fake flag is read last, because it takes the monster's lock and every other read here is a
+     * plain field or map read.
      */
     public static boolean neverTarget(Monster monster) {
         if (SESSIONS.isEmpty() || monster == null) {
@@ -136,8 +195,12 @@ public final class AgentBossRunRegistry {
         }
         MapleMap map = monster.getMap();
         EventInstanceManager event = map == null ? null : map.getEventInstance();
-        AgentBossRunSession session = event == null ? null : forExpedition(event.getExpedition());
-        return session != null && session.definition().neverTargetFakes() && monster.isFake();
+        AgentBossRunSession session = event == null ? null : forEvent(event);
+        if (session == null) {
+            return false;
+        }
+        return AgentBossRules.neverTarget(session.definition().key(), monster.getId())
+                || session.definition().neverTargetFakes() && monster.isFake();
     }
 
     /**
@@ -160,6 +223,7 @@ public final class AgentBossRunRegistry {
         SESSIONS.clear();
         BY_MEMBER.clear();
         BY_EXPEDITION.clear();
+        BY_EVENT.clear();
         waiting = 0;
     }
 }

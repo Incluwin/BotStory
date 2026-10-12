@@ -1,0 +1,230 @@
+package server.agents.capabilities.expedition.boss;
+
+import client.Character;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import scripting.event.EventInstanceManager;
+import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
+import server.maps.MapleMap;
+
+import java.awt.Point;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * P18: Horntail's fight runs over three maps. On a pre-head map the members fight its head; once the map holds no live
+ * monster but never-targets, they walk to next00 and take it (the stock seal lets them through once the head fell), at
+ * most every STAGE_PORTAL_EVERY_MS. On the altar ranged and magic members take the heads first and melee members the
+ * legs and tail. The altar is no stage map, so with nothing up there (before the reactor) members hold. Read from the
+ * shipped boss rules.
+ */
+class AgentBossStageFightTest {
+    private static final int FIRST_STAGE = 240_060_000;
+    private static final int SECOND_STAGE = 240_060_100;
+    private static final int ALTAR = 240_060_200;
+    private static final int LEFT_HEAD = 8_810_000;
+    private static final int HEAD_A = 8_810_002;
+    private static final int HEAD_B = 8_810_003;
+    private static final int LEGS = 8_810_008;
+    private static final int TAIL = 8_810_009;
+    private static final int HORNTAIL_HP = 8_810_018;
+    private static final int INTRO = 8_810_026;
+    private static final Point NEXT00 = new Point(832, -166);
+
+    private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+    private final Map<Integer, MapleMap> maps = new HashMap<>();
+    private final Map<MapleMap, List<Monster>> monsters = new HashMap<>();
+    private final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
+    private final Set<Integer> melee = new HashSet<>();
+    private final List<Integer> portalTries = new ArrayList<>();
+    private final EventInstanceManager event = mock(EventInstanceManager.class);
+    private AgentBossPriorityFight fight;
+
+    @BeforeEach
+    void setUp() {
+        fight = new AgentBossPriorityFight("horntail", new AgentBossPriorityFight.Ports() {
+            @Override
+            public PrimitiveCapabilityGateway gateway() {
+                return gateway;
+            }
+
+            @Override
+            public AgentRuntimeEntry entry(int characterId) {
+                return entries.get(characterId);
+            }
+
+            @Override
+            public List<Monster> monsters(MapleMap on) {
+                return monsters.getOrDefault(on, List.of());
+            }
+
+            @Override
+            public boolean hittable(Monster monster) {
+                return true;
+            }
+
+            @Override
+            public boolean melee(Character member) {
+                return melee.contains(member.getId());
+            }
+
+            @Override
+            public Point portalPosition(Character member, String name) {
+                return "next00".equals(name) && member.getMapId() != ALTAR ? NEXT00 : null;
+            }
+
+            @Override
+            public boolean enterPortal(Character member, String name) {
+                portalTries.add(member.getId());
+                return true;
+            }
+        });
+    }
+
+    @Test
+    void theShippedRulesNameTheTwoPreHeadMapsTheirPortalTheMeleeOrderAndTheLeafreWarp() {
+        AgentBossRules.Boss rules = AgentBossRules.of("horntail");
+        assertEquals(List.of(FIRST_STAGE, SECOND_STAGE), rules.stageMaps());
+        assertEquals("next00", AgentBossRules.stagePortal("horntail"));
+        assertEquals(240_000_000, AgentBossRules.reentryWarpFrom("horntail"));
+        assertEquals(LEGS, rules.meleePriority().get(2), "melee: the pre-heads, then the legs");
+        assertTrue(rules.neverTarget().containsAll(List.of(HORNTAIL_HP, 8_810_024, 8_810_025, INTRO)));
+        assertTrue(AgentBossRunCatalog.HORNTAIL.fightMap(FIRST_STAGE));
+        assertTrue(AgentBossRunCatalog.HORNTAIL.fightMap(ALTAR));
+        assertFalse(AgentBossRunCatalog.HORNTAIL.fightMap(240_050_400), "the recruit map is no fight map");
+        assertFalse(AgentBossRunCatalog.SCARGA.fightMap(FIRST_STAGE), "other bosses fight on their battle map only");
+        assertNull(AgentBossRules.stagePortal("scarga"));
+    }
+
+    @Test
+    void onAPreHeadMapMembersFightItsHead() {
+        mobs(FIRST_STAGE, LEFT_HEAD);
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, FIRST_STAGE, new Point(500, 120))), event, 0L);
+
+        verify(gateway).grind(thane, Set.of(LEFT_HEAD), Set.of());
+        assertTrue(portalTries.isEmpty());
+    }
+
+    @Test
+    void onceTheHeadFellAMemberWalksToNext00AndTakesItAtMostEveryInterval() {
+        mobs(FIRST_STAGE, INTRO);
+        AgentRuntimeEntry thane = entry(10);
+        Character member = member(10, FIRST_STAGE, new Point(200, 120));
+
+        fight.tick(List.of(member), event, 0L);
+        verify(gateway).navigate(thane, NEXT00, true);
+        assertTrue(portalTries.isEmpty(), "too far to take it");
+
+        when(member.getPosition()).thenReturn(new Point(NEXT00));
+        long every = AgentBossPriorityFight.stagePortalEveryMs();
+        fight.tick(List.of(member), event, 1_000L);
+        fight.tick(List.of(member), event, 1_000L + every - 1);
+        assertEquals(List.of(10), portalTries, "one try per interval");
+        fight.tick(List.of(member), event, 1_000L + every);
+        assertEquals(List.of(10, 10), portalTries);
+        verify(gateway, never()).grind(any(AgentRuntimeEntry.class), anySet(), anySet());
+    }
+
+    @Test
+    void theSecondPreHeadMapIsAStageToo() {
+        mobs(SECOND_STAGE);
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, SECOND_STAGE, new Point(NEXT00))), event, 0L);
+
+        verify(gateway).stop(thane);
+        assertEquals(List.of(10), portalTries);
+    }
+
+    @Test
+    void onTheAltarRangedMembersTakeTheHeadsAndMeleeMembersTheLegs() {
+        mobs(ALTAR, HEAD_A, HEAD_B, LEGS, TAIL, HORNTAIL_HP);
+        AgentRuntimeEntry ranged = entry(10);
+        AgentRuntimeEntry warrior = entry(11);
+        melee.add(11);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(0, 260)), member(11, ALTAR, new Point(0, 260))), event, 0L);
+
+        verify(gateway).grind(ranged, Set.of(HEAD_A), Set.of(HEAD_B, LEGS, TAIL));
+        verify(gateway).grind(warrior, Set.of(LEGS), Set.of(HEAD_A, HEAD_B, TAIL));
+    }
+
+    @Test
+    void onTheAltarBeforeTheReactorMembersHoldAndTakeNoPortal() {
+        mobs(ALTAR);
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(0, 260))), event, 0L);
+
+        verify(gateway).stop(thane);
+        verify(gateway, never()).navigate(eq(thane), any(), anyBoolean());
+        assertTrue(portalTries.isEmpty());
+    }
+
+    @Test
+    void afterTheClearAMemberOnAPreHeadMapHolds() {
+        mobs(FIRST_STAGE);
+        when(event.isEventCleared()).thenReturn(true);
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, FIRST_STAGE, new Point(NEXT00))), event, 0L);
+
+        verify(gateway).stop(thane);
+        assertTrue(portalTries.isEmpty());
+    }
+
+    private void mobs(int mapId, int... ids) {
+        List<Monster> live = new ArrayList<>();
+        for (int id : ids) {
+            Monster monster = mock(Monster.class);
+            when(monster.getId()).thenReturn(id);
+            when(monster.isAlive()).thenReturn(true);
+            live.add(monster);
+        }
+        monsters.put(map(mapId), live);
+    }
+
+    private MapleMap map(int mapId) {
+        return maps.computeIfAbsent(mapId, id -> {
+            MapleMap map = mock(MapleMap.class);
+            when(map.getId()).thenReturn(id);
+            return map;
+        });
+    }
+
+    private Character member(int id, int mapId, Point at) {
+        Character character = mock(Character.class);
+        when(character.getId()).thenReturn(id);
+        when(character.getMap()).thenReturn(map(mapId));
+        when(character.getMapId()).thenReturn(mapId);
+        when(character.getPosition()).thenReturn(at);
+        return character;
+    }
+
+    private AgentRuntimeEntry entry(int id) {
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        entries.put(id, entry);
+        return entry;
+    }
+}

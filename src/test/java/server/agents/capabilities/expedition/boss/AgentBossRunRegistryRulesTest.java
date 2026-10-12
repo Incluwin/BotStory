@@ -12,6 +12,8 @@ import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -75,6 +77,36 @@ class AgentBossRunRegistryRulesTest {
         AgentBossRunRegistry.remove(zakumRun);
         AgentBossRunRegistry.remove(session);
         assertFalse(AgentBossRunRegistry.neverTarget(zakumFake), "the run ended");
+    }
+
+    /**
+     * P11: in a Normal Balrog run the fake body (8830000 until both claws fall) is never a target, nor are the parts the
+     * boss rules catalog lists: the claw helpers 8830004/8830005 and the seal 8830006, whose death would release the
+     * second claw early. The claws, the real body and the summoned Balrogs stay targets; outside the run nothing holds.
+     */
+    @Test
+    void normalBalrogsRunNeverTargetsItsFakeBodyHelpersOrSeal() {
+        Expedition normal = mock(Expedition.class);
+        AgentBossRunSession session = open(1L, AgentBossRunCatalog.BALROG_NORMAL, normal);
+        MapleMap battle = map(event(normal));
+
+        assertTrue(AgentBossRunRegistry.neverTarget(part(8830000, true, battle)), "the fake body");
+        for (int helperOrSeal : List.of(8830004, 8830005, 8830006)) {
+            assertTrue(AgentBossRunRegistry.neverTarget(part(helperOrSeal, false, battle)), "listed: " + helperOrSeal);
+        }
+        for (int target : List.of(8830000, 8830001, 8830002, 6400005, 6400006)) {
+            assertFalse(AgentBossRunRegistry.neverTarget(part(target, false, battle)), "a target: " + target);
+        }
+        assertFalse(AgentBossRunRegistry.neverTarget(part(8830006, false, map(event(mock(Expedition.class))))),
+                "another expedition's seal, with no companion run");
+        assertFalse(AgentBossRunRegistry.neverTarget(part(8830006, false, map(null))), "a field map");
+
+        Expedition easy = mock(Expedition.class);
+        open(2L, AgentBossRunCatalog.EASY_BALROG, easy);
+        assertFalse(AgentBossRunRegistry.neverTarget(part(AgentBalrogDefinition.RELEASE_SEAL_MOB, false,
+                map(event(easy)))), "Easy's seal keeps today's path");
+        AgentBossRunRegistry.remove(session);
+        assertFalse(AgentBossRunRegistry.neverTarget(part(8830006, false, battle)), "the run ended");
     }
 
     @Test

@@ -1699,6 +1699,7 @@ public class Character extends AbstractCharacterObject {
         MapleMap map_ = getWarpMap(mapid);
         Portal portal_ = map_.getPortal(banishInfo.portal());
         changeMap(map_, portal_ != null ? portal_ : map_.getRandomPlayerSpawnpoint());
+        server.integration.AgentPresence.banished(this);
     }
 
     public void changeMap(int map) {
@@ -3112,6 +3113,7 @@ public class Character extends AbstractCharacterObject {
                     }
                 }
             }
+            server.integration.AgentPresence.dispelled(this); // P16: an Agent puts its buffs back up
         }
     }
 

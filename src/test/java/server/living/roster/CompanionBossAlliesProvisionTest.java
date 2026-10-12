@@ -296,7 +296,7 @@ class CompanionBossAlliesProvisionTest {
         assertEquals(List.of(), transactions);
         assertEquals(2, h.mapChat.size(), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
-        assertTrue(BossRunLines.GENERIC.get(BossRunLines.ALLY_LOW_AMMO).stream()
+        assertTrue(BossAllyHarness.easyLines(BossRunLines.ALLY_LOW_AMMO).stream()
                 .map(wording -> wording.replace("{ammo}", "arrows")).anyMatch(said(1)::equals), h.mapChat.toString());
     }
 

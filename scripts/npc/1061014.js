@@ -35,25 +35,29 @@ function selectExpedition(type) {
 }
 
 // companions: Mu Young offers an owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES)
-// and "Call allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES)
+// and "Call allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES), for the difficulty they chose
+function bossKey() {
+    return exped == ExpeditionType.BALROG_EASY ? "easy_balrog" : "balrog_normal";
+}
+
 function companionOffer() {
-    return exped == ExpeditionType.BALROG_EASY && Java.type('server.living.LivingWorldHooks').bossPartyOffered(cm, "easy_balrog");
+    return Java.type('server.living.LivingWorldHooks').bossPartyOffered(cm, bossKey());
 }
 
 function companionRegister() {
-    return Java.type('server.living.LivingWorldHooks').bossPartyRegister(cm, "easy_balrog");
+    return Java.type('server.living.LivingWorldHooks').bossPartyRegister(cm, bossKey());
 }
 
 function allyOffer() {
-    return exped == ExpeditionType.BALROG_EASY && Java.type('server.living.LivingWorldHooks').bossAlliesOffered(cm, "easy_balrog");
+    return Java.type('server.living.LivingWorldHooks').bossAlliesOffered(cm, bossKey());
 }
 
 function allyPicker() {
-    return Java.type('server.living.LivingWorldHooks').bossAllyPicker(cm, "easy_balrog");
+    return Java.type('server.living.LivingWorldHooks').bossAllyPicker(cm, bossKey());
 }
 
 function allyCall(selection) {
-    return Java.type('server.living.LivingWorldHooks').bossAllyCall(cm, "easy_balrog", selection);
+    return Java.type('server.living.LivingWorldHooks').bossAllyCall(cm, bossKey(), selection);
 }
 
 // her choices after a member's line (status 30); null when she offers neither
@@ -119,7 +123,7 @@ function openExpedition() {
             cm.sendOk("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it.");
             cm.dispose();
         } else {
-            if (exped == ExpeditionType.BALROG_EASY) {
+            if (exped == ExpeditionType.BALROG_EASY || exped == ExpeditionType.BALROG_NORMAL) {
                 var joined = expedition.addMember(player);
                 var choices = expedition.contains(player) ? companionChoices() : null;
                 if (choices != null) {

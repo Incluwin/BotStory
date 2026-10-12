@@ -191,6 +191,20 @@ public final class Friendship {
         }
     }
 
+    /**
+     * A companion boss run cleared (P12 G12, decision 23): its owner befriends each Resident companion that went in with
+     * them, once for the run, under the daily boss cap. The run's own boss kills gave none (LivingWorldHooks.mobKilled).
+     */
+    public void onBossRunCleared(Character owner, List<Persona> companions, String bossKey) {
+        if (owner == null || AgentPresence.isAgent(owner)) {
+            return;
+        }
+        for (Persona persona : companions) {
+            together(owner, persona, BOSS, world.config().FRIENDSHIP_BOSS_POINTS, world.config().FRIENDSHIP_BOSS_PER_DAY,
+                    "boss run " + bossKey);
+        }
+    }
+
     private void together(Character player, Persona persona, String kind, int points, int perDay, String reason) {
         if (points == 0 || perDay > 0
                 && world.store().countEvents(player.getId(), persona.id(), kind, world.routineDayStartMs()) >= perDay) {

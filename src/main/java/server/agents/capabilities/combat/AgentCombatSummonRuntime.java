@@ -4,6 +4,7 @@ import java.util.function.IntPredicate;
 import client.Character;
 import client.Skill;
 import server.StatEffect;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentCombatGatewayRuntime;
@@ -148,13 +149,16 @@ public final class AgentCombatSummonRuntime {
 
     /**
      * True where this Agent must not summon: the map forbids summons to players (FieldLimit.SUMMON, which the server
-     * never checks) and the Agent fights there as an INSIDE member of a boss run (Easy Balrog's battle map). KPQ stages
-     * and LPQ's boss map carry the bit too; Agents outside boss runs keep summoning there as before.
+     * never checks) and the Agent is in companion boss scope there. That is a REGISTERED, INSIDE or LEAVING member of a
+     * boss run (Easy Balrog's battle map, P7; the entry NPC's room, P12 G11), or a companion beside its owner on the
+     * recruit or gate map of a boss the switch lists (P12 G11: Showa's 801040004). KPQ stages and LPQ's boss map carry
+     * the bit too; Agents outside companion boss scope keep summoning there as before.
      */
     static boolean summonsBarred(Character bot) {
         MapleMap map = bot.getMap();
         return map != null && FieldLimit.SUMMON.check(map.getFieldLimit())
-                && AgentBossRunRegistry.inside(bot.getId());
+                && (AgentBossRunRegistry.barsSummons(bot.getId())
+                || AgentBossRunHost.installed().besideOwnerAtBossGate(bot));
     }
 
     /** Casts one summon skill; {@link SummonResult#BARRED} where {@link #summonsBarred} forbids it. */

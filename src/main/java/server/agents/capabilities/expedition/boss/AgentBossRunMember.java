@@ -18,7 +18,12 @@ public final class AgentBossRunMember {
         /** On its way out of the event. */
         LEAVING,
         /** Out of the run. */
-        OUT
+        OUT,
+        /**
+         * P12 G6: died in a run whose dead members re-enter (AgentBossRunDefinition.DeathMode.REENTER: Scarga,
+         * Horntail), came to outside, and walks back in by the recruit NPC; still part of the run.
+         */
+        REENTERING
     }
 
     /** Who leads the member outside the fight. */
@@ -55,6 +60,10 @@ public final class AgentBossRunMember {
     private AgentBossRunHost.Out leavingFor;
     private long leavingSinceMs;
     private AgentBossRunHost.Out out;
+    /** Since when it is REENTERING; 0 while it is not. */
+    private long reenteringSinceMs;
+    /** P17: when it last talked to the recruit NPC to get back in (0: not since this re-entry began). */
+    private long reenterTalkedAtMs;
     /** Its anchor left while it was down outside, and the host heard it (see {@link #ownerLeftWhileDown}). */
     private boolean ownerLeftWhileDown;
 
@@ -257,9 +266,44 @@ public final class AgentBossRunMember {
         anchorSeen = true;
     }
 
+    /** P12 G6: died out of a re-enter run; it walks back in from now on. */
+    void reentering(long nowMs) {
+        reenteringSinceMs = nowMs;
+        reenterTalkedAtMs = 0L;
+        phase = Phase.REENTERING;
+    }
+
+    long reenteringSinceMs() {
+        return reenteringSinceMs;
+    }
+
+    long reenterTalkedAtMs() {
+        return reenterTalkedAtMs;
+    }
+
+    void reenterTalked(long nowMs) {
+        reenterTalkedAtMs = nowMs;
+    }
+
+    /** P12 G6: back in the fight after a re-entry; its last death is behind it. */
+    void backInside() {
+        seenDead = false;
+        aliveOnceSinceDeath = false;
+        reenteringSinceMs = 0L;
+        phase = Phase.INSIDE;
+    }
+
     void leftRun(AgentBossRunHost.Out reason) {
         out = reason;
         phase = Phase.OUT;
+    }
+
+    /**
+     * A member that follows its owner, out of the run because it died in the fight and came to outside. Any thread:
+     * {@code out} is written before the volatile phase, and read after it.
+     */
+    public boolean downOutside() {
+        return phase == Phase.OUT && kind == Kind.FOLLOWER && out == AgentBossRunHost.Out.DIED;
     }
 
     /**

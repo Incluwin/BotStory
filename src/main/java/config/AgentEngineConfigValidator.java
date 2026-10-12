@@ -78,15 +78,16 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
-            if (key.endsWith("AgentBossScope.BOSS_IDS")) {
+            if (key.endsWith("AgentBossScope.BOSS_IDS") || key.endsWith("AgentSupplyReadiness.BOSS_DESK_MAPS")
+                    || key.endsWith("AgentFollowMapSyncService.NO_FOLLOW_MAPS")) {
                 if (!validBossIds(value)) {
-                    throw new IllegalStateException("Agent tuning key " + key + " must be none, or mob ids"
+                    throw new IllegalStateException("Agent tuning key " + key + " must be none, or ids"
                             + " and ascending id ranges separated by commas, such as 8800003-8800010");
                 }
                 continue;
             }
             // the boss attack mirror's mode, before the boolean and numeric checks too
-            if (key.endsWith("AgentBossAttackMirror.MODE")) {
+            if (key.endsWith("AgentBossAttackMirror.MODE") || key.endsWith("AgentBossAttackMirror.BLAST_MODE")) {
                 if (!validMirrorMode(value)) {
                     throw new IllegalStateException("Agent tuning key " + key + " must be OFF, OBSERVE or APPLY");
                 }

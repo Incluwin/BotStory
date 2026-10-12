@@ -36,7 +36,9 @@ import static org.mockito.Mockito.when;
  * room behind the Door to Zakum (211042400); its companions top up at Glibber on Ice Valley II (211040200) on the way,
  * and allies come in and leave by west00, the way to the door. While the switch lists zakum, Ice Valley II keeps
  * Zakum's standard and Adobis's room holds a companion's trip out (CompanionBossRuns.holdsTripsAt); with it off,
- * neither does, and Easy Balrog's maps keep what they had.
+ * neither does, and Easy Balrog's maps keep what they had. P11: Normal Balrog shares Mu Young's room, her spots, Ant
+ * Tunnel Park and the portals with Easy; where both are listed, her room and the park keep the larger standard (Normal's
+ * 300,000/240,000 points over Easy's 130,000/32,000); at the park a companion under Lv50 keeps neither.
  */
 class BossEntranceTest {
     private static final int MU_YOUNG = 1061014;
@@ -57,10 +59,38 @@ class BossEntranceTest {
     @Test
     void easyBalrogsApproachWithAStoreIsAntTunnelPark() {
         assertEquals(105070001, BossEntrance.EASY_BALROG.approachMapId());
-        assertSame(BossEntrance.EASY_BALROG, BossEntrance.atApproachMap(105070001));
-        assertNull(BossEntrance.atApproachMap(105100100), "Mu Young's room is her entrance, not its approach");
-        assertNull(BossEntrance.atApproachMap(105070000), "the field next to the park");
-        assertNull(BossEntrance.atApproachMap(0));
+        assertEquals(List.of(BossEntrance.EASY_BALROG, BossEntrance.BALROG_NORMAL),
+                BossEntrance.allAtApproachMap(105070001));
+        assertEquals(List.of(), BossEntrance.allAtApproachMap(105100100),
+                "Mu Young's room is her entrance, not its approach");
+        assertEquals(List.of(), BossEntrance.allAtApproachMap(105070000), "the field next to the park");
+        assertEquals(List.of(), BossEntrance.allAtApproachMap(0));
+    }
+
+    @Test
+    void aRowsOwnStoreNpcWinsOverTheApproachMapsSupplier() {
+        assertEquals(1061001, BossEntrance.EASY_BALROG.approachStoreNpcId(), "Ant Tunnel Park's 24 Hr Mobile Store");
+        BossEntrance throughLeafre = new BossEntrance(AgentBossRunCatalog.EASY_BALROG,
+                new PqEntrance.Beside(-50, -30, true), 105_070_001, "top00", "outPerrion", false, 2_022_000);
+        assertEquals(2_022_000, throughLeafre.approachStoreNpcId());
+    }
+
+    /**
+     * P20: an owner passing Leafre is on the way to Pink Bean with nothing in the bag (its marker item only lies on its
+     * battle map), but on the way to Zakum and The Boss only while carrying their entry items (the Eye, the comb).
+     */
+    @Test
+    void anOwnerIsOnTheWayToPinkBeanWithNoItemButToZakumAndShowaOnlyCarryingTheirs() {
+        client.Character owner = mock(client.Character.class);
+        assertTrue(BossEntrance.PINKBEAN.approachMeantBy(owner));
+        assertTrue(BossEntrance.PINKBEAN.approachMeantBy(null));
+        assertFalse(BossEntrance.ZAKUM.approachMeantBy(owner));
+        assertFalse(BossEntrance.SHOWA.approachMeantBy(owner));
+        when(owner.haveItem(4_000_138)).thenReturn(true);
+        assertTrue(BossEntrance.SHOWA.approachMeantBy(owner));
+        assertEquals(List.of(BossEntrance.NEO_BERGAMOT, BossEntrance.NEO_DUNAS, BossEntrance.NEO_AUFHEBEN,
+                BossEntrance.NEO_OBERON, BossEntrance.NEO_NIBELUNG, BossEntrance.HORNTAIL, BossEntrance.PINKBEAN),
+                BossEntrance.allAtApproachMap(240_000_000), "Leafre serves seven bosses");
     }
 
     @Test
@@ -131,9 +161,10 @@ class BossEntranceTest {
     @Test
     void zakumsApproachWithAStoreIsIceValleyTwoWithGlibber() {
         assertEquals(211040200, BossEntrance.ZAKUM.approachMapId());
-        assertSame(BossEntrance.ZAKUM, BossEntrance.atApproachMap(211040200));
-        assertNull(BossEntrance.atApproachMap(211042400), "Adobis's room is the entrance, not its approach");
-        assertNull(BossEntrance.atApproachMap(211000000), "El Nath town is not the approach");
+        assertEquals(List.of(BossEntrance.ZAKUM), BossEntrance.allAtApproachMap(211040200));
+        assertEquals(List.of(), BossEntrance.allAtApproachMap(211042400),
+                "Adobis's room is the entrance, not its approach");
+        assertEquals(List.of(), BossEntrance.allAtApproachMap(211000000), "El Nath town is not the approach");
         assertEquals(2030009, BossEntrance.ZAKUM.approachStoreNpcId(), "Glibber on Ice Valley II");
     }
 
@@ -189,6 +220,83 @@ class BossEntranceTest {
         assertTrue(wzPortal("west00", -1601, -339).matcher(wz).find(), "the WZ names the way to the door west00");
         assertTrue(Pattern.compile("<string name=\"id\" value=\"" + ADOBIS + "\"/>\\s*<int name=\"x\" value=\"-800\"/>"
                 + "\\s*<int name=\"y\" value=\"-236\"/>").matcher(wz).find(), "Adobis stands at -800,-236");
+    }
+
+    // ---- P11: Normal Balrog, signed up with Mu Young too ---------------------------------------------
+
+    @Test
+    void normalBalrogSharesMuYoungsRoomHerSpotsTheParkAndThePortals() {
+        assertSame(AgentBossRunCatalog.BALROG_NORMAL, BossEntrance.BALROG_NORMAL.definition());
+        assertSame(BossEntrance.BALROG_NORMAL, BossEntrance.of(" Balrog_Normal "));
+        assertEquals(List.of(BossEntrance.EASY_BALROG, BossEntrance.BALROG_NORMAL),
+                BossEntrance.allAtRecruitMap(105100100));
+        assertSame(BossEntrance.EASY_BALROG, BossEntrance.atRecruitMap(105100100), "the first places a waiting member");
+        assertEquals(BossEntrance.EASY_BALROG.beside(), BossEntrance.BALROG_NORMAL.beside(), "the same spots");
+        assertEquals(105070001, BossEntrance.BALROG_NORMAL.approachMapId());
+        assertEquals(1061001, BossEntrance.BALROG_NORMAL.approachStoreNpcId());
+        assertEquals("top00", BossEntrance.BALROG_NORMAL.arrivalPortal());
+        assertEquals("outPerrion", BossEntrance.BALROG_NORMAL.exitPortal());
+        assertFalse(BossEntrance.BALROG_NORMAL.holdsTripsAtEntry());
+        assertEquals(List.of(), BossEntrance.allAtRecruitMap(105100300), "the Normal battle map is no entrance");
+    }
+
+    @Test
+    void whereBothBalrogsAreListedTheRoomAndTheParkKeepTheLargerStandard() {
+        LivingWorld world = mock(LivingWorld.class);
+        LivingWorldConfig config = new LivingWorldConfig();
+        when(world.config()).thenReturn(config);
+        CompanionBossRuns runs = new CompanionBossRuns(world);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,balrog_normal";
+        assertEquals("balrog_normal", runs.approachKeyAt(105070001), "300,000/240,000 points over 130,000/32,000");
+        assertEquals("balrog_normal", runs.restockKeyAt(105100100));
+        assertFalse(runs.holdsTripsAt(105100100));
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "balrog_normal";
+        assertEquals("balrog_normal", runs.approachKeyAt(105070001), "Normal alone, though Easy's entrance comes first");
+        assertEquals("balrog_normal", runs.restockKeyAt(105100100));
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertEquals("easy_balrog", runs.approachKeyAt(105070001), "as before P11");
+        assertEquals("easy_balrog", runs.restockKeyAt(105100100));
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "";
+        assertNull(runs.approachKeyAt(105070001));
+        assertNull(runs.restockKeyAt(105100100));
+    }
+
+    @Test
+    void thePartyBossesBuyOnTheirWayInAndHoldTripsAtTheirGates() {
+        // P14: Boat Quay Town for Latanica; Leafre for Neo City, the largest listed standard
+        LivingWorld world = mock(LivingWorld.class);
+        LivingWorldConfig config = new LivingWorldConfig();
+        when(world.config()).thenReturn(config);
+        CompanionBossRuns runs = new CompanionBossRuns(world);
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "latanica,neo_bergamot,neo_dunas,neo_aufheben,neo_oberon,neo_nibelung";
+        assertEquals("latanica", runs.approachKeyAt(541_000_000), "Boat Quay Town");
+        assertEquals("latanica", runs.restockKeyAt(541_010_060), "the gate");
+        assertTrue(runs.holdsTripsAt(541_010_060), "9 hops back: no trip leaves the gate");
+        assertEquals("neo_nibelung", runs.approachKeyAt(240_000_000), "Leafre buys Nibelung's 250/250");
+        assertEquals("neo_dunas", runs.restockKeyAt(240_070_302), "each gate keeps its own boss's standard");
+        assertTrue(runs.holdsTripsAt(240_070_602), "no route leads back from a gate");
+        assertEquals(2_080_001, BossEntrance.NEO_OBERON.approachStoreNpcId(), "Leafre's store, on 240000002");
+        assertEquals(9_270_022, BossEntrance.LATANICA.approachStoreNpcId(), "Boat Quay Town's own supplier");
+
+        config.COMPANION_BOSS_ENABLED_TYPES = "neo_bergamot,neo_dunas";
+        assertEquals("neo_bergamot", runs.approachKeyAt(240_000_000), "a tie keeps the earlier entrance");
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertNull(runs.approachKeyAt(240_000_000), "every party key off: Leafre as before");
+        assertFalse(runs.holdsTripsAt(541_010_060));
+    }
+
+    @Test
+    void theLargerStandardWeighsPointsAndCountsAlike() {
+        assertTrue(CompanionBossRuns.largerStandard("balrog_normal", "easy_balrog"));
+        assertFalse(CompanionBossRuns.largerStandard("easy_balrog", "balrog_normal"));
+        assertTrue(CompanionBossRuns.largerStandard("zakum", "balrog_normal"),
+                "zakum counts 500/400: 820,000 at Unagi and Pure Water over 540,000 points");
+        assertFalse(CompanionBossRuns.largerStandard("easy_balrog", "easy_balrog"), "a tie keeps the earlier one");
     }
 
     private static Pattern wzPortal(String name, int x, int y) {

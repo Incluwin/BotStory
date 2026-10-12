@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -65,8 +66,10 @@ class AgentBossAttackMirrorTest {
     private static final String SHARED_HIT_WINDOW = PREFIX + "SHARED_HIT_WINDOW";
     private static final String CALIBRATION_WINDOW_MS = PREFIX + "CALIBRATION_WINDOW_MS";
     private static final String SUMMARY_LOG_MS = PREFIX + "SUMMARY_LOG_MS";
+    private static final String BLAST_MODE = PREFIX + "BLAST_MODE";
+    private static final String BOSS_IDS = "server.agents.capabilities.mobcontrol.AgentBossScope.BOSS_IDS";
     private static final List<String> TUNING = List.of(MODE, DEDUP_MAX_MS, MAX_SHOWN_HITS, DAMAGE_PERCENT,
-            SHARED_HIT_WINDOW, CALIBRATION_WINDOW_MS, SUMMARY_LOG_MS,
+            SHARED_HIT_WINDOW, CALIBRATION_WINDOW_MS, SUMMARY_LOG_MS, BLAST_MODE, BOSS_IDS,
             "server.agents.capabilities.mobcontrol.AgentBossScope.ENABLED",
             "server.agents.capabilities.mobcontrol.AgentBossScope.EXPEDITION_TYPES");
 
@@ -76,6 +79,12 @@ class AgentBossAttackMirrorTest {
     private static final int REGION_ARM = 8_800_006;
     /** Right arm 3: attack1 is a jump attack, a physical box lt(-800,-250) rb(1100,0). */
     private static final int JUMP_ARM = 8_800_009;
+    /** A Papulatus bomb: self-destructs at half HP; attack1 is a physical box lt(-65,-100) rb(65,0). */
+    private static final int PAPULATUS_BOMB = 8_500_003;
+    /** The Clock: attack3, its lightning, is a magic box lt(-800,-600) rb(800,250) striking at random spots. */
+    private static final int CLOCK = 8_500_001;
+    /** Zakum's body 1: attack2 also has random spots (100 px apart), but Zakum's rules leave them off. */
+    private static final int ZAKUM_BODY = 8_800_000;
     private static final int OID = 1_234;
     private static final int OWNER = 42_000_081;
     private static final int THANE = 42_000_090;
@@ -141,6 +150,8 @@ class AgentBossAttackMirrorTest {
     void tearDown() {
         defenses.close();
         AgentBossScope.endTrial();
+        AgentBossRules.replaceForTest(null);
+        AgentBossRunHost.install(null);
         AgentBossRunRegistry.resetForTest();
         AgentBossClientLoad.resetForTest();
         AgentRuntimeRegistry.clear();
@@ -617,6 +628,156 @@ class AgentBossAttackMirrorTest {
                     + " shown=1 window=1 airborne=0 unengaged=0 regionsMask=0 regionsSampled=0 botAttacks=2"),
                     summaries);
         }
+    }
+
+    // ---- P12: the field scope and the blast step -------------------------------------------
+
+    @Test
+    void aFieldBossWhoseKeyIsOnHitsEveryAgentInRangeCitizensTooAndNothingWhileItsKeyIsOff() {
+        AgentBossRunRegistry.remove(session);
+        tune(BOSS_IDS, String.valueOf(ARM));
+        MapleMap field = mapWith(null);
+        Character player = human(OWNER + 1, field, null, IN_RANGE);
+        Monster fieldBoss = part(ARM, field, player);
+        Character companion = bot(THANE, IN_RANGE, null, field, player.getId());
+        Character citizen = bot(ISOLDE, IN_RANGE, null, field, ISOLDE);
+        Character outOfRange = bot(SORREL, OUT_OF_RANGE, null, field, SORREL);
+        boolean[] keyOn = fieldGroup("field_test", ARM);
+
+        attack(fieldBoss, player, 0);
+        assertEquals(0, impacts.size(), "the field key is off");
+
+        keyOn[0] = true;
+        attack(fieldBoss, player, 0);
+        runImpacts();
+        runHits();
+
+        verify(companion).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(citizen).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(outOfRange, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+        assertTrue(mirror.statusLines().stream().anyMatch(line -> line.startsWith("Run field=")),
+                mirror.statusLines().toString());
+    }
+
+    @Test
+    void aBombsBlastLogsInObserveAndHitsTheRunsMembersInItsBoxInApplyEvenAfterItDied() {
+        Character inBox = member(THANE, new Point(30, -10));
+        Character outOfBox = member(ISOLDE, new Point(300, -10));
+        Monster bomb = part(PAPULATUS_BOMB, map, owner);
+        tune(BLAST_MODE, "OBSERVE");
+
+        try (LogLines lines = new LogLines(AgentBossAttackMirror.class)) {
+            mirror.selfDestructed(bomb);
+
+            assertEquals(0, hits.size(), "OBSERVE changes no HP");
+            List<String> blasts = lines.startingWith("Boss mirror blast");
+            assertEquals(1, blasts.size(), blasts.toString());
+            assertTrue(blasts.get(0).contains("mob=" + PAPULATUS_BOMB) && blasts.get(0).contains("agents=[" + THANE + "]"),
+                    blasts.get(0));
+        }
+
+        tune(BLAST_MODE, "APPLY");
+        mirror.selfDestructed(bomb);
+        assertEquals(1, hits.size(), "one mailbox hit: the member in the bomb's attack1 box");
+        when(bomb.isAlive()).thenReturn(false); // the map kills it before the mailbox runs the hit
+        runHits();
+        verify(inBox).addMPHPAndTriggerAutopot(-ROLL, 0);
+        verify(outOfBox, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "a bomb already dead blows up no more");
+    }
+
+    @Test
+    void aBlastOutsideEveryScopeOrWithBlastModeOffDoesNothing() {
+        Character thane = member(THANE, new Point(30, -10));
+        Monster bomb = part(PAPULATUS_BOMB, map, owner);
+        tune(BLAST_MODE, "OFF");
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "OFF");
+
+        tune(BLAST_MODE, "APPLY");
+        AgentBossRunRegistry.remove(session);
+        mirror.selfDestructed(bomb);
+        assertEquals(0, hits.size(), "no run in its event");
+
+        MapleMap field = mapWith(null);
+        mirror.selfDestructed(part(PAPULATUS_BOMB, field, null));
+        assertEquals(0, hits.size(), "a field with no key on and no trial");
+        verify(thane, never()).addMPHPAndTriggerAutopot(anyInt(), anyInt());
+    }
+
+    /** Lists {@code mobId} under field group {@code key} and installs a host whose answer for it is the returned flag. */
+    private boolean[] fieldGroup(String key, int mobId) {
+        AgentBossRules.replaceForTest(List.of(new AgentBossRules.Boss(key, "Test field", null, null, null, null,
+                List.of(mobId), false, null)));
+        boolean[] keyOn = {false};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String asked) {
+                return keyOn[0] && key.equals(asked);
+            }
+        });
+        return keyOn;
+    }
+
+    /**
+     * P15: the Clock's lightning strikes only near its random spots. 30 members stand 10 px apart across one spacing
+     * (300 px) of its box; whatever the phase, the 7 or 8 of them within RANDOM_SPOT_HALF_WIDTH_PX (35) of a spot are
+     * struck, and no other.
+     */
+    @Test
+    void theClocksLightningStrikesOnlyTheMembersNearItsRandomSpots() {
+        EventInstanceManager tower = mock(EventInstanceManager.class);
+        MapleMap clockRoom = mapWith(tower);
+        Character leader = human(STRANGER, clockRoom, tower, ORIGIN);
+        Monster clock = part(CLOCK, clockRoom, leader);
+        AgentBossRunSession papulatus = new AgentBossRunSession(8L, AgentBossRunCatalog.PAPULATUS, tower,
+                new FakeBossRunPorts.Fight(), NOW);
+        AgentBossRunRegistry.put(papulatus);
+        BossAction.OrdinaryAttack lightning = ServerMobActionCatalog.forMob(CLOCK).attacks().get(2);
+        assertEquals(300, lightning.randomSpotSpacing());
+        List<Character> crew = new ArrayList<>();
+        for (int index = 0; index < 30; index++) {
+            int id = 43_000_000 + index;
+            crew.add(bot(id, new Point(ORIGIN.x + lightning.lt().x + 10 * index, 0), tower, clockRoom, STRANGER));
+            papulatus.admit(id, STRANGER, NOW, AgentBossRunMember.Kind.FOLLOWER).adopted();
+        }
+
+        mirror.controllerAttack(leader, clock, 2, false, 0, 1);
+        runImpacts();
+        runHits();
+
+        long struck = crew.stream().filter(AgentBossAttackMirrorTest::lostHp).count();
+        assertTrue(struck >= 7 && struck <= 8, struck + " struck");
+    }
+
+    /** P15: Zakum's rules leave random spots off, so its body's attack2 strikes its whole box as before. */
+    @Test
+    void zakumsAttackWithRandomSpotsStillStrikesItsWholeBox() {
+        Monster body = part(ZAKUM_BODY, map, owner);
+        BossAction.OrdinaryAttack attack2 = ServerMobActionCatalog.forMob(ZAKUM_BODY).attacks().get(1);
+        assertEquals(100, attack2.randomSpotSpacing());
+        List<Character> crew = new ArrayList<>();
+        for (int index = 0; index < 30; index++) {
+            crew.add(member(43_000_100 + index, new Point(ORIGIN.x + attack2.lt().x + 10 * index, 0)));
+        }
+
+        mirror.controllerAttack(owner, body, 1, false, 0, 1);
+        runImpacts();
+        runHits();
+
+        assertEquals(30, crew.stream().filter(AgentBossAttackMirrorTest::lostHp).count());
+    }
+
+    private static boolean lostHp(Character bot) {
+        return mockingDetails(bot).getInvocations().stream()
+                .anyMatch(invocation -> invocation.getMethod().getName().equals("addMPHPAndTriggerAutopot"));
     }
 
     // ---- fixture ---------------------------------------------------------------------------

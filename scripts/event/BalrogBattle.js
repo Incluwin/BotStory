@@ -133,12 +133,38 @@ function setup(level, lobbyid) {
 }
 
 function afterSetup(eim) {
+    // companions (P11): with a companion signed up for this fight the server runs it (EasyBalrogEncounterService)
+    if (startServerEncounter(eim)) {
+        return;
+    }
     spawnBalrog(eim);
+}
+
+function startServerEncounter(eim) {
+    const Encounter = Java.type('server.life.autonomy.balrog.EasyBalrogEncounterService');
+    const Point = Java.type('java.awt.Point');
+    if (!Encounter.startNormal(eim.getInstanceMap(entryMap), new Point(412, 258))) {
+        return false;
+    }
+    eim.setProperty("serverEncounter", "1");
+    return true;
+}
+
+function serverEncounter(eim) {
+    return eim.getProperty("serverEncounter") == "1";
+}
+
+function stopServerEncounter(eim, reason) {
+    const Encounter = Java.type('server.life.autonomy.balrog.EasyBalrogEncounterService');
+    Encounter.stop(eim.getInstanceMap(entryMap), reason);
 }
 
 function respawnStages(eim) {}
 
 function releaseLeftClaw(eim) {
+    if (serverEncounter(eim)) {
+        return; // the encounter releases its own seal
+    }
     eim.getInstanceMap(entryMap).killMonster(8830006);
 }
 
@@ -221,6 +247,9 @@ function monsterValue(eim, mobId) {
 }
 
 function end(eim) {
+    if (serverEncounter(eim)) {
+        stopServerEncounter(eim, "event-end");
+    }
     var party = eim.getPlayers();
 
     for (var i = 0; i < party.size(); i++) {
@@ -248,6 +277,18 @@ function isBalrogBody(mob) {
 }
 
 function monsterKilled(mob, eim) {
+    if (serverEncounter(eim)) {
+        // the encounter counts its own parts; the real body's death is the clear, and no sealed form follows
+        if (isBalrogBody(mob)) {
+            eim.showClearEffect();
+            eim.clearPQ();
+
+            eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
+            eim.dispatchRaiseQuestMobCount(9101003, entryMap);
+            mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
+        }
+        return;
+    }
     if (isUnsealedBalrog(mob)) {
         var count = eim.getIntProperty("boss");
 
@@ -277,5 +318,9 @@ function allMonstersDead(eim) {}
 
 function cancelSchedule() {}
 
-function dispose(eim) {}
+function dispose(eim) {
+    if (serverEncounter(eim)) {
+        stopServerEncounter(eim, "event-dispose");
+    }
+}
 

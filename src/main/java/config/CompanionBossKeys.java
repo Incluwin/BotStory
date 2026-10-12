@@ -5,7 +5,8 @@ import java.util.List;
 
 /**
  * The boss expeditions living_world.COMPANION_BOSS_ENABLED_TYPES may list: each one whose entry NPC offers an owner who
- * creates or joins the expedition "My party will register too.". A boss's branch adds its key in its own slot of
+ * creates or joins the expedition "My party will register too.", and the field groups (P13: field_victoria and the
+ * other regions, whose bosses fight on maps with no event). A boss's branch adds its key in its own slot of
  * {@link #knownKeys()}.
  */
 public final class CompanionBossKeys {
@@ -21,6 +22,46 @@ public final class CompanionBossKeys {
 
         // slot: zakum
         keys.add("zakum");
+
+        // slot: balrog_normal
+        keys.add("balrog_normal");
+
+        // slot: field groups (P13): the field bosses of a region, by the boss rules catalog's fieldBosses
+        keys.add("field_victoria");
+        keys.add("field_ossyria");
+        keys.add("field_ludus");
+        keys.add("field_mulung");
+        keys.add("field_nihal");
+
+        // slot: party bosses (P14): the party enters by a portal, and the event script opens the run
+        keys.add("latanica");
+        keys.add("neo_bergamot");
+        keys.add("neo_dunas");
+        keys.add("neo_aufheben");
+        keys.add("neo_oberon");
+        keys.add("neo_nibelung");
+
+        // slot: papulatus (P15): a party boss with a daily quota, by the same portal and event-script hook
+        keys.add("papulatus");
+
+        // slot: high-level field groups (P16): Pianus, Leafre, Temple of Time, Zipangu, Masteria
+        keys.add("field_pianus");
+        keys.add("field_leafre");
+        keys.add("field_temple");
+        keys.add("field_zipangu");
+        keys.add("field_masteria");
+
+        // slot: scarga (P17): Scarlion and Targa, Aldol's expedition
+        keys.add("scarga");
+
+        // slot: horntail (P18): Horntail, the Mark of the Squad's expedition
+        keys.add("horntail");
+
+        // slot: showa (P19): The Boss, Konpei's expedition in the Showa hideout
+        keys.add("showa");
+
+        // slot: pinkbean (P20): Pink Bean, the Temple of Time's expedition
+        keys.add("pinkbean");
         return List.copyOf(keys);
     }
 

@@ -1,5 +1,6 @@
 package server.agents.capabilities.supplies;
 
+import config.AgentYamlConfig;
 import client.Character;
 import client.Job;
 import client.inventory.Inventory;
@@ -80,6 +81,9 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int LPQ_DESK = 221_024_500;
     private static final int LUDIBRIUM_PHARMACY = 220_000_002;
     private static final int PPQ_DESK = 251_010_404;
+    /** The shop on the Path of Time, six hops below the Papulatus gate. */
+    private static final int PATH_OF_TIME_SHOP = 220_050_300;
+    private static final String BOSS_DESK_MAPS = "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_DESK_MAPS";
     private static final int HERB_TOWN = 251_000_000;
     private static final int ZAKUM_DOOR = 211_042_300;
     private static final int EOS_TOWER_100TH = 221_024_400;
@@ -315,6 +319,35 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(HERB_TOWN, execution(entry).supplierMapId());
         assertEquals(List.of("started 532 200000"), calls, "seven hops: 25 s + 7 x 25 s");
         assertEquals(1_000L + Math.max(ttlMs(), 7 * ttlPerHopMs()), readinessRequest(entry).expiresAtMs());
+    }
+
+    @Test
+    void atThePapulatusGateListedAsABossDeskItWalksTheSixHopsToTheShopAndBack() {
+        // P12 G9: BOSS_DESK_MAPS ships 220080000; the host lets the trip leave (COMPANION_RESTOCK_TRIP_MAPS, P15)
+        Character silent = companion(538, "SilentSin", Job.ASSASSIN, 14, 21, 103_000);
+        standWithoutSpawns(silent, PAPULATUS_GATE, 0);
+        AgentRuntimeEntry entry = following(silent);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+        assertEquals(PATH_OF_TIME_SHOP, execution(entry).supplierMapId(), "six hops out and six back");
+        assertTrue(calls.get(0).startsWith("started 538 "), calls.toString());
+    }
+
+    @Test
+    void thePapulatusGateNotListedAsABossDeskKeepsTheTwoHopRadius() {
+        String shipped = AgentYamlConfig.config.tuning.put(BOSS_DESK_MAPS, "none");
+        try {
+            Character silent = companion(539, "SilentSin", Job.ASSASSIN, 14, 21, 103_000);
+            standWithoutSpawns(silent, PAPULATUS_GATE, 0);
+            AgentRuntimeEntry entry = following(silent);
+
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+            assertEquals(List.of("refused 539 NO_SUPPLIER 0"), calls);
+        } finally {
+            AgentYamlConfig.config.tuning.put(BOSS_DESK_MAPS, shipped);
+        }
     }
 
     @Test

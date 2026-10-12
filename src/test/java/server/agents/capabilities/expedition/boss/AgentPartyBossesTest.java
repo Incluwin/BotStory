@@ -1,0 +1,227 @@
+package server.agents.capabilities.expedition.boss;
+
+import client.Character;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import scripting.event.EventInstanceManager;
+import server.agents.auth.AgentClaimGuard;
+import server.expeditions.ExpeditionType;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/**
+ * P14, the first party bosses: Capt. Latanica and the five Neo City bosses. Each event script's afterSetup opens its
+ * catalog row's run, and the row's maps and level match the script's. Inside an event with an open party-instance run
+ * the parts its boss rules name are that boss's parts (the control-steal guard covers them there, AgentBossScope), and
+ * nowhere else.
+ */
+class AgentPartyBossesTest {
+    private static final int OWNER = 1;
+    private static final int THANE = 10;
+    private static final long NOW = 1_000_000L;
+
+    private final FakeBossRunPorts ports = new FakeBossRunPorts();
+    private EventInstanceManager event;
+    private Character owner;
+
+    @BeforeEach
+    void setUp() {
+        event = mock(EventInstanceManager.class);
+        when(event.getPlayerById(anyInt())).thenReturn(null);
+        owner = ports.human(OWNER);
+        when(event.getPlayers()).thenReturn(List.of(owner));
+        when(event.getPlayerById(OWNER)).thenReturn(owner);
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return true;
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return true;
+            }
+        });
+    }
+
+    @AfterEach
+    void tearDown() {
+        AgentClaimGuard.install(null);
+        AgentBossRunRegistry.resetForTest();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"LatanicaBattle, latanica", "TD_Battle1, neo_bergamot", "TD_Battle2, neo_dunas",
+            "TD_Battle3, neo_aufheben", "TD_Battle4, neo_oberon", "TD_Battle5, neo_nibelung",
+            "PapulatusBattle, papulatus"})
+    void eachEventScriptOpensItsOwnCatalogRowsRun(String script, String key) throws Exception {
+        String source = Files.readString(Path.of("scripts/event/" + script + ".js"));
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(key);
+
+        assertTrue(source.contains("bossPartyEntered(eim, '" + key + "')"), script + " afterSetup");
+        assertTrue(definition.partyInstance(), key);
+        assertEquals(number(source, "entryMap"), definition.battleMapId(), key + " battle map");
+        assertEquals(number(source, "recruitMap"), definition.recruitMapId(), key + " gate");
+        assertEquals(number(source, "minLevel"), definition.minLevel(), key + " level");
+        assertEquals(AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, definition.deathMode());
+        assertTrue(definition.ownerLeavingTakesParty(), key);
+    }
+
+    @Test
+    void latanicaLeavesByBobAndNeoCityByItsBattleMapsPortal() {
+        assertEquals(9_270_033, AgentBossRunCatalog.LATANICA.exitNpcId());
+        assertTrue(AgentBossRunCatalog.LATANICA.exitNpcAfterClear());
+        for (AgentBossRunDefinition neo : List.of(AgentBossRunCatalog.NEO_BERGAMOT, AgentBossRunCatalog.NEO_DUNAS,
+                AgentBossRunCatalog.NEO_AUFHEBEN, AgentBossRunCatalog.NEO_OBERON, AgentBossRunCatalog.NEO_NIBELUNG)) {
+            assertEquals(neo.battleMapId(), neo.clearMapId(), neo.key() + ": members leave from the battle map");
+            assertEquals(1, neo.rewardExitPortalId(), neo.key() + ": by portal 1");
+            assertEquals(0, neo.exitNpcId(), neo.key() + ": no exit NPC to prepare");
+        }
+        assertEquals(ExpeditionType.ZAKUM.getMinLevel(), AgentBossRunCatalog.ZAKUM.minLevel(), "an expedition's own");
+    }
+
+    /**
+     * P17: Scarlion and Targa is an expedition row (Aldol's list, no choices) whose maps match ScargaBattle.js, whose
+     * dead re-enter by Aldol, and whose exit NPC 9201134 on the battle map lets members out before and after the clear.
+     */
+    @Test
+    void scargaIsAnExpeditionRowWhoseDeadReenterByAldol() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/ScargaBattle.js"));
+        AgentBossRunDefinition scarga = AgentBossRunCatalog.of("scarga");
+
+        assertEquals(ExpeditionType.SCARGA, scarga.type());
+        assertFalse(scarga.partyInstance());
+        assertEquals(number(source, "entryMap"), scarga.battleMapId());
+        assertEquals(number(source, "recruitMap"), scarga.recruitMapId());
+        assertEquals(100, scarga.minLevel(), "the expedition type's Lv100");
+        assertEquals(9_270_047, scarga.entryNpcId());
+        assertEquals(List.of(), scarga.joinSelections());
+        assertEquals(9_201_134, scarga.exitNpcId());
+        assertTrue(scarga.exitNpcAfterClear());
+        assertTrue(scarga.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REENTER, scarga.deathMode());
+        assertEquals(List.of(9_420_545, 9_420_550, 9_420_531, 9_420_532), AgentBossRules.of("scarga").adds());
+    }
+
+    /**
+     * P18: Horntail is an expedition row (the Mark of the Squad's list, no choices) whose maps match HorntailBattle.js:
+     * the Start puts everyone on its entry map, the first stage map; the altar is the event's last map; the recruit map
+     * is the Mark's. The Crystal of Roots is the way out, and its dead re-enter.
+     */
+    @Test
+    void horntailIsAnExpeditionRowOverTheEventsThreeMapsWhoseDeadReenterByTheMark() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/HorntailBattle.js"));
+        AgentBossRunDefinition horntail = AgentBossRunCatalog.of("horntail");
+
+        assertEquals(ExpeditionType.HORNTAIL, horntail.type());
+        assertEquals(number(source, "recruitMap"), horntail.recruitMapId());
+        assertEquals(number(source, "maxMapId"), horntail.battleMapId());
+        assertEquals(number(source, "entryMap"), AgentBossRules.stageMaps("horntail").getFirst(),
+                "the Start's map is the first stage map");
+        assertTrue(horntail.fightMap(number(source, "minMapId")));
+        assertEquals(100, horntail.minLevel(), "the expedition type's Lv100");
+        assertEquals(2_083_004, horntail.entryNpcId());
+        assertEquals(List.of(), horntail.joinSelections());
+        assertEquals(2_083_002, horntail.exitNpcId());
+        assertTrue(horntail.exitNpcAfterClear());
+        assertTrue(horntail.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REENTER, horntail.deathMode());
+        assertEquals(List.of(8_810_019, 8_810_020, 8_810_021, 8_810_022, 8_810_023),
+                AgentBossRules.of("horntail").adds());
+    }
+
+    /**
+     * P19: The Boss is an expedition row (Konpei's list, no choices) whose maps match ShowaBattle.js. Konpei on the
+     * battle map is the way out before the clear; after it his yes moves only the talker into the clear map, still in
+     * the run. The chain comes first, the slot machine is never hit, the comb stays on the floor, and the dead wait.
+     */
+    @Test
+    void showaIsAnExpeditionRowWhoseChainComesFirstAndWhoseDeadWaitOutside() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/ShowaBattle.js"));
+        AgentBossRunDefinition showa = AgentBossRunCatalog.of("showa");
+
+        assertEquals(ExpeditionType.SHOWA, showa.type());
+        assertEquals(number(source, "recruitMap"), showa.recruitMapId());
+        assertEquals(number(source, "entryMap"), showa.battleMapId());
+        assertEquals(number(source, "clearMap"), showa.clearMapId());
+        assertEquals(100, showa.minLevel(), "the expedition type's Lv100");
+        assertEquals(9_120_201, showa.entryNpcId());
+        assertEquals(List.of(), showa.joinSelections());
+        assertEquals(9_120_202, showa.exitNpcId());
+        assertFalse(showa.exitNpcAfterClear());
+        assertTrue(showa.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE, showa.deathMode());
+        assertEquals(List.of(9_400_112, 9_400_113, 9_400_300, 9_400_122), AgentBossRules.of("showa").targetPriority());
+        assertTrue(AgentBossRules.neverTarget("showa", 9_400_114), "the slot machine");
+        assertEquals(List.of(4_000_138), showa.markerItemIds(), "the comb");
+        assertEquals("field_zipangu", AgentBossRules.fieldKeyOf(9_400_122),
+                "Male Boss on Konpei's map stays a field boss");
+    }
+
+    /**
+     * P20: Pink Bean is an expedition row (the Temple Manager's list, no choices) whose maps match PinkBeanBattle.js:
+     * the Start puts everyone on its entry map, the battle map, whose return map (the resurrection map) is a stage map.
+     * 2141002 is the way out before and after the clear, the dead revive inside, and Lv120 comes from the type.
+     */
+    @Test
+    void pinkBeanIsAnExpeditionRowWhoseDeadReviveInsideAndWalkBack() throws Exception {
+        String source = Files.readString(Path.of("scripts/event/PinkBeanBattle.js"));
+        AgentBossRunDefinition pinkbean = AgentBossRunCatalog.of("pinkbean");
+
+        assertEquals(ExpeditionType.PINKBEAN, pinkbean.type());
+        assertEquals(number(source, "recruitMap"), pinkbean.recruitMapId());
+        assertEquals(number(source, "entryMap"), pinkbean.battleMapId());
+        assertTrue(pinkbean.fightMap(270_050_200), "the resurrection map, between minMapId and maxMapId");
+        assertTrue(270_050_200 > number(source, "minMapId") && 270_050_200 < number(source, "maxMapId"));
+        assertEquals(120, pinkbean.minLevel(), "the expedition type's Lv120: only the talker is checked by the NPC");
+        assertEquals(2_141_001, pinkbean.entryNpcId());
+        assertEquals(List.of(), pinkbean.joinSelections());
+        assertEquals(2_141_002, pinkbean.exitNpcId());
+        assertTrue(pinkbean.exitNpcAfterClear());
+        assertTrue(pinkbean.ownerLeavingTakesParty());
+        assertEquals(AgentBossRunDefinition.DeathMode.REVIVE_INSIDE, pinkbean.deathMode());
+        assertEquals(List.of(4_001_193), pinkbean.markerItemIds());
+        assertEquals(List.of(8_820_007), AgentBossRules.of("pinkbean").adds(), "Mini Bean");
+    }
+
+    @Test
+    void anOpenPartyRunsEventNamesItsBossesPartsAndNothingElseDoes() {
+        long sessionId = openLatanica(List.of(THANE));
+        assertTrue(sessionId > 0);
+
+        assertTrue(AgentBossRunRegistry.partyBossPart(event, 9_420_513), "Capt. Latanica");
+        assertTrue(AgentBossRunRegistry.partyBossPart(event, 9_420_511), "an add");
+        assertFalse(AgentBossRunRegistry.partyBossPart(event, 100_100), "a snail");
+        assertFalse(AgentBossRunRegistry.partyBossPart(mock(EventInstanceManager.class), 9_420_513),
+                "another party's event, with no companion run");
+        assertFalse(AgentBossRunRegistry.partyBossPart(null, 9_420_513), "a field map");
+
+        AgentBossRunRegistry.remove(AgentBossRunRegistry.byId(sessionId));
+        assertFalse(AgentBossRunRegistry.partyBossPart(event, 9_420_513), "the run ended");
+    }
+
+    private long openLatanica(List<Integer> agentIds) {
+        return AgentBossRunService.openForEvent(ports, owner, AgentBossRunCatalog.LATANICA, event, agentIds, NOW)
+                .sessionId();
+    }
+
+    private static int number(String source, String name) {
+        Matcher matcher = Pattern.compile(name + " = (\\d+)").matcher(source);
+        assertTrue(matcher.find(), name);
+        return Integer.parseInt(matcher.group(1));
+    }
+}

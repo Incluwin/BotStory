@@ -29,6 +29,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused; one the
  * Start took in anyway is never adopted. A self-led member is adopted only while its anchor is a player of the event.
  * A member its host has no room for on the list at its turn (AgentBossRunHost.Rule.roomFor) is refused FULL.
+ *
+ * <p>P12 G7: a party-instance boss (Latanica, Neo City, Papulatus) has no expedition and no sign-up. Its run is keyed
+ * by the party's event, opens STARTING when the party goes in, and admits each companion the portal took in as
+ * REGISTERED ({@link #admit}); the rest is the same.</p>
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -45,10 +49,15 @@ public final class AgentBossRunSession {
     private final long createdAtMs;
     private final List<AgentBossRunMember> members = new CopyOnWriteArrayList<>();
     private volatile Phase phase = Phase.REGISTERING;
-    /** The expedition's event, from the first member adopted in it; null until then. */
-    private EventInstanceManager event;
+    /**
+     * The run's event: an expedition's from the first member adopted in it (null until then), a party-instance run's
+     * from its open.
+     */
+    private volatile EventInstanceManager event;
     private long startedAtMs;
     private int partySize;
+    /** A member went in: the fight was handed someone, so the end tells it. */
+    private boolean anyAdopted;
     private boolean cleared;
     /** Since when no human stands in the event; -1 while one does. */
     private long noHumanSinceMs = -1L;
@@ -66,6 +75,22 @@ public final class AgentBossRunSession {
         this.createdAtMs = nowMs;
     }
 
+    /** A party-instance run (P12 G7): keyed by the party's {@code event}, STARTING at once, with no expedition. */
+    AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, EventInstanceManager event,
+                        AgentBossFight fight, long nowMs) {
+        if (definition == null || event == null || fight == null) {
+            throw new IllegalArgumentException("a party boss run needs a definition, an event and a fight");
+        }
+        this.sessionId = sessionId;
+        this.definition = definition;
+        this.expedition = null;
+        this.event = event;
+        this.fight = fight;
+        this.createdAtMs = nowMs;
+        this.startedAtMs = nowMs;
+        this.phase = Phase.STARTING;
+    }
+
     public long sessionId() {
         return sessionId;
     }
@@ -74,8 +99,14 @@ public final class AgentBossRunSession {
         return definition;
     }
 
+    /** The run's expedition; null for a party-instance run. */
     public Expedition expedition() {
         return expedition;
+    }
+
+    /** The run's event: a party-instance run's from its open, an expedition's once a member went in; else null. */
+    public EventInstanceManager event() {
+        return event;
     }
 
     public long createdAtMs() {
@@ -125,6 +156,22 @@ public final class AgentBossRunSession {
             return null;
         }
         AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs, kind);
+        members.add(member);
+        AgentBossRunRegistry.index(this, agentId);
+        return member;
+    }
+
+    /**
+     * P12 G7: admits one companion the party's portal took into a party-instance run's event as REGISTERED, with the
+     * next ordinal, and indexes it; the next tick adopts it once it stands on the battle map. Null for an expedition
+     * run, once the fight is past its clear, or when the Agent is already a member.
+     */
+    synchronized AgentBossRunMember admit(int agentId, int enlistedBy, long nowMs, AgentBossRunMember.Kind kind) {
+        if (expedition != null || (phase != Phase.STARTING && phase != Phase.FIGHTING) || member(agentId) != null) {
+            return null;
+        }
+        AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs, kind);
+        member.registered();
         members.add(member);
         AgentBossRunRegistry.index(this, agentId);
         return member;
@@ -326,12 +373,15 @@ public final class AgentBossRunSession {
             log.info("Boss run fighting: session={} boss={} inside={} partySize={}", sessionId, definition.key(),
                     count(AgentBossRunMember.Phase.INSIDE), partySize);
         }
-        watchMembers(ports, host);
+        watchMembers(ports, host, nowMs);
         if (event.isEventDisposed()) {
             // A timeout, or the last player out: the stock event is gone, and with it whoever was still in it.
             for (AgentBossRunMember member : members) {
                 if (inTheRun(member)) {
                     handBack(ports, host, member, ports.agent(member.agentId()) != null);
+                } else if (member.phase() == AgentBossRunMember.Phase.REENTERING) {
+                    letGo(ports, member);
+                    memberOut(host, member, AgentBossRunHost.Out.DIED);
                 }
             }
             end(ports, host, "event-disposed", nowMs);
@@ -346,11 +396,12 @@ public final class AgentBossRunSession {
         }
         watchHumans(ports, nowMs);
         tickLeaving(ports, nowMs);
+        tickReentering(ports, host, nowMs);
         if (phase == Phase.FIGHTING) {
             tickFight(ports, nowMs);
         }
         if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
-                + count(AgentBossRunMember.Phase.REGISTERED) == 0) {
+                + count(AgentBossRunMember.Phase.REGISTERED) + count(AgentBossRunMember.Phase.REENTERING) == 0) {
             end(ports, host, "members-out", nowMs);
         }
     }
@@ -367,7 +418,7 @@ public final class AgentBossRunSession {
      * again; one raised where it fell (alive in the fight on two ticks in a row, see AgentBossRunMember.upAgain)
      * fights on; one whose runtime is gone (parked at a logout) is out with no call.
      */
-    private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
+    private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         for (AgentBossRunMember member : members) {
             if (!inTheRun(member)) {
                 continue;
@@ -382,11 +433,76 @@ public final class AgentBossRunSession {
                             definition.key(), member.agentId(), member.deaths(), ports.supplies(agent));
                 }
             } else if (agent.getEventInstance() != event) {
-                handBack(ports, host, member, true);
+                if (member.seenDead() && !cleared
+                        && definition.deathMode() == AgentBossRunDefinition.DeathMode.REENTER) {
+                    reentering(ports, host, member, nowMs);
+                } else {
+                    handBack(ports, host, member, true);
+                }
             } else {
                 member.upAgain();
             }
         }
+    }
+
+    /**
+     * P12 G6: a member of a re-enter run (Scarga, Horntail) died and came to outside. It stays in the run, REENTERING:
+     * it is freed from the battle walls, and the host walks it back to the recruit NPC.
+     */
+    private void reentering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                            long nowMs) {
+        ports.clearBoundary(member.agentId());
+        member.reentering(nowMs);
+        log.info("Boss run member re-entering: session={} boss={} member={} deaths={}", sessionId, definition.key(),
+                member.agentId(), member.deaths());
+        host.reentering(member.seat(definition.key(), sessionId));
+    }
+
+    /**
+     * P12 G6, each tick: a REENTERING member standing alive in the event again is back inside. One whose runtime is
+     * gone is GONE; one whose anchor is no player of the event any more, or still outside after REENTER_TIMEOUT_MS, or
+     * the boss already fell, gives up and follows its owner (out DIED). P17: any other one that stands alive beside the
+     * recruit NPC (AgentBossDeathWalk walked it there) talks to it, at most every REENTER_TALK_EVERY_MS, as a
+     * registered player does to get back in (Aldol: eim.registerPlayer while canJoin is 1).
+     */
+    private void tickReentering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.REENTERING) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent == null) {
+                memberOut(host, member, AgentBossRunHost.Out.GONE);
+            } else if (agent.isAlive() && agent.getEventInstance() == event) {
+                member.backInside();
+                log.info("Boss run member back inside: session={} boss={} member={} map={}", sessionId,
+                        definition.key(), member.agentId(), agent.getMapId());
+            } else if (cleared || event.getPlayerById(member.anchorId()) == null
+                    || nowMs - member.reenteringSinceMs() >= reenterTimeoutMs()) {
+                log.info("Boss run member gives up re-entering: session={} boss={} member={} cleared={}", sessionId,
+                        definition.key(), member.agentId(), cleared);
+                letGo(ports, member);
+                memberOut(host, member, AgentBossRunHost.Out.DIED);
+            } else {
+                talkBackIn(ports, member, agent, nowMs);
+            }
+        }
+    }
+
+    /** P17: a REENTERING member alive beside the recruit NPC talks to it, at most every REENTER_TALK_EVERY_MS. */
+    private void talkBackIn(AgentBossRunPorts ports, AgentBossRunMember member, Character agent, long nowMs) {
+        if (!agent.isAlive() || agent.getMapId() != definition.recruitMapId() || definition.entryNpcId() <= 0
+                || member.reenterTalkedAtMs() > 0 && nowMs - member.reenterTalkedAtMs() < reenterTalkEveryMs()) {
+            return;
+        }
+        Point npc = ports.npcPosition(agent, definition.entryNpcId());
+        if (npc == null || !near(agent, npc, exitReachPx())) {
+            return;
+        }
+        member.reenterTalked(nowMs);
+        log.info("Boss run member talks back in: session={} boss={} member={} npc={}", sessionId, definition.key(),
+                member.agentId(), definition.entryNpcId());
+        ports.runNpc(agent, definition.entryNpcId());
     }
 
     /**
@@ -471,7 +587,7 @@ public final class AgentBossRunSession {
     private void followAnchorsOut(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         boolean beforeClear = !cleared;
         for (AgentBossRunMember member : members) {
-            boolean downOutside = beforeClear && downOutside(member);
+            boolean downOutside = beforeClear && member.downOutside();
             if (!downOutside && (member.phase() != AgentBossRunMember.Phase.INSIDE
                     || beforeClear && member.kind() != AgentBossRunMember.Kind.FOLLOWER)) {
                 continue;
@@ -503,12 +619,6 @@ public final class AgentBossRunSession {
         }
     }
 
-    /** A member that follows its owner, out of the run because it died in the fight and came to outside. */
-    private static boolean downOutside(AgentBossRunMember member) {
-        return member.kind() == AgentBossRunMember.Kind.FOLLOWER && member.phase() == AgentBossRunMember.Phase.OUT
-                && member.out() == AgentBossRunHost.Out.DIED;
-    }
-
     private static boolean alive(AgentBossRunPorts ports, AgentBossRunMember member) {
         Character agent = ports.agent(member.agentId());
         return agent != null && agent.isAlive();
@@ -516,7 +626,8 @@ public final class AgentBossRunSession {
 
     /**
      * The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls.
-     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}).
+     * The exit NPC's script is prepared once, for the first member that will talk to it (see {@link #walkOut}); a boss
+     * whose way out is a portal (P14: Neo City) has none.
      */
     private void leave(AgentBossRunPorts ports, AgentBossRunMember member, AgentBossRunHost.Out reason, long nowMs) {
         int agentId = member.agentId();
@@ -524,7 +635,7 @@ public final class AgentBossRunSession {
             ports.stop(agentId);
             ports.clearBoundary(agentId);
         }
-        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared) {
+        if ((!cleared || definition.exitNpcAfterClear()) && !exitNpcPrepared && definition.exitNpcId() > 0) {
             exitNpcPrepared = true;
             ports.prepareScripts(definition.exitNpcId());
         }
@@ -576,7 +687,7 @@ public final class AgentBossRunSession {
             } else {
                 ports.navigate(agentId, portal, true);
             }
-        } else if (mapId == definition.battleMapId() && (!clearedNow || definition.exitNpcAfterClear())) {
+        } else if (definition.fightMap(mapId) && (!clearedNow || definition.exitNpcAfterClear())) {
             Point npc = ports.npcPosition(agent, definition.exitNpcId());
             if (npc == null) {
                 moveOut(ports, agent);
@@ -653,7 +764,8 @@ public final class AgentBossRunSession {
         int agentId = member.agentId();
         Character agent = ports.agent(agentId);
         EventInstanceManager memberEvent = agent == null ? null : agent.getEventInstance();
-        boolean inThisEvent = memberEvent != null && memberEvent.getExpedition() == expedition;
+        boolean inThisEvent = memberEvent != null
+                && (expedition != null ? memberEvent.getExpedition() == expedition : memberEvent == event);
         if (member.withdrawn()) {
             log.info("Boss run adoption refused: session={} boss={} member={} (withdrawn)", sessionId,
                     definition.key(), agentId);
@@ -662,7 +774,7 @@ public final class AgentBossRunSession {
         }
         boolean anchorIn = member.kind() != AgentBossRunMember.Kind.SELF_LED
                 || (inThisEvent && memberEvent.getPlayerById(member.anchorId()) != null);
-        if (inThisEvent && anchorIn && agent.getMapId() == definition.battleMapId()) {
+        if (inThisEvent && anchorIn && definition.fightMap(agent.getMapId())) {
             if (!host.seat(member.seat(definition.key(), sessionId))) {
                 log.info("Boss run adoption refused: session={} boss={} member={} (tied to another run)", sessionId,
                         definition.key(), agentId);
@@ -670,7 +782,8 @@ public final class AgentBossRunSession {
                 return;
             }
             if (ports.prepareAdoption(agentId, "entering " + definition.key(), nowMs)) {
-                if (event == null) {
+                if (!anyAdopted) {
+                    anyAdopted = true;
                     event = memberEvent;
                     partySize = memberEvent.getPlayerCount();
                 }
@@ -729,7 +842,10 @@ public final class AgentBossRunSession {
                 count(AgentBossRunMember.Phase.INSIDE));
     }
 
-    /** Ticks the fight for the alive members inside that stand on the battle map in the event; a failure is logged. */
+    /**
+     * Ticks the fight for the alive members inside that stand on a map of the fight in the event (its battle map or,
+     * P18, a stage map before it); a failure is logged.
+     */
     private void tickFight(AgentBossRunPorts ports, long nowMs) {
         List<Character> fighters = new ArrayList<>();
         for (AgentBossRunMember member : members) {
@@ -737,8 +853,9 @@ public final class AgentBossRunSession {
                 continue;
             }
             Character agent = ports.agent(member.agentId());
-            if (agent != null && agent.isAlive() && agent.getMapId() == definition.battleMapId()
-                    && agent.getEventInstance() == event) {
+            // P12 G5: a stunned, seduced or confused member does what its state makes it do, on its own tick
+            if (agent != null && agent.isAlive() && definition.fightMap(agent.getMapId())
+                    && agent.getEventInstance() == event && !AgentBossDisabledState.disabled(agent)) {
                 fighters.add(agent);
             }
         }
@@ -776,7 +893,7 @@ public final class AgentBossRunSession {
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
-        if (event != null) {
+        if (anyAdopted) {
             try {
                 fight.end(event);
             } catch (RuntimeException failure) {
@@ -799,6 +916,12 @@ public final class AgentBossRunSession {
      */
     private void handBackStranded(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
         for (AgentBossRunMember member : members) {
+            if (member.phase() == AgentBossRunMember.Phase.REENTERING) {
+                // outside the event already: it follows its owner again (a self-led one is stopped)
+                bestEffort("letGo", member.agentId(), () -> letGo(ports, member));
+                memberOut(host, member, AgentBossRunHost.Out.DIED);
+                continue;
+            }
             if (!inTheRun(member)) {
                 continue;
             }
@@ -874,6 +997,16 @@ public final class AgentBossRunSession {
     static long exitTimeoutMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS");
+    }
+
+    static long reenterTalkEveryMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TALK_EVERY_MS");
+    }
+
+    static long reenterTimeoutMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TIMEOUT_MS");
     }
 
     static int spotReachPx() {

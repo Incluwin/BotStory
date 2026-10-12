@@ -6,6 +6,7 @@ import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.MemberResult;
@@ -16,6 +17,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
+import server.living.bond.Friendship;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -736,6 +739,29 @@ class CompanionBossRunsTest {
     }
 
     @Test
+    void aClearedRunBefriendsTheOwnerOnceWithEachCompanionThatWentInAndAFailedOneDoesNot() {
+        // P12 G12 (decision 23): BOSS points once per run, at its clear; the run's boss kills gave none
+        Friendship friendship = mock(Friendship.class);
+        when(game.world.friendship()).thenReturn(friendship);
+        signUp(ISOLDE, THANE, SORREL);
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 61_000L, 4, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                new MemberResult(THANE, ANN, true, false, 1, Out.DIED),
+                new MemberResult(SORREL, ANN, false, false, 0, Out.MISSED_START))));
+
+        ArgumentCaptor<List<Persona>> befriended = ArgumentCaptor.captor();
+        verify(friendship).onBossRunCleared(eq(game.ann), befriended.capture(), eq("easy_balrog"));
+        assertEquals(List.of("isolde", "thane"), befriended.getValue().stream()
+                .map(Persona::id).toList(), "Sorrel never went in");
+
+        signUp(ISOLDE);
+        runs.runEnded(new RunEnded(8L, "easy_balrog", true, false, "event-disposed", 1_000L, 61_000L, 2, List.of(
+                new MemberResult(ISOLDE, ANN, true, false, 0, Out.NO_HUMAN_LEFT))));
+        verify(friendship, times(1)).onBossRunCleared(any(), any(), any());
+    }
+
+    @Test
     void aRunThatDidNotClearFailsItsMembersExceptTheOnesThatDied() {
         signUp(ISOLDE, THANE, SORREL);
 
@@ -1010,6 +1036,7 @@ class CompanionBossRunsTest {
         EventInstanceManager event = mock(EventInstanceManager.class);
         MapleMap battle = mock(MapleMap.class);
         when(battle.getEventInstance()).thenReturn(event);
+        when(battle.getId()).thenReturn(105100400);
         open.signedUp.add(event);
 
         game.config.COMPANION_BOSS_ENABLED_TYPES = "";
@@ -1026,6 +1053,40 @@ class CompanionBossRunsTest {
         assertFalse(runs.forcesServerAuthority(battle), "no companion signed up for this fight");
         assertFalse(runs.forcesServerAuthority(mock(MapleMap.class)), "no event");
         assertFalse(runs.forcesServerAuthority(null));
+    }
+
+    /**
+     * P11: the Normal Balrog fight is the server's (EasyBalrogEncounterService.startNormal) while the switch lists
+     * balrog_normal and a companion signed up for it is a player of its event; each boss's own key decides for its own
+     * battle map, and server authority follows the same rule with COMPANION_BOSS_SERVER_AUTHORITY on.
+     */
+    @Test
+    void eachBalrogsFightIsACompanionFightUnderItsOwnKeyOnItsOwnBattleMap() {
+        EventInstanceManager event = mock(EventInstanceManager.class);
+        MapleMap normal = mock(MapleMap.class);
+        when(normal.getEventInstance()).thenReturn(event);
+        when(normal.getId()).thenReturn(105100300);
+        MapleMap easy = mock(MapleMap.class);
+        when(easy.getEventInstance()).thenReturn(event);
+        when(easy.getId()).thenReturn(105100400);
+        open.signedUp.add(event);
+
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertFalse(runs.companionFight(normal), "Normal's own key is off: the stock fight");
+        assertTrue(runs.companionFight(easy));
+
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "balrog_normal";
+        assertTrue(runs.companionFight(normal));
+        assertFalse(runs.companionFight(easy), "Easy's own key is off");
+        game.config.COMPANION_BOSS_SERVER_AUTHORITY = true;
+        assertTrue(runs.forcesServerAuthority(normal));
+        game.config.COMPANION_BOSS_SERVER_AUTHORITY = false;
+        assertFalse(runs.forcesServerAuthority(normal), "the encounter runs, the clients drive it");
+        assertTrue(runs.companionFight(normal));
+
+        open.signedUp.clear();
+        assertFalse(runs.companionFight(normal), "no companion signed up: humans keep the stock fight");
+        assertFalse(runs.companionFight(null));
     }
 
     @Test
@@ -1068,6 +1129,8 @@ class CompanionBossRunsTest {
                 "server.agents.capabilities.expedition.boss.AgentBossRunHost.install(world.bossRuns);",
                 "server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule("
                         + "world.bossRuns::forcesServerAuthority);",
+                "server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule("
+                        + "world.bossRuns::companionFight);",
                 "world.roster.installInstanceDelegation(server.living.roster.CompanionBossRuns.byKey(world.bossRuns,"
                         + " world.partyQuestRuns));")) {
             int at = start.indexOf(installed);
@@ -1077,6 +1140,8 @@ class CompanionBossRunsTest {
         assertTrue(stop.contains("server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);"));
         assertTrue(stop.contains(
                 "server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(null);"));
+        assertTrue(stop.contains(
+                "server.life.autonomy.balrog.EasyBalrogEncounterService.installCompanionFightRule(null);"));
     }
 
     // ---- the lines -----------------------------------------------------------------------------
@@ -1110,14 +1175,14 @@ class CompanionBossRunsTest {
                 BossRunLines.REFUSED_OTHER, "couldn't get my name down, sorry. i'll wait out here.",
                 BossRunLines.MISSED, "couldn't make it in time, i'll wait for you here.");
         for (Map.Entry<String, String> intent : kept.entrySet()) {
-            List<String> wordings = BossRunLines.GENERIC.get(intent.getKey());
+            List<String> wordings = BossAllyHarness.easyLines(intent.getKey());
             assertTrue(wordings.size() >= 2 && wordings.size() <= 3, intent.getKey() + " " + wordings);
             assertEquals(wordings.size(), Set.copyOf(wordings).size(), intent.getKey() + " " + wordings);
             assertTrue(wordings.contains(intent.getValue()), intent.getKey() + " " + wordings);
         }
-        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.REFUSED_LATE).size(),
+        assertEquals(3, BossAllyHarness.easyLines(BossRunLines.REFUSED_LATE).size(),
                 "Start can refuse three walking up at once");
-        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.MISSED).size(),
+        assertEquals(3, BossAllyHarness.easyLines(BossRunLines.MISSED).size(),
                 "the grace can count three out at once");
     }
 
@@ -1135,9 +1200,9 @@ class CompanionBossRunsTest {
 
     // ---- helpers -------------------------------------------------------------------------------
 
-    /** {@code line} is "{@code name}: " and one of the generic wordings for {@code intent}. */
+    /** {@code line} is "{@code name}: " and one of Easy Balrog's wordings for {@code intent}. */
     private static void assertSays(String name, String intent, String line) {
-        assertTrue(BossRunLines.GENERIC.get(intent).contains(wording(name, line)), intent + ": " + line);
+        assertTrue(BossAllyHarness.easyLines(intent).contains(wording(name, line)), intent + ": " + line);
     }
 
     /** What {@code name} said in party chat line {@code line} ("Name: words"). */

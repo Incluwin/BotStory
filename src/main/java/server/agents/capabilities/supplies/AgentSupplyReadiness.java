@@ -721,6 +721,24 @@ public final class AgentSupplyReadiness {
         return tuningInt("DESK_MAX_HOPS");
     }
 
+    /**
+     * P12 G9: a boss gate listed in BOSS_DESK_MAPS (the Papulatus gate, 220080000) is a desk like a party quest's: a
+     * trip from it may reach DESK_MAX_HOPS, both ways. Only a gate the host lets trips leave from sends one.
+     */
+    static boolean bossDesk(int mapId) {
+        String raw = config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_DESK_MAPS");
+        if (raw == null || "none".equals(raw.trim())) {
+            return false;
+        }
+        for (String entry : raw.split(",")) {
+            if (entry.trim().equals(Integer.toString(mapId))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** How long a readiness request to a supplier {@code hops} away stays good: REQUEST_TTL_MS, longer for far ones. */
     static long requestTtlMs(int hops) {
         return Math.max(tuningLong("REQUEST_TTL_MS"), (long) Math.max(0, hops) * tuningLong("REQUEST_TTL_PER_HOP_MS"));

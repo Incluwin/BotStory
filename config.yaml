@@ -908,10 +908,14 @@ living_world:
     # them or mesos at most this often, and answers a gift that still falls short (agent-engine.yaml
     # AgentSupplyReadiness.STILL_SHORT_EVERY_MS) only this long after asking. BOSS_MAPS: party-boss gates (Papulatus,
     # King Pepe) reach no shop; a short companion says so
-    # once as its owner comes in, and entry is never refused.
+    # once as its owner comes in, and entry is never refused. TRIP_MAPS (P12, decision 10): boss gates of BOSS_MAPS a
+    # short companion may still walk to a shop from, as far as a party quest desk (agent-engine.yaml
+    # AgentSupplyReadiness.BOSS_DESK_MAPS) while the switch lists that gate's boss; empty or the boss off = the gate
+    # keeps its no-shop line. 220080000 = Papulatus (P15).
     COMPANION_RESTOCK_ENABLED: true
     COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
     COMPANION_RESTOCK_BOSS_MAPS: "220080000,106021402"
+    COMPANION_RESTOCK_TRIP_MAPS: "220080000"
     # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
     # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
     # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with
@@ -948,6 +952,38 @@ living_world:
     # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
     # Timings: agent-engine.yaml AgentBossRunSession.
     # "zakum" (Adobis, P8) stays off until its staged client-memory checks pass (docs/COMPANION_BOSSING_P8.md).
+    # "balrog_normal" (Mu Young's Normal choice, P11) stays off until its live check passes (docs/COMPANION_BOSSING_P11.md);
+    # with it on, a Normal fight a companion signed up for is the server's own (stock BalrogBattle.js for every other).
+    # Field groups (P13): "field_victoria", "field_ossyria", "field_ludus", "field_mulung", "field_nihal" (their bosses:
+    # boss-rules.json fieldBosses). With a group on, its bosses on maps with no event stay with the player's client when
+    # Agents hit them, their attacks reach every Agent in range, companions join only once a player of their party has
+    # hit that very boss, citizens never attack it, and a companion that dies beside one rests in town before following.
+    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P13.md).
+    # Party bosses (P14): "latanica" and "neo_bergamot", "neo_dunas", "neo_aufheben", "neo_oberon", "neo_nibelung". The
+    # owner leads the party in through the stock portal; the companions inside then fight as a boss run (priority targets,
+    # mirrored attacks, no summons, wait outside when down) and leave with the owner. Each stays off until its live check
+    # passes (docs/COMPANION_BOSSING_P14.md).
+    # "papulatus" (P15): the same party run at the Papulatus gate. A companion with no entry left today stays before
+    # the gate, a dead one walks back to the gate from Ludibrium, and the gate allows one desk trip
+    # (COMPANION_RESTOCK_TRIP_MAPS).
+    # It stays off until its live check passes (docs/COMPANION_BOSSING_P15.md).
+    # High-level field groups (P16): "field_pianus" (Pianus L and R, Seruf, Bloody Boom), "field_leafre"
+    # (Leviathan, Manon, Griffey), "field_temple" (Dodo, Lilynouch, Lyka), "field_zipangu" (Black Crow, Blue Mushmom,
+    # Bamboo Warrior, Male and Female Boss), "field_masteria" (Headless Horseman, Bigfoot). The P13 rules apply. A
+    # group's add (Bloody Boom) is fair game once a player of the party has hit one of the group's bosses on its map.
+    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P16.md).
+    # "scarga" (P17): Scarlion and Targa at Aldol, signed up as at Adobis. A companion that dies walks back from Kampung
+    # and talks to Aldol to get back in (agent-engine.yaml AgentBossRunSession.REENTER_*). It stays off until its live
+    # check passes (docs/COMPANION_BOSSING_P17.md).
+    # "horntail" (P18): Horntail at the Mark of the Squad, signed up as at Adobis. The run spans the two pre-head maps
+    # and the altar. A companion that dies comes to in Leafre, is moved back to the cave entrance (240050400, no route
+    # reaches it) and signs the Mark again. It stays off until its live check passes (docs/COMPANION_BOSSING_P18.md).
+    # "showa" (P19): The Boss at Konpei in the Showa hideout, signed up as at Adobis. List "field_zipangu" too, so
+    # companions waiting on his map leave Male Boss to the players there. A companion that dies waits in Showa Town.
+    # It stays off until its live check passes (docs/COMPANION_BOSSING_P19.md).
+    # "pinkbean" (P20): Pink Bean at the Forgotten Temple Manager, signed up as at Adobis. A companion that dies revives
+    # inside, as a player does, and walks back in through the resurrection map; every death counts toward the stock
+    # 5-death wipe and costs EXP. It stays off until its live check passes (docs/COMPANION_BOSSING_P20.md).
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
@@ -965,6 +1001,10 @@ living_world:
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
+    # A companion that dies beside a field group's boss (P13, a field key on) rests in town before it follows its owner
+    # again, until its HP and MP are back to REST_PERCENT of their maximum or REST_MAX_MS has passed since it died.
+    COMPANION_FIELD_BOSS_REST_PERCENT: 100
+    COMPANION_FIELD_BOSS_REST_MAX_MS: 120000
     # Boss clears are not party-quest clears (2026-10-08): the game calls clearPQ for every event clear, boss
     # expeditions too. For the event scripts listed here (scripts/event file names without .js, a comma list) the
     # clear marks no companion party-quest run, advances no "clear a party quest" quest step and gives no friendship

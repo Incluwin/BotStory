@@ -20,6 +20,8 @@ import server.life.Monster;
 public final class AgentCombatBuffRuntime {
     private static final java.util.Set<Integer> CRITICAL_SURVIVAL_BUFFS = java.util.Set.of(
             Magician.MAGIC_GUARD, BlazeWizard.MAGIC_GUARD, Evan.MAGIC_GUARD);
+    /** P16: Agents a mob's dispel stripped since their last buff tick. */
+    private static final java.util.Set<Integer> DISPELLED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private AgentCombatBuffRuntime() {
     }
@@ -31,6 +33,7 @@ public final class AgentCombatBuffRuntime {
     public static void tickBuffs(AgentRuntimeEntry entry, Character bot, AgentCombatConfig.Config config,
                                  SkillGateway skills) {
         long now = System.currentTimeMillis();
+        rebuffIfDispelled(entry, bot);
         // A party gathered for buffs: the Agent buffs while it stands and waits, even in town.
         AgentPartyGatherRegistry.Gathering gathering = gathering(entry, bot, now);
         AgentCombatSupportPolicy.SkillBuffTickDecision tickDecision =
@@ -100,6 +103,24 @@ public final class AgentCombatBuffRuntime {
         }
         AgentSkillBuffDebugStateRuntime.rememberAction(
                 entry, System.currentTimeMillis(), AgentCombatSupportPolicy.allSkillBuffsActiveOrOnCooldownSummary());
+    }
+
+    /**
+     * P16: a mob's dispel (Pianus, Zakum's arms; Character.dispel through AgentPresence) took this Agent's buffs. Its
+     * buff timers still say they run, so it would wait them out bare; its next buff tick makes every buff due now
+     * instead, as a player puts their buffs back up. Any thread; the timers change on the Agent's tick only.
+     */
+    public static void dispelled(Character agent) {
+        if (agent != null) {
+            DISPELLED.add(agent.getId());
+        }
+    }
+
+    /** On the Agent's tick: once after a dispel, every buff skill is due now (requestRebuff). */
+    static void rebuffIfDispelled(AgentRuntimeEntry entry, Character bot) {
+        if (!DISPELLED.isEmpty() && bot != null && DISPELLED.remove(bot.getId())) {
+            AgentCombatBuffStateRuntime.requestRebuff(entry);
+        }
     }
 
     private static AgentPartyGatherRegistry.Gathering gathering(AgentRuntimeEntry entry, Character bot, long now) {

@@ -22,4 +22,12 @@ public interface AgentPresenceProvider {
         mobHitAccepted(attacker, monster, appliedDamage,
                 reactionContext == null ? 0L : reactionContext.delayMs());
     }
+
+    /** A same-map banish (a mob skill such as Dodo's) just moved this Agent to the map's spawn point. */
+    default void banished(Character agent) {
+    }
+
+    /** A mob's dispel (Pianus, Zakum's arms) just took this Agent's buffs, so it puts them back up (P16). */
+    default void dispelled(Character agent) {
+    }
 }

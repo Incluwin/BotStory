@@ -286,6 +286,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         }
 
         @Override
+        public void reentering(AgentBossRunHost.Seat seat) {
+            calls.add("reentering " + seat.agentCharacterId());
+        }
+
+        @Override
         public void entered(AgentBossRunHost.Seat seat) {
             entered.add(seat.agentCharacterId());
         }

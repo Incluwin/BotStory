@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.TimerManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 import server.life.Monster;
@@ -89,9 +91,10 @@ class AgentBossScopeTest {
     }
 
     @Test
-    void theYamlShipsTheScopeOnForZakumWithNoListedIds() {
+    void theYamlShipsTheScopeOnForEveryExpeditionBossWithNoListedIds() {
         assertEquals("true", shipped.get(ENABLED));
-        assertEquals("ZAKUM", shipped.get(EXPEDITION_TYPES));
+        assertEquals("ZAKUM,SCARGA,HORNTAIL,SHOWA,PINKBEAN", shipped.get(EXPEDITION_TYPES),
+                "P17 adds SCARGA, P18 HORNTAIL, P19 SHOWA, P20 PINKBEAN");
         assertEquals("none", shipped.get(BOSS_IDS));
     }
 
@@ -119,9 +122,9 @@ class AgentBossScopeTest {
             // a fight with a native-capable client: the part is not a server-owned actor
             assertFalse(AgentBossScope.guards(boss(id, balrogBattle, bossfriend)), id + " in a BALROG_EASY event");
         }
-        MapleMap horntailCave = eventMap(ExpeditionType.HORNTAIL);
-        assertFalse(AgentBossScope.guards(boss(8_810_002, horntailCave, human(horntailCave))),
-                "Horntail is not listed");
+        MapleMap chaosCave = eventMap(ExpeditionType.CHAOS_HORNTAIL);
+        assertFalse(AgentBossScope.guards(boss(8_810_002, chaosCave, human(chaosCave))),
+                "Chaos Horntail is not listed");
     }
 
     @Test
@@ -189,6 +192,52 @@ class AgentBossScopeTest {
 
         MapleMap pqStage = eventMap(null);
         assertFalse(AgentBossScope.guards(boss(8_800_003, pqStage, human(pqStage))), "a listed id inside an event");
+    }
+
+    @Test
+    void aFieldGroupsBossIsGuardedOnAFieldOnlyWhileItsKeyIsOn() {
+        // P13: Jr. Balrog is in field_victoria (boss-rules.json); BOSS_IDS stays none
+        boolean[] keyOn = {false};
+        AgentBossRunHost.install(new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean bossEnabled(String key) {
+                return keyOn[0] && key.equals("field_victoria");
+            }
+        });
+        try {
+            MapleMap field = mock(MapleMap.class);
+            Character bossfriend = human(field);
+            Monster jrBalrog = boss(8_130_100, field, bossfriend);
+            assertFalse(AgentBossScope.guards(jrBalrog), "field_victoria is off");
+
+            keyOn[0] = true;
+            assertTrue(AgentBossScope.guards(jrBalrog));
+            assertFalse(AgentBossScope.guards(boss(7_220_000, field, bossfriend)), "Tae Roon: field_mulung is off");
+            MapleMap pqStage = eventMap(null);
+            assertFalse(AgentBossScope.guards(boss(8_130_100, pqStage, human(pqStage))), "inside an event");
+        } finally {
+            AgentBossRunHost.install(null);
+        }
+    }
+
+    @Test
+    void aPartyBossesPartIsGuardedInsideItsOpenRunOnlyNeverOnAField() {
+        // P14: Latanica's add 9420511 roams Singapore's fields too; BOSS_IDS stays none
+        MapleMap battle = eventMap(null);
+        EventInstanceManager latanica = battle.getEventInstance();
+        MapleMap field = mock(MapleMap.class);
+        try (MockedStatic<AgentBossRunRegistry> runs = mockStatic(AgentBossRunRegistry.class)) {
+            runs.when(() -> AgentBossRunRegistry.partyBossPart(latanica, 9_420_511)).thenReturn(true);
+
+            assertTrue(AgentBossScope.guards(boss(9_420_511, battle, human(battle))), "in its run");
+            assertFalse(AgentBossScope.guards(boss(9_420_511, field, human(field))), "on a field map");
+            assertFalse(AgentBossScope.guards(boss(9_420_512, battle, human(battle))), "a part its rules do not name");
+        }
     }
 
     @Test

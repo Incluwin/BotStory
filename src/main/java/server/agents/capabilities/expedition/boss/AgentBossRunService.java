@@ -3,6 +3,7 @@ package server.agents.capabilities.expedition.boss;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
 import server.expeditions.Expedition;
@@ -15,7 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Opens boss runs for claimed Agents and keeps their monitors going. An enlister adopts only Agents it may control
  * and the host claims (the host's own companions, never an unclaimed or GM-spawned Agent), each free of every other
- * boss run and party quest. One run serves one expedition; a second enlister joins it.
+ * boss run and party quest. One run serves one expedition (or, P12 G7, one party-instance event); a second enlister
+ * joins it.
  */
 public final class AgentBossRunService {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunService.class);
@@ -92,6 +94,61 @@ public final class AgentBossRunService {
                 }
             }
             log.info("Boss run enlist: session={} boss={} enlister={} accepted={} refused={}", session.sessionId(),
+                    definition.key(), human.getId(), accepted, refused);
+            return new Enlisted(session.sessionId(), accepted, refused);
+        }
+    }
+
+    /**
+     * P12 G7: admits {@code agentIds}, companions the party's portal just took into {@code event}, as followers of
+     * {@code human} in the party-instance run of {@code definition} for that event; the first call for an event opens
+     * the run. Each one becomes INSIDE once it stands on the battle map in the event. Any thread.
+     */
+    public static Enlisted openForEvent(Character human, AgentBossRunDefinition definition, EventInstanceManager event,
+                                        List<Integer> agentIds, long nowMs) {
+        return openForEvent(AgentBossRunPorts.LIVE, human, definition, event, agentIds, nowMs);
+    }
+
+    static Enlisted openForEvent(AgentBossRunPorts ports, Character human, AgentBossRunDefinition definition,
+                                 EventInstanceManager event, List<Integer> agentIds, long nowMs) {
+        List<Integer> ids = agentIds == null ? List.of() : List.copyOf(new LinkedHashSet<>(agentIds));
+        if (human == null || definition == null || !definition.partyInstance() || event == null
+                || event.isEventDisposed()) {
+            return new Enlisted(0L, List.of(), ids);
+        }
+        List<Integer> accepted = new ArrayList<>();
+        List<Integer> refused = new ArrayList<>();
+        synchronized (ENLIST) {
+            List<Integer> candidates = new ArrayList<>();
+            for (int agentId : ids) {
+                if (adoptable(human, agentId)) {
+                    candidates.add(agentId);
+                } else {
+                    refused.add(agentId);
+                }
+            }
+            AgentBossRunSession session = AgentBossRunRegistry.forEvent(event);
+            if (candidates.isEmpty() || session != null && session.definition() != definition) {
+                refused.addAll(candidates);
+                return new Enlisted(session == null ? 0L : session.sessionId(), accepted, refused);
+            }
+            if (session == null) {
+                session = new AgentBossRunSession(NEXT_SESSION_ID.incrementAndGet(), definition, event,
+                        definition.fight().get(), nowMs);
+                AgentBossRunRegistry.put(session);
+                AgentBossRunSession opened = session;
+                ports.schedule(() -> monitor(ports, opened), monitorMs());
+                log.info("Boss run opened: session={} boss={} enlister={} (party event)", session.sessionId(),
+                        definition.key(), human.getId());
+            }
+            for (int agentId : candidates) {
+                if (session.admit(agentId, human.getId(), nowMs, AgentBossRunMember.Kind.FOLLOWER) != null) {
+                    accepted.add(agentId);
+                } else {
+                    refused.add(agentId);
+                }
+            }
+            log.info("Boss run admit: session={} boss={} enlister={} accepted={} refused={}", session.sessionId(),
                     definition.key(), human.getId(), accepted, refused);
             return new Enlisted(session.sessionId(), accepted, refused);
         }

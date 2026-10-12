@@ -27,11 +27,21 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * True while {@code map} belongs to an event with an open companion boss run (memory only). Its boss kills give no
+     * friendship points each: the run gives them once at its clear (P12 G12, decision 23).
+     */
+    private static boolean inCompanionBossRun(MapleMap map) {
+        scripting.event.EventInstanceManager event = map.getEventInstance();
+        return event != null
+                && server.agents.capabilities.expedition.boss.AgentBossRunRegistry.forEvent(event) != null;
+    }
+
+    /**
      * A monster died; {@code attackerIds} are every character that damaged it (players and agents). This runs on the
      * thread that landed the kill (a player's IO thread or the central Agent tick) inside the monster's monitor, so it
      * stays in memory and takes no map or living lock: kill credit (quest kill steps, contract proofs, quest-only drops),
      * which looks characters up and reads the store, goes to the living-kills lane, and only when a player or a Resident
-     * took part.
+     * took part. A boss kill gives friendship points, except inside a companion boss run (inCompanionBossRun).
      */
     public static void mobKilled(Monster monster, Set<Integer> attackerIds, MapleMap map) {
         LivingWorld world = LivingWorld.get();
@@ -44,7 +54,7 @@ public final class LivingWorldHooks {
                 Set<Integer> attackers = Set.copyOf(attackerIds);
                 world.killLane().execute(() -> credit(world, mobId, attackers, map));
             }
-            if (monster.isBoss()) {
+            if (monster.isBoss() && !inCompanionBossRun(map)) {
                 java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
                 world.executor().submit("friendship.boss " + monster.getId(),
                         () -> world.friendship().onBossKilled(monster.getId(), attackers, map));
@@ -372,6 +382,9 @@ public final class LivingWorldHooks {
             world.crewRotation().died(chr); // Keep my crew fresh swaps one that went down, even once revived
             server.living.population.PopulationHooks.died(chr);
             world.partyQuests().died(chr); // a death inside a companion run counts for its record
+            if (world.bossRuns() != null) {
+                world.bossRuns().died(chr); // beside a field boss, a companion rests in town first (P13)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
         }
@@ -602,8 +615,9 @@ public final class LivingWorldHooks {
     }
 
     /**
-     * Mu Young's Easy window ({@code bossKey} "easy_balrog" in 1061014.js, on the clicker's I/O thread): true when she
-     * offers the owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES). False keeps her
+     * Mu Young's Easy or Normal window ({@code bossKey} "easy_balrog" or "balrog_normal" in 1061014.js, on the
+     * clicker's I/O thread): true when she offers the owner "My party will register too."
+     * (living_world.COMPANION_BOSS_ENABLED_TYPES). False keeps her
      * stock window: no living world, an Agent clicking (a companion's own headless sign-up), or any failure.
      */
     public static boolean bossPartyOffered(scripting.npc.NPCConversationManager cm, String bossKey) {
@@ -639,8 +653,8 @@ public final class LivingWorldHooks {
     }
 
     /**
-     * Mu Young's Easy window (P7 Part B, on the clicker's I/O thread): true when she offers the owner "Call allies
-     * from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES). False keeps her window as it was: no living world, an
+     * Mu Young's Easy or Normal window (P7 Part B, on the clicker's I/O thread): true when she offers the owner "Call
+     * allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES). False keeps her window as it was: no living world, an
      * Agent clicking, or any failure.
      */
     public static boolean bossAlliesOffered(scripting.npc.NPCConversationManager cm, String bossKey) {
@@ -693,6 +707,24 @@ public final class LivingWorldHooks {
         } catch (RuntimeException failure) {
             log.warn("living world bossAllyCall hook failed", failure);
             return server.living.roster.CompanionBossRuns.NO_ALLY_CAN_COME;
+        }
+    }
+
+    /**
+     * P12 G7, a party-instance boss's portal (P14 and P15 scripts, on the portal's thread, right after the stock
+     * registerParty took the party into {@code event}): the companions inside are admitted into the boss's companion
+     * run on companion-ops (CompanionBossRuns.partyEntered). Nothing with no living world, and on any failure; the
+     * party's entry itself never depends on it.
+     */
+    public static void bossPartyEntered(scripting.event.EventInstanceManager event, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || event == null || world.bossRuns() == null) {
+            return;
+        }
+        try {
+            world.bossRuns().partyEntered(event, bossKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossPartyEntered hook failed", failure);
         }
     }
 

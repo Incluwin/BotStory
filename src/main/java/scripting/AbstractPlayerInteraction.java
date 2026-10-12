@@ -1111,7 +1111,9 @@ public class AbstractPlayerInteraction {
     /**
      * Daily lockout pre-check for bosses that run outside the Expedition framework
      * (currently Papulatus). Checks every party member. Returns the name of the first
-     * member who has reached the daily cap, or null if everyone is clear.
+     * member who has reached the daily cap, or null if everyone is clear. P12 G8: a
+     * companion (a bot member) not standing on the leader's map is not checked, as it
+     * does not go in; every player is checked as before.
      */
     public String firstPartyMemberOverBossCap(String bossName) {
         Party party = getPlayer().getParty();
@@ -1120,6 +1122,9 @@ public class AbstractPlayerInteraction {
                     ? null : getPlayer().getName();
         }
         for (PartyCharacter pc : party.getMembers()) {
+            if (companionAway(pc, getPlayer().getMap())) {
+                continue;
+            }
             if (!ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, false)) {
                 return pc.getName();
             }
@@ -1130,7 +1135,8 @@ public class AbstractPlayerInteraction {
     /**
      * Records a daily-lockout entry for every party member. Call this once a boss
      * battle actually starts (symmetrical to how Expedition.registerExpeditionAttempt
-     * logs each active member).
+     * logs each active member). P12 G8: a companion not on the leader's map did not go
+     * in (registerParty takes only members on the map), so its entry is not logged.
      */
     public void logPartyBossAttempt(String bossName) {
         Party party = getPlayer().getParty();
@@ -1139,8 +1145,19 @@ public class AbstractPlayerInteraction {
             return;
         }
         for (PartyCharacter pc : party.getMembers()) {
-            ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, true);
+            if (!companionAway(pc, getPlayer().getMap())) {
+                ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, true);
+            }
         }
+    }
+
+    /** P12 G8: a companion (a bot party member) that is offline or stands on another map than {@code leaderMap}. */
+    static boolean companionAway(PartyCharacter member, server.maps.MapleMap leaderMap) {
+        if (!member.isBot()) {
+            return false;
+        }
+        Character companion = member.getPlayer();
+        return companion == null || companion.getMap() != leaderMap;
     }
 
     public Expedition getExpedition(ExpeditionType type) {

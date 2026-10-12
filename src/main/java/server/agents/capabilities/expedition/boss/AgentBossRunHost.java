@@ -1,7 +1,9 @@
 package server.agents.capabilities.expedition.boss;
 
+import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.life.Monster;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -139,6 +141,43 @@ public final class AgentBossRunHost {
          * that follows its owner.
          */
         default void ownerLeftWhileDown(Seat seat) {
+        }
+
+        /**
+         * P12 G15: true while the host's kill switch lists boss or field-group key {@code key} (a field key such as
+         * field_victoria gates the mirror's field scope and its attack floor for the bosses of its group). Memory
+         * only, any thread. Unless answered, false: no key is on.
+         */
+        default boolean bossEnabled(String key) {
+            return false;
+        }
+
+        /**
+         * P12 G6: a member of a run whose dead members re-enter (Scarga, Horntail) came to outside after a death and
+         * is REENTERING: the host walks it back and has it talk to the recruit NPC. The run takes it back in once it
+         * stands in the event again, and gives up after REENTER_TIMEOUT_MS, at the clear, or when its anchor is gone.
+         * Once per death.
+         */
+        default void reentering(Seat seat) {
+        }
+
+        /**
+         * P12 G11, companion boss scope case 3: true while {@code agent} is a companion on the recruit or gate map of a
+         * boss the switch lists, and the owner it follows stands on that map too (Showa's 801040004 holds monsters).
+         * Memory only, any thread. Unless answered, false.
+         */
+        default boolean besideOwnerAtBossGate(Character agent) {
+            return false;
+        }
+
+        /**
+         * P13 G14, on the Agent's tick, from memory: may {@code agent} hit {@code boss}, a field group's boss whose
+         * key is on (AgentBossField.covers)? The host answers from owner and party knowledge: a companion only once a
+         * player of its party has hit that very boss (so a respawn waits for a player's first hit), a citizen never
+         * (decision 19). Unless answered, true: every Agent hits it as before.
+         */
+        default boolean mayEngageFieldBoss(Character agent, Monster boss) {
+            return true;
         }
     }
 
@@ -287,6 +326,61 @@ public final class AgentBossRunHost {
                 current.ownerLeftWhileDown(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run owner-left-while-down rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void reentering(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.reentering(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run reentering rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public boolean bossEnabled(String key) {
+            Rule current = current();
+            if (current == null) {
+                return false;
+            }
+            try {
+                return current.bossEnabled(key);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run boss-enabled rule failed for {}", key, failure);
+                return false;
+            }
+        }
+
+        @Override
+        public boolean besideOwnerAtBossGate(Character agent) {
+            Rule current = current();
+            if (current == null) {
+                return false;
+            }
+            try {
+                return current.besideOwnerAtBossGate(agent);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run beside-owner rule failed for {}", agent == null ? 0 : agent.getId(), failure);
+                return false;
+            }
+        }
+
+        @Override
+        public boolean mayEngageFieldBoss(Character agent, Monster boss) {
+            Rule current = current();
+            if (current == null) {
+                return true;
+            }
+            try {
+                return current.mayEngageFieldBoss(agent, boss);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run field engagement rule failed for {}", agent == null ? 0 : agent.getId(), failure);
+                return false;
             }
         }
     }

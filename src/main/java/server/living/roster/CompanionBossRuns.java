@@ -10,6 +10,7 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
@@ -28,9 +29,11 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
+import server.expeditions.ExpeditionBossLog;
 import server.integration.AgentPresence;
 import server.life.Monster;
 import server.living.LivingWorld;
+import server.living.bond.Friendship;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.maps.MapleMap;
@@ -182,6 +185,23 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
          */
         default boolean cleared(long sessionId) {
             return false;
+        }
+
+        /**
+         * P12 G7: how many owners other than {@code ownerId} have companions in the party-instance run of {@code
+         * event} (every member, in any phase); unless implemented, 0.
+         */
+        default int otherOwnersIn(EventInstanceManager event, int ownerId) {
+            return 0;
+        }
+
+        /**
+         * P12 G7: admits the owner's companions the party's portal took into {@code event} into its party-instance run
+         * (AgentBossRunService.openForEvent). Refuses them all unless implemented.
+         */
+        default Enlisted admit(Character owner, AgentBossRunDefinition definition, EventInstanceManager event,
+                               List<Integer> agentIds, long nowMs) {
+            return new Enlisted(0L, List.of(), agentIds);
         }
 
         OpenRuns LIVE = new OpenRuns() {
@@ -344,6 +364,24 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
                 return session != null && session.phase() == AgentBossRunSession.Phase.POST_CLEAR;
             }
+
+            @Override
+            public int otherOwnersIn(EventInstanceManager event, int ownerId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forEvent(event);
+                Set<Integer> others = new LinkedHashSet<>();
+                for (AgentBossRunMember member : session == null ? List.<AgentBossRunMember>of() : session.members()) {
+                    if (member.enlistedBy() != ownerId) {
+                        others.add(member.enlistedBy());
+                    }
+                }
+                return others.size();
+            }
+
+            @Override
+            public Enlisted admit(Character owner, AgentBossRunDefinition definition, EventInstanceManager event,
+                                  List<Integer> agentIds, long nowMs) {
+                return AgentBossRunService.openForEvent(owner, definition, event, agentIds, nowMs);
+            }
         };
     }
 
@@ -392,6 +430,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     public static final String NO_ALLY_CAN_COME = "None of your companions on the bench can come right now.";
     /** The owner's own party companions in one run (Part A): a full party is the owner and five. */
     static final int MOST_PER_OWNER = CompanionSlots.PARTY_CAP - 1;
+    /** What one Unagi and one Pure Water restore, to weigh a count standard against a points one. */
+    private static final long UNAGI_HP = 1_000L;
+    private static final long PURE_WATER_MP = 800L;
 
     private final LivingWorld world;
     private final OpenRuns open;
@@ -404,6 +445,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final CompanionBossAllies allies;
     /** P8: the companions' daily boss entries (Zakum), shared with the bench allies' calls. */
     private final CompanionBossQuota quota;
+    /** P13 G14: companions resting in town after a death beside a field boss (decision 18). */
+    private final CompanionFieldBossRest fieldRest;
+    /** P15 G8: companions held off a party boss's gate while they have no entry of it left today. */
+    private final CompanionBossGateCap gateCap;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -424,6 +469,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.runs = new ConcurrentHashMap<>();
         this.quota = new CompanionBossQuota(open);
         this.allies = new CompanionBossAllies(world, open, runs, quota);
+        this.fieldRest = new CompanionFieldBossRest(world);
+        this.gateCap = new CompanionBossGateCap(world,
+                (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
     }
 
     /**
@@ -439,6 +487,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.runs = runs;
         this.allies = allies;
         this.quota = allies.quota();
+        this.fieldRest = new CompanionFieldBossRest(world);
+        this.gateCap = new CompanionBossGateCap(world,
+                (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
     }
 
     /**
@@ -563,6 +614,106 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * P12 G7, the owners rule for a party-instance run (memory, any thread): fewer other owners' companions in the run
+     * of {@code event} than COMPANION_BOSS_OWNERS_MAX allows (1: none at all).
+     */
+    static boolean ownerFits(LivingWorldConfig config, OpenRuns open, EventInstanceManager event, int ownerId) {
+        return open.otherOwnersIn(event, ownerId) < Math.max(1, config.COMPANION_BOSS_OWNERS_MAX);
+    }
+
+    // ---- a party-instance boss (P12 G7: the portal hook of P14 and P15) --------------------------------
+
+    /**
+     * The party-instance portal hook (LivingWorldHooks.bossPartyEntered, on the portal script's thread, after the stock
+     * registerParty took the party into {@code event}): admitting the companions inside is handed to companion-ops
+     * ({@link #admitParty}). Nothing while the switch leaves the boss out, for an unknown key or an expedition boss.
+     */
+    public void partyEntered(EventInstanceManager event, String bossKey) {
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(bossKey);
+        LivingWorldConfig config = world.config();
+        if (event == null || definition == null || !definition.partyInstance() || config == null
+                || !config.companionBossEnabled(definition.key())) {
+            return;
+        }
+        world.executor().submit("boss.party_entered " + definition.key(), () -> admitParty(event, definition));
+    }
+
+    /**
+     * On companion-ops: each human of {@code event} with companions inside admits them into the boss's party-instance
+     * run, owner by owner in the event's order, while the owners rule lets them in ({@link #ownerFits}); a companion is
+     * one of the owner's that follows them, is a player of the event, and is tied to no run (a commitment or a boss
+     * run), five at most. An admitted one is noted for its record and the potion line, as a sign-up is. The run adopts
+     * each once it stands on the battle map; one never adopted misses the start, and one not admitted fights on as any
+     * party member does, with no boss rules.
+     */
+    void admitParty(EventInstanceManager event, AgentBossRunDefinition definition) {
+        String bossKey = definition.key();
+        LivingWorldConfig config = world.config();
+        Commitments commitments = world.commitments();
+        if (config == null || commitments == null || event.isEventDisposed()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Character owner : event.getPlayers()) {
+            if (owner == null || AgentPresence.isAgent(owner) || !world.roster().hasCompanions(owner)) {
+                continue;
+            }
+            List<Integer> inside = companionsInside(owner, event, commitments);
+            if (inside.isEmpty()) {
+                continue;
+            }
+            if (!ownerFits(config, open, event, owner.getId())) {
+                log.info("boss party {} for owner {}: another owner's companions hold the run", bossKey,
+                        owner.getId());
+                continue;
+            }
+            Enlisted admitted = open.admit(owner, definition, event, inside, now);
+            if (admitted.sessionId() == 0L || admitted.accepted().isEmpty()) {
+                log.info("boss party {} for owner {}: nobody admitted, refused {}", bossKey, owner.getId(),
+                        admitted.refused());
+                continue;
+            }
+            CompanionBossRun run = runs.computeIfAbsent(
+                    CompanionBossRun.key(bossKey, admitted.sessionId(), owner.getId()),
+                    ignored -> new CompanionBossRun(bossKey, admitted.sessionId(), owner.getId()));
+            for (int id : admitted.accepted()) {
+                run.signedUp.add(id);
+                Persona persona = world.residents().personaOfCharacterId(id);
+                if (persona != null) {
+                    run.personaByCompanion.put(id, persona.id());
+                }
+                int[] carried = potions.apply(id);
+                if (carried != null) {
+                    run.potionsAtSignUp.put(id, carried);
+                }
+            }
+        }
+    }
+
+    /** The owner's companions that follow them, stand in {@code event} and are tied to no run; five at most. */
+    private List<Integer> companionsInside(Character owner, EventInstanceManager event, Commitments commitments) {
+        Party party = owner.getParty();
+        if (party == null) {
+            return List.of();
+        }
+        RosterService roster = world.roster();
+        List<Integer> ids = new ArrayList<>();
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            if (persona == null || roster.cachedOwnerOf(persona.id()) != owner.getId()
+                    || AgentRuntimeRegistry.leaderIdForAgentCharacter(id) != owner.getId()
+                    || commitments.isCommitted(id) || open.inRun(id) || event.getPlayerById(id) == null) {
+                continue;
+            }
+            if (ids.size() < MOST_PER_OWNER) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /**
      * The owner's companions that can sign up, in party order, {@link #MOST_PER_OWNER} at most: bots of the owner's
      * party that are the owner's own and follow them, loaded, tied to no run (a commitment or a boss run), not kept
      * off follow (on their way, held, away), and on the entry NPC's map on the owner's channel, or gone to the store
@@ -682,13 +833,50 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * The boss whose potion standard (AgentSupplyReadiness.BOSS_STANDARDS, or BOSS_RECOVERY_STANDARDS in HP and MP
      * points) a companion keeps on {@code mapId}: the
      * boss's key on its entry NPC's room (easy_balrog in Mu Young's, 105100100) while the switch lists it; null
-     * anywhere else or with the switch off. Memory only, any thread (CompanionRestock.standing asks it).
+     * anywhere else or with the switch off. Where two listed bosses share the room (P11: Easy and Normal Balrog), the
+     * one with the larger standard ({@link #largerStandard}). Memory only, any thread (CompanionRestock.standing asks
+     * it).
      */
     String restockKeyAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
+        String chosen = null;
+        for (BossEntrance entrance : BossEntrance.allAtRecruitMap(mapId)) {
+            chosen = largerOf(chosen, entrance, Integer.MAX_VALUE);
+        }
+        return chosen;
+    }
+
+    /**
+     * {@code chosen}, or {@code entrance}'s boss key when the switch lists it, a companion of {@code level} meets its
+     * level gate and its standard is the larger one.
+     */
+    private String largerOf(String chosen, BossEntrance entrance, int level) {
         LivingWorldConfig config = world.config();
-        String bossKey = entrance == null ? null : entrance.definition().key();
-        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+        AgentBossRunDefinition definition = entrance.definition();
+        if (config == null || !config.companionBossEnabled(definition.key())
+                || level < definition.minLevel()) {
+            return chosen;
+        }
+        return chosen == null || largerStandard(definition.key(), chosen) ? definition.key() : chosen;
+    }
+
+    /**
+     * True when boss {@code key}'s standard asks a companion to carry more than {@code other}'s (a tie keeps
+     * {@code other}, the earlier entrance): HP plus MP points where BOSS_RECOVERY_STANDARDS lists a key, else its
+     * BOSS_STANDARDS counts at an Unagi's 1,000 HP and a Pure Water's 800 MP, what Ant Tunnel Park and the other boss
+     * stores sell. A map that serves several bosses buys the largest standard among the listed ones (G9 item 2).
+     */
+    static boolean largerStandard(String key, String other) {
+        return standardWeight(key) > standardWeight(other);
+    }
+
+    private static long standardWeight(String key) {
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.Activity.partyQuest(key);
+        AgentSupplyReadiness.RecoveryStandard points = AgentSupplyReadiness.recoveryStandard(activity);
+        if (points != null) {
+            return points.hp() + points.mp();
+        }
+        AgentSupplyReadiness.Standard counts = AgentSupplyReadiness.standard(activity);
+        return counts.hp() * UNAGI_HP + counts.mp() * PURE_WATER_MP;
     }
 
     /**
@@ -698,8 +886,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * switch off. Memory only, any thread (CompanionRestock.restocksFrom asks it, P8).
      */
     boolean holdsTripsAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
-        return entrance != null && entrance.holdsTripsAtEntry() && restockKeyAt(mapId) != null;
+        LivingWorldConfig config = world.config();
+        return config != null && BossEntrance.allAtRecruitMap(mapId).stream().anyMatch(entrance ->
+                entrance.holdsTripsAtEntry() && config.companionBossEnabled(entrance.definition().key()));
     }
 
     /**
@@ -740,13 +929,27 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * The boss whose approach map with a store {@code mapId} is (BossEntrance.approachMapId: Ant Tunnel Park,
      * 105070001, on the walk down to Easy Balrog) while the switch lists it; null anywhere else or with the switch off.
-     * Memory only, any thread.
+     * Where the map serves two listed bosses (P11: Easy and Normal Balrog), the one with the larger standard. Memory
+     * only, any thread.
      */
     String approachKeyAt(int mapId) {
-        BossEntrance entrance = BossEntrance.atApproachMap(mapId);
-        LivingWorldConfig config = world.config();
-        String bossKey = entrance == null ? null : entrance.definition().key();
-        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+        return approachKey(mapId, Integer.MAX_VALUE, null, false);
+    }
+
+    /**
+     * The listed boss served from approach map {@code mapId} with the largest standard whose level gate {@code level}
+     * meets and, when {@code checkMeant}, that {@code owner} is on the way to (BossEntrance.approachMeantBy); null for
+     * none.
+     */
+    private String approachKey(int mapId, int level, Character owner, boolean checkMeant) {
+        String chosen = null;
+        for (BossEntrance entrance : BossEntrance.allAtApproachMap(mapId)) {
+            if (!checkMeant || AgentBossRules.entryItems(entrance.definition().key()).isEmpty()
+                    || entrance.approachMeantBy(owner)) {
+                chosen = largerOf(chosen, entrance, level);
+            }
+        }
+        return chosen;
     }
 
     /**
@@ -757,19 +960,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * otherwise. The rule opens that map to its trip (CompanionRestock.restocksOnField). Memory only, any thread.
      */
     String approachKeyFor(Character bot, int ownerId) {
-        String bossKey = bot == null ? null : approachKeyAt(bot.getMapId());
-        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
-        if (definition == null || bot.getLevel() < definition.type().getMinLevel()) {
+        if (bot == null || approachKeyAt(bot.getMapId()) == null) {
             return null;
         }
         Party party = bot.getParty();
         if (party == null || party.getMemberById(ownerId) == null) {
             return null;
         }
-        BossEntrance entrance = BossEntrance.of(bossKey);
-        boolean meant = entrance == null || definition.markerItemIds().isEmpty()
-                || entrance.approachMeantBy(world.roster().onlineCharacter(ownerId)); // no owner lookup: Easy Balrog
-        return meant ? bossKey : null;
+        // the owner is looked up only for a boss with a marker item (Zakum); Easy and Normal Balrog need none
+        boolean markers = BossEntrance.allAtApproachMap(bot.getMapId()).stream()
+                .anyMatch(entrance -> !AgentBossRules.entryItems(entrance.definition().key()).isEmpty());
+        Character owner = markers ? world.roster().onlineCharacter(ownerId) : null;
+        return approachKey(bot.getMapId(), bot.getLevel(), owner, true);
     }
 
     /**
@@ -780,11 +982,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * that boss (BossEntrance.approachMeantBy: for Zakum, the Eye of Fire).
      */
     void ownerApproached(int ownerId, int mapId) {
-        String bossKey = approachKeyAt(mapId);
-        AgentBossRunDefinition definition = bossKey == null ? null : AgentBossRunCatalog.of(bossKey);
-        Character owner = definition == null ? null : world.roster().onlineCharacter(ownerId);
-        BossEntrance entrance = owner == null ? null : BossEntrance.of(bossKey);
-        Party party = entrance == null || !entrance.approachMeantBy(owner) ? null : owner.getParty();
+        Character owner = approachKeyAt(mapId) == null ? null : world.roster().onlineCharacter(ownerId);
+        Party party = owner == null || approachKey(mapId, Integer.MAX_VALUE, owner, true) == null ? null
+                : owner.getParty();
         if (party == null) {
             return;
         }
@@ -792,8 +992,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             int id = member.getId();
             Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
             Character bot = persona == null || world.roster().cachedOwnerOf(persona.id()) != ownerId ? null : bot(id);
-            if (bot != null && bot.getLevel() >= definition.type().getMinLevel()) {
-                supplies.checkIfShort(id, bossKey);
+            String key = bot == null ? null : approachKey(mapId, bot.getLevel(), owner, true);
+            if (key != null) {
+                supplies.checkIfShort(id, key);
             }
         }
     }
@@ -867,7 +1068,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             world.executor().submit("boss.entered " + seat.agentCharacterId(), () -> quota.entered(seat));
         }
         AgentBossRunDefinition definition = AgentBossRunCatalog.of(seat.bossKey());
-        if (definition != null && !definition.markerItemIds().isEmpty()) {
+        if (definition != null && !AgentBossRules.entryItems(definition.key()).isEmpty()) {
             world.executor().submit("boss.eye " + seat.agentCharacterId(), () -> eyeLine(seat, definition));
         }
     }
@@ -878,6 +1079,17 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * companion-ops it is let go as one out OWNER_LEFT is: it takes orders, can be benched and restocks again while
      * another human fights on. Its line was its down line; another run's commitment is left alone.
      */
+    /**
+     * P17: the companion died in a re-enter run (Scarlion and Targa) and walks back in by the recruit NPC
+     * (AgentBossDeathWalk, then the run's talk to Aldol): it says so once, in its boss's words, on companion-ops.
+     */
+    @Override
+    public void reentering(Seat seat) {
+        int id = seat.agentCharacterId();
+        world.executor().submit("boss.reentering " + id,
+                () -> BossRunLines.say(world, seat.bossKey(), bot(id), BossRunLines.REENTER, null, 0));
+    }
+
     @Override
     public void ownerLeftWhileDown(Seat seat) {
         int id = seat.agentCharacterId();
@@ -889,6 +1101,138 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * companion this run allowed for {@code expedition} (its sign-up and the Start count and log nothing for it);
      * null, the stock count and log, for everyone else (CompanionBossQuota.answer).
      */
+    /**
+     * P12 G15, from memory, any thread: true while living_world.COMPANION_BOSS_ENABLED_TYPES lists {@code key}, a boss
+     * or a field group (AgentBossRunHost.Rule.bossEnabled).
+     */
+    @Override
+    public boolean bossEnabled(String key) {
+        LivingWorldConfig config = world.config();
+        return config != null && config.companionBossEnabled(key);
+    }
+
+    /**
+     * P12 G11, on the Agent's tick, from memory: true while {@code agent} is a companion of the human it follows (its
+     * owner) on the recruit or gate map of a boss the switch lists, and the owner stands on that map too. Its summons
+     * are then barred where the map forbids them (Showa's 801040004, which holds Male Boss and his guards).
+     */
+    @Override
+    public boolean besideOwnerAtBossGate(Character agent) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        LivingWorldConfig config = world.config();
+        if (map == null || config == null) {
+            return false;
+        }
+        int mapId = map.getId();
+        boolean gate = AgentBossRunCatalog.all().stream().anyMatch(definition ->
+                definition.recruitMapId() == mapId && config.companionBossEnabled(definition.key()));
+        int ownerId = gate ? AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) : 0;
+        Persona persona = ownerId <= 0 ? null : world.residents().personaOfCharacterId(agent.getId());
+        return persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId
+                && map.getCharacterById(ownerId) != null;
+    }
+
+    /**
+     * P15 G8, from memory: the key of the party boss whose gate {@code mapId} is (its run catalog row's recruit map:
+     * Papulatus's 220080000) while the switch lists it; null anywhere else.
+     */
+    public String partyGateKeyAt(int mapId) {
+        LivingWorldConfig config = world.config();
+        if (config == null) {
+            return null;
+        }
+        for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
+            if (definition.partyInstance() && definition.recruitMapId() == mapId
+                    && config.companionBossEnabled(definition.key())) {
+                return definition.key();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * P15 G8 (RosterService.ownerEnteredMap, on the thread that moves the owner, memory only): the owner came onto
+     * party boss {@code bossKey}'s gate; a companion of theirs with no entry of it left today stays off it
+     * (CompanionBossGateCap).
+     */
+    public void ownerAtPartyGate(int ownerId, int mapId, String bossKey) {
+        gateCap.ownerEntered(ownerId, mapId, bossKey);
+    }
+
+    /** P15 G8, from memory: true while the companion is held off its owner's party boss gate (no entry left). */
+    public boolean heldOffGate(int companionId) {
+        return gateCap.holds(companionId);
+    }
+
+    /**
+     * The character died (LivingWorldHooks.playerDied, on the dying thread): its map is read here, and companion-ops
+     * decides whether a companion that died beside a field boss rests in town first (P13, CompanionFieldBossRest).
+     */
+    public void died(Character chr) {
+        MapleMap map = chr == null ? null : chr.getMap();
+        if (map == null || map.getEventInstance() != null) {
+            return;
+        }
+        int id = chr.getId();
+        long now = System.currentTimeMillis();
+        world.executor().submit("boss.field_rest " + id, () -> fieldRest.died(id, map, now));
+    }
+
+    /**
+     * P13 G14 (decision 18), from memory, on whatever thread follows: true while the companion rests in town after a
+     * death beside a field boss (CompanionFieldBossRest), so the follow guard keeps it off follow.
+     */
+    public boolean restsAfterFieldBoss(int characterId) {
+        return fieldRest.resting(characterId, System.currentTimeMillis());
+    }
+
+    /**
+     * P13 G14, on the Agent's tick, from memory, for a field group's boss whose key is on: a companion (it follows its
+     * owner) may hit it once a player of its party has hit that very boss (its damage record lists one), so it joins
+     * the owner's fight and a respawn waits for a player's first hit (decision 17). A citizen, or a Resident out on its
+     * own, never hits it (decision 19); the boss's attacks still reach it. P16: a group's add (Pianus's Bloody Boom,
+     * the group's {@code adds}) is fair game once a player of the party has hit one of the group's own bosses on its
+     * map, as a player clears the summons of the boss they fight.
+     */
+    @Override
+    public boolean mayEngageFieldBoss(Character agent, Monster boss) {
+        Persona persona = agent == null || boss == null ? null : world.residents().personaOfCharacterId(agent.getId());
+        int ownerId = persona == null ? 0 : world.roster().cachedOwnerOf(persona.id());
+        Party party = ownerId <= 0 || AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) != ownerId
+                ? null : agent.getParty();
+        if (party == null) {
+            return false;
+        }
+        Set<Integer> players = new HashSet<>();
+        for (PartyCharacter member : party.getMembers()) {
+            if (!member.isBot()) {
+                players.add(member.getId());
+            }
+        }
+        if (players.isEmpty()) {
+            return false;
+        }
+        return boss.highestDamagerIdWhere(players::contains) != 0 || groupBossHitBy(boss, players);
+    }
+
+    /**
+     * P16: true when {@code add} is its field group's add and {@code players} hit a live boss of that group on its map.
+     */
+    private static boolean groupBossHitBy(Monster add, Set<Integer> players) {
+        AgentBossRules.Boss group = AgentBossRules.of(AgentBossRules.fieldKeyOf(add.getId()));
+        MapleMap map = group == null || !group.adds().contains(add.getId()) ? null : add.getMap();
+        if (map == null) {
+            return false;
+        }
+        for (Monster other : map.getAllMonsters()) {
+            if (other != add && other.isAlive() && group.fieldBosses().contains(other.getId())
+                    && !group.adds().contains(other.getId()) && other.highestDamagerIdWhere(players::contains) != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Boolean bossQuota(int characterId, Expedition expedition, boolean logEntry) {
         return quota.answer(characterId, expedition, logEntry);
     }
@@ -1102,10 +1446,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * P8, Zakum's Eye of Fire: as the first of the owner's party companions goes in, the owner on the altar with one
-     * of the boss's marker items in their bag hears that companion say the marker line ({@link BossRunLines#ZAKUM_EYE})
-     * in party chat. Asked once per owner's run, at that first one, with or without the item; a bench ally going in
-     * first never asks (a party of bots has nobody to hear it).
+     * P8, Zakum's Eye of Fire (P19: Showa's comb too): as the first of the owner's party companions goes in, the owner
+     * on the battle map with one of the boss's marker items in their bag hears that companion say the marker line
+     * ({@link BossRunLines#ZAKUM_EYE}) in party chat. Asked once per owner's run, at that first one, with or without
+     * the item; a bench ally going in first never asks (a party of bots has nobody to hear it).
      */
     private void eyeLine(Seat seat, AgentBossRunDefinition definition) {
         CompanionBossRun run = whileOpen(seat);
@@ -1116,7 +1460,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         run.eyeAsked = true;
         Character owner = world.roster().onlineCharacter(run.ownerId);
         if (owner == null || owner.getMapId() != definition.battleMapId()
-                || definition.markerItemIds().stream().noneMatch(owner::haveItem)) {
+                || AgentBossRules.entryItems(definition.key()).stream().noneMatch(owner::haveItem)) {
             return;
         }
         BossRunLines.say(world, bot(id), BossRunLines.ZAKUM_EYE, null, 0, run);
@@ -1161,13 +1505,17 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         record(ended, wentIn, taken);
         logPotions(ended, wentIn, taken);
         if (ended.cleared()) {
+            befriend(ended, wentIn, taken);
             for (CompanionBossRun run : taken.values()) {
                 sayGg(run, wentIn);
             }
         }
     }
 
-    /** One companion_performance row per companion that went in, its owner the one who enlisted it. */
+    /**
+     * One companion_performance row per companion that went in, its owner the one who enlisted it, through the records
+     * (CompanionRunRecorder.save), so its card shows the run at once (P12 G12).
+     */
     private void record(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
         int durationS = (int) Math.max(0L, (ended.endedAtMs() - ended.startedAtMs()) / 1000L);
         for (MemberResult member : wentIn) {
@@ -1176,8 +1524,41 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 log.debug("boss run {} member {} has no persona; no record", ended.sessionId(), member.agentId());
                 continue;
             }
-            world.store().saveCompanionRun(new CompanionRunRow(member.enlistedBy(), member.agentId(), personaId,
-                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize()));
+            CompanionRunRow row = new CompanionRunRow(member.enlistedBy(), member.agentId(), personaId,
+                    ended.bossKey(), outcome(member, ended.cleared()), durationS, member.deaths(), ended.partySize());
+            CompanionPartyQuestService quests = world.partyQuests();
+            if (quests != null) {
+                quests.records().save(row);
+            } else {
+                world.store().saveCompanionRun(row);
+            }
+        }
+    }
+
+    /**
+     * P12 G12 (decision 23): a cleared run gives each owner online the friendship BOSS points once with each of their
+     * Resident companions that went in (Friendship.onBossRunCleared). The run's own boss kills gave none
+     * (LivingWorldHooks.mobKilled).
+     */
+    private void befriend(RunEnded ended, List<MemberResult> wentIn, Map<Integer, CompanionBossRun> taken) {
+        Friendship friendship = world.friendship();
+        if (friendship == null) {
+            return;
+        }
+        for (Map.Entry<Integer, CompanionBossRun> owner : taken.entrySet()) {
+            Character human = world.roster().onlineCharacter(owner.getKey());
+            List<Persona> companions = new ArrayList<>();
+            for (MemberResult member : human == null ? List.<MemberResult>of() : wentIn) {
+                String personaId = member.enlistedBy() == owner.getKey()
+                        ? personaId(owner.getValue(), member.agentId()) : null;
+                Persona persona = personaId == null ? null : world.content().persona(personaId);
+                if (persona != null) {
+                    companions.add(persona);
+                }
+            }
+            if (!companions.isEmpty()) {
+                friendship.onBossRunCleared(human, companions, ended.bossKey());
+            }
         }
     }
 
@@ -1260,18 +1641,33 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     // ---- the fight's server authority and the logout delegation ---------------------------------
 
     /**
-     * Easy Balrog's server-authority rule (EasyBalrogEncounterService), read once as the fight starts on the starting
-     * thread, from memory: true while the switch lists easy_balrog, COMPANION_BOSS_SERVER_AUTHORITY is on, and a
-     * companion signed up for this very fight is a player of {@code battleMap}'s event. The server then moves Balrog
-     * for the whole fight and its attacks reach the companions (the Poison Golem mechanism).
+     * Balrog's server-authority rule (EasyBalrogEncounterService), read once as the fight starts on the starting
+     * thread, from memory: true while COMPANION_BOSS_SERVER_AUTHORITY is on and {@link #companionFight} holds for
+     * {@code battleMap}. The server then moves Balrog for the whole fight and its attacks reach the companions (the
+     * Poison Golem mechanism).
      */
     public boolean forcesServerAuthority(MapleMap battleMap) {
         LivingWorldConfig config = world.config();
-        if (battleMap == null || config == null || !config.COMPANION_BOSS_SERVER_AUTHORITY
-                || !config.companionBossEnabled(AgentBossRunCatalog.EASY_BALROG.key())) {
+        return config != null && config.COMPANION_BOSS_SERVER_AUTHORITY && companionFight(battleMap);
+    }
+
+    /**
+     * Normal Balrog's companion-fight rule (EasyBalrogEncounterService.startNormal, P11 decision 4), and the second
+     * half of {@link #forcesServerAuthority}, read once as the fight starts, from memory: true while the switch lists
+     * the boss whose battle map {@code battleMap} is (easy_balrog on 105100400, balrog_normal on 105100300) and a
+     * companion signed up for this very fight is a player of its event.
+     */
+    public boolean companionFight(MapleMap battleMap) {
+        LivingWorldConfig config = world.config();
+        if (battleMap == null || config == null) {
             return false;
         }
-        return open.signedUpIn(battleMap.getEventInstance());
+        for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
+            if (definition.battleMapId() == battleMap.getId() && config.companionBossEnabled(definition.key())) {
+                return open.signedUpIn(battleMap.getEventInstance());
+            }
+        }
+        return false;
     }
 
     /**
