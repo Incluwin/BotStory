@@ -125,6 +125,20 @@ Run 6, two owners (needs ohboy; ohboy is gm 0):
    1 seat left for you."; after ohboy calls one, his picker shows plain lines "could come, but I can take no more of
    yours." Put 12 back.
 
+Run 6 live result 2026-10-12 19:42-20:25 (int/p9ax + a temporary `COMPANION_BOSS_OWNERS_MAX: 2`): PASS, step 7 not run.
+Crew B at Lv70 (Corvin in SilentSin's seat; the bench allies were Fenna and Corvin).
+- Step 4: Bossfriend's three allies and ohboy's two signed up; 15 members, `expeditionLeases` 5.
+- Step 5: Bossfriend's client was closed mid-fight. Three "Boss ally handed over ... heir=2" lines, exactly one
+  "Orrin : i'll see this through with you, ohboy." (a whisper, not in the server log), crew A despawned "owner
+  offline", the allies fought on.
+- Step 6: cleared with ohboy as the only human, 0 deaths. After out99 all five allies said goodbye ("good fight! back
+  to camp.") and went home; `expeditionLeases` 0, audit drift 0.
+- Found: the clear logged an ERROR in BalrogBattle_Easy.js (`eim.getLeader().getName()` with the leader logged out),
+  so the victory notice was lost. Fixed in both Balrog scripts (7f393f8ba).
+- Driving notes: an idle owner dies within 2 minutes (keep both owners alive: `!heal` through the GM queue, potions
+  by double-click). Call allies within the first minute: the list closes 60 s before the 5-minute clock, and the
+  expedition disbands if the fight has not started when the clock ends.
+
 Regression: set the two Part B switches back to "" and 1, restart, and check that Part A Run 1 shows the same windows;
 `!balrogtest quick` still clears; one KPQ and one HPQ desk run still work.
 
