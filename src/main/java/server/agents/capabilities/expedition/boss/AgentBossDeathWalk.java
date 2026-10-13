@@ -19,7 +19,9 @@ import java.util.function.BiConsumer;
 /**
  * The walk back after a death. A member that died in a boss fight comes to outside, where the battle map's return map
  * puts it. Follow would hold it in place there (its owner is in the event), so this step runs before follow on the
- * Agent's own tick, as a supply trip does (AgentTickPreflightRuntime), and spends the tick while it walks:
+ * Agent's own tick (AgentTickPreflightRuntime). It sets the walk's next move and the tick goes on, so the movement step
+ * makes it ({@link Step#MOVING}; a spent tick left the Agent standing where it came to, P15 live 2026-10-13). While a
+ * supply trip of its own is under way the walk waits and the live tick runs the trip:
  * <ul>
  * <li>P15, decision 9: for a boss whose rules name a {@code deathWaitMap} (Papulatus: from Ludibrium to the gate
  * 220080000), a member down outside walks there on foot and waits for its owner.</li>
@@ -56,13 +58,23 @@ public final class AgentBossDeathWalk {
     private record Target(int mapId, int npcId) {
     }
 
+    /** What one tick of the walk asks of the rest of the Agent's tick. */
+    public enum Step {
+        /** No walk now: the tick goes on as usual. */
+        NONE,
+        /** It walks: the tick goes on so the movement step makes the move this step set; nothing else plans. */
+        MOVING,
+        /** It stands (P18, before its move in): the tick is spent. */
+        HOLD
+    }
+
     private AgentBossDeathWalk() {
     }
 
-    /** One Agent tick, before follow: true spends the tick (it walks toward its target). */
-    public static boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
+    /** One Agent tick, before follow. */
+    public static Step tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
         if (entry == null || agent == null) {
-            return false;
+            return Step.NONE;
         }
         int id = agent.getId();
         AgentBossRunSession session = AgentBossRunRegistry.forMember(id); // one map read: the fast path
@@ -72,14 +84,14 @@ public final class AgentBossDeathWalk {
             if (!WALKS.isEmpty()) {
                 WALKS.remove(id);
             }
-            return false;
+            return Step.NONE;
         }
         Walk walk = WALKS.get(id);
         if (walk != null && (walk.sessionId() != session.sessionId() || walk.deaths() != member.deaths())) {
             walk = null;
         }
         if (walk != null && walk.stopped() || !agent.isAlive()) {
-            return false;
+            return Step.NONE;
         }
         if (walk == null) {
             walk = new Walk(session.sessionId(), member.deaths(), nowMs);
@@ -89,39 +101,39 @@ public final class AgentBossDeathWalk {
                     target.npcId());
         } else if (nowMs - walk.startedAtMs() >= timeoutMs()) {
             stop(id, session, member, agent, target, "timed out");
-            return false;
+            return Step.NONE;
         }
         if (agent.getMapId() == target.mapId()) {
             if (target.npcId() > 0) {
                 return towardNpc(entry, agent, session, member, target);
             }
             stop(id, session, member, agent, target, "arrived");
-            return false;
+            return Step.NONE;
+        }
+        if (supplyTripUnderWay(entry)) {
+            return Step.NONE; // its own shop trip (potions or ammo) moves it, in the live tick
         }
         int warpFrom = reentryWarpFrom(session, member);
-        if (warpFrom > 0 && supplyTripUnderWay(entry)) {
-            return false; // its own shop trip (potions or ammo) moves it, in the live tick
-        }
         if (warpFrom > 0 && agent.getMapId() == warpFrom) {
             long since = nowMs - walk.startedAtMs();
             if (AgentSupplyReadiness.restockPending(entry, nowMs) && since < AgentBossRunSession.verdictWaitMs()) {
-                return false; // its restock decides in the live tick, which a consumed tick would skip
+                return Step.NONE; // its restock decides in the live tick, which a spent tick would skip
             }
             if (since >= reentryWarpAfterMs()) {
                 log.info("Boss death walk moved in: session={} boss={} member={} from map={} to map={}",
                         session.sessionId(), session.definition().key(), id, warpFrom, target.mapId());
                 mover.accept(agent, target.mapId());
             }
-            return true; // it comes to and says its line before it is moved in; it stands meanwhile
+            return Step.HOLD; // it comes to and says its line before it is moved in; it stands meanwhile
         }
         int walkTo = warpFrom > 0 ? warpFrom : target.mapId();
         AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(entry, agent, walkTo,
                 nowMs);
         if (outcome.status() == AgentRouteStatus.NO_ROUTE) {
             stop(id, session, member, agent, target, "no route");
-            return false;
+            return Step.NONE;
         }
-        return outcome.status() != AgentRouteStatus.ARRIVED;
+        return outcome.status() == AgentRouteStatus.ARRIVED ? Step.NONE : Step.MOVING;
     }
 
     /** True while {@code agentId} walks back in an open run (tests and the runtime report). */
@@ -184,23 +196,23 @@ public final class AgentBossDeathWalk {
         return waitMap > 0 ? new Target(waitMap, 0) : null;
     }
 
-    /** On the target map: walks up to the NPC and spends the tick; beside it, stops and waits (false). */
-    private static boolean towardNpc(AgentRuntimeEntry entry, Character agent, AgentBossRunSession session,
+    /** On the target map: walks up to the NPC (MOVING); beside it, stops and waits (NONE). */
+    private static Step towardNpc(AgentRuntimeEntry entry, Character agent, AgentBossRunSession session,
                                      AgentBossRunMember member, Target target) {
         Point npc = AgentPrimitiveCapabilityGatewayRuntime.gateway().npcPosition(agent, target.npcId());
         Point at = agent.getPosition();
         if (npc == null || at == null) {
             stop(agent.getId(), session, member, agent, target, "no NPC");
-            return false;
+            return Step.NONE;
         }
         long reach = AgentBossRunSession.exitReachPx();
         if (at.distanceSq(npc) <= reach * reach) {
             AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
             stop(agent.getId(), session, member, agent, target, "arrived");
-            return false;
+            return Step.NONE;
         }
         AgentPrimitiveCapabilityGatewayRuntime.gateway().navigate(entry, npc, true);
-        return true;
+        return Step.MOVING;
     }
 
     private static boolean anchorInRun(AgentBossRunSession session, AgentBossRunMember member) {

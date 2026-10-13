@@ -40,8 +40,12 @@ public final class AgentTickPreflightRuntime {
                         true, result.agent(), result.runAiTick());
             }
             // P15: a member that died in a boss fight walks back to its boss's wait map before follow holds it
-            if (AgentBossDeathWalk.tick(entry, result.agent(), nowMs)) {
+            AgentBossDeathWalk.Step walk = AgentBossDeathWalk.tick(entry, result.agent(), nowMs);
+            if (walk == AgentBossDeathWalk.Step.HOLD) {
                 return new AgentTickPreflightService.Result(true, result.agent(), result.runAiTick());
+            }
+            if (walk == AgentBossDeathWalk.Step.MOVING) {
+                return result; // the movement step makes the walk's move; the world director plans nothing meanwhile
             }
             AgentWorldDirectorObserveRuntime.tick(entry, result.agent(), nowMs);
             AgentWorldDirectorExecutionRuntime.tick(entry, result.agent(), nowMs);

@@ -11,6 +11,7 @@ import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.capabilities.expedition.boss.AgentBossDeathWalk.Step;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -93,11 +94,11 @@ class AgentBossDeathWalkTest {
     }
 
     @Test
-    void aMemberDownInLudibriumWalksToTheGateAndSpendsItsTick() {
+    void aMemberDownInLudibriumWalksToTheGateAndLeavesTheMoveToTheTick() {
         Character thane = downOutside(AgentBossRunCatalog.PAPULATUS, LUDIBRIUM);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
 
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 1_000L));
         assertTrue(AgentBossDeathWalk.walking(THANE));
         verify(gateway).travelTo(entry, thane, GATE, 1_000L);
     }
@@ -106,13 +107,13 @@ class AgentBossDeathWalkTest {
     void onTheGateItStopsAndWaits() {
         Character thane = downOutside(AgentBossRunCatalog.PAPULATUS, LUDIBRIUM);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 1_000L));
 
         when(thane.getMapId()).thenReturn(GATE);
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 2_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 2_000L));
         assertFalse(AgentBossDeathWalk.walking(THANE));
         when(thane.getMapId()).thenReturn(LUDIBRIUM);
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 3_000L), "one walk per run");
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 3_000L), "one walk per run");
         verify(gateway, times(1)).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -121,7 +122,7 @@ class AgentBossDeathWalkTest {
         Character thane = downOutside(AgentBossRunCatalog.PAPULATUS, LUDIBRIUM);
         when(event.getPlayerById(OWNER)).thenReturn(null);
 
-        assertFalse(AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -130,7 +131,7 @@ class AgentBossDeathWalkTest {
         Character thane = downOutside(AgentBossRunCatalog.PAPULATUS, 220_080_001);
         when(thane.isAlive()).thenReturn(false);
 
-        assertFalse(AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -141,8 +142,8 @@ class AgentBossDeathWalkTest {
         when(gateway.travelTo(any(), any(), anyInt(), anyLong()))
                 .thenReturn(new AgentRouteOutcome(AgentRouteStatus.NO_ROUTE, LUDIBRIUM, -1, GATE, false));
 
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L));
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 2_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 2_000L));
         verify(gateway, times(1)).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -153,9 +154,9 @@ class AgentBossDeathWalkTest {
         long timeout = config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.TIMEOUT_MS");
 
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, timeout));
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L + timeout));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, timeout));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L + timeout));
         assertFalse(AgentBossDeathWalk.walking(THANE));
         verify(gateway, times(2)).travelTo(any(), any(), anyInt(), anyLong());
     }
@@ -164,7 +165,7 @@ class AgentBossDeathWalkTest {
     void aBossWithNoWaitMapKeepsItsMemberWhereItCameTo() {
         Character thane = downOutside(AgentBossRunCatalog.LATANICA, 541_000_000);
 
-        assertFalse(AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -175,7 +176,7 @@ class AgentBossDeathWalkTest {
         session.admit(THANE, OWNER, 0L, AgentBossRunMember.Kind.FOLLOWER).adopted();
         Character thane = agent(LUDIBRIUM);
 
-        assertFalse(AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(new AgentRuntimeEntry(thane, null, null), thane, 1_000L));
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
     }
 
@@ -194,17 +195,17 @@ class AgentBossDeathWalkTest {
         Character thane = agent(KAMPUNG);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
 
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 1_000L));
         verify(gateway).travelTo(entry, thane, SCARGA_GATE, 1_000L);
 
         when(thane.getMapId()).thenReturn(SCARGA_GATE);
         when(thane.getPosition()).thenReturn(new Point(-400, 426));
         when(gateway.npcPosition(thane, ALDOL)).thenReturn(new Point(1693, 353));
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 2_000L), "on the map, it walks up to Aldol");
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 2_000L), "on the map, it walks up to Aldol");
         verify(gateway).navigate(entry, new Point(1693, 353), true);
 
         when(thane.getPosition()).thenReturn(new Point(1690, 353));
-        assertFalse(AgentBossDeathWalk.tick(entry, thane, 3_000L), "beside him it stops and waits");
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 3_000L), "beside him it stops and waits");
         verify(gateway).stop(entry);
         assertFalse(AgentBossDeathWalk.walking(THANE));
 
@@ -212,7 +213,7 @@ class AgentBossDeathWalkTest {
         member.died();
         member.reentering(4_000L);
         when(thane.getMapId()).thenReturn(KAMPUNG);
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 5_000L), "a new death walks again");
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 5_000L), "a new death walks again");
     }
 
     /**
@@ -230,17 +231,17 @@ class AgentBossDeathWalkTest {
         long after = config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossDeathWalk.REENTRY_WARP_AFTER_MS");
 
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L), "it stands in Leafre first");
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after - 1));
+        assertEquals(Step.HOLD, AgentBossDeathWalk.tick(entry, thane, 1_000L), "it stands in Leafre first");
+        assertEquals(Step.HOLD, AgentBossDeathWalk.tick(entry, thane, 1_000L + after - 1));
         assertTrue(movedTo.isEmpty());
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after));
+        assertEquals(Step.HOLD, AgentBossDeathWalk.tick(entry, thane, 1_000L + after));
         assertEquals(List.of(CAVE_ENTRANCE), movedTo);
         verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
 
         when(thane.getMapId()).thenReturn(CAVE_ENTRANCE);
         when(thane.getPosition()).thenReturn(new Point(4, 175));
         when(gateway.npcPosition(thane, MARK)).thenReturn(new Point(898, 260));
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 2_000L + after), "it walks up to the Mark");
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 2_000L + after), "it walks up to the Mark");
         verify(gateway).navigate(entry, new Point(898, 260), true);
         assertEquals(List.of(CAVE_ENTRANCE), movedTo, "moved once");
     }
@@ -251,7 +252,7 @@ class AgentBossDeathWalkTest {
         Character thane = agent(240_010_000);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
 
-        assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 1_000L));
         verify(gateway).travelTo(entry, thane, LEAFRE, 1_000L);
     }
 
@@ -297,33 +298,66 @@ class AgentBossDeathWalkTest {
 
         try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class)) {
             readiness.when(() -> AgentSupplyReadiness.restockPending(eq(entry), anyLong())).thenReturn(true);
-            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L), "still deciding: the live tick runs it");
-            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L + verdictWait - 1), "still deciding");
+            assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L), "still deciding: the live tick runs it");
+            assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L + verdictWait - 1), "still deciding");
 
             trip.start("restock-1", "objective-1", AgentResourceCategory.THROWING_STAR);
             when(thane.getMapId()).thenReturn(LEAFRE_STORE);
-            assertFalse(AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait),
+            assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait),
                     "an ammo trip under way on the store map: the trip moves it");
             verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
             assertTrue(movedTo.isEmpty());
 
             trip.clear();
             when(thane.getMapId()).thenReturn(LEAFRE);
-            assertTrue(AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait));
+            assertEquals(Step.HOLD, AgentBossDeathWalk.tick(entry, thane, 1_000L + after + verdictWait));
         }
         assertEquals(List.of(CAVE_ENTRANCE), movedTo, "back in Leafre, with the decision past its wait");
     }
 
     /**
-     * The tick order the walk's hand-over relies on: the walk runs in the preflight, and a consumed preflight skips the
-     * live gates; there a companion's supply maintenance (objective supervision) runs before the recovery gate, whose
-     * follow map sync holds a companion in place while its owner is in the cave.
+     * P15 live 2026-10-13: a member down in Ludibrium stood where it came to for the whole walk, because a spent tick
+     * never reaches the movement step. Walking, the preflight goes on (the world director waits), and only the P18
+     * stand before the move in spends the tick.
+     */
+    @Test
+    void aWalkingMemberLeavesTheTickGoingSoItMoves() throws java.io.IOException {
+        String preflight = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/java/server/agents/runtime/AgentTickPreflightRuntime.java"));
+        int walk = preflight.indexOf("AgentBossDeathWalk.Step walk = AgentBossDeathWalk.tick(entry, result.agent(), nowMs);");
+        int hold = preflight.indexOf("if (walk == AgentBossDeathWalk.Step.HOLD) {", walk);
+        int moving = preflight.indexOf("if (walk == AgentBossDeathWalk.Step.MOVING) {", hold);
+        int director = preflight.indexOf("AgentWorldDirectorObserveRuntime.tick(", moving);
+        assertTrue(walk >= 0 && hold > walk && moving > hold && director > moving);
+        assertTrue(preflight.substring(moving, director).contains("return result;"), "moving: not consumed");
+    }
+
+    /** A member down in Ludibrium with a shop trip of its own under way: the trip moves it, the walk waits. */
+    @Test
+    void aPlainWalkWaitsWhileTheMembersOwnShopTripRuns() {
+        Character thane = downOutside(AgentBossRunCatalog.PAPULATUS, LUDIBRIUM);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        AgentSupplyProcurementState trip = entry.capabilityStates().require(AgentSupplyProcurementState.STATE_KEY);
+        trip.start("restock-1", "objective-1", AgentResourceCategory.HP_POTION);
+
+        assertEquals(Step.NONE, AgentBossDeathWalk.tick(entry, thane, 1_000L));
+        verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
+
+        trip.clear();
+        assertEquals(Step.MOVING, AgentBossDeathWalk.tick(entry, thane, 2_000L));
+        verify(gateway).travelTo(entry, thane, GATE, 2_000L);
+    }
+
+    /**
+     * The tick order the walk's hand-over relies on: the walk runs in the preflight; in the live gates a companion's
+     * supply maintenance (objective supervision) runs before the recovery gate, whose follow map sync holds a
+     * following companion in place while its owner is in the cave.
      */
     @Test
     void theLiveTickRunsSupplyMaintenanceBeforeFollowSync() throws java.io.IOException {
         String preflight = java.nio.file.Files.readString(
                 java.nio.file.Path.of("src/main/java/server/agents/runtime/AgentTickPreflightRuntime.java"));
-        assertTrue(preflight.contains("if (AgentBossDeathWalk.tick(entry, result.agent(), nowMs)) {"));
+        assertTrue(preflight.contains("AgentBossDeathWalk.Step walk = AgentBossDeathWalk.tick(entry, result.agent(), nowMs);"));
         String gates = java.nio.file.Files.readString(
                 java.nio.file.Path.of("src/main/java/server/agents/runtime/AgentLiveTickGateService.java"));
         int supervision = gates.indexOf("hooks.objectiveSupervisionTick().tick(");
