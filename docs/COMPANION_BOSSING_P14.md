@@ -106,6 +106,39 @@ Neo City:
 5. Repeat for 240070302, 240070402, 240070502 and 240070602.
 6. On Dunas and Nibelung, check that companions stop or switch targets during immunity.
 
+## Live result 2026-10-13 12:17-13:04 (int/p9ba 5c13f07e9, temporary keys latanica + the five neo_ keys)
+
+Owner ohboy (Lv100 Hermit, gm 0) with crew B (Brannock, Garrick, Ilse, Fenna, Corvin, Lv100). Bossfriend gave items
+and warps through the GM queue and healed ohboy. 0 ERROR lines. Keys reverted, committed config live at 13:04.
+
+Latanica (two runs):
+
+- Step 4 (Boat Quay Town): no companion was short of 150/100, so none shopped.
+- Steps 5-7: the party entered (run opened, 5 admitted, `inside=5 partySize=6`); the essence on the reactor spawned
+  him. PASS.
+- Fight: run 1 cleared 43 s after the spawn with ohboy not attacking, so the companions dealt the 2M HP. Run 2 cleared
+  in about 50 s. PASS.
+- Step 8: `!bossmirror status` in run 2: attacks=21 mirrored=18 applied=33, so his attacks hit the companions. PASS.
+  Finding: the mirror's shapes do not match the owner's client. Attack 1 reported 11 / matched 0, attack 2 reported
+  14 / matched 0, attack 3 reported 1 / matched 1 with 8 predicted hits the client never reported. Open.
+- Step 9: `!hpmp Garrick 0`: down 12:35:01, out=DIED 12:35:06, revived in Boat Quay Town and said "sorry, got knocked
+  out. waiting outside."; he met ohboy at the exit map after the clear. PASS.
+- Step 10: after Bob, all five came out (run 1 at once, run 2 within about 40 s). PASS.
+
+Neo City:
+
+- Step 2 (Leafre): Corvin and Fenna were short of Nibelung's 250 HP potions, shopped at 240000002 and came back
+  ("stocked. let's hunt."), each with 250. PASS.
+- Bergamot: entered, cleared in 10 s, all five left with ohboy. PASS.
+- Dunas: cleared in 7 s. PASS. (A first attempt ended in 2 s because a second up press took ohboy out the entry
+  map's portal; the companions left with him, as designed.)
+- Step 4 (seal, stopMotion) and step 6 (immunity on Dunas): not observed. Lv100 companions kill a Neo City boss in
+  seconds, before any skill window. Unit tests only.
+- Not run: Aufheben, Oberon, Nibelung (the airship gate's guards kept ohboy off its ladder).
+
+Driving notes: the Latanica portal sits on a ledge above the floor (jump onto it first); drop the essence within 30 px
+of the reactor at x=-146; on Neo City gates press up once and check the map, since a second press leaves.
+
 ## Risks
 
 - Unconfirmed: whether 10 minutes is enough for Latanica's 2M HP.
