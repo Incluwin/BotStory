@@ -232,6 +232,12 @@ public class StatEffect {
     }
 
     public boolean isActive(Character applyto) {
+        // Only a party card buff reads the party. Reading it takes prtLock, and Character.reapplyLocalStats
+        // (getStackedBuffedValue) asks this under the stat write lock, while prtLock comes first (updateLocalStats,
+        // updatePartyMemberHP): a level-up there against a party HP update on the same character deadlocked.
+        if (cardStats == null || !cardStats.party) {
+            return isEffectActive(applyto.getMapId(), false);
+        }
         return isEffectActive(applyto.getMapId(), applyto.getPartyMembersOnSameMap().size() > 1);
     }
 
