@@ -118,6 +118,21 @@ Partial, stopped early. Run on crew B at Lv100 (ohboy gm 0), with crew A for ste
   revived from, and Keep my crew fresh leaves a companion alone while its field-boss rest runs.
 - Not run: Eliza, Snowman and Kimera, and the crew B balance runs.
 
+### Live result 2026-10-13 05:35-06:09 (int/p9az f510dca73, the two fixes, same temporary keys)
+
+Crew B at Lv100 (ohboy gm 0). 0 ERROR lines. Keys reverted at 06:10.
+
+- Snack Bar: PASS. ohboy broke the stand; the companions then killed the revived boss with him.
+- Eliza: PASS. She stayed at 100% for about 3 minutes beside the companions, then died seconds after ohboy's throws.
+- Kimera: PASS. She stayed at 100% for about a minute beside them, then died within a minute of ohboy's hit.
+- Snowman: the rule before the hit PASS (100% for about 3.5 minutes). After ohboy's hit no companion dealt damage
+  for 4+ minutes. Snowman's stun (mob skill 123) hit all five at 05:54:41 ("Boss disabled ... STUN"); three then
+  stood still at the map's left edge (-360,274) and two at the foot of a rope (468,231) until ohboy left the map, when
+  all five followed him at once. The field mirror worked there (applied=16, the stun reached Corvin and Fenna
+  again). Cause not found; first suspects: AgentBossDisabledState holding the tick while a stun lasts (a stun that
+  does not wear off), and a STUN on a rope (not grounded) calling stop() every tick. Open.
+- Keep my crew fresh: no death this time, so the fix was not exercised live (unit test only).
+
 ## Risks
 
 - Jr. Balrog (MAD 605) can one-shot a Lv40 companion once mirrored.
