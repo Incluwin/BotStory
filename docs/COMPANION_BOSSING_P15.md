@@ -29,7 +29,7 @@ Example: `papulatus` on, the owner leading a party with companions, the Piece of
 
 | Key | Boss | Gate, battle map | Standard (HP/MP potions, projectiles) |
 |---|---|---|---|
-| `papulatus` | Papulatus | 220080000, 220080001 | 300/300, 2500 |
+| `papulatus` | Papulatus | 220080000, 220080001 | 450/300, 2500 (HP was 300 until the first live run) |
 
 MP equals HP because attack1 is deadly: it sets members to 1 HP and 1 MP.
 
@@ -58,7 +58,7 @@ MP equals HP because attack1 is deadly: it sets members to 1 HP and 1 MP.
 
 `agent-engine.yaml`:
 
-- `papulatus=300/300` joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `papulatus=2500` joins `AMMO_STANDARDS`.
+- `papulatus=450/300` (300/300 until 2026-10-13) joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `papulatus=2500` joins `AMMO_STANDARDS`.
 - New: `AgentBossDeathWalk.TIMEOUT_MS: '600000'` (10 minutes for the 12-map walk back).
 - New: `AgentBossAttackMirror.RANDOM_SPOT_HALF_WIDTH_PX: '35'` (half the width of the lightning frames).
 
