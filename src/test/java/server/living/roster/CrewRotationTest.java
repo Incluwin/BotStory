@@ -5,15 +5,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
+import server.life.Monster;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -186,6 +190,52 @@ class CrewRotationTest {
 
         now += game.config.AUTO_ROTATE_COOLDOWN_MS;
         assertNull(rotation.check(game.ann, now), "that death was seen: it swaps nobody again");
+    }
+
+    /**
+     * P13 (decision 18): a companion that goes down beside a covered field boss rests in town, then follows again
+     * (CompanionFieldBossRest), so neither its corpse nor that death swaps it out, during its rest or after it.
+     */
+    @Test
+    void oneThatWentDownBesideACoveredFieldBossRestsInsteadOfBeingSwapped() {
+        rotation.setKeepFresh(game.ann, true);
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "field_victoria";
+        MapleMap sanctuary = game.map(105_090_900);
+        Monster jrBalrog = mock(Monster.class);
+        when(jrBalrog.getId()).thenReturn(8_130_100);
+        when(jrBalrog.isAlive()).thenReturn(true);
+        when(jrBalrog.getMap()).thenReturn(sanctuary);
+        when(sanctuary.getAllMonsters()).thenReturn(List.of(jrBalrog));
+        ConcurrentHashMap<String, CompanionBossRun> parts = new ConcurrentHashMap<>();
+        CompanionBossRuns.OpenRuns open = mock(CompanionBossRuns.OpenRuns.class);
+        CompanionBossRuns runs = new CompanionBossRuns(game.world, open, id -> null, CompanionBossRuns.Supplies.LIVE,
+                parts, new CompanionBossAllies(game.world, open, parts, new CompanionBossQuota(open)));
+        AgentBossRunHost.install(runs);
+        when(game.world.bossRuns()).thenReturn(runs);
+        try {
+            Character down = game.bot(tobi);
+            when(down.getMap()).thenReturn(sanctuary);
+            when(down.getHp()).thenReturn(0);
+            rotation.died(down); // LivingWorldHooks.playerDied
+            assertNull(rotation.check(game.ann, now), "its corpse beside Jr. Balrog");
+            runs.died(down);
+
+            now += game.config.AUTO_ROTATE_TICK_MS;
+            MapleMap town = game.map(LITH);
+            when(down.isAlive()).thenReturn(true);
+            when(down.getMap()).thenReturn(town);
+            when(down.getHp()).thenReturn(50);
+            when(down.getCurrentMaxHp()).thenReturn(4000);
+            assertNull(rotation.check(game.ann, now), "revived in town, it rests");
+
+            now += game.config.AUTO_ROTATE_TICK_MS;
+            when(down.getHp()).thenReturn(4000);
+            assertNull(rotation.check(game.ann, now), "back to full, it follows again");
+            assertEquals(RosterState.ACTIVE, game.row(tobi).state());
+            assertTrue(game.partyChat.isEmpty());
+        } finally {
+            AgentBossRunHost.install(null);
+        }
     }
 
     @Test

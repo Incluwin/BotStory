@@ -126,6 +126,8 @@ public class Monster extends AbstractLoadedLife {
     private final List<Integer> stolenItems = new ArrayList<>(5);
     private int team;
     private int parentMobOid = 0;
+    /** Who hit the forms this monster revived from (killBy), so the fight with Snack Bar's stand goes on with it. */
+    private volatile Set<Integer> hitBeforeRevive = Set.of();
     private int spawnEffect = 0;
     private final HashMap<Integer, AtomicLong> takenDamage = new HashMap<>();
     private ScheduledFuture<?> monsterItemDrop = null;
@@ -199,6 +201,28 @@ public class Monster extends AbstractLoadedLife {
 
     public void setParentMobOid(int parentMobId) {
         this.parentMobOid = parentMobId;
+    }
+
+    /** Who hit this monster or a form it revived from: what its own revived forms keep (killBy). */
+    Set<Integer> hittersSoFar() {
+        Set<Integer> hitters = new HashSet<>(takenDamage.keySet());
+        hitters.addAll(hitBeforeRevive);
+        return Set.copyOf(hitters);
+    }
+
+    /** This monster revived from a form {@code hitters} hit (killBy). */
+    void revivedFrom(Set<Integer> hitters) {
+        hitBeforeRevive = Set.copyOf(hitters);
+    }
+
+    /** True when {@code wanted} lets through a character who hit a form this monster revived from. */
+    public boolean hitBeforeReviveBy(IntPredicate wanted) {
+        for (int id : hitBeforeRevive) {
+            if (wanted.test(id)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public int countAvailableMobSummons(int summonsSize, int skillLimit) {    // limit prop for summons has another conotation, found thanks to MedicOP
@@ -866,6 +890,7 @@ public class Monster extends AbstractLoadedLife {
 
             if (toSpawn.size() > 0) {
                 final EventInstanceManager eim = this.getMap().getEventInstance();
+                final Set<Integer> hitters = hittersSoFar();
 
                 TimerManager.getInstance().schedule(() -> {
                     Character controller = lastController.getLeft();
@@ -876,6 +901,7 @@ public class Monster extends AbstractLoadedLife {
                         mob.setPosition(getPosition());
                         mob.setFh(getFh());
                         mob.setParentMobOid(getObjectId());
+                        mob.revivedFrom(hitters);
 
                         if (dropsDisabled()) {
                             mob.disableDrops();

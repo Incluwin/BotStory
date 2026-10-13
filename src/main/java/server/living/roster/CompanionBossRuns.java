@@ -1194,9 +1194,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * P13 G14, on the Agent's tick, from memory, for a field group's boss whose key is on: a companion (it follows its
-     * owner) may hit it once a player of its party has hit that very boss (its damage record lists one), so it joins
-     * the owner's fight and a respawn waits for a player's first hit (decision 17). A citizen, or a Resident out on its
-     * own, never hits it (decision 19); the boss's attacks still reach it. P16: a group's add (Pianus's Bloody Boom,
+     * owner) may hit it once a player of its party has hit that very boss (its damage record lists one), or a form it
+     * revived from (Snack Bar's stand, King Clang), so it joins the owner's fight and a respawn waits for a player's
+     * first hit (decision 17). A citizen, or a Resident out on its own, never hits it (decision 19); the boss's attacks
+     * still reach it. P16: a group's add (Pianus's Bloody Boom,
      * the group's {@code adds}) is fair game once a player of the party has hit one of the group's own bosses on its
      * map, as a player clears the summons of the boss they fight.
      */
@@ -1218,7 +1219,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (players.isEmpty()) {
             return false;
         }
-        return boss.highestDamagerIdWhere(players::contains) != 0 || groupBossHitBy(boss, players);
+        return boss.highestDamagerIdWhere(players::contains) != 0 || boss.hitBeforeReviveBy(players::contains)
+                || groupBossHitBy(boss, players);
     }
 
     /**

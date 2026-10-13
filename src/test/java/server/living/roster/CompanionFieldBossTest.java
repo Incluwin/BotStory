@@ -112,6 +112,20 @@ class CompanionFieldBossTest {
         return mob;
     }
 
+    /**
+     * Snack Bar: a player's hits land on the stand (Unknown Snack Bar 8220008), which revives as the boss 8220009 with
+     * an empty damage record. The fight goes on: the companions may hit the boss, since Ann hit the form it revived
+     * from. A boss that revived from a form nobody of her party hit still waits for her first hit.
+     */
+    @Test
+    void aBossThatRevivedFromAFormAPlayerHitIsFairGame() {
+        Monster snackBar = fieldMob(8_220_009, field);
+        assertFalse(runs.mayEngageFieldBoss(isolde, snackBar), "nobody of Ann's party hit it or its stand");
+        when(snackBar.hitBeforeReviveBy(any())).thenAnswer(invocation ->
+                ((IntPredicate) invocation.getArgument(0)).test(ANN));
+        assertTrue(runs.mayEngageFieldBoss(isolde, snackBar), "Ann broke its stand");
+    }
+
     @Test
     void aCitizenNeverHitsIt() {
         annHitIt = true;
