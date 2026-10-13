@@ -150,7 +150,8 @@ to the exit): `docs/agents/evidence/video/p15-papulatus-2026-10-13.mp4` (local, 
   "Boss death walk ... from map=220000000 to map=220080000". He then stood at his revive spot (-333,102) in Ludibrium
   for the whole walk and it "timed out" at 16:00:54 (TIMEOUT_MS 10 min). The route exists (12 hops, first portal
   tower00 at -96,29 toward 220010500); after the time-out he walked to that portal at once. Corvin's walk after his
-  death did not move either before the run ended. Cause not found yet.
+  death did not move either before the run ended. Cause not found yet. Fixed later that day in cc3ce6680 (a
+  companion down outside walks back instead of standing still); not run live again.
 - Step 13: after Machine Apparatus, the three members still inside came out (EXITED) and the run ended. PASS.
 - Step 14: bosslog_daily has PAPULATUS at 15:45:51 for ohboy and all five companions. PASS (no member stayed out, so
   the "none for one that stayed out" half was not exercised).
