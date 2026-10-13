@@ -100,6 +100,22 @@ Crew A on its Lv160 rung, from the plan.
 
 Memory gate stage and the crew B balance run: as in the plan, section P13.
 
+### Live result 2026-10-12 22:29-22:58 (int/p9ay + a temporary `easy_balrog,field_victoria,field_ossyria,field_nihal`)
+
+Partial, stopped early. Run on crew B at Lv100 (ohboy gm 0), with crew A for step 9. 0 ERROR lines.
+
+- Jr. Balrog, steps 4, 5 and 8: PASS. The companions stood beside it and left it at 100% until ohboy's first hit,
+  then killed it. They left the respawn (about 10 s later) at 100% for 50 s, until ohboy hit it again.
+- Step 6: partial. The field mirror counted 1 Jr. Balrog attack and applied 0 (the companions kill it in seconds).
+- Step 7: `!botcfg physicsstatus` showed 0 handoffs and 0 releases.
+- Step 9 (with Sorrel of crew A): PASS. He rested in Sleepywood and rejoined at the 2-minute cap (1838/3406 HP).
+- Finding 1, Snack Bar: a player's hits land on the 5,000-HP stand 8220008, which revives as the boss 8220009. The boss
+  is a new monster with no player damage, so the companions stood beside it for 2+ minutes and never attacked. Snack
+  Bar attacks first, and it killed ohboy. The engagement rule must carry a player's hit over to the revived form.
+- Finding 2: ohboy has "Keep my crew fresh" on. When Brannock died beside Jr. Balrog, it benched him at once
+  ("despawned: benched") with no one swapped in, so the P13 rest never ran for him.
+- Not run: Eliza, Snowman and Kimera, and the crew B balance runs.
+
 ## Risks
 
 - Jr. Balrog (MAD 605) can one-shot a Lv40 companion once mirrored.
