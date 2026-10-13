@@ -231,7 +231,24 @@ function monsterKilled(mob, eim) {
         eim.showClearEffect();
         eim.clearPQ();
         eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
-        mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
+        broadcastVictory(mob, eim);
+    }
+}
+
+// The leader can log out before the clear (a second owner's party fights on): name the first human still inside.
+function broadcastVictory(mob, eim) {
+    var victor = eim.getLeader();
+    if (victor == null) {
+        var BotClient = Java.type('client.BotClient');
+        var players = eim.getPlayers();
+        for (var i = 0; i < players.size() && victor == null; i++) {
+            if (!(players.get(i).getClient() instanceof BotClient)) {
+                victor = players.get(i);
+            }
+        }
+    }
+    if (victor != null) {
+        mob.getMap().broadcastBalrogVictory(victor.getName());
     }
 }
 

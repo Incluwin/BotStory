@@ -285,7 +285,7 @@ function monsterKilled(mob, eim) {
 
             eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
             eim.dispatchRaiseQuestMobCount(9101003, entryMap);
-            mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
+            broadcastVictory(mob, eim);
         }
         return;
     }
@@ -298,7 +298,7 @@ function monsterKilled(mob, eim) {
 
             eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
             eim.dispatchRaiseQuestMobCount(9101003, entryMap); // thanks Atoot for noticing quest not getting updated after boss kill
-            mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
+            broadcastVictory(mob, eim);
         } else {
             if (count == 1) {
                 var mapobj = eim.getInstanceMap(entryMap);
@@ -311,6 +311,23 @@ function monsterKilled(mob, eim) {
         if (isBalrogBody(mob)) {
             eim.schedule("spawnSealedBalrog", 10 * 1000);
         }
+    }
+}
+
+// The leader can log out before the clear (a second owner's party fights on): name the first human still inside.
+function broadcastVictory(mob, eim) {
+    var victor = eim.getLeader();
+    if (victor == null) {
+        var BotClient = Java.type('client.BotClient');
+        var players = eim.getPlayers();
+        for (var i = 0; i < players.size() && victor == null; i++) {
+            if (!(players.get(i).getClient() instanceof BotClient)) {
+                victor = players.get(i);
+            }
+        }
+    }
+    if (victor != null) {
+        mob.getMap().broadcastBalrogVictory(victor.getName());
     }
 }
 
