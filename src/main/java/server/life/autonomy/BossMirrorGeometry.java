@@ -11,6 +11,14 @@ import java.util.random.RandomGenerator;
  * every Zakum part) always uses them as stored, whatever facing bit its client sends.
  */
 public final class BossMirrorGeometry {
+    /**
+     * How tall a character stands above its foot point when an attack box is tested against it. The client hits
+     * the body, not the feet: a boss a few px above its floor has boxes that end above everyone on that floor
+     * (Capt. Latanica's attack1 and attack2 end at y 0 and 1, and his client hits came 2 to 33 px lower, P14 live
+     * 2026-10-13). About an avatar's height.
+     */
+    static final int BODY_HEIGHT = 60;
+
     private BossMirrorGeometry() {
     }
 
@@ -51,16 +59,17 @@ public final class BossMirrorGeometry {
     }
 
     /**
-     * True when the target point is inside the attack's shape. A noFlip part reads as facing
-     * left. A region attack tests the given regions, any other attack its box.
+     * True when the attack's shape reaches the target: its foot point, or the body {@link #BODY_HEIGHT}
+     * px above it. A noFlip part reads as facing left. A region attack tests the given regions, any
+     * other attack its box.
      */
     public static boolean hits(BossAction.OrdinaryAttack attack, Point origin, Point target,
                                boolean noFlip, boolean facingLeft, List<Integer> regions) {
         boolean left = noFlip || facingLeft;
         if (usesRegions(attack)) {
-            return BossActionGeometry.containsRegions(attack, origin, target, left, regions);
+            return BossActionGeometry.containsRegions(attack, origin, target, left, regions, BODY_HEIGHT);
         }
-        return BossActionGeometry.contains(attack, origin, target, left);
+        return BossActionGeometry.contains(attack, origin, target, left, List.of(), BODY_HEIGHT);
     }
 
     /**

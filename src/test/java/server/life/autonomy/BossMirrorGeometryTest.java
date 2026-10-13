@@ -171,6 +171,32 @@ class BossMirrorGeometryTest {
                 distributed, origin, new Point(0, -20), true, List.of(-1, 11)));
     }
 
+    /**
+     * Capt. Latanica stands a few px above his floor, and his attack1 and attack2 boxes end at y 0 and 1. His
+     * client's hits on ohboy came 2 to 33 px below him (P14 live 2026-10-13): the box hits the body, not the feet.
+     */
+    @Test
+    void aBoxThatEndsJustAboveTheFeetStillHitsTheBody() {
+        List<BossAction.OrdinaryAttack> latanica = ServerMobActionCatalog.forMob(9_420_513).attacks();
+        BossAction.OrdinaryAttack attack1 = latanica.get(0);
+        BossAction.OrdinaryAttack attack2 = latanica.get(1);
+        assertEquals(new Point(398, 0), attack1.rb());
+        assertEquals(new Point(90, 1), attack2.rb());
+        Point boss = new Point(-146, 223);
+
+        // the live misses, facing right
+        Point attack2Miss = new Point(boss.x + 98, boss.y + 2);
+        Point attack1Miss = new Point(boss.x + 675, boss.y + 33);
+        assertFalse(BossActionGeometry.contains(attack2, boss, attack2Miss, false), "the feet alone miss");
+        assertTrue(BossMirrorGeometry.hits(attack2, boss, attack2Miss, false, false, List.of()));
+        assertTrue(BossMirrorGeometry.hits(attack1, boss, attack1Miss, false, false, List.of()));
+        // a body wholly below the box, or beside it, is not hit
+        Point below = new Point(boss.x + 98, boss.y + 1 + BossMirrorGeometry.BODY_HEIGHT + 1);
+        assertFalse(BossMirrorGeometry.hits(attack2, boss, below, false, false, List.of()));
+        assertFalse(BossMirrorGeometry.hits(attack2, boss, new Point(boss.x + 600, boss.y + 2), false, false,
+                List.of()));
+    }
+
     private static BossAction.OrdinaryAttack firstAttack(int mobId) {
         return ServerMobActionCatalog.forMob(mobId).attacks().getFirst();
     }
