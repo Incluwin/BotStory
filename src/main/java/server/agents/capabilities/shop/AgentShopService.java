@@ -569,12 +569,12 @@ public final class AgentShopService {
         if (!itemOnlyVisit) {
             if (trip == null) {
                 actions.add((sequence, shop) ->
-                        buyPotionStock(sequence, shop, minimumMesoReserve));
+                        buyPotionStock(makeUseRoomForPotions(sequence, shop, wt), shop, minimumMesoReserve));
             } else {
                 // a readiness trip buys its ammo standard after the potion standard, before any potion past it
                 int[] potionsBought = {0, 0};
-                actions.add((sequence, shop) ->
-                        buyPotionStandard(sequence, shop, minimumMesoReserve, potionsBought));
+                actions.add((sequence, shop) -> buyPotionStandard(makeUseRoomForPotions(sequence, shop, wt), shop,
+                        minimumMesoReserve, potionsBought));
                 actions.add((sequence, shop) -> readinessAmmoStep(sequence, shop, bot, wt,
                         AgentSupplyReadiness.ammoTarget(trip), minimumMesoReserve));
                 actions.add((sequence, shop) ->
@@ -1301,6 +1301,58 @@ public final class AgentShopService {
                 potionRecoveryCapacity(bot, forHp),
                 forHp ? bot.getCurrentMaxHp() : bot.getCurrentMaxMp(),
                 AgentPotionPurchasePolicy.triggerReserveBars(forHp));
+    }
+
+    /**
+     * Use room for the potions a visit buys to its reserve bars: with fewer free slots than they take
+     * ({@link #potionSlotsNeeded}), it sells one stack of ammo for a weapon it does not wield
+     * (AgentInventorySellTrashService.collectUnusableAmmo) per slot missing, and nothing else. Found live 2026-10-13:
+     * the Spearman Demon744 kept 8 Unagi in the last slot of a Use tab of 96 holding some 20 stacks of looted arrows,
+     * so Perion's shop refused its White Potions (NO_SPACE) on every visit, and the trip was given up and taken again
+     * every ten minutes while its potions ran out.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoomForPotions(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt) {
+        Character bot = sequence.bot();
+        int missing = potionSlotsNeeded(bot, shop, sequence.inventory()) - freeUseSlots(bot);
+        if (missing <= 0) {
+            return sequence;
+        }
+        List<Integer> sold = new ArrayList<>();
+        for (Item item : AgentInventorySellTrashService.collectUnusableAmmo(
+                sequence.entry(), bot, wt, sequence.inventory())) {
+            if (sold.size() >= missing) {
+                break;
+            }
+            AgentShopGatewayRuntime.shop().sell(bot, shop, InventoryType.USE, item.getPosition(), item.getQuantity());
+            if (!AgentInventoryItemPolicy.hasItem(bot, item)) {
+                sold.add(item.getItemId());
+            }
+        }
+        log.info("Agent '{}' needs {} more free Use slot(s) for potions on map {}: sold ammo it does not use {}",
+                bot.getName(), missing, bot.getMapId(), sold);
+        return sequence;
+    }
+
+    /**
+     * The new Use slots a visit's reserve-bar potions take: per kind, what {@link #plannedPotionQuantity} plans of the
+     * coverage pick ({@link #findPotionItem}) past the room of the stacks of it carried, in whole stacks.
+     */
+    private static int potionSlotsNeeded(Character bot, Shop shop, InventoryGateway inventory) {
+        int slots = 0;
+        for (boolean forHp : new boolean[]{true, false}) {
+            ShopSlotItem potion = findPotionItem(shop, bot, forHp);
+            if (!needsPotionTarget(bot, potion, forHp)) {
+                continue;
+            }
+            int itemId = potion.shopItem.getItemId();
+            int beyond = plannedPotionQuantity(bot, potion, forHp) - stackRoom(bot, itemId, inventory);
+            if (beyond > 0) {
+                int perSlot = Math.max(1, inventory.getSlotMax(bot, itemId));
+                slots += (beyond + perSlot - 1) / perSlot;
+            }
+        }
+        return slots;
     }
 
     /** A visit's potions in one step: {@link #buyPotionStandard}, then {@link #buyPotionExtras}. */
@@ -2030,8 +2082,19 @@ public final class AgentShopService {
             boolean forHp,
             InventoryGateway inventory,
             int room) {
+        int plannedQuantity = Math.min(plannedPotionQuantity(bot, potion, forHp), room);
+        return plannedQuantity <= 0
+                ? null
+                : AgentDialogueCatalog.shopPurchaseIntent(
+                plannedQuantity,
+                resolveItemName(potion.shopItem.getItemId(), "potions", inventory),
+                forHp ? "HP" : "MP");
+    }
+
+    /** What a visit plans to buy of {@code potion} toward the target reserve bars, before its budget and room. */
+    private static int plannedPotionQuantity(Character bot, ShopSlotItem potion, boolean forHp) {
         int[] counts = AgentPotionService.countPotions(bot);
-        int plannedQuantity = AgentPotionPurchasePolicy.quantityToTarget(
+        return AgentPotionPurchasePolicy.quantityToTarget(
                 potionRecoveryCapacity(bot, forHp),
                 forHp ? counts[0] : counts[1],
                 potion.recovery.primary(),
@@ -2039,13 +2102,6 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.targetReserveBars(forHp),
                 0,
                 true);
-        plannedQuantity = Math.min(plannedQuantity, room);
-        return plannedQuantity <= 0
-                ? null
-                : AgentDialogueCatalog.shopPurchaseIntent(
-                plannedQuantity,
-                resolveItemName(potion.shopItem.getItemId(), "potions", inventory),
-                forHp ? "HP" : "MP");
     }
 
     private static ShopSlotItem findPotionItem(Shop shop, Character bot, boolean forHp) {

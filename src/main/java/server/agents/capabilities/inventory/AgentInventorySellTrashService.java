@@ -4,6 +4,7 @@ import client.Character;
 import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import client.inventory.WeaponType;
 import server.ItemRestrictionPolicy;
 import server.agents.capabilities.equipment.AgentEquipmentReservePolicy;
 import server.agents.capabilities.trade.AgentOfferService;
@@ -35,6 +36,23 @@ public final class AgentInventorySellTrashService {
             }
         }
         return result;
+    }
+
+    /**
+     * The Use stacks of ammo for a weapon other than {@code weaponType} (arrows a Spearman loots, say), in slot order,
+     * that a shop may take: no quest item, no untradeable one the world keeps, nothing reserved or held for an offer.
+     */
+    public static List<Item> collectUnusableAmmo(AgentRuntimeEntry entry, Character agent, WeaponType weaponType,
+                                                 InventoryGateway inventory) {
+        long nowMs = System.currentTimeMillis();
+        return AgentInventoryItemPolicy.collectSafeItems(agent, InventoryType.USE,
+                item -> AgentInventoryAmmoPolicy.isTradeAmmoItem(item.getItemId())
+                        && (weaponType == null
+                        || !AgentInventoryAmmoPolicy.isAmmoForWeapon(item.getItemId(), weaponType))
+                        && AgentInventoryReservationRuntime.mayConsume(entry, item, nowMs)
+                        && !AgentOfferService.isReservedForOtherRecipients(entry, agent, item),
+                inventory::isQuestItem,
+                itemId -> ItemRestrictionPolicy.allowsUntradeable(agent, itemId));
     }
 
     private static List<Item> collectNormalTradeEquips(AgentRuntimeEntry entry, Character agent, InventoryGateway inventory) {
