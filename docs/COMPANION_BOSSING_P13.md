@@ -133,6 +133,21 @@ Crew B at Lv100 (ohboy gm 0). 0 ERROR lines. Keys reverted at 06:10.
   does not wear off), and a STUN on a rope (not grounded) calling stop() every tick. Open.
 - Keep my crew fresh: no death this time, so the fix was not exercised live (unit test only).
 
+### Snowman fix and live result 2026-10-13 07:19-07:21 (int/p9ba 5c13f07e9, key field_ossyria only)
+
+Cause: the stun did wear off (the disease expiry task runs for Agents), but AgentBossDisabledState held a stunned
+member with a stop order every tick. A stop leaves follow mode and forgets the follow target. In a run the fight gives
+orders again once the state ends; beside a field boss nothing does, so the members stood still until ohboy changed
+maps. A banish went through the same stop.
+
+Fix (385db240b): the member records whom it followed when its first stun, seduce or confuse began and follows them
+again (or its configured target) once none is left, logging "recovered ... following again". A banish now only drops
+the path and keeps the mode. Two new tests fail on the old code. Suite on int/p9ba 13,671 / 0 / 37.
+
+- Snowman: PASS. His stun hit two companions at 07:19:54; both recovered at 07:19:57 and followed again. ohboy threw
+  at him about 07:20:00 and he died by 07:20:12. Snowman has 120,000 HP and ohboy's five throws deal at most about
+  20,000, so the companions did the rest. 0 ERROR lines. Key reverted, server back on the committed config at 07:22.
+
 ## Risks
 
 - Jr. Balrog (MAD 605) can one-shot a Lv40 companion once mirrored.
