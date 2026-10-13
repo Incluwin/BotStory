@@ -113,7 +113,9 @@ Partial, stopped early. Run on crew B at Lv100 (ohboy gm 0), with crew A for ste
   is a new monster with no player damage, so the companions stood beside it for 2+ minutes and never attacked. Snack
   Bar attacks first, and it killed ohboy. The engagement rule must carry a player's hit over to the revived form.
 - Finding 2: ohboy has "Keep my crew fresh" on. When Brannock died beside Jr. Balrog, it benched him at once
-  ("despawned: benched") with no one swapped in, so the P13 rest never ran for him.
+  ("despawned: benched") and swapped Garrick in from the bench, so the P13 rest never ran for him.
+- Both findings are fixed on feat/companion-bossing-p13-fixes (b53e22af6): a revived form keeps who hit the forms it
+  revived from, and Keep my crew fresh leaves a companion alone while its field-boss rest runs.
 - Not run: Eliza, Snowman and Kimera, and the crew B balance runs.
 
 ## Risks
