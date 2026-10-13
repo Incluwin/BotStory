@@ -110,6 +110,30 @@ The run:
 
 Rollback: set `COMPANION_BOSS_ENABLED_TYPES` back to `"easy_balrog"` and restart. Normal Balrog is then stock.
 
+### Live result 2026-10-12 21:05-21:12 (int/p9ax + a temporary `easy_balrog,balrog_normal`): PASS
+
+Crew B at Lv100: Brannock and Garrick (Crusader), Ilse (Priest), Fenna (Ranger), Corvin (Dragon Knight, in
+SilentSin's seat). ohboy Lv100 Hermit, gm 0. Run session=1 cleared in 3 min 20 s.
+
+- Steps 1-6: done. Exception: ohboy wore his Lv70 gear plus the Lv85 cape. The client refused every Lv90-100 thief
+  piece from `!bossgear me` with "Your stats are too low": the client's Character.wz asks DEX 140 for Red Craven, and
+  the server's copy asks DEX 0. The `auto` build gave ohboy DEX 126. Companions are not affected (no client check).
+- Step 9: Fenna and Corvin said a go line, bought at 1061001 and came back. Brannock, Garrick and Ilse were not short
+  (301-380 HP potions), so they did not go. They also got 300 Unagi and 300 Pure Water by `!giveitem` before the
+  potion line showed that. Companions left in Mu Young's room after the Easy run followed ohboy's `!warphere` only after
+  "follow me" in party chat.
+- Step 13: `!expeditions` listed 6. Step 14: "Normal Balrog encounter started ... serverAuthorityForced=true".
+- Step 16: every companion targeted 8830002, then 8830001 after the seal broke. Claws down in about 90 s.
+- Step 17: not observed. No 30 s status line fell in a reflect window.
+- Step 18: no companion summon (the only SUMMON lines are claw 8830001's own casts).
+- Step 19: `!hpmp Garrick 0` -> one "sorry, balrog got me. waiting outside.", out=DIED, he waited at 105100100.
+- Steps 20-22: only ohboy moved to 105100301, the companions followed, left by out99 with him, "we did it! gg.".
+- Step 23: `PQ potions ... pq=balrog_normal outcome=cleared`: HP potions used 0-147, MP potions 0-7 per companion.
+  The 300/300 standard is far above a 3-minute fight at rung 2; keep it until a slower crew is measured.
+- Client memory gate: ohboy's client virtual size 3,664 -> 4,047 MB of 4,096 (private 635 -> 1,034 MB), the same
+  level as P7 Easy run 2 (4,040 MB).
+- 0 ERROR lines from start to the walk-out.
+
 ## Not covered and known gaps
 
 - No bench-ally stage and no second owner. P7 Part B checks both on the same NPC and service.

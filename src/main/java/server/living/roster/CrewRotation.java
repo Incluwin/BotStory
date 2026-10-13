@@ -7,6 +7,7 @@ import client.inventory.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
+import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -87,10 +88,11 @@ public final class CrewRotation {
 
     /**
      * A character died (LivingWorldHooks.playerDied, any thread): a death outside an instance is kept until the look
-     * after it, which swaps a companion that went down even once it has revived in town.
+     * after it, which swaps a companion that went down even once it has revived in town. Not beside a covered field
+     * boss: the companion rests in town and follows again (P13, CompanionFieldBossRest).
      */
     public void died(Character chr) {
-        if (chr != null && chr.getEventInstance() == null && !keepFresh.isEmpty()) {
+        if (chr != null && chr.getEventInstance() == null && !keepFresh.isEmpty() && !AgentBossField.near(chr)) {
             downAtMs.put(chr.getId(), clock.getAsLong());
         }
     }
@@ -217,7 +219,7 @@ public final class CrewRotation {
                     ? world.content().persona(entry.personaId()) : null;
             Character bot = persona == null ? null : world.roster().companion(entry);
             if (bot == null || committed(bot.getId()) || world.roster().inFlight(owner.getId(), persona.id())
-                    || benchMayEndContract(owner, persona)) {
+                    || benchMayEndContract(owner, persona) || restsAfterFieldBoss(bot)) {
                 continue;
             }
             Long down = downAtMs.get(bot.getId());
@@ -316,6 +318,16 @@ public final class CrewRotation {
         Commitments commitments = world.commitments();
         return owner.getEventInstance() != null || commitments != null
                 && (commitments.isCommitted(owner.getId()) || commitments.ownerCommitted(owner.getId()));
+    }
+
+    /**
+     * P13 (decision 18): a companion that went down beside a covered field boss rests in town, then follows again
+     * (CompanionFieldBossRest). Its corpse beside the boss counts too, since the rest starts a moment later.
+     */
+    private boolean restsAfterFieldBoss(Character bot) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return bossRuns != null && bossRuns.restsAfterFieldBoss(bot.getId())
+                || bot.getHp() <= 0 && AgentBossField.near(bot);
     }
 
     private boolean committed(int characterId) {
