@@ -139,6 +139,13 @@ Neo City:
 Driving notes: the Latanica portal sits on a ledge above the floor (jump onto it first); drop the essence within 30 px
 of the reactor at x=-146; on Neo City gates press up once and check the map, since a second press leaves.
 
+### Mirror fix after P14 (43321aa79, live as int/p9bb 2026-10-13 15:31)
+
+Cause of the calibration finding: the mirror tested the target's foot point against the WZ box. Latanica stands a few
+px above his floor and his attack1/attack2 boxes end at y 0 and 1, so nobody on his floor was ever inside them (all 25
+misses had dy 2 to 33). BossMirrorGeometry now counts a target as a body BODY_HEIGHT (60) px tall on its feet; the
+server-owned boss AI keeps the point test. In P15's Papulatus run the mirror logged no calibration miss at all.
+
 ## Risks
 
 - Unconfirmed: whether 10 minutes is enough for Latanica's 2M HP.

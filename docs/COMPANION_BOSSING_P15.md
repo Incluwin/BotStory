@@ -129,6 +129,39 @@ have failed config validation), with a test that every boss run and field group 
 15. For the cap: run Papulatus twice, then walk the owner off the gate and back on. A companion that used both
     entries stays before the gate with one line.
 
+## Live result 2026-10-13 15:31-16:05 (int/p9bb bfa727296, temporary key papulatus)
+
+Owner ohboy (Lv102 Hermit, gm 0) with crew B (Lv100). Bossfriend gave the piece and warps and healed ohboy through the
+GM queue. 0 ERROR lines. Key reverted, committed config live at 16:05. Video of the whole run (18.5 min, from the gate
+to the exit): `docs/agents/evidence/video/p15-papulatus-2026-10-13.mp4` (local, not in git).
+
+- Shop trip: Fenna, Corvin and Ilse were short of 300 and topped up on the way to the gate ("back, all stocked up").
+  PASS.
+- Steps 3-8: `!resetboss` for all six; the party entered (run opened 15:45:51, 5 admitted); the piece on the reactor
+  (x -128 to -120 on the y=-538 platform) woke the Clock. PASS.
+- Fight: cleared at 15:59:15, about 10 min after the Clock woke; Clock 23M HP, Papulatus 1.59M. PASS.
+- Mirror: applied=63 in the first minute; no calibration miss for 8500001/8500002 in the whole run (the P14 body
+  fix). Step 10 (lightning only near its spots) and step 11 (blast log) not checked separately: no "Boss mirror blast"
+  line was logged.
+- Step 9: deadly attack and drinking: companions drank 70-300 HP potions each. Finding: Corvin (Dragon Knight, front
+  line) used all 300 and died with none left at 15:59:15, as the boss died. The 300 standard is thin for a 10-minute
+  fight at this level.
+- Step 12: FAIL. `!hpmp Garrick 0` at 15:50:49: down, out=DIED, line "ugh, i'm down. i'll wait at the gate.", and
+  "Boss death walk ... from map=220000000 to map=220080000". He then stood at his revive spot (-333,102) in Ludibrium
+  for the whole walk and it "timed out" at 16:00:54 (TIMEOUT_MS 10 min). The route exists (12 hops, first portal
+  tower00 at -96,29 toward 220010500); after the time-out he walked to that portal at once. Corvin's walk after his
+  death did not move either before the run ended. Cause not found yet. Fixed later that day in cc3ce6680 (a
+  companion down outside walks back instead of standing still); not run live again.
+- Step 13: after Machine Apparatus, the three members still inside came out (EXITED) and the run ended. PASS.
+- Step 14: bosslog_daily has PAPULATUS at 15:45:51 for ohboy and all five companions. PASS (no member stayed out, so
+  the "none for one that stayed out" half was not exercised).
+- Step 15 (daily cap after two runs): not run.
+- Client memory: ohboy's client peaked at 3,782 MB virtual (of 4,096).
+
+Driving notes: the gate portal (in00 -295,-632) is at the top of the stairs (one jump from the floor at x -290);
+the drop platform is reached from the right by the steps at y -452 (x 100-151) and -504 (x 36-87), jump from each
+step's left edge.
+
 ## Risks
 
 - Unconfirmed: the spot width (35 px) and the even spot spacing are guesses from the effect frames. Retune

@@ -94,6 +94,38 @@ Memory gate stage (field boss with many bots), from the plan: on Leviathan's Can
 run `!spawn 8220003` if Leviathan is not there, hit it with the owner while citizens and crew A fight beside it, and
 apply the client memory gate's stop rule.
 
+## Live result 2026-10-13 16:55-17:20 (int/p9bc 169d48793, temporary keys: the five P16 groups)
+
+Pianus only, stopped early by a server deadlock (below). Owner ohboy (Lv103 Hermit, gm 0) with crew B (Lv100-101,
+60% gear). Bossfriend (hidden) warped ohboy in, healed him through the GM queue and gave the debuffs; his own crew
+followed him into the cave. Keys reverted, committed config live at 17:23:53. Video (14 min, ohboy's view):
+`docs/agents/evidence/video/p16-pianus-dodo-2026-10-13.mp4` (local, not in git).
+
+- Step 4: PASS. Pianus R stayed at 100% for about 4 minutes with companions beside it, then they joined after
+  ohboy's first throw at 17:07:17 (98.8%, then 93.4% at 17:10:50 and 84.5% at about 17:15).
+- Step 5: FINDING. Pianus's deadly attack1 covers the whole middle of the cave from both sides. Garrick and Corvin
+  showed HP 1 several times; Corvin stayed at 1 for over half a second without drinking (1 -> 11 by regen) and died
+  on the next hit. Every companion died within 3-5 s of each return from its town rest, so they barely fought. The
+  instant drink needs the auto-HP key (91), which `AgentPotionService.setupAutopotForBot` refreshes only every
+  `POT_CHECK_INTERVAL_MS` (45 s) and clears when the bag has no HP potion; why Corvin had no drink 6 min after a GM
+  gift of 300 Unagi is not known.
+- Step 6: not observed: the companions were never alive long enough beside the Bloody Booms.
+- Step 7: PASS for this build. One blast at 17:16:38: `Boss mirror blast OBSERVE ... mob=8510100 origin=33,166
+  agents=[840, 1010] humans=[2]`. `BLAST_MODE` ships `OBSERVE`, so it logged and hurt nobody.
+- Step 8: PASS. Pianus's dispel (skill 127): Corvin lost 6 buffs at 17:12:08 and cast his own again in 0.5-3.2 s, and
+  again at 17:12:57 (0.6-1.1 s). Ilse's Holy Symbol came back on three members in 5.9 s.
+- Step 9: PASS. `!debuff SEDUCE Garrick` at 17:10:20: "Boss disabled ... state=SEDUCE", he wandered, and at 17:10:31
+  "recovered ...; following again".
+- Death and rest (P13 rule): every death beside Pianus revived in Aquarium (230000000) at 50 HP and came back after
+  its rest. Working, but at this level it is a loop.
+- Mirror: about 400 hits applied. Of about 250 calibration misses, about 210 were Bossfriend's: hidden characters are
+  skipped by design but his client still reports hits. ohboy had 41.
+- Steps 10-11 (Dodo, banish) and the Leviathan memory gate: not run.
+- Server deadlock at about 17:18: an Agent's level-up took prtLock under its stat write lock while a party HP update
+  held prtLock and read HP. All four TimerManager-Core threads stopped and the admin port froze; the restart had to
+  kill java after 120 s (no shutdown save). Fixed in 271126c5f (`StatEffect.isActive` reads the party only for a party
+  card buff). Thread dumps: `docs/agents/evidence/deadlock-2026-10-13/` (local).
+
 ## Risks
 
 - Death loops at owner levels under 100.
