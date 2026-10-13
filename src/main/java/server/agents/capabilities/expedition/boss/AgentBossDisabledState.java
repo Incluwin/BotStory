@@ -5,7 +5,11 @@ import client.Disease;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.Monster;
@@ -25,8 +29,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * map stands in for it.</li>
  * <li>CONFUSE: it walks the wrong way, away from the nearest live boss part.</li>
  * <li>Banish (Dodo, Munin): a same-map warp to the spawn point; its next tick drops its path, so it plans again from
- * where it landed.</li>
+ * where it landed, in the mode it was in.</li>
  * </ul>
+ *
+ * <p>The stand and the walks change the Agent's mode (a stop, a move-to). An Agent that followed someone when the first
+ * of the three took it follows them again once none is left, since beside a field boss nothing else would give it an
+ * order again (Snowman's stun left every companion standing for good, P13 live 2026-10-13).</p>
  *
  * <p>Companion boss scope here: an INSIDE or LEAVING member of an open run, or an Agent beside a field boss whose field
  * key is on (AgentBossField.near). Everything else, EPQ's Poison Golem confuse included, keeps today's path. The walk of
@@ -39,6 +47,12 @@ public final class AgentBossDisabledState {
     private static final Set<Integer> BANISHED = ConcurrentHashMap.newKeySet();
     /** The disabled state each Agent acts on now, so a walk starts once per state. */
     private static final Map<Integer, Disease> ACTING = new ConcurrentHashMap<>();
+    /** Whom each disabled Agent followed when the state took it, to follow again once it is over. */
+    private static final Map<Integer, Resume> RESUME = new ConcurrentHashMap<>();
+
+    /** The follow target when the state took the Agent; null when it followed its configured target. */
+    private record Resume(Character target) {
+    }
 
     private AgentBossDisabledState() {
     }
@@ -53,22 +67,26 @@ public final class AgentBossDisabledState {
         }
         int id = agent.getId();
         if (!BANISHED.isEmpty() && BANISHED.remove(id) && inScope(agent)) {
-            AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
+            AgentMovementStateResetService.clearNavigationState(entry);
             log.info("Boss disabled: member={} banished on map={} at={},{}; planning again", id, agent.getMapId(),
                     x(agent), y(agent));
             return false;
         }
         Disease state = state(agent);
         if (state == null) {
-            if (!ACTING.isEmpty()) {
-                ACTING.remove(id);
+            if (!ACTING.isEmpty() && ACTING.remove(id) != null) {
+                resume(entry, agent);
             }
             return false;
         }
         if (!inScope(agent)) {
             return false;
         }
-        boolean onset = ACTING.put(id, state) != state;
+        Disease before = ACTING.put(id, state);
+        if (before == null && AgentModeStateRuntime.following(entry)) {
+            RESUME.put(id, new Resume(AgentRelationshipRuntime.followTarget(entry)));
+        }
+        boolean onset = before != state;
         if (onset) {
             log.info("Boss disabled: member={} state={} map={} at={},{}", id, state, agent.getMapId(), x(agent),
                     y(agent));
@@ -89,6 +107,21 @@ public final class AgentBossDisabledState {
                 return false;
             }
         }
+    }
+
+    /** The last disabled state is over: an Agent that followed someone when it began follows them again. */
+    private static void resume(AgentRuntimeEntry entry, Character agent) {
+        Resume resume = RESUME.remove(agent.getId());
+        if (resume == null) {
+            return;
+        }
+        Character target = resume.target();
+        if (target != null && target.isLoggedinWorld()) {
+            AgentMovementCommandRuntime.follow(entry, target);
+        } else {
+            AgentMovementCommandRuntime.followConfiguredTarget(entry);
+        }
+        log.info("Boss disabled: member={} recovered on map={}; following again", agent.getId(), agent.getMapId());
     }
 
     /**
@@ -171,5 +204,6 @@ public final class AgentBossDisabledState {
     static void resetForTest() {
         BANISHED.clear();
         ACTING.clear();
+        RESUME.clear();
     }
 }

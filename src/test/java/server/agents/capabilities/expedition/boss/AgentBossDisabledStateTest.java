@@ -7,9 +7,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.runtime.AgentModeService;
+import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -35,7 +39,8 @@ import static org.mockito.Mockito.when;
 /**
  * P12 G5: in companion boss scope a stunned member stands still, a seduced one walks to the nearest boss part, a
  * confused one walks the other way, and a banished one plans again from where it landed. Its run's fight gives a
- * disabled member no orders meanwhile. Out of scope (EPQ's Poison Golem confuse included) nothing changes.
+ * disabled member no orders meanwhile, and one that followed someone follows them again once the state is over. Out of
+ * scope (EPQ's Poison Golem confuse included) nothing changes.
  */
 class AgentBossDisabledStateTest {
     private static final int OWNER = 1;
@@ -80,6 +85,51 @@ class AgentBossDisabledStateTest {
         assertTrue(AgentBossDisabledState.holds(entry, thane));
         verify(gateway).stop(entry);
         assertTrue(AgentBossDisabledState.disabled(thane));
+    }
+
+    @Test
+    void aStunnedFollowerFollowsWhomItFollowedOnceTheStunWearsOff() {
+        Character thane = inside(THANE, new Point(0, 0), Disease.STUN);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        Character owner = mock(Character.class);
+        when(owner.getId()).thenReturn(OWNER);
+        when(owner.isLoggedinWorld()).thenReturn(true);
+        AgentModeService.startFollow(entry, owner);
+        // the real stop leaves follow mode and forgets the follow target
+        doAnswer(invocation -> {
+            AgentModeService.startStop(entry);
+            return null;
+        }).when(gateway).stop(entry);
+
+        try (MockedStatic<AgentMovementCommandRuntime> commands = mockStatic(AgentMovementCommandRuntime.class)) {
+            assertTrue(AgentBossDisabledState.holds(entry, thane));
+            assertTrue(AgentBossDisabledState.holds(entry, thane));
+            assertFalse(AgentModeStateRuntime.following(entry));
+            commands.verifyNoInteractions();
+
+            when(thane.getDiseasesSize()).thenReturn(0);
+            when(thane.hasDisease(Disease.STUN)).thenReturn(false);
+            assertFalse(AgentBossDisabledState.holds(entry, thane));
+            assertFalse(AgentBossDisabledState.holds(entry, thane));
+
+            commands.verify(() -> AgentMovementCommandRuntime.follow(entry, owner), times(1));
+        }
+    }
+
+    @Test
+    void aMemberStoppedBeforeTheStunStaysStoppedAfterIt() {
+        Character thane = inside(THANE, new Point(0, 0), Disease.STUN);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        AgentModeService.startStop(entry);
+
+        try (MockedStatic<AgentMovementCommandRuntime> commands = mockStatic(AgentMovementCommandRuntime.class)) {
+            assertTrue(AgentBossDisabledState.holds(entry, thane));
+            when(thane.getDiseasesSize()).thenReturn(0);
+            when(thane.hasDisease(Disease.STUN)).thenReturn(false);
+            assertFalse(AgentBossDisabledState.holds(entry, thane));
+
+            commands.verifyNoInteractions();
+        }
     }
 
     @Test
@@ -130,16 +180,18 @@ class AgentBossDisabledStateTest {
     }
 
     @Test
-    void aBanishedMemberDropsItsPathOnItsNextTickOnce() {
+    void aBanishedMemberDropsItsPathOnItsNextTickAndKeepsFollowing() {
         Character thane = inside(THANE, new Point(0, 0));
         AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
         AgentRuntimeRegistry.registerEntry(OWNER, entry);
+        AgentModeService.startFollow(entry, mock(Character.class));
 
         AgentBossDisabledState.banished(thane);
 
         assertFalse(AgentBossDisabledState.holds(entry, thane), "it plans again on the same tick");
         assertFalse(AgentBossDisabledState.holds(entry, thane));
-        verify(gateway, times(1)).stop(entry);
+        verify(gateway, never()).stop(any());
+        assertTrue(AgentModeStateRuntime.following(entry), "a banish is a warp, not an order");
     }
 
     @Test
