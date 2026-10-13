@@ -246,10 +246,12 @@ public final class AgentBuildService {
         if (entry == null || bot == null || steps == null || steps.isEmpty()) {
             throw new IllegalArgumentException("an Agent, character, and SP build are required");
         }
+        AgentFourthJobInstructor.teach(bot, AgentSkillGatewayRuntime.skills());
         autoAssignSp(entry, bot, List.copyOf(steps), AgentSkillGatewayRuntime.skills());
     }
 
     static void autoAssignSp(AgentRuntimeEntry entry, Character bot, SkillGateway skills) {
+        AgentFourthJobInstructor.teach(bot, skills);
         if (AgentSpBuildProfileService.autoAssign(entry, bot, skills)) {
             return;
         }

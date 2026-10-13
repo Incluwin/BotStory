@@ -32,6 +32,9 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyByte;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.byteThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -477,7 +480,10 @@ class AgentBuildServiceTest {
 
         assertEquals(5, remainingSps[bishopBook]);
         verify(bot, never()).gainSp(anyInt(), anyInt(), anyBoolean());
-        verify(bot, never()).changeSkillLevel(any(Skill.class), anyByte(), anyInt(), anyLong());
+        // The 4th-job instructor's skills (AgentFourthJobInstructor) are offered at master 10 first, Genesis among
+        // them; this mock keeps its master level at 0, so the build still holds the SP and learns no level.
+        verify(bot).changeSkillLevel(argThat(skill -> skill.getId() == Bishop.GENESIS), eq((byte) 0), eq(10), eq(-1L));
+        verify(bot, never()).changeSkillLevel(any(Skill.class), byteThat(level -> level > 0), anyInt(), anyLong());
     }
 
     @Test
