@@ -2,6 +2,10 @@ package server.agents.capabilities.expedition.boss;
 
 import client.Character;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.combat.AgentCombatConfig;
+import server.agents.capabilities.combat.AgentMobTouchPolicy;
+import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
+import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.mobcontrol.AgentBossScope;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -14,6 +18,8 @@ import server.maps.MapleMap;
 import server.maps.Portal;
 
 import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -37,6 +43,11 @@ import java.util.function.Supplier;
  * ranged or magic fighter keeps to the band of x past those boxes, KEEP_OUT_MARGIN_PX inside them. Outside the band it
  * walks in first; inside it, a horizontal boundary holds it there while it fights. The boundary goes once no such
  * part lives.</p>
+ *
+ * <p>2026-10-14: every fighter also keeps out of a deadly touch area on its floor ({@link #touchBand}: Horntail's
+ * Tails and Legs), the same way. A boss with focus steps ({@link AgentBossRules.Focus}) is fought step by step: the
+ * live parts of the first step with one, from the step's ledges when it names any, keeping to the step's side of a
+ * deadly touch area.</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private final String key;
@@ -83,12 +94,18 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 continue;
             }
             boolean melee = ports.melee(member);
-            if (!cleared && rules != null && !rules.keepOut().isEmpty() && !melee
-                    && keepOut(gateway, entry, member, map, keepOutBand(map, rules))) {
+            Set<Integer> live = cleared ? Set.of() : liveByMap.computeIfAbsent(map, this::liveIds);
+            AgentBossRules.Focus step = cleared ? null : AgentBossRules.focusStep(rules, live);
+            if (!cleared && rules != null
+                    && keepOut(gateway, entry, member, map, band(map, member, rules, melee, step))) {
+                continue;
+            }
+            if (step != null) {
+                focus(gateway, entry, member, map, rules, step, live, ordinal(fighters, member, map));
                 continue;
             }
             AgentBossRules.Preferences preferences = cleared ? null
-                    : AgentBossRules.preferences(rules, liveByMap.computeIfAbsent(map, this::liveIds), melee);
+                    : AgentBossRules.preferences(rules, live, melee);
             if (preferences == null || preferences.isEmpty()) {
                 gateway.stop(entry);
             } else {
@@ -99,6 +116,106 @@ public final class AgentBossPriorityFight implements AgentBossFight {
 
     @Override
     public void end(EventInstanceManager event) {
+    }
+
+    /**
+     * Focus order (2026-10-14): the member hits the live parts of {@code step}. When the step names ledges for them it
+     * grinds from one, spread by {@code ordinal} over the ledges that reach a live part (Horntail's Wings and Hands, then
+     * its Heads, out of reach from the floor), preferring the parts its ledge reaches; otherwise it grinds the step's
+     * parts. The boss's live adds are the fallback either way.
+     */
+    private void focus(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member, MapleMap map,
+                       AgentBossRules.Boss rules, AgentBossRules.Focus step, Set<Integer> live, int ordinal) {
+        AgentBossRules.Preferences preferences = AgentBossRules.focusPreferences(rules, step, live);
+        List<AgentBossRules.Anchor> usable = new ArrayList<>();
+        for (AgentBossRules.Anchor anchor : step.anchors()) {
+            if (anchor.mobIds().stream().anyMatch(preferences.preferred()::contains)) {
+                usable.add(anchor);
+            }
+        }
+        if (!usable.isEmpty()) {
+            AgentBossRules.Anchor anchor = usable.get(Math.floorMod(ordinal, usable.size()));
+            Point ground = gateway.groundPoint(map, new Point(anchor.x(), anchor.y()));
+            if (ground != null) {
+                Set<Integer> reach = new LinkedHashSet<>(anchor.mobIds());
+                reach.retainAll(preferences.preferred());
+                Set<Integer> fallback = new LinkedHashSet<>(preferences.preferred());
+                fallback.removeAll(reach);
+                fallback.addAll(preferences.fallback());
+                gateway.grindFromAnchor(entry, ground, reach, fallback);
+                return;
+            }
+        }
+        gateway.grind(entry, preferences.preferred(), preferences.fallback());
+    }
+
+    /** The member's place among the fighters on its map, by character id: what spreads them over a step's ledges. */
+    private static int ordinal(List<Character> fighters, Character member, MapleMap map) {
+        int ordinal = 0;
+        for (Character other : fighters) {
+            if (other.getMap() == map && other.getId() < member.getId()) {
+                ordinal++;
+            }
+        }
+        return ordinal;
+    }
+
+    /**
+     * The band of x the member keeps to on {@code map}, {minX, maxX}, or null for none: its deadly touch band
+     * ({@link #touchBand}), within the P20 keep-out band for a ranged or magic member where the boss names keep-out
+     * boxes. When the two do not meet, the touch band wins.
+     */
+    int[] band(MapleMap map, Character member, AgentBossRules.Boss rules, boolean melee, AgentBossRules.Focus step) {
+        int[] touch = touchBand(map, member, step == null ? null : step.side());
+        int[] keep = melee || rules.keepOut().isEmpty() ? null : keepOutBand(map, rules);
+        if (touch == null || keep == null) {
+            return touch == null ? keep : touch;
+        }
+        int low = Math.max(touch[0], keep[0]);
+        int high = Math.min(touch[1], keep[1]);
+        return low <= high ? new int[] {low, high} : touch;
+    }
+
+    /**
+     * 2026-10-14: the band of x past every deadly touch area on the member's floor, KEEP_OUT_MARGIN_PX outside it; null
+     * while none lives. A live monster's touch area (the lower half of its body box, as touch damage reads it) is deadly
+     * when it reaches the floor under the member and one touch there would take at least TOUCH_KEEP_OUT_HP_PERCENT of
+     * the member's max HP (Horntail's Tails, about 25,000, and Legs, about 11,000). The areas count as one span; the
+     * member keeps to {@code side} of it ("left" or "right"), or with none to the side nearer its middle.
+     */
+    int[] touchBand(MapleMap map, Character member, String side) {
+        Point at = member.getPosition();
+        if (at == null) {
+            return null;
+        }
+        Point ground = ports.gateway().groundPoint(map, at);
+        Point foot = ground != null ? ground : at;
+        double limit = ports.maxHp(member) * (double) touchKeepOutHpPercent() / 100.0d;
+        int sweep = ports.touchSweepPx();
+        long left = Long.MAX_VALUE;
+        long right = Long.MIN_VALUE;
+        for (Monster monster : ports.monsters(map)) {
+            Rectangle area = monster.isAlive() ? ports.touchArea(monster) : null;
+            if (area == null || area.y > foot.y || area.y + area.height <= foot.y - sweep
+                    || ports.touchDamage(member, monster) < limit) {
+                continue;
+            }
+            left = Math.min(left, area.x);
+            right = Math.max(right, (long) area.x + area.width - 1);
+        }
+        if (left > right) {
+            return null;
+        }
+        int margin = keepOutMarginPx();
+        boolean keepLeft = side == null ? foot.x <= (left + right) / 2 : side.equals("left");
+        return keepLeft
+                ? new int[] {Integer.MIN_VALUE, (int) Math.max(Integer.MIN_VALUE, left - 1 - margin)}
+                : new int[] {(int) Math.min(Integer.MAX_VALUE, right + 1 + margin), Integer.MAX_VALUE};
+    }
+
+    static int touchKeepOutHpPercent() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.TOUCH_KEEP_OUT_HP_PERCENT");
     }
 
     /**
@@ -244,7 +361,58 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return false;
         }
 
+        /**
+         * The area where {@code monster} touches an Agent: the lower half of its body box, as
+         * AgentMobTouchPolicy.lowerHalfIntersects reads it; null with no box or when its touch does no damage.
+         */
+        default Rectangle touchArea(Monster monster) {
+            return null;
+        }
+
+        /** The mean damage one touch of {@code monster} does to {@code member}, before a dodge. */
+        default double touchDamage(Character member, Monster monster) {
+            return 0;
+        }
+
+        /** The member's max HP as touch damage meets it (Magic Guard counted). */
+        default int maxHp(Character member) {
+            return Math.max(1, member.getMaxHp());
+        }
+
+        /** How far up from its feet a touch reaches an Agent (MOB_TOUCH_SWEEP_HEIGHT). */
+        default int touchSweepPx() {
+            return 50;
+        }
+
         Ports LIVE = new Ports() {
+            @Override
+            public Rectangle touchArea(Monster monster) {
+                if (AgentMobTouchPolicy.ignoresTouchDamage(monster.getId())) {
+                    return null;
+                }
+                Rectangle box = AgentMobHitboxProvider.getInstance().getMobBounds(monster);
+                if (box == null) {
+                    return null;
+                }
+                int lower = Math.max(1, box.height / 2);
+                return new Rectangle(box.x, box.y + box.height - lower, box.width, lower);
+            }
+
+            @Override
+            public double touchDamage(Character member, Monster monster) {
+                return AgentDefenseDataProvider.getInstance().expectedPhysicalTouchDamage(member, monster);
+            }
+
+            @Override
+            public int maxHp(Character member) {
+                return AgentDefenseDataProvider.effectiveMaximumHp(member);
+            }
+
+            @Override
+            public int touchSweepPx() {
+                return AgentCombatConfig.cfg.MOB_TOUCH_SWEEP_HEIGHT;
+            }
+
             @Override
             public boolean melee(Character member) {
                 boolean magic = member.getJob() != null && member.getJob().getJobNiche() == 2;

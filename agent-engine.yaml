@@ -5962,6 +5962,10 @@ tuning:
     # Purpose: How far inside the safe side of a deadly box beside a boss part (Pink Bean's Solomon and Rex) a ranged or magic companion keeps.
     # Technical: AgentBossPriorityFight, P20: for each live part with boss-rules.json keepOut boxes, a box to the part's left (toDx <= 0) puts the band's low edge at part x + toDx + this, and one to its right (fromDx >= 0) the high edge at part x + fromDx - this. A ranged or magic fighter outside the band walks in first; inside it, setHorizontalBoundary holds it there until no such part lives.
     server.agents.capabilities.expedition.boss.AgentBossPriorityFight.KEEP_OUT_MARGIN_PX: '30'
+    # Values: an integer from 1 to 100; unit: percent of max HP. Recommended: 50 (one touch takes half a member's HP or more).
+    # Purpose: How strong a boss part's touch must be before boss-run companions keep out of where it touches (Horntail's Tails, about 25,000 a touch, and Legs, about 11,000), attacking from its edge as a player would.
+    # Technical: AgentBossPriorityFight.touchBand: a live monster's touch area (the lower half of its body box, AgentMobTouchPolicy) that reaches the floor under a member, with AgentDefenseDataProvider.expectedPhysicalTouchDamage at or above this share of effectiveMaximumHp, joins the span the member keeps out of, KEEP_OUT_MARGIN_PX past its edge, on the focus step's side or the nearer one. Lower values keep more members out of more touch areas.
+    server.agents.capabilities.expedition.boss.AgentBossPriorityFight.TOUCH_KEEP_OUT_HP_PERCENT: '50'
 
     # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
     # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.

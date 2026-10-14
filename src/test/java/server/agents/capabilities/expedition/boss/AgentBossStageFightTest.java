@@ -33,9 +33,9 @@ import static org.mockito.Mockito.when;
 /**
  * P18: Horntail's fight runs over three maps. On a pre-head map the members fight its head; once the map holds no live
  * monster but never-targets, they walk to next00 and take it (the stock seal lets them through once the head fell), at
- * most every STAGE_PORTAL_EVERY_MS. On the altar ranged and magic members take the heads first and melee members the
- * legs and tail. The altar is no stage map, so with nothing up there (before the reactor) members hold. Read from the
- * shipped boss rules.
+ * most every STAGE_PORTAL_EVERY_MS. On the altar every member follows the focus order (2026-10-14): the legs, the
+ * tail, then the wings and hands from the two low ledges, then the heads from the three high ones. The altar is no
+ * stage map, so with nothing up there (before the reactor) members hold. Read from the shipped boss rules.
  */
 class AgentBossStageFightTest {
     private static final int FIRST_STAGE = 240_060_000;
@@ -44,6 +44,11 @@ class AgentBossStageFightTest {
     private static final int LEFT_HEAD = 8_810_000;
     private static final int HEAD_A = 8_810_002;
     private static final int HEAD_B = 8_810_003;
+    private static final int HEAD_C = 8_810_004;
+    private static final int LEFT_HAND = 8_810_005;
+    private static final int RIGHT_HAND = 8_810_006;
+    private static final int WINGS = 8_810_007;
+    private static final int WYVERN = 8_810_020;
     private static final int LEGS = 8_810_008;
     private static final int TAIL = 8_810_009;
     private static final int HORNTAIL_HP = 8_810_018;
@@ -158,7 +163,7 @@ class AgentBossStageFightTest {
     }
 
     @Test
-    void onTheAltarRangedMembersTakeTheHeadsAndMeleeMembersTheLegs() {
+    void onTheAltarEveryMemberTakesTheLegsFirst() {
         mobs(ALTAR, HEAD_A, HEAD_B, LEGS, TAIL, HORNTAIL_HP);
         AgentRuntimeEntry ranged = entry(10);
         AgentRuntimeEntry warrior = entry(11);
@@ -166,8 +171,80 @@ class AgentBossStageFightTest {
 
         fight.tick(List.of(member(10, ALTAR, new Point(0, 260)), member(11, ALTAR, new Point(0, 260))), event, 0L);
 
-        verify(gateway).grind(ranged, Set.of(HEAD_A), Set.of(HEAD_B, LEGS, TAIL));
-        verify(gateway).grind(warrior, Set.of(LEGS), Set.of(HEAD_A, HEAD_B, TAIL));
+        verify(gateway).grind(ranged, Set.of(LEGS), Set.of());
+        verify(gateway).grind(warrior, Set.of(LEGS), Set.of());
+    }
+
+    @Test
+    void withTheLegsDownEveryMemberTakesTheTailAndAnAddIsTheFallback() {
+        mobs(ALTAR, HEAD_A, TAIL, WINGS, WYVERN);
+        AgentRuntimeEntry ranged = entry(10);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(-300, 260))), event, 0L);
+
+        verify(gateway).grind(ranged, Set.of(TAIL), Set.of(WYVERN));
+    }
+
+    @Test
+    void thenTheWingsAndHandsFromTheTwoLowLedgesSpreadOverThem() {
+        mobs(ALTAR, HEAD_A, WINGS, LEFT_HAND, RIGHT_HAND, WYVERN);
+        groundAtAnchors();
+        AgentRuntimeEntry first = entry(10);
+        AgentRuntimeEntry second = entry(11);
+        melee.add(11);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(-300, 260)), member(11, ALTAR, new Point(-300, 260))),
+                event, 0L);
+
+        verify(gateway).grindFromAnchor(first, new Point(-235, 80), Set.of(LEFT_HAND, WINGS),
+                Set.of(RIGHT_HAND, WYVERN));
+        verify(gateway).grindFromAnchor(second, new Point(412, 80), Set.of(RIGHT_HAND, WINGS),
+                Set.of(LEFT_HAND, WYVERN));
+    }
+
+    @Test
+    void lastTheHeadsFromTheHighLedgesOnlyThoseThatReachALiveHead() {
+        mobs(ALTAR, HEAD_B, HEAD_C);
+        groundAtAnchors();
+        AgentRuntimeEntry first = entry(10);
+        AgentRuntimeEntry second = entry(11);
+        AgentRuntimeEntry third = entry(12);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(-300, 260)), member(11, ALTAR, new Point(-300, 260)),
+                member(12, ALTAR, new Point(-300, 260))), event, 0L);
+
+        verify(gateway).grindFromAnchor(first, new Point(-55, -280), Set.of(HEAD_B), Set.of(HEAD_C));
+        verify(gateway).grindFromAnchor(second, new Point(325, -160), Set.of(HEAD_C), Set.of(HEAD_B));
+        verify(gateway).grindFromAnchor(third, new Point(-55, -280), Set.of(HEAD_B), Set.of(HEAD_C));
+    }
+
+    @Test
+    void aStepWhoseLedgeHasNoGroundFallsBackToGrindingItsParts() {
+        mobs(ALTAR, HEAD_A);
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, ALTAR, new Point(-300, 260))), event, 0L);
+
+        verify(gateway).grind(thane, Set.of(HEAD_A), Set.of());
+        verify(gateway, never()).grindFromAnchor(any(), any(), anySet(), anySet());
+    }
+
+    @Test
+    void theShippedFocusOrderIsLegsTailWingsAndHandsThenHeads() {
+        List<AgentBossRules.Focus> focus = AgentBossRules.of("horntail").focus();
+
+        assertEquals(List.of(List.of(LEGS), List.of(TAIL), List.of(WINGS, LEFT_HAND, RIGHT_HAND),
+                List.of(HEAD_A, HEAD_B, HEAD_C)), focus.stream().map(AgentBossRules.Focus::mobIds).toList());
+        assertEquals("left", focus.get(0).side());
+        assertEquals("left", focus.get(1).side());
+        assertTrue(focus.get(0).anchors().isEmpty() && focus.get(1).anchors().isEmpty(), "the floor parts need none");
+        assertEquals(2, focus.get(2).anchors().size());
+        assertEquals(3, focus.get(3).anchors().size());
+    }
+
+    /** The gateway grounds a point on its own spot, as on a ledge's foothold. */
+    private void groundAtAnchors() {
+        when(gateway.groundPoint(any(), any())).thenAnswer(call -> new Point((Point) call.getArgument(1)));
     }
 
     @Test

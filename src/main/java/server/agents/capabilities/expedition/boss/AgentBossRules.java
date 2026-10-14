@@ -49,6 +49,10 @@ import java.util.TreeMap;
  * <li>{@code keepOut} (P20): boxes beside a part, from {@code fromDx} to {@code toDx} along x from the part, that
  * ranged and magic members keep out of while the part lives (Solomon's deadly attack1 to his left, Rex's to his
  * right). A box wholly to one side of its part bounds the member on that side.</li>
+ * <li>{@code focus} (2026-10-14): the boss's focus order, step by step ({@link Focus}): every member hits the live
+ * parts of the first step that has one, from a ledge the step names when it names any, and keeps to the step's side of
+ * a deadly touch area (Horntail: the Legs and the Tail from the left, then the Wings and Hands, then the Heads). Where
+ * no step has a live part (Horntail's pre-head maps) the priority lists apply.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -69,7 +73,7 @@ public final class AgentBossRules {
                        boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
-                       List<KeepOut> keepOut) {
+                       List<KeepOut> keepOut, List<Focus> focus) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -85,6 +89,19 @@ public final class AgentBossRules {
             meleePriority = meleePriority == null ? List.of() : List.copyOf(meleePriority);
             entryItems = entryItems == null ? markerItems : List.copyOf(entryItems);
             keepOut = keepOut == null ? List.of() : List.copyOf(keepOut);
+            focus = focus == null ? List.of() : List.copyOf(focus);
+        }
+
+        /** A boss row with no focus steps (every row before Horntail's, 2026-10-14). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, List.of());
         }
 
         /** A boss row before P20: its entry items are its marker items, and no keep-out boxes. */
@@ -140,6 +157,36 @@ public final class AgentBossRules {
         public KeepOut {
             if (fromDx > toDx) {
                 throw new IllegalArgumentException("a keep-out box needs fromDx <= toDx");
+            }
+        }
+    }
+
+    /**
+     * One step of a boss's focus order (Horntail, 2026-10-14): the parts every member hits while any of them lives,
+     * before any later step's. {@code side} ("left", "right" or null) is the side of a deadly touch area a member keeps
+     * to while the step runs (the Legs and the Tail from the left). {@code anchors} are ledges a member grinds from
+     * while the step runs, for parts out of reach from the floor; empty for none.
+     */
+    public record Focus(List<Integer> mobIds, String side, List<Anchor> anchors) {
+        public Focus {
+            mobIds = mobIds == null ? List.of() : List.copyOf(mobIds);
+            if (mobIds.isEmpty()) {
+                throw new IllegalArgumentException("a focus step needs mob ids");
+            }
+            side = side == null || side.isBlank() ? null : side.trim().toLowerCase(Locale.ROOT);
+            if (side != null && !side.equals("left") && !side.equals("right")) {
+                throw new IllegalArgumentException("a focus step's side is left or right: " + side);
+            }
+            anchors = anchors == null ? List.of() : List.copyOf(anchors);
+        }
+    }
+
+    /** A ledge (x, y on its foothold) a member grinds from, for the parts {@code mobIds} it reaches from there. */
+    public record Anchor(int x, int y, List<Integer> mobIds) {
+        public Anchor {
+            mobIds = mobIds == null ? List.of() : List.copyOf(mobIds);
+            if (mobIds.isEmpty()) {
+                throw new IllegalArgumentException("a focus anchor needs the mob ids it reaches");
             }
         }
     }
@@ -306,6 +353,41 @@ public final class AgentBossRules {
         }
         live.remove(first);
         return new Preferences(Set.of(first), live);
+    }
+
+    /** The first focus step of {@code boss} with a part alive now ({@code liveMobIds}); null when none has. Pure. */
+    public static Focus focusStep(Boss boss, Collection<Integer> liveMobIds) {
+        if (boss == null) {
+            return null;
+        }
+        for (Focus step : boss.focus()) {
+            for (int id : step.mobIds()) {
+                if (liveMobIds.contains(id)) {
+                    return step;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Focus order (2026-10-14): a member hits the live parts of {@code step} and nothing else of the boss; the boss's
+     * live adds are the fallback, so it still answers a summon that touches it. Pure.
+     */
+    public static Preferences focusPreferences(Boss boss, Focus step, Collection<Integer> liveMobIds) {
+        Set<Integer> preferred = new LinkedHashSet<>();
+        for (int id : step.mobIds()) {
+            if (liveMobIds.contains(id)) {
+                preferred.add(id);
+            }
+        }
+        Set<Integer> fallback = new LinkedHashSet<>();
+        for (int id : boss.adds()) {
+            if (liveMobIds.contains(id) && !preferred.contains(id)) {
+                fallback.add(id);
+            }
+        }
+        return new Preferences(preferred, fallback);
     }
 
     /** Replaces the catalog with {@code replacement}; tests only (null loads the shipped file again). */
