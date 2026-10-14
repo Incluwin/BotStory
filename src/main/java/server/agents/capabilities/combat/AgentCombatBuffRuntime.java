@@ -269,7 +269,14 @@ public final class AgentCombatBuffRuntime {
         return false;
     }
 
-    private static boolean castSupportSkill(AgentRuntimeEntry entry, Character bot, Skill skill, StatEffect fx, long now) {
+    /** Off attack cooldown, on the ground and off any rope: when a support cast may start. */
+    static boolean groundedAndFree(AgentRuntimeEntry entry) {
+        return !AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)
+                && !AgentMovementStateRuntime.inAir(entry)
+                && !AgentMovementStateRuntime.climbing(entry);
+    }
+
+    static boolean castSupportSkill(AgentRuntimeEntry entry, Character bot, Skill skill, StatEffect fx, long now) {
         int skillLevel = bot.getSkillLevel(skill);
         AgentCombatSupportPolicy.SupportCastReadiness readiness =
                 AgentCombatSupportPolicy.supportCastReadiness(

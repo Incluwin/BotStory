@@ -235,6 +235,9 @@ public final class AgentCombatConfig {
         // Heal is also gated by moveWindowMs > 0, so it cannot fire mid-attack-movement-window.
         public float SUPPORT_HEAL_TARGET_RATIO = config.AgentTuning.floatValue("server.agents.capabilities.combat.AgentCombatConfig.SUPPORT_HEAL_TARGET_RATIO");
         public int HEAL_MOVE_WINDOW_MS = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatConfig.HEAL_MOVE_WINDOW_MS");
+        // 2026-10-14 (P18): a Priest or Bishop casts Dispel at most this often while it or a party member in its box
+        // carries a disease Dispel cures (Horntail's Right Hand seals the whole altar every 25 s).
+        public int DISPEL_INTERVAL_MS = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatConfig.DISPEL_INTERVAL_MS");
         // Jump-heal: while following, if the leader is at least this many px ahead horizontally,
         // kick a diagonal jump toward them just before the heal cast so the bot keeps closing
         // distance instead of stopping to plant the heal animation. 0 disables.

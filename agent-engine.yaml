@@ -1651,6 +1651,10 @@ tuning:
     # Purpose: Controls how long Agents remain in or wait for heal move window. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "combat config" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.capabilities.combat.AgentCombatConfig.HEAL_MOVE_WINDOW_MS: '600'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 1000-5000 around the tested baseline 2000.
+    # Purpose: Controls how often a Priest or Bishop Agent may cast Dispel while it or a party member inside Dispel's box carries a disease Dispel cures (Seal, Darkness, Weakness, Curse, Poison, Slow). Higher values leave more time for heals and attacks; lower values cure sooner.
+    # Technical: the "combat config" component consumes this as an integer. Unit: milliseconds; 0 lets it cast on every support tick.
+    server.agents.capabilities.combat.AgentCombatConfig.DISPEL_INTERVAL_MS: '2000'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 40-160 around the tested baseline 80; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for jump heal leader ahead. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "combat config" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.

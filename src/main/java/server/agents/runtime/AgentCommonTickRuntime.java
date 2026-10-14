@@ -16,6 +16,7 @@ import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime;
 import server.agents.capabilities.combat.AgentCombatDamageRuntime;
 import server.agents.capabilities.combat.AgentCombatDeathRuntime;
+import server.agents.capabilities.combat.AgentCombatDispelRuntime;
 import server.agents.capabilities.combat.AgentCombatHealRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillCacheRuntime;
 import server.agents.capabilities.dialogue.AgentChatStatusOrchestrator;
@@ -65,8 +66,11 @@ public final class AgentCommonTickRuntime {
                 AgentPartyQuestHooks::isNpcLocked,
                 AgentCombatActionLockRuntime::tickActionLock,
                 AgentCombatSkillCacheRuntime::rebuildSkillCacheIfNeeded,
-                (entry, agent) -> AgentCombatHealRuntime.tickSupportHealing(
-                        entry, agent, AgentCombatConfig.cfg),
+                (entry, agent) -> {
+                    if (!AgentCombatDispelRuntime.tickDispel(entry, agent, AgentCombatConfig.cfg)) {
+                        AgentCombatHealRuntime.tickSupportHealing(entry, agent, AgentCombatConfig.cfg);
+                    }
+                },
                 (entry, agent) -> {
                     AgentCombatBuffRuntime.tickBuffs(entry, agent, AgentCombatConfig.cfg);
                     AgentCombatSpecialMoveTickRuntime.tick(entry, agent);
