@@ -188,10 +188,31 @@ was my driving mistake: I unhid the only human left without a heal loop for him.
 2. The scaled standard (850/850, 7000) waits for Questions 5 and 6. Live evidence: Ingrid (Dark Knight) used about
    400 HP potions on the left head alone and went down at 197.
 3. Client memory (2026-10-14): 12 characters on Horntail exceed the client's 4 GB address space, while 5 companions are
-   too slow to clear 2.75B HP inside 120 minutes. The client reserves about 3.8 GB of address space in a quiet map with
-   only about 650 MB private, so the reservations, not the content, look like the limit.
-4. Companions on a fight map with no visible human all but stop (2026-10-14, crew A after ohboy's crash).
-5. Flint did not drink at 100-160 HP after his re-entry (2026-10-14), like Corvin at 1 HP on Pianus (P16).
+   too slow to clear 2.75B HP inside 120 minutes. **Cause found, fix built, not shipped** (see "Follow-ups" below).
+4. Companions on a fight map with no player watching all but stop (2026-10-14, crew A after ohboy's crash). **Fixed
+   in d395c00c1** (see "Follow-ups").
+5. Flint did not drink at 100-160 HP after his re-entry (2026-10-14). He stood on the same unwatched map as item 4, so
+   the same fix should cover him; the next Horntail run confirms it. Corvin at 1 HP on Pianus (P16) had a player beside
+   him and looks like a separate case (he had run out of potions).
+
+## Follow-ups (2026-10-14)
+
+**Unwatched fight maps (open item 4), d395c00c1 on `fix/boss-run-full-rate`.** An Agent on a map no player watches
+drops from the 50 ms tick to the background cadence (250 ms, at background priority that can wait up to 2 s under
+load). Every party quest holds its members at full rate (`AgentKpqFullRateSimulation` and its siblings); boss runs did
+not. `AgentBossFullRateSimulation` now holds each member that stands in the run's event, lets go when it is out of the
+event or the run, or the run ends, and never clears a requirement something else set. Tests: three in
+`AgentBossRunSessionStartTest` (two fail on the old session). Full suite: 13,692 / 0 / 37.
+
+**Client memory (open item 3), kaentake `fix/wz-large-archive-reads` 3612e71 (on `ship/2026-10-12-crew-window`).**
+NameSpace.dll maps every WZ archive whole into the 32-bit address space when the client opens it. This client's
+archives total 6.8 GB (Character.wz 1.9 GB, Map.wz 1.4 GB, Mob.wz 1.4 GB, Npc.wz 554 MB). Character.wz and Npc.wz were
+mapped (2.5 GB); the rest found no room and were read from their files, which the game already handles. At the login
+screen the stock client had 2,714 MB mapped and 591 MB free (largest free block 135 MB). The DLL now passes over the map
+call for archives larger than 128 MB in the archive open only (the stream's checksum caller is untouched). Measured on a
+test copy of the client: 235 MB mapped and 3,145 MB free at the login screen; 2,927 MB free in game; 1,532 MB peak with
+Horntail summoned beside five Lv200 companions (the stock client idled at 3,791 MB). Characters and NPCs render
+normally. Not shipped: the friends' Kaentake.dll changes only with the user's OK.
 
 ## Risks
 
