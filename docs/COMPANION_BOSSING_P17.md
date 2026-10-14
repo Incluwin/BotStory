@@ -1,7 +1,7 @@
 # P17: Scarlion and Targa
 
 > Built 2026-10-12 on branch `feat/companion-bossing-p17`, on top of P16. Plan: docs/COMPANION_BOSSING_PLAN.md,
-> section P17. Not deployed, not live-tested yet. The `scarga` key ships off.
+> section P17. Deployed keys-off; live-tested 2026-10-13 (below). The `scarga` key ships off.
 
 ## Result
 
@@ -114,6 +114,44 @@ Full suite on 22818d3b6: 13,442 tests, 0 failures, 37 skipped (11:21 min).
     Aldol and is back inside.
 14. Read the "PQ potions ... pq=scarga" lines. They decide Questions 5 and 6 for Horntail and Pink Bean.
 15. Repeat with the bench allies as stage 2 of the memory gate.
+
+## Live result 2026-10-13 21:42-23:16 (int/p9bg fdf2ab04e, temporary keys `scarga` and `field_temple`)
+
+Crew B (Brannock and Garrick Heroes, Ilse Bishop, Fenna Bowmaster, Corvin Dark Knight) with owner ohboy (Night Lord).
+Each companion wore a `!bossgear` kit with passed 10% scrolls and read its job's skill and mastery books (90 reads at
+Lv160, 25 more at Lv200; failed books handed out again, as a player buys another). No ERROR lines in either run.
+
+**Run 1, Lv160 (session 1, 22:08-22:26): not cleared, a measurement.** Targa's first form (60M) took 9.5 min (about
+6.3M a minute); with 540M left and 43 min on the clock the run could not clear, and the level set is refused inside an
+event instance ("nobody was set: ohboy is in an event instance"). ohboy left by the exit NPC; the companions left with
+him (OWNER_LEFT) and were moved out 30 s later.
+
+**Run 2, Lv200 (session 2, 22:34-23:14): cleared.** "SCARGA Expedition with leader ohboy finished after 35 Minutes and
+34 Seconds". Targa spawned 22:36:40 and died 22:49:50 (forms about 2, 3 and 7 min); Scarlion spawned about 22:55 and the
+run logged "Boss run cleared: session=2 boss=scarga inside=4" at 23:10:59 (forms about 4.5, 3.5 and 7.5 min). Fighting
+time about 29 min. The fastest form fell at about 60M a minute (Targa's first).
+
+| Step | Result |
+|---|---|
+| 6-7. Mesos; short companions buy at Trend Zone Metropolis | PASS: all five set off "for scarga" and came back with 600-764 HP and 500-800 MP potions. |
+| 8-10. Aldol: create, "My party will register too." | PASS: "Boss run enlist ... accepted=[338, 9, 336, 878, 835]", all five registered in 31 s. |
+| 11. Start, summon Targa | PASS: the key dropped inside reactor 5511000's area (x -572..-446) summons Targa; a key at x -575 does not (run 1's keys landed there because ohboy slid on after walking, so run 1 used `!spawn 9420542`). Scarlion by a key at x -203. |
+| 12. Immunity | Not observed: no immunity line in either run. 57 stuns, each recovered from (the Snowman fix). |
+| 13. A dead companion walks back from Kampung and talks back in | PASS for Fenna (died 23:08:37, walk 6 hops in 1 min 40 s, "talks back in" and "back inside" 23:10:22). FAIL for Corvin, both runs: "gives up re-entering" after the 5-minute limit. Run 1 he looped on the 15 px stair steps at x about -860 on 551000100; run 2 he reached 551020000 (hop 5 of 6). |
+| 14. "PQ potions ... pq=scarga" | Run 2: Garrick 768 > 112 HP potions, Brannock 746 > 367, Fenna 600 > 504, Ilse 614 > 619 (MP 647 > 570), Corvin out most of the fight. |
+| After the clear | PASS: ohboy left through 9201134 ("You guys defeated both Scarlion and Targa!"); the four inside left with him ("reason=EXITED") and were moved out; Corvin rejoined on Aldol's map. |
+
+Findings:
+- Lv160 is too weak for Scarga in 60 min with five companions; Lv200 (the server's cap) clears it in about 30 min.
+- The 600 HP standard is thin for a front-line Hero over a 30-minute fight (Garrick ended with 112).
+- Corvin's walk back is slower than the 5-minute re-entry limit; Fenna's took 1 min 40 s.
+- Garrick, loaded as a bench REST slice at login and then called, arrived frozen (mode BACKGROUND_ABSTRACT, TOWN_LIFE
+  ledger blocked, mailbox 5); benching and calling him again fixed it. Handed to a separate session.
+- Leafre restock for `field_temple` (the field standard, P16 follow-up): PASS, four companions set off "for a
+  field_temple" on arrival and bought to 500 HP potions.
+
+Video: docs/agents/evidence/video/p17-scarga-2026-10-13.mp4 (run 1) and p17-scarga-lv200-2026-10-13.mp4 (run 2,
+655 MB), not in git.
 
 ## Risks
 
