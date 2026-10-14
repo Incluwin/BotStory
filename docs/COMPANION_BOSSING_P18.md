@@ -182,18 +182,63 @@ was my driving mistake: I unhid the only human left without a heal loop for him.
 
 0 ERROR lines in the run's log (cosmic-log-2026-10-14-2, 04:28-05:22).
 
+## Live check 2026-10-14, rerun (altar reached, not cleared)
+
+**Setup.** int/p9bi live (10:13 restart: the full-rate hold d395c00c1) with the same temporary keys as the first run
+(`horntail` in both lists, `COMPANION_BOSS_OWNERS_MAX` 2). Kaentake.dll b5d5b522 (`fix/wz-large-archive-reads`) shipped
+to both client folders first, patch manifest regenerated, old DLL kept as `.pre-wzmap-2026-10-14.bak`. Same two owners
+and crews, all Lv200. Both owners stayed visible and moved through the maps together; a heal loop healed both through
+Bossfriend's `!healplayer`. Video of ohboy's view, sign-up to exit: `docs/agents/evidence/video/p18-horntail-rerun-2026-10-14.mp4`
+(979 MB, not in git).
+
+| Step | Result |
+|---|---|
+| Client memory gate | **PASS.** Through the normal launcher the client starts with 239 MB mapped and 3,066 MB free. With all 12 on Horntail, ohboy's client peaked at 2,295 MB virtual (Bossfriend's 2,046 MB). The stock DLL idled at 3,791 MB and crashed at 4,081 MB. |
+| 5 Leafre restock | **PASS.** All ten bought up to 600/600 at the Leafre store (10:18-10:20). |
+| 6-8 cave, sign-up, start | **PASS.** 12 enlisted, 0 refused (10:23:55 and 10:24:43); all 12 on 240060000 by 10:25:58. |
+| 9 pre-heads | **PASS.** The left head fell at 10:40:35 (14.7 min); all ten walked to 240060100 on their own. The right head fell at about 10:55; the companions walked on to the altar on their own. |
+| 10 reactor | **PASS.** ohboy climbed the rope at x=572 to the ledge at y=20 and attacked the crystal (2401000 at 598,-91). Horntail woke at 11:07:20 with a 60-minute clock. |
+| 11 never-targets | Not checked live: nothing logs a companion's target. |
+| 12-13 death walk, re-entry restock | **PASS, many times.** On the altar companions went down about 40 times in 11 minutes; each walked back from Leafre, was moved in, talked to the Mark and was back inside (for example Corvin restocked HP 511 -> 600 at 11:08:36 first). |
+| Clear | **FAIL.** See below. |
+
+**Alone on a pre-head map is by design.** The ten stood on 240060100 for 80 s (10:40:39-10:42:00) before ohboy
+arrived, and the right head was still at 100%; with ohboy there it lost 16% in 40 s. `BossTargetRules.hittable` counts a
+boss part only while a human drives it, so the mirror can apply its attacks. The full-rate hold changes tick rate, not
+this rule.
+
+**The altar.** Horntail fell at about 3% a minute for the first 2.5 minutes (93.1% at 11:09:42), then at about 0.6% a
+minute (80.6% at 11:14:52, 77.9% at 11:19:13) as companions died faster than they walked back. They went down with
+plenty of potions (one at 600/600), so the hits outrun the potion drinking. Max HP: the Heroes and the Dark Knights
+19,776, the archers and the Corsair 9,000-9,900, the two mages 5,288. Ingrid went down 11 times and Thane 6. Ingrid ran
+out of mesos after three restocks (3.0M -> 1,689 mesos by 10:51), said the broke line, and got 3M from Bossfriend at
+11:10. Horntail also killed ohboy twice: at 9,276 HP and again at 30,000. I revived him with `!hpmp` the first time and
+`!healplayer` the second (a second `!hpmp` set his MP but left his HP at 0), and raised both owners to 30,000 max HP
+with `!maxhpmp` at 11:09. After the run both were set back in the database while offline: ohboy 8,996/5,309,
+Bossfriend 19,776/2,924 (base max HP/MP before the run).
+
+**Mirror.** 236 calibration misses on the altar from 11:07 (hits the mirror predicted on an owner that the owner's
+client never reported). Most were 8810009 attack 1 (54), 8810006 attack 1 (22), 8810003 attack 3 (21) and 8810002
+attack 3 (20). Summary at 11:17:31: attacks 1,158, mirrored 702, applied 2,106, unengaged 441.
+
+**End.** At 11:19, with 77.9% left and 48 minutes on the clock (it needed more than 1.6% a minute), both owners left by
+the Crystal of Roots. All ten members went out with `OWNER_LEFT`, and the run ended at 11:20:01 with `cleared=false`.
+0 ERROR lines in the run's log (cosmic-log-2026-10-14-5, 10:13-11:22).
+
 ## Open items
 
-1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid).
+1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid; many times in the rerun).
 2. The scaled standard (850/850, 7000) waits for Questions 5 and 6. Live evidence: Ingrid (Dark Knight) used about
-   400 HP potions on the left head alone and went down at 197.
-3. Client memory (2026-10-14): 12 characters on Horntail exceed the client's 4 GB address space, while 5 companions are
-   too slow to clear 2.75B HP inside 120 minutes. **Cause found, fix built, not shipped** (see "Follow-ups" below).
-4. Companions on a fight map with no player watching all but stop (2026-10-14, crew A after ohboy's crash). **Fixed
-   in d395c00c1** (see "Follow-ups").
-5. Flint did not drink at 100-160 HP after his re-entry (2026-10-14). He stood on the same unwatched map as item 4, so
-   the same fix should cover him; the next Horntail run confirms it. Corvin at 1 HP on Pianus (P16) had a player beside
-   him and looks like a separate case (he had run out of potions).
+   400 HP potions on the left head alone and went down at 197. In the rerun she was broke after three restocks.
+3. Client memory (2026-10-14): **fixed and shipped** (kaentake b5d5b522). The rerun peaked at 2,295 MB with 12 characters.
+4. Companions on a fight map with no player watching: the full-rate hold (d395c00c1) is live. They still never hit a
+   boss part no human drives; that is the targeting rule, not the tick rate (see the rerun).
+5. Flint not drinking at 100-160 HP (first run): not seen again in the rerun, where both owners stayed visible.
+6. **Lv200 crews cannot hold the altar** (rerun): about 40 downs in 11 minutes, often with full potions, and the clear
+   rate fell from 3% to 0.6% a minute. Needs a decision before another try: more allies, tougher companions, or ways to
+   stay out of Horntail's attacks.
+7. **Mirror on Horntail** (rerun): 236 predicted hits on the owners that their clients never reported. If the mirror
+   over-applies Horntail's attacks (8810009 attack 1 most of all), that alone could explain part of item 6.
 
 ## Follow-ups (2026-10-14)
 
@@ -212,7 +257,7 @@ screen the stock client had 2,714 MB mapped and 591 MB free (largest free block 
 call for archives larger than 128 MB in the archive open only (the stream's checksum caller is untouched). Measured on a
 test copy of the client: 235 MB mapped and 3,145 MB free at the login screen; 2,927 MB free in game; 1,532 MB peak with
 Horntail summoned beside five Lv200 companions (the stock client idled at 3,791 MB). Characters and NPCs render
-normally. Not shipped: the friends' Kaentake.dll changes only with the user's OK.
+normally. Shipped 2026-10-14 with the user's OK as Kaentake.dll b5d5b522 (both client folders; patch manifest regenerated).
 
 ## Risks
 
