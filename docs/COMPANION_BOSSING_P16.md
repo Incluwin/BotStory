@@ -160,6 +160,22 @@ Findings: field boss groups have no potion standard (`BOSS_STANDARDS` lists run 
 their everyday stock (Corvin: 50 HP potions before the gift); Fenna said "anyone have HP pots? running low" at Dodo.
 Melee companions cannot reach Dodo where it hovers (about 220 px above the floor).
 
+### Follow-ups built 2026-10-13 (user decisions after the retest)
+
+- **Field boss potion standard** (`feat/field-boss-potion-standards`, 87088a3c4). `living_world.COMPANION_FIELD_BOSS_TOWNS`
+  lists each group's towns: Aquarium (`field_pianus`), Leafre (`field_leafre`, `field_temple`), Mushroom Shrine and
+  Showa Town (`field_zipangu`), New Leaf City (`field_masteria`). A companion out with its owner there keeps the group's
+  `BOSS_STANDARDS` count while the switch lists the group and its level meets the group's new `minLevel`
+  (boss-rules.json: 100, 95, 110, 85, 95). Counts: `field_pianus` 500/300, `field_leafre` 300/200, `field_temple`
+  500/300, `field_zipangu` 500/300, `field_masteria` 400/300. Those stores sell nothing stronger than about 1,000 HP a
+  potion. The owner walking into such a town nudges each short companion at once, as Mu Young's room does.
+- **Mastery books** (`feat/agent-mastery-books`, 67161964a + af4990752). An Agent reads the skill (228xxxx) and mastery
+  (229xxxx) books for its job that it carries, one every 10 s, as `SkillBookHandler` does for a player: the book is used
+  up, its success roll decides, and SP then flows into the raised master level. Everyone on the map sees the effect;
+  each read logs `Agent <name> read book <id>: skill <id> master <from> -> <to> (learned|the book failed)`.
+- **Stronger kits** (`tune/bossgear-ten-percent`, 5ba042a56). `!bossgear` now puts a passed 10% scroll in every
+  upgrade slot (60% on a piece no 10% scroll fits), so a kit weapon gains +5 attack a slot instead of +2.
+
 ## Risks
 
 - Death loops at owner levels under 100.
