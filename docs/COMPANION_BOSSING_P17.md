@@ -31,7 +31,7 @@ Example: `scarga` on, the owner at Aldol (551030100) with 5 companions and the k
 
 | Key | Boss | Recruit map, battle map | Standard (HP/MP potions, projectiles) |
 |---|---|---|---|
-| `scarga` | Scarlion and Targa | 551030100, 551030200 | 600/500, 5000 |
+| `scarga` | Scarlion and Targa | 551030100, 551030200 | 900/500, 5000 (HP was 600 until 2026-10-14) |
 
 The standard is above the carry limits, as Zakum's is: a visit raises them to the standard.
 
@@ -54,7 +54,7 @@ The standard is above the carry limits, as Zakum's is: a visit raises them to th
 
 - `AgentBossScope.EXPEDITION_TYPES` changes from `ZAKUM` to `ZAKUM,SCARGA`. It acts only when an Agent hits a part in
   a Scarga event, and Agents get there only with the key on.
-- `scarga=600/500` joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `scarga=5000` joins `AMMO_STANDARDS`.
+- `scarga=900/500` (600/500 until the live run) joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `scarga=5000` joins `AMMO_STANDARDS`.
 - New: `AgentBossRunSession.REENTER_TALK_EVERY_MS: '10000'`.
 
 boss-rules.json: the `scarga` row (`targetPriority` Targa 9420542-9420544, then Scarlion 9420547-9420549; `adds`
@@ -103,7 +103,7 @@ Full suite on 22818d3b6: 13,442 tests, 0 failures, 37 skipped (11:21 min).
 3. Check that each bench ally is still Lv160 from P8. If one is lower, raise it.
 4. Run `!resetboss <name> SCARGA` for each character.
 5. Run `!item 4032246 2` as Bossfriend.
-6. Run `!givemeso <name> 2000000` for each companion. The 600/500 standard costs about 1.54M.
+6. Run `!givemeso <name> 3000000` for each companion. The 900/500 standard costs more than the 1.54M the 600/500 one did.
 7. Run `!warp 550000000`. Check that short companions buy there.
 8. Run `!warp 551030100`.
 9. Start the client memory gate, stage 1: owner plus 5.
@@ -143,8 +143,10 @@ time about 29 min. The fastest form fell at about 60M a minute (Targa's first).
 
 Findings:
 - Lv160 is too weak for Scarga in 60 min with five companions; Lv200 (the server's cap) clears it in about 30 min.
-- The 600 HP standard is thin for a front-line Hero over a 30-minute fight (Garrick ended with 112).
-- Corvin's walk back is slower than the 5-minute re-entry limit; Fenna's took 1 min 40 s.
+- The 600 HP standard is thin for a front-line Hero over a 30-minute fight (Garrick ended with 112). User decision
+  2026-10-14: raised to 900.
+- Corvin's walk back is slower than the 5-minute re-entry limit; Fenna's took 1 min 40 s. User decision 2026-10-14:
+  `REENTER_TIMEOUT_MS` 600000 (10 min).
 - Garrick, loaded as a bench REST slice at login and then called, arrived frozen (mode BACKGROUND_ABSTRACT, TOWN_LIFE
   ledger blocked, mailbox 5); benching and calling him again fixed it. Handed to a separate session.
 - Leafre restock for `field_temple` (the field standard, P16 follow-up): PASS, four companions set off "for a
