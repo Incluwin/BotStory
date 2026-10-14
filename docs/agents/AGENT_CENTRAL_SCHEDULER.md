@@ -136,6 +136,28 @@ authoritative gameplay. Returning from a background mode validates the live
 character, map, and position; an eventual abstract implementation must also
 reconcile pending outcomes before presentation resumes.
 
+Since then, TownLife became the one allowlisted abstract capability
+(`AgentAbstractTickRuntime`). Its window is recorded by
+`AgentBackgroundOutcomeLedger`, together with a fingerprint of the exact state:
+map, position, chair, meso, level and experience. Leaving abstract mode
+requires that no unsupported outcome was recorded and that the fingerprint is
+unchanged. While TownLife still holds the abstract scope and nothing needs the
+Agent, a failed reconciliation keeps it abstract (fail-closed).
+
+`AgentAbstractRecoveryPolicy` limits how long that lasts. Since 2026-10-14 it
+abandons the window, with a WARN line and `APPLIED_LEDGER_ABANDONED` evidence:
+- at once, when the scope has ended, when a player is on the map, or when a
+  full-rate hold applies;
+- otherwise once `RECONCILIATION_ESCAPE_MS` (30 s) has passed since the first
+  failure.
+
+The Character is already the exact state, so nothing is replayed. The trigger
+is usually a change made from outside while the Agent is abstract, such as a
+citizen's travel, a meso gift, or a TownLife stop that stands it up. Before
+this, such Agents stayed abstract forever and never drained their mailbox.
+`!agentscheduler agent <name>` shows `failingMs`, `abandoned` and the last
+abandon.
+
 Background work is also bounded per map and cycle so one invisible crowded map
 cannot monopolize a shard. The default limit is 32 authoritative callbacks per
 map per cycle; `0` disables this guard. Presentation work is never subject to

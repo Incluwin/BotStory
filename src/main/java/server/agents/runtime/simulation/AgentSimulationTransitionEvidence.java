@@ -13,6 +13,8 @@ public record AgentSimulationTransitionEvidence(
         APPLIED,
         ALREADY_IN_MODE,
         OUTCOME_RECONCILIATION_FAILED,
+        /** Applied after abandoning an abstract window that could not reconcile. */
+        APPLIED_LEDGER_ABANDONED,
         MATERIALIZATION_FAILED
     }
 
