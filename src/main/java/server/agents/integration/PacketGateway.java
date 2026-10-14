@@ -18,6 +18,9 @@ public interface PacketGateway {
 
     void broadcastChair(Character agent, int itemId);
 
+    /** The skill or mastery book effect everyone on the Agent's map sees as it reads one (AgentMasteryBooks). */
+    void broadcastSkillBookResult(Character agent, int skillId, int masterLevel, boolean success);
+
     void broadcastCloseRangeAttack(Character agent,
                                    int skill,
                                    int skillLevel,
