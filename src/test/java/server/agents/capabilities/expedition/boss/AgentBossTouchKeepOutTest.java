@@ -39,6 +39,8 @@ import static org.mockito.Mockito.when;
  */
 class AgentBossTouchKeepOutTest {
     private static final int ALTAR = 240_060_200;
+    private static final int FIRST_STAGE = 240_060_000;
+    private static final int LEFT_HEAD = 8_810_000;
     private static final int LEGS = 8_810_008;
     private static final int TAIL = 8_810_009;
     private static final int WINGS = 8_810_007;
@@ -48,7 +50,9 @@ class AgentBossTouchKeepOutTest {
 
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final MapleMap altar = mock(MapleMap.class);
+    private final MapleMap stage = mock(MapleMap.class);
     private final List<Monster> monsters = new ArrayList<>();
+    private final List<Monster> stageMonsters = new ArrayList<>();
     private final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
     private final Map<Integer, Rectangle> areas = new HashMap<>();
     private final Map<Integer, Double> touches = new HashMap<>();
@@ -59,12 +63,14 @@ class AgentBossTouchKeepOutTest {
     @BeforeEach
     void setUp() {
         when(altar.getId()).thenReturn(ALTAR);
+        when(stage.getId()).thenReturn(FIRST_STAGE);
         when(gateway.groundPoint(any(), any())).thenAnswer(call -> new Point((Point) call.getArgument(1)));
         areas.put(LEGS, LEGS_TOUCH);
         areas.put(TAIL, TAIL_TOUCH);
         touches.put(LEGS, 11_100.0d);
         touches.put(TAIL, 25_200.0d);
         touches.put(WINGS, 7_300.0d);
+        touches.put(LEFT_HEAD, 15_100.0d);
         fight = new AgentBossPriorityFight("horntail", new AgentBossPriorityFight.Ports() {
             @Override
             public PrimitiveCapabilityGateway gateway() {
@@ -78,7 +84,7 @@ class AgentBossTouchKeepOutTest {
 
             @Override
             public List<Monster> monsters(MapleMap map) {
-                return map == altar ? monsters : List.of();
+                return map == altar ? monsters : map == stage ? stageMonsters : List.of();
             }
 
             @Override
@@ -188,21 +194,72 @@ class AgentBossTouchKeepOutTest {
         assertNull(fight.touchBand(altar, member(13, new Point(600, 80)), null), "the ledge is above the touch");
     }
 
+    @Test
+    void onAStageMapThatIsDoneTheBoundaryGoesSoTheMemberReachesThePortal() {
+        areas.put(LEFT_HEAD, new Rectangle(696, 128, 224, 136));
+        stageMonsters.add(mob(LEFT_HEAD));
+        AgentRuntimeEntry archer = entry(10);
+        Character member = member(10, stage, new Point(500, 260));
+        fight.tick(List.of(member), event, 0L);
+        verify(gateway).setHorizontalBoundary(archer, FIRST_STAGE, Integer.MIN_VALUE, 696 - 1 - 30);
+
+        stageMonsters.clear();
+        fight.tick(List.of(member), event, 500L);
+
+        verify(gateway).clearHorizontalBoundary(archer);
+    }
+
+    @Test
+    void afterTheClearTheBoundaryGoes() {
+        mobs(LEGS, TAIL);
+        AgentRuntimeEntry hero = entry(10);
+        Character member = member(10, new Point(-400, 260));
+        fight.tick(List.of(member), event, 0L);
+
+        when(event.isEventCleared()).thenReturn(true);
+        fight.tick(List.of(member), event, 500L);
+
+        verify(gateway).clearHorizontalBoundary(hero);
+    }
+
+    @Test
+    void theSameBandOnAnotherMapIsSetThereToo() {
+        mobs(LEGS);
+        areas.put(LEFT_HEAD, LEGS_TOUCH);
+        stageMonsters.add(mob(LEFT_HEAD));
+        AgentRuntimeEntry hero = entry(10);
+
+        fight.tick(List.of(member(10, stage, new Point(-400, 260))), event, 0L);
+        fight.tick(List.of(member(10, new Point(-400, 260))), event, 500L);
+
+        verify(gateway).setHorizontalBoundary(hero, FIRST_STAGE, Integer.MIN_VALUE, EDGE);
+        verify(gateway).setHorizontalBoundary(hero, ALTAR, Integer.MIN_VALUE, EDGE);
+    }
+
     private void mobs(int... ids) {
         for (int id : ids) {
-            Monster monster = mock(Monster.class);
-            when(monster.getId()).thenReturn(id);
-            when(monster.isAlive()).thenReturn(true);
-            when(monster.getPosition()).thenReturn(new Point(71, 260));
-            monsters.add(monster);
+            monsters.add(mob(id));
         }
     }
 
+    private Monster mob(int id) {
+        Monster monster = mock(Monster.class);
+        when(monster.getId()).thenReturn(id);
+        when(monster.isAlive()).thenReturn(true);
+        when(monster.getPosition()).thenReturn(new Point(71, 260));
+        return monster;
+    }
+
     private Character member(int id, Point at) {
+        return member(id, altar, at);
+    }
+
+    private Character member(int id, MapleMap map, Point at) {
         Character character = mock(Character.class);
         when(character.getId()).thenReturn(id);
-        when(character.getMap()).thenReturn(altar);
-        when(character.getMapId()).thenReturn(ALTAR);
+        when(character.getMap()).thenReturn(map);
+        int mapId = map.getId();
+        when(character.getMapId()).thenReturn(mapId);
         when(character.getPosition()).thenReturn(at);
         return character;
     }

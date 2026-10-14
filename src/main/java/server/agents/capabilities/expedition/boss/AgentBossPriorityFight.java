@@ -54,7 +54,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private final Ports ports;
     /** Fighter id -> when it last took the stage portal. */
     private final Map<Integer, Long> portalTries = new HashMap<>();
-    /** Fighter id -> the keep-out band its horizontal boundary holds now: {minX, maxX}. */
+    /** Fighter id -> the band its horizontal boundary holds now, and on which map: {minX, maxX, mapId}. */
     private final Map<Integer, int[]> bands = new HashMap<>();
 
     AgentBossPriorityFight(String key, Ports ports) {
@@ -90,14 +90,16 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 continue;
             }
             if (!cleared && rules != null && rules.stageMaps().contains(map.getId()) && stageDone(map, rules)) {
+                release(gateway, entry, member.getId());
                 advance(gateway, entry, member, rules.stagePortal(), nowMs);
                 continue;
             }
             boolean melee = ports.melee(member);
             Set<Integer> live = cleared ? Set.of() : liveByMap.computeIfAbsent(map, this::liveIds);
             AgentBossRules.Focus step = cleared ? null : AgentBossRules.focusStep(rules, live);
-            if (!cleared && rules != null
-                    && keepOut(gateway, entry, member, map, band(map, member, rules, melee, step))) {
+            if (cleared || rules == null) {
+                release(gateway, entry, member.getId());
+            } else if (keepOut(gateway, entry, member, map, band(map, member, rules, melee, step))) {
                 continue;
             }
             if (step != null) {
@@ -276,11 +278,22 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             gateway.navigate(entry, ground != null ? ground : inside, false);
             return true;
         }
-        int[] was = bands.put(id, band);
-        if (was == null || was[0] != band[0] || was[1] != band[1]) {
+        int[] was = bands.put(id, new int[] {band[0], band[1], map.getId()});
+        if (was == null || was[0] != band[0] || was[1] != band[1] || was[2] != map.getId()) {
             gateway.setHorizontalBoundary(entry, map.getId(), band[0], band[1]);
         }
         return false;
+    }
+
+    /**
+     * Lets go of the member's horizontal boundary, if it holds one: on a stage map that is done (else a boundary from
+     * that map's head would wall it off from the stage portal, as on Horntail's first map on 2026-10-14) and after the
+     * clear.
+     */
+    private void release(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, int id) {
+        if (bands.remove(id) != null) {
+            gateway.clearHorizontalBoundary(entry);
+        }
     }
 
     static int keepOutMarginPx() {
