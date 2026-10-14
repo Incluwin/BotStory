@@ -73,6 +73,31 @@ class LivingWorldConfigRestockTest {
     }
 
     @Test
+    void fieldBossTownsListGroupsWithTheirTownsAndRefuseAnythingElse() {
+        LivingWorldConfig config = new LivingWorldConfig();
+        assertEquals("", config.COMPANION_FIELD_BOSS_TOWNS, "none by default");
+        assertEquals(java.util.List.of(), config.companionFieldBossKeysAt(240_000_000));
+
+        config.COMPANION_FIELD_BOSS_TOWNS = "field_leafre=240000000,field_temple=240000000,field_zipangu=800000000|801000000";
+        assertEquals(java.util.List.of("field_leafre", "field_temple"), config.companionFieldBossKeysAt(240_000_000));
+        assertEquals(java.util.List.of("field_zipangu"), config.companionFieldBossKeysAt(801_000_000));
+        assertEquals(java.util.List.of(), config.companionFieldBossKeysAt(100_000_000));
+        assertDoesNotThrow(config::validate);
+
+        for (String bad : new String[] {"field_pianus", "field_pianus=0", "nosuchboss=230000000",
+                "field_pianus=230000000,230000002"}) {
+            LivingWorldConfig refused = new LivingWorldConfig();
+            refused.COMPANION_FIELD_BOSS_TOWNS = bad;
+            IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, refused::validate, bad);
+            assertTrue(failure.getMessage().startsWith("living_world.COMPANION_FIELD_BOSS_TOWNS must list"), bad);
+        }
+
+        LivingWorldConfig shipped = YamlConfig.config.living_world;
+        assertEquals(java.util.List.of("field_pianus"), shipped.companionFieldBossKeysAt(230_000_000), "Aquarium");
+        assertEquals(java.util.List.of("field_leafre", "field_temple"), shipped.companionFieldBossKeysAt(240_000_000));
+    }
+
+    @Test
     void configYamlShipsTheRestockKeysAndSaysWhy() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
         assertTrue(living.COMPANION_RESTOCK_ENABLED);
