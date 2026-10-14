@@ -4,9 +4,11 @@ import client.Character;
 import client.Client;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.townlife.AgentTownLifeCheckpointRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.AgentActivityBootstrap;
+import server.agents.runtime.field.AgentFieldCheckpointRuntime;
 import server.agents.runtime.field.AgentFieldVisitLeaseRuntime;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.config.Content.Persona;
@@ -157,7 +159,43 @@ class BenchTeardownTest {
         assertTrue(game.calls.indexOf("unload Olwen") < game.calls.indexOf("hand back Olwen"), game.calls.toString());
         game.statics(AgentFieldVisitLeaseRuntime.class).verify(() -> AgentFieldVisitLeaseRuntime.clear(isNull(), eq(olwen)));
         game.statics(AgentTownLifeVisitLeaseRuntime.class).verify(() -> AgentTownLifeVisitLeaseRuntime.clear(isNull(), eq(olwen)));
+        // the visits themselves too, not only their leases
+        game.statics(AgentFieldCheckpointRuntime.class).verify(() -> AgentFieldCheckpointRuntime.delete(901));
+        game.statics(AgentTownLifeCheckpointRuntime.class).verify(() -> AgentTownLifeCheckpointRuntime.delete(901));
         assertNull(game.leases.holder(901));
+    }
+
+    @Test
+    void aRestSliceWhoseHandBackNeverRanLeavesNoTownVisitForTheCallsLoad() {
+        // found live 2026-10-13: Garrick rested unwatched (abstract) in Perion, his owner called, the hand-back missed its
+        // wait, the unload cleared only the visit's lease, and the call's load where he stood restored the bench TownLife
+        // visit: abstract in the empty town on his way, and frozen beside his owner once he arrived
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        game.duty.register(Assignment.REST, game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN));
+        game.duty.tick();
+        game.statics(AgentTownLifeCheckpointRuntime.class).when(() -> AgentTownLifeCheckpointRuntime.delete(anyInt()))
+                .thenAnswer(inv -> game.calls.add("forget town visit " + inv.getArgument(0)));
+        game.mailboxRuns = false;
+
+        game.duty.endFor("fenn", "called by owner");
+
+        assertTrue(game.calls.contains("forget town visit 906"), game.calls.toString());
+        assertTrue(game.calls.indexOf("unload Fenn") < game.calls.indexOf("forget town visit 906"),
+                "once it is out of the registry, so no tick of its writes the visit again: " + game.calls);
+        game.statics(AgentFieldCheckpointRuntime.class).verify(() -> AgentFieldCheckpointRuntime.delete(906));
+        assertNull(game.leases.holder(906));
+    }
+
+    @Test
+    void aSliceHandedBackStillLeavesNoVisitToRestore() {
+        // its hunt is only asked to stop at its boundary: still draining when it unloads, and nothing ticks it after
+        game.companion(ANN, "olwen", "Olwen", 901, Assignment.TRAIN);
+        game.duty.tick();
+
+        game.duty.endFor("olwen", "called by owner");
+
+        game.statics(AgentFieldCheckpointRuntime.class).verify(() -> AgentFieldCheckpointRuntime.delete(901));
+        game.statics(AgentTownLifeCheckpointRuntime.class).verify(() -> AgentTownLifeCheckpointRuntime.delete(901));
     }
 
     /** A town form whose begin works and whose finish throws (when {@code failFinish}). */

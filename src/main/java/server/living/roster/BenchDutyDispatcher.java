@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementOutcome;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy;
+import server.agents.capabilities.townlife.AgentTownLifeCheckpointRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.progression.AgentVictoriaRouteRuntime;
@@ -19,6 +20,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.activity.AgentActivityBootstrap;
 import server.agents.runtime.activity.session.AgentActivityKind;
+import server.agents.runtime.field.AgentFieldCheckpointRuntime;
 import server.agents.runtime.field.AgentFieldVisitLeaseRuntime;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.LivingWorld;
@@ -1246,7 +1248,10 @@ public final class BenchDutyDispatcher {
      * Unloads the slice's companion: out of the registry, then saved and disconnected. Its lease is released once it is
      * offline (the save first, so the next load sees it); true then. While it is still online its lease stays, so
      * nothing can load a second copy of it. A hand-back that never ran on its own tick is finished here: once it is
-     * out of the registry nothing ticks it any more.
+     * out of the registry nothing ticks it any more. Its visits are dropped too, handed back or not (a hunt asked to
+     * stop at its boundary is still draining): their checkpoints would start them again on its next load where it
+     * stands. Found live 2026-10-13: Garrick, called from a REST slice whose hand-back missed its
+     * {@link #ON_AGENT_WAIT_MS}, came back in its bench TownLife visit.
      */
     private boolean unload(Slice slice) {
         Character agent = slice.leaving;
@@ -1264,6 +1269,11 @@ public final class BenchDutyDispatcher {
                 log.warn("bench slice of {} failed to clear its visit checkpoints", slice.personaId, failure);
             }
         }
+        try {
+            forgetVisits(slice.characterId);
+        } catch (RuntimeException failure) {
+            log.warn("bench slice of {} failed to drop its visits", slice.personaId, failure);
+        }
         boolean offline = agent == null || agent.getClient() == null;
         if (!offline) {
             try {
@@ -1278,6 +1288,16 @@ public final class BenchDutyDispatcher {
             world.leases().release(slice.characterId, slice.lease());
         }
         return offline;
+    }
+
+    /**
+     * Drops the town and field visits checkpointed for a character that is not loaded, so its next load restores none
+     * of them where it stands (their lease checkpoints go with them on that load). Every slice's unload, and every
+     * companion load (RosterService.takeCharacter): a slice may also have died with the server.
+     */
+    public void forgetVisits(int characterId) {
+        AgentFieldCheckpointRuntime.delete(characterId);
+        AgentTownLifeCheckpointRuntime.delete(characterId);
     }
 
     /** A field slice's yield, for the model: how long it hunted, and the EXP, meso, items and deaths it took there. */

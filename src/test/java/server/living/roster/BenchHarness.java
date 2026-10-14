@@ -8,6 +8,7 @@ import client.inventory.manipulator.InventoryManipulator;
 import config.LivingWorldConfig;
 import constants.inventory.ItemConstants;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.townlife.AgentTownLifeCheckpointRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentMailboxAction;
@@ -16,6 +17,7 @@ import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.activity.AgentActivityBootstrap;
+import server.agents.runtime.field.AgentFieldCheckpointRuntime;
 import server.agents.runtime.field.AgentFieldVisitLeaseRuntime;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.LivingWorld;
@@ -178,6 +180,8 @@ final class BenchHarness implements AutoCloseable {
         fieldLease.when(() -> AgentFieldVisitLeaseRuntime.clear(any(), any())).thenAnswer(inv ->
                 calls.add("hand back " + ((Character) inv.getArgument(1)).getName()));
         open(AgentTownLifeVisitLeaseRuntime.class);
+        open(AgentFieldCheckpointRuntime.class); // no checkpoint files are touched by a test
+        open(AgentTownLifeCheckpointRuntime.class);
         // an Agent's own mailbox runs at once here, as its next tick would (mailboxRuns false: it never runs)
         open(AgentMailboxRuntime.class).when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
                 .thenAnswer(inv -> {

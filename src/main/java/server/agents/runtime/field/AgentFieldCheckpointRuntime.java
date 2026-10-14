@@ -109,7 +109,20 @@ public final class AgentFieldCheckpointRuntime {
         }
     }
 
-    private static Path path(int characterId) {
+    /**
+     * Drops the checkpoint of an Agent that is not loaded, so its next load restores no field visit (an owner taking
+     * it back from a visit that ended without its Agent's own tick).
+     */
+    public static void delete(int characterId) {
+        if (characterId <= 0) return;
+        try {
+            Files.deleteIfExists(path(characterId));
+        } catch (IOException failure) {
+            log.warn("Could not delete field checkpoint for {}", characterId, failure);
+        }
+    }
+
+    static Path path(int characterId) {
         return DIRECTORY.resolve(characterId + ".json");
     }
 }
