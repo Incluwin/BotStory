@@ -146,10 +146,52 @@ Full suite on 7a6244dba (the re-entry restock, on P20): 13,471 tests, 0 failures
 15. Repeat with the bench allies as stage 2, then with ohboy as stage 3. For stage 3, run `!warphere ohboy` from
     Bossfriend on 240050400.
 
+## Live check 2026-10-14 (partial, not cleared)
+
+**Setup.** int/p9bh live (04:28 restart) with a temporary `horntail` in `COMPANION_BOSS_ENABLED_TYPES` and
+`COMPANION_BOSS_ALLY_TYPES`, and `COMPANION_BOSS_OWNERS_MAX` 2: stages 1 and 3 in one run. Two owners, 12 members:
+
+- ohboy (Lv200 Night Lord, GM 0, visible, expedition captain) with crew B: Brannock and Garrick (Heroes), Ilse
+  (Bishop), Fenna (Bowmaster), Corvin (Dark Knight). All Lv200 with 10% kits and books from P17.
+- Bossfriend (Lv200 Hero, hidden GM) with crew A: Thane (Hero), Ingrid (Dark Knight), Isolde (F/P Arch Mage), Sorrel
+  (Marksman), Flint (Corsair). Raised from Lv70 3rd job to Lv200 4th job for this run (`!setlevel party 200`, then one
+  job set each), with 10% kits, 3M mesos and 91 books (110 reads, 11 still failed after two re-gives).
+
+A heal loop kept ohboy alive with Bossfriend's `!healplayer`. Video of ohboy's view, from the sign-up to his client's
+crash: `docs/agents/evidence/video/p18-horntail-2026-10-14.mp4` (336 MB, not in git).
+
+| Step | Result |
+|---|---|
+| 3-4 resets, leader item | Done. |
+| 5 Leafre restock | **PASS.** Once Lv200, crew A cleared the level gate and all five bought up to 600/600 at the Leafre store (Sorrel 8,612 arrows, Flint 5,104 bullets). Garrick topped up to 600/600. |
+| 6-8 cave, sign-up, start | **PASS.** Both crews arrived at 240050400 within seconds. ohboy created the expedition, and each owner's "My party will register too." enlisted five (0 refused). The start put all 12 on 240060000 at 04:55:04, and the boss log took an entry for each companion. |
+| 9 pre-heads | **PASS (first head).** The left head (330M) fell in about 14.5 min with 10 companions: about 23M a minute against one target, hits of 25k-43k. All ten walked through next00 to 240060100 on their own by 05:10. There, with all 12, the right head lost 6% in 21 s (about 57M a minute). ohboy climbed the three ropes to next00 by script. |
+| 12 death walk | **PASS, twice.** Ingrid went down on her own at 05:05:28 (potions 197/348; at 05:04:55 she had run low and found no reachable store). Flint by `!hpmp Flint 0` at 05:10:48. Each said `boss.reenter`, walked from Leafre, was moved to 240050400, talked to the Mark and was back on 240060000. Flint was back inside 66 s after going down and walked on to 240060100. |
+| 13 re-entry restock | **PASS, twice.** Flint shopped before the move in: HP 573 -> 600, MP 351 -> 600, bullets 2,760 -> 5,760 (mesos 3.02M -> 0.95M), then `Boss death walk moved in`. Ingrid did the same. |
+| 10-11 altar | Not reached. |
+| Client memory gate | **FAIL.** ohboy's client (LAA, 4 GB address space) sat at 3,791 MB virtual in the cave entrance before the fight. It climbed to 4,081 MB on entering 240060100 with 12 characters, then crashed at 05:11:25 (connection reset). Private bytes were only about 1,070 MB. |
+
+**After the crash.** Crew B despawned with their owner offline, as designed. Crew A all but stopped: the right head went
+from about 92% (05:11) to 89.5% (05:19). No visible player stood on that map (Bossfriend was hidden on 240060000), and
+the mirror logged nothing after 05:11, so nothing controlled the head. Isolde and Flint stood at the spawn point, and
+Flint stayed at 100-160 HP for 8 minutes holding 600 potions without drinking.
+
+**End.** At 05:20:10 I unhid Bossfriend to give the head a controller. The head killed him within 40 s, the run logged
+`no standing human` at 05:20:50, all five left (`NO_HUMAN_LEFT`) and the run ended at 05:21:00 with `cleared=false`. This
+was my driving mistake: I unhid the only human left without a heal loop for him.
+
+0 ERROR lines in the run's log (cosmic-log-2026-10-14-2, 04:28-05:22).
+
 ## Open items
 
-1. Restock in Leafre on re-entry: built in 7a6244dba, not live-tested (live check step 13).
-2. The scaled standard (850/850, 7000) waits for Questions 5 and 6.
+1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid).
+2. The scaled standard (850/850, 7000) waits for Questions 5 and 6. Live evidence: Ingrid (Dark Knight) used about
+   400 HP potions on the left head alone and went down at 197.
+3. Client memory (2026-10-14): 12 characters on Horntail exceed the client's 4 GB address space, while 5 companions are
+   too slow to clear 2.75B HP inside 120 minutes. The client reserves about 3.8 GB of address space in a quiet map with
+   only about 650 MB private, so the reservations, not the content, look like the limit.
+4. Companions on a fight map with no visible human all but stop (2026-10-14, crew A after ohboy's crash).
+5. Flint did not drink at 100-160 HP after his re-entry (2026-10-14), like Corvin at 1 HP on Pianus (P16).
 
 ## Risks
 
