@@ -15,6 +15,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.runtime.activity.AgentActivityBootstrap;
+import server.agents.runtime.simulation.AgentSimulationState;
 import server.expeditions.Expedition;
 import server.maps.MapleMap;
 
@@ -29,6 +30,9 @@ public interface AgentBossRunPorts {
 
     /** The loaded Agent character, or null when it has no runtime. */
     Character agent(int agentId);
+
+    /** The Agent's simulation state (the cadence its tick runs at), or null when it has no runtime. */
+    AgentSimulationState simulation(int agentId);
 
     /** True when the server drives the character (a headless Agent client); a human's character answers false. */
     boolean headless(Character character);
@@ -102,6 +106,12 @@ public interface AgentBossRunPorts {
         public Character agent(int agentId) {
             AgentRuntimeEntry entry = entry(agentId);
             return entry == null ? null : entry.bot();
+        }
+
+        @Override
+        public AgentSimulationState simulation(int agentId) {
+            AgentRuntimeEntry entry = entry(agentId);
+            return entry == null ? null : entry.simulationState();
         }
 
         @Override

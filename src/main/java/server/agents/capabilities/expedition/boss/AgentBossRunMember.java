@@ -66,6 +66,10 @@ public final class AgentBossRunMember {
     private long reenterTalkedAtMs;
     /** Its anchor left while it was down outside, and the host heard it (see {@link #ownerLeftWhileDown}). */
     private boolean ownerLeftWhileDown;
+    /** The run holds it at full simulation rate (AgentBossFullRateSimulation). */
+    private boolean fullRateHeld;
+    /** Something else already required full rate when the run took its hold, so letting go leaves that in place. */
+    private boolean fullRateWasRequired;
 
     AgentBossRunMember(int agentId, int enlistedBy, int ordinal, long enlistedAtMs) {
         this(agentId, enlistedBy, ordinal, enlistedAtMs, Kind.FOLLOWER);
@@ -316,5 +320,23 @@ public final class AgentBossRunMember {
         }
         ownerLeftWhileDown = true;
         return true;
+    }
+
+    boolean fullRateHeld() {
+        return fullRateHeld;
+    }
+
+    boolean fullRateWasRequired() {
+        return fullRateWasRequired;
+    }
+
+    void holdFullRate(boolean alreadyRequired) {
+        fullRateHeld = true;
+        fullRateWasRequired = alreadyRequired;
+    }
+
+    void releaseFullRate() {
+        fullRateHeld = false;
+        fullRateWasRequired = false;
     }
 }

@@ -3,6 +3,7 @@ package server.agents.capabilities.expedition.boss;
 import client.Character;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
+import server.agents.runtime.simulation.AgentSimulationState;
 import server.expeditions.Expedition;
 
 import java.awt.Point;
@@ -51,6 +52,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     final List<Long> scheduledDelays = new ArrayList<>();
     /** What {@link #supplies} answers per Agent; nothing by default. */
     final Map<Integer, String> supplies = new HashMap<>();
+    /** Each placed Agent's simulation state, made on first ask. */
+    final Map<Integer, AgentSimulationState> simulation = new HashMap<>();
     boolean stillTheChannels = true;
     boolean adoptionAnswer = true;
     RunNpc runNpc = (agent, npcId, selections) -> true;
@@ -104,6 +107,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     @Override
     public Character agent(int agentId) {
         return agents.get(agentId);
+    }
+
+    @Override
+    public AgentSimulationState simulation(int agentId) {
+        return agents.containsKey(agentId) ? simulation.computeIfAbsent(agentId, id -> new AgentSimulationState()) : null;
     }
 
     @Override

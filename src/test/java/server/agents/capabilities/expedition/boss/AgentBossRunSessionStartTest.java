@@ -362,6 +362,49 @@ class AgentBossRunSessionStartTest {
     }
 
     @Test
+    void membersInTheEventAreHeldAtFullRateWhoeverWatchesTheirMap() {
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE), List.of());
+        inside(THANE);
+        inside(ISOLDE);
+        assertFalse(ports.simulation(THANE).fullRateSimulationRequired());
+
+        session.tick(ports, host, START + 500L);
+
+        assertTrue(ports.simulation(THANE).fullRateSimulationRequired());
+        assertTrue(ports.simulation(ISOLDE).fullRateSimulationRequired());
+    }
+
+    @Test
+    void aMemberOutOfTheEventIsLetGoButARequirementSomethingElseSetStays() {
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE), List.of());
+        ports.simulation(ISOLDE).requireFullRateSimulation();
+        inside(THANE);
+        inside(ISOLDE);
+        session.tick(ports, host, START + 500L);
+
+        // Both walk out of the event alive: they are handed back, and the run lets go of its holds.
+        ports.eventOf.remove(THANE);
+        ports.eventOf.remove(ISOLDE);
+        session.tick(ports, host, START + 1_000L);
+
+        assertEquals(AgentBossRunMember.Phase.OUT, session.member(THANE).phase());
+        assertFalse(ports.simulation(THANE).fullRateSimulationRequired());
+        assertTrue(ports.simulation(ISOLDE).fullRateSimulationRequired(), "the run never set Isolde's requirement");
+    }
+
+    @Test
+    void theRunEndingLetsGoOfEveryHold() {
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+        session.tick(ports, host, START + 500L);
+        assertTrue(ports.simulation(THANE).fullRateSimulationRequired());
+
+        session.end(ports, host, "test", START + 700_000L);
+
+        assertFalse(ports.simulation(THANE).fullRateSimulationRequired());
+    }
+
+    @Test
     void aSelfLedMemberIsAdoptedOnlyWhileItsAnchorIsInTheEvent() {
         AgentBossRunSession session = startedWithSelfLed(List.of(), List.of(ORRIN));
         inside(ORRIN);

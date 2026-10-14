@@ -374,6 +374,7 @@ public final class AgentBossRunSession {
                     count(AgentBossRunMember.Phase.INSIDE), partySize);
         }
         watchMembers(ports, host, nowMs);
+        holdFullRate(ports);
         if (event.isEventDisposed()) {
             // A timeout, or the last player out: the stock event is gone, and with it whoever was still in it.
             for (AgentBossRunMember member : members) {
@@ -403,6 +404,30 @@ public final class AgentBossRunSession {
         if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
                 + count(AgentBossRunMember.Phase.REGISTERED) + count(AgentBossRunMember.Phase.REENTERING) == 0) {
             end(ports, host, "members-out", nowMs);
+        }
+    }
+
+    /**
+     * Each tick: a member in the run that stands in the event is held at full rate, whoever watches its map; any other
+     * member's hold is let go (AgentBossFullRateSimulation).
+     */
+    private void holdFullRate(AgentBossRunPorts ports) {
+        for (AgentBossRunMember member : members) {
+            Character agent = inTheRun(member) ? ports.agent(member.agentId()) : null;
+            boolean wanted = agent != null && agent.getEventInstance() == event;
+            if (wanted || member.fullRateHeld()) {
+                AgentBossFullRateSimulation.apply(member, ports.simulation(member.agentId()), wanted);
+            }
+        }
+    }
+
+    /** Lets go of every hold the run has, as it ends. */
+    private void releaseFullRate(AgentBossRunPorts ports) {
+        for (AgentBossRunMember member : members) {
+            if (member.fullRateHeld()) {
+                bestEffort("releaseFullRate", member.agentId(),
+                        () -> AgentBossFullRateSimulation.apply(member, ports.simulation(member.agentId()), false));
+            }
         }
     }
 
@@ -890,6 +915,7 @@ public final class AgentBossRunSession {
             return;
         }
         handBackStranded(ports, host);
+        releaseFullRate(ports);
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
