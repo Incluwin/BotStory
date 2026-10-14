@@ -5,6 +5,7 @@ import client.inventory.InventoryType;
 import constants.id.ItemId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.Shop;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
@@ -21,6 +22,7 @@ import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveKernel;
 import server.agents.objectives.AgentObjectiveSource;
@@ -137,6 +139,10 @@ public final class AgentSupplyProcurementRuntime {
                 if (gate == AgentSupplyReadinessRuntime.CriticalGate.ASK_ONLY) {
                     awaitingPartySupply(entry, agent, request, execution, nowMs);
                 }
+                return false;
+            }
+            if (!readinessTrip && dutyHolder == null && potion(request.category()) && !selfSustaining(entry)
+                    && !paysForOne(entry, agent, request, execution, nowMs)) {
                 return false;
             }
             if (awaitingPartySupply(entry, agent, request, execution, nowMs)) {
@@ -323,6 +329,65 @@ public final class AgentSupplyProcurementRuntime {
             return true;
         }
         return nowMs < askedAtMs + AgentSupplyRecoveryPolicy.partySupplyWaitMs();
+    }
+
+    /**
+     * Whether an ordinary potion trip may set off: its purse less its wallet reserve pays for one potion of the kind as
+     * the visit buys them (AgentShopService.ordinaryPotionPrice) at the supplier begin() would pick, or no supplier or
+     * price is known (begin() and the visit decide as before). A purse within its reserve buys nothing whatever the
+     * price, so no shop is looked at for it. A refusal asks the party once, as a trip given up does, and holds until the
+     * purse less the reserve reaches that price or the Agent carries more of the kind; an allowance is looked at again
+     * after a readiness check interval. Found live 2026-10-13: SilentSin, Lv36 with 1,600-1,675 mesos under a 2,300
+     * reserve, walked to Ellinia's potion shop every 8-10 minutes for MP potions it could not buy, and every bench
+     * slice (a fresh session, without the cooldown of the last trip given up) set off again at once.
+     */
+    private static boolean paysForOne(AgentRuntimeEntry entry,
+                                      Character agent,
+                                      AgentProcurementRequest request,
+                                      AgentSupplyProcurementState execution,
+                                      long nowMs) {
+        AgentResourceCategory category = request.category();
+        int count = AgentSupplyInventorySnapshot.quantity(agent, category);
+        int mesos = Math.max(0, agent.getMeso());
+        int reserve = AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
+        long spendable = (long) mesos - reserve;
+        AgentSupplyProcurementState.AffordCheck last = execution.affordCheck(category);
+        if (last != null && last.allowed() && nowMs < last.untilMs()) {
+            return true;
+        }
+        if (last != null && !last.allowed() && spendable < last.price() && count <= last.countAt()) {
+            return false;
+        }
+        AgentCareerBuildBundle bundle = entry.capabilityStates().require(
+                AgentCareerProgressionState.STATE_KEY).bundle();
+        AgentCareerShopCatalog.ShopStop stop = bundle == null ? null : AgentCareerShopCatalog.forSupply(
+                bundle, category, agent.getMapId(), routeHops(entry, nowMs));
+        int price = 1; // within its reserve no potion is bought
+        if (stop == null) {
+            price = -1; // begin() finds no supplier either and asks the party, as before
+        } else if (spendable > 0L) {
+            Shop shop = AgentShopGatewayRuntime.shop().findForNpc(stop.npcId());
+            price = AgentShopService.ordinaryPotionPrice(agent, shop, category == AgentResourceCategory.HP_POTION);
+        }
+        if (price <= 0 || spendable >= price) {
+            execution.affordCheck(category, new AgentSupplyProcurementState.AffordCheck(
+                    true, nowMs + AgentSupplyReadiness.checkIntervalMs(), 0, count));
+            return true;
+        }
+        execution.affordCheck(category, new AgentSupplyProcurementState.AffordCheck(false, 0L, price, count));
+        if (spendable <= 0L) {
+            log.info("Agent '{}' cannot pay for {}: mesos {} are within its wallet reserve of {}; no shop trip until"
+                    + " it can", agent.getName(), category, mesos, reserve);
+        } else {
+            log.info("Agent '{}' cannot pay for one {} at NPC {} ({} mesos): mesos {} less its wallet reserve of {}"
+                    + " leave {}; no shop trip until it can", agent.getName(), category, stop.npcId(), price, mesos,
+                    reserve, spendable);
+        }
+        if (execution.partyAskedAtMs(category) < 0L) {
+            execution.markPartyAsked(category, nowMs);
+            askPartyForSupply(entry, agent, category);
+        }
+        return false;
     }
 
     static boolean begin(AgentRuntimeEntry entry,
@@ -614,10 +679,18 @@ public final class AgentSupplyProcurementRuntime {
                     AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
                     execution.mesosBefore(), Math.max(0, agent.getMeso()));
             boolean restored = reserve == null ? after >= target : reserve.restoredSince(execution.quantityBefore());
+            int unaffordable = reserve != null && !restored && after <= execution.quantityBefore()
+                    ? unaffordablePrice(execution, agent) : 0;
             AgentSupplyProcurementOutcome outcome = AgentSupplyReadinessRuntime.judged(entry, agent, execution,
-                    reconcile(execution, agent, after, restored, reserve != null, nowMs));
+                    reconcile(execution, agent, after, restored, reserve != null, unaffordable, nowMs));
             execution.complete(outcome);
             journalOutcome(entry, agent, execution.requestId(), outcome);
+            if (unaffordable > 0 && outcome.status() == AgentSupplyProcurementOutcome.Status.INSUFFICIENT_MESO
+                    && !selfSustaining(entry)) {
+                // its next trip waits for the purse to pay for one (paysForOne), past the cooldown stall sets
+                execution.affordCheck(execution.category(),
+                        new AgentSupplyProcurementState.AffordCheck(false, 0L, unaffordable, after));
+            }
             if (!outcome.restored()) {
                 // Resting and grinding for mesos keeps a companion away from its owner for many
                 // minutes; only a self-sustaining session earns its own supplies that way.
@@ -1072,13 +1145,36 @@ public final class AgentSupplyProcurementRuntime {
         return target != null ? target : AgentRelationshipRuntime.interactionTarget(entry);
     }
 
-    /** {@code potionReserve}: {@code restored} was judged by the potion reserve the shop buys to. */
+    /**
+     * What one potion of an ordinary potion trip's kind costs at its supplier when the purse less its wallet reserve
+     * cannot pay for it there (as the visit buys them, AgentShopService.ordinaryPotionPrice); 1 for a purse within its
+     * reserve, where no price is looked up; 0 when it can pay, or no price is known.
+     */
+    private static int unaffordablePrice(AgentSupplyProcurementState execution, Character agent) {
+        long spendable = (long) Math.max(0, agent.getMeso()) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
+        if (spendable <= 0L) {
+            return 1;
+        }
+        Shop shop = execution.supplierNpcId() > 0
+                ? AgentShopGatewayRuntime.shop().findForNpc(execution.supplierNpcId()) : null;
+        int price = AgentShopService.ordinaryPotionPrice(agent, shop,
+                execution.category() == AgentResourceCategory.HP_POTION);
+        return price > spendable ? price : 0;
+    }
+
+    /**
+     * {@code potionReserve}: {@code restored} was judged by the potion reserve the shop buys to; {@code unaffordable}:
+     * what one potion of the kind costs when the purse less its wallet reserve cannot pay for it (1 within the reserve,
+     * {@link #unaffordablePrice}), else 0. Live 2026-10-13 a purse above 0 but within its reserve bought nothing and was
+     * told NO_PROGRESS, as if the shop had failed it.
+     */
     private static AgentSupplyProcurementOutcome reconcile(
             AgentSupplyProcurementState execution,
             Character agent,
             int quantityAfter,
             boolean restored,
             boolean potionReserve,
+            int unaffordable,
             long nowMs) {
         int mesosAfter = Math.max(0, agent.getMeso());
         AgentSupplyProcurementOutcome.Status status;
@@ -1094,6 +1190,13 @@ public final class AgentSupplyProcurementRuntime {
         } else if (mesosAfter <= 0) {
             status = AgentSupplyProcurementOutcome.Status.INSUFFICIENT_MESO;
             reason = "safe liquidation produced insufficient mesos for the required supply";
+        } else if (unaffordable > 0) {
+            int reserve = AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
+            status = AgentSupplyProcurementOutcome.Status.INSUFFICIENT_MESO;
+            reason = unaffordable == 1
+                    ? "cannot pay for one potion: mesos " + mesosAfter + " are within the wallet reserve of " + reserve
+                    : "cannot pay for one potion at " + unaffordable + ": mesos " + mesosAfter
+                    + " less the wallet reserve of " + reserve + " leave " + (mesosAfter - reserve);
         } else {
             status = AgentSupplyProcurementOutcome.Status.NO_PROGRESS;
             reason = "shop completed without increasing the required supply";

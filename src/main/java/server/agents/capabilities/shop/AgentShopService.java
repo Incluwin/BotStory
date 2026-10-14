@@ -1930,6 +1930,18 @@ public final class AgentShopService {
     }
 
     /**
+     * What one HP (or MP) potion costs at this shop as an ordinary visit's reserve-bar passes buy them (the pick of
+     * {@link #findPotionItem}, which a purse short of it never trades down from); -1 when it sells none.
+     */
+    public static int ordinaryPotionPrice(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return -1;
+        }
+        ShopSlotItem potion = findPotionItem(shop, bot, forHp);
+        return potion == null ? -1 : potion.shopItem.getPrice();
+    }
+
+    /**
      * What a visit to {@code shop} would spend on ammo before any potion, as {@link #executePurchases} sizes it: a
      * seed set of stars or bullets when it has none, the refills of its best partial stacks, and arrows up to the
      * ammo target. 0 for a weapon without ammo.
