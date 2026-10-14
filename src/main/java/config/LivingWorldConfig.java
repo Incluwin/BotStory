@@ -1,5 +1,9 @@
 package config;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 /**
  * Living-world (resident bots, quest lines, contracts, roster) deployment settings.
  * Content lives under {@link #CONTENT_DIR}; see docs/LIVING_RPG_PLAN.md.
@@ -286,6 +290,13 @@ public class LivingWorldConfig {
      * no gate sends a trip, and each keeps its no-shop line.
      */
     public String COMPANION_RESTOCK_TRIP_MAPS = "";
+    /**
+     * Field bosses' towns (user decision 2026-10-13: companions keep a field boss's potion standard as they keep a run
+     * boss's): "key=mapId|mapId,...". A companion out with its owner in a town listed for a field group whose key
+     * COMPANION_BOSS_ENABLED_TYPES lists, at or above the group's level (boss-rules.json minLevel), keeps that group's
+     * AgentSupplyReadiness.BOSS_STANDARDS standard there (CompanionBossRuns.fieldRestockKeyAt). Empty: none.
+     */
+    public String COMPANION_FIELD_BOSS_TOWNS = "";
 
     // Companions go for their next job by themselves (AgentJobPath, JobErrands)
     /**
@@ -397,6 +408,18 @@ public class LivingWorldConfig {
     /** P12 G9: true when COMPANION_RESTOCK_TRIP_MAPS lists {@code mapId} (blank entries and spaces ignored). */
     public boolean companionRestockTripMap(int mapId) {
         return listsMap(COMPANION_RESTOCK_TRIP_MAPS, mapId);
+    }
+
+    /** The field group keys COMPANION_FIELD_BOSS_TOWNS lists {@code mapId} as a town for, in listed order. */
+    public List<String> companionFieldBossKeysAt(int mapId) {
+        List<String> keys = new ArrayList<>();
+        for (String pair : COMPANION_FIELD_BOSS_TOWNS == null ? new String[0] : COMPANION_FIELD_BOSS_TOWNS.split(",")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && listsMap(pair.substring(eq + 1).replace('|', ','), mapId)) {
+                keys.add(pair.substring(0, eq).trim().toLowerCase(Locale.ROOT));
+            }
+        }
+        return keys;
     }
 
     private static boolean listsMap(String list, int mapId) {
@@ -640,6 +663,13 @@ public class LivingWorldConfig {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
                 throw new IllegalArgumentException(
                         "living_world.COMPANION_RESTOCK_TRIP_MAPS must list map ids, not \"" + id.trim() + "\"");
+            }
+        }
+        for (String pair : COMPANION_FIELD_BOSS_TOWNS == null ? new String[0] : COMPANION_FIELD_BOSS_TOWNS.split(",")) {
+            if (!pair.isBlank() && (!pair.trim().matches("[a-z0-9_]+=[1-9][0-9]{0,8}(\\|[1-9][0-9]{0,8})*")
+                    || !CompanionBossKeys.known(pair.trim().substring(0, pair.trim().indexOf('='))))) {
+                throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_TOWNS must list"
+                        + " field_key=mapId|mapId pairs of known keys, not \"" + pair.trim() + "\"");
             }
         }
         for (String key : COMPANION_BOSS_ENABLED_TYPES == null ? new String[0]

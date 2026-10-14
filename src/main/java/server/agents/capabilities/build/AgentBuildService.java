@@ -426,9 +426,13 @@ public final class AgentBuildService {
     }
 
     /**
-     * Detects level-up and sends prompts before spending SP/AP so gating can apply.
+     * Detects level-up and sends prompts before spending SP/AP so gating can apply. Reads a skill or mastery book it
+     * carries first (AgentMasteryBooks).
      */
     public static void checkLevelUp(AgentRuntimeEntry entry, Character bot) {
+        if (AgentMasteryBooks.tick(entry, bot, System.currentTimeMillis())) {
+            autoAssignSp(entry, bot); // a book raised a master level: the SP it holds goes there
+        }
         int lvl = bot.getLevel();
         if (AgentBuildStateRuntime.lastKnownLevel(entry) == lvl) return;
 

@@ -126,6 +126,40 @@ followed him into the cave. Keys reverted, committed config live at 17:23:53. Vi
   kill java after 120 s (no shutdown save). Fixed in 271126c5f (`StatEffect.isActive` reads the party only for a party
   card buff). Thread dumps: `docs/agents/evidence/deadlock-2026-10-13/` (local).
 
+### Retest 2026-10-13 20:04-20:31 (int/p9bf ecc02f127, crew at Lv130 4th job, same temporary keys)
+
+User decision (2026-10-13): level the bots for what they do; at a boss they should overpower it with big numbers but
+not melt it in seconds. ohboy and crew B were set to Lv130 (`!setlevel party 130`, then each to its 4th job: Brannock
+and Garrick Hero, Ilse Bishop, Fenna Bowmaster, Corvin Dark Knight; ohboy Night Lord) and given the Lv130
+`!bossgear` kit; Bossfriend gave each companion 200 Power Elixirs. Before this run, aa5a7e240 made 4th-job Agents
+learn their instructor's skills (they had none). 0 ERROR lines. Video (26 min):
+`docs/agents/evidence/video/p16-pianus-lv130-2026-10-13.mp4` (local, not in git).
+
+- Step 4: PASS. Pianus R untouched for about 70 s with all five beside it; after ohboy's throw at 20:05:31 it fell
+  to 88% in 35 s and died between 20:15:45 and 20:16:47 (24M HP in about 10.5 min, Pianus healing itself; hits of
+  10-18k). Pianus L then stayed at 100% for minutes beside them (never hit by ohboy).
+- Step 5: PASS. No companion was seen at 1 HP (lowest HP in 2 min of 4 Hz samples: Ilse 3,171) and one death in the
+  whole run (Ilse, 20:19:06, rested and came back). Corvin drank about 15 Power Elixirs and 43 Ice Cream Pops in
+  4.5 min ("pot debug": 192 HP / 583 MP pots, from 250 / 598). The run-1 case of Corvin at 1 HP with no drink was
+  not reproduced; the likeliest cause is that he had run out of HP potions (he asked the party for some at 17:05).
+- Step 6: PASS. Three Bloody Booms blew up beside Ilse, Brannock and Corvin at 20:08:38-45 while ohboy was idle, so
+  the companions' hits set them off.
+- Step 7: PASS. Each blast logged `Boss mirror blast OBSERVE ... mob=8510100 ... agents=[338, 9, 878]`.
+- Step 8: PASS. After a dispel at about 20:07:37 they cast their buffs again in 4-8 s, 4th-job ones among them
+  (Garrick's Power Stance 1121002, Corvin's Beholder 1321007).
+- Step 10: PASS. A Dodo spawned beside ohboy (`!spawn 8220004`) stayed at 100% for about 4.5 min while the crew
+  fought the temple guards around it; ohboy's jump-throw from the top step (y -305) hit it at about 20:25:45 and the
+  companions joined at once (12-19k hits). Then Dodo's banish ("You have been ousted by the force of Dodo") sent ohboy
+  to the floor below and the crew followed him off it: 88% when the check ended.
+- Step 11: PASS. `!debuff BANISH Garrick` at 20:30:11: "Boss disabled: member=835 banished on map=270010500 at=248,-432;
+  planning again", then he walked back down to ohboy.
+- Client memory: ohboy's client at 3,997 MB virtual of 4,096 at the end (as in the Balrog runs).
+- Leviathan memory gate: not run.
+
+Findings: field boss groups have no potion standard (`BOSS_STANDARDS` lists run bosses only), so companions come with
+their everyday stock (Corvin: 50 HP potions before the gift); Fenna said "anyone have HP pots? running low" at Dodo.
+Melee companions cannot reach Dodo where it hovers (about 220 px above the floor).
+
 ## Risks
 
 - Death loops at owner levels under 100.

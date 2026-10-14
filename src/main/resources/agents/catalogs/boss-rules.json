@@ -140,27 +140,32 @@
       "key": "field_pianus",
       "label": "Pianus and Seruf",
       "fieldBosses": [8510000, 8520000, 4220000, 4220001, 8510100],
+      "minLevel": 100,
       "adds": [8510100]
     },
     {
       "key": "field_leafre",
       "label": "Leafre field bosses",
-      "fieldBosses": [8220003, 8180000, 8180001]
+      "fieldBosses": [8220003, 8180000, 8180001],
+      "minLevel": 95
     },
     {
       "key": "field_temple",
       "label": "Temple of Time field bosses",
-      "fieldBosses": [8220004, 8220005, 8220006]
+      "fieldBosses": [8220004, 8220005, 8220006],
+      "minLevel": 110
     },
     {
       "key": "field_zipangu",
       "label": "Zipangu field bosses",
-      "fieldBosses": [9400014, 9400205, 6090002, 9400120, 9400122, 9400121]
+      "fieldBosses": [9400014, 9400205, 6090002, 9400120, 9400122, 9400121],
+      "minLevel": 85
     },
     {
       "key": "field_masteria",
       "label": "Masteria field bosses",
-      "fieldBosses": [9400549, 9400575]
+      "fieldBosses": [9400549, 9400575],
+      "minLevel": 95
     }
   ]
 }

@@ -10,6 +10,7 @@ public final class AgentBuildState {
     private boolean spVariantPromptSent = false;
     private int jobPromptSent = 0;
     private int lastKnownLevel = -1;
+    private long nextBookCheckAt = 0L;
 
     public AgentBuildService.ApBuild apBuild() {
         return apBuild;
@@ -71,5 +72,14 @@ public final class AgentBuildState {
 
     public void setLastKnownLevel(int lastKnownLevel) {
         this.lastKnownLevel = lastKnownLevel;
+    }
+
+    /** When the Agent next looks through its Use tab for a book it can read (AgentMasteryBooks.tick). */
+    public long nextBookCheckAt() {
+        return nextBookCheckAt;
+    }
+
+    public void setNextBookCheckAt(long nextBookCheckAt) {
+        this.nextBookCheckAt = nextBookCheckAt;
     }
 }

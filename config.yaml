@@ -916,6 +916,13 @@ living_world:
     COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
     COMPANION_RESTOCK_BOSS_MAPS: "220080000,106021402"
     COMPANION_RESTOCK_TRIP_MAPS: "220080000"
+    # FIELD_BOSS_TOWNS (user decision 2026-10-13): "group=mapId|mapId,..." towns where a companion out with its owner
+    # keeps a high-level field group's potion standard (agent-engine.yaml AgentSupplyReadiness.BOSS_STANDARDS field_*)
+    # while COMPANION_BOSS_ENABLED_TYPES lists the group and the companion meets its level (boss-rules.json minLevel);
+    # the store in town is the nearest one to each group's bosses. Aquarium for Pianus, Leafre for its own field bosses
+    # and for the Temple of Time (Corba flies there from Leafre), Mushroom Shrine and Showa Town for Zipangu, New Leaf
+    # City for Masteria. In the P16 retest Lv130 companions came with their everyday 50 potions and ran short.
+    COMPANION_FIELD_BOSS_TOWNS: "field_pianus=230000000,field_leafre=240000000,field_temple=240000000,field_zipangu=800000000|801000000,field_masteria=600000000"
     # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
     # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
     # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with

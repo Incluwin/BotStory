@@ -66,6 +66,8 @@ class CompanionRestockTest {
     /** Adobis's room behind the Door to Zakum: no shop in reach, and no route leads back into it (P8). */
     private static final int ADOBIS_ROOM = 211_042_400;
     private static final int MU_YOUNGS_ROOM = 105_100_100;
+    /** Aquarium, the store town on the way to Pianus (COMPANION_FIELD_BOSS_TOWNS). */
+    private static final int AQUARIUM = 230_000_000;
     /** Ice Valley II, Glibber's field on the way to the door. */
     private static final int ICE_VALLEY_II = 211_040_200;
     /** Kerning City is KPQ's desk: a companion there keeps KPQ's standard. */
@@ -313,6 +315,30 @@ class CompanionRestockTest {
         hold();
         assertEquals(AgentSupplyReadiness.Activity.partyQuest("hpq"), restock.standing(FENNA),
                 "held at the desk while its owner runs it");
+    }
+
+    @Test
+    void inAFieldBosssTownACompanionAtTheGroupsLevelKeepsItsStandardWhileTheSwitchListsIt() {
+        config.COMPANION_FIELD_BOSS_TOWNS = "field_pianus=230000000,field_leafre=240000000";
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,field_pianus";
+        when(world.bossRuns()).thenReturn(new CompanionBossRuns(world));
+        when(fenna.getMapId()).thenReturn(AQUARIUM);
+        when(fenna.getLevel()).thenReturn(130);
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("field_pianus"), restock.standing(FENNA),
+                "user decision 2026-10-13: a field boss's standard, as a run boss's");
+
+        when(fenna.getLevel()).thenReturn(99);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "below the group's level (boss-rules.json minLevel 100): the everyday standard");
+
+        when(fenna.getLevel()).thenReturn(130);
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "the switch leaves it off");
+
+        when(fenna.getMapId()).thenReturn(240_000_000);
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,field_pianus";
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "Leafre is a town for field_leafre only, which the switch leaves off");
     }
 
     @Test

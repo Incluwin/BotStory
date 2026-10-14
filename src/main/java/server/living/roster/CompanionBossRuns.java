@@ -866,6 +866,36 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * True on a field boss's town (COMPANION_FIELD_BOSS_TOWNS) for a group the switch lists: RosterService.ownerEnteredMap
+     * then has the owner's companions look at their potions ({@link #ownerArrived}). Memory only, any thread.
+     */
+    boolean fieldTownAt(int mapId) {
+        LivingWorldConfig config = world.config();
+        return config != null && config.companionFieldBossKeysAt(mapId).stream().anyMatch(config::companionBossEnabled);
+    }
+
+    /**
+     * The field group whose potion standard a companion of {@code level} keeps in town {@code mapId}
+     * (COMPANION_FIELD_BOSS_TOWNS: Aquarium for Pianus) while the switch lists it and {@code level} meets the group's
+     * level (boss-rules.json minLevel); of two, the one with the larger standard. Null for none. Memory only, any
+     * thread.
+     */
+    String fieldRestockKeyAt(int mapId, int level) {
+        LivingWorldConfig config = world.config();
+        if (config == null) {
+            return null;
+        }
+        String chosen = null;
+        for (String key : config.companionFieldBossKeysAt(mapId)) {
+            if (config.companionBossEnabled(key) && level >= AgentBossRules.minLevel(key)
+                    && (chosen == null || largerStandard(key, chosen))) {
+                chosen = key;
+            }
+        }
+        return chosen;
+    }
+
+    /**
      * True when boss {@code key}'s standard asks a companion to carry more than {@code other}'s (a tie keeps
      * {@code other}, the earlier entrance): HP plus MP points where BOSS_RECOVERY_STANDARDS lists a key, else its
      * BOSS_STANDARDS counts at an Unagi's 1,000 HP and a Pure Water's 800 MP, what Ant Tunnel Park and the other boss
@@ -898,7 +928,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * On companion-ops: the owner came into a boss's entry NPC room ({@code mapId}, RosterService.ownerEnteredMap).
+     * On companion-ops: the owner came into a boss's entry NPC room or a field boss's town ({@code mapId},
+     * RosterService.ownerEnteredMap; COMPANION_FIELD_BOSS_TOWNS, each companion by the group its level meets).
      * Each companion of theirs in their party that is short of that boss's potion standard looks at its potions on its
      * next tick instead of its next check, so one that can reach a shop sets off (and says when it will be back), and
      * one that cannot says there is no shop out here, before it is asked to sign up. In a room that holds its trips
@@ -916,7 +947,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             }
             return;
         }
-        Character owner = bossKey == null ? null : world.roster().onlineCharacter(ownerId);
+        // a field boss's town (COMPANION_FIELD_BOSS_TOWNS): each companion keeps the group's standard its level meets
+        boolean fieldTown = bossKey == null && fieldTownAt(mapId);
+        Character owner = bossKey == null && !fieldTown ? null : world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
             return;
@@ -924,8 +957,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         for (PartyCharacter member : party.getMembers()) {
             int id = member.getId();
             Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
-            if (persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId && bot(id) != null) {
-                supplies.checkIfShort(id, bossKey);
+            Character bot = persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId ? bot(id) : null;
+            String key = bot == null ? null : bossKey != null ? bossKey : fieldRestockKeyAt(mapId, bot.getLevel());
+            if (key != null) {
+                supplies.checkIfShort(id, key);
             }
         }
     }

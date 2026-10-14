@@ -124,6 +124,9 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (key == null && bossRuns != null) {
             key = bossRuns.restockKeyAt(bot.getMapId());
         }
+        if (key == null && bossRuns != null) {
+            key = bossRuns.fieldRestockKeyAt(bot.getMapId(), bot.getLevel());
+        }
         return AgentSupplyReadiness.Activity.partyQuest(key);
     }
 
