@@ -8,8 +8,17 @@ public final class AgentPotionSupplyState {
     private int mpRecoveryTimerMs = 0;
     private long diseaseSignature = 0L;
     private long diseaseCureDueAtMs = 0L;
+    private long lowTopUpDueAtMs = 0L;
     private boolean hpShareRequested = false;
     private boolean mpShareRequested = false;
+
+    public long lowTopUpDueAtMs() {
+        return lowTopUpDueAtMs;
+    }
+
+    public void setLowTopUpDueAtMs(long lowTopUpDueAtMs) {
+        this.lowTopUpDueAtMs = lowTopUpDueAtMs;
+    }
 
     public int potCheckTimerMs() {
         return potCheckTimerMs;

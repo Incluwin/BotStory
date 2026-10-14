@@ -15,6 +15,14 @@ public final class AgentPotionStateRuntime {
         return entry.potionSupplyState().shareRequested(forHp);
     }
 
+    public static long lowTopUpDueAtMs(AgentRuntimeEntry entry) {
+        return entry.potionSupplyState().lowTopUpDueAtMs();
+    }
+
+    public static void setLowTopUpDueAtMs(AgentRuntimeEntry entry, long dueAtMs) {
+        entry.potionSupplyState().setLowTopUpDueAtMs(dueAtMs);
+    }
+
     public static int potCheckTimerMs(AgentRuntimeEntry entry) {
         return entry.potionSupplyState().potCheckTimerMs();
     }

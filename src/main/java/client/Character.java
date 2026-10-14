@@ -10740,6 +10740,14 @@ public class Character extends AbstractCharacterObject {
         triggerAutopotAfterStatLoss(hpDelta, mpDelta);
     }
 
+    /**
+     * Runs the autopot as a stat loss would, for HP and/or MP, with no loss: an Agent that is low without being hit
+     * (revived at 50 HP, or short of potions until a restock) drinks back to its alert too.
+     */
+    public void triggerAutopotWhileLow(boolean hp, boolean mp) {
+        triggerAutopotAfterStatLoss(hp ? -1 : 0, mp ? -1 : 0);
+    }
+
     private void triggerAutopotAfterStatLoss(int hpchange, int mpchange) {
         // Autopot is keyed off stat loss, not off a manager tick, so both normal
         // skill/effect depletion and bot-only server-side damage share one path.

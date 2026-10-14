@@ -3286,6 +3286,10 @@ tuning:
     # Purpose: Limits how much an Agent prefers to over-heal or over-restore with one automatic potion; higher values favor stronger potions, while lower values reduce wasted recovery.
     # Technical: The deficit-aware autopot selector keeps candidates up to this fraction of the current missing stat in its ideal band before preferring an under-sized fallback.
     server.agents.capabilities.supplies.AgentAutopotPolicy.IDEAL_MAX_COVERAGE_BPS: '11000'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 500-2000 around the baseline 1000.
+    # Purpose: How often an Agent that is low on HP or MP without being hit drinks back up, so a companion revived at 50 HP drinks before it walks back into a fight instead of falling to the first hit.
+    # Technical: AgentPotionService.tickLowTopUp, on the potion check of every live tick: an Agent with an autopot key whose HP (or MP) is at or below its autopot alert runs Character.triggerAutopotWhileLow, the stat-loss autopot with no loss, at most once per this interval. 0 checks on every tick.
+    server.agents.capabilities.supplies.AgentPotionService.LOW_TOP_UP_INTERVAL_MS: '1000'
     # Values: an integer from 0 to 10000 basis points. Recommended: 1500-4000 around the baseline 2500.
     # Purpose: Controls how much extra HP or MP from a mixed potion matters when comparing value; higher values make mixed potions more attractive, while lower values favor dedicated potions.
     # Technical: Shopping efficiency adds this fraction of a mixed potion's secondary recovery to its primary recovery before comparing meso cost per useful recovery.

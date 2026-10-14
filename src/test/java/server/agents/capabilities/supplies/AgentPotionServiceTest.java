@@ -41,6 +41,46 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class AgentPotionServiceTest {
+    /** A Hero revived at 50 HP with an autopot key: low, alive, not between maps. */
+    private static Character revivedAt(int hp, Map<Integer, client.keybind.KeyBinding> keymap) {
+        Character bot = mock(Character.class);
+        when(bot.isAlive()).thenReturn(hp > 0);
+        when(bot.getKeymap()).thenReturn(keymap);
+        when(bot.getHp()).thenReturn(hp);
+        when(bot.getCurrentMaxHp()).thenReturn(19_776);
+        when(bot.getAutopotHpAlert()).thenReturn(0.7f);
+        when(bot.getMp()).thenReturn(3_000);
+        when(bot.getCurrentMaxMp()).thenReturn(3_000);
+        when(bot.getAutopotMpAlert()).thenReturn(0.5f);
+        return bot;
+    }
+
+    @Test
+    void lowHpWithoutAHitDrinksOncePerInterval() {
+        Character bot = revivedAt(50, Map.of(91, new client.keybind.KeyBinding(7, 2_020_013)));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        AgentPotionService.tickLowTopUp(entry, bot, 10_000L);
+        AgentPotionService.tickLowTopUp(entry, bot, 10_500L);
+        verify(bot, times(1)).triggerAutopotWhileLow(true, false);
+
+        AgentPotionService.tickLowTopUp(entry, bot, 11_000L);
+        verify(bot, times(2)).triggerAutopotWhileLow(true, false);
+    }
+
+    @Test
+    void noTopUpAboveTheAlertDeadOrWithoutAnAutopotKey() {
+        Map<Integer, client.keybind.KeyBinding> keyed = Map.of(91, new client.keybind.KeyBinding(7, 2_020_013));
+        Character healthy = revivedAt(15_000, keyed);
+        Character dead = revivedAt(0, keyed);
+        Character unkeyed = revivedAt(50, Map.of());
+
+        for (Character bot : List.of(healthy, dead, unkeyed)) {
+            AgentPotionService.tickLowTopUp(new AgentRuntimeEntry(bot, null, null), bot, 10_000L);
+            verify(bot, never()).triggerAutopotWhileLow(anyBoolean(), anyBoolean());
+        }
+    }
+
     @Test
     void consumesAMatchingDiseaseCureOnlyAfterTheRolledDelay() {
         Character bot = mock(Character.class);

@@ -209,8 +209,10 @@ public final class AgentPotionService {
     }
 
     public static void tickPotionCheck(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
-        tickDiseaseCure(entry, bot, inventory, System.currentTimeMillis(),
+        long now = System.currentTimeMillis();
+        tickDiseaseCure(entry, bot, inventory, now,
                 () -> ThreadLocalRandom.current().nextLong(500L, 2_501L));
+        tickLowTopUp(entry, bot, now);
         if (AgentPotionStateRuntime.hasPotCheckDelay(entry)) {
             AgentPotionStateRuntime.tickPotCheckDelay(entry, AgentMovementTimers::tickDown);
             return;
@@ -310,6 +312,27 @@ public final class AgentPotionService {
 
     private static long cureDelay(long delayMs) {
         return Math.max(500L, Math.min(2_500L, delayMs));
+    }
+
+    /**
+     * The autopot drinks only on a stat loss, so an Agent left low without being hit (revived at 50 HP, walking back
+     * into a boss fight) never drank and fell to the first hit. At most every LOW_TOP_UP_INTERVAL_MS, an Agent with
+     * an autopot key whose HP (or MP) is at or below its alert drinks as a loss would make it.
+     */
+    static void tickLowTopUp(AgentRuntimeEntry entry, Character bot, long nowMs) {
+        if (entry == null || bot == null || !bot.isAlive() || bot.isChangingMaps()) {
+            return;
+        }
+        boolean lowHp = bot.getKeymap().get(91) != null
+                && bot.getHp() <= bot.getAutopotHpAlert() * bot.getCurrentMaxHp();
+        boolean lowMp = bot.getKeymap().get(92) != null
+                && bot.getMp() <= bot.getAutopotMpAlert() * bot.getCurrentMaxMp();
+        if (!lowHp && !lowMp || nowMs < AgentPotionStateRuntime.lowTopUpDueAtMs(entry)) {
+            return;
+        }
+        AgentPotionStateRuntime.setLowTopUpDueAtMs(entry, nowMs + Math.max(0, config.AgentTuning.intValue(
+                "server.agents.capabilities.supplies.AgentPotionService.LOW_TOP_UP_INTERVAL_MS")));
+        bot.triggerAutopotWhileLow(lowHp, lowMp);
     }
 
     public static void checkPotShareOnModeStart(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
