@@ -217,9 +217,20 @@ out of mesos after three restocks (3.0M -> 1,689 mesos by 10:51), said the broke
 with `!maxhpmp` at 11:09. After the run both were set back in the database while offline: ohboy 8,996/5,309,
 Bossfriend 19,776/2,924 (base max HP/MP before the run).
 
-**Mirror.** 236 calibration misses on the altar from 11:07 (hits the mirror predicted on an owner that the owner's
-client never reported). Most were 8810009 attack 1 (54), 8810006 attack 1 (22), 8810003 attack 3 (21) and 8810002
-attack 3 (20). Summary at 11:17:31: attacks 1,158, mirrored 702, applied 2,106, unengaged 441.
+**Mirror.** The log has 256 `Boss mirror calibration miss` lines from 11:07. Each is a hit an owner's own client
+reported that the mirror did not predict (`unpredicted`, reportedNotPredicted), not the other way round. 225 are on
+Bossfriend: `USE_AUTOHIDE_GM` hid him on login, and the mirror skips hidden characters, so it never predicts for him.
+Their delays sit within 30 ms of each attack's attackAfter and inside its game-data box (up to +-800 px), so the
+attacks were accepted and timed right. Most of ohboy's 31 are the pillar attacks (8810002/3/4 attack 2, deadly), whose
+regions the mirror samples (regionsMask 0, regionsSampled 134). No sign the mirror over-applies; the counter that would
+show it (predictedNotReported) is only in `!bossmirror status` and was lost at the restart. Hits apply at 100%
+(`DAMAGE_PERCENT`) with the 1.5 s shared window. The hidden Bossfriend also explains the stall while ohboy was dead
+(81.1% -> 81.0% from 11:12:45 to 11:14:26): with no visible player, no part was driven (`unengaged` 441).
+
+**Why they die.** The pillar attacks are `deadlyAttack`: HP and MP drop to 1, and the next hit after the 1.5 s window
+kills. The companions' HP potions are mixed and the standard counts them all alike: Ingrid held 359 White Potions
+(300 HP), Ilse Watermelons (1,000) and Sundaes (2,000), while Brannock and Thane held Reindeer Milk (5,000, the best HP
+potion the Leafre store sells).
 
 **End.** At 11:19, with 77.9% left and 48 minutes on the clock (it needed more than 1.6% a minute), both owners left by
 the Crystal of Roots. All ten members went out with `OWNER_LEFT`, and the run ended at 11:20:01 with `cleared=false`.
@@ -237,8 +248,10 @@ the Crystal of Roots. All ten members went out with `OWNER_LEFT`, and the run en
 6. **Lv200 crews cannot hold the altar** (rerun): about 40 downs in 11 minutes, often with full potions, and the clear
    rate fell from 3% to 0.6% a minute. Needs a decision before another try: more allies, tougher companions, or ways to
    stay out of Horntail's attacks.
-7. **Mirror on Horntail** (rerun): 236 predicted hits on the owners that their clients never reported. If the mirror
-   over-applies Horntail's attacks (8810009 attack 1 most of all), that alone could explain part of item 6.
+7. **Mirror on Horntail** (rerun): checked, no sign of over-applying (see "Mirror" above). Next run: unhide Bossfriend
+   and read `!bossmirror status` before any restart.
+8. **Weak potions count toward the boss standard** (rerun): 600 White Potions meet Horntail's 600. A deadly hit leaves 1
+   HP and 1.5 s, which a 300-2,000 HP potion cannot cover.
 
 ## Follow-ups (2026-10-14)
 
