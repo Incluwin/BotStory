@@ -236,6 +236,41 @@ potion the Leafre store sells).
 the Crystal of Roots. All ten members went out with `OWNER_LEFT`, and the run ended at 11:20:01 with `cleared=false`.
 0 ERROR lines in the run's log (cosmic-log-2026-10-14-5, 10:13-11:22).
 
+## Live check 2026-10-14, potion-fix rerun (altar reached, not cleared)
+
+**Setup.** `fix/companion-potion-topup` d9b8f723d live from 14:47 (9c7489b18 drink back up when low without a hit;
+d9b8f723d Horntail counts only potions that heal at least a quarter of max HP). Same temporary keys, owners, crews and
+DLL as the rerun. Bossfriend was unhidden this time. Owner gifts: 300 Honsters each to the five 19,776-HP fighters
+(they cannot walk to New Leaf City) and coin to the short. Both owners raised to 30,000 with `!maxhpmp` and set back in
+the database afterwards (ohboy 8,996/5,309, Bossfriend 19,776/2,924). Video: `p18-horntail-potionfix-2026-10-14.mp4`
+(891 MB, not in git).
+
+| Step | Result |
+|---|---|
+| Client memory | ohboy's client peaked at 2,326 MB virtual, Bossfriend's 2,339 MB. |
+| 5 Leafre restock | **PASS.** Seven companions bought up to the floored standard (for example Ilse 398 -> 857 counted, 4.2M mesos spent); Brannock, Garrick and Thane already met it. |
+| 6-8 sign-up, start | **PASS.** 12 signed up; all on 240060000 at about 15:00:20. |
+| 9 pre-heads | **PASS.** Left head down at about 15:15 (14.8 min), right head at about 15:29 (13.5 min). One death in both: Fenna at 15:20. |
+| 10 reactor | **PASS.** Horntail woke at about 15:32:30. |
+| Clear | **FAIL.** 94.6% at 15:34, 82.3% at 15:37, then 79.9%, 76.1%, 73.6% at 15:40, 15:43, 15:46. Both owners left at 15:46-15:47; the run ended at 15:47:26 with `cleared=false`. |
+
+**The drink-up fix works.** Companions no longer walk back in at low HP: one death in the 32 minutes of pre-heads,
+two in the altar's first 4.5 minutes (the rerun: about 40 in 11).
+
+**What kills them now: Horntail's Tails by touch.** From 15:37 the companions went down 48 times in 10 minutes: Ilse
+11, Garrick 8, Thane 7, Brannock 6, Corvin 5, Ingrid 4, Isolde 4, Sorrel 2, Flint 1, Fenna 0. The melee fighters and
+the two Bishops died; the archers and the Corsair barely did. Sampling HP four times a second showed single drops of
+17,848 (Ingrid), 11,250 (Brannock) and 7,401 (Ilse) to 0, and Thane took 24,762 at x=257. The parts that touch the
+floor are the Legs (8810008, box x -257..257, PAD 1,160) and the Tails (8810009, box x 120..427, PAD 1,750). A touch
+rolls PAD squared times 0.008-0.0085, so the Tails do about 24,500-26,000 before defence. **The game agrees:**
+Bossfriend, standing at x 195-283, took 25,839, 24,658, 25,467, 25,710 and 25,242 from his own client. Near x 0 his
+client took about 1,700-2,200, so the Legs' real touch was not measured. Mirrored attacks on Brannock were about
+5,200-5,600, the size Bossfriend's client took from the same attacks. So the damage is right; the companions stand
+where a player would not. Why the deaths start at about 15:37 is not known (a Hyper Body running out, or targets
+moving onto the Tails, are guesses).
+
+0 ERROR lines in the run's log (cosmic-log-2026-10-14-7) or after the 15:50 restart on the committed config.
+
 ## Open items
 
 1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid; many times in the rerun).
@@ -246,12 +281,14 @@ the Crystal of Roots. All ten members went out with `OWNER_LEFT`, and the run en
    boss part no human drives; that is the targeting rule, not the tick rate (see the rerun).
 5. Flint not drinking at 100-160 HP (first run): not seen again in the rerun, where both owners stayed visible.
 6. **Lv200 crews cannot hold the altar** (rerun): about 40 downs in 11 minutes, often with full potions, and the clear
-   rate fell from 3% to 0.6% a minute. Needs a decision before another try: more allies, tougher companions, or ways to
-   stay out of Horntail's attacks.
+   rate fell from 3% to 0.6% a minute. The potion-fix rerun narrowed it to item 9.
 7. **Mirror on Horntail** (rerun): checked, no sign of over-applying (see "Mirror" above). Next run: unhide Bossfriend
    and read `!bossmirror status` before any restart.
-8. **Weak potions count toward the boss standard** (rerun): 600 White Potions meet Horntail's 600. A deadly hit leaves 1
-   HP and 1.5 s, which a 300-2,000 HP potion cannot cover.
+8. **Weak potions count toward the boss standard** (rerun): fixed in d9b8f723d (Horntail's floor: a quarter of max HP),
+   with 9c7489b18 (drink back up when low without a hit). Live: one death in 32 minutes of pre-heads.
+9. **Companions stand in the Tails' touch area** (potion-fix rerun): about 25,000 a touch, the same as a player's client
+   takes, so melee fighters and Bishops die there over and over. Needs a fix before another try: companions keep out of
+   a boss part's touch area when one touch would take most of their HP, and attack from its edge.
 
 ## Follow-ups (2026-10-14)
 
