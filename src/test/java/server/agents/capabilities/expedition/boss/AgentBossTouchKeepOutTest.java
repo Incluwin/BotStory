@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  * Legs touch along x -186..327 and the Tails along x 191..497 (the lower halves of their body boxes, as touch damage
  * reads them), for about 11,000 and 25,000 against a Lv200 Hero's 19,776 HP. The focus order fights both from the
  * left, so a member keeps to x <= -186 - 1 - KEEP_OUT_MARGIN_PX (30) = -217 while either lives; a member already
- * inside walks out first. A touch below TOUCH_KEEP_OUT_HP_PERCENT (50) of max HP, an area that does not reach the
+ * inside walks out first. A touch below TOUCH_KEEP_OUT_HP_PERCENT (25) of max HP, an area that does not reach the
  * member's floor (a ledge above it) or no deadly part left frees the member.
  */
 class AgentBossTouchKeepOutTest {
@@ -144,9 +144,9 @@ class AgentBossTouchKeepOutTest {
     }
 
     @Test
-    void aTouchUnderHalfTheMembersHpLeavesItFree() {
+    void aTouchUnderAQuarterOfTheMembersHpLeavesItFree() {
         mobs(LEGS);
-        maxHp = 30_000;
+        maxHp = 50_000;
         AgentRuntimeEntry hero = entry(10);
 
         fight.tick(List.of(member(10, new Point(0, 260))), event, 0L);
@@ -154,6 +154,17 @@ class AgentBossTouchKeepOutTest {
         verify(gateway, never()).setHorizontalBoundary(any(), anyInt(), anyInt(), anyInt());
         verify(gateway, never()).navigate(any(), any(), anyBoolean());
         verify(gateway).grind(hero, Set.of(LEGS), Set.of());
+    }
+
+    @Test
+    void underHyperBodyTheLegsStillCountAtAThirdOfMaxHp() {
+        mobs(LEGS);
+        maxHp = 30_000;
+        AgentRuntimeEntry darkKnight = entry(10);
+
+        fight.tick(List.of(member(10, new Point(-400, 260))), event, 0L);
+
+        verify(gateway).setHorizontalBoundary(darkKnight, ALTAR, Integer.MIN_VALUE, EDGE);
     }
 
     @Test

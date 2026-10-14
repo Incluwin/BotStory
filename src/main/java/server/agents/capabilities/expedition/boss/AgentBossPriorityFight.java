@@ -2,6 +2,7 @@ package server.agents.capabilities.expedition.boss;
 
 import client.Character;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentMobTouchPolicy;
 import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
@@ -311,7 +312,11 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         return true;
     }
 
-    /** P18: walks to the stage portal and, beside it, takes it at most every STAGE_PORTAL_EVERY_MS. */
+    /**
+     * P18: walks to the stage portal and, beside it, takes it at most every STAGE_PORTAL_EVERY_MS. 2026-10-14: beside it
+     * a member first puts Magic Guard back up ({@link Ports#castSurvivalBuff}), so a Bishop walking back in after a
+     * death does not reach the battle map at 5,000 HP with no guard (one head attack killed one on arrival 15 times).
+     */
     private void advance(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
                          String portalName, long nowMs) {
         Point portal = portalName == null ? null : ports.portalPosition(member, portalName);
@@ -323,6 +328,9 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         long reach = AgentBossRunSession.exitReachPx();
         if (at.distanceSq(portal) > reach * reach) {
             gateway.navigate(entry, portal, true);
+            return;
+        }
+        if (ports.castSurvivalBuff(member)) {
             return;
         }
         Long last = portalTries.get(member.getId());
@@ -397,7 +405,22 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return 50;
         }
 
+        /**
+         * The member casts Magic Guard when it knows it and has it down (AgentCombatBuffRuntime's critical survival
+         * buff); true when it cast now. Buffs wait on a map with no live monster, so a member walking back through a
+         * finished stage map would reach the battle map without it.
+         */
+        default boolean castSurvivalBuff(Character member) {
+            return false;
+        }
+
         Ports LIVE = new Ports() {
+            @Override
+            public boolean castSurvivalBuff(Character member) {
+                AgentRuntimeEntry entry = entry(member.getId());
+                return entry != null && AgentCombatBuffRuntime.tryCastCriticalSurvivalBuff(entry, member);
+            }
+
             @Override
             public Rectangle touchArea(Monster monster) {
                 if (AgentMobTouchPolicy.ignoresTouchDamage(monster.getId())) {

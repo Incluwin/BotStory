@@ -61,6 +61,7 @@ class AgentBossStageFightTest {
     private final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
     private final Set<Integer> melee = new HashSet<>();
     private final List<Integer> portalTries = new ArrayList<>();
+    private final Set<Integer> guardDown = new HashSet<>();
     private final EventInstanceManager event = mock(EventInstanceManager.class);
     private AgentBossPriorityFight fight;
 
@@ -101,6 +102,11 @@ class AgentBossStageFightTest {
             public boolean enterPortal(Character member, String name) {
                 portalTries.add(member.getId());
                 return true;
+            }
+
+            @Override
+            public boolean castSurvivalBuff(Character member) {
+                return guardDown.remove(member.getId());
             }
         });
     }
@@ -159,6 +165,20 @@ class AgentBossStageFightTest {
         fight.tick(List.of(member(10, SECOND_STAGE, new Point(NEXT00))), event, 0L);
 
         verify(gateway).stop(thane);
+        assertEquals(List.of(10), portalTries);
+    }
+
+    @Test
+    void besideTheStagePortalAMemberWithoutMagicGuardCastsItBeforeTakingThePortal() {
+        mobs(SECOND_STAGE);
+        entry(10);
+        guardDown.add(10);
+        Character ilse = member(10, SECOND_STAGE, new Point(NEXT00));
+
+        fight.tick(List.of(ilse), event, 0L);
+        assertTrue(portalTries.isEmpty(), "the guard first");
+
+        fight.tick(List.of(ilse), event, 600L);
         assertEquals(List.of(10), portalTries);
     }
 
