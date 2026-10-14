@@ -9,11 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.SkillGateway;
 import server.agents.runtime.AgentRuntimeEntry;
-import tools.PacketCreator;
 
 import java.util.Comparator;
 import java.util.List;
@@ -97,9 +97,7 @@ public final class AgentMasteryBooks {
             if (success) {
                 bot.changeSkillLevel(skill, bot.getSkillLevel(skill), master, -1);
             }
-            if (bot.getMap() != null) {
-                bot.getMap().broadcastMessage(PacketCreator.skillBookResult(bot, skillId, master, true, success));
-            }
+            AgentPacketGatewayRuntime.packets().broadcastSkillBookResult(bot, skillId, master, success);
             log.info("Agent {} read book {}: skill {} master {} -> {} ({})", bot.getName(), book.getItemId(), skillId,
                     currentMaster, success ? master : currentMaster, success ? "learned" : "the book failed");
             return success;

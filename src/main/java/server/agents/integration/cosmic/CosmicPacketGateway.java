@@ -42,6 +42,13 @@ public enum CosmicPacketGateway implements PacketGateway {
     }
 
     @Override
+    public void broadcastSkillBookResult(Character agent, int skillId, int masterLevel, boolean success) {
+        if (agent != null && agent.getMap() != null) {
+            agent.getMap().broadcastMessage(PacketCreator.skillBookResult(agent, skillId, masterLevel, true, success));
+        }
+    }
+
+    @Override
     public void broadcastCloseRangeAttack(Character agent,
                                           int skill,
                                           int skillLevel,

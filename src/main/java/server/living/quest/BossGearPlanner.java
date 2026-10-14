@@ -18,7 +18,7 @@ import java.util.function.IntPredicate;
 /**
  * The {@code !bossgear} kit (docs/COMPANION_BOSSING_PLAN.md G13): for a character of a job and level, a piece of this
  * server's gear in each GearPicks slot ({@link GearPicks#pick}: named, non-cash, obtainable, within its job, gender and
- * main stats, stable for its seed), every upgrade slot holding a passed 60% scroll chosen for its job
+ * main stats, stable for its seed), every upgrade slot holding a passed 10% scroll chosen for its job (60% where the piece takes no 10%)
  * ({@link FriendForge#recipe}). Each slot takes the highest band at or under the level that has a piece: v83 gear stops
  * near level 120, so a level 160 character gets level 120 pieces. One top: the overall or the coat, whichever is the
  * higher level (the overall on a tie), and pants only under a coat. The weapon keeps the worn one's type while the job
@@ -31,8 +31,12 @@ public final class BossGearPlanner {
      * engine reads the same text, so its look-diversity filter never takes a worn kit piece off.
      */
     public static final String OWNER_TAG = AgentEquipmentOwnerTags.BOSS_GEAR;
-    /** Every upgrade slot takes a 60% scroll, and every scroll passes. */
-    static final List<ScrollRecipe> RECIPE = List.of(new ScrollRecipe(60, ScrollRecipe.REST));
+    /**
+     * Every upgrade slot takes a 10% scroll, the strongest standard grade (user 2026-10-13: scroll the bots' gear so
+     * they deal damage faster; it was 60%), and every scroll passes; a piece no 10% scroll fits takes 60% instead.
+     */
+    static final List<ScrollRecipe> RECIPE = List.of(new ScrollRecipe(10, ScrollRecipe.REST),
+            new ScrollRecipe(60, ScrollRecipe.REST));
     /** Bands are tried from the character's own level band down in these steps (GearPicks spans 20 levels a band). */
     private static final int BAND_STEP = 10;
     private static final int FIRST_WEAPON_TYPE = 130;

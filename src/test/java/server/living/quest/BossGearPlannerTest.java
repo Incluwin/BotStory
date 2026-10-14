@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The {@code !bossgear} kit (docs/COMPANION_BOSSING_PLAN.md G13) over the seed knowledge snapshot and a fixture forge
- * catalog: one piece per GearPicks slot at the highest band that has one, every slot a passed 60% scroll for the job,
+ * catalog: one piece per GearPicks slot at the highest band that has one, every slot a passed 10% scroll for the job,
  * untradeable and tagged. The forge's input (the plan) is checked, not a forged item: ItemInformationProvider, which
  * FriendForge.forge and every new Equip read, cannot start without its database in a unit test.
  */
@@ -145,14 +145,32 @@ class BossGearPlannerTest {
     }
 
     @Test
-    void everySlotHoldsAPassedSixtyPercentScrollForTheJob() {
+    void everySlotHoldsAPassedTenPercentScrollForTheJob() {
         List<Piece> kit = BossGearPlanner.plan(k, CATALOG, wearer(HERO, 160, Map.of(WEAPON, GLADIUS)));
         assertFalse(kit.isEmpty());
 
         for (Piece piece : kit) {
             // FriendForge.forge: each passed scroll adds its stats and a level, each scroll spends a slot, so this is
-            // a piece at level tuc with 0 slots left and the base stats plus tuc times the warrior's 60% scroll
+            // a piece at level tuc with 0 slots left and the base stats plus tuc times the warrior's 10% scroll
             assertEquals(SLOTS, piece.plan().slots(), piece.toString());
+            assertEquals(List.of(new Use(WARRIOR_10, SLOTS, SLOTS)), piece.plan().uses(), piece.toString());
+        }
+    }
+
+    @Test
+    void aPieceNoTenPercentScrollFitsTakesSixtyPercentScrolls() {
+        Catalog noTen = new Catalog() {
+            @Override
+            public Map<String, Integer> equipStats(int itemId) {
+                return Map.of("tuc", SLOTS);
+            }
+
+            @Override
+            public List<Scroll> scrollsFor(int itemId) {
+                return List.of(ALWAYS, WARRIOR_60, MAGE_60);
+            }
+        };
+        for (Piece piece : BossGearPlanner.plan(k, noTen, wearer(HERO, 160, Map.of(WEAPON, GLADIUS)))) {
             assertEquals(List.of(new Use(WARRIOR_60, SLOTS, SLOTS)), piece.plan().uses(), piece.toString());
         }
     }

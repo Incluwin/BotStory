@@ -55,7 +55,7 @@ import java.util.function.Supplier;
 
 /**
  * The companion side of {@code !bossgear} (GM 6, docs/COMPANION_BOSSING_PLAN.md G13): a level-fitting kit
- * ({@link BossGearPlanner}: a piece per slot, every upgrade slot a passed 60% scroll, untradeable and tagged
+ * ({@link BossGearPlanner}: a piece per slot, every upgrade slot a passed 10% scroll, untradeable and tagged
  * {@value BossGearPlanner#OWNER_TAG}) for the GM ("me": into their Equip tab, they put it on) or one of their own
  * companions out with them (worn on its own mailbox, what it wore before goes to its bag). Runs on companion-ops.
  *
@@ -241,14 +241,14 @@ public final class CompanionGearTool {
         String pieces = names(k, kit);
         if (preview) {
             logUse(gm, target, kit, true, 0, 0, 0L);
-            return done("Preview for " + who + ": " + kit.size() + " pieces, every slot a passed 60% scroll: " + pieces
+            return done("Preview for " + who + ": " + kit.size() + " pieces, every slot a passed 10% scroll: " + pieces
                     + ". Nothing was given.");
         }
         long startedMs = System.currentTimeMillis();
         if (self) {
             int given = game.give(gm, kit);
             logUse(gm, target, kit, false, given, 0, startedMs);
-            return done(given + " of " + kit.size() + " boss pieces are in your Equip tab (every slot a passed 60%"
+            return done(given + " of " + kit.size() + " boss pieces are in your Equip tab (every slot a passed 10%"
                     + " scroll); put them on: " + pieces + (given < kit.size() ? ". The rest could not be given." : "."));
         }
         return dispatch(gm, target, kit, need, pieces, startedMs);
@@ -309,7 +309,7 @@ public final class CompanionGearTool {
                         : bot.getName() + "'s Equip tab filled up first; nothing was given.";
             } else {
                 text = bot.getName() + " now wears " + outcome.worn() + " boss pieces of " + planned + " (every slot a"
-                        + " passed 60% scroll): " + pieces + (outcome.worn() < outcome.given()
+                        + " passed 10% scroll): " + pieces + (outcome.worn() < outcome.given()
                         ? "; the rest are in its Equip tab" : "") + (outcome.skipped() > 0
                         ? "; " + outcome.skipped() + " it wore already were skipped." : ".");
             }
