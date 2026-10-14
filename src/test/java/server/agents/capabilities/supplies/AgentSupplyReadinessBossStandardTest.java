@@ -63,7 +63,7 @@ class AgentSupplyReadinessBossStandardTest {
     void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
         assertEquals("easy_balrog=100/60,zakum=500/400,balrog_normal=300/300,latanica=150/100,neo_bergamot=150/100,"
                         + "neo_dunas=150/100,neo_aufheben=200/150,neo_oberon=200/150,neo_nibelung=250/250,"
-                        + "papulatus=450/300,scarga=600/500,horntail=600/600,showa=600/600,pinkbean=600/600,"
+                        + "papulatus=450/300,scarga=900/500,horntail=600/600,showa=600/600,pinkbean=600/600,"
                         + "field_pianus=500/300,field_leafre=300/200,field_temple=500/300,field_zipangu=500/300,"
                         + "field_masteria=400/300",
                 AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
