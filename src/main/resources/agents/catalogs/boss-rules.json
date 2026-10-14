@@ -37,6 +37,12 @@
       "stagePortal": "next00",
       "reentryWarpFrom": 240000000,
       "focus": [
+        {"mobIds": [8810000], "anchors": [
+          {"x": 820, "y": -160, "mobIds": [8810000]},
+          {"x": 900, "y": -160, "mobIds": [8810000]}]},
+        {"mobIds": [8810001], "anchors": [
+          {"x": -370, "y": -160, "mobIds": [8810001]},
+          {"x": -290, "y": -160, "mobIds": [8810001]}]},
         {"mobIds": [8810008], "side": "left"},
         {"mobIds": [8810009], "side": "left"},
         {"mobIds": [8810007, 8810005, 8810006], "anchors": [

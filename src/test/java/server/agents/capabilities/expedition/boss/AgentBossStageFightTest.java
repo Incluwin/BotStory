@@ -42,6 +42,7 @@ class AgentBossStageFightTest {
     private static final int SECOND_STAGE = 240_060_100;
     private static final int ALTAR = 240_060_200;
     private static final int LEFT_HEAD = 8_810_000;
+    private static final int RIGHT_HEAD = 8_810_001;
     private static final int HEAD_A = 8_810_002;
     private static final int HEAD_B = 8_810_003;
     private static final int HEAD_C = 8_810_004;
@@ -127,14 +128,40 @@ class AgentBossStageFightTest {
     }
 
     @Test
-    void onAPreHeadMapMembersFightItsHead() {
+    void onAPreHeadMapMembersFightItsHeadFromTheTopPlatformSpreadOverIt() {
+        // 2026-10-14: the user saw members hit the heads from the floor when the top platform put them in reach
+        mobs(FIRST_STAGE, LEFT_HEAD);
+        groundAtAnchors();
+        AgentRuntimeEntry first = entry(10);
+        AgentRuntimeEntry second = entry(11);
+
+        fight.tick(List.of(member(10, FIRST_STAGE, new Point(500, 260)), member(11, FIRST_STAGE, new Point(600, 260))),
+                event, 0L);
+
+        verify(gateway).grindFromAnchor(first, new Point(820, -160), Set.of(LEFT_HEAD), Set.of());
+        verify(gateway).grindFromAnchor(second, new Point(900, -160), Set.of(LEFT_HEAD), Set.of());
+        assertTrue(portalTries.isEmpty());
+    }
+
+    @Test
+    void theRightHeadFromItsTopPlatformToo() {
+        mobs(SECOND_STAGE, RIGHT_HEAD);
+        groundAtAnchors();
+        AgentRuntimeEntry thane = entry(10);
+
+        fight.tick(List.of(member(10, SECOND_STAGE, new Point(0, 260))), event, 0L);
+
+        verify(gateway).grindFromAnchor(thane, new Point(-370, -160), Set.of(RIGHT_HEAD), Set.of());
+    }
+
+    @Test
+    void aPreHeadPlatformWithNoGroundFallsBackToGrindingTheHead() {
         mobs(FIRST_STAGE, LEFT_HEAD);
         AgentRuntimeEntry thane = entry(10);
 
-        fight.tick(List.of(member(10, FIRST_STAGE, new Point(500, 120))), event, 0L);
+        fight.tick(List.of(member(10, FIRST_STAGE, new Point(500, 260))), event, 0L);
 
         verify(gateway).grind(thane, Set.of(LEFT_HEAD), Set.of());
-        assertTrue(portalTries.isEmpty());
     }
 
     @Test
@@ -250,16 +277,19 @@ class AgentBossStageFightTest {
     }
 
     @Test
-    void theShippedFocusOrderIsLegsTailWingsAndHandsThenHeads() {
+    void theShippedFocusOrderIsThePreHeadsThenLegsTailWingsAndHandsThenHeads() {
         List<AgentBossRules.Focus> focus = AgentBossRules.of("horntail").focus();
 
-        assertEquals(List.of(List.of(LEGS), List.of(TAIL), List.of(WINGS, LEFT_HAND, RIGHT_HAND),
-                List.of(HEAD_A, HEAD_B, HEAD_C)), focus.stream().map(AgentBossRules.Focus::mobIds).toList());
-        assertEquals("left", focus.get(0).side());
-        assertEquals("left", focus.get(1).side());
-        assertTrue(focus.get(0).anchors().isEmpty() && focus.get(1).anchors().isEmpty(), "the floor parts need none");
-        assertEquals(2, focus.get(2).anchors().size());
-        assertEquals(3, focus.get(3).anchors().size());
+        assertEquals(List.of(List.of(LEFT_HEAD), List.of(RIGHT_HEAD), List.of(LEGS), List.of(TAIL),
+                List.of(WINGS, LEFT_HAND, RIGHT_HAND), List.of(HEAD_A, HEAD_B, HEAD_C)),
+                focus.stream().map(AgentBossRules.Focus::mobIds).toList());
+        assertEquals(2, focus.get(0).anchors().size(), "the left head's top platform");
+        assertEquals(2, focus.get(1).anchors().size(), "the right head's top platform");
+        assertEquals("left", focus.get(2).side());
+        assertEquals("left", focus.get(3).side());
+        assertTrue(focus.get(2).anchors().isEmpty() && focus.get(3).anchors().isEmpty(), "the floor parts need none");
+        assertEquals(2, focus.get(4).anchors().size());
+        assertEquals(3, focus.get(5).anchors().size());
     }
 
     /** The gateway grounds a point on its own spot, as on a ledge's foothold. */

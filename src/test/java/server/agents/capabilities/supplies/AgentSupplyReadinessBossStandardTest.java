@@ -69,7 +69,7 @@ class AgentSupplyReadinessBossStandardTest {
     void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
         assertEquals("easy_balrog=100/60,zakum=500/400,balrog_normal=300/300,latanica=150/100,neo_bergamot=150/100,"
                         + "neo_dunas=150/100,neo_aufheben=200/150,neo_oberon=200/150,neo_nibelung=250/250,"
-                        + "papulatus=450/300,scarga=900/500,horntail=600/600,showa=600/600,pinkbean=600/600,"
+                        + "papulatus=450/300,scarga=900/500,horntail=900/900,showa=600/600,pinkbean=600/600,"
                         + "field_pianus=500/300,field_leafre=300/200,field_temple=500/300,field_zipangu=500/300,"
                         + "field_masteria=400/300",
                 AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
@@ -240,7 +240,7 @@ class AgentSupplyReadinessBossStandardTest {
 
     @Test
     void horntailCountsOnlyPotionsThatRestoreAQuarterOfMaximumHp() {
-        // P18 rerun 2026-10-14: Ingrid carried 359 White Potions toward Horntail's 600 HP potions
+        // P18 rerun 2026-10-14: Ingrid carried 359 White Potions toward Horntail's 600 HP potions (900 since the touch-fence rerun)
         Map<Integer, StatEffect> effects = Map.of(WHITE, effect(300, 0), REINDEER_MILK, effect(5_000, 0),
                 HONSTER, rateEffect(0.6), PURE_WATER, effect(0, 800));
         try (MockedStatic<AgentUseItemClassificationPolicy> classification = potionEffects(effects)) {
@@ -259,7 +259,7 @@ class AgentSupplyReadinessBossStandardTest {
             assertEquals(new AgentSupplyReadiness.PotionFloor(2_500, 0), AgentSupplyReadiness.potionFloor(HORNTAIL));
             assertEquals(List.of(216, 600), List.of(AgentSupplyReadiness.countFor(hero, HORNTAIL)[0],
                     AgentSupplyReadiness.countFor(hero, HORNTAIL)[1]), "Reindeer Milk and Honsters; no MP floor");
-            assertEquals(384, AgentSupplyReadiness.shortfall(hero, HORNTAIL).hp(), "600 - 216");
+            assertEquals(684, AgentSupplyReadiness.shortfall(hero, HORNTAIL).hp(), "900 - 216");
             assertEquals(575, AgentSupplyReadiness.countFor(hero, AgentSupplyReadiness.Activity.partyQuest("scarga"))[0],
                     "no floor: every HP potion");
         }

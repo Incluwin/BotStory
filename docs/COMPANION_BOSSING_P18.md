@@ -33,7 +33,7 @@ Example: `horntail` on, the owner at the Mark (240050400) with 5 companions.
 
 | Key | Boss | Recruit map, fight maps | Standard (HP/MP potions, projectiles) |
 |---|---|---|---|
-| `horntail` | Horntail | 240050400; 240060000, 240060100, 240060200 | 600/600, 4800 |
+| `horntail` | Horntail | 240050400; 240060000, 240060100, 240060200 | 900/900, 4800 |
 
 600/600 with 4800 projectiles is the plan's starting standard: it fills the 18-stack budget. The scaled standard
 (850/850, 7000) waits for Questions 5 and 6.
@@ -59,7 +59,7 @@ Example: `horntail` on, the owner at the Mark (240050400) with 5 companions.
 
 - `AgentBossScope.EXPEDITION_TYPES` changes from `ZAKUM,SCARGA` to `ZAKUM,SCARGA,HORNTAIL`. It acts only when an Agent
   hits a part in a Horntail event, and Agents get there only with the key on.
-- `horntail=600/600` joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `horntail=4800` joins `AMMO_STANDARDS`.
+- `horntail=900/900` (600/600 until the touch-fence rerun, where Ingrid and both Bishops ran dry) joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `horntail=4800` joins `AMMO_STANDARDS`.
 - New: `AgentBossDeathWalk.REENTRY_WARP_AFTER_MS: '5000'` and `AgentBossPriorityFight.STAGE_PORTAL_EVERY_MS: '2000'`.
 
 boss-rules.json: the `horntail` row gains `targetPriority` (pre-heads, heads A-C, hands, wings, legs, tail),
