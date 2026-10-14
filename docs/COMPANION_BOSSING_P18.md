@@ -271,6 +271,44 @@ moving onto the Tails, are guesses).
 
 0 ERROR lines in the run's log (cosmic-log-2026-10-14-7) or after the 15:50 restart on the committed config.
 
+## Live check 2026-10-14, touch-fence rerun (altar reached, not cleared)
+
+**Setup.** `feat/boss-touch-focus` f6340129a live from 17:13 (touch keep-out from half of max HP; Horntail focus order
+Legs from the left, Tail from the left, Wings and Hands from the y=80 ledges, Heads from their ledges). Same temporary
+keys, owners and crews; both owners at 30,000 again (set back in the database afterwards). Ilse, Isolde and Flint were
+broke after the last run and got 4M each; Ingrid 3M mid-run. Video: `p18-horntail-touchfocus-2026-10-14.mp4` (1,738 MB,
+not in git).
+
+| Step | Result |
+|---|---|
+| Client memory | ohboy's client peaked at about 2,320 MB virtual. |
+| 5 Leafre restock, 6-8 sign-up, start | **PASS.** 12 signed up; all on 240060000 at about 17:26:20. |
+| 9 pre-heads | **PASS, slow.** Left head down at 17:39 (12.7 min, 0 deaths). Right head down at 18:24:50 (45 min): the two archers spent long spells on the right-hand ropes, out of range. |
+| 10 reactor | **PASS.** Horntail woke at about 18:30. |
+| Touch fence | **PASS.** During the Legs the melee fighters held left of x -217; Ingrid stood inside the Legs (by design: under Hyper Body a Legs touch was under half her max HP). Legs and Tail down by about 18:37. |
+| Focus order | **PASS for Legs, Tail and Wings.** Wings down at about 18:51. The fighters then stayed on the y=80 ledges for the Hands. |
+| Clear | **FAIL.** 96.9% at 18:32, 67.7% at 18:51 (1.5% a minute), then 62.9% at 19:01 (0.5% a minute). `@bosshp` at 19:00: Left Hand 20%, Right Hand 55%, all three Heads 100%. Both owners left at 19:01-19:02; the run ended at 19:02:39 with `cleared=false`. |
+
+**Seal is the next wall.** The Right Hand (8810006) casts Seal (mob skill 120 level 8) every 25 s for 30 s, 90% of the
+time, over a box of 1,600 x 850 px: the whole altar. It also casts Darkness (121) every 15 s and Weakness (122). At
+19:01 padlocks hung over most of the crew and ohboy's chat said his skill was sealed. A sealed companion basic-attacks
+only (`AgentCombatPlanRuntime`), so only summons (Phoenix, the Corsair's) keep full damage. Companions cure a disease
+only with a cure item already in their Use tab (`AgentPotionService.tickDiseaseCure`), and nobody carried one; no
+Bishop casts Dispel on sealed allies. The Leafre store sells no cure. Holy Water (2050003, cures Seal and Curse) sells
+at 500 in Orbis (2012005), Kerning, Ellinia and elsewhere; All Cure (2050004) at 9201099.
+
+**The Hands are just in reach.** The y=80 ledges end at x -230 and 410. Brandish reaches 150 px forward, so the Heroes
+reach the Left Hand (x -139..-44) with room to spare and the Right Hand (x 184..281) by about 20 px. Knockback and
+seduce (both Hands cast 128) kept dropping fighters to the floor, where they climb back by the ropes.
+
+**Deaths on the altar came from empty potions, not touch.** 42 downs after 18:29: Ingrid 20 (HP potions 0, out of
+mesos until a gift), Ilse 17 and Isolde 6 (MP potions 0, so no Magic Guard), others 0-2. Ilse also walked back in
+without Magic Guard after each death (a death clears buffs, and no buff is cast on an empty stage map): fixed in
+c44869508 (Magic Guard before the stage portal), with b2031d233 (the touch boundary is let go on a finished stage map
+and after the clear). Neither is live yet.
+
+0 ERROR lines in the run's log (cosmic-log-2026-10-14-9) or after the 19:05 restart on the committed config.
+
 ## Open items
 
 1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid; many times in the rerun).
@@ -286,9 +324,17 @@ moving onto the Tails, are guesses).
    and read `!bossmirror status` before any restart.
 8. **Weak potions count toward the boss standard** (rerun): fixed in d9b8f723d (Horntail's floor: a quarter of max HP),
    with 9c7489b18 (drink back up when low without a hit). Live: one death in 32 minutes of pre-heads.
-9. **Companions stand in the Tails' touch area** (potion-fix rerun): about 25,000 a touch, the same as a player's client
-   takes, so melee fighters and Bishops die there over and over. Needs a fix before another try: companions keep out of
-   a boss part's touch area when one touch would take most of their HP, and attack from its edge.
+9. **Companions stand in the Tails' touch area** (potion-fix rerun): fixed in f6340129a (keep out of a touch that
+   would take a quarter of max HP since c44869508; Horntail focus order). Live PASS in the touch-fence rerun.
+10. **Seal** (touch-fence rerun): the Right Hand seals the whole altar every 25 s for 30 s, and companions carry no
+    cure and do not Dispel. Waits on the user: how companions get Holy Water, and Bishops casting Dispel.
+11. **Empty potions on the altar** (touch-fence rerun): Ingrid's HP potions and both Bishops' MP potions ran out; the
+    600/600 standard is short for a full altar fight (see item 2).
+12. **Archers on the ropes** (touch-fence rerun): on 240060100 the archers spent long spells on the right-hand ropes,
+    out of the right head's range; that head took 45 minutes against 13 in the potion-fix rerun.
+13. **More hands** (touch-fence rerun): before the Hands, 12 Lv200 characters did about 1.5% a minute; the altar needs
+    about 1.7% for the 60-minute limit. Plan: Bossfriend's four bench allies (Gunnar Lv79 Crusader, Magna Lv75 White
+    Knight, Orrin, Tamsin) raised to Lv200.
 
 ## Follow-ups (2026-10-14)
 
