@@ -51,6 +51,12 @@ class AgentSupplyReadinessBossStandardTest {
     private static final int BLUE = 2_000_003;
     private static final int PURE_WATER = 2_022_000;
     private static final int UNAGI = 2_022_003;
+    private static final int REINDEER_MILK = 2_020_013;
+    private static final int HONSTER = 2_002_021;
+    private static final String FLOOR_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS";
+    private static final AgentSupplyReadiness.Activity HORNTAIL =
+            AgentSupplyReadiness.Activity.partyQuest("horntail");
     private static final AgentSupplyReadiness.Activity EASY_BALROG =
             AgentSupplyReadiness.Activity.partyQuest("easy_balrog");
 
@@ -233,6 +239,49 @@ class AgentSupplyReadinessBossStandardTest {
     }
 
     @Test
+    void horntailCountsOnlyPotionsThatRestoreAQuarterOfMaximumHp() {
+        // P18 rerun 2026-10-14: Ingrid carried 359 White Potions toward Horntail's 600 HP potions
+        Map<Integer, StatEffect> effects = Map.of(WHITE, effect(300, 0), REINDEER_MILK, effect(5_000, 0),
+                HONSTER, rateEffect(0.6), PURE_WATER, effect(0, 800));
+        try (MockedStatic<AgentUseItemClassificationPolicy> classification = potionEffects(effects)) {
+            Character hero = mock(Character.class);
+            when(hero.getId()).thenReturn(877);
+            when(hero.getJob()).thenReturn(Job.HERO);
+            when(hero.getCurrentMaxHp()).thenReturn(19_776);
+            when(hero.getCurrentMaxMp()).thenReturn(3_000);
+            Inventory use = new Inventory(hero, InventoryType.USE, (byte) 24);
+            use.addItem(Items.itemWithQuantity(WHITE, 359));
+            use.addItem(Items.itemWithQuantity(REINDEER_MILK, 166));
+            use.addItem(Items.itemWithQuantity(HONSTER, 50));
+            use.addItem(Items.itemWithQuantity(PURE_WATER, 600));
+            when(hero.getInventory(InventoryType.USE)).thenReturn(use);
+
+            assertEquals(new AgentSupplyReadiness.PotionFloor(2_500, 0), AgentSupplyReadiness.potionFloor(HORNTAIL));
+            assertEquals(List.of(216, 600), List.of(AgentSupplyReadiness.countFor(hero, HORNTAIL)[0],
+                    AgentSupplyReadiness.countFor(hero, HORNTAIL)[1]), "Reindeer Milk and Honsters; no MP floor");
+            assertEquals(384, AgentSupplyReadiness.shortfall(hero, HORNTAIL).hp(), "600 - 216");
+            assertEquals(575, AgentSupplyReadiness.countFor(hero, AgentSupplyReadiness.Activity.partyQuest("scarga"))[0],
+                    "no floor: every HP potion");
+        }
+    }
+
+    @Test
+    void aMalformedOrZeroPotionFloorCountsEveryPotion() {
+        String configured = AgentYamlConfig.config.tuning.put(FLOOR_KEY, "horntail=x/0");
+        try {
+            assertNull(AgentSupplyReadiness.potionFloor(HORNTAIL), "malformed");
+            AgentYamlConfig.config.tuning.put(FLOOR_KEY, "horntail=0/0");
+            assertNull(AgentSupplyReadiness.potionFloor(HORNTAIL), "0/0");
+            AgentYamlConfig.config.tuning.put(FLOOR_KEY, "pinkbean=3000/1000");
+            assertNull(AgentSupplyReadiness.potionFloor(HORNTAIL), "not listed");
+            assertEquals(new AgentSupplyReadiness.PotionFloor(3_000, 1_000),
+                    AgentSupplyReadiness.potionFloor(AgentSupplyReadiness.Activity.partyQuest("pinkbean")));
+        } finally {
+            AgentYamlConfig.config.tuning.put(FLOOR_KEY, configured);
+        }
+    }
+
+    @Test
     void threeHundredSeventeenWhitePotionsAreShortOfEasyBalrogsHp() {
         // 317 White Potions hold 95,100 HP: by count they were plenty (BOSS_STANDARDS asks 100), and in the run of
         // 2026-10-08 every member ran out of HP potions before the body died
@@ -316,8 +365,11 @@ class AgentSupplyReadinessBossStandardTest {
 
     /** Red 50 HP, White 300 HP, Unagi 1,000 HP, Blue 100 MP, Pure Water 800 MP. */
     private static MockedStatic<AgentUseItemClassificationPolicy> potionEffects() {
-        Map<Integer, StatEffect> effects = Map.of(RED, effect(50, 0), WHITE, effect(300, 0), UNAGI, effect(1_000, 0),
-                BLUE, effect(0, 100), PURE_WATER, effect(0, 800));
+        return potionEffects(Map.of(RED, effect(50, 0), WHITE, effect(300, 0), UNAGI, effect(1_000, 0),
+                BLUE, effect(0, 100), PURE_WATER, effect(0, 800)));
+    }
+
+    private static MockedStatic<AgentUseItemClassificationPolicy> potionEffects(Map<Integer, StatEffect> effects) {
         MockedStatic<AgentUseItemClassificationPolicy> classification =
                 mockStatic(AgentUseItemClassificationPolicy.class);
         classification.when(() -> AgentUseItemClassificationPolicy.itemEffect(anyInt()))
@@ -331,6 +383,13 @@ class AgentSupplyReadinessBossStandardTest {
         StatEffect effect = mock(StatEffect.class);
         when(effect.getHp()).thenReturn((short) hp);
         when(effect.getMp()).thenReturn((short) mp);
+        return effect;
+    }
+
+    /** A potion restoring {@code hpRate} of maximum HP (a Honster's 0.6). */
+    private static StatEffect rateEffect(double hpRate) {
+        StatEffect effect = mock(StatEffect.class);
+        when(effect.getHpRate()).thenReturn(hpRate);
         return effect;
     }
 

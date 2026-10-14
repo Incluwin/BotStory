@@ -121,6 +121,39 @@ class AgentShopPotionPolicyTest {
                 effects::containsKey, effects::get), "no mana potion on sale");
     }
 
+    @Test
+    void aPotionFloorBuysTheStrongestPotionThatMeetsItForTheCharacter() {
+        // New Leaf City's store: White Potion 300 HP, Sundae 2,000, Reindeer Milk 5,000, Honster 60% of maximum HP
+        ShopItem white = shopItem(2000002, 320);
+        ShopItem sundae = shopItem(2001001, 2300);
+        ShopItem reindeer = shopItem(2020013, 5600);
+        ShopItem honster = shopItem(2002021, 2800);
+        Map<Integer, StatEffect> effects = Map.of(
+                2000002, effect(300, 0, 0, 0),
+                2001001, effect(2000, 0, 0, 0),
+                2020013, effect(5000, 0, 0, 0),
+                2002021, effect(0, 0, 0.6, 0));
+        List<ShopItem> newLeafCity = List.of(white, sundae, reindeer, honster);
+        List<ShopItem> leafre = List.of(white, sundae, reindeer);
+
+        assertEquals(honster, AgentShopPotionPolicy.selectAtFloor(newLeafCity, 600, 10_000_000L, 19_776, 3_000, true,
+                2_500, effects::containsKey, effects::get).shopItem(), "a Hero: 11,866 HP a Honster");
+        assertEquals(reindeer, AgentShopPotionPolicy.selectAtFloor(leafre, 600, 10_000_000L, 19_776, 3_000, true,
+                2_500, effects::containsKey, effects::get).shopItem(), "no Honster in Leafre; the Sundae misses 4,944");
+        assertEquals(reindeer, AgentShopPotionPolicy.selectAtFloor(newLeafCity, 600, 10_000_000L, 5_288, 20_000,
+                true, 2_500, effects::containsKey, effects::get).shopItem(), "a mage: 5,000 beats a 3,173 Honster");
+        assertEquals(sundae, AgentShopPotionPolicy.selectAtFloor(leafre, 600, 2_000_000L, 5_288, 20_000, true,
+                2_500, effects::containsKey, effects::get).shopItem(), "600 Reindeer Milk do not fit; Sundaes do");
+        assertEquals(sundae, AgentShopPotionPolicy.selectAtFloor(leafre, 600, 100_000L, 5_288, 20_000, true,
+                2_500, effects::containsKey, effects::get).shopItem(), "nothing fits: the cheapest that meets it");
+        assertNull(AgentShopPotionPolicy.selectAtFloor(List.of(white), 600, 10_000_000L, 19_776, 3_000, true,
+                2_500, effects::containsKey, effects::get), "nothing on sale meets it");
+        assertEquals(5600, AgentShopPotionPolicy.cheapestPrice(leafre, 19_776, 3_000, true, 2_500,
+                effects::containsKey, effects::get), "the trip prices the cheapest that meets it");
+        assertEquals(320, AgentShopPotionPolicy.cheapestPrice(leafre, 19_776, 3_000, true, 0,
+                effects::containsKey, effects::get), "no floor: the cheapest of all");
+    }
+
     private static ShopItem shopItem(int itemId, int price) {
         ShopItem item = mock(ShopItem.class);
         when(item.getItemId()).thenReturn(itemId);

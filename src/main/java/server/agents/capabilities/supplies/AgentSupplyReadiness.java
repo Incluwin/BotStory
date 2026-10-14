@@ -423,9 +423,9 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * What the Agent's own potions ({@link AgentPotionService#countPotions}) and projectiles ({@link #carriedAmmo})
-     * lack for {@code activity}; for a key BOSS_RECOVERY_STANDARDS lists ({@link #recoveryStandard}), the HP and MP
-     * points its recovery potions ({@link #recoveryCarried}) lack of that standard instead of the potions.
+     * What the Agent's own potions ({@link #countFor}) and projectiles ({@link #carriedAmmo}) lack for
+     * {@code activity}; for a key BOSS_RECOVERY_STANDARDS lists ({@link #recoveryStandard}), the HP and MP points its
+     * recovery potions ({@link #recoveryCarried}) lack of that standard instead of the potions.
      */
     public static Shortfall shortfall(Character agent, Activity activity) {
         if (agent == null) {
@@ -435,10 +435,51 @@ public final class AgentSupplyReadiness {
         if (points != null) {
             return recoveryShortfall(agent, activity, points);
         }
-        int[] potions = agent.getInventory(InventoryType.USE) == null ? new int[]{0, 0}
-                : AgentPotionService.countPotions(agent);
+        int[] potions = countFor(agent, activity);
         Shortfall lacking = shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
         return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity));
+    }
+
+    /**
+     * The {HP, MP} potions the Agent carries toward {@code activity}'s count standard: every recovery potion
+     * (AgentPotionService.countPotions), or with a potion floor ({@link #potionFloor}) only the ones that each restore
+     * at least the floor's share of its current maximum. {0, 0} without a Use tab.
+     */
+    public static int[] countFor(Character agent, Activity activity) {
+        Inventory use = agent == null ? null : agent.getInventory(InventoryType.USE);
+        if (use == null) {
+            return new int[]{0, 0};
+        }
+        PotionFloor floor = potionFloor(activity);
+        if (floor == null) {
+            return AgentPotionService.countPotions(agent);
+        }
+        return AgentPotionInventoryPolicy.countRecoveryPotions(use.list(), AgentUseItemClassificationPolicy::itemEffect,
+                agent.getCurrentMaxHp(), agent.getCurrentMaxMp(), floor.hpBps(), floor.mpBps());
+    }
+
+    /** One potion's least share of the Agent's maximum HP and MP, in basis points, for a boss's count standard. */
+    public record PotionFloor(int hpBps, int mpBps) {
+    }
+
+    /**
+     * The potion floor BOSS_POTION_FLOOR_BPS lists for {@code activity}'s key ("horntail=2500/0"): toward that boss's
+     * count standard a potion counts, and a shop buys it, only when one restores at least that share of the Agent's
+     * maximum. Null: no activity, a key not listed, a malformed pair, or 0/0. Read from agent-engine.yaml at every
+     * call.
+     */
+    public static PotionFloor potionFloor(Activity activity) {
+        if (activity == null || activity.partyQuestKey().isEmpty()) {
+            return null;
+        }
+        int[] own = listed(activity.partyQuestKey(), config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS"));
+        if (own == null) {
+            return null;
+        }
+        int hp = Math.min(10_000, Math.max(0, own[0]));
+        int mp = Math.min(10_000, Math.max(0, own[1]));
+        return hp == 0 && mp == 0 ? null : new PotionFloor(hp, mp);
     }
 
     /**

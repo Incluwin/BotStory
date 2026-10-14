@@ -1554,20 +1554,23 @@ public final class AgentShopService {
         int hpGoal = topUp ? AgentSupplyReadiness.buyTarget(activity, bot, true) : standard.hp();
         int mpGoal = !AgentSupplyReadiness.needsManaPotions(bot) ? 0
                 : topUp ? AgentSupplyReadiness.buyTarget(activity, bot, false) : standard.mp();
-        int[] carried = AgentPotionService.countPotions(bot);
+        int[] carried = AgentSupplyReadiness.countFor(bot, activity);
+        AgentSupplyReadiness.PotionFloor floor = AgentSupplyReadiness.potionFloor(activity);
+        int hpFloorBps = floor == null ? 0 : floor.hpBps();
+        int mpFloorBps = floor == null ? 0 : floor.mpBps();
         int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0], standard.hp());
         int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1], standard.mp());
         AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
         if (hpWant > 0) {
             long heldForMana = mpWant <= 0 ? 0L
-                    : (long) mpWant * Math.max(0, cheapestRecoveryPrice(bot, shop, false));
+                    : (long) mpWant * Math.max(0, cheapestRecoveryPrice(bot, shop, false, mpFloorBps));
             current = buyFloor(current, shop, hpPick, true, hpWant,
                     Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp,
-                    standard.hp());
+                    standard.hp(), hpFloorBps);
         }
         if (mpWant > 0) {
             current = buyFloor(current, shop, mpPick, false, mpWant, spendable(bot, minimumMesoReserve),
-                    minimumMesoReserve, bought, topUp, standard.mp());
+                    minimumMesoReserve, bought, topUp, standard.mp(), mpFloorBps);
         }
         return current;
     }
@@ -1576,7 +1579,7 @@ public final class AgentShopService {
      * One kind of the floor: {@code want} of the potion {@link #floorItem} picks within {@code budget}; a top-up buys
      * only what the budget pays for, so a short purse is no shortfall to report. Never past the room that leaves the
      * Use slot a party quest keeps free ({@link #roomBesideTheRunsSlot}); a standard pass held back by it says its
-     * bag is full.
+     * bag is full. {@code floorBps}: the standard's potion floor for the kind (0 for none).
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> current,
@@ -1588,9 +1591,10 @@ public final class AgentShopService {
             int minimumMesoReserve,
             int[] bought,
             boolean topUp,
-            int standard) {
+            int standard,
+            int floorBps) {
         Character bot = current.bot();
-        ShopSlotItem item = floorItem(shop, bot, pick, forHp, want, budget, current.inventory());
+        ShopSlotItem item = floorItem(shop, bot, pick, forHp, want, budget, floorBps, current.inventory());
         if (item == null) {
             return current;
         }
@@ -1778,19 +1782,22 @@ public final class AgentShopService {
     }
 
     /**
-     * The potion a floor pass buys {@code want} of within {@code budget} (AgentShopPotionPolicy.selectForCount). With
-     * at most one Use slot free, a new kind of potion would take the last slot (a party quest keeps one free for its
-     * items and rewards), so it buys onto a stack of this kind it already carries, when this shop sells one.
+     * The potion a floor pass buys {@code want} of within {@code budget} (AgentShopPotionPolicy.selectForCount; with a
+     * potion floor, AgentShopPotionPolicy.selectAtFloor). With at most one Use slot free, a new kind of potion would
+     * take the last slot (a party quest keeps one free for its items and rewards), so it buys onto a stack of this kind
+     * it already carries, when this shop sells one that meets the floor.
      */
     private static ShopSlotItem floorItem(Shop shop, Character bot, ShopSlotItem pick, boolean forHp, int want,
-                                          long budget, InventoryGateway inventory) {
-        ShopSlotItem selected = selectForCount(shop, bot, pick, forHp, want, budget);
+                                          long budget, int floorBps, InventoryGateway inventory) {
+        ShopSlotItem selected = floorBps > 0 ? selectAtFloor(shop, bot, forHp, want, budget, floorBps)
+                : selectForCount(shop, bot, pick, forHp, want, budget);
         if (selected == null || freeUseSlots(bot) > 1
                 || stackRoom(bot, selected.shopItem.getItemId(), inventory) > 0) {
             return selected;
         }
         ShopSlotItem carried = carriedStack(shop, bot, forHp, inventory);
-        return carried != null ? carried : selected;
+        return carried != null && AgentPotionRecoveryPolicy.meetsFloor(carried.recovery,
+                forHp ? bot.getCurrentMaxHp() : bot.getCurrentMaxMp(), floorBps) ? carried : selected;
     }
 
     /**
@@ -1972,13 +1979,30 @@ public final class AgentShopService {
         return selected == null ? null : new ShopSlotItem(selected.slot(), selected.shopItem(), selected.recovery());
     }
 
+    private static ShopSlotItem selectAtFloor(Shop shop, Character bot, boolean forHp, int want, long budget,
+                                              int floorBps) {
+        AgentShopPotionPolicy.PotionShopSlot selected = AgentShopPotionPolicy.selectAtFloor(
+                shop.getItems(), want, budget, bot.getCurrentMaxHp(), bot.getCurrentMaxMp(), forHp, floorBps,
+                AgentUseItemClassificationPolicy::isRecoveryPotion, AgentUseItemClassificationPolicy::itemEffect);
+        return selected == null ? null : new ShopSlotItem(selected.slot(), selected.shopItem(), selected.recovery());
+    }
+
     /** The cheapest HP (or MP) recovery potion this shop sells, in mesos; -1 when it sells none. */
     public static int cheapestRecoveryPrice(Character bot, Shop shop, boolean forHp) {
+        return cheapestRecoveryPrice(bot, shop, forHp, 0);
+    }
+
+    /**
+     * As {@link #cheapestRecoveryPrice(Character, Shop, boolean)}, among the potions one of which restores at least
+     * {@code floorBps} of the bot's maximum (a boss standard's potion floor; 0 for none).
+     */
+    public static int cheapestRecoveryPrice(Character bot, Shop shop, boolean forHp, int floorBps) {
         if (bot == null || shop == null) {
             return -1;
         }
         return AgentShopPotionPolicy.cheapestPrice(shop.getItems(), bot.getCurrentMaxHp(), bot.getCurrentMaxMp(),
-                forHp, AgentUseItemClassificationPolicy::isRecoveryPotion, AgentUseItemClassificationPolicy::itemEffect);
+                forHp, floorBps, AgentUseItemClassificationPolicy::isRecoveryPotion,
+                AgentUseItemClassificationPolicy::itemEffect);
     }
 
     /**

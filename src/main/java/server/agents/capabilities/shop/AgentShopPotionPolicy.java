@@ -106,18 +106,78 @@ public final class AgentShopPotionPolicy {
                                     boolean forHp,
                                     IntPredicate recoveryPotion,
                                     IntFunction<StatEffect> effectLookup) {
+        return cheapestPrice(items, maxHp, maxMp, forHp, 0, recoveryPotion, effectLookup);
+    }
+
+    /**
+     * As {@link #cheapestPrice(List, int, int, boolean, IntPredicate, IntFunction)}, among the potions one of which
+     * restores at least {@code floorBps} of the maximum (a boss standard's potion floor; 0 for none).
+     */
+    public static int cheapestPrice(List<ShopItem> items,
+                                    int maxHp,
+                                    int maxMp,
+                                    boolean forHp,
+                                    int floorBps,
+                                    IntPredicate recoveryPotion,
+                                    IntFunction<StatEffect> effectLookup) {
         int cheapest = -1;
         for (ShopItem item : items) {
             if (item.getPrice() <= 0 || !recoveryPotion.test(item.getItemId())) {
                 continue;
             }
             StatEffect effect = effectLookup.apply(item.getItemId());
-            if (effect != null && AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp) != null
+            Recovery recovery = effect == null ? null
+                    : AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp);
+            if (recovery != null && AgentPotionRecoveryPolicy.meetsFloor(recovery, forHp ? maxHp : maxMp, floorBps)
                     && (cheapest < 0 || item.getPrice() < cheapest)) {
                 cheapest = item.getPrice();
             }
         }
         return cheapest;
+    }
+
+    /**
+     * The potion a boss standard with a potion floor buys {@code want} of within {@code budget}: of the potions one of
+     * which restores at least {@code floorBps} of the maximum, the strongest for this character (its restore capped at
+     * the maximum; a percent potion such as a Honster scales with it) of which {@code want} fit the budget, the cheaper
+     * on a tie; else the cheapest of them, of which the budget buys what it can. Null when the shop sells none.
+     */
+    public static PotionShopSlot selectAtFloor(List<ShopItem> items,
+                                               int want,
+                                               long budget,
+                                               int maxHp,
+                                               int maxMp,
+                                               boolean forHp,
+                                               int floorBps,
+                                               IntPredicate recoveryPotion,
+                                               IntFunction<StatEffect> effectLookup) {
+        int maximum = Math.max(1, forHp ? maxHp : maxMp);
+        PotionShopSlot strongest = null;
+        PotionShopSlot cheapest = null;
+        for (int i = 0; i < items.size(); i++) {
+            ShopItem item = items.get(i);
+            if (item.getPrice() <= 0 || !recoveryPotion.test(item.getItemId())) {
+                continue;
+            }
+            StatEffect effect = effectLookup.apply(item.getItemId());
+            Recovery recovery = effect == null ? null
+                    : AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp);
+            if (recovery == null || !AgentPotionRecoveryPolicy.meetsFloor(recovery, maximum, floorBps)) {
+                continue;
+            }
+            PotionShopSlot candidate = new PotionShopSlot((short) i, item, recovery);
+            if ((long) item.getPrice() * Math.max(1, want) <= budget) {
+                int restores = Math.min(recovery.primary(), maximum);
+                int best = strongest == null ? -1 : Math.min(strongest.recovery().primary(), maximum);
+                if (restores > best || restores == best && item.getPrice() < strongest.shopItem().getPrice()) {
+                    strongest = candidate;
+                }
+            }
+            if (cheapest == null || item.getPrice() < cheapest.shopItem().getPrice()) {
+                cheapest = candidate;
+            }
+        }
+        return strongest != null ? strongest : cheapest;
     }
 
     private static boolean better(

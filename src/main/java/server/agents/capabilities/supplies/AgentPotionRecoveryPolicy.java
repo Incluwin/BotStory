@@ -38,6 +38,15 @@ public final class AgentPotionRecoveryPolicy {
         return new Recovery(primary, secondary, secondary > 0, percentageBased);
     }
 
+    /**
+     * True when one potion restoring {@code recovery} reaches {@code floorBps} of {@code maximum} (a boss standard's
+     * potion floor); always true for a floor of 0 or less.
+     */
+    public static boolean meetsFloor(Recovery recovery, int maximum, int floorBps) {
+        return floorBps <= 0 || recovery != null
+                && (long) recovery.primary() * 10_000L >= (long) Math.max(0, maximum) * floorBps;
+    }
+
     public static int coverageBasisPoints(int recovery, int targetDeficit) {
         if (recovery <= 0 || targetDeficit <= 0) {
             return 0;

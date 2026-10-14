@@ -324,13 +324,17 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * What a readiness trip's checks price one potion of the kind at: for a count standard the cheapest {@code shop}
-     * sells (the floor's last resort, so a purse that covers it reaches the standard); for a points standard
+     * sells (the floor's last resort, so a purse that covers it reaches the standard), with a potion floor
+     * (AgentSupplyReadiness.potionFloor) the cheapest that meets it; for a points standard
      * (AgentSupplyReadiness.recoveryStandard) the visit's pick (AgentShopService.coveragePickPrice), the potion its
      * floor buys the points in. -1 when it sells none.
      */
     private static int potionPrice(Character agent, Shop shop, AgentSupplyReadiness.Activity activity, boolean forHp) {
         if (AgentSupplyReadiness.recoveryStandard(activity) == null) {
-            return AgentShopService.cheapestRecoveryPrice(agent, shop, forHp);
+            AgentSupplyReadiness.PotionFloor floor = AgentSupplyReadiness.potionFloor(activity);
+            int floorBps = floor == null ? 0 : forHp ? floor.hpBps() : floor.mpBps();
+            return floorBps > 0 ? AgentShopService.cheapestRecoveryPrice(agent, shop, forHp, floorBps)
+                    : AgentShopService.cheapestRecoveryPrice(agent, shop, forHp);
         }
         return AgentShopService.coveragePickRecovery(agent, shop, forHp) > 0
                 ? AgentShopService.coveragePickPrice(agent, shop, forHp) : -1;

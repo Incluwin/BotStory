@@ -130,6 +130,14 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS")) {
+                // its own branch: a false from validNonNumericTuning would let a bare number pass the numeric check
+                if (!validPotionFloors(value)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be key=HP/MP pairs of basis points from 0 to 10000");
+                }
+                continue;
+            }
             if (validNonNumericTuning(key, value)) {
                 continue;
             }
@@ -268,6 +276,23 @@ final class AgentEngineConfigValidator {
      */
     static boolean validRecoveryStandards(String value) {
         return value != null && value.matches("[a-z0-9_]+=\\d{1,9}/\\d{1,9}(,[a-z0-9_]+=\\d{1,9}/\\d{1,9})*");
+    }
+
+    /**
+     * True for "key=HP/MP[,key=HP/MP...]" with lower-case keys and basis points from 0 to 10000, so
+     * AgentSupplyReadiness.potionFloor reads every pair as listed.
+     */
+    static boolean validPotionFloors(String value) {
+        if (value == null || !value.matches("[a-z0-9_]+=\\d{1,5}/\\d{1,5}(,[a-z0-9_]+=\\d{1,5}/\\d{1,5})*")) {
+            return false;
+        }
+        for (String pair : value.split(",")) {
+            String[] shares = pair.substring(pair.indexOf('=') + 1).split("/");
+            if (Integer.parseInt(shares[0]) > 10_000 || Integer.parseInt(shares[1]) > 10_000) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean validNonNumericTuning(String key, String value) {
