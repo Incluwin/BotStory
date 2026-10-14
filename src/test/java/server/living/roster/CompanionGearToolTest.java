@@ -266,7 +266,7 @@ class CompanionGearToolTest {
         List<Piece> kit = game.worn.get(0);
         assertEquals(149, at(kit, WEAPON).itemId() / 10_000, "the sword fails isWeaponCompatible for a Corsair: " + kit);
         for (Piece piece : kit) {
-            assertEquals(List.of(new Use(SIXTY, 7, 7)), piece.plan().uses(), piece.toString());
+            assertEquals(List.of(new Use(TEN, 7, 7)), piece.plan().uses(), piece.toString());
         }
         assertTrue(reply.startsWith("Flint now wears " + kit.size() + " boss pieces"), reply);
         assertEquals(List.of(), game.given);
