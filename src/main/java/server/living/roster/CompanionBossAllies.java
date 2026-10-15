@@ -505,7 +505,7 @@ final class CompanionBossAllies {
                 offered.add(row.personaId());
             } else {
                 text.append(row.offered() ? row.name() + " could come, but I can take no more of yours."
-                        : notOffered(row.name(), row.level(), row.why()));
+                        : notOffered(row.name(), row.level(), row.why(), row.etaMs()));
             }
         }
         if (offered.size() >= 2) {
@@ -554,11 +554,11 @@ final class CompanionBossAllies {
                 Persona persona = world.content().persona(personaId);
                 String name = persona == null ? personaId : persona.name();
                 names.add(name);
-                why.append(' ').append(notOffered(name, 0, NotOffered.BUSY));
+                why.append(' ').append(notOffered(name, 0, NotOffered.BUSY, 0L));
             } else {
                 names.add(row.name());
                 if (!row.offered()) {
-                    why.append(' ').append(notOffered(row.name(), row.level(), row.why()));
+                    why.append(' ').append(notOffered(row.name(), row.level(), row.why(), row.etaMs()));
                 } else if (now.left() <= 0) {
                     noRoom = true;
                 }
@@ -568,10 +568,15 @@ final class CompanionBossAllies {
                 + (noRoom ? " I can take no more of yours." : "");
     }
 
-    /** A benched companion she does not offer, as her window's plain line saying why. */
-    private static String notOffered(String name, int level, NotOffered why) {
+    /**
+     * A benched companion she does not offer, as her window's plain line saying why. One too far says how long it needs
+     * (whole minutes, rounded up), so an owner learns to call allies first (P18 run 5: the owner signed his party up
+     * first, and when he opened the picker none of his four could still make it).
+     */
+    private static String notOffered(String name, int level, NotOffered why, long etaMs) {
         return switch (why) {
-            case TOO_FAR -> name + " (Lv. " + level + ") cannot reach me before the list closes.";
+            case TOO_FAR -> name + " (Lv. " + level + ") needs about " + Math.max(1L, Math.ceilDiv(etaMs, MINUTE_MS))
+                    + " min to reach me, and my list closes before that. Call allies first next time.";
             case NOT_READY -> name + " is not ready for this battle.";
             case ON_THE_WAY -> name + " is already on the way.";
             case BUSY -> name + " is busy right now.";

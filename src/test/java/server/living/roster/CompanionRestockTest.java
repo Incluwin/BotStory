@@ -211,6 +211,23 @@ class CompanionRestockTest {
         }
     }
 
+    /**
+     * P18 run 5 (2026-10-14): an ally called from the bench leads itself, and so had no standing duty at all; walking
+     * back in from Leafre it never bought, and Ingrid died 19 times on arrival with nothing to drink. It keeps the boss's
+     * standard there as a party member does; anywhere else its own lead still keeps it off the duty.
+     */
+    @Test
+    void anAllyWalkingBackIntoItsBossRunKeepsThatBosssStandardThoughItLeadsItself() {
+        leaders.put(FENNA, FENNA); // an ally leads itself
+        try (MockedStatic<AgentBossDeathWalk> walk = mockStatic(AgentBossDeathWalk.class)) {
+            walk.when(() -> AgentBossDeathWalk.reentryRestockKey(fenna)).thenReturn("horntail");
+            assertEquals(AgentSupplyReadiness.Activity.partyQuest("horntail"), restock.standing(FENNA));
+
+            walk.when(() -> AgentBossDeathWalk.reentryRestockKey(fenna)).thenReturn(null);
+            assertNull(restock.standing(FENNA), "leading itself anywhere else");
+        }
+    }
+
     @Test
     void atABossGateItKeepsItsDutyButNeverSetsOffForAShopFromThere() {
         when(fenna.getMapId()).thenReturn(PAPULATUS_GATE); // Toly's shop is six hops back down the Path of Time

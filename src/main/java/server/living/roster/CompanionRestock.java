@@ -73,14 +73,17 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return null;
         }
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
-        if (at == null || AgentPartyQuestEngagementRegistry.forMember(agentCharacterId) != null
-                || AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) != at.ownerId()) {
-            return null; // not a companion, in a run, or leading itself (a bench slice)
+        if (at == null || AgentPartyQuestEngagementRegistry.forMember(agentCharacterId) != null) {
+            return null; // not a companion, or in a party quest run
         }
         String reentry = AgentBossDeathWalk.reentryRestockKey(bot(agentCharacterId));
         if (reentry != null) {
-            // P18 follow-up: walking back into its boss run from the map it is moved in from (Horntail: Leafre)
+            // P18 follow-up: walking back into its boss run from the map it is moved in from (Horntail: Leafre). An ally
+            // called from the bench leads itself there and keeps it too (P18 run 5: Ingrid came back empty 19 times)
             return AgentSupplyReadiness.Activity.partyQuest(reentry);
+        }
+        if (AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) != at.ownerId()) {
+            return null; // leading itself (a bench slice, an ally)
         }
         if (held(at)) {
             // waiting outside its owner's run: the run commits its extras too, and it restocks meanwhile

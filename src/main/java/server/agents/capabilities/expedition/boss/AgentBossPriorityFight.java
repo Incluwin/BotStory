@@ -1,6 +1,9 @@
 package server.agents.capabilities.expedition.boss;
 
 import client.Character;
+import client.Disease;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
@@ -51,12 +54,18 @@ import java.util.function.Supplier;
  * deadly touch area.</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
+    private static final Logger log = LoggerFactory.getLogger(AgentBossPriorityFight.class);
     private final String key;
     private final Ports ports;
     /** Fighter id -> when it last took the stage portal. */
     private final Map<Integer, Long> portalTries = new HashMap<>();
     /** Fighter id -> the band its horizontal boundary holds now, and on which map: {minX, maxX, mapId}. */
     private final Map<Integer, int[]> bands = new HashMap<>();
+    /** Fighter id -> how long it stood sealed, and how long disabled (stun, seduce, confuse), since the last status. */
+    private final Map<Integer, long[]> afflicted = new HashMap<>();
+    /** When the last tick ran, and when the last status line went out (-1: none yet). */
+    private long lastTickMs = -1;
+    private long lastStatusMs = -1;
 
     AgentBossPriorityFight(String key, Ports ports) {
         if (key == null || key.isBlank()) {
@@ -82,6 +91,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         }
         boolean cleared = event != null && event.isEventCleared();
         AgentBossRules.Boss rules = AgentBossRules.of(key);
+        status(fighters, rules, nowMs);
         PrimitiveCapabilityGateway gateway = ports.gateway();
         Map<MapleMap, Set<Integer>> liveByMap = new HashMap<>();
         for (Character member : fighters) {
@@ -119,6 +129,87 @@ public final class AgentBossPriorityFight implements AgentBossFight {
 
     @Override
     public void end(EventInstanceManager event) {
+    }
+
+    /**
+     * 2026-10-14 (P18, run 5 follow-up): once every STATUS_EVERY_MS, one line of the fight as it stands: each boss part's
+     * HP (the parts its boss rules name, holder too) and each fighter's map, place, HP, buff count, and how long it stood sealed and disabled since the last line,
+     * so a slow stage shows why (Horntail's Hands held the run at 0.6% a minute with nothing in the log to say why).
+     * Sealed and disabled time is summed over ticks (at most two seconds a tick). Memory only, besides the log.
+     */
+    private void status(List<Character> fighters, AgentBossRules.Boss rules, long nowMs) {
+        long step = lastTickMs < 0 ? 0 : Math.max(0, Math.min(2_000, nowMs - lastTickMs));
+        lastTickMs = nowMs;
+        for (Character member : fighters) {
+            long[] times = afflicted.computeIfAbsent(member.getId(), id -> new long[2]);
+            if (member.hasDisease(Disease.SEAL)) {
+                times[0] += step;
+            }
+            if (member.hasDisease(Disease.STUN) || member.hasDisease(Disease.SEDUCE)
+                    || member.hasDisease(Disease.CONFUSE)) {
+                times[1] += step;
+            }
+        }
+        if (lastStatusMs < 0) {
+            lastStatusMs = nowMs;
+            return;
+        }
+        long every = statusEveryMs();
+        if (every <= 0 || nowMs - lastStatusMs < every) {
+            return;
+        }
+        lastStatusMs = nowMs;
+        if (!log.isInfoEnabled()) {
+            afflicted.clear();
+            return;
+        }
+        Set<MapleMap> maps = new LinkedHashSet<>();
+        for (Character member : fighters) {
+            if (member.getMap() != null) {
+                maps.add(member.getMap());
+            }
+        }
+        Set<Integer> named = new LinkedHashSet<>();
+        if (rules != null) {
+            named.addAll(rules.targetPriority());
+            named.addAll(rules.meleePriority());
+            named.addAll(rules.neverTarget());
+        }
+        StringBuilder parts = new StringBuilder();
+        for (MapleMap map : maps) {
+            for (Monster monster : ports.monsters(map)) {
+                if (monster.isAlive() && named.contains(monster.getId())) {
+                    parts.append(parts.length() == 0 ? "" : " ").append(monster.getId()).append(':')
+                            .append(percent(monster.getHp(), monster.getMaxHp())).append('%');
+                }
+            }
+        }
+        StringBuilder members = new StringBuilder();
+        for (Character member : fighters) {
+            Point at = member.getPosition();
+            long[] times = afflicted.getOrDefault(member.getId(), new long[2]);
+            List<?> buffs = member.getAllBuffs();
+            members.append(members.length() == 0 ? "" : "; ").append(member.getName()).append(' ')
+                    .append(member.getMapId()).append(at == null ? "" : "(" + at.x + "," + at.y + ")")
+                    .append(" hp=").append(percent(member.getHp(), member.getCurrentMaxHp())).append('%')
+                    .append(" buffs=").append(buffs == null ? 0 : buffs.size())
+                    .append(" sealed=").append(times[0] / 1000).append('s')
+                    .append(" disabled=").append(times[1] / 1000).append('s');
+        }
+        afflicted.clear();
+        AgentBossRules.Focus focus = rules == null || maps.size() != 1 ? null
+                : AgentBossRules.focusStep(rules, liveIds(maps.iterator().next()));
+        log.info("Boss fight status: boss={} step={} parts=[{}] members=[{}]", key,
+                focus == null ? "-" : focus.mobIds(), parts, members);
+    }
+
+    private static long percent(long value, long maximum) {
+        return maximum <= 0 ? 0 : Math.max(0, Math.min(100, value * 100 / maximum));
+    }
+
+    static long statusEveryMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.STATUS_EVERY_MS");
     }
 
     /**

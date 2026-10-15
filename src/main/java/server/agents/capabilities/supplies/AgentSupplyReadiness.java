@@ -504,7 +504,7 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * The potion floor BOSS_POTION_FLOOR_BPS lists for {@code activity}'s key ("horntail=2500/0"): toward that boss's
+     * The potion floor BOSS_POTION_FLOOR_BPS lists for {@code activity}'s key ("horntail=1500/0"): toward that boss's
      * count standard a potion counts, and a shop buys it, only when one restores at least that share of the Agent's
      * maximum. Null: no activity, a key not listed, a malformed pair, or 0/0. Read from agent-engine.yaml at every
      * call.

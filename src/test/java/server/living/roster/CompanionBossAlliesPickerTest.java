@@ -149,7 +149,8 @@ class CompanionBossAlliesPickerTest {
 
         long margin = h.expedition.getStartTime() - h.deadline();
         h.closesIn(margin + 30_000L);
-        assertTrue(window().endsWith("\r\nBrann (Lv. 70) cannot reach me before the list closes." + THATS_ALL),
+        assertTrue(window().endsWith("\r\nBrann (Lv. 70) needs about 1 min to reach me, and my list closes before"
+                        + " that. Call allies first next time." + THATS_ALL),
                 window());
     }
 

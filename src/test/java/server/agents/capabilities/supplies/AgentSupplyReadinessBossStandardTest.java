@@ -239,7 +239,7 @@ class AgentSupplyReadinessBossStandardTest {
     }
 
     @Test
-    void horntailCountsOnlyPotionsThatRestoreAQuarterOfMaximumHp() {
+    void horntailCountsOnlyPotionsThatRestoreFifteenPercentOfMaximumHp() {
         // P18 rerun 2026-10-14: Ingrid carried 359 White Potions toward Horntail's 600 HP potions (900 since the touch-fence rerun)
         Map<Integer, StatEffect> effects = Map.of(WHITE, effect(300, 0), REINDEER_MILK, effect(5_000, 0),
                 HONSTER, rateEffect(0.6), PURE_WATER, effect(0, 800));
@@ -256,12 +256,16 @@ class AgentSupplyReadinessBossStandardTest {
             use.addItem(Items.itemWithQuantity(PURE_WATER, 600));
             when(hero.getInventory(InventoryType.USE)).thenReturn(use);
 
-            assertEquals(new AgentSupplyReadiness.PotionFloor(2_500, 0), AgentSupplyReadiness.potionFloor(HORNTAIL));
+            assertEquals(new AgentSupplyReadiness.PotionFloor(1_500, 0), AgentSupplyReadiness.potionFloor(HORNTAIL));
             assertEquals(List.of(216, 600), List.of(AgentSupplyReadiness.countFor(hero, HORNTAIL)[0],
                     AgentSupplyReadiness.countFor(hero, HORNTAIL)[1]), "Reindeer Milk and Honsters; no MP floor");
             assertEquals(684, AgentSupplyReadiness.shortfall(hero, HORNTAIL).hp(), "900 - 216");
             assertEquals(575, AgentSupplyReadiness.countFor(hero, AgentSupplyReadiness.Activity.partyQuest("scarga"))[0],
                     "no floor: every HP potion");
+
+            // P18 run 5: 10% gear put Thane just past 20,000 HP, where a quarter no longer let Reindeer Milk count
+            when(hero.getCurrentMaxHp()).thenReturn(20_400);
+            assertEquals(216, AgentSupplyReadiness.countFor(hero, HORNTAIL)[0], "Reindeer Milk still counts");
         }
     }
 
