@@ -73,6 +73,20 @@ public final class AgentCombatSupportPolicy {
         return targetCount >= minimumTargetsWithoutHealer || hasNearbyHealSkillAlly;
     }
 
+    /**
+     * 2026-10-15 (P20 runs 5-6): whether a roar that costs {@code hpCostRate} of max HP (Dragon Roar: 20%) leaves the
+     * Agent above its autopot HP alert. Dark Knights roaring from just over half HP in Solomon's stun band fell to
+     * about 30% and died to his next ~16,600 hit, seven times over two runs; a roar from above the alert plus its cost
+     * leaves one hit's room before the potion.
+     */
+    public static boolean roarLeavesHpAboveAlert(Character bot, double hpCostRate) {
+        if (bot == null) {
+            return false;
+        }
+        int maxHp = bot.getCurrentMaxHp();
+        return hpCostRate <= 0 || bot.getHp() - hpCostRate * maxHp > bot.getAutopotHpAlert() * maxHp;
+    }
+
     public static boolean needsHeal(Character chr, double targetHpRatio) {
         if (chr == null || !chr.isAlive()) {
             return false;

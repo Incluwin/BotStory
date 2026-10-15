@@ -165,6 +165,10 @@ public final class AgentSkillAttackPlanRuntime {
                         bot, config.SUPPORT_RANGE, config.SUPPORT_VERTICAL_RANGE))) {
             return reject("dragon-roar-ally-rule");
         }
+        if (skillId == DragonKnight.DRAGON_ROAR
+                && !AgentCombatSupportPolicy.roarLeavesHpAboveAlert(bot, -effect.getHpRate())) {
+            return reject("dragon-roar-hp-alert");
+        }
 
         return new AgentAttackPlan(skillId, skillLevel, attackCount, hitBox, targets,
                 route, packetFields.display(),

@@ -48,6 +48,18 @@ class AgentCombatSupportPolicyTest {
     }
 
     @Test
+    void shouldRoarOnlyWhenTheCostLeavesHpAboveTheAutopotAlert() {
+        Character bot = characterWithHp(27_300, 30_000);
+        when(bot.getAutopotHpAlert()).thenReturn(0.7f);
+
+        assertTrue(AgentCombatSupportPolicy.roarLeavesHpAboveAlert(bot, 0.2),
+                "91% - 20% = 71%, over the 70% alert: one hit's room left");
+        when(bot.getHp()).thenReturn(20_000);
+        assertFalse(AgentCombatSupportPolicy.roarLeavesHpAboveAlert(bot, 0.2), "67% - 20% = 47%, under the 70% alert");
+        assertTrue(AgentCombatSupportPolicy.roarLeavesHpAboveAlert(bot, 0), "a skill with no HP cost is not held back");
+    }
+
+    @Test
     void shouldApplyLegacyHealThreshold() {
         Character healthy = characterWithHp(101, 200);
         Character hurt = characterWithHp(99, 200);
