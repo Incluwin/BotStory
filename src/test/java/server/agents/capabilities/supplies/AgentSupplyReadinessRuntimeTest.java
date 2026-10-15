@@ -732,6 +732,19 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(execution(entry).isActive());
     }
 
+    @Test
+    void aFullUseTabOfArrowsItCannotShootIsRoomTheVisitSells() {
+        // 2026-10-14 (P18): the Crusader Gunnar's full Use tab of looted arrows kept every Horntail restock put
+        Character halvard = companion(510, "Halvard", Job.SPEARMAN, 15, 30, 20_000);
+        freeSlots.put(510, 0);
+        shopService.when(() -> AgentShopService.sellableAmmoStacks(any(), eq(halvard))).thenReturn(2);
+        AgentRuntimeEntry entry = following(halvard);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
+        assertTrue(execution(entry).isActive(), "two stacks to sell: a slot for the potions and one for the run");
+        assertFalse(calls.stream().anyMatch(call -> call.contains("NO_SPACE")), calls.toString());
+    }
+
     // (h)
     @Test
     void aFullUseTabStaysPutUntilASlotForThePotionsAndOneForTheRunAreFree() {

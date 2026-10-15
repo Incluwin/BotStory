@@ -536,6 +536,46 @@ class AgentShopServiceReadinessAmmoTest {
     }
 
     @Test
+    void aCureTripSellsArrowsItCannotShootForTheRoomItsHolyWaterTakes() {
+        // 2026-10-14 (P18): the Crusader Gunnar's Use tab was full of looted arrows and bullets, so every Horntail
+        // restock stayed put on NO_SPACE
+        trip = HORNTAIL_CURE;
+        prices.put(HOLY_WATER, 500);
+        sellable();
+        bag(6);
+        carryPotions(100, 100);
+        for (int i = 0; i < 4; i++) {
+            use.addItem(junk(ARROW, 2_000));
+        }
+        purse = AgentSupplyReadiness.cureStandard(HORNTAIL_CURE) * 500 + 1_000;
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(150, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+        assertEquals(3, transactions.stream().filter(t -> t.equals("sold 2000 x " + ARROW)).count(),
+                "two stacks of Holy Water and the run's slot: " + transactions);
+        assertEquals(1, use.getNumFreeSlot(), "the run's slot");
+    }
+
+    @Test
+    void anArcherOnACureTripSellsNoneOfItsOwnArrows() {
+        trip = HORNTAIL_CURE;
+        hunter();
+        prices.put(HOLY_WATER, 500);
+        sellable();
+        bag(6);
+        carryPotions(100, 100);
+        for (int i = 0; i < 4; i++) {
+            use.addItem(junk(ARROW, 2_000));
+        }
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.BOW);
+
+        assertEquals(0, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+        assertEquals(4, ammoStacks(WeaponType.BOW), "its own arrows stay");
+    }
+
+    @Test
     void aTripForAnyOtherActivityBuysNoCures() {
         trip = LPQ;
         prices.put(HOLY_WATER, 500);
@@ -599,6 +639,28 @@ class AgentShopServiceReadinessAmmoTest {
         return sequence;
     }
 
+    /** The counter buys back what it is sold, as the live shop does. */
+    private void sellable() {
+        when(gateway.sell(any(), any(), any(), anyShort(), anyShort())).thenAnswer(inv -> {
+            short slot = inv.getArgument(3);
+            short quantity = inv.getArgument(4);
+            Item stack = use.getItem(slot);
+            transactions.add("sold " + quantity + " x " + stack.getItemId());
+            use.removeItem(slot, quantity, false);
+            return Shop.TransactionResult.SUCCESS;
+        });
+    }
+
+    /** A Use stack that is tradeable without asking the item data (ItemInformationProvider needs the database). */
+    private static Item junk(int itemId, int quantity) {
+        return new Item(itemId, (short) 0, (short) quantity) {
+            @Override
+            public boolean isUntradeable() {
+                return false;
+            }
+        };
+    }
+
     private void hunter() {
         when(bot.getJob()).thenReturn(Job.HUNTER);
     }
@@ -608,13 +670,13 @@ class AgentShopServiceReadinessAmmoTest {
         when(bot.getInventory(InventoryType.USE)).thenReturn(use);
     }
 
-    /** White and Blue potions in stacks of 100. */
+    /** White and Blue potions in stacks of 100, tradeable without the item data (a readiness visit looks for room). */
     private void carryPotions(int white, int blue) {
         for (int left = white; left > 0; left -= 100) {
-            use.addItem(Items.itemWithQuantity(WHITE, Math.min(100, left)));
+            use.addItem(junk(WHITE, Math.min(100, left)));
         }
         for (int left = blue; left > 0; left -= 100) {
-            use.addItem(Items.itemWithQuantity(BLUE, Math.min(100, left)));
+            use.addItem(junk(BLUE, Math.min(100, left)));
         }
     }
 

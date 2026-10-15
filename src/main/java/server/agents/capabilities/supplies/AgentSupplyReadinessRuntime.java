@@ -319,15 +319,17 @@ public final class AgentSupplyReadinessRuntime {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
                     (int) Math.min(Integer.MAX_VALUE, spend - spendable), potions);
         }
-        if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
+        // 2026-10-14 (P18): the visit sells ammo for a weapon it does not wield for room
+        // (AgentShopService.makeUseRoomForReadiness), so a Use tab full of looted arrows is room too
+        int room = freeUseSlots(agent) + AgentShopService.sellableAmmoStacks(entry, agent);
+        if (room < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
-        if (readinessAmmo != null && readinessAmmo.newStacks() > 0
-                && freeUseSlots(agent) < readinessAmmo.newStacks() + 1) {
+        if (readinessAmmo != null && readinessAmmo.newStacks() > 0 && room < readinessAmmo.newStacks() + 1) {
             // the run's slot stays free
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
-        if (cures.newStacks() > 0 && freeUseSlots(agent) < cures.newStacks() + 1) {
+        if (cures.newStacks() > 0 && room < cures.newStacks() + 1) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
         return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0, potions);

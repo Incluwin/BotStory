@@ -573,8 +573,8 @@ public final class AgentShopService {
             } else {
                 // a readiness trip buys its ammo standard after the potion standard, before any potion past it
                 int[] potionsBought = {0, 0};
-                actions.add((sequence, shop) -> buyPotionStandard(makeUseRoomForPotions(sequence, shop, wt), shop,
-                        minimumMesoReserve, potionsBought));
+                actions.add((sequence, shop) -> buyPotionStandard(makeUseRoomForReadiness(sequence, shop, wt, trip),
+                        shop, minimumMesoReserve, potionsBought));
                 actions.add((sequence, shop) -> readinessAmmoStep(sequence, shop, bot, wt,
                         AgentSupplyReadiness.ammoTarget(trip), minimumMesoReserve));
                 actions.add((sequence, shop) -> readinessCureStep(sequence, shop, bot,
@@ -1395,7 +1395,50 @@ public final class AgentShopService {
     static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoomForPotions(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt) {
         Character bot = sequence.bot();
-        int missing = potionSlotsNeeded(bot, shop, sequence.inventory()) - freeUseSlots(bot);
+        return makeUseRoom(sequence, shop, wt, potionSlotsNeeded(bot, shop, sequence.inventory()), "potions");
+    }
+
+    /**
+     * {@link #makeUseRoomForPotions} for a readiness trip: room for all it buys, as the trip's checks counted it
+     * (AgentSupplyReadinessRuntime.assess counts these stacks as room): the potion standard's shortfall a stack of
+     * {@link #READINESS_POTIONS_PER_STACK} at a time, the trip's ammo and seal cure stacks, and the run's slot, or the
+     * reserve bars' slots when those take more. Found live 2026-10-14 (P18): the Crusader Gunnar carried 51 stacks of
+     * looted arrows and 24 of bullets in a full Use tab, so every Horntail restock stayed put on NO_SPACE.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoomForReadiness(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt,
+            AgentSupplyReadiness.Activity trip) {
+        Character bot = sequence.bot();
+        AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(bot, trip);
+        int wanted = stacks(shortfall.hp()) + stacks(shortfall.mp())
+                + readinessAmmoPlan(bot, shop, bot.getMapId(), trip).newStacks()
+                + readinessCurePlan(bot, shop, trip).newStacks() + 1;
+        return makeUseRoom(sequence, shop, wt,
+                Math.max(wanted, potionSlotsNeeded(bot, shop, sequence.inventory())), "a readiness trip");
+    }
+
+    /** What a readiness trip's room counts one potion stack as: the smallest stack a counter potion fills. */
+    static final int READINESS_POTIONS_PER_STACK = 100;
+
+    private static int stacks(int potions) {
+        return potions <= 0 ? 0 : (potions + READINESS_POTIONS_PER_STACK - 1) / READINESS_POTIONS_PER_STACK;
+    }
+
+    /**
+     * Stacks of ammo for a weapon {@code bot} does not wield: the Use room a visit can make
+     * ({@link #makeUseRoom}), which the readiness checks count beside the free slots.
+     */
+    public static int sellableAmmoStacks(AgentRuntimeEntry entry, Character bot) {
+        return AgentInventorySellTrashService.collectUnusableAmmo(entry, bot,
+                AgentAttackExecutionProvider.getEquippedWeaponType(bot), AgentInventoryGatewayRuntime.inventory()).size();
+    }
+
+    /** Sells one stack of ammo for a weapon it does not wield per Use slot it lacks of {@code slotsWanted}. */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> makeUseRoom(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, WeaponType wt, int slotsWanted,
+            String forWhat) {
+        Character bot = sequence.bot();
+        int missing = slotsWanted - freeUseSlots(bot);
         if (missing <= 0) {
             return sequence;
         }
@@ -1410,8 +1453,8 @@ public final class AgentShopService {
                 sold.add(item.getItemId());
             }
         }
-        log.info("Agent '{}' needs {} more free Use slot(s) for potions on map {}: sold ammo it does not use {}",
-                bot.getName(), missing, bot.getMapId(), sold);
+        log.info("Agent '{}' needs {} more free Use slot(s) for {} on map {}: sold ammo it does not use {}",
+                bot.getName(), missing, forWhat, bot.getMapId(), sold);
         return sequence;
     }
 
