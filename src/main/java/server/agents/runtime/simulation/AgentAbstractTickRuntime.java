@@ -32,8 +32,8 @@ public final class AgentAbstractTickRuntime {
         Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         AgentAbstractExecutionScope scope = entry.simulationState().abstractExecutionScope();
         if (agent == null || scope == AgentAbstractExecutionScope.NONE) {
-            entry.simulationState().backgroundOutcomes()
-                    .recordUnsupportedOutcome("abstract tick without an eligible capability");
+            // Nothing ran, so nothing mutated: the capability ended (e.g. TownLife exited) before
+            // the scheduler could pick a live mode. The next decision leaves abstract mode.
             return;
         }
         entry.simulationState().backgroundOutcomes().heartbeat(nowMs);

@@ -359,7 +359,18 @@ final class AgentSchedulerDetailDiagnostics {
                     + " ledgerScope=" + outcomes.scope()
                     + " heartbeats=" + outcomes.heartbeatCount()
                     + " reconciliations=" + outcomes.reconciliationCount()
-                    + " blocked=" + (outcomes.unsupportedOutcome() != null));
+                    + " blocked=" + (outcomes.unsupportedOutcome() != null)
+                    + " failingMs=" + (outcomes.firstFailedReconciliationAtMs() < 0L
+                    ? "-" : Long.toString(nowMs - outcomes.firstFailedReconciliationAtMs()))
+                    + " abandoned=" + outcomes.abandonmentCount());
+            AgentBackgroundOutcomeLedger.Abandonment abandonment = outcomes.lastAbandonment();
+            if (abandonment != null) {
+                lines.add("  lastAbandonMsAgo=" + (nowMs - abandonment.abandonedAtMs())
+                        + " reason=" + abandonment.reason()
+                        + " unsupported=" + abandonment.unsupportedOutcome()
+                        + " baseline=" + abandonment.materializedBaseline()
+                        + " then=" + abandonment.currentState());
+            }
         }
         return List.copyOf(lines);
     }
