@@ -158,6 +158,8 @@ class AgentBossRulesCatalogTest {
         assertEquals(List.of(8_820_003, 8_820_004), pinkBean.attackKeepOut(),
                 "Solomon's and Rex's hits keep out a member that one would nearly kill");
         assertEquals(0, pinkBean.keepOutHpPercent(), "the global ATTACK_KEEP_OUT_HP_PERCENT (80)");
+        assertTrue(pinkBean.targetPriority().indexOf(8_820_004) < pinkBean.targetPriority().indexOf(8_820_003),
+                "Rex, whose attack2 covers the whole floor, falls before Solomon: the two never hit one spot at once");
 
         for (String key : List.of("zakum", "horntail", "showa", "scarga", "papulatus", "easy_balrog")) {
             AgentBossRules.Boss boss = AgentBossRules.of(key);
