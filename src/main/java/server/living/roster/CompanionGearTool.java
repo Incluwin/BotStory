@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -22,10 +23,14 @@ import server.agents.runtime.AgentCharacterMaintenanceRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.combat.CombatFormulaProvider;
 import server.knowledge.ItemFact;
 import server.knowledge.WorldKnowledge;
 import server.living.LivingWorld;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.living.quest.BossGearPlanner;
+import server.living.quest.BossGearPlanner.Accuracy;
 import server.living.quest.BossGearPlanner.Piece;
 import server.living.quest.BossGearPlanner.Wearer;
 import server.living.quest.FriendForge;
@@ -40,8 +45,10 @@ import server.living.store.LivingStore.WearStats;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +89,9 @@ public final class CompanionGearTool {
     private static final short SHIELD = -10;
     private static final short WEAPON = -11;
     private static final short TOP = -5;
+    /** The slots a kit with an accuracy goal may fill: the kit's armour and weapon, and the face, eye, earring, pendant. */
+    private static final Set<Short> ACCURACY_SLOTS = Set.of((short) -1, (short) -2, (short) -3, (short) -4, (short) -5,
+            (short) -6, (short) -7, (short) -8, (short) -9, (short) -10, (short) -11, (short) -17);
 
     /**
      * What the companion's mailbox did: pieces put in its bag, of those the pieces it wears, and the pieces it skipped
@@ -128,6 +138,19 @@ public final class CompanionGearTool {
          * going on, whose answer has then gone to companion-ops).
          */
         CompletableFuture<?> settle(AgentRuntimeEntry runtime);
+
+        /**
+         * The accuracy at which a character of {@code level} hits every part of boss {@code bossKey} each time
+         * (boss-rules.json's target and melee priority, never-targets left out); -1 when the catalog has no such boss.
+         */
+        default int accuracyNeed(String bossKey, int level) {
+            return -1;
+        }
+
+        /** The character's accuracy as Agents roll it (CombatFormulaProvider). */
+        default int accuracy(Character chr) {
+            return 0;
+        }
     }
 
     static final Game LIVE = new Game() {
@@ -177,7 +200,44 @@ public final class CompanionGearTool {
         public CompletableFuture<?> settle(AgentRuntimeEntry runtime) {
             return AgentMailboxRuntime.dispatch(runtime, entry -> Boolean.TRUE);
         }
+
+        @Override
+        public int accuracyNeed(String bossKey, int level) {
+            AgentBossRules.Boss boss = AgentBossRules.of(bossKey);
+            if (boss == null) {
+                return -1;
+            }
+            Set<Integer> parts = new LinkedHashSet<>(boss.targetPriority());
+            parts.addAll(boss.meleePriority());
+            parts.removeAll(boss.neverTarget());
+            int need = 0;
+            for (int part : parts) {
+                Monster mob = LifeFactory.getMonster(part);
+                if (mob != null) {
+                    need = Math.max(need, alwaysHits(mob.getLevel(), mob.getAvoidability(), level));
+                }
+            }
+            return need;
+        }
+
+        @Override
+        public int accuracy(Character chr) {
+            return CombatFormulaProvider.getInstance().getTotalAccuracy(chr);
+        }
     };
+
+    /**
+     * The accuracy at which a character of {@code level} hits a mob of {@code mobLevel} and {@code avoid} every time:
+     * CombatFormulaProvider's physical hit chance, (1.3 - avoid / rate) / 0.6 with rate = accuracy * 100 /
+     * (max(0, mobLevel - level) * 10 + 255), reaches 1.
+     */
+    static int alwaysHits(int mobLevel, int avoid, int level) {
+        if (avoid <= 0) {
+            return 0;
+        }
+        int scale = Math.max(0, mobLevel - level) * 10 + 255;
+        return (int) Math.ceil(avoid * scale / 70.0);
+    }
 
     private final LivingWorld world;
     private final Game game;
@@ -205,15 +265,24 @@ public final class CompanionGearTool {
      * line to reply once the companion's mailbox answered, or at the answer timeout; never exceptionally.
      */
     public CompletableFuture<String> use(Character gm, String name, boolean preview) {
+        return use(gm, name, preview, null);
+    }
+
+    /**
+     * {@link #use(Character, String, boolean)} with an accuracy goal: the kit also reaches the accuracy that hits boss
+     * {@code boss}'s parts every time ({@link BossGearPlanner#plan(WorldKnowledge, Catalog, Wearer, Accuracy)}), and
+     * the reply says the accuracy reached; {@code boss} null is the plain kit.
+     */
+    public CompletableFuture<String> use(Character gm, String name, boolean preview, String boss) {
         try {
-            return useChecked(gm, name, preview);
+            return useChecked(gm, name, preview, boss);
         } catch (RuntimeException failure) {
             log.warn("gm bossgear: {} failed for {}", name, gm.getName(), failure);
             return done(name + ": the gear failed (" + failure.getMessage() + ").");
         }
     }
 
-    private CompletableFuture<String> useChecked(Character gm, String name, boolean preview) {
+    private CompletableFuture<String> useChecked(Character gm, String name, boolean preview, String boss) {
         boolean self = name.equalsIgnoreCase("me");
         Object found = self ? new Target(gm, null) : target(gm, name);
         if (found instanceof String refusal) {
@@ -226,7 +295,18 @@ public final class CompanionGearTool {
             return refused(gm, name, "Server knowledge is not loaded (knowledge.ENABLED in config.yaml); boss gear is"
                     + " picked from it.");
         }
-        List<Piece> kit = new ArrayList<>(BossGearPlanner.plan(k, catalog, wearer(chr)));
+        Accuracy goal = null;
+        if (boss != null) {
+            int need = game.accuracyNeed(boss, chr.getLevel());
+            if (need < 0) {
+                return refused(gm, name, "No boss rules for '" + boss + "' (boss-rules.json keys, such as showa or"
+                        + " horntail).");
+            }
+            goal = accuracyGoal(chr, need);
+        }
+        List<Piece> kit = new ArrayList<>(BossGearPlanner.plan(k, catalog, wearer(chr), goal));
+        String accuracy = goal == null ? ""
+                : accuracyLine(boss, BossGearPlanner.accuracy(kit, catalog, goal), goal.need());
         kit.removeIf(piece -> wearsAlready(chr, piece));
         if (kit.isEmpty()) {
             return refused(gm, name, chr.getName() + " already wears boss gear in every slot it has a piece for.");
@@ -242,16 +322,42 @@ public final class CompanionGearTool {
         if (preview) {
             logUse(gm, target, kit, true, 0, 0, 0L);
             return done("Preview for " + who + ": " + kit.size() + " pieces, every slot a passed 10% scroll: " + pieces
-                    + ". Nothing was given.");
+                    + ". Nothing was given." + accuracy);
         }
         long startedMs = System.currentTimeMillis();
         if (self) {
             int given = game.give(gm, kit);
             logUse(gm, target, kit, false, given, 0, startedMs);
             return done(given + " of " + kit.size() + " boss pieces are in your Equip tab (every slot a passed 10%"
-                    + " scroll); put them on: " + pieces + (given < kit.size() ? ". The rest could not be given." : "."));
+                    + " scroll); put them on: " + pieces + (given < kit.size() ? ". The rest could not be given." : ".")
+                    + accuracy);
         }
-        return dispatch(gm, target, kit, need, pieces, startedMs);
+        return dispatch(gm, target, kit, need, pieces, startedMs).thenApply(text -> text + accuracy);
+    }
+
+    /**
+     * The accuracy goal for {@code chr}: {@code need}, its accuracy without what it wears in the kit's and the accessory
+     * slots, and what each of those worn pieces adds (accuracy, DEX at 0.8, LUK at 0.5).
+     */
+    private Accuracy accuracyGoal(Character chr, int need) {
+        double base = game.accuracy(chr);
+        Map<Short, Double> worn = new HashMap<>();
+        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
+            if (ACCURACY_SLOTS.contains(item.getPosition()) && item instanceof Equip equip) {
+                double adds = equip.getAcc() + 0.8 * equip.getDex() + 0.5 * equip.getLuk();
+                worn.put(item.getPosition(), adds);
+                base -= adds;
+            }
+        }
+        return new Accuracy(need, base, worn);
+    }
+
+    /** The reply's accuracy sentence: what the kit reaches of the need and, when short, about how much DEX closes it. */
+    static String accuracyLine(String boss, int reached, int need) {
+        int shortBy = need - reached;
+        return " Accuracy for " + boss + ": " + reached + " of the " + need + " that always hits"
+                + (shortBy <= 0 ? "." : "; " + shortBy + " short (about " + (int) Math.ceil(shortBy / 0.8)
+                + " more DEX would close it).");
     }
 
     private CompletableFuture<String> dispatch(Character gm, Target target, List<Piece> kit, int need, String pieces,

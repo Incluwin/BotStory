@@ -188,4 +188,125 @@ class BossGearPlannerTest {
     void noKnowledgeGivesNoKit() {
         assertEquals(List.of(), BossGearPlanner.plan(null, CATALOG, wearer(HERO, 160, Map.of(WEAPON, GLADIUS))));
     }
+
+    // ---- an accuracy goal (user 2026-10-15: accuracy from equipment, as little damage lost as possible) ----------
+
+    /** The warrior's accuracy scroll: less attack than WARRIOR_10, 5 accuracy and 3 DEX (7.4 accuracy). */
+    private static final Scroll ACCURACY_10 = new Scroll(2040904, 10, Map.of("PAD", 3, "ACC", 5, "DEX", 3));
+    /** Gloves only: nearly WARRIOR_10's damage with 5 accuracy, the cheapest accuracy per point lost. */
+    private static final Scroll GLOVE_ACCURACY_10 = new Scroll(2040905, 10, Map.of("PAD", 5, "STR", 1, "ACC", 5));
+    private static final double SWAP_GAIN = 7.4;
+    private static final int GLOVE_CATEGORY = 108;
+    private static final Set<Integer> ACCESSORY_CATEGORIES = Set.of(101, 102, 103, 112);
+    private static final short EYE = -3;
+    private static final short[] ACCESSORY_POSITIONS = {-2, -3, -4, -17};
+    /** Every accessory adds 10 accuracy unscrolled; armour adds none; gloves also take the cheaper glove scroll. */
+    private static final Catalog ACCURACY = new Catalog() {
+        @Override
+        public Map<String, Integer> equipStats(int itemId) {
+            return ACCESSORY_CATEGORIES.contains(itemId / 10_000) ? Map.of("tuc", SLOTS, "ACC", 10)
+                    : Map.of("tuc", SLOTS);
+        }
+
+        @Override
+        public List<Scroll> scrollsFor(int itemId) {
+            return itemId / 10_000 == GLOVE_CATEGORY ? List.of(WARRIOR_10, ACCURACY_10, GLOVE_ACCURACY_10)
+                    : List.of(WARRIOR_10, ACCURACY_10);
+        }
+    };
+
+    private static long accuracyUses(List<Piece> kit) {
+        return kit.stream().flatMap(piece -> piece.plan().uses().stream())
+                .filter(use -> use.scroll() != WARRIOR_10).mapToInt(Use::takes).sum();
+    }
+
+    private static boolean accessory(Piece piece) {
+        for (short position : ACCESSORY_POSITIONS) {
+            if (piece.position() == position) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void withoutAGoalTheKitIsThePlainOne() {
+        Wearer hero = wearer(HERO, 160, Map.of(WEAPON, GLADIUS));
+
+        assertEquals(BossGearPlanner.plan(k, ACCURACY, hero), BossGearPlanner.plan(k, ACCURACY, hero, null));
+        assertEquals(BossGearPlanner.plan(k, ACCURACY, hero),
+                BossGearPlanner.plan(k, ACCURACY, hero, new BossGearPlanner.Accuracy(0, 100, Map.of())));
+    }
+
+    @Test
+    void aGoalTheDamageKitMeetsChangesNothing() {
+        Wearer hero = wearer(HERO, 160, Map.of(WEAPON, GLADIUS));
+        BossGearPlanner.Accuracy goal = new BossGearPlanner.Accuracy(150, 150, Map.of());
+
+        List<Piece> kit = BossGearPlanner.plan(k, ACCURACY, hero, goal);
+
+        assertEquals(BossGearPlanner.plan(k, ACCURACY, hero), kit, "accuracy 150 already meets 150");
+        assertEquals(150, BossGearPlanner.accuracy(kit, ACCURACY, goal));
+    }
+
+    @Test
+    void aShortKitAddsAccessoriesThenTurnsJustEnoughSlotsToAccuracy() {
+        Wearer hero = wearer(HERO, 160, Map.of(WEAPON, GLADIUS));
+        BossGearPlanner.Accuracy goal = new BossGearPlanner.Accuracy(200, 100, Map.of());
+
+        List<Piece> kit = BossGearPlanner.plan(k, ACCURACY, hero, goal);
+        int reached = BossGearPlanner.accuracy(kit, ACCURACY, goal);
+
+        assertTrue(reached >= 200, "the goal is met: " + reached);
+        assertTrue(kit.stream().anyMatch(BossGearPlannerTest::accessory), "empty accessory slots are filled first");
+        long accessories = kit.stream().filter(BossGearPlannerTest::accessory).count();
+        double fromScrolls = 200 - 100 - 10.0 * accessories;
+        assertTrue(fromScrolls > 0, "this test needs a goal the accessories alone do not meet: " + kit);
+        // the cheapest turn is the gloves' (5 accuracy each), then the rest at 7.4; one turn fewer falls short
+        long turned = accuracyUses(kit);
+        assertTrue(reached - SWAP_GAIN < 200, "no more slots turned than the goal needs: " + reached + " " + kit);
+        assertTrue(turned > 0, kit.toString());
+        Piece glove = at(kit, GLOVE);
+        long gloveTurns = glove.plan().uses().stream().filter(use -> use.scroll() == GLOVE_ACCURACY_10)
+                .mapToInt(Use::takes).sum();
+        assertEquals(Math.min(SLOTS, turned), gloveTurns, "the gloves' cheaper scroll goes first: " + glove);
+        for (Piece piece : kit) {
+            assertEquals(piece.plan().slots(), piece.plan().uses().stream().mapToInt(Use::count).sum(),
+                    "every slot still holds one scroll: " + piece);
+        }
+    }
+
+    @Test
+    void aWornAccessoryStaysOnAndCounts() {
+        Wearer hero = wearer(HERO, 160, Map.of(WEAPON, GLADIUS, EYE, 1022060));
+        BossGearPlanner.Accuracy goal = new BossGearPlanner.Accuracy(400, 100, Map.of(EYE, 12.0));
+
+        List<Piece> kit = BossGearPlanner.plan(k, ACCURACY, hero, goal);
+
+        assertFalse(positions(kit).contains(EYE), "the worn eye accessory is not replaced: " + kit);
+        double scrolls = kit.stream().mapToDouble(piece -> BossGearPlanner.accuracyOf(piece.plan(), ACCURACY)).sum();
+        assertEquals((int) Math.floor(100 + 12.0 + scrolls), BossGearPlanner.accuracy(kit, ACCURACY, goal));
+    }
+
+    @Test
+    void aGoalTooHighTurnsEverySlotAndStaysShort() {
+        Wearer hero = wearer(HERO, 160, Map.of(WEAPON, GLADIUS));
+        BossGearPlanner.Accuracy goal = new BossGearPlanner.Accuracy(5_000, 100, Map.of());
+
+        List<Piece> kit = BossGearPlanner.plan(k, ACCURACY, hero, goal);
+
+        for (Piece piece : kit) {
+            assertTrue(piece.plan().uses().stream().noneMatch(use -> use.scroll() == WARRIOR_10),
+                    "every damage scroll gave way: " + piece);
+        }
+        assertTrue(BossGearPlanner.accuracy(kit, ACCURACY, goal) < 5_000);
+    }
+
+    @Test
+    void aMagiciansKitIsUnchanged() {
+        Wearer bishop = new Wearer(232, 160, MALE, STRONG, Map.of(), type -> type == 137 || type == 138, 4242L);
+
+        assertEquals(BossGearPlanner.plan(k, ACCURACY, bishop),
+                BossGearPlanner.plan(k, ACCURACY, bishop, new BossGearPlanner.Accuracy(5_000, 0, Map.of())));
+    }
 }

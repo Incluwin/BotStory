@@ -33,8 +33,19 @@ class BossGearCommandTest {
                 BossGearCommand.parse(new String[] {"Flint", "preview"}));
         assertEquals(new BossGearCommand.Line("Flint", false, true), BossGearCommand.parse(new String[] {"Flint", "remove"}));
         assertEquals(new BossGearCommand.Line("me", false, true), BossGearCommand.parse(new String[] {"me", "REMOVE"}));
-        assertNull(BossGearCommand.parse(new String[] {"Flint", "strip"}));
         assertNull(BossGearCommand.parse(new String[] {}));
+    }
+
+    @Test
+    void aSecondWordNamesTheBossWhoseAccuracyTheKitReaches() {
+        // the tool refuses a key boss-rules.json lacks ("No boss rules for 'strip'"), so any other word is a boss key
+        assertEquals(new BossGearCommand.Line("Flint", false, false, "showa"),
+                BossGearCommand.parse(new String[] {"Flint", "showa"}));
+        assertEquals(new BossGearCommand.Line("Flint", true, false, "showa"),
+                BossGearCommand.parse(new String[] {"Flint", "showa", "preview"}));
+        assertNull(BossGearCommand.parse(new String[] {"Flint", "showa", "remove"}), "a removal takes no boss");
+        assertNull(BossGearCommand.parse(new String[] {"Flint", "remove", "preview"}));
+        assertNull(BossGearCommand.parse(new String[] {"Flint", "a", "b", "c"}));
     }
 
     @Test

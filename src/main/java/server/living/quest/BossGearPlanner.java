@@ -9,10 +9,18 @@ import server.knowledge.WorldKnowledge;
 import server.living.config.Content.ScrollRecipe;
 import server.living.quest.FriendForge.Catalog;
 import server.living.quest.FriendForge.Plan;
+import server.living.quest.FriendForge.Scroll;
+import server.living.quest.FriendForge.Use;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntPredicate;
 
 /**
@@ -51,8 +59,221 @@ public final class BossGearPlanner {
     private static final short CAPE = -9;
     private static final short SHIELD = -10;
     private static final short WEAPON = -11;
+    private static final short FACE = -2;
+    private static final short EYE = -3;
+    private static final short EARRING = -4;
+    private static final short PENDANT = -17;
+    /** The accessory slots an accuracy goal may fill when they are empty, by their GearPicks category. */
+    private static final Map<Short, String> ACCESSORIES = accessories();
+    private static final String NO_NAME = "MISSING NAME";
+    private static final int MAGICIAN = 2;
 
     private BossGearPlanner() {
+    }
+
+    /**
+     * An accuracy goal for a kit: {@code need} is the accuracy at which every hit lands on the boss's parts at the
+     * wearer's level (the v83 hit formula Agents roll); {@code base} is the wearer's accuracy without anything worn in
+     * the kit's or the accessory slots; {@code worn} is what each piece it wears in those slots adds, by position.
+     */
+    public record Accuracy(int need, double base, Map<Short, Double> worn) {
+        public Accuracy {
+            worn = worn == null ? Map.of() : Map.copyOf(worn);
+        }
+    }
+
+    /**
+     * The kit for {@code wearer} with an accuracy goal (user 2026-10-15: warriors keep AP out of DEX and get the
+     * accuracy a boss needs from their equipment, losing as little damage as they can). The plain kit comes first,
+     * every slot scrolled for damage; while it falls short of {@code goal}, empty accessory slots take the accessory
+     * that adds the most accuracy, then scrolls give way to accuracy scrolls of the same grade, the one that costs the
+     * least damage for each point of accuracy first, until the goal is met or nothing is left to change
+     * ({@link #accuracy} then tells how short it stays: AP into DEX is the last resort, outside the kit). A magician's
+     * kit is unchanged: its magic accuracy comes from INT and LUK.
+     */
+    public static List<Piece> plan(WorldKnowledge k, Catalog catalog, Wearer wearer, Accuracy goal) {
+        List<Piece> kit = plan(k, catalog, wearer);
+        if (k == null || goal == null || goal.need() <= 0 || (wearer.jobId() / 100) % 10 == MAGICIAN) {
+            return kit;
+        }
+        for (Map.Entry<Short, String> slot : ACCESSORIES.entrySet()) {
+            if (accuracy(kit, catalog, goal) >= goal.need()) {
+                return kit;
+            }
+            if (!wearer.worn().containsKey(slot.getKey())) {
+                Plan accessory = accessory(k, catalog, wearer, slot.getValue());
+                if (accessory != null) {
+                    kit.add(new Piece(slot.getKey(), slot.getValue(), accessory));
+                }
+            }
+        }
+        if (accuracy(kit, catalog, goal) < goal.need()) {
+            swapForAccuracy(kit, catalog, wearer.jobId(), goal);
+        }
+        return kit;
+    }
+
+    /** The accuracy the wearer reaches in {@code kit}: its base, what it keeps wearing elsewhere, and the kit. */
+    public static int accuracy(List<Piece> kit, Catalog catalog, Accuracy goal) {
+        double total = goal.base();
+        Set<Short> covered = new HashSet<>();
+        for (Piece piece : kit) {
+            covered.add(piece.position());
+            total += accuracyOf(piece.plan(), catalog);
+        }
+        for (Map.Entry<Short, Double> worn : goal.worn().entrySet()) {
+            if (!covered.contains(worn.getKey())) {
+                total += worn.getValue();
+            }
+        }
+        return (int) Math.floor(total);
+    }
+
+    /** The accuracy a piece adds as planned: its own and its scrolls', DEX at 0.8 and LUK at 0.5 (Agents' formula). */
+    static double accuracyOf(Plan plan, Catalog catalog) {
+        Map<String, Integer> info = catalog.equipStats(plan.itemId());
+        double accuracy = info == null ? 0 : accuracyOf(info);
+        for (Use use : plan.uses()) {
+            accuracy += use.takes() * accuracyOf(use.scroll().stats());
+        }
+        return accuracy;
+    }
+
+    static double accuracyOf(Map<String, Integer> stats) {
+        return stats.getOrDefault("ACC", 0) + 0.8 * stats.getOrDefault("DEX", 0) + 0.5 * stats.getOrDefault("LUK", 0);
+    }
+
+    /**
+     * The obtainable accessory of {@code category} the wearer can wear that adds the most accuracy once scrolled to the
+     * kit's recipe (the lowest id on a tie); null when none adds any.
+     */
+    private static Plan accessory(WorldKnowledge k, Catalog catalog, Wearer wearer, String category) {
+        int mask = FriendForge.jobMask(wearer.jobId());
+        Plan best = null;
+        double bestAccuracy = 0;
+        for (ItemFact item : k.items()) {
+            if (!wears(item, category, wearer, mask) || !k.obtainable(item.id())) {
+                continue;
+            }
+            Plan plan = FriendForge.recipe(item.id(), RECIPE, wearer.jobId(), catalog);
+            double accuracy = accuracyOf(plan, catalog);
+            if (accuracy > bestAccuracy || accuracy == bestAccuracy && best != null && item.id() < best.itemId()) {
+                best = plan;
+                bestAccuracy = accuracy;
+            }
+        }
+        return best;
+    }
+
+    private static boolean wears(ItemFact item, String category, Wearer wearer, int mask) {
+        if (!item.equip() || !category.equals(item.category()) || item.cash() || item.unnamed() || item.name().isEmpty()
+                || NO_NAME.equals(item.name()) || item.reqLevel() > wearer.level()) {
+            return false;
+        }
+        if (item.reqJob() != 0 && (mask == 0 || (item.reqJob() & mask) == 0)) {
+            return false;
+        }
+        int itemGender = item.id() / 1000 % 10;
+        if (itemGender <= 1 && itemGender != wearer.gender()) {
+            return false;
+        }
+        int[] stats = wearer.stats();
+        return item.reqStr() <= stats[0] && item.reqDex() <= stats[1] && item.reqInt() <= stats[2]
+                && item.reqLuk() <= stats[3] && item.reqPop() <= 0;
+    }
+
+    /** One slot of a planned scroll given over to an accuracy scroll: what it costs the job and the accuracy it adds. */
+    private record Swap(int piece, int use, Scroll scroll, double cost, double gain) {
+        double costPerPoint() {
+            return cost / gain;
+        }
+    }
+
+    /**
+     * Turns the kit's scrolls into accuracy scrolls of the same grade, one slot at a time and cheapest damage per point
+     * of accuracy first ({@link FriendForge#value} for the job), until the goal is met or no slot is left to turn.
+     */
+    private static void swapForAccuracy(List<Piece> kit, Catalog catalog, int jobId, Accuracy goal) {
+        List<Swap> swaps = new ArrayList<>();
+        for (int i = 0; i < kit.size(); i++) {
+            Piece piece = kit.get(i);
+            List<Scroll> scrolls = FriendForge.standard(catalog.scrollsFor(piece.itemId()));
+            List<Use> uses = piece.plan().uses();
+            for (int u = 0; u < uses.size(); u++) {
+                Swap best = bestSwap(i, u, uses.get(u), scrolls, jobId);
+                for (int slot = 0; best != null && slot < uses.get(u).takes(); slot++) {
+                    swaps.add(best);
+                }
+            }
+        }
+        swaps.sort(Comparator.comparingDouble(Swap::costPerPoint).thenComparingInt(Swap::piece)
+                .thenComparingInt(Swap::use));
+        double total = accuracy(kit, catalog, goal);
+        Map<Long, Integer> turned = new LinkedHashMap<>();
+        Map<Long, Swap> chosen = new HashMap<>();
+        for (Swap swap : swaps) {
+            if (total >= goal.need()) {
+                break;
+            }
+            long key = (long) swap.piece() << 32 | swap.use();
+            turned.merge(key, 1, Integer::sum);
+            chosen.put(key, swap);
+            total += swap.gain();
+        }
+        for (int i = 0; i < kit.size(); i++) {
+            Piece piece = kit.get(i);
+            List<Use> kept = new ArrayList<>();
+            List<Use> added = new ArrayList<>();
+            List<Use> uses = piece.plan().uses();
+            for (int u = 0; u < uses.size(); u++) {
+                Use old = uses.get(u);
+                long key = (long) i << 32 | u;
+                int count = turned.getOrDefault(key, 0);
+                if (old.count() > count) {
+                    kept.add(count == 0 ? old : new Use(old.scroll(), old.count() - count, old.takes() - count));
+                }
+                if (count > 0) {
+                    added.add(new Use(chosen.get(key).scroll(), count, count));
+                }
+            }
+            if (!added.isEmpty()) {
+                kept.addAll(added);
+                kit.set(i, new Piece(piece.position(), piece.category(),
+                        new Plan(piece.itemId(), piece.plan().slots(), List.copyOf(kept))));
+            }
+        }
+    }
+
+    /** The same-grade scroll that adds more accuracy than {@code use}'s for the least damage per point; null for none. */
+    private static Swap bestSwap(int piece, int useIndex, Use use, List<Scroll> scrolls, int jobId) {
+        Scroll now = use.scroll();
+        double accuracyNow = accuracyOf(now.stats());
+        double valueNow = FriendForge.value(now.stats(), jobId);
+        Swap best = null;
+        for (Scroll scroll : scrolls) {
+            if (scroll.success() != now.success()) {
+                continue;
+            }
+            double gain = accuracyOf(scroll.stats()) - accuracyNow;
+            if (gain <= 0) {
+                continue;
+            }
+            Swap swap = new Swap(piece, useIndex, scroll, valueNow - FriendForge.value(scroll.stats(), jobId), gain);
+            if (best == null || swap.costPerPoint() < best.costPerPoint()
+                    || swap.costPerPoint() == best.costPerPoint() && scroll.id() < best.scroll().id()) {
+                best = swap;
+            }
+        }
+        return best;
+    }
+
+    private static Map<Short, String> accessories() {
+        Map<Short, String> slots = new LinkedHashMap<>();
+        slots.put(PENDANT, "pendant");
+        slots.put(EYE, "eye");
+        slots.put(FACE, "face");
+        slots.put(EARRING, "earring");
+        return Collections.unmodifiableMap(slots);
     }
 
     /**
