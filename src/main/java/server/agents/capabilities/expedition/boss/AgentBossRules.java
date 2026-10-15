@@ -53,6 +53,9 @@ import java.util.TreeMap;
  * parts of the first step that has one, from a ledge the step names when it names any, and keeps to the step's side of
  * a deadly touch area (Horntail: the Legs and the Tail from the left, then the Wings and Hands, then the Heads). Where
  * no step has a live part (Horntail's pre-head maps) the priority lists apply.</li>
+ * <li>{@code attackKeepOut} (2026-10-15): parts whose attacks every member keeps out of where one hit would take most
+ * of its HP (AgentBossPriorityFight.ATTACK_KEEP_OUT_HP_PERCENT), past the attack's reach on the part's facing side, as
+ * a player fights a boss from behind (Showa's Bodyguard A, whose attack2 hits about 26,000 up to 147 px in front).</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -73,7 +76,7 @@ public final class AgentBossRules {
                        boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
-                       List<KeepOut> keepOut, List<Focus> focus) {
+                       List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -90,6 +93,19 @@ public final class AgentBossRules {
             entryItems = entryItems == null ? markerItems : List.copyOf(entryItems);
             keepOut = keepOut == null ? List.of() : List.copyOf(keepOut);
             focus = focus == null ? List.of() : List.copyOf(focus);
+            attackKeepOut = attackKeepOut == null ? List.of() : List.copyOf(attackKeepOut);
+        }
+
+        /** A boss row with no attack keep-out parts (every row before Showa's, 2026-10-15). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, List.of());
         }
 
         /** A boss row with no focus steps (every row before Horntail's, 2026-10-14). */

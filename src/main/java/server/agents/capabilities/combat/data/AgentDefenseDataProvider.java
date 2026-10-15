@@ -189,7 +189,15 @@ public final class AgentDefenseDataProvider {
      * of 1 included. The PQ clear-time estimate divides a member's effective HP by it (touches to go down).
      */
     public double expectedPhysicalTouchDamage(Character bot, Monster mob) {
-        int physicalAttackDamage = Math.max(0, mob.getPADamage());
+        return expectedPhysicalTouchDamage(bot, mob, mob.getPADamage());
+    }
+
+    /**
+     * The mean of {@link #rollPhysicalTouchDamage(Character, Monster, int)} given that the hit lands, for a physical
+     * attack of {@code attack} (a boss attack's own PADamage): what the boss fight's attack keep-out weighs.
+     */
+    public double expectedPhysicalTouchDamage(Character bot, Monster mob, int attack) {
+        int physicalAttackDamage = Math.max(0, attack);
         if (physicalAttackDamage <= 0) {
             return 1.0d;
         }
@@ -253,6 +261,20 @@ public final class AgentDefenseDataProvider {
         double damage = (magicAttackDamage * (double) magicAttackDamage * randomFactor)
                 - Math.max(0, character.getTotalMdef()) * 0.5d;
         return Math.max(1, (int) Math.floor(damage));
+    }
+
+    /**
+     * The mean of {@link #rollMagicAttackDamage(Character, Monster, int)} given that the hit lands: the same formula
+     * averaged over its uniform random factor, floor and the minimum of 1 included.
+     */
+    public double expectedMagicAttackDamage(Character character, Monster mob, int attack) {
+        int magicAttackDamage = Math.max(0, attack);
+        if (magicAttackDamage <= 0) {
+            return 1.0d;
+        }
+        double square = magicAttackDamage * (double) magicAttackDamage;
+        double reduction = Math.max(0, character.getTotalMdef()) * 0.5d;
+        return meanFlooredAtLeastOne(square * MIN_DAMAGE_FACTOR - reduction, square * MAX_DAMAGE_FACTOR - reduction);
     }
 
     public int getStandardPdd(Job job, int level) {

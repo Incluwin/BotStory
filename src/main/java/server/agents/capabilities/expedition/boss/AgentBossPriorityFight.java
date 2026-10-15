@@ -18,6 +18,9 @@ import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.Monster;
+import server.life.MonsterStats;
+import server.life.autonomy.BossAction;
+import server.life.autonomy.ServerMobActionCatalog;
 import server.maps.MapleMap;
 import server.maps.Portal;
 
@@ -52,6 +55,10 @@ import java.util.function.Supplier;
  * Tails and Legs), the same way. A boss with focus steps ({@link AgentBossRules.Focus}) is fought step by step: the
  * live parts of the first step with one, from the step's ledges when it names any, keeping to the step's side of a
  * deadly touch area.</p>
+ *
+ * <p>2026-10-15: a part the boss rules list under {@code attackKeepOut} (Showa's Bodyguards) adds the reach of each of
+ * its attacks that would take ATTACK_KEEP_OUT_HP_PERCENT of a member's HP in one hit to the span the member keeps out
+ * of, on the side the part faces, so the member fights it from behind or from outside that reach.</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentBossPriorityFight.class);
@@ -260,7 +267,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * boxes. When the two do not meet, the touch band wins.
      */
     int[] band(MapleMap map, Character member, AgentBossRules.Boss rules, boolean melee, AgentBossRules.Focus step) {
-        int[] touch = touchBand(map, member, step == null ? null : step.side());
+        int[] touch = touchBand(map, member, step == null ? null : step.side(), rules.attackKeepOut());
         int[] keep = melee || rules.keepOut().isEmpty() ? null : keepOutBand(map, rules);
         if (touch == null || keep == null) {
             return touch == null ? keep : touch;
@@ -278,6 +285,16 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * member keeps to {@code side} of it ("left" or "right"), or with none to the side nearer its middle.
      */
     int[] touchBand(MapleMap map, Character member, String side) {
+        return touchBand(map, member, side, List.of());
+    }
+
+    /**
+     * {@link #touchBand(MapleMap, Character, String)} with the attacks of the live parts in {@code attackParts} (the
+     * boss's attackKeepOut, 2026-10-15) in the span too: each attack box ({@link #attackArea}, on the side the part
+     * faces) that reaches the member's floor, for an attack that is not deadly (a deadly hit leaves 1 HP, and the
+     * member drinks back up) and whose mean hit is at least ATTACK_KEEP_OUT_HP_PERCENT of the member's max HP.
+     */
+    int[] touchBand(MapleMap map, Character member, String side, List<Integer> attackParts) {
         Point at = member.getPosition();
         if (at == null) {
             return null;
@@ -297,6 +314,22 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             left = Math.min(left, area.x);
             right = Math.max(right, (long) area.x + area.width - 1);
         }
+        double attackLimit = ports.maxHp(member) * (double) attackKeepOutHpPercent() / 100.0d;
+        for (Monster monster : attackParts.isEmpty() ? List.<Monster>of() : ports.monsters(map)) {
+            Point origin = monster.isAlive() && attackParts.contains(monster.getId()) ? monster.getPosition() : null;
+            if (origin == null) {
+                continue;
+            }
+            for (BossAction.OrdinaryAttack attack : ports.attacks(monster)) {
+                Rectangle area = attack.deadly() ? null : attackArea(origin, ports.facesLeft(monster), attack);
+                if (area == null || area.y > foot.y || area.y + area.height <= foot.y - sweep
+                        || ports.attackDamage(member, monster, attack) < attackLimit) {
+                    continue;
+                }
+                left = Math.min(left, area.x);
+                right = Math.max(right, (long) area.x + area.width - 1);
+            }
+        }
         if (left > right) {
             return null;
         }
@@ -305,6 +338,26 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         return keepLeft
                 ? new int[] {Integer.MIN_VALUE, (int) Math.max(Integer.MIN_VALUE, left - 1 - margin)}
                 : new int[] {(int) Math.min(Integer.MAX_VALUE, right + 1 + margin), Integer.MAX_VALUE};
+    }
+
+    /**
+     * Where {@code attack} strikes from a part at {@code origin}: its WZ box (stored for a part facing left), mirrored
+     * when the part faces right; null without a box.
+     */
+    static Rectangle attackArea(Point origin, boolean facingLeft, BossAction.OrdinaryAttack attack) {
+        if (origin == null || attack.lt() == null || attack.rb() == null) {
+            return null;
+        }
+        int minX = facingLeft ? origin.x + attack.lt().x : origin.x - attack.rb().x;
+        int maxX = facingLeft ? origin.x + attack.rb().x : origin.x - attack.lt().x;
+        int minY = origin.y + Math.min(attack.lt().y, attack.rb().y);
+        int maxY = origin.y + Math.max(attack.lt().y, attack.rb().y);
+        return new Rectangle(minX, minY, Math.max(1, maxX - minX + 1), Math.max(1, maxY - minY + 1));
+    }
+
+    static int attackKeepOutHpPercent() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.ATTACK_KEEP_OUT_HP_PERCENT");
     }
 
     static int touchKeepOutHpPercent() {
@@ -496,6 +549,24 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return 50;
         }
 
+        /** 2026-10-15: the attacks of {@code monster}, in WZ order (ServerMobActionCatalog). */
+        default List<BossAction.OrdinaryAttack> attacks(Monster monster) {
+            return List.of();
+        }
+
+        /** 2026-10-15: true when {@code monster} faces left now (a noFlip part always reads as left). */
+        default boolean facesLeft(Monster monster) {
+            return true;
+        }
+
+        /**
+         * 2026-10-15: the mean damage one hit of {@code attack} of {@code monster} does to {@code member} when it lands,
+         * at the boss attack mirror's damage percent.
+         */
+        default double attackDamage(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
+            return 0;
+        }
+
         /**
          * The member casts Magic Guard when it knows it and has it down (AgentCombatBuffRuntime's critical survival
          * buff); true when it cast now. Buffs wait on a map with no live monster, so a member walking back through a
@@ -538,6 +609,28 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             @Override
             public int touchSweepPx() {
                 return AgentCombatConfig.cfg.MOB_TOUCH_SWEEP_HEIGHT;
+            }
+
+            @Override
+            public List<BossAction.OrdinaryAttack> attacks(Monster monster) {
+                return ServerMobActionCatalog.forMob(monster.getId()).attacks();
+            }
+
+            @Override
+            public boolean facesLeft(Monster monster) {
+                MonsterStats stats = monster.getStats();
+                return (stats != null && stats.getFixedStance() > 0) || monster.isFacingLeft();
+            }
+
+            @Override
+            public double attackDamage(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
+                AgentDefenseDataProvider defense = AgentDefenseDataProvider.getInstance();
+                double mean = attack.magic()
+                        ? defense.expectedMagicAttackDamage(member, monster,
+                                attack.magicAttack() > 0 ? attack.magicAttack() : monster.getMADamage())
+                        : defense.expectedPhysicalTouchDamage(member, monster,
+                                attack.physicalAttack() > 0 ? attack.physicalAttack() : monster.getPADamage());
+                return mean * Math.max(0, AgentBossAttackMirror.damagePercent()) / 100.0d;
             }
 
             @Override

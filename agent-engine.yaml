@@ -5978,6 +5978,10 @@ tuning:
     # Purpose: How strong a boss part's touch must be before boss-run companions keep out of where it touches (Horntail's Tails, about 25,000 a touch, and Legs, about 11,000), attacking from its edge as a player would.
     # Technical: AgentBossPriorityFight.touchBand: a live monster's touch area (the lower half of its body box, AgentMobTouchPolicy) that reaches the floor under a member, with AgentDefenseDataProvider.expectedPhysicalTouchDamage at or above this share of effectiveMaximumHp, joins the span the member keeps out of, KEEP_OUT_MARGIN_PX past its edge, on the focus step's side or the nearer one. Lower values keep more members out of more touch areas.
     server.agents.capabilities.expedition.boss.AgentBossPriorityFight.TOUCH_KEEP_OUT_HP_PERCENT: '25'
+    # Values: an integer from 1 to 100; unit: percent of max HP. Recommended: 80 (an attack that nearly kills in one hit).
+    # Purpose: How strong one hit of a listed boss part's attack must be before boss-run companions keep out of its reach, fighting the part from behind or from outside that reach as a player would (Showa's Bodyguard A hits about 26,000 up to 147 px in front, against a Lv200 Hero's 19,776 HP).
+    # Technical: AgentBossPriorityFight.touchBand: for a live part in the boss's boss-rules.json attackKeepOut, each attack that is not deadly, whose box (ServerMobActionCatalog, mirrored when the part faces right) reaches the floor under a member and whose mean hit (AgentDefenseDataProvider expected physical or magic damage, at the boss mirror's DAMAGE_PERCENT) is at least this share of effectiveMaximumHp, joins the span the member keeps out of, KEEP_OUT_MARGIN_PX past its edge, on the nearer side. 2026-10-15 (P19 run 1: the Bodyguards killed seven of nine companions with full potions).
+    server.agents.capabilities.expedition.boss.AgentBossPriorityFight.ATTACK_KEEP_OUT_HP_PERCENT: '80'
 
     # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
     # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.
