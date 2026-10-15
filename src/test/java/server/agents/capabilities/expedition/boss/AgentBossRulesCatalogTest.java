@@ -155,6 +155,9 @@ class AgentBossRulesCatalogTest {
         assertEquals(600, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
         assertEquals(100, pinkBean.damagePercentOn(8_820_007), "an add keeps the member's own strength");
         assertEquals(100, pinkBean.damagePercentOn(8_820_019), "a statue is no part");
+        assertEquals(List.of(8_820_003, 8_820_004), pinkBean.attackKeepOut(),
+                "Solomon's and Rex's hits keep out a member that one would nearly kill");
+        assertEquals(0, pinkBean.keepOutHpPercent(), "the global ATTACK_KEEP_OUT_HP_PERCENT (80)");
 
         for (String key : List.of("zakum", "horntail", "showa", "scarga", "papulatus", "easy_balrog")) {
             AgentBossRules.Boss boss = AgentBossRules.of(key);

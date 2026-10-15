@@ -221,6 +221,20 @@ class AgentBossAttackKeepOutTest {
     }
 
     @Test
+    void aGuardiansHitKeepsOutAMemberBackWithoutHyperBodyButNotOneWithIt() {
+        // 2026-10-15 (P20 run 5): Solomon hits for about 16,600. A Dark Knight revived without Hyper Body (19,776)
+        // walked back into his stun band and died twice in five minutes; with Hyper Body (30,000) it fights inside.
+        hits.put(SMASH, 16_600.0d);
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, 273 - 1 - 30},
+                fight.touchBand(battle, member(10, new Point(200, 161)), null, List.of(BODYGUARD_A)),
+                "16,600 is 84% of 19,776, over 80%");
+        maxHp = 30_000;
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, 390 - 1 - 30},
+                fight.touchBand(battle, member(10, new Point(200, 161)), null, List.of(BODYGUARD_A)),
+                "16,600 is 55% of 30,000, under 80%: only the touch's edge (390) bounds it, not the smash's (273)");
+    }
+
+    @Test
     void aBodyguardThatWalksIsGivenAWiderBerth() {
         mobile = true;
 
