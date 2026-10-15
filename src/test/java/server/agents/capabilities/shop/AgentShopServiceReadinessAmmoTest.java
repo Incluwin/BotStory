@@ -502,6 +502,63 @@ class AgentShopServiceReadinessAmmoTest {
         assertEquals(new AgentShopService.ReadinessAmmoPlan(800, 400L, 0), plan, "its own stack's refill only");
     }
 
+    // ---- seal cures (2026-10-14, P18: Horntail's Right Hand seals the whole altar) --------------------
+
+    private static final int HOLY_WATER = 2_050_003;
+    private static final AgentSupplyReadiness.Activity HORNTAIL_CURE =
+            AgentSupplyReadiness.Activity.partyQuest("horntail_cure");
+
+    @Test
+    void aCureTripBuysHolyWaterUpToTheCureStandardBeforeAnyPotionPastItsStandard() {
+        trip = HORNTAIL_CURE;
+        prices.put(HOLY_WATER, 500);
+        carryPotions(20, 25);
+        int standard = AgentSupplyReadiness.cureStandard(HORNTAIL_CURE);
+        purse = standard * 500 + 1_000; // the cures and hardly a potion more
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(150, standard, "agent-engine.yaml CURE_STANDARDS horntail_cure");
+        assertEquals(standard, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+    }
+
+    @Test
+    void aCureTripNeverFillsTheLastFreeUseSlot() {
+        trip = HORNTAIL_CURE;
+        prices.put(HOLY_WATER, 500);
+        bag(4);
+        carryPotions(20, 25);
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(100, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+        assertEquals(1, use.getNumFreeSlot(), "the run's slot");
+    }
+
+    @Test
+    void aTripForAnyOtherActivityBuysNoCures() {
+        trip = LPQ;
+        prices.put(HOLY_WATER, 500);
+        carryPotions(80, 100);
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(0, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+    }
+
+    @Test
+    void readinessCurePlanPricesTheCuresTheCounterBuysOrSaysTheShopSellsNone() {
+        prices.put(HOLY_WATER, 500);
+
+        AgentShopService.ReadinessCurePlan plan = AgentShopService.readinessCurePlan(bot,
+                shop(List.of(WHITE, BLUE, HOLY_WATER)), HORNTAIL_CURE);
+        assertEquals(new AgentShopService.ReadinessCurePlan(HOLY_WATER, 150, 75_000L, 2), plan);
+        assertTrue(AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE)), HORNTAIL_CURE).unsold(),
+                "Leafre's store sells none");
+        assertEquals(AgentShopService.ReadinessCurePlan.NOTHING,
+                AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, HOLY_WATER)), LPQ));
+    }
+
     // ---- fixture ---------------------------------------------------------------------------
 
     private AgentShopService.ReadinessAmmoPlan plan(Shop shop, WeaponType wt, boolean victoria, int target) {

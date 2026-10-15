@@ -76,19 +76,25 @@ public final class AgentSupplyReadiness {
      * How many HP and MP potions, and projectiles for its weapon, an Agent still lacks for a standard (0 when it has
      * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles, and
      * for a points standard ({@link #recoveryStandard}) gives HP and MP points instead of potions, which a shop turns
-     * into a count of the potion it buys.
+     * into a count of the potion it buys. {@code cure} counts the seal cures (Holy Water, All Cure) lacking for a
+     * CURE_STANDARDS key ({@link #cureStandard}); 0 everywhere else.
      */
-    public record Shortfall(int hp, int mp, int ammo) {
-        public static final Shortfall NONE = new Shortfall(0, 0, 0);
+    public record Shortfall(int hp, int mp, int ammo, int cure) {
+        public static final Shortfall NONE = new Shortfall(0, 0, 0, 0);
 
-        /** Potions only: no projectiles lacking. */
+        /** Potions and projectiles: no cures lacking. */
+        public Shortfall(int hp, int mp, int ammo) {
+            this(hp, mp, ammo, 0);
+        }
+
+        /** Potions only: no projectiles or cures lacking. */
         public Shortfall(int hp, int mp) {
-            this(hp, mp, 0);
+            this(hp, mp, 0, 0);
         }
 
         /** Nothing lacking at all. */
         public boolean none() {
-            return potionsNone() && ammo <= 0;
+            return potionsNone() && ammo <= 0 && cure <= 0;
         }
 
         /** No potions lacking, whatever the projectiles. */
@@ -409,6 +415,40 @@ public final class AgentSupplyReadiness {
         return null;
     }
 
+    /**
+     * 2026-10-14 (P18): the seal cures an Agent goes into {@code activity} with at least: the count CURE_STANDARDS lists
+     * for its key ("horntail_cure=60"), else 0 (no cure standard). Horntail's Right Hand seals the whole altar; a
+     * companion buys Holy Water where its store sells it (Orbis, on the way to Leafre) and drinks one when sealed
+     * (AgentPotionService.tickDiseaseCure). Read from agent-engine.yaml at every call; never negative.
+     */
+    public static int cureStandard(Activity activity) {
+        if (activity == null) {
+            return 0;
+        }
+        String standards = config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.CURE_STANDARDS");
+        Integer own = listedCount(activity.partyQuestKey(), standards);
+        return Math.max(0, own != null ? own : 0);
+    }
+
+    /** The seal cures in the Agent's Use tab: Holy Water and All Cure Potions. 0 without a Use tab. */
+    public static int carriedCures(Character agent) {
+        Inventory use = agent == null ? null : agent.getInventory(InventoryType.USE);
+        if (use == null) {
+            return 0;
+        }
+        return use.countById(SEAL_CURES[0]) + use.countById(SEAL_CURES[1]);
+    }
+
+    /** What the Agent's seal cures ({@link #carriedCures}) lack for {@code activity}'s cure standard. */
+    public static int cureShortfall(Character agent, Activity activity) {
+        int standard = cureStandard(activity);
+        return standard <= 0 || agent == null ? 0 : Math.max(0, standard - carriedCures(agent));
+    }
+
+    /** Holy Water (cures Seal and Curse), then All Cure Potion: what {@link #carriedCures} counts. */
+    public static final int[] SEAL_CURES = {2_050_003, 2_050_004};
+
     /** What the Agent's projectiles for its equipped weapon ({@link #carriedAmmo}) lack for {@code activity}. */
     public static int ammoShortfall(Character agent, Activity activity) {
         return agent == null ? 0 : ammoShortfall(carriedAmmo(agent), activity);
@@ -437,7 +477,8 @@ public final class AgentSupplyReadiness {
         }
         int[] potions = countFor(agent, activity);
         Shortfall lacking = shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
-        return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity));
+        return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity),
+                cureShortfall(agent, activity));
     }
 
     /**
@@ -599,7 +640,7 @@ public final class AgentSupplyReadiness {
         long hp = Math.max(0L, points.hp() - recoveryCarried(agent, true));
         long mp = needsManaPotions(agent) ? Math.max(0L, points.mp() - recoveryCarried(agent, false)) : 0L;
         return new Shortfall((int) Math.min(Integer.MAX_VALUE, hp), (int) Math.min(Integer.MAX_VALUE, mp),
-                ammoShortfall(agent, activity));
+                ammoShortfall(agent, activity), cureShortfall(agent, activity));
     }
 
     /** The {HP, MP} counts {@code standards} ("key=HP/MP,...") lists for {@code key}, or null. */

@@ -397,6 +397,25 @@ class AgentSupplyReadinessBossStandardTest {
         return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest(key));
     }
 
+    @Test
+    void theHorntailCureKeyCountsHolyWaterAndAllCureAndNoOtherKeyHasACureStandard() {
+        // 2026-10-14 (P18): Horntail's Right Hand seals the whole altar; companions buy Holy Water in Orbis
+        Character hero = mock(Character.class);
+        Inventory use = new Inventory(hero, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(2_050_003, 100));
+        use.addItem(Items.itemWithQuantity(2_050_004, 20));
+        when(hero.getInventory(InventoryType.USE)).thenReturn(use);
+        AgentSupplyReadiness.Activity cure = AgentSupplyReadiness.Activity.partyQuest("horntail_cure");
+
+        assertEquals(150, AgentSupplyReadiness.cureStandard(cure));
+        assertEquals(120, AgentSupplyReadiness.carriedCures(hero));
+        assertEquals(30, AgentSupplyReadiness.cureShortfall(hero, cure));
+        assertEquals(0, AgentSupplyReadiness.cureStandard(HORNTAIL), "Leafre's store sells none: not at the desk");
+        assertEquals(0, AgentSupplyReadiness.cureShortfall(hero, AgentSupplyReadiness.Activity.PARTY_QUEST));
+        assertFalse(new AgentSupplyReadiness.Shortfall(0, 0, 0, 30).none(), "a cure shortfall is a shortfall");
+        assertTrue(new AgentSupplyReadiness.Shortfall(0, 0, 0, 30).potionsNone());
+    }
+
     private static int ammoStandardFor(String key) {
         return AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest(key));
     }

@@ -35,6 +35,8 @@ final class CompanionRestockLines {
     static final String BACK_AMMO = "restock.backAmmo";
     static final String BROKE_AMMO = "restock.brokeAmmo";
     static final String NO_SHOP_AMMO = "restock.noShopAmmo";
+    /** 2026-10-14 (P18): what a companion short only of seal cures says it lacks in its ammo lines. */
+    static final String CURES = "holy water";
     /**
      * After its broke line, someone handed it mesos or supplies that still do not pay for its trip
      * (AgentSupplyReadiness.Rule.stillShort): it says it is still short of "{need}". The gift's own path thanks
@@ -127,7 +129,10 @@ final class CompanionRestockLines {
         if (shortfall.mp() > 0) {
             return MANA_POTIONS;
         }
-        return shortfall.ammo() > 0 ? ammoWord(bot) : POTIONS;
+        if (shortfall.ammo() > 0) {
+            return ammoWord(bot);
+        }
+        return shortfall.cure() > 0 ? CURES : POTIONS;
     }
 
     /**

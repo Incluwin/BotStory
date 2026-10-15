@@ -874,6 +874,32 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return config != null && config.companionFieldBossKeysAt(mapId).stream().anyMatch(config::companionBossEnabled);
     }
 
+    /** True on a boss's cure town (COMPANION_BOSS_CURE_TOWNS) for a boss the switch lists. Memory only, any thread. */
+    boolean cureTownAt(int mapId) {
+        LivingWorldConfig config = world.config();
+        return config != null && config.companionCureBossKeysAt(mapId).stream().anyMatch(config::companionBossEnabled);
+    }
+
+    /**
+     * 2026-10-14 (P18): the cure key ("horntail_cure") whose seal-cure standard (AgentSupplyReadiness.CURE_STANDARDS) a
+     * companion of {@code level} keeps in town {@code mapId} (COMPANION_BOSS_CURE_TOWNS: Orbis for Horntail) while the
+     * switch lists the boss and {@code level} meets its level; the first listed. Null for none. Memory only, any thread.
+     */
+    String cureRestockKeyAt(int mapId, int level) {
+        LivingWorldConfig config = world.config();
+        if (config == null) {
+            return null;
+        }
+        for (String key : config.companionCureBossKeysAt(mapId)) {
+            AgentBossRunDefinition definition = AgentBossRunCatalog.of(key);
+            int minLevel = definition != null ? definition.minLevel() : AgentBossRules.minLevel(key);
+            if (config.companionBossEnabled(key) && level >= minLevel) {
+                return key + "_cure";
+            }
+        }
+        return null;
+    }
+
     /**
      * The field group whose potion standard a companion of {@code level} keeps in town {@code mapId}
      * (COMPANION_FIELD_BOSS_TOWNS: Aquarium for Pianus) while the switch lists it and {@code level} meets the group's
@@ -947,8 +973,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             }
             return;
         }
-        // a field boss's town (COMPANION_FIELD_BOSS_TOWNS): each companion keeps the group's standard its level meets
-        boolean fieldTown = bossKey == null && fieldTownAt(mapId);
+        // a field boss's town (COMPANION_FIELD_BOSS_TOWNS): each companion keeps the group's standard its level meets;
+        // a boss's cure town (COMPANION_BOSS_CURE_TOWNS: Orbis for Horntail) its seal cures
+        boolean fieldTown = bossKey == null && (fieldTownAt(mapId) || cureTownAt(mapId));
         Character owner = bossKey == null && !fieldTown ? null : world.roster().onlineCharacter(ownerId);
         Party party = owner == null ? null : owner.getParty();
         if (party == null) {
@@ -959,6 +986,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
             Character bot = persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId ? bot(id) : null;
             String key = bot == null ? null : bossKey != null ? bossKey : fieldRestockKeyAt(mapId, bot.getLevel());
+            if (bot != null && key == null) {
+                key = cureRestockKeyAt(mapId, bot.getLevel());
+            }
             if (key != null) {
                 supplies.checkIfShort(id, key);
             }

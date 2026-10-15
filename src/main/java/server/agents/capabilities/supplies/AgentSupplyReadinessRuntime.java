@@ -171,7 +171,8 @@ public final class AgentSupplyReadinessRuntime {
         AgentSupplyReadiness.Shortfall potions = assessment.potions(); // a points standard's gap in that shop's potions
         AgentProcurementRequest request = new AgentProcurementRequest(
                 REQUEST_PREFIX + category + ':' + nowMs, category,
-                potions.hp() > 0 ? potions.hp() : potions.mp() > 0 ? potions.mp() : potions.ammo(),
+                potions.hp() > 0 ? potions.hp() : potions.mp() > 0 ? potions.mp()
+                        : potions.ammo() > 0 ? potions.ammo() : potions.cure(),
                 Math.max(0, assessment.spendable()),
                 List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.CRITICAL, "",
                 nowMs + AgentSupplyReadiness.requestTtlMs(assessment.hops()));
@@ -304,8 +305,15 @@ public final class AgentSupplyReadinessRuntime {
             // this supplier cannot bring it there
             return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0, potions);
         }
+        // 2026-10-14 (P18): seal cures for a cure standard, bought after the potion standard; a supplier that sells
+        // none cannot bring a cure-only shortfall there
+        AgentShopService.ReadinessCurePlan cures = shortfall.cure() > 0
+                ? AgentShopService.readinessCurePlan(agent, shop, activity) : AgentShopService.ReadinessCurePlan.NOTHING;
+        if (cures.unsold() && shortfall.potionsNone() && shortfall.ammo() <= 0) {
+            return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0, potions);
+        }
         long spend = ammo + (long) potions.hp() * hpPrice + (long) potions.mp() * mpPrice
-                + (readinessAmmo == null ? 0L : readinessAmmo.spend());
+                + (readinessAmmo == null ? 0L : readinessAmmo.spend()) + cures.spend();
         long spendable = (long) mesos(agent) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
         if (spend > spendable) {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
@@ -317,6 +325,9 @@ public final class AgentSupplyReadinessRuntime {
         if (readinessAmmo != null && readinessAmmo.newStacks() > 0
                 && freeUseSlots(agent) < readinessAmmo.newStacks() + 1) {
             // the run's slot stays free
+            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
+        }
+        if (cures.newStacks() > 0 && freeUseSlots(agent) < cures.newStacks() + 1) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0, potions);
         }
         return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0, potions);
@@ -356,7 +367,7 @@ public final class AgentSupplyReadinessRuntime {
                         AgentShopService.coveragePickRecovery(agent, shop, true)),
                 AgentSupplyReadiness.potionsFor(shortfall.mp(),
                         AgentShopService.coveragePickRecovery(agent, shop, false)),
-                shortfall.ammo());
+                shortfall.ammo(), shortfall.cure());
     }
 
     /**
@@ -500,9 +511,9 @@ public final class AgentSupplyReadinessRuntime {
             return;
         }
         if (verdict != AgentSupplyReadinessState.Verdict.NO_SUPPLIER) {
-            log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {},"
-                            + " mesos {}, missing {}, free use slots {})", agent.getName(), activity, verdict,
-                    agent.getMapId(), shortfall.hp(), shortfall.mp(), shortfall.ammo(), mesos,
+            log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {}"
+                            + " cure {}, mesos {}, missing {}, free use slots {})", agent.getName(), activity, verdict,
+                    agent.getMapId(), shortfall.hp(), shortfall.mp(), shortfall.ammo(), shortfall.cure(), mesos,
                     assessment.missingMesos(), freeSlots);
         }
         boolean said = AgentSupplyReadiness.refused(agent.getId(), activity, switch (verdict) {
@@ -647,8 +658,12 @@ public final class AgentSupplyReadinessRuntime {
             int mpPrice = shop == null || shortfall.mp() <= 0 ? 0 : potionPrice(agent, shop, activity, false);
             long needed = !shortfall.potionsNone() || shop == null
                     ? (long) potions.hp() * Math.max(0, hpPrice) + (long) potions.mp() * Math.max(0, mpPrice)
-                    : AgentShopService.readinessAmmoPlan(agent, shop, execution.supplierMapId(), activityOf(entry))
-                    .spend();
+                    : shortfall.ammo() > 0
+                    ? AgentShopService.readinessAmmoPlan(agent, shop, execution.supplierMapId(), activityOf(entry))
+                    .spend() : 0L;
+            if (shortfall.cure() > 0 && shop != null) {
+                needed += AgentShopService.readinessCurePlan(agent, shop, activity).spend();
+            }
             long spendable = (long) mesos - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
             missing = Math.max(0L, needed - spendable);
         }
@@ -659,7 +674,7 @@ public final class AgentSupplyReadinessRuntime {
             return AgentSupplyReadiness.Outcome.SHORT_MESOS;
         }
         if (!shortfall.none() && (freeSlots == 0
-                || freeSlots == 1 && (shortfall.ammo() > 0
+                || freeSlots == 1 && (shortfall.ammo() > 0 || shortfall.cure() > 0
                 || heldAtTheRunsSlot(agent, shop, activityOf(entry), shortfall)))) {
             state.cooldown(AgentSupplyReadinessState.Cooldown.SHORT_SPACE, until, mesos, 0, freeSlots, shortfall,
                     agent.getMapId());
@@ -725,11 +740,11 @@ public final class AgentSupplyReadinessRuntime {
             state.resetInterrupted();
         }
         int ammo = AgentAmmoService.carriedProjectiles(agent);
-        log.info("Agent '{}' readiness restock {} ended {} ({}): potions now hp {} mp {}, ammo {}", agent.getName(),
-                requestId, outcome, status,
+        log.info("Agent '{}' readiness restock {} ended {} ({}): potions now hp {} mp {}, ammo {}, cures {}",
+                agent.getName(), requestId, outcome, status,
                 AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
                 AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
-                ammo == Integer.MAX_VALUE ? "-" : Integer.toString(ammo));
+                ammo == Integer.MAX_VALUE ? "-" : Integer.toString(ammo), AgentSupplyReadiness.carriedCures(agent));
         AgentSupplyReadiness.finished(agent.getId(), activity, outcome);
     }
 

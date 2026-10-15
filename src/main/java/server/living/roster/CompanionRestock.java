@@ -127,6 +127,9 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (key == null && bossRuns != null) {
             key = bossRuns.fieldRestockKeyAt(bot.getMapId(), bot.getLevel());
         }
+        if (key == null && bossRuns != null) {
+            key = bossRuns.cureRestockKeyAt(bot.getMapId(), bot.getLevel());
+        }
         return AgentSupplyReadiness.Activity.partyQuest(key);
     }
 
@@ -185,8 +188,9 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         }
         Character bot = bot(agentCharacterId);
         String bossKey = activity == null ? null : activity.partyQuestKey();
-        if (bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))) {
-            String word = CompanionRestockLines.ammoWord(bot);
+        String supplyWord = bot == null ? null : supplyWord(bot, AgentSupplyReadiness.shortfall(bot, activity));
+        if (supplyWord != null) {
+            String word = supplyWord;
             ammoTrips.put(agentCharacterId, word);
             if (boss(activity)) {
                 int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
@@ -221,7 +225,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     public boolean refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                            AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall,
                            int missingMesos) {
-        String word = ammoOnly(shortfall) ? CompanionRestockLines.ammoWord(bot(agentCharacterId)) : null;
+        String word = supplyWord(bot(agentCharacterId), shortfall);
         if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             String need = CompanionRestockLines.need(bot(agentCharacterId), shortfall);
@@ -303,8 +307,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      */
     private static String ammoWordAtTheEnd(int agentCharacterId, AgentSupplyReadiness.Activity activity) {
         Character bot = bot(agentCharacterId);
-        return bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))
-                ? CompanionRestockLines.ammoWord(bot) : null;
+        return bot == null ? null : supplyWord(bot, AgentSupplyReadiness.shortfall(bot, activity));
     }
 
     // ---- on companion-ops -------------------------------------------------------------------
@@ -361,8 +364,9 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             if (!lacking.none()
                     && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
                 if (lacking.potionsNone()) {
+                    String word = supplyWord(bot, lacking);
                     CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP_AMMO,
-                            CompanionRestockLines.ammoWord(bot));
+                            word != null ? word : CompanionRestockLines.ammoWord(bot));
                 } else {
                     CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP);
                 }
@@ -397,6 +401,17 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     /** True when only projectiles are short: the trip's lines are its ammo lines. */
     private static boolean ammoOnly(AgentSupplyReadiness.Shortfall shortfall) {
         return shortfall != null && shortfall.potionsNone() && shortfall.ammo() > 0;
+    }
+
+    /**
+     * The word a trip short of no potions says its ammo lines with: what it shoots when projectiles are short, "holy
+     * water" when only seal cures are (2026-10-14, P18); null when potions are short (its potion lines).
+     */
+    private static String supplyWord(Character bot, AgentSupplyReadiness.Shortfall shortfall) {
+        if (ammoOnly(shortfall)) {
+            return CompanionRestockLines.ammoWord(bot);
+        }
+        return shortfall != null && shortfall.potionsNone() && shortfall.cure() > 0 ? CompanionRestockLines.CURES : null;
     }
 
     /** True for a boss's activity (its key a boss run's, such as easy_balrog): it kept that boss's standard. */

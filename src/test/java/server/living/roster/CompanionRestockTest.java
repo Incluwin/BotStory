@@ -342,6 +342,28 @@ class CompanionRestockTest {
     }
 
     @Test
+    void inOrbisACompanionAtHorntailsLevelKeepsItsSealCureStandardWhileTheSwitchListsHorntail() {
+        // 2026-10-14 (P18, user yes): Horntail's Right Hand seals the altar and Leafre sells no cure; Orbis does
+        config.COMPANION_BOSS_CURE_TOWNS = "horntail=200000000|200000002";
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog,horntail";
+        when(world.bossRuns()).thenReturn(new CompanionBossRuns(world));
+        when(fenna.getMapId()).thenReturn(200_000_000);
+        when(fenna.getLevel()).thenReturn(200);
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("horntail_cure"), restock.standing(FENNA));
+        when(fenna.getMapId()).thenReturn(200_000_002);
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("horntail_cure"), restock.standing(FENNA),
+                "at Edel's counter too, where the trip ends");
+
+        when(fenna.getLevel()).thenReturn(99);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "below Horntail's level (the expedition's 100): the everyday standard");
+
+        when(fenna.getLevel()).thenReturn(200);
+        config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "the switch leaves it off");
+    }
+
+    @Test
     void aHeldExtraOfARunningRunKeepsItsDuty() {
         hold();
         commitments.commit("pq:kpq:1", ANN, FENNA); // the run commits its extras too, until it ends

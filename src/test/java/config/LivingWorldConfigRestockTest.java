@@ -98,6 +98,28 @@ class LivingWorldConfigRestockTest {
     }
 
     @Test
+    void bossCureTownsListBossesWithTheirTownsAndRefuseAnythingElse() {
+        LivingWorldConfig config = new LivingWorldConfig();
+        assertEquals("", config.COMPANION_BOSS_CURE_TOWNS, "none by default");
+        assertEquals(java.util.List.of(), config.companionCureBossKeysAt(200_000_000));
+
+        config.COMPANION_BOSS_CURE_TOWNS = "horntail=200000000|200000002";
+        assertEquals(java.util.List.of("horntail"), config.companionCureBossKeysAt(200_000_002));
+        assertEquals(java.util.List.of(), config.companionCureBossKeysAt(240_000_000));
+        assertDoesNotThrow(config::validate);
+
+        for (String bad : new String[] {"horntail", "horntail=0", "nosuchboss=200000000", "horntail=200000000,200000002"}) {
+            LivingWorldConfig refused = new LivingWorldConfig();
+            refused.COMPANION_BOSS_CURE_TOWNS = bad;
+            IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, refused::validate, bad);
+            assertTrue(failure.getMessage().startsWith("living_world.COMPANION_BOSS_CURE_TOWNS must list"), bad);
+        }
+
+        assertEquals(java.util.List.of("horntail"), YamlConfig.config.living_world.companionCureBossKeysAt(200_000_000),
+                "shipped: Orbis, whose store (Edel) sells Holy Water");
+    }
+
+    @Test
     void configYamlShipsTheRestockKeysAndSaysWhy() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
         assertTrue(living.COMPANION_RESTOCK_ENABLED);

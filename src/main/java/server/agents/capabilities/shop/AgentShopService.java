@@ -577,6 +577,8 @@ public final class AgentShopService {
                         minimumMesoReserve, potionsBought));
                 actions.add((sequence, shop) -> readinessAmmoStep(sequence, shop, bot, wt,
                         AgentSupplyReadiness.ammoTarget(trip), minimumMesoReserve));
+                actions.add((sequence, shop) -> readinessCureStep(sequence, shop, bot,
+                        AgentSupplyReadiness.cureStandard(trip), minimumMesoReserve));
                 actions.add((sequence, shop) ->
                         buyPotionExtras(sequence, shop, minimumMesoReserve, potionsBought));
             }
@@ -1064,6 +1066,85 @@ public final class AgentShopService {
                     report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
         }
         return sequence.withUnspoken(report.quantity()).withQuietShortfall(report);
+    }
+
+    /**
+     * 2026-10-14 (P18): a readiness trip toward a cure standard ({@link AgentSupplyReadiness#cureStandard}) buys the
+     * shop's cheapest seal cure (Holy Water, All Cure) until the Agent carries the standard, after the potion standard
+     * and before any potion past it, never into the last free Use slot (the one a run keeps free). A shop that sells
+     * none buys nothing; the trip's checks ({@link #readinessCurePlan}) keep a companion from walking to one.
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessCureStep(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, int standard,
+            int minimumMesoReserve) {
+        int missing = standard - AgentSupplyReadiness.carriedCures(bot);
+        ShopSlotItem cure = standard <= 0 || missing <= 0 ? null : cheapestCure(shop);
+        if (cure == null) {
+            return sequence;
+        }
+        int quantity = Math.min(missing, cureRoom(bot, cure.shopItem.getItemId(), sequence.inventory()));
+        if (quantity <= 0) {
+            log.info("Agent '{}' readiness cure: no Use room for {} (lacks {})", bot.getName(),
+                    cure.shopItem.getItemId(), missing);
+            return sequence;
+        }
+        AgentShopBuyReport report = buyFixedCostItem(bot, shop, cure, quantity, 100, minimumMesoReserve);
+        log.info("Agent '{}' readiness cure: {} x{} ({}), now {}", bot.getName(), report.itemId(),
+                report.quantity(), report.reason(), AgentSupplyReadiness.carriedCures(bot));
+        return sequence.withUnspoken(report.quantity()).withQuietShortfall(report);
+    }
+
+    /**
+     * What a readiness trip's cure step would buy at {@code shop} for {@code activity}'s cure standard: the cure, its
+     * price, how many, what they cost and the Use slots they open. {@code quantity} 0 when nothing is lacking; a
+     * lacking Agent at a shop that sells no seal cure gets {@link ReadinessCurePlan#NONE_SOLD}.
+     */
+    public record ReadinessCurePlan(int itemId, int quantity, long spend, int newStacks) {
+        public static final ReadinessCurePlan NOTHING = new ReadinessCurePlan(0, 0, 0L, 0);
+        public static final ReadinessCurePlan NONE_SOLD = new ReadinessCurePlan(-1, 0, 0L, 0);
+
+        /** The Agent lacks cures and the shop sells none. */
+        public boolean unsold() {
+            return itemId < 0;
+        }
+    }
+
+    /** {@link ReadinessCurePlan} for {@code bot} at {@code shop}. */
+    public static ReadinessCurePlan readinessCurePlan(Character bot, Shop shop,
+                                                      AgentSupplyReadiness.Activity activity) {
+        int missing = AgentSupplyReadiness.cureShortfall(bot, activity);
+        if (bot == null || shop == null || missing <= 0) {
+            return ReadinessCurePlan.NOTHING;
+        }
+        ShopSlotItem cure = cheapestCure(shop);
+        if (cure == null) {
+            return ReadinessCurePlan.NONE_SOLD;
+        }
+        int itemId = cure.shopItem.getItemId();
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
+        int perSlot = Math.max(1, inventory.getSlotMax(bot, itemId));
+        int beyondStacks = Math.max(0, missing - stackRoom(bot, itemId, inventory));
+        return new ReadinessCurePlan(itemId, missing, (long) missing * cure.shopItem.getPrice(),
+                (beyondStacks + perSlot - 1) / perSlot);
+    }
+
+    /** The shop's cheapest seal cure ({@link AgentSupplyReadiness#SEAL_CURES}), or null when it sells none. */
+    private static ShopSlotItem cheapestCure(Shop shop) {
+        ShopSlotItem best = null;
+        for (int itemId : AgentSupplyReadiness.SEAL_CURES) {
+            ShopSlotItem item = shop == null ? null : findShopItem(shop, itemId);
+            if (item != null && (best == null || item.shopItem.getPrice() < best.shopItem.getPrice())) {
+                best = item;
+            }
+        }
+        return best;
+    }
+
+    /** How many of {@code itemId} fit on the Agent's stacks of it and in its free Use slots but the last one. */
+    private static int cureRoom(Character bot, int itemId, InventoryGateway inventory) {
+        long room = stackRoom(bot, itemId, inventory)
+                + (long) Math.max(0, freeUseSlots(bot) - 1) * Math.max(1, inventory.getSlotMax(bot, itemId));
+        return (int) Math.min(Integer.MAX_VALUE, room);
     }
 
     /**

@@ -923,6 +923,11 @@ living_world:
     # and for the Temple of Time (Corba flies there from Leafre), Mushroom Shrine and Showa Town for Zipangu, New Leaf
     # City for Masteria. In the P16 retest Lv130 companions came with their everyday 50 potions and ran short.
     COMPANION_FIELD_BOSS_TOWNS: "field_pianus=230000000,field_leafre=240000000,field_temple=240000000,field_zipangu=800000000|801000000,field_masteria=600000000"
+    # BOSS_CURE_TOWNS (user decision 2026-10-14, P18): "boss=mapId|mapId,..." towns where a companion out with its
+    # owner buys seal cures (agent-engine.yaml AgentSupplyReadiness.CURE_STANDARDS <boss>_cure) while
+    # COMPANION_BOSS_ENABLED_TYPES lists the boss and the companion meets its level. Horntail's Right Hand seals the
+    # whole altar every 25 s; Leafre sells no cure, so companions buy Holy Water at Orbis (Edel, 200000002) on the way.
+    COMPANION_BOSS_CURE_TOWNS: "horntail=200000000|200000002"
     # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
     # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
     # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with

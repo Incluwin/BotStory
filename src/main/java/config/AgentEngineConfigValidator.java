@@ -122,6 +122,14 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.CURE_STANDARDS")) {
+                // 2026-10-14: key=count pairs of seal cures, at most five stacks of Holy Water
+                if (!validAmmoStandards(value, CURE_STANDARDS_BOUND)) {
+                    throw new IllegalStateException("Agent tuning key " + key
+                            + " must be key=count pairs with counts from 0 to " + CURE_STANDARDS_BOUND);
+                }
+                continue;
+            }
             if (key.endsWith("AgentSupplyReadiness.BOSS_RECOVERY_STANDARDS")) {
                 // its own branch: a false from validNonNumericTuning would let a bare number pass the numeric check
                 if (!validRecoveryStandards(value)) {
@@ -211,6 +219,9 @@ final class AgentEngineConfigValidator {
     }
 
     /** True for "key=count[,key=count...]" with lower-case keys and every count from 0 to {@code bound}. */
+    /** The most seal cures a CURE_STANDARDS pair may ask for: five stacks of Holy Water. */
+    static final long CURE_STANDARDS_BOUND = 500L;
+
     static boolean validAmmoStandards(String value, long bound) {
         if (value == null || !value.matches("[a-z0-9_]+=\\d+(,[a-z0-9_]+=\\d+)*")) {
             return false;

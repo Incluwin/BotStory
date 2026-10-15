@@ -297,6 +297,13 @@ public class LivingWorldConfig {
      * AgentSupplyReadiness.BOSS_STANDARDS standard there (CompanionBossRuns.fieldRestockKeyAt). Empty: none.
      */
     public String COMPANION_FIELD_BOSS_TOWNS = "";
+    /**
+     * 2026-10-14 (P18): towns where a companion buys a boss's seal cures: "key=mapId|mapId,...". A companion out with
+     * its owner on a listed map, for a boss COMPANION_BOSS_ENABLED_TYPES lists and at or above its level, keeps the
+     * cure standard AgentSupplyReadiness.CURE_STANDARDS gives "key_cure" there (CompanionBossRuns.cureRestockKeyAt):
+     * Orbis for Horntail, whose Right Hand seals the altar and whose way passes Orbis. Empty: none.
+     */
+    public String COMPANION_BOSS_CURE_TOWNS = "";
 
     // Companions go for their next job by themselves (AgentJobPath, JobErrands)
     /**
@@ -414,6 +421,18 @@ public class LivingWorldConfig {
     public List<String> companionFieldBossKeysAt(int mapId) {
         List<String> keys = new ArrayList<>();
         for (String pair : COMPANION_FIELD_BOSS_TOWNS == null ? new String[0] : COMPANION_FIELD_BOSS_TOWNS.split(",")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && listsMap(pair.substring(eq + 1).replace('|', ','), mapId)) {
+                keys.add(pair.substring(0, eq).trim().toLowerCase(Locale.ROOT));
+            }
+        }
+        return keys;
+    }
+
+    /** The boss keys COMPANION_BOSS_CURE_TOWNS lists {@code mapId} as a cure town for, in listed order. */
+    public List<String> companionCureBossKeysAt(int mapId) {
+        List<String> keys = new ArrayList<>();
+        for (String pair : COMPANION_BOSS_CURE_TOWNS == null ? new String[0] : COMPANION_BOSS_CURE_TOWNS.split(",")) {
             int eq = pair.indexOf('=');
             if (eq > 0 && listsMap(pair.substring(eq + 1).replace('|', ','), mapId)) {
                 keys.add(pair.substring(0, eq).trim().toLowerCase(Locale.ROOT));
@@ -670,6 +689,13 @@ public class LivingWorldConfig {
                     || !CompanionBossKeys.known(pair.trim().substring(0, pair.trim().indexOf('='))))) {
                 throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_TOWNS must list"
                         + " field_key=mapId|mapId pairs of known keys, not \"" + pair.trim() + "\"");
+            }
+        }
+        for (String pair : COMPANION_BOSS_CURE_TOWNS == null ? new String[0] : COMPANION_BOSS_CURE_TOWNS.split(",")) {
+            if (!pair.isBlank() && (!pair.trim().matches("[a-z0-9_]+=[1-9][0-9]{0,8}(\\|[1-9][0-9]{0,8})*")
+                    || !CompanionBossKeys.known(pair.trim().substring(0, pair.trim().indexOf('='))))) {
+                throw new IllegalArgumentException("living_world.COMPANION_BOSS_CURE_TOWNS must list"
+                        + " key=mapId|mapId pairs of known keys, not \"" + pair.trim() + "\"");
             }
         }
         for (String key : COMPANION_BOSS_ENABLED_TYPES == null ? new String[0]

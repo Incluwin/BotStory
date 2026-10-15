@@ -3077,7 +3077,8 @@ public final class RosterService {
             });
         }
         CompanionBossRuns bossRuns = world.bossRuns();
-        if (bossRuns != null && (bossRuns.restockKeyAt(map.getId()) != null || bossRuns.fieldTownAt(map.getId()))) {
+        if (bossRuns != null && (bossRuns.restockKeyAt(map.getId()) != null || bossRuns.fieldTownAt(map.getId())
+                || bossRuns.cureTownAt(map.getId()))) {
             int ownerId = owner.getId();
             int mapId = map.getId();
             // a boss's entrance (Mu Young's room) or a field boss's town (Aquarium for Pianus): companions short of
