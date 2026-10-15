@@ -1,7 +1,8 @@
 # P19: The Boss (Showa expedition)
 
 > Built 2026-10-12 on branch `feat/companion-bossing-p19`, on top of P18. Plan: docs/COMPANION_BOSSING_PLAN.md,
-> section P19. Not deployed, not live-tested yet. The `showa` key ships off.
+> section P19. The `showa` key ships off. **Live check CLEARED 2026-10-15 11:40** on the seventh run (see "Live check
+> 2026-10-15" below).
 
 ## Result
 
@@ -97,7 +98,53 @@ Full suite on d3738d314: 13,457 tests, 0 failures, 37 skipped (12:14 min).
 12. Check that the companions hit the Bodyguard chain before the battle map's Male Boss.
 13. Repeat with the bench allies as stage 2 of the memory gate.
 
+## Live check 2026-10-15
+
+Temporary, uncommitted main-tree config for every run: `COMPANION_BOSS_ENABLED_TYPES`
+"easy_balrog,showa,field_zipangu" and `COMPANION_BOSS_ALLY_TYPES` "easy_balrog,showa"; from run 4 also
+`COMPANION_BOSS_OWNERS_MAX` 2. Crews at level 200 in 4th job. Both owners raised to 30,000 HP with `!maxhpmp` for the
+runs and set back in the database afterwards (ohboy 8,996/5,309, Bossfriend 19,776/2,924).
+
+| Run | Build | Members | Result |
+|---|---|---|---|
+| 1 | 440a1c90f | Bossfriend + 5 + 4 allies | Bodyguard A 73% after 7 min; 7 of 9 companions dead. Ended. |
+| 2 | 61e5660c2 | same | The attack fence held only while the Bodyguard stood still; his touch (~16,800) killed companions who drank at 70%. Ended. |
+| 3 | 586d6f8fe | same | Everyone held ~120 px back (the touch counted as deadly too): 7M HP/min, Bodyguard A 90% at 5 min. Ended. |
+| 4 | 6ee4f3053 | both owners, 14 companions | Bodyguard A fell in ~11 min (42M/min); Bodyguard B to 20%; 12 of 14 died once potions ran out. Both clients then crashed entering Konpei's map (server state; cleared by a restart). |
+| 5 | 6ee4f3053 | same, 700 Power Elixirs each | Both Bodyguards fell. The Boss (eva 120) at 99%: most warrior hits missed, and his ~21k touch killed them. |
+| 6 | cf5d742f3 | same, accuracy kits | Bodyguard B 53% when the warriors ran dry (gifts to full Use tabs never landed). |
+| 7 | cf5d742f3 | 13 companions + both owners, 1,500+ potions per warrior | **Cleared 11:40:38.** Bodyguard A ~13 min, Bodyguard B ~19 min, The Boss ~15 min. No warrior died. |
+
+**Run 7 detail.**
+
+- Deaths (6): Flint, Fenna, Sorrel, Gunnar (50 potions: his Use tab was full), Ilse and Isolde. All without Hyper
+  Body; the two Bishops died on Bodyguard B as in every run.
+- The Hyper Body warriors under the 90% fence: they fought close and drank at 95%, and held for the whole fight.
+- Accuracy: the Showa kit lifted the warriors' accuracy for The Boss's 120 avoid. He fell at about 10M HP a minute.
+- After the clear all seven inside left with their owners (EXITED); the run ended `cleared=true members=13`.
+- Client memory peaked at 1,651 MB of address space. No ERROR lines in the server log.
+- Video: `docs/agents/evidence/video/p19-showa-run7-2026-10-15.mp4` (672 MB, not in git).
+
+**What it took (all on `feat/companion-manager`, live as cf5d742f3).**
+
+1. `61e5660c2`: `attackKeepOut` in boss-rules.json; a companion keeps out of a listed part's attack reach when one hit
+   would take most of its HP.
+2. `fddc06340`/`2a9dbfd5d`: a wider gap from moving parts, and an HP floor (drink before one hit can kill) while a big
+   toucher is on the map.
+3. `6ee4f3053`: `keepOutHpPercent` per boss; Showa's 90 lets Hyper Body warriors fight the Bodyguards.
+4. `cf5d742f3`: `!bossgear <name> showa` builds a kit that reaches the boss's accuracy from equipment (user decision:
+   gear, not DEX).
+5. Not deployed yet: `7af80a93a`, a kit needs one free bag slot per worn piece only.
+
+**Open items.**
+
+1. Gifts to a full Use tab are silently lost (Gunnar, runs 6 and 7). Owners have no way to see it.
+2. The ordinary restock finds no reachable shop from the hideout; companions fight with what they brought.
+3. Bishops and ranged members without Hyper Body die to the Bodyguards in every run.
+4. The client crash entering Konpei's map (run 4) was not explained; it did not recur after a restart.
+
 ## Risks
 
-- Unconfirmed: whether 1.05B HP can be cleared in 60 minutes.
+- Unconfirmed: whether 1.05B HP can be cleared in 60 minutes. **Answered 2026-10-15: yes, in 49 minutes with 13
+  companions at level 200.**
 - Unconfirmed: whether the gang on Konpei's map attacks registered companions while they wait.
