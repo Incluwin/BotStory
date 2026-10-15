@@ -5982,6 +5982,18 @@ tuning:
     # Purpose: How strong one hit of a listed boss part's attack must be before boss-run companions keep out of its reach, fighting the part from behind or from outside that reach as a player would (Showa's Bodyguard A hits about 26,000 up to 147 px in front, against a Lv200 Hero's 19,776 HP).
     # Technical: AgentBossPriorityFight.touchBand: for a live part in the boss's boss-rules.json attackKeepOut, each attack that is not deadly, whose box (ServerMobActionCatalog, mirrored when the part faces right) reaches the floor under a member and whose mean hit (AgentDefenseDataProvider expected physical or magic damage, at the boss mirror's DAMAGE_PERCENT) is at least this share of effectiveMaximumHp, joins the span the member keeps out of, KEEP_OUT_MARGIN_PX past its edge, on the nearer side. 2026-10-15 (P19 run 1: the Bodyguards killed seven of nine companions with full potions).
     server.agents.capabilities.expedition.boss.AgentBossPriorityFight.ATTACK_KEEP_OUT_HP_PERCENT: '80'
+    # Values: a non-negative integer; unit: pixels. Recommended: 90-150; 120 gives about a second of warning against a boss part walking at speed +30.
+    # Purpose: How far past a moving boss part's deadly touch or attack reach a boss-run companion keeps (Showa's Bodyguards walk the floor and touch for about 16,800).
+    # Technical: AgentBossPriorityFight.touchBand: when a part in the span is mobile (MonsterStats.isMobile: a move or fly animation), the band edge sits max(KEEP_OUT_MARGIN_PX, this) past the span instead of KEEP_OUT_MARGIN_PX. Horntail's parts stand still and keep KEEP_OUT_MARGIN_PX. 2026-10-15 (P19 run 2).
+    server.agents.capabilities.expedition.boss.AgentBossPriorityFight.MOBILE_KEEP_OUT_MARGIN_PX: '120'
+    # Values: an integer from 0 to 100; unit: percent of the hit. Recommended: 15.
+    # Purpose: How much more HP than the biggest hit a boss-run companion could take nearby it keeps before drinking, so one hit never finds it low (a Hero with 19,776 HP drinking at 70% died to one 16,800 touch).
+    # Technical: AgentBossPriorityFight.guardHp: each tick, the largest mean hit on the member's map (a touch reaching its floor, or a non-deadly attack of an attackKeepOut part) plus this percent of it, over effectiveMaximumHp, capped at HP_FLOOR_MAX_PERCENT, becomes its autopot HP alert while it beats the member's own alert; its own alert comes back once it does not.
+    server.agents.capabilities.expedition.boss.AgentBossPriorityFight.HP_FLOOR_EXTRA_PERCENT: '15'
+    # Values: an integer from 50 to 99; unit: percent of max HP. Recommended: 95.
+    # Purpose: The highest a boss-run companion's potion alert rises for a big hit nearby: past this it would drink on every scratch.
+    # Technical: AgentBossPriorityFight.guardHp: the raised autopot HP alert (Character.setAutopotHpAlert) is min(this percent, the biggest nearby hit plus HP_FLOOR_EXTRA_PERCENT of it, over effectiveMaximumHp); the 45 s autopot setup (AgentPotionService.setupAutopotForBot) and the fight both restore the member's own alert once no such hit is near.
+    server.agents.capabilities.expedition.boss.AgentBossPriorityFight.HP_FLOOR_MAX_PERCENT: '95'
 
     # ---- RJPQ (early branch; the integrator may move these under the RJPQ anchor) ----
     # Values: 1000-10000 milliseconds. Recommended: 3000, the lease KPQ, HPQ and EPQ use.
