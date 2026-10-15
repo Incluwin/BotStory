@@ -252,6 +252,22 @@ class CompanionBossAlliesProvisionTest {
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
     }
 
+    /**
+     * P18 run 6 (2026-10-15): an ally whose boss lists a cure town (COMPANION_BOSS_CURE_TOWNS: Orbis for Horntail) also
+     * buys its seal cures there on arrival, at the potion supplier catalog's store on that town's map, after its
+     * potions; with no cure town it asks for none (the four allies stood sealed half of every minute at the Hands).
+     */
+    @Test
+    void anAllyWhoseBossListsACureTownBuysItsCuresAtThatTownsStoreAfterItsPotions() {
+        h.game.config.COMPANION_BOSS_CURE_TOWNS = "easy_balrog=105070001"; // Ant Tunnel Park: catalog store 1061001
+        carryTheStandard();
+
+        h.game.runDueTimers();
+
+        assertEquals(List.of("provision Orrin easy_balrog at " + STORE, "cures Orrin easy_balrog at " + STORE),
+                h.ports.provisions);
+    }
+
     @Test
     void aStockedAllyBuysNothing() {
         carryTheStandard();

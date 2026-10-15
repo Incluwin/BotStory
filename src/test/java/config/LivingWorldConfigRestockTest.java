@@ -106,6 +106,9 @@ class LivingWorldConfigRestockTest {
         config.COMPANION_BOSS_CURE_TOWNS = "horntail=200000000|200000002";
         assertEquals(java.util.List.of("horntail"), config.companionCureBossKeysAt(200_000_002));
         assertEquals(java.util.List.of(), config.companionCureBossKeysAt(240_000_000));
+        assertEquals(java.util.List.of(200_000_000, 200_000_002), config.companionCureTownsFor("horntail"));
+        assertEquals(java.util.List.of(200_000_000, 200_000_002), config.companionCureTownsFor("HORNTAIL"));
+        assertEquals(java.util.List.of(), config.companionCureTownsFor("zakum"));
         assertDoesNotThrow(config::validate);
 
         for (String bad : new String[] {"horntail", "horntail=0", "nosuchboss=200000000", "horntail=200000000,200000002"}) {

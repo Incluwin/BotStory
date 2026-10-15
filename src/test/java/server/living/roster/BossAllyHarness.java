@@ -444,6 +444,12 @@ final class BossAllyHarness implements AutoCloseable {
         }
 
         @Override
+        public int provisionCures(Character agent, String bossKey, int storeNpcId) {
+            provisions.add("cures " + agent.getName() + " " + bossKey + " at " + storeNpcId);
+            return liveStore ? CompanionBossAllies.Ports.LIVE.provisionCures(agent, bossKey, storeNpcId) : 0;
+        }
+
+        @Override
         public JoinOutcome join(Character lead, Character ally) {
             party.add("join " + lead.getName() + " <- " + ally.getName() + " (" + CauseScope.current() + ")");
             Integer allyParty = partyIdOf(ally.getId());

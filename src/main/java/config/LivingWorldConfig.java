@@ -441,6 +441,25 @@ public class LivingWorldConfig {
         return keys;
     }
 
+    /**
+     * The towns COMPANION_BOSS_CURE_TOWNS lists for boss {@code key}, in listed order; empty for none. The value is
+     * validated at load, so every entry parses.
+     */
+    public List<Integer> companionCureTownsFor(String key) {
+        List<Integer> towns = new ArrayList<>();
+        for (String pair : COMPANION_BOSS_CURE_TOWNS == null ? new String[0] : COMPANION_BOSS_CURE_TOWNS.split(",")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && key != null && pair.substring(0, eq).trim().equalsIgnoreCase(key)) {
+                for (String entry : pair.substring(eq + 1).split("\\|")) {
+                    if (!entry.isBlank()) {
+                        towns.add(Integer.parseInt(entry.trim()));
+                    }
+                }
+            }
+        }
+        return towns;
+    }
+
     private static boolean listsMap(String list, int mapId) {
         for (String entry : list == null ? new String[0] : list.split(",")) {
             if (!entry.isBlank() && entry.trim().equals(Integer.toString(mapId))) {

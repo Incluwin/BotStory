@@ -66,6 +66,30 @@ public final class AgentShopProvisioning {
     }
 
     /**
+     * 2026-10-15 (P18 run 6): the loaded Agent buys at NPC {@code npcId}'s shop the seal cures it lacks of
+     * {@code activity}'s cure standard (AgentSupplyReadiness.cureStandard: "horntail_cure"), as a readiness trip's cure
+     * step does there ({@link AgentShopService#readinessCureStep}), with no visit. Returns how many it bought; 0 when it
+     * lacks none, the activity has no cure standard, or that NPC has no shop. On the thread that holds the Agent.
+     */
+    public static int provisionCuresAt(Character agent, int npcId, AgentSupplyReadiness.Activity activity) {
+        int standard = AgentSupplyReadiness.cureStandard(activity);
+        if (agent == null || npcId <= 0 || standard <= 0 || agent.getInventory(InventoryType.USE) == null
+                || AgentSupplyReadiness.cureShortfall(agent, activity) <= 0) {
+            return 0;
+        }
+        Shop shop = AgentShopGatewayRuntime.shop().findForNpc(npcId);
+        if (shop == null) {
+            return 0;
+        }
+        int before = AgentSupplyReadiness.carriedCures(agent);
+        AgentShopPurchaseSequence<AgentRuntimeEntry> counter = new AgentShopPurchaseSequence<>(null, agent,
+                AgentInventoryGatewayRuntime.inventory(), null, List.of(), new ArrayList<>(), null);
+        AgentShopService.readinessCureStep(counter, shop, agent, standard,
+                AgentSupplyRecoveryPolicy.minimumWalletReserve(agent));
+        return Math.max(0, AgentSupplyReadiness.carriedCures(agent) - before);
+    }
+
+    /**
      * The counter's steps in a readiness trip's order, for {@code activity} at {@code shop}, never spending into
      * {@code minimumMesoReserve}; a new autopot choice when it bought potions (as a visit's end does).
      */

@@ -1074,7 +1074,7 @@ public final class AgentShopService {
      * and before any potion past it, never into the last free Use slot (the one a run keeps free). A shop that sells
      * none buys nothing; the trip's checks ({@link #readinessCurePlan}) keep a companion from walking to one.
      */
-    private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessCureStep(
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessCureStep(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, int standard,
             int minimumMesoReserve) {
         int missing = standard - AgentSupplyReadiness.carriedCures(bot);

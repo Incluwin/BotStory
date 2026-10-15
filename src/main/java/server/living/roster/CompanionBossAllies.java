@@ -23,6 +23,7 @@ import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.capabilities.shop.AgentShopProvisioning;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.progression.AgentPotionSupplierCatalog;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -184,6 +185,15 @@ final class CompanionBossAllies {
          */
         AgentShopProvisioning.Provisioned provision(Character agent, String bossKey, int storeNpcId);
 
+        /**
+         * The Agent buys at NPC {@code storeNpcId}'s shop the seal cures it lacks of {@code bossKey}'s cure standard
+         * ("horntail_cure"), from its own purse, with no walk (AgentShopProvisioning.provisionCuresAt); how many it
+         * bought.
+         */
+        default int provisionCures(Character agent, String bossKey, int storeNpcId) {
+            return 0;
+        }
+
         /** The ally joins {@code lead}'s party; a lead in no party makes one first. */
         JoinOutcome join(Character lead, Character ally);
 
@@ -237,6 +247,12 @@ final class CompanionBossAllies {
             public AgentShopProvisioning.Provisioned provision(Character agent, String bossKey, int storeNpcId) {
                 return AgentShopProvisioning.provisionAt(agent, storeNpcId,
                         AgentSupplyReadiness.Activity.partyQuest(bossKey));
+            }
+
+            @Override
+            public int provisionCures(Character agent, String bossKey, int storeNpcId) {
+                return AgentShopProvisioning.provisionCuresAt(agent, storeNpcId,
+                        AgentSupplyReadiness.Activity.partyQuest(bossKey + "_cure"));
             }
 
             @Override
@@ -757,7 +773,37 @@ final class CompanionBossAllies {
         } catch (RuntimeException failure) {
             log.warn("boss ally {} bought nothing on arrival", trip.characterId, failure);
         }
+        int cureStore = cureStoreNpcId(trip.bossKey);
+        if (cureStore > 0) {
+            try {
+                int cures = ports.provisionCures(agent, trip.bossKey, cureStore);
+                log.info("Boss ally provisioned cures: session={} ally={} store={} bought {}", trip.sessionId,
+                        trip.characterId, cureStore, cures);
+            } catch (RuntimeException failure) {
+                log.warn("boss ally {} bought no cures on arrival", trip.characterId, failure);
+            }
+        }
         return true;
+    }
+
+    /**
+     * 2026-10-15 (P18 run 6): the store in {@code bossKey}'s cure town (COMPANION_BOSS_CURE_TOWNS: Orbis for
+     * Horntail), the potion supplier catalog's NPC on one of its maps (Edel, 2012005); 0 for none. An ally called from
+     * the bench comes by that town (Victoria to Leafre goes by way of Orbis), so it buys its seal cures there as a party
+     * member does on its walk; without them, and out of reach of its owner's Bishops' Dispel (party members only), the
+     * four allies stood sealed half of every minute at Horntail's Hands.
+     */
+    private int cureStoreNpcId(String bossKey) {
+        List<Integer> towns = world.config().companionCureTownsFor(bossKey);
+        if (towns.isEmpty()) {
+            return 0;
+        }
+        for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
+            if (towns.contains(supplier.mapId())) {
+                return supplier.npcId();
+            }
+        }
+        return 0;
     }
 
     /** A loaded ally as a live slice is (BenchDutyDispatcher.begin): each step on its own, never undoing the load. */
