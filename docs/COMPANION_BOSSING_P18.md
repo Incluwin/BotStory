@@ -309,6 +309,46 @@ and after the clear). Neither is live yet.
 
 0 ERROR lines in the run's log (cosmic-log-2026-10-14-9) or after the 19:05 restart on the committed config.
 
+## Live check 2026-10-14, 16-member run (altar reached, about 6% short)
+
+**Setup.** Live 96b7a94cf from 20:17, then 532ea7231 from 20:44 (all the fixes below; full suite 13,733 / 0 / 37).
+Temporary keys `COMPANION_BOSS_ENABLED_TYPES` and `COMPANION_BOSS_ALLY_TYPES` with `horntail`, `OWNERS_MAX` 2. ohboy with
+crew B (Brannock, Garrick, Ilse, Fenna, Corvin); Bossfriend with Isolde, Thane, Magna, Orrin and Tamsin; Bossfriend's
+bench allies Gunnar, Ingrid, Sorrel and Flint called at the Mark. Magna, Orrin and Tamsin (Paladins) and Gunnar (Hero)
+were raised to Lv200 4th job with 10% kits and 4M mesos; the three Paladins got their 66 mastery books. Both owners at
+30,000 HP again (set back in the database afterwards). Video: `p18-horntail-cure-allies-2026-10-14.mp4` (2.2 GB, not
+in git).
+
+New since the touch-fence rerun: Magic Guard before the stage portal and the touch boundary let go on a finished stage
+map (b2031d233, c44869508); pre-heads fought from their top platforms and the Horntail standard 900/900 (b2ca38049);
+Priests and Bishops cast Dispel on afflicted party members (2cc001017); Holy Water bought in Orbis for Horntail
+(96b7a94cf, `horntail_cure=150`); a Use tab full of ammo the Agent cannot use counts as room (532ea7231).
+
+| Step | Result |
+|---|---|
+| Holy Water in Orbis | **PASS.** All ten party companions bought 150 at Edel (2012005), saying they needed holy water. Ilse came back with 48 and broke; 4M from her owner and she topped up. |
+| Ammo room (532ea7231) | **PASS live.** Tamsin, with 54M mesos and 2 free Use slots, stayed put on NO_SPACE before the fix; after it she sold 2 stacks of throwing stars she cannot use and came back with 1,982 HP, 900 MP and 150 cures. Gunnar (51 stacks of arrows, 24 of bullets) sat this run out because the fix came mid-setup. |
+| 5 Leafre restock (900/900) | **PASS** for nine. Corvin, Garrick and Fenna were short of mesos (4M each). Thane said "no shop out here": open item 14. |
+| Ally picker | **PASS on the second try.** On the first expedition both parties registered first, and the picker then listed every ally as "cannot reach me before the list closes" (they were on bench duty in Victoria, 3 minutes out; the list closes about 30 s before the sign-up does). It timed out at 20:54:55. Bossfriend then created the expedition and called the allies first: all four arrived and all 14 companions signed up by 20:58:56. |
+| 9 pre-heads | **PASS, fast.** The fighters fought from the top platforms (y -160). Left head 20:59:30 to 21:06:30 (7.0 min), right head 21:06:50 to 21:13:40 (6.8 min); the last runs took 12.7 and 45 minutes. |
+| 10 reactor | **PASS.** Horntail woke at about 21:15. |
+| Legs, Tail, Wings | **PASS.** 99.5% at 21:15 to 66.0% at 21:27, about 3.3% a minute. |
+| Hands | **Slow.** 61.2% at 21:32, 57.8% at 21:38 (Left Hand dead), 50.0% at 21:44 (Right Hand dead): about 0.6% a minute for some 15 minutes. |
+| Heads | 45.0% at 21:47, 29.0% at 21:56 (1.8% a minute with all three up), then 22.6% at 22:01 and 7.5% at 22:13 (1.3% a minute on the middle head alone). |
+| Clear | **FAIL by about 6%.** The event ended at 22:14:58 (`event-disposed`, `cleared=false`), about 125M HP and some 4 minutes short. |
+
+**Deaths.** Ingrid, an ally, about 40: allies are not restocked for the boss (open item 15), so she came in with no
+potions. A gift of 600 Honsters and 300 Power Elixirs at 21:18:53 kept her alive for some 40 minutes, then she ran dry
+again. Ilse 7 (Power Elixirs at 21:38), Isolde 3, the rest 0 to 2. The owners went down twice early (revived in place
+with `!healplayer`).
+
+**Holy Water use was low.** After the run the ten party companions held 126 to 133 of their 150 (they had 136 to 144
+at the 20:42 save), so each drank 3 to 15 during the fight. Nothing logs a seal or a cure, so whether seals mostly
+missed or went uncured is open (item 17).
+
+ohboy's client peaked at 2,359 MB virtual with 16 characters on the altar. 0 ERROR lines in the run's log
+(cosmic-log-2026-10-14-12) and after the 22:18 restart on the committed config.
+
 ## Open items
 
 1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid; many times in the rerun).
@@ -335,6 +375,20 @@ and after the clear). Neither is live yet.
 13. **More hands** (touch-fence rerun): before the Hands, 12 Lv200 characters did about 1.5% a minute; the altar needs
     about 1.7% for the 60-minute limit. Plan: Bossfriend's four bench allies (Gunnar Lv79 Crusader, Magna Lv75 White
     Knight, Orrin, Tamsin) raised to Lv200.
+
+14. **Potion floor edge** (16-member run): Horntail counts potions that heal a quarter of the current max HP. A Lv200
+    warrior's kit lifts max HP just past 20,000 (Thane 20,014), so the floor passes Reindeer Milk's 5,000 and Leafre
+    sells nothing that counts: the trip is NO_SUPPLIER ("no shop out here"). Fix: a floor a little under the quarter,
+    or one measured against max HP before equipment.
+15. **Allies carry no boss standard**: a bench ally called at the Mark is not restocked for the boss. Ingrid came in
+    with no potions and died about 40 times.
+16. **Ally picker timing**: the list closes about 30 s before the sign-up ends and bench allies on Victoria duty are
+    3 minutes out, so the owner must call them right after creating the expedition. The picker could say so, or the
+    list could stay open while called allies are on the way.
+17. **Hands stage** (0.6% a minute): the companions drank only 3 to 15 Holy Water each. Needs a log line for a seal on
+    a companion and its cure, to tell missed seals from uncured ones, and the Hands' reach from the y=80 ledges.
+18. **Last head**: with one head left the rate fell from 1.8% to 1.3% a minute; about 6% (125M HP) short at the
+    60-minute limit.
 
 ## Follow-ups (2026-10-14)
 
