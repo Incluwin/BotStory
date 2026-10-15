@@ -215,6 +215,11 @@ public interface PrimitiveCapabilityGateway {
     default void clearHorizontalBoundary(AgentRuntimeEntry entry) {
     }
 
+    /** The x nearest {@code x} that the Agent's horizontal boundary on {@code mapId} allows; {@code x} with none. */
+    default int clampHorizontalX(AgentRuntimeEntry entry, int mapId, int x) {
+        return x;
+    }
+
     /** Starts one ordinary, physics-simulated ground jump in the requested direction. */
     default boolean jump(AgentRuntimeEntry entry, int direction) {
         return false;

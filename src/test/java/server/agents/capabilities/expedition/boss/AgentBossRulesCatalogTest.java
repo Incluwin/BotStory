@@ -149,10 +149,10 @@ class AgentBossRulesCatalogTest {
     }
 
     @Test
-    void pinkBeansCompanionsHitItsPartsFourTimesHarderAndEveryOtherBossKeepsTheirOwnStrength() {
+    void pinkBeansCompanionsHitItsPartsSixTimesHarderAndEveryOtherBossKeepsTheirOwnStrength() {
         AgentBossRules.Boss pinkBean = AgentBossRules.of("pinkbean");
-        assertEquals(400, pinkBean.damagePercentOn(8_820_003), "Solomon, a guardian");
-        assertEquals(400, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
+        assertEquals(600, pinkBean.damagePercentOn(8_820_003), "Solomon, a guardian");
+        assertEquals(600, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
         assertEquals(100, pinkBean.damagePercentOn(8_820_007), "an add keeps the member's own strength");
         assertEquals(100, pinkBean.damagePercentOn(8_820_019), "a statue is no part");
 

@@ -4,7 +4,10 @@ import client.Character;
 import client.inventory.WeaponType;
 import java.awt.Point;
 import java.awt.Rectangle;
+import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
 import server.agents.capabilities.movement.AgentMovementProfile;
+import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 
 public final class AgentCombatRangePolicy {
@@ -72,6 +75,41 @@ public final class AgentCombatRangePolicy {
         boolean facingLeft = aimPoint.x < bot.getPosition().x;
         Rectangle basicReach = basicWeaponReachRect(bot, facingLeft, route);
         return basicReach != null && AgentCombatHitboxIntersection.intersectsMonster(basicReach, target);
+    }
+
+    /**
+     * 2026-10-15 (P20 run 4): whether a close-range plan on a boss whose body sits apart from its origin (Pink Bean's
+     * Solomon and Rex, Horntail's parts) is swung from where the Agent stands. Their bodies are wide and raised, so a
+     * long, weak box (Shout: +-200 px, 30% x1) reaches one from where the main swing (Brandish: 150 px) does not, and a
+     * Hero knocked back to the wall at x=-899 stood there Shouting for minutes at 1/20 of its damage. Such a swing
+     * holds only within ATTACK_RANGE_X of the body; farther out the Agent walks in, unless its horizontal boundary
+     * keeps it out (then it swings from where it is, as before). Every other plan and target holds wherever it is in
+     * range.
+     */
+    public static boolean closeSwingHoldsHere(AgentRuntimeEntry entry, Character agent, AgentAttackPlan plan,
+                                              Monster target) {
+        if (plan == null || plan.route != AgentAttackRoute.CLOSE || agent == null || agent.getPosition() == null
+                || target == null || !target.isBoss()) {
+            return true;
+        }
+        Rectangle body = AgentMobHitboxProvider.getInstance().getMobBounds(target);
+        if (!AgentCombatTargetPositionPolicy.isHorizontallyDetached(target.getPosition(), body)) {
+            return true;
+        }
+        int reach = AgentCombatConfig.cfg.ATTACK_RANGE_X;
+        int left = body.x;
+        int right = body.x + Math.max(0, body.width - 1);
+        int x = agent.getPosition().x;
+        if (gapX(x, left, right) <= reach) {
+            return true;
+        }
+        int stand = x < left ? left - reach : right + reach;
+        int allowed = AgentPrimitiveCapabilityGatewayRuntime.gateway().clampHorizontalX(entry, agent.getMapId(), stand);
+        return gapX(allowed, left, right) > reach;
+    }
+
+    private static int gapX(int x, int left, int right) {
+        return x < left ? left - x : Math.max(0, x - right);
     }
 
     public static boolean canUseAttackPlanNow(boolean grounded, WeaponType weaponType, AgentAttackRoute route) {

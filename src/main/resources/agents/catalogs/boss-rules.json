@@ -68,7 +68,7 @@
         {"mobId": 8820003, "fromDx": -900, "toDx": -200},
         {"mobId": 8820004, "fromDx": 200, "toDx": 900}
       ],
-      "companionDamagePercent": 400
+      "companionDamagePercent": 600
     },
     {
       "key": "latanica",

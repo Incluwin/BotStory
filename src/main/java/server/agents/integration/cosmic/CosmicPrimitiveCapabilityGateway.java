@@ -469,6 +469,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public int clampHorizontalX(AgentRuntimeEntry entry, int mapId, int x) {
+        return AgentHorizontalBoundaryStateRuntime.clampX(entry, mapId, x);
+    }
+
+    @Override
     public boolean jump(AgentRuntimeEntry entry, int direction) {
         Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
         if (agent == null || direction == 0 || !AgentJumpActionService.grounded(entry)) {
