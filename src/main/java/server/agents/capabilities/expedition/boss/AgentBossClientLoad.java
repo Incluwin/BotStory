@@ -20,6 +20,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class AgentBossClientLoad {
     /** The attacks committed in each open run, by its session (identity); closed runs are pruned on a new run. */
     private static final Map<AgentBossRunSession, AtomicLong> ATTACKS = new ConcurrentHashMap<>();
+    /**
+     * 2026-10-15: each INSIDE member's attacks and the damage they dealt since its last status line ({@link #drain}),
+     * by character id, for the boss fight status line (P20 run 1: the crew swung once every 2.2 s each).
+     */
+    private static final Map<Integer, long[]> MEMBER_COUNTS = new ConcurrentHashMap<>();
 
     private AgentBossClientLoad() {
     }
@@ -47,6 +52,42 @@ public final class AgentBossClientLoad {
         attacks.incrementAndGet();
     }
 
+    /**
+     * Counts one committed attack and the damage its lines dealt for the Agent while it is an INSIDE member on its
+     * run's battle map, for its next status line.
+     */
+    public static void memberAttack(Character bot, long dealt) {
+        if (battleRun(bot) == null) {
+            return;
+        }
+        long[] counts = MEMBER_COUNTS.computeIfAbsent(bot.getId(), ignored -> new long[2]);
+        synchronized (counts) {
+            counts[0]++;
+            counts[1] += Math.max(0L, dealt);
+        }
+    }
+
+    /**
+     * The percent the Agent's damage lines on {@code mobId} are scaled to: its boss's {@code companionDamagePercent}
+     * while it is an INSIDE member on its run's battle map and the mob is one of the boss's parts, else 100.
+     */
+    public static int damagePercent(Character bot, int mobId) {
+        AgentBossRunSession session = battleRun(bot);
+        AgentBossRules.Boss rules = session == null ? null : AgentBossRules.of(session.definition().key());
+        return rules == null ? 100 : rules.damagePercentOn(mobId);
+    }
+
+    /** The member's {attacks, damage} since the last drain, and starts the next count; {0, 0} for none. */
+    static long[] drain(int characterId) {
+        long[] counts = MEMBER_COUNTS.remove(characterId);
+        if (counts == null) {
+            return new long[2];
+        }
+        synchronized (counts) {
+            return counts.clone();
+        }
+    }
+
     /** The attacks the run's INSIDE members committed on its battle map since the run began. */
     static long attacks(AgentBossRunSession session) {
         AtomicLong attacks = ATTACKS.get(session);
@@ -72,5 +113,6 @@ public final class AgentBossClientLoad {
     /** Forgets every count; tests only. */
     static void resetForTest() {
         ATTACKS.clear();
+        MEMBER_COUNTS.clear();
     }
 }

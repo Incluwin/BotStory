@@ -188,4 +188,21 @@ class AgentCombatAttackRuntimeTest {
         usage.reset();
         assertEquals(0L, usage.degenerateAttacks());
     }
+
+    @Test
+    void aBossesCompanionDamagePercentScalesEveryLineAndKeepsTheDelayAndCrits() {
+        net.server.channel.handlers.AbstractDealDamageHandler.AttackTarget made =
+                new net.server.channel.handlers.AbstractDealDamageHandler.AttackTarget(
+                        (short) 316, List.of(20_000, 0, 31_000), java.util.Set.of(2));
+
+        var strong = AgentCombatAttackRuntime.scaled(made, 400);
+
+        assertEquals(List.of(80_000, 0, 124_000), strong.damageLines(), "a miss stays a miss");
+        assertEquals((short) 316, strong.delay());
+        assertEquals(java.util.Set.of(2), strong.critLineIndices());
+        assertEquals(made, AgentCombatAttackRuntime.scaled(made, 100), "100 leaves the lines as they were");
+        assertEquals(List.of(Integer.MAX_VALUE), AgentCombatAttackRuntime.scaled(
+                new net.server.channel.handlers.AbstractDealDamageHandler.AttackTarget(
+                        (short) 0, List.of(Integer.MAX_VALUE), java.util.Set.of()), 1000).damageLines());
+    }
 }

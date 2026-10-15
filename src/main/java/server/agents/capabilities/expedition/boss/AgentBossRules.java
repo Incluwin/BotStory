@@ -60,6 +60,10 @@ import java.util.TreeMap;
  * this boss's threshold for both keep-outs, as a percent of the member's max HP. Showa's is 90: the HP floor
  * (AgentBossPriorityFight.guardHp) carries a member through any hit under about 82% of its HP, so a Hyper Body warrior
  * (about 31,600 HP) fights Bodyguard A at arm's length while a member a hit would kill outright keeps out.</li>
+ * <li>{@code companionDamagePercent} (2026-10-15, 0 = 100 = unchanged): the percent an INSIDE member's damage lines on
+ * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
+ * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
+ * HP over 140 minutes needs about 55 million a minute; twelve Lv200 companions dealt about 17 million (P20 run 1).</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -81,7 +85,7 @@ public final class AgentBossRules {
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
                        List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut,
-                       int keepOutHpPercent) {
+                       int keepOutHpPercent, int companionDamagePercent) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -102,6 +106,41 @@ public final class AgentBossRules {
             if (keepOutHpPercent < 0 || keepOutHpPercent > 100) {
                 throw new IllegalArgumentException("keepOutHpPercent must be 0 to 100: " + keepOutHpPercent);
             }
+            if (companionDamagePercent < 0 || companionDamagePercent > 1000) {
+                throw new IllegalArgumentException("companionDamagePercent must be 0 to 1000: " + companionDamagePercent);
+            }
+        }
+
+        /** A boss row whose companions hit its parts at their own strength (every row before Pink Bean's run 2). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut, int keepOutHpPercent) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, attackKeepOut, keepOutHpPercent, 0);
+        }
+
+        /**
+         * The percent an INSIDE member's damage lines on one of this boss's parts are scaled to, 100 when the row sets
+         * none. A part is a {@code targetPriority}, {@code meleePriority} or focus step id; adds keep the member's own
+         * strength.
+         */
+        public int damagePercentOn(int mobId) {
+            if (companionDamagePercent <= 0 || companionDamagePercent == 100) {
+                return 100;
+            }
+            if (targetPriority.contains(mobId) || meleePriority.contains(mobId)) {
+                return companionDamagePercent;
+            }
+            for (Focus step : focus) {
+                if (step.mobIds().contains(mobId)) {
+                    return companionDamagePercent;
+                }
+            }
+            return 100;
         }
 
         /** A boss row that keeps the global keep-out thresholds (every row before Showa's run 4, 2026-10-15). */

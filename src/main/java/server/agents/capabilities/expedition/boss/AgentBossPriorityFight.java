@@ -203,13 +203,16 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         for (Character member : fighters) {
             Point at = member.getPosition();
             long[] times = afflicted.getOrDefault(member.getId(), new long[2]);
+            long[] swings = AgentBossClientLoad.drain(member.getId());
             List<?> buffs = member.getAllBuffs();
             members.append(members.length() == 0 ? "" : "; ").append(member.getName()).append(' ')
                     .append(member.getMapId()).append(at == null ? "" : "(" + at.x + "," + at.y + ")")
                     .append(" hp=").append(percent(member.getHp(), member.getCurrentMaxHp())).append('%')
                     .append(" buffs=").append(buffs == null ? 0 : buffs.size())
                     .append(" sealed=").append(times[0] / 1000).append('s')
-                    .append(" disabled=").append(times[1] / 1000).append('s');
+                    .append(" disabled=").append(times[1] / 1000).append('s')
+                    .append(" atk=").append(swings[0])
+                    .append(" dmg=").append(swings[1] / 1000).append('k');
         }
         afflicted.clear();
         AgentBossRules.Focus focus = rules == null || maps.size() != 1 ? null

@@ -118,9 +118,10 @@ public final class AgentCombatAttackRuntime {
         attack.targets = new HashMap<>();
 
         for (Monster target : authoritativeTargets) {
-            attack.targets.put(target.getObjectId(),
+            attack.targets.put(target.getObjectId(), scaled(
                     CombatFormulaProvider.getInstance().makeTarget(bot, target, numDamage,
-                            attackPlan.skillId, damageProfile, attackPlan.hitDelayMs));
+                            attackPlan.skillId, damageProfile, attackPlan.hitDelayMs),
+                    AgentBossClientLoad.damagePercent(bot, target.getId())));
         }
 
         if (bot.getMap() != attackMap) {
@@ -171,6 +172,7 @@ public final class AgentCombatAttackRuntime {
                 .mapToLong(damage -> damage)
                 .sum();
         AgentCombatSkillUsageStateRuntime.record(entry, attackPlan.skillId, dealt);
+        AgentBossClientLoad.memberAttack(bot, dealt);
         if (degenerateBasicAttack(bot, attackPlan)) {
             AgentCombatSkillUsageStateRuntime.recordDegenerate(entry);
         }
@@ -250,6 +252,19 @@ public final class AgentCombatAttackRuntime {
         return attackPlan != null && attackPlan.skillId == 0 && attackPlan.isCloseRangeRoute()
                 && AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
                 AgentAttackExecutionProvider.getEquippedWeaponType(bot));
+    }
+
+    /** The target's lines scaled to {@code percent} (a boss's companionDamagePercent); the target itself at 100. */
+    static AbstractDealDamageHandler.AttackTarget scaled(AbstractDealDamageHandler.AttackTarget made, int percent) {
+        if (made == null || percent == 100) {
+            return made;
+        }
+        List<Integer> lines = new ArrayList<>(made.damageLines().size());
+        for (Integer line : made.damageLines()) {
+            long value = line == null ? 0L : (long) line * percent / 100L;
+            lines.add((int) Math.max(0L, Math.min(Integer.MAX_VALUE, value)));
+        }
+        return new AbstractDealDamageHandler.AttackTarget(made.delay(), lines, made.critLineIndices());
     }
 
 }

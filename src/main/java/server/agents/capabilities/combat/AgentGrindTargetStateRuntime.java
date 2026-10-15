@@ -32,8 +32,14 @@ public final class AgentGrindTargetStateRuntime {
         }
         Monster target = activeTargetInMap(entry, bot.getMap());
         if (target == null
-                || !AgentCombatObjectiveTargetStateRuntime.allows(entry, target.getId())
-                || target.getPosition().distanceSq(botPos) > seekRangeSq) {
+                || !AgentCombatObjectiveTargetStateRuntime.allows(entry, target.getId())) {
+            return null;
+        }
+        // Measured to the body, as target search measures it (AgentCombatCandidateProvider): a boss part's body can sit
+        // far from its origin (Pink Bean's Solomon, 620-740 px), and from the origin a member knocked back to the wall
+        // dropped a target its swing nearly reached (P20 run 1, 2026-10-15).
+        Point aim = AgentCombatAimPointPolicy.aimPoint(bot, target);
+        if ((aim == null ? target.getPosition() : aim).distanceSq(botPos) > seekRangeSq) {
             return null;
         }
         return target;

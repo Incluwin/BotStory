@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -185,6 +186,23 @@ class AgentBossClientLoadTest {
         assertEquals(3L, AgentBossClientLoad.attacks(zakum), "the floor does not have to be on");
         assertEquals(1L, AgentBossClientLoad.attacks(easy));
         assertEquals(0L, AgentBossClientLoad.attacks(idle));
+    }
+
+    @Test
+    void eachInsideMembersAttacksAndDamageAreCountedUntilItsStatusLineDrainsThem() {
+        AgentBossRunSession zakum = open(1L, AgentBossRunCatalog.ZAKUM);
+        Character thane = inside(zakum, THANE, ALTAR);
+        Character offTheAltar = inside(zakum, INGRID, ADOBIS_ROOM);
+
+        AgentBossClientLoad.memberAttack(thane, 30_000L);
+        AgentBossClientLoad.memberAttack(thane, 12_000L);
+        AgentBossClientLoad.memberAttack(offTheAltar, 50_000L);
+        AgentBossClientLoad.memberAttack(agent(STRANGER, ALTAR), 50_000L);
+
+        assertArrayEquals(new long[]{2L, 42_000L}, AgentBossClientLoad.drain(THANE));
+        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(THANE), "a drain starts the next count");
+        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(INGRID), "off its battle map it is not counted");
+        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(STRANGER));
     }
 
 

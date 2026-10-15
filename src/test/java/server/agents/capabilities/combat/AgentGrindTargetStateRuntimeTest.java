@@ -90,6 +90,31 @@ class AgentGrindTargetStateRuntimeTest {
     }
 
     @Test
+    void seekRangeIsMeasuredToTheTargetsBodyNotItsOrigin() {
+        // Pink Bean's Solomon (8820003): origin x=5 on the altar floor, body box 620-740 px to its left (P20 run 1).
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        Monster solomon = mock(Monster.class);
+        server.life.MonsterStats stats = mock(server.life.MonsterStats.class);
+        Point wall = new Point(-899, -42);
+        when(bot.getMap()).thenReturn(map);
+        when(bot.getPosition()).thenReturn(wall);
+        when(solomon.isAlive()).thenReturn(true);
+        when(solomon.getMap()).thenReturn(map);
+        when(solomon.getId()).thenReturn(8_820_003);
+        when(solomon.getPosition()).thenReturn(new Point(5, -42));
+        when(solomon.getStats()).thenReturn(stats);
+        when(stats.getFixedStance()).thenReturn(4);
+
+        AgentGrindTargetStateRuntime.setTarget(entry, solomon);
+
+        assertSame(solomon, AgentGrindTargetStateRuntime.targetInSeekRange(entry, bot, wall, 800L * 800L),
+                "904 px from the origin, but under 200 px from the body");
+        assertNull(AgentGrindTargetStateRuntime.targetInSeekRange(entry, bot, wall, 100L * 100L));
+    }
+
+    @Test
     void countsTargetSwitchesAndResetsThemWithTargetState() {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
         Monster first = mock(Monster.class);

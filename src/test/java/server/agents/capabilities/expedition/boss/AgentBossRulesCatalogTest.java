@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -145,5 +146,36 @@ class AgentBossRulesCatalogTest {
                 List.of(8_830_000, 8_830_001, 8_830_002, 6_400_005, 8_830_004));
         assertEquals(Set.of(8_830_002), claws.preferred(), "the initial claw first");
         assertEquals(Set.of(8_830_000, 8_830_001, 6_400_005), claws.fallback(), "the helper 8830004 is never hit");
+    }
+
+    @Test
+    void pinkBeansCompanionsHitItsPartsFourTimesHarderAndEveryOtherBossKeepsTheirOwnStrength() {
+        AgentBossRules.Boss pinkBean = AgentBossRules.of("pinkbean");
+        assertEquals(400, pinkBean.damagePercentOn(8_820_003), "Solomon, a guardian");
+        assertEquals(400, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
+        assertEquals(100, pinkBean.damagePercentOn(8_820_007), "an add keeps the member's own strength");
+        assertEquals(100, pinkBean.damagePercentOn(8_820_019), "a statue is no part");
+
+        for (String key : List.of("zakum", "horntail", "showa", "scarga", "papulatus", "easy_balrog")) {
+            AgentBossRules.Boss boss = AgentBossRules.of(key);
+            for (int part : boss.targetPriority()) {
+                assertEquals(100, boss.damagePercentOn(part), key + " " + part);
+            }
+        }
+    }
+
+    @Test
+    void aCompanionDamagePercentReachesTheFocusAndMeleeListsAndStaysInItsBounds() {
+        AgentBossRules.Boss boss = new AgentBossRules.Boss("test_strong", "Test strong", null, List.of(100), null,
+                null, null, false, null, 0, 0, false, null, null, List.of(200), 0, null, null,
+                List.of(new AgentBossRules.Focus(List.of(300), null, List.of())), null, 0, 250);
+        assertEquals(250, boss.damagePercentOn(100));
+        assertEquals(250, boss.damagePercentOn(200));
+        assertEquals(250, boss.damagePercentOn(300));
+        assertEquals(100, boss.damagePercentOn(400));
+
+        assertThrows(IllegalArgumentException.class, () -> new AgentBossRules.Boss("test_bad", "Test bad", null,
+                List.of(100), null, null, null, false, null, 0, 0, false, null, null, null, 0, null, null, null,
+                null, 0, 1001));
     }
 }
