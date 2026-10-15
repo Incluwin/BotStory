@@ -56,6 +56,10 @@ import java.util.TreeMap;
  * <li>{@code attackKeepOut} (2026-10-15): parts whose attacks every member keeps out of where one hit would take most
  * of its HP (AgentBossPriorityFight.ATTACK_KEEP_OUT_HP_PERCENT), past the attack's reach on the part's facing side, as
  * a player fights a boss from behind (Showa's Bodyguard A, whose attack2 hits about 26,000 up to 147 px in front).</li>
+ * <li>{@code keepOutHpPercent} (2026-10-15, 0 = the global TOUCH_KEEP_OUT_HP_PERCENT and ATTACK_KEEP_OUT_HP_PERCENT):
+ * this boss's threshold for both keep-outs, as a percent of the member's max HP. Showa's is 90: the HP floor
+ * (AgentBossPriorityFight.guardHp) carries a member through any hit under about 82% of its HP, so a Hyper Body warrior
+ * (about 31,600 HP) fights Bodyguard A at arm's length while a member a hit would kill outright keeps out.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -76,7 +80,8 @@ public final class AgentBossRules {
                        boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
-                       List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut) {
+                       List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut,
+                       int keepOutHpPercent) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -94,6 +99,21 @@ public final class AgentBossRules {
             keepOut = keepOut == null ? List.of() : List.copyOf(keepOut);
             focus = focus == null ? List.of() : List.copyOf(focus);
             attackKeepOut = attackKeepOut == null ? List.of() : List.copyOf(attackKeepOut);
+            if (keepOutHpPercent < 0 || keepOutHpPercent > 100) {
+                throw new IllegalArgumentException("keepOutHpPercent must be 0 to 100: " + keepOutHpPercent);
+            }
+        }
+
+        /** A boss row that keeps the global keep-out thresholds (every row before Showa's run 4, 2026-10-15). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, attackKeepOut, 0);
         }
 
         /** A boss row with no attack keep-out parts (every row before Showa's, 2026-10-15). */

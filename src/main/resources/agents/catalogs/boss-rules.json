@@ -126,7 +126,8 @@
       "targetPriority": [9400112, 9400113, 9400300, 9400122],
       "neverTarget": [9400114],
       "markerItems": [4000138],
-      "attackKeepOut": [9400112, 9400113]
+      "attackKeepOut": [9400112, 9400113],
+      "keepOutHpPercent": 90
     },
     {
       "key": "field_victoria",

@@ -275,7 +275,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * boxes. When the two do not meet, the touch band wins.
      */
     int[] band(MapleMap map, Character member, AgentBossRules.Boss rules, boolean melee, AgentBossRules.Focus step) {
-        int[] touch = touchBand(map, member, step == null ? null : step.side(), rules.attackKeepOut());
+        int[] touch = touchBand(map, member, step == null ? null : step.side(), rules.attackKeepOut(),
+                rules.keepOutHpPercent());
         int[] keep = melee || rules.keepOut().isEmpty() ? null : keepOutBand(map, rules);
         if (touch == null || keep == null) {
             return touch == null ? keep : touch;
@@ -303,13 +304,23 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * member drinks back up) and whose mean hit is at least ATTACK_KEEP_OUT_HP_PERCENT of the member's max HP.
      */
     int[] touchBand(MapleMap map, Character member, String side, List<Integer> attackParts) {
+        return touchBand(map, member, side, attackParts, 0);
+    }
+
+    /**
+     * {@link #touchBand(MapleMap, Character, String, List)} with the boss's own threshold for both keep-outs
+     * ({@code keepOutHpPercent}, boss-rules.json, 2026-10-15): a percent of the member's max HP, or 0 for the global
+     * TOUCH_KEEP_OUT_HP_PERCENT and ATTACK_KEEP_OUT_HP_PERCENT.
+     */
+    int[] touchBand(MapleMap map, Character member, String side, List<Integer> attackParts, int keepOutHpPercent) {
         Point at = member.getPosition();
         if (at == null) {
             return null;
         }
         Point ground = ports.gateway().groundPoint(map, at);
         Point foot = ground != null ? ground : at;
-        double limit = ports.maxHp(member) * (double) touchKeepOutHpPercent() / 100.0d;
+        double limit = ports.maxHp(member)
+                * (double) (keepOutHpPercent > 0 ? keepOutHpPercent : touchKeepOutHpPercent()) / 100.0d;
         int sweep = ports.touchSweepPx();
         long left = Long.MAX_VALUE;
         long right = Long.MIN_VALUE;
@@ -324,7 +335,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             right = Math.max(right, (long) area.x + area.width - 1);
             moving |= ports.mobile(monster);
         }
-        double attackLimit = ports.maxHp(member) * (double) attackKeepOutHpPercent() / 100.0d;
+        double attackLimit = ports.maxHp(member)
+                * (double) (keepOutHpPercent > 0 ? keepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
         for (Monster monster : attackParts.isEmpty() ? List.<Monster>of() : ports.monsters(map)) {
             Point origin = monster.isAlive() && attackParts.contains(monster.getId()) ? monster.getPosition() : null;
             if (origin == null) {

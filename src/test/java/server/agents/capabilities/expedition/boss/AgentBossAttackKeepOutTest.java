@@ -196,6 +196,28 @@ class AgentBossAttackKeepOutTest {
         verify(gateway).grind(any(), anySet(), anySet());
         verify(gateway, never()).navigate(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
         assertEquals(List.of(9_400_112, 9_400_113), AgentBossRules.of("showa").attackKeepOut());
+        assertEquals(90, AgentBossRules.of("showa").keepOutHpPercent());
+        assertEquals(0, AgentBossRules.of("horntail").keepOutHpPercent());
+    }
+
+    @Test
+    void underShowasNinetyPercentAHyperBodyWarriorFightsBodyguardAAtArmsLength() {
+        maxHp = 31_600;
+        mobile = true;
+
+        assertNull(fight.touchBand(battle, member(10, new Point(380, 161)), null, List.of(BODYGUARD_A), 90),
+                "25,900 is 82% and 16,800 is 53% of 31,600: the HP floor (95%) carries it through either");
+    }
+
+    @Test
+    void underShowasNinetyPercentAHeroWithoutHyperBodyStillKeepsOutOfTheSmashButNotTheTouch() {
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, 273 - 1 - 30},
+                fight.touchBand(battle, member(10, new Point(200, 161)), null, List.of(BODYGUARD_A), 90),
+                "25,900 is 131% of 19,776");
+        assertArrayEquals(new int[] {428 + 1 + 30, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(11, new Point(470, 161)), null, List.of(BODYGUARD_A), 90),
+                "behind it only the smash's edge (428) bounds it: 16,800 is 85% of 19,776, under 90%, so not the"
+                        + " touch's (450)");
     }
 
     @Test
