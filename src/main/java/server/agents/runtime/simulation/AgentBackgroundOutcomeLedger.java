@@ -6,6 +6,11 @@ package server.agents.runtime.simulation;
  * TownLife is initially mutation-free while abstract, so reconciliation only has to prove
  * that no unsupported mutable outcome was recorded. Any future abstract capability must
  * add a typed outcome applier before it can be allowlisted.
+ *
+ * A window that cannot reconcile stays closed while its abstract work is in flight. Once
+ * that work has ended or the Agent is needed in the exact world, the transition service may
+ * {@link #abandon abandon} the window: the Character is already the exact state, so nothing
+ * is replayed and the failure is kept as evidence instead.
  */
 public final class AgentBackgroundOutcomeLedger {
     private boolean active;
@@ -16,6 +21,9 @@ public final class AgentBackgroundOutcomeLedger {
     private String unsupportedOutcome;
     private long reconciliationCount;
     private AgentMaterializedStateFingerprint materializedBaseline;
+    private long firstFailedReconciliationAtMs = -1L;
+    private long abandonmentCount;
+    private Abandonment lastAbandonment;
 
     public synchronized void begin(AgentAbstractExecutionScope nextScope, long nowMs) {
         begin(nextScope, nowMs, null);
@@ -38,6 +46,7 @@ public final class AgentBackgroundOutcomeLedger {
         heartbeatCount = 0L;
         unsupportedOutcome = null;
         materializedBaseline = baseline;
+        firstFailedReconciliationAtMs = -1L;
     }
 
     public synchronized void heartbeat(long nowMs) {
@@ -72,8 +81,52 @@ public final class AgentBackgroundOutcomeLedger {
         active = false;
         scope = AgentAbstractExecutionScope.NONE;
         materializedBaseline = null;
+        firstFailedReconciliationAtMs = -1L;
         reconciliationCount++;
         return true;
+    }
+
+    /**
+     * Notes a failed reconciliation and returns when this window first failed to reconcile,
+     * or -1 when no window is open.
+     */
+    public synchronized long recordFailedReconciliation(long nowMs) {
+        if (!active) {
+            return -1L;
+        }
+        if (firstFailedReconciliationAtMs < 0L) {
+            firstFailedReconciliationAtMs = Math.max(0L, nowMs);
+        }
+        return firstFailedReconciliationAtMs;
+    }
+
+    /**
+     * Closes a window that cannot reconcile without replaying anything. Returns what was
+     * dropped, or null when no window was open.
+     */
+    public synchronized Abandonment abandon(String reason,
+                                            AgentMaterializedStateFingerprint currentState,
+                                            long nowMs) {
+        if (!active) {
+            return null;
+        }
+        Abandonment abandonment = new Abandonment(
+                reason == null || reason.isBlank() ? "unspecified" : reason.trim(),
+                scope,
+                startedAtMs,
+                firstFailedReconciliationAtMs,
+                Math.max(0L, nowMs),
+                unsupportedOutcome,
+                materializedBaseline,
+                currentState);
+        active = false;
+        scope = AgentAbstractExecutionScope.NONE;
+        unsupportedOutcome = null;
+        materializedBaseline = null;
+        firstFailedReconciliationAtMs = -1L;
+        abandonmentCount++;
+        lastAbandonment = abandonment;
+        return abandonment;
     }
 
     public synchronized Snapshot snapshot() {
@@ -85,7 +138,10 @@ public final class AgentBackgroundOutcomeLedger {
                 heartbeatCount,
                 unsupportedOutcome,
                 reconciliationCount,
-                materializedBaseline);
+                materializedBaseline,
+                firstFailedReconciliationAtMs,
+                abandonmentCount,
+                lastAbandonment);
     }
 
     public record Snapshot(
@@ -96,6 +152,21 @@ public final class AgentBackgroundOutcomeLedger {
             long heartbeatCount,
             String unsupportedOutcome,
             long reconciliationCount,
-            AgentMaterializedStateFingerprint materializedBaseline) {
+            AgentMaterializedStateFingerprint materializedBaseline,
+            long firstFailedReconciliationAtMs,
+            long abandonmentCount,
+            Abandonment lastAbandonment) {
+    }
+
+    /** Evidence for a window closed without reconciling. */
+    public record Abandonment(
+            String reason,
+            AgentAbstractExecutionScope scope,
+            long startedAtMs,
+            long firstFailedReconciliationAtMs,
+            long abandonedAtMs,
+            String unsupportedOutcome,
+            AgentMaterializedStateFingerprint materializedBaseline,
+            AgentMaterializedStateFingerprint currentState) {
     }
 }
