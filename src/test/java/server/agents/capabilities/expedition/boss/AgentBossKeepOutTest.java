@@ -164,7 +164,7 @@ class AgentBossKeepOutTest {
 
         verify(gateway, never()).setHorizontalBoundary(any(), anyInt(), anyInt(), anyInt());
         verify(gateway, never()).navigate(any(), any(), anyBoolean());
-        verify(gateway).grind(warrior, Set.of(SOLOMON), Set.of(REX));
+        verify(gateway).grind(warrior, Set.of(REX), Set.of(SOLOMON)); // Rex first (a5c81c851)
     }
 
     @Test
