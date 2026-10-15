@@ -30,6 +30,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +78,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private final Map<Integer, long[]> afflicted = new HashMap<>();
     /** Fighter id -> its own HP alert while a big hit nearby holds it higher ({@link #guardHp}). */
     private final Map<Integer, Float> raisedAlerts = new HashMap<>();
+    /** Fighters held on a finished stage map with no HP potion left ({@link #holdsDry}). */
+    private final Set<Integer> heldDry = new HashSet<>();
     /** When the last tick ran, and when the last status line went out (-1: none yet). */
     private long lastTickMs = -1;
     private long lastStatusMs = -1;
@@ -116,7 +119,11 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
             if (!cleared && rules != null && rules.stageMaps().contains(map.getId()) && stageDone(map, rules)) {
                 release(gateway, entry, member.getId());
-                advance(gateway, entry, member, rules.stagePortal(), nowMs);
+                if (holdsDry(member)) {
+                    gateway.stop(entry);
+                } else {
+                    advance(gateway, entry, member, rules.stagePortal(), nowMs);
+                }
                 continue;
             }
             guardHp(member, cleared ? null : map, rules);
@@ -541,6 +548,26 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.KEEP_OUT_MARGIN_PX");
     }
 
+    /**
+     * 2026-10-15 (P20 run 9): true while a member of a run whose deaths count against it (REVIVE_INSIDE: Pink Bean's
+     * expedition fails at its fifth death) stands on a finished stage map, the room it revives in, with no HP potion
+     * left: it waits there instead of walking back in. Ingrid revived dry three times in 46 seconds and spent the
+     * run's last three lives. Once it holds a potion again (its owner hands it some), it walks back in. Says so once
+     * per stay ({@link Ports#heldDry}).
+     */
+    private boolean holdsDry(Character member) {
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(key);
+        boolean dry = definition != null && definition.deathMode() == AgentBossRunDefinition.DeathMode.REVIVE_INSIDE
+                && ports.hpPotions(member) <= 0;
+        if (!dry) {
+            heldDry.remove(member.getId());
+        } else if (heldDry.add(member.getId())) {
+            log.info("Boss run member holds dry: boss={} member={} map={}", key, member.getId(), member.getMapId());
+            ports.heldDry(member);
+        }
+        return dry;
+    }
+
     /** P18: a stage map is done once no live monster but the boss's never-targets stands on it. */
     private boolean stageDone(MapleMap map, AgentBossRules.Boss rules) {
         for (Monster monster : ports.monsters(map)) {
@@ -689,7 +716,30 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return false;
         }
 
+        /** 2026-10-15: the HP potions the member carries (AgentPotionService's count). */
+        default int hpPotions(Character member) {
+            return Integer.MAX_VALUE;
+        }
+
+        /** 2026-10-15: the member started waiting on a stage map with no HP potion left; its host says so. */
+        default void heldDry(Character member) {
+        }
+
         Ports LIVE = new Ports() {
+            @Override
+            public int hpPotions(Character member) {
+                return gateway().hpPotionCount(member);
+            }
+
+            @Override
+            public void heldDry(Character member) {
+                AgentBossRunSession session = AgentBossRunRegistry.forMember(member.getId());
+                AgentBossRunMember seat = session == null ? null : session.member(member.getId());
+                if (seat != null) {
+                    AgentBossRunHost.installed().heldDry(seat.seat(session.definition().key(), session.sessionId()));
+                }
+            }
+
             @Override
             public boolean castSurvivalBuff(Character member) {
                 AgentRuntimeEntry entry = entry(member.getId());

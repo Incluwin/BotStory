@@ -41,6 +41,11 @@ final class BossRunLines {
      * (AgentBossRunHost.Rule.reentering); once per death.
      */
     static final String REENTER = "boss.reenter";
+    /**
+     * 2026-10-15 (P20 run 9): it revived with no HP potion left in a run whose deaths count against it (Pink Bean) and
+     * waits in the room it revived in (AgentBossRunHost.Rule.heldDry); once per stay.
+     */
+    static final String DRY = "boss.dry";
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
@@ -143,6 +148,10 @@ final class BossRunLines {
                     "ugh, i'm down. running back in!",
                     "got knocked out, on my way back in.",
                     "be right back, heading back in.")),
+            Map.entry(DRY, List.of(
+                    "out of pots. i'll wait back here, can't afford to go down again.",
+                    "no potions left, so i'm staying back here. don't want to cost us another life.",
+                    "i'm dry on pots. waiting here, toss me some if you can.")),
             Map.entry(REGROUP, List.of("everyone's down... let's regroup outside.")),
             Map.entry(HANDOFF, List.of("i'll see this through with you, {name}.")),
             Map.entry(GG, List.of(

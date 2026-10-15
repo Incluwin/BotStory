@@ -162,6 +162,13 @@ public final class AgentBossRunHost {
         }
 
         /**
+         * 2026-10-15 (P20 run 9): a member of a run whose deaths count against it revived with no HP potion left and
+         * waits in the room it revived in instead of walking back in (AgentBossPriorityFight.holdsDry). Once per stay.
+         */
+        default void heldDry(Seat seat) {
+        }
+
+        /**
          * P12 G11, companion boss scope case 3: true while {@code agent} is a companion on the recruit or gate map of a
          * boss the switch lists, and the owner it follows stands on that map too (Showa's 801040004 holds monsters).
          * Memory only, any thread. Unless answered, false.
@@ -339,6 +346,19 @@ public final class AgentBossRunHost {
                 current.reentering(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run reentering rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void heldDry(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.heldDry(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run held-dry rule failed for {}", seat, failure);
             }
         }
 
