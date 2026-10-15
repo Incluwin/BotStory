@@ -5,6 +5,7 @@ import client.Disease;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.combat.AgentBerserkWindowPolicy;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentMobTouchPolicy;
@@ -12,6 +13,7 @@ import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.mobcontrol.AgentBossScope;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
@@ -58,7 +60,10 @@ import java.util.function.Supplier;
  *
  * <p>2026-10-15: a part the boss rules list under {@code attackKeepOut} (Showa's Bodyguards) adds the reach of each of
  * its attacks that would take ATTACK_KEEP_OUT_HP_PERCENT of a member's HP in one hit to the span the member keeps out
- * of, on the side the part faces, so the member fights it from behind or from outside that reach.</p>
+ * of, on the side the part faces, so the member fights it from behind or from outside that reach. A part that moves
+ * (Showa's Bodyguards walk the floor) keeps members MOBILE_KEEP_OUT_MARGIN_PX past its span instead of
+ * KEEP_OUT_MARGIN_PX, and while any monster on its map could hit a member for more than its autopot alert leaves it,
+ * the member drinks earlier ({@link #guardHp}).</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentBossPriorityFight.class);
@@ -70,6 +75,8 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private final Map<Integer, int[]> bands = new HashMap<>();
     /** Fighter id -> how long it stood sealed, and how long disabled (stun, seduce, confuse), since the last status. */
     private final Map<Integer, long[]> afflicted = new HashMap<>();
+    /** Fighter id -> its own HP alert while a big hit nearby holds it higher ({@link #guardHp}). */
+    private final Map<Integer, Float> raisedAlerts = new HashMap<>();
     /** When the last tick ran, and when the last status line went out (-1: none yet). */
     private long lastTickMs = -1;
     private long lastStatusMs = -1;
@@ -112,6 +119,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 advance(gateway, entry, member, rules.stagePortal(), nowMs);
                 continue;
             }
+            guardHp(member, cleared ? null : map, rules);
             boolean melee = ports.melee(member);
             Set<Integer> live = cleared ? Set.of() : liveByMap.computeIfAbsent(map, this::liveIds);
             AgentBossRules.Focus step = cleared ? null : AgentBossRules.focusStep(rules, live);
@@ -305,6 +313,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         int sweep = ports.touchSweepPx();
         long left = Long.MAX_VALUE;
         long right = Long.MIN_VALUE;
+        boolean moving = false;
         for (Monster monster : ports.monsters(map)) {
             Rectangle area = monster.isAlive() ? ports.touchArea(monster) : null;
             if (area == null || area.y > foot.y || area.y + area.height <= foot.y - sweep
@@ -313,6 +322,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
             left = Math.min(left, area.x);
             right = Math.max(right, (long) area.x + area.width - 1);
+            moving |= ports.mobile(monster);
         }
         double attackLimit = ports.maxHp(member) * (double) attackKeepOutHpPercent() / 100.0d;
         for (Monster monster : attackParts.isEmpty() ? List.<Monster>of() : ports.monsters(map)) {
@@ -328,12 +338,13 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 }
                 left = Math.min(left, area.x);
                 right = Math.max(right, (long) area.x + area.width - 1);
+                moving |= ports.mobile(monster);
             }
         }
         if (left > right) {
             return null;
         }
-        int margin = keepOutMarginPx();
+        int margin = moving ? Math.max(keepOutMarginPx(), mobileKeepOutMarginPx()) : keepOutMarginPx();
         boolean keepLeft = side == null ? foot.x <= (left + right) / 2 : side.equals("left");
         return keepLeft
                 ? new int[] {Integer.MIN_VALUE, (int) Math.max(Integer.MIN_VALUE, left - 1 - margin)}
@@ -353,6 +364,75 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         int minY = origin.y + Math.min(attack.lt().y, attack.rb().y);
         int maxY = origin.y + Math.max(attack.lt().y, attack.rb().y);
         return new Rectangle(minX, minY, Math.max(1, maxX - minX + 1), Math.max(1, maxY - minY + 1));
+    }
+
+    /**
+     * 2026-10-15 (P19): while a live monster on the member's map could hit it for more than its autopot alert leaves
+     * it ({@link #worstHit}), its HP alert rises to that hit plus HP_FLOOR_EXTRA_PERCENT of it, as a share of its
+     * max HP, at most HP_FLOOR_MAX_PERCENT, so the member drinks before one hit can find it low: Showa's Bodyguard A
+     * touches for about 16,800, and a Hero with 19,776 HP who drinks at 70% died to one touch. Its own alert comes
+     * back once no such monster lives (the 45 s autopot setup restores it too). A member with no HP potion key
+     * (alert 0) is left alone; {@code map} null (the run cleared) restores the alert.
+     */
+    private void guardHp(Character member, MapleMap map, AgentBossRules.Boss rules) {
+        int id = member.getId();
+        float base = ports.baseHpAlert(member);
+        double worst = map == null || rules == null ? 0 : worstHit(map, member, rules.attackKeepOut());
+        float floor = (float) Math.min(hpFloorMaxPercent() / 100.0d,
+                worst * (100 + hpFloorExtraPercent()) / 100.0d / Math.max(1, ports.maxHp(member)));
+        if (base > 0 && floor > base) {
+            raisedAlerts.put(id, base);
+            ports.setHpAlert(member, floor);
+        } else if (raisedAlerts.remove(id) != null) {
+            ports.setHpAlert(member, base);
+        }
+    }
+
+    /**
+     * The biggest mean hit a live monster on {@code map} could deal the member now: a touch whose area reaches its
+     * floor, or a non-deadly attack of a part in {@code attackParts}; 0 for none.
+     */
+    double worstHit(MapleMap map, Character member, List<Integer> attackParts) {
+        Point at = member.getPosition();
+        if (at == null) {
+            return 0;
+        }
+        Point ground = ports.gateway().groundPoint(map, at);
+        Point foot = ground != null ? ground : at;
+        int sweep = ports.touchSweepPx();
+        double worst = 0;
+        for (Monster monster : ports.monsters(map)) {
+            if (!monster.isAlive()) {
+                continue;
+            }
+            Rectangle area = ports.touchArea(monster);
+            if (area != null && area.y <= foot.y && area.y + area.height > foot.y - sweep) {
+                worst = Math.max(worst, ports.touchDamage(member, monster));
+            }
+            if (attackParts.contains(monster.getId())) {
+                for (BossAction.OrdinaryAttack attack : ports.attacks(monster)) {
+                    if (!attack.deadly()) {
+                        worst = Math.max(worst, ports.attackDamage(member, monster, attack));
+                    }
+                }
+            }
+        }
+        return worst;
+    }
+
+    static int mobileKeepOutMarginPx() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.MOBILE_KEEP_OUT_MARGIN_PX");
+    }
+
+    static int hpFloorExtraPercent() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.HP_FLOOR_EXTRA_PERCENT");
+    }
+
+    static int hpFloorMaxPercent() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossPriorityFight.HP_FLOOR_MAX_PERCENT");
     }
 
     static int attackKeepOutHpPercent() {
@@ -567,6 +647,24 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return 0;
         }
 
+        /** 2026-10-15: true when {@code monster} walks or flies (Showa's Bodyguards), not a part that stands still. */
+        default boolean mobile(Monster monster) {
+            return false;
+        }
+
+        /**
+         * 2026-10-15: the HP fraction the member drinks below on its own (its owner's setting or the configured
+         * alert, with a Berserk window), 0 with no HP potion key.
+         */
+        default float baseHpAlert(Character member) {
+            return member.getAutopotHpAlert();
+        }
+
+        /** 2026-10-15: the member's autopot now drinks below {@code alert} of its max HP. */
+        default void setHpAlert(Character member, float alert) {
+            member.setAutopotHpAlert(alert);
+        }
+
         /**
          * The member casts Magic Guard when it knows it and has it down (AgentCombatBuffRuntime's critical survival
          * buff); true when it cast now. Buffs wait on a map with no live monster, so a member walking back through a
@@ -614,6 +712,18 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             @Override
             public List<BossAction.OrdinaryAttack> attacks(Monster monster) {
                 return ServerMobActionCatalog.forMob(monster.getId()).attacks();
+            }
+
+            @Override
+            public boolean mobile(Monster monster) {
+                MonsterStats stats = monster.getStats();
+                return stats != null && stats.isMobile();
+            }
+
+            @Override
+            public float baseHpAlert(Character member) {
+                return member.getKeymap().get(91) == null ? 0f
+                        : AgentBerserkWindowPolicy.autopotHpThreshold(member, AgentPotionService.hpThreshold(member));
             }
 
             @Override

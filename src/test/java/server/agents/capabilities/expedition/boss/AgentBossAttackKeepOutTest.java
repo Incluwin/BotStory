@@ -54,6 +54,9 @@ class AgentBossAttackKeepOutTest {
     private final EventInstanceManager event = mock(EventInstanceManager.class);
     private List<BossAction.OrdinaryAttack> attacks = List.of(STUN, SMASH);
     private boolean facesLeft = true;
+    private boolean mobile;
+    private float ownAlert = 0.7f;
+    private final List<Float> alerts = new ArrayList<>();
     private int maxHp = 19_776;
     private AgentBossPriorityFight fight;
 
@@ -113,6 +116,21 @@ class AgentBossAttackKeepOutTest {
             @Override
             public double attackDamage(Character member, Monster monster, BossAction.OrdinaryAttack attack) {
                 return hits.getOrDefault(attack, 0.0d);
+            }
+
+            @Override
+            public boolean mobile(Monster monster) {
+                return mobile;
+            }
+
+            @Override
+            public float baseHpAlert(Character member) {
+                return ownAlert;
+            }
+
+            @Override
+            public void setHpAlert(Character member, float alert) {
+                alerts.add(alert);
             }
         });
         monsters.add(bodyguard());
@@ -178,6 +196,48 @@ class AgentBossAttackKeepOutTest {
         verify(gateway).grind(any(), anySet(), anySet());
         verify(gateway, never()).navigate(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
         assertEquals(List.of(9_400_112, 9_400_113), AgentBossRules.of("showa").attackKeepOut());
+    }
+
+    @Test
+    void aBodyguardThatWalksIsGivenAWiderBerth() {
+        mobile = true;
+
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, 273 - 1 - 120},
+                fight.touchBand(battle, member(10, new Point(100, 161)), null, List.of(BODYGUARD_A)));
+    }
+
+    @Test
+    void whileBodyguardALivesAMemberDrinksAtNinetyFivePercentAndBackAtSeventyAfter() {
+        entries.put(10, mock(AgentRuntimeEntry.class));
+        Character hero = member(10, new Point(100, 161));
+
+        fight.tick(List.of(hero), event, 0L);
+        monsters.clear();
+        fight.tick(List.of(hero), event, 500L);
+        fight.tick(List.of(hero), event, 1_000L);
+
+        assertEquals(List.of(0.95f, 0.7f), alerts);
+    }
+
+    @Test
+    void aTouchTheMemberOutlastsAtItsOwnAlertLeavesThatAlert() {
+        attacks = List.of(STUN);
+        maxHp = 60_000;
+        entries.put(10, mock(AgentRuntimeEntry.class));
+
+        fight.tick(List.of(member(10, new Point(100, 161))), event, 0L);
+
+        assertEquals(List.of(), alerts, "16,800 x 1.15 is a third of 60,000, under the own 70%");
+    }
+
+    @Test
+    void aMemberWithNoHpPotionKeyIsLeftAlone() {
+        ownAlert = 0f;
+        entries.put(10, mock(AgentRuntimeEntry.class));
+
+        fight.tick(List.of(member(10, new Point(100, 161))), event, 0L);
+
+        assertEquals(List.of(), alerts);
     }
 
     @Test
