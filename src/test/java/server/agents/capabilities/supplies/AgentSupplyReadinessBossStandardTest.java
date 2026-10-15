@@ -270,6 +270,29 @@ class AgentSupplyReadinessBossStandardTest {
     }
 
     @Test
+    void pinkBeanCountsOnlyPotionsThatRestoreFifteenPercentOfMaximumHpToo() {
+        // P20 run 10 (2026-10-15): Ingrid bought 556 White Potions at Leafre toward Pink Bean's 600 and drank all 600
+        // in under three minutes
+        AgentSupplyReadiness.Activity pinkBean = AgentSupplyReadiness.Activity.partyQuest("pinkbean");
+        Map<Integer, StatEffect> effects = Map.of(WHITE, effect(300, 0), REINDEER_MILK, effect(5_000, 0));
+        try (MockedStatic<AgentUseItemClassificationPolicy> classification = potionEffects(effects)) {
+            Character ingrid = mock(Character.class);
+            when(ingrid.getId()).thenReturn(877);
+            when(ingrid.getJob()).thenReturn(Job.DARKKNIGHT);
+            when(ingrid.getCurrentMaxHp()).thenReturn(19_776);
+            when(ingrid.getCurrentMaxMp()).thenReturn(2_924);
+            Inventory use = new Inventory(ingrid, InventoryType.USE, (byte) 24);
+            use.addItem(Items.itemWithQuantity(WHITE, 556));
+            use.addItem(Items.itemWithQuantity(REINDEER_MILK, 44));
+            when(ingrid.getInventory(InventoryType.USE)).thenReturn(use);
+
+            assertEquals(new AgentSupplyReadiness.PotionFloor(1_500, 0), AgentSupplyReadiness.potionFloor(pinkBean));
+            assertEquals(44, AgentSupplyReadiness.countFor(ingrid, pinkBean)[0], "the White Potions do not count");
+            assertEquals(556, AgentSupplyReadiness.shortfall(ingrid, pinkBean).hp(), "600 - 44");
+        }
+    }
+
+    @Test
     void aMalformedOrZeroPotionFloorCountsEveryPotion() {
         String configured = AgentYamlConfig.config.tuning.put(FLOOR_KEY, "horntail=x/0");
         try {
