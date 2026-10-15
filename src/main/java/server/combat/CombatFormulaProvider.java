@@ -984,6 +984,7 @@ public final class CombatFormulaProvider {
     private WeaponType resolveWeaponType(int itemId) {
         return switch (itemId / 10000) {
             case 130 -> WeaponType.SWORD1H;
+            case 140 -> WeaponType.SWORD2H;
             case 131, 141 -> WeaponType.GENERAL1H_SWING;
             case 132, 142 -> WeaponType.GENERAL2H_SWING;
             case 133 -> WeaponType.DAGGER_THIEVES;

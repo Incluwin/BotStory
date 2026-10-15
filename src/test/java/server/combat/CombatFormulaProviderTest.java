@@ -194,6 +194,26 @@ class CombatFormulaProviderTest {
     }
 
     @Test
+    void shouldResolveSwordMasteryForTwoHandedSword() {
+        // 2026-10-15 (P20): a Hero's Timeless Nibleheim (140xxxx) fell to NOT_A_WEAPON and kept the 0.1 floor.
+        Character bot = mockDamageBot();
+        when(bot.getJob()).thenReturn(Job.HERO);
+        mockWeapon(bot, 1402046);
+
+        Skill masterySkill = mock(Skill.class);
+        StatEffect masteryEffect = mock(StatEffect.class);
+        when(masteryEffect.getMastery()).thenReturn(10);
+        when(masterySkill.getEffect(20)).thenReturn(masteryEffect);
+        when(bot.getSkillLevel(constants.skills.Fighter.SWORD_MASTERY)).thenReturn(20);
+
+        try (MockedStatic<SkillFactory> skillFactory = Mockito.mockStatic(SkillFactory.class)) {
+            skillFactory.when(() -> SkillFactory.getSkill(constants.skills.Fighter.SWORD_MASTERY)).thenReturn(masterySkill);
+
+            assertEquals(0.6d, provider.resolvePhysicalMastery(bot), 1.0e-12d);
+        }
+    }
+
+    @Test
     void shouldFallbackToTenPercentPhysicalMasteryWithoutSkill() {
         Character bot = mockDamageBot();
         mockWeapon(bot, 1462000);
