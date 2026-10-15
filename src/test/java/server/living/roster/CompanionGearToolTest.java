@@ -356,17 +356,28 @@ class CompanionGearToolTest {
     }
 
     @Test
-    void theBagNeedsASlotPerPiecePlusOneForPantsAnOverallPushesOff() throws Exception {
+    void theBagNeedsASlotPerWornPiecePlusOneForPantsAnOverallPushesOff() throws Exception {
         flintWears.addItemFromDB(Equip.restored(BLUE_JEAN_SHORTS, PANTS));
         use("Flint", false);
         List<Piece> kit = game.worn.get(0);
         assertEquals("longcoat", at(kit, TOP).category(), "a pirate's overall: " + kit);
-        assertEquals(List.of(kit.size() + 1), game.needs, "the overall pushes the worn pants into the bag");
+        assertEquals(List.of(2), game.needs, "the worn weapon swaps into the bag and the overall pushes the pants off");
 
-        bag(kit.size());
+        bag(1);
         String reply = use("Flint", false);
-        assertTrue(reply.contains("needs " + (kit.size() + 1) + " free Equip slots"), reply);
+        assertTrue(reply.contains("needs 2 free Equip slots"), reply);
         assertEquals(1, game.worn.size(), "nothing more went to the mailbox");
+    }
+
+    @Test
+    void piecesForEmptySlotsNeedOnlyTheOneSlotEachPassesThrough() throws Exception {
+        flintWears.removeSlot(WEAPON);
+        bag(1);
+
+        use("Flint", false);
+
+        assertEquals(1, game.worn.size(), "a full bag with one free slot still takes a kit for bare slots");
+        assertEquals(List.of(1), game.needs);
     }
 
     @Test

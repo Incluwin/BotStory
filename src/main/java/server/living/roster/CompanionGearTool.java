@@ -515,11 +515,13 @@ public final class CompanionGearTool {
     }
 
     /**
-     * Free Equip slots a companion needs: one per piece (what it wore swaps into the freed slot), plus one for worn pants
-     * an overall pushes off, plus one for a worn shield a new weapon type may push off (two-handed).
+     * Free Equip slots a companion needs: one per piece whose slot it wears something in (what it wore swaps into the
+     * bag), at least one (each piece passes through the bag on its way on), plus one for worn pants an overall pushes
+     * off, plus one for a worn shield a new weapon type may push off (two-handed).
      */
-    private static int need(Character chr, List<Piece> kit) {
-        int need = kit.size();
+    static int need(Character chr, List<Piece> kit) {
+        Inventory worn = chr.getInventory(InventoryType.EQUIPPED);
+        int need = Math.max(1, (int) kit.stream().filter(piece -> worn.getItem(piece.position()) != null).count());
         boolean overall = kit.stream().anyMatch(piece -> piece.position() == TOP && "longcoat".equals(piece.category()));
         if (overall && chr.getInventory(InventoryType.EQUIPPED).getItem(PANTS) != null) {
             need++;
