@@ -21,6 +21,8 @@ import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.scheduler.AgentScheduler;
+import server.agents.runtime.simulation.AgentSimulationMode;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRequest;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.knowledge.IntList;
@@ -71,6 +73,10 @@ public final class PresenceScheduler {
     /** An old hand this close below knowledge.VETERAN_LEVEL talks like a veteran (exact chances, rate numbers). */
     private static final int VETERAN_EARLY_LEVELS = 20;
     private static final int VETERAN_DAYS = 120;
+    /** A move re-checks every half second whether its abstract citizen has left BACKGROUND_ABSTRACT. */
+    private static final long ABSTRACT_EXIT_CHECK_MS = 500L;
+    /** 12 checks (6 s) outlast one abstract heartbeat (5 s), so even a scheduler that cannot be woken decides once. */
+    static final int ABSTRACT_EXIT_CHECKS = 12;
 
     private final Population population;
     private final Map<Integer, CitizenSession> sessions = new ConcurrentHashMap<>();
@@ -648,7 +654,8 @@ public final class PresenceScheduler {
     /**
      * Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. Its
      * activity changes as it arrives, never before: a move that waits (a supply trip) or is still on its pause leaves
-     * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs.
+     * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs. A citizen
+     * whose Agent runs abstract leaves BACKGROUND_ABSTRACT before it is moved.
      */
     public void travel(CitizenSession session, Activity next, int mapId, long now) {
         Character agent = session.agent();
@@ -663,7 +670,8 @@ public final class PresenceScheduler {
             return;
         }
         AgentRuntimeEntry entry = session.entry;
-        if (entry != null && AgentTownLifeRuntime.active(entry)) {
+        leaveAbstract(entry, agent);
+        if (entry != null && AgentTownLifeRuntime.active(entry)) { // someone can see it: it finishes what it is doing
             AgentTownLifeRuntime.stop(entry, agent);
             AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
         }
@@ -671,34 +679,65 @@ public final class PresenceScheduler {
             AgentMovementCommandRuntime.stop(entry);
         }
         population.market().onLeave(session);
-        Runnable move = () -> {
-            try {
-                Character current = session.agent();
-                if (current == null || !sessions.containsKey(session.characterId)) {
-                    return;
-                }
-                if (asked != session.latestMove) { // a newer move was asked during this one's pause: that one stands
-                    log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), asked.mapId());
-                    return;
-                }
-                if (onSupplyTrip(session)) { // it ran low while the move waited
-                    waitForSupplyTrip(session, current, asked);
-                    return;
-                }
-                if (current.getMapId() != target.getId()) {
-                    current.changeMap(target, target.getPortal(0));
-                }
-                session.mapId = target.getId();
-                session.activity = next;
-                startActivity(session, target, System.currentTimeMillis());
-                population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
-            } catch (RuntimeException failure) {
-                log.debug("citizen {} travel failed", session.name(), failure);
-            }
-        };
         boolean observed = Population.humansIn(agent.getMap()) > 0 || Population.humansIn(target) > 0;
         long delay = observed ? Math.min(90_000L, Math.max(4_000L, server.living.roster.RecallTravel.etaMs(agent.getMapId(), target.getId()) / 4)) : 1_000L;
-        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, move, delay);
+        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> arrive(session, asked, target, ABSTRACT_EXIT_CHECKS), delay);
+    }
+
+    /**
+     * Makes a move after its pause. A citizen whose Agent is still in BACKGROUND_ABSTRACT is not moved yet: the abstract
+     * window reconciles only while the citizen stands where the window began, so the move waits for the mode decision
+     * that {@link #leaveAbstract} woke. After ABSTRACT_EXIT_CHECKS checks it moves anyway, and the Agent leaves the
+     * window through the scheduler's bounded abandon (a WARN).
+     */
+    private void arrive(CitizenSession session, CitizenSession.Move asked, MapleMap target, int abstractChecksLeft) {
+        try {
+            Character current = session.agent();
+            if (current == null || !sessions.containsKey(session.characterId)) {
+                return;
+            }
+            if (asked != session.latestMove) { // a newer move was asked during this one's pause: that one stands
+                log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), asked.mapId());
+                return;
+            }
+            if (onSupplyTrip(session)) { // it ran low while the move waited
+                waitForSupplyTrip(session, current, asked);
+                return;
+            }
+            if (abstractChecksLeft > 0 && leaveAbstract(session.entry, current)) {
+                TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
+                        () -> arrive(session, asked, target, abstractChecksLeft - 1), ABSTRACT_EXIT_CHECK_MS);
+                return;
+            }
+            if (current.getMapId() != target.getId()) {
+                current.changeMap(target, target.getPortal(0));
+            }
+            session.mapId = target.getId();
+            session.activity = asked.activity();
+            startActivity(session, target, System.currentTimeMillis());
+            population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
+        } catch (RuntimeException failure) {
+            log.debug("citizen {} travel failed", session.name(), failure);
+        }
+    }
+
+    /**
+     * Starts an abstract citizen's way back to the exact world before it is moved. A graceful TownLife exit waits out a
+     * committed DWELL and holds the abstract scope through the move, so the window could not reconcile (one WARN per
+     * travel). Nobody on its map can see an abrupt stop, so TownLife stops at once, and the woken scheduler's next mode
+     * decision reconciles the window. True while the Agent is still abstract.
+     */
+    private static boolean leaveAbstract(AgentRuntimeEntry entry, Character agent) {
+        if (entry == null || entry.simulationState().mode() != AgentSimulationMode.BACKGROUND_ABSTRACT) {
+            return false;
+        }
+        if (AgentTownLifeRuntime.active(entry) && Population.humansIn(agent.getMap()) == 0) {
+            AgentTownLifeRuntime.forceStop(entry, agent, "citizen travel");
+            AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
+        }
+        AgentScheduler.wake(entry);
+        return true;
     }
 
     /**
