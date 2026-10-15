@@ -13,6 +13,7 @@ import java.awt.Rectangle;
 import server.maps.MapItem;
 import server.agents.perception.AgentMapPerception;
 import constants.skills.ChiefBandit;
+import constants.skills.DragonKnight;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.operations.events.AgentAttackResolvedEvent;
 import server.agents.integration.CombatAttackApplicationResult;
@@ -121,7 +122,7 @@ public final class AgentCombatAttackRuntime {
             attack.targets.put(target.getObjectId(), scaled(
                     CombatFormulaProvider.getInstance().makeTarget(bot, target, numDamage,
                             attackPlan.skillId, damageProfile, attackPlan.hitDelayMs),
-                    AgentBossClientLoad.damagePercent(bot, target.getId())));
+                    linePercent(attackPlan.skillId, AgentBossClientLoad.damagePercent(bot, target.getId()))));
         }
 
         if (bot.getMap() != attackMap) {
@@ -252,6 +253,15 @@ public final class AgentCombatAttackRuntime {
         return attackPlan != null && attackPlan.skillId == 0 && attackPlan.isCloseRangeRoute()
                 && AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
                 AgentAttackExecutionProvider.getEquippedWeaponType(bot));
+    }
+
+    /**
+     * 2026-10-15 (P20 run 7): the percent a boss's companionDamagePercent ({@code bossPercent}) scales the lines of
+     * {@code skillId} by. Sacrifice costs its user x% of its first line in HP (CloseRangeDamageHandler), so a scaled
+     * line made a Dark Knight pay 30-50k HP a cast, left at 1 HP by safeAddHP for the next hit: its lines stay as made.
+     */
+    static int linePercent(int skillId, int bossPercent) {
+        return skillId == DragonKnight.SACRIFICE ? 100 : bossPercent;
     }
 
     /** The target's lines scaled to {@code percent} (a boss's companionDamagePercent); the target itself at 100. */

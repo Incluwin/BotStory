@@ -205,4 +205,11 @@ class AgentCombatAttackRuntimeTest {
                 new net.server.channel.handlers.AbstractDealDamageHandler.AttackTarget(
                         (short) 0, List.of(Integer.MAX_VALUE), java.util.Set.of()), 1000).damageLines());
     }
+
+    @Test
+    void sacrificesLinesStayAsMadeSoItsHpCostDoesNotGrowWithTheBossScale() {
+        assertEquals(100, AgentCombatAttackRuntime.linePercent(constants.skills.DragonKnight.SACRIFICE, 1000));
+        assertEquals(1000, AgentCombatAttackRuntime.linePercent(constants.skills.DragonKnight.SPEAR_CRUSHER, 1000));
+        assertEquals(100, AgentCombatAttackRuntime.linePercent(0, 100), "outside a boss run nothing changes");
+    }
 }
