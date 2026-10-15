@@ -50,8 +50,8 @@ public final class AgentInventoryItemPolicy {
         for (short slot = 1; slot <= inventory.getSlotLimit(); slot++) {
             Item item = inventory.getItem(slot);
             if (item != null
-                    && isSafeToDrop(item, isQuestItem, allowsUntradeableItem)
-                    && filter.test(item)) {
+                    && filter.test(item) // first: the safety check reads the item data
+                    && isSafeToDrop(item, isQuestItem, allowsUntradeableItem)) {
                 result.add(item);
             }
         }

@@ -558,6 +558,27 @@ class AgentShopServiceReadinessAmmoTest {
     }
 
     @Test
+    void anAllyProvisionedOnArrivalSellsArrowsItCannotShootForItsPotions() {
+        // 2026-10-15 (P19): the ally Gunnar came to every Showa run with 95 of 96 Use slots full of looted arrows and
+        // bullets, and his arrival purchase bought nothing
+        trip = AgentSupplyReadiness.Activity.partyQuest("horntail");
+        sellable();
+        bag(5);
+        for (int i = 0; i < 4; i++) {
+            use.addItem(junk(ARROW, 2_000));
+        }
+        purse = 1_000_000;
+
+        AgentShopProvisioning.Provisioned bought = AgentShopProvisioning.provision(bot,
+                shop(List.of(WHITE, BLUE)), trip, 0, inventory, WeaponType.GENERAL1H_SWING);
+
+        assertEquals(4, transactions.stream().filter(t -> t.equals("sold 2000 x " + ARROW)).count(),
+                transactions.toString());
+        assertEquals(400, bought.hpPotions(), "a stack in each slot it made, HP first: " + transactions);
+        assertEquals(1, use.getNumFreeSlot(), "the run's slot");
+    }
+
+    @Test
     void anArcherOnACureTripSellsNoneOfItsOwnArrows() {
         trip = HORNTAIL_CURE;
         hunter();

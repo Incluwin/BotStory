@@ -100,6 +100,9 @@ public final class AgentShopProvisioning {
         int mesosBefore = agent.getMeso();
         AgentShopPurchaseSequence<AgentRuntimeEntry> counter = new AgentShopPurchaseSequence<>(null, agent,
                 inventory, null, List.of(), new ArrayList<>(), null);
+        // Room as a readiness trip makes it (2026-10-15, P19): the ally Gunnar came to every Showa run with 95 of 96 Use
+        // slots full of looted arrows and bullets and bought nothing.
+        counter = AgentShopService.makeUseRoomForReadiness(counter, shop, weapon, activity);
         int[] bought = {0, 0};
         counter = AgentShopService.buyReadinessFloor(counter, shop, activity, minimumMesoReserve, bought, false);
         AgentShopService.buyReadinessAmmo(agent, shop, weapon, inventory, AgentSupplyReadiness.ammoTarget(activity),
