@@ -1,7 +1,8 @@
 # P18: Horntail
 
 > Built 2026-10-12 on branch `feat/companion-bossing-p18`, on top of P17. Plan: docs/COMPANION_BOSSING_PLAN.md,
-> section P18. Not deployed, not live-tested yet. The `horntail` key ships off.
+> section P18. **Live: CLEARED 2026-10-15 00:15** (run 6, 16 members, 37 minutes on the altar). The `horntail` key
+> ships off.
 
 ## Result
 
@@ -349,6 +350,33 @@ missed or went uncured is open (item 17).
 ohboy's client peaked at 2,359 MB virtual with 16 characters on the altar. 0 ERROR lines in the run's log
 (cosmic-log-2026-10-14-12) and after the 22:18 restart on the committed config.
 
+## Live check 2026-10-14/15, run 6 (CLEARED)
+
+**Setup.** Live 49ef17f60 (`fix/horntail-clear`, full suite 13,734 / 0 / 37) from 22:53, with the same temporary keys
+as the 16-member run (`horntail` in ENABLED_TYPES and ALLY_TYPES, OWNERS_MAX 2), reverted at 00:20. Same 16 members:
+ohboy with Brannock, Garrick, Ilse, Fenna and Corvin; Bossfriend with Isolde, Thane, Magna, Orrin and Tamsin; his bench
+allies Gunnar, Ingrid, Sorrel and Flint. Both owners at 30,000 HP for the run, set back in the database afterwards.
+Owner gifts: 5M mesos to the six companions short of coin (Ingrid, Flint and Sorrel in the database while benched, since
+`!givemeso` needs them online), and 150 Holy Water to each ally on the altar (below). Video:
+`p18-horntail-run6-2026-10-14.mp4` (1.4 GB, not in git).
+
+New in 49ef17f60: Horntail's potion floor 15% of max HP (was a quarter); an ally keeps the re-entry restock in Leafre;
+the ally picker's too-far line names the minutes an ally needs; a once-a-minute "Boss fight status" line.
+
+| Step | Result |
+|---|---|
+| Restock (Orbis, then Leafre) | **PASS.** All ten party companions topped Holy Water to 150 in Orbis and potions to 900/900 in Leafre. Thane, whom the old floor stranded, now bought Reindeer Milk to 900. Brannock and Corvin stayed put CANNOT_AFFORD until their owner's 5M. |
+| Ally call | **PASS on the second expedition.** In the first, ohboy created it and registered before Bossfriend opened the picker with 3:38 left; the picker now said "Flint (Lv. 200) needs about 3 min to reach me, and my list closes before that." It disbanded unstarted. In the second, Bossfriend created it and called first: all four arrived at 23:21:54-58 and bought 486-900 HP potions at the Leafre store. |
+| Pre-heads | **PASS.** 6 and 7.5 minutes, no deaths, everyone on the top platforms. |
+| Altar | **CLEARED** at 00:15:27, 37 minutes after Horntail woke (23:38:30): Legs within 2 minutes, Tail by about 23:42, Wings by 23:47, Hands by 23:54, Heads 23:54-00:15. Run 5 took 60 minutes to reach 6% left. |
+| Deaths | Ingrid 6, nobody else (run 5: about 60). |
+| Seal | The status line showed the ten party companions sealed 1-3 s a minute (Holy Water and Dispel), the four allies 21-29 s: they carry no cure, and Dispel reaches only the caster's party. With 150 Holy Water each (owner's gift, 23:45) they fell to 0-4 s. |
+| Hands | A mass seduce at 23:53:55 pulled ten fighters off the ledges toward the Right Hand; each recovered (disabled state). |
+| Ally re-entry restock (49ef17f60) | **PASS.** Ingrid, an ally, restocked in Leafre on her way back in at 23:39:59 (0 -> 896 HP potions). |
+| After the clear | **PASS.** ohboy left by the Crystal of Roots and Bossfriend by `!warp`; every companion left with its owner (EXITED) and the allies went home. |
+| Errors | 0 ERROR lines in the run's logs (22:53-00:20). |
+| Client memory | ohboy's client peaked at 2,533 MB of its 4,096 MB address space. |
+
 ## Open items
 
 1. Restock in Leafre on re-entry: built in 7a6244dba. Live PASS on 2026-10-14 (Flint and Ingrid; many times in the rerun).
@@ -387,6 +415,16 @@ ohboy's client peaked at 2,359 MB virtual with 16 characters on the altar. 0 ERR
     list could stay open while called allies are on the way.
 17. **Hands stage** (0.6% a minute): the companions drank only 3 to 15 Holy Water each. Needs a log line for a seal on
     a companion and its cure, to tell missed seals from uncured ones, and the Hands' reach from the y=80 ledges.
+    Run 6: the status line (49ef17f60) showed it: the allies carried no cure (item 19).
+
+Run 6 resolved 14 (floor 15%), 15 (allies restock on re-entry; at the Mark they buy from their own purse) and 16
+(the picker names the minutes an ally needs; call allies first).
+
+19. **Allies carry no seal cure**: an ally called at the Mark buys potions there (no store on the way sells cures) and
+    Dispel reaches only the caster's party, so in run 6 the four allies stood sealed half of every minute at the Hands
+    until their owner handed each 150 Holy Water.
+20. **Ingrid burns potions**: as an ally she used 896 HP potions in 13 minutes on the altar and then died six times on
+    arrival (pots=0) once broke. Where she stands, and why she alone, is open.
 18. **Last head**: with one head left the rate fell from 1.8% to 1.3% a minute; about 6% (125M HP) short at the
     60-minute limit.
 
