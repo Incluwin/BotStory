@@ -155,8 +155,8 @@ class AgentBossRulesCatalogTest {
         assertEquals(1000, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
         assertEquals(100, pinkBean.damagePercentOn(8_820_007), "an add keeps the member's own strength");
         assertEquals(100, pinkBean.damagePercentOn(8_820_019), "a statue is no part");
-        assertEquals(List.of(8_820_003, 8_820_004), pinkBean.attackKeepOut(),
-                "Solomon's and Rex's hits keep out a member that one would nearly kill");
+        assertEquals(List.of(8_820_003, 8_820_004, 8_820_005, 8_820_006, 8_820_002), pinkBean.attackKeepOut(),
+                "every guardian's hit keeps out a member that one would nearly kill (Hugin's killed three in run 8)");
         assertEquals(0, pinkBean.keepOutHpPercent(), "the global ATTACK_KEEP_OUT_HP_PERCENT (80)");
         assertTrue(pinkBean.targetPriority().indexOf(8_820_004) < pinkBean.targetPriority().indexOf(8_820_003),
                 "Rex, whose attack2 covers the whole floor, falls before Solomon: the two never hit one spot at once");
