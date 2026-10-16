@@ -235,6 +235,26 @@ class AgentBossAttackKeepOutTest {
     }
 
     @Test
+    void pinkBeansBarrageKeepsOutABowmasterItWouldOneShotButNotAHyperBodyWarrior() {
+        // 2026-10-16 (P20 run 14): Pink Bean's attack1 strikes nine areas across x -400..400 for about 11,900 each
+        // (MADamage 1,200). Fenna, a Bowmaster with 8,996 HP, stood at his feet and died twice in two minutes. From
+        // the band's edge (521 px from his origin, 484 from his body) her Hurricane still reaches him: 400 + 120.
+        BossAction.OrdinaryAttack barrage = attack(3, false, new Point(-400, -600), new Point(400, 0));
+        attacks = List.of(barrage);
+        hits.put(barrage, 11_900.0d);
+        mobile = true;
+        maxHp = 8_996;
+
+        assertArrayEquals(new int[] {420 + 400 + 1 + 120, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(10, new Point(720, 161)), null, List.of(BODYGUARD_A)),
+                "11,900 is 132% of 8,996");
+        maxHp = 31_600;
+        assertArrayEquals(new int[] {450 + 1 + 120, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(11, new Point(720, 161)), null, List.of(BODYGUARD_A)),
+                "11,900 is 38% of 31,600: only the touch's edge (450) bounds a Hyper Body warrior");
+    }
+
+    @Test
     void aBodyguardThatWalksIsGivenAWiderBerth() {
         mobile = true;
 
