@@ -149,10 +149,10 @@ class AgentBossRulesCatalogTest {
     }
 
     @Test
-    void pinkBeansCompanionsHitItsPartsTenTimesHarderAndEveryOtherBossKeepsTheirOwnStrength() {
+    void pinkBeansCompanionsHitItsPartsTwentyTimesHarderAndEveryOtherBossKeepsTheirOwnStrength() {
         AgentBossRules.Boss pinkBean = AgentBossRules.of("pinkbean");
-        assertEquals(1000, pinkBean.damagePercentOn(8_820_003), "Solomon, a guardian");
-        assertEquals(1000, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
+        assertEquals(2000, pinkBean.damagePercentOn(8_820_003), "Solomon, a guardian");
+        assertEquals(2000, pinkBean.damagePercentOn(8_820_001), "Pink Bean himself");
         assertEquals(100, pinkBean.damagePercentOn(8_820_007), "an add keeps the member's own strength");
         assertEquals(100, pinkBean.damagePercentOn(8_820_019), "a statue is no part");
         assertEquals(List.of(8_820_003, 8_820_004, 8_820_005, 8_820_006, 8_820_002), pinkBean.attackKeepOut(),
@@ -181,6 +181,6 @@ class AgentBossRulesCatalogTest {
 
         assertThrows(IllegalArgumentException.class, () -> new AgentBossRules.Boss("test_bad", "Test bad", null,
                 List.of(100), null, null, null, false, null, 0, 0, false, null, null, null, 0, null, null, null,
-                null, 0, 1001));
+                null, 0, 5001));
     }
 }

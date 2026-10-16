@@ -63,7 +63,8 @@ import java.util.TreeMap;
  * <li>{@code companionDamagePercent} (2026-10-15, 0 = 100 = unchanged): the percent an INSIDE member's damage lines on
  * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
  * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
- * HP over 140 minutes needs about 55 million a minute; twelve Lv200 companions dealt about 17 million (P20 run 1).</li>
+ * HP over 140 minutes needs about 55 million a minute; twelve Lv200 companions dealt about 17 million (P20 run 1).
+ * At most 5000; a line is clamped at Integer.MAX_VALUE.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>
  * <li>{@code fieldBosses} (P12 G1): for a field group key such as field_victoria, the boss ids that fight under it on
@@ -106,8 +107,8 @@ public final class AgentBossRules {
             if (keepOutHpPercent < 0 || keepOutHpPercent > 100) {
                 throw new IllegalArgumentException("keepOutHpPercent must be 0 to 100: " + keepOutHpPercent);
             }
-            if (companionDamagePercent < 0 || companionDamagePercent > 1000) {
-                throw new IllegalArgumentException("companionDamagePercent must be 0 to 1000: " + companionDamagePercent);
+            if (companionDamagePercent < 0 || companionDamagePercent > 5000) {
+                throw new IllegalArgumentException("companionDamagePercent must be 0 to 5000: " + companionDamagePercent);
             }
         }
 

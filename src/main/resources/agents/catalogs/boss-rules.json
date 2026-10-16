@@ -69,7 +69,7 @@
         {"mobId": 8820004, "fromDx": 200, "toDx": 900}
       ],
       "attackKeepOut": [8820003, 8820004, 8820005, 8820006, 8820002],
-      "companionDamagePercent": 1000
+      "companionDamagePercent": 2000
     },
     {
       "key": "latanica",
