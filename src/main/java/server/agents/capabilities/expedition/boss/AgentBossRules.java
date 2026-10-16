@@ -60,6 +60,10 @@ import java.util.TreeMap;
  * this boss's threshold for both keep-outs, as a percent of the member's max HP. Showa's is 90: the HP floor
  * (AgentBossPriorityFight.guardHp) carries a member through any hit under about 82% of its HP, so a Hyper Body warrior
  * (about 31,600 HP) fights Bodyguard A at arm's length while a member a hit would kill outright keeps out.</li>
+ * <li>{@code attackKeepOutHpPercent} (2026-10-16, 0 = {@code keepOutHpPercent}): this boss's threshold for the attack
+ * keep-out alone. Pink Bean's is 65: his barrage (about 11,900, with a stun) is 80% of a Bowmaster's Hyper Body HP
+ * (about 14,400), under the global 80, and killed Fenna twice in a minute in run 15; a warrior without Hyper Body
+ * (19,776) takes 60% and still fights at his feet. Its touch keep-out stays at the global 25.</li>
  * <li>{@code companionDamagePercent} (2026-10-15, 0 = 100 = unchanged): the percent an INSIDE member's damage lines on
  * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
  * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
@@ -86,7 +90,7 @@ public final class AgentBossRules {
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
                        List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut,
-                       int keepOutHpPercent, int companionDamagePercent) {
+                       int keepOutHpPercent, int companionDamagePercent, int attackKeepOutHpPercent) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -110,6 +114,32 @@ public final class AgentBossRules {
             if (companionDamagePercent < 0 || companionDamagePercent > 5000) {
                 throw new IllegalArgumentException("companionDamagePercent must be 0 to 5000: " + companionDamagePercent);
             }
+            if (attackKeepOutHpPercent < 0 || attackKeepOutHpPercent > 100) {
+                throw new IllegalArgumentException(
+                        "attackKeepOutHpPercent must be 0 to 100: " + attackKeepOutHpPercent);
+            }
+        }
+
+        /** A boss row whose attack keep-out shares {@code keepOutHpPercent} (every row before Pink Bean's run 15). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut, int keepOutHpPercent,
+                    int companionDamagePercent) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, attackKeepOut, keepOutHpPercent, companionDamagePercent, 0);
+        }
+
+        /**
+         * This boss's threshold for the attack keep-out, as a percent of the member's max HP: its own
+         * {@code attackKeepOutHpPercent}, else {@code keepOutHpPercent}, else 0 (the global
+         * ATTACK_KEEP_OUT_HP_PERCENT).
+         */
+        public int attackThresholdPercent() {
+            return attackKeepOutHpPercent > 0 ? attackKeepOutHpPercent : keepOutHpPercent;
         }
 
         /** A boss row whose companions hit its parts at their own strength (every row before Pink Bean's run 2). */

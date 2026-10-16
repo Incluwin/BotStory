@@ -158,7 +158,11 @@ class AgentBossRulesCatalogTest {
         assertEquals(List.of(8_820_003, 8_820_004, 8_820_005, 8_820_006, 8_820_002, 8_820_001),
                 pinkBean.attackKeepOut(), "every guardian's hit keeps out a member that one would nearly kill"
                         + " (Hugin's killed three in run 8), and so does Pink Bean's barrage (Fenna, run 14)");
-        assertEquals(0, pinkBean.keepOutHpPercent(), "the global ATTACK_KEEP_OUT_HP_PERCENT (80)");
+        assertEquals(0, pinkBean.keepOutHpPercent(), "the global TOUCH_KEEP_OUT_HP_PERCENT (25) for touches");
+        assertEquals(65, pinkBean.attackThresholdPercent(),
+                "a Hyper Body Bowmaster (~14,400) keeps out of the barrage (~11,500), an unbuffed warrior does not");
+        assertEquals(90, AgentBossRules.of("showa").attackThresholdPercent(), "Showa's one threshold for both");
+        assertEquals(0, AgentBossRules.of("horntail").attackThresholdPercent(), "the global 80");
         assertTrue(pinkBean.targetPriority().indexOf(8_820_004) < pinkBean.targetPriority().indexOf(8_820_003),
                 "Rex, whose attack2 covers the whole floor, falls before Solomon: the two never hit one spot at once");
 

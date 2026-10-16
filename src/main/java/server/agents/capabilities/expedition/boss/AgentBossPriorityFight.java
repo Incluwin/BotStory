@@ -287,7 +287,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      */
     int[] band(MapleMap map, Character member, AgentBossRules.Boss rules, boolean melee, AgentBossRules.Focus step) {
         int[] touch = touchBand(map, member, step == null ? null : step.side(), rules.attackKeepOut(),
-                rules.keepOutHpPercent());
+                rules.keepOutHpPercent(), rules.attackThresholdPercent());
         int[] keep = melee || rules.keepOut().isEmpty() ? null : keepOutBand(map, rules);
         if (touch == null || keep == null) {
             return touch == null ? keep : touch;
@@ -327,6 +327,15 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * TOUCH_KEEP_OUT_HP_PERCENT and ATTACK_KEEP_OUT_HP_PERCENT.
      */
     int[] touchBand(MapleMap map, Character member, String side, List<Integer> attackParts, int keepOutHpPercent) {
+        return touchBand(map, member, side, attackParts, keepOutHpPercent, keepOutHpPercent);
+    }
+
+    /**
+     * {@link #touchBand(MapleMap, Character, String, List, int)} with a threshold of its own for the attacks
+     * ({@code attackKeepOutHpPercent}, boss-rules.json, 2026-10-16; 0 for the global ATTACK_KEEP_OUT_HP_PERCENT).
+     */
+    int[] touchBand(MapleMap map, Character member, String side, List<Integer> attackParts, int keepOutHpPercent,
+                    int attackKeepOutHpPercent) {
         Point at = member.getPosition();
         if (at == null) {
             return null;
@@ -346,7 +355,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             areas.add(new long[] {area.x, (long) area.x + area.width - 1, ports.mobile(monster) ? 1 : 0});
         }
         double attackLimit = ports.maxHp(member)
-                * (double) (keepOutHpPercent > 0 ? keepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
+                * (double) (attackKeepOutHpPercent > 0 ? attackKeepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
         for (Monster monster : attackParts.isEmpty() ? List.<Monster>of() : ports.monsters(map)) {
             Point origin = monster.isAlive() && attackParts.contains(monster.getId()) ? monster.getPosition() : null;
             if (origin == null) {

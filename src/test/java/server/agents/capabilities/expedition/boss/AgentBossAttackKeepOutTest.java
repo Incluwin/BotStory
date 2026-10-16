@@ -255,6 +255,30 @@ class AgentBossAttackKeepOutTest {
     }
 
     @Test
+    void underPinkBeansSixtyFivePercentAHyperBodyBowmasterKeepsOutOfTheBarrageAndAnUnbuffedWarriorDoesNot() {
+        // 2026-10-16 (P20 run 15): with Hyper Body Fenna had about 14,400 HP, and the barrage's ~11,500 (less half her
+        // magic defense) was 80% of it, not over the global 80: she stood in it, was stunned twice and died twice in
+        // 38 seconds.
+        BossAction.OrdinaryAttack barrage = attack(3, false, new Point(-400, -600), new Point(400, 0));
+        attacks = List.of(barrage);
+        hits.put(barrage, 11_500.0d);
+        mobile = true;
+        maxHp = 14_393;
+        AgentBossRules.Boss rules = new AgentBossRules.Boss("test", "Test", null, List.of(BODYGUARD_A), null, null,
+                null, false, null, 0, 0, false, null, null, null, 0, null, null, null, List.of(BODYGUARD_A), 0, 0, 65);
+
+        assertArrayEquals(new int[] {420 + 400 + 1 + 120, Integer.MAX_VALUE},
+                fight.band(battle, member(10, new Point(720, 161)), rules, true, null), "80% is over 65");
+        assertArrayEquals(new int[] {450 + 1 + 120, Integer.MAX_VALUE},
+                fight.touchBand(battle, member(10, new Point(720, 161)), null, List.of(BODYGUARD_A)),
+                "under the global 80 only the touch's edge (450) bounds her");
+        maxHp = 19_776;
+        assertArrayEquals(new int[] {450 + 1 + 120, Integer.MAX_VALUE},
+                fight.band(battle, member(11, new Point(720, 161)), rules, true, null),
+                "58% of a warrior's 19,776 without Hyper Body: it still fights at his feet");
+    }
+
+    @Test
     void aBodyguardThatWalksIsGivenAWiderBerth() {
         mobile = true;
 
