@@ -558,7 +558,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private boolean holdsDry(Character member) {
         AgentBossRunDefinition definition = AgentBossRunCatalog.of(key);
         boolean dry = definition != null && definition.deathMode() == AgentBossRunDefinition.DeathMode.REVIVE_INSIDE
-                && ports.hpPotions(member) <= 0;
+                && ports.hpPotions(member) == 0;
         if (!dry) {
             heldDry.remove(member.getId());
         } else if (heldDry.add(member.getId())) {
@@ -716,7 +716,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return false;
         }
 
-        /** 2026-10-15: the HP potions the member carries (AgentPotionService's count). */
+        /** 2026-10-15: the HP potions the member carries (AgentPotionService's count); -1 when that cannot be told. */
         default int hpPotions(Character member) {
             return Integer.MAX_VALUE;
         }
