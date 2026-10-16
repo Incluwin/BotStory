@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -163,6 +164,9 @@ class AgentBossRulesCatalogTest {
                 "a Hyper Body Bowmaster (~14,400) keeps out of the barrage (~11,500), an unbuffed warrior does not");
         assertEquals(90, AgentBossRules.of("showa").attackThresholdPercent(), "Showa's one threshold for both");
         assertEquals(0, AgentBossRules.of("horntail").attackThresholdPercent(), "the global 80");
+        assertEquals(new AgentBossRules.LastStand("fallenPlayers", 4), pinkBean.lastStand(),
+                "PinkBeanBattle.js calls its last stand at the fourth fallen player and ends at the fifth");
+        assertNull(AgentBossRules.of("horntail").lastStand(), "Horntail's dead re-enter");
         assertTrue(pinkBean.targetPriority().indexOf(8_820_004) < pinkBean.targetPriority().indexOf(8_820_003),
                 "Rex, whose attack2 covers the whole floor, falls before Solomon: the two never hit one spot at once");
 

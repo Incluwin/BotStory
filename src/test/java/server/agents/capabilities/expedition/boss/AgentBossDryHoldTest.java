@@ -39,6 +39,7 @@ class AgentBossDryHoldTest {
     private final Map<Integer, Integer> potions = new HashMap<>();
     private final List<Integer> portalTries = new ArrayList<>();
     private final List<Integer> heldDry = new ArrayList<>();
+    private final List<Integer> heldLastStand = new ArrayList<>();
     private final AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
     private final EventInstanceManager event = mock(EventInstanceManager.class);
 
@@ -81,6 +82,56 @@ class AgentBossDryHoldTest {
         potions.put(10, 0);
         fight.tick(List.of(ingrid), event, 60_000L);
         assertEquals(List.of(10, 10), heldDry);
+    }
+
+    @Test
+    void onceTheEventCallsItsLastStandARevivedMemberWithPotionsWaitsInTheRoomAndSaysSoOnce() {
+        // 2026-10-16 (P20 runs 14-16): each run ended on a member walking back in after the fourth death and dying
+        // again; Pink Bean's script calls "last stand mode" at its fourth fallen player and ends at the fifth.
+        AgentBossPriorityFight fight = fight("pinkbean");
+        when(event.getIntProperty("fallenPlayers")).thenReturn(4);
+        potions.put(10, 1_311);
+        Character fenna = member(10, REVIVE_ROOM);
+
+        fight.tick(List.of(fenna), event, 0L);
+        fight.tick(List.of(fenna), event, 10_000L);
+
+        assertTrue(portalTries.isEmpty(), "one more death would end the run");
+        assertEquals(List.of(10), heldLastStand, "one line per stay");
+        assertTrue(heldDry.isEmpty(), "it holds potions");
+    }
+
+    @Test
+    void beforeTheLastStandARevivedMemberWithPotionsWalksBackIn() {
+        AgentBossPriorityFight fight = fight("pinkbean");
+        when(event.getIntProperty("fallenPlayers")).thenReturn(3);
+        potions.put(10, 1_311);
+
+        fight.tick(List.of(member(10, REVIVE_ROOM)), event, 0L);
+
+        assertEquals(List.of(10), portalTries);
+        assertTrue(heldLastStand.isEmpty());
+    }
+
+    @Test
+    void aHorntailMemberWalksBackInWhateverItsEventCounts() {
+        AgentBossPriorityFight fight = fight("horntail");
+        when(event.getIntProperty("fallenPlayers")).thenReturn(9);
+
+        fight.tick(List.of(member(10, HORNTAIL_STAGE)), event, 0L);
+
+        assertEquals(List.of(10), portalTries, "Horntail names no last stand");
+        assertTrue(heldLastStand.isEmpty());
+    }
+
+    @Test
+    void anEventThatHasCountedNoDeathYetHoldsNobody() {
+        AgentBossPriorityFight fight = fight("pinkbean");
+        when(event.getIntProperty("fallenPlayers")).thenThrow(new NumberFormatException("null"));
+
+        fight.tick(List.of(member(10, REVIVE_ROOM)), event, 0L);
+
+        assertEquals(List.of(10), portalTries);
     }
 
     @Test
@@ -135,6 +186,11 @@ class AgentBossDryHoldTest {
             @Override
             public void heldDry(Character member) {
                 heldDry.add(member.getId());
+            }
+
+            @Override
+            public void heldLastStand(Character member) {
+                heldLastStand.add(member.getId());
             }
         });
     }

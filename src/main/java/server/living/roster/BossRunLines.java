@@ -46,6 +46,12 @@ final class BossRunLines {
      * waits in the room it revived in (AgentBossRunHost.Rule.heldDry); once per stay.
      */
     static final String DRY = "boss.dry";
+    /**
+     * 2026-10-16 (P20): it revived after the boss's event called its last stand (Pink Bean: one more death ends the
+     * expedition) and waits in the room it revived in for the rest of the run (AgentBossRunHost.Rule.heldLastStand);
+     * once per stay.
+     */
+    static final String LAST_STAND = "boss.laststand";
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
@@ -152,6 +158,10 @@ final class BossRunLines {
                     "out of pots. i'll wait back here, can't afford to go down again.",
                     "no potions left, so i'm staying back here. don't want to cost us another life.",
                     "i'm dry on pots. waiting here, toss me some if you can.")),
+            Map.entry(LAST_STAND, List.of(
+                    "one more of us goes down and it's over. i'll stay back here, finish it!",
+                    "can't risk another fall now. waiting here, you've got this.",
+                    "last stand, so i'm sitting the rest out. bring it home.")),
             Map.entry(REGROUP, List.of("everyone's down... let's regroup outside.")),
             Map.entry(HANDOFF, List.of("i'll see this through with you, {name}.")),
             Map.entry(GG, List.of(

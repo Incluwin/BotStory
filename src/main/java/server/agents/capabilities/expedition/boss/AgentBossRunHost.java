@@ -169,6 +169,13 @@ public final class AgentBossRunHost {
         }
 
         /**
+         * 2026-10-16 (P20): a member revived on a stage map after the boss's event called its last stand and waits there
+         * for the rest of the run instead of walking back in (AgentBossPriorityFight.holdsLastStand). Once per stay.
+         */
+        default void heldLastStand(Seat seat) {
+        }
+
+        /**
          * P12 G11, companion boss scope case 3: true while {@code agent} is a companion on the recruit or gate map of a
          * boss the switch lists, and the owner it follows stands on that map too (Showa's 801040004 holds monsters).
          * Memory only, any thread. Unless answered, false.
@@ -359,6 +366,19 @@ public final class AgentBossRunHost {
                 current.heldDry(seat);
             } catch (RuntimeException failure) {
                 log.warn("boss-run held-dry rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void heldLastStand(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.heldLastStand(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run last-stand rule failed for {}", seat, failure);
             }
         }
 

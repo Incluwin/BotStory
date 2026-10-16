@@ -64,6 +64,11 @@ import java.util.TreeMap;
  * keep-out alone. Pink Bean's is 65: his barrage (about 11,900, with a stun) is 80% of a Bowmaster's Hyper Body HP
  * (about 14,400), under the global 80, and killed Fenna twice in a minute in run 15; a warrior without Hyper Body
  * (19,776) takes 60% and still fights at his feet. Its touch keep-out stays at the global 25.</li>
+ * <li>{@code lastStand} (2026-10-16, null for none): the event property counting the run's deaths and the count at
+ * which the boss's script calls its last stand ({@link LastStand}). From then on a member that revives on a stage map
+ * waits there instead of walking back in (AgentBossPriorityFight.holdsLastStand), as an expedition tells its dead to
+ * stay out once one more death would end it. Pink Bean runs 14 to 16 each ended on a member walking back in after the
+ * fourth death and dying again.</li>
  * <li>{@code companionDamagePercent} (2026-10-15, 0 = 100 = unchanged): the percent an INSIDE member's damage lines on
  * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
  * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
@@ -90,7 +95,8 @@ public final class AgentBossRules {
                        boolean randomSpots, List<Integer> stageMaps, String stagePortal,
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
                        List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut,
-                       int keepOutHpPercent, int companionDamagePercent, int attackKeepOutHpPercent) {
+                       int keepOutHpPercent, int companionDamagePercent, int attackKeepOutHpPercent,
+                       LastStand lastStand) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -118,6 +124,20 @@ public final class AgentBossRules {
                 throw new IllegalArgumentException(
                         "attackKeepOutHpPercent must be 0 to 100: " + attackKeepOutHpPercent);
             }
+        }
+
+        /** A boss row with no last stand (every row before Pink Bean's run 17, 2026-10-16). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut, int keepOutHpPercent,
+                    int companionDamagePercent, int attackKeepOutHpPercent) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, attackKeepOut, keepOutHpPercent, companionDamagePercent,
+                    attackKeepOutHpPercent, null);
         }
 
         /** A boss row whose attack keep-out shares {@code keepOutHpPercent} (every row before Pink Bean's run 15). */
@@ -263,6 +283,18 @@ public final class AgentBossRules {
         public KeepOut {
             if (fromDx > toDx) {
                 throw new IllegalArgumentException("a keep-out box needs fromDx <= toDx");
+            }
+        }
+    }
+
+    /**
+     * 2026-10-16: the event property that counts a run's deaths, and the count at which the boss's script calls its last
+     * stand (Pink Bean: "fallenPlayers", 4; the expedition ends at 5).
+     */
+    public record LastStand(String property, int at) {
+        public LastStand {
+            if (property == null || property.isBlank() || at < 1) {
+                throw new IllegalArgumentException("a last stand needs an event property and a count of at least 1");
             }
         }
     }

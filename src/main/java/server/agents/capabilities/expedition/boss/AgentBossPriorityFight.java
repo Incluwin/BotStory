@@ -81,6 +81,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
     private final Map<Integer, Float> raisedAlerts = new HashMap<>();
     /** Fighters held on a finished stage map with no HP potion left ({@link #holdsDry}). */
     private final Set<Integer> heldDry = new HashSet<>();
+    private final Set<Integer> heldLastStand = new HashSet<>();
     /** When the last tick ran, and when the last status line went out (-1: none yet). */
     private long lastTickMs = -1;
     private long lastStatusMs = -1;
@@ -120,7 +121,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             }
             if (!cleared && rules != null && rules.stageMaps().contains(map.getId()) && stageDone(map, rules)) {
                 release(gateway, entry, member.getId());
-                if (holdsDry(member)) {
+                if (holdsDry(member) || holdsLastStand(member, event, rules)) {
                     gateway.stop(entry);
                 } else {
                     advance(gateway, entry, member, rules.stagePortal(), nowMs);
@@ -625,6 +626,28 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         return dry;
     }
 
+    /**
+     * 2026-10-16 (P20 runs 14-16): true once the boss's event counts its last-stand deaths ({@code lastStand},
+     * boss-rules.json; Pink Bean's script calls "last stand mode" at its fourth fallen player and ends at the fifth),
+     * for a member that revived on a finished stage map: it waits there for the rest of the run instead of walking back
+     * in, as an expedition tells its dead to stay out once one more death would end it. Runs 14 to 16 each ended on a
+     * member walking back in after the fourth death and dying again (Fenna, twice in a minute each time). Says so once
+     * per stay ({@link Ports#heldLastStand}).
+     */
+    private boolean holdsLastStand(Character member, EventInstanceManager event, AgentBossRules.Boss rules) {
+        AgentBossRules.LastStand lastStand = rules.lastStand();
+        int fallen = lastStand == null || event == null ? 0 : ports.eventCount(event, lastStand.property());
+        boolean hold = lastStand != null && fallen >= lastStand.at();
+        if (!hold) {
+            heldLastStand.remove(member.getId());
+        } else if (heldLastStand.add(member.getId())) {
+            log.info("Boss run member holds for the last stand: boss={} member={} map={} fallen={}", key,
+                    member.getId(), member.getMapId(), fallen);
+            ports.heldLastStand(member);
+        }
+        return hold;
+    }
+
     /** P18: a stage map is done once no live monster but the boss's never-targets stands on it. */
     private boolean stageDone(MapleMap map, AgentBossRules.Boss rules) {
         for (Monster monster : ports.monsters(map)) {
@@ -782,6 +805,19 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         default void heldDry(Character member) {
         }
 
+        /** 2026-10-16: the event's count under {@code property} (Pink Bean's fallenPlayers), 0 while it holds none. */
+        default int eventCount(EventInstanceManager event, String property) {
+            try {
+                return event.getIntProperty(property);
+            } catch (NumberFormatException none) {
+                return 0;
+            }
+        }
+
+        /** 2026-10-16: the member started waiting on a stage map for the boss's last stand; its host says so. */
+        default void heldLastStand(Character member) {
+        }
+
         Ports LIVE = new Ports() {
             @Override
             public int hpPotions(Character member) {
@@ -794,6 +830,16 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                 AgentBossRunMember seat = session == null ? null : session.member(member.getId());
                 if (seat != null) {
                     AgentBossRunHost.installed().heldDry(seat.seat(session.definition().key(), session.sessionId()));
+                }
+            }
+
+            @Override
+            public void heldLastStand(Character member) {
+                AgentBossRunSession session = AgentBossRunRegistry.forMember(member.getId());
+                AgentBossRunMember seat = session == null ? null : session.member(member.getId());
+                if (seat != null) {
+                    AgentBossRunHost.installed().heldLastStand(
+                            seat.seat(session.definition().key(), session.sessionId()));
                 }
             }
 

@@ -1169,6 +1169,13 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     @Override
+    public void heldLastStand(Seat seat) {
+        int id = seat.agentCharacterId();
+        world.executor().submit("boss.laststand " + id,
+                () -> BossRunLines.say(world, seat.bossKey(), bot(id), BossRunLines.LAST_STAND, null, 0));
+    }
+
+    @Override
     public void ownerLeftWhileDown(Seat seat) {
         int id = seat.agentCharacterId();
         world.executor().submit("boss.owner_left_down " + id, () -> release(key(seat), id));
