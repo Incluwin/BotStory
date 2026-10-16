@@ -76,14 +76,15 @@ class LivingWorldConfigBossTest {
     }
 
     @Test
-    void configYamlShipsEasyBalrogOnWithServerAuthorityAndSaysWhy() throws IOException {
+    void configYamlShipsEasyBalrogAndPinkBeanOnWithServerAuthorityAndSaysWhy() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
-        assertEquals("easy_balrog", living.COMPANION_BOSS_ENABLED_TYPES);
+        assertEquals("easy_balrog,pinkbean", living.COMPANION_BOSS_ENABLED_TYPES);
         assertTrue(living.companionBossEnabled("easy_balrog"), "on for the Easy Balrog live checks");
+        assertTrue(living.companionBossEnabled("pinkbean"), "on since its live check cleared (P20 run 17, 2026-10-16)");
         assertTrue(living.COMPANION_BOSS_SERVER_AUTHORITY);
 
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"easy_balrog\"\n"));
+        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"easy_balrog,pinkbean\"\n"));
         assertTrue(yaml.contains("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n"));
         String comment = yaml.substring(yaml.indexOf("# Boss expeditions with companions"),
                 yaml.indexOf("COMPANION_BOSS_ENABLED_TYPES:"));

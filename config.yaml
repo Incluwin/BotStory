@@ -995,8 +995,9 @@ living_world:
     # It stays off until its live check passes (docs/COMPANION_BOSSING_P19.md).
     # "pinkbean" (P20): Pink Bean at the Forgotten Temple Manager, signed up as at Adobis. A companion that dies revives
     # inside, as a player does, and walks back in through the resurrection map; every death counts toward the stock
-    # 5-death wipe and costs EXP. It stays off until its live check passes (docs/COMPANION_BOSSING_P20.md).
-    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
+    # 5-death wipe and costs EXP. On since 2026-10-16 (user): its live check cleared on run 17
+    # (docs/COMPANION_BOSSING_P20.md).
+    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,pinkbean"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
     # COMPANION_BOSS_ENABLED_TYPES, the entry NPC also offers an owner on her list "Call allies from my bench...".
