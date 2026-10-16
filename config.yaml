@@ -1005,12 +1005,13 @@ living_world:
     # Victoria), come in at the top of her stairs, sign up, fight in their own bot party and go back to their bench
     # duty after the run. The server holds at most EXPEDITION_BURST_MAX of them at once, split evenly between owners.
     # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them. "easy_balrog" ships on
-    # for its live checks (2026-10-08, user OK); set "" to turn bench allies off again.
+    # for its live checks (2026-10-08, user OK); set "" to turn bench allies off again. "pinkbean" on since 2026-10-16
+    # (user): allies come through Leafre's store toward Pink Bean's potion standard on their way in.
     # OWNERS_MAX: owners whose companions may sign up for one expedition (1 = Part A's one-owner rule).
     # HUMAN_SEATS: seats of the list's 30 that companions always leave free for players.
     # ALLY_WALK_OUT_MS: how long an ally walks to the room's way out after the run (Mu Young to the outPerrion portal
     # is about 1,300 px) before it goes where it stands.
-    COMPANION_BOSS_ALLY_TYPES: "easy_balrog"
+    COMPANION_BOSS_ALLY_TYPES: "easy_balrog,pinkbean"
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000

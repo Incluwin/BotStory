@@ -94,16 +94,17 @@ class LivingWorldConfigBossTest {
     }
 
     // P7 Part B: bench allies and second owners. Both are off in code; config.yaml ships bench allies on for Easy
-    // Balrog (its live checks, 2026-10-08) and keeps the one-owner rule.
+    // Balrog (its live checks, 2026-10-08) and Pink Bean (user, 2026-10-16) and keeps the one-owner rule.
 
     @Test
-    void allyKeysAreOffInCodeAndShipEasyBalrogOnWithOneOwner() {
+    void allyKeysAreOffInCodeAndShipEasyBalrogAndPinkBeanOnWithOneOwner() {
         LivingWorldConfig shipped = YamlConfig.config.living_world;
         LivingWorldConfig defaults = new LivingWorldConfig();
         assertEquals("", defaults.COMPANION_BOSS_ALLY_TYPES);
         assertFalse(defaults.companionBossAlliesEnabled("easy_balrog"));
-        assertEquals("easy_balrog", shipped.COMPANION_BOSS_ALLY_TYPES);
+        assertEquals("easy_balrog,pinkbean", shipped.COMPANION_BOSS_ALLY_TYPES);
         assertTrue(shipped.companionBossAlliesEnabled("easy_balrog"), "bench allies are on for their live checks");
+        assertTrue(shipped.companionBossAlliesEnabled("pinkbean"), "and for Pink Bean (user, 2026-10-16)");
         for (LivingWorldConfig config : new LivingWorldConfig[] {defaults, shipped}) {
             assertEquals(1, config.COMPANION_BOSS_OWNERS_MAX, "Part A's one-owner rule");
             assertEquals(2, config.COMPANION_BOSS_HUMAN_SEATS);
@@ -222,8 +223,9 @@ class LivingWorldConfigBossTest {
     @Test
     void theYamlCarriesTheFourKeys() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"easy_balrog\"\n", "\n    COMPANION_BOSS_OWNERS_MAX: 1\n",
-                "\n    COMPANION_BOSS_HUMAN_SEATS: 2\n", "\n    COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000\n"};
+        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"easy_balrog,pinkbean\"\n",
+                "\n    COMPANION_BOSS_OWNERS_MAX: 1\n", "\n    COMPANION_BOSS_HUMAN_SEATS: 2\n",
+                "\n    COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000\n"};
         int after = yaml.indexOf("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n");
         assertTrue(after > 0);
         for (String key : keys) {
