@@ -288,8 +288,8 @@ public final class AgentBossRules {
     }
 
     /**
-     * 2026-10-16: the event property that counts a run's deaths, and the count at which the boss's script calls its last
-     * stand (Pink Bean: "fallenPlayers", 4; the expedition ends at 5).
+     * 2026-10-16: the event property that counts a run's deaths, and the count at which the boss's script calls its
+     * last stand (Pink Bean: "fallenPlayers", 4; the expedition ends at 5).
      */
     public record LastStand(String property, int at) {
         public LastStand {

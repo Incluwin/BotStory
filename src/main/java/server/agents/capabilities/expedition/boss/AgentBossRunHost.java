@@ -169,8 +169,9 @@ public final class AgentBossRunHost {
         }
 
         /**
-         * 2026-10-16 (P20): a member revived on a stage map after the boss's event called its last stand and waits there
-         * for the rest of the run instead of walking back in (AgentBossPriorityFight.holdsLastStand). Once per stay.
+         * 2026-10-16 (P20): a member revived on a stage map after the boss's event called its last stand and waits
+         * there for the rest of the run instead of walking back in (AgentBossPriorityFight.holdsLastStand). Once per
+         * stay.
          */
         default void heldLastStand(Seat seat) {
         }
