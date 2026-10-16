@@ -3,7 +3,8 @@
 > Built 2026-10-12 on branch `feat/companion-bossing-p20`, on top of P19. Plan: docs/COMPANION_BOSSING_PLAN.md,
 > section P20. The statue fix (decision 15) acts for every player as soon as it is deployed. **Live check CLEARED
 > 2026-10-16 04:23** on the seventeenth run, 69 minutes, six companions, 4 of the 5 deaths (see "Live runs" below).
-> **The `pinkbean` key is on since 2026-10-16** (user; 18d5b66e0). Bench allies and second owners stay off for it.
+> **The `pinkbean` key is on since 2026-10-16** (user; 18d5b66e0), bench allies too (b00fc73cc). Second owners stay
+> off (`OWNERS_MAX` 1).
 
 ## Result
 
@@ -282,8 +283,10 @@ Full suite on bbf4f205b: 13,467 tests, 0 failures, 37 skipped (10:54 min).
 ## Open items
 
 1. The scaled standard (1200/1200, 10000) waits for Questions 5 and 6.
-2. `pinkbean` is on (user, 2026-10-16, 18d5b66e0). `COMPANION_BOSS_ALLY_TYPES` stays `easy_balrog` and
-   `OWNERS_MAX` 1: every run 4-17 used no bench allies, and run 3's ally bought White Potions (a separate fix).
+2. `pinkbean` is on (user, 2026-10-16, 18d5b66e0), and so are its bench allies (`COMPANION_BOSS_ALLY_TYPES`
+   `easy_balrog,pinkbean`, b00fc73cc); `OWNERS_MAX` stays 1. Runs 4-17 used no bench allies. An ally tops up at
+   Leafre on its way in under the 1500/0 floor (run 3's ally bought White Potions before it); one short of mesos
+   arrives short of 1,500 and says so, and the dry and last-stand holds keep it from spending the run's last lives.
 3. Warriors still die with full potion bags to a deadly hit (HP to 1) followed by another before the autopot fires:
    Solomon's attack1 stuns as it drops HP to 1 (Thane, run 16), and seduce walks a member into the next hit. Deadly
    attacks are left out of both keep-outs on purpose.
