@@ -89,6 +89,19 @@ public final class AgentSpBuildProfileService {
         };
     }
 
+    /**
+     * The level {@code agent}'s SP profile plans for {@code skillId} at its level, as autoAssign spends toward it;
+     * 0 with no profile, for a job the profile does not cover, or for a skill it does not plan (AgentBookSpeech).
+     */
+    public static int plannedLevel(AgentRuntimeEntry entry, Character agent, int skillId) {
+        AgentSpBuildProfile profile = entry == null ? null : entry.spBuildProfileState().profile();
+        if (profile == null || agent == null || !profile.supports(agent.getJob())) {
+            return 0;
+        }
+        int level = Math.min(agent.getLevel(), profile.supportedThroughLevel());
+        return cumulativeTargets(profile, level).getOrDefault(skillId, 0);
+    }
+
     private static Map<Integer, Integer> cumulativeTargets(AgentSpBuildProfile profile, int level) {
         Map<Integer, Integer> targets = new LinkedHashMap<>();
         if (!profile.segments().isEmpty()) {

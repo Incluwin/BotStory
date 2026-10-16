@@ -2,6 +2,7 @@ package server.living.roster;
 
 import client.Character;
 import client.QuestStatus;
+import server.agents.capabilities.build.AgentBookSpeech;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffStateRuntime;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
@@ -56,7 +57,7 @@ import java.util.function.UnaryOperator;
  * per owner in living_crew; everyone it placed keeps to the crew's formation from then on).</p>
  */
 public final class CompanionSettingsApplier implements AgentPotionThresholds.Rule, AgentLootPolicy.Rule, AgentWalletReserve.Rule,
-        AgentChatToggleHook.Rule, AgentFormationHook.Rule, AgentBagFullSpeech.Rule {
+        AgentChatToggleHook.Rule, AgentFormationHook.Rule, AgentBagFullSpeech.Rule, AgentBookSpeech.Rule {
     /** How long what an owner's quests need is kept before their started quests are read again (QUEST_ONLY). */
     private static final long QUEST_NEEDS_TTL_MS = 1_000L;
 
@@ -82,7 +83,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         this.roster = roster;
     }
 
-    /** Installs the potion, loot, chat toggle, formation and bag-full seams (LivingWorld.start). */
+    /** Installs the potion, loot, chat toggle, formation and bag-full seams, book lines too (LivingWorld.start). */
     public void install() {
         AgentPotionThresholds.install(this);
         AgentLootPolicy.install(this);
@@ -90,6 +91,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentChatToggleHook.install(this);
         AgentFormationHook.install(this);
         AgentBagFullSpeech.install(this);
+        AgentBookSpeech.install(this);
     }
 
     /** Takes the seams out again (LivingWorld.stop): every Agent drinks and loots as configured. */
@@ -100,6 +102,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentChatToggleHook.install(null);
         AgentFormationHook.install(null);
         AgentBagFullSpeech.install(null);
+        AgentBookSpeech.install(null);
     }
 
     /**
@@ -424,6 +427,12 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         }
         var party = agent.getParty();
         return party != null && party.getMemberById(at.ownerId()) != null;
+    }
+
+    /** Book lines (AgentBookSpeech: a failed book, one that waits on an earlier book): the bag-full companions. */
+    @Override
+    public boolean speaksOfBooks(Character agent) {
+        return speaksOfFullBag(agent);
     }
 
     /**

@@ -6,6 +6,7 @@ import client.Skill;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.agents.integration.InventoryGateway;
@@ -16,9 +17,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyByte;
@@ -37,11 +41,17 @@ class AgentMasteryBooksTest {
     private static final int BRANDISH_20 = 2290010;
     /** A Night Lord's book: a Hero gets no skill from it (ItemInformationProvider.getSkillStats skillid 0). */
     private static final int TRIPLE_THROW_20 = 2290084;
+    /** The next Brandish book: needs Brandish 15, masters it to 30. */
+    private static final int BRANDISH_30 = 2290011;
+    private static final int ENRAGE = 1121010;
+    /** A mastery book of Enrage: needs Enrage 5, masters it to 20. */
+    private static final int ENRAGE_20 = 2290016;
     private static final int POTION = 2000005;
 
     private final SkillGateway skills = mock(SkillGateway.class);
     private final InventoryGateway inventory = mock(InventoryGateway.class);
     private final Skill brandish = mock(Skill.class);
+    private final Skill enrage = mock(Skill.class);
     private final Character hero = mock(Character.class);
     private final List<Item> use = new ArrayList<>();
     private final Map<Integer, Map<String, Integer>> books = new HashMap<>();
@@ -62,6 +72,11 @@ class AgentMasteryBooksTest {
         books.put(TRIPLE_THROW_20, Map.of("skillid", 0, "masterLevel", 20, "reqSkillLevel", 5, "success", 70));
     }
 
+    private Map<String, Integer> stats(int itemId, int jobId) {
+        assertEquals(Job.HERO.getId(), jobId, "the book is read for the Agent's own job");
+        return books.get(itemId);
+    }
+
     private void carry(int itemId, int slot) {
         Item item = mock(Item.class);
         when(item.getItemId()).thenReturn(itemId);
@@ -70,11 +85,8 @@ class AgentMasteryBooksTest {
         use.add(item);
     }
 
-    private boolean read() {
-        return AgentMasteryBooks.readOne(hero, skills, inventory, (itemId, jobId) -> {
-            assertEquals(Job.HERO.getId(), jobId, "the book is read for the Agent's own job");
-            return books.get(itemId);
-        }, chance -> {
+    private AgentMasteryBooks.Read read() {
+        return AgentMasteryBooks.readOne(hero, skills, inventory, this::stats, chance -> {
             assertEquals(70, chance, "the book's own success rate");
             return succeeds;
         });
@@ -86,7 +98,7 @@ class AgentMasteryBooksTest {
         carry(TRIPLE_THROW_20, 2);
         carry(BRANDISH_20, 3);
 
-        assertTrue(read());
+        assertEquals(new AgentMasteryBooks.Read(BRANDISH, true), read());
         verify(inventory).removeFromSlot(hero, InventoryType.USE, (short) 3, (short) 1, false);
         verify(hero).changeSkillLevel(brandish, (byte) 5, 20, -1);
     }
@@ -96,7 +108,7 @@ class AgentMasteryBooksTest {
         carry(BRANDISH_20, 4);
         succeeds = false;
 
-        assertFalse(read());
+        assertEquals(new AgentMasteryBooks.Read(BRANDISH, false), read());
         verify(inventory).removeFromSlot(hero, InventoryType.USE, (short) 4, (short) 1, false);
         verify(hero, never()).changeSkillLevel(any(), anyByte(), anyInt(), anyLong());
     }
@@ -104,15 +116,15 @@ class AgentMasteryBooksTest {
     @Test
     void anotherJobsBookABookItCannotReadYetAndOneItHasOutgrownStayInItsBag() {
         carry(TRIPLE_THROW_20, 2);
-        assertFalse(read(), "a Night Lord's book");
+        assertNull(read(), "a Night Lord's book");
 
         carry(BRANDISH_20, 3);
         when(hero.getSkillLevel(brandish)).thenReturn((byte) 4);
-        assertFalse(read(), "Brandish 4, the book asks for 5");
+        assertNull(read(), "Brandish 4, the book asks for 5");
 
         when(hero.getSkillLevel(brandish)).thenReturn((byte) 10);
         when(hero.getMasterLevel(brandish)).thenReturn(20);
-        assertFalse(read(), "already mastered to 20");
+        assertNull(read(), "already mastered to 20");
 
         verify(inventory, never()).removeFromSlot(any(), any(), anyShort(), anyShort(), any(Boolean.class));
         verify(hero, never()).changeSkillLevel(any(), anyByte(), anyInt(), anyLong());
@@ -137,5 +149,75 @@ class AgentMasteryBooksTest {
         assertTrue(AgentMasteryBooks.isBook(BRANDISH_20));
         assertFalse(AgentMasteryBooks.isBook(POTION));
         assertFalse(AgentMasteryBooks.isBook(2300000));
+    }
+
+    @AfterEach
+    void uninstall() {
+        AgentBookSpeech.install(null);
+    }
+
+    private boolean look(AgentRuntimeEntry entry) {
+        return AgentMasteryBooks.look(entry, hero, skills, inventory, this::stats, chance -> succeeds);
+    }
+
+    @Test
+    void aFailedBookIsKeptForItsLineUntilALaterBookOfItsSkillTakes() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(hero, null, null);
+        carry(BRANDISH_20, 3); // the mock inventory keeps it in the bag: the second look reads another copy
+        succeeds = false;
+
+        assertFalse(look(entry));
+        assertEquals(Set.of(BRANDISH), entry.buildState().failedBookSkills());
+
+        succeeds = true;
+        assertTrue(look(entry));
+        assertTrue(entry.buildState().failedBookSkills().isEmpty());
+    }
+
+    @Test
+    void onlyALookThatReadsNoBookHandsOverToItsBookLine() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(hero, null, null);
+        AtomicInteger asked = new AtomicInteger();
+        AgentBookSpeech.install(agent -> asked.incrementAndGet() < 0);
+        carry(BRANDISH_20, 3);
+
+        look(entry);
+        assertEquals(0, asked.get(), "still reading");
+
+        when(hero.getMasterLevel(brandish)).thenReturn(20);
+        look(entry);
+        assertEquals(1, asked.get(), "nothing left to read");
+
+        when(hero.isAlive()).thenReturn(false);
+        look(entry);
+        assertEquals(1, asked.get(), "dead: it reads nothing and says nothing");
+    }
+
+    @Test
+    void aBookAskingForMoreThanItsSkillsMasterLevelWaitsOnAnEarlierBook() {
+        books.put(BRANDISH_30, Map.of("skillid", BRANDISH, "masterLevel", 30, "reqSkillLevel", 15, "success", 50));
+        books.put(ENRAGE_20, Map.of("skillid", ENRAGE, "masterLevel", 20, "reqSkillLevel", 5, "success", 70));
+        when(skills.getSkill(ENRAGE)).thenReturn(enrage); // master 0: no book teaches it a first level
+        carry(TRIPLE_THROW_20, 2);
+        carry(BRANDISH_30, 3);
+        carry(ENRAGE_20, 4);
+
+        assertEquals(Set.of(BRANDISH), AgentMasteryBooks.waitingSkills(hero, skills, this::stats),
+                "Brandish 30 asks for Brandish 15 at master 10");
+
+        when(hero.getMasterLevel(brandish)).thenReturn(20);
+        assertEquals(Set.of(), AgentMasteryBooks.waitingSkills(hero, skills, this::stats),
+                "at master 20 it reads the book once its SP takes Brandish to 15");
+    }
+
+    @Test
+    void aBookWhoseEarlierBookItCarriesIsNotWaitingOnABook() {
+        // Brannock carries Enrage 20 and 30: his Enrage 20 book waits on Advanced Combo 25, which no book line fixes
+        books.put(BRANDISH_30, Map.of("skillid", BRANDISH, "masterLevel", 30, "reqSkillLevel", 15, "success", 50));
+        when(hero.getSkillLevel(brandish)).thenReturn((byte) 0);
+        carry(BRANDISH_20, 2);
+        carry(BRANDISH_30, 3);
+
+        assertEquals(Set.of(), AgentMasteryBooks.waitingSkills(hero, skills, this::stats));
     }
 }

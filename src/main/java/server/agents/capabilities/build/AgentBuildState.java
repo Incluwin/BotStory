@@ -1,5 +1,9 @@
 package server.agents.capabilities.build;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * Mutable runtime state for AP/SP build and job-advancement prompting.
  */
@@ -11,6 +15,8 @@ public final class AgentBuildState {
     private int jobPromptSent = 0;
     private int lastKnownLevel = -1;
     private long nextBookCheckAt = 0L;
+    private final Set<Integer> failedBookSkills = new LinkedHashSet<>();
+    private final Set<Integer> bookSkillsNamed = new HashSet<>();
 
     public AgentBuildService.ApBuild apBuild() {
         return apBuild;
@@ -81,5 +87,15 @@ public final class AgentBuildState {
 
     public void setNextBookCheckAt(long nextBookCheckAt) {
         this.nextBookCheckAt = nextBookCheckAt;
+    }
+
+    /** Skills whose book failed its roll since the Agent last said so (AgentBookSpeech), in the order they failed. */
+    public Set<Integer> failedBookSkills() {
+        return failedBookSkills;
+    }
+
+    /** Skills it has named this session in a book line (AgentBookSpeech), so a waiting book is mentioned once. */
+    public Set<Integer> bookSkillsNamed() {
+        return bookSkillsNamed;
     }
 }

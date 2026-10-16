@@ -8,6 +8,7 @@ import org.mockito.MockedStatic;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffStateRuntime;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
+import server.agents.capabilities.build.AgentBookSpeech;
 import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.capabilities.movement.AgentFormationHook;
@@ -182,6 +183,24 @@ class CompanionSettingsApplierTest {
         game.selfLed.remove(HADRIK);
         CompanionSettingsApplier.uninstall();
         assertFalse(AgentBagFullSpeech.speaksOfFullBag(bot), "taken out with the other seams");
+    }
+
+    @Test
+    void theSameCompanionsSayWhatTheirBooksNeed() {
+        // 2026-10-16: Orrin's failed Blast book went unnoticed for two days (AgentBookSpeech)
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);
+        Character citizen = game.bot(950, "Marlo");
+        assertTrue(game.roster().call(game.ann, hadrik).ok());
+        applier().install();
+        Character bot = game.bot(hadrik);
+
+        assertTrue(AgentBookSpeech.speaksOfBooks(bot), "installed as the seam's rule");
+        assertFalse(AgentBookSpeech.speaksOfBooks(citizen));
+        game.partyless.add(HADRIK);
+        assertFalse(AgentBookSpeech.speaksOfBooks(bot), "not in her party");
+        game.partyless.remove(HADRIK);
+        CompanionSettingsApplier.uninstall();
+        assertFalse(AgentBookSpeech.speaksOfBooks(bot), "taken out with the other seams");
     }
 
     @Test

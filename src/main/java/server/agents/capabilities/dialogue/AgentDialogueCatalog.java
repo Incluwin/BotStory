@@ -252,6 +252,23 @@ public final class AgentDialogueCatalog {
             "no room in my bag, gotta leave that.",
             "my bag's full, can't pick that up.");
     /**
+     * An owned companion whose skill or mastery book failed its roll (AgentBookSpeech): %s names the skill, or the
+     * skills ("blast and rush"). No line says the book's 20 or 30.
+     */
+    private static final List<String> BOOK_FAILED_ONE_TEMPLATES = List.of(
+            "ugh, my %s book didn't take. if you find another one, i'll try again.",
+            "no luck, that %s book didn't take. got another one?");
+    private static final List<String> BOOK_FAILED_MANY_TEMPLATES = List.of(
+            "ugh, my %s books didn't take. if you find more, i'll try again.",
+            "no luck, those %s books didn't take. got any more?");
+    /** An owned companion carrying a book that waits on an earlier book of its skill (AgentBookSpeech). */
+    private static final List<String> BOOK_WAITING_ONE_TEMPLATES = List.of(
+            "can't read my %s book yet. i need the one before it first.",
+            "my %s book has to wait, i need the earlier one first.");
+    private static final List<String> BOOK_WAITING_MANY_TEMPLATES = List.of(
+            "can't read my %s books yet. i need the ones before them first.",
+            "my %s books have to wait, i need the earlier ones first.");
+    /**
      * Any other Agent (a citizen, a Resident, a bench slice) telling nearby players a bag is full, at most once per
      * AgentResourceDialogueReactionService.INVENTORY_COOLDOWN_MS for each bag. Until 2026-10-10 it said
      * "equip inventory is full!" (the bag's name + " inventory is full!").
@@ -728,6 +745,16 @@ public final class AgentDialogueCatalog {
 
     public static List<String> lootBagFullReplies() {
         return LOOT_BAG_FULL_REPLIES;
+    }
+
+    /** A failed book's lines, for one skill or for {@code many}; %s names the skill(s). */
+    public static List<String> bookFailedTemplates(boolean many) {
+        return many ? BOOK_FAILED_MANY_TEMPLATES : BOOK_FAILED_ONE_TEMPLATES;
+    }
+
+    /** A waiting book's lines, for one skill or for {@code many}; %s names the skill(s). */
+    public static List<String> bookWaitingTemplates(boolean many) {
+        return many ? BOOK_WAITING_MANY_TEMPLATES : BOOK_WAITING_ONE_TEMPLATES;
     }
 
     public static List<String> nearbyBagFullReplies() {
