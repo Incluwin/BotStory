@@ -2,9 +2,11 @@ package server.agents.capabilities.expedition.boss;
 
 import client.Character;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * The client-load lever for boss runs (P8). Each attack a companion commits on a boss's battle map sends its packet,
@@ -22,9 +24,33 @@ public final class AgentBossClientLoad {
     private static final Map<AgentBossRunSession, AtomicLong> ATTACKS = new ConcurrentHashMap<>();
     /**
      * 2026-10-15: each INSIDE member's attacks and the damage they dealt since its last status line ({@link #drain}),
-     * by character id, for the boss fight status line (P20 run 1: the crew swung once every 2.2 s each).
+     * by character id, for the boss fight status line (P20 run 1: the crew swung once every 2.2 s each). 2026-10-16:
+     * and its attacks by skill (P20 run 15: the line did not say what Orrin swung, 5 times a minute beside Solomon).
      */
-    private static final Map<Integer, long[]> MEMBER_COUNTS = new ConcurrentHashMap<>();
+    private static final Map<Integer, Tally> MEMBER_COUNTS = new ConcurrentHashMap<>();
+
+    /** A member's attacks, the damage they dealt, and its attacks by skill id (0: a basic attack), since a drain. */
+    record Swings(long attacks, long damage, Map<Integer, Long> bySkill) {
+        static final Swings NONE = new Swings(0L, 0L, Map.of());
+
+        /** "id:count" per skill, most attacks first, comma-separated; "-" for none. */
+        String skills() {
+            if (bySkill.isEmpty()) {
+                return "-";
+            }
+            return bySkill.entrySet().stream()
+                    .sorted(Map.Entry.<Integer, Long>comparingByValue().reversed()
+                            .thenComparing(Map.Entry.comparingByKey()))
+                    .map(skill -> skill.getKey() + ":" + skill.getValue())
+                    .collect(Collectors.joining(","));
+        }
+    }
+
+    private static final class Tally {
+        private long attacks;
+        private long damage;
+        private final Map<Integer, Long> bySkill = new HashMap<>();
+    }
 
     private AgentBossClientLoad() {
     }
@@ -53,17 +79,18 @@ public final class AgentBossClientLoad {
     }
 
     /**
-     * Counts one committed attack and the damage its lines dealt for the Agent while it is an INSIDE member on its
-     * run's battle map, for its next status line.
+     * Counts one committed attack of {@code skillId} and the damage its lines dealt for the Agent while it is an
+     * INSIDE member on its run's battle map, for its next status line.
      */
-    public static void memberAttack(Character bot, long dealt) {
+    public static void memberAttack(Character bot, int skillId, long dealt) {
         if (battleRun(bot) == null) {
             return;
         }
-        long[] counts = MEMBER_COUNTS.computeIfAbsent(bot.getId(), ignored -> new long[2]);
-        synchronized (counts) {
-            counts[0]++;
-            counts[1] += Math.max(0L, dealt);
+        Tally tally = MEMBER_COUNTS.computeIfAbsent(bot.getId(), ignored -> new Tally());
+        synchronized (tally) {
+            tally.attacks++;
+            tally.damage += Math.max(0L, dealt);
+            tally.bySkill.merge(Math.max(0, skillId), 1L, Long::sum);
         }
     }
 
@@ -77,14 +104,14 @@ public final class AgentBossClientLoad {
         return rules == null ? 100 : rules.damagePercentOn(mobId);
     }
 
-    /** The member's {attacks, damage} since the last drain, and starts the next count; {0, 0} for none. */
-    static long[] drain(int characterId) {
-        long[] counts = MEMBER_COUNTS.remove(characterId);
-        if (counts == null) {
-            return new long[2];
+    /** The member's swings since the last drain, and starts the next count; {@link Swings#NONE} for none. */
+    static Swings drain(int characterId) {
+        Tally tally = MEMBER_COUNTS.remove(characterId);
+        if (tally == null) {
+            return Swings.NONE;
         }
-        synchronized (counts) {
-            return counts.clone();
+        synchronized (tally) {
+            return new Swings(tally.attacks, tally.damage, Map.copyOf(tally.bySkill));
         }
     }
 

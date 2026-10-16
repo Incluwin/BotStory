@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,6 +73,8 @@ class AgentBossClientLoadTest {
     /** Mano's field, Thicket Around the Beach III, and Mano: a field boss on a map with no event. */
     private static final int FIELD = 104_000_400;
     private static final int MANO = 2_220_000;
+    /** Skill.wz 1221009, a Paladin's Blast. */
+    private static final int BLAST = 1_221_009;
 
     private String shipped;
 
@@ -194,15 +195,22 @@ class AgentBossClientLoadTest {
         Character thane = inside(zakum, THANE, ALTAR);
         Character offTheAltar = inside(zakum, INGRID, ADOBIS_ROOM);
 
-        AgentBossClientLoad.memberAttack(thane, 30_000L);
-        AgentBossClientLoad.memberAttack(thane, 12_000L);
-        AgentBossClientLoad.memberAttack(offTheAltar, 50_000L);
-        AgentBossClientLoad.memberAttack(agent(STRANGER, ALTAR), 50_000L);
+        AgentBossClientLoad.memberAttack(thane, BLAST, 30_000L);
+        AgentBossClientLoad.memberAttack(thane, 0, 12_000L);
+        AgentBossClientLoad.memberAttack(thane, BLAST, 20_000L);
+        AgentBossClientLoad.memberAttack(offTheAltar, BLAST, 50_000L);
+        AgentBossClientLoad.memberAttack(agent(STRANGER, ALTAR), BLAST, 50_000L);
 
-        assertArrayEquals(new long[]{2L, 42_000L}, AgentBossClientLoad.drain(THANE));
-        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(THANE), "a drain starts the next count");
-        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(INGRID), "off its battle map it is not counted");
-        assertArrayEquals(new long[]{0L, 0L}, AgentBossClientLoad.drain(STRANGER));
+        AgentBossClientLoad.Swings swings = AgentBossClientLoad.drain(THANE);
+        assertEquals(3L, swings.attacks());
+        assertEquals(62_000L, swings.damage());
+        assertEquals("1221009:2,0:1", swings.skills(), "by skill, most attacks first; 0 is a basic attack");
+        assertEquals(AgentBossClientLoad.Swings.NONE, AgentBossClientLoad.drain(THANE),
+                "a drain starts the next count");
+        assertEquals(AgentBossClientLoad.Swings.NONE, AgentBossClientLoad.drain(INGRID),
+                "off its battle map it is not counted");
+        assertEquals(AgentBossClientLoad.Swings.NONE, AgentBossClientLoad.drain(STRANGER));
+        assertEquals("-", AgentBossClientLoad.Swings.NONE.skills());
     }
 
 

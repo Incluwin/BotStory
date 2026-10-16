@@ -173,7 +173,7 @@ public final class AgentCombatAttackRuntime {
                 .mapToLong(damage -> damage)
                 .sum();
         AgentCombatSkillUsageStateRuntime.record(entry, attackPlan.skillId, dealt);
-        AgentBossClientLoad.memberAttack(bot, dealt);
+        AgentBossClientLoad.memberAttack(bot, attackPlan.skillId, dealt);
         if (degenerateBasicAttack(bot, attackPlan)) {
             AgentCombatSkillUsageStateRuntime.recordDegenerate(entry);
         }
