@@ -7,6 +7,7 @@ import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -216,6 +217,45 @@ public final class AgentBossRunRegistry {
         AgentBossRunMember.Phase phase = member == null ? null : member.phase();
         return (phase == AgentBossRunMember.Phase.INSIDE || phase == AgentBossRunMember.Phase.LEAVING)
                 && session.definition().markerItemIds().contains(drop.getItemId());
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3): the other members of a self-led member's open run (SELF_LED: a bench ally, which leads
+     * itself in a party of bots, so its own cohort is only itself) who stay with the same human (anchorId): its
+     * owner's party companions and its owner's other allies, in any phase but REFUSED and OUT. Its potion share asks
+     * them too (AgentPotionService). Empty for any other Agent, and for an ally itself REFUSED or OUT. Memory only,
+     * any thread.
+     */
+    public static List<Integer> crewOf(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember self = session == null ? null : session.member(agentId);
+        if (self == null || self.kind() != AgentBossRunMember.Kind.SELF_LED || !inRun(self)) {
+            return List.of();
+        }
+        List<Integer> crew = new ArrayList<>();
+        for (AgentBossRunMember member : session.members()) {
+            if (member != self && member.anchorId() == self.anchorId() && inRun(member)) {
+                crew.add(member.agentId());
+            }
+        }
+        return crew;
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3): the human a self-led member (a bench ally) stays with in its open run, in any phase but
+     * REFUSED and OUT; 0 for any other Agent. Its trade with that human is its owner's trade
+     * (AgentInventoryTickRuntime). Memory only, any thread.
+     */
+    public static int selfLedAnchor(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember member = session == null ? null : session.member(agentId);
+        return member != null && member.kind() == AgentBossRunMember.Kind.SELF_LED && inRun(member)
+                ? member.anchorId() : 0;
+    }
+
+    private static boolean inRun(AgentBossRunMember member) {
+        AgentBossRunMember.Phase phase = member.phase();
+        return phase != AgentBossRunMember.Phase.REFUSED && phase != AgentBossRunMember.Phase.OUT;
     }
 
     /** Forgets every run; tests only. */

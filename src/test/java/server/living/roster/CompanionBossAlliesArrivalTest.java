@@ -28,9 +28,9 @@ import static server.living.roster.LifecycleHarness.ANN;
  * A bench ally's arrival (P7 Part B step 7, CompanionBossAllies.arrive): at its ETA it loads at top00 of the
  * expedition's own copy of Mu Young's room, on the expedition's channel, registers as an idle Agent that leads itself,
  * comes back whole, drinks by its own settings and takes its banked EXP and stall stock back (a live slice's order),
- * says it is here and, once, that it is low on potions. A stale timer does nothing; a member no longer waiting to sign
- * up (or a run past its sign-ups) turns back with a whisper, and one loaded elsewhere cannot come; both let the lease,
- * the commitment and the trip go.
+ * says it is here and, once, that it is low on potions, asking its crew for some. A stale timer does nothing; a member
+ * no longer waiting to sign up (or a run past its sign-ups) turns back with a whisper, and one loaded elsewhere cannot
+ * come; both let the lease, the commitment and the trip go.
  */
 class CompanionBossAlliesArrivalTest {
     private static final int ORRIN = 911;
@@ -86,6 +86,8 @@ class CompanionBossAlliesArrivalTest {
         assertTrue(isLine(BossRunLines.ALLY_LOW_POTS, null, h.mapChat.get(1).substring("Orrin: ".length())),
                 h.mapChat.toString());
         assertEquals(1, h.ports.loads.size());
+        // 2026-10-15 (P20 run 3): it asks its crew, and the potion share asks its owner's companions in the room
+        assertEquals(List.of("crew Orrin easy_balrog"), h.ports.crewAsks);
     }
 
     @Test
@@ -94,6 +96,7 @@ class CompanionBossAlliesArrivalTest {
 
         assertEquals(1, h.mapChat.size(), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, h.mapChat.get(0).substring("Orrin: ".length())));
+        assertEquals(List.of(), h.ports.crewAsks, "nothing to ask for");
     }
 
     @Test

@@ -380,6 +380,8 @@ final class BossAllyHarness implements AutoCloseable {
         final Set<Integer> shortOfAmmo = new HashSet<>();
         /** "provision <Name> <boss> at <store NPC>" per provisioning asked for, in order. */
         final List<String> provisions = new ArrayList<>();
+        /** "crew <Name> <boss>" per ask of its crew for potions (askCrewForPotions), in order. */
+        final List<String> crewAsks = new ArrayList<>();
         /**
          * True: provisioning and the potion and ammo counts are the live ones (Ports.LIVE: the real shop code path,
          * its statics stubbed by the test); false: the sets above, and provisioning buys nothing.
@@ -447,6 +449,14 @@ final class BossAllyHarness implements AutoCloseable {
         public int provisionCures(Character agent, String bossKey, int storeNpcId) {
             provisions.add("cures " + agent.getName() + " " + bossKey + " at " + storeNpcId);
             return liveStore ? CompanionBossAllies.Ports.LIVE.provisionCures(agent, bossKey, storeNpcId) : 0;
+        }
+
+        @Override
+        public void askCrewForPotions(Character agent, String bossKey) {
+            crewAsks.add("crew " + agent.getName() + " " + bossKey);
+            if (liveStore) {
+                CompanionBossAllies.Ports.LIVE.askCrewForPotions(agent, bossKey);
+            }
         }
 
         @Override

@@ -34,12 +34,15 @@ import server.agents.integration.InventoryGateway;
 import server.agents.runtime.AgentSessionLifecycleRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.StatEffect;
 import server.agents.coordination.AgentCoordinationRuntime;
 import server.agents.coordination.AgentSupplyNeedMessage;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -435,6 +438,17 @@ public final class AgentPotionService {
         return requestPotShare(entry, bot, forHp, false, false, nowMs);
     }
 
+    /**
+     * 2026-10-15 (P20 run 3): a bench ally still short of its boss's potions after its arrival purchase has asked its
+     * crew for some in its own words (CompanionBossAllies): its share is asked as its own critical ask is, the donor
+     * picked from its cohort and its crew ({@link #donorCandidates}), past the share's cooldown and no-donor backoff,
+     * with no ask line of the Agent's own. False when no Agent runtime holds it or it cannot trade now.
+     */
+    public static boolean requestCrewPotShare(Character bot, boolean forHp) {
+        AgentRuntimeEntry entry = bot == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        return entry != null && requestPotShare(entry, bot, forHp, true, true, System.currentTimeMillis());
+    }
+
     private static boolean requestPotShare(AgentRuntimeEntry entry,
                                            Character bot,
                                            boolean forHp,
@@ -539,7 +553,7 @@ public final class AgentPotionService {
         long startedAt = AgentPerformanceMonitor.start();
         AgentRuntimeEntry bestEntry = null;
         int bestCount = 0;
-        for (AgentRuntimeEntry sibling : AgentSessionLifecycleRuntime.getCohortEntries(requesterEntry)) {
+        for (AgentRuntimeEntry sibling : donorCandidates(requesterEntry)) {
             Character siblingBot = AgentRuntimeIdentityRuntime.bot(sibling);
             if (sibling == excludedEntry || selfSustaining(sibling)
                     || siblingBot == null || siblingBot.getMapId() != recipient.getMapId()) {
@@ -554,6 +568,29 @@ public final class AgentPotionService {
         }
         AgentPerformanceMonitor.recordSince("potion-donor-select", startedAt);
         return bestEntry != null ? new AgentPotionDonorPlan<>(bestEntry, bestCount) : null;
+    }
+
+    /**
+     * Whom a share asks: the requester's cohort, and 2026-10-15 (P20 run 3) for a bench ally also its crew, the members
+     * of its boss run who stay with the same human (AgentBossRunRegistry.crewOf). An ally leads itself in a party of
+     * bots, so its cohort is itself alone: Gunnar asked his party at 14:23:26, dry, and nobody answered, while his
+     * owner's ten companions in the same fight still held 328 to 1,976 HP potions each when the run failed.
+     */
+    private static List<AgentRuntimeEntry> donorCandidates(AgentRuntimeEntry requesterEntry) {
+        List<AgentRuntimeEntry> cohort = AgentSessionLifecycleRuntime.getCohortEntries(requesterEntry);
+        Character requester = AgentRuntimeIdentityRuntime.bot(requesterEntry);
+        List<Integer> crew = requester == null ? List.of() : AgentBossRunRegistry.crewOf(requester.getId());
+        if (crew.isEmpty()) {
+            return cohort;
+        }
+        List<AgentRuntimeEntry> candidates = new ArrayList<>(cohort);
+        for (int memberId : crew) {
+            AgentRuntimeEntry member = AgentRuntimeRegistry.findByAgentCharacterId(memberId);
+            if (member != null && !candidates.contains(member)) {
+                candidates.add(member);
+            }
+        }
+        return candidates;
     }
 
     private static boolean selfSustaining(AgentRuntimeEntry entry) {

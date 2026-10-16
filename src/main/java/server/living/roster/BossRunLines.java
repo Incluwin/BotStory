@@ -75,6 +75,11 @@ final class BossRunLines {
     static final String ALLY_NO_ROOM = "boss.ally.noroom";
     static final String ALLY_CANT_COME = "boss.ally.cantcome";
     static final String ALLY_HERE = "boss.ally.here";
+    /**
+     * Still short of the boss's potions after buying what it could on arrival: since 2026-10-15 (P20 run 3) it asks
+     * for some where its crew hears it, as a player would, and its owner's companions there answer by the potion
+     * share (CompanionBossAllies.askCrew). It used to say only that it would make it work.
+     */
     static final String ALLY_LOW_POTS = "boss.ally.lowpots";
     /** Still short of projectiles after buying what it could on arrival ("{ammo}": stars, arrows, bolts, bullets). */
     static final String ALLY_LOW_AMMO = "boss.ally.lowammo";
@@ -190,8 +195,8 @@ final class BossRunLines {
                     "made it. signing up.",
                     "here! putting my name down.")),
             Map.entry(ALLY_LOW_POTS, List.of(
-                    "bit low on pots, i'll make it work.",
-                    "running low on pots and no shop nearby. i'll manage.")),
+                    "spent all i had on pots and i'm still short. anyone spare some?",
+                    "bit low on pots and no shop nearby. can anyone spare a few?")),
             Map.entry(ALLY_LOW_AMMO, List.of(
                     "low on {ammo}, i'll make it last.",
                     "not many {ammo} left and no shop nearby. i'll make them count.")),
@@ -263,8 +268,8 @@ final class BossRunLines {
                     "here! putting my name down.",
                     "phew, long way down. where do i sign?")),
             Map.entry(ALLY_LOW_POTS, List.of(
-                    "bit low on pots, i'll make it work.",
-                    "running low on pots and no shop down here. i'll manage.")),
+                    "spent all i had on pots and i'm still short. anyone spare some?",
+                    "bit low on pots and no shop down here. can anyone spare a few?")),
             Map.entry(ALLY_LOW_AMMO, List.of(
                     "low on {ammo}, i'll make it last.",
                     "not many {ammo} left and no shop down here. i'll make them count.")),
@@ -389,7 +394,7 @@ final class BossRunLines {
                     Map.entry(ALLY_HERE, List.of(
                             "made it to the door. signing up.",
                             "here! putting my name down.")),
-                    Map.entry(ALLY_LOW_POTS, List.of("bit low on pots and no shop up here. i'll manage.")),
+                    Map.entry(ALLY_LOW_POTS, List.of("bit low on pots and no shop up here. can anyone spare a few?")),
                     Map.entry(ALLY_LOW_AMMO, List.of(
                             "not many {ammo} left and no shop up here. i'll make them count.")),
                     Map.entry(GG, List.of(

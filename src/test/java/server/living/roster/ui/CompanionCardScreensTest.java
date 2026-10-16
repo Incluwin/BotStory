@@ -26,6 +26,7 @@ import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionBossRuns;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
@@ -435,6 +436,36 @@ class CompanionCardScreensTest {
                     state.name());
             LivingTalk.forget(owner);
         }
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3): a bench ally at its boss (CompanionBossRuns.allyHere) standing on its owner's map offers
+     * "Let's trade" on its bench card, so its owner can hand it potions when it says on arrival it is short; the trade
+     * goes to the manager. Not while it stands on another map (in the fight while its owner waits outside).
+     */
+    @Test
+    void aBenchAllyAtItsBossOnTheOwnersMapOffersATrade() {
+        rows.add(miraRow);
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(world.bossRuns()).thenReturn(bossRuns);
+        Character ally = mock(Character.class);
+        when(bossRuns.allyHere("mira")).thenReturn(ally);
+        when(ally.getMap()).thenReturn(mock(MapleMap.class)); // the fight
+
+        menus.card(owner, miraRow);
+        assertFalse(lastTalk().labels().contains("Let's trade"), lastTalk().labels().toString());
+        LivingTalk.forget(owner);
+
+        MapleMap room = owner.getMap();
+        when(ally.getMap()).thenReturn(room);
+        menus.card(owner, miraRow);
+        List<String> labels = lastTalk().labels();
+        assertEquals(List.of("Your wages...", "Let's trade", "We should part ways"),
+                labels.subList(labels.indexOf("Your wages..."), labels.size()), labels.toString());
+
+        pick("Let's trade");
+
+        verify(manager).openTrade(eq(owner), eq(mira), anyLong());
     }
 
     // ---- tied to a run ---------------------------------------------------------------------

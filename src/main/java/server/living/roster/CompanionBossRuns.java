@@ -811,6 +811,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * 2026-10-15 (P20 run 3), from memory, any thread: {@code personaId}'s bench ally while it is loaded at its boss
+     * (the entry NPC's room or the fight), else null. Its card offers its owner "Let's trade" while it stands on the
+     * owner's map (CompanionManager.openTrade), so the owner can hand it potions when it says on arrival it is short.
+     */
+    public Character allyHere(String personaId) {
+        return allies.here(personaId);
+    }
+
+    /**
      * P7 Part B, any thread (/runtime/budget): the most EXPEDITION leases held at once since the living world started,
      * raised as a bench ally's call takes one (CompanionBossAllies); it never falls.
      */
