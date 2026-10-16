@@ -69,7 +69,7 @@ class AgentSupplyReadinessBossStandardTest {
     void easyBalrogKeepsAHundredHpAndSixtyMpPotionsFromTheYaml() {
         assertEquals("easy_balrog=100/60,zakum=500/400,balrog_normal=300/300,latanica=150/100,neo_bergamot=150/100,"
                         + "neo_dunas=150/100,neo_aufheben=200/150,neo_oberon=200/150,neo_nibelung=250/250,"
-                        + "papulatus=450/300,scarga=900/500,horntail=900/900,showa=600/600,pinkbean=600/600,"
+                        + "papulatus=450/300,scarga=900/500,horntail=900/900,showa=600/600,pinkbean=900/600,"
                         + "field_pianus=500/300,field_leafre=300/200,field_temple=500/300,field_zipangu=500/300,"
                         + "field_masteria=400/300",
                 AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
@@ -288,7 +288,7 @@ class AgentSupplyReadinessBossStandardTest {
 
             assertEquals(new AgentSupplyReadiness.PotionFloor(1_500, 0), AgentSupplyReadiness.potionFloor(pinkBean));
             assertEquals(44, AgentSupplyReadiness.countFor(ingrid, pinkBean)[0], "the White Potions do not count");
-            assertEquals(556, AgentSupplyReadiness.shortfall(ingrid, pinkBean).hp(), "600 - 44");
+            assertEquals(856, AgentSupplyReadiness.shortfall(ingrid, pinkBean).hp(), "900 - 44");
         }
     }
 
