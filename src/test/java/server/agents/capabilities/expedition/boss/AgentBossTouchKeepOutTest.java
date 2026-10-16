@@ -209,8 +209,8 @@ class AgentBossTouchKeepOutTest {
 
     @Test
     void withNoSideTwoTouchesApartLeaveTheGapBetweenThemFree() {
-        // 2026-10-15 (P20 run 11): Solomon's and Hugin's touches on Pink Bean's left ledge (y -99) lie 220 px apart, and
-        // joining them walled off the ledge, the only foothold from which Hugin can be hit
+        // 2026-10-15 (P20 run 11): Solomon's and Hugin's touches on Pink Bean's left ledge (y -99) lie 220 px apart,
+        // and joining them walled off the ledge, the only foothold from which Hugin can be hit
         areas.put(SOLOMON, new Rectangle(-737, -150, 120, 60));
         areas.put(HUGIN, new Rectangle(-397, -150, 157, 60));
         touches.put(SOLOMON, 17_000.0d);
