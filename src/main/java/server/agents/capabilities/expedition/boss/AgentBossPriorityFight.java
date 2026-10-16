@@ -29,6 +29,7 @@ import server.maps.Portal;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -300,8 +301,11 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * 2026-10-14: the band of x past every deadly touch area on the member's floor, KEEP_OUT_MARGIN_PX outside it; null
      * while none lives. A live monster's touch area (the lower half of its body box, as touch damage reads it) is deadly
      * when it reaches the floor under the member and one touch there would take at least TOUCH_KEEP_OUT_HP_PERCENT of
-     * the member's max HP (Horntail's Tails, about 25,000, and Legs, about 11,000). The areas count as one span; the
-     * member keeps to {@code side} of it ("left" or "right"), or with none to the side nearer its middle.
+     * the member's max HP (Horntail's Tails, about 25,000, and Legs, about 11,000). With {@code side} ("left" or
+     * "right") the areas count as one span and the member keeps to that side of it. With none (2026-10-15, P20 run 11)
+     * only areas that overlap, each widened by its margin, join: the member keeps to the free gap it stands in, or,
+     * standing inside a joined area, to the gap beside its nearer edge. Pink Bean's Solomon and Hugin touch apart, and
+     * the whole span between them walled off the only ledge from which Hugin can be hit.
      */
     int[] touchBand(MapleMap map, Character member, String side) {
         return touchBand(map, member, side, List.of());
@@ -332,18 +336,14 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         double limit = ports.maxHp(member)
                 * (double) (keepOutHpPercent > 0 ? keepOutHpPercent : touchKeepOutHpPercent()) / 100.0d;
         int sweep = ports.touchSweepPx();
-        long left = Long.MAX_VALUE;
-        long right = Long.MIN_VALUE;
-        boolean moving = false;
+        List<long[]> areas = new ArrayList<>();
         for (Monster monster : ports.monsters(map)) {
             Rectangle area = monster.isAlive() ? ports.touchArea(monster) : null;
             if (area == null || area.y > foot.y || area.y + area.height <= foot.y - sweep
                     || ports.touchDamage(member, monster) < limit) {
                 continue;
             }
-            left = Math.min(left, area.x);
-            right = Math.max(right, (long) area.x + area.width - 1);
-            moving |= ports.mobile(monster);
+            areas.add(new long[] {area.x, (long) area.x + area.width - 1, ports.mobile(monster) ? 1 : 0});
         }
         double attackLimit = ports.maxHp(member)
                 * (double) (keepOutHpPercent > 0 ? keepOutHpPercent : attackKeepOutHpPercent()) / 100.0d;
@@ -358,19 +358,67 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                         || ports.attackDamage(member, monster, attack) < attackLimit) {
                     continue;
                 }
-                left = Math.min(left, area.x);
-                right = Math.max(right, (long) area.x + area.width - 1);
-                moving |= ports.mobile(monster);
+                areas.add(new long[] {area.x, (long) area.x + area.width - 1, ports.mobile(monster) ? 1 : 0});
             }
         }
-        if (left > right) {
+        if (areas.isEmpty()) {
             return null;
         }
+        if (side == null) {
+            return gap(areas, foot.x);
+        }
+        long left = Long.MAX_VALUE;
+        long right = Long.MIN_VALUE;
+        boolean moving = false;
+        for (long[] area : areas) {
+            left = Math.min(left, area[0]);
+            right = Math.max(right, area[1]);
+            moving |= area[2] != 0;
+        }
         int margin = moving ? Math.max(keepOutMarginPx(), mobileKeepOutMarginPx()) : keepOutMarginPx();
-        boolean keepLeft = side == null ? foot.x <= (left + right) / 2 : side.equals("left");
-        return keepLeft
-                ? new int[] {Integer.MIN_VALUE, (int) Math.max(Integer.MIN_VALUE, left - 1 - margin)}
-                : new int[] {(int) Math.min(Integer.MAX_VALUE, right + 1 + margin), Integer.MAX_VALUE};
+        return side.equals("left")
+                ? new int[] {Integer.MIN_VALUE, clamp(left - 1 - margin)}
+                : new int[] {clamp(right + 1 + margin), Integer.MAX_VALUE};
+    }
+
+    /**
+     * The band of the free gap at {@code x} between the deadly {@code areas} ({x0, x1, mobile}), each widened by its
+     * margin to the last x a member may stand at, overlapping ones joined; standing inside a joined area, the gap
+     * beside its nearer edge (the left one at the middle).
+     */
+    private static int[] gap(List<long[]> areas, int x) {
+        List<long[]> spans = new ArrayList<>();
+        for (long[] area : areas) {
+            int margin = area[2] != 0 ? Math.max(keepOutMarginPx(), mobileKeepOutMarginPx()) : keepOutMarginPx();
+            spans.add(new long[] {area[0] - 1 - margin, area[1] + 1 + margin});
+        }
+        spans.sort(Comparator.comparingLong(span -> span[0]));
+        List<long[]> joined = new ArrayList<>();
+        for (long[] span : spans) {
+            long[] last = joined.isEmpty() ? null : joined.get(joined.size() - 1);
+            if (last != null && span[0] <= last[1]) {
+                last[1] = Math.max(last[1], span[1]);
+            } else {
+                joined.add(span.clone());
+            }
+        }
+        int i = 0;
+        while (i < joined.size() && joined.get(i)[1] <= x) {
+            i++;
+        }
+        if (i < joined.size() && joined.get(i)[0] < x) {
+            long[] inside = joined.get(i);
+            if (x > (inside[0] + inside[1]) / 2) {
+                i++;
+            }
+        }
+        long low = i == 0 ? Integer.MIN_VALUE : joined.get(i - 1)[1];
+        long high = i == joined.size() ? Integer.MAX_VALUE : joined.get(i)[0];
+        return new int[] {clamp(low), clamp(high)};
+    }
+
+    private static int clamp(long x) {
+        return (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, x));
     }
 
     /**

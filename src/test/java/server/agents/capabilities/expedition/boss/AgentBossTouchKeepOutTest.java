@@ -44,6 +44,8 @@ class AgentBossTouchKeepOutTest {
     private static final int LEGS = 8_810_008;
     private static final int TAIL = 8_810_009;
     private static final int WINGS = 8_810_007;
+    private static final int SOLOMON = 8_820_003;
+    private static final int HUGIN = 8_820_005;
     private static final Rectangle LEGS_TOUCH = new Rectangle(-186, 169, 514, 91);
     private static final Rectangle TAIL_TOUCH = new Rectangle(191, 193, 307, 71);
     private static final int EDGE = -186 - 1 - 30;
@@ -203,6 +205,42 @@ class AgentBossTouchKeepOutTest {
         assertArrayEquals(new int[] {497 + 1 + 30, Integer.MAX_VALUE},
                 fight.touchBand(altar, member(12, new Point(600, 260)), "right"));
         assertNull(fight.touchBand(altar, member(13, new Point(600, 80)), null), "the ledge is above the touch");
+    }
+
+    @Test
+    void withNoSideTwoTouchesApartLeaveTheGapBetweenThemFree() {
+        // 2026-10-15 (P20 run 11): Solomon's and Hugin's touches on Pink Bean's left ledge (y -99) lie 220 px apart, and
+        // joining them walled off the ledge, the only foothold from which Hugin can be hit
+        areas.put(SOLOMON, new Rectangle(-737, -150, 120, 60));
+        areas.put(HUGIN, new Rectangle(-397, -150, 157, 60));
+        touches.put(SOLOMON, 17_000.0d);
+        touches.put(HUGIN, 20_000.0d);
+        mobs(SOLOMON, HUGIN);
+        int solomonRight = -618 + 1 + 30;
+        int huginLeft = -397 - 1 - 30;
+
+        assertArrayEquals(new int[] {solomonRight, huginLeft},
+                fight.touchBand(altar, member(10, new Point(-500, -99)), null), "in the gap: stay in it");
+        assertArrayEquals(new int[] {solomonRight, huginLeft},
+                fight.touchBand(altar, member(11, new Point(-380, -99)), null), "inside Hugin's, nearer its left edge");
+        assertArrayEquals(new int[] {-241 + 1 + 30, Integer.MAX_VALUE},
+                fight.touchBand(altar, member(12, new Point(-250, -99)), null), "nearer its right edge");
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, -737 - 1 - 30},
+                fight.touchBand(altar, member(13, new Point(-800, -99)), null), "left of both");
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, -737 - 1 - 30},
+                fight.touchBand(altar, member(14, new Point(-500, -99)), "left"), "a named side: the whole span");
+    }
+
+    @Test
+    void touchesWhoseMarginsMeetStillJoin() {
+        areas.put(SOLOMON, new Rectangle(-737, -150, 120, 60));
+        areas.put(HUGIN, new Rectangle(-617 + 60, -150, 100, 60));
+        touches.put(SOLOMON, 17_000.0d);
+        touches.put(HUGIN, 20_000.0d);
+        mobs(SOLOMON, HUGIN);
+
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, -737 - 1 - 30},
+                fight.touchBand(altar, member(10, new Point(-600, -99)), null), "60 px apart: no room between");
     }
 
     @Test
