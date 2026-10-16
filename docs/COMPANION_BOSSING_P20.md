@@ -1,17 +1,17 @@
 # P20: Pink Bean
 
 > Built 2026-10-12 on branch `feat/companion-bossing-p20`, on top of P19. Plan: docs/COMPANION_BOSSING_PLAN.md,
-> section P20. The `pinkbean` key ships off. The statue fix (decision 15) acts for every player as soon as it is
-> deployed. **Live check CLEARED 2026-10-16 04:23** on the seventeenth run, 69 minutes, six companions, 4 of the 5
-> deaths (see "Live runs" below).
+> section P20. The statue fix (decision 15) acts for every player as soon as it is deployed. **Live check CLEARED
+> 2026-10-16 04:23** on the seventeenth run, 69 minutes, six companions, 4 of the 5 deaths (see "Live runs" below).
+> **The `pinkbean` key is on since 2026-10-16** (user; 18d5b66e0). Bench allies and second owners stay off for it.
 
 ## Result
 
 An owner can now sign their companions up for Pink Bean at the Forgotten Temple Manager, as at Adobis for Zakum. A
 companion that dies revives inside, as a player does, and walks back into the fight. Ranged and magic companions keep
 out of Solomon's and Rex's deadly boxes. P20 also fixes the statue reactor for every player: Pink Bean now wakes even
-when the event's first player lies dead on another map. With `pinkbean` off (as shipped), the Manager's window and the
-fight are stock.
+when the event's first player lies dead on another map. With `pinkbean` off, the Manager's window and the fight are
+stock.
 
 ## Live runs (2026-10-15 to 2026-10-16)
 
@@ -282,8 +282,8 @@ Full suite on bbf4f205b: 13,467 tests, 0 failures, 37 skipped (10:54 min).
 ## Open items
 
 1. The scaled standard (1200/1200, 10000) waits for Questions 5 and 6.
-2. `pinkbean` ships off: the keys went back to `easy_balrog` and `OWNERS_MAX` 1 after the clear, as for Horntail and
-   Showa. Turning it on is the user's call.
+2. `pinkbean` is on (user, 2026-10-16, 18d5b66e0). `COMPANION_BOSS_ALLY_TYPES` stays `easy_balrog` and
+   `OWNERS_MAX` 1: every run 4-17 used no bench allies, and run 3's ally bought White Potions (a separate fix).
 3. Warriors still die with full potion bags to a deadly hit (HP to 1) followed by another before the autopot fires:
    Solomon's attack1 stuns as it drops HP to 1 (Thane, run 16), and seduce walks a member into the next hit. Deadly
    attacks are left out of both keep-outs on purpose.
