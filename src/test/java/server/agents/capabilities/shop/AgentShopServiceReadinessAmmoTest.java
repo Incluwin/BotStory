@@ -7,6 +7,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import config.AgentYamlConfig;
 import constants.inventory.ItemConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -504,6 +505,17 @@ class AgentShopServiceReadinessAmmoTest {
 
     // ---- seal cures (2026-10-14, P18: Horntail's Right Hand seals the whole altar) --------------------
 
+    private static final int ORANGE = 2_000_001;
+    private static final int MANA_ELIXIR = 2_000_006;
+    private static final int MELTING_CHEESE = 2_020_012;
+    private static final int REINDEER_MILK = 2_020_013;
+    private static final AgentSupplyReadiness.Activity PINK_BEAN = AgentSupplyReadiness.Activity.partyQuest("pinkbean");
+    private static final String FLOOR_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS";
+    private static final String BOSS_STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_STANDARDS";
+    /** Pink Bean's standard on P20 run 3 (raised to 1500/600 since), the purchase the live line records. */
+    private static final String RUN_THREE_STANDARD = "pinkbean=600/600";
     private static final int HOLY_WATER = 2_050_003;
     private static final AgentSupplyReadiness.Activity HORNTAIL_CURE =
             AgentSupplyReadiness.Activity.partyQuest("horntail_cure");
@@ -576,6 +588,50 @@ class AgentShopServiceReadinessAmmoTest {
                 transactions.toString());
         assertEquals(400, bought.hpPotions(), "a stack in each slot it made, HP first: " + transactions);
         assertEquals(1, use.getNumFreeSlot(), "the run's slot");
+    }
+
+    @Test
+    void anAllyProvisionedForPinkBeanInLeafreBuysPotionsThatHealAndStaysShort() {
+        // 2026-10-15 (P20 run 3): the ally Gunnar, a Hero with 19,776 HP, met Pink Bean's 600 HP potions with 522 White
+        // Potions bought on arrival at Leafre's store; at 300 HP each he drank all 600 in about 7 minutes and died four
+        // times with none left. Toward the floor his purse buys Melting Cheese as far as it goes
+        String standards = AgentYamlConfig.config.tuning.put(BOSS_STANDARDS_KEY, RUN_THREE_STANDARD);
+        try {
+            gunnarInLeafre();
+
+            AgentShopProvisioning.Provisioned bought = AgentShopProvisioning.provision(bot, leafre(), PINK_BEAN,
+                    100_000, inventory, WeaponType.GENERAL2H_SWING);
+
+            assertEquals(List.of("64 x " + MELTING_CHEESE, "100 x " + BLUE, "100 x " + BLUE, "90 x " + BLUE),
+                    transactions, "4,000 HP each, the cheapest that meets 15%, with all the HP money; the mana gap in "
+                            + "Blue Potions");
+            assertEquals(64, bought.hpPotions(), "256,000 HP, where 522 White Potions held 156,600");
+            assertEquals(536, AgentSupplyReadiness.shortfall(bot, PINK_BEAN).hp(), "short: he says so on arrival");
+            assertEquals(100_887, purse, "the wallet reserve stays");
+        } finally {
+            AgentYamlConfig.config.tuning.put(BOSS_STANDARDS_KEY, standards);
+        }
+    }
+
+    @Test
+    void withoutPinkBeansFloorTheSamePurseBuysTheCountInWhitePotionsAsItDidLive() {
+        String standards = AgentYamlConfig.config.tuning.put(BOSS_STANDARDS_KEY, RUN_THREE_STANDARD);
+        String configured = AgentYamlConfig.config.tuning.put(FLOOR_KEY, "horntail=1500/0");
+        try {
+            gunnarInLeafre();
+
+            AgentShopProvisioning.Provisioned bought = AgentShopProvisioning.provision(bot, leafre(), PINK_BEAN,
+                    100_000, inventory, WeaponType.GENERAL2H_SWING);
+
+            assertEquals(new AgentShopProvisioning.Provisioned(522, 290, 0, 446_887, 100_047), bought,
+                    "the live line, bought hp=522 mp=290 ammo=0 mesos 446887->100047: " + transactions);
+            assertTrue(transactions.stream().allMatch(t -> t.endsWith(" x " + WHITE) || t.endsWith(" x " + MANA_ELIXIR)),
+                    "White Potions and Mana Elixirs only: " + transactions);
+            assertTrue(AgentSupplyReadiness.shortfall(bot, PINK_BEAN).potionsNone(), "600 met the count");
+        } finally {
+            AgentYamlConfig.config.tuning.put(FLOOR_KEY, configured);
+            AgentYamlConfig.config.tuning.put(BOSS_STANDARDS_KEY, standards);
+        }
     }
 
     @Test
@@ -684,6 +740,33 @@ class AgentShopServiceReadinessAmmoTest {
 
     private void hunter() {
         when(bot.getJob()).thenReturn(Job.HUNTER);
+    }
+
+    /**
+     * The ally Gunnar on arrival for Pink Bean (P20 run 3): a Hero with 19,776 HP, 446,887 mesos, 78 HP potions left
+     * from run 2 (their kind is not logged; White Potions here) and 310 Mana Elixirs.
+     */
+    private void gunnarInLeafre() {
+        when(bot.getId()).thenReturn(1_005);
+        when(bot.getName()).thenReturn("Gunnar");
+        when(bot.getJob()).thenReturn(Job.HERO);
+        when(bot.getCurrentMaxHp()).thenReturn(19_776);
+        when(bot.getCurrentMaxMp()).thenReturn(3_000);
+        effects.put(ORANGE, effect(150, 0));
+        effects.put(MANA_ELIXIR, effect(0, 300));
+        effects.put(MELTING_CHEESE, effect(4_000, 0));
+        effects.put(REINDEER_MILK, effect(5_000, 0));
+        prices.putAll(Map.of(ORANGE, 160, MANA_ELIXIR, 620, MELTING_CHEESE, 4_500, REINDEER_MILK, 5_600));
+        use.addItem(junk(WHITE, 78));
+        for (int left = 310; left > 0; left -= 100) {
+            use.addItem(junk(MANA_ELIXIR, Math.min(100, left)));
+        }
+        purse = 446_887;
+    }
+
+    /** Leafre's store (2080001, 240000002) at its prices: its HP and MP recovery potions. */
+    private Shop leafre() {
+        return shop(List.of(REINDEER_MILK, MELTING_CHEESE, MANA_ELIXIR, BLUE, WHITE, ORANGE, RED));
     }
 
     private void bag(int slots) {
