@@ -43,6 +43,7 @@ class AgentBossKeepOutTest {
     private static final int BATTLE = 270_050_100;
     private static final int RESURRECTION = 270_050_200;
     private static final int ARIEL = 8_820_002;
+    private static final int MUNIN = 8_820_006;
     private static final int SOLOMON = 8_820_003;
     private static final int REX = 8_820_004;
     private static final int PINK_BEAN = 8_820_001;
@@ -107,7 +108,9 @@ class AgentBossKeepOutTest {
                 new AgentBossRules.KeepOut(REX, 200, 900)), rules.keepOut());
         assertEquals(List.of(RESURRECTION), rules.stageMaps());
         assertEquals("in00", rules.stagePortal());
-        assertEquals(ARIEL, rules.targetPriority().getFirst(), "the healer first");
+        // P20 run 13: Munin seduced 48 times in 7 minutes of wave 5 while the party fought Ariel (who casts Undead
+        // only in this data, no heal)
+        assertEquals(List.of(MUNIN, ARIEL), rules.targetPriority().subList(0, 2), "the seducer first");
         assertEquals(PINK_BEAN, rules.targetPriority().getLast());
         assertEquals(List.of(4_001_193), rules.markerItems(), "the stage-5 drop stays on the floor");
         assertEquals(List.of(), AgentBossRules.entryItems("pinkbean"), "the owner carries nothing in");
