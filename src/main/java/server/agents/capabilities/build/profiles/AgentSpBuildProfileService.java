@@ -209,7 +209,11 @@ public final class AgentSpBuildProfileService {
             int targetLevel = Math.min(target.getValue(), maxAssignableLevel(agent, skill, definition));
             while (agent.getRemainingSps()[book] > 0 && agent.getSkillLevel(skill) < targetLevel) {
                 if (!requirementsMet(agent, definition, skills)) {
-                    return;
+                    // Its prerequisite is short, often held below the plan by its master level, so the next
+                    // targets still get SP. Returning here starved them: Brannock (Lv200 Hero, 2026-10-16) has
+                    // Enrage waiting on Advanced Combo 25 at master 20, and sat at Maple Warrior 0/10, Achilles
+                    // 10/20 with 90 SP.
+                    break;
                 }
                 if (!learnOne(entry, agent, skill, target.getKey(), book, definition.maxLevel(), profile.profileId())) {
                     return;

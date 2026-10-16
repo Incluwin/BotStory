@@ -94,6 +94,37 @@ class AgentBuildServiceTest {
     }
 
     @Test
+    void aSkillWaitingOnItsPrerequisiteLeavesTheRestOfTheFourthJobPlanItsSp() {
+        // Brannock, Lv200 Hero (2026-10-16): Enrage waits on Advanced Combo 25, held at master 20 by its books. The
+        // plan's later skills still take SP: Maple Warrior up to its master 10, Achilles up to its master 20.
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        entry.spBuildProfileState().assign(AgentSpBuildProfileRepository.defaultRepository()
+                .find("mapleroyals-optimal-2026-hero").orElseThrow());
+        int book = GameConstants.getSkillBook(Job.HERO.getId());
+        int[] remainingSps = new int[5];
+        remainingSps[book] = 90;
+        Map<Integer, Integer> skillLevels = new HashMap<>(Map.of(1120003, 20, 1120004, 10, 1121001, 30,
+                1121002, 30, 1121006, 28, 1121008, 30, 1121011, 5));
+        Map<Integer, Integer> masterLevels = Map.of(1120003, 20, 1120004, 20, 1120005, 10, 1121000, 10,
+                1121001, 30, 1121002, 30, 1121006, 30, 1121008, 30, 1121010, 10, 1121011, 5);
+        SkillGateway skills = mock(SkillGateway.class);
+        when(skills.getSkill(anyInt())).thenAnswer(invocation -> mockSkill(invocation.getArgument(0), 30, true));
+        when(bot.getJob()).thenReturn(Job.HERO);
+        when(bot.getLevel()).thenReturn(200);
+        when(bot.getMasterLevel(any(Skill.class))).thenAnswer(invocation ->
+                masterLevels.getOrDefault(invocation.<Skill>getArgument(0).getId(), 0));
+        stubSkillState(bot, remainingSps, skillLevels);
+
+        assertTrue(AgentSpBuildProfileService.autoAssign(entry, bot, skills));
+
+        assertEquals(0, skillLevels.getOrDefault(1121010, 0), "Enrage still waits on Advanced Combo 25");
+        assertEquals(10, skillLevels.get(1121000), "Maple Warrior up to its master level");
+        assertEquals(20, skillLevels.get(1120004), "Achilles up to its master level");
+        assertEquals(70, remainingSps[book]);
+    }
+
+    @Test
     void sourceProfileKeepsSpendingSpPastItsLastProfiledLevel() {
         // Rurik: Lv31 Warrior that has not taken 2nd job; the first-job profile ends at Lv30.
         Character bot = mock(Character.class);
