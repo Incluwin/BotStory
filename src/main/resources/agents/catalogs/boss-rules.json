@@ -71,7 +71,11 @@
       "attackKeepOut": [8820003, 8820004, 8820005, 8820006, 8820002, 8820001],
       "companionDamagePercent": 2000,
       "attackKeepOutHpPercent": 65,
-      "lastStand": {"property": "fallenPlayers", "at": 4}
+      "lastStand": {"property": "fallenPlayers", "at": 4},
+      "ledges": [
+        {"x": -455, "y": -99, "mobIds": [8820005]},
+        {"x": 460, "y": -102, "mobIds": [8820006]}
+      ]
     },
     {
       "key": "latanica",

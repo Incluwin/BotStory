@@ -69,6 +69,10 @@ import java.util.TreeMap;
  * waits there instead of walking back in (AgentBossPriorityFight.holdsLastStand), as an expedition tells its dead to
  * stay out once one more death would end it. Pink Bean runs 14 to 16 each ended on a member walking back in after the
  * fourth death and dying again.</li>
+ * <li>{@code ledges} (2026-10-16, empty for none): ledges ({@link Anchor}) from which a melee member hits the parts
+ * each names when its attacks cannot reach them from the floor under them (AgentBossPriorityFight.ledge). Pink Bean's
+ * Hugin and Munin hang 99 px above the floor: a Hero's Brandish (110 px up) reaches them from there, a Paladin's Blast
+ * does not, and on the y=-99 ledge beside Hugin the Paladin swung 25-55 times a minute against 0-3 on the floor.</li>
  * <li>{@code companionDamagePercent} (2026-10-15, 0 = 100 = unchanged): the percent an INSIDE member's damage lines on
  * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
  * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
@@ -96,7 +100,7 @@ public final class AgentBossRules {
                        List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
                        List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut,
                        int keepOutHpPercent, int companionDamagePercent, int attackKeepOutHpPercent,
-                       LastStand lastStand) {
+                       LastStand lastStand, List<Anchor> ledges) {
         public Boss {
             if (key == null || key.isBlank() || label == null || label.isBlank()) {
                 throw new IllegalArgumentException("a boss rule needs a key and a label");
@@ -114,6 +118,7 @@ public final class AgentBossRules {
             keepOut = keepOut == null ? List.of() : List.copyOf(keepOut);
             focus = focus == null ? List.of() : List.copyOf(focus);
             attackKeepOut = attackKeepOut == null ? List.of() : List.copyOf(attackKeepOut);
+            ledges = ledges == null ? List.of() : List.copyOf(ledges);
             if (keepOutHpPercent < 0 || keepOutHpPercent > 100) {
                 throw new IllegalArgumentException("keepOutHpPercent must be 0 to 100: " + keepOutHpPercent);
             }
@@ -124,6 +129,20 @@ public final class AgentBossRules {
                 throw new IllegalArgumentException(
                         "attackKeepOutHpPercent must be 0 to 100: " + attackKeepOutHpPercent);
             }
+        }
+
+        /** A boss row with no ledges (every row before Pink Bean's, 2026-10-16). */
+        public Boss(String key, String label, Map<String, Integer> roles, List<Integer> targetPriority,
+                    List<Integer> adds, List<Integer> neverTarget, List<Integer> fieldBosses,
+                    boolean neverTargetFakes, List<Integer> markerItems, int minLevel, int deathWaitMap,
+                    boolean randomSpots, List<Integer> stageMaps, String stagePortal,
+                    List<Integer> meleePriority, int reentryWarpFrom, List<Integer> entryItems,
+                    List<KeepOut> keepOut, List<Focus> focus, List<Integer> attackKeepOut, int keepOutHpPercent,
+                    int companionDamagePercent, int attackKeepOutHpPercent, LastStand lastStand) {
+            this(key, label, roles, targetPriority, adds, neverTarget, fieldBosses, neverTargetFakes, markerItems,
+                    minLevel, deathWaitMap, randomSpots, stageMaps, stagePortal, meleePriority, reentryWarpFrom,
+                    entryItems, keepOut, focus, attackKeepOut, keepOutHpPercent, companionDamagePercent,
+                    attackKeepOutHpPercent, lastStand, null);
         }
 
         /** A boss row with no last stand (every row before Pink Bean's run 17, 2026-10-16). */

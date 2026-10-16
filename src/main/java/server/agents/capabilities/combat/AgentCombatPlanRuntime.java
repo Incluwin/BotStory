@@ -95,7 +95,7 @@ public final class AgentCombatPlanRuntime {
         return candidates;
     }
 
-    private static List<Integer> attackSkillIds(AgentRuntimeEntry entry) {
+    static List<Integer> attackSkillIds(AgentRuntimeEntry entry) {
         List<Integer> attackSkillIds = AgentCombatSkillClassifier.cachedAttackSkillIds(
                 AgentCombatSkillCacheStateRuntime.attackSkillIds(entry),
                 AgentCombatSkillCacheStateRuntime.attackSkillId(entry),

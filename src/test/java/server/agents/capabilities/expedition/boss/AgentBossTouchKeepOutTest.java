@@ -129,7 +129,8 @@ class AgentBossTouchKeepOutTest {
 
         fight.tick(List.of(member(10, new Point(257, 260))), event, 0L);
 
-        verify(gateway).navigate(hero, new Point(EDGE, 260), false);
+        // 30 px inside the edge: a walk ends within STOP_DIST (30) of its target
+        verify(gateway).navigate(hero, new Point(EDGE - 30, 260), false);
         verify(gateway, never()).grind(any(), anySet(), anySet());
         verify(gateway, never()).setHorizontalBoundary(any(), anyInt(), anyInt(), anyInt());
     }
@@ -229,6 +230,43 @@ class AgentBossTouchKeepOutTest {
                 fight.touchBand(altar, member(13, new Point(-800, -99)), null), "left of both");
         assertArrayEquals(new int[] {Integer.MIN_VALUE, -737 - 1 - 30},
                 fight.touchBand(altar, member(14, new Point(-500, -99)), "left"), "a named side: the whole span");
+    }
+
+    @Test
+    void aMemberJustPastTheEdgeWalksFarEnoughInThatItsWalkEndsInsideThenFights() {
+        // 2026-10-16 (P20 run 15): Garrick stood on the ledge at x=-400, 28 px past the edge of Hugin's touch
+        // (x -397..-240 on the ledge, -428 with the margin). A walk ends within STOP_DIST (30) of its target, so one
+        // aimed at the edge ended where it began; every tick sent him again instead of a fight, and he swung 0-2 times
+        // a minute for three minutes while the members beside him swung 19-41
+        areas.put(HUGIN, new Rectangle(-397, -239, 158, 99));
+        touches.put(HUGIN, 20_000.0d);
+        mobs(HUGIN);
+        AgentRuntimeEntry garrick = entry(10);
+        Character member = member(10, new Point(-400, -99));
+
+        fight.tick(List.of(member), event, 0L);
+        verify(gateway).navigate(garrick, new Point(-428 - 30, -99), false);
+        verify(gateway, never()).grind(any(), anySet(), anySet());
+
+        when(member.getPosition()).thenReturn(new Point(-428 - 30 + 29, -99));
+        fight.tick(List.of(member), event, 1L);
+        verify(gateway).setHorizontalBoundary(garrick, ALTAR, Integer.MIN_VALUE, -428);
+        verify(gateway).grind(garrick, Set.of(HUGIN), Set.of());
+    }
+
+    @Test
+    void aBandNarrowerThanTwoWalkEndsIsWalkedToPreciselyAtItsMiddle() {
+        areas.put(SOLOMON, new Rectangle(-600, -150, 122, 60));
+        areas.put(HUGIN, new Rectangle(-397, -239, 158, 99));
+        touches.put(SOLOMON, 17_000.0d);
+        touches.put(HUGIN, 20_000.0d);
+        mobs(SOLOMON, HUGIN);
+        AgentRuntimeEntry member = entry(10);
+
+        fight.tick(List.of(member(10, new Point(-400, -99))), event, 0L);
+
+        // the gap between them is -448..-428: 10 px in, at its middle, and precisely
+        verify(gateway).navigate(member, new Point(-438, -99), true);
     }
 
     @Test
