@@ -153,6 +153,14 @@ public interface PrimitiveCapabilityGateway {
         return false;
     }
 
+    /**
+     * 2026-10-15 (P20 run 11): the Agent casts its Hero's Will (any class's, Pirate's Rage too), which cures every
+     * abnormal status, when it knows one that is off cooldown and may cast now; true when it cast.
+     */
+    default boolean castHerosWill(AgentRuntimeEntry entry, Character agent) {
+        return false;
+    }
+
     /** How many HP potions this character carries in its USE bag; -1 when that cannot be told. */
     default int hpPotionCount(Character character) {
         return -1;

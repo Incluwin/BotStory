@@ -28,6 +28,7 @@ import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentAttackPlanScoringPolicy;
 import server.agents.capabilities.combat.AgentAttackRoute;
+import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatDirectiveRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
 import server.agents.capabilities.combat.AgentCombatVariationRuntime;
@@ -355,6 +356,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     public boolean rangedWeapon(Character agent) {
         return AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
                 AgentAttackExecutionProvider.getEquippedWeaponType(agent));
+    }
+
+    @Override
+    public boolean castHerosWill(AgentRuntimeEntry entry, Character agent) {
+        return AgentCombatBuffRuntime.tryCastHerosWill(entry, agent);
     }
 
     @Override

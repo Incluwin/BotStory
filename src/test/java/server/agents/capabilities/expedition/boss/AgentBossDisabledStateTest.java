@@ -156,6 +156,19 @@ class AgentBossDisabledStateTest {
     }
 
     @Test
+    void aSeducedMemberWithHerosWillReadyCastsItInsteadOfWalking() {
+        // 2026-10-15 (P20 run 11): Munin seduced 37 times in 4 minutes and dragged the members across the map
+        boss(new Point(400, 0));
+        Character thane = inside(THANE, new Point(0, 0), Disease.SEDUCE);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(thane, null, null);
+        when(gateway.castHerosWill(entry, thane)).thenReturn(true);
+
+        assertTrue(AgentBossDisabledState.holds(entry, thane), "the cast takes its tick");
+
+        verify(gateway, never()).navigate(any(), any(), anyBoolean());
+    }
+
+    @Test
     void aConfusedMemberWalksAwayFromTheNearestBossPart() {
         boss(new Point(300, 0));
         Character thane = inside(THANE, new Point(100, 0), Disease.CONFUSE);

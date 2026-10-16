@@ -2,11 +2,24 @@ package server.agents.capabilities.combat;
 
 import client.BuffStat;
 import client.Character;
+import client.Disease;
 import client.Skill;
 import client.inventory.WeaponType;
+import constants.skills.Aran;
+import constants.skills.Bishop;
 import constants.skills.BlazeWizard;
+import constants.skills.Bowmaster;
+import constants.skills.Buccaneer;
+import constants.skills.DarkKnight;
 import constants.skills.Evan;
+import constants.skills.FPArchMage;
+import constants.skills.Hero;
+import constants.skills.ILArchMage;
 import constants.skills.Magician;
+import constants.skills.Marksman;
+import constants.skills.NightLord;
+import constants.skills.Paladin;
+import constants.skills.Shadower;
 import server.StatEffect;
 import server.agents.capabilities.dialogue.AgentCombatDialogueReporter;
 import server.agents.integration.AgentSkillGatewayRuntime;
@@ -198,6 +211,39 @@ public final class AgentCombatBuffRuntime {
             return false;
         }
         return castSupportSkill(entry, bot, skill, effect, System.currentTimeMillis());
+    }
+
+    /** Every class's Hero's Will, Pirate's Rage too, as StatEffect.isHerosWill lists them. */
+    private static final int[] HEROS_WILLS = {Hero.HEROS_WILL, Paladin.HEROS_WILL, DarkKnight.HEROS_WILL,
+            FPArchMage.HEROS_WILL, ILArchMage.HEROS_WILL, Bishop.HEROS_WILL, Bowmaster.HEROS_WILL,
+            Marksman.HEROS_WILL, NightLord.HEROS_WILL, Shadower.HEROS_WILL, Buccaneer.PIRATES_RAGE, Aran.HEROS_WILL};
+
+    /**
+     * 2026-10-15 (P20 run 11): casts the Agent's Hero's Will, which cures every abnormal status
+     * (StatEffect.isCureAllAbnormalStatus), through the support cast path, as a seduced player presses it; true when it
+     * cast. Not while sealed (no skill then), mid-jump, on a rope, on attack cooldown, or with it cooling.
+     */
+    public static boolean tryCastHerosWill(AgentRuntimeEntry entry, Character bot) {
+        return tryCastHerosWill(entry, bot, AgentSkillGatewayRuntime.skills());
+    }
+
+    static boolean tryCastHerosWill(AgentRuntimeEntry entry, Character bot, SkillGateway skills) {
+        if (entry == null || bot == null || !bot.isAlive() || bot.hasDisease(Disease.SEAL) || !groundedAndFree(entry)) {
+            return false;
+        }
+        for (int skillId : HEROS_WILLS) {
+            Skill skill = skills.getSkill(skillId);
+            int level = skill == null ? 0 : bot.getSkillLevel(skill);
+            if (level <= 0) {
+                continue;
+            }
+            if (bot.skillIsCooling(skillId)) {
+                return false;
+            }
+            StatEffect effect = skill.getEffect(level);
+            return effect != null && castSupportSkill(entry, bot, skill, effect, System.currentTimeMillis());
+        }
+        return false;
     }
 
     static boolean tryCastCriticalSurvivalBuff(AgentRuntimeEntry entry, Character bot, SkillGateway skills) {

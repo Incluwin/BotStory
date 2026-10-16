@@ -26,7 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * <ul>
  * <li>STUN: it stands still and does nothing (on the ground; in the air it falls first).</li>
  * <li>SEDUCE: it walks toward the boss that seduced it. The caster is not kept, so the nearest live boss part on the
- * map stands in for it.</li>
+ * map stands in for it. One that knows Hero's Will casts it instead whenever it is off cooldown (2026-10-15), as a
+ * player presses it; so does a confused one.</li>
  * <li>CONFUSE: it walks the wrong way, away from the nearest live boss part.</li>
  * <li>Banish (Dodo, Munin): a same-map warp to the spawn point; its next tick drops its path, so it plans again from
  * where it landed, in the mode it was in.</li>
@@ -97,6 +98,11 @@ public final class AgentBossDisabledState {
                 return AgentMovementStateRuntime.grounded(entry);
             }
             case SEDUCE, CONFUSE -> {
+                if (AgentPrimitiveCapabilityGatewayRuntime.gateway().castHerosWill(entry, agent)) {
+                    // 2026-10-15 (P20 run 11): as a player presses it; Munin seduced 37 times in 4 minutes
+                    log.info("Boss disabled: member={} cast Hero's Will against {}", id, state);
+                    return true;
+                }
                 Point walkTo = onset ? walkTo(agent, state) : null;
                 if (walkTo != null) {
                     AgentPrimitiveCapabilityGatewayRuntime.gateway().navigate(entry, walkTo, false);
