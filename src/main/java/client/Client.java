@@ -75,6 +75,7 @@ import server.living.probe.CompanionProbeService;
 import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import server.maps.MiniDungeonInfo;
+import server.mods.features.FeaturePackets;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import server.monitoring.SlowOperationLogger;
 import server.monitoring.ThrottledLogger;
@@ -187,6 +188,11 @@ public class Client extends ChannelInboundHandlerAdapter {
     private volatile boolean crewWindowOpen;
     /** The last WELCOME this connection's client heard said enabled: only then does it open the native Crew window. */
     private volatile boolean crewWindowEnabled;
+    /**
+     * The kaentake feature list this connection's client last sent (docs/CLIENT_FEATURE_HANDSHAKE.md), or null: a
+     * client without the handshake never sends one, and is never sent an answer.
+     */
+    private volatile FeaturePackets.Report clientFeatures;
 
     public enum Type {
         LOGIN,
@@ -229,6 +235,15 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     public void setCrewWindowEnabled(boolean crewWindowEnabled) {
         this.crewWindowEnabled = crewWindowEnabled;
+    }
+
+    /** The feature list (REPORT, or the APPLIED after it) this connection's client last sent; null when it sent none. */
+    public FeaturePackets.Report getClientFeatures() {
+        return clientFeatures;
+    }
+
+    public void setClientFeatures(FeaturePackets.Report clientFeatures) {
+        this.clientFeatures = clientFeatures;
     }
 
     public Client(Type type, long sessionId, String remoteAddress, PacketProcessor packetProcessor, int world, int channel) {

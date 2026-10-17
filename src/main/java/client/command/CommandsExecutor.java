@@ -258,6 +258,7 @@ import client.command.commands.gm6.HeapDumpCommand;
 import client.command.commands.gm6.HealAgentCommand;
 import client.command.commands.gm6.JourneyCommand;
 import client.command.commands.gm6.MapPlayersCommand;
+import client.command.commands.gm6.ModsCommand;
 import client.command.commands.gm6.SaveAllCommand;
 import client.command.commands.gm6.ServerAddChannelCommand;
 import client.command.commands.gm6.ServerAddWorldCommand;
@@ -663,6 +664,7 @@ public class CommandsExecutor {
         addCommand("spawnbot", 6, SpawnBotCommand.class);
         addCommand("leaveparty", 6, LeavePartyCommand.class);
         addCommand("botcfg", 6, BotCfgCommand.class);
+        addCommand("mods", 6, ModsCommand.class);
         addCommand("airshow", 6, AirshowCommand.class);
         addCommand("regennav", 6, RegenNavCommand.class);
         addCommand("setgmlevel", 6, SetGmLevelCommand.class);

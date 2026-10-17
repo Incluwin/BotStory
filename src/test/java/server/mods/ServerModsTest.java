@@ -1,0 +1,92 @@
+package server.mods;
+
+import config.YamlConfig;
+import org.junit.jupiter.api.Test;
+import server.mods.features.FeaturePolicy;
+import server.mods.features.FeaturePolicy.Decision;
+import server.mods.features.FeaturePolicy.Rule;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The server mod registry and config.yaml mods: a switch per mod (missing = the mod's default, unknown = ignored, a
+ * value other than on/off fails), flipped until the next restart; the shipped config.yaml answers the two gameplay
+ * features allow (what the shipped client does today) and any other server_gated one deny.
+ */
+class ServerModsTest {
+    private static final ServerMod ON_BY_DEFAULT = new ServerMod("auto_loot", "Auto loot", true);
+    private static final ServerMod OFF_BY_DEFAULT = new ServerMod("fast_boats", "Fast boats", false);
+
+    @Test
+    void aSwitchMissingFromConfigTakesTheModsDefault() {
+        ServerMods mods = new ServerMods(List.of(ON_BY_DEFAULT, OFF_BY_DEFAULT), Map.of());
+        assertTrue(mods.isOn(ON_BY_DEFAULT));
+        assertFalse(mods.isOn(OFF_BY_DEFAULT));
+        assertEquals("auto_loot on, fast_boats off", mods.summary());
+    }
+
+    @Test
+    void configSwitchesTakeOnOffTrueFalseInAnyCase() {
+        Map<String, String> switches = new LinkedHashMap<>();
+        switches.put("Auto_Loot", " OFF ");
+        switches.put("fast_boats", "true");
+        switches.put("retired_mod", "on");
+        ServerMods mods = new ServerMods(List.of(ON_BY_DEFAULT, OFF_BY_DEFAULT), switches);
+        assertFalse(mods.isOn(ON_BY_DEFAULT));
+        assertTrue(mods.isOn(OFF_BY_DEFAULT));
+        assertNull(mods.find("retired_mod"), "a line for no mod is ignored");
+    }
+
+    @Test
+    void aSwitchThatIsNotOnOrOffFails() {
+        assertEquals("mods.SWITCHES.auto_loot must be on or off", assertThrows(IllegalArgumentException.class,
+                () -> new ServerMods(List.of(ON_BY_DEFAULT), Map.of("auto_loot", "sometimes"))).getMessage());
+        assertNull(ServerMods.parseSwitch(null));
+        assertEquals(Boolean.TRUE, ServerMods.parseSwitch("Yes"));
+        assertEquals(Boolean.FALSE, ServerMods.parseSwitch("no"));
+    }
+
+    @Test
+    void aFlipHoldsAndFindTakesAnyCase() {
+        ServerMods mods = new ServerMods(List.of(ON_BY_DEFAULT), Map.of());
+        mods.set(ON_BY_DEFAULT, false);
+        assertFalse(mods.isOn(ON_BY_DEFAULT));
+        assertSame(ON_BY_DEFAULT, mods.find(" AUTO_LOOT "));
+        assertNull(mods.find(null));
+    }
+
+    @Test
+    void theRegistryHoldsTheClientFeaturePolicyOnByDefault() {
+        assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY), ServerMods.ALL);
+        assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
+        assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
+    }
+
+    @Test
+    void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowed() {
+        assertEquals(Map.of("client_feature_policy", "on"), YamlConfig.config.mods.SWITCHES);
+        FeaturePolicy shipped = FeaturePolicy.parse(YamlConfig.config.mods.FEATURES, YamlConfig.config.mods.SERVER_GATED_DEFAULT);
+        assertEquals(Map.of("free_addy", new Rule(Decision.ALLOW, 0), "ext_chain_lightning", new Rule(Decision.ALLOW, 0)),
+                shipped.rules());
+        assertEquals(Decision.DENY, shipped.gatedDefault());
+        assertTrue(new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES).isOn(ServerMods.CLIENT_FEATURE_POLICY));
+    }
+
+    @Test
+    void aMissingModsSectionIsTheDefaults() {
+        config.ModsConfig defaults = new config.ModsConfig();
+        defaults.validate();
+        assertTrue(defaults.SWITCHES.isEmpty());
+        assertTrue(defaults.FEATURES.isEmpty());
+        assertEquals("deny", defaults.SERVER_GATED_DEFAULT);
+    }
+}

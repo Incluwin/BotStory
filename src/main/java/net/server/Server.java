@@ -927,6 +927,7 @@ public class Server {
 
         DatabaseMigrations.runDatabaseMigrations();
         server.knowledge.KnowledgeLoader.start(); // async: knowledge file + live drop/shop overlay
+        server.mods.ServerMods.boot(); // config.yaml mods.SWITCHES
         EconomyTransactionCoordinator.initializePersistentJournal();
 
         channelDependencies = registerChannelDependencies();

@@ -457,6 +457,8 @@ public final class PacketProcessor {
         registerHandler(RecvOpcode.BOT_EQUIP, new net.server.channel.handlers.AgentEquipHandler());
         // P10 native Crew window: inert unless the client said HELLO and living_world.CREW_WINDOW_NATIVE allows it
         registerHandler(RecvOpcode.CREW_WINDOW, new net.server.channel.handlers.CrewWindowHandler());
+        // Login feature handshake: only a kaentake client with it sends this, and only it is ever answered
+        registerHandler(RecvOpcode.CLIENT_FEATURES, new net.server.channel.handlers.ClientFeaturesHandler());
         // Keep the protocol surface registered regardless of configuration.
         // Each observer handler performs its own feature and authorization
         // checks, so a disabled observer suite remains inert. Registering the

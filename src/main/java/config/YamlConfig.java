@@ -20,6 +20,7 @@ public class YamlConfig {
     public LivingWorldConfig living_world;
     public PopulationConfig population;
     public KnowledgeConfig knowledge;
+    public ModsConfig mods;
 
     private static YamlConfig loadConfig() {
         try {
@@ -44,6 +45,10 @@ public class YamlConfig {
                 config.knowledge = new KnowledgeConfig();
             }
             config.knowledge.validate();
+            if (config.mods == null) {
+                config.mods = new ModsConfig();
+            }
+            config.mods.validate();
             return config;
         } catch (FileNotFoundException e) {
             throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage(), e);
