@@ -98,6 +98,16 @@ public final class AgentJumpProbeService {
                                                                    int desiredDir,
                                                                    AgentMovementProfile profile,
                                                                    int moverZMass) {
+        return walkOffLandingVariants(map, from, desiredDir, profile, moverZMass, -1);
+    }
+
+    /** As above, starting on {@code startRegionId}'s own foothold at {@code from} ({@link #walkOffStartFoothold}). */
+    public static List<AgentWalkOffLanding> walkOffLandingVariants(MapleMap map,
+                                                                   Point from,
+                                                                   int desiredDir,
+                                                                   AgentMovementProfile profile,
+                                                                   int moverZMass,
+                                                                   int startRegionId) {
         List<AgentWalkOffLanding> outcomes = new java.util.ArrayList<>();
         double terminalHSpeed = AgentMovementKinematicsService.maxHorizontalSpeedPerClientStep(profile) * desiredDir;
         double[] physicsXPhases = {0.0, -0.4, 0.4};
@@ -108,7 +118,7 @@ public final class AgentJumpProbeService {
                 for (double horizontalSpeed : launchSpeeds) {
                     outcomes.add(simulateWalkOffLanding(map, from, desiredDir,
                             new AgentGroundTravelState(from.x + phase, horizontalSpeed, carryMs),
-                            profile, moverZMass));
+                            profile, moverZMass, startRegionId));
                 }
             }
         }
@@ -131,11 +141,22 @@ public final class AgentJumpProbeService {
                                                              AgentGroundTravelState initialState,
                                                              AgentMovementProfile profile,
                                                              int moverZMass) {
+        return simulateWalkOffLanding(map, from, desiredDir, initialState, profile, moverZMass, -1);
+    }
+
+    /** As above, starting on {@code startRegionId}'s own foothold at {@code from} ({@link #walkOffStartFoothold}). */
+    public static AgentWalkOffLanding simulateWalkOffLanding(MapleMap map,
+                                                             Point from,
+                                                             int desiredDir,
+                                                             AgentGroundTravelState initialState,
+                                                             AgentMovementProfile profile,
+                                                             int moverZMass,
+                                                             int startRegionId) {
         if (map == null || from == null || desiredDir == 0 || initialState == null) {
             return null;
         }
 
-        Foothold foothold = AgentGroundingService.findGroundFoothold(map, from);
+        Foothold foothold = walkOffStartFoothold(map, from, startRegionId);
         if (foothold == null) {
             return null;
         }
@@ -169,6 +190,20 @@ public final class AgentJumpProbeService {
             elapsedMs += AgentMovementPhysicsConfig.configuredMovementTickMs();
         }
         return null;
+    }
+
+    /**
+     * The foothold a walk-off starts on. A region point on a slope is rounded to the nearest pixel
+     * (AgentNavigationGraph.Segment.pointAt), while FootholdTree truncates, so the point can lie 1 px below its own
+     * foothold. A lookup by position then misses that foothold, and with another one stacked within its slope probe
+     * above it can answer a foothold 18 px lower: on 551000100's steps (15 px apart) the lowest step's walk-off
+     * walked the floor under it, fell off that floor's far end, and the graph got a cheap drop from the step onto the
+     * platform beyond. Given the region, its own segment at that x is the foothold.
+     */
+    private static Foothold walkOffStartFoothold(MapleMap map, Point from, int startRegionId) {
+        Foothold foothold = startRegionId < 0 ? null
+                : AgentGroundCollisionService.findWalkRegionGroundFoothold(map, startRegionId, from.x, from.y);
+        return foothold != null ? foothold : AgentGroundingService.findGroundFoothold(map, from);
     }
 
     public static int estimateFallLandingTimeMs(MapleMap map, Point from, int stepX) {

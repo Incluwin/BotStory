@@ -112,7 +112,8 @@ public final class AgentNavigationWaypointService {
                 AgentMovementPhysicsStateRuntime.groundTravelState(entry),
                 AgentMovementStateRuntime.movementProfile(entry),
                 AgentWallCollisionPolicy.moverZMassForRegion(
-                        map, edge.fromRegionId));
+                        map, edge.fromRegionId),
+                edge.fromRegionId);
         if (matchesDirectionalDrop(edge, graph, liveOutcome)) {
             // Like rope top step-offs, once the continuous-control exit is naturally executable
             // we stop targeting an intermediate anchor and just keep feeding the authored

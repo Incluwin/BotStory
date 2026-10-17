@@ -1130,7 +1130,7 @@ public final class AgentNavigationGraphService {
         int stepX = AgentMovementKinematicsService.walkStep(map, movementProfile) * direction;
         int moverZMass = AgentWallCollisionPolicy.moverZMassForRegion(map, from.id);
         List<AgentWalkOffLanding> walkOffVariants = AgentJumpProbeService.walkOffLandingVariants(
-                map, startPoint, direction, movementProfile, moverZMass);
+                map, startPoint, direction, movementProfile, moverZMass, from.id);
         AgentWalkOffLanding walkOff = walkOffVariants.isEmpty() ? null : walkOffVariants.get(0);
         if (walkOff == null || walkOff.landing() == null || walkOff.landing().foothold() == null) {
             return;
