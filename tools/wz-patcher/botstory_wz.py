@@ -6,8 +6,8 @@ Works on either base the BotStory server supports:
     the GMS v83 setup (Base, Effect, Morph, Sound, TamingMob);
   * the Community Repack WZ set.
 
-The pack (pack/) holds only BotStory's own content and the images the server knows that a
-base lacks:
+The pack (Nexon game data, so not in git: see the README) holds only BotStory's own content and
+the images the server knows that a base lacks:
   * botstory: what the BotStory client changed or added (Resident quests, portraits and names,
     skill and item edits, cash shop edits, the large quick-slot bar) and Custom.wz;
   * server:   images in the server's WZ XML that the clean Cosmic client lacks (307 equips the
@@ -28,6 +28,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -42,7 +43,9 @@ from wzlib.tree import (apply_edit, blob_subtree, diff, equal, leaf_json,  # noq
 from wzlib.types import PropNode, PROP_EXTENDED, WzEntry  # noqa: E402
 from wzlib.writer import compute_checksum, save_wz_file, write_img  # noqa: E402
 
-PACK = HERE / "pack"
+# The pack is Nexon game data and stays off GitHub. On the BotStory host it lives next to the
+# patch server (FriendServer/patch-server/wz-pack); elsewhere pass --pack or set BOTSTORY_WZ_PACK.
+PACK = Path(os.environ.get("BOTSTORY_WZ_PACK") or HERE.parents[2] / "patch-server" / "wz-pack")
 FORMAT = 1
 DEFAULT_SERVER_WZ = HERE.parent.parent / "wz"
 SKIP_WZ = {"List.wz", "Custom.wz"}  # List.wz is not a PKG1 archive; Custom.wz is copied whole
@@ -93,6 +96,9 @@ def predecessors(wz):
 class Pack:
     def __init__(self, root=PACK):
         self.root = Path(root)
+        if not (self.root / "pack.json").is_file():
+            sys.exit(f"no BotStory WZ pack in {self.root}: the pack is not in git; "
+                     "pass --pack <folder> or set BOTSTORY_WZ_PACK (see the README)")
         self.meta = json.loads((self.root / "pack.json").read_text(encoding="utf-8"))
         if self.meta.get("format") != FORMAT:
             sys.exit(f"{self.root / 'pack.json'}: unknown pack format {self.meta.get('format')}")
@@ -622,7 +628,8 @@ def write_edits(out, wzname, path, edits, gms):
 
 def main():
     ap = argparse.ArgumentParser(description="BotStory WZ patcher")
-    ap.add_argument("--pack", default=str(PACK), help="pack folder (default: pack/ next to this script)")
+    ap.add_argument("--pack", default=str(PACK),
+                    help="pack folder (default: $BOTSTORY_WZ_PACK, else patch-server/wz-pack beside the server repo)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("patch", help="add the BotStory content to a client's WZ files")
     p.add_argument("--client", required=True, help="folder with the base WZ files")

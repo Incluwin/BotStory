@@ -80,3 +80,6 @@ nul
 /docs/agents/evidence/**/*.mp4
 /docs/agents/evidence/**/*.mp4.start
 /docs/agents/evidence/**/*.mp4.stop
+
+# wz-patcher pack: Nexon game data, never committed (on the host it is patch-server/wz-pack)
+/tools/wz-patcher/pack/

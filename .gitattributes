@@ -12,6 +12,6 @@
 *.jar binary
 *.class binary
 
-# BotStory WZ patcher pack: WZ images and archives
+# WZ images and archives
 *.wz binary
 *.img binary

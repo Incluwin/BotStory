@@ -11,7 +11,11 @@ base WZ set:
 Plain GMS v83 WZ files (the setup without the Cosmic files) do not work: the Cosmic server
 spawns NPCs, maps and items that only the Cosmic files have. `check` reports them as missing.
 
-Keep this repository private: `pack/` holds Nexon game data.
+The pack the patcher applies is Nexon game data, so it is not in this repository. On the
+BotStory host it lives in `FriendServer/patch-server/wz-pack/`, which the patcher uses by
+default; elsewhere pass `--pack <folder>` or set `BOTSTORY_WZ_PACK`. Never commit a pack
+(`tools/wz-patcher/pack/` is git-ignored). Friends never need it: the launcher downloads the
+patched files (see below).
 
 ## Patch a client
 
@@ -81,7 +85,7 @@ How each image is applied:
   BotStory image is written as is. A patched Community Repack is byte-identical to the shipped
   BotStory client.
 - Otherwise BotStory's changes are applied node by node to the base's own image
-  (`pack/edits/*.json`), so the base keeps its own content. On the clean Cosmic client this
+  (the pack's `edits/*.json`), so the base keeps its own content. On the clean Cosmic client this
   happens for `String.wz` `Eqp` and `Npc`.
 - An image the base lacks is added. "server" images are only ever added, never replaced.
 
@@ -96,8 +100,9 @@ How each image is applied:
 
 ## Rebuild the pack (maintainers)
 
-After a client WZ ships (MapleEdit Deploy, a Custom.wz change), rebuild the pack on the host and
-commit `pack/` and `client-files.json`:
+After a client WZ ships (MapleEdit Deploy, a Custom.wz change), rebuild the pack on the host.
+`build` writes the pack to `patch-server/wz-pack/` (or `--pack`) and this folder's
+`client-files.json`; commit only `client-files.json`:
 
 ```
 python tools/wz-patcher/botstory_wz.py build ^

@@ -193,10 +193,11 @@ HaRepacker allows you to export to "Private server", which is the .img files pac
 This server requires custom .wz files (unfortunately), as you may have noted during installation of the client. The intention is for these to be removed eventually and to solely run on vanilla .wz files.
 
 In BotStory, the server reads the XML in `wz/` (Cosmic's export plus BotStory's
-edits). The repository holds no client `.wz` archives except `Custom.wz`,
-kaentake's overlay. The changed and added client images live in the WZ
-patcher's pack (`tools/wz-patcher/pack/`, Nexon game data: keep the repository
-private). After a client WZ change ships, rebuild the pack (see its README).
+edits). The repository holds no client `.wz` archives or images. The changed and
+added client images are the WZ patcher's pack, which is Nexon game data and stays
+on the BotStory host next to the patch server; friends get the patched files
+through the launcher. After a client WZ change ships, rebuild the pack (see
+`tools/wz-patcher/README.md`).
 
 #### WZ editing
 * Use the HaRepacker-resurrected editor, encryption "GMS (old)".
