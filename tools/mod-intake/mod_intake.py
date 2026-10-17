@@ -1,14 +1,17 @@
-"""BotStory mod intake: read a Discord server's releases channels into a local SQLite store.
+"""BotStory mod intake: read a Discord server's releases channels into a local store, snapshot what they link.
 
     python tools/mod-intake/mod_intake.py channels          list the server's channels, * = would be tracked
     python tools/mod-intake/mod_intake.py sync              fetch new threads, messages, edits, attachments
+    python tools/mod-intake/mod_intake.py fetch             snapshot what new links point at (git, pastes)
     python tools/mod-intake/mod_intake.py status            what the store holds
+    python tools/mod-intake/mod_intake.py sources           list link snapshots (--status failed|manual|...)
     python tools/mod-intake/mod_intake.py search <words>    full-text search over messages and file names
     python tools/mod-intake/mod_intake.py thread <id|name>  print one thread
 
 Settings live in <data dir>/.env; see README.md.
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -16,21 +19,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from intake import config as configlib  # noqa: E402
 from intake.api import DiscordClient, DiscordError, Unauthorized  # noqa: E402
+from intake.fetch import run_fetch  # noqa: E402
 from intake.store import Store  # noqa: E402
 from intake.sync import IntakeError, run_sync, select_tracked  # noqa: E402
 
 CHANNEL_TYPES = {0: "text", 2: "voice", 4: "category", 5: "announcement", 13: "stage", 15: "forum", 16: "media"}
+SOURCE_STATUSES = ("stored", "failed", "manual", "skipped")
+MAX_FAILURES_SHOWN = 20
 
 
-def main(argv=None, transport=None, sleep=None, page_size=100):
+def main(argv=None, transport=None, sleep=None, page_size=100, **fetch_options):
+    """transport: the Discord API for sync/channels, the web for fetch. fetch_options go to run_fetch (tests)."""
     parser = argparse.ArgumentParser(prog="mod_intake.py", description=__doc__.split("\n")[0])
     parser.add_argument("--data", help="data folder (default: $MOD_INTAKE_DATA or FriendServer/mod-intake-data)")
     sub = parser.add_subparsers(dest="command", required=True)
     sync_p = sub.add_parser("sync", help="fetch new threads, messages, edits and attachments")
     sync_p.add_argument("--no-starters", action="store_true", help="skip re-reading each thread's first post")
     sync_p.add_argument("--no-attachments", action="store_true", help="do not download attachments this time")
+    fetch_p = sub.add_parser("fetch", help="snapshot what new links point at: git mirrors, raw pastes")
+    fetch_p.add_argument("--limit", type=int, help="handle at most this many links this run")
+    fetch_p.add_argument("--retry-failed", action="store_true", help="retry failed links even after 3 tries")
+    fetch_p.add_argument("--delay", type=float, default=1.0, help="seconds between requests to one host (1)")
+    fetch_p.add_argument("--dry-run", action="store_true", help="say what would be fetched; no network")
     sub.add_parser("channels", help="list the server's channels; * marks the ones sync would read")
     sub.add_parser("status", help="summarise the store")
+    sources_p = sub.add_parser("sources", help="list link snapshots")
+    sources_p.add_argument("--status", choices=SOURCE_STATUSES)
+    sources_p.add_argument("--kind", help="a link kind, e.g. github_pull")
     search_p = sub.add_parser("search", help="full-text search")
     search_p.add_argument("words", nargs="+")
     search_p.add_argument("--limit", type=int, default=20)
@@ -53,8 +68,12 @@ def main(argv=None, transport=None, sleep=None, page_size=100):
             return 1
         store = Store(cfg.db_path)
         try:
+            if args.command == "fetch":
+                return cmd_fetch(store, cfg, args, transport, sleep, fetch_options)
             if args.command == "status":
                 return cmd_status(store, cfg)
+            if args.command == "sources":
+                return cmd_sources(store, args.status, args.kind)
             if args.command == "search":
                 return cmd_search(store, " ".join(args.words), args.limit)
             return cmd_thread(store, " ".join(args.key))
@@ -81,6 +100,37 @@ def cmd_sync(client, cfg, args, page_size):
     print(f"Synced {stats.threads} threads ({stats.new_threads} new): {stats.new_messages} new messages, "
           f"{stats.edited_messages} edited; attachments {stats.stored_attachments} stored, "
           f"{stats.failed_attachments} failed, {stats.skipped_attachments} too large; {client.requests} requests.")
+    return 0
+
+
+def cmd_fetch(store, cfg, args, transport, sleep, options):
+    if sleep:
+        options = dict(options, sleep=sleep)
+    stats = run_fetch(store, cfg.data_dir, transport=transport, limit=args.limit, retry_failed=args.retry_failed,
+                      delay=args.delay, dry_run=args.dry_run, **options)
+    if stats.dry_run:
+        return 0
+    print(f"Fetched {stats.links} links: {stats.stored} stored, {stats.failed} failed, {stats.manual} manual, "
+          f"{stats.skipped} skipped" + (f", {stats.deferred} left for the next run" if stats.deferred else "")
+          + f"; {stats.clones} clones, {stats.updates} updates, {stats.git_requests} git and "
+            f"{stats.http_requests} paste requests.")
+    for url, error in stats.failures[:MAX_FAILURES_SHOWN]:
+        print(f"  failed  {url}\n          {error}")
+    if len(stats.failures) > MAX_FAILURES_SHOWN:
+        print(f"  ... {len(stats.failures) - MAX_FAILURES_SHOWN} more: see 'sources --status failed'")
+    return 0
+
+
+def cmd_sources(store, status, kind):
+    rows = store.sources(status, kind)
+    for r in rows:
+        pin = (r["pinned_sha"] or "")[:12]
+        print(f"{r['status']:<8} {r['kind']:<16} {pin:<12} {r['url']}")
+        detail = r["error"] or r["note"]
+        if detail:
+            print(f"{'':<38}{detail}")
+    if not rows:
+        print("No sources" + (" with that status or kind." if status or kind else " yet: run 'fetch'."))
     return 0
 
 
@@ -117,6 +167,15 @@ def cmd_status(store, cfg):
     print(f"Messages: {s['messages']} (+{s['revisions']} earlier versions of edited posts)")
     print("Attachments: " + (", ".join(f"{n} {st} ({_size(b)})" for st, n, b in s["attachments"]) or "none"))
     print("Links: " + (", ".join(f"{kind} {n}" for kind, n in s["links"]) or "none"))
+    waiting = f"{s['unfetched_links']} links not fetched yet (run 'fetch')" if s["unfetched_links"] else ""
+    print("Sources: " + (", ".join(x for x in (", ".join(f"{n} {st}" for st, n in s["sources"]), waiting) if x)
+                         or "none"))
+    blocks, in_messages = s["code_blocks"]
+    print(f"Code blocks: {blocks} in {in_messages} messages")
+    if s["last_fetch"]:
+        f = json.loads(s["last_fetch"])
+        print(f"Last fetch: {f['at']} -> {f['links']} links, {f['stored']} stored, {f['failed']} failed"
+              + (f", {f['deferred']} left for the next run" if f.get("deferred") else ""))
     run = s["last_run"]
     if run:
         print(f"Last sync: {run['started_at']} -> {run['status']}, {run['requests']} requests, "
@@ -158,7 +217,12 @@ def cmd_thread(store, key):
             where = f"sha256 {a['sha256'][:12]}" if a["sha256"] else a["status"]
             print(f"   [file] {a['filename']}  {_size(a['size'] or 0)}  {where}")
         for link in links:
-            print(f"   [{link['kind']}] {link['url']}")
+            snapshot = ""
+            if link["status"] == "stored":
+                snapshot = f"  -> {link['pinned_sha'][:12]}" if link["pinned_sha"] else "  -> stored"
+            elif link["status"]:
+                snapshot = f"  -> {link['status']}: {link['error'] or link['note']}"
+            print(f"   [{link['kind']}] {link['url']}{snapshot}")
     return 0
 
 

@@ -52,6 +52,9 @@ The first real sync waits for the bot token.
   recorded fixtures (built first, so P1 does not wait for the bot token).
 
 ### P2 Fetch linked sources
+Status 2026-10-17: built on `feat/mod-intake-p2` (`fetch` and `sources` commands, `sources` and `code_blocks`
+tables), tested against local bare repos and a fake web (`tools/mod-intake/README.md`, "Fetch (P2)"). The first
+real run waits for the first real sync.
 - GitHub repos: `git clone --filter=blob:none` into a mirror cache, pinned to the commit the thread links or the
   default branch head at sync time. Gists and pastes saved raw. Nothing fetched is built or run.
 - Code blocks inside messages are extracted as files (language from the fence, else guessed).

@@ -211,7 +211,7 @@ def _fetch_attachments(client, store, attachments_dir, max_bytes, stats, log):
             stats.failed_attachments += 1
             continue
         sha = hashlib.sha256(body).hexdigest()
-        _write_blob(attachments_dir, sha, body)
+        write_blob(attachments_dir, sha, body)
         store.set_attachment(a["id"], "stored", sha256=sha)
         stats.stored_attachments += 1
     store.commit()
@@ -230,7 +230,7 @@ def _download(client, url):
     return resp.status, resp.body
 
 
-def _write_blob(attachments_dir, sha, body):
+def write_blob(attachments_dir, sha, body):
     folder = os.path.join(attachments_dir, sha[:2])
     path = os.path.join(folder, sha)
     if os.path.exists(path):

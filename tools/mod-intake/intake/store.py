@@ -1,11 +1,14 @@
-"""SQLite store: channels, threads, messages with edit history, attachments, links, sync runs."""
+"""SQLite store: channels, threads, messages with edit history, attachments, links, sync runs; and (P2) the
+snapshot of what each link points at, and the code blocks inside messages."""
 import json
 import sqlite3
 from datetime import datetime, timezone
 
+from . import codeblocks as codelib
 from . import links as linklib
 
 DISCORD_EPOCH_MS = 1420070400000
+SCHEMA_VERSION = 2  # 2: sources, code_blocks
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
@@ -40,6 +43,14 @@ CREATE TABLE IF NOT EXISTS sync_runs(
     threads INTEGER, new_threads INTEGER, new_messages INTEGER, edited_messages INTEGER,
     stored_attachments INTEGER, failed_attachments INTEGER, skipped_attachments INTEGER, notes TEXT);
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content, files);
+CREATE TABLE IF NOT EXISTS sources(
+    message_id INTEGER NOT NULL, url TEXT NOT NULL, kind TEXT, method TEXT, remote TEXT, local_path TEXT,
+    ref TEXT, pinned_sha TEXT, base_sha TEXT, path TEXT, status TEXT NOT NULL, error TEXT, note TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0, fetched_at TEXT, PRIMARY KEY(message_id, url));
+CREATE INDEX IF NOT EXISTS sources_by_status ON sources(status);
+CREATE TABLE IF NOT EXISTS code_blocks(
+    message_id INTEGER NOT NULL, idx INTEGER NOT NULL, language TEXT, guessed INTEGER NOT NULL, text TEXT NOT NULL,
+    PRIMARY KEY(message_id, idx));
 """
 
 
@@ -62,7 +73,11 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
-        self.db.execute("INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', '1')")
+        version = self.meta("schema_version")
+        if version is not None and int(version) < 2:  # a P1 store: its messages predate code block extraction
+            for row in self.db.execute("SELECT id, content FROM messages").fetchall():
+                self._save_code_blocks(row["id"], row["content"])
+        self.set_meta("schema_version", SCHEMA_VERSION)
         self.db.commit()
 
     def close(self):
@@ -70,6 +85,14 @@ class Store:
 
     def commit(self):
         self.db.commit()
+
+    def meta(self, key):
+        row = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key, value):
+        self.db.execute("INSERT INTO meta(key, value) VALUES(?, ?) "
+                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, str(value)))
 
     # Channels and threads
 
@@ -173,11 +196,21 @@ class Store:
                 "INSERT OR IGNORE INTO links(message_id, url, kind, host, owner, repo, ref, path) "
                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
                 (mid, link.url, link.kind, link.host, link.owner, link.repo, link.ref, link.path))
+        self._save_code_blocks(mid, content)
         files = " ".join(r["filename"] or "" for r in self.db.execute(
             "SELECT filename FROM attachments WHERE message_id = ? ORDER BY id", (mid,)))
         self.db.execute("DELETE FROM messages_fts WHERE rowid = ?", (mid,))
         self.db.execute("INSERT INTO messages_fts(rowid, content, files) VALUES(?, ?, ?)", (mid, content, files))
         return status
+
+    def _save_code_blocks(self, message_id, content):
+        self.db.execute("DELETE FROM code_blocks WHERE message_id = ?", (message_id,))
+        for b in codelib.extract(content):
+            self.db.execute("INSERT INTO code_blocks(message_id, idx, language, guessed, text) VALUES(?, ?, ?, ?, ?)",
+                            (message_id, b.index, b.language, int(b.guessed), b.text))
+
+    def message_exists(self, message_id):
+        return self.db.execute("SELECT 1 FROM messages WHERE id = ?", (message_id,)).fetchone() is not None
 
     def refresh_attachment_urls(self, m):
         """Take fresh signed CDN URLs from a re-fetched message without touching its text."""
@@ -198,6 +231,39 @@ class Store:
             """UPDATE attachments SET status = ?, sha256 = COALESCE(?, sha256), detail = ?,
                    attempts = attempts + 1, fetched_at = ? WHERE id = ?""",
             (status, sha256, detail, now_iso(), attachment_id))
+
+    def attachment(self, attachment_id):
+        return self.db.execute("SELECT id, filename, status, sha256 FROM attachments WHERE id = ?",
+                               (attachment_id,)).fetchone()
+
+    # Sources: one snapshot per links row (a message's link), so the same repository linked again later pins again
+
+    def links_to_fetch(self, max_attempts, retry_failed=False):
+        """Links with no snapshot yet, and failed ones with tries left (all failed ones with retry_failed)."""
+        return self.db.execute(
+            """SELECT l.message_id, l.url, l.kind, l.host, l.owner, l.repo, l.ref, l.path
+               FROM links l LEFT JOIN sources s ON s.message_id = l.message_id AND s.url = l.url
+               WHERE s.status IS NULL OR (s.status = 'failed' AND (? OR s.attempts < ?))
+               ORDER BY l.message_id, l.rowid""", (int(retry_failed), max_attempts)).fetchall()
+
+    def save_source(self, message_id, url, kind, status, method=None, remote=None, local_path=None, ref=None,
+                    pinned_sha=None, base_sha=None, path=None, error=None, note=None):
+        self.db.execute(
+            """INSERT INTO sources(message_id, url, kind, method, remote, local_path, ref, pinned_sha, base_sha, path,
+                   status, error, note, attempts, fetched_at)
+               VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+               ON CONFLICT(message_id, url) DO UPDATE SET kind=excluded.kind, method=excluded.method,
+                   remote=excluded.remote, local_path=excluded.local_path, ref=excluded.ref,
+                   pinned_sha=excluded.pinned_sha, base_sha=excluded.base_sha, path=excluded.path,
+                   status=excluded.status, error=excluded.error, note=excluded.note, attempts=attempts + 1,
+                   fetched_at=excluded.fetched_at""",
+            (message_id, url, kind, method, remote, local_path, ref, pinned_sha, base_sha, path, status, error, note,
+             now_iso()))
+
+    def sources(self, status=None, kind=None):
+        sql = ("SELECT s.*, m.conversation_id FROM sources s LEFT JOIN messages m ON m.id = s.message_id "
+               "WHERE (? IS NULL OR s.status = ?) AND (? IS NULL OR s.kind = ?) ORDER BY s.status, s.message_id, s.url")
+        return self.db.execute(sql, (status, status, kind, kind)).fetchall()
 
     # Sync runs
 
@@ -230,6 +296,11 @@ class Store:
                              "GROUP BY status ORDER BY status").fetchall(),
             "links": q("SELECT kind, COUNT(*) FROM links GROUP BY kind ORDER BY COUNT(*) DESC, kind").fetchall(),
             "last_run": q("SELECT * FROM sync_runs ORDER BY id DESC LIMIT 1").fetchone(),
+            "sources": q("SELECT status, COUNT(*) FROM sources GROUP BY status ORDER BY status").fetchall(),
+            "unfetched_links": q("SELECT COUNT(*) FROM links l LEFT JOIN sources s ON s.message_id = l.message_id "
+                                 "AND s.url = l.url WHERE s.status IS NULL").fetchone()[0],
+            "code_blocks": q("SELECT COUNT(*), COUNT(DISTINCT message_id) FROM code_blocks").fetchone(),
+            "last_fetch": self.meta("last_fetch"),
         }
 
     def search(self, text, limit=20):
@@ -266,8 +337,10 @@ class Store:
             attachments = self.db.execute(
                 "SELECT filename, size, status, sha256 FROM attachments WHERE message_id = ? ORDER BY id",
                 (m["id"],)).fetchall()
-            links = self.db.execute("SELECT kind, url FROM links WHERE message_id = ? ORDER BY rowid",
-                                    (m["id"],)).fetchall()
+            links = self.db.execute(
+                "SELECT l.kind, l.url, s.status, s.pinned_sha, s.error, s.note FROM links l LEFT JOIN sources s "
+                "ON s.message_id = l.message_id AND s.url = l.url WHERE l.message_id = ? ORDER BY l.rowid",
+                (m["id"],)).fetchall()
             revisions = self.db.execute("SELECT COUNT(*) FROM message_revisions WHERE message_id = ?",
                                         (m["id"],)).fetchone()[0]
             out.append((m, attachments, links, revisions))
