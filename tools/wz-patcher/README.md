@@ -40,6 +40,27 @@ repo's `wz/` folder, or `--server-wz`), that the client has every image the serv
 The rest of a BotStory client (kaentake's `Kaentake.dll` and `Launch Game.exe`, `config.ini`,
 the stock DLLs) is listed in `client-files.json` with the source of each file.
 
+## Play through the friends' launcher
+
+`Launch Game.exe` keeps a client in sync with the host's patch server. A client on the clean
+Cosmic WZ set must say so in its `config.ini`:
+
+```
+[config]
+patch_url=http://100.65.63.117:8485
+base=cosmic
+```
+
+With `base=cosmic` the launcher keeps the Cosmic WZ files: the eleven files that differ between
+the two sets (Character, Effect, Item, Map, Mob, Npc, Reactor, Skill, Sound, String, UI) come
+from the host's `bases/cosmic/` set, which is this patcher's output, and everything else from the
+main manifest. A client patched here downloads nothing. A clean Cosmic install with `base=cosmic`
+and no patching downloads the patched files from the host (about 380 MB), so players need neither
+Python nor this repository. Without `base` (or with `base=repack`) the client is a Community
+Repack client, and a Cosmic client would get the Repack WZ files instead (about 7 GB).
+
+`base` needs the `Launch Game.exe` shipped on 2026-10-17 or later; older launchers ignore it.
+
 ## What the pack adds
 
 | WZ file | Content | Kind |
@@ -98,6 +119,13 @@ python tools/wz-patcher/botstory_wz.py check --client <tmp2>
 
 Every file in `<tmp1>` must be byte-identical to the live client. Unit tests:
 `python -m unittest discover -s tools/wz-patcher/tests`.
+
+Then refresh the patch server's Cosmic set, so `base=cosmic` clients get the new content too
+(host only; the script lives outside this repository, see its README):
+
+```
+python FriendServer/patch-server/build_base.py --name cosmic --clean "<clean Cosmic WZ folder>"
+```
 
 `wzlib/` is MapleEdit's WZ reader and writer (Incluwin/MapleEdit, AGPL-3.0), adapted. It adds
 a pure-Python AES for the key stream, keeps one-byte strings with code-page characters intact,

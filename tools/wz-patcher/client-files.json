@@ -151,8 +151,8 @@
  },
  {
   "path": "Launch Game.exe",
-  "size": 75776,
-  "sha256": "43ddfbac6605017ebc1c522fe203ecd5e65ceaf13b0634b2534096cc9a835686",
+  "size": 80896,
+  "sha256": "37c14f11e3a72c7438ded7482bb9ba3d0fb46bdc09a29eb7409da9d084a8e2f4",
   "source": "Incluwin/kaentake build (Launch Game.exe = Kaentake.exe)"
  },
  {
