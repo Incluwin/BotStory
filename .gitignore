@@ -83,3 +83,4 @@ nul
 
 # wz-patcher pack: Nexon game data, never committed (on the host it is patch-server/wz-pack)
 /tools/wz-patcher/pack/
+/tools/wz-patcher/**/__pycache__/

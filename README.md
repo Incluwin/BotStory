@@ -197,7 +197,9 @@ edits). The repository holds no client `.wz` archives or images. The changed and
 added client images are the WZ patcher's pack, which is Nexon game data and stays
 on the BotStory host next to the patch server; friends get the patched files
 through the launcher. After a client WZ change ships, rebuild the pack (see
-`tools/wz-patcher/README.md`).
+`tools/wz-patcher/README.md`). The Residents' portraits and quest-log entries need
+no pack: `tools\living-world-client.bat "<client folder>"` makes them from the
+server's content and database and that client's own WZ files.
 
 #### WZ editing
 * Use the HaRepacker-resurrected editor, encryption "GMS (old)".

@@ -59,4 +59,36 @@ class ResidentLooksTest {
         assertTrue(hairs.size() >= 25, "distinct hair " + hairs.size());
         assertTrue(faces.size() >= 20, "distinct faces " + faces.size());
     }
+
+    /** RESIDENT_LOOK_SEED 0 keeps the looks the live Residents have (read from the live database on 2026-10-17). */
+    @Test
+    void seedZeroKeepsTheShippedLooks() {
+        Look male = new Look("male", -1, 0, 0);
+        Look female = new Look("female", -1, 0, 0);
+        assertEquals(new ResidentLooks.Resolved(0, 3, 20527, 30131), looks.resolve(persona("dorran", male)));
+        assertEquals(new ResidentLooks.Resolved(1, 3, 21501, 31610), looks.resolve(persona("fenna", female)));
+        assertEquals(new ResidentLooks.Resolved(0, 0, 20125, 30214), looks.resolve(persona("olwen", Look.NONE)));
+        assertEquals(new ResidentLooks.Resolved(1, 3, 21118, 31534), looks.resolve(persona("wren", female)));
+        assertEquals(looks.resolve(persona("olwen", Look.NONE)), new ResidentLooks(0).resolve(persona("olwen", Look.NONE)));
+    }
+
+    @Test
+    void anotherSeedGivesAnotherCastButKeepsAuthoredFields() {
+        ResidentLooks other = new ResidentLooks(20261017L);
+        int changed = 0;
+        for (int i = 0; i < 30; i++) {
+            Persona persona = persona("resident" + i, new Look("female", -1, 0, 0));
+            ResidentLooks.Resolved shipped = looks.resolve(persona);
+            ResidentLooks.Resolved mine = other.resolve(persona);
+            assertEquals(1, mine.gender(), "an authored gender stays");
+            if (shipped.face() != mine.face() || shipped.hair() != mine.hair()) {
+                changed++;
+            }
+        }
+        assertTrue(changed >= 25, "residents with another face or hair " + changed);
+        assertEquals(new ResidentLooks.Resolved(0, 2, 20005, 30030),
+                other.resolve(persona("pinned", new Look("male", 2, 20005, 30030))));
+        assertEquals(other.resolve(persona("olwen", Look.NONE)).gender(),
+                ResidentLooks.gender(persona("olwen", Look.NONE), 20261017L), "the provisioner creates the same gender");
+    }
 }

@@ -80,7 +80,7 @@ public final class ResidentRuntime {
 
     private final LivingWorld world;
     private final ResidentProvisioner provisioner;
-    private final ResidentLooks looks = new ResidentLooks();
+    private final ResidentLooks looks;
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final Map<Integer, String> personaByCharacter = new ConcurrentHashMap<>();
     /** Agent character ids known not to be personas (spawnbot companions, ambient pool), so kills skip the DB. */
@@ -114,6 +114,7 @@ public final class ResidentRuntime {
     public ResidentRuntime(LivingWorld world) {
         this.world = world;
         this.provisioner = new ResidentProvisioner(world);
+        this.looks = new ResidentLooks(world.config().RESIDENT_LOOK_SEED);
     }
 
     // ---- queries -------------------------------------------------------------------------

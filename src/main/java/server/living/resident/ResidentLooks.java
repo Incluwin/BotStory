@@ -22,11 +22,12 @@ import java.util.TreeSet;
 
 /**
  * Each Resident's appearance: whatever the persona's {@code look} block sets, and for the rest a
- * pick that is stable for the persona id - gender, a natural skin tone, a regular face and
- * hairstyle for that gender, and an eye and hair color. Styles come from this server's
- * Character.wz, which every client's Character.wz contains. The look is written to the backing
- * character while it is not loaded, so the Resident materializes with it and the portrait tool
- * (MapleEdit/app/living_world_portraits.py) reads it from the database.
+ * pick that is stable for the persona id and the server's {@code RESIDENT_LOOK_SEED} - gender, a
+ * natural skin tone, a regular face and hairstyle for that gender, and an eye and hair color. Seed 0
+ * gives the looks Residents always had. Styles come from this server's Character.wz, which every
+ * client's Character.wz contains. The look is written to the backing character while it is not
+ * loaded, so the Resident materializes with it and the portrait export
+ * ({@code ResidentPortraitExportMain}) reads it from the database.
  */
 public final class ResidentLooks {
     private static final Logger log = LoggerFactory.getLogger(ResidentLooks.class);
@@ -36,8 +37,14 @@ public final class ResidentLooks {
 
     private final TreeSet<Integer> faces = new TreeSet<>();
     private final TreeSet<Integer> hairs = new TreeSet<>();
+    private final long seed;
 
     ResidentLooks() {
+        this(0);
+    }
+
+    ResidentLooks(long seed) {
+        this.seed = seed;
         for (DataDirectoryEntry dir : DataProviderFactory.getDataProvider(WZFiles.CHARACTER).getRoot().getSubdirectories()) {
             TreeSet<Integer> into = dir.getName().equals("Face") ? faces : dir.getName().equals("Hair") ? hairs : null;
             if (into == null) {
@@ -56,7 +63,7 @@ public final class ResidentLooks {
     public Resolved resolve(Persona persona) {
         Look look = persona.look();
         // every draw happens in a fixed order so setting one field never reshuffles the others
-        SplittableRandom random = draws(persona);
+        SplittableRandom random = draws(persona, seed);
         int genderDraw = random.nextInt(2);
         int skinDraw = random.nextInt(SKINS.length);
         int faceDraw = random.nextInt(Integer.MAX_VALUE);
@@ -74,16 +81,17 @@ public final class ResidentLooks {
      * The gender {@link #resolve} gives the persona (0 male, 1 female), without reading Character.wz: the provisioner
      * creates the character in that gender's starting clothes.
      */
-    static int gender(Persona persona) {
-        return gender(persona.look(), draws(persona).nextInt(2));
+    static int gender(Persona persona, long seed) {
+        return gender(persona.look(), draws(persona, seed).nextInt(2));
     }
 
     private static int gender(Look look, int genderDraw) {
         return look.gender() == null ? genderDraw : look.gender().equals("female") ? 1 : 0;
     }
 
-    private static SplittableRandom draws(Persona persona) {
-        return new SplittableRandom(0x9E3779B97F4A7C15L ^ persona.id().hashCode());
+    /** Seed 0 leaves the persona-only stream unchanged; another seed is spread over all 64 bits first. */
+    private static SplittableRandom draws(Persona persona, long seed) {
+        return new SplittableRandom(0x9E3779B97F4A7C15L ^ persona.id().hashCode() ^ seed * 0xBF58476D1CE4E5B9L);
     }
 
     /** Regular faces of a gender in their first eye color: 20000-20099 male, 21000-21099 female. */

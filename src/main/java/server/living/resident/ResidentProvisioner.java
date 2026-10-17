@@ -66,7 +66,7 @@ final class ResidentProvisioner {
             creation.setAccID(account.accountId());
             creation.setAccountName(persona.name());
             int characterId = AgentClientGatewayRuntime.clients().createBackingCharacter(creation, persona.name(),
-                    ResidentLooks.gender(persona));
+                    ResidentLooks.gender(persona, world.config().RESIDENT_LOOK_SEED));
             if (characterId == -1) {
                 log.warn("Persona {}: character creation for '{}' failed (name invalid or taken)", persona.id(), persona.name());
                 return 0;

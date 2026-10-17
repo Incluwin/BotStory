@@ -23,10 +23,11 @@ import java.util.Set;
  * shows for them: {@code tools\living-world-questlog.bat [content-dir] [export.json]}.
  *
  * <p>Ids live in {@code quest-log-ids.yaml} next to the content (30000-32767, never renumbered;
- * new quests take the next free id). The JSON goes to MapleEdit, whose
- * {@code living_world_quests.py} writes the entries into Quest.wz (QuestInfo/Check/Act) and the
- * server XML; the runtime then mirrors ledger state into the client quest log when
- * {@code living_world.QUEST_LOG_MIRROR} is on.
+ * new quests take the next free id). The JSON goes to tools/wz-patcher's {@code residents} command
+ * (tools\living-world-client.bat), which writes the entries into a client's Quest.wz
+ * (QuestInfo/Check/Act), or to MapleEdit, whose {@code living_world_quests.py} does the same through
+ * that code and also stages the server XML; the runtime then mirrors ledger state into the client
+ * quest log when {@code living_world.QUEST_LOG_MIRROR} is on.
  *
  * <p>How the client shows them (checked in a v83 client): the list groups quests by {@code area}
  * under a header named in Etc.wz {@code QuestCategory.img}, and labels each entry with

@@ -20,6 +20,8 @@ image, so the base keeps its own content.
     python botstory_wz.py patch --client "<client folder>"            # in place, with backups
     python botstory_wz.py patch --client "<WZ folder>" --out "<dir>"  # write patched files to <dir>
     python botstory_wz.py check --client "<client folder>"            # verify a patched client
+    python botstory_wz.py residents --client "<client folder>"        # Resident portraits + quest log, made
+                                                                      # from this client (see residents.py)
     python botstory_wz.py build ...                                   # maintainers, see README
 
 Python 3.8+, standard library only.
@@ -48,6 +50,7 @@ from wzlib.writer import compute_checksum, save_wz_file, write_img  # noqa: E402
 PACK = Path(os.environ.get("BOTSTORY_WZ_PACK") or HERE.parents[2] / "patch-server" / "wz-pack")
 FORMAT = 1
 DEFAULT_SERVER_WZ = HERE.parent.parent / "wz"
+DEFAULT_EXPORT = HERE.parent.parent / "target"  # where tools\living-world-client.bat has the server export
 SKIP_WZ = {"List.wz", "Custom.wz"}  # List.wz is not a PKG1 archive; Custom.wz is copied whole
 
 
@@ -339,6 +342,86 @@ def patch_exe(pack, exe, out, backup):
         exe.write_bytes(data)
     print("  MapleStory.exe large-address-aware flag set")
     return True
+
+
+# ---------------------------------------------------------------------------------- Residents
+
+def cmd_residents(args):
+    """Resident portraits and quest-log entries from the server's export, rendered from this client's own files."""
+    import residents
+    client = Path(args.client)
+    out = Path(args.out) if args.out else None
+    export = Path(args.export)
+    needed = ["Character.wz", "Base.wz", "Npc.wz", "String.wz", "Quest.wz", "Etc.wz"]
+    missing = [n for n in needed if not (client / n).is_file()]
+    if missing:
+        sys.exit(f"{client} lacks {', '.join(missing)}")
+    sources = {"portraits": export / "resident-portraits.json", "quests": export / "living-quest-log.json"}
+    for path in sources.values():
+        if not path.is_file():
+            sys.exit(f"no {path}: run tools\\living-world-client.bat (it exports, then runs this command)")
+    doc = json.loads(sources["portraits"].read_text(encoding="utf-8"))
+    quests = json.loads(sources["quests"].read_text(encoding="utf-8"))
+    bad = [q["questId"] for q in quests if not residents.QUEST_MIN <= int(q["logId"]) <= residents.QUEST_MAX]
+    if bad or len({q["logId"] for q in quests}) != len(quests):
+        sys.exit(f"{sources['quests']}: quest-log ids outside {residents.QUEST_MIN}-{residents.QUEST_MAX} "
+                 f"or repeated ({bad[:5]})")
+    hitbox = int(doc["hitboxNpcId"])
+
+    portraits = residents.render_portraits(client, doc)
+    print(f"  rendered {len(portraits)} portraits from {client / 'Character.wz'}")
+    if args.preview:
+        preview = Path(args.preview)
+        preview.mkdir(parents=True, exist_ok=True)
+        persona = {p["npcId"]: p["persona"] for p in doc["portraits"]}
+        for npc_id, (image, _, _) in portraits.items():
+            (preview / f"{persona[npc_id]}.png").write_bytes(residents.png(image))
+        print(f"  previews in {preview}")
+    areas = {int(q["area"]) for q in quests if q.get("area")}
+    jobs = [
+        ("Npc.wz", lambda wz: residents.patch_npc(wz, portraits, hitbox),
+         [f"{i}.img" for i in sorted(portraits)] + [f"{hitbox}.img"], f"{len(portraits)} portraits + quest-marker hitbox"),
+        ("String.wz", lambda wz: residents.patch_string(wz, portraits, hitbox), ["Npc.img"], "their names"),
+        ("Quest.wz", lambda wz: residents.patch_quests(wz, quests), list(residents.QUEST_IMGS),
+         f"{len(quests)} living-world quests"),
+        ("Etc.wz", lambda wz: residents.patch_category(wz, areas), ["QuestCategory.img"],
+         f"quest-list group '{residents.CATEGORY_LABEL}' (area {', '.join(map(str, sorted(areas)))})"),
+    ]
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = client / "botstory-wz-backup" / stamp
+    if out:
+        out.mkdir(parents=True, exist_ok=True)
+    changed_any = False
+    for name, job, expect, what in jobs:
+        src = client / name
+        target = (out / name) if out else src.with_name(src.name + ".botstory-new")
+        wz = WzFile(src)
+        try:
+            job(wz)
+            save_wz_file(wz, target)
+        finally:
+            wz.close()
+        with WzFile(target) as written:
+            index = written.index()
+            lacking = [p for p in expect if p not in index]
+            if lacking:
+                sys.exit(f"{target}: written file lacks {lacking[:5]}")
+            for p in expect:
+                written.parse_img(index[p])
+        if sha256_file(target) == sha256_file(src):
+            if not out:
+                target.unlink()
+            print(f"  {name:13s} up to date ({what})")
+            continue
+        if not out:
+            backup.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(backup / name))
+            target.replace(src)
+        changed_any = True
+        print(f"  {name:13s} written ({what})")
+    if changed_any and not out:
+        print(f"originals moved to {backup}")
+    print("done" if changed_any else "nothing to do: the client already has these Residents")
 
 
 # ---------------------------------------------------------------------------------- checking
@@ -639,6 +722,12 @@ def main():
     c = sub.add_parser("check", help="verify that a client has the BotStory content")
     c.add_argument("--client", required=True)
     c.add_argument("--server-wz", help=f"server WZ XML folder (default {DEFAULT_SERVER_WZ})")
+    r = sub.add_parser("residents", help="render Resident portraits and quest-log entries from this client's own files")
+    r.add_argument("--client", required=True, help="folder with the client's WZ files")
+    r.add_argument("--out", help="write the four patched files here instead of patching in place")
+    r.add_argument("--export", default=str(DEFAULT_EXPORT),
+                   help=f"folder with the server's resident-portraits.json and living-quest-log.json (default {DEFAULT_EXPORT})")
+    r.add_argument("--preview", help="also write each portrait as <persona>.png into this folder")
     b = sub.add_parser("build", help="maintainers: rebuild the pack from the live BotStory client")
     b.add_argument("--repack", required=True, help="Community Repack WZ folder (the base BotStory was built on)")
     b.add_argument("--live", required=True, help="live BotStory 'Game Files' folder")
@@ -652,6 +741,8 @@ def main():
         cmd_patch(args)
     elif args.cmd == "check":
         sys.exit(cmd_check(args))
+    elif args.cmd == "residents":
+        cmd_residents(args)
     else:
         cmd_build(args)
 

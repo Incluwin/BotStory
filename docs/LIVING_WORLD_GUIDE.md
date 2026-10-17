@@ -213,7 +213,9 @@ header shows "Over Level N" from `lvmin` and the giver's own portrait (`npc`, fr
 2. `cd MapleEdit\app && python living_world_quests.py` - writes QuestInfo/Check/Act entries into
    `out/Quest.wz` and names the Residents group in `out/Etc.wz` (both stacking with other edits)
    and stages the server XML; deploy Quest.wz and Etc.wz from the MapleEdit dashboard so the patch
-   server ships them to every client.
+   server ships them to every client. Without MapleEdit, `tools\living-world-client.bat "<client
+   folder>"` runs both exports and writes the entries (and the portraits) straight into a client
+   folder with the same code (`tools/wz-patcher/residents.py`).
 3. `living_world.QUEST_LOG_MIRROR: true` - the server then sets the matching quest STARTED on
    accept and COMPLETED on completion (`QuestLog`), and reconciles older ledger state at login.
 
@@ -250,14 +252,18 @@ crashes on it as an avatar effect.
 ### Portraits
 
 The v83 NPC window can only draw an NPC (or the viewer's own avatar), so each Resident gets an NPC
-of its own: `MapleEdit/app/living_world_portraits.py` renders the Resident's character (skin, face,
-hair, visible equipment, standing pose) from Character.wz using its database look, and writes
-`Npc.wz <id>.img` (the render as `stand/0`) plus `String.wz Npc.img/<id>/name`. Ids start at
-9970000, never change once assigned and live in `portrait-npc-ids.yaml` next to the content, which
-the server reads (`!world reload` after a run). `--preview DIR` writes PNGs, `--only a,b --preview
-DIR` renders just those, `--install` backs up and replaces the live Npc.wz/String.wz and regenerates
-the patch manifest (Npc.wz is ~580 MB, so friends download it again after every run). It patches the
-live client files, not MapleEdit `out/`. Re-run after Residents' gear changes or after new
+of its own, rendered from the client's own Character.wz, so no Resident image ships with the
+repository: `ResidentPortraitExportMain` reads each Resident's database look (skin, face, hair,
+visible equipment) and assigns the ids, and `tools/wz-patcher/residents.py` renders the standing pose
+and writes `Npc.wz <id>.img` (the render as `stand/0`) plus `String.wz Npc.img/<id>/name`. Ids start
+at 9970000, never change once assigned and live in `portrait-npc-ids.yaml` next to the content, which
+the server reads (`!world reload` after a run). Two ways to run it: `tools\living-world-client.bat
+"<client folder>"` patches any client folder (with the quest log, see above), and
+`MapleEdit/app/living_world_portraits.py` installs into the live client: `--preview DIR` writes PNGs,
+`--only a,b --preview DIR` renders just those, `--install` backs up and replaces the live
+Npc.wz/String.wz, copies the ids into the content directory and regenerates the patch manifest
+(Npc.wz is ~580 MB, so friends download it again after every run). It patches the live client files,
+not MapleEdit `out/`, and the ids reach the server only with `--install`. Re-run after Residents' gear changes or after new
 Residents have materialized once (a persona without a character yet is skipped and keeps a
 borrowed portrait).
 
@@ -344,9 +350,11 @@ Contracts: `offerWhen` (bond stage, flags, arc chapter), `price` (`meso`, `items
 (0 = leaves after an hour on the bench, -1 = never), `paceGap`, `maxLag`, `giftItemIds`.
 
 Looks: `look: { gender: female|male, skin: 0-11, face: <id>, hair: <id> }`, every field optional.
-Unset fields get a pick that is stable for the persona id (natural skin tone, a regular face and
-hairstyle for the gender with an eye and hair color, from the server's Character.wz, which every
-client has); an unset gender is picked the same way, so set it wherever the writing says he or she.
+Unset fields get a pick that is stable for the persona id and `living_world.RESIDENT_LOOK_SEED`
+(natural skin tone, a regular face and hairstyle for the gender with an eye and hair color, from the
+server's Character.wz, which every client has); an unset gender is picked the same way, so set it
+wherever the writing says he or she. Seed 0 gives the looks Residents always had; another number gives
+a server its own cast (every Resident is re-dressed on the next boot).
 `ResidentLooks` writes the look to the character at startup, on `!world reload` (a materialized
 Resident whose look changed goes to standby and comes back with it) and when one is provisioned;
 re-run the portrait tool afterwards so the NPC window matches.
@@ -381,9 +389,9 @@ wired yet. The longest explanation wins, then the more specific alias.
 | roster, bench ledger, haul | `server.living.roster.*` |
 | arcs and rumors (deterministic rumor director: waiting listener, unheard, least performed) | `server.living.arc.*` |
 | MapleEdit page | `MapleEdit/app/routes_living.py`, `templates/living.html`, `static/js/living.js`; server side `AdminControlPort` `/runtime/living`, `/actions/living-reload` |
-| Resident portraits in the NPC window | `MapleEdit/app/living_world_portraits.py`, `portrait-npc-ids.yaml`, `ResidentDialogue.portraitOf` |
+| Resident portraits in the NPC window | `server.living.config.ResidentPortraitExportMain`, `tools/wz-patcher/residents.py`, `MapleEdit/app/living_world_portraits.py`, `portrait-npc-ids.yaml`, `ResidentDialogue.portraitOf` |
 | quest markers over Residents, click-to-talk | `server.living.quest.QuestMarkers`, `ResidentDialogue.onCharacterClicked` (via `CharInfoRequestHandler`), `MapleEdit/app/living_world_markers.py` |
-| client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `MapleEdit/app/living_world_quests.py` |
+| client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `tools/wz-patcher/residents.py`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
 

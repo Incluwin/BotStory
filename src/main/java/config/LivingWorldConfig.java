@@ -28,6 +28,12 @@ public class LivingWorldConfig {
     public String ALWAYS_AWAKE_TOWNS = "";
     /** Reply-length threshold above which a Resident whispers instead of using a chat bubble. */
     public int RESIDENT_BUBBLE_MAX_CHARS = 70;
+    /**
+     * Mixed into each Resident's look pick (skin, face, hair, and gender where the persona sets none). 0 keeps the
+     * looks Residents always had; any other number gives this server its own. A change re-dresses every Resident on
+     * the next boot, so re-run the portrait tool (tools/living-world-client.bat) afterwards.
+     */
+    public long RESIDENT_LOOK_SEED = 0;
     /** Mirror quest state into the client quest log (needs the Quest.wz patch from tools\living-world-questlog.bat shipped). */
     public boolean QUEST_LOG_MIRROR = false;
     /** Effect path drawn over a Resident for a player who can take one of its quests; empty = none. */

@@ -15,7 +15,8 @@ The pack the patcher applies is Nexon game data, so it is not in this repository
 BotStory host it lives in `FriendServer/patch-server/wz-pack/`, which the patcher uses by
 default; elsewhere pass `--pack <folder>` or set `BOTSTORY_WZ_PACK`. Never commit a pack
 (`tools/wz-patcher/pack/` is git-ignored). Friends never need it: the launcher downloads the
-patched files (see below).
+patched files (see below). Without a pack, `residents` still gives any client the Residents'
+portraits and quest log, made from that client's own files (see "Resident portraits and quest log").
 
 ## Patch a client
 
@@ -43,6 +44,39 @@ repo's `wz/` folder, or `--server-wz`), that the client has every image the serv
 
 The rest of a BotStory client (kaentake's `Kaentake.dll` and `Launch Game.exe`, `config.ini`,
 the stock DLLs) is listed in `client-files.json` with the source of each file.
+
+## Resident portraits and quest log
+
+Each Resident's NPC-window portrait and the living-world quests in the client's quest log are not
+shipped: they are made on your machine from the server's YAML and database and your client's own
+WZ files, so every server gets its own (set `living_world.RESIDENT_LOOK_SEED` in `config.yaml` for
+your own faces and hair). From the server directory, after the server has created the Residents (a
+boot with `living_world.ENABLED`):
+
+```
+tools\living-world-client.bat "<client folder>"
+```
+
+It runs two exports from `target/Cosmic.jar` with the server's database settings
+(`ResidentPortraitExportMain`: each Resident's look and NPC id, kept in
+`scripts/config/living-world/portrait-npc-ids.yaml`; `QuestLogExportMain`: each quest's client id
+and text), then `botstory_wz.py residents`, which renders every portrait from the client's
+`Character.wz` and writes four files:
+
+| WZ file | Content |
+|---|---|
+| Npc.wz | 9970000+: one NPC per Resident, its rendered look; 9970999: the invisible quest-marker hitbox |
+| String.wz `Npc` | the Residents' names |
+| Quest.wz `QuestInfo`, `Check`, `Act` | the living-world quests (ids 30000-32767; no stock quest uses them) |
+| Etc.wz `QuestCategory` | the "Residents" group of the quest list (area 31) |
+
+In place by default (originals in `<client folder>/botstory-wz-backup/<date-time>/`); `--out
+<folder>` writes the four files elsewhere, `--preview <folder>` also saves each portrait as a PNG.
+Run it again after `RESIDENT_LOOK_SEED`, a Resident's gear or the quests change, and give your
+players the new files: the server opens a Resident's NPC window with its id, so ship the client
+files before restarting the server with new ids. Python standard library only, like the rest of
+the patcher. On the BotStory host, MapleEdit's `living_world_portraits.py` and
+`living_world_quests.py` do the same through this code (`residents.py`) for the live client.
 
 ## Play through the friends' launcher
 
@@ -132,7 +166,10 @@ Then refresh the patch server's Cosmic set, so `base=cosmic` clients get the new
 python FriendServer/patch-server/build_base.py --name cosmic --clean "<clean Cosmic WZ folder>"
 ```
 
-`wzlib/` is MapleEdit's WZ reader and writer (Incluwin/MapleEdit, AGPL-3.0), adapted. It adds
+`residents.py` is MapleEdit's portrait renderer and quest-log writer (Incluwin/MapleEdit,
+AGPL-3.0), moved here, with the image work in plain Python: compositing is Pillow's
+`alpha_composite`, byte for byte (`tests/test_residents.py` checks it against Pillow when Pillow is
+installed). `wzlib/` is MapleEdit's WZ reader and writer (Incluwin/MapleEdit, AGPL-3.0), adapted. It adds
 a pure-Python AES for the key stream, keeps one-byte strings with code-page characters intact,
 parses `Shape2D#Convex2D`, and points type-2 (shared-name) directory entries at their name's
 new position.

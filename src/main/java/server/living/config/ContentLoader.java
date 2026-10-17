@@ -54,7 +54,7 @@ import java.util.stream.Stream;
  * <pre>
  * personas/**.yaml   quests/**.yaml   contracts/**.yaml   arcs/**.yaml   rumors/**.yaml
  * loadouts.yaml      command-phrases.yaml      quest-log-ids.yaml (written by the quest-log export)
- * portrait-npc-ids.yaml (written by MapleEdit/app/living_world_portraits.py)
+ * portrait-npc-ids.yaml (written by the portrait export, ResidentPortraitExportMain)
  * </pre>
  * A file holds one object or a list of objects. Every parse error names file and path.
  */

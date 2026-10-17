@@ -738,8 +738,13 @@ living_world:
     ROUTINE_ZONE: "America/New_York"
     ALWAYS_AWAKE_TOWNS: "lith-harbor"
     RESIDENT_BUBBLE_MAX_CHARS: 70
-    # true once MapleEdit has shipped the living-world Quest.wz entries (tools\living-world-questlog.bat, then
-    # MapleEdit/app/living_world_quests.py + deploy); otherwise the client would list nameless quests
+    # Mixed into each Resident's skin, face and hair (and gender where the persona sets none). 0 = the looks this
+    # server's Residents have always had; set your own number for your own cast, then re-run
+    # tools\living-world-client.bat so the portraits match.
+    RESIDENT_LOOK_SEED: 0
+    # true once the clients have the living-world Quest.wz entries (tools\living-world-client.bat on a client
+    # folder, or tools\living-world-questlog.bat then MapleEdit/app/living_world_quests.py + deploy);
+    # otherwise the client would list nameless quests
     QUEST_LOG_MIRROR: true
     # quest icons replayed over Residents, only for the player they concern: something to take / something to hand in.
     # The Custom.wz paths are head-height copies of the NPC icons (MapleEdit/app/living_world_markers.py).
@@ -747,8 +752,9 @@ living_world:
     QUEST_MARKER_READY: "Custom/UI/UIWindow.img/QuestMarker/ready"
     QUEST_MARKER_PULSE_MS: 1100
     QUEST_MARKER_REFRESH_MS: 10000
-    # Clicking a marker opens the Resident's menu: an invisible NPC the icon's size (written by
-    # MapleEdit/app/living_world_portraits.py) is spawned under it for that player only. 0 = not clickable.
+    # Clicking a marker opens the Resident's menu: an invisible NPC the icon's size (written with the portraits by
+    # tools\living-world-client.bat or MapleEdit/app/living_world_portraits.py) is spawned under it for that
+    # player only. 0 = not clickable.
     # The client hit-tests an NPC as standing on its position, so LIFT raises it from the feet to the icon.
     QUEST_MARKER_HITBOX_NPC: 9970999
     QUEST_MARKER_HITBOX_LIFT: 72
