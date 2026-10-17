@@ -61,6 +61,10 @@ real run waits for the first real sync.
 - Done when: every link in the ingested threads resolves to a stored snapshot or a recorded failure reason.
 
 ### P3 Catalog and triage
+Status 2026-10-17: built on `feat/mod-intake-p3` (`triage`, `dossier`, `board`, `overrides`, `inventory`;
+`catalog/mods.yaml`, `overrides.yaml`, `inventory.yaml`), tested on the fake Discord fixture after a P2 fetch from
+local repositories with a fake Jev (`tools/mod-intake/README.md`, "Triage (P3)"). The real triage run waits for the
+first real sync.
 - One dossier per release thread: title, author, date, links, attachments, code blocks, and the follow-up replies
   that carry fixes or bug reports.
 - Judgments via TypeSafe Jev (typed, per thread; see `use-typesafe-skill`), with rules in code wherever plain

@@ -2,8 +2,10 @@
 
 Reads the releases channels of a Discord server (M. Development C.) into a local SQLite store: every
 thread, message, edit, attachment and link (phase P1, `sync`), then snapshots what those links point at
-so triage and porting work from pinned local copies (phase P2, `fetch`). Later phases sort the store
-into mods and port them into BotStory's client and server; see `docs/MOD_INTAKE_PLAN.md`.
+so triage and porting work from pinned local copies (phase P2, `fetch`), then turns each release thread
+into a dossier and a catalog entry, triaged by rules and TypeSafe Jev judgments (phase P3, `triage`,
+`board`). Later phases port the candidates into BotStory's client and server; see
+`docs/MOD_INTAKE_PLAN.md`.
 
 Python 3.8 or newer, standard library only. `fetch` also needs the git command line.
 
@@ -42,6 +44,10 @@ python tools/mod-intake/mod_intake.py status
 python tools/mod-intake/mod_intake.py sources --status manual
 python tools/mod-intake/mod_intake.py search duey fix
 python tools/mod-intake/mod_intake.py thread "Boss HP"
+python tools/mod-intake/mod_intake.py triage --dry-run
+python tools/mod-intake/mod_intake.py triage
+python tools/mod-intake/mod_intake.py board --serve
+python tools/mod-intake/mod_intake.py overrides set 1234567890 status=porting
 ```
 
 - `channels` lists the server's channels and marks with `*` the ones `sync` reads. Without
@@ -61,6 +67,8 @@ python tools/mod-intake/mod_intake.py thread "Boss HP"
 
 Run `sync` as often as you like; a sync with nothing new costs a few listing requests plus the
 first-post re-reads. Rate limits are respected (429 `retry_after`, empty buckets).
+
+The order after a sync is `sync`, `fetch`, `triage`, then `board` to look at the result.
 
 ## Fetch (P2)
 
@@ -113,6 +121,70 @@ for the messages already in it.
 Not covered: release assets and download hosts (by hand), re-pinning a link whose message was edited
 but kept the same URL, and private gists.
 
+## Triage (P3)
+
+`triage` turns every release thread into a **dossier** and a **catalog entry**:
+
+1. Dossier (`<data>/dossiers/<thread id>.json`, local only: it holds message text): title, author, date,
+   forum tags, the first post and its earlier versions, the replies, each link with what `fetch` pinned
+   (and the files that pin changes, read offline from the mirror), attachments with their real type
+   (from the first bytes: DLL, WZ, zip, text), code blocks, and rule evidence. A text channel's posts
+   that carry a link, file or code block get a dossier too (`post-<message id>`).
+2. Rules (`intake/rules.py`): v83-range addresses (`0x00Axxxxx`) and the ones our own client modules
+   use, file paths and their layout (`src/main/java` = Cosmic, `src/net` = HeavenMS line, `scripts/`,
+   SQL, WZ XML, C++), Java packages, telltale class names (`MaplePacketCreator` vs `PacketCreator`,
+   `CWvsContext`), version and source words in the title and text (`[v83]`, `v95`, Cosmic, HeavenMS),
+   and whether a linked commit is already in this server repo's history.
+3. Jev judgments (TypeSafe, `intake/jev.py`), one request per thread: kind (client hook, client WZ,
+   server Java, server script, database, tool, not a mod) plus a yes/no per kind, game version (v83,
+   other, unknown), server family (Cosmic, HeavenMS line, other base, no server part), which of our
+   mods it matches, how it relates to them (new, already have it, conflicts), and per reply: fix, bug
+   report or neither. Requests carry facts only (text, links, pins, file lists, rule evidence), never a
+   rule's conclusion. A thread with many replies takes more requests.
+4. Policy (`intake/triage.py`, plain code): skipped when Jev is sure it is not a mod, made for another
+   version, or something we already have (or every commit it links is already merged here); otherwise a
+   candidate. `review: true` marks what a person should look at: uncertain answers, rules and Jev
+   disagreeing, a possible conflict, a skip resting on a Jev answer below 0.9, anything not judged yet.
+
+```
+triage --dry-run    dossiers + rule triage for every thread, and what Jev would cost; sends nothing
+triage              judges what is not cached, writes catalog/mods.yaml and <data>/board.html
+triage --no-jev     cached judgments only (rules for the rest); never calls the API
+triage --limit 20   judge at most 20 threads this run
+dossier <id|name>   print a dossier (--json for all of it)
+board [--serve]     write the board; --serve also serves it on 127.0.0.1:8791 and saves corrections
+overrides list | set <thread> field=value ... | import board-corrections.json
+inventory           refresh catalog/inventory.yaml's client part from kaentake src/feature_list.h
+```
+
+**Cost and cache.** Answers are cached in `<data>/triage.sqlite3` by a hash of the exact request, so a
+re-run asks again only for threads whose content changed (a new reply, an edit, a new pin). Jev 1.13
+costs $0.042 per million input tokens; a thread is about 5,000 tokens (most of it the list of our mods),
+so 300 threads cost about $0.06. `--dry-run` prints the estimate first.
+
+**API key.** `TYPESAFE_API_KEY` from the environment, else the data folder's `.env`, else the `.env`
+next to the data folder (`FriendServer/.env`). It is never printed. `TYPESAFE_MODEL` or `--model`
+picks the model; the default is pinned (`jev-1.13.0`) because the thresholds were set against it.
+
+**Catalog files** (`tools/mod-intake/catalog/`, committed):
+
+| File | What |
+| --- | --- |
+| `mods.yaml` | generated: one entry per thread with id, title, author, source links and pins, attachments (name, type, sha256), kind, version, family, applies, status (`candidate`, `skipped` with a reason, `porting`, `ported`, `shipped`), review flag, reply fix/bug counts, rule tags and the Jev probabilities. Metadata only: no message text, no code. `client_feature` and `server_mod` hold the P4 feature id and the P5 `server.mods` id once a mod is ported. |
+| `overrides.yaml` | corrections by thread id, applied on top of every run: `id status reason kind version family applies match review note client_feature server_mod replies`. The automatic value a correction replaced is kept under `auto` in `mods.yaml`. |
+| `inventory.yaml` | what BotStory already has: kaentake's modules (generated, with the addresses each one uses) and our server features, tools and data (kept by hand; `server_mod` waits for P5's ids). |
+
+A mod's `id` is a slug of the title the first time it is seen and never changes after (a renamed thread
+keeps it); set `id` in `overrides.yaml` to rename it.
+
+**Board.** `<data>/board.html` lists every thread with filters (status, kind, version, family, applies,
+needs review, text), and for each: the decision trail ("why"), the Jev probabilities, the rule evidence,
+the dossier (first post, earlier versions, links with pins and changed files, attachments, code,
+replies with their class) and a correction form. Opened as a file, corrections stay in the browser
+until exported (`overrides import board-corrections.json`); with `board --serve` they go straight into
+`overrides.yaml` and `mods.yaml` is rebuilt from cached judgments. The server listens on 127.0.0.1
+only and accepts corrections only with the page's token. Message text is shown as text, never as HTML.
+
 ## Data folder
 
 ```
@@ -126,6 +198,9 @@ mod-intake-data/
   sources/gist/<id>/
   sources/files/ab/abcd...             paste text by sha256, no file extension
   sources/no-hooks/                    empty on purpose: git's hooks and template folder
+  dossiers/<thread id>.json            P3 dossiers (message text: local only)
+  triage.sqlite3                       cached Jev answers, by request hash
+  board.html                           the P3 board
 ```
 
 Repositories are kept forever (pins are refs); a big server fork can take tens of MB even without
@@ -149,4 +224,6 @@ The tests run against `tests/fake_discord.py`, an in-memory Discord API with the
 fed by `tests/fixtures/guild.json` (a made-up server; no real Discord content is in this repo).
 The fetch tests (`tests/test_fetch.py`) clone local bare repositories built in a temp folder
 (`tests/git_fixture.py`) with git limited to the file transport, and read pastes from a fake web, so
-they need no network.
+they need no network. The triage tests (`tests/test_triage.py`) run the fixture through sync and fetch
+from local repositories, then judge it with `tests/fake_jev.py`, an in-memory TypeSafe API that checks
+requests the way the real one does; no key, no network.

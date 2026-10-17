@@ -7,31 +7,53 @@
     python tools/mod-intake/mod_intake.py sources           list link snapshots (--status failed|manual|...)
     python tools/mod-intake/mod_intake.py search <words>    full-text search over messages and file names
     python tools/mod-intake/mod_intake.py thread <id|name>  print one thread
+    python tools/mod-intake/mod_intake.py inventory         refresh catalog/inventory.yaml from kaentake
+    python tools/mod-intake/mod_intake.py triage --dry-run  dossiers + rule triage + what Jev would cost
+    python tools/mod-intake/mod_intake.py triage            judge with Jev, write catalog/mods.yaml + the board
+    python tools/mod-intake/mod_intake.py dossier <id|name> print one thread's dossier
+    python tools/mod-intake/mod_intake.py board --serve     browse and correct the catalog (127.0.0.1)
+    python tools/mod-intake/mod_intake.py overrides ...     list, set or import corrections
 
 Settings live in <data dir>/.env; see README.md.
 """
 import argparse
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from intake import board as boardlib  # noqa: E402
 from intake import config as configlib  # noqa: E402
+from intake import dossier as dossierlib  # noqa: E402
+from intake import inventory as invlib  # noqa: E402
+from intake import jev as jevlib  # noqa: E402
+from intake import triage as triagelib  # noqa: E402
+from intake import yamlish  # noqa: E402
 from intake.api import DiscordClient, DiscordError, Unauthorized  # noqa: E402
 from intake.fetch import run_fetch  # noqa: E402
 from intake.store import Store  # noqa: E402
 from intake.sync import IntakeError, run_sync, select_tracked  # noqa: E402
+
+TOOL_DIR = Path(__file__).resolve().parent
+CATALOG_DIR = TOOL_DIR / "catalog"
+SERVER_REPO = TOOL_DIR.parents[1]  # tools/mod-intake -> the server repo (a worktree works too)
 
 CHANNEL_TYPES = {0: "text", 2: "voice", 4: "category", 5: "announcement", 13: "stage", 15: "forum", 16: "media"}
 SOURCE_STATUSES = ("stored", "failed", "manual", "skipped")
 MAX_FAILURES_SHOWN = 20
 
 
-def main(argv=None, transport=None, sleep=None, page_size=100, **fetch_options):
-    """transport: the Discord API for sync/channels, the web for fetch. fetch_options go to run_fetch (tests)."""
+def main(argv=None, transport=None, sleep=None, page_size=100, jev_transport=None, environ=None, serve=None,
+         **fetch_options):
+    """transport: the Discord API for sync/channels, the web for fetch; jev_transport: the TypeSafe API for triage;
+    environ: replaces os.environ for the API key lookup; serve: called with the board server instead of
+    serve_forever. fetch_options go to run_fetch; their git_env also reaches triage and board (tests)."""
     parser = argparse.ArgumentParser(prog="mod_intake.py", description=__doc__.split("\n")[0])
     parser.add_argument("--data", help="data folder (default: $MOD_INTAKE_DATA or FriendServer/mod-intake-data)")
+    parser.add_argument("--catalog", help=f"catalog folder (default: {CATALOG_DIR})")
     sub = parser.add_subparsers(dest="command", required=True)
     sync_p = sub.add_parser("sync", help="fetch new threads, messages, edits and attachments")
     sync_p.add_argument("--no-starters", action="store_true", help="skip re-reading each thread's first post")
@@ -51,6 +73,31 @@ def main(argv=None, transport=None, sleep=None, page_size=100, **fetch_options):
     search_p.add_argument("--limit", type=int, default=20)
     thread_p = sub.add_parser("thread", help="print a thread by id or name fragment")
     thread_p.add_argument("key", nargs="+")
+    inv_p = sub.add_parser("inventory", help="refresh catalog/inventory.yaml's client part from kaentake")
+    inv_p.add_argument("--kaentake", help="kaentake checkout (default: kaentake next to the server repo)")
+    inv_p.add_argument("--ref", default="feat/feature-toggles",
+                       help="branch or commit to read (default feat/feature-toggles); '' = the work tree")
+    triage_p = sub.add_parser("triage", help="dossiers, rule tags and Jev judgments -> catalog/mods.yaml")
+    triage_p.add_argument("--dry-run", action="store_true",
+                          help="write dossiers and print the triage and Jev estimate; no API calls, no catalog")
+    triage_p.add_argument("--no-jev", action="store_true", help="use cached judgments only; never call the API")
+    triage_p.add_argument("--limit", type=int, help="judge at most this many threads this run")
+    triage_p.add_argument("--model", help=f"Jev model (default $TYPESAFE_MODEL or {jevlib.DEFAULT_MODEL})")
+    triage_p.add_argument("--all", action="store_true", help="list every thread, not only the first 60")
+    dossier_p = sub.add_parser("dossier", help="print one thread's dossier (from the last triage)")
+    dossier_p.add_argument("key", nargs="+")
+    dossier_p.add_argument("--json", action="store_true", help="the whole dossier as JSON")
+    board_p = sub.add_parser("board", help="write the HTML board (cached judgments only); --serve to correct")
+    board_p.add_argument("--serve", action="store_true", help="serve it on 127.0.0.1 and save corrections")
+    board_p.add_argument("--port", type=int, default=boardlib.DEFAULT_PORT, help=f"(default {boardlib.DEFAULT_PORT})")
+    ov_p = sub.add_parser("overrides", help="corrections that survive re-runs (catalog/overrides.yaml)")
+    ov_sub = ov_p.add_subparsers(dest="action", required=True)
+    ov_sub.add_parser("list", help="print the corrections")
+    ov_set = ov_sub.add_parser("set", help="correct one thread: overrides set <thread> status=porting ...")
+    ov_set.add_argument("thread")
+    ov_set.add_argument("fields", nargs="+", help="field=value (an empty value removes the field)")
+    ov_imp = ov_sub.add_parser("import", help="merge a board export (board-corrections.json)")
+    ov_imp.add_argument("file")
     args = parser.parse_args(argv)
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -63,6 +110,11 @@ def main(argv=None, transport=None, sleep=None, page_size=100, **fetch_options):
             if args.command == "channels":
                 return cmd_channels(client, cfg)
             return cmd_sync(client, cfg, args, page_size)
+        paths = triagelib.Paths(cfg.data_dir, Path(args.catalog) if args.catalog else CATALOG_DIR)
+        if args.command == "inventory":
+            return cmd_inventory(paths, args)
+        if args.command == "overrides":
+            return cmd_overrides(paths, args)
         if not cfg.db_path.exists():
             print(f"No data yet in {cfg.data_dir}: run 'sync' first.")
             return 1
@@ -76,9 +128,22 @@ def main(argv=None, transport=None, sleep=None, page_size=100, **fetch_options):
                 return cmd_sources(store, args.status, args.kind)
             if args.command == "search":
                 return cmd_search(store, " ".join(args.words), args.limit)
+            if args.command == "triage":
+                return cmd_triage(store, cfg, paths, args, jev_transport, environ, sleep,
+                                  fetch_options.get("git_env"))
+            if args.command == "board":
+                return cmd_board(store, paths, args, fetch_options.get("git_env"), serve)
+            if args.command == "dossier":
+                return cmd_dossier(paths, " ".join(args.key), args.json)
             return cmd_thread(store, " ".join(args.key))
         finally:
             store.close()
+    except jevlib.JevAuthError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 2
+    except (jevlib.JevError, invlib.InventoryError, yamlish.YamlError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
     except Unauthorized:
         print("Discord refused the bot token (401). Check DISCORD_BOT_TOKEN in the data folder's .env.",
               file=sys.stderr)
@@ -223,6 +288,179 @@ def cmd_thread(store, key):
             elif link["status"]:
                 snapshot = f"  -> {link['status']}: {link['error'] or link['note']}"
             print(f"   [{link['kind']}] {link['url']}{snapshot}")
+    return 0
+
+
+def cmd_inventory(paths, args):
+    repo = Path(args.kaentake) if args.kaentake else default_kaentake()
+    source = invlib.KaentakeSource(repo, args.ref or None)
+    data = invlib.regenerate(paths.inventory, source)
+    print(f"{paths.inventory}: {len(data['client'])} client modules from kaentake {source.ref or 'work tree'} "
+          f"({source.commit[:12]}), {len(data['server'])} server entries kept.")
+    return 0
+
+
+def default_kaentake():
+    """kaentake next to the main server checkout (also from a worktree of it)."""
+    p = subprocess.run(["git", "-C", str(SERVER_REPO), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    common = Path(p.stdout.decode("utf-8", "replace").strip()) if p.returncode == 0 else SERVER_REPO / ".git"
+    return common.parent.parent / "kaentake"
+
+
+def _server_repo():
+    return SERVER_REPO if (SERVER_REPO / ".git").exists() else None
+
+
+def cmd_triage(store, cfg, paths, args, jev_transport, environ, sleep, git_env):
+    environ = os.environ if environ is None else environ
+    model = args.model or environ.get("TYPESAFE_MODEL") or jevlib.DEFAULT_MODEL
+    jev = None
+    ask = not (args.dry_run or args.no_jev)
+    if ask:
+        key = jevlib.load_key(environ, [cfg.data_dir / ".env", cfg.data_dir.parent / ".env"])
+        if not key:
+            print("TYPESAFE_API_KEY not found (environment, the data folder's .env, or the .env next to it). "
+                  "Use --dry-run or --no-jev to triage on rules and cached judgments only.", file=sys.stderr)
+            return 2
+        jev = jevlib.JevClient(key, transport=jev_transport, model=model, **({"sleep": sleep} if sleep else {}))
+    out = triagelib.run(store, paths, jev=jev, ask=ask, model=model, write=not args.dry_run, limit=args.limit,
+                        server_repo=_server_repo(), git_env=git_env)
+    print_triage(out, args.all)
+    for note in out.notes:
+        print(f"note: {note}")
+    est = triagelib.estimate(out.pending, model)
+    cached = len(out.requests) - len(out.pending)
+    if args.dry_run:
+        print(f"\nDry run: {len(out.dossiers)} dossiers written to {paths.dossiers}.")
+        print(f"Jev ({model}): {est['requests']} requests to send for {est['threads']} threads, "
+              f"~{est['tokens']:,} input tokens, ~${est['usd']:.4f} at ${jevlib.PRICE_PER_MTOK}/Mtok; "
+              f"{cached} already cached.")
+        print("Nothing sent and no catalog written. 'triage' judges and writes catalog/mods.yaml.")
+        return 0
+    if ask:
+        print(f"\nJudged {out.asked} requests ({out.tokens:,} input tokens, ~${jevlib.cost_usd(out.tokens):.4f}); "
+              f"{cached - out.asked} were cached; {len(out.failed)} failed"
+              + (f"; {est['requests']} left for the next run" if est["requests"] else "") + ".")
+    else:
+        print(f"\nCached judgments only: {cached} of {len(out.requests)} requests have answers.")
+    path = boardlib.write(out, paths)
+    print(f"Wrote {paths.mods} ({len(out.entries)} entries) and the board {path}.")
+    return 0
+
+
+def print_triage(out, show_all):
+    rows = sorted(out.entries, key=lambda e: triagelib._unit_sort_key(e["thread"]))
+    for e in rows if show_all else rows[:60]:
+        flag = "?" if e["review"] else " "
+        print(f"{flag} {e['status']:<9} {e['kind'] or '-':<13} {e['version'] or '-':<7} {e['family'] or '-':<14} "
+              f"{e['applies'] or '-':<12} {e['id']:<34} {e['title'][:60]}")
+        if e.get("reason"):
+            print(f"{'':<12}{e['reason']}")
+    if not show_all and len(rows) > 60:
+        print(f"... {len(rows) - 60} more (--all)")
+    counts = triagelib.summary(out.entries, None)
+    print(f"{counts['entries']} threads: " + ", ".join(f"{n} {s}" for s, n in counts["status"].items())
+          + f"; {counts['review']} need review (?), {counts['judged']} judged by Jev.")
+
+
+def cmd_board(store, paths, args, git_env, serve):
+    out = triagelib.run(store, paths, ask=False, write=True, server_repo=_server_repo(), git_env=git_env)
+    path = boardlib.write(out, paths)
+    if not args.serve:
+        print(f"Board: {path} (open it in a browser; 'board --serve' saves corrections directly).")
+        return 0
+    try:
+        server = boardlib.BoardServer(out, paths, port=args.port)
+    except OSError as e:
+        print(f"Error: cannot listen on 127.0.0.1:{args.port} ({e.strerror or e}); pick another with --port.",
+              file=sys.stderr)
+        return 1
+    print(f"Board: {server.url}  (127.0.0.1 only; Ctrl+C stops it). Corrections go to {paths.overrides}.")
+    try:
+        if serve:
+            serve(server)
+        else:
+            server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.httpd.server_close()
+    return 0
+
+
+def cmd_dossier(paths, key, as_json):
+    dossiers = dossierlib.load_all(paths.dossiers)
+    if not dossiers:
+        print("No dossiers yet: run 'triage' (or 'triage --dry-run') first.")
+        return 1
+    hits = [d for d in dossiers if d["id"] == key] or [d for d in dossiers if key.lower() in d["title"].lower()]
+    if len(hits) != 1:
+        print("No dossier matches." if not hits else "Several match; use an id:")
+        for d in hits:
+            print(f"  {d['id']}  {d['title']}")
+        return 1
+    d = hits[0]
+    if as_json:
+        print(json.dumps(d, ensure_ascii=False, indent=1))
+        return 0
+    s = d["stats"]
+    print(f"== {d['title']}  ({d['id']}, {d['unit']} in #{d['channel']['name']})")
+    print(f"by {d['author']['name']} on {(d['created_at'] or '')[:10]}; {s['replies']} replies, {s['links']} links, "
+          f"{s['attachments']} attachments, {s['code_blocks']} code blocks, {s['edits']} earlier versions")
+    h = d["hints"]
+    versions = ", ".join(f"{v} ({w})" for v, w in h["versions"]) or "-"
+    families = ", ".join(f"{f} ({w})" for f, w in h["families"]) or "-"
+    print(f"rules: kinds {', '.join(h['kinds']) or '-'}; versions {versions}; families {families}")
+    for k, v in d["evidence"]["release"].items():
+        if v:
+            print(f"  {k}: {v}")
+    for m in ([d["starter"]] if d["starter"] else []) + d["replies"]:
+        print(f"\n-- {m['author']}  {(m['created_at'] or '')[:16]}  [{m['id']}]")
+        print(m["text"])
+        for link in m["links"]:
+            snap = link["snapshot"] or {}
+            pin = " " + snap["pinned_sha"][:12] if snap.get("pinned_sha") else ""
+            files = f", {link['files']['count']} files ({link['files']['mode']})" if link.get("files") else ""
+            print(f"   [{link['kind']}] {link['url']} -> {snap.get('status', 'not fetched')}{pin}{files}")
+        for a in m["attachments"]:
+            print(f"   [file] {a['filename']}  {a['type']}")
+    return 0
+
+
+def cmd_overrides(paths, args):
+    if args.action == "list":
+        data = triagelib.load_overrides(paths.overrides)
+        if not data:
+            print(f"No corrections in {paths.overrides}.")
+        for unit_id, fields in data.items():
+            print(f"{unit_id}: " + ", ".join(f"{k}={v}" for k, v in fields.items()))
+        return 0
+    if args.action == "import":
+        try:
+            n = boardlib.import_corrections(paths, args.file)
+        except (OSError, ValueError) as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        print(f"Imported corrections for {n} threads into {paths.overrides}. "
+              f"Run 'triage --no-jev' or 'board' to rebuild mods.yaml.")
+        return 0
+    fields = {}
+    for item in args.fields:
+        if "=" not in item:
+            print(f"Error: expected field=value, got {item!r}", file=sys.stderr)
+            return 1
+        key, value = item.split("=", 1)
+        if key.strip() == "review":
+            value = {"true": True, "false": False, "": None}.get(value.lower(), value)
+        fields[key.strip()] = value
+    try:
+        current = triagelib.save_override(paths.overrides, args.thread, fields)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    print(f"{args.thread}: " + (", ".join(f"{k}={v}" for k, v in current.items()) or "no corrections left")
+          + ". Run 'triage --no-jev' or 'board' to rebuild mods.yaml.")
     return 0
 
 
