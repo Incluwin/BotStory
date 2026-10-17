@@ -1,0 +1,1164 @@
+16:55:38.536 [main] INFO  server.Server - Cosmic v83 starting up.
+16:55:38.659 [main] INFO  decision.AgentDecisionCatalogRuntime - Agent decision catalog runtime disabled
+16:55:38.671 [main] WARN  server.Server - Runtime feature enabled: characters normalize to max inventory slots.
+16:55:38.674 [main] INFO  tools.DatabaseConnection - Initializing database connection pool. Connecting to:'jdbc:mysql://localhost:3306/cosmic' with user:'root'
+16:55:39.104 [main] INFO  tools.DatabaseConnection - Connection pool initialized in 429 ms
+16:55:44.094 [main] INFO  monitoring.DiskSpaceMonitor - Disk space healthy: disk=ok:181678/975200MB
+16:55:44.124 [main] INFO  server.Server - Starting world 0
+16:55:46.189 [main] INFO  channel.Channel - Channel 1: Listening on port 7575
+16:55:46.327 [main] INFO  channel.Channel - Channel 2: Listening on port 7576
+16:55:46.442 [main] INFO  channel.Channel - Channel 3: Listening on port 7577
+16:55:46.444 [main] INFO  server.Server - Finished loading world 0
+16:55:46.554 [main] INFO  server.Server - Listening on port 8484
+16:55:46.558 [main] INFO  server.Server - Cosmic is now online after 8030 ms.
+16:55:49.363 [knowledge-loader] INFO  knowledge.KnowledgeLoader - [knowledge] loaded 5262 maps, 1564 mobs, 10906 items, 1524 npcs, 2807 quests, 182 script spawns, 66 travel legs, 232 aliases; overlay 22157 drops, 6 global, 3891 shop rows, 1 plife; file 145 ms, overlay 466 ms, total 8639 ms, ~8 MB heap
+16:55:52.823 [main] INFO  server.Server - Loaded Dressing Room in 5797ms.
+16:55:53.300 [main] INFO  set.SetItemManager - SetItemManager: loaded 20 sets covering 193 items from C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\set-items.yml
+16:55:53.386 [main] INFO  equip.SecondaryStatRequirementOverrides - SecondaryStatRequirementOverrides: loaded overrides for 1108 item(s) from C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\..\MapleEdit\app\patches\zero-secondary-stats.json
+16:55:57.919 [main] INFO  test.GmTestQueueWatcher - GmTestQueueWatcher active on C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\logs\gm-command-queue.txt
+16:55:58.013 [main] INFO  admin.AdminControlPort - AdminControlPort listening on 127.0.0.1:8480
+16:55:58.030 [main] INFO  admin.AdminControlPort - AdminSsoKey ready — address 923a157f79ab08685002899baa0a6c7e09c2249201379b1bebb7ff31a2a69496
+16:55:58.032 [main] INFO  admin.AdminSampler - AdminSampler started (player 60s, map presence 5min)
+16:55:58.032 [main] INFO  security.ConnectionThrottle - ConnectionThrottle: enabled=true concurrent/ip=6 connects=20x10000ms packets=120x1000ms
+16:55:58.038 [main] INFO  security.AntiCheat - AntiCheat: enabled=true logOnly=true maxHit=500000 maxMeso/min=5000000 maxMoveDelta=1200
+16:55:58.048 [main] INFO  population.AgentPopulationRuntime - Agent population runtime started: enabled=false managed=0 store=.runtime\agents\population.json
+16:55:58.058 [main] INFO  typesafe.JevClient - TypeSafe System One client initialised: TypeSafeSettings[endpoint=https://api.typesafe.ai/v1/systemone, model=jev-latest, timeoutMs=1500, apiKey=<set>]
+16:55:58.059 [main] INFO  typesafe.JevUsageReporter - TypeSafe usage reporting every 30 min to the log and logs\typesafe-usage.csv
+16:55:59.227 [main] INFO  phrases.PhraseMatcher - Phrase packs: 56 commands, 15 learned phrases
+16:55:59.443 [main] INFO  living.LivingWorld - Living world started: personas=72 recruitable=24 towns={ellinia=10, henesys=13, kerning-city=12, lith-harbor=10, nautilus=8, perion=12, sleepywood=7} quests=197 contracts=25 arcs=9 rumors=7 loadouts=32 phrases=56 (world 0 channel 1, content C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\living-world)
+16:55:59.669 [main] INFO  population.Population - Population started: 902 citizens (cohorts=5 careers=12 voices=5 regions=17 fields=618 intents=42), 717 target, 240 online max, channels [1]
+16:55:59.672 [main] INFO  server.Server - Database Console bridge disabled. Set COSMIC_DATABASE_CONSOLE_BRIDGE_ENABLED=true to enable it.
+16:55:59.674 [main] INFO  server.Server - Agent Director panel bridge disabled. Set COSMIC_DIRECTOR_PANEL_ENABLED=true to enable it.
+16:55:59.675 [main] INFO  server.Server - Agent map-graph viewer disabled. Set COSMIC_AGENT_MAPGRAPH_ENABLED=true to enable it.
+16:56:01.509 [companion-ops] INFO  data.AgentAttackDataProvider - Bot attack direction ids: loaded 164 action ids using built-in overrides + 00002000.img.xml
+16:56:01.517 [companion-ops] INFO  data.AgentAttackDataProvider - Bot skill timing: loaded 115 body action timings from 00002000.img.xml
+16:56:01.521 [companion-ops] INFO  data.AgentAttackDataProvider - Bot attack timing: loaded 43 body stances from 00002000.img.xml
+16:56:01.579 [companion-ops] INFO  roster.PqPaceLedger - PQ pace records of kpq read: epoch=1 runs=5 learned=records/5 notes={s1.grind.incomplete=1, s5.carry.excludedLeader=2, s5.carry.incomplete=1, s5.normals.nonPositive=2}
+16:56:01.583 [companion-ops] INFO  roster.PqPaceLedger - PQ pace records of hpq read: epoch=1 runs=2 learned=records/2 notes={seeds.incomplete=1}
+16:56:01.585 [companion-ops] INFO  roster.PqPaceLedger - PQ pace records of lpq read: epoch=1 runs=1 learned=records/1 notes={s1.collect.excludedLeader=1, s2.collect.excludedLeader=1, s3.collect.excludedLeader=1, s4.rooms.excludedLeader=1, s5.rooms.excludedLeader=1, s7.fight.excludedLeader=1}
+16:56:01.589 [companion-ops] INFO  roster.PqPaceLedger - PQ pace records of epq read: epoch=1 runs=2 learned=records/2 notes={climb.excludedLeader=1, marbles.excludedLeader=1, trees.incomplete=1}
+16:56:01.686 [companion-ops] INFO  roster.BenchCombatLearning - bench combat learning: candidates of 14 jobs read
+16:56:05.149 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident olwen dressed from loadout beginner-townsfolk
+16:56:05.153 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident olwen (Olwen) materialized in lith-harbor at 2800,520
+16:56:05.199 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Olwen is using fallback movement on map 104000000 while its navigation graph warms (leader=Olwen, walkableFootholds=383)
+16:56:05.201 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident mirel dressed from loadout beginner-townsfolk
+16:56:05.203 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident mirel (Mirel) materialized in lith-harbor at 4260,518
+16:56:05.245 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident tobin dressed from loadout beginner-townsfolk
+16:56:05.246 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident tobin (Tobin) materialized in lith-harbor at 1650,641
+16:56:05.258 [TimerManager-Core-1] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=8, generation=1] elapsedMs=440
+16:56:05.306 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Mirel is using fallback movement on map 104000000 while its navigation graph warms (leader=Mirel, walkableFootholds=383)
+16:56:05.308 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident sable dressed from loadout beginner-townsfolk
+16:56:05.311 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident sable (Sable) materialized in lith-harbor at 2205,107
+16:56:05.314 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Tobin is using fallback movement on map 104000000 while its navigation graph warms (leader=Tobin, walkableFootholds=383)
+16:56:05.331 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Sable is using fallback movement on map 104000000 while its navigation graph warms (leader=Sable, walkableFootholds=383)
+16:56:06.092 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident hadrik dressed from loadout sailor-cutlass
+16:56:06.093 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident hadrik (Hadrik) materialized in lith-harbor at 1100,279
+16:56:06.128 [TimerManager-Low-1] INFO  resident.ResidentWardrobe - Resident pim dressed from loadout beginner-townsfolk
+16:56:06.174 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident pim (Pim) materialized in lith-harbor (town life)
+16:56:06.244 [TimerManager-Core-1] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=13, generation=5] elapsedMs=291
+16:56:06.280 [TimerManager-Low-1] INFO  resident.ResidentRuntime - Resident hob (Hob) materialized in lith-harbor at 2448,525
+16:56:36.718 [TimerManager-Core-2] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=13, generation=5] elapsedMs=441
+16:56:59.767 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Elon956 online: AFK at 610030000 (Courtyard) lv73 ch1
+16:56:59.892 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Mivara online: AFK at 103000000 (Kerning City) lv24 ch1
+16:57:00.093 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen AngelHermit online: TOWN at 220000000 (Ludibrium) lv74 ch1
+16:57:00.145 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilMos online: TOWN at 540000000 (CBD) lv47 ch1
+16:57:00.307 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen PigChief online: TOWN at 103000000 (Kerning City) lv31 ch1
+16:57:00.574 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xOrkax online: TRAIN at 105090100 (The Tunnel That Lost Light II) lv57 ch1
+16:57:00.646 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Nona online: AFK at 100000000 (Henesys) lv35 ch1
+16:57:01.027 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent xOrkax is using fallback movement on map 105090100 while its navigation graph warms (leader=xOrkax, walkableFootholds=786)
+16:57:01.031 [TimerManager-Core-1] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=710, generation=13] elapsedMs=426
+16:57:01.074 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rorakun online: TOWN at 103000000 (Kerning City) lv66 ch1
+16:57:01.117 [TimerManager-Core-4] INFO  net.PacketProcessor - [observer] protocol handlers registered channel=1 enabled=true navgraphEnabled=true
+16:57:14.692 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Wais online: TRAIN at 610020011 (Cavern of Pain) lv74 ch1
+16:57:14.705 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' is low on MP_POTION and asked its party before leaving to shop
+16:57:14.784 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilRanger online: TOWN at 110000000 (Florina Beach) lv27 ch1
+16:57:15.109 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Moa589 online: TRAIN at 610020013 (Cavern of Honor) lv84 ch1
+16:57:15.404 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xOryx online: TOWN at 260000000 (Ariant) lv50 ch1
+16:57:15.528 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Nous293 online: TOWN at 300000000 (Altaire Camp) lv57 ch1
+16:57:29.715 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Elis63 online: AFK at 100000000 (Henesys) lv30 ch1
+16:57:29.830 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Nena online: TOWN at 103000000 (Kerning City) lv58 ch1
+16:57:29.944 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen BunnyCleric online: TRAIN at 600020300 (Wolf Spider Cavern) lv82 ch1
+16:57:30.074 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FoxMage online: TOWN at 261000000 (Magatia) lv60 ch1
+16:57:30.155 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen MixTheCleric online: AFK at 103000000 (Kerning City) lv52 ch1
+16:57:30.213 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Luly128 online: MARKET at 910000000 (Free Market) lv59 ch1
+16:57:30.272 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rose524 online: TRAIN at 106000101 (The Burnt Land I) lv28 ch1
+16:57:30.329 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Rose524 is using fallback movement on map 106000101 while its navigation graph warms (leader=Rose524, walkableFootholds=138)
+16:57:30.385 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rois447 online: TOWN at 541000000 (Boat Quay Town) lv69 ch1
+16:57:30.840 [TimerManager-Core-4] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=298, generation=12] elapsedMs=316
+16:57:32.071 [TimerManager-Map-1] WARN  maps.MapManager - Map high-water world=0 channel=1 map=600020300 objects=257 drops=0 reactors=0 monsters=256
+16:57:44.707 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iLikeBlade online: TRAIN at 106020200 (Isolated Mushroom Forest) lv27 ch1
+16:57:44.783 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen DaxTheHermit online: MARKET at 910000000 (Free Market) lv48 ch1
+16:57:44.845 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Hais online: TOWN at 105040300 (Sleepywood) lv42 ch1
+16:57:45.006 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen WausTheSin online: TRAIN at 221023100 (Eos Tower 73rd Floor) lv25 ch1
+16:57:45.032 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no MP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+16:57:45.033 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start MP_POTION resupply; suppressing the category for 300000 ms
+16:57:45.055 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Ocean765 online: TOWN at 105040300 (Sleepywood) lv36 ch1
+16:57:45.111 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iHateWolf online: PQ at 103000000 (Kerning City) lv23 ch1
+16:57:45.200 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LittleSniper online: TOWN at 100000000 (Henesys) lv49 ch1
+16:57:45.417 [TimerManager-Core-3] WARN  navigation.AgentNavigationPathService - Slow bot pathfind: caller=target-score took 65.5 ms map=221023100 startRegion=3 targetRegion=6 regions=31 startOut=37 startPos=(112, 186) targetPos=(-60, 311) expanded=4 stale=0 dominated=2 edgeChecks=69 usableEdges=69 relaxations=68 openPeak=65 bestGoalCost=1550 resultEdges=2 capped=false
+16:57:45.522 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xPoisx online: TOWN at 103000000 (Kerning City) lv43 ch1
+16:57:45.529 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' is low on HP_POTION and asked its party before leaving to shop
+16:57:45.579 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xJothx online: MARKET at 910000000 (Free Market) lv50 ch1
+16:57:45.667 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LazyArrow online: TOWN at 104000000 (Lith Harbor) lv49 ch1
+16:57:45.707 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Sky706 online: AFK at 103000000 (Kerning City) lv35 ch1
+16:57:45.750 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Josena online: TRAIN at 103040400 (7th Floor 8th Floor Area A) lv50 ch1
+16:57:45.813 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen BladeSader online: TRAIN at 682000501 (Sophilia's Bedroom) lv61 ch1
+16:57:45.832 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no MP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+16:57:45.833 [TimerManager-Core-1] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start MP_POTION resupply; suppressing the category for 300000 ms
+16:57:45.860 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Neshao online: TOWN at 103000000 (Kerning City) lv39 ch1
+16:57:45.997 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen StarRanger online: MARKET at 910000000 (Free Market) lv63 ch1
+16:57:46.036 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Lius online: MARKET at 910000000 (Free Market) lv81 ch1
+16:57:52.955 [TimerManager-Core-4] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=710, generation=13] elapsedMs=307
+16:57:57.503 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no HP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+16:57:57.504 [TimerManager-Core-1] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start HP_POTION resupply; suppressing the category for 300000 ms
+16:57:59.694 [companion-ops] INFO  roster.BenchDutyDispatcher - bench slice: Garrick rest live at 102000000 for 2
+16:57:59.750 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RoseArcher online: TRAIN at 260010400 (The Scorching Desert) lv28 ch1
+16:57:59.902 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LazyWolf online: MARKET at 910000000 (Free Market) lv58 ch1
+16:57:59.963 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soki883 online: AFK at 211000000 (El Nath) lv76 ch1
+16:57:59.993 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Leaf132 online: AFK at 100000000 (Henesys) lv48 ch1
+16:58:00.068 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SkyKnight online: TRAIN at 140010200 (Dangerous Forest) lv15 ch1
+16:58:00.191 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen HolyMushroom online: PQ at 200080101 (map 200080101) lv54 ch1
+16:58:00.267 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen StarWarrior online: TRAIN at 101030107 (Remains <Tomb> III) lv48 ch1
+16:58:00.325 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen CrazyDit online: TOWN at 103000000 (Kerning City) lv34 ch1
+16:58:00.504 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RioTheKnight online: AFK at 800000000 (Mushroom Shrine) lv46 ch1
+16:58:00.875 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xTiax online: AFK at 211000000 (El Nath) lv84 ch1
+16:58:00.939 [TimerManager-Core-1] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=383, generation=21] elapsedMs=324
+16:58:00.970 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Jora online: TRAIN at 103000103 (Line 1 <Area 2>) lv29 ch1
+16:58:01.144 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' suspended foreground work for MP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=103000103 supplierMap=103000002 supplierNpc=1051002 existingShopVisit=false
+16:58:01.172 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Jora is using fallback movement on map 103000102 while its navigation graph warms (leader=Jora, walkableFootholds=129)
+16:58:08.079 [TimerManager-Core-2] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=710, generation=13] elapsedMs=418
+16:58:08.087 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000200 objects=292 drops=0 reactors=0 monsters=291
+16:58:08.692 [nioEventLoopGroup-3-1] INFO  client.Client - [crew-window] first inbound opcode=279 payloadBytes=7 handler=CrewWindowHandler loggedIn=true account=bossfriend01 player=Bossfriend
+16:58:08.694 [nioEventLoopGroup-3-1] INFO  ui.NativeCrewWindow - [crew-window] HELLO from Bossfriend: protocol 2, DLL build 20261012, served at 2, enabled=true
+16:58:10.079 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000200 objects=389 drops=0 reactors=0 monsters=388
+16:58:14.756 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilPirate online: TRAIN at 105090312 (Drake's Nest) lv70 ch1
+16:58:14.896 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Riis online: TRAIN at 222010102 (Tiger Forest II) lv52 ch1
+16:58:14.967 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iHugGhost online: TOWN at 100000000 (Henesys) lv43 ch1
+16:58:15.026 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Kely84 online: TOWN at 104000000 (Lith Harbor) lv50 ch1
+16:58:15.080 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soa367 online: TOWN at 102000000 (Perion) lv50 ch1
+16:58:15.131 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilLeaf online: TOWN at 103000000 (Kerning City) lv41 ch1
+16:58:15.182 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen QuietCookie online: TRAIN at 240010800 (Entrance to Sky Nest) lv81 ch1
+16:58:17.033 [TimerManager-Core-3] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=1010, generation=59] elapsedMs=5298
+16:58:17.197 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no HP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+16:58:17.198 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start HP_POTION resupply; suppressing the category for 300000 ms
+16:58:17.320 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=105090312 supplierMap=105070001 supplierNpc=1061001 existingShopVisit=false
+16:58:18.618 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent EvilPirate is using fallback movement on map 105090311 while its navigation graph warms (leader=EvilPirate, walkableFootholds=593)
+16:58:21.403 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Jora is using fallback movement on map 103000101 while its navigation graph warms (leader=Jora, walkableFootholds=164)
+16:58:24.085 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000101 objects=261 drops=0 reactors=0 monsters=256
+16:58:24.709 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent EvilPirate is using fallback movement on map 105090310 while its navigation graph warms (leader=EvilPirate, walkableFootholds=591)
+16:58:29.738 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Kero768 online: TOWN at 101000000 (Ellinia) lv39 ch1
+16:58:29.766 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iHugRose online: TOWN at 103000000 (Kerning City) lv53 ch1
+16:58:29.809 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LuckyFox online: MARKET at 910000000 (Free Market) lv71 ch1
+16:58:29.849 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SirJox online: TOWN at 100000000 (Henesys) lv50 ch1
+16:58:29.911 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Faney online: TOWN at 220000000 (Ludibrium) lv73 ch1
+16:58:29.937 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SnailRanger online: TOWN at 103000000 (Kerning City) lv50 ch1
+16:58:29.978 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Yuneel online: AFK at 100000000 (Henesys) lv27 ch1
+16:58:30.004 [TimerManager-Low-1] WARN  progression.AgentCareerProgressionCheckpointRuntime - Ignoring incompatible career checkpoint for SilentPepper (994): warrior-standard-v1 v1 != thief-claw-standard-v1 v1
+16:58:30.005 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SilentPepper online: TRAIN at 140010200 (Dangerous Forest) lv14 ch1
+16:58:30.079 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Kely online: TRAIN at 103040101 (1st Floor 2nd Floor Area B) lv34 ch1
+16:58:30.142 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilOrn online: MARKET at 910000000 (Free Market) lv37 ch1
+16:58:30.217 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Keon206 online: TRAIN at 200010300 (Stairway to the Sky II) lv71 ch1
+16:58:30.245 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Keon206' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=200010300 supplierMap=200000002 supplierNpc=2012005 existingShopVisit=false
+16:58:30.283 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilGius online: AFK at 550000000 (Trend Zone Metropolis) lv73 ch1
+16:58:30.328 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Faka online: AFK at 100000000 (Henesys) lv43 ch1
+16:58:30.371 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Mokachan online: TOWN at 103000000 (Kerning City) lv36 ch1
+16:58:30.416 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FrostKnight online: MARKET at 910000000 (Free Market) lv52 ch1
+16:58:30.895 [TimerManager-Core-2] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=255, generation=53] elapsedMs=347
+16:58:31.141 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Keon206 is using fallback movement on map 200010200 while its navigation graph warms (leader=Keon206, walkableFootholds=103)
+16:58:35.646 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent EvilPirate is using fallback movement on map 105090300 while its navigation graph warms (leader=EvilPirate, walkableFootholds=758)
+16:58:44.739 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iHateCookie online: TOWN at 221000000 (Omega Sector) lv74 ch1
+16:58:44.770 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilDit online: TOWN at 240000000 (Leafre) lv71 ch1
+16:58:44.859 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SirElro online: TOWN at 230000000 (Aquarium) lv82 ch1
+16:58:44.919 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen IceSky online: MARKET at 910000000 (Free Market) lv51 ch1
+16:58:44.978 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Haly online: AFK at 200000000 (Orbis) lv50 ch1
+16:58:45.018 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Joon online: TOWN at 250000000 (Mu Lung) lv78 ch1
+16:58:45.055 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xKaox online: TRAIN at 101030106 (Remains <Tomb> II) lv46 ch1
+16:58:45.083 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen GoldenSader online: MARKET at 910000000 (Free Market) lv81 ch1
+16:58:46.180 [TimerManager-Core-2] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=365, generation=64] elapsedMs=281
+16:58:49.326 [TimerManager-Low-1] INFO  population.Market - citizen GoldenSader opened a stall in room 910000001 with 8 listings
+16:58:59.708 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Blade854 online: TRAIN at 551000200 (Hibiscus Road 2) lv58 ch1
+16:58:59.749 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EpicArcher online: TOWN at 100000000 (Henesys) lv55 ch1
+16:58:59.750 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Blade854 is using fallback movement on map 551000200 while its navigation graph warms (leader=Blade854, walkableFootholds=120)
+16:58:59.796 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Giraa online: TRAIN at 222010200 (Tiger Ridge) lv57 ch1
+16:58:59.825 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Jonakun online: TOWN at 100000000 (Henesys) lv49 ch1
+16:58:59.891 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SirZera online: TRAIN at 540020000 (Suburban Area 1) lv38 ch1
+16:58:59.920 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Anvith online: TOWN at 100000000 (Henesys) lv32 ch1
+16:58:59.925 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent SirZera is using fallback movement on map 540020000 while its navigation graph warms (leader=SirZera, walkableFootholds=229)
+16:59:14.709 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Norath online: TOWN at 102000000 (Perion) lv51 ch1
+16:59:14.737 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen QuietFighter online: MARKET at 910000000 (Free Market) lv72 ch1
+16:59:14.775 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Fana93 online: TOWN at 103000000 (Kerning City) lv53 ch1
+16:59:14.800 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Nekix online: TRAIN at 101030105 (Remains <Tomb> I) lv51 ch1
+16:59:14.838 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen GoldenOcean online: TRAIN at 103000202 (Line 2 <Area 3>) lv52 ch1
+16:59:14.867 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent GoldenOcean is using fallback movement on map 103000202 while its navigation graph warms (leader=GoldenOcean, walkableFootholds=166)
+16:59:14.877 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen GoldenPig online: AFK at 220000000 (Ludibrium) lv60 ch1
+16:59:14.903 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iLikeBunny online: TOWN at 230000000 (Aquarium) lv78 ch1
+16:59:14.931 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SilentSpear online: TRAIN at 106010103 (Golem's Temple I) lv50 ch1
+16:59:14.973 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Tain828 online: PQ at 103000000 (Kerning City) lv21 ch1
+16:59:15.011 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RoseSniper online: MARKET at 910000000 (Free Market) lv78 ch1
+16:59:15.040 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Dain online: TOWN at 120000000 (Nautilus Harbor) lv52 ch1
+16:59:15.073 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Tilix online: TRAIN at 101030109 (Remains <Cliff>) lv71 ch1
+16:59:15.134 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FrostSword online: TRAIN at 801000210 (The Secret Spa (F)) lv52 ch1
+16:59:15.149 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Tilix is using fallback movement on map 101030109 while its navigation graph warms (leader=Tilix, walkableFootholds=117)
+16:59:15.164 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent FrostSword is using fallback movement on map 801000210 while its navigation graph warms (leader=FrostSword, walkableFootholds=406)
+16:59:16.077 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000202 objects=207 drops=0 reactors=0 monsters=205
+16:59:18.077 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000103 objects=366 drops=0 reactors=0 monsters=364
+16:59:18.081 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000202 objects=275 drops=0 reactors=0 monsters=273
+16:59:24.735 [TimerManager-Core-4] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=903, generation=110] elapsedMs=380
+16:59:28.918 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Jora item=4000007 quantity=7 protected=50 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=50, within15=0, within25=0, ledgerReserved=0]
+16:59:28.919 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Jora item=4000008 quantity=123 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+16:59:29.706 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rori online: MARKET at 910000000 (Free Market) lv51 ch1
+16:59:29.769 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Orin224 online: TRAIN at 211040101 (Valley of Snowman) lv65 ch1
+16:59:29.791 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iNeedDemon online: TRAIN at 800010001 (The Mountain of Cloud Fox) lv35 ch1
+16:59:29.813 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LeafKnight online: TOWN at 102000000 (Perion) lv42 ch1
+16:59:29.838 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Elneri online: TOWN at 101000000 (Ellinia) lv44 ch1
+16:59:29.848 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent iNeedDemon is using fallback movement on map 800010001 while its navigation graph warms (leader=iNeedDemon, walkableFootholds=151)
+16:59:29.873 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen AngryPanda online: MARKET at 910000000 (Free Market) lv44 ch1
+16:59:29.904 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Velykun online: AFK at 100000000 (Henesys) lv24 ch1
+16:59:29.945 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen AngelKnight online: TOWN at 120000000 (Nautilus Harbor) lv51 ch1
+16:59:29.947 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent Keon206 is using fallback movement on map 200010000 while its navigation graph warms (leader=Keon206, walkableFootholds=163)
+16:59:35.991 [nioEventLoopGroup-3-2] INFO  client.Client - [crew-window] first inbound opcode=279 payloadBytes=7 handler=CrewWindowHandler loggedIn=true account=crewfriend24 player=Crewfriend
+16:59:35.992 [nioEventLoopGroup-3-2] INFO  ui.NativeCrewWindow - [crew-window] HELLO from Crewfriend: protocol 2, DLL build 20261012, served at 2, enabled=true
+16:59:44.708 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Gikira online: TRAIN at 101030405 (East Rocky Mountain VI) lv28 ch1
+16:59:44.730 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Taelchan online: TRAIN at 106010101 (The Breathing Rock) lv31 ch1
+16:59:44.751 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Mos400 online: TOWN at 102000000 (Perion) lv40 ch1
+16:59:44.771 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iNeedMoon online: MARKET at 910000000 (Free Market) lv56 ch1
+16:59:44.789 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xSaax online: AFK at 100000000 (Henesys) lv39 ch1
+16:59:44.813 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Yuro140 online: TRAIN at 200010301 (Garden of Darkness I) lv70 ch1
+16:59:44.847 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Moy252 online: TOWN at 100000000 (Henesys) lv54 ch1
+16:59:44.867 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Veka198 online: MARKET at 910000000 (Free Market) lv34 ch1
+16:59:44.894 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilNee online: TOWN at 801000000 (Showa Town) lv39 ch1
+16:59:44.922 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Samix online: TRAIN at 211040200 (Ice Valley II) lv70 ch1
+16:59:44.989 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Samix' suspended foreground work for HP_POTION resupply: phase=SHOPPING sourceMap=211040200 supplierMap=211040200 supplierNpc=2030009 existingShopVisit=false
+16:59:45.437 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command WarpCommand
+16:59:46.524 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' finished shopping at NPC 1051002 on map 103000002: MP_POTION 6 -> 16 (reserve 9000/7152), potions hp 68 mp 16, mesos 1450409 -> 1593444
+16:59:48.088 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent EvilPirate is using fallback movement on map 105090000 while its navigation graph warms (leader=EvilPirate, walkableFootholds=1238)
+16:59:48.533 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+16:59:50.083 [TimerManager-Map-1] WARN  maps.MapManager - Map high-water world=0 channel=1 map=105090000 objects=243 drops=0 reactors=0 monsters=240
+16:59:51.629 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command GiveItemCommand
+16:59:52.078 [TimerManager-Map-1] WARN  maps.MapManager - Map high-water world=0 channel=1 map=105090000 objects=323 drops=0 reactors=0 monsters=320
+16:59:53.485 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command WarpCommand
+16:59:57.904 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Samix item=4003005 quantity=100 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+16:59:57.904 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Samix item=4000021 quantity=36 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+16:59:57.905 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Samix item=4003005 quantity=42 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+16:59:59.465 [TimerManager-Core-2] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Gikira' below map bounds map=101030405 from=java.awt.Point[x=4,y=2746] to=java.awt.Point[x=1496,y=1508]
+16:59:59.487 [companion-ops] INFO  roster.BenchDutyDispatcher - bench slice: Liriki train live at 101040003 for 2
+16:59:59.495 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Liriki is using fallback movement on map 101040003 while its navigation graph warms (leader=Liriki, walkableFootholds=123)
+16:59:59.699 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xLikax online: PQ at 221024500 (map 221024500) lv48 ch1
+16:59:59.731 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SwiftSword online: MARKET at 910000000 (Free Market) lv42 ch1
+16:59:59.845 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Liro769 online: TRAIN at 800020200 (A Desolate Cemetery) lv61 ch1
+16:59:59.947 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen QuietMuffin online: TOWN at 100000000 (Henesys) lv47 ch1
+17:00:00.032 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Dara online: TOWN at 102000000 (Perion) lv50 ch1
+17:00:00.130 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SilverCat online: TOWN at 100000000 (Henesys) lv24 ch1
+17:00:00.158 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Noruel online: TOWN at 130000000 (Ereve) lv15 ch1
+17:00:00.177 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilPepper online: TRAIN at 105080000 (Drake Hunting Ground) lv48 ch1
+17:00:00.192 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent EvilPepper is using fallback movement on map 105080000 while its navigation graph warms (leader=EvilPepper, walkableFootholds=416)
+17:00:00.206 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soth online: TOWN at 102000000 (Perion) lv48 ch1
+17:00:00.252 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iWantPanda online: TOWN at 240000000 (Leafre) lv78 ch1
+17:00:00.274 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Tasea online: TRAIN at 200010200 (Stairway to the Sky I) lv56 ch1
+17:00:14.706 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Lira online: TRAIN at 211041000 (Wolf Territory V) lv67 ch1
+17:00:14.738 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen ShadowLeaf online: TOWN at 550000000 (Trend Zone Metropolis) lv60 ch1
+17:00:14.830 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xIsxx online: TRAIN at 801010000 (Showa Street 1) lv48 ch1
+17:00:14.849 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Bedoin online: TRAIN at 100040106 (The Forest of Evil II) lv52 ch1
+17:00:14.867 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Gius763 online: TRAIN at 106010101 (The Breathing Rock) lv33 ch1
+17:00:14.888 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Mushroom86 online: TRAIN at 801010000 (Showa Street 1) lv47 ch1
+17:00:14.949 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Bedoin is using fallback movement on map 100040106 while its navigation graph warms (leader=Bedoin, walkableFootholds=143)
+17:00:14.956 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Lura online: TOWN at 600000000 (New Leaf City - Town Center) lv42 ch1
+17:00:14.993 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xKarax online: TRAIN at 100040105 (The Forest of Evil I) lv55 ch1
+17:00:15.025 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Neus online: TRAIN at 103040303 (5th Floor 6th Floor Area D) lv50 ch1
+17:00:15.061 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soakun online: AFK at 102000000 (Perion) lv49 ch1
+17:00:15.084 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent xKarax is using fallback movement on map 100040105 while its navigation graph warms (leader=xKarax, walkableFootholds=154)
+17:00:23.039 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Samix' finished shopping at NPC 2030009 on map 211040200: HP_POTION 6 -> 27 (reserve 29640/28800), potions hp 27 mp 45, mesos 4287366 -> 5731232
+17:00:23.305 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Samix' finished its HP_POTION resupply on map 211040200
+17:00:29.714 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen PepperArcher online: TOWN at 540000000 (CBD) lv75 ch1
+17:00:29.754 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Bevaka online: TRAIN at 105070100 (The Cave of Evil Eye I) lv26 ch1
+17:00:29.759 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Bevaka is using fallback movement on map 105070100 while its navigation graph warms (leader=Bevaka, walkableFootholds=392)
+17:00:29.777 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Berex online: TOWN at 120000000 (Nautilus Harbor) lv27 ch1
+17:00:29.802 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Ryis764 online: AFK at 105040300 (Sleepywood) lv24 ch1
+17:00:29.821 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Zerokun online: AFK at 540000000 (CBD) lv59 ch1
+17:00:29.851 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RooTheHermit online: TRAIN at 250010700 (Peach Farm 3) lv64 ch1
+17:00:29.897 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Liki online: TOWN at 101000000 (Ellinia) lv28 ch1
+17:00:29.923 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen BladeCleric online: AFK at 100000000 (Henesys) lv62 ch1
+17:00:29.940 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rireus online: TRAIN at 103000200 (Line 2 <Area 1>) lv34 ch1
+17:00:29.969 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iLoveCat online: TRAIN at 682000405 (Toy Room) lv80 ch1
+17:00:29.998 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Wolf976 online: AFK at 610030000 (Courtyard) lv78 ch1
+17:00:30.035 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen IcePriest online: TOWN at 100000000 (Henesys) lv37 ch1
+17:00:30.089 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen DemonChief online: TOWN at 250000000 (Mu Lung) lv82 ch1
+17:00:30.108 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen PooTheSin online: TRAIN at 105090000 (The Tunnel That Lost Light I) lv50 ch1
+17:00:30.130 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rineel online: TRAIN at 211040900 (Wolf Territory IV) lv69 ch1
+17:00:42.036 [nioEventLoopGroup-3-2] WARN  client.Client - Exception caught by Crewfriend
+java.net.SocketException: Connection reset
+	at java.base/sun.nio.ch.SocketChannelImpl.throwConnectionReset(SocketChannelImpl.java:401)
+	at java.base/sun.nio.ch.SocketChannelImpl.read(SocketChannelImpl.java:434)
+	at io.netty.buffer.AdaptivePoolingAllocator$AdaptiveByteBuf.setBytes(AdaptivePoolingAllocator.java:1357)
+	at io.netty.buffer.AbstractByteBuf.writeBytes(AbstractByteBuf.java:1139)
+	at io.netty.channel.socket.nio.NioSocketChannel.doReadBytes(NioSocketChannel.java:350)
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:152)
+	at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.handle(AbstractNioChannel.java:445)
+	at io.netty.channel.nio.NioIoHandler$DefaultNioRegistration.handle(NioIoHandler.java:381)
+	at io.netty.channel.nio.NioIoHandler.processSelectedKey(NioIoHandler.java:575)
+	at io.netty.channel.nio.NioIoHandler.processSelectedKeysOptimized(NioIoHandler.java:550)
+	at io.netty.channel.nio.NioIoHandler.processSelectedKeys(NioIoHandler.java:491)
+	at io.netty.channel.nio.NioIoHandler.run(NioIoHandler.java:468)
+	at io.netty.channel.SingleThreadIoEventLoop.runIo(SingleThreadIoEventLoop.java:206)
+	at io.netty.channel.SingleThreadIoEventLoop.run(SingleThreadIoEventLoop.java:177)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$5.run(SingleThreadEventExecutor.java:1073)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+17:00:42.168 [companion-ops] INFO  roster.RosterService - companion casse despawned: owner offline
+17:00:42.207 [companion-ops] INFO  roster.RosterService - companion dorran despawned: owner offline
+17:00:42.248 [companion-ops] INFO  roster.RosterService - companion halvard despawned: owner offline
+17:00:42.283 [companion-ops] INFO  roster.RosterService - companion kestrel despawned: owner offline
+17:00:44.099 [TimerManager-Low-1] INFO  server.Server - Scale health players=1 agents=165 characters=166 maps=379/131 idleCandidates=0 heap=752/2048MB disk=ok:181678/975200MB dbPool active=0 idle=10 total=10 waiting=0 max=10 connTimeoutMs=30000 ThreadManager general[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] blocking[active=0,queued=0,pool=4,completed=645,submitted=645,rejected=0] database[active=0,queued=0,pool=1,completed=7,submitted=7,rejected=0] autosave[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] timers core=active:0,queued:1120,completed:272215,threads:4 save=active:0,queued:5,completed:1202,threads:2 map=active:0,queued:1,completed:150,threads:2 event=active:0,queued:1,completed:10,threads:2 low=active:1,queued:34,completed:2372,threads:1 load=NORMAL monitoredChr=0 npcPendingRuntime=0 npcConversations=0 npcScripts=0 questActions=0 questScripts=0 loginAttemptAccounts=0 loginBypass=0 newYearCards=0 inLoginState=0 loadedMapHighWatermark=379 charSaves total=47 failed=0 manual=47 autosave=0 skippedClean=0 avgMs=76 maxMs=385 maxChr=Kero768 lastMs=25 lastChr=Kestrel(1000) mapBroadcasts total=4458 slow=0 ranged=0 timed=4458 avgMs=0 avgRecipients=0 maxMs=31 maxMap=220000000 maxRecipients=1 lastMs=0 lastMap=211040200 lastRecipients=0
+17:00:44.101 [TimerManager-Low-1] WARN  server.Server - Scale health map growth watch loaded=379 active=131 idleCandidates=0 previousHighWatermark=0 highWatermark=379
+17:00:44.684 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen PinkPepper online: MARKET at 910000000 (Free Market) lv55 ch1
+17:00:44.712 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xZeusx online: AFK at 551000000 (Kampung Village) lv54 ch1
+17:00:44.741 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FrostCat online: TOWN at 103000000 (Kerning City) lv77 ch1
+17:00:44.758 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen DarkMuffin online: MARKET at 910000000 (Free Market) lv31 ch1
+17:00:44.775 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soruro online: TRAIN at 103000105 (Line 1 <Area 4>) lv49 ch1
+17:00:44.795 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xWaonx online: TOWN at 230000000 (Aquarium) lv80 ch1
+17:00:44.822 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FluffyMuffin online: TOWN at 100000000 (Henesys) lv39 ch1
+17:00:44.846 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilHari online: AFK at 100000000 (Henesys) lv32 ch1
+17:00:44.868 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent Soruro is using fallback movement on map 103000105 while its navigation graph warms (leader=Soruro, walkableFootholds=165)
+17:00:44.883 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen HolyPriest online: TOWN at 211000000 (El Nath) lv87 ch1
+17:00:48.082 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=103000105 objects=227 drops=0 reactors=0 monsters=225
+17:00:58.262 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Keon206' finished shopping at NPC 2012005 on map 200000002: HP_POTION 9 -> 31 (reserve 62000/60560), potions hp 31 mp 54, mesos 9265076 -> 11404626
+17:00:59.725 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Jokiin online: TOWN at 261000000 (Magatia) lv67 ch1
+17:00:59.810 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Roro online: TOWN at 680000000 (Amoria) lv66 ch1
+17:00:59.831 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Yushaus online: TRAIN at 103000105 (Line 1 <Area 4>) lv51 ch1
+17:00:59.865 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SpearArcher online: AFK at 100000000 (Henesys) lv53 ch1
+17:00:59.890 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen NinjaWarrior online: TRAIN at 106000140 (The Burnt Land V) lv50 ch1
+17:00:59.908 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent NinjaWarrior is using fallback movement on map 106000140 while its navigation graph warms (leader=NinjaWarrior, walkableFootholds=111)
+17:00:59.912 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LazyNinja online: TOWN at 101000000 (Ellinia) lv50 ch1
+17:00:59.961 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Blade504 online: TOWN at 100000000 (Henesys) lv31 ch1
+17:01:01.354 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' walked back to map 103000103 after its MP_POTION resupply
+17:01:01.496 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' has no HP_POTION supplier the portal router can reach from map 610020013; asking the party instead
+17:01:01.498 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:01:14.707 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xWarax online: TRAIN at 541010040 (Ghost Ship 5) lv61 ch1
+17:01:14.748 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FireSin online: TRAIN at 220060100 (Warped Path of Time<2>) lv76 ch1
+17:01:14.759 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent FireSin is using fallback movement on map 220060100 while its navigation graph warms (leader=FireSin, walkableFootholds=460)
+17:01:14.770 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Faloro online: MARKET at 910000000 (Free Market) lv38 ch1
+17:01:14.797 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SnailDit online: TOWN at 200000000 (Orbis) lv71 ch1
+17:01:14.822 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Ordoth online: TOWN at 200000000 (Orbis) lv69 ch1
+17:01:14.842 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Panda777 online: TOWN at 100000000 (Henesys) lv28 ch1
+17:01:29.688 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FrostWolf online: AFK at 550000000 (Trend Zone Metropolis) lv55 ch1
+17:01:29.710 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SirHari online: TRAIN at 100040101 (Monkey Forest I) lv42 ch1
+17:01:29.737 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen WolfWiz online: TRAIN at 220060200 (Warped Path of Time<3>) lv80 ch1
+17:01:29.759 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent WolfWiz is using fallback movement on map 220060200 while its navigation graph warms (leader=WolfWiz, walkableFootholds=250)
+17:01:29.774 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Limiis online: TOWN at 100000000 (Henesys) lv40 ch1
+17:01:29.794 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen DemonMage online: TRAIN at 101030106 (Remains <Tomb> II) lv52 ch1
+17:01:29.813 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SwiftBunny online: TRAIN at 106010103 (Golem's Temple I) lv52 ch1
+17:01:29.836 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Tael online: MARKET at 910000000 (Free Market) lv53 ch1
+17:01:29.872 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Mosera online: TOWN at 551000000 (Kampung Village) lv72 ch1
+17:01:29.894 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FrostOcean online: AFK at 220000000 (Ludibrium) lv66 ch1
+17:01:29.933 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Yuna online: TRAIN at 221040300 (Kulan Field IV) lv48 ch1
+17:01:29.949 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Yuna is using fallback movement on map 221040300 while its navigation graph warms (leader=Yuna, walkableFootholds=125)
+17:01:44.703 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soro online: AFK at 105040300 (Sleepywood) lv26 ch1
+17:01:44.722 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soth613 online: AFK at 103000000 (Kerning City) lv26 ch1
+17:01:44.744 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen StarPriest online: TRAIN at 101030108 (Remains <Tomb> IV) lv65 ch1
+17:01:44.745 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent StarPriest is using fallback movement on map 101030108 while its navigation graph warms (leader=StarPriest, walkableFootholds=129)
+17:01:44.765 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen CrazyStar online: TRAIN at 103040302 (5th Floor 6th Floor Area C) lv50 ch1
+17:01:44.798 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xNoxx online: AFK at 600000000 (New Leaf City - Town Center) lv44 ch1
+17:01:44.814 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Riruly online: TRAIN at 211040200 (Ice Valley II) lv75 ch1
+17:01:44.834 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Veviis online: AFK at 100000000 (Henesys) lv35 ch1
+17:01:44.858 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LeafSader online: PQ at 103000000 (Kerning City) lv27 ch1
+17:01:44.877 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilLuis online: TRAIN at 100040104 (Tree Dungeon, Monkey Forest II) lv39 ch1
+17:01:50.083 [nioEventLoopGroup-3-3] INFO  client.Character - ensureQuestRing: chr ohboy has slot -12 occupied; deferring grant
+17:01:50.977 [nioEventLoopGroup-3-3] INFO  client.Client - [crew-window] first inbound opcode=279 payloadBytes=7 handler=CrewWindowHandler loggedIn=true account=ohboyohboy player=ohboy
+17:01:50.977 [nioEventLoopGroup-3-3] INFO  ui.NativeCrewWindow - [crew-window] HELLO from ohboy: protocol 2, DLL build 20261012, served at 2, enabled=true
+17:01:59.256 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command WarpCommand
+17:01:59.480 [companion-ops] INFO  roster.BenchDutyDispatcher - bench slice: Faro723 train live at 101020009 for 2
+17:01:59.690 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Rose88 online: TOWN at 200000000 (Orbis) lv74 ch1
+17:01:59.718 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen EvilDragon online: TOWN at 211000000 (El Nath) lv63 ch1
+17:01:59.755 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iLikeOcean online: MARKET at 910000000 (Free Market) lv44 ch1
+17:01:59.781 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Ryonkun online: AFK at 200000000 (Orbis) lv59 ch1
+17:02:03.293 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:02:07.337 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command GiveItemCommand
+17:02:10.465 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command WarpCommand
+17:02:10.538 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=451 dy=-58 delayMs=668
+17:02:14.700 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen TinyFighter online: TOWN at 103000000 (Kerning City) lv43 ch1
+17:02:14.717 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Tiki online: MARKET at 910000000 (Free Market) lv59 ch1
+17:02:14.749 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LilIss online: AFK at 680000000 (Amoria) lv46 ch1
+17:02:18.755 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-713 dy=32 delayMs=5336
+17:02:19.212 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:20.580 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-713 dy=32 delayMs=595
+17:02:23.861 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:24.793 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:26.032 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:29.138 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:29.682 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Beth online: TOWN at 102000000 (Perion) lv27 ch1
+17:02:29.712 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Demon733 online: TOWN at 230000000 (Aquarium) lv76 ch1
+17:02:29.758 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen TayTheKnight online: TOWN at 230000000 (Aquarium) lv83 ch1
+17:02:30.812 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=2 dx=213 dy=32 delayMs=4915
+17:02:33.782 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:38.132 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:39.687 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:41.129 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-812 dy=32 delayMs=3584
+17:02:41.548 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:43.110 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:44.693 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xOrxx online: TRAIN at 221030200 (Boswell Field II) lv45 ch1
+17:02:44.717 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Wakikun online: TOWN at 103000000 (Kerning City) lv39 ch1
+17:02:44.738 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xYurox online: PQ at 103000000 (Kerning City) lv24 ch1
+17:02:44.758 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen StormMuffin online: TRAIN at 106010103 (Golem's Temple I) lv50 ch1
+17:02:44.782 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Keus233 online: AFK at 103000000 (Kerning City) lv41 ch1
+17:02:44.813 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen PinkMuffin online: TOWN at 250000000 (Mu Lung) lv66 ch1
+17:02:45.010 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no MP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:02:45.011 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:02:46.840 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:51.497 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:52.818 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no MP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:02:52.819 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:02:54.289 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:57.398 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:02:58.074 [TimerManager-Core-4] WARN  kpq.AgentKpqPopulationRuntime - Background KPQ queue rolled back for members [LeafSader, xYurox, Tain828, iHateWolf]
+java.lang.IllegalStateException: xYurox could not release its current activity
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.admitParty(AgentKpqPopulationRuntime.java:153)
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.sweep(AgentKpqPopulationRuntime.java:121)
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.sweepSafely(AgentKpqPopulationRuntime.java:91)
+	at server.TimerManager$LoggingSaveRunnable.run(TimerManager.java:307)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358)
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+17:02:59.695 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Soki online: TOWN at 105040300 (Sleepywood) lv42 ch1
+17:02:59.714 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iLikeArrow online: TRAIN at 105090312 (Drake's Nest) lv66 ch1
+17:02:59.755 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FoxSniper online: TOWN at 261000000 (Magatia) lv64 ch1
+17:03:01.136 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:01.140 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command WarpCommand
+17:03:01.962 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no HP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:03:01.962 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:03:04.553 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:05.480 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:03:07.102 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=31 mirrored=24 dispatched=13 applied=11 shown=11 window=2 airborne=0 unengaged=0 regionsMask=0 regionsSampled=6
+17:03:07.339 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:03:08.448 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-386 dy=-58 delayMs=1048
+17:03:08.578 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:09.507 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:03:11.366 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:03:11.674 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:11.857 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=1008 dx=-524 dy=32 delayMs=633
+17:03:13.488 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-611 dy=32 delayMs=1068
+17:03:13.535 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command SummonCommand
+17:03:13.846 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:14.681 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Joel631 online: TRAIN at 106010102 (The Entrance of Golem's Temple) lv50 ch1
+17:03:14.713 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Fael online: AFK at 103000000 (Kerning City) lv47 ch1
+17:03:14.733 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Wavaki online: AFK at 104000000 (Lith Harbor) lv47 ch1
+17:03:14.754 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Anus646 online: TOWN at 120000000 (Nautilus Harbor) lv41 ch1
+17:03:14.774 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xRyusx online: AFK at 200000000 (Orbis) lv60 ch1
+17:03:14.791 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen FireRanger online: MARKET at 910000000 (Free Market) lv50 ch1
+17:03:14.814 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Poy604 online: TRAIN at 110030001 (Clang and Lorang) lv50 ch1
+17:03:14.876 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen OrriTheWiz online: TOWN at 540000000 (CBD) lv57 ch1
+17:03:14.902 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen SwiftMage online: TOWN at 211000000 (El Nath) lv65 ch1
+17:03:15.394 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:16.171 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=329 dy=32 delayMs=627
+17:03:17.342 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no HP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:03:17.342 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:03:18.981 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-785 dy=32 delayMs=1047
+17:03:19.118 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:20.666 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:21.962 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=219 dy=32 delayMs=1771
+17:03:26.291 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-872 dy=32 delayMs=1036
+17:03:26.555 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:28.103 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:29.692 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Arrow384 online: TRAIN at 100040101 (Monkey Forest I) lv43 ch1
+17:03:29.712 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iKillPig online: TOWN at 110000000 (Florina Beach) lv43 ch1
+17:03:29.731 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iKillCat online: TRAIN at 551010000 (Fantasy Theme Park 1) lv75 ch1
+17:03:29.761 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent iKillCat is using fallback movement on map 551010000 while its navigation graph warms (leader=iKillCat, walkableFootholds=163)
+17:03:30.199 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:03:30.583 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:32.135 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:33.605 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1047
+17:03:33.992 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:34.465 [TimerManager-Core-1] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=710, generation=13] elapsedMs=362
+17:03:35.281 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:37.518 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=609
+17:03:37.761 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:39.312 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:41.188 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:44.290 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:44.700 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Sais online: TOWN at 100000000 (Henesys) lv52 ch1
+17:03:44.724 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Orvaly online: TOWN at 103000000 (Kerning City) lv45 ch1
+17:03:44.742 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Saakun online: TRAIN at 101030105 (Remains <Tomb> I) lv49 ch1
+17:03:44.763 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen BigNinja online: TOWN at 110000000 (Florina Beach) lv30 ch1
+17:03:44.788 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen ShadowMoon online: TRAIN at 101020010 (Tree Dungeon, Forest Up North IX) lv39 ch1
+17:03:44.811 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Ryon online: TRAIN at 106010105 (Golem's Temple III) lv57 ch1
+17:03:44.830 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Hara online: TRAIN at 105080000 (Drake Hunting Ground) lv44 ch1
+17:03:45.285 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=630
+17:03:46.771 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:48.322 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:49.580 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1036
+17:03:49.873 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:51.424 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:53.694 [TimerManager-Core-2] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Liro769' below map bounds map=800020200 from=java.awt.Point[x=1313,y=520] to=java.awt.Point[x=1129,y=-85]
+17:03:54.950 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-806 dy=32 delayMs=5298
+17:03:54.950 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5325
+17:03:55.142 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:56.213 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' has no HP_POTION supplier the portal router can reach from map 211041000; asking the party instead
+17:03:56.214 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:03:57.001 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:58.073 [TimerManager-Core-1] WARN  kpq.AgentKpqPopulationRuntime - Background KPQ queue rolled back for members [LeafSader, xYurox, Tain828, iHateWolf]
+java.lang.IllegalStateException: Tain828 could not release its current activity
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.admitParty(AgentKpqPopulationRuntime.java:153)
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.sweep(AgentKpqPopulationRuntime.java:121)
+	at server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.sweepSafely(AgentKpqPopulationRuntime.java:91)
+	at server.TimerManager$LoggingSaveRunnable.run(TimerManager.java:307)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358)
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+17:03:58.242 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:59.707 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Milina online: TRAIN at 221030300 (Boswell Field III) lv49 ch1
+17:03:59.731 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RoseFighter online: AFK at 103000000 (Kerning City) lv46 ch1
+17:03:59.751 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen xNoelx online: TOWN at 610030000 (Courtyard) lv75 ch1
+17:03:59.793 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:03:59.802 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen iKillFox online: TRAIN at 105050000 (Ant Tunnel I) lv26 ch1
+17:03:59.810 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent iKillFox is using fallback movement on map 105050000 while its navigation graph warms (leader=iKillFox, walkableFootholds=370)
+17:03:59.826 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen LittleDit online: AFK at 102000000 (Perion) lv49 ch1
+17:03:59.853 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Jokachan online: TRAIN at 105090312 (Drake's Nest) lv72 ch1
+17:03:59.882 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RoisTheSin online: TOWN at 540000000 (CBD) lv62 ch1
+17:03:59.905 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen Lith online: TRAIN at 106000110 (The Burnt Land II) lv37 ch1
+17:03:59.942 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent Lith is using fallback movement on map 106000110 while its navigation graph warms (leader=Lith, walkableFootholds=116)
+17:04:01.342 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:02.892 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:03.652 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-807 dy=32 delayMs=3601
+17:04:04.447 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:06.001 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:07.207 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=60 mirrored=51 dispatched=81 applied=45 shown=45 window=34 airborne=0 unengaged=0 regionsMask=0 regionsSampled=12
+17:04:07.243 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:08.794 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:10.358 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:04:10.667 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:12.220 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:14.270 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:04:14.390 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:14.690 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen RedCookie online: TRAIN at 106020300 (Deep Inside Mushroom Forest) lv31 ch1
+17:04:14.714 [TimerManager-Low-1] INFO  population.PresenceScheduler - citizen CookieArcher online: TRAIN at 200010121 (Garden of Yellow II) lv61 ch1
+17:04:15.943 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:17.494 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:19.047 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:19.776 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-805 dy=32 delayMs=3599
+17:04:20.909 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:22.456 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:24.080 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:04:24.319 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:25.866 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:28.004 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=2 dx=222 dy=32 delayMs=4920
+17:04:28.005 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=4948
+17:04:28.345 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:29.571 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:04:29.898 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:32.375 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:33.924 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:35.786 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:37.046 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:04:37.340 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:39.520 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:41.070 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:42.931 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:44.480 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:45.680 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:04:45.720 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:50.014 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=628
+17:04:50.368 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:54.320 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:04:54.977 [TimerManager-Core-2] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Liro769' below map bounds map=800020200 from=java.awt.Point[x=1303,y=520] to=java.awt.Point[x=1129,y=-85]
+17:04:56.264 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:04:58.077 [TimerManager-Core-3] INFO  kpq.AgentKpqPopulationRuntime - Background KPQ queued: world=0 channel=1 members=[LeafSader, xYurox, Tain828, iHateWolf]
+17:04:59.539 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:04:59.991 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:00.494 [TimerManager-Core-1] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Liro769' below map bounds map=800020200 from=java.awt.Point[x=1309,y=534] to=java.awt.Point[x=1129,y=-85]
+17:05:02.786 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:02.940 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1047
+17:05:04.957 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:06.510 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:06.867 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:05:08.179 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=90 mirrored=77 dispatched=161 applied=78 shown=78 window=83 airborne=0 unengaged=0 regionsMask=0 regionsSampled=16
+17:05:10.281 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=2 dx=219 dy=32 delayMs=4920
+17:05:10.554 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:13.509 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=4949
+17:05:13.511 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-960 dy=32 delayMs=1050
+17:05:13.958 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:21.741 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=153 dy=32 delayMs=628
+17:05:22.042 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:23.592 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:25.821 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=627
+17:05:26.075 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:28.809 [TimerManager-Core-2] WARN  kpq.AgentKpqRuntime - KPQ execution lease transferred without changing the party caller: session=kpq-0a775e1a-b40b-493f-8604-f6e23f9003cd from=230 to=539 caller=230
+17:05:29.804 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:32.283 [nioEventLoopGroup-3-3] INFO  command.CommandsExecutor - Chr ohboy used command BossHpCommand
+17:05:33.548 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:05:37.860 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=4949
+17:05:38.199 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:38.435 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Corvin' is low on HP_POTION and asked its party before leaving to shop
+17:05:40.203 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:05:43.472 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:44.083 [TimerManager-Low-1] INFO  server.Server - Scale health players=2 agents=259 characters=261 maps=411/164 idleCandidates=0 heap=714/2048MB disk=ok:181654/975200MB dbPool active=0 idle=10 total=10 waiting=0 max=10 connTimeoutMs=30000 ThreadManager general[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] blocking[active=0,queued=0,pool=4,completed=1128,submitted=1128,rejected=0] database[active=0,queued=0,pool=0,completed=8,submitted=8,rejected=0] autosave[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] timers core=active:0,queued:1526,completed:792529,threads:4 save=active:0,queued:5,completed:2406,threads:2 map=active:0,queued:1,completed:300,threads:2 event=active:0,queued:1,completed:20,threads:2 low=active:1,queued:29,completed:4828,threads:1 load=NORMAL monitoredChr=0 npcPendingRuntime=0 npcConversations=0 npcScripts=0 questActions=0 questScripts=0 loginAttemptAccounts=0 loginBypass=0 newYearCards=0 inLoginState=0 loadedMapHighWatermark=411 charSaves total=64 failed=0 manual=64 autosave=0 skippedClean=0 avgMs=71 maxMs=385 maxChr=Kero768 lastMs=31 lastChr=RedCookie(225) mapBroadcasts total=24030 slow=0 ranged=0 timed=24030 avgMs=0 avgRecipients=1 maxMs=31 maxMap=220000000 maxRecipients=1 lastMs=0 lastMap=230040420 lastRecipients=2
+17:05:45.195 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:05:49.519 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=627
+17:05:52.392 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-805 dy=32 delayMs=5338
+17:05:52.780 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:05:54.325 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' abandoned HP_POTION resupply after 0 failed shop visit(s), returning to map 105090312 and suppressing the category for 300000 ms: no progress toward the supplier: 300025 ms on map 105080000 without reaching its portal to map 105070400
+17:05:56.704 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1042
+17:05:57.120 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:02.060 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:06:02.402 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:02.960 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' has no HP_POTION supplier the portal router can reach from map 610020013; asking the party instead
+17:06:02.960 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:06:05.196 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:05.474 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:06:05.515 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command GiveItemCommand
+17:06:07.053 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:07.813 [TimerManager-Core-2] ERROR kpq.AgentKpqCoordinator - KPQ session failure: session=kpq-0a775e1a-b40b-493f-8604-f6e23f9003cd phase=PREPARING reason=The party could not gather at Lakelis blocker=prepare-gather blockerMs=1791925522623 diagnostics=event=none,members=[LeafSader(230):type=AGENT:channel=1:map=103000000:pos=java.awt.Point[x=-1623,y=139]:hp=474:coupons=0:passes=0:shoes=0:blocker=, Tain828(539):type=AGENT:channel=1:map=103000000:pos=java.awt.Point[x=-578,y=426]:hp=799:coupons=0:passes=0:shoes=0:blocker=, iHateWolf(780):type=AGENT:channel=1:map=103000000:pos=java.awt.Point[x=-1623,y=139]:hp=930:coupons=0:passes=0:shoes=0:blocker=, xYurox(387):type=AGENT:channel=1:map=103000000:pos=java.awt.Point[x=-570,y=426]:hp=801:coupons=0:passes=0:shoes=0:blocker=]
+17:06:07.821 [TimerManager-Core-2] INFO  kpq.AgentKpqPaceReport - KPQ pace span: session=kpq-0a775e1a-b40b-493f-8604-f6e23f9003cd key=yes seconds=45.2 work=0 theorySeconds=-1 implied={} complete=false why=open throttled=- companionRun=false
+17:06:07.833 [TimerManager-Core-2] INFO  kpq.AgentKpqTerminationService - KPQ session released: session=kpq-0a775e1a-b40b-493f-8604-f6e23f9003cd outcome=The party could not gather at Lakelis phase=FAILED event=none members=4
+17:06:08.603 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:10.130 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=119 mirrored=103 dispatched=243 applied=122 shown=122 window=121 airborne=0 unengaged=0 regionsMask=0 regionsSampled=18
+17:06:10.731 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:06:11.087 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:12.332 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:14.223 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:06:19.612 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:06:19.795 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:21.345 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:22.895 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:24.111 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-805 dy=32 delayMs=3599
+17:06:24.443 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:24.687 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Bedoin' suspended foreground work for MP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=100040106 supplierMap=101000002 supplierNpc=1031100 existingShopVisit=false
+17:06:25.992 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:26.706 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:06:28.785 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:28.840 [TimerManager-Core-1] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Keon206' stopped walking back to map 200010300 after its HP_POTION resupply (restocked): no progress toward the suspended plan: 300014 ms on map 200010000 without reaching its portal to map 200010100
+17:06:30.960 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:34.378 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:37.816 [TimerManager-Core-4] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'iLikeArrow' below map bounds map=105090312 from=java.awt.Point[x=1867,y=928] to=java.awt.Point[x=-154,y=343]
+17:06:38.104 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:06:39.035 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:41.754 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'iLikeArrow' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=105090312 supplierMap=105070001 supplierNpc=1061001 existingShopVisit=false
+17:06:42.409 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=625
+17:06:45.524 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Bedoin is using fallback movement on map 100040103 while its navigation graph warms (leader=Bedoin, walkableFootholds=187)
+17:06:46.580 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=614
+17:06:48.348 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:49.899 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:52.533 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-806 dy=32 delayMs=3599
+17:06:53.000 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:56.902 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=611
+17:06:57.031 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:06:58.890 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:04.220 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:07:05.611 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Gikira' suspended foreground work for MP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=101030405 supplierMap=102000002 supplierNpc=1021100 existingShopVisit=false
+17:07:07.582 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:09.132 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:09.916 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Bedoin is using fallback movement on map 100040100 while its navigation graph warms (leader=Bedoin, walkableFootholds=248)
+17:07:10.202 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=149 mirrored=131 dispatched=330 applied=160 shown=160 window=167 airborne=0 unengaged=0 regionsMask=0 regionsSampled=23
+17:07:10.683 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:11.921 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:14.952 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1047
+17:07:15.019 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:16.568 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:16.729 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-805 dy=32 delayMs=5330
+17:07:16.730 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:07:18.842 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Gikira is using fallback movement on map 101030404 while its navigation graph warms (leader=Gikira, walkableFootholds=127)
+17:07:19.056 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:23.718 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:24.604 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1051
+17:07:25.232 [TimerManager-Core-2] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'iLikeArrow' below map bounds map=105090300 from=java.awt.Point[x=-349,y=567] to=java.awt.Point[x=1715,y=-1090]
+17:07:26.520 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:26.778 [nioEventLoopGroup-3-3] INFO  command.CommandsExecutor - Chr ohboy used command BossHpCommand
+17:07:28.073 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:29.934 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:30.721 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent Bedoin is using fallback movement on map 100050000 while its navigation graph warms (leader=Bedoin, walkableFootholds=386)
+17:07:31.180 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:31.812 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Gikira is using fallback movement on map 101030403 while its navigation graph warms (leader=Gikira, walkableFootholds=126)
+17:07:33.594 [TimerManager-Core-2] WARN  scheduler.AgentTickScheduler - Slow central Agent tick session=AgentSessionId[agentCharacterId=624, generation=183] elapsedMs=272
+17:07:34.092 [TimerManager-Map-2] WARN  maps.MapManager - Map high-water world=0 channel=1 map=100050000 objects=235 drops=0 reactors=0 monsters=232
+17:07:34.226 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:36.089 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:37.207 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Brannock' is low on HP_POTION and asked its party before leaving to shop
+17:07:37.852 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:07:38.261 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:39.809 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:41.266 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=629
+17:07:41.671 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:43.224 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:45.143 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no MP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:07:45.144 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:07:45.584 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=4947
+17:07:46.021 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:46.558 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Gikira is using fallback movement on map 101030402 while its navigation graph warms (leader=Gikira, walkableFootholds=100)
+17:07:48.815 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:49.498 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:07:49.597 [TimerManager-Core-3] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'iLikeArrow' below map bounds map=105090300 from=java.awt.Point[x=-349,y=567] to=java.awt.Point[x=1715,y=-1090]
+17:07:55.276 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no MP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:07:55.277 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:07:56.259 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:07:57.376 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=1050
+17:08:01.281 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:08:01.535 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:04.023 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:04.227 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no HP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:08:04.228 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:08:05.270 [TimerManager-Core-3] INFO  navigation.AgentNavigationWarmupService - Agent Gikira is using fallback movement on map 101030400 while its navigation graph warms (leader=Gikira, walkableFootholds=124)
+17:08:05.569 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:07.235 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Brannock' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=230000000 supplierMap=230000002 supplierNpc=2060004 existingShopVisit=false
+17:08:07.433 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1049
+17:08:07.741 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:09.013 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:08:09.292 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:09.831 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent Gikira is using fallback movement on map 101040000 while its navigation graph warms (leader=Gikira, walkableFootholds=196)
+17:08:11.152 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=177 mirrored=156 dispatched=409 applied=193 shown=193 window=216 airborne=0 unengaged=0 regionsMask=0 regionsSampled=26
+17:08:12.086 [TimerManager-Map-1] WARN  maps.MapManager - Map high-water world=0 channel=1 map=101040000 objects=214 drops=0 reactors=0 monsters=212
+17:08:12.390 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:15.770 [TimerManager-Core-2] INFO  navigation.AgentNavigationWarmupService - Agent Brannock is using fallback movement on map 230000002 while its navigation graph warms (leader=ohboy, walkableFootholds=169)
+17:08:16.520 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1049
+17:08:17.460 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no HP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:08:17.461 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:08:20.242 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=5368
+17:08:23.648 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:08:28.169 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Brannock item=4003005 quantity=40 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+17:08:28.171 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Brannock item=4000021 quantity=16 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+17:08:29.046 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:08:30.066 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Bedoin' finished shopping at NPC 1031100 on map 101000002: MP_POTION 8 -> 30 (reserve 9000/8892), potions hp 160 mp 30, mesos 10873414 -> 10957626
+17:08:33.321 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=629
+17:08:37.225 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:40.020 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:41.045 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:08:43.834 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-870 dy=32 delayMs=1038
+17:08:44.051 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:49.606 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:08:49.949 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:53.055 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:53.532 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Brannock' finished shopping at NPC 2060004 on map 230000002: HP_POTION 0 -> 40 (reserve 200000/99290), potions hp 40 mp 418, mesos 2832983 -> 4273658
+17:08:53.602 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1043
+17:08:56.603 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=5367
+17:08:56.782 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:08:57.968 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' has no HP_POTION supplier the portal router can reach from map 211041000; asking the party instead
+17:08:57.968 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:08:59.880 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:02.151 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:09:02.367 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:04.764 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Brannock' walked back to map 230000000 after its HP_POTION resupply
+17:09:07.023 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:08.242 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5369
+17:09:08.573 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:10.122 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:11.656 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=206 mirrored=179 dispatched=510 applied=225 shown=225 window=278 airborne=0 unengaged=0 regionsMask=0 regionsSampled=28
+17:09:11.698 [TimerManager-Core-1] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Gikira item=4000009 quantity=31 protected=40 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=40, within25=0, ledgerReserved=0]
+17:09:11.698 [TimerManager-Core-1] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Gikira item=4000018 quantity=14 protected=90 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=40, within15=0, within25=50, ledgerReserved=0]
+17:09:11.951 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'SkyKnight' is low on HP_POTION and asked its party before leaving to shop
+17:09:11.998 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:13.547 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:16.961 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=630
+17:09:17.271 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:18.825 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:20.087 [TimerManager-Core-3] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'iNeedDemon' below map bounds map=800010001 from=java.awt.Point[x=2215,y=463] to=java.awt.Point[x=91,y=-55]
+17:09:21.280 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:09:21.622 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:23.176 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:25.185 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1050
+17:09:25.656 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:26.895 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:29.916 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:09:31.998 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Gikira' finished shopping at NPC 1021100 on map 102000002: MP_POTION 9 -> 24 (reserve 7400/7320), potions hp 52 mp 24, mesos 1226685 -> 1254392
+17:09:34.253 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=1049
+17:09:37.748 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=5368
+17:09:37.748 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=2 dx=225 dy=32 delayMs=5340
+17:09:40.796 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1044
+17:09:42.024 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'SkyKnight' has no HP_POTION supplier the portal router can reach from map 140010200; asking the party instead
+17:09:42.024 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'SkyKnight' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:09:44.286 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:46.382 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5369
+17:09:46.383 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=225 dy=32 delayMs=1770
+17:09:46.772 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:49.874 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:50.105 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:09:53.705 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1046
+17:09:54.216 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:55.768 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:09:57.622 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1017
+17:10:01.030 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=623
+17:10:01.117 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Fenna' is low on HP_POTION and asked its party before leaving to shop
+17:10:04.463 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:04.944 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=4985
+17:10:07.562 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:09.114 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:11.304 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1046
+17:10:11.596 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:13.145 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:13.410 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Bedoin' walked back to map 100040106 after its MP_POTION resupply
+17:10:14.663 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=235 mirrored=202 dispatched=627 applied=264 shown=264 window=363 airborne=0 unengaged=0 regionsMask=0 regionsSampled=30
+17:10:15.623 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=626
+17:10:17.489 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:19.943 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=615
+17:10:20.903 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command DebuffCommand
+17:10:20.950 [TimerManager-Core-2] INFO  boss.AgentBossDisabledState - Boss disabled: member=835 state=SEDUCE map=230040420 at=-306,153
+17:10:21.837 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:23.903 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=2 dx=229 dy=32 delayMs=4876
+17:10:23.903 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=4905
+17:10:24.005 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:25.557 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:26.902 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:10:27.104 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:28.595 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-798 dy=32 delayMs=3599
+17:10:28.658 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:30.207 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:31.218 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Fenna' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=230000000 supplierMap=230000002 supplierNpc=2060004 existingShopVisit=false
+17:10:31.532 [TimerManager-Core-2] INFO  boss.AgentBossDisabledState - Boss disabled: member=835 recovered on map=230040420; following again
+17:10:31.763 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:33.313 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=630
+17:10:37.223 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:10:37.345 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:40.222 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1049
+17:10:40.451 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:41.962 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-795 dy=32 delayMs=599
+17:10:42.316 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:43.640 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=5369
+17:10:43.653 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=2 dx=224 dy=32 delayMs=5339
+17:10:44.096 [TimerManager-Low-1] INFO  server.Server - Scale health players=2 agents=259 characters=261 maps=421/164 idleCandidates=0 heap=822/2048MB disk=ok:181635/975200MB dbPool active=0 idle=10 total=10 waiting=0 max=10 connTimeoutMs=30000 ThreadManager general[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] blocking[active=0,queued=0,pool=4,completed=1610,submitted=1610,rejected=0] database[active=0,queued=0,pool=0,completed=8,submitted=8,rejected=0] autosave[active=0,queued=0,pool=2,completed=130,submitted=130,rejected=0] timers core=active:0,queued:1533,completed:1354122,threads:4 save=active:0,queued:5,completed:3609,threads:2 map=active:1,queued:0,completed:449,threads:2 event=active:0,queued:1,completed:30,threads:2 low=active:1,queued:29,completed:6981,threads:1 load=NORMAL monitoredChr=0 npcPendingRuntime=0 npcConversations=0 npcScripts=0 questActions=0 questScripts=0 loginAttemptAccounts=0 loginBypass=0 newYearCards=0 inLoginState=0 loadedMapHighWatermark=421 charSaves total=194 failed=0 manual=64 autosave=130 skippedClean=0 avgMs=57 maxMs=385 maxChr=Kero768 lastMs=160 lastChr=StormMuffin(372) mapBroadcasts total=63324 slow=0 ranged=0 timed=63324 avgMs=0 avgRecipients=1 maxMs=40 maxMap=230040420 maxRecipients=2 lastMs=0 lastMap=230040420 lastRecipients=2
+17:10:50.544 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1032
+17:10:53.542 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1049
+17:10:53.815 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:54.661 [TimerManager-Core-1] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' stopped walking back to map 105090312 after its HP_POTION resupply (not restocked): no progress toward the suspended plan: 300106 ms on map 105080000 without reaching its portal to map 105090000
+17:10:54.662 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' resumed its plan without restocking HP_POTION and is asking the party instead
+17:10:55.677 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=3 oid=1000000002 chr=2 dx=-802 dy=32 delayMs=3598
+17:10:57.232 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:10:59.235 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:11:01.577 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:02.962 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' has no HP_POTION supplier the portal router can reach from map 610020013; asking the party instead
+17:11:02.962 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:11:03.641 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Fenna' finished shopping at NPC 2060004 on map 230000002: HP_POTION 0 -> 100 (reserve 30000/47070), potions hp 100 mp 285, mesos 1705976 -> 1668976
+17:11:04.312 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:11:07.465 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:11:07.467 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=225 dy=32 delayMs=1768
+17:11:09.965 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:14.357 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:11:14.669 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Fenna' walked back to map 230000000 after its HP_POTION resupply
+17:11:15.502 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=266 mirrored=228 dispatched=743 applied=314 shown=314 window=429 airborne=0 unengaged=0 regionsMask=0 regionsSampled=33
+17:11:16.794 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:19.910 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' has no HP_POTION supplier the portal router can reach from map 105080000; asking the party instead
+17:11:19.911 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:11:20.437 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=5369
+17:11:20.437 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=2 dx=225 dy=32 delayMs=5341
+17:11:22.992 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=629
+17:11:23.303 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:24.854 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:26.890 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1046
+17:11:30.136 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:32.745 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Garrick' is low on HP_POTION and asked its party before leaving to shop
+17:11:33.316 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1044
+17:11:37.956 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:41.778 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-798 dy=32 delayMs=5338
+17:11:41.778 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5367
+17:11:45.334 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1036
+17:11:45.722 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:46.987 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:49.669 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:11:50.104 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:51.655 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:54.503 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:11:54.569 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Gikira' walked back to map 101030405 after its MP_POTION resupply
+17:11:55.382 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Ilse' is low on MP_POTION and asked its party before leaving to shop
+17:11:58.178 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:11:59.735 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1044
+17:12:01.289 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:02.610 [TimerManager-Core-4] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Rose524' below map bounds map=106000101 from=java.awt.Point[x=1096,y=2376] to=java.awt.Point[x=568,y=1459]
+17:12:04.053 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:12:05.013 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Garrick' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=230000000 supplierMap=230000002 supplierNpc=2060004 existingShopVisit=false
+17:12:07.816 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:09.371 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:10.924 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:13.988 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1051
+17:12:14.346 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:17.304 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=294 mirrored=252 dispatched=841 applied=372 shown=372 window=469 airborne=0 unengaged=0 regionsMask=0 regionsSampled=37
+17:12:18.324 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1018
+17:12:18.719 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'xWarax' is low on HP_POTION and asked its party before leaving to shop
+17:12:22.628 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-877 dy=32 delayMs=5339
+17:12:22.628 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:12:23.048 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:24.178 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Garrick item=4000021 quantity=9 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+17:12:24.183 [TimerManager-Core-4] INFO  demand.AgentQuestItemDispositionRuntime - Agent ETC sale proposal agent=Garrick item=4003005 quantity=28 protected=0 revision=8bb4a29f11428d0d91391ed364c5ffd02ca05803eeb7d2899c3ba0d0bd86fabc evidence=[active=0, committed=0, within5=0, within15=0, within25=0, ledgerReserved=0]
+17:12:25.291 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1046
+17:12:27.401 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:31.044 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-874 dy=32 delayMs=5338
+17:12:31.044 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5367
+17:12:31.447 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:33.002 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:34.538 [TimerManager-Core-2] WARN  navigation.AgentNavigationPathService - Slow bot pathfind: caller=committed took 83.8 ms map=230040420 startRegion=7 targetRegion=4 regions=8 startOut=12 startPos=(-257, 168) targetPos=(-459, 136) expanded=10 stale=23 dominated=59 edgeChecks=116 usableEdges=116 relaxations=91 openPeak=40 bestGoalCost=-1 resultEdges=0 capped=false
+17:12:35.597 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=630
+17:12:35.816 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:39.906 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5331
+17:12:39.906 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5366
+17:12:43.964 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' suspended foreground work for MP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=103000103 supplierMap=103000002 supplierNpc=1051002 existingShopVisit=false
+17:12:44.003 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:12:45.258 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no MP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:12:45.258 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:12:48.554 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=620
+17:12:48.569 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:48.727 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'xWarax' suspended foreground work for HP_POTION resupply: phase=TRAVEL_TO_SUPPLIER sourceMap=541010040 supplierMap=541000000 supplierNpc=9270022 existingShopVisit=false
+17:12:50.176 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:12:50.439 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:51.485 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Garrick' finished shopping at NPC 2060004 on map 230000002: HP_POTION 0 -> 50 (reserve 100000/98100), potions hp 50 mp 386, mesos 1673180 -> 3555431
+17:12:53.229 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:54.473 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:12:54.487 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:12:55.313 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no MP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:12:55.313 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start MP_POTION resupply; suppressing the category for 300000 ms
+17:12:55.510 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Corvin' is low on HP_POTION and asked its party before leaving to shop
+17:13:00.085 [TimerManager-Core-4] INFO  navigation.AgentNavigationWarmupService - Agent xWarax is using fallback movement on map 541000300 while its navigation graph warms (leader=xWarax, walkableFootholds=294)
+17:13:02.724 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:13:03.158 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:03.270 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Garrick' walked back to map 230000000 after its HP_POTION resupply
+17:13:04.306 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' has no HP_POTION supplier the portal router can reach from map 682000501; asking the party instead
+17:13:04.308 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'BladeSader' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:13:07.314 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=629
+17:13:07.504 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:11.624 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5339
+17:13:11.625 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:13:11.858 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:13.411 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:14.249 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1050
+17:13:16.209 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:17.611 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' has no HP_POTION supplier the portal router can reach from map 610020011; asking the party instead
+17:13:17.611 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Wais' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:13:17.964 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=320 mirrored=273 dispatched=917 applied=391 shown=391 window=526 airborne=0 unengaged=0 regionsMask=0 regionsSampled=39
+17:13:18.968 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5340
+17:13:18.968 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-870 dy=32 delayMs=5368
+17:13:19.319 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:24.058 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:13:24.914 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:26.066 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Corvin' has no HP_POTION supplier the portal router can reach from map 230040420; asking the party instead
+17:13:26.066 [TimerManager-Core-3] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Corvin' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:13:27.605 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1040
+17:13:27.943 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent xWarax is using fallback movement on map 541000200 while its navigation graph warms (leader=xWarax, walkableFootholds=198)
+17:13:28.026 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:29.582 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:32.695 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:13:34.568 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:36.242 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1029
+17:13:36.242 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=157 dy=32 delayMs=1769
+17:13:36.740 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:37.984 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:40.165 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1030
+17:13:43.579 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:46.185 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=639
+17:13:48.758 [TimerManager-Core-1] INFO  navigation.AgentNavigationWarmupService - Agent xWarax is using fallback movement on map 541000100 while its navigation graph warms (leader=xWarax, walkableFootholds=262)
+17:13:50.514 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:13:50.727 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:52.283 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:54.595 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5339
+17:13:54.596 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:13:54.769 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:56.322 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:13:58.095 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' has no HP_POTION supplier the portal router can reach from map 211041000; asking the party instead
+17:13:58.095 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Lira' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:13:59.145 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:14:03.475 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1052
+17:14:03.809 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:05.364 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:07.790 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5340
+17:14:07.790 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5363
+17:14:08.164 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:11.274 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:12.142 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:14:14.250 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' finished shopping at NPC 1051002 on map 103000002: MP_POTION 9 -> 19 (reserve 9900/7152), potions hp 68 mp 19, mesos 1594638 -> 1585938
+17:14:15.926 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5366
+17:14:18.475 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=347 mirrored=296 dispatched=984 applied=412 shown=412 window=572 airborne=0 unengaged=0 regionsMask=0 regionsSampled=43
+17:14:19.074 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:14:19.075 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=154 dy=32 delayMs=1769
+17:14:21.236 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:22.483 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:23.398 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5340
+17:14:23.399 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:14:25.593 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:27.148 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:29.154 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:14:29.639 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:32.745 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:33.695 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=157 dy=32 delayMs=629
+17:14:33.990 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:35.544 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:37.796 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1050
+17:14:38.028 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:39.584 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:42.029 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'SkyKnight' has no HP_POTION supplier the portal router can reach from map 140010200; asking the party instead
+17:14:42.029 [TimerManager-Core-1] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'SkyKnight' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:14:42.356 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:14:42.696 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:44.250 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:46.660 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5340
+17:14:46.660 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:14:47.050 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:48.602 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:49.051 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1023
+17:14:51.393 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:52.947 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:14:54.877 [TimerManager-Core-2] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'Rose524' below map bounds map=106000101 from=java.awt.Point[x=1027,y=2400] to=java.awt.Point[x=568,y=1459]
+17:14:55.316 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1049
+17:14:58.017 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'iLikeArrow' abandoned HP_POTION resupply after 0 failed shop visit(s), returning to map 105090312 and suppressing the category for 300000 ms: no progress toward the supplier: 300166 ms on map 105080000 without reaching its portal to map 105070400
+17:14:59.125 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5341
+17:14:59.126 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5369
+17:14:59.480 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:01.034 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:02.683 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:15:02.684 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=154 dy=32 delayMs=1767
+17:15:02.901 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:04.455 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:05.108 [TimerManager-Core-3] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'xWarax' finished shopping at NPC 9270022 on map 541000000: HP_POTION 0 -> 31 (reserve 31000/30410), potions hp 31 mp 96, mesos 10531215 -> 10492115
+17:15:05.368 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'xWarax' is rejoining its owner after its HP_POTION resupply
+17:15:06.594 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1047
+17:15:06.932 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:08.265 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=603
+17:15:08.484 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:16.913 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:15:17.179 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:18.726 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:20.215 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=374 mirrored=317 dispatched=1023 applied=414 shown=414 window=609 airborne=0 unengaged=0 regionsMask=0 regionsSampled=49
+17:15:21.222 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5339
+17:15:21.222 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5336
+17:15:21.516 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:23.071 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:24.807 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Ingrid' is low on HP_POTION and asked its party before leaving to shop
+17:15:25.860 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:28.965 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:29.904 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:15:30.486 [TimerManager-Core-1] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Jora' walked back to map 103000103 after its MP_POTION resupply
+17:15:30.516 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:31.760 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:34.182 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:15:34.555 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:38.505 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1050
+17:15:40.888 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:15:43.231 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:44.086 [TimerManager-Low-1] INFO  server.Server - Scale health players=2 agents=259 characters=261 maps=422/162 idleCandidates=0 heap=1049/2048MB disk=ok:181555/975200MB dbPool active=0 idle=10 total=10 waiting=0 max=10 connTimeoutMs=30000 ThreadManager general[active=0,queued=0,pool=0,completed=0,submitted=0,rejected=0] blocking[active=0,queued=0,pool=4,completed=2092,submitted=2092,rejected=0] database[active=0,queued=0,pool=0,completed=8,submitted=8,rejected=0] autosave[active=0,queued=0,pool=2,completed=260,submitted=260,rejected=0] timers core=active:0,queued:1525,completed:1909699,threads:4 save=active:0,queued:5,completed:4813,threads:2 map=active:0,queued:1,completed:599,threads:2 event=active:0,queued:1,completed:39,threads:2 low=active:1,queued:29,completed:9124,threads:1 load=NORMAL monitoredChr=0 npcPendingRuntime=0 npcConversations=0 npcScripts=0 questActions=0 questScripts=0 loginAttemptAccounts=0 loginBypass=0 newYearCards=0 inLoginState=0 loadedMapHighWatermark=422 charSaves total=328 failed=0 manual=68 autosave=260 skippedClean=0 avgMs=53 maxMs=385 maxChr=Kero768 lastMs=47 lastChr=Wavaki(704) mapBroadcasts total=97844 slow=0 ranged=0 timed=97844 avgMs=0 avgRecipients=1 maxMs=40 maxMap=230040420 maxRecipients=2 lastMs=0 lastMap=230040420 lastRecipients=2
+17:15:47.155 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-870 dy=32 delayMs=1048
+17:15:47.569 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:49.802 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=2 dx=-873 dy=32 delayMs=5339
+17:15:49.802 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5368
+17:15:51.910 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:54.811 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Ingrid' has no HP_POTION supplier the portal router can reach from map 230040420; asking the party instead
+17:15:54.811 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Ingrid' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:15:55.781 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:15:56.257 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:57.814 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:15:59.606 [companion-ops] INFO  roster.BenchDutyDispatcher - bench slice: Liriki train live at 101040003 for 2
+17:16:00.098 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1036
+17:16:00.610 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:04.196 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:16:04.644 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:05.561 [TimerManager-Core-4] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' has no HP_POTION supplier the portal router can reach from map 610020013; asking the party instead
+17:16:05.561 [TimerManager-Core-4] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'Moa589' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:16:08.743 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:16:09.303 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:09.909 [TimerManager-Core-3] WARN  movement.AgentAirbornePhysicsService - Recovered Agent 'xWarax' below map bounds map=541000000 from=java.awt.Point[x=1500,y=365] to=java.awt.Point[x=102,y=161]
+17:16:10.360 [TimerManager-Core-2] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1047
+17:16:10.856 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:18.596 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1018
+17:16:19.955 [TimerManager-Core-2] INFO  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' has no HP_POTION supplier the portal router can reach from map 105080000; asking the party instead
+17:16:19.956 [TimerManager-Core-2] WARN  supplies.AgentSupplyProcurementRuntime - Agent 'EvilPirate' could not start HP_POTION resupply; suppressing the category for 300000 ms
+17:16:20.169 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:20.292 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=400 mirrored=339 dispatched=1079 applied=425 shown=425 window=653 airborne=0 unengaged=0 regionsMask=0 regionsSampled=54
+17:16:23.319 [TimerManager-Core-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1050
+17:16:28.676 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1048
+17:16:29.169 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:30.716 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:33.256 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=628
+17:16:38.337 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=1048
+17:16:38.983 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror blast OBSERVE field=230040420 mob=8510100 oid=1000000033 origin=33,166 agents=[840, 1010] humans=[2]
+17:16:41.887 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:43.330 [TimerManager-Core-4] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=631
+17:16:46.230 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:47.647 [TimerManager-Core-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:16:47.780 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:49.331 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:50.883 [gm-test-queue] INFO  command.CommandsExecutor - Chr Bossfriend used command HealPersonCommand
+17:16:55.766 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=1047
+17:16:58.916 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=2 oid=1000000003 chr=2 dx=196 dy=32 delayMs=1769
+17:17:03.641 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=2 dx=196 dy=32 delayMs=598
+17:17:03.641 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=627
+17:17:07.975 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=5354
+17:17:08.938 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=1 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=1}
+17:17:08.940 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:17:13.750 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=9688
+17:17:18.084 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=15463
+17:17:18.957 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=2 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=2}
+17:17:18.958 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:17:21.357 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=428 mirrored=357 dispatched=1113 applied=442 shown=442 window=671 airborne=0 unengaged=9 regionsMask=0 regionsSampled=59
+17:17:22.404 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=19797
+17:17:28.165 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=24117
+17:17:28.975 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=3 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=3}
+17:17:28.975 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:17:36.655 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=4 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=15, reason=Fast hp healing, signal=FAST_HP_HEALING, points=1}
+17:17:36.655 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_HP_HEALING Fast hp healing
+17:17:36.806 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=29878
+17:17:38.995 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=5 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=4}
+17:17:38.996 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:17:41.126 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=38519
+17:17:45.445 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=42838
+17:17:49.015 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=6 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=5}
+17:17:49.015 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:17:49.765 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=47158
+17:17:54.082 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=51478
+17:17:58.405 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=55795
+17:17:59.034 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=7 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=6}
+17:17:59.035 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:02.726 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=60118
+17:18:09.055 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=8 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=7}
+17:18:09.057 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:09.956 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=64439
+17:18:15.685 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=1 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=-1
+17:18:19.075 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=9 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=8}
+17:18:19.076 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:20.005 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=77398
+17:18:21.867 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=455 mirrored=357 dispatched=1113 applied=442 shown=442 window=671 airborne=0 unengaged=36 regionsMask=0 regionsSampled=59
+17:18:24.326 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=81718
+17:18:28.646 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=86039
+17:18:29.095 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=10 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=9}
+17:18:29.096 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:32.966 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=90359
+17:18:37.255 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=94679
+17:18:39.115 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=11 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=10}
+17:18:39.115 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:41.605 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-870 dy=32 delayMs=98968
+17:18:45.535 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=103318
+17:18:49.135 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=12 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=11}
+17:18:49.136 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:18:49.856 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=107218
+17:18:54.565 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=111539
+17:18:58.885 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=116278
+17:18:59.156 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=13 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=12}
+17:18:59.157 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:02.817 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=120598
+17:19:07.137 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=124499
+17:19:09.176 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=14 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=13}
+17:19:09.176 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:11.845 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=128819
+17:19:16.167 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-870 dy=32 delayMs=133558
+17:19:19.194 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=15 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=14}
+17:19:19.195 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:20.485 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=137880
+17:19:23.759 [nioEventLoopGroup-3-3] INFO  boss.AgentBossAttackMirror - Boss mirror summary field=230040420 attacks=483 mirrored=357 dispatched=1113 applied=442 shown=442 window=671 airborne=0 unengaged=64 regionsMask=0 regionsSampled=59
+17:19:24.415 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=142198
+17:19:28.736 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=146098
+17:19:29.216 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=16 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=15}
+17:19:29.216 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:33.056 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=150419
+17:19:37.377 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=154739
+17:19:39.235 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=17 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=16}
+17:19:39.235 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:41.695 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=159060
+17:19:46.017 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=163378
+17:19:49.255 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=18 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=17}
+17:19:49.255 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:50.727 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8520000 attack=3 oid=1000000003 chr=1008 dx=154 dy=32 delayMs=167700
+17:19:55.047 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=172440
+17:19:59.277 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=19 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=18}
+17:19:59.277 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:19:59.367 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=176760
+17:20:03.687 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=181080
+17:20:08.007 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=185400
+17:20:09.297 [nioEventLoopGroup-3-1] INFO  SECURITY - securityEvent sequence=20 type=AUTOBAN_SIGNAL severity=WARNING accountId=1006 characterId=1008 remote=12ca17b49af22894 evidence={threshold=20, reason=Fast mp healing, signal=FAST_MP_HEALING, points=19}
+17:20:09.298 [nioEventLoopGroup-3-1] INFO  autoban.AutobanManager - Autoban - chr Bossfriend caused FAST_MP_HEALING Fast mp healing
+17:20:12.325 [nioEventLoopGroup-3-1] INFO  boss.AgentBossAttackMirror - Boss mirror calibration miss mob=8510000 attack=1 oid=1000000002 chr=1008 dx=-873 dy=32 delayMs=189720

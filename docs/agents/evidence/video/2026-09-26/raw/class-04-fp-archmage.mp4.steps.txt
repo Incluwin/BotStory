@@ -1,0 +1,15 @@
+2.02 wait 1
+7.16 say !spawnbot ProbeFP showcase
+7.16 cut
+7.16 caption 5 Fire/Poison Arch Mage, Lv 144 (Magician) - grinding Henesys Hunting Ground I
+7.16 park
+7.17 online ProbeFP
+7.17 party Jevelopers 2
+8.17 wait 1
+8.17 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+13.19 wait 5
+18.07 say grind
+18.07 park
+18.07 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.79 follow ProbeFP 45
+63.79 stop

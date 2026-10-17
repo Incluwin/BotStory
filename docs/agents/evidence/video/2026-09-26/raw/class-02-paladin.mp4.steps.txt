@@ -1,0 +1,16 @@
+2.02 wait 1
+7.13 say !spawnbot ProbePala showcase
+7.13 cut
+7.13 caption 5 Paladin, Lv 148 (Warrior) - grinding Henesys Hunting Ground I
+7.13 park
+7.13 online ProbePala
+7.13 party Jevelopers 2
+8.14 wait 1
+8.14 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+13.15 wait 5
+18.21 say grind
+18.21 park
+18.21 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+18.21 caption 7 One elemental charge at a time, and Charged Blow only while that charge is up
+64.05 follow ProbePala 45
+64.05 stop

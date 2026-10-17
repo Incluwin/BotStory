@@ -1,0 +1,15 @@
+2.02 wait 1
+7.14 say !spawnbot ProbeHero showcase
+7.14 cut
+7.14 caption 5 Hero, Lv 145 (Warrior) - grinding Henesys Hunting Ground I
+7.14 park
+7.17 online ProbeHero
+7.17 party Jevelopers 2
+8.17 wait 1
+8.17 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+13.19 wait 5
+18.06 say grind
+18.06 park
+18.06 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.65 follow ProbeHero 45
+63.65 stop

@@ -1,0 +1,15 @@
+2.03 wait 1
+6.79 say !spawnbot ProbeIL showcase
+6.79 cut
+6.79 caption 5 Ice/Lightning Arch Mage, Lv 135 (Magician) - grinding Henesys Hunting Ground I
+6.79 park
+6.79 online ProbeIL
+6.79 party Jevelopers 2
+7.80 wait 1
+7.80 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+12.81 wait 5
+17.65 say grind
+17.65 park
+17.65 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.31 follow ProbeIL 45
+63.31 stop

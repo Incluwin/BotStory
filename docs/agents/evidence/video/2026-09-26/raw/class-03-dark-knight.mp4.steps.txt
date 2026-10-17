@@ -1,0 +1,15 @@
+2.01 wait 1
+6.85 say !spawnbot ProbeDK showcase
+6.85 cut
+6.85 caption 5 Dark Knight, Lv 123 (Warrior) - grinding Henesys Hunting Ground I
+6.85 park
+6.87 online ProbeDK
+6.89 party Jevelopers 2
+7.90 wait 1
+7.90 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+12.91 wait 5
+17.67 say grind
+17.67 park
+17.67 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.38 follow ProbeDK 45
+63.38 stop

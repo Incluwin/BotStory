@@ -1,0 +1,15 @@
+2.02 wait 1
+7.08 say !spawnbot ProbeBM showcase
+7.08 cut
+7.08 caption 5 Bowmaster, Lv 121 (Bowman) - grinding Henesys Hunting Ground I
+7.08 park
+7.08 online ProbeBM
+7.08 party Jevelopers 2
+8.09 wait 1
+8.09 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+13.10 wait 5
+17.91 say grind
+17.91 park
+17.91 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.66 follow ProbeBM 45
+63.66 stop

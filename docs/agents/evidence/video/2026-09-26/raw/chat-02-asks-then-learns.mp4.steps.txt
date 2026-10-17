@@ -1,0 +1,37 @@
+2.03 wait 1
+2.03 cut
+2.03 caption 6 When it isn't sure what the player means, it asks - and the answer teaches it
+4.03 wait 2
+8.79 say see all those snails? go clear em out
+8.79 expectlog ACT \[grind\]
+8.79 park
+17.42 follow ProbePala 8
+22.19 say ok that's plenty, ease off
+22.20 expectlog ASK \[stop\]
+22.20 park
+22.20 caption 5 "ease off" is ambiguous, so it asks instead of guessing
+25.21 wait 3
+29.73 say yea
+29.73 expectlog learned .* -> stop \(PLAYER
+29.73 park
+29.73 caption 5 "yea" - it stops and remembers what that phrase meant
+33.75 wait 4
+38.35 say alright, head back over to me
+38.35 expectlog ASK \[follow me\]
+38.35 park
+38.35 caption 4 Unsure again - it asks
+41.36 wait 3
+46.07 say nah
+46.07 park
+46.07 caption 4 "nah" - it drops the suggestion
+49.08 wait 3
+54.00 say see all those snails? go clear em out
+54.01 expectlog ACT \[grind\].*\n(.*\n)*.*ACT \[grind\]
+54.01 park
+62.71 follow ProbePala 8
+67.51 say ok that's plenty, ease off
+67.51 expectlog \[phrase\] message="ok that's plenty, ease off" -> stop
+67.51 park
+67.51 caption 6 Same phrase again - no question this time: it learned what the player meant
+72.51 wait 5
+72.51 stop

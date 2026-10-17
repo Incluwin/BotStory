@@ -1,0 +1,15 @@
+2.01 wait 1
+6.64 say !spawnbot ProbeNL showcase
+6.64 cut
+6.64 caption 5 Night Lord, Lv 122 (Thief) - grinding Henesys Hunting Ground I
+6.64 park
+6.64 online ProbeNL
+6.65 party Jevelopers 2
+7.66 wait 1
+7.66 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+12.67 wait 5
+17.36 say grind
+17.36 park
+17.36 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.01 follow ProbeNL 45
+63.02 stop

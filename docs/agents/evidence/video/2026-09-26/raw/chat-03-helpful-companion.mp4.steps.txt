@@ -1,0 +1,33 @@
+2.01 wait 1
+6.96 say !spawnbot ProbeBish
+6.96 cut
+6.96 caption 6 A Bishop joins as a party of two - its buffs land on the camera character
+6.96 park
+6.97 online ProbeBish
+6.97 party Jevelopers 2
+14.97 wait 8
+20.04 say lemme get a fame
+20.04 expectlog ACT \[fame me\]
+20.04 park
+20.04 caption 4 "lemme get a fame" - it fames the player
+24.05 wait 4
+29.30 say got anything that would be an upgrade for me?
+29.30 park
+29.30 caption 5 It checks its bag for gear that would help the player
+34.31 wait 5
+39.30 say what gear do u want from me?
+39.30 park
+39.30 caption 5 ...and says what it would like in return
+44.31 wait 5
+49.25 say turn off your buffs for now
+49.25 expectlog -> support off
+49.25 park
+49.25 caption 4 Buffs off on request
+53.25 wait 4
+58.23 say ok buff me again pls
+58.23 expectlog -> support on
+58.23 park
+58.23 caption 5 ...and back on: it recasts its buffs right away
+60.79 freshbuff Jevelopers 2311003 15
+64.79 wait 4
+64.79 stop

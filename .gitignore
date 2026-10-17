@@ -72,3 +72,11 @@ nul
 
 # What bench grinders nobody could see learned (AgentCombatCandidates): runtime data, adopted only via the arena.
 /scripts/config/agents/combat-policy/candidates/
+
+# Evidence media: screenshots, cua trajectories and recordings stay on the host (tens of GB).
+# The text next to them (notes, step logs, jstacks) is committed.
+/docs/agents/evidence/cua/
+/docs/agents/evidence/**/*.png
+/docs/agents/evidence/**/*.mp4
+/docs/agents/evidence/**/*.mp4.start
+/docs/agents/evidence/**/*.mp4.stop

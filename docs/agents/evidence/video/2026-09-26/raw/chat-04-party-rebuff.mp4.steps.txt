@@ -1,0 +1,31 @@
+2.02 wait 1
+7.12 say !spawnbot ProbeBish
+7.13 online ProbeBish
+12.16 say !spawnbot ProbeHero
+12.16 online ProbeHero
+12.18 party Jevelopers 3
+12.18 cut
+12.18 caption 6 A party of three: a Bishop, a Hero and the camera character
+12.18 park
+18.19 wait 6
+23.46 say see all those snails? go clear em out
+23.46 expectlog (ACT \[grind\]|-> grind)
+23.46 park
+23.46 caption 6 They split up to hunt, out of range of each other's party buffs
+40.96 apart ProbeBish 350 230 40
+40.96 apart ProbeHero 350 230 40
+42.96 wait 2
+48.00 say everyone come get buffed
+48.00 expectlog ACT \[gather up for buffs\]
+48.00 park
+48.00 caption 8 "everyone come get buffed" - the party walks over, and the Bishop recasts its party buffs once everyone is in range
+56.25 freshbuff Jevelopers 2311003 15
+56.25 freshbuff ProbeHero 2311003 15
+56.25 freshbuff ProbeBish 2311003 15
+60.26 wait 4
+65.45 say see all those snails? go clear em out
+65.45 expectlog gather up for buffs\][^\n]*\n(.*\n)*.*(ACT \[grind\]|-> grind)
+65.45 park
+65.45 caption 5 ...then back to hunting
+72.46 wait 7
+72.46 stop

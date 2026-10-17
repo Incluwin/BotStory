@@ -1,0 +1,39 @@
+2.01 wait 1
+2.01 cut
+2.01 caption 6 Plain chat, no command words: the Paladin works out what the player means
+5.02 wait 3
+9.74 say hey stick with me for a bit
+9.74 expectlog -> follow me
+9.74 park
+9.74 caption 4 "stick with me" - it follows
+12.80 hold left 2500
+13.81 wait 1
+18.40 say wait here a sec
+18.40 expectlog -> stop
+18.40 park
+18.40 caption 4 "wait here a sec" - it stays put
+20.82 hold right 1800
+22.83 wait 2
+27.99 say come over here
+27.99 park
+27.99 caption 4 "come over here" - it walks over
+32.00 wait 4
+36.76 say see all those snails? go clear em out
+36.76 expectlog ACT \[grind\]
+36.76 park
+36.76 caption 5 "go clear em out" - it starts hunting
+49.38 follow ProbePala 12
+54.09 say take it easy for a sec
+54.09 expectlog ACT \[stop\]
+54.09 park
+54.09 caption 4 "take it easy" - it stops
+57.10 wait 3
+61.94 say just hold this spot and smack anything that comes close
+61.94 park
+61.94 caption 6 "hold this spot" - it guards the spot and fights whatever comes close
+67.96 wait 6
+72.85 say what level r u now?
+72.85 park
+72.85 caption 4 A question gets a straight answer
+77.85 wait 5
+77.85 stop

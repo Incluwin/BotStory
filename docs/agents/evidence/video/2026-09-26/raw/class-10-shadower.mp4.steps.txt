@@ -1,0 +1,15 @@
+2.01 wait 1
+6.91 say !spawnbot ProbeShad showcase
+6.91 cut
+6.91 caption 5 Shadower, Lv 122 (Thief) - grinding Henesys Hunting Ground I
+6.91 park
+6.91 online ProbeShad
+6.91 party Jevelopers 2
+7.93 wait 1
+7.93 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+12.94 wait 5
+17.62 say grind
+17.62 park
+17.62 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.24 follow ProbeShad 45
+63.24 stop

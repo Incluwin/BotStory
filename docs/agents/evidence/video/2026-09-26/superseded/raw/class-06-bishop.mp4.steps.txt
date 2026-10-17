@@ -1,0 +1,15 @@
+2.02 wait 1
+6.57 say !spawnbot ProbeBish showcase
+6.57 cut
+6.57 caption 5 Bishop, Lv 147 (Magician) - grinding Henesys Hunting Ground I
+6.57 park
+6.57 online ProbeBish
+6.60 party Jevelopers 2
+7.60 wait 1
+7.60 caption 6 Party of two: its party buffs land on the camera character, a Shadower hiding in Dark Sight
+12.61 wait 5
+17.32 say grind
+17.32 park
+17.32 caption 7 Showcase mode: it names each skill aloud as it uses it, working through its whole kit
+63.04 follow ProbeBish 45
+63.04 stop
