@@ -138,7 +138,7 @@ companion-ops.
 5. **Live checks** (two clients, GM test accounts): each verb vs the NPC dialog, full party, confirm Yes/No,
    stale click, channel change, relog, stale-DLL client, switch off mid-session.
 6. **Soak**: replaced (user, 2026-10-12) by a measured 30-minute memory run on the test client, then the user's normal play; rollback rehearsal through the manifest, side-by-side video.
-7. **Ship** to friends: user's OK, manifest regenerated, client kit rebuilt (`tools/client-kit`).
+7. **Ship** to friends: user's OK, manifest regenerated, WZ patcher pack rebuilt (`tools/wz-patcher`, `build`).
 
 ## Status (2026-10-12)
 

@@ -1,0 +1,105 @@
+# BotStory WZ patcher
+
+Adds BotStory's own client content to the WZ files of a v83 client. BotStory runs on either
+base WZ set:
+
+| Base | Files | How to get it |
+|---|---|---|
+| Clean Cosmic client | the 12 files in `cosmic-wz/` of [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client), plus `Base.wz`, `Effect.wz`, `Morph.wz`, `Sound.wz`, `TamingMob.wz` from the GMS v83 setup | install `MapleGlobal-v83-setup.exe`, then copy the `cosmic-wz` files over the installed ones |
+| Community Repack | the 17 files of `Community Repack WZs.zip` | the repack download |
+
+Plain GMS v83 WZ files (the setup without the Cosmic files) do not work: the Cosmic server
+spawns NPCs, maps and items that only the Cosmic files have. `check` reports them as missing.
+
+Keep this repository private: `pack/` holds Nexon game data.
+
+## Patch a client
+
+Python 3.8 or newer, standard library only.
+
+```
+python tools/wz-patcher/botstory_wz.py patch --client "<client folder>"
+python tools/wz-patcher/botstory_wz.py check --client "<client folder>"
+```
+
+`patch` changes the client folder in place. The original files move to
+`<client folder>/botstory-wz-backup/<date-time>/`. Run it again at any time: a file that already
+has the content is left alone. On Windows, `patch-client.bat "<client folder>"` runs both steps.
+
+Options:
+
+- `--out <folder>` writes the patched files to a new folder and leaves the client untouched.
+  Add `--copy-unchanged` to copy the other WZ files too, so `<folder>` is a complete WZ set.
+- `--exe "<v83 install>/MapleStory.exe"` also sets the large-address-aware flag on the stock
+  GMS v83 `MapleStory.exe` (2 bytes). BotStory needs it: the client runs out of address space
+  without it.
+
+`check` confirms every BotStory image is present and, when it finds the server's WZ XML (the
+repo's `wz/` folder, or `--server-wz`), that the client has every image the server knows.
+
+The rest of a BotStory client (kaentake's `Kaentake.dll` and `Launch Game.exe`, `config.ini`,
+the stock DLLs) is listed in `client-files.json` with the source of each file.
+
+## What the pack adds
+
+| WZ file | Content | Kind |
+|---|---|---|
+| Quest.wz `Act`, `Check`, `QuestInfo` | Resident quests (ids 30000-32767) in the quest log and Quest Helper | BotStory |
+| Etc.wz `QuestCategory` | the "Residents" quest category (area 31) | BotStory |
+| Etc.wz `Commodity` | cash shop edits | BotStory |
+| Npc.wz (55 images, 9970000+), String.wz `Npc` | Resident portraits and names | BotStory |
+| Skill.wz (39 job images), String.wz `Skill` | skill edits and repaired skill links | BotStory |
+| Character.wz (1 medal, 5 rings), String.wz `Eqp` | item edits | BotStory |
+| UI.wz `StatusBar` | the large quick-slot bar for kaentake's `enlargequickslot` | BotStory |
+| Custom.wz | kaentake's overlay: Crew window, quest markers, mob HP bar, skill cooldown numbers, fusion anvil, quick-slot widths, the photo chair | BotStory |
+| Character.wz (303 equips), String.wz `Eqp` (302 names) | equips the server's WZ XML has and the clean Cosmic client lacks (taken from the Community Repack, which has them) | server |
+
+How each image is applied:
+
+- If the base image is byte-identical to the Community Repack image BotStory was built on, the
+  BotStory image is written as is. A patched Community Repack is byte-identical to the shipped
+  BotStory client.
+- Otherwise BotStory's changes are applied node by node to the base's own image
+  (`pack/edits/*.json`), so the base keeps its own content. On the clean Cosmic client this
+  happens for `String.wz` `Eqp` and `Npc`.
+- An image the base lacks is added. "server" images are only ever added, never replaced.
+
+## Known differences that are not errors
+
+- The Community Repack lacks five Cosmic world maps (`WorldMap032`, `210`, `211`, `220`,
+  `230`). The server never sends world maps; in those regions the world map window is empty.
+  `check` lists them as UI only.
+- Some edits exist only in the server's WZ XML and in no client (secondary stat requirements
+  set to 0 on about 980 equips, some skill values, a few names). The server applies them. The
+  client still shows the stock values.
+
+## Rebuild the pack (maintainers)
+
+After a client WZ ships (MapleEdit Deploy, a Custom.wz change), rebuild the pack on the host and
+commit `pack/` and `client-files.json`:
+
+```
+python tools/wz-patcher/botstory_wz.py build ^
+    --repack "<Community Repack>" ^
+    --live "<BotStory Client>/Game Files" ^
+    --cosmic "<clean Cosmic WZ folder>" ^
+    --stock-client "<v83 install>"
+```
+
+`build` compares the live client with the Community Repack image by image, writes the changed
+and added images and their node edits, and adds the server images the clean Cosmic client lacks
+(from the repo's `wz/`, or `--server-wz`). Then check both bases:
+
+```
+python tools/wz-patcher/botstory_wz.py patch --client "<Community Repack>" --out <tmp1>
+python tools/wz-patcher/botstory_wz.py patch --client "<clean Cosmic WZ folder>" --out <tmp2> --copy-unchanged
+python tools/wz-patcher/botstory_wz.py check --client <tmp2>
+```
+
+Every file in `<tmp1>` must be byte-identical to the live client. Unit tests:
+`python -m unittest discover -s tools/wz-patcher/tests`.
+
+`wzlib/` is MapleEdit's WZ reader and writer (Incluwin/MapleEdit, AGPL-3.0), adapted. It adds
+a pure-Python AES for the key stream, keeps one-byte strings with code-page characters intact,
+parses `Shape2D#Convex2D`, and points type-2 (shared-name) directory entries at their name's
+new position.
