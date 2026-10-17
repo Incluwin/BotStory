@@ -101,9 +101,7 @@ public final class AgentGrindModeTickService {
         if (attackPlan == null) {
             attackPlan = AgentCombatPlanRuntime.planAttack(entry, agent, target, AgentCombatConfig.cfg);
         }
-        if (!AgentCombatRangePolicy.closeSwingHoldsHere(entry, agent, attackPlan, target)) {
-            attackPlan = null;   // walk in to the wide boss body instead of holding for a long, weak box
-        }
+        attackPlan = AgentGrindRangedEngagementService.walkInUnlessSwingHolds(entry, agent, attackPlan, target);
 
         AgentGrindRangedEngagementService.Result engagement =
                 AgentGrindRangedEngagementService.engage(
