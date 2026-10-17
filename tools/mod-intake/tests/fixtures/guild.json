@@ -1,0 +1,72 @@
+{
+  "_comment": "Synthetic guild in Discord API v10 shapes (made up for tests; no real server content). Thread id == starter message id, as in forum channels. Attachment 'data' becomes the file body served by the fake CDN.",
+  "guild_id": "900000000000000001",
+  "authors": {
+    "hookwright": {"id": "800000000000000001", "username": "hookwright", "global_name": "Hookwright"},
+    "packetsmith": {"id": "800000000000000002", "username": "packetsmith", "global_name": null},
+    "wzfox": {"id": "800000000000000003", "username": "wzfox", "global_name": "WZ Fox"},
+    "releasebot": {"id": "800000000000000009", "username": "releasebot", "global_name": null, "bot": true}
+  },
+  "channels": [
+    {"id": "900000000000000010", "type": 4, "name": "RELEASES", "position": 3},
+    {"id": "900000000000000011", "type": 15, "name": "client-releases", "parent_id": "900000000000000010", "position": 0},
+    {"id": "900000000000000012", "type": 15, "name": "server-releases", "parent_id": "900000000000000010", "position": 1},
+    {"id": "900000000000000013", "type": 0, "name": "patches", "parent_id": "900000000000000010", "position": 2},
+    {"id": "900000000000000014", "type": 15, "name": "staff-releases", "parent_id": "900000000000000010", "position": 3, "forbidden": true},
+    {"id": "900000000000000020", "type": 4, "name": "COMMUNITY", "position": 1},
+    {"id": "900000000000000021", "type": 0, "name": "general", "parent_id": "900000000000000020", "position": 0},
+    {"id": "900000000000000022", "type": 2, "name": "voice", "parent_id": "900000000000000020", "position": 1}
+  ],
+  "threads": [
+    {"id": "1000000000000000100", "parent_id": "900000000000000011", "name": "[v83] Boss HP bar hook for kaentake", "owner": "hookwright", "archived": false, "archive_timestamp": "2025-06-01T10:00:00+00:00", "applied_tags": ["700000000000000001"]},
+    {"id": "1000000000000000200", "parent_id": "900000000000000011", "name": "[v95] Damage skin loader", "owner": "wzfox", "archived": true, "archive_timestamp": "2025-03-01T00:00:00+00:00", "applied_tags": []},
+    {"id": "1000000000000000500", "parent_id": "900000000000000011", "name": "[v83] Mob HP percent tag", "owner": "hookwright", "archived": true, "archive_timestamp": "2025-02-01T00:00:00+00:00", "applied_tags": []},
+    {"id": "1000000000000000300", "parent_id": "900000000000000012", "name": "[Cosmic] Duey fix + Fredrick", "owner": "packetsmith", "archived": true, "archive_timestamp": "2025-05-10T00:00:00+00:00", "applied_tags": []},
+    {"id": "1000000000000000400", "parent_id": "900000000000000012", "name": "HeavenMS skill fixes", "owner": "wzfox", "archived": false, "archive_timestamp": "2025-06-02T00:00:00+00:00", "applied_tags": []},
+    {"id": "1000000000000000600", "parent_id": "900000000000000013", "name": "v83 login patch discussion", "owner": "packetsmith", "archived": false, "archive_timestamp": "2025-06-03T00:00:00+00:00", "applied_tags": []}
+  ],
+  "messages": {
+    "1000000000000000100": [
+      {"id": "1000000000000000100", "author": "hookwright",
+       "content": "Boss HP bar for v83 clients, built on kaentake.\nSource: https://github.com/hookwright/v83-bosshp\nHooks CUIMiniMap at 0x00A2C8E0. Drop the DLL next to Kaentake.dll.",
+       "attachments": [{"id": "1000000000000000101", "filename": "BossHP.dll", "content_type": "application/x-msdownload", "data": "MZ fake dll bytes one"}]},
+      {"id": "1000000000000000110", "author": "packetsmith",
+       "content": "Crashes in Cash Shop for me, fix:\n```cpp\nif (CWvsContext::GetInstance()->m_pStage == nullptr) return;\n```\nAlso https://gist.github.com/packetsmith/0a1b2c3d4e5f6a7b8c9d"},
+      {"id": "1000000000000000120", "author": "hookwright", "reply_to": "1000000000000000110",
+       "content": "Fixed in https://github.com/hookwright/v83-bosshp/commit/3f2a9c1d0e8b7a6f5e4d3c2b1a0f9e8d7c6b5a49, thanks!"}
+    ],
+    "1000000000000000200": [
+      {"id": "1000000000000000200", "author": "wzfox",
+       "content": "For v95 only. https://github.com/wzfox/v95-damageskin/releases/tag/v1.2",
+       "attachments": [{"id": "1000000000000000201", "filename": "DamageSkin.wz", "content_type": "application/octet-stream", "data": "fake wz bytes"}]}
+    ],
+    "1000000000000000500": [
+      {"id": "1000000000000000500", "author": "hookwright",
+       "content": "Mob HP percentage tag.\n```cpp\nvoid AttachMobHpTagMod() {}\n```"}
+    ],
+    "1000000000000000300": [
+      {"id": "1000000000000000300", "author": "packetsmith",
+       "content": "Duey loses packages on CC. Patch: https://github.com/packetsmith/Cosmic/pull/12 and the SQL at https://pastebin.com/raw/Ab12Cd34.",
+       "attachments": [{"id": "1000000000000000301", "filename": "duey_fix.patch", "content_type": "text/x-diff; charset=utf-8", "data": "--- a/src/main/java/net/server/channel/handlers/DueyHandler.java\n+++ b/src/main/java/net/server/channel/handlers/DueyHandler.java\n"}]},
+      {"id": "1000000000000000310", "author": "wzfox",
+       "content": "Works on HeavenMS too: https://github.com/packetsmith/Cosmic/blob/master/src/main/java/net/server/channel/handlers/DueyHandler.java#L120"}
+    ],
+    "1000000000000000400": [
+      {"id": "1000000000000000400", "author": "wzfox",
+       "content": "Skill fixes pack: https://github.com/wzfox/heavenms-skillfixes.git (readme <https://raw.githubusercontent.com/wzfox/heavenms-skillfixes/main/README.md>)",
+       "attachments": [{"id": "1000000000000000401", "filename": "BossHP-copy.dll", "content_type": "application/x-msdownload", "data": "MZ fake dll bytes one"}]}
+    ],
+    "900000000000000013": [
+      {"id": "1000000000000000600", "author": "packetsmith",
+       "content": "Patch for the v83 login screen: https://github.com/packetsmith/v83-login/compare/abc123...def456 see also https://discord.com/channels/900000000000000001/900000000000000011/1000000000000000100"},
+      {"id": "1000000000000000610", "author": "releasebot", "content": "New release posted!"}
+    ],
+    "1000000000000000600": [
+      {"id": "1000000000000000620", "author": "hookwright", "content": "Is this for Cosmic?"},
+      {"id": "1000000000000000630", "author": "packetsmith", "content": "Yes, Cosmic master. Mirror: https://mega.nz/file/abcd#key"}
+    ],
+    "900000000000000021": [
+      {"id": "1000000000000000700", "author": "wzfox", "content": "general chat, never tracked"}
+    ]
+  }
+}

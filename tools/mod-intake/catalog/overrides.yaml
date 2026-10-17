@@ -1,0 +1,8 @@
+# Corrections to the triage, by thread id (forum threads) or post-<message id> (text channel posts).
+# Every 'mod_intake.py triage' run applies these on top of what rules and judgments say, so they survive re-runs.
+# The board (mod_intake.py board --serve) writes this file; hand edits work too.
+# Fields: id status reason kind version family applies match review note client_feature server_mod
+#         replies: {<message id>: fix | bug_report | neither}
+# status: candidate | skipped | porting | ported | shipped
+
+overrides: {}
