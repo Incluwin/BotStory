@@ -1,17 +1,36 @@
-# Cosmic Agents
+# BotStory
 
-Cosmic Agents is a Global MapleStory v83 server project built on top of
-[P0nk/Cosmic](https://github.com/P0nk/Cosmic). It extends Cosmic with a modular,
-server-validated Agent platform for autonomous characters that remain normal
-Cosmic characters and obey server-side gameplay rules.
+BotStory is a Global MapleStory v83 server built on
+[P0nk/Cosmic](https://github.com/P0nk/Cosmic) and the
+[cosmic_agents](https://github.com/Kiwiism/cosmic_agents) Agent platform. Its
+autonomous characters are normal Cosmic characters that obey the server's
+gameplay rules:
+
+- **Companions** you recruit, party with, bench and manage without typing: they
+  level, buy supplies, run party quests and clear bosses with you.
+- **Residents**: town characters with routines, dialogue, portraits, quests
+  (shown in the client's quest log), friendship levels and contracts. See
+  [docs/LIVING_WORLD_GUIDE.md](docs/LIVING_WORLD_GUIDE.md).
+- **Citizens**: an ambient population that trains, chats, forms guilds and
+  trades. See [docs/POPULATION_GUIDE.md](docs/POPULATION_GUIDE.md).
+- An admin control port (used by the MapleEdit dashboard), TypeSafe Jev
+  judgments for chat and intent, and a skill-probe harness.
+
+The game client is the stock GMS v83 client with the BotStory fork of
+[kaentake](https://github.com/iw2d/kaentake), running on either the clean Cosmic
+WZ files or the Community Repack WZ files; see [3 - Client](#3---client).
 
 ## Credits And Upstream Lineage
 
 - [P0nk/Cosmic](https://github.com/P0nk/Cosmic) is the upstream v83 server base.
   Cosmic was created and maintained by P0nk with contributions from the wider
   Cosmic community.
+- [Kiwiism/cosmic_agents](https://github.com/Kiwiism/cosmic_agents) is the Agent
+  platform BotStory's companions run on.
 - [nutnnut/Cosmic](https://github.com/nutnnut/Cosmic) provided the companion
   behavior from which the reconstructed Agent runtime was derived.
+- [MadaraGameDev/SoloMapling](https://github.com/MadaraGameDev/SoloMapling)
+  provided the ambient player population (`soloMapling`).
 - Cosmic itself descends from the OdinMS and HeavenMS emulator lineage.
 
 This repository is not the official Cosmic project.
@@ -43,7 +62,10 @@ The repository also contains read-only game-data catalog tooling and a Database
 Console for administrative game-data access. The Database Console should not be
 exposed publicly without authentication and network hardening.
 
-## Validation Status
+## Validation Status (from upstream cosmic_agents)
+
+These figures are cosmic_agents' own, from before the BotStory merge; BotStory's
+suite is far larger (see [docs/TEST_GUIDE.md](docs/TEST_GUIDE.md)).
 
 - Full Maven suite: 4,392 tests passed with no failures, errors, or skips.
 - Maven package build: passed.
@@ -113,9 +135,25 @@ To run the jar, a ``launch.bat`` file is provided for convenience. Simply double
 Alternatively, run the jar file from the terminal. Just remember to provide the `wz-path` system property pointing to your wz directory.
 
 ### 3 - Client
-The client files are located in a separate repository: https://github.com/P0nk/Cosmic-client
+BotStory's client is the stock GMS v83 `MapleStory.exe` with the BotStory fork of
+kaentake (`Kaentake.dll`, and `Kaentake.exe` shipped as `Launch Game.exe`).
+For the WZ files, pick either base:
 
-Follow the installation guide in the README.
+- the clean Cosmic client: install the v83 setup from
+  [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client), then copy its
+  `cosmic-wz` files over the installed ones; or
+- the Community Repack WZ set.
+
+Then add BotStory's own content with the WZ patcher:
+
+```
+python tools/wz-patcher/botstory_wz.py patch --client "<client folder>" --exe "<client folder>/MapleStory.exe"
+```
+
+[tools/wz-patcher/README.md](tools/wz-patcher/README.md) lists what it adds
+and every other file a client needs. Friends who use the installer get a
+finished client and updates from the launcher; for a Cosmic-based install, see
+"Play through the friends' launcher" there.
 
 ### 4 - Getting into the game
 You have successfully started the client, and you're looking at the login screen. 
@@ -153,6 +191,12 @@ The client can read the .wz files directly, but the server requires them to be i
 HaRepacker allows you to export to "Private server", which is the .img files packaged in the .wz stripped of sprites and converted to XML. This takes much less disk space.
 
 This server requires custom .wz files (unfortunately), as you may have noted during installation of the client. The intention is for these to be removed eventually and to solely run on vanilla .wz files.
+
+In BotStory, the server reads the XML in `wz/` (Cosmic's export plus BotStory's
+edits). The repository holds no client `.wz` archives except `Custom.wz`,
+kaentake's overlay. The changed and added client images live in the WZ
+patcher's pack (`tools/wz-patcher/pack/`, Nexon game data: keep the repository
+private). After a client WZ change ships, rebuild the pack (see its README).
 
 #### WZ editing
 * Use the HaRepacker-resurrected editor, encryption "GMS (old)".
