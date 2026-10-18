@@ -109,8 +109,9 @@ BotStory's client is the stock Global MapleStory v83 client.
 > - Every character wears an Evolving Ring (items 1112499-1112502), which the Cosmic WZ files do
 >   not have.
 >
-> With both worked around in a test, the client played normally. Until the server and this guide
-> handle both, only the BotStory client can play. The steps below are the rest of the setup.
+> With both worked around in a test, the client entered the game and ran normally in town (maps,
+> other players, a companion, a Resident's menu). Until the server and this guide handle both,
+> only the BotStory client can play. The steps below are the rest of the setup.
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
    1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
