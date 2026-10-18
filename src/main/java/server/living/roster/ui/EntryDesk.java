@@ -122,6 +122,10 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
         for (Seat seat : plan.lineup()) {
             lines.add("#b" + seat.name() + "#k" + (seat.characterId() == plan.leaderId() ? " (leader)" : about(plan, seat)));
         }
+        String note = voice.lineupNote(plan); // Wonky's blessing for all five branches; most desks have none
+        if (note != null) {
+            lines.add(note);
+        }
         lines.addAll(voice.clearTime(plan)); // how long it should take, and who would struggle; none without
         if (!plan.extras().isEmpty()) {
             Map<Integer, String> reasons = new HashMap<>();

@@ -12,10 +12,12 @@ import server.maps.MapleMap;
 import java.awt.Point;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
@@ -37,6 +39,32 @@ public final class PqEntrance {
 
     /** A run's session while its quest's registry holds it: its id and the event leader it has now. */
     public record LiveSession(String sessionId, int eventLeaderId) { }
+
+    /**
+     * The job branches (Job.getJobNiche: 1 warrior, 2 magician, 3 bowman, 4 thief, 5 pirate) her own lineup choice
+     * prefers between everyone who goes in, humans too, and how much longer than the quickest lineup one that has them
+     * may take and still be her choice. A preference, never a rule: a lineup without them goes in all the same, and the
+     * leader's pick is never changed for it. Only OPQ's entrance has one (Wonky blesses a party with all five).
+     */
+    public record BranchPreference(Set<Integer> branches, long worthMs) {
+        public BranchPreference {
+            branches = Set.copyOf(branches);
+        }
+
+        /** How many of the branches nobody in {@code lineup} has. */
+        public int missing(Collection<LineupPlan.Seat> lineup) {
+            Set<Integer> missing = new HashSet<>(branches);
+            for (LineupPlan.Seat seat : lineup) {
+                missing.remove(seat.jobId() / 100 % 10);
+            }
+            return missing.size();
+        }
+
+        /** True when someone in {@code lineup} has each of the branches. */
+        public boolean metBy(Collection<LineupPlan.Seat> lineup) {
+            return missing(lineup) == 0;
+        }
+    }
 
     /** The quest's own Agent-layer admission of a lineup, its leader as operator and event leader. */
     interface Admit {
@@ -67,6 +95,7 @@ public final class PqEntrance {
     private final Beside beside;
     private final KeepClear keepClear;
     private final Admit admit;
+    private final BranchPreference branchPreference;
     /**
      * Where the entry NPC kept clear of followers stands, by the map instance she was found on: looked for once per map
      * (MapleMap.getNPCById copies every object on it under its lock, and she never moves), not on every follow tick.
@@ -86,6 +115,19 @@ public final class PqEntrance {
                IntFunction<? extends AgentCompanionRunSession> forOperator,
                IntFunction<? extends AgentCompanionRunSession> forMember, boolean admitsOnIo,
                BooleanSupplier backgroundRuns, Beside beside, KeepClear keepClear, Admit admit) {
+        this(key, entryNpcId, seats, dpsMobIds, voice, memberProblem, registrationBlocker, paceLoader, forOperator,
+                forMember, admitsOnIo, backgroundRuns, beside, keepClear, admit, null);
+    }
+
+    /** An entrance whose own lineup choice prefers {@code branchPreference}'s job branches (null: none). */
+    PqEntrance(String key, int entryNpcId, SeatRules seats, int[] dpsMobIds, DeskVoice voice,
+               BiFunction<Character, Boolean, String> memberProblem,
+               BiFunction<Integer, Collection<Integer>, String> registrationBlocker,
+               Supplier<? extends AgentPqPaceProfile> paceLoader,
+               IntFunction<? extends AgentCompanionRunSession> forOperator,
+               IntFunction<? extends AgentCompanionRunSession> forMember, boolean admitsOnIo,
+               BooleanSupplier backgroundRuns, Beside beside, KeepClear keepClear, Admit admit,
+               BranchPreference branchPreference) {
         this.key = key;
         this.definition = AgentPartyQuestCatalog.require(key);
         this.entryNpcId = entryNpcId;
@@ -102,6 +144,7 @@ public final class PqEntrance {
         this.beside = beside;
         this.keepClear = keepClear;
         this.admit = admit;
+        this.branchPreference = branchPreference;
     }
 
     /** Every entrance by its key, each quest's built in its own file (KpqEntrance, HpqEntrance) in its own slot. */
@@ -220,6 +263,11 @@ public final class PqEntrance {
 
     public SeatRules seatRules() {
         return seats;
+    }
+
+    /** The job branches her own lineup choice prefers (OPQ's five); null for every other quest. */
+    public BranchPreference branchPreference() {
+        return branchPreference;
     }
 
     /** The monsters a companion that can go is weighed against without a clear time (its damage, averaged). */

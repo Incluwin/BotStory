@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.Job;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
@@ -27,8 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * words: OPQ admission's refusals each have her line (said to the leader when they are his), the stock start's
  * refusals are 2013000.js's texts word for word, her clear time has thresholds of its own for the tower's three
  * quarters of an hour (quick under 30 minutes, the clock within 5 minutes of the timer, a range from 5 minutes, a hedge
- * until 3 recorded runs), she only cautions about Papa Pixie (at most two), and nothing she says names another
- * quest's NPC or place.
+ * until 3 recorded runs), she only cautions about Papa Pixie (at most two), she promises her blessing under a lineup
+ * with all five job branches, and nothing she says names another quest's NPC or place.
  */
 class WonkyLinesTest {
     private static final long FORTY_FIVE_MINUTES_MS = 2_700_000L;
@@ -134,6 +135,20 @@ class WonkyLinesTest {
         assertNull(wonky.backAfterReroll(), "the KPQ re-roll never reaches Wonky");
         assertEquals("Before I can send you up:", wonky.blockerHeader());
         assertEquals(GENERIC, wonky.generic());
+    }
+
+    @Test
+    void herBlessingIsSaidUnderALineupWithAllFiveBranches() {
+        LineupPlan five = lineupOf(Job.CLERIC, Job.HUNTER, Job.PAGE, Job.ASSASSIN, Job.BRAWLER);
+        assertEquals("Warrior, magician, bowman, thief and pirate, all together! You'll go up with my blessing.",
+                WonkyLines.VOICE.lineupNote(five));
+        assertEquals(WonkyLines.BLESSING, WonkyLines.VOICE.lineupNote(lineupOf(Job.FIGHTER, Job.CLERIC,
+                Job.CROSSBOWMAN, Job.BANDIT, Job.GUNSLINGER, Job.HUNTER)), "six with all five");
+        assertNull(WonkyLines.VOICE.lineupNote(lineupOf(Job.CLERIC, Job.HUNTER, Job.PAGE, Job.ASSASSIN, Job.FIGHTER,
+                Job.HUNTER)), "no pirate: nothing said, and nothing kept out");
+        assertNull(WonkyLines.VOICE.lineupNote(plan(6)), "a warrior and five archers");
+        assertNull(LakelisLines.VOICE.lineupNote(five), "no other desk has a line for it");
+        assertNull(RedSignLines.VOICE.lineupNote(five));
     }
 
     // ---- how long the tower should take ----------------------------------------------------
@@ -304,6 +319,16 @@ class WonkyLinesTest {
     /** Ben (the leader, 10) and {@code size} - 1 companions at Wonky, Mira (901) first. */
     private static LineupPlan plan(int size) {
         return plan(size, null);
+    }
+
+    /** Ben, a human leader of the first job, and a companion of each of the other jobs. */
+    private static LineupPlan lineupOf(Job... jobs) {
+        List<LineupPlan.Seat> lineup = new ArrayList<>();
+        for (int i = 0; i < jobs.length; i++) {
+            lineup.add(new LineupPlan.Seat(i == 0 ? 10 : 900 + i, "M" + i, 55, jobs[i].getId(), "", i == 0,
+                    i == 0 ? 0 : 10, i == 0 ? null : "m" + i, 200_080_101, true, 0L, 0, 0));
+        }
+        return new LineupPlan("opq", 10, List.copyOf(lineup), List.of(), List.of(), List.of(), null, false, null);
     }
 
     private static LineupPlan plan(int size, LineupPlan.ClearTime clearTime) {

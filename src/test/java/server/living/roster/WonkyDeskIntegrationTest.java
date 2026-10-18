@@ -134,6 +134,8 @@ class WonkyDeskIntegrationTest {
                 + "Six of you, then? These are the ones I'd send up the tower:\r\n#bAnn#k (leader)\r\n"),
                 lineup.text());
         assertTrue(lineup.text().contains("Lv50, not ready for this yet"), lineup.text());
+        assertTrue(lineup.text().contains("\r\n" + WonkyLines.BLESSING + "\r\n"),
+                "Ann's Cleric, a Hunter, a Page, an Assassin and a Brawler: her blessing\r\n" + lineup.text());
         assertEquals("Yes, send us in.", lineup.labels().getFirst(), lineup.text());
 
         pick("Yes, send us in.");

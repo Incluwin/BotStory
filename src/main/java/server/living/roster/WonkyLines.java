@@ -36,6 +36,12 @@ public final class WonkyLines {
     static final String NOT_READY = "not ready for this yet";
     /** Above the tower's level band. */
     static final String PAST_THE_TOWER = "past the tower";
+    /**
+     * Under a lineup with a warrior, a magician, a bowman, a thief and a pirate: OrbisPQ.js gives such a party her
+     * blessing as it goes in (Blessing from Wonky the Fairy).
+     */
+    static final String BLESSING = "Warrior, magician, bowman, thief and pirate, all together! You'll go up with my "
+            + "blessing.";
     /** What a companion she sent for from its bench tells the party as it arrives (lower-case, as they talk). */
     static final String ARRIVAL_LINE = "here! ready for wonky when you are.";
     /** 2013000.js, when the event finds nobody eligible. */
@@ -211,6 +217,11 @@ public final class WonkyLines {
             }
             return WonkyLines.chooseLine(clearTime.estimate(), clearTime.objectiveS(), clearTime.ownObjectiveS(),
                     clearTime.timeS(), clearTime.ownTimeS(), clearTime.timerMs());
+        }
+
+        @Override
+        public String lineupNote(LineupPlan plan) {
+            return OpqEntrance.ALL_FIVE_BRANCHES.metBy(plan.lineup()) ? BLESSING : null;
         }
     };
 

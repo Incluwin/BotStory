@@ -154,11 +154,18 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
      * {@link #TIME_TIE_MS} of it go by their fit (as above, without what they hit for), then usual places, then
      * persona. More than {@link #MAX_LINEUPS} lineups, no estimate, or no lineup that can clear: the choice above.
      * The leader's pick is never changed; it gets its own estimate, and hers to compare with.</p>
+     *
+     * <p>An entrance with a {@link PqEntrance.BranchPreference} (OPQ: all five branches, for Wonky's blessing) has her
+     * own choice prefer the lineups that have its branches: weighed, the quickest of those wins when it is at most the
+     * preference's worth slower than the quickest of all (else the quickest of all, as above); without a weighing,
+     * the choice above is swapped to them when it can be ({@link #withBranches}). A lineup that cannot have them is
+     * chosen as above, and the leader's pick is never changed for them.</p>
      */
     static LineupPlan build(String pqKey, int leaderId, int leaderLevel, List<Candidate> party, Set<Integer> picked,
                             Pace pace) {
         PqEntrance entrance = PqEntrance.of(pqKey);
         PqEntrance.SeatRules seats = entrance.seatRules();
+        PqEntrance.BranchPreference preference = entrance.branchPreference();
         List<Candidate> humans = new ArrayList<>();
         List<Candidate> seatable = new ArrayList<>();
         List<Waiting> waiting = new ArrayList<>();
@@ -183,9 +190,12 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         List<Candidate> pool = picked == null ? seatable
                 : seatable.stream().filter(member -> picked.contains(member.seat().characterId())).toList();
         List<Candidate> chosen = roundRobin(leaderId, leaderLevel, humanSeats, pool, room);
+        if (picked == null) {
+            chosen = withBranches(preference, leaderId, leaderLevel, humanSeats, pool, chosen);
+        }
         ClearTime clearTime = null;
         if (pace != null) {
-            Weighing weighing = new Weighing(pace, leaderId, leaderLevel, humans);
+            Weighing weighing = new Weighing(pace, leaderId, leaderLevel, humans, preference);
             if (picked == null) {
                 Weighed best = weighing.best(seatable, ownRoom, chosen);
                 if (best != null) {
@@ -195,8 +205,8 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             } else {
                 Weighed pick = weighing.weigh(chosen);
                 if (pick != null) {
-                    Weighed own = weighing.best(seatable, ownRoom,
-                            roundRobin(leaderId, leaderLevel, humanSeats, seatable, ownRoom));
+                    Weighed own = weighing.best(seatable, ownRoom, withBranches(preference, leaderId, leaderLevel,
+                            humanSeats, seatable, roundRobin(leaderId, leaderLevel, humanSeats, seatable, ownRoom)));
                     clearTime = weighing.clearTime(pick, own);
                 }
             }
@@ -258,6 +268,75 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         return chosen;
     }
 
+    /**
+     * Her turns' choice {@code chosen} from {@code pool}, swapped to every branch {@code preference} wants between the
+     * humans and the companions (null: it wants none, and {@code chosen} stays as it is). While one is missing, she
+     * swaps a chosen companion for one of the same owner's that is not chosen (so each owner keeps the seats its turns
+     * give it), one that adds a missing branch and loses none; of those swaps, the one that costs least by
+     * {@link #score} (then a usual companion in, one without a usual place out, persona, and the one her turns seated
+     * last out). The swapped lineup is kept only when it gets every branch, shown in the order her turns seat it; else
+     * {@code chosen} as it is, since a lineup still short of a branch gets nothing for the swaps. Two owners trading
+     * branches between them is not searched.
+     */
+    private static List<Candidate> withBranches(PqEntrance.BranchPreference preference, int leaderId, int leaderLevel,
+                                                List<Seat> humans, List<Candidate> pool, List<Candidate> chosen) {
+        if (preference == null || preference.metBy(seats(humans, chosen))) {
+            return chosen;
+        }
+        double bestDps = pool.stream().mapToDouble(Candidate::dps).max().orElse(0.0d);
+        List<Candidate> lineup = new ArrayList<>(chosen);
+        int missing = preference.missing(seats(humans, lineup));
+        while (missing > 0) {
+            List<Swap> swaps = new ArrayList<>();
+            for (int at = 0; at < lineup.size(); at++) {
+                Candidate out = lineup.get(at);
+                Set<Integer> others = new HashSet<>();
+                for (Seat human : humans) {
+                    others.add(human.jobId() / 100);
+                }
+                for (Candidate member : lineup) {
+                    if (member != out) {
+                        others.add(member.seat().jobId() / 100);
+                    }
+                }
+                for (Candidate in : pool) {
+                    if (in.seat().ownerId() != out.seat().ownerId() || lineup.contains(in)) {
+                        continue;
+                    }
+                    List<Candidate> swapped = new ArrayList<>(lineup);
+                    swapped.set(at, in);
+                    if (preference.missing(seats(humans, swapped)) < missing) {
+                        swaps.add(new Swap(at, in, score(in, leaderLevel, others, bestDps)
+                                - score(out, leaderLevel, others, bestDps)));
+                    }
+                }
+            }
+            if (swaps.isEmpty()) {
+                return chosen;
+            }
+            Swap best = swaps.stream().min(Comparator.comparingDouble((Swap swap) -> -swap.gain())
+                    .thenComparing(swap -> !swap.in().usual())
+                    .thenComparing(swap -> lineup.get(swap.at()).usual())
+                    .thenComparing(swap -> swap.in().seat().personaId())
+                    .thenComparing(swap -> -swap.at())).orElseThrow();
+            lineup.set(best.at(), best.in());
+            missing = preference.missing(seats(humans, lineup));
+        }
+        return roundRobin(leaderId, leaderLevel, humans, lineup, lineup.size());
+    }
+
+    /** A companion of the lineup's {@code at}th seat swapped for {@code in}, and what it gains by {@link #score}. */
+    private record Swap(int at, Candidate in, double gain) { }
+
+    /** The humans' seats, then the companions'. */
+    private static List<Seat> seats(List<Seat> humans, List<Candidate> companions) {
+        List<Seat> seats = new ArrayList<>(humans);
+        for (Candidate member : companions) {
+            seats.add(member.seat());
+        }
+        return seats;
+    }
+
     /** The pool by owner, the leader's first, then in party order; each owner's own in party order. */
     private static Map<Integer, List<Candidate>> byOwner(int leaderId, List<Candidate> pool) {
         Map<Integer, List<Candidate>> byOwner = new LinkedHashMap<>();
@@ -313,12 +392,17 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
      */
     private record Weighed(List<Candidate> chosen, AgentPqPaceEstimate estimate, double objectiveS, double timeS) { }
 
-    /** Weighs lineups of the party's companions beside its humans by their clear-time estimate. */
-    private record Weighing(Pace pace, int leaderId, int leaderLevel, List<Candidate> humans) {
+    /**
+     * Weighs lineups of the party's companions beside its humans by their clear-time estimate, preferring the job
+     * branches of {@code preference} (null: none).
+     */
+    private record Weighing(Pace pace, int leaderId, int leaderLevel, List<Candidate> humans,
+                            PqEntrance.BranchPreference preference) {
         /**
-         * Her choice from {@code pool} for {@code room} seats: the quickest lineup the owners' seats allow, or
-         * {@code greedy} (the choice without an estimate) when there are too many to weigh or none can clear; null
-         * when a lineup has no estimate.
+         * Her choice from {@code pool} for {@code room} seats: the quickest lineup the owners' seats allow (of those
+         * with the preference's branches, when one is within its worth of the quickest), or {@code greedy} (the
+         * choice without an estimate) when there are too many to weigh or none can clear; null when a lineup has no
+         * estimate.
          */
         Weighed best(List<Candidate> pool, int room, List<Candidate> greedy) {
             Map<Integer, List<Candidate>> byOwner = byOwner(leaderId, pool);
@@ -348,8 +432,18 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             for (Seat human : humanSeats) {
                 humanBranches.add(human.jobId() / 100);
             }
-            Weighed best = weighed.stream()
-                    .filter(one -> one.objectiveS() <= quickest + TIME_TIE_MS / 1000.0d)
+            List<Weighed> choosable = weighed;
+            if (preference != null) {
+                double worthS = preference.worthMs() / 1000.0d;
+                List<Weighed> preferred = weighed.stream().filter(one -> one.objectiveS() <= quickest + worthS
+                        && preference.metBy(seats(humanSeats, one.chosen()))).toList();
+                if (!preferred.isEmpty()) {
+                    choosable = preferred;
+                }
+            }
+            double fastest = choosable.stream().mapToDouble(Weighed::objectiveS).min().orElseThrow();
+            Weighed best = choosable.stream()
+                    .filter(one -> one.objectiveS() <= fastest + TIME_TIE_MS / 1000.0d)
                     .min(Comparator.comparingDouble((Weighed one) -> -fit(one.chosen(), humanBranches))
                             .thenComparingLong(one -> -one.chosen().stream().filter(Candidate::usual).count())
                             .thenComparing(one -> personas(one.chosen())))
