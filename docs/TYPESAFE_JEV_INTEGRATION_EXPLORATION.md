@@ -199,7 +199,7 @@ Sample request for use case A (abridged):
 ```json
 {
   "model": "jev-latest",
-  "state": { "message": "leroy can u farm around here", "speaker": "ganre",
+  "state": { "message": "leroy can u farm around here", "speaker": "Rowan",
              "bots_present": ["Jason", "Leroy"], "map": "Henesys Hunting Ground I" },
   "questions": {
     "intent": { "type": "choice",

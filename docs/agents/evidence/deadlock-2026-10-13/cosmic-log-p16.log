@@ -13,9 +13,9 @@
 16:55:46.558 [main] INFO  server.Server - Cosmic is now online after 8030 ms.
 16:55:49.363 [knowledge-loader] INFO  knowledge.KnowledgeLoader - [knowledge] loaded 5262 maps, 1564 mobs, 10906 items, 1524 npcs, 2807 quests, 182 script spawns, 66 travel legs, 232 aliases; overlay 22157 drops, 6 global, 3891 shop rows, 1 plife; file 145 ms, overlay 466 ms, total 8639 ms, ~8 MB heap
 16:55:52.823 [main] INFO  server.Server - Loaded Dressing Room in 5797ms.
-16:55:53.300 [main] INFO  set.SetItemManager - SetItemManager: loaded 20 sets covering 193 items from C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\set-items.yml
-16:55:53.386 [main] INFO  equip.SecondaryStatRequirementOverrides - SecondaryStatRequirementOverrides: loaded overrides for 1108 item(s) from C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\..\MapleEdit\app\patches\zero-secondary-stats.json
-16:55:57.919 [main] INFO  test.GmTestQueueWatcher - GmTestQueueWatcher active on C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\logs\gm-command-queue.txt
+16:55:53.300 [main] INFO  set.SetItemManager - SetItemManager: loaded 20 sets covering 193 items from C:\Users\<user>\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\set-items.yml
+16:55:53.386 [main] INFO  equip.SecondaryStatRequirementOverrides - SecondaryStatRequirementOverrides: loaded overrides for 1108 item(s) from C:\Users\<user>\Desktop\MapleServer\FriendServer\BotStory Server\..\MapleEdit\app\patches\zero-secondary-stats.json
+16:55:57.919 [main] INFO  test.GmTestQueueWatcher - GmTestQueueWatcher active on C:\Users\<user>\Desktop\MapleServer\FriendServer\BotStory Server\logs\gm-command-queue.txt
 16:55:58.013 [main] INFO  admin.AdminControlPort - AdminControlPort listening on 127.0.0.1:8480
 16:55:58.030 [main] INFO  admin.AdminControlPort - AdminSsoKey ready — address 923a157f79ab08685002899baa0a6c7e09c2249201379b1bebb7ff31a2a69496
 16:55:58.032 [main] INFO  admin.AdminSampler - AdminSampler started (player 60s, map presence 5min)
@@ -25,7 +25,7 @@
 16:55:58.058 [main] INFO  typesafe.JevClient - TypeSafe System One client initialised: TypeSafeSettings[endpoint=https://api.typesafe.ai/v1/systemone, model=jev-latest, timeoutMs=1500, apiKey=<set>]
 16:55:58.059 [main] INFO  typesafe.JevUsageReporter - TypeSafe usage reporting every 30 min to the log and logs\typesafe-usage.csv
 16:55:59.227 [main] INFO  phrases.PhraseMatcher - Phrase packs: 56 commands, 15 learned phrases
-16:55:59.443 [main] INFO  living.LivingWorld - Living world started: personas=72 recruitable=24 towns={ellinia=10, henesys=13, kerning-city=12, lith-harbor=10, nautilus=8, perion=12, sleepywood=7} quests=197 contracts=25 arcs=9 rumors=7 loadouts=32 phrases=56 (world 0 channel 1, content C:\Users\ganre\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\living-world)
+16:55:59.443 [main] INFO  living.LivingWorld - Living world started: personas=72 recruitable=24 towns={ellinia=10, henesys=13, kerning-city=12, lith-harbor=10, nautilus=8, perion=12, sleepywood=7} quests=197 contracts=25 arcs=9 rumors=7 loadouts=32 phrases=56 (world 0 channel 1, content C:\Users\<user>\Desktop\MapleServer\FriendServer\BotStory Server\scripts\config\living-world)
 16:55:59.669 [main] INFO  population.Population - Population started: 902 citizens (cohorts=5 careers=12 voices=5 regions=17 fields=618 intents=42), 717 target, 240 online max, channels [1]
 16:55:59.672 [main] INFO  server.Server - Database Console bridge disabled. Set COSMIC_DATABASE_CONSOLE_BRIDGE_ENABLED=true to enable it.
 16:55:59.674 [main] INFO  server.Server - Agent Director panel bridge disabled. Set COSMIC_DIRECTOR_PANEL_ENABLED=true to enable it.

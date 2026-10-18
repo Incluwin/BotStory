@@ -43,7 +43,7 @@ class AgentOfferReplyJudgeTest {
 
     @Test
     void stateDescribesWhoGivesWhat() {
-        Map<String, Object> state = AgentOfferReplyJudge.state("keep it", "ganre", "Jason", "Red Whip", false);
+        Map<String, Object> state = AgentOfferReplyJudge.state("keep it", "Rowan", "Jason", "Red Whip", false);
         @SuppressWarnings("unchecked")
         Map<String, Object> offer = (Map<String, Object>) state.get("pending_offer");
         assertEquals("Red Whip", offer.get("item"));
@@ -56,7 +56,7 @@ class AgentOfferReplyJudgeTest {
                 new JevAnswer("choice", option, Map.of(option, confidence), null, null, Map.of(), confidence)),
                 300L, 0L, 80L));
         Optional<AgentOfferReplyJudge.Decision> decision = new AgentOfferReplyJudge(client, 0.7d)
-                .judge(AgentOfferReplyJudge.state("whatever", "ganre", "Jason", "Red Whip", true));
+                .judge(AgentOfferReplyJudge.state("whatever", "Rowan", "Jason", "Red Whip", true));
         return decision.orElseThrow();
     }
 }

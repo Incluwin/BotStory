@@ -264,7 +264,7 @@ Updated after the review of cbb8e8879: B1 (the restore trap), B2 ('!hpmp 0'), B3
 Rules: GM commands only for setup, fault injection and walking; never to do a companion's job. Abort a run with
 '!epqtest stop' (never '!warp' out of the instance). Record every GM command used (logwatch prints 'Chr <name> used
 command <Class>' lines).
-Tools: VENV = C:/Users/ganre/Desktop/MapleServer/tools/cua/.venv/Scripts/python.exe; KIT = scratchpad/pqkit.
+Tools: VENV = C:/Users/<user>/Desktop/MapleServer/tools/cua/.venv/Scripts/python.exe; KIT = scratchpad/pqkit.
 - Driver: write KIT/pqs/epq.py on the kpq/hpq pattern (stage handlers that hold near the companions; loot at his feet on
   the 'EPQ handover:' lines with the leader's loot key; Ellin up top on 930000400 via '!stepto npc 2133001'; the sprite
   via '!stepto npc 2133004'; the altar drop by dragging the stone from the Etc tab onto the floor x 301..475, with

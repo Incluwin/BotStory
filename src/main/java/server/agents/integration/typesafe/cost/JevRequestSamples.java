@@ -31,9 +31,9 @@ public final class JevRequestSamples {
         samples.put(TypeSafeDirectorProposalProvider.SELECT_KIND, directorSelect());
         samples.put(TypeSafeDirectorProposalProvider.RANK_KIND, directorRank());
         samples.put(JevNameScreen.REQUEST_KIND, JevNameScreen.request("Adm1nJohn"));
-        samples.put(JevReportTriage.REQUEST_KIND, JevReportTriage.request("ganre", "Bob",
+        samples.put(JevReportTriage.REQUEST_KIND, JevReportTriage.request("Rowan", "Bob",
                 "he keeps spamming meso selling links in henesys",
-                "Bob: cheap mesos 1m = 2usd pm me\nBob: fast delivery\nganre: stop\nBob: cheap mesos 1m = 2usd"));
+                "Bob: cheap mesos 1m = 2usd pm me\nBob: fast delivery\nRowan: stop\nBob: cheap mesos 1m = 2usd"));
         return samples;
     }
 
@@ -41,7 +41,7 @@ public final class JevRequestSamples {
         JevState state = JevState.create()
                 .put("message", "leroy can u farm around here pls", 100)
                 .put("channel", "map chat", 70)
-                .put("speaker", Map.of("name", "ganre", "is_owner", true, "level", 34), 90)
+                .put("speaker", Map.of("name", "Rowan", "is_owner", true, "level", 34), 90)
                 .put("bot", Map.of("name", "Leroy", "level", 31, "job", "Fighter", "hp", "high",
                         "mp", "about half", "activity", "following its leader", "map", "Henesys Hunting Ground I"), 80)
                 .put("last_owner_command", Map.of("text", "follow me", "when", "about 2 minutes ago"), 60);
@@ -50,14 +50,14 @@ public final class JevRequestSamples {
 
     public static JevRequest partyQuest() {
         return AgentPartyQuestDialogueJudge.request(
-                AgentPartyQuestDialogueJudge.state("ganre", "wait how many do i need again", "Kerning City Party Quest",
+                AgentPartyQuestDialogueJudge.state("Rowan", "wait how many do i need again", "Kerning City Party Quest",
                         "Stage 1", "each member asks Cloto for a question and reports how many coupons it needs", "party member"),
                 List.of(new AgentPartyQuestDialogueJudge.Question("asks_coupon_count",
                         "Is the speaker asking how many coupons or tickets they need, or asking for the answer to their stage question?")));
     }
 
     public static JevRequest offerReply() {
-        return AgentOfferReplyJudge.request(AgentOfferReplyJudge.state("nah keep it", "ganre", "Leroy", "Red Whip", false));
+        return AgentOfferReplyJudge.request(AgentOfferReplyJudge.state("nah keep it", "Rowan", "Leroy", "Red Whip", false));
     }
 
     public static JevRequest directorSelect() {

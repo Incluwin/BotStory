@@ -1346,7 +1346,7 @@ These items were open findings in version 1. Each one now has an owner.
 
 ## Details
 
-- I edited no worktree file. I read the P8 worktree at C:/Users/ganre/AppData/Local/Temp/claude/C--Users-ganre-Desktop-MapleServer/57350396-c11f-43a7-ab35-10105dd00020/scratchpad/wt-fix, branch feat/companion-bossing-p8. Another workflow commits there.
+- I edited no worktree file. I read the P8 worktree at C:/Users/<user>/AppData/Local/Temp/claude/C--Users-<user>-Desktop-MapleServer/57350396-c11f-43a7-ab35-10105dd00020/scratchpad/wt-fix, branch feat/companion-bossing-p8. Another workflow commits there.
 - P8 commits on that branch: step 1 c04831a96, step 2 d3b4f2f3a, step 3 e0479798d and 1d307ee13, step 4 e452f77e0, step 5 9f44389c3, step 6 d3b5c4c26, step 7 4dd36710e. The tip was 4dd36710e at my last read, with a clean working tree.
 - The Zakum leader lines (2030013.js:119-121) were read at 9f44389c3 and still hold at 4dd36710e.
 - Line numbers I re-checked for this version are at 9f44389c3. Other line numbers are at f5b8c0ab5, as in version 1. Locate code by content where they moved.

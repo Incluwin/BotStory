@@ -30,7 +30,7 @@ class AgentPartyQuestDialogueJudgeTest {
                     "says_ready", new JevAnswer("noul", null, Map.of(), 0.12d, null, Map.of(), null)),
                     400L, 0L, 90L);
         });
-        Map<String, Object> state = AgentPartyQuestDialogueJudge.state("ganre", "wait how many do i need again",
+        Map<String, Object> state = AgentPartyQuestDialogueJudge.state("Rowan", "wait how many do i need again",
                 "Kerning City Party Quest", "Stage 1", "report coupon counts", "party member");
 
         Optional<AgentPartyQuestDialogueJudge.Verdict> verdict = AgentPartyQuestDialogueJudge.judge(client, state, List.of(

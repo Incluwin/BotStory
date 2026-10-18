@@ -66,8 +66,8 @@ class JevModerationTest {
 
     @Test
     void reportTriageRequestIncludesChatLogOnlyWhenPresent() {
-        JevRequest with = JevReportTriage.request("ganre", "Bob", "he keeps spamming", "Bob: buy mesos at ...");
-        JevRequest without = JevReportTriage.request("ganre", "Bob", "hacking", "");
+        JevRequest with = JevReportTriage.request("Rowan", "Bob", "he keeps spamming", "Bob: buy mesos at ...");
+        JevRequest without = JevReportTriage.request("Rowan", "Bob", "hacking", "");
         @SuppressWarnings("unchecked")
         Map<String, Object> withState = (Map<String, Object>) with.state();
         @SuppressWarnings("unchecked")
