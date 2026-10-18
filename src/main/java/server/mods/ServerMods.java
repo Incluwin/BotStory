@@ -23,8 +23,15 @@ public final class ServerMods {
     public static final ServerMod CLIENT_FEATURE_POLICY = new ServerMod("client_feature_policy",
             "Client feature policy at login (mods.FEATURES)", true);
 
+    /**
+     * A Beginner whose client has the {@code beginner_ap} feature active keeps the AP of each level-up to place
+     * (Character.levelUp); without it USE_AUTOASSIGN_STARTERS_AP spends a Beginner's AP for them, as before.
+     */
+    public static final ServerMod BEGINNER_AP = new ServerMod("beginner_ap",
+            "Beginners place their own AP (client feature beginner_ap)", false);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
-    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY);
+    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, BEGINNER_AP);
 
     private static volatile ServerMods instance;
 

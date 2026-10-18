@@ -65,20 +65,24 @@ class ServerModsTest {
     }
 
     @Test
-    void theRegistryHoldsTheClientFeaturePolicyOnByDefault() {
-        assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY), ServerMods.ALL);
+    void theRegistryHoldsTheClientFeaturePolicyOnAndBeginnerApOffByDefault() {
+        assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.BEGINNER_AP), ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
+        assertFalse(ServerMods.BEGINNER_AP.defaultOn());
+        assertEquals("beginner_ap", ServerMods.BEGINNER_AP.id());
     }
 
     @Test
-    void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowed() {
-        assertEquals(Map.of("client_feature_policy", "on"), YamlConfig.config.mods.SWITCHES);
+    void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowedAndBeginnerApOff() {
+        assertEquals(Map.of("client_feature_policy", "on", "beginner_ap", "off"), YamlConfig.config.mods.SWITCHES);
         FeaturePolicy shipped = FeaturePolicy.parse(YamlConfig.config.mods.FEATURES, YamlConfig.config.mods.SERVER_GATED_DEFAULT);
-        assertEquals(Map.of("free_addy", new Rule(Decision.ALLOW, 0), "ext_chain_lightning", new Rule(Decision.ALLOW, 0)),
-                shipped.rules());
+        assertEquals(Map.of("free_addy", new Rule(Decision.ALLOW, 0), "ext_chain_lightning", new Rule(Decision.ALLOW, 0),
+                "beginner_ap", new Rule(Decision.ALLOW, 0)), shipped.rules());
         assertEquals(Decision.DENY, shipped.gatedDefault());
-        assertTrue(new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES).isOn(ServerMods.CLIENT_FEATURE_POLICY));
+        ServerMods mods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
+        assertTrue(mods.isOn(ServerMods.CLIENT_FEATURE_POLICY));
+        assertFalse(mods.isOn(ServerMods.BEGINNER_AP));
     }
 
     @Test

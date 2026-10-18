@@ -1096,8 +1096,11 @@ mods:
     # One switch per server mod (server.mods.ServerMods), read at boot; "!mods <id> on|off" flips one until the next
     # restart. A mod with no line here takes its own default.
     #   client_feature_policy  answer client feature lists from FEATURES below; off: every feature is allowed
+    #   beginner_ap            a Beginner whose client has beginner_ap active keeps each level-up's AP to place;
+    #                          off: USE_AUTOASSIGN_STARTERS_AP spends it for them
     SWITCHES:
         client_feature_policy: on
+        beginner_ap: off
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays
@@ -1106,10 +1109,12 @@ mods:
     # A number after the word is the oldest feature version it holds for ("require 2"): an older version is denied
     # where the line allows it and counts as lacking where it requires it. "!mods feature <id> ..." changes a line
     # until the next restart. Gameplay features (free_addy: damage cap 999,999 and speed cap 250;
-    # ext_chain_lightning: Chain Lightning range and no damage dropoff) are server_gated in the client.
+    # ext_chain_lightning: Chain Lightning range and no damage dropoff; beginner_ap: the stat window lets Beginners
+    # place AP at level 10 and below, given AP by the beginner_ap switch above) are server_gated in the client.
     FEATURES:
         free_addy: allow
         ext_chain_lightning: allow
+        beginner_ap: allow
     # The answer for a server_gated feature FEATURES does not name (allow or deny): a new gameplay mod waits for a
     # line here.
     SERVER_GATED_DEFAULT: deny
