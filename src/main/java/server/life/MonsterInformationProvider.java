@@ -39,12 +39,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MonsterInformationProvider {
     private static final Logger log = LoggerFactory.getLogger(MonsterInformationProvider.class);
@@ -56,21 +55,25 @@ public class MonsterInformationProvider {
         return instance;
     }
 
-    private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<>();
+    // Every cache below is filled lazily from whichever thread kills, spawns or reads a monster (channel threads and
+    // Agent ticks), so each must be thread-safe: a plain HashMap threw ConcurrentModificationException from
+    // continentDrops.computeIfAbsent on monster death. Ported from asaf-shitrit/Cosmic
+    // fix/continent-drops-concurrent-map, widened from its four caches to every lazily filled one.
+    private final Map<Integer, List<MonsterDropEntry>> drops = new ConcurrentHashMap<>();
     private final List<MonsterGlobalDropEntry> globaldrops = new ArrayList<>();
-    private final Map<Integer, List<MonsterGlobalDropEntry>> continentDrops = new HashMap<>();
+    private final Map<Integer, List<MonsterGlobalDropEntry>> continentDrops = new ConcurrentHashMap<>();
 
-    private final Map<Integer, List<Integer>> dropsChancePool = new HashMap<>();    // thanks to ronan
-    private final Set<Integer> hasNoMultiEquipDrops = new HashSet<>();
-    private final Map<Integer, List<MonsterDropEntry>> extraMultiEquipDrops = new HashMap<>();
+    private final Map<Integer, List<Integer>> dropsChancePool = new ConcurrentHashMap<>();    // thanks to ronan
+    private final Set<Integer> hasNoMultiEquipDrops = ConcurrentHashMap.newKeySet();
+    private final Map<Integer, List<MonsterDropEntry>> extraMultiEquipDrops = new ConcurrentHashMap<>();
 
-    private final Map<Pair<Integer, Integer>, Integer> mobAttackAnimationTime = new HashMap<>();
-    private final Map<MobSkill, Integer> mobSkillAnimationTime = new HashMap<>();
+    private final Map<Pair<Integer, Integer>, Integer> mobAttackAnimationTime = new ConcurrentHashMap<>();
+    private final Map<MobSkill, Integer> mobSkillAnimationTime = new ConcurrentHashMap<>();
 
-    private final Map<Integer, Pair<Integer, Integer>> mobAttackInfo = new HashMap<>();
+    private final Map<Integer, Pair<Integer, Integer>> mobAttackInfo = new ConcurrentHashMap<>();
 
-    private final Map<Integer, Boolean> mobBossCache = new HashMap<>();
-    private final Map<Integer, String> mobNameCache = new HashMap<>();
+    private final Map<Integer, Boolean> mobBossCache = new ConcurrentHashMap<>();
+    private final Map<Integer, String> mobNameCache = new ConcurrentHashMap<>();
 
     protected MonsterInformationProvider() {
         retrieveGlobal();
@@ -102,7 +105,9 @@ public class MonsterInformationProvider {
                         rs.getInt("minimum_mob_level"),
                         rs.getInt("maximum_mob_level")));
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
+            // IllegalStateException = the pool is not up yet. The singleton is built in the class initializer, so
+            // letting it escape would leave the class unloadable (NoClassDefFoundError) for the rest of the JVM.
             log.error("Error retrieving global drops", e);
         }
     }
@@ -151,8 +156,9 @@ public class MonsterInformationProvider {
     }
 
     public final List<MonsterDropEntry> retrieveDrop(final int monsterId) {
-        if (drops.containsKey(monsterId)) {
-            return drops.get(monsterId);
+        List<MonsterDropEntry> cached = drops.get(monsterId);    // one read: a reload can clear between two
+        if (cached != null) {
+            return cached;
         }
         final List<MonsterDropEntry> ret = new LinkedList<>();
 
@@ -175,8 +181,9 @@ public class MonsterInformationProvider {
     }
 
     public final List<Integer> retrieveDropPool(final int monsterId) {  // ignores Quest and Party Quest items
-        if (dropsChancePool.containsKey(monsterId)) {
-            return dropsChancePool.get(monsterId);
+        List<Integer> cachedPool = dropsChancePool.get(monsterId);
+        if (cachedPool != null) {
+            return cachedPool;
         }
 
         ItemInformationProvider ii = ItemInformationProvider.getInstance();

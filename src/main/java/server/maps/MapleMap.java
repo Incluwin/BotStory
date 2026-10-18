@@ -1658,6 +1658,7 @@ public class MapleMap {
             return false;
         }
         monster.dispatchMonsterRemovedWithoutKill();
+        dismissRemoveAfter(monster);    // as for a death: drop its pending removeAfter task now
         broadcastMessage(PacketCreator.killMonster(monster.getObjectId(), 1), monster.getPosition());
         monster.aggroSwitchController(null, false);
         return true;

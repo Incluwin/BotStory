@@ -1007,6 +1007,10 @@ public class Monster extends AbstractLoadedLife {
                 eim.friendlyKilled(this, hasKiller);
             }
         }
+        // a dead mob's removeAfter task would otherwise sit in the map scheduler, holding the mob, until it fires
+        // (9400547 schedules one 90000 s out); the task is a no-op on a removed mob, so running it now just drops it.
+        // Ported from breakcraft/Cosmic pull-300.
+        getMap().dismissRemoveAfter(this);
     }
 
     private synchronized void processMonsterKilled(boolean hasKiller) {
