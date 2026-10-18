@@ -117,7 +117,9 @@ class AgentSupplyReadinessTest {
         // Ellin's desk passes partyQuest("epq") (CompanionPartyQuestService.waitingReason), as the duty does.
         AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character mage = withJob(Job.FP_WIZARD);
-        when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
+        client.inventory.Inventory use = mock(client.inventory.Inventory.class);
+        when(use.countById(2_050_001)).thenReturn(10); // EPQ's darkness cures (2026-10-17) are in: potions only here
+        when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(use);
         int[] carried = {349, 350};
         try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
             potions.when(() -> AgentPotionService.countPotions(mage)).thenAnswer(inv -> carried.clone());

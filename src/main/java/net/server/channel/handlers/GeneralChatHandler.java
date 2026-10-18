@@ -73,6 +73,7 @@ public final class GeneralChatHandler extends AbstractPacketHandler {
 
             AgentPartyQuestLobbyRuntime.observeChat(chr, s, currentServerTime());
             AgentKpqHumanDialogueRuntime.observeChat(chr, s, currentServerTime());
+            server.agents.capabilities.partyquest.rjpq.AgentRjpqSessionRegistry.answerLetterInChat(chr.getId(), s);
             if (!server.living.LivingWorldHooks.chat(chr, s)) {
                 AgentInteractionRuntime.handleLeaderChat(chr, s, AgentReplyChannel.MAP);
             }

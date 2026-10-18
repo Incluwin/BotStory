@@ -112,6 +112,30 @@ class CompanionRestockLinesTest {
     }
 
     @Test
+    void aCompanionShortOnlyOfCuresNamesTheKindItsDutyLacks() {
+        // 2026-10-17: party quest bosses blind (Eyedrops) as well as seal (Holy Water)
+        client.Character bot = mock(client.Character.class);
+        when(bot.getId()).thenReturn(901);
+        client.inventory.Inventory use = new client.inventory.Inventory(bot, client.inventory.InventoryType.USE,
+                (byte) 24);
+        when(bot.getInventory(client.inventory.InventoryType.USE)).thenReturn(use);
+        AgentSupplyReadiness.Shortfall curesOnly = new AgentSupplyReadiness.Shortfall(0, 0, 0, 10);
+        AgentSupplyReadiness.Activity[] duty = {AgentSupplyReadiness.Activity.partyQuest("rjpq")};
+        AgentSupplyReadiness.install(id -> duty[0]);
+        try {
+            assertEquals("eyedrops", CompanionRestockLines.need(bot, curesOnly), "Frankenroid only blinds");
+            duty[0] = AgentSupplyReadiness.Activity.partyQuest("lpq");
+            assertEquals("holy water and eyedrops", CompanionRestockLines.need(bot, curesOnly));
+            use.addItem(testutil.Items.itemWithQuantity(2_050_001, 10));
+            assertEquals("holy water", CompanionRestockLines.need(bot, curesOnly), "its Eyedrops are in");
+            duty[0] = AgentSupplyReadiness.Activity.partyQuest("horntail_cure");
+            assertEquals("holy water", CompanionRestockLines.need(bot, curesOnly));
+        } finally {
+            AgentSupplyReadiness.install(null);
+        }
+    }
+
+    @Test
     void aStillShortLineNamesWhatItStillLacksAndLeavesTheThanksToTheGift() {
         // the trade window's completion ("ty!") and the card's coin ("ty! appreciate it." from a companion short of
         // its potions) thank already: the still-short line that follows them within seconds does not thank again

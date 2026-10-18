@@ -37,6 +37,8 @@ final class CompanionRestockLines {
     static final String NO_SHOP_AMMO = "restock.noShopAmmo";
     /** 2026-10-14 (P18): what a companion short only of seal cures says it lacks in its ammo lines. */
     static final String CURES = "holy water";
+    /** 2026-10-17: what a companion short only of darkness cures (a party quest's) says it lacks. */
+    static final String DARKNESS_CURES = "eyedrops";
     /**
      * After its broke line, someone handed it mesos or supplies that still do not pay for its trip
      * (AgentSupplyReadiness.Rule.stillShort): it says it is still short of "{need}". The gift's own path thanks
@@ -132,7 +134,23 @@ final class CompanionRestockLines {
         if (shortfall.ammo() > 0) {
             return ammoWord(bot);
         }
-        return shortfall.cure() > 0 ? CURES : POTIONS;
+        return shortfall.cure() > 0 ? cureWord(bot) : POTIONS;
+    }
+
+    /**
+     * What {@code bot} calls the cures it lacks for its standing duty (AgentSupplyReadiness.standing): "holy water"
+     * for seal cures, "eyedrops" for darkness cures (2026-10-17), both when it lacks both; "holy water" when neither
+     * can be told.
+     */
+    static String cureWord(Character bot) {
+        AgentSupplyReadiness.Activity activity = bot == null ? null : AgentSupplyReadiness.standing(bot.getId());
+        boolean seal = AgentSupplyReadiness.cureShortfall(bot, activity, AgentSupplyReadiness.CureKind.SEAL) > 0;
+        boolean darkness = AgentSupplyReadiness.cureShortfall(bot, activity,
+                AgentSupplyReadiness.CureKind.DARKNESS) > 0;
+        if (darkness) {
+            return seal ? CURES + " and " + DARKNESS_CURES : DARKNESS_CURES;
+        }
+        return CURES;
     }
 
     /**

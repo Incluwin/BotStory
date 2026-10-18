@@ -30,6 +30,13 @@ public final class AgentLmpqDefinition {
     public static final int ROOM_MARKER_MESOS = 10;
     public static final Set<Integer> BOX_REACTORS = Set.of(
             8_091_000, 8_091_001, 8_091_002, 8_091_003, 8_091_004, 8_098_000);
+    /**
+     * 2026-10-17: the rooms whose boxes summon Tauromacis (JP) (9400218), which drops 25-50 coupons (drop data 152):
+     * in Room 6 all three boxes do (8091004 two of them, each 8098000 three, as 8098000.js keys its summons on the
+     * distance from 809050005), in Room 7 the 8091004 box two. Pietri pays 50 EXP a coupon (9103000.js), so the run
+     * works these rooms out before it regroups (AgentLmpqCoordinator.readyToRegroup).
+     */
+    public static final Set<Integer> TAUROMACIS_ROOMS = Set.of(6, 7);
     public static final Set<Integer> COUPON_MOBS = Set.of(
             9_400_209, 9_400_210, 9_400_211, 9_400_212, 9_400_213,
             9_400_214, 9_400_215, 9_400_216, 9_400_217, 9_400_218);

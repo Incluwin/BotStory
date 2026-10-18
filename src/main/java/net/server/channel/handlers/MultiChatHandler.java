@@ -69,6 +69,8 @@ public final class MultiChatHandler extends AbstractPacketHandler {
             // Allow bot commands ("come", "follow", "stop"...) issued via party chat
             // so the owner doesn't have to be on the same map.
             AgentKpqHumanDialogueRuntime.observeChat(player, chattext, currentServerTime());
+            server.agents.capabilities.partyquest.rjpq.AgentRjpqSessionRegistry.answerLetterInChat(player.getId(),
+                    chattext);
             AgentInteractionRuntime.handleLeaderChat(player, chattext, AgentReplyChannel.PARTY);
         } else if (type == 2 && player.getGuildId() > 0) {
             Server.getInstance().guildChat(player.getGuildId(), player.getName(), player.getId(), chattext);

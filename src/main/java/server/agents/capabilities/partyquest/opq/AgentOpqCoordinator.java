@@ -70,7 +70,6 @@ final class AgentOpqCoordinator {
     private static final Point LOBBY_UPPER_PLATFORM = new Point(-1717, -926);
     private static final Point ROOT_POT = new Point(-755, 19);
     private static final Point MINERVA_BASE = new Point(-48, -916);
-    private static final List<int[]> SEALED_COMBINATIONS = sealedCombinations();
 
     private AgentOpqCoordinator() { }
 
@@ -475,10 +474,10 @@ final class AgentOpqCoordinator {
     }
 
     private static void assignSealedPlatforms(AgentOpqSession session, List<AgentOpqMemberState> holders) {
-        int[] combination = SEALED_COMBINATIONS.get(Math.min(session.sealedAttempt(), SEALED_COMBINATIONS.size() - 1));
+        AgentOpqSealedSearch.Split split = session.sealedGuess();
         int holder = 0;
         for (int platform = 0; platform < 3; platform++) {
-            for (int count = 0; count < combination[platform]; count++) holders.get(holder++).assignPlatform(platform);
+            for (int count = 0; count < split.on(platform); count++) holders.get(holder++).assignPlatform(platform);
         }
     }
 
@@ -609,10 +608,32 @@ final class AgentOpqCoordinator {
                 .map(m -> character(m.characterId())).filter(java.util.Objects::nonNull).toList();
         if (holders.size() != 3 || !sealedFormationReady(session, holders)) return;
         if (nowMs - session.sealedCheckedAtMs() < 1_500L) return;
+        AgentOpqSealedSearch.Split checked = session.sealedGuess();
         if (runEak(session, entry, agent, EakKind.SEALED, session.sealedAttempt() + 1)) {
-            if (propertyInt(agent, "statusStg4") != 1) session.advanceSealedAttempt(nowMs);
-            else session.markProgress(nowMs);
+            if (propertyInt(agent, "statusStg4") != 1) {
+                String answer = session.advanceSealedAttempt(nowMs);
+                logSealed(session, checked, answer);
+            } else {
+                session.markProgress(nowMs);
+                AgentOpqSealedSplitMemory.current().recordSolved(checked);
+                logSealed(session, checked, "sealed");
+            }
             session.markSealedChecked(nowMs);
+        }
+    }
+
+    /**
+     * 'OPQ sealed: session= split= answer= candidates= solvedBefore=' after each of the leader's sealed checks (every
+     * mode): the split the holders stood in, Eak's answer (one-right, all-wrong, unheard, unheard-dropped, sealed), the
+     * splits still possible and how often this server had solved that split before.
+     */
+    private static void logSealed(AgentOpqSession session, AgentOpqSealedSearch.Split checked, String answer) {
+        try {
+            int solved = AgentOpqSealedSplitMemory.current().solvedCount(checked);
+            log.info("OPQ sealed: session={} split={} answer={} candidates={} solvedBefore={}", session.sessionId(),
+                    checked.key(), answer, session.sealedCandidateCount(), "sealed".equals(answer) ? solved - 1 : solved);
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
         }
     }
 
@@ -1440,14 +1461,6 @@ final class AgentOpqCoordinator {
         int best = -1, distance = Integer.MAX_VALUE;
         for (int i = 0; i < ys.length; i++) if (Math.abs(y - ys[i]) < distance) { distance = Math.abs(y - ys[i]); best = i; }
         return distance <= 150 ? best : -1;
-    }
-
-    private static List<int[]> sealedCombinations() {
-        List<int[]> result = new ArrayList<>();
-        for (int left = 0; left <= 3; left++) for (int middle = 0; middle <= 3 - left; middle++) {
-            result.add(new int[]{left, middle, 3 - left - middle});
-        }
-        return List.copyOf(result);
     }
 
     private static boolean near(Point first, Point second, int radius) {

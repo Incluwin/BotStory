@@ -149,6 +149,11 @@ class AgentSupplyReadinessRuntimeTest {
     private final Map<Integer, Integer> ammo = new HashMap<>();
     /** What AgentShopService.readinessAmmoPlan answers: by default it reaches any standard for nothing. */
     private AgentShopService.ReadinessAmmoPlan ammoPlan = new AgentShopService.ReadinessAmmoPlan(Integer.MAX_VALUE, 0L, 0);
+    /**
+     * What AgentShopService.readinessCurePlan answers: by default the shop sells no cure, so a duty with a cure
+     * standard (EPQ's Eyedrops since 2026-10-17; the mocked Use tab holds none) only shops for its potions.
+     */
+    private AgentShopService.ReadinessCurePlan curePlan = AgentShopService.ReadinessCurePlan.NONE_SOLD;
     private MockedStatic<AgentAmmoService> ammoService;
     private MockedStatic<AgentShopService> shopService;
     private MockedStatic<AgentShopGatewayRuntime> shopGateway;
@@ -171,6 +176,8 @@ class AgentSupplyReadinessRuntimeTest {
         shopService.when(() -> AgentShopService.plannedAmmoSpend(any(), any())).thenAnswer(inv -> ammoSpend);
         shopService.when(() -> AgentShopService.readinessAmmoPlan(any(), any(), anyInt(), any()))
                 .thenAnswer(inv -> ammoPlan);
+        shopService.when(() -> AgentShopService.readinessCurePlan(any(), any(), any()))
+                .thenAnswer(inv -> curePlan);
         shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(true)))
                 .thenAnswer(inv -> redStack.contains(((Character) inv.getArgument(0)).getId()));
         shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(false)))
@@ -2022,6 +2029,48 @@ class AgentSupplyReadinessRuntimeTest {
 
         assertFalse(execution(entry).suppressed(AgentResourceCategory.HP_POTION, 2_200L),
                 "an ammo-only trip carries HP_POTION too: readiness keeps its own cooldowns");
+    }
+
+    // ---- party quest cures (2026-10-17) ----------------------------------------------------
+
+    private static final AgentSupplyReadiness.Activity LPQ = AgentSupplyReadiness.Activity.partyQuest("lpq");
+
+    @Test
+    void curesItCannotAffordNeverCostAPotionTripItsTrip() {
+        // LPQ's Holy Water and Eyedrops ride along: the cure step buys what the purse has left past the reserve
+        curePlan = new AgentShopService.ReadinessCurePlan(2_050_003, 20, 1_000_000L, 2);
+        Character rurik = companion(560, "Rurik", Job.FIGHTER, 14, 21, 30_000);
+        activities.put(560, LPQ);
+        AgentRuntimeEntry entry = following(rurik);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, rurik, 1_000L));
+        assertTrue(execution(entry).isActive(), calls.toString());
+        assertEquals(List.of("started 560 50000"), calls);
+    }
+
+    @Test
+    void aTripForCuresAloneMustAffordThem() {
+        curePlan = new AgentShopService.ReadinessCurePlan(2_050_003, 20, 7_000L, 2);
+        Character yara = companion(561, "Yara", Job.CLERIC, 40, 50, 6_000);
+        activities.put(561, LPQ);
+        AgentRuntimeEntry entry = following(yara);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, yara, 1_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 561 CANNOT_AFFORD 1000"), calls, "10 Holy Water and 10 Eyedrops cost 7,000");
+
+        purses.put(561, 7_000);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, yara, 6_000L), "its potions are fine: a cure trip");
+    }
+
+    @Test
+    void aShortOfCuresOnlyCompanionStaysPutWhereTheStoreSellsNone() {
+        Character yara = companion(562, "Yara", Job.CLERIC, 40, 50, 100_000);
+        activities.put(562, LPQ);
+        AgentRuntimeEntry entry = following(yara);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, yara, 1_000L));
+        assertFalse(execution(entry).isActive(), calls.toString());
     }
 
     // ---- fixture ---------------------------------------------------------------------------

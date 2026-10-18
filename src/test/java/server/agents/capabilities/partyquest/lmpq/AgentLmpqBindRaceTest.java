@@ -65,6 +65,9 @@ class AgentLmpqBindRaceTest {
     @Test
     void aMemberStillEnteringIsCounted() {
         AgentLmpqSession session = leaderJustInside();
+        // Rooms 6 and 7 worked out, so the Tauromacis hold (AgentLmpqTauromacisHoldTest) lets 36 coupons regroup.
+        session.rooms().depleted(6, mira.getId(), 2_000L);
+        session.rooms().depleted(7, mira.getId(), 2_000L);
         when(mira.getItemQuantity(AgentLmpqDefinition.COUPON, false)).thenReturn(36);
 
         AgentLmpqCoordinator.tickSession(session, 10_000L);

@@ -78,6 +78,7 @@ final class AgentRjpqStagePlay {
     static void play(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
                      AgentRjpqMemberState member, long nowMs) {
         int stageMap = session.side().zenumistMap(agent.getMapId());
+        acknowledgeLetterAnswer(session, agent);
         if (AgentRjpqTerminationService.pastTheClear(session.eventInstance())) {
             claim(session, entry, agent, member, nowMs);
         } else if (stageMap == AgentRjpqDefinition.BOOKS_MAP) {
@@ -132,7 +133,13 @@ final class AgentRjpqStagePlay {
         log.info("RJPQ book: session={} side={} member={} book={} opened={}", session.sessionId(), side.key(),
                 agent.getId(), book.objectId(), opened);
         if (AgentRjpqCoordinator.actions().itemCount(agent, side.letterItemId()) > lettersBefore) {
-            AgentRjpqDialogue.narrate(session, "B3", agent, AgentRjpqCompanionPlay.letterFound(side));
+            session.letterFound(agent.getId());
+            if (AgentRjpqDialogue.narrate(session, "B3", agent, AgentRjpqCompanionPlay.letterFound(side))) {
+                AgentRjpqDialogue.narrate(session, "B3b", agent, AgentRjpqCompanionPlay.letterWhy(side));
+                session.markLetterAsked();
+            }
+            log.info("RJPQ letter: session={} side={} holder={} asked={}", session.sessionId(), side.key(),
+                    agent.getId(), session.letterQuestionOpen());
         }
         if (intProperty(agent, "statusStg1") == 1) {
             AgentRjpqDialogue.narrate(session, "B2", agent, AgentRjpqCompanionPlay.passFound());
@@ -221,6 +228,10 @@ final class AgentRjpqStagePlay {
                      AgentRjpqMemberState member, long nowMs) {
         AgentRjpqSide side = session.side();
         AgentRjpqDialogue.narrate(session, "K1", agent, AgentRjpqCompanionPlay.keysStart());
+        if (givesLetterNow(session, agent)) {
+            giveLetter(session, entry, agent, member, nowMs);
+            return;
+        }
         Reactor officeDoor = reactor(agent, side.reactorName(AgentRjpqDefinition.OFFICE_DOOR));
         if (officeDoor != null && officeDoor.getState() == 1) {
             if (leaderMayWantYuleteAlone(session, agent)) {
@@ -254,6 +265,63 @@ final class AgentRjpqStagePlay {
             }
         }
         AgentRjpqCoordinator.actions().grind(entry, Set.of(AgentRjpqDefinition.NEO_HUROID_MOB_ID));
+    }
+
+    /**
+     * 2026-10-17: the letter's holder says once what it will do with the leader's answer (AgentRjpqSessionRegistry
+     * .answerLetterInChat records it on his chat thread).
+     */
+    private static void acknowledgeLetterAnswer(AgentRjpqSession session, Character agent) {
+        Boolean wanted = session.letterWanted();
+        if (wanted == null || agent.getId() != session.letterHolderId()) return;
+        if (AgentRjpqDialogue.narrate(session, "B4", agent, wanted
+                ? AgentRjpqCompanionPlay.letterYes(session.side()) : AgentRjpqCompanionPlay.letterNo())) {
+            log.info("RJPQ letter: session={} side={} holder={} wanted={}", session.sessionId(), session.side().key(),
+                    agent.getId(), wanted);
+        }
+    }
+
+    /**
+     * True when this companion holds the captive's letter, the leader said to give it, and the side's NPC has not
+     * read one yet (npcShocked, MagatiaPQ_Z.js): it goes to Romeo/Juliet on the Special Lab before anything else.
+     */
+    static boolean givesLetterNow(AgentRjpqSession session, Character agent) {
+        return Boolean.TRUE.equals(session.letterWanted()) && !session.letterGiven()
+                && agent.getId() == session.letterHolderId()
+                && AgentRjpqCoordinator.actions().itemCount(agent, session.side().letterItemId()) > 0
+                && intProperty(agent, "npcShocked") == 0;
+    }
+
+    /**
+     * Walks to the side's NPC on the Special Lab and talks: with the letter in its bag the script's first branch takes
+     * it (2112005.js / 2112006.js). Given once the letter has left its bag.
+     */
+    private static void giveLetter(AgentRjpqSession session, AgentRuntimeEntry entry, Character agent,
+                                   AgentRjpqMemberState member, long nowMs) {
+        AgentRjpqSide side = session.side();
+        Point stand = ground(agent, AgentRjpqCoordinator.actions().npcPosition(agent, side.claimNpcId()));
+        if (stand == null) {
+            AgentRjpqCoordinator.actions().stop(entry);
+            return;
+        }
+        if (!near(agent.getPosition(), stand, NPC_REACH_PX) || !AgentRjpqCoordinator.actions().grounded(agent)) {
+            AgentRjpqCoordinator.actions().navigate(entry, stand, true);
+            return;
+        }
+        AgentRjpqCoordinator.actions().stop(entry);
+        boolean talked = AgentRjpqCoordinator.partyQuest().runNpc(agent, side.claimNpcId());
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        session.markProgress(nowMs);
+        boolean given = AgentRjpqCoordinator.actions().itemCount(agent, side.letterItemId()) == 0;
+        int tries = session.noteLetterTry();
+        if (given) {
+            AgentRjpqDialogue.narrate(session, "B5", agent, AgentRjpqCompanionPlay.letterGiven(side));
+        }
+        if (given || tries >= CLAIM_RETRY_MAX) {
+            session.markLetterGiven(); // given, or past the NPC retries a claim gets: kept, the run goes on
+        }
+        log.info("RJPQ letter given: session={} side={} holder={} talked={} given={} try={}", session.sessionId(),
+                side.key(), agent.getId(), talked, given, tries);
     }
 
     /** The side's closed Dark Lab doors on the agent's map. */

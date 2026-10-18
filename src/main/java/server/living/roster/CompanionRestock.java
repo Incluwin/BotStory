@@ -408,13 +408,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     /**
      * The word a trip short of no potions says its ammo lines with: what it shoots when projectiles are short, "holy
-     * water" when only seal cures are (2026-10-14, P18); null when potions are short (its potion lines).
+     * water" when only seal cures are (2026-10-14, P18), "eyedrops" when only darkness cures are (2026-10-17,
+     * CompanionRestockLines.cureWord); null when potions are short (its potion lines).
      */
     private static String supplyWord(Character bot, AgentSupplyReadiness.Shortfall shortfall) {
         if (ammoOnly(shortfall)) {
             return CompanionRestockLines.ammoWord(bot);
         }
-        return shortfall != null && shortfall.potionsNone() && shortfall.cure() > 0 ? CompanionRestockLines.CURES : null;
+        return shortfall != null && shortfall.potionsNone() && shortfall.cure() > 0
+                ? CompanionRestockLines.cureWord(bot) : null;
     }
 
     /** True for a boss's activity (its key a boss run's, such as easy_balrog): it kept that boss's standard. */

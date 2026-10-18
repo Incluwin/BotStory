@@ -19,6 +19,8 @@ class AgentRjpqLinesLintTest {
     private static List<String> lines(AgentRjpqSide side) {
         List<String> lines = new ArrayList<>(List.of(AgentRjpqCompanionPlay.booksStart(),
                 AgentRjpqCompanionPlay.passFound(), AgentRjpqCompanionPlay.letterFound(side),
+                AgentRjpqCompanionPlay.letterWhy(side), AgentRjpqCompanionPlay.letterYes(side),
+                AgentRjpqCompanionPlay.letterNo(), AgentRjpqCompanionPlay.letterGiven(side),
                 AgentRjpqCompanionPlay.tunnelStart(), AgentRjpqCompanionPlay.keysStart(),
                 AgentRjpqCompanionPlay.officeStandBack(), AgentRjpqCompanionPlay.roomsStart(LEADER),
                 AgentRjpqCompanionPlay.bossCall(), AgentRjpqCompanionPlay.watchCaptive(side),

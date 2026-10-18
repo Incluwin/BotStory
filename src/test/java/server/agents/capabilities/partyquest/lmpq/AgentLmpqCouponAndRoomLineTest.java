@@ -34,6 +34,9 @@ class AgentLmpqCouponAndRoomLineTest {
     void leavingFarmingLogsTheSecuredCoupons() {
         AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, AgentLmpqSession.Phase.FARMING,
                 ben, mira, kes, pel);
+        // Rooms 6 and 7 worked out, so the Tauromacis hold (AgentLmpqTauromacisHoldTest) lets 36 coupons regroup.
+        session.rooms().depleted(6, mira.getId(), 2_000L);
+        session.rooms().depleted(7, mira.getId(), 2_000L);
         coupons(mira, 20);
         coupons(kes, 10);
         coupons(pel, 6);

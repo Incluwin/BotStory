@@ -49,6 +49,10 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     private EventInstanceManager eventInstance;
     private int sealedAttempt;
     private long sealedCheckedAtMs;
+    private List<AgentOpqSealedSearch.Split> sealedCandidates = AgentOpqSealedSearch.SPLITS;
+    private AgentOpqSealedSearch.Split sealedGuess;
+    private Boolean sealedVerdict;
+    private int sealedUnheard;
     private int wayUpLeverAttempt;
     private final Set<Integer> completedLoungeSubrooms = new LinkedHashSet<>();
     private boolean papaPixieEngaged;
@@ -209,7 +213,45 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     public AgentOpqPortalRoute loungeRoute() { return loungeRoute; }
     public AgentOpqPortalRoute wayUpRoute() { return wayUpRoute; }
     public synchronized int sealedAttempt() { return sealedAttempt; }
-    public synchronized void advanceSealedAttempt(long nowMs) { sealedAttempt = Math.min(9, sealedAttempt + 1); sealedCheckedAtMs = nowMs; markProgress(nowMs); }
+    /**
+     * 2026-10-17: the split the sealed room's holders stand in for the next check (AgentOpqSealedSearch), chosen from
+     * the splits that agree with every answer of Eak's so far, weighted by AgentOpqSealedSplitMemory.
+     */
+    public synchronized AgentOpqSealedSearch.Split sealedGuess() {
+        if (sealedGuess == null) {
+            AgentOpqSealedSplitMemory memory = AgentOpqSealedSplitMemory.current();
+            sealedGuess = AgentOpqSealedSearch.next(sealedCandidates, memory::weight);
+        }
+        return sealedGuess;
+    }
+
+    /** The splits still possible after Eak's answers so far. */
+    public synchronized int sealedCandidateCount() { return sealedCandidates.size(); }
+
+    /**
+     * Eak's answer to a wrong check, as he said it (2013001.js through AgentOpqSessionRegistry.recordSealedVerdict):
+     * true for one platform right, false for all of them wrong. The next {@link #advanceSealedAttempt} uses it.
+     */
+    public synchronized void recordSealedVerdict(boolean onePlatformRight) { sealedVerdict = onePlatformRight; }
+
+    /**
+     * After a check that did not seal the room: with Eak's answer heard, the guess and every split that disagrees with
+     * it are dropped and the next guess is chosen ("one-right" / "all-wrong"). Not heard (he only asked for exactly
+     * three players, or the script did not answer), the same split is checked once more ("unheard"); not heard twice,
+     * it is dropped alone ("unheard-dropped"). Returns which of those it was.
+     */
+    public synchronized String advanceSealedAttempt(long nowMs) {
+        Boolean heard = sealedVerdict;
+        sealedVerdict = null;
+        sealedCheckedAtMs = nowMs;
+        markProgress(nowMs);
+        if (heard == null && ++sealedUnheard < 2) return "unheard";
+        sealedUnheard = 0;
+        sealedCandidates = AgentOpqSealedSearch.afterWrongCheck(sealedCandidates, sealedGuess(), heard);
+        sealedGuess = null;
+        sealedAttempt = Math.min(9, sealedAttempt + 1);
+        return heard == null ? "unheard-dropped" : heard ? "one-right" : "all-wrong";
+    }
     public synchronized long sealedCheckedAtMs() { return sealedCheckedAtMs; }
     public synchronized void markSealedChecked(long nowMs) { sealedCheckedAtMs = nowMs; }
     public synchronized int wayUpLeverAttempt() { return wayUpLeverAttempt; }

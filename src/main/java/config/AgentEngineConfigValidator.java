@@ -122,8 +122,10 @@ final class AgentEngineConfigValidator {
                 }
                 continue;
             }
-            if (key.endsWith("AgentSupplyReadiness.CURE_STANDARDS")) {
-                // 2026-10-14: key=count pairs of seal cures, at most five stacks of Holy Water
+            if (key.endsWith("AgentSupplyReadiness.CURE_STANDARDS")
+                    || key.endsWith("AgentSupplyReadiness.DARKNESS_CURE_STANDARDS")) {
+                // 2026-10-14: key=count pairs of seal cures, at most five stacks of Holy Water; 2026-10-17 the same
+                // for darkness cures (Eyedrops)
                 if (!validAmmoStandards(value, CURE_STANDARDS_BOUND)) {
                     throw new IllegalStateException("Agent tuning key " + key
                             + " must be key=count pairs with counts from 0 to " + CURE_STANDARDS_BOUND);

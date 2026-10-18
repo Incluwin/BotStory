@@ -91,7 +91,9 @@ class AgentOpqPaceReportTest {
     @Test
     void thePuzzleCountersAreDrawnOnlyWhenTheyMoved() {
         AgentOpqSession session = session();
+        session.recordSealedVerdict(false); // Eak's answers to two wrong checks (2026-10-17: AgentOpqSealedSearch)
         session.advanceSealedAttempt(2_000L);
+        session.recordSealedVerdict(true);
         session.advanceSealedAttempt(3_000L);
         assertEquals(Map.of("sealedWrongChecks", 2), AgentOpqPaceReport.of(session, 5_000L).drawn());
         session.advanceWayUpLeverAttempt(4_000L);

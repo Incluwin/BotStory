@@ -48,6 +48,7 @@ final class OpqRunFixture implements AutoCloseable {
     private final List<AgentOpqSession> sessions = new ArrayList<>();
 
     OpqRunFixture() {
+        AgentOpqSealedSplitMemory.install(new AgentOpqSealedSplitMemory(null)); // no .runtime file from a test
         registry = open(AgentRuntimeRegistry.class);
         identity = open(AgentRuntimeIdentityRuntime.class);
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(characters);
@@ -128,6 +129,7 @@ final class OpqRunFixture implements AutoCloseable {
         for (int i = statics.size() - 1; i >= 0; i--) {
             statics.get(i).close();
         }
+        AgentOpqSealedSplitMemory.install(null);
     }
 
     private <T> MockedStatic<T> open(Class<T> type) {

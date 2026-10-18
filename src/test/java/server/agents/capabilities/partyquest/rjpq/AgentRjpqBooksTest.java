@@ -121,7 +121,10 @@ class AgentRjpqBooksTest {
         fixture.tick(TOBI, 2_000L);
 
         assertEquals(List.of("the pass is hidden in one of these books. let's split up and check them.",
-                "found juliet's letter in this book. no idea what to do with it."), fixture.said);
+                "found juliet's letter in this book. should i give it to romeo? yes or no",
+                "if i do, yulete sends an angrier boss, but it pays more if juliet stays safe."), fixture.said);
+        assertEquals(MIRA, fixture.session.letterHolderId(), "the first finder holds it");
+        assertTrue(fixture.session.letterQuestionOpen(), "the leader was asked (2026-10-17)");
     }
 
     @Test
@@ -136,7 +139,7 @@ class AgentRjpqBooksTest {
         fixture.tick(MIRA, 2_000L);
 
         verify(fixture.partyQuest).runNpcObject(fixture.character(MIRA), 2_112_013, 201);
-        assertTrue(fixture.said.contains("found romeo's letter in this book. no idea what to do with it."));
+        assertTrue(fixture.said.contains("found romeo's letter in this book. should i give it to juliet? yes or no"));
     }
 
     @Test
