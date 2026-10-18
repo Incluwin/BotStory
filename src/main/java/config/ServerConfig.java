@@ -406,4 +406,20 @@ public class ServerConfig {
     public int  ANTICHEAT_MAX_MESO_PER_MIN;
     public int  ANTICHEAT_MAX_MOVE_DELTA_PX;
     public boolean ANTICHEAT_LOG_ONLY;
+
+    /**
+     * HOST, LANHOST and TAILSCALEHOST from the SERVER_HOST, SERVER_LANHOST and SERVER_TAILSCALEHOST environment
+     * variables (start-server.bat and launch.bat load them from .env), so the addresses a host hands its players
+     * stay out of the shared config.yaml. A missing or blank variable keeps the config.yaml value.
+     */
+    public void applyAddressOverrides(Map<String, String> environment) {
+        HOST = addressOverride(environment, "SERVER_HOST", HOST);
+        LANHOST = addressOverride(environment, "SERVER_LANHOST", LANHOST);
+        TAILSCALEHOST = addressOverride(environment, "SERVER_TAILSCALEHOST", TAILSCALEHOST);
+    }
+
+    private static String addressOverride(Map<String, String> environment, String name, String configured) {
+        String value = environment.get(name);
+        return value == null || value.isBlank() ? configured : value.trim();
+    }
 }

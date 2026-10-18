@@ -27,6 +27,7 @@ public class YamlConfig {
             YamlReader reader = new YamlReader(Files.newBufferedReader(Path.of(CONFIG_FILE_NAME), CharsetConstants.CHARSET));
             YamlConfig config = reader.read(YamlConfig.class);
             reader.close();
+            config.server.applyAddressOverrides(System.getenv());
             if (config.bot_economy == null) {
                 // Missing block in config.yaml: initialize with defaults. Feature stays
                 // OFF until ENABLED is explicitly flipped to true.

@@ -168,11 +168,11 @@ worlds:
 
 server:
     #Database Configuration
-    DB_URL_FORMAT: "jdbc:mysql://%s:3306/cosmic" # If the docker ENV for DB_HOST is anything but "db", this string format should be changed from 3306 to 3307 (or whichever port it was changed to in docker)
+    DB_URL_FORMAT: "jdbc:mysql://%s:3306/cosmic?createDatabaseIfNotExist=true" # The first start creates the cosmic schema. If the docker ENV for DB_HOST is anything but "db", this string format should be changed from 3306 to 3307 (or whichever port it was changed to in docker)
     DB_HOST: "localhost"
     DB_USER: "root"
-    # Leave DB_PASS blank here and set it via the DB_PASS environment variable (or a local .env file loaded by start_all.bat / launch.bat).
-    # Committing a real password to this file ships it in the upstream repo. See .env.example at the FriendServer root.
+    # Leave DB_PASS blank here and set it via the DB_PASS environment variable: setup.bat writes it to .env, which
+    # start-server.bat loads. Committing a real password to this file ships it in the public repo. See .env.example.
     DB_PASS: ""
     INIT_CONNECTION_POOL_TIMEOUT: 90    # Seconds
 
@@ -207,8 +207,8 @@ server:
     LOGIN_ATTEMPT_DURATION: 120         #Period in seconds the login attempt remains registered on the system.
 
     #Ip Configuration
-    HOST: 100.65.63.117             #WAN IPv4 address (Tailscale IP - what remote friends connect to)
-    LANHOST: 127.0.0.1              #LAN IPv4 address
+    HOST: 127.0.0.1                 #WAN IPv4 address: what players on the internet connect to. Set SERVER_HOST in .env to your public IP to host them.
+    LANHOST: 127.0.0.1              #LAN IPv4 address: what players on your home network connect to. Set SERVER_LANHOST in .env to this PC's LAN IP.
     LOCALHOST: 127.0.0.1            #Loopback IPv4 address
     GMSERVER: false
 
@@ -516,7 +516,7 @@ server:
     # Login Configuration
     DEPLOYMENT_PROFILE: local                               # Allowed values: local, production.
     ALLOW_INSECURE_PRODUCTION_AUTH: false                   # Production must enable both PIN and PIC unless this risk is explicitly accepted.
-    TAILSCALEHOST: 100.65.63.117                            # Tailscale (100.64.0.0/10) IPv4 address - same as HOST; tailnet clients are routed here
+    TAILSCALEHOST: 127.0.0.1                                # Tailscale (100.64.0.0/10) IPv4 address tailnet clients are routed to. Set SERVER_TAILSCALEHOST in .env to this PC's Tailscale IP.
     # Server Flags
     observer:
         enabled: true                                       # Enables browser observer packets, event collection, navgraph inspection, and camera director feeds.

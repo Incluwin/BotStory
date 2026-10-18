@@ -34,8 +34,11 @@ import java.util.regex.Pattern;
 public final class SecondaryStatRequirementOverrides {
     private static final Logger log = LoggerFactory.getLogger(SecondaryStatRequirementOverrides.class);
 
-    /** Default location of the patch file, relative to the server working directory. */
-    private static final String DEFAULT_PATH = "../MapleEdit/app/patches/zero-secondary-stats.json";
+    /** MapleEdit's copy next to the server, relative to the server working directory; MapleEdit regenerates it. */
+    static final Path MAPLEEDIT_PATH = Paths.get("../MapleEdit/app/patches/zero-secondary-stats.json");
+
+    /** The copy shipped with the server, used when there is no MapleEdit checkout next to it. */
+    static final Path BUNDLED_PATH = Paths.get("scripts/config/zero-secondary-stats.json");
 
     /** Stat fields recognised by this override. Anything else in the patch is ignored. */
     public enum Field {
@@ -55,9 +58,13 @@ public final class SecondaryStatRequirementOverrides {
 
     private SecondaryStatRequirementOverrides() {}
 
-    /** Load from the default path (relative to server working directory). */
+    /** Load MapleEdit's copy when there is one, else the bundled copy (both relative to the working directory). */
     public static void load() {
-        load(Paths.get(DEFAULT_PATH));
+        load(defaultPath(MAPLEEDIT_PATH, BUNDLED_PATH));
+    }
+
+    static Path defaultPath(Path mapleEdit, Path bundled) {
+        return Files.exists(mapleEdit) ? mapleEdit : bundled;
     }
 
     /** Load from an explicit path. Missing file is treated as "no overrides". */

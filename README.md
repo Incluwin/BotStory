@@ -18,7 +18,7 @@ gameplay rules:
 
 The game client is the stock GMS v83 client with the BotStory fork of
 [kaentake](https://github.com/iw2d/kaentake), running on either the clean Cosmic
-WZ files or the Community Repack WZ files; see [3 - Client](#3---client).
+WZ files or the Community Repack WZ files; see [the game client](docs/SETUP.md#2-the-game-client).
 
 ## Credits And Upstream Lineage
 
@@ -62,151 +62,264 @@ The repository also contains read-only game-data catalog tooling and a Database
 Console for administrative game-data access. The Database Console should not be
 exposed publicly without authentication and network hardening.
 
-## Validation Status (from upstream cosmic_agents)
+## Features
 
-These figures are cosmic_agents' own, from before the BotStory merge; BotStory's
-suite is far larger (see [docs/TEST_GUIDE.md](docs/TEST_GUIDE.md)).
+Everything here is on in the shipped `config.yaml` unless it says otherwise. The switches live in
+`config.yaml` (sections `living_world`, `population`, `knowledge`, `mods`) and `agent-engine.yaml`.
+Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or extended them.
 
-- Full Maven suite: 4,392 tests passed with no failures, errors, or skips.
-- Maven package build: passed.
-- Production and test `server.bots` directories: absent.
-- Production `server.bots` imports and runtime dependencies: absent.
-- Automated scheduler parity and deterministic 500-session scheduler soak:
-  passed.
-- Live-client parity and long-duration production soak: not yet recorded.
+### Companions: recruiting and running a crew
 
-## Original Cosmic Setup Notes
+- **Recruiting:**
+  - Recruit Residents by contract, paying their price in mesos, items or kill proof; they stay on
+    your roster.
+  - Hire citizens for a fee and wages. A citizen who has partied with you for 10 minutes offers
+    to stay.
+- **The roster:** up to 10 companions per player, 5 in your party and 5 on the bench.
+- **Managing it without typing:**
+  - The stock party window: invite calls a companion, expel benches it. A bot never leads the
+    party, and two players share the seats fairly.
+  - The companion card (double-click your companion): follow, wait or hunt; camp duty; fighting
+    style; supplies and loot; haul, wages and gear; Let's trade; gifts; part ways.
+- **Calling companions:**
+  - A called companion travels to you with an ETA and walks in through the portal.
+  - It waits outside instances and follows you across channels.
+  - It parks when you log out and comes back when you log in.
+- **The Crew window:** the Adventurer's Roster item opens it as NPC dialog. With the BotStory
+  client it is a native, mouse-driven window (drag to swap, hotkey U).
+- **Lineups and records:**
+  - Named lineups (usual, Hunting, PQ, Boss) and "Who should come along?" suggestions; party
+    quest NPCs name their pick.
+  - The card keeps records, such as "KPQ: cleared 1 of 6".
+- **Social:**
+  - Opt-in crew rotation ("Keep my crew fresh").
+  - Bench companions answer your Party Search.
+  - Companions ask to be buddies and sit in a "Crew" buddy group.
+- **Bench duties while you play:** train, farm mesos or an item, gather, sell the haul, run a
+  real Free Market stall, or rest. Duties come with haul, Duey and bank hand-over, wages and
+  upkeep. Leave the choice to them and a bandit picks the duty and the spot.
+- **EXP:** companions don't dilute your EXP, and bench EXP is banked toward your level.
+- **Chat verbs** in map chat or a whisper, checked against ownership: call, bench, swap, park,
+  release, "*name* camp here", train, farm, gather, sell, stall, rest, haul, wages, come back.
 
-The setup notes below are inherited from P0nk/Cosmic and remain useful for
-running the base server locally.
+### What companions do on their own
 
-## Getting started
-Follow along as I go through the steps to play the game on your local computer from start to finish. I won't go into extreme detail, so if you don't have prior experience with Java or git, you might struggle.
+- **Leveling:** grinding, patrolling or holding a spot *(cosmic_agents)*. Job advancement
+  errands: they walk to their instructor and back.
+- **Builds:**
+  - SP and AP follow a career bundle; a mismatched bundle is re-picked with one AP reset, and
+    spare SP goes to dump skills.
+  - They read the skill and mastery books in their bag and say in party chat which ones failed or
+    need an earlier book.
+- **Gear:** they choose and upgrade it, keep the better roll, and Residents wear their own
+  friendship gear.
+- **Supplies:**
+  - They restock their own potions to the standard of the party quest or boss ahead, walking to
+    a shop and back. This includes field-boss towns, Holy Water from Orbis for Horntail, and seal
+    and darkness cures.
+  - Short on mesos, they ask you for potions or coin.
+  - They buy and drink Sniper, Warrior and Magic potions when those help, spending at most 25% of
+    their spare mesos, with a toggle per companion.
+  - They buy and share ammo, check it before a run, and sell ammo they can't use to free Use
+    slots.
+- **Loot:** by policy (everything, own kills, quest items, nothing), and they leave boss drops to
+  people.
 
-We will set up the following:
-- Database - the database is used by the server to store game data such as accounts, characters and inventory items.
-- Server - the server is the "brain" and routes network traffic between the clients.
-- Client - the client is the application used to _play the game_, i.e. MapleStory.exe.
+### Combat
 
-### 1 - Database 
-You will start by installing the database server and database client. Then you will connect to the server with the client to create a new database schema.
+- **Basics:** skill planner, party buffs and heals *(cosmic_agents)*, and autopot with HP/MP
+  thresholds set per companion.
+- **Combat learner:** semi-Markov Q-learning that practices only on bench slices nobody is
+  watching. Live play uses a learned table only after `!combatarena` adopts it.
+- **Support:** Priests and Bishops cast Dispel on afflicted party members. In boss runs, a seduced
+  or confused member casts Hero's Will.
+- **Skill handling:** rebuffs after a mob dispel, summons, dashes, crash skills, weapon charges,
+  the Berserk window and a Dragon Roar HP guard.
+- **Navigation:** a graph with jump, drop, climb, rope, portal, Flash Jump and Teleport edges
+  *(cosmic_agents)*. BotStory adds:
+  - following you through the portal you took;
+  - an instance-aware follow guard;
+  - ladder and rope fixes;
+  - Haste and Teleport routes for the RJPQ Dark Labs.
 
-#### Steps
+### Party quests
 
-1. Download and install [MySQL Community Server 8+](https://dev.mysql.com/downloads/mysql/). You will have to set a root password. Make sure you don't lose it because you will need it later.
-2. Download and install [HeidiSQL](https://www.heidisql.com/download.php).
-3. Connect to the database: 
-   1. Open HeidiSQL
-   2. Create a new Session: "New" -> fill in your password -> "Save"
-   3. Connect to the database: click on your saved session -> "Open"
-4. Create a new database schema:
-   1. In the opened session, right-click on the session name in the menu on the left
-   2. "Create new" -> "Database" -> database name should be "cosmic" -> "OK"
-5. Done. The database is now ready. Once the Cosmic server starts, it will create tables and populate some of them with initial data.
+- **KPQ, HPQ, LPQ and EPQ** with companions (`COMPANION_PQ_ENABLED_KEYS`):
+  - The entry NPC proposes a lineup and can call from your bench, while extras wait beside her.
+  - Downed companions tap out.
+  - Run records and clear-time estimates.
+- **RJPQ** with companions (the Romeo and Juliet desks, Dark Lab runners): built, off by default.
+  Add `rjpq,rjpqj` to the key list.
+- **OPQ, LMPQ and PPQ** companion runs (sealed-room learning, the LMPQ regroup, the PPQ medal
+  hand-over): started by a GM only, with `!opqtest`, `!lmpqtest` or `!ppqtest party`.
+- **Fixed:** the PPQ side-room portals.
 
-### 2 - Server
-You will start by cloning the repository, then configure the database properties and lastly start the server.
+### Bosses
 
-#### Prerequisites
-* Java 21 (I recommend [Amazon Corretto](https://aws.amazon.com/corretto))
-* IDE (I recommend [IntelliJ IDEA](https://www.jetbrains.com/idea/))
+- **Companion boss runs:** the server moves the boss, and its attacks hit companions.
+  - Companions spend their own daily entries and always leave two seats for players.
+  - A companion that dies to a field boss rests in town first.
+  - You can call bench allies into a run.
+- **On by default:** Easy Balrog and Pink Bean (`COMPANION_BOSS_ENABLED_TYPES`).
+- **Built, off by default:**
+  - Normal Balrog, Zakum, Papulatus, Scarga, Horntail, Showa, Latanica and the five Neo City
+    bosses.
+  - Field-boss groups for Victoria, Ossyria, Ludus, Mu Lung, Nihal, Pianus, Leafre, the Temple of
+    Time, Zipangu and Masteria.
+- **Test kit:** `!bossgear` gives a companion a boss kit and puts its own gear back afterwards.
 
-#### Steps
+### Residents: the living world
 
-1. Clone Cosmic into a new project. In IntelliJ, you would create a new project from version control.
-2. Open _config.yaml_. Find "DB_PASS" and set it to your database root user password.
-3. Start the server. The main method is located in `net.server.Server`.
-4. If you see "Cosmic is now online" in the console, it means the server is online and ready to serve traffic. Yay!
+- **The cast:** 72 named Residents in the seven Victoria towns, 24 of them recruitable. They
+  follow hourly routines and sleep when nobody is near.
+- **Talking to them:** say a Resident's name, stand near them or whisper. "menu" or a
+  double-click opens a real NPC window with their portrait. The portrait is rendered from your
+  client's own `Character.wz`, so no game art ships with the server.
+- **Quests:** 197 of them, 118 for friendship.
+  - They show in the client's quest log under "Residents", with Quest Helper targets.
+  - Quest markers float over Residents, shown only to the player they concern.
+- **Friendship:**
+  - Levels 1-10, earned from quests, fame, daily gifts, party quests and bosses.
+  - Friendship quests give the Resident's own weapon, or armour made for your class, pre-scrolled
+    to a recipe.
+  - At friendship level 4, a Resident sends a buddy request.
+- **Story:** 25 contracts, 9 story arcs that change who is recruitable, and Resident-to-Resident
+  rumors played out in public.
 
-Below, I list other ways of running the server which are completely optional.
+### Citizens: an ambient population
 
-#### Docker
-Support for Docker is also provided out of the box, as an alternative to running straight in the IDE. If you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed it's as easy as running `docker compose up`.
+- **The population:** 717 generated citizens, up to 240 of them online on channel 1. Each has a
+  name, look, career, backdated age and level, with births and retirements.
+- **Daily presence by cohort** (busy evenings, different weekends): training, town, party quest
+  lobbies, the market and AFK. It spans 17 regions and 30 towns profiled by the TownLife
+  generator.
+- **Chatter:** templated lines in each citizen's own voice, megaphones, and conversations with
+  optional Ollama replies.
+- **Social life:** 24 bot guilds, buddies and fame.
+- **Free Market:** a price index that drifts with sales. Merchant citizens open real stalls and
+  buy underpriced goods from player shops.
 
-Making changes becomes a bit more tedious though as you have to rebuild the server image via `docker compose up --build`.
+### Server knowledge
 
-#### Jar
-Another option is to start the server from a terminal by running a jar file. You first need to build the jar file from source which requires [Maven](https://maven.apache.org/). Fortunately, [Maven Wrapper](https://maven.apache.org/wrapper/) is provided so you don't have to install Maven separately.
+- **Answers from this server's data:** bots answer questions like "who drops steelies", "where
+  do I buy manas" or "how do I get to Ludi" from this server's own WZ, drop and shop data, live
+  rates and slang aliases.
+- **Knowledge to match:** each bot knows what a player of its level and home town would know;
+  only veterans quote drop rates.
+- **Shared with decisions:** the same index picks farming fields and citizens' gear. Content
+  linters check every id against it.
 
-Building the jar file is as easy as running ``./mvnw.cmd clean package``. The project is configured to produce a "fat" jar which contains all dependencies (by utilizing the _maven-assembly-plugin_). Note that the WZ XML files are __not__ included in the jar.
+### Talking to bots
 
-To run the jar, a ``launch.bat`` file is provided for convenience. Simply double-click it and the server will start in a new terminal window. 
+- **No setup needed:** phrase packs and menus work without any key or model.
+- **TypeSafe Jev** (optional): judges chat that no rule matched, with a "did you mean...?". It
+  also judges trade replies and party quest questions in shadow mode.
+- **Ollama** (optional): generated small talk for citizens and companions.
 
-Alternatively, run the jar file from the terminal. Just remember to provide the `wz-path` system property pointing to your wz directory.
+### Gameplay changes from stock Cosmic
 
-### 3 - Client
-BotStory's client is the stock GMS v83 `MapleStory.exe` with the BotStory fork of
-kaentake (`Kaentake.dll`, and `Kaentake.exe` shipped as `Launch Game.exe`).
-For the WZ files, pick either base:
+- **Rates:**
+  - 10x EXP, with monster EXP held to 5x below level 30.
+  - 3x mesos, drops and boss drops.
+  - 4x mob density, 2-second respawns and full respawns.
+- **Equipment:**
+  - Secondary-stat requirements are gone; only the class's primary stat counts.
+  - Any class can wear any gear.
+  - Equipment levels up.
+- **Characters and items:**
+  - A permanent Hyper Teleport Rock at level 10.
+  - Perfect Pitch as a global drop, a rebalanced NX card drop and Fusion Anvil transmog.
+  - Pets never expire, characters get the maximum inventory slots, and HP/MP caps at 30,000.
+  - Autosave every 10 minutes and a custom keyset on new characters.
+- **Login and security:** PIN and PIC off for local play, a per-IP connection throttle, and
+  anti-cheat in log-only mode.
 
-- the clean Cosmic client: install the v83 setup from
-  [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client), then copy its
-  `cosmic-wz` files over the installed ones; or
-- the Community Repack WZ set.
+### Client features and server mods
 
-Then add BotStory's own content with the WZ patcher:
+- **Client feature handshake:** the BotStory client reports its feature toggles, and the
+  server's policy allows or denies each one (`mods.FEATURES`). Free Addy's damage and speed caps
+  and the extended Chain Lightning are allowed by default. Clients that never report are never
+  affected. See [docs/CLIENT_FEATURE_HANDSHAKE.md](docs/CLIENT_FEATURE_HANDSHAKE.md).
+- **Server mods** with switches (`mods.SWITCHES`) and a `!mods` report per client.
+- **The BotStory client:** the native Crew window, the head-height quest markers and the feature
+  toggles come from the BotStory kaentake build and its `Custom.wz`, which are not public yet.
+  See [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
 
+### Commands
+
+- **Players:**
+  - `@roster` (or `@companions`): your companions.
+  - `@bond <name>`: your friendship with a Resident.
+  - `@quests`: your Resident quests.
+- **GMs, living world:**
+  - `!world`: status, reload, wake/sleep, arcs, flags, bonds, rumors, phrases.
+  - `!citizens`: population status, births, seeding, guilds, market.
+  - `!knowledge`: status, reload, or ask it a question.
+  - `!grantcompanion`: put a Resident on a player's roster.
+  - `!mods`: mod switches and client features.
+  - `!typesafe`: Jev spend and cost projection.
+- **GMs, companions and testing:**
+  - `!setlevel`, `!bossgear`, `!bossmirror`, `!combatarena`, `!skillprobe`, `!stepto`.
+  - The party quest test runs `!kpqtest`, `!hpqtest`, `!lpqtest`, `!epqtest`, `!opqtest`, `!lmpqtest`,
+    `!ppqtest` and `!rjpqtest`; `party` runs your current party as a companion run.
+  - `!spawnbot`, `!regennav`, `!botcfg` *(cosmic_agents)*.
+
+### Fixes and hardening
+
+- **Deadlocks:**
+  - owner logout (party lock vs map lock);
+  - logout buffs;
+  - item-drop packets built under the map lock;
+  - an attack-buff sum vs the party lock, which froze every timer.
+- **Database:**
+  - UTC database sessions, so saves no longer fail in a daylight-saving gap;
+  - 11 save indexes (350 ms to 43 ms per save);
+  - a shutdown that saves players first and finishes in seconds.
+- **Packets and bans:** packet budgets for mob control and the Crew window. Bots are never
+  autobanned.
+- **Ported from other Cosmic forks:** thread-safe monster information caches, serialized map
+  script engines, and the early release of a dead mob's tasks.
+- **From cosmic_agents:**
+  - a packet frame cap and per-family rate limiter;
+  - shop, NPC-prompt and login validation;
+  - transactional deletion and dirty-section autosaves;
+  - bounded thread pools and JVM guardrails.
+
+### Tools
+
+- **Setup:** `setup.bat` and `start-server.bat` for Windows, and `docker compose` for any OS.
+- **Client:**
+  - [tools/wz-patcher](tools/wz-patcher/README.md), including the pack-free `exe` command for the
+    large-address-aware flag.
+  - `tools\living-world-client.bat`: Resident portraits and the quest log for any client.
+- **Content:** content linters, the knowledge export and the Jev cost projector.
+- **Diagnostics:** the skill probe harness (`!skillprobe`) and the map-graph viewer (off unless
+  `COSMIC_AGENT_MAPGRAPH_ENABLED` is set).
+- **Admin:** the loopback AdminControlPort for the MapleEdit dashboard, and the Database Console.
+- **Mod intake:** triages mod releases from Discord and forks of Cosmic; it needs your own bot
+  token.
+- **Tests:** a suite of about 11,500 tests; see [docs/TEST_GUIDE.md](docs/TEST_GUIDE.md).
+
+## Setup
+
+On Windows the server takes two double-clicks; [docs/SETUP.md](docs/SETUP.md) has the details,
+Docker, the game client, hosting friends and troubleshooting.
+
+1. **Get the code:** `git clone https://github.com/Incluwin/BotStory.git`, or Code > Download ZIP.
+2. **Run `setup.bat`.**
+   - It checks for Java 21 and offers to install it.
+   - It finds MySQL, or offers to start one in Docker.
+   - It saves the database login in `.env` and builds the server.
+3. **Run `start-server.bat`** and wait for `Cosmic is now online`.
+4. **Set up a v83 client:** see [docs/SETUP.md](docs/SETUP.md#2-the-game-client).
+5. **Log in** as `admin` / `admin` (a GM), or with any new username and password.
+
+With Docker on any OS, set `DB_PASS` in `.env`, then start everything:
+
+```bash
+cp .env.example .env
 ```
-python tools/wz-patcher/botstory_wz.py patch --client "<client folder>" --exe "<client folder>/MapleStory.exe"
+
+```bash
+docker compose up --build
 ```
-
-[tools/wz-patcher/README.md](tools/wz-patcher/README.md) lists what it adds
-and every other file a client needs. Friends who use the installer get a
-finished client and updates from the launcher; for a Cosmic-based install, see
-"Play through the friends' launcher" there.
-
-### 4 - Getting into the game
-You have successfully started the client, and you're looking at the login screen. 
-
-#### Logging in
-At this point, you can log in to the admin account using the following credentials:
-* Username: "admin"
-* Password: "admin"
-* Pin: "0000"
-* Pic: "000000"
-
-You can also create a new regular account by typing in your desired username & password and attempting to log in. This "automatic registration" feature lets you create new accounts to play around with. It is enabled by default (see _config.yaml_).
-
-#### Entering the game
-Create a new character as you normally would, and then select it to enter the game. Hooray, finally we're in!
-
-If you log in to the "Admin" character, you'll notice that the character looks almost invisible. This is hide mode, which is enabled by default when you log in to a GM character. You won't be visible to normal players and no mobs will move if you're alone on the map. Toggle hide mode on or off by typing "@hide" in the in-game chat.
-
-Hide is one of many commands available to players, type "@commands" to see the full list. Higher ranked GMs have access to more powerful commands.
-
-That's it, have fun playing around in game! 
-
-## Advanced concepts
-Some slightly more advanced concepts that might be useful once you're up and running.
-
-### Host on remote server
-You don't have to host the server on your local machine to play. It's possible to host on a remote server such as a VPS or a dedicated server.
-
-I leave it to you to figure out the server hosting part, but once you have that running you'll need to edit the client ip to point to your remote server ip.
-
-### WZ files
-WZ files are the asset/data files required by the client and server. Typically, the [HaRepacker-resurrected](https://github.com/lastbattle/Harepacker-resurrected) tool is used to manage (view, edit, export) the .wz files.
-
-The client can read the .wz files directly, but the server requires them to be in XML format. The server does not make use of the sprites, which is the motivation for different kinds of exporting. 
-HaRepacker allows you to export to "Private server", which is the .img files packaged in the .wz stripped of sprites and converted to XML. This takes much less disk space.
-
-This server requires custom .wz files (unfortunately), as you may have noted during installation of the client. The intention is for these to be removed eventually and to solely run on vanilla .wz files.
-
-In BotStory, the server reads the XML in `wz/` (Cosmic's export plus BotStory's
-edits). The repository holds no client `.wz` archives or images. The changed and
-added client images are the WZ patcher's pack, which is Nexon game data and stays
-on the BotStory host next to the patch server; friends get the patched files
-through the launcher. After a client WZ change ships, rebuild the pack (see
-`tools/wz-patcher/README.md`). The Residents' portraits and quest-log entries need
-no pack: `tools\living-world-client.bat "<client folder>"` makes them from the
-server's content and database and that client's own WZ files.
-
-#### WZ editing
-* Use the HaRepacker-resurrected editor, encryption "GMS (old)".
-* Open the desired .wz for editing and use the node hierarchy to make the desired changes (copy/pasting nodes may be unreliable in rare scenarios).
-* Save the changed .wz, overwriting the original content at the client folder.
-* Finally, re-export (using the "Private Server" exporting option) the changed XMLs into the server's .wz XML files (found in the "wz" directory), overwriting the old contents.
-
-Make sure to always export from the client .wz files to the server XML, and not the other way around. 
-
-Editing the client .wz without exporting to the server may lead to strange behavior.

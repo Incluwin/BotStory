@@ -9,10 +9,10 @@ REM 2. QuestLogExportMain: quest-log ids and text (after 1: a quest names its gi
 REM 3. tools\wz-patcher\botstory_wz.py residents: writes Npc.wz, String.wz, Quest.wz and Etc.wz
 REM    (in place, originals kept in <client folder>\botstory-wz-backup\, unless --out is given)
 setlocal
-REM database settings as launch.bat reads them: FriendServer\.env, then config.yaml
-set "ENV_FILE=%~dp0..\..\.env"
-if exist "%ENV_FILE%" (
-    for /f "usebackq tokens=1,* eol=# delims==" %%A in ("%ENV_FILE%") do (
+REM database settings as start-server.bat and launch.bat read them: this repo's .env (setup.bat),
+REM then the .env one folder up (an older layout), then config.yaml
+for %%F in ("%~dp0..\.env" "%~dp0..\..\.env") do if exist %%F (
+    for /f "usebackq tokens=1,* eol=# delims==" %%A in (%%F) do (
         if not "%%~A"=="" if not defined %%~A set "%%~A=%%~B"
     )
 )

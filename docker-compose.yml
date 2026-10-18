@@ -22,6 +22,10 @@ services:
       DB_HOST: "db" ## Remember if this is present it will OVERRIDE the host in the config.yaml, if you put here anything other than db, you'll need to change the config.yaml jdbc string to port 3307, and not port 3306
       DB_USER: "${DB_USER:-root}"
       DB_PASS: "${DB_PASS:?DB_PASS is required - copy .env.example to .env and set a value}"
+      # Addresses for players on other PCs (see .env.example); blank keeps config.yaml.
+      SERVER_HOST: "${SERVER_HOST:-}"
+      SERVER_LANHOST: "${SERVER_LANHOST:-}"
+      SERVER_TAILSCALEHOST: "${SERVER_TAILSCALEHOST:-}"
 
   db:
     image: mysql:8.4.0
@@ -33,12 +37,14 @@ services:
     volumes:
       - ./database/docker-db-data:/var/lib/mysql
 
+  # Optional economy evidence database (!economy runs, economy dashboard): docker compose --profile economy up
   economy-db:
     image: postgres:16.4
+    profiles: ["economy"]
     environment:
       POSTGRES_DB: "${ECONOMY_DB_NAME:-cosmic_economy}"
       POSTGRES_USER: "${ECONOMY_DB_USER:-economy}"
-      POSTGRES_PASSWORD: "${ECONOMY_DB_PASSWORD:?Set ECONOMY_DB_PASSWORD in .env}"
+      POSTGRES_PASSWORD: "${ECONOMY_DB_PASSWORD:-}" # set ECONOMY_DB_PASSWORD in .env before using this profile
     ports:
       - "127.0.0.1:${ECONOMY_DB_PORT:-5433}:5432"
     volumes:

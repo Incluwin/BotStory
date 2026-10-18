@@ -22,6 +22,7 @@ image, so the base keeps its own content.
     python botstory_wz.py check --client "<client folder>"            # verify a patched client
     python botstory_wz.py residents --client "<client folder>"        # Resident portraits + quest log, made
                                                                       # from this client (see residents.py)
+    python botstory_wz.py exe --exe "<client folder>/MapleStory.exe"  # large-address-aware flag only, no pack
     python botstory_wz.py build ...                                   # maintainers, see README
 
 Python 3.8+, standard library only.
@@ -34,6 +35,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -52,6 +54,15 @@ FORMAT = 1
 DEFAULT_SERVER_WZ = HERE.parent.parent / "wz"
 DEFAULT_EXPORT = HERE.parent.parent / "target"  # where tools\living-world-client.bat has the server export
 SKIP_WZ = {"List.wz", "Custom.wz"}  # List.wz is not a PKG1 archive; Custom.wz is copied whole
+
+# The stock GMS v83 MapleStory.exe needs only its large-address-aware flag and the PE checksum byte
+# that changes with it (what cmd_build records in the pack). Neither is game data, so `exe` applies
+# them without a pack.
+STOCK_EXE_PATCH = {
+    "base": {"size": 4286088, "sha256": "ed5a699407b9705528b6a653cdee7395e6e1b7317b9711dcfb34681092072848"},
+    "result": {"size": 4286088, "sha256": "33bb280921cd93dad593080e9e44a2cfe1af507d71f76f4b64c6d80613d52e77"},
+    "patches": [{"offset": 318, "old": 15, "new": 47}, {"offset": 384, "old": 220, "new": 252}],
+}
 
 
 def sha256_bytes(data):
@@ -342,6 +353,15 @@ def patch_exe(pack, exe, out, backup):
         exe.write_bytes(data)
     print("  MapleStory.exe large-address-aware flag set")
     return True
+
+
+def cmd_exe(args):
+    exe = Path(args.exe)
+    if not exe.is_file():
+        sys.exit(f"no such file: {exe}")
+    backup = exe.parent / "botstory-wz-backup" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    if patch_exe(SimpleNamespace(meta={"exe": STOCK_EXE_PATCH}), exe, None, backup):
+        print(f"original moved to {backup}")
 
 
 # ---------------------------------------------------------------------------------- Residents
@@ -728,6 +748,8 @@ def main():
     r.add_argument("--export", default=str(DEFAULT_EXPORT),
                    help=f"folder with the server's resident-portraits.json and living-quest-log.json (default {DEFAULT_EXPORT})")
     r.add_argument("--preview", help="also write each portrait as <persona>.png into this folder")
+    e = sub.add_parser("exe", help="set the large-address-aware flag on a stock MapleStory.exe (no pack needed)")
+    e.add_argument("--exe", required=True, help="the stock GMS v83 MapleStory.exe")
     b = sub.add_parser("build", help="maintainers: rebuild the pack from the live BotStory client")
     b.add_argument("--repack", required=True, help="Community Repack WZ folder (the base BotStory was built on)")
     b.add_argument("--live", required=True, help="live BotStory 'Game Files' folder")
@@ -743,6 +765,8 @@ def main():
         sys.exit(cmd_check(args))
     elif args.cmd == "residents":
         cmd_residents(args)
+    elif args.cmd == "exe":
+        cmd_exe(args)
     else:
         cmd_build(args)
 

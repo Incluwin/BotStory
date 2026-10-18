@@ -37,7 +37,8 @@ Options:
   Add `--copy-unchanged` to copy the other WZ files too, so `<folder>` is a complete WZ set.
 - `--exe "<v83 install>/MapleStory.exe"` also sets the large-address-aware flag on the stock
   GMS v83 `MapleStory.exe` (2 bytes). BotStory needs it: the client runs out of address space
-  without it.
+  without it. Without a pack, `botstory_wz.py exe --exe "<v83 install>/MapleStory.exe"` sets
+  the same two bytes (the original goes to `botstory-wz-backup/` next to it).
 
 `check` confirms every BotStory image is present and, when it finds the server's WZ XML (the
 repo's `wz/` folder, or `--server-wz`), that the client has every image the server knows.
@@ -85,7 +86,7 @@ Cosmic WZ set must say so in its `config.ini`:
 
 ```
 [config]
-patch_url=http://100.65.63.117:8485
+patch_url=http://<host address>:8485
 base=cosmic
 ```
 

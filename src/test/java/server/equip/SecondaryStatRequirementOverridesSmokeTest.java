@@ -1,6 +1,7 @@
 package server.equip;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,5 +65,24 @@ class SecondaryStatRequirementOverridesSmokeTest {
         for (Map.Entry<Integer, Map<SecondaryStatRequirementOverrides.Field, Integer>> e : parsed.entrySet()) {
             assertTrue(!e.getValue().isEmpty(), "itemId " + e.getKey() + " has no recognised fields");
         }
+    }
+
+    @Test
+    void bundledPatchFileShipsWithTheServer() throws Exception {
+        // A checkout without MapleEdit next to it loads this copy, so it must always be there and parse.
+        String body = Files.readString(SecondaryStatRequirementOverrides.BUNDLED_PATH);
+        Map<Integer, Map<SecondaryStatRequirementOverrides.Field, Integer>> parsed =
+                SecondaryStatRequirementOverrides.parse(body);
+        assertTrue(parsed.size() >= 500, "expected at least 500 item overrides, got " + parsed.size());
+    }
+
+    @Test
+    void mapleEditCopyWinsOverTheBundledOne(@TempDir Path dir) throws Exception {
+        Path mapleEdit = dir.resolve("maple-edit.json");
+        Path bundled = dir.resolve("bundled.json");
+
+        assertEquals(bundled, SecondaryStatRequirementOverrides.defaultPath(mapleEdit, bundled));
+        Files.writeString(mapleEdit, "{}");
+        assertEquals(mapleEdit, SecondaryStatRequirementOverrides.defaultPath(mapleEdit, bundled));
     }
 }
