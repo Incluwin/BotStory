@@ -5,6 +5,7 @@ import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -74,6 +75,12 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private long enteredAtMs = -1L;
     private Map<String, Integer> lastItemCounts = Map.of();
     private Map<String, Integer> lastReactorStates = Map.of();
+    /** Medal stacks a companion dropped for the leader and claimed back before they expire: stack object id -> Agent. */
+    private final Map<Integer, Integer> recollectors = new HashMap<>();
+    /** How often each medal stack's lineage has been picked back up (the count moves to the stack dropped again). */
+    private final Map<Integer, Integer> recollectCounts = new HashMap<>();
+    /** When a hand-over line of this kind was last said, so carriers converging on the leader say one between them. */
+    private final Map<String, Long> lineWindows = new HashMap<>();
 
     public AgentPpqSession(Mode mode, long seed, int operatorId, boolean skipChestRooms, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid PPQ session required");
@@ -210,6 +217,55 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
 
     /** True the first time a line's key is used in this run. */
     synchronized boolean narrateOnce(String key) { return key != null && !key.isBlank() && narrated.add(key); }
+
+    /**
+     * True when no line of this kind was said within {@code windowMs}; the window then starts now. Carriers converging
+     * on the leader with medals say one line between them.
+     */
+    synchronized boolean claimLineWindow(String key, long nowMs, long windowMs) {
+        if (key == null) return false;
+        Long last = lineWindows.get(key);
+        if (last != null && nowMs - last < windowMs) return false;
+        lineWindows.put(key, nowMs);
+        return true;
+    }
+
+    /** Whether this id is an Agent of the run (a companion, in a companion run). */
+    synchronized boolean agentOfRun(int id) {
+        AgentPpqMemberState member = members.get(id);
+        return member != null && member.memberType() == AgentPpqMemberState.MemberType.AGENT;
+    }
+
+    /** Claims a medal stack lying for the leader back for this Agent; false when another Agent already did. */
+    synchronized boolean beginRecollect(int objectId, int agentId) {
+        if (objectId == 0 || agentId <= 0 || recollectors.containsKey(objectId)) return false;
+        recollectors.put(objectId, agentId);
+        return true;
+    }
+
+    /** The Agent that claimed this medal stack back, or 0. */
+    synchronized int recollectorOf(int objectId) {
+        Integer agent = recollectors.get(objectId);
+        return agent == null ? 0 : agent;
+    }
+
+    /** Ends a stack's claim (picked up, or gone); answers how often its lineage had been picked back up before. */
+    synchronized int endRecollect(int objectId) {
+        recollectors.remove(objectId);
+        Integer count = recollectCounts.remove(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** How often this stack's lineage has been picked back up. */
+    synchronized int recollectCount(int objectId) {
+        Integer count = recollectCounts.get(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** Carries a lineage's re-collect count to the stack dropped again. */
+    synchronized void setRecollectCount(int objectId, int count) {
+        if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
+    }
 
     /**
      * One pass's readings against the last pass's: progress when a map's live mob count dropped (a kill; a respawn is

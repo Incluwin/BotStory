@@ -110,6 +110,51 @@ final class AgentRjpqCompanionPlay {
         return "if you want yulete, go talk to him now. we'll stay back.";
     }
 
+    // ---- lines (the Dark Labs, 2026-10-17) ----
+
+    /** The Dark Lab's side as companions name it: Lab 1's door is on the Special Lab's left, Lab 2's on its right. */
+    static String labWord(int lab) {
+        return lab == 0 ? "left" : "right";
+    }
+
+    static String labMine(int lab) {
+        return lab == 0 ? "i'll take the left dark lab. with haste i can make its jumps."
+                : "i'll take the right dark lab. i can teleport between its cells.";
+    }
+
+    static String labNobody(int lab, String leader) {
+        return lab == 0 ? leader + ", none of us can make the left lab's jumps. it needs max haste, so it's yours."
+                : leader + ", none of us can teleport through the right lab's cells. that one's yours.";
+    }
+
+    static String labGaveUp(int lab, String leader) {
+        return leader + ", i had to get out of the " + labWord(lab) + " lab. the gas was too much. it's yours now.";
+    }
+
+    static String labRunnerDown(int lab, String leader) {
+        return leader + ", our runner for the " + labWord(lab) + " lab went down. that lab is yours now.";
+    }
+
+    static String filesAtFeet(String leader) {
+        return "the files are at your feet, " + leader + ".";
+    }
+
+    static String bothFiles(AgentRjpqSide side, String leader) {
+        return leader + ", that's both files. give them to " + side.npcName() + ".";
+    }
+
+    static String filesByNpc(AgentRjpqSide side, String leader) {
+        return leader + ", i left the files by " + side.npcName() + ".";
+    }
+
+    static String filesNudge(String leader) {
+        return leader + ", the files are on the floor by you.";
+    }
+
+    static String filesBackUp() {
+        return "the files are about to vanish. grabbing them again.";
+    }
+
     // ---- lines (stage 6-7 and the claims) ----
 
     private static final List<String> ORDINALS = List.of("first", "second", "third", "fourth", "fifth", "sixth",

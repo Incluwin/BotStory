@@ -1,6 +1,8 @@
 package server.agents.capabilities.partyquest.ppq;
 
 import client.Character;
+import server.maps.MapItem;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,27 @@ public final class AgentPpqSessionRegistry {
         BY_OPERATOR.remove(session.operatorId(), session.sessionId());
         session.members().forEach(member -> BY_MEMBER.remove(member.characterId(), session.sessionId()));
     }
+    /**
+     * Whether this bot may loot this drop of a PPQ objective item. In a companion run the companions gather the medal
+     * stage's current marks for the human leader (only he may hand them to Guon): a natural drop of the wave's mark is
+     * theirs to pick up, a stack a companion dropped for him is his, and only the companion that claimed it back before
+     * it can expire may take it. Everything else is {@link #canLootExclusive(Character, int)}, unchanged.
+     */
+    public static boolean canLootExclusive(Character character, MapItem drop) {
+        if (character == null || drop == null) return false;
+        int itemId = drop.getItemId();
+        if (AgentPpqDefinition.MEDALS.contains(itemId)) {
+            AgentPpqSession session = forMember(character.getId());
+            if (session != null && session.companionAdopted() && character.getId() != session.eventLeaderId()
+                    && session.eventInstance() != null && character.getEventInstance() == session.eventInstance()) {
+                if (drop.isPlayerDrop()) return session.recollectorOf(drop.getObjectId()) == character.getId();
+                return itemId == AgentPpqCoordinator.expectedMedal(
+                        AgentPpqCoordinator.character(session.eventLeaderId()));
+            }
+        }
+        return canLootExclusive(character, itemId);
+    }
+
     public static boolean canLootExclusive(Character character, int itemId) {
         if (character == null || !AgentPpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)) return false;
         AgentPpqSession session = forMember(character.getId());

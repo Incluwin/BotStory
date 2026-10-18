@@ -13,6 +13,7 @@ import constants.skills.NightWalker;
 import server.agents.capabilities.movement.AgentMovementSkillConfig;
 import server.agents.capabilities.movement.AgentMovementSkillStateRuntime;
 import server.agents.capabilities.partyquest.lpq.AgentLpqMovementSkillPolicy;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqMovementSkillPolicy;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.FieldLimit;
 
@@ -151,7 +152,8 @@ public final class AgentMovementSkillPolicy {
                                              AgentNavigationGraph.EdgeType edgeType) {
         return switch (edgeType) {
             case TELEPORT -> AgentMovementSkillConfig.TELEPORT_MODE.active()
-                    || AgentLpqMovementSkillPolicy.allowsActiveTeleport(agent);
+                    || AgentLpqMovementSkillPolicy.allowsActiveTeleport(agent)
+                    || AgentRjpqMovementSkillPolicy.allowsActiveTeleport(agent);
             case FLASH_JUMP -> AgentMovementSkillConfig.FLASH_JUMP_MODE.active();
             default -> false;
         };

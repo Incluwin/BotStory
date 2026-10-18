@@ -1596,6 +1596,38 @@ tuning:
     # Purpose: The longest any PPQ run may take from admission to entering its event, a cap kept apart from the run's own so a slow start never shortens the stages.
     # Technical: AgentPpqCoordinator.tickSession fails an unbound session ("PPQ entry timed out") once this long has passed since AgentPpqSession.startedAtMs; EVENT_TIMEOUT_MS counts from AgentPpqSession.enteredAtMs instead.
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.PRE_ENTRY_TIMEOUT_MS: '900000'
+    # Values: 1-20 marks. Recommended: 5, EPQ's marble batch.
+    # Purpose: Sets how many of the wave's pirate marks a companion holds before it brings them to a human leader who is near.
+    # Technical: AgentPpqMedalHandOver reads this on 925100100 in companion runs; once the party's marks (the leader's bag, the companions' bags and the stacks lying for him) make twenty, every carrier brings what it holds whatever the batch.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.BATCH: '5'
+    # Values: 100-1500 pixels. Recommended: 400, about a screen's half width.
+    # Purpose: Sets how near the human leader must stand for a carrier to bring him a batch of pirate marks early.
+    # Technical: Same map and within this Euclidean distance; used only by the batch rule of AgentPpqMedalHandOver.handOverDue in PPQ companion runs.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.NEAR_PX: '400'
+    # Values: 20-120 pixels. Recommended: 60, the at-feet distance of the other party quests' hand-overs.
+    # Purpose: Sets how close to the leader's spot a carrier drops its pirate marks, so the stack lands at his feet.
+    # Technical: Both on a foothold and within this on both axes, with the map's own drop landing (predictDropLanding) checked before the drop; a landing above or below him makes the carrier walk on. The companion's line follows the landing.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.REACH_PX: '60'
+    # Values: 5000-60000 milliseconds. Recommended: 20000, short against the medal stage's timer.
+    # Purpose: Bounds a carrier's walk to the human leader with pirate marks; after it the carrier leaves the stack by Guon instead.
+    # Technical: Counted from the hand-over's start on the carrier's own PPQ member state; an unreachable leader (canReach false, another map, down) goes to Guon at once, where the leader hands the marks in.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.TIMEOUT_MS: '20000'
+    # Values: 5000-120000 milliseconds. Recommended: 15000.
+    # Purpose: Reminds the human leader once about pirate marks a companion dropped for him that still lie on the floor.
+    # Technical: Counted from the stack's drop time (MapItem.getDropTime); one line per stack, and one for stacks lying together within the same window, said by the companion that dropped it.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.PICKUP_NUDGE_MS: '15000'
+    # Values: 30000-170000 milliseconds. Recommended: 120000, well before the 180-second item expiry.
+    # Purpose: Sets when a companion picks pirate marks left lying for the leader back up, so they never vanish unclaimed.
+    # Technical: Counted from the stack's drop time; clamped below config.yaml ITEM_EXPIRE_TIME less one ITEM_EXPIRE_CHECK sweep (with a WARN). The dropper claims it while it stands on the map, else the lowest-id companion there; the loot rule lets only that claimer take the stack, which it then drops for him again.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.RECOLLECT_MS: '120000'
+    # Values: 0-5. Recommended: 2.
+    # Purpose: Caps how often one stack of pirate marks is picked back up and dropped for the leader again before it is left to expire.
+    # Technical: The count follows the stack's lineage through each re-drop (AgentPpqSession.setRecollectCount); 0 turns re-collecting off and leaves stacks lying until they expire.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.RECOLLECT_MAX: '2'
+    # Values: 1000-30000 milliseconds. Recommended: 8000.
+    # Purpose: Keeps carriers converging on the leader with pirate marks to one line between them instead of one each.
+    # Technical: AgentPpqSession.claimLineWindow per line kind (at feet, by Guon) and mark; the twenty line is always said once per wave, and the window starts again with it.
+    server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.LINE_WINDOW_MS: '8000'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 
@@ -6096,6 +6128,46 @@ tuning:
     # Purpose: How many times an RJPQ companion asks one claim NPC (the marble, the traces, the reward) before it gives that claim up.
     # Technical: AgentRjpqStagePlay.claim counts its tries per map in the member state; from the second try a full tab first loses its cheapest item (E2 once); past this many it logs 'RJPQ claim skipped' and stands, and the release takes it out through the event.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.CLAIM_RETRY_MAX: '3'
+    # Values: true or false. Recommended: true for the RJPQ Dark Lab 2 runner.
+    # Purpose: Lets the RJPQ Dark Lab 2 runner teleport between the lab's walled cells without turning Teleport navigation on globally.
+    # Technical: Only 926100202 and 926110202 receive Teleport graph edges (AgentNavigationGraphService), and routing over them still requires the run's chosen Lab 2 runner in its run's event (AgentRjpqMovementSkillPolicy.allowsActiveTeleport), a learned Teleport, field permission, MP reserve and cooldown eligibility.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqMovementSkillPolicy.ENABLE_TELEPORT_NAVIGATION: 'true'
+    # Values: 105-123. Recommended: 120, the offline graph's threshold on Map.wz 926100201.
+    # Purpose: The jump stat a companion needs, with its Haste on, to be chosen as the runner of RJPQ Dark Lab 1, whose boxes stand on high conveyor ledges.
+    # Technical: AgentRjpqDarkLabs.chooseRunners compares Character.getTotalJumpStat plus its best Haste's jump (Skill.wz effect) with this; the navigation graph of 926100201 reaches all six box ledges and the exit at 120 and none at 110 (AgentRjpqDarkLabNavigationTest). Inside the lab the runner recasts Haste while its jump is below this.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.LAB_ONE_JUMP: '120'
+    # Values: 30-120 pixels. Recommended: 60.
+    # Purpose: How close to a Dark Lab box the runner stands before it hits it, so it breaks boxes from beside them as a player does.
+    # Technical: AgentRjpqDarkLabs.lab compares the runner's position with the box's grounded spot by Euclidean distance, and wants it on a foothold, before PrimitiveCapabilityGateway.hitReactor.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.BOX_REACH_PX: '60'
+    # Values: 300-3000 milliseconds. Recommended: 700, about one attack.
+    # Purpose: The pause between two of the runner's hits on a Dark Lab box, which takes four hits to break (Reactor.wz 2612001-2612003).
+    # Technical: AgentRjpqDarkLabs.lab defers the member's next action by this much after each hitReactor.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.BOX_HIT_MS: '700'
+    # Values: 60000-600000 milliseconds. Recommended: 240000.
+    # Purpose: The longest a runner stays in its Dark Lab before it gives the lab up and leaves it to the leader, so a stuck runner never holds the run.
+    # Technical: Counted from its arrival in the lab (AgentRjpqMemberState.labEnteredAtMs); on giving up it says D4 once, the session marks the lab given up (AgentRjpqSession.giveUpLab) and nobody is sent in again.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.LAB_RUN_LIMIT_MS: '240000'
+    # Values: 5-60 percent. Recommended: 30.
+    # Purpose: The HP share at or below which a runner with no HP potion left gives its Dark Lab up and leaves, before the lab's gas takes it down.
+    # Technical: The labs drain 300 HP every five seconds (Map.wz decHP, World's map-damage task); AgentRjpqDarkLabs.aboutToGoDown reads the HP and the HP potion count (PrimitiveCapabilityGateway.hpPotionCount).
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.DYING_HP_PERCENT: '30'
+    # Values: 20-120 pixels. Recommended: 60, the at-feet distance of the other party quests' hand-overs.
+    # Purpose: How close to the leader's spot a companion drops the RJPQ experiment files, so they land at his feet, and how close it stands to the NPC.
+    # Technical: Both on a foothold and within this on both axes, with the map's own drop landing (predictDropLanding) checked before the drop; also the reach for the walk to Romeo or Juliet.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.FILES_REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 25000.
+    # Purpose: Bounds a companion's walk to the leader with the RJPQ experiment files; after it, it leaves them by Romeo or Juliet instead.
+    # Technical: Counted from the hand-over's start on the companion's member state; an unreachable leader (canReach false) goes to the NPC at once, and a leader off the Special Lab is waited for by the NPC.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.FILES_TIMEOUT_MS: '25000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000.
+    # Purpose: Reminds the leader once about experiment files a companion dropped for him that still lie on the floor.
+    # Technical: Counted from the stack's drop time (MapItem.getDropTime); one D7 line per stack, said by its dropper.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.FILES_NUDGE_MS: '20000'
+    # Values: 30000-170000 milliseconds. Recommended: 120000, well before the 180-second item expiry.
+    # Purpose: When a companion picks experiment files left lying for the leader back up, since files that expire leave the run unable to finish.
+    # Technical: Counted from the stack's drop time; its dropper while it stands on the map, else the lowest-id companion there (AgentRjpqDarkLabs.mayRecollect, which the loot rule also asks), then brings them again.
+    server.agents.capabilities.partyquest.rjpq.AgentRjpqDarkLabs.FILES_RECOLLECT_MS: '120000'
     # Values: 1000-30000 milliseconds. Recommended: 6000, a little more than the RJPQ watchdog period.
     # Purpose: How close to the end of its 45-minute timer an RJPQ event must have been at the run's last look for its end to count as the timer running out.
     # Technical: AgentRjpqCompanionRun.pass stores the event's getTimeLeft on every pass; when the event ends before the clear and the last read was at most this, AgentRjpqParting.endedCause names TIMEOUT ("out of time... yulete got away.").
