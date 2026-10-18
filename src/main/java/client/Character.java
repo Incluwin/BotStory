@@ -3951,6 +3951,28 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
+    // Server mod botstory_wz off (clients on the Cosmic WZ files): nothing grants an Evolving Ring
+    // or moves the codex to -149, but a character that got either while it was on still carries
+    // it, and such a client closes on entering the game. The log says why.
+    public void warnItemsNeedingBotStoryWz() {
+        List<String> found = new ArrayList<>();
+        for (InventoryType type : new InventoryType[]{InventoryType.EQUIPPED, InventoryType.EQUIP}) {
+            for (Item item : getInventory(type).list()) {
+                if (EvolvingRing.isChainRing(item.getItemId())) {
+                    found.add("Evolving Ring " + item.getItemId() + " at " + item.getPosition());
+                }
+            }
+        }
+        Item cashMedal = getInventory(InventoryType.EQUIPPED).getItem((short) -149);
+        if (cashMedal != null && cashMedal.getItemId() == MONSTER_BOOK_MEDAL_ID) {
+            found.add("Hunter's Codex at -149");
+        }
+        if (!found.isEmpty()) {
+            log.warn("chr {} carries {} while server mod botstory_wz is off: a client without BotStory's WZ "
+                    + "files closes on entering the game", getName(), String.join(", ", found));
+        }
+    }
+
     public void gainGachaExp() {
         int expgain = 0;
         long currentgexp = gachaexp.get();

@@ -32,7 +32,7 @@ public class ModsCommand extends Command {
         FeatureHandshake handshake = FeatureHandshake.get();
         if (params.length == 0) {
             for (ServerMod mod : mods.mods()) {
-                gm.yellowMessage(mod.id() + ": " + (mods.isOn(mod) ? "on" : "off") + " - " + mod.title());
+                gm.yellowMessage(mods.describe(mod) + " - " + mod.title());
             }
             gm.yellowMessage("Client features: " + handshake.policy().summary());
             return;
@@ -51,6 +51,11 @@ public class ModsCommand extends Command {
         if (mod == null || on == null) {
             gm.yellowMessage(mod == null ? "No server mod '" + params[0] + "'. Usage: !mods <mod> on|off"
                     : "Usage: !mods " + mod.id() + " on|off");
+            return;
+        }
+        if (mod.bootOnly()) {
+            gm.yellowMessage(mods.describe(mod) + " is read at boot only: connected clients depend on it. Set "
+                    + ServerMods.environmentName(mod) + " in .env or mods.SWITCHES in config.yaml, then restart.");
             return;
         }
         mods.set(mod, on);

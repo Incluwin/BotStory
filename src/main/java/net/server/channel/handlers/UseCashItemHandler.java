@@ -70,6 +70,7 @@ import server.maps.Kite;
 import server.maps.MapleMap;
 import server.maps.MapleTVEffect;
 import server.maps.PlayerShopItem;
+import server.mods.ServerMods;
 import service.NoteService;
 import service.NoteService.PlayerNoteResult;
 import tools.PacketCreator;
@@ -708,6 +709,11 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
                 client.sendPacket(PacketCreator.enableActions());
             }, SECONDS.toMillis(3));
         } else if (itemId == 5900000) { // Fusion Anvil — kaentake client; packet body order: skinPos (left/APPEARANCE slot), basePos (right/FUNCTION slot)
+            if (!ServerMods.get().isOn(ServerMods.FUSION_ANVIL)) { // the transmog id never reaches the client: keep the anvil
+                player.dropMessage(1, "The Fusion Anvil does not work on this server.");
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
             short skinPos = p.readShort();
             short basePos = p.readShort();
 

@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.life.MobSkill;
 import server.living.LivingWorldHooks;
+import server.mods.ServerMods;
 import service.NoteService;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
@@ -468,13 +469,19 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             // Evolving Ring chain: retroactively grant Evolving Ring I to legacy characters
             // who pre-date the chain feature. No-op for characters that already carry any
             // chain ring (including the Fully Evolved terminal).
-            player.ensureEvolvingRing();
             // Hunter's Codex: relocate from regular medal slot (-49) to cash medal
             // slot (-149) so a regular medal can occupy -49 alongside it. WZ now has
             // cash=1 on img 1142165 (set by install_monster_book_medal.py), so the v83
             // client treats this as a cash medal and renders it at the offset slot.
             // No-op if the codex is not at -49 — independent of the gated auto-grant.
-            player.relocateMonsterBookMedalToCashSlot();
+            // Both need BotStory's WZ files (server mod botstory_wz): the Cosmic files
+            // have no Evolving Ring and ship the codex with cash=0.
+            if (ServerMods.get().isOn(ServerMods.BOTSTORY_WZ)) {
+                player.ensureEvolvingRing();
+                player.relocateMonsterBookMedalToCashSlot();
+            } else {
+                player.warnItemsNeedingBotStoryWz();
+            }
             // Hunter's Codex: backfill + stat sync.
             // GATED: leave commented until install_monster_book_medal.py has been
             // run. The medal img 1142165 ships with medalTag=95 in stock v83 WZ,

@@ -108,6 +108,7 @@ import server.maps.PlayerShop;
 import server.maps.PlayerShopItem;
 import server.maps.Reactor;
 import server.maps.Summon;
+import server.mods.ServerMods;
 import server.movement.LifeMovementFragment;
 
 import java.awt.*;
@@ -505,10 +506,20 @@ public class PacketCreator {
             p.writeInt(equip.getVicious()); //WTF NEXON ARE YOU SERIOUS?
             p.writeLong(0);
         }
+        addEquipTail(p, equip);
+    }
+
+    /**
+     * An equip's last fields: the stock v83 ones, then, with server mod fusion_anvil, its Fusion Anvil transmog id,
+     * which only the BotStory kaentake DLL reads (GW_ItemSlotBase::Decode hook). Any other client misreads every item
+     * that follows it.
+     */
+    static void addEquipTail(OutPacket p, Equip equip) {
         p.writeLong(getTime(-2));
         p.writeInt(-1);
-        p.writeInt(equip.getAnvilItemId()); // Fusion Anvil transmog — kaentake client reads this via GW_ItemSlotBase::Decode hook
-
+        if (ServerMods.get().isOn(ServerMods.FUSION_ANVIL)) {
+            p.writeInt(equip.getAnvilItemId());
+        }
     }
 
     private static void addInventoryInfo(OutPacket p, Character chr) {

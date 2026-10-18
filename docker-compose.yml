@@ -26,6 +26,9 @@ services:
       SERVER_HOST: "${SERVER_HOST:-}"
       SERVER_LANHOST: "${SERVER_LANHOST:-}"
       SERVER_TAILSCALEHOST: "${SERVER_TAILSCALEHOST:-}"
+      # The BotStory client only (see .env.example); blank keeps config.yaml's off.
+      MOD_FUSION_ANVIL: "${MOD_FUSION_ANVIL:-}"
+      MOD_BOTSTORY_WZ: "${MOD_BOTSTORY_WZ:-}"
 
   db:
     image: mysql:8.4.0

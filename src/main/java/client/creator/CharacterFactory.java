@@ -31,6 +31,7 @@ import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.mods.ServerMods;
 import tools.PacketCreator;
 
 /**
@@ -85,15 +86,19 @@ public abstract class CharacterFactory {
         // Evolving Ring I: auto-equip in Ring slot 2 (-13). The ring auto-evolves at item-level 30
         // (see Equip.transmuteToNextTier) through Ring II → Ring III → Fully Evolved Ring. Like
         // the Quest Ring, it's locked to the slot — see ItemMoveHandler / canWearEquipment.
-        try {
-            Item eq_evo = ii.getEquipById(EvolvingRing.EVOLVING_RING_I);
-            if (eq_evo != null) {
-                eq_evo.setPosition((byte) -13);
-                equipped.addItemFromDB(eq_evo);
+        // Only with server mod botstory_wz: the Cosmic WZ files have no Evolving Ring, and a client
+        // without it closes on entering the game.
+        if (ServerMods.get().isOn(ServerMods.BOTSTORY_WZ)) {
+            try {
+                Item eq_evo = ii.getEquipById(EvolvingRing.EVOLVING_RING_I);
+                if (eq_evo != null) {
+                    eq_evo.setPosition((byte) -13);
+                    equipped.addItemFromDB(eq_evo);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to auto-equip Evolving Ring I {} on new character",
+                        EvolvingRing.EVOLVING_RING_I, e);
             }
-        } catch (Exception e) {
-            log.warn("Failed to auto-equip Evolving Ring I {} on new character",
-                    EvolvingRing.EVOLVING_RING_I, e);
         }
 
         // Hunter's Codex: auto-equip in cash medal slot (-149) so a regular medal can
