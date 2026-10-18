@@ -69,6 +69,11 @@ ports 8484 and 7575-7577.
 - Code changes need `docker compose up --build`.
 - The optional economy database starts only with `docker compose --profile economy up`. Set
   `ECONOMY_DB_PASSWORD` in `.env` before you use it.
+- **Players on other PCs.** Docker Desktop passes every connection to the server from its own
+  network address (172.17.0.1), so the server takes every player, even one on this PC, for a
+  home-network player and sends them `SERVER_LANHOST`. `SERVER_HOST` and `SERVER_TAILSCALEHOST`
+  have no effect here. Set `SERVER_LANHOST=` to the one address all your players use, such as
+  this PC's Tailscale IP; players on this PC can connect through that address too.
 
 ### By hand (any OS)
 
@@ -97,9 +102,12 @@ BotStory's client is the stock Global MapleStory v83 client. These are the steps
 public files:
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
-   1. Run `MapleGlobal-v83-setup.exe`.
-   2. Delete `HShield`, `ASPLnchr.exe` and `Patcher.exe` from the install folder.
-   3. Copy the files in `cosmic-wz` over the installed ones.
+   1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
+      GitHub and use its download button: they are stored in Git LFS, so a `git clone` without
+      Git LFS gets small pointer files instead.
+   2. Run `MapleGlobal-v83-setup.exe`.
+   3. Delete `HShield`, `ASPLnchr.exe` and `Patcher.exe` from the install folder.
+   4. Copy the files in `cosmic-wz` over the installed ones.
 
    Plain v83 WZ files do not work: the server uses NPCs, maps and items that only the Cosmic
    files have. A Community Repack WZ set works too.
@@ -109,9 +117,11 @@ public files:
      server, run `Kaentake.exe <server address> 8484`, or set `host=` and `port=` in its
      `config.ini`. Keep `MapleStory.exe` for this option.
    - `HeavenMS-localhost-WINDOW.exe` from P0nk/Cosmic-client: copy it into the folder and run it.
+     It only connects to this PC (P0nk's README shows how to hex-edit the address), and
+     Windows Security flags it as a virus because it is a modified client.
 3. **Set the large-address-aware flag** (kaentake option only). A long session can run the
    client out of its 2 GB address space. This sets the flag on the stock `MapleStory.exe`; it
-   checks the file's hash first and keeps a backup next to it:
+   checks the file's hash first and moves the original to `botstory-wz-backup\` next to it:
 
    ```bash
    py -3 tools\wz-patcher\botstory_wz.py exe --exe "C:\Nexon\MapleStory\MapleStory.exe"
@@ -178,7 +188,8 @@ Without them, you manage companions with:
 
 Players on the server's own PC need nothing extra. For anyone else, put the address their client
 should use in `.env`, then restart the server. Each player points their client at that address,
-for example with `Kaentake.exe <address> 8484`.
+for example with `Kaentake.exe <address> 8484`. Under Docker Desktop only `SERVER_LANHOST`
+applies (see [Docker](#docker-windows-macos-linux)).
 
 | Players | `.env` line | Value |
 |---|---|---|

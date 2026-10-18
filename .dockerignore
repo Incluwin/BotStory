@@ -17,3 +17,5 @@ tools
 target
 logs
 .runtime
+# The agents' navigation-graph cache a local server writes (hundreds of MB); the image never uses it.
+cache
