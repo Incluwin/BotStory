@@ -39,6 +39,10 @@ registry table, the server's `mods:` defaults, the launcher's feature list and a
 ### P1 Ingest (`tools/mod-intake`, Python stdlib)
 Status 2026-10-17: built on `feat/mod-intake`, 39 tests against a fake Discord API (`tools/mod-intake/README.md`).
 The first real sync waits for the bot token.
+Update 2026-10-17: the user cannot add a bot (no Manage Server, no admin to ask), so two more sources feed the same
+store: `forks` (GitHub forks of P0nk/Cosmic and iw2d/kaentake with work of their own, one thread per fork branch,
+the diff from the compare API as a stored attachment, nothing cloned) and `inbox` (Discord text pasted by hand into
+`<data dir>/inbox/`, one file per thread). Exporting with the user's own account was ruled out (Discord's Terms).
 - REST only (no gateway): list the releases channels, their active and archived threads (forum and text channels),
   then page messages with `after=<last snowflake>` per thread. 429 handling from `retry_after`.
 - Store in SQLite (FTS5): channels, threads, messages, edits (keep old content), reactions count, embeds,

@@ -1,4 +1,5 @@
 """Discord REST client (API v10): bot auth, rate limits, paging. Standard library only."""
+import http.client
 import json
 import time
 import urllib.error
@@ -48,10 +49,13 @@ class UrllibTransport:
     def request(self, method, url, headers):
         req = urllib.request.Request(url, method=method, headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                return Response(r.status, dict(r.headers.items()), r.read())
-        except urllib.error.HTTPError as e:
-            return Response(e.code, dict(e.headers.items()), e.read())
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                    return Response(r.status, dict(r.headers.items()), r.read())
+            except urllib.error.HTTPError as e:
+                return Response(e.code, dict(e.headers.items()), e.read())
+        except http.client.HTTPException as e:  # IncompleteRead...: the connection dropped mid-body; callers retry
+            raise ConnectionError(f"connection dropped: {e!r}"[:300]) from e
 
 
 class DiscordClient:

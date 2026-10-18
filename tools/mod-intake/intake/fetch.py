@@ -12,6 +12,7 @@ reason (retried on later runs), 'manual' or 'skipped' with a note. Nothing fetch
 have no work tree and run no hooks, git may only speak https, and local git commands never fetch on demand.
 """
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -448,10 +449,13 @@ class HttpTransport:
     def request(self, method, url, headers):
         req = urllib.request.Request(url, method=method, headers=headers)
         try:
-            with self.opener.open(req, timeout=self.timeout) as r:
-                return Response(r.status, dict(r.headers.items()), r.read(self.max_bytes + 1))
-        except urllib.error.HTTPError as e:
-            return Response(e.code, dict(e.headers.items()), e.read(self.max_bytes + 1))
+            try:
+                with self.opener.open(req, timeout=self.timeout) as r:
+                    return Response(r.status, dict(r.headers.items()), r.read(self.max_bytes + 1))
+            except urllib.error.HTTPError as e:
+                return Response(e.code, dict(e.headers.items()), e.read(self.max_bytes + 1))
+        except http.client.HTTPException as e:  # IncompleteRead...: the connection dropped mid-body; callers retry
+            raise ConnectionError(f"connection dropped: {e!r}"[:300]) from e
 
 
 class Pacer:

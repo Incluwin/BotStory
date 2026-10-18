@@ -1,5 +1,7 @@
 """SQLite store: channels, threads, messages with edit history, attachments, links, sync runs; and (P2) the
-snapshot of what each link points at, and the code blocks inside messages."""
+snapshot of what each link points at, and the code blocks inside messages; and the state of the other sources
+(GitHub forks, the manual inbox), which write thread-shaped records into the same tables."""
+import hashlib
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -8,7 +10,7 @@ from . import codeblocks as codelib
 from . import links as linklib
 
 DISCORD_EPOCH_MS = 1420070400000
-SCHEMA_VERSION = 2  # 2: sources, code_blocks
+SCHEMA_VERSION = 3  # 2: sources, code_blocks; 3: github_forks, github_fork_branches, inbox_files
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
@@ -51,6 +53,13 @@ CREATE INDEX IF NOT EXISTS sources_by_status ON sources(status);
 CREATE TABLE IF NOT EXISTS code_blocks(
     message_id INTEGER NOT NULL, idx INTEGER NOT NULL, language TEXT, guessed INTEGER NOT NULL, text TEXT NOT NULL,
     PRIMARY KEY(message_id, idx));
+CREATE TABLE IF NOT EXISTS github_forks(
+    repo_id INTEGER PRIMARY KEY, upstream TEXT, full_name TEXT, pushed_at TEXT, checked_at TEXT);
+CREATE TABLE IF NOT EXISTS github_fork_branches(
+    repo_id INTEGER NOT NULL, branch TEXT NOT NULL, head_sha TEXT, ahead_by INTEGER, behind_by INTEGER,
+    thread_id INTEGER, compared_at TEXT, PRIMARY KEY(repo_id, branch));
+CREATE TABLE IF NOT EXISTS inbox_files(
+    name TEXT PRIMARY KEY, sha256 TEXT NOT NULL, thread_id INTEGER NOT NULL, imported_at TEXT);
 """
 
 
@@ -65,6 +74,12 @@ def snowflake_iso(snowflake):
 
 def _int(value):
     return int(value) if value not in (None, "") else None
+
+
+def synthetic_id(key):
+    """A stable id for a record that has no Discord id (a fork branch, an inbox file). 52 bits, so it stays below
+    every real Discord snowflake (all ids since 2015 are above 2**55); a unit's messages take the ids after it."""
+    return int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:13], 16) or 1
 
 
 class Store:
@@ -132,11 +147,108 @@ class Store:
                    archive_timestamp=excluded.archive_timestamp, message_count=excluded.message_count,
                    applied_tags=excluded.applied_tags, last_message_id=excluded.last_message_id,
                    raw=excluded.raw, updated_at=excluded.updated_at""",
-            (tid, _int(t.get("parent_id")), t.get("name"), _int(t.get("owner_id")), snowflake_iso(tid),
+            (tid, _int(t.get("parent_id")), t.get("name"), _int(t.get("owner_id")),
+             t.get("created_at") or snowflake_iso(tid),
              int(bool(meta.get("archived"))), int(bool(meta.get("locked"))), meta.get("archive_timestamp"),
              t.get("message_count"), json.dumps(t.get("applied_tags") or []), _int(t.get("last_message_id")),
              json.dumps(t), stamp, stamp))
         return is_new
+
+    def save_source_channel(self, channel_id, channel_type, name, guild_id=None, raw=None):
+        """The channel a non-Discord source files its threads under. Never tracked, so a Discord sync leaves it be."""
+        self.db.execute(
+            """INSERT INTO channels(id, guild_id, parent_id, type, name, position, tracked, access, raw, updated_at)
+               VALUES(?, ?, NULL, ?, ?, 0, 0, 'ok', ?, ?)
+               ON CONFLICT(id) DO UPDATE SET guild_id=COALESCE(excluded.guild_id, guild_id), type=excluded.type,
+                   name=excluded.name, raw=excluded.raw, updated_at=excluded.updated_at""",
+            (channel_id, _int(guild_id), channel_type, name, json.dumps(raw or {}), now_iso()))
+
+    def thread(self, thread_id):
+        return self.db.execute("SELECT * FROM threads WHERE id = ?", (thread_id,)).fetchone()
+
+    def replace_conversation(self, conversation_id, messages, attachments=()):
+        """Swap every message of a source-owned conversation (a fork branch, an inbox file) for these. The source is
+        the record of its own history, so no revisions are kept. attachments: files already stored, as dicts with
+        id, message_id, filename, content_type, size, sha256. Snapshots (sources rows) of links that come back with
+        the same message id and URL stay valid and are kept; the rest go."""
+        old = [r["id"] for r in self.db.execute("SELECT id FROM messages WHERE conversation_id = ?",
+                                                 (conversation_id,))]
+        self._forget_messages(old, keep_sources=True)
+        for a in attachments:
+            self.db.execute(
+                """INSERT OR REPLACE INTO attachments(id, message_id, filename, content_type, size, url, status, sha256,
+                       attempts, fetched_at) VALUES(?, ?, ?, ?, ?, NULL, 'stored', ?, 1, ?)""",
+                (a["id"], a["message_id"], a["filename"], a["content_type"], a["size"], a["sha256"], now_iso()))
+        for m in messages:
+            self.save_message(conversation_id, m)
+        kept = {int(m["id"]) for m in messages}
+        self._forget_messages([mid for mid in old if mid not in kept], keep_sources=False)
+        for mid in kept:
+            self.db.execute("DELETE FROM sources WHERE message_id = ? AND url NOT IN "
+                            "(SELECT url FROM links WHERE message_id = ?)", (mid, mid))
+
+    def delete_conversation(self, conversation_id):
+        """Remove a source-owned thread and everything in it."""
+        old = [r["id"] for r in self.db.execute("SELECT id FROM messages WHERE conversation_id = ?",
+                                                 (conversation_id,))]
+        self._forget_messages(old, keep_sources=False)
+        self.db.execute("DELETE FROM threads WHERE id = ?", (conversation_id,))
+        self.db.execute("DELETE FROM cursors WHERE conversation_id = ?", (conversation_id,))
+
+    def _forget_messages(self, message_ids, keep_sources):
+        tables = ["links", "code_blocks", "attachments"] + ([] if keep_sources else ["sources", "message_revisions"])
+        for mid in message_ids:
+            self.db.execute("DELETE FROM messages WHERE id = ?", (mid,))
+            self.db.execute("DELETE FROM messages_fts WHERE rowid = ?", (mid,))
+            for table in tables:
+                self.db.execute(f"DELETE FROM {table} WHERE message_id = ?", (mid,))
+
+    # GitHub forks: what was last seen of each fork and branch, so unchanged ones cost no API calls
+
+    def fork_state(self, repo_id):
+        row = self.db.execute("SELECT pushed_at FROM github_forks WHERE repo_id = ?", (repo_id,)).fetchone()
+        branches = {r["branch"]: r for r in self.db.execute(
+            "SELECT * FROM github_fork_branches WHERE repo_id = ?", (repo_id,))}
+        return (row["pushed_at"] if row else None), branches
+
+    def save_fork(self, repo_id, upstream, full_name, pushed_at):
+        self.db.execute(
+            """INSERT INTO github_forks(repo_id, upstream, full_name, pushed_at, checked_at) VALUES(?, ?, ?, ?, ?)
+               ON CONFLICT(repo_id) DO UPDATE SET upstream=excluded.upstream, full_name=excluded.full_name,
+                   pushed_at=excluded.pushed_at, checked_at=excluded.checked_at""",
+            (repo_id, upstream, full_name, pushed_at, now_iso()))
+
+    def save_fork_branch(self, repo_id, branch, head_sha, ahead_by, behind_by, thread_id):
+        self.db.execute(
+            """INSERT INTO github_fork_branches(repo_id, branch, head_sha, ahead_by, behind_by, thread_id, compared_at)
+               VALUES(?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(repo_id, branch) DO UPDATE SET head_sha=excluded.head_sha, ahead_by=excluded.ahead_by,
+                   behind_by=excluded.behind_by, thread_id=COALESCE(excluded.thread_id, thread_id),
+                   compared_at=excluded.compared_at""",
+            (repo_id, branch, head_sha, ahead_by, behind_by, thread_id, now_iso()))
+
+    def forget_fork_branch(self, repo_id, branch):
+        self.db.execute("DELETE FROM github_fork_branches WHERE repo_id = ? AND branch = ?", (repo_id, branch))
+
+    def fork_counts(self):
+        return self.db.execute(
+            """SELECT (SELECT COUNT(*) FROM github_forks),
+                      (SELECT COUNT(*) FROM github_fork_branches WHERE ahead_by > 0),
+                      (SELECT COUNT(*) FROM inbox_files)""").fetchone()
+
+    # Inbox: one row per pasted file, so an unchanged file is not imported again
+
+    def inbox_files(self):
+        return {r["name"]: r for r in self.db.execute("SELECT * FROM inbox_files")}
+
+    def save_inbox_file(self, name, sha256, thread_id):
+        self.db.execute(
+            """INSERT INTO inbox_files(name, sha256, thread_id, imported_at) VALUES(?, ?, ?, ?)
+               ON CONFLICT(name) DO UPDATE SET sha256=excluded.sha256, thread_id=excluded.thread_id,
+                   imported_at=excluded.imported_at""", (name, sha256, thread_id, now_iso()))
+
+    def delete_inbox_file(self, name):
+        self.db.execute("DELETE FROM inbox_files WHERE name = ?", (name,))
 
     # Cursors: the newest message id read from each conversation (a thread or a text channel)
 

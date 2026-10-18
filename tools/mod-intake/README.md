@@ -7,7 +7,12 @@ into a dossier and a catalog entry, triaged by rules and TypeSafe Jev judgments 
 `board`). Later phases port the candidates into BotStory's client and server; see
 `docs/MOD_INTAKE_PLAN.md`.
 
-Python 3.8 or newer, standard library only. `fetch` also needs the git command line.
+Two more sources feed the same store when the Discord bot cannot be added: `forks` reads the GitHub
+forks of P0nk/Cosmic and iw2d/kaentake that carry work of their own, and `inbox` imports Discord text you
+copied by hand. Their threads go through `fetch`, `triage` and the board like Discord threads.
+
+Python 3.8 or newer, standard library only. `fetch` also needs the git command line; `forks` needs a
+GitHub login (the GitHub CLI's, or `GITHUB_TOKEN`).
 
 ## Bot setup
 
@@ -69,6 +74,67 @@ Run `sync` as often as you like; a sync with nothing new costs a few listing req
 first-post re-reads. Rate limits are respected (429 `retry_after`, empty buckets).
 
 The order after a sync is `sync`, `fetch`, `triage`, then `board` to look at the result.
+
+## GitHub forks
+
+```
+python tools/mod-intake/mod_intake.py forks
+python tools/mod-intake/mod_intake.py forks --upstream iw2d/kaentake --limit 50
+```
+
+Reads every fork of P0nk/Cosmic and iw2d/kaentake (and forks of those forks, `--max-depth`, default 3)
+and keeps the branches that have commits of their own. Each such branch becomes one thread under a
+"forks of <upstream>" channel:
+
+- the starter post: which fork and branch, how many commits ahead of and behind the upstream default
+  branch, the compare link, and the changed files (`M src/...`, `A scripts/...`);
+- one reply per own commit (the newest 50), with its message;
+- the diff against upstream, from GitHub's compare API, as a stored `.diff` attachment.
+
+Skipped without a compare: forks never pushed to after forking, branches whose head is an upstream branch
+head, and BotStory's own forks (Incluwin). Branches whose commits are only merges of upstream are counted
+but get no thread. Nothing is cloned: P2 would clone each fork whole, so the compare link is recorded as a
+skipped snapshot and `fetch` leaves it alone; clone a fork by hand when porting it.
+
+Later runs cost little: a fork whose `pushed_at` has not changed is skipped, and a branch whose head has
+not moved is not compared again. A pushed branch replaces its thread (the GitHub history is the record, so
+no old versions are kept); a deleted branch, or one with nothing of its own left (merged upstream), loses
+its thread. `--limit` caps the compares in one run; the next run continues. When the API limit (5,000
+requests an hour with a login) runs out, the run stops, says when it resets, and keeps what it has. A
+compare that fails on the network or a GitHub server error is asked again on the next run; one GitHub
+refuses (unrelated history, an empty repository) is not, until the branch moves.
+
+GitHub access: `GITHUB_TOKEN` or `GH_TOKEN` from the environment, else the GitHub CLI's login
+(`gh auth token`). The token stays in memory and is never printed or stored.
+
+## Inbox (Discord text copied by hand)
+
+```
+python tools/mod-intake/mod_intake.py inbox
+```
+
+Put one `.txt` or `.md` file per thread in `<data dir>/inbox/` (the first `inbox` run creates the folder).
+Start the file with the thread's link (right-click the thread, Copy Link) and, if you like, a title; then
+paste the messages:
+
+```
+https://discord.com/channels/<server id>/<thread id>
+Title: [v83] Quest log colours
+
+hookwright — 7/22/25, 11:22 AM
+Colours for the quest log. ...
+packetsmith — Today at 3:14 PM
+Works on Cosmic. https://github.com/...
+```
+
+Selecting messages in Discord and copying gives the `name — date time` lines above; the compact layout
+(`[11:22 AM] name: text`) works too. Code keeps its ``` fences when you copy a single message with
+right-click > Copy Text; a multi-message selection copies code as plain text. Without the link the
+thread gets an id from the file name. With it, the record has the thread's real id, so it lines up with
+what a bot would read.
+
+The files are the record: `inbox` imports new and changed files, skips unchanged ones, and drops the
+thread of a deleted file. A file whose thread is already in the store from a Discord sync is left out.
 
 ## Fetch (P2)
 
@@ -191,8 +257,9 @@ only and accepts corrections only with the page's token. Message text is shown a
 mod-intake-data/
   .env
   intake.sqlite3          channels, threads, messages, message_revisions, attachments, links, sync_runs,
-                          sources, code_blocks
-  attachments/ab/abcd...  each attachment once, named by its sha256, no file extension
+                          sources, code_blocks, github_forks, github_fork_branches, inbox_files
+  attachments/ab/abcd...  each attachment once, named by its sha256, no file extension (fork diffs too)
+  inbox/*.txt, *.md       Discord text you pasted (the inbox command imports it)
   sources/github/<owner>/<repo>/       partial clones, no work tree (lower-case names)
   sources/git/<host>/<owner>/<repo>/   GitLab, Bitbucket, Codeberg
   sources/gist/<id>/

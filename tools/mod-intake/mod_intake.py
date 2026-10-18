@@ -2,6 +2,8 @@
 
     python tools/mod-intake/mod_intake.py channels          list the server's channels, * = would be tracked
     python tools/mod-intake/mod_intake.py sync              fetch new threads, messages, edits, attachments
+    python tools/mod-intake/mod_intake.py forks             read GitHub forks with commits of their own
+    python tools/mod-intake/mod_intake.py inbox             import Discord text pasted into <data>/inbox/*.txt
     python tools/mod-intake/mod_intake.py fetch             snapshot what new links point at (git, pastes)
     python tools/mod-intake/mod_intake.py status            what the store holds
     python tools/mod-intake/mod_intake.py sources           list link snapshots (--status failed|manual|...)
@@ -28,6 +30,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from intake import board as boardlib  # noqa: E402
 from intake import config as configlib  # noqa: E402
 from intake import dossier as dossierlib  # noqa: E402
+from intake import forks as forklib  # noqa: E402
+from intake import inbox as inboxlib  # noqa: E402
 from intake import inventory as invlib  # noqa: E402
 from intake import jev as jevlib  # noqa: E402
 from intake import triage as triagelib  # noqa: E402
@@ -41,16 +45,18 @@ TOOL_DIR = Path(__file__).resolve().parent
 CATALOG_DIR = TOOL_DIR / "catalog"
 SERVER_REPO = TOOL_DIR.parents[1]  # tools/mod-intake -> the server repo (a worktree works too)
 
-CHANNEL_TYPES = {0: "text", 2: "voice", 4: "category", 5: "announcement", 13: "stage", 15: "forum", 16: "media"}
+CHANNEL_TYPES = {0: "text", 2: "voice", 4: "category", 5: "announcement", 13: "stage", 15: "forum", 16: "media",
+                 1001: "github forks", 1002: "inbox"}
 SOURCE_STATUSES = ("stored", "failed", "manual", "skipped")
 MAX_FAILURES_SHOWN = 20
 
 
 def main(argv=None, transport=None, sleep=None, page_size=100, jev_transport=None, environ=None, serve=None,
-         **fetch_options):
+         github_transport=None, **fetch_options):
     """transport: the Discord API for sync/channels, the web for fetch; jev_transport: the TypeSafe API for triage;
-    environ: replaces os.environ for the API key lookup; serve: called with the board server instead of
-    serve_forever. fetch_options go to run_fetch; their git_env also reaches triage and board (tests)."""
+    github_transport: the GitHub API for forks; environ: replaces os.environ for the API key and GitHub token lookups;
+    serve: called with the board server instead of serve_forever. fetch_options go to run_fetch; their git_env also
+    reaches triage and board (tests)."""
     parser = argparse.ArgumentParser(prog="mod_intake.py", description=__doc__.split("\n")[0])
     parser.add_argument("--data", help="data folder (default: $MOD_INTAKE_DATA or FriendServer/mod-intake-data)")
     parser.add_argument("--catalog", help=f"catalog folder (default: {CATALOG_DIR})")
@@ -58,6 +64,13 @@ def main(argv=None, transport=None, sleep=None, page_size=100, jev_transport=Non
     sync_p = sub.add_parser("sync", help="fetch new threads, messages, edits and attachments")
     sync_p.add_argument("--no-starters", action="store_true", help="skip re-reading each thread's first post")
     sync_p.add_argument("--no-attachments", action="store_true", help="do not download attachments this time")
+    forks_p = sub.add_parser("forks", help="read GitHub forks whose branches have commits of their own")
+    forks_p.add_argument("--upstream", action="append",
+                         help=f"owner/repo whose forks to read; repeatable (default {', '.join(forklib.UPSTREAMS)})")
+    forks_p.add_argument("--limit", type=int, help="compare at most this many fork branches this run")
+    forks_p.add_argument("--max-depth", type=int, default=forklib.MAX_DEPTH,
+                         help=f"forks of forks to follow (default {forklib.MAX_DEPTH})")
+    sub.add_parser("inbox", help="import Discord text you pasted into <data dir>/inbox/*.txt")
     fetch_p = sub.add_parser("fetch", help="snapshot what new links point at: git mirrors, raw pastes")
     fetch_p.add_argument("--limit", type=int, help="handle at most this many links this run")
     fetch_p.add_argument("--retry-failed", action="store_true", help="retry failed links even after 3 tries")
@@ -115,8 +128,18 @@ def main(argv=None, transport=None, sleep=None, page_size=100, jev_transport=Non
             return cmd_inventory(paths, args)
         if args.command == "overrides":
             return cmd_overrides(paths, args)
+        if args.command in ("forks", "inbox"):
+            cfg.data_dir.mkdir(parents=True, exist_ok=True)
+            store = Store(cfg.db_path)
+            try:
+                if args.command == "inbox":
+                    return cmd_inbox(store, cfg)
+                return cmd_forks(store, cfg, args, os.environ if environ is None else environ, github_transport,
+                                 sleep)
+            finally:
+                store.close()
         if not cfg.db_path.exists():
-            print(f"No data yet in {cfg.data_dir}: run 'sync' first.")
+            print(f"No data yet in {cfg.data_dir}: run 'sync', 'forks' or 'inbox' first.")
             return 1
         store = Store(cfg.db_path)
         try:
@@ -148,9 +171,31 @@ def main(argv=None, transport=None, sleep=None, page_size=100, jev_transport=Non
         print("Discord refused the bot token (401). Check DISCORD_BOT_TOKEN in the data folder's .env.",
               file=sys.stderr)
         return 2
-    except (IntakeError, DiscordError) as e:
+    except (IntakeError, DiscordError, forklib.GitHubError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
+
+
+def cmd_forks(store, cfg, args, environ, transport, sleep):
+    stats = forklib.run_forks(store, cfg.attachments_dir, environ, upstreams=args.upstream or forklib.UPSTREAMS,
+                              transport=transport, limit=args.limit, max_depth=args.max_depth,
+                              **({"sleep": sleep} if sleep else {}))
+    print(f"Read {stats.forks} forks: {stats.never_pushed} never pushed to, {stats.unchanged} unchanged since the last "
+          f"run, {stats.skipped_owner} our own; compared {stats.compares} branches, {stats.no_own_commits} without "
+          f"work of their own; {stats.threads} fork threads saved ({stats.new_threads} new)"
+          + (f", {stats.dropped} dropped (branch gone or merged)" if stats.dropped else "")
+          + f"; {stats.requests} GitHub requests.")
+    if stats.stopped:
+        print(f"Not finished: {stats.stopped}")
+    return 0
+
+
+def cmd_inbox(store, cfg):
+    folder = cfg.data_dir / "inbox"
+    stats = inboxlib.run_inbox(store, folder)
+    print(f"Inbox {folder}: {stats.files} files, {stats.imported} imported, {stats.unchanged} unchanged, "
+          f"{stats.skipped} skipped, {stats.removed} removed (file deleted).")
+    return 0
 
 
 def cmd_sync(client, cfg, args, page_size):
@@ -227,6 +272,9 @@ def cmd_status(store, cfg):
     print("Tracked channels:")
     for c in s["tracked_channels"]:
         print(f"  #{c['name']}  [{CHANNEL_TYPES.get(c['type'], c['type'])}]  access={c['access'] or '-'}")
+    forks, fork_branches, inbox_files = store.fork_counts()
+    print(f"Other sources: {forks} GitHub forks read, {fork_branches} fork branches with work of their own; "
+          f"{inbox_files} inbox files")
     total, archived = s["threads"]
     print(f"Threads: {total} ({archived} archived)")
     print(f"Messages: {s['messages']} (+{s['revisions']} earlier versions of edited posts)")

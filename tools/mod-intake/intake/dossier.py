@@ -24,7 +24,7 @@ MAX_READ_FILES = 40           # changed files read per snapshot for evidence
 MAX_READ_BYTES = 256 * 1024
 EXCERPT_CHARS = 1500
 TEXT_CHANNEL_TYPES = (0, 5)
-CHANNEL_TYPES = {0: "text", 5: "announcement", 15: "forum", 16: "media"}
+CHANNEL_TYPES = {0: "text", 5: "announcement", 15: "forum", 16: "media", 1001: "github forks", 1002: "inbox"}
 CHANGE_KINDS = {"github_commit", "github_pull", "github_compare"}
 SINGLE_FILE_KINDS = {"github_blob", "github_raw"}
 

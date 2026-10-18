@@ -36,7 +36,7 @@ class CliTest(unittest.TestCase):
     def test_status_before_sync(self):
         code, out, _ = self.run_cli("status")
         self.assertEqual(code, 1)
-        self.assertIn("run 'sync' first", out)
+        self.assertIn("run 'sync', 'forks' or 'inbox' first", out)
 
     def test_channels_marks_tracked(self):
         code, out, _ = self.run_cli("channels")
