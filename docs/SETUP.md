@@ -98,8 +98,19 @@ The server creates the `cosmic` database on its first start (`createDatabaseIfNo
 
 ## 2. The game client
 
-BotStory's client is the stock Global MapleStory v83 client. These are the steps that work with
-public files:
+BotStory's client is the stock Global MapleStory v83 client.
+
+> **Not playable with public files yet.** A client set up with the steps below (P0nk's v83 setup,
+> `cosmic-wz` and kaentake v3.4.1; tested 2026-10-18) reaches character select, then closes as
+> soon as a character enters the game, for two reasons:
+>
+> - The server writes a BotStory-only value after every equip (the Fusion Anvil transmog id) that
+>   only the BotStory build of kaentake reads. Any other client misreads every item.
+> - Every character wears an Evolving Ring (items 1112499-1112502), which the Cosmic WZ files do
+>   not have.
+>
+> With both worked around in a test, the client played normally. Until the server and this guide
+> handle both, only the BotStory client can play. The steps below are the rest of the setup.
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
    1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
@@ -127,7 +138,7 @@ public files:
    py -3 tools\wz-patcher\botstory_wz.py exe --exe "C:\Nexon\MapleStory\MapleStory.exe"
    ```
 
-4. **Add the Residents' portraits and quest log** before you play in the Victoria towns:
+4. **Add the Residents' portraits and quest log** before you first log in:
    1. Start the server once, so it creates the Residents, then stop it.
    2. Run this from the server folder (it needs [Python 3.8+](https://www.python.org/downloads/)):
 
@@ -140,8 +151,9 @@ public files:
       Residents' quests into your client's `Npc.wz`, `String.wz`, `Quest.wz` and `Etc.wz`. The
       originals go to `botstory-wz-backup\`.
 
-   The v83 client expects every NPC the server shows it to exist in its WZ files, so do this
-   step before you play. Run it again after the Residents' gear or quests change.
+   The v83 client expects every NPC and quest the server shows it to exist in its WZ files.
+   Without this step it closes when you talk to a Resident, and the status bar and chat box do
+   not appear. Run it again after the Residents' gear or quests change.
 5. **Quest markers without BotStory's `Custom.wz`.** The markers over Residents are drawn from
    BotStory's `Custom.wz`. On any other client, set both marker paths in `config.yaml` to the
    stock icons:
@@ -160,11 +172,11 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
 - `Custom.wz` with the native Crew window, the head-height quest markers and the mob HP bar.
 - BotStory's item, skill and cash-shop edits, and the large quick-slot bar.
 - Images for 307 equips the server took from the Community Repack, which a client on the Cosmic
-  WZ set lacks.
+  WZ set lacks, and the Evolving Rings every character wears.
 
 The BotStory build of kaentake is not published yet either. It adds the Crew window, the client
-feature toggles and the feature handshake. `tools/wz-patcher/README.md` describes how that pack
-is applied.
+feature toggles, the feature handshake and the Fusion Anvil field the server sends with every
+equip. `tools/wz-patcher/README.md` describes how that pack is applied.
 
 Without them, you manage companions with:
 
@@ -227,6 +239,8 @@ The server runs without any of these.
   `JAVA_HOME` must point at a JDK 21.
 - **`Could not read config file config.yaml`.** The server must start from the repository folder;
   `start-server.bat` does this for you.
-- **The client closes in a Victoria town.** Check that you ran step 4 of
-  [the game client](#2-the-game-client) (`tools\living-world-client.bat`) on that client, so the
-  Residents' NPCs are in its WZ files.
+- **The client closes when you talk to a Resident, or shows no status bar.** Check that you ran
+  step 4 of [the game client](#2-the-game-client) (`tools\living-world-client.bat`) on that
+  client, so the Residents' NPCs and quests are in its WZ files.
+- **The client closes as soon as a character enters the game.** That is the public-client gap at
+  the top of [the game client](#2-the-game-client).
