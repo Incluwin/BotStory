@@ -287,6 +287,9 @@ public final class AgentPpqCoordinator {
                 || mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP) {
             clearAndAdvance(session, entry, agent, member, nowMs); return;
         }
+        if (mapId == AgentPpqDefinition.SIDE_ONE_MAP || mapId == AgentPpqDefinition.SIDE_TWO_MAP) {
+            sideRoom(session, entry, agent, member, nowMs); return;
+        }
         actions().stop(entry);
     }
 
@@ -322,6 +325,11 @@ public final class AgentPpqCoordinator {
             // can never drain this continuously respawning map and prevents the NPC hand-in.
             if (itemId != 0 && collectObjectiveDrop(
                     session, entry, agent, Set.of(itemId), nowMs)) return;
+        } else if (session.companionAdopted() && itemId != 0) {
+            // Only the event leader may hand Guon the marks: the companions gather this wave's and bring them to him.
+            if (AgentPpqMedalHandOver.tick(session, entry, agent, member, itemId, leader, nowMs)) return;
+            if (AgentPpqMedalHandOver.gatherWanted(session, agent, leader, itemId)
+                    && collectObjectiveDrop(session, entry, agent, Set.of(itemId), nowMs)) return;
         }
         if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
             actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
@@ -330,7 +338,8 @@ public final class AgentPpqCoordinator {
         else actions().stop(entry);
     }
 
-    private static int expectedMedal(Character leader) {
+    /** The mark the medal stage wants now (PiratePQ.js 'stage2' 0-2), or 0 once the three waves are in. */
+    static int expectedMedal(Character leader) {
         if (leader == null) return AgentPpqDefinition.ROOKIE_MEDAL;
         String stage = partyQuest().property(leader, "stage2");
         return switch (stage == null ? "0" : stage) {
@@ -349,6 +358,11 @@ public final class AgentPpqCoordinator {
         int mapId = agent.getMapId();
         boolean deck = mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP;
         Character leader = character(session.eventLeaderId());
+        if (deck && leaderFightingInSideRoom(session, leader, mapId)) {
+            // The human leader went into this deck's hidden room and is fighting there: the companions join him.
+            usePortal(entry, agent, member, AgentPpqDefinition.SIDE_ROOM_ENTRY_PORTAL, nowMs);
+            return;
+        }
         boolean chestAvailable = !session.skipChestRooms() && !session.chestCompleteForDeck(mapId)
                 && leader != null && leader.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0;
         if (deck && chestAvailable) {
@@ -358,6 +372,33 @@ public final class AgentPpqCoordinator {
             return;
         }
         usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(mapId), nowMs);
+    }
+
+    /**
+     * Whether a companion run's human leader stands in this deck's hidden room with its Kru and Captains still alive.
+     * The room is optional (EXP, mesos and the Herb Town concentrates; davy_next2/3 never ask for it), so only a leader
+     * who chose to go in takes the companions there.
+     */
+    static boolean leaderFightingInSideRoom(AgentPpqSession session, Character leader, int deckMapId) {
+        if (!session.companionAdopted() || leader == null || leader.getHp() <= 0 || isAgent(leader)) return false;
+        int sideRoom = AgentPpqDefinition.sideRoomOf(deckMapId);
+        return sideRoom != 0 && leader.getMapId() == sideRoom
+                && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) > 0;
+    }
+
+    /**
+     * A hidden side room: an Agent fights beside a leader who stands in it while its mobs live, and otherwise goes back
+     * to the deck by out00. Before this it stood idle here for good.
+     */
+    private static void sideRoom(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                 AgentPpqMemberState member, long nowMs) {
+        Character leader = character(session.eventLeaderId());
+        boolean leaderHere = leader != null && leader.getHp() > 0 && leader.getMapId() == agent.getMapId();
+        if (leaderHere && actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+            return;
+        }
+        usePortal(entry, agent, member, AgentPpqDefinition.SIDE_ROOM_EXIT_PORTAL, nowMs);
     }
 
     private static void chest(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
@@ -522,26 +563,34 @@ public final class AgentPpqCoordinator {
         if (!near(agent.getPosition(), npc)) { if (npc != null) actions().navigate(entry, npc, true); return false; }
         actions().stop(entry); return partyQuest().runNpc(agent, npcId, selections);
     }
+    /**
+     * Says a guide line once per run, from the first Agent online. Each Agent used to claim the key for itself, so the
+     * same line came once from every companion on successive ticks.
+     */
     private static void announce(AgentPpqSession session, String key, String message) {
-        AgentPpqMemberState speaker = session.members().stream()
+        Character agent = session.members().stream()
                 .filter(member -> member.memberType() == AgentPpqMemberState.MemberType.AGENT)
-                .filter(member -> member.claimAnnouncement(key)).findFirst().orElse(null);
-        Character agent = speaker == null ? null : character(speaker.characterId());
-        if (agent != null) AgentPartyGatewayRuntime.party().sendPartyChat(agent, message);
+                .map(member -> character(member.characterId()))
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+        if (agent == null || !session.narrateOnce("guide-" + key)) return;
+        AgentPartyGatewayRuntime.party().sendPartyChat(agent, message);
     }
     private static void guideHumanLeader(AgentPpqSession session, Character leader) {
         int mapId = leader.getMapId();
         if (mapId == AgentPpqDefinition.MEDAL_MAP) {
             int medal = expectedMedal(leader);
             if (medal != 0) announce(session, "human-medal-" + medal,
-                    leader.getName() + ", loot 20 of item " + medal + " and talk to Guon. We will keep killing.");
+                    AgentPpqMedalHandOver.waveLine(medal, leader.getName()));
+        } else if (mapId == AgentPpqDefinition.SIDE_ONE_MAP || mapId == AgentPpqDefinition.SIDE_TWO_MAP) {
+            announce(session, "human-side-" + mapId, leader.getName()
+                    + ", this hidden room is optional: EXP, mesos and Herb Town concentrates. The deck timer keeps running.");
         } else if (!session.skipChestRooms()
                 && (mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP)
                 && !session.chestCompleteForDeck(mapId)
                 && leader.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0
                 && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
             announce(session, "human-chest-" + mapId,
-                    leader.getName() + ", take the side portal, clear the chest room, talk to Guon, and drop a chest key by the chest.");
+                    leader.getName() + ", take the chest-room portal, clear the room, talk to Guon, and drop a chest key by the chest.");
         }
     }
     /** 'PPQ phase:' for a phase change, in every mode; nothing for none. */
@@ -608,7 +657,12 @@ public final class AgentPpqCoordinator {
                 .anyMatch(item -> item.getQuantity() < slotMax && "".equals(item.getOwner()));
     }
 
-    private static boolean near(Point first, Point second) {
+    /** Drops {@code quantity} of an Etc item where the Agent stands, as a player does (the medal hand-over). */
+    static boolean dropEtc(AgentRuntimeEntry entry, int itemId, short quantity) {
+        return AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, itemId, quantity);
+    }
+
+    static boolean near(Point first, Point second) {
         return first != null && second != null && first.distanceSq(second) <= (long) INTERACTION_RADIUS * INTERACTION_RADIUS;
     }
     private static Point reactorDropPoint(Reactor reactor) {

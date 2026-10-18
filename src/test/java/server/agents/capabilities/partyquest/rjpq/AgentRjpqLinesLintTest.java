@@ -30,6 +30,15 @@ class AgentRjpqLinesLintTest {
             lines.add(AgentRjpqCompanionPlay.beakersStart(beaker));
             lines.add(AgentRjpqCompanionPlay.beakerNext(beaker));
         }
+        for (int lab = 0; lab < 2; lab++) {
+            lines.add(AgentRjpqCompanionPlay.labMine(lab));
+            lines.add(AgentRjpqCompanionPlay.labNobody(lab, LEADER));
+            lines.add(AgentRjpqCompanionPlay.labGaveUp(lab, LEADER));
+            lines.add(AgentRjpqCompanionPlay.labRunnerDown(lab, LEADER));
+        }
+        lines.addAll(List.of(AgentRjpqCompanionPlay.filesAtFeet(LEADER), AgentRjpqCompanionPlay.bothFiles(side, LEADER),
+                AgentRjpqCompanionPlay.filesByNpc(side, LEADER), AgentRjpqCompanionPlay.filesNudge(LEADER),
+                AgentRjpqCompanionPlay.filesBackUp()));
         for (int row = 0; row < AgentRjpqDefinition.LAB_UNIT_ROWS; row++) {
             for (int column = 0; column < AgentRjpqDefinition.LAB_UNIT_COLUMNS; column++) {
                 lines.add(AgentRjpqCompanionPlay.leaderRow(LEADER, row, column));

@@ -13,14 +13,19 @@ import java.util.Collection;
  * What an RJPQ companion may pick up inside its run's event (plan 7.7), as a refuse-only clause for the shared loot
  * eligibility: it never makes a drop lootable that the stock rules refuse. A companion takes a liquid only while it
  * holds none and never one lying in a beaker (it is being poured), a card key never from a closed door's area (it is
- * opening that door), and never a letter or the files (the leader's to hand in). Anything else that would take a new
- * slot is left once the bag is down to the room the claims need (two ETC, one USE, one equip), as a player keeps room
- * for the reward. Mesos are always fine.
+ * opening that door), never a letter, and the files only as AgentRjpqDarkLabs.mayTakeFiles allows (a Dark Lab runner
+ * in its lab, or a stack it dropped for the leader that it picks back up before it expires). Anything else that would
+ * take a new slot is left once the bag is down to the room the claims need (two ETC, one USE, one equip), as a player
+ * keeps room for the reward. Mesos are always fine.
  */
 final class AgentRjpqLootRule {
     /** One drop as one companion in the run's event sees it. */
     record Facts(int itemId, boolean meso, int held, int freeSlotsOfItsTab, boolean inBeakerArea,
-                 boolean inClosedDoorArea) {
+                 boolean inClosedDoorArea, boolean filesMayBeTaken) {
+        Facts(int itemId, boolean meso, int held, int freeSlotsOfItsTab, boolean inBeakerArea,
+              boolean inClosedDoorArea) {
+            this(itemId, meso, held, freeSlotsOfItsTab, inBeakerArea, inClosedDoorArea, false);
+        }
     }
 
     private AgentRjpqLootRule() {
@@ -36,6 +41,9 @@ final class AgentRjpqLootRule {
         }
         if (itemId == AgentRjpqDefinition.CARD_KEY_ITEM_ID) {
             return !facts.inClosedDoorArea();
+        }
+        if (itemId == AgentRjpqDefinition.ALCADNO_FILES_ITEM_ID || itemId == AgentRjpqDefinition.ZENUMIST_FILES_ITEM_ID) {
+            return facts.filesMayBeTaken();
         }
         if (AgentRjpqDefinition.EXCLUSIVE_ITEM_IDS.contains(itemId)) {
             return false;
@@ -85,6 +93,9 @@ final class AgentRjpqLootRule {
                 }
             }
         }
-        return new Facts(itemId, meso, held, free, beaker, door);
+        boolean files = (itemId == AgentRjpqDefinition.ALCADNO_FILES_ITEM_ID
+                || itemId == AgentRjpqDefinition.ZENUMIST_FILES_ITEM_ID)
+                && AgentRjpqDarkLabs.mayTakeFiles(session, bot, drop, System.currentTimeMillis());
+        return new Facts(itemId, meso, held, free, beaker, door, files);
     }
 }

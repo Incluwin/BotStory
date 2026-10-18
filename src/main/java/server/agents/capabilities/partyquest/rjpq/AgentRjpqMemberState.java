@@ -22,6 +22,10 @@ public final class AgentRjpqMemberState {
     private boolean unitRefreshed;
     private final Map<Integer, Integer> claimTries = new HashMap<>();
     private final Set<Integer> claimsSkipped = new HashSet<>();
+    private long labEnteredAtMs;
+    private int labBoxObjectId;
+    private long filesHandOverStartedAtMs;
+    private boolean filesToNpc;
 
     AgentRjpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -49,6 +53,48 @@ public final class AgentRjpqMemberState {
 
     void deferUntil(long atMs) {
         nextActionAtMs = atMs;
+    }
+
+    /** When this runner came into its Dark Lab (kept while it stays in), 0 outside one. */
+    long labEnteredAtMs(long nowMs) {
+        if (labEnteredAtMs == 0L) labEnteredAtMs = Math.max(1L, nowMs);
+        return labEnteredAtMs;
+    }
+
+    void leftLab() {
+        labEnteredAtMs = 0L;
+        labBoxObjectId = 0;
+    }
+
+    /** The box this runner is breaking, 0 for none. */
+    int labBoxObjectId() {
+        return labBoxObjectId;
+    }
+
+    void targetLabBox(int objectId) {
+        labBoxObjectId = objectId;
+    }
+
+    /** When this companion set out to bring the files to the leader, 0 when it is not bringing them. */
+    long filesHandOverStartedAtMs() {
+        return filesHandOverStartedAtMs;
+    }
+
+    void startFilesHandOver(long nowMs) {
+        if (filesHandOverStartedAtMs == 0L) filesHandOverStartedAtMs = Math.max(1L, nowMs);
+    }
+
+    void endFilesHandOver() {
+        filesHandOverStartedAtMs = 0L;
+        filesToNpc = false;
+    }
+
+    boolean filesToNpc() {
+        return filesToNpc;
+    }
+
+    void sendFilesToNpc() {
+        filesToNpc = true;
     }
 
     /** The Lab Unit portal this member just took (row, column), until its next tick reads where it landed. */

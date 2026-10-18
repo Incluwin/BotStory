@@ -119,7 +119,7 @@ public final class AgentLootEligibility {
                 && !AgentEpqSessionRegistry.canLootExclusive(bot, drop)) return false;
 
         if (AgentPpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
-                && !AgentPpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
+                && !AgentPpqSessionRegistry.canLootExclusive(bot, drop)) return false;
 
         // slot: rjpq
         if ((AgentRjpqDefinition.EXCLUSIVE_ITEM_IDS.contains(itemId)

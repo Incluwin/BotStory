@@ -12,6 +12,7 @@ import server.agents.physics.AgentWallCollisionPolicy;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.partyquest.lpq.AgentLpqMovementSkillPolicy;
+import server.agents.capabilities.partyquest.rjpq.AgentRjpqMovementSkillPolicy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -500,7 +501,8 @@ public final class AgentNavigationGraphService {
     }
 
     private static boolean satisfiesScopedMovementRequirements(AgentNavigationGraph graph) {
-        if (!AgentLpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)) {
+        if (!AgentLpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)
+                && !AgentRjpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)) {
             return true;
         }
         return graph.regions.stream()
@@ -1246,7 +1248,8 @@ public final class AgentNavigationGraphService {
                 throwIfBuildInterrupted();
                 if (server.agents.capabilities.movement.AgentMovementSkillConfig
                         .TELEPORT_MODE.visibleToShadowRouting()
-                        || AgentLpqMovementSkillPolicy.authorsTeleportEdges(map.getId())) {
+                        || AgentLpqMovementSkillPolicy.authorsTeleportEdges(map.getId())
+                        || AgentRjpqMovementSkillPolicy.authorsTeleportEdges(map.getId())) {
                     addTeleportEdges(map, from, regionsById, regionIdByFootholdId,
                             anchor, outgoing, edgeKeys);
                 }

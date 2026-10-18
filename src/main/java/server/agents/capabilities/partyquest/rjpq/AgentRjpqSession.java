@@ -81,6 +81,9 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private Boolean letterWanted;
     private boolean letterGiven;
     private int letterTries;
+    /** Dark Lab runners, Lab 1 then Lab 2: 0 until chosen, NO_RUNNER when no companion can reach that lab. */
+    private final int[] labRunners = new int[2];
+    private final boolean[] labGivenUp = new boolean[2];
     private long lastTimeLeftMs = Long.MAX_VALUE;
     private int leaderMapId = -1;
     private Phase phase = Phase.PREPARING;
@@ -655,6 +658,35 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
 
     synchronized boolean letterGiven() {
         return letterGiven;
+    }
+
+    /** Whether the Dark Lab runners were chosen for this run. */
+    synchronized boolean labRunnersChosen() {
+        return labRunners[0] != 0 && labRunners[1] != 0;
+    }
+
+    /** Records the Dark Lab runners once (an id, or AgentRjpqDarkLabs.NO_RUNNER); false when they were chosen already. */
+    synchronized boolean chooseLabRunners(int labOne, int labTwo) {
+        if (labRunnersChosen() || labOne == 0 || labTwo == 0) return false;
+        labRunners[0] = labOne;
+        labRunners[1] = labTwo;
+        return true;
+    }
+
+    /** The runner of Dark Lab {@code lab} (0 or 1): its id, AgentRjpqDarkLabs.NO_RUNNER, or 0 before the choice. */
+    synchronized int labRunner(int lab) {
+        return lab == 0 || lab == 1 ? labRunners[lab] : 0;
+    }
+
+    /** The lab's runner gave it up (low HP, its time ran out): the lab is the leader's now. */
+    synchronized boolean giveUpLab(int lab) {
+        if ((lab != 0 && lab != 1) || labGivenUp[lab]) return false;
+        labGivenUp[lab] = true;
+        return true;
+    }
+
+    synchronized boolean labGivenUp(int lab) {
+        return (lab == 0 || lab == 1) && labGivenUp[lab];
     }
 
     synchronized boolean narrateOnce(String key) {

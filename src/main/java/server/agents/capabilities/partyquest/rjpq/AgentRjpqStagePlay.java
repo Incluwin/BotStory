@@ -27,8 +27,8 @@ import java.util.Set;
  * What a companion does on each RJPQ stage, on its own tick, the way a player would: it walks to what it needs and acts
  * from beside it (a book, a beaker, a door, a portal, a drop), never from afar, and it leaves a stage through its exit
  * once the stage is open, without waiting for its leader (the default between stages), but it waits for the leader
- * before the boss. Every stage but the Dark Labs and the file hand-over, which stay the leader's until the first live
- * test shows how a player reaches the boxes; after the boss, each companion claims for itself.
+ * before the boss. The Dark Labs and the files are AgentRjpqDarkLabs' (a Haste runner and a Teleport runner, the files
+ * dropped at the leader's feet); after the boss, each companion claims for itself.
  */
 final class AgentRjpqStagePlay {
     private static final Logger log = LoggerFactory.getLogger(AgentRjpqStagePlay.class);
@@ -89,6 +89,10 @@ final class AgentRjpqStagePlay {
             beakers(session, entry, agent, member, nowMs);
         } else if (stageMap == AgentRjpqDefinition.SPECIAL_LAB_MAP) {
             keys(session, entry, agent, member, nowMs);
+        } else if (stageMap == AgentRjpqDefinition.DARK_LAB_ONE_MAP) {
+            AgentRjpqDarkLabs.lab(session, entry, agent, member, AgentRjpqDarkLabs.LAB_ONE, nowMs);
+        } else if (stageMap == AgentRjpqDefinition.DARK_LAB_TWO_MAP) {
+            AgentRjpqDarkLabs.lab(session, entry, agent, member, AgentRjpqDarkLabs.LAB_TWO, nowMs);
         } else if (stageMap == AgentRjpqDefinition.OFFICE_MAP) {
             office(session, entry, agent, member, nowMs);
         } else if (stageMap == AgentRjpqDefinition.LAB_TUNNEL_MAP) {
@@ -254,6 +258,10 @@ final class AgentRjpqStagePlay {
                         AgentRjpqDefinition.CARD_KEY_ITEM_ID, nowMs);
                 return;
             }
+        }
+        // the Dark Labs (2026-10-17): files to the leader, and each lab's runner into its open lab
+        if (AgentRjpqDarkLabs.specialLab(session, entry, agent, member, nowMs)) {
+            return;
         }
         if (!closed.isEmpty() && keys == 0) {
             List<Area> doorAreas = closed.stream()
@@ -793,7 +801,7 @@ final class AgentRjpqStagePlay {
     }
 
     /** Leaves the stage through its exit portal: walks onto it, then presses up there as a player would. */
-    private static void leave(AgentRuntimeEntry entry, Character agent, AgentRjpqMemberState member, String portalName,
+    static void leave(AgentRuntimeEntry entry, Character agent, AgentRjpqMemberState member, String portalName,
                               long nowMs) {
         Portal portal = standAtPortal(entry, agent, portalName);
         if (portal != null && AgentRjpqCoordinator.partyQuest().enterPortal(agent, portal.getId())) {
@@ -802,7 +810,7 @@ final class AgentRjpqStagePlay {
     }
 
     /** Walks onto the named portal and stands there; the portal once the agent stands on it, else null. */
-    private static Portal standAtPortal(AgentRuntimeEntry entry, Character agent, String portalName) {
+    static Portal standAtPortal(AgentRuntimeEntry entry, Character agent, String portalName) {
         MapleMap map = agent.getMap();
         Portal portal = map == null ? null : map.getPortal(portalName);
         if (portal == null) {
@@ -819,7 +827,7 @@ final class AgentRjpqStagePlay {
     }
 
     /** Walks to a floor drop and loots it from beside it. */
-    private static void pickUp(AgentRuntimeEntry entry, Character agent, MapItem item) {
+    static void pickUp(AgentRuntimeEntry entry, Character agent, MapItem item) {
         if (!near(agent.getPosition(), item.getPosition(), LOOT_REACH_PX)) {
             AgentRjpqCoordinator.actions().navigate(entry, ground(agent, item.getPosition()), true);
             return;
@@ -875,7 +883,7 @@ final class AgentRjpqStagePlay {
         return leader == null ? "" : leader.getName();
     }
 
-    private static Reactor reactor(Character agent, String name) {
+    static Reactor reactor(Character agent, String name) {
         for (Reactor reactor : AgentRjpqCoordinator.actions().reactors(agent)) {
             if (name.equals(reactor.getName())) {
                 return reactor;
@@ -884,7 +892,7 @@ final class AgentRjpqStagePlay {
         return null;
     }
 
-    private static Point ground(Character agent, Point point) {
+    static Point ground(Character agent, Point point) {
         if (point == null) {
             return null;
         }
