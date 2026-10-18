@@ -42,6 +42,14 @@ class MonsterInformationProviderConcurrencyTest {
     }
 
     @Test
+    void aProviderBuiltBeforeTheDatabasePoolStillLoads() {
+        // tests run without a pool, as does anything touching the provider before Server startup opens one
+        MonsterInformationProvider early = new MonsterInformationProvider();
+
+        assertEquals(List.of(), early.getRelevantGlobalDrops(100_000_000));
+    }
+
+    @Test
     void everyLazilyFilledCacheIsThreadSafe() throws IllegalAccessException {
         List<String> unsafe = new ArrayList<>();
         int checked = 0;

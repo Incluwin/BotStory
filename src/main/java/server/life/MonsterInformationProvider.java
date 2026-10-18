@@ -105,7 +105,9 @@ public class MonsterInformationProvider {
                         rs.getInt("minimum_mob_level"),
                         rs.getInt("maximum_mob_level")));
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IllegalStateException e) {
+            // IllegalStateException = the pool is not up yet. The singleton is built in the class initializer, so
+            // letting it escape would leave the class unloadable (NoClassDefFoundError) for the rest of the JVM.
             log.error("Error retrieving global drops", e);
         }
     }
