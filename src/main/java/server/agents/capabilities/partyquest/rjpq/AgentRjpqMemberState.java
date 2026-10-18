@@ -24,6 +24,7 @@ public final class AgentRjpqMemberState {
     private final Set<Integer> claimsSkipped = new HashSet<>();
     private long labEnteredAtMs;
     private int labBoxObjectId;
+    private final Set<Integer> labBoxesBroken = new HashSet<>();
     private long filesHandOverStartedAtMs;
     private boolean filesToNpc;
 
@@ -64,6 +65,7 @@ public final class AgentRjpqMemberState {
     void leftLab() {
         labEnteredAtMs = 0L;
         labBoxObjectId = 0;
+        labBoxesBroken.clear();
     }
 
     /** The box this runner is breaking, 0 for none. */
@@ -73,6 +75,16 @@ public final class AgentRjpqMemberState {
 
     void targetLabBox(int objectId) {
         labBoxObjectId = objectId;
+    }
+
+    /** The box it was breaking is down: it is not broken again on this visit, even once it stands up again. */
+    void labBoxBroken() {
+        if (labBoxObjectId != 0) labBoxesBroken.add(labBoxObjectId);
+        labBoxObjectId = 0;
+    }
+
+    boolean brokeLabBox(int objectId) {
+        return labBoxesBroken.contains(objectId);
     }
 
     /** When this companion set out to bring the files to the leader, 0 when it is not bringing them. */
