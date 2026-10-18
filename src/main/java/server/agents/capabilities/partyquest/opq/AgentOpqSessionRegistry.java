@@ -110,9 +110,10 @@ public final class AgentOpqSessionRegistry {
 
     /**
      * 2026-10-18: whether this bot may loot this drop of an OPQ objective item. In a companion run its human leader
-     * leads, a stack of walkway or lounge fragments a companion dropped for him is his, and so is a statue piece he
-     * dropped himself: only the companion that claimed the stack (to pick it back up before it expires, or to take the
-     * piece to the statue) may take it. Everything else is {@link #canLootExclusive(Character, int)}, unchanged.
+     * leads, a stack of walkway or lounge fragments or the Root of Life a companion dropped for him is his, and so is
+     * a statue piece or the Root he dropped himself: only the companion that claimed the stack (to pick it back up
+     * before it expires, or to take it to the statue) may take it. Everything else is
+     * {@link #canLootExclusive(Character, int)}, unchanged.
      */
     public static boolean canLootExclusive(Character character, MapItem drop) {
         if (character == null || drop == null) return false;
@@ -120,11 +121,12 @@ public final class AgentOpqSessionRegistry {
         AgentOpqSession session = forMember(character.getId());
         if (session != null && drop.isPlayerDrop() && AgentOpqConductor.conducts(session)
                 && session.eventInstance() != null && character.getEventInstance() == session.eventInstance()) {
-            boolean fragmentsForHim = (itemId == AgentOpqDefinition.WALKWAY_FRAGMENT
-                    || itemId == AgentOpqDefinition.LOUNGE_FRAGMENT) && session.agentOfRun(drop.getOwnerId());
-            boolean hisPiece = AgentOpqDefinition.STATUE_PIECES.contains(itemId)
+            boolean forHim = (itemId == AgentOpqDefinition.WALKWAY_FRAGMENT
+                    || itemId == AgentOpqDefinition.LOUNGE_FRAGMENT || itemId == AgentOpqDefinition.ROOT_OF_LIFE)
+                    && session.agentOfRun(drop.getOwnerId());
+            boolean his = AgentOpqConductor.LEADER_DROPS.contains(itemId)
                     && drop.getOwnerId() == session.eventLeaderId();
-            if (fragmentsForHim || hisPiece) return session.claimerOf(drop.getObjectId()) == character.getId();
+            if (forHim || his) return session.claimerOf(drop.getObjectId()) == character.getId();
         }
         return canLootExclusive(character, itemId);
     }

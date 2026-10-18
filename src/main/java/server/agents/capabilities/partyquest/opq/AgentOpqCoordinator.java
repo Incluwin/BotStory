@@ -70,7 +70,7 @@ final class AgentOpqCoordinator {
     private static final Point LOBBY_SECOND_ROPE_TOP = new Point(-1777, -905);
     private static final Point LOBBY_UPPER_PLATFORM = new Point(-1717, -926);
     private static final Point ROOT_POT = new Point(-755, 19);
-    private static final Point MINERVA_BASE = new Point(-48, -916);
+    static final Point MINERVA_BASE = new Point(-48, -916);
 
     /** The walkway's statue fragments Eak takes from the leader's bag (2013001.js). */
     static final int WALKWAY_QUOTA = 30;
@@ -173,9 +173,15 @@ final class AgentOpqCoordinator {
                     tickStatueRestoration(session, leader, nowMs);
                     if (AgentOpqConductor.conducts(session)) AgentOpqConductor.guide(session, leader, nowMs);
                 }
-                case GARDEN -> assignGarden(session, nowMs);
-                case RESTORING_MINERVA -> tickFinalRoot(session, leader, nowMs);
-                case CLAIMING_REWARD -> tickReward(session, nowMs);
+                case GARDEN -> assignGarden(session, leader, nowMs);
+                case RESTORING_MINERVA -> {
+                    tickFinalRoot(session, leader, nowMs);
+                    if (AgentOpqConductor.conducts(session)) AgentOpqConductedGarden.guideRoot(session, leader);
+                }
+                case CLAIMING_REWARD -> {
+                    if (AgentOpqConductor.conducts(session)) AgentOpqConductedGarden.guideAfterClear(session, leader);
+                    tickReward(session, nowMs);
+                }
                 default -> { }
             }
         }
@@ -237,12 +243,16 @@ final class AgentOpqCoordinator {
         if (leader.getMapId() == AgentOpqDefinition.GARDEN_MAP) {
             session.transition(AgentOpqSession.Phase.GARDEN, nowMs);
         }
+        // 2026-10-18: a human leader may drop the Root in the centre for a companion to take up (decision O5).
         if (leader.getMapId() == AgentOpqDefinition.CENTER_MAP
                 && session.phase() == AgentOpqSession.Phase.GARDEN
-                && leader.getItemQuantity(AgentOpqDefinition.ROOT_OF_LIFE, false) > 0) {
+                && (leader.getItemQuantity(AgentOpqDefinition.ROOT_OF_LIFE, false) > 0
+                || AgentOpqConductor.conducts(session) && AgentOpqConductedGarden.rootInCentre(session, leader))) {
             session.transition(AgentOpqSession.Phase.RESTORING_MINERVA, nowMs);
         }
-        if (leader.getMapId() == AgentOpqDefinition.CLEAR_MAP) {
+        // 2026-10-18: a human-led run's claims begin with the clear, wherever he is (he may take the hidden room).
+        if (leader.getMapId() == AgentOpqDefinition.CLEAR_MAP
+                || AgentOpqConductor.conducts(session) && session.clearSeenAtMs() != 0L) {
             session.transition(AgentOpqSession.Phase.CLAIMING_REWARD, nowMs);
         }
     }
@@ -969,7 +979,7 @@ final class AgentOpqCoordinator {
         ACTIONS.stop(entry);
     }
 
-    private static void assignGarden(AgentOpqSession session, long nowMs) {
+    private static void assignGarden(AgentOpqSession session, Character leader, long nowMs) {
         List<AgentOpqMemberState> agents = counted(session).stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
@@ -978,15 +988,19 @@ final class AgentOpqCoordinator {
                 .filter(agent -> agent.getMapId() == AgentOpqDefinition.GARDEN_MAP)
                 .anyMatch(agent -> papaPixie(agent) != null);
         session.observePapaPixie(papaPixieAlive, nowMs);
+        // 2026-10-18: a human leader plants nothing; the lowest-id companion standing in the garden does (Step 2d).
+        boolean conducted = AgentOpqConductor.conducts(session);
+        int seeder = conducted ? AgentOpqConductedGarden.seeder(session, agents) : session.eventLeaderId();
         for (int index = 0; index < agents.size(); index++) {
             AgentOpqMemberState agent = agents.get(index);
             agent.assign(papaPixieAlive
                             ? papaPixieCombatRole(index, agents.size())
-                            : agent.characterId() == session.eventLeaderId()
+                            : agent.characterId() == seeder
                             ? AgentOpqMemberState.Role.GARDEN_SEEDER
                             : AgentOpqMemberState.Role.BOSS_ATTACKER,
                     null, 0);
         }
+        if (conducted) AgentOpqConductedGarden.guideGarden(session, leader, seeder, papaPixieAlive);
     }
 
     private static void tickGardenWorker(AgentOpqSession session, AgentRuntimeEntry entry,
@@ -999,12 +1013,19 @@ final class AgentOpqCoordinator {
             return;
         }
         member.clearBossCombat();
+        // 2026-10-18: the Root goes to a human leader at his feet; a Root lying for him is picked back up in time.
+        if (AgentOpqConductor.conducts(session)
+                && AgentOpqConductedGarden.handOverRoot(session, entry, agent, member, nowMs)) return;
         if (member.role() == AgentOpqMemberState.Role.GARDEN_SEEDER) {
             List<Integer> lootPriority = List.of(AgentOpqDefinition.ROOT_OF_LIFE,
                     AgentOpqDefinition.EVEN_STRANGER_SEED, AgentOpqDefinition.TRANSPARENT_TRIGGER,
                     AgentOpqDefinition.STRANGE_SEED);
-            for (int item : lootPriority) {
-                reserve(session, item, agent, AgentOpqDefinition.GARDEN_MAP, nowMs);
+            if (AgentOpqConductor.conducts(session)) {
+                AgentOpqConductedGarden.reserveSeeds(session, agent, nowMs);
+            } else {
+                for (int item : lootPriority) {
+                    reserve(session, item, agent, AgentOpqDefinition.GARDEN_MAP, nowMs);
+                }
             }
             for (int item : lootPriority) {
                 if (collectReservedDrop(session, entry, agent, Set.of(item), nowMs)) return;
@@ -1150,6 +1171,11 @@ final class AgentOpqCoordinator {
 
     private static void tickRootCarrier(AgentOpqSession session, AgentRuntimeEntry entry,
                                         Character agent, AgentOpqMemberState member, long nowMs) {
+        // 2026-10-18: a companion takes a human leader's Root up (O5); nobody talks to Minerva before the clear (R4).
+        if (AgentOpqConductor.conducts(session)) {
+            AgentOpqConductedGarden.tickRoot(session, entry, agent, member, nowMs);
+            return;
+        }
         if (agent.getMapId() != AgentOpqDefinition.CENTER_MAP) return;
         if (agent.getId() == session.eventLeaderId()
                 && agent.getItemQuantity(AgentOpqDefinition.ROOT_OF_LIFE, false) > 0) {
@@ -1187,6 +1213,9 @@ final class AgentOpqCoordinator {
         AgentOpqMemberState member = session.member(agent.getId());
         // Off the reward map nothing is waiting to be judged (a warp that landed after the run was a reward).
         if (member != null && agent.getMapId() != AgentOpqDefinition.CLEAR_MAP) member.clearRewardAsk();
+        // 2026-10-18: a human leader's companions wait in the centre or follow him into the hidden room first.
+        if (member != null && AgentOpqConductor.conducts(session)
+                && AgentOpqConductedGarden.holdClaim(session, entry, agent, member, nowMs)) return;
         if (agent.getMapId() == AgentOpqDefinition.CENTER_MAP && propertyInt(agent, "statusStg8") == 1) {
             if (runNearbyNpc(entry, agent, AgentOpqDefinition.MINERVA_NPC)) session.markProgress(nowMs);
             return;
@@ -1338,8 +1367,8 @@ final class AgentOpqCoordinator {
         return best == null ? null : new Point(best);
     }
 
-    private static boolean enterAuthoredPortal(AgentRuntimeEntry entry, Character agent, int portalId,
-                                               long nowMs, AgentOpqMemberState member) {
+    static boolean enterAuthoredPortal(AgentRuntimeEntry entry, Character agent, int portalId,
+                                long nowMs, AgentOpqMemberState member) {
         Point portal = ACTIONS.portalPosition(agent, portalId);
         if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal)) {
             if (portal != null) ACTIONS.navigate(entry, portal, true);
@@ -1413,13 +1442,14 @@ final class AgentOpqCoordinator {
         ACTIONS.navigate(entry, target, true); return false;
     }
 
-    private static void dropAt(AgentRuntimeEntry entry, Character agent, int itemId, Point target,
-                               long nowMs, AgentOpqMemberState member) {
-        if (!moveTo(entry, agent, target, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
-        if (!AgentOpqInteractionPolicy.mayDropTrigger(agent.getPosition(), target)) return;
-        if (dropItem(entry, InventoryType.ETC, itemId, (short) 1)) {
-            member.deferUntil(nowMs + ACTION_RETRY_MS);
-        }
+    /** Walks to {@code target} and drops one {@code itemId} there; true when it dropped. */
+    static boolean dropAt(AgentRuntimeEntry entry, Character agent, int itemId, Point target,
+                          long nowMs, AgentOpqMemberState member) {
+        if (!moveTo(entry, agent, target, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return false;
+        if (!AgentOpqInteractionPolicy.mayDropTrigger(agent.getPosition(), target)) return false;
+        if (!dropItem(entry, InventoryType.ETC, itemId, (short) 1)) return false;
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        return true;
     }
 
     private static void reserve(AgentOpqSession session, int item, Character agent, int mapId, long nowMs) {

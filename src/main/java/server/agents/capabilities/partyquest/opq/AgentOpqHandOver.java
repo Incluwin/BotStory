@@ -22,7 +22,8 @@ import java.util.List;
  * next to him; a leader it cannot reach, or a walk past TIMEOUT_MS, gets the stack by Eak. Until he comes the holders
  * wait by Eak (AgentOpqConductor calls him). A stack he leaves lying is pointed out once and, before it can expire,
  * picked back up and dropped for him again, at most RECOLLECT_MAX times; only the companion that claimed it may take it
- * (AgentOpqSessionRegistry.canLootExclusive with the drop). Human-led runs only.
+ * (AgentOpqSessionRegistry.canLootExclusive with the drop). Human-led runs only. The garden's Root of Life goes to
+ * him the same way (a quota of one, the garden's exit in place of Eak; AgentOpqConductedGarden), with its own lines.
  */
 final class AgentOpqHandOver {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqHandOver.class);
@@ -182,11 +183,20 @@ final class AgentOpqHandOver {
         if (leader == null) return;
         String name = leader.getName();
         if (!session.claimLineWindow("handover-" + itemId, nowMs, LINE_WINDOW_MS)) return;
-        String line = lineage > 0 ? AgentOpqCompanionPlay.pickedBackUp()
-                : place == Place.EAK ? AgentOpqCompanionPlay.byEak(name)
-                : AgentOpqCompanionPlay.atYourFeet(name, place == Place.FEET);
         AgentOpqDialogue.say(session, "handover-" + place.name().toLowerCase(java.util.Locale.ROOT), agent, leader,
-                line);
+                line(itemId, name, place, lineage > 0));
+    }
+
+    /** The hand-over's line: the fragments' (pick them up and talk to Eak), or the Root's (only he takes the exit). */
+    static String line(int itemId, String leader, Place place, boolean recollect) {
+        if (itemId == AgentOpqDefinition.ROOT_OF_LIFE) {
+            return recollect ? AgentOpqCompanionPlay.rootPickedBackUp()
+                    : place == Place.EAK ? AgentOpqCompanionPlay.rootByTheExit(leader)
+                    : AgentOpqCompanionPlay.rootAtYourFeet(leader, place == Place.FEET);
+        }
+        return recollect ? AgentOpqCompanionPlay.pickedBackUp()
+                : place == Place.EAK ? AgentOpqCompanionPlay.byEak(leader)
+                : AgentOpqCompanionPlay.atYourFeet(leader, place == Place.FEET);
     }
 
     /**
@@ -203,7 +213,9 @@ final class AgentOpqHandOver {
                     && session.narrateOnce("handover-nudge-" + stack.getObjectId())
                     && session.claimLineWindow("handover-nudge-" + itemId, nowMs, PICKUP_NUDGE_MS)) {
                 AgentOpqDialogue.say(session, "handover-nudge", agent, leader,
-                        AgentOpqCompanionPlay.stillOnTheFloor(leader.getName()));
+                        itemId == AgentOpqDefinition.ROOT_OF_LIFE
+                                ? AgentOpqCompanionPlay.rootStillOnTheFloor(leader.getName())
+                                : AgentOpqCompanionPlay.stillOnTheFloor(leader.getName()));
             }
         }
         for (MapItem stack : stacks.stream().sorted(Comparator.comparingLong(MapItem::getDropTime)).toList()) {

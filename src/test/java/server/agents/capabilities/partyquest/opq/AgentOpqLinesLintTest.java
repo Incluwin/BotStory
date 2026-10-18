@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 2026-10-18: every line a companion says in a human-led OPQ run reads as player chat (lower case but for the leader's
- * name, no digits, no markup, one chat line with a long name), and Eak's script tells the run only what he tells the
- * party: his sealed and lever answers, inside guards that keep his answer when the hook is missing.
+ * name, no digits, no markup, one chat line with a long name), the garden's and Minerva's included, and Eak's script
+ * tells the run only what he tells the party: his sealed and lever answers, inside guards that keep his answer when the
+ * hook is missing.
  */
 class AgentOpqLinesLintTest {
     private static final String LEADER = "Crewfriendxx";
@@ -30,7 +31,17 @@ class AgentOpqLinesLintTest {
                 AgentOpqCompanionPlay.stillOnTheFloor(LEADER), AgentOpqCompanionPlay.pickedBackUp(),
                 AgentOpqCompanionPlay.sealedOneRight(), AgentOpqCompanionPlay.sealedAllWrong(),
                 AgentOpqCompanionPlay.leverOneRight(), AgentOpqCompanionPlay.leverBothWrong(),
-                AgentOpqCompanionPlay.solved()));
+                AgentOpqCompanionPlay.solved(), AgentOpqCompanionPlay.seeds(), AgentOpqCompanionPlay.papaPixieOut(),
+                AgentOpqCompanionPlay.rootAtYourFeet(LEADER, true), AgentOpqCompanionPlay.rootAtYourFeet(LEADER, false),
+                AgentOpqCompanionPlay.rootByTheExit(LEADER), AgentOpqCompanionPlay.rootStillOnTheFloor(LEADER),
+                AgentOpqCompanionPlay.rootPickedBackUp(), AgentOpqCompanionPlay.dropTheRoot(LEADER),
+                AgentOpqCompanionPlay.minervaFree(), AgentOpqCompanionPlay.grabOurRewards()));
+        for (AgentOpqHandOver.Place place : AgentOpqHandOver.Place.values()) {
+            for (int item : List.of(AgentOpqDefinition.WALKWAY_FRAGMENT, AgentOpqDefinition.ROOT_OF_LIFE)) {
+                lines.add(AgentOpqHandOver.line(item, LEADER, place, false));
+                lines.add(AgentOpqHandOver.line(item, LEADER, place, true));
+            }
+        }
         for (AgentOpqDefinition.Room room : AgentOpqDefinition.Room.values()) {
             lines.add(AgentOpqCompanionPlay.call(room, LEADER));
         }
@@ -45,6 +56,18 @@ class AgentOpqLinesLintTest {
             assertTrue(line.length() <= 100, line);
             assertFalse(line.chars().anyMatch(c -> Character.isDigit(c) || "#[<{".indexOf(c) >= 0), line);
         }
+    }
+
+    @Test
+    void theRootsHandOverLinesNameTheExitAndTheFragmentsKeepEak() {
+        for (AgentOpqHandOver.Place place : AgentOpqHandOver.Place.values()) {
+            String root = AgentOpqHandOver.line(AgentOpqDefinition.ROOT_OF_LIFE, LEADER, place, false);
+            assertTrue(root.contains("root") && root.contains("exit") && !root.contains("eak"), root);
+            String fragments = AgentOpqHandOver.line(AgentOpqDefinition.LOUNGE_FRAGMENT, LEADER, place, false);
+            assertTrue(fragments.contains("eak") && !fragments.contains("root"), fragments);
+        }
+        assertEquals(AgentOpqCompanionPlay.rootPickedBackUp(),
+                AgentOpqHandOver.line(AgentOpqDefinition.ROOT_OF_LIFE, LEADER, AgentOpqHandOver.Place.FEET, true));
     }
 
     @Test

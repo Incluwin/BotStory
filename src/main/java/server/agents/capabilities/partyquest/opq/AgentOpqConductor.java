@@ -37,6 +37,10 @@ final class AgentOpqConductor {
     static final int WAY_UP_TOP_Y = -4_900;
     /** The way up's lever reactor (five of them, named "1" to "5"). */
     static final int LEVER_REACTOR_ID = 2_008_007;
+    /** What the leader drops in the centre for a companion to put up (decision O5): the statue pieces, the Root. */
+    static final Set<Integer> LEADER_DROPS = java.util.stream.Stream.concat(
+            AgentOpqDefinition.STATUE_PIECES.stream(), java.util.stream.Stream.of(AgentOpqDefinition.ROOT_OF_LIFE))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private AgentOpqConductor() {
     }
@@ -224,8 +228,8 @@ final class AgentOpqConductor {
 
     /**
      * In the centre, a statue piece the leader dropped there (decision O5) is picked up by one companion, which the
-     * stock piece carrier then takes to its scar. A claim whose companion left the centre is let go. True when this
-     * companion owns the pass.
+     * stock piece carrier then takes to its scar; so is the Root, which AgentOpqConductedGarden takes to Minerva's
+     * statue. A claim whose companion left the centre is let go. True when this companion owns the pass.
      */
     static boolean collectLeaderPiece(AgentOpqSession session, AgentRuntimeEntry entry, Character agent,
                                       AgentOpqMemberState member, long nowMs) {
@@ -260,12 +264,12 @@ final class AgentOpqConductor {
         return false;
     }
 
-    /** The statue pieces the leader dropped on {@code map}, still lying. */
+    /** The statue pieces and the Root the leader dropped on {@code map}, still lying. */
     static List<MapItem> leaderPieces(AgentOpqSession session, MapleMap map) {
         if (map == null) return List.of();
         return AgentMapPerception.items(map).stream()
                 .filter(drop -> drop != null && !drop.isPickedUp() && drop.isPlayerDrop()
-                        && AgentOpqDefinition.STATUE_PIECES.contains(drop.getItemId())
+                        && LEADER_DROPS.contains(drop.getItemId())
                         && drop.getOwnerId() == session.eventLeaderId() && drop.getPosition() != null)
                 .toList();
     }
@@ -325,7 +329,7 @@ final class AgentOpqConductor {
     }
 
     /** The counted companions, in id order. */
-    private static List<AgentOpqMemberState> companions(AgentOpqSession session) {
+    static List<AgentOpqMemberState> companions(AgentOpqSession session) {
         return AgentOpqCoordinator.counted(session).stream()
                 .filter(member -> member.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
@@ -339,7 +343,7 @@ final class AgentOpqConductor {
     }
 
     /** The lowest-id counted companion standing on {@code mapId}, or null. */
-    private static Character companionOn(AgentOpqSession session, int mapId) {
+    static Character companionOn(AgentOpqSession session, int mapId) {
         return companions(session).stream().map(member -> AgentOpqCoordinator.character(member.characterId()))
                 .filter(Objects::nonNull).filter(character -> character.getMapId() == mapId)
                 .findFirst().orElse(null);

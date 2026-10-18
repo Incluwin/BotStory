@@ -76,4 +76,45 @@ final class AgentOpqCompanionPlay {
     static String solved() {
         return "that's it! i'll grab the piece.";
     }
+
+    /** The garden's start, said once by the companion that plants. */
+    static String seeds() {
+        return "i'll do the seeds. everyone else on the plants.";
+    }
+
+    static String papaPixieOut() {
+        return "papa pixie's out!";
+    }
+
+    /** The Root lies for the leader: the garden's exit takes only the event leader holding it. */
+    static String rootAtYourFeet(String leader, boolean atHisFeet) {
+        return leader + (atHisFeet ? ", the root's at your feet." : ", the root's right next to you.")
+                + " only you can take it through the exit.";
+    }
+
+    static String rootByTheExit(String leader) {
+        return leader + ", i left the root by the exit. only you can take it through.";
+    }
+
+    static String rootStillOnTheFloor(String leader) {
+        return leader + ", the root's still on the floor by you.";
+    }
+
+    static String rootPickedBackUp() {
+        return "picked the root back up so it doesn't vanish. here it is.";
+    }
+
+    /** The leader is back in the centre with the Root (decision O5: a companion takes it up to the statue). */
+    static String dropTheRoot(String leader) {
+        return leader + ", drop the root here. i'll take it up to the statue.";
+    }
+
+    /** Minerva is free: the hidden room (in06) is open, and the companions come along if he goes. */
+    static String minervaFree() {
+        return "minerva's free! the hidden room has goodies if you want, we'll come with you.";
+    }
+
+    static String grabOurRewards() {
+        return "we'll grab our rewards and wait outside.";
+    }
 }

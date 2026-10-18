@@ -77,10 +77,13 @@ class AgentOpqHumanLeaderStallTest {
         AgentOpqCoordinator.tickSession(session, clear);
         AgentOpqCoordinator.tickSession(session, STALL); // 07:54:52, where the stall timer failed the run
 
-        assertEquals(AgentOpqSession.Phase.RESTORING_MINERVA, session.phase());
+        // 2026-10-18 (OPQ plan Step 2d): the claims begin with the clear; Mira waits in the centre while Ben is there.
+        assertEquals(AgentOpqSession.Phase.CLAIMING_REWARD, session.phase());
         verifyNobodyLeft();
+        AgentOpqCoordinator.tickMember(session, run.entries.get(mira.getId()), mira, STALL + 1_000L);
+        verify(run.partyQuest, never()).runNpc(mira, AgentOpqDefinition.MINERVA_NPC);
 
-        // Ben says yes to Minerva and is on 920011300: the claims begin, and Mira, beside her there, claims.
+        // Ben says yes to Minerva and is on 920011300: Mira, beside her there, claims.
         when(ben.getMapId()).thenReturn(AgentOpqDefinition.CLEAR_MAP);
         AgentOpqCoordinator.tickSession(session, STALL + 30_000L);
         assertEquals(AgentOpqSession.Phase.CLAIMING_REWARD, session.phase());
