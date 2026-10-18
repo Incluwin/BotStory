@@ -306,7 +306,9 @@ class GitRunner:
         self.calls.append(("network" if network else "local", list(args)))
         timeout = self.timeout if network else LOCAL_TIMEOUT
         try:
-            p = subprocess.run(argv, input=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=self.cwd,
+            # No stdin given = an empty one: a detached run (scheduler, agent shell) may have no valid console handle.
+            feed = {"input": stdin} if stdin is not None else {"stdin": subprocess.DEVNULL}
+            p = subprocess.run(argv, **feed, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=self.cwd,
                                env=self.network_env if network else self.local_env, timeout=timeout)
         except subprocess.TimeoutExpired:
             return GitResult(-1, "", f"timed out after {timeout} s")

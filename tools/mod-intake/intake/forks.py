@@ -68,7 +68,7 @@ def github_token(environ, run=subprocess.run):
         if environ.get(key):
             return environ[key]
     try:
-        p = run(["gh", "auth", "token"], capture_output=True, text=True, timeout=30)
+        p = run(["gh", "auth", "token"], stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)
     except (OSError, subprocess.TimeoutExpired):
         return None
     token = (p.stdout or "").strip()

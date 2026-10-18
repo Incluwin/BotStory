@@ -102,7 +102,7 @@ class FetchTestBase(unittest.TestCase):
         env = dict(self.env, GIT_NO_LAZY_FETCH="1")
         git_dir = str(self.data / "sources/github/hookwright/v83-bosshp/.git")
         return subprocess.run(["git", "--git-dir", git_dir, "cat-file", "-e", spec], env=env,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
+                              stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
 
 
 class PinningTest(FetchTestBase):

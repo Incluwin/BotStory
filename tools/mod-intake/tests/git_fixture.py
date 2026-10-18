@@ -25,7 +25,8 @@ def isolated_env(folder):
 
 
 def git(*args, env=None):
-    p = subprocess.run(["git", *IDENTITY, *args], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.run(["git", *IDENTITY, *args], env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE)
     if p.returncode:
         raise AssertionError(f"git {' '.join(args)} failed: {p.stderr.decode('utf-8', 'replace')}")
     return p.stdout.decode("utf-8", "replace").strip()

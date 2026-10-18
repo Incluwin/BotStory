@@ -55,7 +55,8 @@ class KaentakeSource:
         self.commit = self._git("rev-parse", "--verify", (ref or "HEAD") + "^{commit}").strip()
 
     def _git(self, *args):
-        p = subprocess.run(["git", "-C", str(self.repo), *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.run(["git", "-C", str(self.repo), *args], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE)
         if p.returncode:
             raise InventoryError(f"git {' '.join(args)}: {p.stderr.decode('utf-8', 'replace').strip()}")
         return p.stdout.decode("utf-8", "replace")

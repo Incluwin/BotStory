@@ -351,7 +351,7 @@ def cmd_inventory(paths, args):
 def default_kaentake():
     """kaentake next to the main server checkout (also from a worktree of it)."""
     p = subprocess.run(["git", "-C", str(SERVER_REPO), "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     common = Path(p.stdout.decode("utf-8", "replace").strip()) if p.returncode == 0 else SERVER_REPO / ".git"
     return common.parent.parent / "kaentake"
 
