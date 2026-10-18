@@ -31,8 +31,51 @@ final class AgentRjpqCompanionPlay {
         return "found the pass! the way out is open.";
     }
 
+    /**
+     * B3, 2026-10-17: the finder asks the leader, since the letter is trade-blocked (dropped, it vanishes) and handing
+     * it in changes the boss for everyone: MagatiaPQ_Z.js pays 140,000 for the angry Frankenroid against 105,000 when
+     * the captive survives.
+     */
     static String letterFound(AgentRjpqSide side) {
-        return "found " + side.captiveName() + "'s letter in this book. no idea what to do with it.";
+        return "found " + side.captiveName() + "'s letter in this book. should i give it to " + side.npcName()
+                + "? yes or no";
+    }
+
+    /** B3b, right after the question: what the answer changes. */
+    static String letterWhy(AgentRjpqSide side) {
+        return "if i do, yulete sends an angrier boss, but it pays more if " + side.captiveName() + " stays safe.";
+    }
+
+    /** The leader said yes: the holder gives it in the special lab. */
+    static String letterYes(AgentRjpqSide side) {
+        return "ok, " + side.npcName() + " gets the letter when we reach the lab.";
+    }
+
+    /** The leader said no. */
+    static String letterNo() {
+        return "ok, i'll keep it to myself.";
+    }
+
+    /** The holder gave it. */
+    static String letterGiven(AgentRjpqSide side) {
+        return "gave " + side.npcName() + " the letter. heads up, yulete won't go easy on us now.";
+    }
+
+    private static final Set<String> LETTER_YES = Set.of("yes", "y", "yeah", "yep", "yup", "sure", "ok", "okay",
+            "do it", "go ahead", "give it", "give it to him", "give it to her", "yes please");
+    private static final Set<String> LETTER_NO = Set.of("no", "n", "nah", "nope", "keep it", "dont", "don't",
+            "no thanks");
+
+    /**
+     * The leader's typed answer to {@link #letterFound}: true for a whole line that says yes, false for one that says
+     * no, null for anything else (chat about something else stays chat).
+     */
+    static Boolean letterAnswer(String message) {
+        if (message == null) return null;
+        String line = message.trim().toLowerCase(java.util.Locale.ROOT).replaceAll("[.!?~]+$", "").trim();
+        if (LETTER_YES.contains(line)) return Boolean.TRUE;
+        if (LETTER_NO.contains(line)) return Boolean.FALSE;
+        return null;
     }
 
     static String tunnelStart() {

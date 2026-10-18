@@ -350,9 +350,11 @@ class AgentSupplyReadinessBossStandardTest {
     void lpqStillCountsPotions() {
         AgentSupplyReadiness.Activity lpq = AgentSupplyReadiness.Activity.partyQuest("lpq");
         try (MockedStatic<AgentUseItemClassificationPolicy> effects = potionEffects()) {
-            assertTrue(AgentSupplyReadiness.shortfall(dragonKnight(RED, 40, BLUE, 50), lpq).none(),
+            // 2026-10-17: LPQ also has seal and darkness cure standards (10 + 10), which these bags lack
+            AgentSupplyReadiness.Shortfall weak = AgentSupplyReadiness.shortfall(dragonKnight(RED, 40, BLUE, 50), lpq);
+            assertTrue(weak.potionsNone() && weak.ammo() == 0,
                     "40 Red and 50 Blue Potions: LPQ's 40 / 50, however weak");
-            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0, 0),
+            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0, 0, 20),
                     AgentSupplyReadiness.shortfall(dragonKnight(UNAGI, 39, PURE_WATER, 50), lpq),
                     "one potion short, however strong");
         }
@@ -441,6 +443,40 @@ class AgentSupplyReadinessBossStandardTest {
         assertEquals(0, AgentSupplyReadiness.cureShortfall(hero, AgentSupplyReadiness.Activity.PARTY_QUEST));
         assertFalse(new AgentSupplyReadiness.Shortfall(0, 0, 0, 30).none(), "a cure shortfall is a shortfall");
         assertTrue(new AgentSupplyReadiness.Shortfall(0, 0, 0, 30).potionsNone());
+    }
+
+    @Test
+    void partyQuestBossesGetSealAndDarknessStandardsAndAnAllCureCountsTowardBoth() {
+        // 2026-10-17: Alishar and Papa Pixie seal and blind, Frankenroid and the Poison Golems blind (Mob.wz skills
+        // 120 and 121); a desk's town sells the cure its standard lists
+        Character hero = mock(Character.class);
+        Inventory use = new Inventory(hero, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(2_050_003, 4));
+        use.addItem(Items.itemWithQuantity(2_050_001, 2));
+        use.addItem(Items.itemWithQuantity(2_050_004, 3));
+        when(hero.getInventory(InventoryType.USE)).thenReturn(use);
+        AgentSupplyReadiness.Activity lpq = AgentSupplyReadiness.Activity.partyQuest("lpq");
+        AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
+        AgentSupplyReadiness.CureKind seal = AgentSupplyReadiness.CureKind.SEAL;
+        AgentSupplyReadiness.CureKind darkness = AgentSupplyReadiness.CureKind.DARKNESS;
+
+        assertEquals(10, AgentSupplyReadiness.cureStandard(seal, lpq));
+        assertEquals(10, AgentSupplyReadiness.cureStandard(darkness, lpq));
+        assertEquals(7, AgentSupplyReadiness.carriedCures(hero, seal), "4 Holy Water and 3 All Cure");
+        assertEquals(5, AgentSupplyReadiness.carriedCures(hero, darkness), "2 Eyedrops and 3 All Cure");
+        assertEquals(3 + 5, AgentSupplyReadiness.cureShortfall(hero, lpq), "every kind together");
+        assertEquals(0, AgentSupplyReadiness.cureStandard(seal, epq), "Ellin Forest's store sells no Holy Water");
+        assertEquals(5, AgentSupplyReadiness.cureShortfall(hero, epq));
+        for (String key : List.of("opq", "rjpq", "rjpqj")) {
+            assertEquals(10, AgentSupplyReadiness.cureStandard(darkness, AgentSupplyReadiness.Activity.partyQuest(key)),
+                    key);
+        }
+        assertEquals(0, AgentSupplyReadiness.cureStandard(seal, AgentSupplyReadiness.Activity.partyQuest("rjpq")),
+                "Frankenroid never seals");
+        for (String key : List.of("kpq", "hpq", "lmpq", "ppq", "horntail_cure")) {
+            assertEquals(0, AgentSupplyReadiness.cureStandard(darkness, AgentSupplyReadiness.Activity.partyQuest(key)),
+                    key);
+        }
     }
 
     private static int ammoStandardFor(String key) {

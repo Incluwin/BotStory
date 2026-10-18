@@ -70,10 +70,10 @@ public final class AgentShopProvisioning {
      * {@code activity}'s cure standard (AgentSupplyReadiness.cureStandard: "horntail_cure"), as a readiness trip's cure
      * step does there ({@link AgentShopService#readinessCureStep}), with no visit. Returns how many it bought; 0 when it
      * lacks none, the activity has no cure standard, or that NPC has no shop. On the thread that holds the Agent.
+     * 2026-10-17: every kind of cure the activity has a standard for (AgentSupplyReadiness.CureKind).
      */
     public static int provisionCuresAt(Character agent, int npcId, AgentSupplyReadiness.Activity activity) {
-        int standard = AgentSupplyReadiness.cureStandard(activity);
-        if (agent == null || npcId <= 0 || standard <= 0 || agent.getInventory(InventoryType.USE) == null
+        if (agent == null || npcId <= 0 || agent.getInventory(InventoryType.USE) == null
                 || AgentSupplyReadiness.cureShortfall(agent, activity) <= 0) {
             return 0;
         }
@@ -81,12 +81,27 @@ public final class AgentShopProvisioning {
         if (shop == null) {
             return 0;
         }
-        int before = AgentSupplyReadiness.carriedCures(agent);
+        int before = carriedOfEveryKind(agent);
         AgentShopPurchaseSequence<AgentRuntimeEntry> counter = new AgentShopPurchaseSequence<>(null, agent,
                 AgentInventoryGatewayRuntime.inventory(), null, List.of(), new ArrayList<>(), null);
-        AgentShopService.readinessCureStep(counter, shop, agent, standard,
+        AgentShopService.readinessCureStep(counter, shop, agent, activity,
                 AgentSupplyRecoveryPolicy.minimumWalletReserve(agent));
-        return Math.max(0, AgentSupplyReadiness.carriedCures(agent) - before);
+        return Math.max(0, carriedOfEveryKind(agent) - before);
+    }
+
+    /** The cures of every kind the Agent carries, an All Cure Potion (which counts toward each kind) once. */
+    private static int carriedOfEveryKind(Character agent) {
+        java.util.Set<Integer> cures = new java.util.HashSet<>();
+        for (AgentSupplyReadiness.CureKind kind : AgentSupplyReadiness.CureKind.values()) {
+            for (int itemId : kind.items()) {
+                cures.add(itemId);
+            }
+        }
+        int carried = 0;
+        for (int itemId : cures) {
+            carried += agent.getInventory(InventoryType.USE).countById(itemId);
+        }
+        return carried;
     }
 
     /**

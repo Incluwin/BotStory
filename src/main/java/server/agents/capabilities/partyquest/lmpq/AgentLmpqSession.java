@@ -53,6 +53,7 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private final java.util.Set<Integer> seenHeld = new java.util.LinkedHashSet<>();
     private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<String> notes = new java.util.HashSet<>();
     private final java.util.concurrent.atomic.AtomicBoolean coordinating =
             new java.util.concurrent.atomic.AtomicBoolean();
 
@@ -267,6 +268,11 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
         if (potionsAtEntry != null || potions == null) return false;
         potionsAtEntry = potions;
         return true;
+    }
+
+    /** True the first time the run claims {@code key}: for a log line the run writes once, whoever ticks it. */
+    synchronized boolean claimNote(String key) {
+        return key != null && notes.add(key);
     }
 
     /**

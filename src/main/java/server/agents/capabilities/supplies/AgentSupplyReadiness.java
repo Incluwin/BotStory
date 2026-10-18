@@ -422,32 +422,98 @@ public final class AgentSupplyReadiness {
      * (AgentPotionService.tickDiseaseCure). Read from agent-engine.yaml at every call; never negative.
      */
     public static int cureStandard(Activity activity) {
-        if (activity == null) {
+        return cureStandard(CureKind.SEAL, activity);
+    }
+
+    /**
+     * The cures of {@code kind} an Agent goes into {@code activity} with at least: the count its kind's standards
+     * ({@link CureKind#standards}) list for the activity's key, else 0. Read from agent-engine.yaml at every call;
+     * never negative.
+     */
+    public static int cureStandard(CureKind kind, Activity activity) {
+        if (kind == null || activity == null) {
             return 0;
         }
-        String standards = config.AgentTuning.stringValue(
-                "server.agents.capabilities.supplies.AgentSupplyReadiness.CURE_STANDARDS");
-        Integer own = listedCount(activity.partyQuestKey(), standards);
+        Integer own = listedCount(activity.partyQuestKey(), kind.standards());
         return Math.max(0, own != null ? own : 0);
     }
 
     /** The seal cures in the Agent's Use tab: Holy Water and All Cure Potions. 0 without a Use tab. */
     public static int carriedCures(Character agent) {
-        Inventory use = agent == null ? null : agent.getInventory(InventoryType.USE);
+        return carriedCures(agent, CureKind.SEAL);
+    }
+
+    /**
+     * The cures of {@code kind} in the Agent's Use tab ({@link CureKind#items}); an All Cure Potion counts toward every
+     * kind, as it cures them all. 0 without a Use tab.
+     */
+    public static int carriedCures(Character agent, CureKind kind) {
+        Inventory use = agent == null || kind == null ? null : agent.getInventory(InventoryType.USE);
         if (use == null) {
             return 0;
         }
-        return use.countById(SEAL_CURES[0]) + use.countById(SEAL_CURES[1]);
+        int carried = 0;
+        for (int itemId : kind.items) {
+            carried += use.countById(itemId);
+        }
+        return carried;
     }
 
-    /** What the Agent's seal cures ({@link #carriedCures}) lack for {@code activity}'s cure standard. */
+    /**
+     * What the Agent's cures lack for {@code activity}'s cure standards, every kind together (2026-10-17: seal and
+     * darkness, {@link CureKind}); what {@link Shortfall#cure} counts.
+     */
     public static int cureShortfall(Character agent, Activity activity) {
-        int standard = cureStandard(activity);
-        return standard <= 0 || agent == null ? 0 : Math.max(0, standard - carriedCures(agent));
+        int lacking = 0;
+        for (CureKind kind : CureKind.values()) {
+            lacking += cureShortfall(agent, activity, kind);
+        }
+        return lacking;
+    }
+
+    /** What the Agent's cures of {@code kind} ({@link #carriedCures(Character, CureKind)}) lack of its standard. */
+    public static int cureShortfall(Character agent, Activity activity, CureKind kind) {
+        int standard = cureStandard(kind, activity);
+        return standard <= 0 || agent == null ? 0 : Math.max(0, standard - carriedCures(agent, kind));
     }
 
     /** Holy Water (cures Seal and Curse), then All Cure Potion: what {@link #carriedCures} counts. */
     public static final int[] SEAL_CURES = {2_050_003, 2_050_004};
+    /** 2026-10-17: Eyedrops (cure Darkness), then All Cure Potion: what a darkness standard counts. */
+    public static final int[] DARKNESS_CURES = {2_050_001, 2_050_004};
+
+    /**
+     * A kind of status cure a companion stocks for an activity, each with its own standards key. SEAL (CURE_STANDARDS,
+     * 2026-10-14, P18): Horntail's Right Hand, and Alishar (LPQ) and Papa Pixie (OPQ). DARKNESS
+     * (DARKNESS_CURE_STANDARDS, 2026-10-17): the blindness that cuts accuracy, cast by Alishar, Papa Pixie, Frankenroid
+     * (RJPQ) and the Poison Golems (EPQ) (Mob.wz skill 121). The cure itself is drunk by AgentPotionService
+     * .tickDiseaseCure whatever the kind; the kind only decides what a readiness trip buys.
+     */
+    public enum CureKind {
+        SEAL(SEAL_CURES),
+        DARKNESS(DARKNESS_CURES);
+
+        private final int[] items;
+
+        CureKind(int[] items) {
+            this.items = items.clone();
+        }
+
+        /** The cures that count toward this kind, the one a shop sells cheapest bought first. */
+        public int[] items() {
+            return items.clone();
+        }
+
+        /** This kind's "key=count,..." standards, read from agent-engine.yaml at every call. */
+        String standards() {
+            return switch (this) {
+                case SEAL -> config.AgentTuning.stringValue(
+                        "server.agents.capabilities.supplies.AgentSupplyReadiness.CURE_STANDARDS");
+                case DARKNESS -> config.AgentTuning.stringValue(
+                        "server.agents.capabilities.supplies.AgentSupplyReadiness.DARKNESS_CURE_STANDARDS");
+            };
+        }
+    }
 
     /** What the Agent's projectiles for its equipped weapon ({@link #carriedAmmo}) lack for {@code activity}. */
     public static int ammoShortfall(Character agent, Activity activity) {

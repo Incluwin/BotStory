@@ -76,6 +76,11 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     private String eventLeaderName;
     private final AgentRjpqPaceMarks pace = new AgentRjpqPaceMarks();
     private boolean filesHandedIn;
+    private int letterHolderId;
+    private boolean letterAsked;
+    private Boolean letterWanted;
+    private boolean letterGiven;
+    private int letterTries;
     private long lastTimeLeftMs = Long.MAX_VALUE;
     private int leaderMapId = -1;
     private Phase phase = Phase.PREPARING;
@@ -603,6 +608,55 @@ public final class AgentRjpqSession implements AgentCompanionRunSession {
     }
 
     /** True only the first time a line key is used in this run. */
+    /**
+     * 2026-10-17: companion {@code holderId} found the captive's letter in a book; the first finder is kept. The letter
+     * is trade-blocked (it vanishes when dropped), so the leader is asked whether it should go to the side's NPC.
+     */
+    synchronized void letterFound(int holderId) {
+        if (letterHolderId == 0 && holderId > 0) letterHolderId = holderId;
+    }
+
+    /** The companion holding the captive's letter; 0 for none. */
+    synchronized int letterHolderId() {
+        return letterHolderId;
+    }
+
+    /** The leader was asked whether the letter should go to the side's NPC. */
+    synchronized void markLetterAsked() {
+        letterAsked = true;
+    }
+
+    /** True while the leader was asked about the letter and has not answered, and the letter was not given. */
+    synchronized boolean letterQuestionOpen() {
+        return letterAsked && letterWanted == null && !letterGiven;
+    }
+
+    /** The leader's answer, taken once while the question is open; false otherwise. */
+    synchronized boolean answerLetter(boolean wanted) {
+        if (!letterQuestionOpen()) return false;
+        letterWanted = wanted;
+        return true;
+    }
+
+    /** The leader's answer about the letter; null while none came. */
+    synchronized Boolean letterWanted() {
+        return letterWanted;
+    }
+
+    /** The holder gave the letter to the side's NPC, or stopped trying. */
+    synchronized void markLetterGiven() {
+        letterGiven = true;
+    }
+
+    /** One more talk to the side's NPC with the letter; returns how many so far. */
+    synchronized int noteLetterTry() {
+        return ++letterTries;
+    }
+
+    synchronized boolean letterGiven() {
+        return letterGiven;
+    }
+
     synchronized boolean narrateOnce(String key) {
         return key != null && !key.isBlank() && narrated.add(key);
     }

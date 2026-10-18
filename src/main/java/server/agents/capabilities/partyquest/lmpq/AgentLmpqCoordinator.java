@@ -40,6 +40,8 @@ public final class AgentLmpqCoordinator {
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_STALL_MS");
     private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.ENTRY_HOLD_GRACE_MS");
+    private static final long TAUROMACIS_BUDGET_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TAUROMACIS_BUDGET_MS");
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
     private static final int PORTAL_RADIUS = 55;
@@ -131,10 +133,7 @@ public final class AgentLmpqCoordinator {
         }
 
         int secured = usableCoupons(session);
-        if (session.phase() == AgentLmpqSession.Phase.FARMING
-                && (secured >= AgentLmpqDefinition.SAFE_COUPON_TARGET
-                || secured >= AgentLmpqDefinition.REQUIRED_COUPONS
-                && (nowMs - session.phaseEnteredAtMs() >= 120_000L || noAvailableFarmRooms(session)))) {
+        if (session.phase() == AgentLmpqSession.Phase.FARMING && readyToRegroup(session, secured, nowMs)) {
             session.members().forEach(member -> {
                 session.rooms().releaseOwner(member.characterId(), nowMs);
                 member.clearTargetRoom();
@@ -625,6 +624,37 @@ public final class AgentLmpqCoordinator {
         } catch (RuntimeException failure) {
             log.warn("LMPQ coupons line failed: session={}", session.sessionId(), failure);
         }
+    }
+
+    /**
+     * Whether the farming run has enough coupons and nothing better to farm, so it regroups. Below
+     * REQUIRED_COUPONS never; with no room left to farm, always. While FARMING is younger than TAUROMACIS_BUDGET_MS
+     * (2026-10-17; 0 turns this off) not while a Tauromacis room (AgentLmpqDefinition.TAUROMACIS_ROOMS) is still open
+     * to the Agents, since its coupons are worth 50 EXP each at Pietri; logged once as 'LMPQ hold:'. Otherwise, as
+     * before: at SAFE_COUPON_TARGET, or after 120 s.
+     */
+    static boolean readyToRegroup(AgentLmpqSession session, int secured, long nowMs) {
+        if (secured < AgentLmpqDefinition.REQUIRED_COUPONS) return false;
+        if (noAvailableFarmRooms(session)) return true;
+        long farmingMs = nowMs - session.phaseEnteredAtMs();
+        List<Integer> open = farmingMs < TAUROMACIS_BUDGET_MS ? openTauromacisRooms(session) : List.of();
+        if (!open.isEmpty()) {
+            if (session.claimNote("tauromacis-hold")) {
+                log.info("LMPQ hold: session={} secured={} open={} runMs={}", session.sessionId(), secured, open,
+                        nowMs - session.startedAtMs());
+            }
+            return false;
+        }
+        return secured >= AgentLmpqDefinition.SAFE_COUPON_TARGET || farmingMs >= 120_000L;
+    }
+
+    /** The Tauromacis rooms an Agent may still farm: available, reserved or being worked, in room order. */
+    private static List<Integer> openTauromacisRooms(AgentLmpqSession session) {
+        return AgentLmpqDefinition.TAUROMACIS_ROOMS.stream().sorted().filter(room -> {
+            AgentLmpqRoomLedger.State state = session.rooms().room(room).state();
+            return state == AgentLmpqRoomLedger.State.AVAILABLE || state == AgentLmpqRoomLedger.State.RESERVED
+                    || state == AgentLmpqRoomLedger.State.WORKING;
+        }).toList();
     }
 
     private static boolean noAvailableFarmRooms(AgentLmpqSession session) {

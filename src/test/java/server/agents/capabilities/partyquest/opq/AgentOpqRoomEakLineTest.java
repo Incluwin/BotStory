@@ -112,7 +112,10 @@ class AgentOpqRoomEakLineTest {
             when(holders[platform].getPosition()).thenReturn(platforms[platform]);
         }
         nearEak(lea, AgentOpqDefinition.SEALED_MAP);
-        when(run.partyQuest.runNpc(lea, AgentOpqDefinition.EAK_NPC)).thenReturn(true);
+        when(run.partyQuest.runNpc(lea, AgentOpqDefinition.EAK_NPC)).thenAnswer(inv -> {
+            AgentOpqSessionRegistry.recordSealedVerdict(lea.getId(), false); // 2013001.js: "All ... wrong"
+            return true;
+        });
         String id = session.sessionId();
 
         try (OpqLogLines lines = new OpqLogLines(AgentOpqCoordinator.class)) {
@@ -127,6 +130,46 @@ class AgentOpqRoomEakLineTest {
                     lines.startingWith("OPQ eak:"), "the third tick sees the room sealed and leaves");
         }
         assertEquals(2, session.sealedAttempt());
+    }
+
+    @Test
+    void eaksAnswersNarrowTheSearchAndTheSealingSplitIsRemembered() {
+        // 2026-10-17: the holders stand in the search's guess; Eak's answers come through 2013001.js's hook
+        AgentOpqSession session = sixAgents(AgentOpqSession.Phase.SPLIT_ROOMS);
+        session.member(11).assign(AgentOpqMemberState.Role.LEADER, AgentOpqDefinition.Room.SEALED, 0);
+        Character[] holders = {mira, kes, pel};
+        Point[] platforms = {new Point(-162, -808), new Point(-40, -919), new Point(78, -813)};
+        for (int platform = 0; platform < 3; platform++) {
+            AgentOpqMemberState holder = session.member(holders[platform].getId());
+            holder.assign(AgentOpqMemberState.Role.SEALED_PLATFORM, AgentOpqDefinition.Room.SEALED, 0);
+            holder.assignPlatform(platform);
+            when(holders[platform].getMapId()).thenReturn(AgentOpqDefinition.SEALED_MAP);
+            when(holders[platform].getPosition()).thenReturn(platforms[platform]);
+        }
+        nearEak(lea, AgentOpqDefinition.SEALED_MAP);
+        String[] status = {"0"};
+        when(run.partyQuest.property(lea, "statusStg4")).thenAnswer(inv -> status[0]);
+        int[] checks = {0};
+        when(run.partyQuest.runNpc(lea, AgentOpqDefinition.EAK_NPC)).thenAnswer(inv -> {
+            if (++checks[0] == 1) AgentOpqSessionRegistry.recordSealedVerdict(lea.getId(), true);
+            else status[0] = "1"; // the second check seals the room
+            return true;
+        });
+        String id = session.sessionId();
+
+        try (OpqLogLines lines = new OpqLogLines(AgentOpqCoordinator.class)) {
+            AgentOpqCoordinator.tickMember(session, run.entries.get(11), lea, 10_000L);
+            AgentOpqSealedSearch.Split second = session.sealedGuess();
+            AgentOpqCoordinator.tickMember(session, run.entries.get(11), lea, 12_000L);
+
+            assertEquals("012", second.key(), "the best of the six splits that share a platform's count with 003");
+            assertEquals(List.of(
+                    "OPQ sealed: session=" + id + " split=003 answer=one-right candidates=6 solvedBefore=0",
+                    "OPQ sealed: session=" + id + " split=012 answer=sealed candidates=6 solvedBefore=0"),
+                    lines.startingWith("OPQ sealed:"));
+            assertEquals(1, AgentOpqSealedSplitMemory.current().solvedCount(second), "remembered for later runs");
+        }
+        assertEquals(1, session.sealedAttempt(), "one wrong check");
     }
 
     /** {@code leader} stands on {@code mapId} next to Eak. */

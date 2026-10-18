@@ -598,13 +598,16 @@ class AgentShopServiceReadinessAmmoTest {
 
     @Test
     void aTripForAnyOtherActivityBuysNoCures() {
-        trip = LPQ;
+        trip = KPQ;
         prices.put(HOLY_WATER, 500);
+        prices.put(EYEDROPS, 200);
         carryPotions(80, 100);
 
-        visit(List.of(WHITE, BLUE, HOLY_WATER), WeaponType.GENERAL1H_SWING);
+        visit(List.of(WHITE, BLUE, HOLY_WATER, EYEDROPS), WeaponType.GENERAL1H_SWING);
 
         assertEquals(0, AgentSupplyReadiness.carriedCures(bot), transactions.toString());
+        assertEquals(0, AgentSupplyReadiness.carriedCures(bot, AgentSupplyReadiness.CureKind.DARKNESS),
+                transactions.toString());
     }
 
     @Test
@@ -617,7 +620,58 @@ class AgentShopServiceReadinessAmmoTest {
         assertTrue(AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE)), HORNTAIL_CURE).unsold(),
                 "Leafre's store sells none");
         assertEquals(AgentShopService.ReadinessCurePlan.NOTHING,
-                AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, HOLY_WATER)), LPQ));
+                AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, HOLY_WATER)), KPQ));
+    }
+
+    // ---- party quest cures (2026-10-17: Alishar, Papa Pixie, Frankenroid and the Poison Golems seal or blind) ------
+
+    private static final int EYEDROPS = 2_050_001;
+    private static final AgentSupplyReadiness.Activity RJPQ = AgentSupplyReadiness.Activity.partyQuest("rjpq");
+
+    @Test
+    void anLpqTripBuysHolyWaterAndEyedropsUpToTheirStandards() {
+        mapId = 220_000_000;
+        trip = LPQ;
+        prices.put(HOLY_WATER, 500);
+        prices.put(EYEDROPS, 200);
+        carryPotions(80, 100);
+
+        visit(List.of(WHITE, BLUE, HOLY_WATER, EYEDROPS), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(10, AgentSupplyReadiness.carriedCures(bot, AgentSupplyReadiness.CureKind.SEAL),
+                "agent-engine.yaml CURE_STANDARDS lpq: " + transactions);
+        assertEquals(10, AgentSupplyReadiness.carriedCures(bot, AgentSupplyReadiness.CureKind.DARKNESS),
+                "agent-engine.yaml DARKNESS_CURE_STANDARDS lpq: " + transactions);
+        assertEquals(0, AgentSupplyReadiness.cureShortfall(bot, LPQ));
+    }
+
+    @Test
+    void anEpqTripAtEllinForestsStoreBuysEyedropsOnly() {
+        trip = EPQ;
+        prices.put(EYEDROPS, 200);
+        carryPotions(700, 700);
+
+        visit(List.of(WHITE, BLUE, EYEDROPS), WeaponType.GENERAL1H_SWING);
+
+        assertEquals(10, AgentSupplyReadiness.carriedCures(bot, AgentSupplyReadiness.CureKind.DARKNESS),
+                transactions.toString());
+        assertEquals(0, AgentSupplyReadiness.cureStandard(EPQ), "Mayoren sells no Holy Water: no seal standard");
+        assertEquals(0, AgentSupplyReadiness.cureShortfall(bot, EPQ));
+    }
+
+    @Test
+    void readinessCurePlanAddsEveryKindTheShopSellsAndIsUnsoldOnlyWhenItSellsNoneLacking() {
+        prices.put(HOLY_WATER, 500);
+        prices.put(EYEDROPS, 200);
+
+        assertEquals(new AgentShopService.ReadinessCurePlan(HOLY_WATER, 20, 7_000L, 2),
+                AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, HOLY_WATER, EYEDROPS)), LPQ),
+                "10 Holy Water and 10 Eyedrops");
+        assertEquals(new AgentShopService.ReadinessCurePlan(EYEDROPS, 10, 2_000L, 1),
+                AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, EYEDROPS)), LPQ),
+                "the Eyedrops it sells, the Holy Water left for another store");
+        assertTrue(AgentShopService.readinessCurePlan(bot, shop(List.of(WHITE, BLUE, HOLY_WATER)), RJPQ).unsold(),
+                "RJPQ wants darkness cures only, and this store sells none");
     }
 
     // ---- fixture ---------------------------------------------------------------------------

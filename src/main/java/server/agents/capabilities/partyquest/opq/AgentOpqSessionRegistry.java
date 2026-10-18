@@ -63,6 +63,16 @@ public final class AgentOpqSessionRegistry {
         return sessionId == null ? null : SESSIONS.get(sessionId);
     }
     public static boolean active(int id) { return forMember(id) != null; }
+
+    /**
+     * 2026-10-17: Eak's answer to a wrong sealed-room check, called by 2013001.js as he says it: true for "One of the
+     * platforms has the right number of players", false for "All of the platforms have the wrong amount". Kept for the
+     * run of the player who asked ({@code characterId}); nothing outside a run. Only what Eak tells the party.
+     */
+    public static void recordSealedVerdict(int characterId, boolean onePlatformRight) {
+        AgentOpqSession session = forMember(characterId);
+        if (session != null) session.recordSealedVerdict(onePlatformRight);
+    }
     public static Collection<AgentOpqSession> sessions() { return List.copyOf(SESSIONS.values()); }
     public static synchronized void remove(AgentOpqSession session) {
         if (session == null || !SESSIONS.remove(session.sessionId(), session)) return;

@@ -88,6 +88,20 @@ public final class AgentRjpqSessionRegistry {
         return AgentRjpqLootRule.allows(AgentRjpqLootRule.facts(session, bot, drop));
     }
 
+    /**
+     * 2026-10-17: a typed line in party or map chat, on the speaker's I/O thread: recorded as the leader's answer when
+     * his run asked whether a companion should give the captive's letter to Romeo or Juliet and the whole line is a
+     * yes or a no (AgentRjpqCompanionPlay.letterAnswer); the companion acts on its tick. One map lookup for anyone else.
+     *
+     * @return true when the line was his answer
+     */
+    public static boolean answerLetterInChat(int speakerId, String message) {
+        AgentRjpqSession session = forMember(speakerId);
+        if (session == null || session.eventLeaderId() != speakerId || !session.letterQuestionOpen()) return false;
+        Boolean wanted = AgentRjpqCompanionPlay.letterAnswer(message);
+        return wanted != null && session.answerLetter(wanted);
+    }
+
     public static boolean active(int id) {
         return forMember(id) != null;
     }

@@ -312,8 +312,11 @@ public final class AgentSupplyReadinessRuntime {
         if (cures.unsold() && shortfall.potionsNone() && shortfall.ammo() <= 0) {
             return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0, potions);
         }
+        // 2026-10-17: cures ride along on a trip for potions or projectiles and never cost it that trip (the cure step
+        // buys what the purse has left past the wallet reserve); only a trip for cures alone must afford them
+        boolean curesOnly = shortfall.potionsNone() && shortfall.ammo() <= 0;
         long spend = ammo + (long) potions.hp() * hpPrice + (long) potions.mp() * mpPrice
-                + (readinessAmmo == null ? 0L : readinessAmmo.spend()) + cures.spend();
+                + (readinessAmmo == null ? 0L : readinessAmmo.spend()) + (curesOnly ? cures.spend() : 0L);
         long spendable = (long) mesos(agent) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
         if (spend > spendable) {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),

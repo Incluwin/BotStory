@@ -7,6 +7,7 @@
 
 var status = 0;
 var em = null;
+const AgentOpqSessionRegistry = Java.type('server.agents.capabilities.partyquest.opq.AgentOpqSessionRegistry');
 
 function isStatueComplete() {
     for (var i = 1; i <= 6; i++) {
@@ -169,6 +170,12 @@ function action(mode, type, selection) {
                             clearStage(4, eim);
                         } else {
                             eim.showWrongEffect();
+                            // the run's search hears Eak's answer as the party does (2026-10-17); a server without
+                            // the hook, or any failure in it, never costs the party his answer
+                            try {
+                                AgentOpqSessionRegistry.recordSealedVerdict(cm.getPlayer().getId(), num_correct > 0);
+                            } catch (e) {
+                            }
                             if (num_correct > 0) {
                                 cm.sendOk("One of the platforms has the right number of players.");
                             } else {
