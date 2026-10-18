@@ -22,6 +22,7 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.life.Monster;
 import server.maps.MapItem;
+import server.maps.MapleMap;
 import server.maps.Reactor;
 
 import java.awt.Point;
@@ -71,7 +72,27 @@ final class AgentOpqCoordinator {
     private static final Point ROOT_POT = new Point(-755, 19);
     private static final Point MINERVA_BASE = new Point(-48, -916);
 
+    /** The walkway's statue fragments Eak takes from the leader's bag (2013001.js). */
+    static final int WALKWAY_QUOTA = 30;
+    /** The lounge's statue fragments Eak takes from the leader's bag (2013001.js). */
+    static final int LOUNGE_QUOTA = 40;
+
     private AgentOpqCoordinator() { }
+
+    /** The primitive actions every OPQ worker uses (resolved per call). */
+    static PrimitiveCapabilityGateway actions() {
+        return ACTIONS;
+    }
+
+    /** How long a member waits after one of its server actions before the next. */
+    static long actionRetryMs() {
+        return ACTION_RETRY_MS;
+    }
+
+    /** Within the loot radius of a drop on both axes. */
+    static boolean withinLootRadius(Point agent, Point drop) {
+        return near(agent, drop, LOOT_RADIUS);
+    }
 
     /**
      * How long a run may go without progress before it is ended; a human-led run waits this long for its entry, and
@@ -142,10 +163,16 @@ final class AgentOpqCoordinator {
                 case ENTERING -> tickEntry(session, leader, nowMs);
                 case ENTRANCE -> assignEntrance(session);
                 case SPLIT_ROOMS -> {
-                    assignSplitRooms(session, nowMs);
+                    // 2026-10-18: a human leader holds no room; his companions work them and call him to Eak.
+                    if (AgentOpqConductor.conducts(session)) AgentOpqConductor.assignRooms(session, leader, nowMs);
+                    else assignSplitRooms(session, nowMs);
                     synchronizeRoomCompletion(session, leader, nowMs);
+                    if (AgentOpqConductor.conducts(session)) AgentOpqConductor.guide(session, leader, nowMs);
                 }
-                case RESTORING_STATUE -> tickStatueRestoration(session, leader, nowMs);
+                case RESTORING_STATUE -> {
+                    tickStatueRestoration(session, leader, nowMs);
+                    if (AgentOpqConductor.conducts(session)) AgentOpqConductor.guide(session, leader, nowMs);
+                }
                 case GARDEN -> assignGarden(session, nowMs);
                 case RESTORING_MINERVA -> tickFinalRoot(session, leader, nowMs);
                 case CLAIMING_REWARD -> tickReward(session, nowMs);
@@ -399,7 +426,8 @@ final class AgentOpqCoordinator {
     private static void assignSplitRooms(AgentOpqSession session, long nowMs) {
         // The fixed six-Agent layout below assigns nothing with fewer than six. It keeps counting every member, a
         // departed one included (its room then waits), so the leader's hand-ins and the lounge runners are still
-        // assigned after a departure; the lounge subrooms themselves go only to runners the event still holds.
+        // assigned after a departure; the lounge subrooms themselves go only to runners the event still holds. A
+        // companion run led by a human never comes here (AgentOpqConductor.assignRooms).
         List<AgentOpqMemberState> agents = session.members().stream()
                 .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentOpqMemberState::characterId)).toList();
@@ -459,7 +487,7 @@ final class AgentOpqCoordinator {
     }
 
     /** The room ledger's claim, with an 'OPQ room:' line when it changed the room's owner or state. */
-    private static void claimRoom(AgentOpqSession session, AgentOpqDefinition.Room room, int ownerId, long nowMs) {
+    static void claimRoom(AgentOpqSession session, AgentOpqDefinition.Room room, int ownerId, long nowMs) {
         AgentOpqRoomLedger.Lease before = session.rooms().lease(room);
         session.rooms().claim(room, ownerId, nowMs);
         logRoomChange(session, room, before, nowMs);
@@ -482,7 +510,7 @@ final class AgentOpqCoordinator {
         }
     }
 
-    private static void assignLoungeSubrooms(AgentOpqSession session) {
+    static void assignLoungeSubrooms(AgentOpqSession session) {
         List<AgentOpqMemberState> runners = counted(session).stream()
                 .filter(m -> m.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER).toList();
         Set<Integer> occupied = runners.stream().map(AgentOpqMemberState::assignedSubroomMapId)
@@ -499,7 +527,7 @@ final class AgentOpqCoordinator {
         }
     }
 
-    private static void assignSealedPlatforms(AgentOpqSession session, List<AgentOpqMemberState> holders) {
+    static void assignSealedPlatforms(AgentOpqSession session, List<AgentOpqMemberState> holders) {
         AgentOpqSealedSearch.Split split = session.sealedGuess();
         int holder = 0;
         for (int platform = 0; platform < 3; platform++) {
@@ -545,6 +573,17 @@ final class AgentOpqCoordinator {
 
     private static void tickWalkway(AgentOpqSession session, AgentRuntimeEntry entry,
                                     Character agent, AgentOpqMemberState member, long nowMs) {
+        if (AgentOpqConductor.conducts(session)) {
+            // 2026-10-18: the thirty go to the human leader at his feet once he is in the walkway (AgentOpqHandOver);
+            // with the party's thirty gathered the collector stops gathering and waits by Eak for him.
+            if (AgentOpqHandOver.tick(session, entry, agent, member, AgentOpqDefinition.WALKWAY_FRAGMENT,
+                    WALKWAY_QUOTA, AgentOpqDefinition.WALKWAY_MAP, WALKWAY_EAK, nowMs)) return;
+            if (AgentOpqHandOver.partyTotal(session, agent.getMap(), character(session.eventLeaderId()),
+                    AgentOpqDefinition.WALKWAY_FRAGMENT) >= WALKWAY_QUOTA) {
+                moveTo(entry, agent, WALKWAY_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
+                return;
+            }
+        }
         if (collectReservedDrop(session, entry, agent, Set.of(AgentOpqDefinition.WALKWAY_FRAGMENT), nowMs)) return;
         if (ACTIONS.liveMonsterCount(agent, AgentOpqDefinition.WALKWAY_MOBS) > 0) {
             ACTIONS.grind(entry, AgentOpqDefinition.WALKWAY_MOBS); return;
@@ -653,7 +692,7 @@ final class AgentOpqCoordinator {
      * mode): the split the holders stood in, Eak's answer (one-right, all-wrong, unheard, unheard-dropped, sealed), the
      * splits still possible and how often this server had solved that split before.
      */
-    private static void logSealed(AgentOpqSession session, AgentOpqSealedSearch.Split checked, String answer) {
+    static void logSealed(AgentOpqSession session, AgentOpqSealedSearch.Split checked, String answer) {
         try {
             int solved = AgentOpqSealedSplitMemory.current().solvedCount(checked);
             log.info("OPQ sealed: session={} split={} answer={} candidates={} solvedBefore={}", session.sessionId(),
@@ -669,6 +708,7 @@ final class AgentOpqCoordinator {
             member.beginLoungeCollection(agent.getMapId(),
                     agent.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false));
         }
+        if (AgentOpqConductor.conducts(session) && tickConductedLounge(session, entry, agent, member, nowMs)) return;
         if (collectReservedDrop(session, entry, agent, Set.of(AgentOpqDefinition.LOUNGE_FRAGMENT), nowMs)) return;
         int piece = AgentOpqDefinition.STATUE_PIECES.get(4);
         if (agent.getId() == session.eventLeaderId() && agent.getItemQuantity(piece, false) > 0) {
@@ -714,6 +754,30 @@ final class AgentOpqCoordinator {
         }
     }
 
+    /**
+     * 2026-10-18, a human-led run's lounge: once the party's forty are gathered (his bag, the runners' bags and the
+     * stacks lying for him by Eak) every runner leaves its subroom for the lounge and hands its fragments to him there
+     * (AgentOpqHandOver), waiting by Eak until he comes. True when this pass is spent.
+     */
+    private static boolean tickConductedLounge(AgentOpqSession session, AgentRuntimeEntry entry, Character agent,
+                                               AgentOpqMemberState member, long nowMs) {
+        Character leader = character(session.eventLeaderId());
+        boolean inLounge = agent.getMapId() == AgentOpqDefinition.LOUNGE_MAP;
+        if (inLounge && AgentOpqHandOver.tick(session, entry, agent, member, AgentOpqDefinition.LOUNGE_FRAGMENT,
+                LOUNGE_QUOTA, AgentOpqDefinition.LOUNGE_MAP, LOUNGE_EAK, nowMs)) return true;
+        MapleMap lounge = inLounge ? agent.getMap()
+                : leader != null && leader.getMapId() == AgentOpqDefinition.LOUNGE_MAP ? leader.getMap() : null;
+        if (AgentOpqHandOver.partyTotal(session, lounge, leader, AgentOpqDefinition.LOUNGE_FRAGMENT) < LOUNGE_QUOTA) {
+            return false;
+        }
+        if (AgentOpqDefinition.LOUNGE_ROOM_MAPS.contains(agent.getMapId())) {
+            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+        } else if (inLounge) {
+            moveTo(entry, agent, LOUNGE_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
+        }
+        return true;
+    }
+
     private static void tickLoungePortalDiscovery(AgentOpqSession session, AgentRuntimeEntry entry,
                                                    Character agent, AgentOpqMemberState member, long nowMs) {
         if (member.portalObservationPending(agent.getMapId())) {
@@ -752,7 +816,10 @@ final class AgentOpqCoordinator {
         if (agent.getPosition().y > -4_900) {
             tickWayUpPortalDiscovery(session, entry, agent, member, nowMs); return;
         }
-        if (agent.getId() == session.eventLeaderId()) {
+        if (AgentOpqConductor.conducts(session)) {
+            // 2026-10-18: the runner sets the next pair and the human leader checks it at Eak, far below.
+            AgentOpqConductor.setLevers(session, entry, agent, member, nowMs);
+        } else if (agent.getId() == session.eventLeaderId()) {
             configureWayUpLevers(session, entry, agent, member, nowMs);
         } else ACTIONS.stop(entry);
     }
@@ -896,6 +963,9 @@ final class AgentOpqCoordinator {
             }
             return;
         }
+        // 2026-10-18: a human leader drops the pieces Eak gave him in the centre; a companion puts them up (O5).
+        if (AgentOpqConductor.conducts(session)
+                && AgentOpqConductor.collectLeaderPiece(session, entry, agent, member, nowMs)) return;
         ACTIONS.stop(entry);
     }
 
@@ -1159,7 +1229,7 @@ final class AgentOpqCoordinator {
                                                Character agent, Set<Integer> items, long nowMs) {
         MapItem target = AgentMapPerception.items(agent.getMap()).stream()
                 .filter(drop -> !drop.isPickedUp() && items.contains(drop.getItemId()))
-                .filter(drop -> AgentOpqSessionRegistry.canLootExclusive(agent, drop.getItemId()))
+                .filter(drop -> AgentOpqSessionRegistry.canLootExclusive(agent, drop))
                 .min(Comparator.comparingDouble(drop -> drop.getPosition().distanceSq(agent.getPosition())))
                 .orElse(null);
         if (target == null) return false;
@@ -1183,7 +1253,7 @@ final class AgentOpqCoordinator {
         return true;
     }
 
-    private static boolean hitNearestLegalReactor(AgentRuntimeEntry entry, Character agent,
+    static boolean hitNearestLegalReactor(AgentRuntimeEntry entry, Character agent,
                                                   AgentOpqMemberState member, List<Reactor> candidates, long nowMs) {
         if (candidates == null || candidates.isEmpty()) return false;
         Reactor committed = candidates.stream().filter(r -> r.getObjectId() == member.committedReactorObjectId()
@@ -1359,7 +1429,7 @@ final class AgentOpqCoordinator {
         }
     }
 
-    private static boolean dropItem(AgentRuntimeEntry entry, InventoryType type, int itemId, short quantity) {
+    static boolean dropItem(AgentRuntimeEntry entry, InventoryType type, int itemId, short quantity) {
         Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         if (agent == null || type == null) return false;
         var inventory = agent.getInventory(type);
@@ -1380,13 +1450,13 @@ final class AgentOpqCoordinator {
         return reactor == null ? fallback : reactor.getPosition();
     }
 
-    private static List<Reactor> activeReactors(Character agent) {
+    static List<Reactor> activeReactors(Character agent) {
         List<Reactor> result = new ArrayList<>();
         for (Reactor reactor : ACTIONS.reactors(agent)) if (reactor != null && reactor.isAlive() && reactor.isActive()) result.add(reactor);
         return result;
     }
 
-    private static int propertyInt(Character character, String property) {
+    static int propertyInt(Character character, String property) {
         String value = OPQ.property(character, property);
         if (value == null) return -1;
         try { return Integer.parseInt(value); } catch (NumberFormatException ignored) { return -1; }
@@ -1397,7 +1467,7 @@ final class AgentOpqCoordinator {
      * event (a dead member the event still holds is down and still counted) or not held yet (the event registers a
      * party one member at a time, so it is still entering). Before the binding, every member that has not departed.
      */
-    private static List<AgentOpqMemberState> counted(AgentOpqSession session) {
+    static List<AgentOpqMemberState> counted(AgentOpqSession session) {
         EventInstanceManager bound = session.eventInstance();
         Set<Integer> held = bound == null ? null : heldIds(bound);
         return session.members().stream()
@@ -1472,7 +1542,7 @@ final class AgentOpqCoordinator {
         };
     }
 
-    private static boolean sealedFormationReady(AgentOpqSession session, List<Character> holders) {
+    static boolean sealedFormationReady(AgentOpqSession session, List<Character> holders) {
         for (Character holder : holders) {
             AgentOpqMemberState member = session.member(holder.getId());
             if (member == null || holder.getMapId() != AgentOpqDefinition.SEALED_MAP

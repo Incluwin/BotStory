@@ -9,6 +9,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,17 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     private final Set<Integer> handBacks = new LinkedHashSet<>();
     private final Set<Integer> handedBack = new LinkedHashSet<>();
     private long boundAtMs;
+    // 2026-10-18, a human-led run (AgentOpqConductor): the lines said once, the line windows, the stacks claimed back
+    // or claimed for the statue (object id -> Agent) and their re-collects, and the human's puzzle checks.
+    private final Set<String> narrated = new LinkedHashSet<>();
+    private final Map<String, Long> lineWindows = new HashMap<>();
+    private final Map<Integer, Integer> claims = new HashMap<>();
+    private final Map<Integer, Integer> recollectCounts = new HashMap<>();
+    private HumanCheck<AgentOpqSealedSearch.Split> humanSealedCheck;
+    private List<AgentOpqLeverSearch.Pair> leverCandidates = AgentOpqLeverSearch.PAIRS;
+    private AgentOpqLeverSearch.Pair leverGuess;
+    private HumanCheck<AgentOpqLeverSearch.Pair> humanLeverCheck;
+    private int leverChecks;
 
     /** A session of the stock six members (every Agent-run and fixture run). */
     public AgentOpqSession(Mode mode, long seed, int operatorId, long nowMs) {
@@ -256,6 +268,121 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     public synchronized void markSealedChecked(long nowMs) { sealedCheckedAtMs = nowMs; }
     public synchronized int wayUpLeverAttempt() { return wayUpLeverAttempt; }
     public synchronized void advanceWayUpLeverAttempt(long nowMs) { wayUpLeverAttempt = Math.min(9, wayUpLeverAttempt + 1); markProgress(nowMs); }
+
+    /** A puzzle check the human leader made at Eak as 2013001.js reported it: what stood (null: unreadable), his answer. */
+    record HumanCheck<T>(T observed, boolean oneRight) { }
+
+    /** True the first time {@code key} is asked for in this run: a line said once. */
+    synchronized boolean narrateOnce(String key) { return key != null && narrated.add(key); }
+
+    /**
+     * True when no line of this kind was said within {@code windowMs}; the window then starts now. Companions converging
+     * on the leader say one line between them, and the calls come one at a time.
+     */
+    synchronized boolean claimLineWindow(String key, long nowMs, long windowMs) {
+        if (key == null) return false;
+        Long last = lineWindows.get(key);
+        if (last != null && nowMs - last < windowMs) return false;
+        lineWindows.put(key, nowMs);
+        return true;
+    }
+
+    /** Whether this id is an Agent of the run. */
+    synchronized boolean agentOfRun(int id) {
+        AgentOpqMemberState member = members.get(id);
+        return member != null && member.memberType() == AgentOpqMemberState.MemberType.AGENT;
+    }
+
+    /**
+     * Claims a stack lying on the floor for this Agent: fragments it dropped for the leader, picked back up before they
+     * expire, or a statue piece he dropped in the centre, taken to the statue. False when another Agent already did.
+     */
+    synchronized boolean beginClaim(int objectId, int agentId) {
+        if (objectId == 0 || agentId <= 0 || claims.containsKey(objectId)) return false;
+        claims.put(objectId, agentId);
+        return true;
+    }
+
+    /** The Agent that claimed this stack, or 0. */
+    synchronized int claimerOf(int objectId) {
+        Integer agent = claims.get(objectId);
+        return agent == null ? 0 : agent;
+    }
+
+    /** Ends a stack's claim (picked up, or gone); answers how often its lineage had been picked back up before. */
+    synchronized int endClaim(int objectId) {
+        claims.remove(objectId);
+        Integer count = recollectCounts.remove(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** How often this stack's lineage has been picked back up. */
+    synchronized int recollectCount(int objectId) {
+        Integer count = recollectCounts.get(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** Carries a lineage's re-collect count to the stack dropped again. */
+    synchronized void setRecollectCount(int objectId, int count) {
+        if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
+    }
+
+    /**
+     * The human leader's wrong sealed check (2013001.js through AgentOpqSessionRegistry.recordSealedVerdict): the split
+     * that stood on the platforms (null when it was not readable) and Eak's answer. The next coordinator pass applies it.
+     */
+    synchronized void recordHumanSealedCheck(AgentOpqSealedSearch.Split observed, boolean onePlatformRight) {
+        humanSealedCheck = new HumanCheck<>(observed, onePlatformRight);
+    }
+
+    /**
+     * Applies the human leader's last wrong sealed check: the candidates are pruned with the split that stood (the
+     * guess when it was not readable), so a check made while the holders were still moving prunes right too, and the
+     * next guess is chosen. Returns the check with the split it pruned by, or null when there was none.
+     */
+    synchronized HumanCheck<AgentOpqSealedSearch.Split> applyHumanSealedCheck(long nowMs) {
+        HumanCheck<AgentOpqSealedSearch.Split> check = humanSealedCheck;
+        humanSealedCheck = null;
+        if (check == null) return null;
+        AgentOpqSealedSearch.Split checked = check.observed() == null ? sealedGuess() : check.observed();
+        sealedCandidates = AgentOpqSealedSearch.afterWrongCheck(sealedCandidates, checked, check.oneRight());
+        sealedGuess = null;
+        sealedVerdict = null;
+        sealedAttempt = Math.min(9, sealedAttempt + 1);
+        sealedCheckedAtMs = nowMs;
+        markProgress(nowMs);
+        return new HumanCheck<>(checked, check.oneRight());
+    }
+
+    /** The pair of levers the way up's runner pushes for the next check (AgentOpqLeverSearch). */
+    synchronized AgentOpqLeverSearch.Pair leverGuess() {
+        if (leverGuess == null) leverGuess = AgentOpqLeverSearch.next(leverCandidates);
+        return leverGuess;
+    }
+
+    /** The pairs still possible after Eak's answers so far. */
+    synchronized int leverCandidateCount() { return leverCandidates.size(); }
+
+    /** The human leader's wrong lever checks applied so far. */
+    synchronized int leverChecks() { return leverChecks; }
+
+    /** The human leader's wrong lever check, as {@link #recordHumanSealedCheck} keeps a sealed one. */
+    synchronized void recordHumanLeverCheck(AgentOpqLeverSearch.Pair observed, boolean oneRight) {
+        humanLeverCheck = new HumanCheck<>(observed, oneRight);
+    }
+
+    /** Applies the human leader's last wrong lever check as {@link #applyHumanSealedCheck} applies a sealed one. */
+    synchronized HumanCheck<AgentOpqLeverSearch.Pair> applyHumanLeverCheck(long nowMs) {
+        HumanCheck<AgentOpqLeverSearch.Pair> check = humanLeverCheck;
+        humanLeverCheck = null;
+        if (check == null) return null;
+        AgentOpqLeverSearch.Pair checked = check.observed() == null ? leverGuess() : check.observed();
+        leverCandidates = AgentOpqLeverSearch.afterWrongCheck(leverCandidates, checked, check.oneRight());
+        leverGuess = null;
+        leverChecks++;
+        markProgress(nowMs);
+        return new HumanCheck<>(checked, check.oneRight());
+    }
     public synchronized void completeLoungeSubroom(int mapId, long nowMs) {
         if (AgentOpqDefinition.LOUNGE_ROOM_MAPS.contains(mapId) && completedLoungeSubrooms.add(mapId)) markProgress(nowMs);
     }
