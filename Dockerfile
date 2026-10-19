@@ -47,6 +47,8 @@ RUN mkdir -p ./logs/gc ./logs/heapdumps ./logs/crash
 # This exposes the login server, and channels.
 # Format for channels: WWCC, where WW is 75 plus the world number and CC is 75 plus the channel number (both zero indexed).
 EXPOSE 8484 7575 7576 7577
-ENTRYPOINT ["java", "-Xmx2048m", "-Dagents.scheduler.mode=central-sequential", "-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=./logs/heapdumps", "-XX:+ExitOnOutOfMemoryError", "-XX:ErrorFile=./logs/crash/hs_err_pid%p.log", "-Xlog:gc*,safepoint:file=./logs/gc/gc.log:time,uptime,level,tags:filecount=10,filesize=20M", "-jar", "./Server.jar"]
+# docker-compose.yml mounts ./logs over the folders made above, and java will not start without logs/gc,
+# so the entrypoint makes them again in whatever is mounted there.
+ENTRYPOINT ["sh", "-c", "mkdir -p logs/gc logs/heapdumps logs/crash && exec java -Xmx2048m -Dagents.scheduler.mode=central-sequential -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=./logs/heapdumps -XX:+ExitOnOutOfMemoryError -XX:ErrorFile=./logs/crash/hs_err_pid%p.log -Xlog:gc*,safepoint:file=./logs/gc/gc.log:time,uptime,level,tags:filecount=10,filesize=20M -jar ./Server.jar"]
 
 
