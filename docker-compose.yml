@@ -18,6 +18,13 @@ services:
       - ./scripts:/opt/server/scripts
       - ./wz:/opt/server/wz
       - ./logs:/opt/server/logs
+      # What the server keeps between starts outside MySQL: the agents' careers, personalities and
+      # checkpoints (.runtime) and their navigation graphs (cache). Without these a rebuilt container
+      # starts the agents over.
+      - ./.runtime:/opt/server/.runtime
+      - ./cache:/opt/server/cache
+    # Room to save everyone on `docker compose stop` / `down` before Docker kills the server.
+    stop_grace_period: 2m
     environment:
       DB_HOST: "db" ## Remember if this is present it will OVERRIDE the host in the config.yaml, if you put here anything other than db, you'll need to change the config.yaml jdbc string to port 3307, and not port 3306
       DB_USER: "${DB_USER:-root}"

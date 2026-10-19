@@ -48,8 +48,8 @@ Settings live in two files:
 
 ### Docker (Windows, macOS, Linux)
 
-Requires Docker Desktop (or Docker Engine with Compose v2). Give Docker at least 4 GB of memory:
-the server alone uses a 2 GB heap.
+Requires Docker Desktop (or Docker Engine with Compose v2). Give Docker at least 4 GB of memory,
+and have that much free on the PC: the server alone uses a 2 GB heap, and MySQL about 0.5 GB.
 
 ```bash
 cp .env.example .env
@@ -61,12 +61,22 @@ Set `DB_PASS=` in `.env` to a password of your choice; it becomes MySQL's root p
 docker compose up --build
 ```
 
-This builds the server image and starts it together with MySQL. Clients connect to this PC on
-ports 8484 and 7575-7577.
+This builds the server image and starts it together with MySQL. The first build downloads the
+libraries and compiles the server inside Docker, which takes a few minutes. The server is ready
+when the log shows `Cosmic is now online`; it creates the Residents and the citizens in the
+minutes after that. Clients connect to this PC on ports 8484 and 7575-7577. MySQL listens on
+`127.0.0.1:3307`, not 3306, so it does not clash with a MySQL already on this PC.
 
 - `config.yaml`, `scripts/` and `wz/` are mounted into the container, so for changes to those,
   `docker compose restart maplestory` is enough.
 - Code changes need `docker compose up --build`.
+- What the server keeps between starts stays in the repository folder, so a rebuilt container
+  carries on where the old one stopped: MySQL in `database/docker-db-data`, the agents' own files
+  in `.runtime/`, their navigation graphs in `cache/`, and the logs in `logs/`.
+- **To stop the server,** press Ctrl+C in the `docker compose up` window, or run
+  `docker compose stop`. Both save everyone first; Docker gives the server up to 2 minutes for that.
+- For the Residents' portraits and quest log in your client, see
+  [the game client](#2-the-game-client), step 4.
 - The optional economy database starts only with `docker compose --profile economy up`. Set
   `ECONOMY_DB_PASSWORD` in `.env` before you use it.
 - **Players on other PCs.** Docker Desktop passes every connection to the server from its own
@@ -140,7 +150,9 @@ BotStory's client is the stock Global MapleStory v83 client.
    ```
 
 4. **Add the Residents' portraits and quest log** before you first log in:
-   1. Start the server once, so it creates the Residents, then stop it.
+   1. Start the server once, so it creates the Residents, then stop it. At first only the
+      Residents of Lith Harbor (`ALWAYS_AWAKE_TOWNS` in `config.yaml`) have characters. The
+      others get theirs when a player first enters their town.
    2. Run this from the server folder (it needs [Python 3.8+](https://www.python.org/downloads/)):
 
       ```bash
@@ -152,9 +164,37 @@ BotStory's client is the stock Global MapleStory v83 client.
       Residents' quests into your client's `Npc.wz`, `String.wz`, `Quest.wz` and `Etc.wz`. The
       originals go to `botstory-wz-backup\`.
 
+   **With Docker,** `tools\living-world-client.bat` does not work: it needs the server built on
+   this PC and MySQL on port 3306. The server part runs in the container instead, so Java is not
+   needed here. From the server folder, with the stack up:
+
+   ```bash
+   docker compose stop maplestory
+   ```
+
+   ```bash
+   docker compose run --rm --entrypoint java maplestory -Dwz-path=wz -cp Server.jar server.living.config.ResidentPortraitExportMain scripts/config/living-world logs/client-export/resident-portraits.json
+   ```
+
+   ```bash
+   docker compose run --rm --entrypoint java maplestory -Dwz-path=wz -cp Server.jar server.living.config.QuestLogExportMain scripts/config/living-world logs/client-export/living-quest-log.json
+   ```
+
+   ```bash
+   docker compose start maplestory
+   ```
+
+   Then, from the same folder (it needs Python 3.8+):
+
+   ```bash
+   py -3 tools\wz-patcher\botstory_wz.py residents --client "C:\Nexon\MapleStory" --export logs\client-export
+   ```
+
    The v83 client expects every NPC and quest the server shows it to exist in its WZ files.
    Without this step it closes when you talk to a Resident, and the status bar and chat box do
-   not appear. Run it again after the Residents' gear or quests change.
+   not appear. Residents without a character yet borrow a stock townsperson's portrait; the
+   first line the export prints names them (`no character yet: ...`). Run this step again after
+   you have visited their towns, and after the Residents' gear or quests change.
 5. **Quest markers without BotStory's `Custom.wz`.** The markers over Residents are drawn from
    BotStory's `Custom.wz`. On any other client, set both marker paths in `config.yaml` to the
    stock icons:
