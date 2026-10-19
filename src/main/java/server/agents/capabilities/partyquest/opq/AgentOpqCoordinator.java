@@ -14,6 +14,7 @@ import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.perception.AgentMapPerception;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
@@ -1546,6 +1547,7 @@ final class AgentOpqCoordinator {
      */
     private static void handBack(AgentOpqSession session, int id, long nowMs) {
         try {
+            tapOut(session, id, nowMs);
             AgentOpqSessionRegistry.unindexMember(session, id);
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
@@ -1554,6 +1556,23 @@ final class AgentOpqCoordinator {
         } catch (RuntimeException failure) {
             log.warn("OPQ departed member hand-back failed: session={} member={}", session.sessionId(), id, failure);
         }
+    }
+
+    /**
+     * A companion run's Agent that departed before the clear (a downed companion its respawn took out of the tower, one
+     * the event never let in) taps out as KPQ's, HPQ's, LPQ's and EPQ's companions do: asked before the hand-back, the
+     * host holds it outside where it stands, says so in party chat and takes it out of the party, so the hand-back stops
+     * it instead of sending it after its owner, who is still in the tower. Refused (no host run), a stock run, a member
+     * that is not loaded, or a departure after the clear (the way out after the reward): the hand-back alone, as before.
+     */
+    private static void tapOut(AgentOpqSession session, int id, long nowMs) {
+        if (!session.companionAdopted() || session.clearSeenAtMs() != 0L) return;
+        Character member = character(id);
+        if (member == null) return;
+        int mapId = member.getMapId();
+        boolean accepted = AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                "opq", session.sessionId(), id, mapId, nowMs));
+        log.info("OPQ tap-out: session={} member={} map={} accepted={}", session.sessionId(), id, mapId, accepted);
     }
 
     /** What the members the run counts hold of {@code itemId} (a departed member's items left with it). */
