@@ -1487,7 +1487,7 @@ tuning:
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ACTION_RETRY_MS: '650'
     # Values: 300000-1800000 milliseconds. Recommended: 720000 to allow natural puzzle discovery while still terminating a genuinely abandoned run before the event timer.
     # Purpose: Bounds how long an OPQ session may show no authoritative progress before safe cleanup.
-    # Technical: The coordinator compares session-owned progress only and releases all OPQ leases and loot custody through the idempotent termination path.
+    # Technical: The coordinator compares session-owned progress only (the first sight of the clear counts, read before this check) and releases all OPQ leases and loot custody through the idempotent termination path. A companion run whose human leader is in its event is never timed out (AgentOpqCoordinator.humanLeaderInEvent): only the leader can act in some phases, and the stock event's timers bound the run.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.PHASE_TIMEOUT_MS: '720000'
     # Values: 30000-180000 milliseconds. Recommended: 90000 so a live split-room worker retains ownership through navigation while a vanished worker can be replaced.
     # Purpose: Prevents two Agents from owning the same OPQ room objective concurrently.
@@ -1521,6 +1521,34 @@ tuning:
     # Purpose: Bounds how long after the OPQ run binds its event a member the event has not registered yet is still treated as entering.
     # Technical: AgentOpqCoordinator.observeDepartures marks a member the bound event never held as departed (logged, its Agent handed back) once this long has passed since the bind; a member held and then lost departs at once, whatever this value.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
+    # Values: 15000-180000 milliseconds. Recommended: 45000, long enough for the leader to finish the hand-in he is on.
+    # Purpose: Spaces the calls a companion makes for the human leader when its OPQ room needs him at its Eak.
+    # Technical: AgentOpqConductor.guide keeps one window per room (and one for the whole statue) in a companion run its human leader leads; at most one call goes out per coordinator pass, in party chat while he stands in another room; a room he is in is never called.
+    server.agents.capabilities.partyquest.opq.AgentOpqConductor.CALL_REPEAT_MS: '45000'
+    # Values: 20-120 pixels. Recommended: 60, the at-feet distance of the other party quests' hand-overs.
+    # Purpose: Sets how close to the human leader's spot a companion drops the walkway or lounge fragments, so they land at his feet.
+    # Technical: AgentOpqHandOver drops once both stand on footholds within this many pixels on both axes and the map lands the drop there (else beside him); it also bounds the wait spot by Eak and the at-Eak drop.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000, enough to cross a room to the leader.
+    # Purpose: Bounds a companion's walk to the human leader with fragments; after it the companion leaves the stack by Eak instead.
+    # Technical: AgentOpqHandOver.handOver compares the open hand-over's age with this; an unreachable leader (canReach false while the carrier stands on ground) sends the stack by Eak at once.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.TIMEOUT_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 30000.
+    # Purpose: Reminds the human leader once about fragments a companion dropped for him that still lie on the floor.
+    # Technical: AgentOpqHandOver says one line per stack after it has lain this long (one line per window for stacks lying together), from the companion that dropped it, in map chat beside him.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.PICKUP_NUDGE_MS: '30000'
+    # Values: 30000-170000 milliseconds. Recommended: 120000, well before the 180-second item expiry.
+    # Purpose: Sets when a companion picks fragments left lying for the human leader back up, so they never vanish unclaimed.
+    # Technical: AgentOpqHandOver claims a stack lying this long (its dropper while it stands in the room, else the lowest-id companion there), picks it up and drops it for him again; clamped below ITEM_EXPIRE_TIME less one ITEM_EXPIRE_CHECK with one WARN.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.RECOLLECT_MS: '120000'
+    # Values: 0-5. Recommended: 2.
+    # Purpose: Caps how often one stack of OPQ fragments is picked back up and dropped for the leader again before it is left to expire.
+    # Technical: AgentOpqHandOver.recollectDue counts the re-collects of a stack's lineage (the count moves to the stack dropped again); at this count the stack is left for the leader and may expire.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.RECOLLECT_MAX: '2'
+    # Values: 1000-30000 milliseconds. Recommended: 8000.
+    # Purpose: Keeps companions converging on the human leader with fragments to one line between them instead of one each.
+    # Technical: AgentOpqHandOver claims this window per fragment kind before its at-feet, by-Eak or picked-back-up line; a drop inside the window is logged ('OPQ handover:') but says nothing.
+    server.agents.capabilities.partyquest.opq.AgentOpqHandOver.LINE_WINDOW_MS: '8000'
 
     # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
