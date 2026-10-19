@@ -1,7 +1,7 @@
 {
 "format": 1,
 "exporter": "KnowledgeExportMain 3",
-"generatedAt": "2026-10-18T04:34:23Z",
+"generatedAt": "2026-10-19T23:30:40Z",
 "sources": [
 {"path": "wz/String.wz/Map.img.xml", "fileCount": 1, "totalBytes": 740721},
 {"path": "wz/String.wz/Mob.img.xml", "fileCount": 1, "totalBytes": 137214},
@@ -39,7 +39,7 @@
 {"path": "scripts/npc", "fileCount": 701, "totalBytes": 2392304},
 {"path": "scripts/event", "fileCount": 108, "totalBytes": 543678},
 {"path": "scripts/reactor", "fileCount": 292, "totalBytes": 313023},
-{"path": "scripts/portal", "fileCount": 459, "totalBytes": 400834},
+{"path": "scripts/portal", "fileCount": 459, "totalBytes": 400840},
 {"path": "scripts/map", "fileCount": 90, "totalBytes": 60473},
 {"path": "scripts/quest", "fileCount": 253, "totalBytes": 560092},
 {"path": "scripts/item", "fileCount": 2, "totalBytes": 3930}
