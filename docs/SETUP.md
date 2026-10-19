@@ -182,8 +182,12 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
 - `Custom.wz` with the native Crew window, the head-height quest markers and the mob HP bar.
 - BotStory's item, skill and cash-shop edits, and the large quick-slot bar.
 - The Evolving Rings (`botstory_wz`).
-- Images for 307 equips the server took from the Community Repack, which a client on the Cosmic
-  WZ set lacks. What such a client does when a character gets one of them has not been tested.
+- Images for 303 equips the server took from the Community Repack (168 shoulder pads, 126
+  weapons and 9 others), which a client on the Cosmic WZ set lacks. No drop, shop, quest or
+  reward gives one. Only GM commands do (`!item`, `!drop`, `!dress`), and SoloMapling's bots
+  wear some when `ENABLE_SOLO_MAPLING` is on. On that client such an item shows as an empty
+  inventory slot. Double-clicking it closes the game, and a character wearing one closes the
+  game at the character list.
 
 The BotStory build of kaentake is not published yet either. It adds the Crew window, the client
 feature toggles, the feature handshake and the Fusion Anvil (`fusion_anvil`).
