@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntPredicate;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,5 +172,55 @@ class CompanionFieldBossTest {
         game.standsBesideAnn(citizen);
         runs.died(citizen);
         assertFalse(runs.restsAfterFieldBoss(CITIZEN), "a citizen is no companion");
+    }
+
+    /**
+     * 2026-10-19: a companion that went down twice beside the same boss stops walking back into that fight. It says so
+     * once in party chat and waits in town while the boss stands there and Ann stays on its map; once Ann leaves (or
+     * the boss falls), it follows again and its count starts over.
+     */
+    @Test
+    void twoDeathsBesideTheSameBossSitTheFightOutWhileItLasts() {
+        when(isolde.isAlive()).thenReturn(true);
+        when(isolde.getHp()).thenReturn(4000);
+        when(isolde.getCurrentMaxHp()).thenReturn(4000);
+        when(isolde.getMp()).thenReturn(800);
+        when(isolde.getCurrentMaxMp()).thenReturn(800);
+        runs.died(isolde);
+        assertFalse(runs.restsAfterFieldBoss(ISOLDE), "one death: it rested to full and follows again");
+
+        runs.died(isolde);
+        assertTrue(runs.restsAfterFieldBoss(ISOLDE), "the second death: it sits this fight out, though full");
+        assertTrue(runs.restsAfterFieldBoss(ISOLDE));
+        assertEquals(1, game.partyChat.stream().filter(line -> line.startsWith("Isolde: ")).count(),
+                "says so once: " + game.partyChat);
+        assertTrue(CompanionFieldBossRest.SIT_OUT_LINES.stream().anyMatch(line -> game.partyChat.contains("Isolde: " + line)));
+
+        game.moveAnn(100_000_000, 0, 0);
+        assertFalse(runs.restsAfterFieldBoss(ISOLDE), "Ann left the boss's map: it follows her again");
+        game.moveAnn(JR_BALROG_MAP, 100, 0);
+        runs.died(isolde);
+        assertFalse(runs.restsAfterFieldBoss(ISOLDE), "back at the boss, the count started over");
+    }
+
+    @Test
+    void theSitOutEndsWhenTheBossFallsAndZeroDeathsTurnItOff() {
+        when(isolde.isAlive()).thenReturn(true);
+        when(isolde.getHp()).thenReturn(4000);
+        when(isolde.getCurrentMaxHp()).thenReturn(4000);
+        when(isolde.getMp()).thenReturn(800);
+        when(isolde.getCurrentMaxMp()).thenReturn(800);
+        runs.died(isolde);
+        runs.died(isolde);
+        assertTrue(runs.restsAfterFieldBoss(ISOLDE));
+        when(jrBalrog.isAlive()).thenReturn(false);
+        assertFalse(runs.restsAfterFieldBoss(ISOLDE), "the boss fell: it follows again");
+
+        when(jrBalrog.isAlive()).thenReturn(true);
+        game.config.COMPANION_FIELD_BOSS_SIT_OUT_DEATHS = 0;
+        runs.died(isolde);
+        runs.died(isolde);
+        runs.died(isolde);
+        assertFalse(runs.restsAfterFieldBoss(ISOLDE), "0 = the kill switch: rest and follow after every death");
     }
 }

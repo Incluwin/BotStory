@@ -1026,6 +1026,13 @@ living_world:
     # again, until its HP and MP are back to REST_PERCENT of their maximum or REST_MAX_MS has passed since it died.
     COMPANION_FIELD_BOSS_REST_PERCENT: 100
     COMPANION_FIELD_BOSS_REST_MAX_MS: 120000
+    # A companion that went down SIT_OUT_DEATHS times beside a field boss on one map (2026-10-19, for the field groups
+    # on by default) stops walking back into that fight: it says so once in party chat and waits in town while the boss
+    # stands there and its owner stays on that map, at most SIT_OUT_MAX_MS from its first death there. Without it, an
+    # owner fighting a boss far above their companions' level had them die, rest, walk back and die again all fight.
+    # 0 = the kill switch: it rests and follows again after every death, as before.
+    COMPANION_FIELD_BOSS_SIT_OUT_DEATHS: 2
+    COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS: 1800000
     # Boss clears are not party-quest clears (2026-10-08): the game calls clearPQ for every event clear, boss
     # expeditions too. For the event scripts listed here (scripts/event file names without .js, a comma list) the
     # clear marks no companion party-quest run, advances no "clear a party quest" quest step and gives no friendship
