@@ -22,8 +22,9 @@ import java.util.Set;
  * "Who should come along?" (docs/BOT_MANAGEMENT_PLAN.md P9, learned lineup suggestions; decisions 2026-10-06): for each
  * party quest switched on whose levels take the owner, the crew its entry NPC's own rule picks ({@link LineupPlan}: the
  * level closest to the owner's, a job branch nobody in it has yet, and the clear record once a companion has three
- * runs, which changes with every recorded run) from the owner, the others in their party and the owner's rested bench
- * companions in the quest's levels. A bench companion picked is one to call. A crew is weighed without its clear time:
+ * runs, which changes with every recorded run; Wonky's also all five job branches when a swap gets them) from the owner,
+ * the others in their party and the owner's rested bench companions in the quest's levels. A bench companion picked
+ * is one to call. A crew is weighed without its clear time:
  * a companion at camp is not loaded, so its power cannot be read (the desk weighs it at the entrance). Companion-ops:
  * the rested check reads the store.
  */

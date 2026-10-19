@@ -27,6 +27,7 @@ public final class CompanionPqKeys {
         // slot: lmpq
 
         // slot: opq
+        keys.add("opq");
 
         // slot: ppq
 

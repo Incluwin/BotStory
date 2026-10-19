@@ -62,6 +62,11 @@ public interface DeskVoice {
     /** Her line under the leader's pick; null without a clear time. */
     String chooseLine(LineupPlan plan);
 
+    /** Her line about the lineup's members, under them (Wonky's blessing for all five branches); null: none. */
+    default String lineupNote(LineupPlan plan) {
+        return null;
+    }
+
     /** A line every desk shares, as this voice puts it; a speaking NPC says it as it is. */
     default String local(String sharedLine) {
         return sharedLine;

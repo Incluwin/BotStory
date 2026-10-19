@@ -122,6 +122,24 @@ class CrewSuggestionsTest {
     }
 
     @Test
+    void wonkysCrewCallsABenchPirateForHerBlessing() {
+        game.config.COMPANION_PQ_ENABLED_KEYS = "opq"; // this test's config only
+        when(game.ann.getLevel()).thenReturn(60);
+        Persona jinx = benched("jinx", "Jinx", 950, 60, Job.CLERIC);
+        Persona mira = benched("mira", "Mira", 951, 60, Job.FIGHTER);
+        Persona rin = benched("rin", "Rin", 952, 60, Job.ASSASSIN);
+        Persona pip = benched("pip", "Pip", 953, 60, Job.FP_WIZARD);
+        benched("tobi", "Tobi", 954, 60, Job.HUNTER); // a second bowman beside Ann
+        Persona bo = benched("bo", "Bo", 955, 55, Job.BRAWLER);
+
+        Suggestion opq = suggestions.suggest(game.ann, "opq");
+
+        assertEquals(List.of("you", "Jinx", "Mira", "Rin", "Pip", "Bo"), opq.crew(),
+                "Bo, five levels off, for Tobi: all five branches");
+        assertEquals(List.of(jinx, mira, rin, pip, bo), opq.fromBench());
+    }
+
+    @Test
     void oneQuestsCrewIsItsEntryInTheListAndNoneWhenSwitchedOffOrNotForTheOwnersLevel() {
         benched("mira", "Mira", 950, 26, Job.FIGHTER);
         assertEquals(of("kpq"), suggestions.suggest(game.ann, "kpq"));

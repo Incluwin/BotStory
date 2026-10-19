@@ -69,6 +69,10 @@ function action(mode, type, selection) {
                         cm.sendOk("Your party leader must talk to me to start this party quest.");
                         cm.dispose();
                     } else {
+                        // companions in the party: the living world answers the click (living_world.COMPANION_PQ_ENABLED_KEYS)
+                        if (Java.type('server.living.LivingWorldHooks').partyQuestEntry(cm, "opq")) {
+                            return;
+                        }
                         var eli = em.getEligibleParty(cm.getParty());
                         if (eli.size() > 0) {
                             if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {

@@ -1481,6 +1481,42 @@ tuning:
     # Technical: AgentEpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for epq.
     server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.PACE_EPOCH: '1'
 
+    # Values: 5000-180000 milliseconds. Recommended: 30000, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior of the leader's time at the entrance, from the party's arrival to the rooms being split up.
+    # Technical: AgentOpqPaceProfile's leader-side fixed term entrance, learned per leader and never from COMPANION_PQ_PACE_EXCLUDED_LEADERS; the span runs from ENTRANCE to SPLIT_ROOMS (his talk to Eak, then the walk to the centre).
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.ENTRANCE_MS: '30000'
+    # Values: 120000-2400000 milliseconds. Recommended: 900000, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior of the six rooms worked by the companions until every statue piece is back in the centre.
+    # Technical: Companion-side fixed term, leader-bounded (five rooms end at his click on Eak, so where he waits shapes it); the span runs from SPLIT_ROOMS to RESTORING_STATUE, and recorded companion runs refit it.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.ROOMS_MS: '900000'
+    # Values: 10000-600000 milliseconds. Recommended: 90000, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior of the statue: the pieces at the leader's feet put up and his talk to Eak that opens the garden.
+    # Technical: Companion-side fixed term, leader-bounded (a companion in the centre places the pieces he drops); the span runs from RESTORING_STATUE to GARDEN, and recorded companion runs refit it.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.STATUE_MS: '90000'
+    # Values: 0.05-1.0 of the theory kill rate. Recommended: 0.25, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior efficiency of the party clearing the garden, Papa Pixie and the fights before him.
+    # Technical: The garden segment is a Clear of Papa Pixie 9300039 (672000 HP in Mob.wz) that every member fights, the leader included; the seeds, the Nependeaths and his summons are inside the efficiency. Refit per run from GARDEN to RESTORING_MINERVA. At 0.25 AgentOpqPaceProfileTest's reference crew (six members at 1500 damage a second on him) clears it in about 300 s.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.GARDEN_EFFICIENCY: '0.25'
+    # Values: 10000-300000 milliseconds. Recommended: 60000, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior of the leader carrying the Root of Life from the garden to the statue until Minerva is free.
+    # Technical: AgentOpqPaceProfile's leader-side fixed term root, learned per leader and never from COMPANION_PQ_PACE_EXCLUDED_LEADERS; the span runs from RESTORING_MINERVA to CLAIMING_REWARD (AgentOpqPaceReport's root span).
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.ROOT_MS: '60000'
+    # Values: 10000-300000 milliseconds. Recommended: 60000, a guess until a live run measures it (OPQ plan Step 0).
+    # Purpose: Prior of the companions claiming their rewards once Minerva is free, until the run completes.
+    # Technical: AgentOpqPaceProfile's companion-side fixed term claim; the span runs from CLAIMING_REWARD to COMPLETED, recorded companion runs refit it, and Wonky's clear-time estimate adds it as a fixed time.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.CLAIM_MS: '60000'
+    # Values: 2-15 touches. Recommended: 5, as EPQ's golem.
+    # Purpose: Names a companion that Papa Pixie would put down in fewer touches as fragile, for Wonky's caution.
+    # Technical: AgentOpqPaceProfile passes it as Thresholds.fragileTouches; AgentPqPaceEstimator names a non-leader member FRAGILE when its effective HP over the danger mob 9300039's expected touch damage (PADamage 270, AgentPqMemberPower.touchesToDown) is below it.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.FRAGILE_TOUCHES: '5'
+    # Values: 0.3-0.9. Recommended: 0.6, as the other party quests' desks.
+    # Purpose: Names a companion whose best attack lands under this chance on Papa Pixie, for Wonky's caution.
+    # Technical: AgentOpqPaceProfile passes it as Thresholds.weakHitChance; AgentPqPaceEstimator names a non-leader member MISSES when its best attack lands under it on Papa Pixie, the garden segment's only mob.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: whole numbers from 1. Recommended: 1; bump it when a pace change lands so older records are not learned from.
+    # Purpose: Marks which OPQ pace records the clear-time calibration may learn from.
+    # Technical: AgentOpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for opq.
+    server.agents.capabilities.partyquest.opq.AgentOpqPaceProfile.PACE_EPOCH: '1'
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.
     # Technical: Each Agent stores its own next-action deadline; this value never pauses the session coordinator or another member's room tick.
