@@ -747,7 +747,8 @@ living_world:
     # otherwise the client would list nameless quests
     QUEST_LOG_MIRROR: true
     # quest icons replayed over Residents, only for the player they concern: something to take / something to hand in.
-    # The Custom.wz paths are head-height copies of the NPC icons (MapleEdit/app/living_world_markers.py).
+    # The Custom.wz paths are head-height copies of the NPC icons (MapleEdit/app/living_world_markers.py). A client
+    # without BotStory's Custom.wz draws none: docs/SETUP.md step 5 of the game client has the stock icons and lift.
     QUEST_MARKER_AVAILABLE: "Custom/UI/UIWindow.img/QuestMarker/available"
     QUEST_MARKER_READY: "Custom/UI/UIWindow.img/QuestMarker/ready"
     QUEST_MARKER_PULSE_MS: 1100

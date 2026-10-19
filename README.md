@@ -311,8 +311,8 @@ Docker, the game client, hosting friends and troubleshooting.
    - It finds MySQL, or offers to start one in Docker.
    - It saves the database login in `.env` and builds the server.
 3. **Run `start-server.bat`** and wait for `Cosmic is now online`.
-4. **Set up a v83 client:** see [docs/SETUP.md](docs/SETUP.md#2-the-game-client). A client made
-   from public files cannot play yet; that section says why.
+4. **Set up a v83 client** from public files (P0nk's v83 setup and kaentake): see
+   [docs/SETUP.md](docs/SETUP.md#2-the-game-client).
 5. **Log in** as `admin` / `admin` (a GM), or with any new username and password.
 
 With Docker on any OS, set `DB_PASS` in `.env`, then start everything:

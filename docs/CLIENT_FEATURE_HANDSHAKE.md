@@ -7,14 +7,26 @@ may veto or require them at login.
 
 ## Server mods
 
-- `server.mods.ServerMods.ALL` lists every server mod (`ServerMod`: id, title, default). A ported mod adds one line
-  there and asks `ServerMods.get().isOn(MOD)` before it acts.
+- `server.mods.ServerMods.ALL` lists every server mod (`ServerMod`: id, title, default, boot only). A ported mod adds
+  one line there and asks `ServerMods.get().isOn(MOD)` before it acts.
 - config.yaml `mods.SWITCHES`: `<id>: on|off` (also true/false, yes/no), read at boot (`ServerMods.boot()` logs
   `Server mods: ...`). A missing line = the mod's default; a line naming no mod is logged and ignored; any other
   value fails the boot with the key's name.
-- `!mods` (GM 6) lists the switches and the feature policy; `!mods <id> on|off` flips one until the next restart.
+- An environment variable `MOD_<ID>` (`MOD_FUSION_ANVIL=on`, from `.env` or docker-compose) wins over the config.yaml
+  line; the boot line names it (`fusion_anvil on (MOD_FUSION_ANVIL)`). A blank one is ignored, any value other than
+  on/off fails the boot.
+- `!mods` (GM 6) lists the switches and the feature policy; `!mods <id> on|off` flips one until the next restart,
+  except a boot-only mod, which connected clients depend on.
 - The first server mod is `client_feature_policy` (default on): the handshake answers from `mods.FEATURES`. Off,
   every answer is `allow`, which also lifts a veto a client kept from an earlier login.
+- `fusion_anvil` and `botstory_wz` (both default off, docs/SETUP.md "2. The game client") are for the BotStory
+  host's own client. The handshake cannot replace them: the shipped DLL reports only after the first SET_FIELD of a
+  connection, and that SET_FIELD already carries every equip.
+  - `fusion_anvil` (boot only): every equip ends with its Fusion Anvil transmog id
+    (`PacketCreator.addEquipTail`), which only the BotStory kaentake DLL reads. The Fusion Anvil item works only
+    with it on.
+  - `botstory_wz`: the Evolving Ring grant (new characters, and every login) and the Hunter's Codex move to -149.
+    Both need BotStory's WZ files.
 
 ## Feature policy (`mods.FEATURES`)
 

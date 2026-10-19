@@ -98,20 +98,26 @@ The server creates the `cosmic` database on its first start (`createDatabaseIfNo
 
 ## 2. The game client
 
-BotStory's client is the stock Global MapleStory v83 client.
+BotStory's client is the stock Global MapleStory v83 client. The steps below make one from public
+files (P0nk's v83 setup, `cosmic-wz` and kaentake v3.4.1). It plays on a server that runs
+`config.yaml` as shipped. Tested 2026-10-18 with a new account and character:
 
-> **Not playable with public files yet.** A client set up with the steps below (P0nk's v83 setup,
-> `cosmic-wz` and kaentake v3.4.1; tested 2026-10-18) reaches character select, then closes as
-> soon as a character enters the game, for two reasons:
->
-> - The server writes a BotStory-only value after every equip (the Fusion Anvil transmog id) that
->   only the BotStory build of kaentake reads. Any other client misreads every item.
-> - Every character wears an Evolving Ring (items 1112499-1112502), which the Cosmic WZ files do
->   not have.
->
-> With both worked around in a test, the client entered the game and ran normally in town (maps,
-> other players, a companion, a Resident's menu). Until the server and this guide handle both,
-> only the BotStory client can play. The steps below are the rest of the setup.
+- entering the game;
+- a Resident's menu, quest log and quest markers;
+- accepting a Resident quest and handing it in.
+
+Two server mods in `config.yaml` (`mods.SWITCHES`) are for the BotStory host's own client. They
+ship off, and must stay off for this client:
+
+| Mod | When on | A client made from public files |
+|---|---|---|
+| `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Misreads every item and closes as soon as a character enters the game |
+| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), and the Hunter's Codex becomes a cash medal | Closes when a character wearing either enters the game |
+
+The BotStory client needs both on (`MOD_FUSION_ANVIL=on` and `MOD_BOTSTORY_WZ=on` in `.env`): its
+kaentake DLL always reads the Fusion Anvil id, so with `fusion_anvil` off it misreads every item.
+A server therefore serves one kind of client at a time. The line `Server mods: ...` at server
+start shows both switches.
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
    1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
@@ -156,15 +162,18 @@ BotStory's client is the stock Global MapleStory v83 client.
    Without this step it closes when you talk to a Resident, and the status bar and chat box do
    not appear. Run it again after the Residents' gear or quests change.
 5. **Quest markers without BotStory's `Custom.wz`.** The markers over Residents are drawn from
-   BotStory's `Custom.wz`. On any other client, set both marker paths in `config.yaml` to the
-   stock icons:
+   BotStory's `Custom.wz`, so any other client shows none. You can still double-click a Resident
+   to open its menu. To show the markers, set these in `config.yaml` (under `living_world`):
 
    ```yaml
    QUEST_MARKER_AVAILABLE: "UI/UIWindow.img/QuestIcon/0"
    QUEST_MARKER_READY: "UI/UIWindow.img/QuestIcon/2"
+   QUEST_MARKER_HITBOX_LIFT: -40
    ```
 
-   They then draw at the Resident's feet instead of over its head.
+   The first two use the stock icons, which draw at the Resident's feet instead of over its head.
+   The third moves the marker's clickable box down to them, so clicking a marker opens the
+   Resident's menu.
 
 ### What the public client does not have yet
 
@@ -172,12 +181,13 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
 
 - `Custom.wz` with the native Crew window, the head-height quest markers and the mob HP bar.
 - BotStory's item, skill and cash-shop edits, and the large quick-slot bar.
+- The Evolving Rings (`botstory_wz`).
 - Images for 307 equips the server took from the Community Repack, which a client on the Cosmic
-  WZ set lacks, and the Evolving Rings every character wears.
+  WZ set lacks. What such a client does when a character gets one of them has not been tested.
 
 The BotStory build of kaentake is not published yet either. It adds the Crew window, the client
-feature toggles, the feature handshake and the Fusion Anvil field the server sends with every
-equip. `tools/wz-patcher/README.md` describes how that pack is applied.
+feature toggles, the feature handshake and the Fusion Anvil (`fusion_anvil`).
+`tools/wz-patcher/README.md` describes how that pack is applied.
 
 Without them, you manage companions with:
 
@@ -243,5 +253,11 @@ The server runs without any of these.
 - **The client closes when you talk to a Resident, or shows no status bar.** Check that you ran
   step 4 of [the game client](#2-the-game-client) (`tools\living-world-client.bat`) on that
   client, so the Residents' NPCs and quests are in its WZ files.
-- **The client closes as soon as a character enters the game.** That is the public-client gap at
-  the top of [the game client](#2-the-game-client).
+- **The client closes as soon as a character enters the game.**
+  - Check the server's start line `Server mods: ...`. With a client made from public files,
+    `fusion_anvil` and `botstory_wz` must both be off. A `(MOD_...)` after a switch means a `.env`
+    variable set it.
+  - A character that got an Evolving Ring or a cash-slot Hunter's Codex while `botstory_wz` was on
+    keeps it, and can't enter the game on this client. The server log names it at login
+    (`carries ... while server mod botstory_wz is off`).
+  - See [the game client](#2-the-game-client).
