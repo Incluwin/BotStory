@@ -17,8 +17,6 @@ public final class AgentPpqDefinition {
     public static final int DECK_TWO_MAP = 925_100_300;
     public static final int CHEST_TWO_MAP = 925_100_301;
     public static final int SIDE_TWO_MAP = 925_100_302;
-    /** Each deck's portal 3 'in01' (davy2_hd1, davy3_hd1) into its hidden room; no condition, the first entry spawns. */
-    public static final int SIDE_ROOM_ENTRY_PORTAL = 3;
     /** The hidden room's portal 1 'out00' back to its deck. */
     public static final int SIDE_ROOM_EXIT_PORTAL = 1;
     public static final int DOOR_MAP = 925_100_400;
@@ -80,15 +78,6 @@ public final class AgentPpqDefinition {
             case BOSS_MAP -> AgentPpqStage.BOSS;
             case CLEAR_MAP -> AgentPpqStage.CLEAR;
             default -> AgentPpqStage.OUTSIDE;
-        };
-    }
-
-    /** The hidden room off this deck, or 0 for any other map. */
-    public static int sideRoomOf(int deckMapId) {
-        return switch (deckMapId) {
-            case DECK_ONE_MAP -> SIDE_ONE_MAP;
-            case DECK_TWO_MAP -> SIDE_TWO_MAP;
-            default -> 0;
         };
     }
 

@@ -358,11 +358,6 @@ public final class AgentPpqCoordinator {
         int mapId = agent.getMapId();
         boolean deck = mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP;
         Character leader = character(session.eventLeaderId());
-        if (deck && leaderFightingInSideRoom(session, leader, mapId)) {
-            // The human leader went into this deck's hidden room and is fighting there: the companions join him.
-            usePortal(entry, agent, member, AgentPpqDefinition.SIDE_ROOM_ENTRY_PORTAL, nowMs);
-            return;
-        }
         boolean chestAvailable = !session.skipChestRooms() && !session.chestCompleteForDeck(mapId)
                 && leader != null && leader.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0;
         if (deck && chestAvailable) {
@@ -372,18 +367,6 @@ public final class AgentPpqCoordinator {
             return;
         }
         usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(mapId), nowMs);
-    }
-
-    /**
-     * Whether a companion run's human leader stands in this deck's hidden room with its Kru and Captains still alive.
-     * The room is optional (EXP, mesos and the Herb Town concentrates; davy_next2/3 never ask for it), so only a leader
-     * who chose to go in takes the companions there.
-     */
-    static boolean leaderFightingInSideRoom(AgentPpqSession session, Character leader, int deckMapId) {
-        if (!session.companionAdopted() || leader == null || leader.getHp() <= 0 || isAgent(leader)) return false;
-        int sideRoom = AgentPpqDefinition.sideRoomOf(deckMapId);
-        return sideRoom != 0 && leader.getMapId() == sideRoom
-                && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) > 0;
     }
 
     /**
@@ -581,9 +564,6 @@ public final class AgentPpqCoordinator {
             int medal = expectedMedal(leader);
             if (medal != 0) announce(session, "human-medal-" + medal,
                     AgentPpqMedalHandOver.waveLine(medal, leader.getName()));
-        } else if (mapId == AgentPpqDefinition.SIDE_ONE_MAP || mapId == AgentPpqDefinition.SIDE_TWO_MAP) {
-            announce(session, "human-side-" + mapId, leader.getName()
-                    + ", this hidden room is optional: EXP, mesos and Herb Town concentrates. The deck timer keeps running.");
         } else if (!session.skipChestRooms()
                 && (mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP)
                 && !session.chestCompleteForDeck(mapId)
