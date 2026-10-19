@@ -27,6 +27,7 @@ import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.mods.BotStoryWzEquips;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -62,7 +63,8 @@ public class DressingRoom {
         log.info(String.format("Loaded Dressing Room in %dms.", System.currentTimeMillis() - start));
     }
 
+    /** Without the equips only BotStory's WZ files have while server mod botstory_wz is off. */
     public static List<EquipStats> getEquipsByType(EquipType type) {
-        return equipsByType.getOrDefault(type, Collections.emptyList());
+        return BotStoryWzEquips.filter(equipsByType.getOrDefault(type, Collections.emptyList()), EquipStats::getItemId);
     }
 }

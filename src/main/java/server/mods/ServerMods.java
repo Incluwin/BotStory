@@ -37,7 +37,8 @@ public final class ServerMods {
     /**
      * The clients have BotStory's WZ files: characters wear an Evolving Ring (1112499-1112502, not in the Cosmic WZ
      * files) and the Hunter's Codex sits in the cash medal slot (-149, which needs cash=1 on 1142165). Off, neither is
-     * granted or moved, so a client on public WZ files can enter the game.
+     * granted or moved, so a client on public WZ files can enter the game, and the GM item commands, the dressing room
+     * and SoloMapling's bots leave out every equip only BotStory's WZ files have ({@link BotStoryWzEquips}).
      */
     public static final ServerMod BOTSTORY_WZ = new ServerMod("botstory_wz",
             "Clients have BotStory's WZ files (Evolving Ring, Hunter's Codex as a cash medal)", false);

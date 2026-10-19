@@ -48,6 +48,7 @@ import server.life.*;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
 import server.maps.MapleMap;
+import server.mods.BotStoryWzEquips;
 import server.partyquest.PartyQuest;
 import server.partyquest.Pyramid;
 import server.quest.Quest;
@@ -1295,6 +1296,10 @@ public class AbstractPlayerInteraction {
 
     public boolean spawnDressingRoomItem(int id, boolean randomStats) {
         if (!canUseDressingRoom()) {
+            return false;
+        }
+        if (BotStoryWzEquips.withheld(id)) {
+            getPlayer().dropMessage(5, BotStoryWzEquips.refusal(id));
             return false;
         }
         ItemInformationProvider ii = ItemInformationProvider.getInstance();

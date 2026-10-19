@@ -112,7 +112,7 @@ ship off, and must stay off for this client:
 | Mod | When on | A client made from public files |
 |---|---|---|
 | `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Misreads every item and closes as soon as a character enters the game |
-| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), and the Hunter's Codex becomes a cash medal | Closes when a character wearing either enters the game |
+| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands and SoloMapling's bots may hand out the 303 Community Repack equips | Closes when a character wearing any of them enters the game |
 
 The BotStory client needs both on (`MOD_FUSION_ANVIL=on` and `MOD_BOTSTORY_WZ=on` in `.env`): its
 kaentake DLL always reads the Fusion Anvil id, so with `fusion_anvil` off it misreads every item.
@@ -184,10 +184,10 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
 - The Evolving Rings (`botstory_wz`).
 - Images for 303 equips the server took from the Community Repack (168 shoulder pads, 126
   weapons and 9 others), which a client on the Cosmic WZ set lacks. No drop, shop, quest or
-  reward gives one. Only GM commands do (`!item`, `!drop`, `!dress`), and SoloMapling's bots
-  wear some when `ENABLE_SOLO_MAPLING` is on. On that client such an item shows as an empty
-  inventory slot. Double-clicking it closes the game, and a character wearing one closes the
-  game at the character list.
+  reward gives one. While `botstory_wz` is off, the GM item commands (`!item`, `!drop`,
+  `!proitem`, `!dress`) refuse them and SoloMapling's bots never wear or sell one. On that
+  client such an item shows as an empty inventory slot. Double-clicking it closes the game,
+  and a character wearing one closes the game at the character list.
 
 The BotStory build of kaentake is not published yet either. It adds the Crew window, the client
 feature toggles, the feature handshake and the Fusion Anvil (`fusion_anvil`).

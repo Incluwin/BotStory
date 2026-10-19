@@ -26,7 +26,9 @@ may veto or require them at login.
     (`PacketCreator.addEquipTail`), which only the BotStory kaentake DLL reads. The Fusion Anvil item works only
     with it on.
   - `botstory_wz`: the Evolving Ring grant (new characters, and every login) and the Hunter's Codex move to -149.
-    Both need BotStory's WZ files.
+    Both need BotStory's WZ files. Off, the GM item commands, the dressing room and SoloMapling's bots also leave
+    out the 307 equips only BotStory's WZ files have (`server.mods.BotStoryWzEquips`, list in
+    `src/main/resources/mods/botstory-wz-equips.txt`).
 
 ## Feature policy (`mods.FEATURES`)
 

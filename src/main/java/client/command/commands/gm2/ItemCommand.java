@@ -31,6 +31,7 @@ import client.inventory.manipulator.InventoryManipulator;
 import config.YamlConfig;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
+import server.mods.BotStoryWzEquips;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -54,8 +55,6 @@ public class ItemCommand extends Command {
             actor.yellowMessage("Syntax: !item <itemid|name> [quantity]");
             return false;
         }
-
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
 
         int itemId;
         short quantity = 1;
@@ -89,6 +88,12 @@ public class ItemCommand extends Command {
             itemId = searchResult.getFirst().getLeft();
         }
 
+        if (BotStoryWzEquips.withheld(itemId)) {
+            actor.yellowMessage(BotStoryWzEquips.refusal(itemId));
+            return false;
+        }
+
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
         if (ii.getName(itemId) == null || !ii.hasData(itemId)) {
             actor.yellowMessage("Item id '" + params[0] + "' does not exist.");
             return false;

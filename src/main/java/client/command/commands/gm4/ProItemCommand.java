@@ -32,6 +32,7 @@ import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
+import server.mods.BotStoryWzEquips;
 
 public class ProItemCommand extends Command {
     {
@@ -46,9 +47,13 @@ public class ProItemCommand extends Command {
             return;
         }
 
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
         int itemid = Integer.parseInt(params[0]);
+        if (BotStoryWzEquips.withheld(itemid)) {
+            player.yellowMessage(BotStoryWzEquips.refusal(itemid));
+            return;
+        }
 
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
         if (ii.getName(itemid) == null) {
             player.yellowMessage("Item id '" + params[0] + "' does not exist.");
             return;

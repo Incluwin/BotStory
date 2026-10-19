@@ -33,6 +33,7 @@ import client.inventory.Pet;
 import config.YamlConfig;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
+import server.mods.BotStoryWzEquips;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -83,6 +84,11 @@ public class ItemDropCommand extends Command {
                 return;
             }
             itemId = searchResult.getFirst().getLeft();
+        }
+
+        if (BotStoryWzEquips.withheld(itemId)) {
+            player.yellowMessage(BotStoryWzEquips.refusal(itemId));
+            return;
         }
 
         ItemInformationProvider ii = ItemInformationProvider.getInstance();

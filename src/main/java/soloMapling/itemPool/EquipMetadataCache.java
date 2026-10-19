@@ -7,6 +7,7 @@ import provider.DataTool;
 import provider.wz.WZFiles;
 import provider.wz.XMLDomMapleData;
 import server.ItemInformationProvider;
+import server.mods.BotStoryWzEquips;
 
 import java.io.FileInputStream;
 import java.nio.file.DirectoryStream;
@@ -350,19 +351,22 @@ public class EquipMetadataCache {
 
     // ── Query API ────────────────────────────────────────────────────────
 
+    // Every getter leaves out the equips only BotStory's WZ files have while server mod botstory_wz is off,
+    // so bots never wear or sell one to a client on the Cosmic WZ files.
+
     /** Get all cached equips. */
     public List<EquipEntry> all() {
-        return allEquips;
+        return BotStoryWzEquips.filter(allEquips, e -> e.id);
     }
 
     /** Get all equips of a given type. */
     public List<EquipEntry> getByType(EquipType type) {
-        return byType.getOrDefault(type, Collections.emptyList());
+        return BotStoryWzEquips.filter(byType.getOrDefault(type, Collections.emptyList()), e -> e.id);
     }
 
     /** Get all cash/NX equips of a given type (pre-filtered, instant). */
     public List<EquipEntry> getCashByType(EquipType type) {
-        return cashByType.getOrDefault(type, Collections.emptyList());
+        return BotStoryWzEquips.filter(cashByType.getOrDefault(type, Collections.emptyList()), e -> e.id);
     }
 
     /** Start a fluent filtered query. */
