@@ -9,6 +9,7 @@ import constants.skills.Bandit;
 import constants.skills.NightWalker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.navigation.AgentMovementSkillPolicy;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
@@ -17,6 +18,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapItem;
+import server.maps.MapleMap;
 import server.maps.Reactor;
 
 import java.awt.Point;
@@ -200,8 +202,8 @@ final class AgentRjpqDarkLabs {
     }
 
     /**
-     * Whether the lab still needs doing: its runner did not give it up, the files are not in, and nobody in the run
-     * holds this lab's files.
+     * Whether the lab still needs doing: its runner did not give it up, the files are not in, nobody in the run holds
+     * this lab's files, and no stack of them a companion handed over still lies on the Special Lab.
      */
     static boolean labWanted(AgentRjpqSession session, Character observer, int lab) {
         if (session.labGivenUp(lab) || AgentRjpqStagePlay.intProperty(observer, "statusStg4") == 1) return false;
@@ -210,7 +212,22 @@ final class AgentRjpqDarkLabs {
             Character character = AgentRjpqCoordinator.character(member.characterId());
             if (character != null && AgentRjpqCoordinator.actions().itemCount(character, files) > 0) return false;
         }
-        return true;
+        return !handedOverFilesLying(session, files);
+    }
+
+    /**
+     * A stack of these files a companion of the run dropped for the leader still lies on the Special Lab, where every
+     * hand-over happens (at his feet or by the NPC), until he takes it, its dropper picks it back up, or it expires.
+     */
+    private static boolean handedOverFilesLying(AgentRjpqSession session, int files) {
+        EventInstanceManager event = session.eventInstance();
+        MapleMap specialLab = event == null ? null
+                : event.getMapInstance(session.side().map(AgentRjpqDefinition.SPECIAL_LAB_MAP));
+        if (specialLab == null) return false;
+        for (MapItem drop : AgentMapPerception.items(specialLab)) {
+            if (handedOverFiles(session, drop) && drop.getItemId() == files) return true;
+        }
+        return false;
     }
 
     /** The lab's card-key door on the Special Lab is open (its entry portal script wants its reactor in state 1). */
@@ -301,17 +318,22 @@ final class AgentRjpqDarkLabs {
                 session.side().key(), agent.getId(), lab + 1, box.getObjectId(), box.getState(), hit);
     }
 
-    /** The box being broken while it stands, else the nearest standing box (never chosen by which one is real). */
+    /**
+     * The box being broken while it is unbroken, else the nearest unbroken box it has not broken on this visit (never
+     * chosen by which one is real). A broken box is not active: one without a respawn delay (Lab 1's decoys) stands on
+     * at its last state, which has no event; one with a delay is gone, and stands up again at state 0 after it.
+     */
     static Reactor nextBox(Character agent, AgentRjpqMemberState member) {
         List<Reactor> boxes = AgentRjpqCoordinator.actions().reactors(agent).stream()
-                .filter(reactor -> reactor != null && reactor.isAlive() && reactor.getPosition() != null
+                .filter(reactor -> reactor != null && reactor.isActive() && reactor.getPosition() != null
                         && AgentRjpqDefinition.BOX_REACTOR_IDS.contains(reactor.getId()))
                 .toList();
         Reactor current = boxes.stream().filter(reactor -> reactor.getObjectId() == member.labBoxObjectId())
                 .findFirst().orElse(null);
         if (current != null) return current;
-        Reactor nearest = boxes.stream().min(Comparator.comparingDouble(reactor -> distanceSq(agent,
-                reactor.getPosition()))).orElse(null);
+        member.labBoxBroken();
+        Reactor nearest = boxes.stream().filter(reactor -> !member.brokeLabBox(reactor.getObjectId()))
+                .min(Comparator.comparingDouble(reactor -> distanceSq(agent, reactor.getPosition()))).orElse(null);
         member.targetLabBox(nearest == null ? 0 : nearest.getObjectId());
         return nearest;
     }
