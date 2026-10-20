@@ -24,6 +24,7 @@ import server.agents.capabilities.partyquest.rjpq.AgentRjpqDefinition;
 import server.agents.capabilities.partyquest.rjpq.AgentRjpqSessionRegistry;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardGracePolicy;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
+import server.agents.capabilities.expedition.cwkpq.AgentCwkpqLootRule;
 import server.agents.runtime.AgentSessionLifecycleRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHooks;
@@ -79,6 +80,7 @@ public final class AgentLootEligibility {
         if (AgentLmpqSessionRegistry.preservesPortalMarker(bot, drop)) return false;
         if (AgentOpqSessionRegistry.preservesMarker(bot, drop)) return false;
         if (AgentBossRunRegistry.preservesMarker(bot, drop)) return false;
+        if (AgentCwkpqLootRule.refuses(bot, drop)) return false;
         AgentKpqSession kpqSession = AgentKpqSessionRegistry.forMember(bot.getId());
         if (kpqSession != null) {
             AgentKpqMemberState member = kpqSession.member(bot.getId());
