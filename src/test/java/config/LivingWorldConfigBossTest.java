@@ -15,12 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The P7 kill switch (docs/BOT_MANAGEMENT_PLAN.md flow 4): boss expeditions with companions are off unless
- * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only easy_balrog (Mu Young) or zakum (Adobis, P8) may
- * be listed. COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code
- * default is off; config.yaml ships easy_balrog on since its live checks began (2026-10-07), and says why, and zakum
- * off until its live checks pass. Part B: bench allies need COMPANION_BOSS_ALLY_TYPES to list the boss as well (off in
- * code, easy_balrog on in config.yaml since its live checks began, 2026-10-08), and COMPANION_BOSS_OWNERS_MAX ships at
- * 1 (Part A's one-owner rule).
+ * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only the keys of config.CompanionBossKeys may be listed.
+ * COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code default is
+ * off; config.yaml ships every built boss on since 2026-10-19 (user: turn on what was built), and says why. Part B:
+ * bench allies need COMPANION_BOSS_ALLY_TYPES to list the boss as well (off in code; config.yaml ships them on for
+ * every expedition boss, which has a sign-up list), and COMPANION_BOSS_OWNERS_MAX ships at 1 (Part A's one-owner rule).
  */
 class LivingWorldConfigBossTest {
 
@@ -75,16 +74,22 @@ class LivingWorldConfigBossTest {
         }
     }
 
+    /** Every boss the catalog knows, in its order: what config.yaml ships on since 2026-10-19. */
+    static final String EVERY_BOSS = String.join(",", CompanionBossKeys.KNOWN);
+    /** The expedition bosses (a sign-up list at an NPC), which take bench allies. */
+    static final String EXPEDITION_BOSSES = "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean";
+
     @Test
-    void configYamlShipsEasyBalrogAndPinkBeanOnWithServerAuthorityAndSaysWhy() throws IOException {
+    void configYamlShipsEveryBossOnWithServerAuthorityAndSaysWhy() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
-        assertEquals("easy_balrog,pinkbean", living.COMPANION_BOSS_ENABLED_TYPES);
-        assertTrue(living.companionBossEnabled("easy_balrog"), "on for the Easy Balrog live checks");
-        assertTrue(living.companionBossEnabled("pinkbean"), "on since its live check cleared (P20 run 17, 2026-10-16)");
+        assertEquals(EVERY_BOSS, living.COMPANION_BOSS_ENABLED_TYPES);
+        for (String key : CompanionBossKeys.KNOWN) {
+            assertTrue(living.companionBossEnabled(key), key + " on since 2026-10-19 (user: turn on what was built)");
+        }
         assertTrue(living.COMPANION_BOSS_SERVER_AUTHORITY);
 
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"easy_balrog,pinkbean\"\n"));
+        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"" + EVERY_BOSS + "\"\n"));
         assertTrue(yaml.contains("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n"));
         String comment = yaml.substring(yaml.indexOf("# Boss expeditions with companions"),
                 yaml.indexOf("COMPANION_BOSS_ENABLED_TYPES:"));
@@ -93,18 +98,22 @@ class LivingWorldConfigBossTest {
         }
     }
 
-    // P7 Part B: bench allies and second owners. Both are off in code; config.yaml ships bench allies on for Easy
-    // Balrog (its live checks, 2026-10-08) and Pink Bean (user, 2026-10-16) and keeps the one-owner rule.
+    // P7 Part B: bench allies and second owners. Both are off in code; config.yaml ships bench allies on for every
+    // expedition boss (2026-10-19; Easy Balrog since 2026-10-08, Pink Bean since 2026-10-16) and keeps the one-owner
+    // rule.
 
     @Test
-    void allyKeysAreOffInCodeAndShipEasyBalrogAndPinkBeanOnWithOneOwner() {
+    void allyKeysAreOffInCodeAndShipOnForEveryExpeditionBossWithOneOwner() {
         LivingWorldConfig shipped = YamlConfig.config.living_world;
         LivingWorldConfig defaults = new LivingWorldConfig();
         assertEquals("", defaults.COMPANION_BOSS_ALLY_TYPES);
         assertFalse(defaults.companionBossAlliesEnabled("easy_balrog"));
-        assertEquals("easy_balrog,pinkbean", shipped.COMPANION_BOSS_ALLY_TYPES);
-        assertTrue(shipped.companionBossAlliesEnabled("easy_balrog"), "bench allies are on for their live checks");
-        assertTrue(shipped.companionBossAlliesEnabled("pinkbean"), "and for Pink Bean (user, 2026-10-16)");
+        assertEquals(EXPEDITION_BOSSES, shipped.COMPANION_BOSS_ALLY_TYPES);
+        for (String key : EXPEDITION_BOSSES.split(",")) {
+            assertTrue(shipped.companionBossAlliesEnabled(key), key + ": bench allies come to every expedition boss");
+        }
+        assertFalse(shipped.companionBossAlliesEnabled("papulatus"), "a party boss has no sign-up list");
+        assertFalse(shipped.companionBossAlliesEnabled("field_victoria"), "nor a field group");
         for (LivingWorldConfig config : new LivingWorldConfig[] {defaults, shipped}) {
             assertEquals(1, config.COMPANION_BOSS_OWNERS_MAX, "Part A's one-owner rule");
             assertEquals(2, config.COMPANION_BOSS_HUMAN_SEATS);
@@ -223,7 +232,7 @@ class LivingWorldConfigBossTest {
     @Test
     void theYamlCarriesTheFourKeys() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"easy_balrog,pinkbean\"\n",
+        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"" + EXPEDITION_BOSSES + "\"\n",
                 "\n    COMPANION_BOSS_OWNERS_MAX: 1\n", "\n    COMPANION_BOSS_HUMAN_SEATS: 2\n",
                 "\n    COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000\n"};
         int after = yaml.indexOf("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n");

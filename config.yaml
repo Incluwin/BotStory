@@ -970,55 +970,54 @@ living_world:
     # SERVER_AUTHORITY: while a signed-up companion is in the fight, the server moves Balrog for all of it and its
     # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
     # Timings: agent-engine.yaml AgentBossRunSession.
-    # "zakum" (Adobis, P8) stays off until its staged client-memory checks pass (docs/COMPANION_BOSSING_P8.md).
-    # "balrog_normal" (Mu Young's Normal choice, P11) stays off until its live check passes (docs/COMPANION_BOSSING_P11.md);
-    # with it on, a Normal fight a companion signed up for is the server's own (stock BalrogBattle.js for every other).
+    # Every boss below is on by default since 2026-10-19 (user: turn on what was built); live results per boss are in
+    # docs/COMPANION_BOSSING_P8.md .. P20.md. Take a key out of the list to turn that boss back to stock.
+    # "zakum" (Adobis, P8): the arms, then the body; a companion that goes down waits in El Nath.
+    # "balrog_normal" (Mu Young's Normal choice, P11): a Normal fight a companion signed up for is the server's own
+    # (stock BalrogBattle.js for every other).
     # Field groups (P13): "field_victoria", "field_ossyria", "field_ludus", "field_mulung", "field_nihal" (their bosses:
     # boss-rules.json fieldBosses). With a group on, its bosses on maps with no event stay with the player's client when
     # Agents hit them, their attacks reach every Agent in range, companions join only once a player of their party has
-    # hit that very boss, citizens never attack it, and a companion that dies beside one rests in town before following.
-    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P13.md).
+    # hit that very boss, citizens never attack it, and a companion that dies beside one rests in town before following
+    # (COMPANION_FIELD_BOSS_REST_*; after SIT_OUT_DEATHS deaths it sits that fight out). A citizen that dies beside one
+    # trains elsewhere while it stands (population.FIELD_BOSS_AVOID_MS).
     # Party bosses (P14): "latanica" and "neo_bergamot", "neo_dunas", "neo_aufheben", "neo_oberon", "neo_nibelung". The
     # owner leads the party in through the stock portal; the companions inside then fight as a boss run (priority targets,
-    # mirrored attacks, no summons, wait outside when down) and leave with the owner. Each stays off until its live check
-    # passes (docs/COMPANION_BOSSING_P14.md).
+    # mirrored attacks, no summons, wait outside when down) and leave with the owner.
     # "papulatus" (P15): the same party run at the Papulatus gate. A companion with no entry left today stays before
     # the gate, a dead one walks back to the gate from Ludibrium, and the gate allows one desk trip
     # (COMPANION_RESTOCK_TRIP_MAPS).
-    # It stays off until its live check passes (docs/COMPANION_BOSSING_P15.md).
     # High-level field groups (P16): "field_pianus" (Pianus L and R, Seruf, Bloody Boom), "field_leafre"
     # (Leviathan, Manon, Griffey), "field_temple" (Dodo, Lilynouch, Lyka), "field_zipangu" (Black Crow, Blue Mushmom,
     # Bamboo Warrior, Male and Female Boss), "field_masteria" (Headless Horseman, Bigfoot). The P13 rules apply. A
     # group's add (Bloody Boom) is fair game once a player of the party has hit one of the group's bosses on its map.
-    # Each stays off until its live check passes (docs/COMPANION_BOSSING_P16.md).
     # "scarga" (P17): Scarlion and Targa at Aldol, signed up as at Adobis. A companion that dies walks back from Kampung
-    # and talks to Aldol to get back in (agent-engine.yaml AgentBossRunSession.REENTER_*). It stays off until its live
-    # check passes (docs/COMPANION_BOSSING_P17.md).
+    # and talks to Aldol to get back in (agent-engine.yaml AgentBossRunSession.REENTER_*).
     # "horntail" (P18): Horntail at the Mark of the Squad, signed up as at Adobis. The run spans the two pre-head maps
     # and the altar. A companion that dies comes to in Leafre, is moved back to the cave entrance (240050400, no route
-    # reaches it) and signs the Mark again. It stays off until its live check passes (docs/COMPANION_BOSSING_P18.md).
-    # "showa" (P19): The Boss at Konpei in the Showa hideout, signed up as at Adobis. List "field_zipangu" too, so
-    # companions waiting on his map leave Male Boss to the players there. A companion that dies waits in Showa Town.
-    # It stays off until its live check passes (docs/COMPANION_BOSSING_P19.md).
+    # reaches it) and signs the Mark again. Cleared 2026-10-15 (run 6).
+    # "showa" (P19): The Boss at Konpei in the Showa hideout, signed up as at Adobis. Keep "field_zipangu" listed with
+    # it, so companions waiting on his map leave Male Boss to the players there. A companion that dies waits in Showa
+    # Town. Cleared 2026-10-15 (run 7).
     # "pinkbean" (P20): Pink Bean at the Forgotten Temple Manager, signed up as at Adobis. A companion that dies revives
     # inside, as a player does, and walks back in through the resurrection map; every death counts toward the stock
-    # 5-death wipe and costs EXP. On since 2026-10-16 (user): its live check cleared on run 17
-    # (docs/COMPANION_BOSSING_P20.md).
-    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,pinkbean"
+    # 5-death wipe and costs EXP. On since 2026-10-16 (user): its live check cleared on run 17.
+    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,zakum,balrog_normal,field_victoria,field_ossyria,field_ludus,field_mulung,field_nihal,latanica,neo_bergamot,neo_dunas,neo_aufheben,neo_oberon,neo_nibelung,papulatus,field_pianus,field_leafre,field_temple,field_zipangu,field_masteria,scarga,horntail,showa,pinkbean"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
     # COMPANION_BOSS_ENABLED_TYPES, the entry NPC also offers an owner on her list "Call allies from my bench...".
     # Up to ROSTER_MAX - 5 of their benched companions travel down (the recall ETA, at most RECALL_MAX_ETA_MS on
     # Victoria), come in at the top of her stairs, sign up, fight in their own bot party and go back to their bench
     # duty after the run. The server holds at most EXPEDITION_BURST_MAX of them at once, split evenly between owners.
-    # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them. "easy_balrog" ships on
-    # for its live checks (2026-10-08, user OK); set "" to turn bench allies off again. "pinkbean" on since 2026-10-16
-    # (user): allies come through Leafre's store toward Pink Bean's potion standard on their way in.
+    # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them. Bench allies come to every
+    # expedition boss (a sign-up list at an NPC) since 2026-10-19 (user: turn on what was built); party bosses and field
+    # groups have no list, so they take none. "easy_balrog" since 2026-10-08, "pinkbean" since 2026-10-16: allies come
+    # through Leafre's store toward Pink Bean's potion standard on their way in.
     # OWNERS_MAX: owners whose companions may sign up for one expedition (1 = Part A's one-owner rule).
     # HUMAN_SEATS: seats of the list's 30 that companions always leave free for players.
     # ALLY_WALK_OUT_MS: how long an ally walks to the room's way out after the run (Mu Young to the outPerrion portal
     # is about 1,300 px) before it goes where it stands.
-    COMPANION_BOSS_ALLY_TYPES: "easy_balrog,pinkbean"
+    COMPANION_BOSS_ALLY_TYPES: "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean"
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
