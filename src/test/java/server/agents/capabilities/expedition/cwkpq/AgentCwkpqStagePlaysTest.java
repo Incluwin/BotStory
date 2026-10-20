@@ -1,7 +1,9 @@
 package server.agents.capabilities.expedition.cwkpq;
 
+import client.BuffStat;
 import client.Character;
 import client.Job;
+import constants.skills.Assassin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
@@ -23,8 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -163,6 +167,100 @@ class AgentCwkpqStagePlaysTest {
         AgentCwkpqStagePlays.storage(ports, List.of(fenna), event, run, 1_000L);
 
         verify(partyQuest).enterPortal(fenna, 1);
+    }
+
+    // ---- stage 3 ----
+
+    @Test
+    void aThiefPutsItsHasteUpFirst() {
+        agilityPortals();
+        Character fenna = member(10, "Fenna", Job.HERMIT, new Point(-483, 1536), 4_111_005, Assassin.HASTE);
+        when(casting.buff(any(), any(), anyInt())).thenReturn(true);
+        when(fenna.getBuffedValue(BuffStat.SPEED)).thenReturn(null); // no Haste on yet
+
+        AgentCwkpqStagePlays.agility(ports, List.of(fenna), event, run, 1_000L);
+        AgentCwkpqStagePlays.agility(ports, List.of(fenna), event, run, 1_200L);
+
+        verify(casting).buff(entries.get(10), fenna, Assassin.HASTE);
+        when(fenna.getBuffedValue(BuffStat.SPEED)).thenReturn(45);
+        AgentCwkpqStagePlays.agility(ports, List.of(fenna), event, run, 3_000L);
+        verify(casting).buff(any(), any(), anyInt()); // once: its Haste is up
+    }
+
+    @Test
+    void aLowSigilIsClimbedToAtAnyStatsAndAHighOneOnlyHasted() {
+        agilityPortals();
+        reactor(51, 6_109_000, new Point(857, 1431), 0, true); // the warrior's, on the floor
+        reactor(52, 6_109_002, new Point(322, -789), 0, true); // the mage's, past the gap
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(812, 1431), 1_111_008);
+        Character magna = member(11, "Magna", Job.FP_ARCHMAGE, new Point(100, 1536), 2_111_002);
+
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin, magna), event, run, 1_000L);
+
+        verify(casting).hitWithSkill(orrin, 51, 1_111_008);
+        verify(gateway, never()).navigate(eq(entries.get(11)), eq(new Point(277, -789)), anyBoolean());
+        verify(gateway).navigate(entries.get(11), new Point(-441, 1535), false);
+        assertEquals(List.of("Magna: " + AgentCwkpqStagePlays.NO_HIGH_CLIMBER), party);
+
+        hasted(magna);
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin, magna), event, run, 2_000L);
+        verify(gateway).navigate(entries.get(11), new Point(277, -789), true);
+        assertEquals(1, party.size(), "said once");
+    }
+
+    @Test
+    void aHastedMemberWithNoSigilLeftTakesTheTopPortalFromItsLongFloorUntilFivePasses() {
+        agilityPortals();
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(310, -1104), 1_111_008);
+        hasted(orrin);
+        Character dorran = member(11, "Dorran", Job.PALADIN, new Point(100, 1536), 1_211_002);
+
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin, dorran), event, run, 1_000L);
+
+        verify(partyQuest).enterPortal(orrin, 1);
+        verify(gateway).navigate(entries.get(11), new Point(-441, 1535), false);
+
+        when(event.getIntProperty("glpq3_p")).thenReturn(5);
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin, dorran), event, run, 3_000L);
+        verify(partyQuest).enterPortal(orrin, 1); // no pass wanted: it waits below
+    }
+
+    @Test
+    void withFiveSigilsAndFivePassesEveryoneTakesTheBottomPortal() {
+        agilityPortals();
+        when(event.getIntProperty("glpq3")).thenReturn(5);
+        when(event.getIntProperty("glpq3_p")).thenReturn(5);
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(-441, 1535), 1_111_008);
+
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin), event, run, 1_000L);
+
+        verify(partyQuest).enterPortal(orrin, 2);
+    }
+
+    @Test
+    void theHighClimbIsHasteOrBetter() {
+        Character climber = member(10, "Orrin", Job.HERO, new Point(0, 0));
+        assertFalse(AgentCwkpqStagePlays.climbsHigh(climber), "base 100/100");
+        when(climber.getTotalMoveSpeedStat()).thenReturn(145);
+        when(climber.getTotalJumpStat()).thenReturn(100);
+        assertFalse(AgentCwkpqStagePlays.climbsHigh(climber), "Haste's speed without its jump");
+        when(climber.getTotalJumpStat()).thenReturn(110);
+        assertTrue(AgentCwkpqStagePlays.climbsHigh(climber));
+        when(climber.getTotalMoveSpeedStat()).thenReturn(120);
+        when(climber.getTotalJumpStat()).thenReturn(120);
+        assertTrue(AgentCwkpqStagePlays.climbsHigh(climber));
+        assertTrue(AgentCwkpqStagePlays.reaches(member(11, "Dorran", Job.PALADIN, new Point(0, 0)),
+                new Point(240, 531)), "a low sigil");
+    }
+
+    private void agilityPortals() {
+        portal("next00", 1, new Point(215, -1107));
+        portal("next01", 2, new Point(-441, 1535));
+    }
+
+    private static void hasted(Character member) {
+        when(member.getTotalMoveSpeedStat()).thenReturn(145);
+        when(member.getTotalJumpStat()).thenReturn(120);
     }
 
     // ---- stage 4 ----

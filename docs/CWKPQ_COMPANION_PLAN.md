@@ -165,6 +165,21 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     clears do, sets `current_instance` to the stage before (CWKPQ.js restarts a stage's timer only when the counter is
     one short), runs the event's clearPQ for the armory, and moves everyone alive inside the instance to the stage's
     first portal; the down stay where they fell. `stop` runs the event's own end.
+- **C5 built 2026-10-20 on feat/cwkpq** (stage 3, without traps):
+  - No jump-down (`AgentNavigationFieldLimitPolicy`): route selection leaves out down-jumps (DROP edges with no
+    launch step) on a map whose field limit has CANNOTJUMPDOWN (610030300, 610030510, 610030550, pinned to Map.wz);
+    walk-off drops stay. A route-time filter, like the movement-skill one, so the cached graphs (GRAPH_VERSION 60)
+    stand.
+  - Stage 3 play (`AgentCwkpqStagePlays.agility`): a thief with Haste puts it up first (a party buff, so the members
+    by it get it too). Each waiting sigil goes to the first member by slot who can cast its skill and reach it: a low
+    one (y > -684) at any stats, a high one only at speed 120 + jump 120, speed 145 + jump 110, or with an active
+    Flash Jump or Teleport (C0). When nobody can reach a high one, one of its class says once "i can't make that climb
+    without haste. our sigil up there is yours". While fewer than 5 passes are counted, every member who climbs high
+    and has no sigil to turn takes the top portal from (310,-1104), the portal's long floor (its own point snaps to the
+    short duplicate foothold only a down-jump reaches). The rest wait by the bottom portal; with 5 sigils and 5 passes
+    everyone takes it.
+  - Not built: trap damage (decision 3). It waits for the live measurement of what a menhir hit does to a human
+    client; bots take none until then, as today.
 
 ## Questions for you (answered, kept for the record)
 
@@ -433,7 +448,7 @@ C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 | **C2** | Keystone errand (A3): errand states, live or ledger hunting, interrupts, lines | M | C1, Question 1 |
 | **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionBossKeys` (built 2026-10-20) | L | - |
 | **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest status / checkpoint <stage> / stop` (built 2026-10-20) | M | C0, C3 |
-| **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes | L | C0, C4 |
+| **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes (stage 3 built 2026-10-20; traps wait for the live measurement) | L | C0, C4 |
 | **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |
 | **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters | M | C3 |
 | **C8** | Armory, claims, release, pace profile and desk estimate, guidance lines once per run | M | C6, C7 |

@@ -404,6 +404,7 @@ public final class AgentNavigationTargetService {
         boolean sameRegion = startRegionId == targetRegionId;
         Predicate<AgentNavigationGraph.Edge> edgeFilter = edge ->
                 reliabilityFilter.test(edge)
+                        && !AgentNavigationFieldLimitPolicy.forbids(bot, edge)
                         && !progressState.blocks(edge, nowMs)
                         && !AgentVerticalTraversalService.blocksRecentInverseEntry(
                                 graph, entry, edge, nowMs)
