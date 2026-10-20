@@ -1,0 +1,350 @@
+# Companions in Crimsonwood Keep PQ (CWKPQ), with the keystone prequests
+
+Written 2026-10-19. Exploration only: nothing here is built. Every fact below was read from this server's scripts, WZ
+data and Java on `feat/companion-manager` cb21e2908, not from GMS guides. Where the community guide you shared
+disagrees with this server, this plan follows the server and says so.
+
+## Result
+
+- **CWKPQ can be done, but it needs both of our tracks at once.** It is a stock *expedition* of 6 to 30 members
+  (`ExpeditionType.java:44`, `CWKPQ(6, 30, 90, 255, 5)`), so sign-up must come from the boss track (expedition
+  join at Jack, bench allies, overflow bot parties, two owners). Its six stages need the PQ track's stage
+  coordinator (the RJPQ/OPQ shape). Neither track does this alone. COMPANION_BOSSING_PLAN.md:1311 already set
+  CWKPQ aside for this reason.
+- **The keystone prequest is short.** Only three quests are needed to enter: 8222 *The Brewing Storm* (10
+  Stormbreaker Badges for Lukan), start 8230 *Stemming the Tide* at Jack in the Cavern of Pain, then 8223 *Storming
+  the Castle* (75 Windraider, 75 Firebrand, 75 Nightshadow for Lukan). The Crimsonwood Keystone 3992041 is its
+  reward. Subani, Elpam, Taggrin and *Lost in Translation* are not needed to join. They unlock Joko and Fiona
+  (the exchange), which is optional.
+- **Companions who go with their owner already get the quests.** `AgentPartyQuestSyncService` copies the owner's
+  quest starts, progress and completions to every Agent in the party. When the owner completes 8223, his party
+  companions receive their own keystones. What is missing is a companion doing the chain **by itself**: a benched
+  ally, a new recruit, or a companion whose owner already holds a keystone. The plan adds a keystone errand for them
+  (the JobErrands shape).
+- **The road to Lukan and Jack is not in the bots' world map.** Haunted House 682000000 is outside the masteria
+  route group, the NLC taxi (9201056) has no travel leg, and the Valley of Heroes climb is treated as a plain portal.
+  Firebrand needs extra care: quest 8223 counts only the revived form 9400578, which appears when 9400577 dies.
+- **Bots cannot touch a sigil today.** The sigil reactors accept only listed skill ids (`Reactor.java:276-281`,
+  Reactor.wz `activeSkillID`). The bot gateway hits every reactor with skill id 0
+  (`CosmicPrimitiveCapabilityGateway.java:854`). One new primitive fixes stages 2, 3 and 4: hit a reactor with a real
+  skill the bot owns, from inside the skill's range, with the cast shown to players.
+- **Stage 3 is a jump quest, and we have no jump-quest navigation.** The nav graph has no moving obstacles, and
+  trap damage is reported only by a human client (`TakeDamageHandler.java:74-83`), so bots never take it. This is the
+  riskiest stage. An offline nav probe on the real map (Step C0) decides how hard it is.
+- **This server has four Grandmasters, not five.** Margana 9400590, Red Nirg 9400591, Rellik 9400592 and Hsalf
+  9400593. There is no Mikhal in v83 String.wz. Stage 6 also starts with 10 Master Guardians and 20 Crimson Guardians.
+- **This server's stages 4 and 5 differ from the guide.** Stage 4 is 8 shuffled sigil spots, 5 of them real, each
+  for one class (no altar riddle). Stage 5 is five class-only rooms, each giving a weapon that is dropped onto its
+  relic in the main hall (no relic handed to the leader).
+- **The class rule is not enforced at entry.** Jack checks only levels 90-255. The classes matter later: each sigil
+  takes only its class's skills, and each stage-5 room takes only its class. So the hard rule is at least one member
+  of each of the five archetypes. Two of each is the guide's advice and our recommendation.
+- **The run ends easily.** It ends when the count drops to 6 or fewer, or when the leader leaves or revives
+  (`EventInstanceManager.java:1278-1286`, `CWKPQ.js:250-326`). A revive counts as leaving. So companion deaths must be
+  held in the event, like the other PQs' death gates, and the desk should ask for at least 8 members.
+- **Size: 11 phases (C0-C10).** By the plan's effort sizes, C0-C9 are about 11 to 22 weeks in sequence, less with
+  the two parallel streams (keystone and PQ). C10 is optional. The first useful milestone is C1 + C2 (companions can
+  earn keystones). The first full clear needs C0-C9.
+
+## Decisions taken
+
+You answered "do recommended for all" on 2026-10-19, so every question below takes its recommendation:
+
+1. The keystone errand hunts live when a player can see it or a live bench slot is free, and on the bench ledger at
+   the companion's measured kill rate otherwise.
+2. The exchange chain for bots waits (C10).
+3. Bots take trap damage in stages 3 and 4, with values measured from a human client in C0.
+4. Both stock script faults are fixed, inside the scripts only (stage-5 weapon re-issue, stirge plate script).
+5. Jack refuses to start companions without one member of each archetype, and warns below 2 of each or below 8
+   members.
+6. A new crew C under a new GM test owner is raised for the live checks. Crews A and B stay as they are.
+
+## Questions for you (answered, kept for the record)
+
+1. **Keystone errand: real hunting or a ledger?** Recommended: a companion without a keystone hunts for real (live)
+   when a live bench slot is free or a player is on the map, and otherwise progresses on the bench ledger at its
+   measured kill rate. The other choice is to keep today's waiver only (companions get the quests only by following
+   their owner). If you do not answer, I use the recommendation.
+2. **Should bots also do the exchange chain (Subani, Elpam, Taggrin, *The Right Path*) and trade badges with Joko?**
+   It is not needed to join. Recommended: later (phase C10). If you do not answer, it waits.
+3. **Trap damage in stages 3 and 4: should bots take it?** A human takes menhir and flame hits; a bot would not.
+   Recommended: yes, the server applies the same hit to a bot that crosses an active trap, using values measured from
+   a human client in C0. If you do not answer, I use the recommendation.
+4. **May I fix two stock script faults?** (a) A lost stage-5 weapon can never be re-issued (`glpq5_room` bit), which
+   locks the run. (b) The stirge plate script `reactor/6109013.js` calls `killAllMonsters(true)`, which does not
+   exist. Recommended: fix both, inside the scripts only. If you do not answer, I leave them.
+5. **Lineup rule at Jack.** Recommended: refuse to start companions without one member of each archetype (hard), and
+   warn below 2 of each or below 8 members (soft). If you do not answer, I use the recommendation.
+6. **Test crew.** A full check needs about 10 bots at Lv120-150 in 4th job, two of each archetype, including two
+   pirates, with boss gear. Which crew may I raise with `!setlevel` / `!bossgear`? Recommended: a new crew C under a
+   new GM test owner, so the bossing crews A and B stay as they are. If you do not answer, I ask again before C9.
+
+## Words used
+
+- **Keystone:** Crimsonwood Keystone 3992041, a SETUP item (slotMax 1, trade-blocked). The Gate (NPC 9201114 or
+  portal `in06` in Hall of Mastery 610030010, `glpqEnter.js`) lets only holders into the recruit map 610030020.
+- **Recruit map:** Hall to Inner Sanctum 610030020, where Jack (9201113) makes the expedition.
+- **Sigil:** a class reactor that turns only for listed skill ids. Stage 2 and 3 use 6109000-6109004, stage 4 uses
+  6109016-6109020.
+- **Archetype:** one of the five job branches, `jobId / 100 % 10` (1 warrior, 2 mage, 3 bowman, 4 thief, 5 pirate),
+  the same "job niche" the stage-5 portals read.
+- **Mirror (quest):** `AgentPartyQuestSyncService`, which copies a human's quest start, progress and completion to the
+  Agents in his party (`Quest.java:332`, `:355`, `:420`, `:449`).
+- **Mirror (boss):** P8's `AgentBossAttackMirror`, which applies client-controlled boss attacks to bots.
+- **Errand:** a companion leaves its owner or its bench duty, does one job elsewhere and comes back (`JobErrands.java`).
+- **Death gate:** a clause in `AgentDeathTickCoordinator` that holds a dead member in the event until the clear.
+- **Effort sizes:** S is 1-3 days, M is 1-2 weeks, L is 2-4 weeks (BOT_MANAGEMENT_PLAN.md:544).
+
+## Part A: the keystone prequests
+
+### A1. The chain on this server
+
+From `wz/Quest.wz` (QuestInfo, Check, Act) and `scripts/quest/82xx.js`. Quest prereqs are exact states: "done" is 2,
+"in progress" is 1. Every quest script here only needs to be accepted; none warps, times or branches.
+
+**Needed to enter CWKPQ** (the minimum path, level 70 and up):
+
+| Order | Quest | Start and end | Needs | Reward |
+|---|---|---|---|---|
+| 1 | 8222 The Brewing Storm | Lukan 9201098, Phantom Road 610010003 | 10 Stormbreaker Badge 4032006 (taken). Stormbreaker 9400581 (Lv80) drops it at 20%; nearest is Forgotten Path 610010005 | 85,000 EXP |
+| 2 | 8230 Stemming the Tide (start) | Jack 9201096, Cavern of Pain 610020011 | Nothing (no prereq) | Nothing yet |
+| 3 | 8223 Storming the Castle | Lukan | 8222 done, 8230 in progress. Kill 75 Windraider 9400576, 75 Firebrand **9400578**, 75 Nightshadow 9400579 | **Keystone 3992041**, 220,000 EXP |
+| 4 | 8230 (finish, optional) | Jack | Holds 3992041 (not taken) | Text only |
+
+Lukan's script re-issues a lost keystone once 8223 is done (`scripts/npc/9201098.js`). The Gate checks the item only,
+never a quest.
+
+**Optional** (the exchange): 4913-4915 *Subani's Legacy* and 4916-4917 *Lost!* / *ReVersal* lead to 8219 *Finding
+Jack* (Map of Phantom Forest 3992040, 175,000 EXP). With 8224 *The Fallen Woods* (50 Phantom Seeds for Taggrin) that
+opens 8225 *The Right Path*, which alone unlocks Joko (9201097) and Fiona (9201095). 8226 *The Fallen Warriors* (50
+Elder Ashes) is not needed for either here, although GMS needed it for Fiona. 8221 *Mark of Heroism* gives the Marker
+of Heroism 3992039, which opens the Valley of Heroes statue portals. *How to get to Lukan* is not a quest in v83.
+
+### A2. Where the bots stand today
+
+| Need | State | Evidence |
+|---|---|---|
+| Reach New Leaf City | Exists: Kerning subway leg | `agents/catalogs/npc-travel-legs.json` |
+| NLC to Haunted House 682000000 by taxi 9201056 (15,000 mesos) | **Missing** leg; taxi entry has `destinationMapId: 0` | `town-life/new-leaf-city.json` |
+| Haunted House to Bent Tree 610010000 (`right01`) | **Missing**: 682000000 is outside the masteria group (600000000-620000000) | `world-portal-route-graph.json` |
+| Dead Man's Gorge to Lukan (`U5_4`, `A1_2`, `A2_2`) and Forgotten Path | In the graph | same |
+| Valley of Heroes 1 and 2 climb (610020000/610020001) to Lower Ascent, then `CM3_2` to Jack | **Unproven**: the graph treats it as a portal edge. A fall in Lower Ascent drops you back to Valley 1 | portal data; C0 probe |
+| Firebrand 9400578 for the kill count | **Missing**: it spawns only when 9400577 dies (`Mob.wz/9400577.img.xml` revive). A spawn-list lookup finds it only in CWKPQ rooms | drop and spawn data |
+| Scripted quest start checks prereqs | **Hole**: `CosmicPrimitiveCapabilityGateway.startQuest` runs a start script without `Quest.canStart`. A bot could start 8223 without 8230 in progress | survey, gateway :615-628 |
+| Bots know the prereqs | **Missing**: `scripts/config/knowledge/server-knowledge.json` quests have no prereq quests or states | knowledge export |
+| Keep the keystone, Map and Marker | **Risk**: SETUP quest items are not "needs", so a sell plan could sell them | `CosmicMarketSellerPlanReader` |
+| Companions going with the owner get the quests | **Works** (quest mirror) | `AgentPartyQuestSyncService.java` |
+| A companion does a quest chain alone | **Missing**: journey Agents have a quest scheduler (`AgentVictoriaQuestSchedulerRuntime`, Victoria under Lv30 only); companions have only job errands | survey |
+
+Level note: the chain allows Lv70, but its mobs are Lv80 (Stormbreaker), Lv90 (Firebrand) and Lv100 (Nightshadow).
+The errand should start at Lv85 and up (decision C2-1), and CWKPQ itself needs 90.
+
+### A3. How the keystone errand works (phase C2)
+
+The shape is `JobErrands` (`src/main/java/server/living/roster/JobErrands.java`), which already sends a companion off
+to its instructor and back with its seat kept.
+
+1. **When.** A companion at Lv85+ with no keystone sets off when its owner turns the CWKPQ key on for it (the Crew
+   window or chat: "get your keystone"), or when a CWKPQ desk names it as missing one. A benched companion goes
+   between its bench duties. It says so in its own words: "i don't have a keystone yet. going to see Lukan."
+2. **Road.** Kerning subway, NLC taxi, Haunted House, Bent Tree, Dead Man's Gorge, Phantom Road. The road time is
+   paid as for job errands; the companion loads live on Lukan's map.
+3. **Steps.** Each step is a small objective the errand runs in order. It always checks prereqs itself (fix A2 row 6),
+   so it can never start 8223 before 8230:
+   - talk to Lukan, start 8222;
+   - hunt Stormbreakers at Forgotten Path until it holds 10 badges, then hand them in;
+   - travel to Jack (Valley of Heroes climb, or the statue portals if it holds the Marker) and start 8230;
+   - back to Lukan, start 8223;
+   - hunt the three kinds. For Firebrand it hunts 9400577 and finishes the revived 9400578;
+   - hand in to Lukan, receive the keystone, say so, come back to its owner or duty.
+4. **Live or ledger** (Question 1). While a player is on the hunting map or a live bench slot is free
+   (`BENCH_LIVE_MAX`), the companion hunts for real and is visible. Otherwise the bench ledger advances its count at
+   the kill rate it measured live for that mob, so a ledgered errand never runs faster than a live one.
+5. **Interrupts.** Called back by its owner, it saves its step and quest progress (the quest log holds the counts) and
+   resumes later. A death sends it to the nearest town and it carries on.
+6. **Owner on the same chain.** If its owner is doing the chain too, the companion joins its owner instead and the
+   quest mirror does the rest, as today.
+7. **Help for the owner.** A companion that holds a keystone can answer "how do I get into Crimsonwood Keep?" from
+   server data (knowledge grounding), once C1 exports prereqs.
+
+## Part B: the PQ itself
+
+### B1. The stages on this server
+
+From `scripts/event/CWKPQ.js` and the stage scripts. Timers restart the first time anyone reaches each stage.
+
+| Stage | Map | Time | What clears it | Implemented by |
+|---|---|---|---|---|
+| 1 Inner Sanctum Hallway | 610030100 | 2 min | Someone uses the hidden portal `next01` at (1547,336) under the lion's head. That sets `glpq1`. Then everyone takes `next00` at (824,328). 20 Master Guardians (7M HP, immune to all elements) spawn at 60 s if anyone is still there | `glpqPortalDummy.js`, `glpqPortal0.js` |
+| 2 Forgotten Storage Chamber | 610030200 | 10 min | All five sigils (6109000-6109004), each hit with a skill of its class | `reactor/6109000-6109004.js`, `glpq2 == 5` |
+| 3 Test of Agility | 610030300 | 10 min | Five sigils high up a jump map (CANNOTJUMPDOWN), and five passes through the top portal (215,-1107), which drops you to the bottom | `glpq3 >= 5 && glpq3_p >= 5`; menhir traps move with each sigil |
+| 4 Test of Wit | 610030400 | 10 min | 8 sigil spots shuffled each run: 5 real class sigils (6109016-6109020) plus fakes. Any 5 activations clear it. 48 invincible Blood Stirges; flame traps toggled by touch plates | `CWKPQ.js:98-150`, `glpq4 >= 5` |
+| 5 Test of Unity | 610030500 | 20 min | Five class rooms, entered by job niche. Each gives one weapon (4001256-4001260), dropped onto its relic reactor (6109005-6109009) in the hall | `glpqPortal00-04.js`, room NPCs 9201107-9201111, `glpq5 >= 5` |
+| 6 Grandmaster Council Hall | 610030600 | 60 min | Event leader talks to the Battle Statue 9201115: 10 Master Guardians + 20 Crimson Guardians spawn; when the hall is empty, he talks again and the four masters spawn; when empty again, he talks a third time to clear | `scripts/npc/9201115.js`, `glpq6` 0-3 |
+| Secret Chamber | 610030700 | - | Walk through | `glpqPortal7.js` |
+| Armory (bonus) | 610030800 | 1 min | Break 30 boxes (5 hits each); items spray out. Mastery books, Gelt Chocolate 2022121, Tao materials for Fiona | `reactor/6102002-6102005.js`, reactordrops |
+
+Stage 5 rooms:
+
+| Room | Map | To get the weapon |
+|---|---|---|
+| Warrior | 610030510 | Kill 21 Crimson Guardians (120k HP each), climb to the master at (117,-2259), talk |
+| Bowman | 610030540 | Kill 5 Master Guardians (7M HP each, immune to all elements), talk |
+| Mage | 610030521 | Kill 13 Firebrand, 7 Stormbreaker, 2 Elderwraith, talk. Fall pits send you back |
+| Thief | 610030530 | Break the 5 eye reactors 6108004 (any hit), talk |
+| Pirate | 610030550 | Hit the 5 chests (4 hits each); one real (6102001) drops the Forbidden Gun; pick it up |
+
+Sigil skills (Reactor.wz `activeSkillID`):
+
+| Archetype | Skills that turn its sigil |
+|---|---|
+| Warrior | 1111008 Shout, 1211002 Charged Blow, 1311003/1311004 Dragon Fury |
+| Bowman | 3111006/3211006 Strafe, 3111005 Silver Hawk, 3211005 Golden Eagle, 3221001 Piercing Arrow |
+| Mage | 2001005 Magic Claw (any mage), 2111002 Explosion, 2211002 Ice Strike, 2321003 Bahamut |
+| Thief | 4111002 Shadow Partner, 4111005 Avenger, 4211001 Chakra, 4211004 Band of Thieves, 4211006 Meso Explosion |
+| Pirate | 5001001 Flash Fist (any pirate), 5111005 Transformation, 5121001 Dragon Strike, 5211002 Gaviota, 5221004 Rapid Fire |
+
+Every 3rd-job branch has at least one, but a bot must have put SP into it. C0 checks every persona's SP build.
+
+Boss numbers (Mob.wz): Margana 200M HP (immune to holy; resists lightning, fire, ice), Red Nirg 255M (no element
+traits; revives into Scarlet Phoenix 9400596 and Azure Ocelot 9400597), Rellik 231M (immune to holy, weak to fire),
+Hsalf 233M (immune to holy, weak to ice). All are Lv130. With the guards, stage 6 holds about 1 billion HP for 60
+minutes. Bot damage already applies element effects (`CombatFormulaProvider.java:307-320`), so a Bishop's holy attacks
+do nothing to any master but Red Nirg.
+
+### B2. What we reuse and what is missing
+
+| Need | Reuse | Missing |
+|---|---|---|
+| Sign-up of 6-30 at Jack | Boss track: `AgentBossRunService.enlist` / `AgentBossRunSession.signUp` (runNpc with join selection, then check `expedition.contains`), `CompanionBossAllies` (bench allies travel, overflow bot parties of up to 6), multiple owners (`COMPANION_BOSS_OWNERS_MAX`), the five boss NPC hooks (e.g. `scripts/npc/2083004.js:46-62`) | Hooks in `scripts/npc/9201113.js`; a CWKPQ lineup rule (archetypes); keystone filter for allies |
+| Stage play | PQ track: RJPQ shape (Session, Coordinator, StagePlay, CompanionRun, PaceProfile, TestService); `PartyQuestGateway` (runNpc, enterPortal, property, eventMembers) | A `partyquest/cwkpq` package, not tied to a party |
+| Archetype rule | `AgentEpqRosterRequirementPolicy` (one of each of five), OPQ five-branch preference (`PqEntrance.BranchPreference`) | Two-of-each version |
+| Sigils | `hitReactor` primitive | **Skill-on-reactor primitive** (B3) |
+| Touch plates | none | Touch primitive calling `ReactorScriptManager.touch/untouch` (only for stage 4 flames) |
+| Weapon onto relic | `dropInto` with `predictDropLanding` (RJPQ, OPQ) | Relic drop areas are high in the hall (e.g. sword relic x 1093-1293, y -665..-454); C0 probe |
+| Hidden portals | `enterPortal` (walk on, press up) | Nothing |
+| Jump quest | Nav graph jump/rope edges; RJPQ Haste jump | **Moving traps, trap damage, CANNOTJUMPDOWN route** (B4) |
+| Class rooms | Grind, NPC talk, reactor hits, pick-up | Room choice by job niche; weapon hand-over |
+| Council Hall | `AgentBossPriorityFight`, `boss-rules.json`, boss mirror, server authority | A `cwkpq` boss-rules entry; leader statue calls |
+| Deaths | Death gate chain (`AgentDeathTickCoordinator.java:33-56`) | A CWKPQ gate (hold the corpse; a revive unregisters and can end the run) |
+| Armory loot | Loot clauses (`AgentLootEligibility.java:76-127`), boss loot rules (P12 G10) | Box areas per member; etiquette |
+
+### B3. The skill-on-reactor primitive (phase C4)
+
+`hitReactorWithSkill(agent, reactorOid, skillId)`:
+
+1. Pick the skill: the sigil's `activeSkillID` list, filtered to skills the bot has at level 1 or more and can cast now
+   (MP, cooldown, weapon). Prefer an attack the bot already uses (Avenger, Strafe, Explosion, Dragon Strike), then a
+   summon (Silver Hawk, Gaviota, Bahamut), then a buff (Shadow Partner, Chakra, Transformation).
+2. Stand where a player would: inside the skill's range box (Skill.wz `lt`/`rb`) from the reactor, facing it, on the
+   reactor's ground.
+3. Cast it for real: MP and cooldown are paid, and the attack, summon or buff is broadcast as for any other cast. An
+   attack with no monster targets is still shown.
+4. Then call `Reactor.hitReactor(true, x, stance, skillId, client)`. A wrong skill does nothing, as for a player.
+
+This is narrow on purpose. The existing `hitReactor` stays as it is for every other reactor.
+
+### B4. Stage 3, the jump quest (phase C5)
+
+This is the part most likely to change after C0.
+
+- **C0 probe first.** On the real Map.wz 610030300, build the nav graph at each test member's speed and jump (with
+  and without Haste), and check: does a route reach each of the five sigils, and the top portal, without jumping
+  down? The RJPQ Dark Lab probe did the same (Lab 1 reachable only at jump 120).
+- **Traps.** The menhirs are `trapGL` map objects that move with `moveEnvironment("menhirN", 1)` after each sigil.
+  Their damage is client-side. C0 measures, with a human client, which hits land where and for how much
+  (damagefrom -3/-4 in `TakeDamageHandler`). With your yes (Question 3), the server applies the same hit to a bot whose
+  path crosses an active trap, so bots have to heal like players do.
+- **Who climbs.** One climber per archetype, chosen by speed and jump. A human of that archetype may climb instead:
+  the companion yields once the human's sigil turns. Each climber hits its sigil, then takes the top portal, which
+  counts a pass and drops it to the bottom. Five passes are needed in total, so climbers who finish early climb again
+  if fewer than five passes are counted.
+- **Fallback if the probe fails.** If some sigil cannot be reached at any bot's stats, that archetype's sigil
+  becomes a human's job, and the desk says so. I do not want a teleport cheat here.
+
+### B5. Stages 1, 2 and 4 (phase C4)
+
+- **Stage 1.** The companion nearest to the lion's head takes the hidden portal, then everyone takes the exit. Target:
+  done before the 60 s guardians. A companion says where the way is the first time: "it's behind the pillar under the
+  lion's head".
+- **Stage 2.** Each archetype's nearest member takes its sigil (claim leases like RJPQ's `claimDoor`); the others hold
+  by the exit.
+- **Stage 4.** Each sigil spot shows its class picture to a player. C0 checks in Reactor.wz whether the fakes
+  (6108000, 6108001, 6108005) look like real sigils. If they look different, a bot may read a spot's class from the
+  reactor id, as a player reads it from the picture. If they look the same, a bot must try spots and remember which
+  failed. The flame plates are optional; companions step on them only if the trap damage of Question 3 is on.
+
+### B6. Stage 5, the class rooms (phase C6)
+
+- Each archetype's members enter their own room (`getJobNiche`). A human goes to his own room; companions of his
+  archetype go with him.
+- The weapon goes to the member who talks to the room's master (or picks up the gun). That member carries it back and
+  drops it into its relic's area. Nobody else may drop it. If its holder dies, the death gate keeps the corpse in the
+  event, and the weapon with it (exclusive items are removed only on unregister, `CWKPQ.js:73`).
+- **Pace risk: the bowman room.** Its five Master Guardians hold 35M HP and are immune to every element, so only
+  physical bowman attacks count. A rough estimate: two Lv100 Rangers need about 16 minutes of the room's 20. The pace estimate
+  must check this, and the desk should warn when the bowmen are under 4th job.
+- With Question 4 (a), a lost weapon can be re-issued once when no copy exists in the instance.
+
+### B7. Stage 6, the Council Hall (phase C7)
+
+- The event leader must talk to the Battle Statue three times (`cm.isEventLeader()`). With a human leader,
+  companions call him when the hall is empty: "the guards are down, talk to the statue." With an Agent leader (not
+  planned here), it would talk itself.
+- A new `cwkpq` entry in `boss-rules.json` sets target priority for the four masters and their summons, and lets
+  each member prefer a master it can hurt: fire mages on Rellik, ice mages on Hsalf, Bishops on Red Nirg or healing.
+  Recommended order: one master at a time, Red Nirg last (his revive adds two more). This is a prior; the learner can
+  change it later.
+- The boss mirror and server authority apply to all four masters, as for the P12 bosses, so masters really hit bots.
+- **Potion check.** These maps set field limit bit 0x1000, which Cosmic names CANNOTUSEPOTION (`FieldLimit.java:39`)
+  and never checks on the server. The client's own flag list may mean something else by 0x1000. C0 checks with a human
+  client whether potions work in 610030400 and 610030600. Bots must obey whatever a human client obeys.
+
+### B8. Armory, claims and release (phase C8)
+
+- The Armory lasts one minute. Each member gets a share of the 30 boxes by area, so no two members hit the same box.
+- Loot (proposal): humans may pick up anything. A companion picks up only what its own class can use (its weapon
+  types, its class's mastery books), leaves Gelt Chocolate for physical attackers and magic-attack food for mages, and
+  never takes Tao materials a human could want. The CWKPQ loot clause is refuse-only, like the others.
+- After the clear the run ends in 610030020; companions follow their owner, and allies go back to their duties.
+
+## Part C: the phases
+
+| Phase | What | Size | Needs |
+|---|---|---|---|
+| **C0** | Step 0 checks, no gameplay code: offline nav probes (610030300 sigils and top portal; 610030400 spots; 610030500 relic areas; warrior room top; Valley of Heroes 1 and 2; Lower Ascent to Jack); a human client measures trap hits and checks potions at 0x1000; Reactor.wz fake-sigil pictures; every persona's SP in a sigil skill; stirge script behaviour; mirror behaviour when a companion already holds a keystone | S | - |
+| **C1** | Keystone road and quest data: Haunted House in the masteria group, NLC taxi leg, Valley climb edges (from C0), Firebrand revive link in the hunt planner, prereq states in the knowledge export, `Quest.canStart` before any bot scripted start, keep SETUP quest items out of sell plans | M | C0 |
+| **C2** | Keystone errand (A3): errand states, live or ledger hunting, interrupts, lines | M | C1, Question 1 |
+| **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionPqKeys` + `PqEntrance` | L | - |
+| **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest party prod / checkpoint <s2..s6, armory> / status / stop` | M | C0, C3 |
+| **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes | L | C0, C4 |
+| **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |
+| **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters | M | C3 |
+| **C8** | Armory, claims, release, pace profile and desk estimate, guidance lines once per run | M | C6, C7 |
+| **C9** | Live checks with crew C, GM-first (`!cwkpqtest checkpoint` per stage), then one full human-led run | M | all, Question 6 |
+| **C10** | Optional exchange chain and Joko badge trades for bots | M | C2, Question 2 |
+
+C1-C2 and C3-C4 can be built in parallel; they touch different files. Everything ships behind the `cwkpq` key, off.
+
+## Risks
+
+1. **Stage 3 may be beyond bot movement.** If C0 shows sigils out of reach, that archetype needs a human there.
+2. **Client memory.** Up to 30 members and about 1 billion HP of fighting in one map, with summons. The client memory
+   gate from the bossing plan applies to stage 6.
+3. **The run ends at 6.** A run of 7 survives one departure; a run of 6 none. The desk warns below 8.
+4. **The human leader must not revive.** If he dies and takes the revive, the stock rule ends the run for everyone.
+   Companions can warn him once; they cannot stop it.
+5. **Quest mirror edge.** When the owner completes 8223, the mirror force-completes it for a companion that may
+   already hold a keystone (slotMax 1). C0 checks that this does not fail or duplicate.
+6. **Ledger fairness.** A ledgered keystone errand must never finish faster than the same companion would live.
+
+## Stock facts worth knowing
+
+- Jack's sage 9201103 says "level 100"; the real gate is 90. The requirement string says "2 minutes"; that is only
+  stage 1.
+- Stage 3 counts top-portal passes, not players; stage 4 counts any 5 activations, not 5 classes.
+- `9201115.js` spawns guards only on the left half and does not register the masters with the event.
+- A late joiner at stage 6 is sent to 610030700, not 610030800.
+- No daily limit applies: `BossLogEntry` has no CWKPQ entry.
+- Clear rewards are stage EXP and mesos, the Armory boxes and this server's Perfect Pitch (10-18,
+  `EventInstanceManager.java:1227`). There is no clear item.
