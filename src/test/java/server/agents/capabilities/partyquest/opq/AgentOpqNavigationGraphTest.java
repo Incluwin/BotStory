@@ -1,14 +1,20 @@
 package server.agents.capabilities.partyquest.opq;
 
+import client.Character;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentJumpProbeService;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.movement.AgentStandaloneMoveTargetCoordinator;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.capabilities.navigation.AgentNavigationPathService;
 import server.agents.capabilities.navigation.AgentPortalApproachService;
+import server.agents.runtime.AgentModeService;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.simulation.AgentSimulationMode;
 import server.maps.MapleMap;
 import server.maps.Rope;
 
@@ -16,11 +22,18 @@ import java.awt.Point;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AgentOpqNavigationGraphTest {
     @BeforeAll
@@ -34,6 +47,53 @@ class AgentOpqNavigationGraphTest {
         Point portal = AgentPortalApproachService.navigableTarget(map, map.getPortal(11));
         assertRoute(AgentOpqDefinition.LOUNGE_MAP, new Point(-45, -728), portal,
                 new AgentMovementProfile(100, 123));
+    }
+
+    @Test
+    void loungeHighSubroomsTakeTheClimbersJumpAndTheLowOneABaseJump() {
+        // 2026-10-20 live: a Fighter (jump 100) stood at the lounge's door (st00) for 43 minutes. The ledges up to in00
+        // and the r4 portal row are 84-96 px apart and a base jump rises 77 px: reachable at LOUNGE_JUMP, none at 110.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.LOUNGE_MAP);
+        Point door = new Point(-45, -728);
+        List<Point> high = List.of(3, 11, 12, 13).stream()
+                .map(id -> AgentPortalApproachService.navigableTarget(map, map.getPortal(id))).toList();
+        AgentNavigationGraph climber = AgentNavigationGraphService.rebuildGraph(map,
+                new AgentMovementProfile(100, AgentOpqCoordinator.LOUNGE_JUMP));
+        AgentNavigationGraph below = AgentNavigationGraphService.rebuildGraph(map, new AgentMovementProfile(100, 110));
+        for (Point target : high) {
+            assertTrue(reaches(climber, map, door, target), "jump " + AgentOpqCoordinator.LOUNGE_JUMP + " to " + target);
+            assertFalse(reaches(below, map, door, target), "jump 110 to " + target);
+        }
+        Point low = AgentPortalApproachService.navigableTarget(map, map.getPortal(6));
+        assertTrue(reaches(AgentNavigationGraphService.rebuildGraph(map, AgentMovementProfile.base()), map, door, low));
+    }
+
+    @Test
+    void lobbyRunnerClimbsFromTheFloorToTheUpperPlatform() {
+        // 2026-10-20 live (Marrow, two whole runs): each jump off the x -1598 rope landed 11 px short of the ledge it
+        // ends on at x -1664. The rope's traversal settled as she left it, the next resolve planned that jump-off again
+        // from beside the rope, and air steering toward its start pulled her back
+        // (AgentNavigationClimbExitExecutionService). The runner follows the coordinator's targets as it does live.
+        for (int speed : new int[] {100, 103}) {
+            for (int phase = 0; phase < 2; phase++) {
+                Point end = followCoordinatorTargets(AgentOpqDefinition.LOBBY_MAP, new Point(-1_633, -127), speed,
+                        phase, AgentOpqCoordinator::lobbyAscentTarget, position -> position.y <= -850);
+                assertTrue(end.y <= -850, "speed " + speed + " phase " + phase + " ended at " + end);
+            }
+        }
+    }
+
+    @Test
+    void wayUpRunnerCatchesTheLongRopeFromItsPlatform() {
+        // 2026-10-20 live (Kettle, two whole runs): the authored jump from x -117 had no climbing intent and passed the
+        // long rope (x -43) below its bottom; the graph's edge onto it launches from x -108.
+        for (int speed : new int[] {100, 102}) {
+            for (int phase = 0; phase < 2; phase++) {
+                Point end = followCoordinatorTargets(AgentOpqDefinition.ON_WAY_UP_MAP, new Point(-150, -846), speed,
+                        phase, AgentOpqCoordinator::wayUpAscentTarget, position -> position.y <= -1_600);
+                assertTrue(end.y <= -1_600, "speed " + speed + " phase " + phase + " ended at " + end);
+            }
+        }
     }
 
     @Test
@@ -94,6 +154,43 @@ class AgentOpqNavigationGraphTest {
     void entranceCenterCloudStrikePlatformHasALegalRouteFromLowerLeft() {
         assertRoute(AgentOpqDefinition.ENTRANCE_MAP,
                 new Point(-307, -201), new Point(-54, -498));
+    }
+
+    private static boolean reaches(AgentNavigationGraph graph, MapleMap map, Point from, Point to) {
+        return graph.canReach(graph.findRegionId(map, from), graph.findRegionId(map, to));
+    }
+
+    /**
+     * Runs an Agent's live movement (background ticks of five substeps, an AI tick every second one) toward the
+     * target {@code targetFor} gives for its position, re-issued every tick as the coordinator does; returns where it
+     * stands once {@code done} holds or after two minutes.
+     */
+    private static Point followCoordinatorTargets(int mapId, Point start, int speed, int phase,
+                                                  Function<Point, Point> targetFor, Predicate<Point> done) {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        AtomicReference<Point> position = new AtomicReference<>(new Point(start));
+        Character agent = mock(Character.class);
+        when(agent.getPosition()).thenAnswer(invocation -> new Point(position.get()));
+        doAnswer(invocation -> {
+            position.set(new Point(invocation.getArgument(0)));
+            return null;
+        }).when(agent).setPosition(any(Point.class));
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getMapId()).thenReturn(mapId);
+        when(agent.getId()).thenReturn(1);
+        when(agent.getHp()).thenReturn(100);
+        when(agent.getMaxHp()).thenReturn(100);
+        when(agent.isAlive()).thenReturn(true);
+        when(agent.getTotalMoveSpeedStat()).thenReturn(speed);
+        when(agent.getTotalJumpStat()).thenReturn(100);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentMovementStateRuntime.setMovementProfile(entry, new AgentMovementProfile(speed, 100));
+        entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
+        for (int tick = 0; tick < 480 && !done.test(position.get()); tick++) {
+            AgentModeService.startMoveTo(entry, targetFor.apply(position.get()), true);
+            AgentStandaloneMoveTargetCoordinator.tickStandaloneMoveTarget(entry, agent, (tick + phase) % 2 == 0);
+        }
+        return position.get();
     }
 
     private static void assertRoute(int mapId, Point start, Point target) {

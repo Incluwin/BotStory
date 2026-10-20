@@ -139,6 +139,24 @@ public final class AgentClimbMovementService {
         AgentMovementBroadcastService.broadcastMovement(entry);
     }
 
+    /**
+     * A navigation edge's jump off a rope, on the fixed arc the graph kept the edge for (AgentJumpProbeService). Free,
+     * the flight was steered (2026-10-20): the rope's vertical traversal settles as the Agent leaves it, the next
+     * resolve finds the Agent beside the rope and plans the same jump-off again, and air steering toward that edge's
+     * start pulled the Agent back to the rope. OPQ's lobby: the jump off its x -1598 rope fell 11 px short of the ledge
+     * ending at x -1664, every time, and the lobby runner looped for two whole runs.
+     */
+    public static void jumpOffRopeOnPlannedArc(AgentRuntimeEntry entry, Character agent, int dx) {
+        jumpOffRope(entry, agent, dx);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, true);
+    }
+
+    /** A navigation edge's jump from a rope to the next one, on the graph's fixed arc (jumpOffRopeOnPlannedArc). */
+    public static void jumpToRopeOnPlannedArc(AgentRuntimeEntry entry, Character agent, int dx) {
+        jumpToRope(entry, agent, dx);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, true);
+    }
+
     public static void jumpToRope(AgentRuntimeEntry entry, Character agent, int dx) {
         Rope sourceRope = AgentClimbStateRuntime.climbRope(entry);
         double airVelX = AgentMovementKinematicsService.ropeJumpVelocityX(

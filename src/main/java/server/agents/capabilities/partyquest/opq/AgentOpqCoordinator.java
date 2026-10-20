@@ -15,6 +15,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
+import server.agents.capabilities.partyquest.AgentPartyQuestHaste;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.perception.AgentMapPerception;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
@@ -59,6 +60,10 @@ final class AgentOpqCoordinator {
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.REWARD_REFUSALS_MAX");
     private static final long ENTRY_HOLD_GRACE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS");
+    static final int LOUNGE_JUMP = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.LOUNGE_JUMP");
+    /** The lounge subroom a base jump reaches: 920010604 through in03, down the rope below the lounge's door. */
+    static final int LOUNGE_LOW_SUBROOM = AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(3);
     private static final int LOOT_RADIUS = server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
     private static final Point ENTRANCE_HANDOFF = new Point(170, 96);
     private static final Point ENTRANCE_EAK = new Point(377, 66);
@@ -70,6 +75,8 @@ final class AgentOpqCoordinator {
     private static final Point LOBBY_SECOND_ROPE_BOTTOM = new Point(-1777, -528);
     private static final Point LOBBY_SECOND_ROPE_TOP = new Point(-1777, -905);
     private static final Point LOBBY_UPPER_PLATFORM = new Point(-1717, -926);
+    /** Where the way-up runner stops before its last steps to the long rope's launch at x -108 (wayUpAscentTarget). */
+    private static final Point WAY_UP_LAUNCH_STAGING = new Point(-114, -846);
     private static final Point ROOT_POT = new Point(-755, 19);
     static final Point MINERVA_BASE = new Point(-48, -916);
 
@@ -521,6 +528,11 @@ final class AgentOpqCoordinator {
         }
     }
 
+    /**
+     * Each lounge runner without an open subroom takes the first open one nobody holds that it can reach: a climber
+     * (climbsLounge) any of the four, the others only the low one (LOUNGE_LOW_SUBROOM), as the rest sit up ledges a
+     * base jump does not reach (2026-10-20 live: a Fighter given the first subroom stood at the door for 43 minutes).
+     */
     static void assignLoungeSubrooms(AgentOpqSession session) {
         List<AgentOpqMemberState> runners = counted(session).stream()
                 .filter(m -> m.role() == AgentOpqMemberState.Role.LOUNGE_RUNNER).toList();
@@ -530,8 +542,10 @@ final class AgentOpqCoordinator {
         for (AgentOpqMemberState runner : runners) {
             int current = runner.assignedSubroomMapId();
             if (current > 0 && !session.loungeSubroomComplete(current)) continue;
+            boolean climber = climbsLounge(runner.characterId());
             int next = AgentOpqDefinition.LOUNGE_ROOM_MAPS.stream()
                     .filter(id -> !session.loungeSubroomComplete(id) && !occupied.contains(id))
+                    .filter(id -> climber || id == LOUNGE_LOW_SUBROOM)
                     .findFirst().orElse(0);
             runner.assign(AgentOpqMemberState.Role.LOUNGE_RUNNER, AgentOpqDefinition.Room.LOUNGE, next);
             if (next > 0) occupied.add(next);
@@ -758,6 +772,11 @@ final class AgentOpqCoordinator {
         }
         int targetRoom = member.assignedSubroomMapId();
         Integer portal = AgentOpqDefinition.LOUNGE_SUBROOM_ENTRY_PORTALS.get(targetRoom);
+        if (portal != null && targetRoom != LOUNGE_LOW_SUBROOM && AgentPartyQuestHaste.needsHaste(agent, LOUNGE_JUMP)
+                && AgentPartyQuestHaste.castHaste(entry, agent)) {
+            member.deferUntil(nowMs + ACTION_RETRY_MS); // its Haste on before the ledges up to the high subrooms
+            return;
+        }
         if (portal != null) {
             if (portal != 6 && agent.getPosition().y > -1_760) {
                 tickLoungePortalDiscovery(session, entry, agent, member, nowMs);
@@ -884,30 +903,26 @@ final class AgentOpqCoordinator {
     }
 
     private static void navigateWayUpInitialAscent(AgentRuntimeEntry entry, Character agent) {
-        Point position = agent.getPosition();
+        ACTIONS.navigate(entry, wayUpAscentTarget(agent.getPosition()), true);
+    }
+
+    /**
+     * Where the way-up runner heads below the first portal row. The long rope (x -43, y -1623 to -878) hangs 32 px above
+     * the platform at y -846 and 64 px beyond its end: the graph's ground-to-rope edge onto it launches from x -108 with
+     * the climbing intent a grab needs (2026-10-20 live: an authored jump from x -117 had none, passed the rope below
+     * its bottom, and the runner fell back to y -406 for the whole run). The launch is 1 px from the platform's end,
+     * so the runner stops at WAY_UP_LAUNCH_STAGING first: walked into at speed, the launch is overrun off the end.
+     */
+    static Point wayUpAscentTarget(Point position) {
         int y = position.y;
-        Point target;
-        if (y > -540) target = new Point(-176, -551);
-        else if (y > -820) target = new Point(-173, -844);
-        else if (y > -1_590) {
-            // The long rope begins just beyond the right edge of this platform.
-            // Walk to the authored jump launch, then use ordinary jump physics so
-            // the airborne rope-grab service can attach; the graph cannot model
-            // this ground-to-rope gap as a direct climb edge.
-            if (Math.abs(position.x + 43) <= 18 && y <= -870) {
-                target = new Point(-43, -1_623);
-            } else if (position.x < -118) {
-                target = new Point(-112, -846);
-            } else {
-                ACTIONS.jump(entry, 1);
-                return;
-            }
+        if (y > -540) return new Point(-176, -551);
+        if (y > -820) return new Point(-173, -844);
+        if (y > -1_590) {
+            return position.x < WAY_UP_LAUNCH_STAGING.x - 6 && y > -870
+                    ? new Point(WAY_UP_LAUNCH_STAGING) : new Point(-43, -1_623);
         }
-        else if (y > -1_840) target = Math.abs(position.x - 178) > 28
-                ? new Point(178, -1_664) : new Point(178, -1_862);
-        else target = Math.abs(position.x - 100) > 28
-                ? new Point(100, -1_866) : new Point(100, -2_022);
-        ACTIONS.navigate(entry, target, true);
+        if (y > -1_840) return Math.abs(position.x - 178) > 28 ? new Point(178, -1_664) : new Point(178, -1_862);
+        return Math.abs(position.x - 100) > 28 ? new Point(100, -1_866) : new Point(100, -2_022);
     }
 
     private static void configureWayUpLevers(AgentOpqSession session, AgentRuntimeEntry entry,
@@ -1611,6 +1626,12 @@ final class AgentOpqCoordinator {
     private static boolean near(Point first, Point second, int radius) {
         return first != null && second != null && Math.abs(first.x - second.x) <= radius
                 && Math.abs(first.y - second.y) <= radius;
+    }
+
+    /** Whether the companion reaches the lounge's ledges: its jump with its Haste is LOUNGE_JUMP or more. */
+    static boolean climbsLounge(int characterId) {
+        Character companion = character(characterId);
+        return companion != null && AgentPartyQuestHaste.jumpWithHaste(companion) >= LOUNGE_JUMP;
     }
 
     static Character character(int id) {

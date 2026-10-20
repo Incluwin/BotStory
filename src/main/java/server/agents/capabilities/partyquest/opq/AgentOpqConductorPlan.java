@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.opq;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,11 @@ import java.util.Set;
  * open rooms nobody works (walkway, storage, lobby, the way up, the lounge), then the sealed room once three are free
  * for its three platforms, then help in the lounge once the sealed room is staffed or done; the rest wait in the
  * centre. With five companions the first pass gives each of them one of those five rooms.
+ * <p>
+ * 2026-10-20 (live run: a Fighter stood at the lounge's door for 43 minutes): three of the lounge's four subrooms sit up
+ * ledges a base jump cannot reach, so the lounge wants a climber (a companion whose jump with its Haste reaches
+ * AgentOpqCoordinator.LOUNGE_JUMP). A climber the pass hands another room swaps with the non-climber it hands the
+ * lounge, and a free climber joins a lounge none of whose workers climbs; a companion already working keeps its room.
  */
 final class AgentOpqConductorPlan {
     /** The rooms a single companion works, in the order free companions take them. */
@@ -33,8 +39,16 @@ final class AgentOpqConductorPlan {
     /** What a companion does this pass. */
     enum Duty { ROOM, CARRY, WAIT }
 
-    /** One companion as the plan reads it: the room it works now (null for none) and whether it carries a piece. */
-    record Companion(int id, AgentOpqDefinition.Room room, boolean carrying) { }
+    /**
+     * One companion as the plan reads it: the room it works now (null for none), whether it carries a piece and
+     * whether it climbs the lounge's ledges.
+     */
+    record Companion(int id, AgentOpqDefinition.Room room, boolean carrying, boolean climber) {
+        /** A companion that climbs (the plan before the lounge's ledges were read). */
+        Companion(int id, AgentOpqDefinition.Room room, boolean carrying) {
+            this(id, room, carrying, true);
+        }
+    }
 
     /** A companion's assignment: its duty and, for ROOM, the room. */
     record Assignment(Duty duty, AgentOpqDefinition.Room room) {
@@ -58,10 +72,15 @@ final class AgentOpqConductorPlan {
             else if (companion.carrying()) plan.put(companion.id(), Assignment.CARRY);
             else free.add(companion.id());
         }
+        Set<Integer> taken = new HashSet<>();
         for (AgentOpqDefinition.Room room : SOLO_ROOMS) {
             if (!complete.contains(room) && owners.get(room).isEmpty() && !free.isEmpty()) {
+                taken.add(free.get(0));
                 owners.get(room).add(free.remove(0));
             }
+        }
+        if (!complete.contains(AgentOpqDefinition.Room.LOUNGE)) {
+            seatAClimberInTheLounge(owners, free, taken, climbers(ordered));
         }
         List<Integer> holders = owners.get(AgentOpqDefinition.Room.SEALED);
         boolean sealedOpen = !complete.contains(AgentOpqDefinition.Room.SEALED);
@@ -77,6 +96,40 @@ final class AgentOpqConductorPlan {
         Map<Integer, Assignment> byId = new LinkedHashMap<>();
         ordered.forEach(companion -> byId.put(companion.id(), plan.get(companion.id())));
         return byId;
+    }
+
+    private static Set<Integer> climbers(List<Companion> companions) {
+        Set<Integer> ids = new HashSet<>();
+        companions.stream().filter(Companion::climber).forEach(companion -> ids.add(companion.id()));
+        return ids;
+    }
+
+    /**
+     * The lounge wants a climber. When none of its workers climbs, a climber this pass handed another room takes the
+     * lounge and the non-climber this pass handed the lounge takes that room; failing that, a free climber joins it.
+     * {@code taken}: the companions this pass handed a room.
+     */
+    private static void seatAClimberInTheLounge(Map<AgentOpqDefinition.Room, List<Integer>> owners, List<Integer> free,
+                                                Set<Integer> taken, Set<Integer> climbers) {
+        List<Integer> lounge = owners.get(AgentOpqDefinition.Room.LOUNGE);
+        if (lounge.stream().anyMatch(climbers::contains)) return;
+        Integer newLounger = lounge.stream().filter(taken::contains).findFirst().orElse(null);
+        if (newLounger != null) {
+            for (AgentOpqDefinition.Room room : SOLO_ROOMS) {
+                List<Integer> workers = owners.get(room);
+                if (room == AgentOpqDefinition.Room.LOUNGE || workers.size() != 1) continue;
+                Integer worker = workers.get(0);
+                if (taken.contains(worker) && climbers.contains(worker)) {
+                    workers.set(0, newLounger);
+                    lounge.set(lounge.indexOf(newLounger), worker);
+                    return;
+                }
+            }
+        }
+        free.stream().filter(climbers::contains).findFirst().ifPresent(climber -> {
+            free.remove(climber);
+            lounge.add(climber);
+        });
     }
 
     /** The role a companion working {@code room} holds (the stock roles, so the room workers run unchanged). */

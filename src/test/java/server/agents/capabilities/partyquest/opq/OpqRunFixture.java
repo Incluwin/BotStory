@@ -88,6 +88,8 @@ final class OpqRunFixture implements AutoCloseable {
         when(member.getMap()).thenReturn(map);
         when(member.getMapId()).thenReturn(AgentOpqDefinition.CENTER_MAP);
         when(member.getEventInstance()).thenReturn(event);
+        // a geared jump that climbs the lounge's ledges (AgentOpqCoordinator.climbsLounge); a test lowers it
+        when(member.getTotalJumpStat()).thenReturn(123);
         return member;
     }
 
