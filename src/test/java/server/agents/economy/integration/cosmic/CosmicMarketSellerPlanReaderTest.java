@@ -123,6 +123,46 @@ class CosmicMarketSellerPlanReaderTest {
         assertTrue(plan.preferredRoomMapId() <= 910000004);
     }
 
+    @Test
+    void neverSellsTheCrimsonwoodKeysToAnNpc() {
+        int chair = 3010000;
+        EconomyCatalog catalog = new EconomyCatalog() {
+            @Override public String version() { return "test"; }
+            @Override public Optional<ItemFact> item(int id) { return Optional.empty(); }
+            @Override public List<MonsterDropFact> monsterDrops(int monsterId) { return List.of(); }
+            @Override public Optional<NpcShopFact> npcShop(int npcId) { return Optional.empty(); }
+        };
+        Character agent = mock(Character.class);
+        Inventory setup = mock(Inventory.class);
+        for (InventoryType type : List.of(InventoryType.EQUIP, InventoryType.USE, InventoryType.ETC)) {
+            Inventory inventory = mock(Inventory.class);
+            when(inventory.list()).thenReturn(List.of());
+            when(agent.getInventory(type)).thenReturn(inventory);
+        }
+        when(agent.getInventory(InventoryType.SETUP)).thenReturn(setup);
+        List<Item> held = new java.util.ArrayList<>();
+        short slot = 1;
+        for (int itemId : List.of(3992039, 3992040, 3992041, chair)) {
+            Item item = mock(Item.class);
+            when(item.getItemId()).thenReturn(itemId);
+            when(item.getQuantity()).thenReturn((short) 1);
+            when(item.getPosition()).thenReturn(slot++);
+            held.add(item);
+        }
+        when(setup.list()).thenReturn(held);
+        when(agent.getId()).thenReturn(1);
+        when(agent.getName()).thenReturn("Seller");
+        CosmicMarketSellerPlanReader reader = new CosmicMarketSellerPlanReader(catalog, 1012004,
+                16, 5140000, .15, .75, (id, quantity) -> 100);
+
+        MarketSellerPlan plan = reader.read(agent, profile(), new PrivateMarketKnowledge(),
+                List.of(), Instant.parse("2026-01-01T00:00:00Z"));
+
+        assertEquals(List.of(chair), plan.npcSales().stream().map(MarketSellerPlan.NpcSale::itemId).toList(),
+                "the chair goes to the NPC; the Marker, the Map and the Keystone stay");
+        assertTrue(plan.stallListings().isEmpty());
+    }
+
     private static CommerceParticipant profile() {
         return new CommerceParticipant("agent", "warrior", .5, .5, .5, .5,
                 .5, 1, 24, .5, .5);

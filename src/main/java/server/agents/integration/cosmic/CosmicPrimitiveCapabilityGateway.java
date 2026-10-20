@@ -617,7 +617,10 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
         Quest quest = Quest.getInstance(questId);
         boolean succeeded;
         if (quest.hasScriptRequirement(false)) {
-            succeeded = CosmicHeadlessQuestScriptGateway.start(agent, questId, npcId);
+            // As QuestActionHandler's scripted start: the script runs only for a quest that may start, so a bot
+            // cannot begin Storming the Castle (8223) without Stemming the Tide (8230) in progress.
+            succeeded = quest.canStart(agent, npcId)
+                    && CosmicHeadlessQuestScriptGateway.start(agent, questId, npcId);
         } else {
             quest.start(agent, npcId);
             int status = agent.getQuestStatus(questId);

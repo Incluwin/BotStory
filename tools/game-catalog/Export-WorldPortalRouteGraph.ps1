@@ -9,6 +9,8 @@ param(
 # neither lies in an excluded range (the ferry, crane and boat ride maps 2000900xx). Victoria Island
 # (100000000-129999999) stays in victoria-portal-route-graph.json. The group table is written into the
 # catalog, and AgentWorldPortalRouteGraphFreshnessTest re-derives the edges from WZ with it.
+# The Haunted House 682000000 is part of Masteria: the NLC taxi lands there, and its right portal is the only
+# way into the Phantom Forest (Crimsonwood). Only that one map joins the group, not the mansion behind it.
 
 $ErrorActionPreference = "Stop"
 
@@ -19,6 +21,7 @@ $groups = @(
     [ordered]@{ id = "singapore"; firstMapId = 540000000; endMapId = 550000000 },
     [ordered]@{ id = "malaysia"; firstMapId = 550000000; endMapId = 560000000 },
     [ordered]@{ id = "masteria"; firstMapId = 600000000; endMapId = 620000000 },
+    [ordered]@{ id = "masteria"; firstMapId = 682000000; endMapId = 682000001 },
     [ordered]@{ id = "zipangu"; firstMapId = 800000000; endMapId = 810000000 }
 )
 $excludedRanges = @(

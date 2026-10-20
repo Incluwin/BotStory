@@ -21,6 +21,12 @@ import java.util.*;
 
 /** Reads only actual inventory plus this seller's private observations. */
 public final class CosmicMarketSellerPlanReader {
+    /**
+     * Crimsonwood keys a player never sells, although an NPC pays 100 mesos for each: the Marker of Heroism, the Map
+     * of Phantom Forest (only its quest's end gives it, and Joko and Fiona open with it held) and the Crimsonwood
+     * Keystone (the Gate into the Keep lets only holders in).
+     */
+    private static final Set<Integer> KEPT_KEY_ITEM_IDS = Set.of(3992039, 3992040, 3992041);
     private final EconomyCatalog catalog;
     private final int dispositionNpcId;
     private final int maximumListings;
@@ -139,7 +145,8 @@ public final class CosmicMarketSellerPlanReader {
         for (InventoryType type : List.of(InventoryType.EQUIP, InventoryType.USE,
                 InventoryType.SETUP, InventoryType.ETC)) {
             for (Item item : agent.getInventory(type).list()) {
-                if (item.getQuantity() <= 0 || item.getItemId() == permitItemId) continue;
+                if (item.getQuantity() <= 0 || item.getItemId() == permitItemId
+                        || KEPT_KEY_ITEM_IDS.contains(item.getItemId())) continue;
                 int protectedQuantity = Math.min(item.getQuantity(),
                         reserved.getOrDefault(item.getItemId(), 0));
                 if (protectedQuantity > 0) reserved.compute(item.getItemId(),

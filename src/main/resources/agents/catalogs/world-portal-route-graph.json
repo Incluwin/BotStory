@@ -2,7 +2,7 @@
     "schemaVersion":  1,
     "catalogId":  "world-standard-portal-route-graph-v1",
     "sourcePath":  "wz/Map.wz/Map",
-    "sourceSha256":  "90d309df2225132b65d8c907ae5fc21253afa8c86ad896a123187763ee0484df",
+    "sourceSha256":  "bc541f01d86c07243752eb405f3fff08f232ac298d1cc3f4273a3d56da72483d",
     "groups":  [
                    {
                        "id":  "ereve",
@@ -33,6 +33,11 @@
                        "id":  "masteria",
                        "firstMapId":  600000000,
                        "endMapId":  620000000
+                   },
+                   {
+                       "id":  "masteria",
+                       "firstMapId":  682000000,
+                       "endMapId":  682000001
                    },
                    {
                        "id":  "zipangu",
@@ -5225,6 +5230,10 @@
                       "toMapId":  610010201
                   },
                   {
+                      "fromMapId":  610010000,
+                      "toMapId":  682000000
+                  },
+                  {
                       "fromMapId":  610010001,
                       "toMapId":  610010000
                   },
@@ -5243,6 +5252,10 @@
                   {
                       "fromMapId":  610010002,
                       "toMapId":  610010201
+                  },
+                  {
+                      "fromMapId":  610010002,
+                      "toMapId":  682000000
                   },
                   {
                       "fromMapId":  610010003,
@@ -5687,6 +5700,14 @@
                   {
                       "fromMapId":  610030800,
                       "toMapId":  610030010
+                  },
+                  {
+                      "fromMapId":  682000000,
+                      "toMapId":  610010000
+                  },
+                  {
+                      "fromMapId":  682000000,
+                      "toMapId":  610010002
                   },
                   {
                       "fromMapId":  800000000,

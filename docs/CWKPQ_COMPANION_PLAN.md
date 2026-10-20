@@ -59,6 +59,25 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
    members.
 6. A new crew C under a new GM test owner is raised for the live checks. Crews A and B stay as they are.
 
+## Progress
+
+- **C0** runs in its own session (offline nav probes and data checks); results go to docs/CWKPQ_C0_RESULTS.md.
+- **C1, first part, built 2026-10-19 on feat/cwkpq:**
+  - Haunted House 682000000 joins the masteria route group (exporter + regenerated graph: 4 new edges with Bent
+    Tree 610010000 and 610010002).
+  - Travel legs `new-leaf-city-to-haunted-house` and back (NLC taxi 9201056, 15,000 mesos). Kerning to Phantom
+    Road now routes by the subway and the taxi (AgentTravelLegRouteTest).
+  - A bot's scripted quest start runs only when `Quest.canStart` allows it, as the client handler does
+    (CosmicPrimitiveCapabilityGateway.startQuest). Scripted completes are unchanged; the client also checks
+    `canComplete` there, which is a possible later fix.
+  - Economy sell plans never sell the Marker 3992039, the Map 3992040 or the Keystone 3992041 to an NPC (all three
+    are trade-blocked, so stalls already refuse them).
+- **C1, left:** Valley of Heroes climb edges wait for the C0 probe. Two items moved:
+  - The Firebrand revive link needs no export change: the knowledge file's mobs already carry a `revive` column
+    (9400577 revives into 9400578). C2's hunt choice reads it.
+  - Quest prereqs in the knowledge export move to C2 item 7, together with the chat answer that uses them, so the
+    export does not carry a column nothing reads.
+
 ## Questions for you (answered, kept for the record)
 
 1. **Keystone errand: real hunting or a ledger?** Recommended: a companion without a keystone hunts for real (live)

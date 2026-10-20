@@ -14,6 +14,9 @@ import server.maps.MapleMap;
 import server.quest.Quest;
 
 import java.awt.Point;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class CosmicPrimitiveCapabilityGatewayTest {
@@ -102,5 +106,34 @@ class CosmicPrimitiveCapabilityGatewayTest {
 
         assertEquals(1, CosmicPrimitiveCapabilityGateway.INSTANCE
                 .questProgress(agent, 2314, 2314));
+    }
+
+    @Test
+    void aScriptedStartRunsOnlyWhenTheQuestMayStart() {
+        int lukan = 9201098;
+        Map<Integer, QuestStatus.Status> log = new HashMap<>();
+        Character agent = mock(Character.class);
+        when(agent.getLevel()).thenReturn(90);
+        when(agent.getQuest(any(Quest.class))).thenAnswer(call -> {
+            Quest quest = call.getArgument(0);
+            QuestStatus status = mock(QuestStatus.class);
+            when(status.getStatus()).thenReturn(log.getOrDefault((int) quest.getId(),
+                    QuestStatus.Status.NOT_STARTED));
+            when(status.getInfoEx()).thenReturn(List.of());
+            return status;
+        });
+        try (MockedStatic<CosmicHeadlessQuestScriptGateway> scripts =
+                     mockStatic(CosmicHeadlessQuestScriptGateway.class)) {
+            scripts.when(() -> CosmicHeadlessQuestScriptGateway.start(agent, 8223, lukan)).thenReturn(true);
+
+            log.put(8222, QuestStatus.Status.COMPLETED);
+            assertFalse(CosmicPrimitiveCapabilityGateway.INSTANCE.startQuest(agent, 8223, lukan),
+                    "Storming the Castle waits for Stemming the Tide in progress");
+            scripts.verify(() -> CosmicHeadlessQuestScriptGateway.start(agent, 8223, lukan), never());
+
+            log.put(8230, QuestStatus.Status.STARTED);
+            assertTrue(CosmicPrimitiveCapabilityGateway.INSTANCE.startQuest(agent, 8223, lukan));
+            scripts.verify(() -> CosmicHeadlessQuestScriptGateway.start(agent, 8223, lukan));
+        }
     }
 }

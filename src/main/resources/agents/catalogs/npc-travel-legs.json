@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "catalogId": "npc-travel-legs-v1",
   "source": "scripts/npc/<npcId>.js (selections, fares, tickets, warps), scripts/event/{Hak,Subway,AirPlane}.js and MapleMap ride timers, NPC placement from wz/Map.wz life",
-  "note": "Rides the walking graphs cannot see. A leg boards at fromMapId by talking to npcId with these dialogue selections; it lands on toMapId at once, or after waiting on one of rideMapIds (a waiting room or the ride itself) until the server moves the rider on. A ticket is bought from its seller first. The Ellinia-Orbis boat is taken with the boarding NPC's 'instantly' option. Left out: Ereve and Rien (their docks are not joined to their towns by plain portals, so a bot would be stranded), Florina's return (it goes to a saved location), taxis (shortcuts, not the way) and the Zipangu world tour.",
+  "note": "Rides the walking graphs cannot see. A leg boards at fromMapId by talking to npcId with these dialogue selections; it lands on toMapId at once, or after waiting on one of rideMapIds (a waiting room or the ride itself) until the server moves the rider on. A ticket is bought from its seller first. The Ellinia-Orbis boat is taken with the boarding NPC's 'instantly' option. Left out: Ereve and Rien (their docks are not joined to their towns by plain portals, so a bot would be stranded), Florina's return (it goes to a saved location), taxis (shortcuts, not the way; the one exception is the NLC taxi to the Haunted House, the only way into the Phantom Forest and Crimsonwood) and the Zipangu world tour.",
   "legs": [
     {
       "id": "ellinia-to-orbis", "fromMapId": 101000300, "npcId": 1032008, "selections": [0], "toMapId": 200000100,
@@ -65,6 +65,8 @@
       "fare": 0, "rideMapIds": [600010002, 600010003],
       "ticket": { "itemId": 4031713, "sellerMapId": 600010001, "sellerNpcId": 9201057, "selections": [0], "price": 5000 }
     },
+    { "id": "new-leaf-city-to-haunted-house", "fromMapId": 600000000, "npcId": 9201056, "selections": [], "toMapId": 682000000, "fare": 15000, "rideMapIds": [] },
+    { "id": "haunted-house-to-new-leaf-city", "fromMapId": 682000000, "npcId": 9201056, "selections": [], "toMapId": 600000000, "fare": 15000, "rideMapIds": [] },
     {
       "id": "kerning-to-singapore", "fromMapId": 103000000, "npcId": 9270041, "selections": [1, 0], "toMapId": 540010000,
       "fare": 0, "rideMapIds": [540010100, 540010101],

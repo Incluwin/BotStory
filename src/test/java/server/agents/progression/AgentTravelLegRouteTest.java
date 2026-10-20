@@ -59,6 +59,18 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void reachesLukanOnPhantomRoadByTheSubwayTheNlcTaxiAndTheHauntedHouse() {
+        List<AgentVictoriaTrainingRouteCatalog.Step> path = AgentVictoriaTrainingRouteCatalog.ridePath(
+                103000000, 610010003, Set.of(), leg -> true, RIDE_HOP_COST);
+
+        assertEquals(List.of("kerning-to-new-leaf-city", "new-leaf-city-to-haunted-house"), legs(path));
+        assertEquals(610010003, path.get(path.size() - 1).toMapId());
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(103000000, 610010003, Set.of(),
+                leg -> !leg.id().equals("new-leaf-city-to-haunted-house"), RIDE_HOP_COST),
+                "without the taxi no portal leads from New Leaf City into the Phantom Forest");
+    }
+
+    @Test
     void aLegItCannotUseIsLeftOutAndWithoutItThereIsNoWay() {
         assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(
                 200000000, 220000000, Set.of(), leg -> !leg.id().equals("orbis-to-ludibrium"), RIDE_HOP_COST));
