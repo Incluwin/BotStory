@@ -97,6 +97,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionRestock restock;
     private final server.living.roster.GmLevelHolds gmLevelHolds;
     private final server.living.roster.JobErrands jobErrands;
+    private final server.living.roster.KeystoneErrands keystoneErrands;
     private final server.living.roster.CompanionBossRuns bossRuns;
     private final server.living.roster.ui.NativeCrewWindow crewWindow;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
@@ -150,6 +151,7 @@ public final class LivingWorld {
         this.restock = new server.living.roster.CompanionRestock(this); // companions restock their own potions
         this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
         this.jobErrands = new server.living.roster.JobErrands(this); // companions go for their next job (2026-10-05)
+        this.keystoneErrands = new server.living.roster.KeystoneErrands(this); // companions earn their keystones (2026-10-19)
         this.bossRuns = new server.living.roster.CompanionBossRuns(this); // P7: boss runs with companions
         this.crewWindow = new server.living.roster.ui.NativeCrewWindow(this); // P10: the native Crew window
     }
@@ -231,6 +233,8 @@ public final class LivingWorld {
         // companions go to their instructor for their next job by themselves; after the boot reconciliation, so the
         // errands a restart cut short are carried on over reconciled rows (2026-10-05)
         world.jobErrands.install();
+        // and go for their Crimsonwood Keystone when their owner asks; the same restart rule (2026-10-19)
+        world.keystoneErrands.install();
         // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         // the yields live bench slices measured (companion_yield), before the first ledger tick credits them
@@ -245,7 +249,10 @@ public final class LivingWorld {
         TimerManager timers = TimerManager.getInstance();
         // the job errands out: a return its owner was offline for, one called back meanwhile (JobErrands)
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
-                () -> world.executor.submit("job_errands.sweep", world.jobErrands::sweep),
+                () -> {
+                    world.executor.submit("job_errands.sweep", world.jobErrands::sweep);
+                    world.executor.submit("keystone_errands.sweep", world.keystoneErrands::sweep);
+                },
                 world.config.COMPANION_JOB_ERRAND_SWEEP_MS, world.config.COMPANION_JOB_ERRAND_SWEEP_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);
@@ -562,6 +569,11 @@ public final class LivingWorld {
     /** Companions going for their next job by themselves (2026-10-05): the errands out. */
     public server.living.roster.JobErrands jobErrands() {
         return jobErrands;
+    }
+
+    /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */
+    public server.living.roster.KeystoneErrands keystoneErrands() {
+        return keystoneErrands;
     }
 
     /** P6: party quests with companions, which start at the quest's entry NPC (Lakelis). */

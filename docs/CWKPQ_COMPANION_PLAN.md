@@ -77,6 +77,26 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     (9400577 revives into 9400578). C2's hunt choice reads it.
   - Quest prereqs in the knowledge export move to C2 item 7, together with the chat answer that uses them, so the
     export does not carry a column nothing reads.
+- **C2 built 2026-10-19 on feat/cwkpq** (`server.living.roster.KeystoneErrands`, lines in `KeystoneErrandLines`):
+  - The owner asks in chat: "<name> get your keystone" (also "get a keystone", "<name> keystone") or "everyone get
+    keystones". Out with its owner, the companion says why and walks out keeping its seat; benched, it goes between
+    its duties. Below COMPANION_KEYSTONE_ERRAND_MIN_LEVEL (85), holding a keystone already, or locked out (8230
+    finished before 8223 began), it says so and stays.
+  - The step is read from its own quest log and bags each time it is loaded, so a GM change, a restart or the owner's
+    quest mirror never makes it repeat a step. Steps: start 8222 at Lukan, hunt badges in Stormhall 610030014 (only
+    Stormbreakers spawn there), hand in, start 8230 at Jack in the Cavern of Pain, start 8223 at Lukan, hunt in the
+    Cavern of Fortitude 610020014 (only Windraiders, Firebrands and Nightshadows), hand in. Firebrands are hunted in
+    their first form. Two words with Lukan in a row are said without leaving him. A lost keystone is re-crafted by
+    Lukan's script.
+  - Talk steps are town-pool bench slices; hunts are field-pool slices fighting only the marks. Between live slices
+    the ledger credits each mark at the rate the companion measured live there (no live measurement, no credit),
+    capped at what the step needs, and writes it into the quest log and bag at the next load. A restart loses unwritten
+    credit, never quest progress.
+  - The Crew window says what it is doing ("hunting Stormbreakers for Lukan"); Crew suggestions and Party Search skip
+    a companion out for its keystone. Kill switch COMPANION_KEYSTONE_ERRANDS_ENABLED (on, since a companion goes only
+    when asked). Talk and walk times reuse the job errands' keys.
+  - Not built: the chat answer about the keystone path (item 7) and the knowledge export prereqs it needs; a full
+    SETUP tab when 8223 pays the keystone (the hand-in fails three times and the errand ends).
 
 ## Questions for you (answered, kept for the record)
 

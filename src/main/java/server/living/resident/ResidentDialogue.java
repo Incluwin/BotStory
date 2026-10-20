@@ -119,6 +119,7 @@ public final class ResidentDialogue {
     private static final Pattern EVERYONE_BENCH = Pattern.compile("^(everyone|all|everybody) (bench|rest|go to camp)$");
     private static final Pattern EVERYONE_PARK = Pattern.compile("^(park|park (everyone|all|everybody)|(everyone|all|everybody) park)$");
     private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
+    private static final Pattern EVERYONE_KEYSTONE = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?keystones$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
     private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
 
@@ -761,6 +762,10 @@ public final class ResidentDialogue {
                     persona -> world.roster().call(owner, persona)));
             return true;
         }
+        if (EVERYONE_KEYSTONE.matcher(normalized).matches() && world.roster().hasCompanions(owner)) {
+            verbs.show(owner, "roster.keystone_all", 5, () -> keystones(owner));
+            return true;
+        }
         // "<name> <assignment or haul command>"
         String[] words = normalized.split(" ");
         if (words.length >= 2) {
@@ -798,6 +803,8 @@ public final class ResidentDialogue {
             case "send it", "mail it", "duey it", "send the haul": verbs.say(owner, "roster.send", () -> world.roster().sendIt(owner, persona)); return true;
             case "bank it", "deposit it", "bank the meso": verbs.say(owner, "roster.bank", () -> world.roster().bankIt(owner, persona)); return true;
             case "release", "youre free", "go home": verbs.say(owner, "roster.release", () -> world.contracts().dismiss(owner, persona)); return true;
+            case "get your keystone", "get a keystone", "get the keystone", "go get your keystone", "go get a keystone",
+                    "keystone": verbs.say(owner, "roster.keystone", () -> world.keystoneErrands().ask(owner, persona)); return true;
             default: break;
         }
         // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
@@ -854,6 +861,18 @@ public final class ResidentDialogue {
      * Runs {@code verb} (on companion-ops) for each companion {@code which} picks; one line each, except that the
      * leader cap is said once (the rest would only repeat it).
      */
+    /** "everyone get keystones": each companion out or benched answers for its own Crimsonwood Keystone. */
+    private List<String> keystones(Character owner) {
+        List<String> lines = new ArrayList<>();
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona != null && (entry.state() == RosterState.ACTIVE || entry.state() == RosterState.BENCHED)) {
+                lines.add(world.keystoneErrands().ask(owner, persona));
+            }
+        }
+        return lines;
+    }
+
     private List<String> everyone(Character owner, Predicate<RosterEntry> which,
                                   Function<Persona, RosterResult> verb) {
         List<String> lines = new ArrayList<>();

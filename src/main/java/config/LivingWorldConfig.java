@@ -328,6 +328,16 @@ public class LivingWorldConfig {
     public int COMPANION_JOB_ERRAND_RETRY_MS = 1800000;
     /** How often the errands out are looked at (a return its owner was offline for, one called back meanwhile). */
     public int COMPANION_JOB_ERRAND_SWEEP_MS = 30000;
+    /**
+     * A companion its owner asks ("casse get your keystone") goes for its own Crimsonwood Keystone (KeystoneErrands,
+     * docs/CWKPQ_COMPANION_PLAN.md A3): Lukan's and Jack's quests and the hunts for them, live when a seat is free,
+     * else on the ledger at its own measured rates. It walks and talks as a job errand does (COMPANION_JOB_ERRAND_TALK_MS,
+     * _WALK_MAX_MS) and is looked at on the job errands' sweep. false = the kill switch: no companion goes, and one out
+     * is called back.
+     */
+    public boolean COMPANION_KEYSTONE_ERRANDS_ENABLED = true;
+    /** The level a companion must have to go: the hunts are Lv80-100 mobs (Lukan's own gate is 70). */
+    public int COMPANION_KEYSTONE_ERRAND_MIN_LEVEL = 85;
 
     // Party Search fills from the bench (P9 flow 11, PartySearchBench)
     /**
@@ -697,6 +707,9 @@ public class LivingWorldConfig {
         }
         if (COMPANION_JOB_ERRAND_SWEEP_MS <= 0) {
             throw new IllegalArgumentException("living_world.COMPANION_JOB_ERRAND_SWEEP_MS must be > 0");
+        }
+        if (COMPANION_KEYSTONE_ERRAND_MIN_LEVEL < 70 || COMPANION_KEYSTONE_ERRAND_MIN_LEVEL > 200) {
+            throw new IllegalArgumentException("living_world.COMPANION_KEYSTONE_ERRAND_MIN_LEVEL must be 70-200 (Lukan asks 70)");
         }
         if (COMPANION_BUDDY_FRIENDSHIP_LEVEL < 1 || COMPANION_BUDDY_FRIENDSHIP_LEVEL > 10) {
             throw new IllegalArgumentException("living_world.COMPANION_BUDDY_FRIENDSHIP_LEVEL must be 1-10");

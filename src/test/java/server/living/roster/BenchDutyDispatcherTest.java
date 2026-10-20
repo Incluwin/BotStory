@@ -100,6 +100,22 @@ class BenchDutyDispatcherTest {
     }
 
     @Test
+    void aSecondFormAheadOfTheDutyAnswersOnlyWhereTheFirstDoesNot() {
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        game.companion(ANN, "orrin", "Orrin", 907, Assignment.REST);
+        BenchHarness.FakeForm town = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);
+        BenchHarness.FakeForm job = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);
+        BenchHarness.FakeForm keystone = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);
+        game.duty.register(Assignment.REST, town);
+
+        game.duty.first(entry -> entry.personaId().equals("fenn") ? job : null);
+        game.duty.alsoFirst(entry -> keystone);
+
+        assertSame(job, game.duty.formOf(game.row(ANN, "fenn")), "its next job goes first (JobErrands)");
+        assertSame(keystone, game.duty.formOf(game.row(ANN, "orrin")), "then its keystone (KeystoneErrands)");
+    }
+
+    @Test
     void anUnregisteredFormFallsBackToTheLedger() {
         game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
         BenchHarness.FakeForm town = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);

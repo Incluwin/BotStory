@@ -341,6 +341,15 @@ public final class BenchDutyDispatcher {
         first = chooser == null ? entry -> null : chooser;
     }
 
+    /** Adds {@code chooser} after what {@link #first} takes already (a companion out for its keystone: KeystoneErrands). */
+    public void alsoFirst(Function<RosterEntry, Form> chooser) {
+        Function<RosterEntry, Form> before = first;
+        first = entry -> {
+            Form ahead = before.apply(entry);
+            return ahead != null ? ahead : chooser.apply(entry);
+        };
+    }
+
     /**
      * The form a row's next slice takes: the one {@link #first} answers for it, else its duty's (also when the chooser
      * fails: one row's errand never stops every other row's turn).

@@ -107,7 +107,9 @@ public final class CrewSuggestions {
         for (RosterEntry entry : world.roster().roster(owner)) {
             Persona persona = entry.state() == RosterState.BENCHED ? world.content().persona(entry.personaId()) : null;
             JobErrands errands = world.jobErrands();
-            if (persona == null || errands != null && errands.underway(persona.id())) {
+            KeystoneErrands keystones = world.keystoneErrands();
+            if (persona == null || errands != null && errands.underway(persona.id())
+                    || keystones != null && keystones.underway(persona.id())) {
                 continue;
             }
             int level = rested.of(owner, entry, persona);

@@ -150,6 +150,10 @@ public final class PartySearchBench {
         if (errands != null && errands.underway(persona.id())) {
             return 0; // on its way to its instructor: it answers nothing until it is back
         }
+        KeystoneErrands keystones = world.keystoneErrands();
+        if (keystones != null && keystones.underway(persona.id())) {
+            return 0; // out for its Crimsonwood Keystone: the same
+        }
         int level = rested.of(owner, entry, persona);
         if (level <= 0) {
             return 0;

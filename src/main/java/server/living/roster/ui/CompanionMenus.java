@@ -296,6 +296,11 @@ public final class CompanionMenus {
         if (instructor != null) {
             return "gone to see " + instructor;
         }
+        server.living.roster.KeystoneErrands keystones = world.keystoneErrands();
+        String keystone = keystones == null ? null : keystones.doing(view.personaId());
+        if (keystone != null) {
+            return keystone;
+        }
         if (!view.loaded() || view.state() != RosterState.ACTIVE || !world.config().COMPANION_RESTOCK_ENABLED) {
             return null;
         }
