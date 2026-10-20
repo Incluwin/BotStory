@@ -2,6 +2,7 @@ package server.agents.capabilities.expedition.boss;
 
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogScenario;
+import server.agents.capabilities.expedition.cwkpq.AgentCwkpqRun;
 import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.agents.capabilities.expedition.zakum.AgentZakumScenario;
 import server.expeditions.ExpeditionType;
@@ -151,9 +152,25 @@ public final class AgentBossRunCatalog {
             AgentBossPriorityFight.forKey("pinkbean"), true, AgentBossRules.markerItems("pinkbean"),
             AgentBossRules.neverTargetFakes("pinkbean"), true, AgentBossRunDefinition.DeathMode.REVIVE_INSIDE);
 
+    // slot: cwkpq
+    /**
+     * Crimsonwood Keep (CWKPQ plan C3), the keep's party quest run as an expedition of 6-30 at Lv90 or more, no daily
+     * quota: sign up with Jack (9201113) on the Hall to Inner Sanctum 610030020, which only a Crimsonwood Keystone
+     * (3992041) lets players into, with his registering window (no choices, as Adobis's). The Start puts everyone on
+     * the Inner Sanctum Hallway 610030100; the run plays over every stage map before the Grandmaster Council Hall
+     * 610030600, its battle map (boss-rules.json stageMaps), stage by stage (AgentCwkpqRun). The Battle Statue's third
+     * talk clears it; the Armory 610030800 is its reward room, out00 (portal 1) the way out after. No exit NPC stands
+     * in the keep. A member that dies stays down until the clear (HOLD_UNTIL_CLEAR: a revive there unregisters it and
+     * can end the run); an owner who leaves takes their party's members out with them.
+     */
+    public static final AgentBossRunDefinition CWKPQ = new AgentBossRunDefinition("cwkpq", ExpeditionType.CWKPQ,
+            610_030_020, AgentCwkpqRun.COUNCIL_HALL_MAP_ID, 610_030_800, 9_201_113, List.of(), 0, 1,
+            AgentCwkpqRun::forCompanions, false, AgentBossRules.markerItems("cwkpq"),
+            AgentBossRules.neverTargetFakes("cwkpq"), true, AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
             NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA,
-            PINKBEAN);
+            PINKBEAN, CWKPQ);
 
     private AgentBossRunCatalog() {
     }

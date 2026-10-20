@@ -1313,6 +1313,27 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * True when a character nothing has loaded holds item {@code itemId} anywhere in its saved inventory (quantity above
+     * 0): a bench ally's Crimsonwood Keystone (CompanionKeystoneGate).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public boolean holdsItem(int characterId, int itemId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT 1 FROM inventoryitems WHERE characterid = ? AND type = 1 AND itemid = ? AND quantity > 0"
+                        + " LIMIT 1")) {
+            ps.setInt(1, characterId);
+            ps.setInt(2, itemId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException failure) {
+            log.warn("inventory read failed for character {}", characterId, failure);
+            throw new ReadFailed("inventoryitems", failure);
+        }
+    }
+
     /** Keeps one companion_yield row (an upsert); false when the write failed. */
     public boolean saveCompanionYield(YieldRow row) {
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(

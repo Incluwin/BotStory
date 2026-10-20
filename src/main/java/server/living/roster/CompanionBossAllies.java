@@ -98,7 +98,9 @@ final class CompanionBossAllies {
         /** It has a trip already ("is already on the way"). */
         ON_THE_WAY,
         /** Tied to a run, in a boss run, loaded for something else than its live slice, or walking out ("busy"). */
-        BUSY
+        BUSY,
+        /** CWKPQ plan C3: it holds no Crimsonwood Keystone, and the keep's hall lets nobody in without one. */
+        NO_KEYSTONE
     }
 
     /** One benched companion of the owner's as the entry NPC's picker shows it; {@code why} null: it can be called. */
@@ -596,6 +598,7 @@ final class CompanionBossAllies {
             case NOT_READY -> name + " is not ready for this battle.";
             case ON_THE_WAY -> name + " is already on the way.";
             case BUSY -> name + " is busy right now.";
+            case NO_KEYSTONE -> name + " has no Crimsonwood Keystone yet. Tell them to get their keystone first.";
         };
     }
 
@@ -651,6 +654,14 @@ final class CompanionBossAllies {
                 log.info("boss ally call of {} for owner {} denied: no entry left today", persona.id(), trip.ownerId);
                 trips.remove(trip.personaId, trip);
                 whisper(trip, persona, BossRunLines.ALLY_QUOTA, null);
+                return;
+            }
+            CompanionKeystoneGate keystones = keystones(context.definition());
+            if (keystones != null && (known == 0 || !keystones.holdsNow(persona.id(), known))) {
+                log.info("boss ally call of {} for owner {} denied: no Crimsonwood Keystone", persona.id(),
+                        trip.ownerId);
+                trips.remove(trip.personaId, trip);
+                whisper(trip, persona, BossRunLines.ALLY_NO_KEYSTONE, null);
                 return;
             }
             world.benchDuty().endFor(persona.id(), CALLED);
@@ -1499,7 +1510,21 @@ final class CompanionBossAllies {
         if (level < definition.type().getMinLevel() || level > definition.type().getMaxLevel()) {
             return NotOffered.NOT_READY;
         }
+        CompanionKeystoneGate keystones = keystones(definition);
+        if (keystones != null && keystones.lacks(persona.id())) {
+            return NotOffered.NO_KEYSTONE;
+        }
         return arrivesAtMs + ArrivalPlacement.STAGGER_MAX_MS > deadlineMs ? NotOffered.TOO_FAR : null;
+    }
+
+    /**
+     * CWKPQ plan C3: the keystone gate when {@code definition} is Crimsonwood Keep's, whose hall lets nobody in without a
+     * Crimsonwood Keystone, and the gate is on; else null (allies load into every other boss's room as before).
+     */
+    private CompanionKeystoneGate keystones(AgentBossRunDefinition definition) {
+        CompanionBossRuns bossRuns = definition == AgentBossRunCatalog.CWKPQ ? world.bossRuns() : null;
+        CompanionKeystoneGate gate = bossRuns == null ? null : bossRuns.keystones();
+        return gate != null && gate.on() ? gate : null;
     }
 
     /** Tied to a run, in a boss run, or loaded for anything but its own live bench slice. */

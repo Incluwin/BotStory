@@ -14,6 +14,7 @@ import server.maps.MapleMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -103,6 +104,45 @@ class AgentBossDeathDepartureGateTest {
 
         assertEquals(1, townRespawns[0]);
         respawns.verify(() -> AgentRespawnCoordinator.respawnInto(any(), any(), any()), never());
+    }
+
+    // CWKPQ plan C3: hold until the clear (Crimsonwood Keep: a revive unregisters and can end the run)
+
+    @Test
+    void aDeadMemberOfAHoldingRunStaysDownWhileTheEventLivesUncleared() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
+
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L));
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 250L), "and on its next tick");
+
+        assertEquals(0, townRespawns[0]);
+        verify(event, never()).revivePlayer(any());
+        respawns.verify(() -> AgentRespawnCoordinator.respawnInto(any(), any(), any()), never());
+    }
+
+    @Test
+    void aHeldMemberRespawnsInTownOnceTheEventIsCleared() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L));
+        when(event.isEventCleared()).thenReturn(true);
+
+        assertTrue(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 250L));
+
+        assertEquals(1, townRespawns[0]);
+        verify(event, never()).revivePlayer(any());
+    }
+
+    @Test
+    void aHeldMemberRespawnsOnceTheEventIsGoneOrNoLongerHoldsIt() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
+        when(event.isEventDisposed()).thenReturn(true);
+        assertTrue(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L), "disposed");
+
+        when(event.isEventDisposed()).thenReturn(false);
+        when(thane.getEventInstance()).thenReturn(null);
+        assertTrue(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L), "unregistered");
+
+        assertEquals(2, townRespawns[0]);
     }
 
     /** Thane: a loaded INSIDE member of a run of {@code mode}, dead on the battle map in its event. */

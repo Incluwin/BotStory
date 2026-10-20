@@ -37,6 +37,64 @@ function start() {
     action(1, 0, 0);
 }
 
+// companions: Jack offers an owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES lists cwkpq)
+// and "Call allies from my bench..." (living_world.COMPANION_BOSS_ALLY_TYPES)
+function companionOffer() {
+    return Java.type('server.living.LivingWorldHooks').bossPartyOffered(cm, "cwkpq");
+}
+
+function companionRegister() {
+    return Java.type('server.living.LivingWorldHooks').bossPartyRegister(cm, "cwkpq");
+}
+
+function allyOffer() {
+    return Java.type('server.living.LivingWorldHooks').bossAlliesOffered(cm, "cwkpq");
+}
+
+function allyPicker() {
+    return Java.type('server.living.LivingWorldHooks').bossAllyPicker(cm, "cwkpq");
+}
+
+function allyCall(selection) {
+    return Java.type('server.living.LivingWorldHooks').bossAllyCall(cm, "cwkpq", selection);
+}
+
+// with companions on the list, nobody can turn some class's sigil: his refusal (null: start as stock)
+function startRefusal() {
+    return Java.type('server.living.LivingWorldHooks').cwkpqStartRefusal(cm);
+}
+
+// his choices after a member's line (status 30); null when he offers neither
+function companionChoices() {
+    var party = companionOffer();
+    var allies = allyOffer();
+    if (!party && !allies) {
+        return null;
+    }
+    return "\r\n#b" + (party ? "#L1#My party will register too.#l\r\n" : "") + (allies ? "#L3#Call allies from my bench...#l\r\n" : "") + "#L2#That's all for now.#l";
+}
+
+// his choices after the leader's list (status 2); null when he offers neither
+function leaderChoices() {
+    var party = companionOffer();
+    var allies = allyOffer();
+    if (!party && !allies) {
+        return null;
+    }
+    return (party ? "\r\n#L4#My party will register too.#l" : "") + (allies ? "\r\n#L5#Call allies from my bench...#l" : "");
+}
+
+// the bench picker's answer: with choices it loops (status 40), any other answer ends the talk
+function allyWindow(text) {
+    if (text.indexOf("#L") >= 0) {
+        cm.sendSimple(text);
+        status = 40;
+    } else {
+        cm.sendOk(text);
+        cm.dispose();
+    }
+}
+
 function action(mode, type, selection) {
 
     player = cm.getPlayer();
@@ -63,16 +121,35 @@ function action(mode, type, selection) {
                     cm.sendOk("Your expedition is already in progress, for those who remain battling lets pray for those brave souls.");
                     cm.dispose();
                 } else {
+                    var choices = leaderChoices();
+                    if (choices != null) {
+                        cm.sendSimple(list + choices);
+                        status = 2;
+                        return;
+                    }
                     cm.sendSimple(list);
                     status = 2;
                 }
             } else if (expedition.isRegistering()) { //If the expedition is registering
                 if (expedition.contains(player)) { //If you're in it but it hasn't started, be patient
+                    var choices = companionChoices();
+                    if (choices != null) {
+                        cm.sendSimple("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it." + choices);
+                        status = 30;
+                        return;
+                    }
                     cm.sendOk("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it.");
                     cm.dispose();
                 } else { //If you aren't in it, you're going to get added
-                    cm.sendOk(expedition.addMember(cm.getPlayer()));
-                    cm.dispose();
+                    var joined = expedition.addMember(player);
+                    var choices = expedition.contains(player) ? companionChoices() : null;
+                    if (choices != null) {
+                        cm.sendSimple(joined + choices);
+                        status = 30;
+                    } else {
+                        cm.sendOk(joined);
+                        cm.dispose();
+                    }
                 }
             } else if (expedition.isInProgress()) { //Only if the expedition is in progress
                 if (expedition.contains(player)) { //If you're registered, warp you in
@@ -94,6 +171,12 @@ function action(mode, type, selection) {
 
                 var res = cm.createExpedition(cwkpq);
                 if (res == 0) {
+                    var choices = companionChoices();
+                    if (choices != null) {
+                        cm.sendSimple("The #rCrimsonwood Keep Party Quest Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!" + choices);
+                        status = 30;
+                        return;
+                    }
                     cm.sendOk("The #rCrimsonwood Keep Party Quest Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
                 } else if (res > 0) {
                     cm.sendOk("Sorry, you've already reached the quota of attempts for this expedition! Try again another day...");
@@ -109,6 +192,15 @@ function action(mode, type, selection) {
 
             }
         } else if (status == 2) {
+            if (selection == 4) {
+                cm.sendOk(companionRegister());
+                cm.dispose();
+                return;
+            }
+            if (selection == 5) {
+                allyWindow(allyPicker());
+                return;
+            }
             if (selection == 1) {
                 if (expedition == null) {
                     cm.sendOk("The expedition could not be loaded.");
@@ -134,6 +226,12 @@ function action(mode, type, selection) {
                 var size = expedition.getMemberList().size();
                 if (size < min) {
                     cm.sendOk("You need at least " + min + " players registered in your expedition.");
+                    cm.dispose();
+                    return;
+                }
+                var refusal = startRefusal();
+                if (refusal != null) {
+                    cm.sendOk(refusal);
                     cm.dispose();
                     return;
                 }
@@ -175,6 +273,21 @@ function action(mode, type, selection) {
                 cm.sendSimple(list);
                 status = 2;
             }
+        } else if (status == 30) {
+            if (selection == 3) {
+                allyWindow(allyPicker());
+                return;
+            }
+            if (selection == 1) {
+                cm.sendOk(companionRegister());
+            }
+            cm.dispose();
+        } else if (status == 40) {
+            if (selection == 99) {
+                cm.dispose();
+                return;
+            }
+            allyWindow(allyCall(selection));
         }
     }
 }

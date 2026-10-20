@@ -981,6 +981,8 @@ living_world:
     # Timings: agent-engine.yaml AgentBossRunSession.
     # Every boss below is on by default since 2026-10-19 (user: turn on what was built); live results per boss are in
     # docs/COMPANION_BOSSING_P8.md .. P20.md. Take a key out of the list to turn that boss back to stock.
+    # "cwkpq" (Jack's Crimsonwood Keep expedition, docs/CWKPQ_COMPANION_PLAN.md) is known but not listed: companions
+    # sign up and go in, but its stages have no companion play yet. It goes on once they do.
     # "zakum" (Adobis, P8): the arms, then the body; a companion that goes down waits in El Nath.
     # "balrog_normal" (Mu Young's Normal choice, P11): a Normal fight a companion signed up for is the server's own
     # (stock BalrogBattle.js for every other).

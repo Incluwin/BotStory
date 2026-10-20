@@ -110,6 +110,33 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     when asked). Talk and walk times reuse the job errands' keys.
   - Not built: the chat answer about the keystone path (item 7) and the knowledge export prereqs it needs; a full
     SETUP tab when 8223 pays the keystone (the hand-in fails three times and the errand ends).
+- **C3 built 2026-10-20 on feat/cwkpq** (the expedition desk at Jack):
+  - CWKPQ runs on the boss track, not the PQ desks: an expedition of 6-30 needs the boss track's sign-up, bench allies
+    and seat counts, and every reader of the switch is boss-track code. So the key `cwkpq` is in
+    `CompanionBossKeys` (COMPANION_BOSS_ENABLED_TYPES / _ALLY_TYPES), not `CompanionPqKeys`, and `PqEntrance` has no
+    row. It ships off: `LivingWorldConfigBossTest.STILL_BUILT` keeps it out of the "every built boss is on" pin.
+  - `AgentBossRunCatalog.CWKPQ`: recruit 610030020 (Jack 9201113, no join choices), battle 610030600, reward room
+    610030800 (out00 is portal 1), no exit NPC, marker items the five stage-5 weapons. boss-rules.json `cwkpq`:
+    stageMaps 610030100-610030550 (every stage and class room, so adoption and the fight tick work there), the Blood
+    Stirge never a target, entryItems the keystone (the New Leaf City approach store keeps the standard only for an
+    owner carrying one). `BossEntrance.CWKPQ`: companions wait beside Jack, allies come and go by out00, trips out of
+    the hall are held.
+  - Death mode `HOLD_UNTIL_CLEAR` (AgentBossDeathDepartureGate): a dead INSIDE member stays down where it fell while
+    the event lives, is not cleared and still holds it; after the clear it respawns in town. Raised where it fell
+    (Resurrection), it plays on.
+  - `AgentCwkpqRun` is the run's fight: it hands each tick's members to their stage map's play. No stage has a play
+    yet (C4-C7); members stand where they are, logged once per stage.
+  - `AgentCwkpqSigils`: the five archetypes' sigil reactors and skills, pinned to Reactor.wz and String.wz by a test.
+  - Jack's script takes the Mark of the Squad's five hooks under `cwkpq` (pinned by JackCwkpqHookScriptTest) and one
+    of its own: with any Agent on the list, Start is refused while some archetype's sigil can be turned by nobody on
+    it (`CompanionBossRuns.cwkpqStartRefusal`, decision 5, hard). While the list is open a party companion warns once
+    each: a sigil nobody can turn, fewer than 8 on the list, a sigil only one can turn (decision 5, soft).
+  - Keystone gate (`CompanionKeystoneGate`, on with COMPANION_KEYSTONE_ERRANDS_ENABLED): as the owner comes into the
+    hall, a following companion with no keystone stays in the Hall of Mastery and says why ("say get your keystone
+    and i'll go see lukan"). The ally picker does not offer a benched companion read as holding none (read when the
+    owner comes in), and the call reads its bag again; one with none whispers so and stays at camp.
+  - Not built: a line when a held member goes down (the stock "down" line comes after the clear); a picker choice that
+    sends a keystone-less ally on its errand.
 
 ## Questions for you (answered, kept for the record)
 
@@ -376,7 +403,7 @@ C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 | **C0** | Step 0 checks, no gameplay code: offline nav probes (610030300 sigils and top portal; 610030400 spots; 610030500 relic areas; warrior room top; Valley of Heroes 1 and 2; Lower Ascent to Jack); a human client measures trap hits and checks potions at 0x1000; Reactor.wz fake-sigil pictures; every persona's SP in a sigil skill; stirge script behaviour; mirror behaviour when a companion already holds a keystone | S | - |
 | **C1** | Keystone road and quest data: Haunted House in the masteria group, NLC taxi leg, Valley climb edges (from C0), Firebrand revive link in the hunt planner, prereq states in the knowledge export, `Quest.canStart` before any bot scripted start, keep SETUP quest items out of sell plans | M | C0 |
 | **C2** | Keystone errand (A3): errand states, live or ledger hunting, interrupts, lines | M | C1, Question 1 |
-| **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionPqKeys` + `PqEntrance` | L | - |
+| **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionBossKeys` (built 2026-10-20) | L | - |
 | **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest party prod / checkpoint <s2..s6, armory> / status / stop` | M | C0, C3 |
 | **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes | L | C0, C4 |
 | **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |

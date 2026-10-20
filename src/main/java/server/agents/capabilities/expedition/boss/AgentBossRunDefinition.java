@@ -36,7 +36,14 @@ public record AgentBossRunDefinition(String key, ExpeditionType type, int recrui
         /** It stays in the run, walks back from town and enters again by the recruit NPC (Scarga, Horntail). */
         REENTER,
         /** It revives inside the event, as a player does (Pink Bean); the death gate holds its stock respawn. */
-        REVIVE_INSIDE
+        REVIVE_INSIDE,
+        /**
+         * It stays down where it fell until the clear, as a player who has not pressed OK (Crimsonwood Keep): there a
+         * revive unregisters the member and ends the run once six or fewer are left (CWKPQ.js playerRevive), so the
+         * death gate holds its respawn while the event lives, is not cleared and still holds it. Raised where it fell
+         * (Resurrection), it plays on.
+         */
+        HOLD_UNTIL_CLEAR
     }
 
     public AgentBossRunDefinition {

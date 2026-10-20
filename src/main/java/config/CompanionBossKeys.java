@@ -62,6 +62,9 @@ public final class CompanionBossKeys {
 
         // slot: pinkbean (P20): Pink Bean, the Temple of Time's expedition
         keys.add("pinkbean");
+
+        // slot: cwkpq (CWKPQ plan C3): Crimsonwood Keep, Jack's expedition; on once every stage has its companion play
+        keys.add("cwkpq");
         return List.copyOf(keys);
     }
 

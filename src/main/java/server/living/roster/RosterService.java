@@ -3065,6 +3065,9 @@ public final class RosterService {
         if (gateKey != null) {
             gateRuns.ownerAtPartyGate(owner.getId(), map.getId(), gateKey); // P15 G8: no capped companion follows on
         }
+        if (gateRuns != null) {
+            gateRuns.ownerAtKeystoneGate(owner.getId(), map.getId()); // CWKPQ C3: no keystone, no Hall to Inner Sanctum
+        }
         if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())
                 && !CompanionRestock.tripsFromGate(world, map.getId())) { // P12 G9: a desk trip goes instead
             int ownerId = owner.getId();

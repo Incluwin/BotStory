@@ -81,6 +81,7 @@ class AgentBossRunPartyEventTest {
             AgentBossRunDefinition.DeathMode expected = Set.of("scarga", "horntail").contains(definition.key())
                     ? AgentBossRunDefinition.DeathMode.REENTER
                     : definition.key().equals("pinkbean") ? AgentBossRunDefinition.DeathMode.REVIVE_INSIDE
+                    : definition.key().equals("cwkpq") ? AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR
                     : AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE;
             assertEquals(expected, definition.deathMode(), definition.key());
         }

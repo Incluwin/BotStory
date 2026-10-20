@@ -112,6 +112,23 @@ final class BossRunLines {
      */
     static final String ZAKUM_EYE = "boss.zakum.eye";
 
+    /**
+     * CWKPQ plan C3: as its owner comes into the Hall to Inner Sanctum, a following companion with no Crimsonwood
+     * Keystone stays in the Hall of Mastery (CompanionKeystoneGate) and says why, and how to send it for one.
+     */
+    static final String KEYSTONE = "boss.keystone";
+    /**
+     * CWKPQ plan C3, decision 5: once the list has its members, nobody on it can turn one archetype's sigil ("{name}":
+     * Warrior, Magician, Bowman, Thief or Pirate); Jack will not start the run so.
+     */
+    static final String SIGIL_MISSING = "boss.cwkpq.missing";
+    /** CWKPQ plan C3, decision 5 (a warning): only one member can turn the "{name}" sigil. */
+    static final String SIGIL_THIN = "boss.cwkpq.thin";
+    /** CWKPQ plan C3, decision 5 (a warning): fewer than eight are on the list; the run ends at six. */
+    static final String SMALL_LIST = "boss.cwkpq.small";
+    /** CWKPQ plan C3: a bench ally called with no Crimsonwood Keystone stays at its camp and whispers so. */
+    static final String ALLY_NO_KEYSTONE = "boss.ally.nokeystone";
+
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
             Map.entry(SIGNED_UP, List.of(
@@ -348,6 +365,42 @@ final class BossRunLines {
                     Map.entry(GG, List.of(
                             "gg!! pink bean is down!",
                             "we beat pink bean. gg!")))),
+            // slot: cwkpq (CWKPQ plan C3: Jack's expedition in the Hall to Inner Sanctum; dead members stay down)
+            Map.entry("cwkpq", Map.ofEntries(
+                    Map.entry(KEYSTONE, List.of(
+                            "no keystone on me, so i'm stuck at the gate. say get your keystone and i'll go see lukan.",
+                            "the gate won't let me in without a keystone. waiting here, or send me to lukan for one.")),
+                    Map.entry(SIGIL_MISSING, List.of(
+                            "nobody on the list can turn the {name} sigil. jack won't let us start like this.",
+                            "we've got no one for the {name} sigil yet. jack won't start us.")),
+                    Map.entry(SIGIL_THIN, List.of(
+                            "only one of us can turn the {name} sigil. if they go down we're stuck.",
+                            "heads up, just one {name} sigil turner on the list.")),
+                    Map.entry(ALLY_NO_KEYSTONE, List.of(
+                            "i don't have a crimsonwood keystone yet, so jack's hall won't let me in. sorry!",
+                            "no keystone yet, can't get into the keep. send me to lukan sometime?")),
+                    Map.entry(SMALL_LIST, List.of(
+                            "we're a small group. if a couple of us drop, the keep throws everyone out.",
+                            "not many of us on the list. a few deaths and the keep kicks us all.")),
+                    Map.entry(DOWN, List.of(
+                            "got knocked out in there. see you outside.",
+                            "i was down till the end. waiting out here.")),
+                    Map.entry(REFUSED_LEVEL, List.of("jack won't take me yet. i'll wait out here.")),
+                    Map.entry(REFUSED_BANNED, List.of(
+                            "guess i'm off the list. i'll wait out here.",
+                            "jack won't let me sign. i'll sit this one out.")),
+                    Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to jack in time. i'll catch up after.")),
+                    Map.entry(ALLY_ON_MY_WAY, List.of(
+                            "heading to crimsonwood keep. {eta}.",
+                            "omw to jack in the keep, {eta}.")),
+                    Map.entry(ALLY_HERE, List.of(
+                            "made it to the keep. signing up with jack.",
+                            "here! putting my name down.")),
+                    Map.entry(ALLY_LOW_POTS, List.of(
+                            "bit low on pots and the shop's back in new leaf city. i'll manage.")),
+                    Map.entry(GG, List.of(
+                            "gg!! the grandmasters are down!",
+                            "we cleared crimsonwood keep. gg!")))),
             // slot: showa (P19: Konpei's expedition in the Showa hideout; the comb is the marker item)
             Map.entry("showa", Map.ofEntries(
                     Map.entry(DOWN, List.of(

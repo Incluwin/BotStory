@@ -128,8 +128,19 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance PINKBEAN = new BossEntrance(AgentBossRunCatalog.PINKBEAN,
             new PqEntrance.Beside(-50, -30, true), 240_000_000, "out00", "out00", true, 2_080_001);
 
+    // slot: cwkpq
+    /**
+     * Jack stands at 976,94 (WZ 610030020 life) in the Hall to Inner Sanctum: companions wait beside him, as at Adobis.
+     * Players come through New Leaf City (600000000), whose store (9201060) is the last on the way: past it lie the
+     * taxi, the Phantom Forest, the Valley of Heroes and the keep, so a trip out of the hall is held there. Allies come in
+     * and leave by out00 (-915,214), where the keystone gate (glpqEnter, Gate 9201114) lands players; each needs its
+     * own Crimsonwood Keystone (CompanionKeystoneGate).
+     */
+    static final BossEntrance CWKPQ = new BossEntrance(AgentBossRunCatalog.CWKPQ,
+            new PqEntrance.Beside(-50, -30, true), 600_000_000, "out00", "out00", true, 0);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA, PINKBEAN);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA, PINKBEAN, CWKPQ);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

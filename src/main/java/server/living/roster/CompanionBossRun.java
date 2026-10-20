@@ -47,6 +47,8 @@ final class CompanionBossRun {
     volatile boolean ownerLeftSaid;
     /** The first of the owner's party companions went in: the marker line was said then, or never is. */
     volatile boolean eyeAsked;
+    /** CWKPQ plan C3: the sigil and list-size warnings its companions said (CompanionBossRuns.warnSigils), once each. */
+    final Set<String> sigilWarnings = ConcurrentHashMap.newKeySet();
     /** When the lost-run sweep first found its session gone (0: it has not); read and written on companion-ops only. */
     long goneSinceMs;
     /** Intent -> the wordings its companions said for it in this run, until every one was said (guarded by this). */

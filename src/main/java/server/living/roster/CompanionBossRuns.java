@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRules;
+import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
@@ -46,6 +47,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -455,6 +457,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private final CompanionFieldBossRest fieldRest;
     /** P15 G8: companions held off a party boss's gate while they have no entry of it left today. */
     private final CompanionBossGateCap gateCap;
+    /** CWKPQ plan C3: companions held off the Hall to Inner Sanctum while they hold no Crimsonwood Keystone. */
+    private final CompanionKeystoneGate keystoneGate;
 
     /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
     private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
@@ -478,6 +482,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.fieldRest = new CompanionFieldBossRest(world);
         this.gateCap = new CompanionBossGateCap(world,
                 (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
+        this.keystoneGate = new CompanionKeystoneGate(world);
     }
 
     /**
@@ -496,6 +501,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         this.fieldRest = new CompanionFieldBossRest(world);
         this.gateCap = new CompanionBossGateCap(world,
                 (id, name) -> ExpeditionBossLog.attemptBossByName(id, name, false));
+        this.keystoneGate = new CompanionKeystoneGate(world);
     }
 
     /**
@@ -1248,6 +1254,120 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     public boolean heldOffGate(int companionId) {
         return gateCap.holds(companionId);
     }
+    /**
+     * CWKPQ plan C3 (RosterService.ownerEnteredMap, on the thread that moves the owner, memory only): the owner came
+     * into {@code mapId}; into the Hall to Inner Sanctum, a following companion of theirs with no Crimsonwood Keystone
+     * stays in the Hall of Mastery (CompanionKeystoneGate).
+     */
+    public void ownerAtKeystoneGate(int ownerId, int mapId) {
+        keystoneGate.ownerEntered(ownerId, mapId);
+    }
+
+    /** CWKPQ plan C3, from memory: true while the companion is held off the hall for want of a keystone. */
+    public boolean heldOffKeystoneGate(int companionId) {
+        return keystoneGate.holds(companionId);
+    }
+
+    /** The keystone gate the bench allies read (their picker and their call). */
+    CompanionKeystoneGate keystones() {
+        return keystoneGate;
+    }
+
+    /** CWKPQ plan C3, decision 5: the list size under which a companion warns that a few deaths end the run. */
+    static final int CWKPQ_SAFE_LIST = 8;
+
+    /**
+     * CWKPQ plan C3, decision 5 (LivingWorldHooks.cwkpqStartRefusal, Jack's Start, on the leader's I/O thread, memory
+     * only): Jack's refusal when companions are on the list and nobody on it can turn some archetype's sigil
+     * (AgentCwkpqSigils.turns: the archetype's job and one of its sigil skills); null lets the stock Start go on, as it
+     * always does for an expedition of humans alone.
+     */
+    public String cwkpqStartRefusal(Character leader) {
+        Expedition expedition = leader == null ? null : expeditionOf(leader, AgentBossRunCatalog.CWKPQ);
+        if (expedition == null) {
+            return null;
+        }
+        List<Character> members = expedition.getActiveMembers();
+        if (members.stream().noneMatch(AgentPresence::isAgent)) {
+            return null;
+        }
+        List<AgentCwkpqSigils.Archetype> missing = new ArrayList<>();
+        AgentCwkpqSigils.coverage(members).forEach((archetype, count) -> {
+            if (count == 0) {
+                missing.add(archetype);
+            }
+        });
+        if (missing.isEmpty()) {
+            return null;
+        }
+        StringBuilder sigils = new StringBuilder();
+        for (int i = 0; i < missing.size(); i++) {
+            AgentCwkpqSigils.Archetype archetype = missing.get(i);
+            if (i > 0) {
+                sigils.append(i == missing.size() - 1 ? " or " : ", ");
+            }
+            sigils.append("the #b").append(archetype.label()).append("#k sigil (").append(archetype.skillNames())
+                    .append(')');
+        }
+        log.info("CWKPQ Start refused: leader={} members={} missing={}", leader.getId(), members.size(), missing);
+        return "Your expedition cannot open the way through the keep: nobody on your list can turn " + sigils
+                + ". Bring someone who can, then talk to me again.";
+    }
+
+    /**
+     * CWKPQ plan C3, decision 5, after {@link #allSignedUp}'s lines while the list is open: a party companion of the
+     * owner on the list says the first warning that holds and it has not said this run, in order: nobody can turn an
+     * archetype's sigil (Jack will refuse the Start), fewer than {@link #CWKPQ_SAFE_LIST} are on the list (the run ends
+     * at six), or only one member can turn an archetype's sigil. One line a call, each warning once a run; counted over
+     * everyone on the list, humans and every owner's companions. A warning only.
+     */
+    void warnSigils(CompanionBossRun run, Character saidSignedUp) {
+        Character owner = "cwkpq".equals(run.bossKey) ? world.roster().onlineCharacter(run.ownerId) : null;
+        Expedition expedition = owner == null ? null : expeditionOf(owner, AgentBossRunCatalog.CWKPQ);
+        if (expedition == null) {
+            return;
+        }
+        List<Character> members = expedition.getActiveMembers();
+        Map<AgentCwkpqSigils.Archetype, Integer> coverage = AgentCwkpqSigils.coverage(members);
+        String missing = firstCoveredBy(coverage, 0);
+        String thin = firstCoveredBy(coverage, 1);
+        String intent;
+        String name = null;
+        if (missing != null) {
+            intent = BossRunLines.SIGIL_MISSING;
+            name = missing;
+        } else if (members.size() < CWKPQ_SAFE_LIST && !run.sigilWarnings.contains(BossRunLines.SMALL_LIST)) {
+            intent = BossRunLines.SMALL_LIST;
+        } else if (thin != null) {
+            intent = BossRunLines.SIGIL_THIN;
+            name = thin;
+        } else {
+            return;
+        }
+        if (run.sigilWarnings.contains(intent)) {
+            return;
+        }
+        Character speaker = null;
+        for (int id : run.signedUp) {
+            Character listed = follows(id, run.ownerId) ? bot(id) : null;
+            if (listed != null && (speaker == null || speaker == saidSignedUp)) {
+                speaker = listed;
+            }
+        }
+        if (speaker != null && run.sigilWarnings.add(intent)) {
+            BossRunLines.say(world, speaker, intent, name, 0, run);
+        }
+    }
+
+    /** The first archetype, lower case, that exactly {@code count} members can turn the sigil of; null for none. */
+    private static String firstCoveredBy(Map<AgentCwkpqSigils.Archetype, Integer> coverage, int count) {
+        for (Map.Entry<AgentCwkpqSigils.Archetype, Integer> covered : coverage.entrySet()) {
+            if (covered.getValue() == count) {
+                return covered.getKey().label().toLowerCase(Locale.ROOT);
+            }
+        }
+        return null;
+    }
 
     /**
      * The character died (LivingWorldHooks.playerDied, on the dying thread): its map is read here, and companion-ops
@@ -1397,6 +1517,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
         Character saidIt = run.signedUpSaid || run.signedUp.isEmpty() ? null : saySignedUp(run, speaker);
         warnIfNoHealer(run, saidIt);
+        warnSigils(run, saidIt);
     }
 
     /**

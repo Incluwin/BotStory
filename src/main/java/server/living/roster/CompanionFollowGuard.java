@@ -40,6 +40,9 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (bossRuns != null && bossRuns.heldOffGate(agentCharacterId)) {
             return true; // P15 G8: no entry of its owner's party boss left today: it stays off the gate
         }
+        if (bossRuns != null && bossRuns.heldOffKeystoneGate(agentCharacterId)) {
+            return true; // CWKPQ C3: no Crimsonwood Keystone: it waits in the Hall of Mastery
+        }
         RosterService roster = world.roster();
         if (!roster.keepsAnyOffFollow()) {
             return false;

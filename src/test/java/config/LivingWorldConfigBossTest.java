@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -74,8 +75,11 @@ class LivingWorldConfigBossTest {
         }
     }
 
-    /** Every boss the catalog knows, in its order: what config.yaml ships on since 2026-10-19. */
-    static final String EVERY_BOSS = String.join(",", CompanionBossKeys.KNOWN);
+    /** Keys whose companion play is still being built, which ship off: Crimsonwood Keep (CWKPQ plan C3-C8). */
+    static final List<String> STILL_BUILT = List.of("cwkpq");
+    /** Every boss the catalog knows but those, in its order: what config.yaml ships on since 2026-10-19. */
+    static final String EVERY_BOSS = String.join(",",
+            CompanionBossKeys.KNOWN.stream().filter(key -> !STILL_BUILT.contains(key)).toList());
     /** The expedition bosses (a sign-up list at an NPC), which take bench allies. */
     static final String EXPEDITION_BOSSES = "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean";
 
@@ -84,7 +88,8 @@ class LivingWorldConfigBossTest {
         LivingWorldConfig living = YamlConfig.config.living_world;
         assertEquals(EVERY_BOSS, living.COMPANION_BOSS_ENABLED_TYPES);
         for (String key : CompanionBossKeys.KNOWN) {
-            assertTrue(living.companionBossEnabled(key), key + " on since 2026-10-19 (user: turn on what was built)");
+            assertEquals(!STILL_BUILT.contains(key), living.companionBossEnabled(key),
+                    key + ": on since 2026-10-19 (user: turn on what was built), unless still being built");
         }
         assertTrue(living.COMPANION_BOSS_SERVER_AUTHORITY);
 
