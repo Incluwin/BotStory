@@ -221,6 +221,23 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   a weapon scroll for the weapon in its hand, and any potion; it leaves Gelt Chocolate (2022121) to physical attackers
   and the Tao materials, storybooks and the chair to the humans. This server's Armory drops no Pie; its other potion
   is Sunblock (2022277).
+- **C8, pace estimate, built 2026-10-20** (`AgentCwkpqPaceProfile`, `CwkpqClearTime`, `JackLines`): hallway, storage,
+  agility, wit, the five class rooms side by side, relics, the statue's talks, the hall's guards and the Grandmasters.
+  A pace Clear can now let one class fight (`AgentPqPaceSegment.Fighters`): the warrior, bowman and mage rooms are
+  fought by their class alone, and a member is weighed only on the clears it fights. Jack shows the estimate and up
+  to two cautions over the leader's list when companions are on it (living_world.COMPANION_PQ_CLEAR_TIME and the
+  cwkpq boss switch on). The estimate's horizon went from one hour to two (`HORIZON_MS` 7200000): the stage clocks add
+  to 112 minutes. Priors only; recording cwkpq runs into pq_run_pace is not built.
+  - Found while building it: the Grandmasters and Red Nirg's revives hold about 929M HP and cwkpq sets no
+    `companionDamagePercent`, so ten companions at 30,000 damage a second take them past the 40-minute slow limit.
+    Whether companions get a damage scale here (as Pink Bean's 2000%) is for the C9 live check.
+  - Not modelled: the damage policy counts an element a mob is immune to as normal (Master Guardians resist all five).
+- **C8, Armory, built 2026-10-20** (`AgentCwkpqArmoryPlay`): a boss fight may now play on after its clear on maps it
+  names (`AgentBossFight.playsAfterClear`); only cwkpq does. After the statue's last talk the companions take the
+  hall's next00, wait in the Secret Chamber until someone has started the Armory's minute (current_instance 6), then
+  break only their own share of the 30 boxes: everyone on the Armory shares them along the shelves, the humans first,
+  and one companion says which boxes are the humans' ("the top left boxes are yours, we'll break the rest"). With its
+  share broken a companion picks up what the loot rules let it.
 
 ## Questions for you (answered, kept for the record)
 
