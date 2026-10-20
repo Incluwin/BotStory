@@ -1,16 +1,11 @@
 package server.agents.capabilities.partyquest.rjpq;
 
-import client.BuffStat;
 import client.Character;
-import client.SkillFactory;
 import client.inventory.InventoryType;
-import constants.skills.Assassin;
-import constants.skills.Bandit;
-import constants.skills.NightWalker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
-import server.agents.capabilities.combat.AgentCombatBuffRuntime;
+import server.agents.capabilities.partyquest.AgentPartyQuestHaste;
 import server.agents.capabilities.navigation.AgentMovementSkillPolicy;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.integration.AgentInventoryGatewayRuntime;
@@ -44,7 +39,6 @@ final class AgentRjpqDarkLabs {
     static final String LAB_ONE_ENTRY_PORTAL = "in00";
     static final String LAB_TWO_ENTRY_PORTAL = "in01";
     static final String LAB_EXIT_PORTAL = "out00";
-    private static final int[] HASTE_SKILL_IDS = {Assassin.HASTE, Bandit.HASTE, NightWalker.HASTE};
     private static final long ACTION_RETRY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.rjpq.AgentRjpqStagePlay.ACTION_RETRY_MS");
     static final int LAB_ONE_JUMP = config.AgentTuning.intValue(
@@ -136,36 +130,14 @@ final class AgentRjpqDarkLabs {
         return -1;
     }
 
-    /** Its jump stat with its Haste on: its own when Haste (or another jump buff) is on, else plus Haste's jump. */
+    /** Its jump stat with its Haste on (AgentPartyQuestHaste). */
     static int jumpWithHaste(Character companion) {
-        int jump = companion.getTotalJumpStat();
-        return companion.getBuffedValue(BuffStat.JUMP) != null ? jump : jump + hasteJump(companion);
+        return AgentPartyQuestHaste.jumpWithHaste(companion);
     }
 
-    /** The jump its best Haste adds (Skill.wz: one per level, 20 at max); 0 without Haste. */
+    /** The jump its best Haste adds (AgentPartyQuestHaste); 0 without Haste. */
     static int hasteJump(Character companion) {
-        int best = 0;
-        for (int skillId : HASTE_SKILL_IDS) {
-            int level = companion.getSkillLevel(skillId);
-            if (level <= 0) continue;
-            int jump = level;
-            try {
-                for (var statup : SkillFactory.getSkill(skillId).getEffect(level).getStatups()) {
-                    if (statup.getLeft() == BuffStat.JUMP) jump = statup.getRight();
-                }
-            } catch (RuntimeException | LinkageError unreadableSkill) {
-                // the skill data cannot be read here (tests): Haste adds one jump per level
-            }
-            best = Math.max(best, jump);
-        }
-        return best;
-    }
-
-    private static int hasteSkill(Character companion) {
-        for (int skillId : HASTE_SKILL_IDS) {
-            if (companion.getSkillLevel(skillId) > 0) return skillId;
-        }
-        return 0;
+        return AgentPartyQuestHaste.hasteJump(companion);
     }
 
     static boolean teleports(Character companion) {
@@ -249,12 +221,11 @@ final class AgentRjpqDarkLabs {
     }
 
     private static boolean needsHaste(Character agent) {
-        return agent.getTotalJumpStat() < LAB_ONE_JUMP && agent.getBuffedValue(BuffStat.JUMP) == null;
+        return AgentPartyQuestHaste.needsHaste(agent, LAB_ONE_JUMP);
     }
 
     private static boolean castHaste(AgentRuntimeEntry entry, Character agent) {
-        int skill = hasteSkill(agent);
-        return skill != 0 && AgentCombatBuffRuntime.tryCastExplicitUtilityBuff(entry, agent, skill);
+        return AgentPartyQuestHaste.castHaste(entry, agent);
     }
 
     // ---- inside a Dark Lab ----

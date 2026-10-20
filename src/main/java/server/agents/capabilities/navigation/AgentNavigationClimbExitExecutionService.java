@@ -10,7 +10,8 @@ import server.maps.Rope;
 import java.awt.Point;
 
 /**
- * Agent-owned climb-exit edge execution for navigation.
+ * Agent-owned climb-exit edge execution for navigation. Its jumps fly the arc the graph planned
+ * (AgentClimbMovementService.jumpOffRopeOnPlannedArc).
  */
 public final class AgentNavigationClimbExitExecutionService {
     private AgentNavigationClimbExitExecutionService() {
@@ -32,7 +33,7 @@ public final class AgentNavigationClimbExitExecutionService {
             if (targetRope == null || AgentClimbMovementPolicy.sameRope(AgentClimbStateRuntime.climbRope(entry), targetRope)) {
                 return false;
             }
-            AgentClimbMovementService.jumpToRope(entry, agent, edge.launchStepX);
+            AgentClimbMovementService.jumpToRopeOnPlannedArc(entry, agent, edge.launchStepX);
             return true;
         }
 
@@ -46,7 +47,7 @@ public final class AgentNavigationClimbExitExecutionService {
                 && agentPos.y != edge.startPoint.y) {
             AgentNavigationClimbExecutionService.startClimbing(entry, agent, sourceRope, edge.startPoint.y);
         }
-        AgentClimbMovementService.jumpOffRope(entry, agent, edge.launchStepX);
+        AgentClimbMovementService.jumpOffRopeOnPlannedArc(entry, agent, edge.launchStepX);
         return true;
     }
 }

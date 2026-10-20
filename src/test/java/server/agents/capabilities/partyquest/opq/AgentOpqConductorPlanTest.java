@@ -33,6 +33,11 @@ class AgentOpqConductorPlanTest {
         return new AgentOpqConductorPlan.Companion(id, room, false);
     }
 
+    /** A companion whose jump with its Haste does not reach the lounge's ledges. */
+    private static AgentOpqConductorPlan.Companion grounded(int id, AgentOpqDefinition.Room room) {
+        return new AgentOpqConductorPlan.Companion(id, room, false, false);
+    }
+
     private static AgentOpqConductorPlan.Assignment room(AgentOpqDefinition.Room room) {
         return new AgentOpqConductorPlan.Assignment(AgentOpqConductorPlan.Duty.ROOM, room);
     }
@@ -144,6 +149,48 @@ class AgentOpqConductorPlanTest {
         Map<Integer, AgentOpqConductorPlan.Assignment> refilled = plan(complete, working(12, SEALED),
                 working(13, SEALED), fresh(15), working(16, LOUNGE));
         assertEquals(room(SEALED), refilled.get(15));
+    }
+
+    @Test
+    void theClimberTakesTheLoungeAndTheCompanionThatCannotClimbTakesTheClimbersRoom() {
+        // 2026-10-20 live: Sadie (a Fighter, jump 100) had the lounge and stood at its door for 43 minutes while Jinx,
+        // the one companion with Haste, worked the storage room.
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(Set.of(), grounded(12, null), fresh(13),
+                grounded(14, null), grounded(15, null), grounded(16, null));
+
+        assertEquals(room(WALKWAY), plan.get(12));
+        assertEquals(room(LOUNGE), plan.get(13));
+        assertEquals(room(LOBBY), plan.get(14));
+        assertEquals(room(WAY_UP), plan.get(15));
+        assertEquals(room(STORAGE), plan.get(16));
+    }
+
+    @Test
+    void aWorkingNonClimberKeepsTheLoungeAndTheFirstFreeClimberJoinsIt() {
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(EnumSet.of(STORAGE), grounded(12, WALKWAY),
+                fresh(13), grounded(14, LOBBY), grounded(15, WAY_UP), grounded(16, LOUNGE));
+
+        assertEquals(room(LOUNGE), plan.get(16), "a companion keeps its room until it is complete");
+        assertEquals(room(LOUNGE), plan.get(13));
+        assertEquals(room(WALKWAY), plan.get(12));
+    }
+
+    @Test
+    void aClimberAlreadyWorkingAnotherRoomKeepsIt() {
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(Set.of(), grounded(12, WALKWAY),
+                working(13, STORAGE), grounded(14, LOBBY), grounded(15, WAY_UP), grounded(16, LOUNGE));
+
+        assertEquals(room(STORAGE), plan.get(13));
+        assertEquals(room(LOUNGE), plan.get(16));
+    }
+
+    @Test
+    void withNoClimberTheRoomsGoInIdOrderAsBefore() {
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(Set.of(), grounded(12, null), grounded(13, null),
+                grounded(14, null), grounded(15, null), grounded(16, null));
+
+        assertEquals(room(STORAGE), plan.get(13));
+        assertEquals(room(LOUNGE), plan.get(16));
     }
 
     @Test

@@ -74,7 +74,7 @@ final class AgentOpqConductor {
         }
         List<AgentOpqConductorPlan.Companion> input = companions.stream()
                 .map(member -> new AgentOpqConductorPlan.Companion(member.characterId(), member.assignedRoom(),
-                        carrying(member))).toList();
+                        carrying(member), AgentOpqCoordinator.climbsLounge(member.characterId()))).toList();
         Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete);
         List<AgentOpqMemberState> holders = new ArrayList<>();
         for (AgentOpqMemberState member : companions) {

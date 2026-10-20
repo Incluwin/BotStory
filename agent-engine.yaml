@@ -1557,6 +1557,10 @@ tuning:
     # Purpose: Bounds how long after the OPQ run binds its event a member the event has not registered yet is still treated as entering.
     # Technical: AgentOpqCoordinator.observeDepartures marks a member the bound event never held as departed (logged, its Agent handed back) once this long has passed since the bind; a member held and then lost departs at once, whatever this value.
     server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ENTRY_HOLD_GRACE_MS: '5000'
+    # Values: 105-123. Recommended: 115, the offline graph's threshold on Map.wz 920010600.
+    # Purpose: The jump stat a companion needs, with its Haste on, to climb the OPQ lounge's ledges to its three high subrooms.
+    # Technical: AgentOpqCoordinator.climbsLounge compares Character.getTotalJumpStat plus its best Haste's jump (AgentPartyQuestHaste) with this; the plan of a human-led run seats a climber in the lounge, a non-climber runner takes only the low subroom 920010604, and a climber casts its Haste before the climb while its jump is below this. The navigation graph of 920010600 reaches the subroom doors and the portal row from the lounge's door at 115 and none at 110 (AgentOpqNavigationGraphTest).
+    server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.LOUNGE_JUMP: '115'
     # Values: 15000-180000 milliseconds. Recommended: 45000, long enough for the leader to finish the hand-in he is on.
     # Purpose: Spaces the calls a companion makes for the human leader when its OPQ room needs him at its Eak.
     # Technical: AgentOpqConductor.guide keeps one window per room (and one for the whole statue) in a companion run its human leader leads; at most one call goes out per coordinator pass, in party chat while he stands in another room; a room he is in is never called.
