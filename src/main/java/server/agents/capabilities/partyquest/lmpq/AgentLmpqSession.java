@@ -68,6 +68,8 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private boolean failureClaimed;
     private String floorDeparture;
     private int couponsAtRegroup;
+    private String leaderName;
+    private final Set<Integer> expiredHolds = new java.util.HashSet<>();
     private List<server.agents.capabilities.partyquest.pace.AgentPqMemberPower> powersAtEntry = List.of();
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
@@ -499,6 +501,23 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
 
     /** The name of the companion whose departure at the floor ended the event; null when none did. */
     synchronized String floorDeparture() { return floorDeparture; }
+
+    /** Remembers the event leader's name as last seen, for a parting said after he went offline. */
+    synchronized void noteLeaderName(String name) {
+        if (name != null && !name.isBlank()) leaderName = name;
+    }
+
+    /** The event leader's name as last seen; null until a pass saw him. */
+    synchronized String leaderName() { return leaderName; }
+
+    /**
+     * Ends the death gate's hold of this dead member (P6h Step 3, SHORT_HANDED): its next respawn is let through even
+     * at the floor, and the stock event ends as a player pressing OK would.
+     */
+    synchronized void expireHold(int id) { expiredHolds.add(id); }
+
+    /** Whether the hold of this member was ended. */
+    synchronized boolean holdExpired(int id) { return expiredHolds.contains(id); }
 
     /** The coupons the run counted as secured when it regrouped (the farm span's work); 0 until then. */
     synchronized int couponsAtRegroup() { return couponsAtRegroup; }

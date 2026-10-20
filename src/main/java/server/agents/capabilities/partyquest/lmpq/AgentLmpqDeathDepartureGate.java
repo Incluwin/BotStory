@@ -89,8 +89,10 @@ public final class AgentLmpqDeathDepartureGate {
         }
         // The registered ids are read under the session monitor, so a departure that has just finished (its
         // unregister done, its reservation released) is seen as gone, never as present.
+        // P6h Step 3: a hold a companion run's verdict ended (SHORT_HANDED) is let through.
         AgentLmpqSession.Departure departure = session.reserveDeparture(id, event::registeredIds,
-                AgentLmpqDefinition.MIN_PARTY_SIZE, bodyMayWait(session.phase(), mapId), nowMs);
+                AgentLmpqDefinition.MIN_PARTY_SIZE, bodyMayWait(session.phase(), mapId) && !session.holdExpired(id),
+                nowMs);
         if (!departure.proceed()) {
             if (departure.firstHold()) {
                 logDeparture(session, id, name, mapId, "HOLD", departure.registered(), departure.othersInFlight(),
@@ -100,6 +102,8 @@ public final class AgentLmpqDeathDepartureGate {
         }
         String decision = departure.atFloor() ? "PROCEED_AT_FLOOR"
                 : departure.heldMs() >= 0L ? "RELEASED" : "PROCEED";
+        // The event ends with this departure: a companion run's parting names who went down.
+        if (departure.atFloor()) session.noteFloorDeparture(name);
         logDeparture(session, id, name, mapId, decision, departure.registered(), departure.othersInFlight(),
                 Math.max(0L, departure.heldMs()));
         try {

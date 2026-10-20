@@ -60,6 +60,14 @@ public final class AgentLmpqCoordinator {
     }
 
     /**
+     * A companion run's parting before the failure that follows it (P6h Step 3); nothing for any other run, after the
+     * clear, or for a run already ending.
+     */
+    private static void parting(AgentLmpqSession session, AgentLmpqParting.Kind kind, String subject) {
+        if (session.companionAdopted()) AgentLmpqCompanionRun.parting(session, AgentLmpqParting.of(kind, subject));
+    }
+
+    /**
      * The 'LMPQ session failure:' line alone, the phase left as it is: for a caller that releases the run itself and
      * must keep the release (the GM fixture harness), since a run marked FAILED is released by the next member tick.
      */
@@ -71,15 +79,21 @@ public final class AgentLmpqCoordinator {
     public static void tickSession(AgentLmpqSession session, long nowMs) {
         if (session.terminal() || session.paused()) return;
         if (eventTimerExpired(session, nowMs)) {
+            parting(session, AgentLmpqParting.Kind.TIMEOUT, null);
             fail(session, "LMPQ event timer expired", nowMs);
             return;
         }
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
+            parting(session, AgentLmpqParting.Kind.GONE, session.leaderName());
             fail(session, "LMPQ leader left", nowMs);
             return;
         }
-        if (leader.getHp() <= 0) {
+        session.noteLeaderName(leader.getName());
+        // P6h Step 3: after the clear a companion run never fails for its leader (he claims when he likes).
+        if (leader.getHp() <= 0
+                && !(session.companionAdopted() && AgentLmpqTerminationService.pastTheClear(session))) {
+            parting(session, AgentLmpqParting.Kind.DEFEATED, leader.getName());
             fail(session, "LMPQ event leader is unavailable", nowMs);
             return;
         }
@@ -96,6 +110,7 @@ public final class AgentLmpqCoordinator {
         // A companion run waits at Rolly for its leader no longer than its harness and host promise him.
         if (session.companionAdopted() && session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING) == 0L
                 && nowMs - session.startedAtMs() >= humanIdleLimitMs()) {
+            parting(session, AgentLmpqParting.Kind.SILENT, null);
             fail(session, "LMPQ was never entered", nowMs);
             return;
         }
@@ -104,10 +119,17 @@ public final class AgentLmpqCoordinator {
             // LMPQ base fix 3: before the clear, an event that ended, or a leader it no longer holds (LudiMazePQ.js
             // ends the event when its leader leaves the maze), ends the run at once with the honest reason.
             if (bound.isEventDisposed()) {
+                if (session.companionAdopted()) {
+                    long entered = session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING);
+                    AgentLmpqCompanionRun.parting(session, AgentLmpqParting.eventEnded(session.floorDeparture(),
+                            entered == 0L ? 0L : nowMs - entered, AgentPartyQuestCatalog.require("lmpq").eventTimerMs(),
+                            ENTRY_HOLD_GRACE_MS + TIMEOUT_SLACK_MS));
+                }
                 fail(session, "LMPQ event ended before the clear", nowMs);
                 return;
             }
             if (leader.getEventInstance() != bound || !AgentLmpqDefinition.isEventMap(leader.getMapId())) {
+                parting(session, AgentLmpqParting.Kind.LEFT, leader.getName());
                 fail(session, "LMPQ leader left", nowMs);
                 return;
             }
@@ -117,10 +139,12 @@ public final class AgentLmpqCoordinator {
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
             session.noteHeld(heldIds(bound)); // a member held now is one this event was seen holding
             if (memberInAnotherInstance(session, bound)) {
+                parting(session, AgentLmpqParting.Kind.GENERIC, null);
                 fail(session, "An LMPQ participant left the active maze", nowMs);
                 return;
             }
             observeDepartures(session, bound, nowMs);
+            AgentLmpqCompanionRun.downs(session, heldIds(bound), nowMs);
             // P6h review: the last companion has departed and humans stay in the maze: they carry on without the run.
             if (AgentLmpqTerminationService.humansCarryOn(session, nowMs)) return;
         }
@@ -208,6 +232,7 @@ public final class AgentLmpqCoordinator {
         }
         session.observeProgressSignature(progressSignature(session), nowMs);
         if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) {
+            parting(session, AgentLmpqParting.Kind.TOO_LONG, null);
             fail(session, session.phase() == AgentLmpqSession.Phase.REWARD
                     ? "LMPQ reward stalled" : "LMPQ stalled in " + session.phase(), nowMs);
         }
@@ -240,6 +265,7 @@ public final class AgentLmpqCoordinator {
         member.observeRoom(AgentLmpqDefinition.roomForMap(agent.getMapId()));
         if (session.eventInstance() != null && AgentLmpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
+            parting(session, AgentLmpqParting.Kind.GENERIC, null);
             fail(session, "LMPQ member entered a different event instance", nowMs);
             return;
         }
@@ -683,6 +709,7 @@ public final class AgentLmpqCoordinator {
             session.rooms().releaseOwner(id, nowMs);
             state.clearTargetRoom();
             Character member = character(id);
+            AgentLmpqCompanionRun.departed(session, state, member, left, nowMs);
             log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}"
                             + " reason={}", session.sessionId(), member == null ? "-" : member.getName(), id,
                     state.memberType(), member == null ? "-" : String.valueOf(member.getMapId()), session.phase(),

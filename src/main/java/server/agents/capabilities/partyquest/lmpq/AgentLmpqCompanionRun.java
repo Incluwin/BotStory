@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeConfig;
@@ -34,6 +35,8 @@ final class AgentLmpqCompanionRun {
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REST_HP_FRACTION");
     static final double RESUME_HP_FRACTION = config.AgentTuning.doubleValue(
             "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.RESUME_HP_FRACTION");
+    static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS");
 
     private AgentLmpqCompanionRun() {
     }
@@ -307,6 +310,120 @@ final class AgentLmpqCompanionRun {
             index++;
         }
         return 0;
+    }
+
+    // ---- deaths, departures, partings (Step 3) ---------------------------------------------------------------------
+
+    /**
+     * The downs of a bound companion run before its clear: each non-leader member the event holds is marked down when
+     * dead ('LMPQ member down:'), up again when revived, and, held dead at the floor past MEMBER_RECOVERY_TIMEOUT_MS
+     * before the clearing, SHORT_HANDED: its hold ends (AgentLmpqSession.expireHold), so its respawn is let through and
+     * the stock event ends as a player pressing OK would, which the run reports WENT_DOWN.
+     */
+    static void downs(AgentLmpqSession session, Set<Integer> held, long nowMs) {
+        if (!session.companionAdopted()) return;
+        boolean clearing = session.phase().ordinal() >= AgentLmpqSession.Phase.CLEARING.ordinal();
+        for (AgentLmpqMemberState state : session.members()) {
+            int id = state.characterId();
+            if (id == session.eventLeaderId() || session.departed(id) || !held.contains(id)) continue;
+            Character member = AgentLmpqCoordinator.character(id);
+            if (member == null) continue;
+            AgentLmpqMemberVerdicts.Verdict verdict = AgentLmpqMemberVerdicts.verdict(new AgentLmpqMemberVerdicts.Facts(
+                    state.memberType(), member.getHp(), true, true, false, false, session.downSinceMs(id), clearing,
+                    nowMs, MEMBER_RECOVERY_TIMEOUT_MS));
+            switch (verdict) {
+                case DOWN_WAIT -> {
+                    if (session.markDown(id, nowMs)) {
+                        log.info("LMPQ member down: session={} member={}({}) type={} map={} phase={}",
+                                session.sessionId(), member.getName(), id, state.memberType(), member.getMapId(),
+                                session.phase());
+                    }
+                }
+                case REVIVED -> {
+                    session.clearDown(id);
+                    log.info("LMPQ member up: session={} member={}({})", session.sessionId(), member.getName(), id);
+                }
+                case SHORT_HANDED -> {
+                    if (session.claimNote("short-handed-" + id)) {
+                        session.expireHold(id);
+                        log.info("LMPQ member: session={} member={}({}) verdict=SHORT_HANDED downMs={}",
+                                session.sessionId(), member.getName(), id, nowMs - session.downSinceMs(id));
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+    }
+
+    /**
+     * A member the event no longer holds, in a companion run, as the coordinator marks it departed: a companion that
+     * left (its respawn took it out, above the floor) is tapped out by its host, which has it wait outside and say
+     * its own line ('LMPQ companion tapped out:'); if the host keeps it, another companion says it had to go. A human
+     * who left is dropped with one line. A member the event never held, and the leader, get nothing here.
+     */
+    static void departed(AgentLmpqSession session, AgentLmpqMemberState state, Character member, boolean left,
+                         long nowMs) {
+        if (!session.companionAdopted() || state.characterId() == session.eventLeaderId()) return;
+        AgentLmpqMemberVerdicts.Verdict verdict = AgentLmpqMemberVerdicts.verdict(new AgentLmpqMemberVerdicts.Facts(
+                state.memberType(), member == null ? 0 : member.getHp(), false, left, false,
+                AgentLmpqTerminationService.pastTheClear(session), session.downSinceMs(state.characterId()),
+                false, nowMs, MEMBER_RECOVERY_TIMEOUT_MS));
+        String name = member == null ? null : member.getName();
+        if (verdict == AgentLmpqMemberVerdicts.Verdict.REQUEST_TAP_OUT) {
+            boolean accepted = member != null && AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                    "lmpq", session.sessionId(), state.characterId(), member.getMapId(), nowMs));
+            log.info("LMPQ companion tapped out: session={} member={}({}) map={} accepted={}", session.sessionId(),
+                    name, state.characterId(), member == null ? "-" : String.valueOf(member.getMapId()), accepted);
+            if (!accepted && name != null) {
+                AgentLmpqDialogue.narrate(session, "went-" + state.characterId(), speaker(session, null),
+                        AgentLmpqCompanionPlay.companionWent(name));
+            }
+        } else if (verdict == AgentLmpqMemberVerdicts.Verdict.DROP_HUMAN && name != null) {
+            AgentLmpqDialogue.narrate(session, "left-" + state.characterId(), speaker(session, null),
+                    AgentLmpqCompanionPlay.humanLeft(name));
+        }
+    }
+
+    /**
+     * Says the run's parting once, before it fails: never after the clear (a companion run never fails in words
+     * then), never for a run already ending, and only the run's first failure speaks. SILENT says nothing; otherwise
+     * a companion on the leader's map, else any companion still up, says it ('LMPQ parting:').
+     */
+    static void parting(AgentLmpqSession session, AgentLmpqParting parting) {
+        if (!session.companionAdopted() || parting == null || session.terminal() || session.terminationStarted()
+                || AgentLmpqTerminationService.pastTheClear(session) || !session.claimFailure()) {
+            return;
+        }
+        if (parting.kind() == AgentLmpqParting.Kind.SILENT) return;
+        Character who = partingSpeaker(session);
+        log.info("LMPQ parting: session={} kind={} speaker={}", session.sessionId(), parting.kind(),
+                who == null ? "none" : who.getName());
+        AgentLmpqDialogue.narrate(session, "parting", who, parting.line());
+    }
+
+    /**
+     * Who says the parting: a companion on the leader's map, else any companion still up, else any loaded one; the
+     * departed are no longer the run's. The event may already have put them all outside the maze.
+     */
+    static Character partingSpeaker(AgentLmpqSession session) {
+        Character leader = AgentLmpqCoordinator.character(session.eventLeaderId());
+        Character up = null;
+        Character loaded = null;
+        for (AgentLmpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLmpqMemberState.MemberType.AGENT
+                    || session.departed(member.characterId())) {
+                continue;
+            }
+            Character agent = AgentLmpqCoordinator.character(member.characterId());
+            if (agent == null) continue;
+            if (agent.getHp() > 0) {
+                if (leader != null && agent.getMapId() == leader.getMapId()) return agent;
+                if (up == null) up = agent;
+            }
+            if (loaded == null) loaded = agent;
+        }
+        return up != null ? up : loaded;
     }
 
     // ---- speakers -------------------------------------------------------------------------------------------------

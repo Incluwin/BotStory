@@ -1650,6 +1650,10 @@ tuning:
     # Purpose: Sets the HP fraction at which a resting LMPQ companion with fewer than POT_STOP HP potions goes back to farming.
     # Technical: AgentLmpqCompanionRun.rests ends the rest ('LMPQ rest: state=END') once the companion's HP reaches this share of its maximum or it holds POT_STOP HP potions again; it then picks a room as before. Companion runs only.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.RESUME_HP_FRACTION: '0.7'
+    # Values: 10000-120000 milliseconds. Recommended: 45000 so a companion held dead in Room 16 at the floor has time to be revived, yet a run that cannot move on ends well inside the maze timer.
+    # Purpose: Bounds how long an LMPQ companion run keeps a dead companion held at the stock floor of three, before the clearing, before it lets the companion out and the event end.
+    # Technical: AgentLmpqCompanionRun.downs marks a held dead member down and, past this, SHORT_HANDED (AgentLmpqMemberVerdicts): AgentLmpqSession.expireHold makes AgentLmpqDeathDepartureGate let its respawn through, LudiMazePQ.js ends the event at the floor and the run says the WENT_DOWN parting. From CLEARING on a body on the clear maps waits for the clear. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
     # Values: 250-5000 milliseconds. Recommended: 1000 for timely LMPQ liveness checks with modest scheduler overhead.
     # Purpose: Scans active LMPQ runs for an expired or dead coordinator lease, or the loss of every loaded Agent, so each run still ticks, fails or completes.
     # Technical: AgentLmpqWatchdogRuntime iterates only AgentLmpqSessionRegistry, ticks a run through its first live Agent when the lease has run out, and releases a run that ended through the idempotent LMPQ termination path.
