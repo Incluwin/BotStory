@@ -4,6 +4,9 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -11,6 +14,8 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
 import server.maps.Reactor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -232,6 +237,7 @@ final class AgentPpqCompanionRun {
         }
         boolean down = leader.getHp() <= 0 && leader.getEventInstance() == event;
         if (session.observeLeaderDown(down)) {
+            session.pace().markDown(leader.getId());
             log.info("PPQ leader down: session={} stage={}", session.sessionId(), session.leaderStage());
             AgentPpqDialogue.narrate(session, "D1", partingSpeaker(session, leader), leader,
                     AgentPpqCompanionPlay.leaderDown(leader.getName()));
@@ -239,6 +245,7 @@ final class AgentPpqCompanionRun {
         if (!verdicts(session, event, nowMs)) {
             return false;
         }
+        markPace(session, leader, nowMs);
         for (String name : session.takeDeparted()) {
             Character speaker = partingSpeaker(session, leader);
             if (speaker != null && !speaker.getName().equals(name)) {
@@ -273,9 +280,12 @@ final class AgentPpqCompanionRun {
                         log.info("PPQ departed: session={} member={} type=HUMAN map={} companionRun=true",
                                 session.sessionId(), id, character == null ? "-" : String.valueOf(character.getMapId()));
                         if (character != null) session.queueDeparted(character.getName());
+                        session.pace().markDeparted(id);
                     }
                 }
-                case DOWN_WAIT -> session.markDown(id, nowMs);
+                case DOWN_WAIT -> {
+                    if (session.markDown(id, nowMs)) session.pace().markDown(id);
+                }
                 case REVIVED -> session.clearDown(id);
                 case SHORT_HANDED -> {
                     fail(session, character.getName() + " went down, and no companion of the PPQ run stands",
@@ -412,6 +422,107 @@ final class AgentPpqCompanionRun {
         } catch (RuntimeException unavailable) {
             return 0;
         }
+    }
+
+    /**
+     * The party is inside (P6i Step 5): who entered, and each member's power from the warmed PPQ profile (empty while it
+     * is cold or a member cannot be read).
+     */
+    static void markEntered(AgentPpqSession session, long nowMs) {
+        List<Integer> entrants = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(AgentPpqPaceProfile.QUEST_KEY);
+        boolean readable = profile != null;
+        for (AgentPpqMemberState member : session.members()) {
+            entrants.add(member.characterId());
+            if (!readable) {
+                continue;
+            }
+            Character character = AgentPpqCoordinator.character(member.characterId());
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentPpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("PPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().markEntered(readable ? power : List.of(), entrants, nowMs);
+    }
+
+    /**
+     * The pace boundaries one pass sees (plan 10): the leader's first step onto the medal map, the second deck, the
+     * door map and the boss map; a chest or hidden room he went into (that deck's span holds more than its clear);
+     * each wave's twenty in his bag and its hand-in (the event's stage2); the Lord Pirate down; and the wave pirates
+     * alive on the medal map, whose drops between passes count as the wave's kills. Never throws.
+     */
+    static void markPace(AgentPpqSession session, Character leader, long nowMs) {
+        try {
+            AgentPpqPaceMarks pace = session.pace();
+            var actions = AgentPpqCoordinator.actions();
+            switch (leader.getMapId()) {
+                case AgentPpqDefinition.MEDAL_MAP -> pace.mark(AgentPpqPaceMarks.Boundary.MEDALS, nowMs);
+                case AgentPpqDefinition.CHEST_ONE_MAP, AgentPpqDefinition.SIDE_ONE_MAP ->
+                        pace.markDetour(AgentPpqDefinition.DECK_ONE_MAP);
+                case AgentPpqDefinition.DECK_TWO_MAP -> pace.mark(AgentPpqPaceMarks.Boundary.DECK_TWO, nowMs);
+                case AgentPpqDefinition.CHEST_TWO_MAP, AgentPpqDefinition.SIDE_TWO_MAP ->
+                        pace.markDetour(AgentPpqDefinition.DECK_TWO_MAP);
+                case AgentPpqDefinition.DOOR_MAP -> pace.mark(AgentPpqPaceMarks.Boundary.DOORS, nowMs);
+                case AgentPpqDefinition.BOSS_MAP -> {
+                    pace.mark(AgentPpqPaceMarks.Boundary.BOSS, nowMs);
+                    if (actions.liveMonsterCount(leader, AgentPpqDefinition.LORD_PIRATES) == 0) {
+                        pace.mark(AgentPpqPaceMarks.Boundary.BOSS_DOWN, nowMs);
+                    }
+                }
+                default -> {
+                }
+            }
+            int wave = medalWave(leader);
+            if (wave >= 1) pace.mark(AgentPpqPaceMarks.Boundary.WAVE_ONE_IN, nowMs);
+            if (wave >= 2) pace.mark(AgentPpqPaceMarks.Boundary.WAVE_TWO_IN, nowMs);
+            if (wave >= 3) pace.mark(AgentPpqPaceMarks.Boundary.WAVE_THREE_IN, nowMs);
+            if (wave < 0 || wave >= AgentPpqDefinition.MEDAL_MOBS.size()) return;
+            int medal = AgentPpqDefinition.ROOKIE_MEDAL + wave;
+            if (actions.itemCount(leader, medal) >= AgentPpqDefinition.MEDALS_PER_WAVE) {
+                pace.mark(switch (wave) {
+                    case 0 -> AgentPpqPaceMarks.Boundary.WAVE_ONE_FULL;
+                    case 1 -> AgentPpqPaceMarks.Boundary.WAVE_TWO_FULL;
+                    default -> AgentPpqPaceMarks.Boundary.WAVE_THREE_FULL;
+                }, nowMs);
+            }
+            Character onMedals = leader.getMapId() == AgentPpqDefinition.MEDAL_MAP ? leader : onMedalMap(session);
+            if (onMedals != null) {
+                pace.observeWave(wave, actions.liveMonsterCount(onMedals,
+                        Set.of(AgentPpqDefinition.MEDAL_MOBS.get(wave))));
+            }
+        } catch (RuntimeException failure) {
+            log.debug("PPQ pace marks unreadable: session={}", session.sessionId(), failure);
+        }
+    }
+
+    /** The event's medal wave (stage2: 0-2 while collecting, 3 once all are handed in); -1 when unreadable. */
+    private static int medalWave(Character leader) {
+        try {
+            String stage = AgentPpqCoordinator.partyQuest().property(leader, "stage2");
+            return stage == null ? -1 : Integer.parseInt(stage.trim());
+        } catch (RuntimeException unreadable) {
+            return -1;
+        }
+    }
+
+    /** A loaded member of the run standing on the medal map; null when none. */
+    private static Character onMedalMap(AgentPpqSession session) {
+        for (AgentPpqMemberState member : session.members()) {
+            Character character = AgentPpqCoordinator.character(member.characterId());
+            if (character != null && character.getMapId() == AgentPpqDefinition.MEDAL_MAP) return character;
+        }
+        return null;
     }
 
     /** The runtime entry of an Agent, or null. */

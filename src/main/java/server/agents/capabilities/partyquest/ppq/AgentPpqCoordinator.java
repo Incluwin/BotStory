@@ -88,6 +88,7 @@ public final class AgentPpqCoordinator {
             session.setPotionsAtEntry(AgentPpqTerminationService.potions(session));
             // Wu Yang's exit is the companions' own talk after the clear: compiled now, off the tick that needs it.
             if (session.companionAdopted()) partyQuest().prepareNpcScripts(AgentPpqDefinition.RESCUE_NPC);
+            if (session.companionAdopted()) AgentPpqCompanionRun.markEntered(session, nowMs);
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
         if (capReached(session, nowMs)) return;
@@ -164,6 +165,7 @@ public final class AgentPpqCoordinator {
     private static boolean afterClear(AgentPpqSession session, long nowMs) {
         if (session.phase() != AgentPpqSession.Phase.CLEARING) return false;
         long afterClearMs = nowMs - session.observeCleared(nowMs);
+        session.pace().mark(AgentPpqPaceMarks.Boundary.CLEARED, session.observeCleared(nowMs));
         boolean waiting = stillInside(session);
         if (waiting && afterClearMs < AFTER_CLEAR_LIMIT_MS) return false;
         log.info("PPQ after clear: session={} stillInside={} afterClearMs={} companionRun={}",
@@ -206,6 +208,7 @@ public final class AgentPpqCoordinator {
             log.info("PPQ departed: session={} member={} map={} registered={} companionRun={}", session.sessionId(), id,
                     agent == null ? "-" : String.valueOf(agent.getMapId()), held.size(), session.companionAdopted());
             handBack(session, id, nowMs);
+            session.pace().markDeparted(id);
             if (session.companionAdopted() && agent != null) session.queueDeparted(agent.getName());
         }
     }
@@ -223,6 +226,7 @@ public final class AgentPpqCoordinator {
             log.info("PPQ departed: session={} member={} map=- reason=missing companionRun={}", session.sessionId(),
                     id, session.companionAdopted());
             handBack(session, id, nowMs);
+            session.pace().markDeparted(id);
         }
         return true;
     }

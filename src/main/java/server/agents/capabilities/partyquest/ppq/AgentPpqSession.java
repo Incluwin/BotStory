@@ -91,6 +91,8 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final List<String> departedNames = new java.util.ArrayList<>();
     /** Companion runs: one-shot log keys, apart from the lines'. */
     private final Set<String> logMarks = new HashSet<>();
+    /** Companion runs: when each boundary of the run's pace was first seen (P6i Step 5). */
+    private final AgentPpqPaceMarks pace = new AgentPpqPaceMarks();
     /** Companion runs: the leader lay dead in the bound event at the last pass. */
     private boolean leaderDown;
     /** Companion runs: the leader's name as the last pass saw it, for a parting said once he is gone. */
@@ -439,6 +441,9 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     }
 
     synchronized boolean leaderDown() { return leaderDown; }
+
+    /** The run's pace marks; they lock themselves. */
+    AgentPpqPaceMarks pace() { return pace; }
 
     synchronized void noteLeaderName(String name) {
         if (name != null && !name.isBlank()) eventLeaderName = name;
