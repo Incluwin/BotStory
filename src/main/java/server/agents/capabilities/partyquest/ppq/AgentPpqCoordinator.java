@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
@@ -72,7 +73,10 @@ public final class AgentPpqCoordinator {
         if (session.terminal() || session.terminationStarted() || session.paused()) return;
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
-            if (!cleared(session)) { session.fail("PPQ event leader is unavailable", nowMs); return; }
+            if (!cleared(session)) {
+                fail(session, "PPQ event leader is unavailable", AgentPpqParting.Kind.GONE, nowMs);
+                return;
+            }
             // The run is won: a leader who logged out after the clear leaves it to the after-clear rules.
             logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
             afterClear(session, nowMs);
@@ -92,7 +96,7 @@ public final class AgentPpqCoordinator {
         boolean humanDownInside = !isAgent(leader) && session.eventInstance() != null
                 && leader.getEventInstance() == session.eventInstance();
         if (leader.getHp() <= 0 && !humanDownInside && !cleared(session)) {
-            session.fail("PPQ event leader is unavailable", nowMs); return;
+            fail(session, "PPQ event leader is unavailable", AgentPpqParting.Kind.DEFEATED, nowMs); return;
         }
         observeDepartures(session, nowMs);
         logStage(session, leader, nowMs);
@@ -103,9 +107,15 @@ public final class AgentPpqCoordinator {
         }
         if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
-            session.fail("PPQ event instance was disposed before clear", nowMs); return;
+            // a companion run says why, from what its last pass saw of the event (plan 9.4)
+            fail(session, "PPQ event instance was disposed before clear", AgentPpqParting.endedCause(
+                    session.leaderDown(), session.lastTimeLeftMs(), AgentPpqCompanionRun.TIMEOUT_SLACK_MS,
+                    session.lastRegistered(), AgentPpqDefinition.STOCK_FLOOR), nowMs);
+            return;
         }
         boolean companionRun = session.companionAdopted();
+        // The leader, the members and the lines for those who left, before the clear (plan 7.0 T3-T9, 9.2-9.4).
+        if (companionRun && !AgentPpqCompanionRun.pass(session, leader, nowMs)) return;
         // A companion run says nothing before entry: its leader clicks Guon himself (plan 7.1).
         if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER && !companionRun
                 && session.phase() == AgentPpqSession.Phase.PREPARING) {
@@ -135,8 +145,16 @@ public final class AgentPpqCoordinator {
         // The authored medal stage allows six minutes and uses probabilistic drops.  Do not
         // declare a legal, still-attacking party stalled before that stage can naturally finish.
         if (!cleared(session) && nowMs - session.lastProgressAtMs() >= STALL_TIMEOUT_MS) {
-            session.fail("PPQ stalled", nowMs);
+            fail(session, "PPQ stalled", AgentPpqParting.Kind.TOO_LONG, nowMs);
         }
+    }
+
+    /**
+     * Fails the run with this reason: a stock run exactly as it always did, a companion run once, with its companions'
+     * parting of this kind (AgentPpqCompanionRun.fail).
+     */
+    private static void fail(AgentPpqSession session, String reason, AgentPpqParting.Kind kind, long nowMs) {
+        AgentPpqCompanionRun.fail(session, reason, kind, null, nowMs);
     }
 
     /**
@@ -168,10 +186,13 @@ public final class AgentPpqCoordinator {
             if (player != null) held.add(player.getId());
         }
         session.noteHeld(held);
+        // A companion run's member the event never held once the entry wait has passed since the bind went in without
+        // it (plan 7.1): it leaves the run as one that walked out does.
+        boolean entryOver = session.companionAdopted() && nowMs - session.enteredAtMs() >= COMPANION_ENTRY_WAIT_MS;
         for (AgentPpqMemberState member : session.members()) {
             int id = member.characterId();
             if (member.memberType() != AgentPpqMemberState.MemberType.AGENT || held.contains(id)
-                    || !session.seenHeld(id)) continue;
+                    || !(session.seenHeld(id) || entryOver)) continue;
             Character agent = character(id);
             if (agent != null && AgentPpqDefinition.isEventMap(agent.getMapId())) continue;
             if (session.companionAdopted() && session.lastAgent(id)) {
@@ -185,7 +206,25 @@ public final class AgentPpqCoordinator {
             log.info("PPQ departed: session={} member={} map={} registered={} companionRun={}", session.sessionId(), id,
                     agent == null ? "-" : String.valueOf(agent.getMapId()), held.size(), session.companionAdopted());
             handBack(session, id, nowMs);
+            if (session.companionAdopted() && agent != null) session.queueDeparted(agent.getName());
         }
+    }
+
+    /**
+     * A companion run's Agent not loaded for MEMBER_RECOVERY_TIMEOUT_MS (plan 9.2 MISSING) leaves the run as a departed
+     * one does; its last Agent sends the run home with the humans carrying on. False when the run ended.
+     */
+    static boolean departMissing(AgentPpqSession session, int id, long nowMs) {
+        if (session.lastAgent(id)) {
+            AgentPpqTerminationService.release(session, AgentPpqTerminationService.HUMANS_CARRY_ON, nowMs, false);
+            return false;
+        }
+        if (session.departAgent(id)) {
+            log.info("PPQ departed: session={} member={} map=- reason=missing companionRun={}", session.sessionId(),
+                    id, session.companionAdopted());
+            handBack(session, id, nowMs);
+        }
+        return true;
     }
 
     /**
@@ -196,6 +235,15 @@ public final class AgentPpqCoordinator {
     private static void handBack(AgentPpqSession session, int id, long nowMs) {
         try {
             AgentPpqFullRateSimulation.apply(session, id, entry(id), false);
+            if (session.companionAdopted()) {
+                // A desk run's host takes it out of the party and holds it by Guon's ship until the run is over (a
+                // tap-out, plan 9.2); with no host run (an adopted test run) it is refused and the hand-back below
+                // rehomes it as before.
+                boolean tappedOut = AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                        "ppq", session.sessionId(), id, AgentPpqDefinition.RECRUIT_MAP, nowMs));
+                log.info("PPQ tap-out: session={} member={} map={} accepted={}", session.sessionId(), id,
+                        AgentPpqDefinition.RECRUIT_MAP, tappedOut);
+            }
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(id);
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
             AgentPpqSessionRegistry.unindexMember(session, id);
@@ -228,17 +276,17 @@ public final class AgentPpqCoordinator {
         if (session.eventInstance() == null) {
             long waitedMs = nowMs - session.startedAtMs();
             if (session.companionAdopted() && waitedMs >= COMPANION_ENTRY_WAIT_MS) {
-                session.fail("The PPQ leader did not start the event in time", nowMs);
+                fail(session, "The PPQ leader did not start the event in time", AgentPpqParting.Kind.SILENT, nowMs);
                 return true;
             }
             if (waitedMs >= PRE_ENTRY_TIMEOUT_MS) {
-                session.fail("PPQ entry timed out", nowMs);
+                fail(session, "PPQ entry timed out", AgentPpqParting.Kind.SILENT, nowMs);
                 return true;
             }
             return false;
         }
         if (nowMs - session.enteredAtMs() >= EVENT_TIMEOUT_MS && !holdsAHuman(session)) {
-            session.fail("PPQ event timer expired", nowMs);
+            fail(session, "PPQ event timer expired", AgentPpqParting.Kind.TOO_LONG, nowMs);
             return true;
         }
         return false;

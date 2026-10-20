@@ -12,15 +12,22 @@ import server.maps.MapItem;
 import server.maps.Reactor;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
- * The run-level side of a PPQ companion run (P6i Steps 2 and 3), at the points the coordinator gates on
+ * The run-level side of a PPQ companion run (P6i Steps 2 to 4), at the points the coordinator gates on
  * {@link AgentPpqSession#companionAdopted}: each companion's own prelude (out of FOLLOW for the whole run, full rate where
- * no player sees it) and the companions' coaching lines on the leader's map, each said once by a companion standing
- * there. Every read of a character, map, reactor or the event happens here, outside the session's monitor.
+ * no player sees it), the companions' coaching lines on the leader's map, each said once by a companion standing there,
+ * and the run's own pass before the clear (the leader, the members' verdicts, the lines for members who left) with its
+ * early end in a companion's words. Past the clear a companion run never fails. Every read of a character, map,
+ * reactor or the event happens here, outside the session's monitor.
  */
 final class AgentPpqCompanionRun {
     private static final Logger log = LoggerFactory.getLogger(AgentPpqCompanionRun.class);
+    private static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS");
+    static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.TIMEOUT_SLACK_MS");
 
     private AgentPpqCompanionRun() {
     }
@@ -201,6 +208,210 @@ final class AgentPpqCompanionRun {
             if (drop != null && !drop.isPickedUp() && drop.getItemId() == AgentPpqDefinition.CHEST_KEY) return true;
         }
         return false;
+    }
+
+    /**
+     * One pass over a bound companion run before its clear (plan 7.0 T3-T9, 9.2-9.4), on the lease holder: the
+     * event's time left and size for the parting, the lead passed (GENERIC), the leader down in the event (D1 once; no
+     * failure: his OK ends the stock event, and the run then ends DEFEATED), every member's verdict, then the line for
+     * members who left while the run goes on. False when it ended the run. Past the clear or before the bind it does
+     * nothing.
+     */
+    static boolean pass(AgentPpqSession session, Character leader, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null || leader == null || AgentPpqCoordinator.cleared(session) || event.isEventDisposed()) {
+            return true;
+        }
+        session.noteLeaderName(leader.getName());
+        session.observeEvent(timeLeft(event), registered(event));
+        int eventLeader = leaderId(event);
+        if (eventLeader > 0 && eventLeader != session.eventLeaderId()) {
+            fail(session, "The PPQ event is no longer led by the run's leader", AgentPpqParting.Kind.GENERIC, null,
+                    nowMs);
+            return false;
+        }
+        boolean down = leader.getHp() <= 0 && leader.getEventInstance() == event;
+        if (session.observeLeaderDown(down)) {
+            log.info("PPQ leader down: session={} stage={}", session.sessionId(), session.leaderStage());
+            AgentPpqDialogue.narrate(session, "D1", partingSpeaker(session, leader), leader,
+                    AgentPpqCompanionPlay.leaderDown(leader.getName()));
+        }
+        if (!verdicts(session, event, nowMs)) {
+            return false;
+        }
+        for (String name : session.takeDeparted()) {
+            Character speaker = partingSpeaker(session, leader);
+            if (speaker != null && !speaker.getName().equals(name)) {
+                AgentPpqDialogue.narrate(session, "T1-" + name, speaker, leader, AgentPpqCompanionPlay.hadToGo(name));
+            }
+        }
+        return true;
+    }
+
+    /** Every non-leader member by AgentPpqMemberVerdicts; false when it ended the run. */
+    private static boolean verdicts(AgentPpqSession session, EventInstanceManager event, long nowMs) {
+        for (AgentPpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (id == session.eventLeaderId()) continue;
+            Character character = AgentPpqCoordinator.character(id);
+            AgentPpqMemberVerdicts.Verdict verdict = AgentPpqMemberVerdicts.verdict(new AgentPpqMemberVerdicts.Facts(
+                    true, member.memberType(), character != null, character == null ? 0 : character.getHp(),
+                    character != null && character.getEventInstance() == event, session.seenHeld(id),
+                    session.downSinceMs(id), session.held(id), standingCompanions(session, id)));
+            if (verdict != AgentPpqMemberVerdicts.Verdict.MISSING) session.clearMissing(id);
+            switch (verdict) {
+                case MISSING -> {
+                    if (session.missingFor(id, nowMs) >= MEMBER_RECOVERY_TIMEOUT_MS
+                            && session.claimLogMark("missing-" + id)) {
+                        log.info("PPQ member missing: session={} member={} missingMs={}", session.sessionId(), id,
+                                MEMBER_RECOVERY_TIMEOUT_MS);
+                        if (!AgentPpqCoordinator.departMissing(session, id, nowMs)) return false;
+                    }
+                }
+                case DROP_HUMAN -> {
+                    if (session.claimLogMark("left-" + id)) {
+                        log.info("PPQ departed: session={} member={} type=HUMAN map={} companionRun=true",
+                                session.sessionId(), id, character == null ? "-" : String.valueOf(character.getMapId()));
+                        if (character != null) session.queueDeparted(character.getName());
+                    }
+                }
+                case DOWN_WAIT -> session.markDown(id, nowMs);
+                case REVIVED -> session.clearDown(id);
+                case SHORT_HANDED -> {
+                    fail(session, character.getName() + " went down, and no companion of the PPQ run stands",
+                            AgentPpqParting.Kind.WENT_DOWN, character, nowMs);
+                    return false;
+                }
+                default -> {
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The departure gate's end of a companion run with no other companion standing (plan 9.1), on the dying
+     * companion's own tick, in its own words.
+     */
+    static void shortHanded(AgentPpqSession session, int dyingId, String name, long nowMs) {
+        // the dying companion says it, when the run has an event to say it in (fail says nothing without one)
+        Character dying = session.eventInstance() == null ? null : AgentPpqCoordinator.character(dyingId);
+        fail(session, (name == null || name.isBlank() ? "Companion " + dyingId : name)
+                        + " went down, and no companion of the PPQ run stands",
+                AgentPpqParting.Kind.WENT_DOWN, dying, nowMs);
+    }
+
+    /**
+     * The run's companions other than {@code exceptId} the bound event holds and the departure gate neither holds down
+     * nor is letting go: the gate's own count of who still stands (it reads no character), so the last companion down
+     * at the floor ends the run when the one before it is already held.
+     */
+    static int standingByTheGate(AgentPpqSession session, int exceptId, Set<Integer> registered) {
+        int standing = 0;
+        for (AgentPpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (member.memberType() == AgentPpqMemberState.MemberType.AGENT && id != exceptId
+                    && id != session.eventLeaderId() && registered.contains(id) && !session.held(id)
+                    && !session.departing(id)) {
+                standing++;
+            }
+        }
+        return standing;
+    }
+
+    /**
+     * Ends the run (plan 9.5). A stock run fails as it always did. A companion run that already ended or is being
+     * released, or is past its clear, is left alone (a companion run never fails after the clear); only its first
+     * failure speaks and fails it. SILENT, or a run that never went in, says nothing; otherwise the given speaker, else
+     * a companion beside the leader, else any standing in the event, else any loaded one, says the parting once
+     * ('PPQ parting:'). The 'PPQ session failure:' reason is unchanged.
+     */
+    static void fail(AgentPpqSession session, String reason, AgentPpqParting.Kind kind, Character speaker,
+                     long nowMs) {
+        if (!session.companionAdopted()) {
+            session.fail(reason, nowMs);
+            return;
+        }
+        if (session.terminal() || session.terminationStarted() || AgentPpqCoordinator.cleared(session)
+                || !session.claimFailure()) {
+            return;
+        }
+        if (kind != null && kind != AgentPpqParting.Kind.SILENT && session.eventInstance() != null) {
+            try {
+                Character leader = AgentPpqCoordinator.character(session.eventLeaderId());
+                Character who = speaker != null ? speaker : partingSpeaker(session, leader);
+                String leaderName = leader != null ? leader.getName() : session.eventLeaderName();
+                log.info("PPQ parting: session={} kind={} speaker={}", session.sessionId(), kind,
+                        who == null ? "none" : who.getName());
+                AgentPpqDialogue.narrate(session, "parting", who, leader, AgentPpqParting.of(kind, leaderName).line());
+            } catch (RuntimeException failure) {
+                log.warn("PPQ parting failed: session={}", session.sessionId(), failure);
+            }
+        }
+        session.fail(reason, nowMs);
+    }
+
+    /** A companion beside the leader, else any standing in the run's event, else any loaded one; null when none. */
+    static Character partingSpeaker(AgentPpqSession session, Character leader) {
+        Character beside = speakerBeside(session, leader);
+        if (beside != null) return beside;
+        Character standing = null;
+        Character loaded = null;
+        for (AgentPpqMemberState member : session.members()) {
+            if (member.memberType() != AgentPpqMemberState.MemberType.AGENT
+                    || member.characterId() == session.eventLeaderId()) {
+                continue;
+            }
+            Character agent = AgentPpqCoordinator.character(member.characterId());
+            if (agent == null) continue;
+            if (standing == null && agent.getHp() > 0 && session.eventInstance() != null
+                    && agent.getEventInstance() == session.eventInstance()) {
+                standing = agent;
+            }
+            if (loaded == null) loaded = agent;
+        }
+        return standing != null ? standing : loaded;
+    }
+
+    /** The run's companions other than {@code exceptId} alive and registered in its bound event (plan R19). */
+    static int standingCompanions(AgentPpqSession session, int exceptId) {
+        EventInstanceManager event = session.eventInstance();
+        if (event == null) return 0;
+        int standing = 0;
+        for (AgentPpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (member.memberType() != AgentPpqMemberState.MemberType.AGENT || id == exceptId
+                    || id == session.eventLeaderId()) {
+                continue;
+            }
+            Character agent = AgentPpqCoordinator.character(id);
+            if (agent != null && agent.getHp() > 0 && agent.getEventInstance() == event) standing++;
+        }
+        return standing;
+    }
+
+    private static long timeLeft(EventInstanceManager event) {
+        try {
+            return event.getTimeLeft();
+        } catch (RuntimeException unavailable) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static int registered(EventInstanceManager event) {
+        try {
+            return (int) event.getPlayers().stream().filter(Objects::nonNull).count();
+        } catch (RuntimeException unavailable) {
+            return -1;
+        }
+    }
+
+    private static int leaderId(EventInstanceManager event) {
+        try {
+            return event.getLeaderId();
+        } catch (RuntimeException unavailable) {
+            return 0;
+        }
     }
 
     /** The runtime entry of an Agent, or null. */

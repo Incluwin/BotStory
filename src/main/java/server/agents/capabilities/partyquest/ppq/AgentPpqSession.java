@@ -93,6 +93,8 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Set<String> logMarks = new HashSet<>();
     /** Companion runs: the leader lay dead in the bound event at the last pass. */
     private boolean leaderDown;
+    /** Companion runs: the leader's name as the last pass saw it, for a parting said once he is gone. */
+    private String eventLeaderName;
     /** Companion runs: the bound event's time left at the last pass; Long.MAX_VALUE until read. */
     private long lastTimeLeftMs = Long.MAX_VALUE;
     /** Companion runs: the players the bound event held at the last pass; -1 until read. */
@@ -437,6 +439,16 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     }
 
     synchronized boolean leaderDown() { return leaderDown; }
+
+    synchronized void noteLeaderName(String name) {
+        if (name != null && !name.isBlank()) eventLeaderName = name;
+    }
+
+    /** The leader's name as the last pass saw it; null before any. */
+    synchronized String eventLeaderName() { return eventLeaderName; }
+
+    /** Whether this member's departure is in flight (its gate let it go and its respawn has not returned). */
+    synchronized boolean departing(int id) { return departuresInFlight.contains(id); }
 
     /** The bound event as the last pass read it, outside this monitor: its time left and how many it held. */
     synchronized void observeEvent(long timeLeftMs, int registered) {

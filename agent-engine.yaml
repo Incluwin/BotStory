@@ -1704,6 +1704,14 @@ tuning:
     # Purpose: Below this share of its HP, a PPQ companion with no HP potion left drops the wave's medals at its feet, so its death does not delete them, and gathers no more until it is better.
     # Technical: AgentPpqCompanionPlay.dying (hp * 100 <= this * currentMaxHp and hpPotionCount 0) on 925100100 in companion runs; the stack is a companion drop, so the nudge and the re-collect of AgentPpqMedalHandOver bring it on to the leader ('PPQ medals left:', line M6 once a wave).
     server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT: '25'
+    # Values: 10000-300000 milliseconds. Recommended: 45000, EPQ's member recovery timeout.
+    # Purpose: How long a PPQ companion run waits for one of its companions to load back in before it lets that companion go and carries on without it.
+    # Technical: AgentPpqCompanionRun.verdicts (companion runs, before the clear): an Agent member with no character online (AgentPpqMemberVerdicts MISSING) for this long since first seen so leaves the run as a departed one does (AgentPpqCoordinator.departMissing: tap-out, hand-back); its last Agent releases the run with the humans carrying on.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 500-10000 milliseconds. Recommended: 2000, a few session ticks.
+    # Purpose: How close to the end of its stage timer a PPQ event must have been at the run's last look for its end to count as the timer running out, in the companions' parting.
+    # Technical: AgentPpqCompanionRun.pass stores the event's getTimeLeft on every pass (AgentPpqSession.observeEvent); when the event is disposed before the clear and the last read was at most this, AgentPpqParting.endedCause names TIMEOUT ("out of time... let's head back.").
+    server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.TIMEOUT_SLACK_MS: '2000'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 
