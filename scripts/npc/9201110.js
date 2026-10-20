@@ -25,6 +25,15 @@ function start() {
                     } else {
                         cm.sendOk("Make room on your ETC inventory first.");
                     }
+                } else if (Java.type('server.partyquest.CwkpqRelicWeapons').lost(eim, 4001256)) {
+                    // a weapon lost before its relic took it is given once more (CWKPQ plan Question 4 (a))
+                    if (cm.canHold(4001256, 1)) {
+                        Java.type('server.partyquest.CwkpqRelicWeapons').markReissued(eim, 4001256);
+                        cm.gainItem(4001256, 1);
+                        cm.sendOk("Lost before it reached its Relic? Take this one. It is the last this room will give.");
+                    } else {
+                        cm.sendOk("Make room on your ETC inventory first.");
+                    }
                 } else {
                     cm.sendOk("The weapon inside this room has already been retrieved.");
                 }

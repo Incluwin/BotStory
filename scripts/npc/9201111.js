@@ -3,6 +3,22 @@
 
 function start() {
     if (cm.getPlayer().getMap().getId() == 610030500) {
+        // the gun lost before its relic took it, once its chest was broken, is given once more to a pirate (CWKPQ plan
+        // Question 4 (a)); the pirate room has no master to give it
+        var eim = cm.getEventInstance();
+        var relics = Java.type('server.partyquest.CwkpqRelicWeapons');
+        if (eim != null && cm.getPlayer().getJob().getJobNiche() == 5 && relics.gunChestBroken(eim)
+                && relics.lost(eim, 4001260)) {
+            if (cm.canHold(4001260, 1)) {
+                relics.markReissued(eim, 4001260);
+                cm.gainItem(4001260, 1);
+                cm.sendOk("The Forbidden Gun was lost before it reached its Relic? Take this one. It is the last you will get.");
+            } else {
+                cm.sendOk("Make room on your ETC inventory first.");
+            }
+            cm.dispose();
+            return;
+        }
         cm.sendOk("You're about to get wet and do what a Pirate does best--dig for booty! Be careful--that water beneath is known as Heavy Water, and it's so dense that I doubt you could swim through it! You'll have to make your way around....The relic you seek is known as the Forbidden Gun, which is an ancient weapon of the finest Pirate to grace the shores of Masteria--Steel Fist Jack! It's been buried in one of the many treasure chests you'll find below the sea. It won't be easy...Pirates were known for burying things in the most unlikely places, so dig deep and keep your guard up. There are sharks and much worse in those waters!");
         cm.dispose();
     } else if (cm.getPlayer().getMap().getId() == 610030000) {
