@@ -232,8 +232,9 @@ public final class ContentQuestionDetector {
         rule(Kind.GET_WHERE, "^where (?:can|do|should|could|would|did) (?:i|you|we|people|one|players) (?:get|find|obtain|grab)"
                 + " (?:some |more |a |an |the )?(?<x>.+?)(?: from| at| anywhere| around here| here)?$", false, null);
         rule(Kind.GET_WHERE, "^where (?:to|2|i can|we can|i could) (?:get|find|obtain) (?:some |more |a |an |the )?(?<x>.+?)$", false, null);
-        rule(Kind.GET_WHERE, "^how (?:do|can|would|should) (?:i|you|we|one|people) (?:get|obtain|find|make) (?:some |more |a |an )?(?<x>.+?)$", false, null);
-        rule(Kind.GET_WHERE, "^how (?:to|2) (?:get|obtain|find|make) (?:some |more |a |an )?(?<x>.+?)$", false, null);
+        // "how do i get into cwkpq" is a place, not an item: the "get into" rule below takes it
+        rule(Kind.GET_WHERE, "^how (?:do|can|would|should) (?:i|you|we|one|people) (?:get|obtain|find|make) (?!into )(?:some |more |a |an )?(?<x>.+?)$", false, null);
+        rule(Kind.GET_WHERE, "^how (?:to|2) (?:get|obtain|find|make) (?!into )(?:some |more |a |an )?(?<x>.+?)$", false, null);
         rule(Kind.GET_WHERE, "^where (?:does|do) (?:the )?(?<x>.+?) come from$", false, null);
         rule(Kind.GET_WHERE, "^(?:any |is there an? )?(?:good )?(?:place|spot) to get (?<x>.+)$", false, null);
         // where things are

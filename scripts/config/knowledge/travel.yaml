@@ -1,8 +1,9 @@
 # NPC travel the portal graph cannot see: ships, planes, the subway, cranes, elevators and taxis.
 # Each leg: board at `from` (the map where `npc` stands) and arrive at `to`. Ids are checked against
 # server-knowledge.json at load; a leg naming an unknown map or NPC is dropped with a warning.
-# kind: ship / plane / subway / crane / dolphin / elevator / boat / guide / world-tour / taxi. Routes (WorldKnowledge.route)
-# use every kind except taxi, which is a shortcut, not the way; taxis are listed for answers and for travel.
+# kind: ship / plane / subway / crane / dolphin / elevator / boat / guide / world-tour / taxi / cab. Routes (WorldKnowledge.route)
+# use every kind except taxi, which is a shortcut, not the way; taxis are listed for answers and for travel. A cab is a
+# taxi that is the only way somewhere (the NLC Taxi to the Haunted House), so routes take it.
 # A guide or elevator hop counts like walking through one map; every other ride like walking ten.
 # cost: the fare in mesos from the NPC or ticket script (0 = free or ticket only). Sources: scripts/npc/*.js,
 # cross-checked with tmp/agent-llm-catalog/generated_travel_service_catalog.json.
@@ -51,6 +52,9 @@ legs:
   # Kerning City <-> New Leaf City (subway; tickets from Bell 9201057)
   - { from: 103000100, to: 600010001, npc: 1052007, kind: subway, cost: 5000, note: "Kerning subway -> New Leaf City" }
   - { from: 600010001, to: 103000100, npc: 9201068, kind: subway, cost: 5000, note: "New Leaf City -> Kerning subway" }
+  # New Leaf City <-> the Haunted House, the only way into the Phantom Forest (NLC Taxi, 15000 each way)
+  - { from: 600000000, to: 682000000, npc: 9201056, kind: cab, cost: 15000, note: "NLC Taxi -> Haunted House (Phantom Forest)" }
+  - { from: 682000000, to: 600000000, npc: 9201056, kind: cab, cost: 15000, note: "Haunted House -> New Leaf City" }
   # Kerning City <-> Singapore (Irene / Shalon)
   - { from: 103000000, to: 540010000, npc: 9270041, kind: plane, cost: 5000, note: "Kerning City -> Singapore" }
   - { from: 540010000, to: 103000000, npc: 9270038, kind: plane, cost: 5000, note: "Singapore -> Kerning City" }

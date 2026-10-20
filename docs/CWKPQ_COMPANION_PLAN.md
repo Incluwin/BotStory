@@ -232,6 +232,13 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     `companionDamagePercent`, so ten companions at 30,000 damage a second take them past the 40-minute slow limit.
     Whether companions get a damage scale here (as Pink Bean's 2000%) is for the C9 live check.
   - Not modelled: the damage policy counts an element a mob is immune to as normal (Master Guardians resist all five).
+- **C2 chat answer, built 2026-10-20** (server.knowledge): CWKPQ is a known PQ (aliases.yaml cwkpq: lobby 610030020,
+  Jack 9201113, levels 90-255), with the keystone (3992041) and Lukan (9201098) by name. "how do i join cwkpq" names
+  Jack and the keystone from Lukan; "how do i get the keystone" names Lukan's quests (it was "dont think anything drops
+  those": quest rewards are not item sources); a bot under level 70 says it is past it. The NLC Taxi to the Haunted
+  House is a travel leg of a new kind, cab (a taxi that is the only way, which routes take), so "how do i get to
+  crimsonwood keep" is "subway to nlc, cab to haunted house, then thru valley of heroes". "how do i get into X" was
+  read as an item question for every PQ; it now asks where X is.
 - **C8, Armory, built 2026-10-20** (`AgentCwkpqArmoryPlay`): a boss fight may now play on after its clear on maps it
   names (`AgentBossFight.playsAfterClear`); only cwkpq does. After the statue's last talk the companions take the
   hall's next00, wait in the Secret Chamber until someone has started the Armory's minute (current_instance 6), then

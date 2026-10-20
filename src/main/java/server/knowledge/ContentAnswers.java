@@ -82,6 +82,16 @@ public final class ContentAnswers {
     private static final int FM_LAST = 910_000_022;
     private static final int TELE_ROCK = 5_041_000;
     private static final int PERFECT_PITCH = 4_310_000;
+    /** CWKPQ plan C2: the Crimsonwood Keystone, a quest reward only (8223), which the drop tables never show. */
+    private static final int CRIMSONWOOD_KEYSTONE = 3_992_041;
+    /** The keep's PQ lobby, the Hall to Inner Sanctum (aliases.yaml cwkpq). */
+    private static final int CWKPQ_LOBBY = 610_030_020;
+    /** Lukan's keystone quests start at level 70: a bot below it has not done them. */
+    private static final int KEYSTONE_QUEST_LEVEL = 70;
+    private static final String KEYSTONE_FACT = "Crimsonwood Keystone: Lukan on Phantom Road in the Phantom Forest"
+            + " gives it for his quest Storming the Castle (level 70), after The Brewing Storm (10 Stormbreaker Badges)"
+            + " and starting Stemming the Tide with Jack in the Cavern of Pain; nothing drops it and no shop sells it;"
+            + " the gate to Crimsonwood Keep's party quest takes it";
     private static final int[] JOB_LEVELS = {0, 10, 30, 70, 120};
     private static final int MAGICIAN_FIRST_JOB = 8;
     private static final List<EntityKind> ITEMS = List.of(EntityKind.ITEM);
@@ -773,6 +783,9 @@ public final class ContentAnswers {
         if (item.id() == TELE_ROCK) {
             return answered(c, "rules.rock", Map.of(), "content.rules", ServerRules.rock());
         }
+        if (item.id() == CRIMSONWOOD_KEYSTONE) {
+            return keystone(c, item);
+        }
         if (fact.map(ItemFact::cash).orElse(false)) {
             return answered(c, "cash", Map.of(), "content.item_source", item.say() + ": a Cash Shop item, nothing drops it");
         }
@@ -1012,6 +1025,9 @@ public final class ContentAnswers {
         if (item.id() == TELE_ROCK) {
             return answered(c, "rules.rock", Map.of(), "content.rules", ServerRules.rock());
         }
+        if (item.id() == CRIMSONWOOD_KEYSTONE) {
+            return keystone(c, item);
+        }
         if (c.k.item(item.id()).map(ItemFact::cash).orElse(false)) {
             return answered(c, "cash", Map.of(), "content.shop", item.say() + ": a Cash Shop item");
         }
@@ -1157,8 +1173,12 @@ public final class ContentAnswers {
                 int lobby = subject.ids().getInt(0);
                 put(facts, "content.where", subject.say() + ": lobby " + placeFact(c, lobby) + ", started by "
                         + npcSay(c, subject.npc()) + ", levels " + subject.minLevel() + "-" + subject.maxLevel());
-                yield new Composed(Outcome.ANSWERED, line(c, "where.pq", Map.of("pq", subject.say(), "town", townSay(c, lobby),
-                        "npc", npcSay(c, subject.npc()))), facts);
+                boolean keystone = lobby == CWKPQ_LOBBY && c.ask.bot().level() >= KEYSTONE_QUEST_LEVEL;
+                if (keystone) {
+                    put(facts, "content.item_source", KEYSTONE_FACT);
+                }
+                yield new Composed(Outcome.ANSWERED, line(c, keystone ? "where.pq.keystone" : "where.pq",
+                        Map.of("pq", subject.say(), "town", townSay(c, lobby), "npc", npcSay(c, subject.npc()))), facts);
             }
             default -> {
                 int map = nearestMap(c, knownFirst(c, subject.ids()));
@@ -2150,6 +2170,18 @@ public final class ContentAnswers {
         }
         int cut = text.lastIndexOf(' ', maxChars);
         return text.substring(0, cut > 0 ? cut : maxChars).replaceAll("[, ]+$", "");
+    }
+
+    /**
+     * CWKPQ plan C2: where the Crimsonwood Keystone comes from, Lukan's quests (no drop table or shop has it, so the
+     * item answers would say nothing drops it). A bot under the quests' level has not done them: "way past me".
+     */
+    private Composed keystone(Context c, Entity item) {
+        if (c.ask.bot().level() < KEYSTONE_QUEST_LEVEL) {
+            return new Composed(Outcome.DEFLECTED, line(c, "deflect.item", Map.of()), facts(c, "content.boundary",
+                    item.say() + " comes from quests far above the speaker's level; say you don't know"));
+        }
+        return answered(c, "get.keystone", Map.of(), "content.item_source", KEYSTONE_FACT);
     }
 
     private Composed answered(Context c, String key, Map<String, String> vars, String factKey, String fact) {

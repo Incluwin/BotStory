@@ -70,6 +70,7 @@ aliases:
   - {alias: ["maple claw"], kind: item, ids: [1472030], wz: "Maple Claw"}
   - {alias: ["maple staff"], kind: item, ids: [1382009], wz: "Maple Staff"}
   # ---- etc -----------------------------------------------------------------------------------
+  - {alias: [keystone, "crimsonwood keystone", "cwk keystone", "cwkpq keystone", "cwkpq key", "cwk key"], kind: item, ids: [3992041], say: "keystone", wz: "Crimsonwood Keystone"}
   - {alias: ["bronze ore", "bronze ores"], kind: item, ids: [4010000], wz: "Bronze Ore"}
   - {alias: ["steel ore", "steel ores"], kind: item, ids: [4010001], wz: "Steel Ore"}
   - {alias: ["mithril ore", "mith ore", "mithril ores"], kind: item, ids: [4010002], wz: "Mithril Ore"}
@@ -216,8 +217,10 @@ aliases:
   - {alias: [lpq, "ludi pq", ludipq, "ludibrium pq"], kind: pq, ids: [221024500, 922010100], npc: 2040034, levels: [35, 50], say: "lpq", wz: "Eos Tower 101st Floor; Abandoned Tower"}
   - {alias: [opq, "orbis pq", "orbis party quest"], kind: pq, ids: [200080101, 920010000], npc: 2013000, levels: [51, 70], say: "opq", wz: "The Unknown Tower"}
   - {alias: [hpq, "henesys pq", "moon bunny pq", "rice cake pq"], kind: pq, ids: [100000200, 910010000], npc: 1012112, levels: [10, 200], say: "hpq", wz: "Henesys Park; Primrose Hill"}
+  - {alias: [cwkpq, "cwk pq", ckpq, "crimsonwood pq", "crimsonwood party quest", "crimsonwood keep pq", "crimsonwood keep party quest"], kind: pq, ids: [610030020, 610030100], npc: 9201113, levels: [90, 255], say: "cwkpq", wz: "Hall to Inner Sanctum; Inner Sanctum Hallway"}
   # ---- NPCs ----------------------------------------------------------------------------------
   - {alias: [lakelis], kind: npc, ids: [9020000], wz: "Lakelis"}
+  - {alias: [lukan], kind: npc, ids: [9201098], wz: "Lukan"}
   - {alias: ["red sign"], kind: npc, ids: [2040034], wz: "Red Sign"}
   - {alias: [wonky, "wonky the fairy"], kind: npc, ids: [2013000], wz: "Wonky the Fairy"}
   - {alias: [tory], kind: npc, ids: [1012112], wz: "Tory"}

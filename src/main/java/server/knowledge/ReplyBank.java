@@ -137,6 +137,13 @@ final class ReplyBank {
         put("where.mob.none", "dont think they spawn anywhere normal");
         put("where.pq", "{pq}s in {town}, talk to {npc}", "{town}, {npc} starts it");
         put("where.pq/quiet", "{town}, {npc}");
+        // CWKPQ plan C2: the keep's gate takes the Crimsonwood Keystone, so its PQ is never told without it
+        put("where.pq.keystone", "{pq}s in crimsonwood keep, talk to {npc}. u need the keystone from lukan first",
+                "{npc} in crimsonwood keep starts it, get the keystone from lukan first");
+        put("where.pq.keystone/quiet", "crimsonwood keep, {npc}. keystone from lukan first");
+        put("get.keystone", "lukan in the phantom forest gives it, do his quests",
+                "do lukans quests, hes on phantom road in the phantom forest", "lukan gives it, phantom forest. lv 70 quests");
+        put("get.keystone/quiet", "lukan, phantom forest");
         put("where.role.here", "{role}s right here, {spot}", "{spot}, {npc}");
         put("where.role.here/quiet", "{spot}");
         put("where.role.square", "{role}s right here, {npc}", "{npc}, right here");
