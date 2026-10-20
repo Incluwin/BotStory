@@ -158,14 +158,15 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
 
 - **Companion boss runs:** the server moves the boss, and its attacks hit companions.
   - Companions spend their own daily entries and always leave two seats for players.
-  - A companion that dies to a field boss rests in town first.
-  - You can call bench allies into a run.
-- **On by default:** Easy Balrog and Pink Bean (`COMPANION_BOSS_ENABLED_TYPES`).
-- **Built, off by default:**
-  - Normal Balrog, Zakum, Papulatus, Scarga, Horntail, Showa, Latanica and the five Neo City
-    bosses.
+  - A companion that dies to a field boss rests in town first. One that keeps dying to it sits
+    that fight out in town and says so.
+  - You can call bench allies into any boss with a sign-up list.
+- **Every boss is on by default** (`COMPANION_BOSS_ENABLED_TYPES`):
+  - Easy and Normal Balrog, Zakum, Papulatus, Scarga, Horntail, Showa, Pink Bean, Latanica and
+    the five Neo City bosses.
   - Field-boss groups for Victoria, Ossyria, Ludus, Mu Lung, Nihal, Pianus, Leafre, the Temple of
-    Time, Zipangu and Masteria.
+    Time, Zipangu and Masteria. Citizens never attack a field boss; one that dies beside it
+    trains elsewhere while the boss stands.
 - **Test kit:** `!bossgear` gives a companion a boss kit and puts its own gear back afterwards.
 
 ### Residents: the living world
