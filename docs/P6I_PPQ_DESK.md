@@ -201,3 +201,11 @@ Never use `!warp` or `!warpto` inside the PQ. Grep for: `PPQ phase:`, `PPQ stage
 | AgentPpqPaceProfile.WEAK_HIT_CHANCE (new) | 0.6 |
 | AgentPpqPaceProfile.PACE_EPOCH (new) | 1 |
 | (supplies) AgentSupplyReadiness.PARTY_QUEST_STANDARDS ppq | 30/40 (unchanged, P2 default) |
+
+## Live 2026-10-19 (89d38f027, "ppq" on by default)
+
+Crewfriend (Lv78) with Dorran, Lioren and Kestrel at Guon (251010404). L7: Guon's window ("<Party Quest: Pirate Ship>
+Four of you, then?", Yes / Let me choose / the bench call); Yes admitted the session (companionRun=true), all four in
+925100000, STAGE_ONE, Lioren's S1 line. Medals: the leader stood far left, so the carriers left them under Guon's
+ledge (place=NPC) and said M2b. The leader leaving ended the run: Kestrel's parting line, the session released, every
+companion back on 251010404. L8 (a full desk run) not done.

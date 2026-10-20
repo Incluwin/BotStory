@@ -144,14 +144,14 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
 
 ### Party quests
 
-- **KPQ, HPQ, LPQ and EPQ** with companions (`COMPANION_PQ_ENABLED_KEYS`):
-  - The entry NPC proposes a lineup and can call from your bench, while extras wait beside her.
+- **Every party quest is on by default** (`COMPANION_PQ_ENABLED_KEYS`): KPQ, HPQ, LPQ, EPQ, LMPQ, OPQ,
+  PPQ and RJPQ (both the Romeo and the Juliet side).
+  - The entry NPC (Lakelis, Tory, the Red Sign, Ellin, Rolly, Wonky, Guon, Romeo, Juliet) proposes a
+    lineup and can call from your bench, while extras wait beside them.
   - Downed companions tap out.
   - Run records and clear-time estimates.
-- **RJPQ** with companions (the Romeo and Juliet desks, Dark Lab runners): built, off by default.
-  Add `rjpq,rjpqj` to the key list.
-- **OPQ, LMPQ and PPQ** companion runs (sealed-room learning, the LMPQ regroup, the PPQ medal
-  hand-over): started by a GM only, with `!opqtest`, `!lmpqtest` or `!ppqtest party`.
+  - In the run, companions play their part: the LMPQ coupons and regroup, the OPQ sealed rooms and
+    garden, the PPQ medals at your feet, the RJPQ books and Dark Lab runners.
 - **Fixed:** the PPQ side-room portals.
 
 ### Bosses

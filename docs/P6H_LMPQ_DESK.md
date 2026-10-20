@@ -108,3 +108,9 @@ Binding plan: `p6h_lmpq_plan.md`, section "STEPS 2-6", in the session scratchpad
 | AgentLmpqWatchdogRuntime.PERIOD_MS | 1000 | 250-5000 | 1b |
 
 Unchanged elsewhere: `AgentSupplyReadiness.PARTY_QUEST_STANDARDS` already lists lmpq=30/40.
+
+## Live 2026-10-19 (89d38f027, "lmpq" on by default)
+
+Rolly answers with his window ("<Party Quest: Ludibrium Maze>", the leader, Dorran Lv75 and Lioren Lv77 kept waiting
+as "past the maze", Let me choose / the bench call / Never mind). No full run: the test crew is Lv75-78, above the
+maze's 51-70, and lowering them with `!setlevel` can drop skills a restore does not give back.
