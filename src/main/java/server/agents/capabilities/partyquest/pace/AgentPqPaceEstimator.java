@@ -226,6 +226,9 @@ public final class AgentPqPaceEstimator {
         for (AgentPqMemberPower member : members) {
             if (member.humanLeader()) continue;
             for (AgentPqPaceSegment segment : AgentPqPaceSegment.leaves(segments)) {
+                if (segment instanceof AgentPqPaceSegment.Clear clear && !clear.fighters().test(member)) {
+                    continue; // a room its class never enters
+                }
                 List<Integer> mobs = segment instanceof AgentPqPaceSegment.Quota quota ? List.of(quota.mobId())
                         : segment instanceof AgentPqPaceSegment.Clear clear ? List.copyOf(clear.counts().keySet())
                         : List.of();

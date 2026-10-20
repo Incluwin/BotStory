@@ -156,7 +156,7 @@ class AgentPqPaceEstimatorTest {
                 new AgentPqPaceEstimate.Weakness(0, BOSS, "boss", AgentPqPaceEstimate.Kind.UNHITTABLE)));
         for (double value : new double[]{estimate.p10S(), estimate.p50S(), estimate.p90S(), estimate.meanS()}) {
             assertFalse(Double.isNaN(value));
-            assertEquals(3_600.0d, value, 1e-9);
+            assertEquals(7_200.0d, value, 1e-9); // the estimate's HORIZON_MS
         }
         assertEquals(1.0d, estimate.overTimerChance(), 1e-12);
         estimate.segmentMeanS().values().forEach(value -> assertFalse(Double.isNaN(value) || Double.isInfinite(value)));

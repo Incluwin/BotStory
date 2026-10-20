@@ -25,6 +25,14 @@ public sealed interface AgentPqPaceSegment {
         LEADER
     }
 
+    /** Which members a clear lets fight; {@link #EVERYONE} unless a room takes one class only. */
+    @FunctionalInterface
+    interface Fighters {
+        boolean test(AgentPqMemberPower member);
+
+        Fighters EVERYONE = member -> true;
+    }
+
     /** Which mob type each member fights first: member id to mob id, given each member's damage per live mob type. */
     @FunctionalInterface
     interface Assigner {
@@ -94,15 +102,17 @@ public sealed interface AgentPqPaceSegment {
     /**
      * Kill every mob of a fixed census once (KPQ stage 5's normals, then King Slime). The theory time is a water-fill:
      * each fighter works the type {@code assigner} gives it until a type dies, then they choose again. Every member
-     * fights but the human leader, who fights only when {@code leaderFights} (KPQ parks him by Cloto); a human beside
-     * him fights like a companion. Its calibration term is the efficiency under {@link #key()}.
+     * {@code fighters} lets in fights (everyone, but for a room only one class may enter: CWKPQ's class rooms) but the
+     * human leader, who fights only when {@code leaderFights} (KPQ parks him by Cloto); a human beside him fights like
+     * a companion. Its calibration term is the efficiency under {@link #key()}.
      */
     record Clear(String key, Map<Integer, Integer> counts, Map<Integer, Integer> hp, Assigner assigner,
-                 boolean leaderFights) implements AgentPqPaceSegment {
+                 boolean leaderFights, Fighters fighters) implements AgentPqPaceSegment {
         public Clear {
             requireKey(key);
-            if (counts == null || counts.isEmpty() || hp == null || assigner == null) {
-                throw new IllegalArgumentException("a clear needs a census, the HP of each type and an assigner");
+            if (counts == null || counts.isEmpty() || hp == null || assigner == null || fighters == null) {
+                throw new IllegalArgumentException("a clear needs a census, the HP of each type, an assigner and its"
+                        + " fighters");
             }
             for (Map.Entry<Integer, Integer> count : counts.entrySet()) {
                 Integer mobHp = hp.get(count.getKey());
@@ -112,6 +122,17 @@ public sealed interface AgentPqPaceSegment {
             }
             counts = Collections.unmodifiableMap(new TreeMap<>(counts));
             hp = Collections.unmodifiableMap(new TreeMap<>(hp));
+        }
+
+        /** A clear every member fights. */
+        public Clear(String key, Map<Integer, Integer> counts, Map<Integer, Integer> hp, Assigner assigner,
+                     boolean leaderFights) {
+            this(key, counts, hp, assigner, leaderFights, Fighters.EVERYONE);
+        }
+
+        /** True when {@code member} fights this clear: let in by its fighters, and not a human leader it parks. */
+        public boolean fights(AgentPqMemberPower member) {
+            return fighters.test(member) && (leaderFights || !member.humanLeader());
         }
 
         public long totalHp() {

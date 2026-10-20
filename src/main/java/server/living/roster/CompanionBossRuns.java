@@ -1315,6 +1315,30 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
+     * CWKPQ plan C8 (LivingWorldHooks.cwkpqClearTime, Jack's window for the leader, on his I/O thread, memory only):
+     * how long Jack thinks the keep takes this list, and up to two cautions, from the warm pace profile and every
+     * member's power; null while living_world.COMPANION_PQ_CLEAR_TIME is off, cwkpq is not switched on for
+     * companions, or there is nothing to say (CwkpqClearTime.text).
+     */
+    public String cwkpqClearTime(Character leader) {
+        if (!world.config().COMPANION_PQ_CLEAR_TIME
+                || !world.config().companionBossEnabled(AgentBossRunCatalog.CWKPQ.key())) {
+            return null;
+        }
+        Expedition expedition = leader == null ? null : expeditionOf(leader, AgentBossRunCatalog.CWKPQ);
+        return expedition == null ? null
+                : CwkpqClearTime.text(leader, expedition.getActiveMembers(), CwkpqClearTime.Pace.LIVE);
+    }
+
+    /** CWKPQ plan C8, on companion-ops at boot: warms the profile Jack's clear time reads, while it can be shown. */
+    public void warmCwkpqPace() {
+        if (world.config().COMPANION_PQ_CLEAR_TIME
+                && world.config().companionBossEnabled(AgentBossRunCatalog.CWKPQ.key())) {
+            CwkpqClearTime.warm();
+        }
+    }
+
+    /**
      * CWKPQ plan C3, decision 5, after {@link #allSignedUp}'s lines while the list is open: a party companion of the
      * owner on the list says the first warning that holds and it has not said this run, in order: nobody can turn an
      * archetype's sigil (Jack will refuse the Start), fewer than {@link #CWKPQ_SAFE_LIST} are on the list (the run ends

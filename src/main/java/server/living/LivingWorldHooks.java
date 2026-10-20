@@ -735,6 +735,25 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * CWKPQ plan C8: Jack's window for the leader (9201113.js, on his I/O thread, memory only): how long Jack thinks
+     * the keep takes this list (CompanionBossRuns.cwkpqClearTime), or null to show the stock list alone. Null with no
+     * living world, for an Agent leader, and on any failure: the list is never held back by this hook going wrong.
+     */
+    public static String cwkpqClearTime(scripting.npc.NPCConversationManager cm) {
+        LivingWorld world = LivingWorld.get();
+        Character leader = cm == null ? null : cm.getPlayer();
+        if (world == null || leader == null || world.bossRuns() == null || AgentPresence.isAgent(leader)) {
+            return null;
+        }
+        try {
+            return world.bossRuns().cwkpqClearTime(leader);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("living world cwkpqClearTime hook failed", failure);
+            return null;
+        }
+    }
+
+    /**
      * P12 G7, a party-instance boss's portal (P14 and P15 scripts, on the portal's thread, right after the stock
      * registerParty took the party into {@code event}): the companions inside are admitted into the boss's companion
      * run on companion-ops (CompanionBossRuns.partyEntered). Nothing with no living world, and on any failure; the

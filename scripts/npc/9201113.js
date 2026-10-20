@@ -64,6 +64,12 @@ function startRefusal() {
     return Java.type('server.living.LivingWorldHooks').cwkpqStartRefusal(cm);
 }
 
+// with companions on the list, how long he thinks the keep takes, over the leader's list (empty: nothing to say)
+function clearTime() {
+    var line = Java.type('server.living.LivingWorldHooks').cwkpqClearTime(cm);
+    return line == null || line == "" ? "" : line + "\r\n\r\n";
+}
+
 // his choices after a member's line (status 30); null when he offers neither
 function companionChoices() {
     var party = companionOffer();
@@ -123,7 +129,7 @@ function action(mode, type, selection) {
                 } else {
                     var choices = leaderChoices();
                     if (choices != null) {
-                        cm.sendSimple(list + choices);
+                        cm.sendSimple(clearTime() + list + choices);
                         status = 2;
                         return;
                     }

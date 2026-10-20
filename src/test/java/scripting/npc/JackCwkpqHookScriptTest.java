@@ -27,7 +27,12 @@ class JackCwkpqHookScriptTest {
         String startCheck = "// with companions on the list, nobody can turn some class's sigil: his refusal (null: start"
                 + " as stock)\nfunction startRefusal() {\n"
                 + "    return Java.type('server.living.LivingWorldHooks').cwkpqStartRefusal(cm);\n}\n\n";
-        assertEquals(marksHooks, between(jack, "function companionOffer()", "function action(").replace(startCheck, ""));
+        String clearTime = "// with companions on the list, how long he thinks the keep takes, over the leader's list"
+                + " (empty: nothing to say)\nfunction clearTime() {\n"
+                + "    var line = Java.type('server.living.LivingWorldHooks').cwkpqClearTime(cm);\n"
+                + "    return line == null || line == \"\" ? \"\" : line + \"\\r\\n\\r\\n\";\n}\n\n";
+        assertEquals(marksHooks, between(jack, "function companionOffer()", "function action(").replace(startCheck, "")
+                .replace(clearTime, ""));
         assertEquals(between(mark, "} else if (status == 30) {", "\n    }\n}"),
                 between(jack, "} else if (status == 30) {", "\n    }\n}"), "the same picker loop");
         assertEquals(5, count(jack, "LivingWorldHooks').boss"), "the five hooks");
@@ -39,6 +44,9 @@ class JackCwkpqHookScriptTest {
         String jack = read("scripts/npc/9201113.js");
         assertEquals(4, count(jack, "var choices = "), "create, leader's list, registered, join");
         assertEquals(1, count(jack, "var refusal = startRefusal();"));
+        assertEquals(1, count(jack, "cm.sendSimple(clearTime() + list + choices);"),
+                "his clear time over the leader's list, only when he offers companions");
+        assertTrue(jack.contains("cm.sendSimple(list);"), "the stock leader's list is kept");
         int sizeCheck = jack.indexOf("You need at least \" + min + \" players registered in your expedition.");
         int refusal = jack.indexOf("var refusal = startRefusal();");
         int send = jack.indexOf("The expedition will begin and you will now be escorted");

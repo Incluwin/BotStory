@@ -3446,10 +3446,10 @@ tuning:
     # Purpose: Time resolution of the clear-time distribution, which an NPC rounds to whole minutes before saying it.
     # Technical: AgentPqPaceEstimator rounds each drawn outcome (kill counts, puzzle checks, parallel branches) to this grid and reports quantiles in its multiples; fixed times keep full precision.
     server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.GRID_MS: '5000'
-    # Values: 600000-7200000 milliseconds. Recommended: 3600000. Keep it well above the longest event timer the estimate is used for.
+    # Values: 600000-7200000 milliseconds. Recommended: 7200000. Keep it well above the longest run the estimate is used for: CWKPQ's stage clocks add up to 112 minutes.
     # Purpose: Longest clear time the estimate represents; slower outcomes and parties that cannot clear are reported at this bound.
     # Technical: AgentPqPaceEstimator folds the distribution's tail beyond this into its last bin and reports every quantile and the mean at it when the party cannot clear.
-    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.HORIZON_MS: '3600000'
+    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.HORIZON_MS: '7200000'
     # Values: 1000-3600000 milliseconds. Recommended: 60000. Lower values show more failures in the log; higher values keep a failing job quieter.
     # Purpose: Limits how often a failed damage or touch estimate for a party member is logged at info, so a job whose estimate always fails still shows up in a live run.
     # Technical: AgentPqMemberPower.of counts a failed policy call as 0 damage (or an unknown touch as never fragile) and logs at info at most once per this interval, else at debug.
@@ -6460,6 +6460,74 @@ tuning:
     # Purpose: Keeps RJPQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
     # Technical: AgentRjpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for rjpq and rjpqj.
     server.agents.capabilities.partyquest.rjpq.AgentRjpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 15000-300000 milliseconds. Recommended: 60000 until the first live runs measure it; the stage's clock is 2 minutes and its guardians come at one.
+    # Purpose: The CWKPQ clear-time estimate's prior for stage one, a companion finding the hidden portal in the Inner Sanctum Hallway.
+    # Technical: AgentCwkpqPaceProfile.priors "hallway" (a COMPANION Fixed segment), the first of the run; AgentPqPaceCalibration replaces it with the fitted time once cwkpq runs are recorded.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.HALLWAY_MS: '60000'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 until the first live runs measure it.
+    # Purpose: The CWKPQ clear-time estimate's prior for stage two, five companions walking to the Forgotten Storage Chamber's sigils and casting a sigil skill at each.
+    # Technical: AgentCwkpqPaceProfile.priors "storage" (a COMPANION Fixed segment); the stage turns on skill casts and walking, not on damage, so it is a fixed time.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.STORAGE_MS: '120000'
+    # Values: 60000-600000 milliseconds. Recommended: 360000; the C0 probes found 38-55 jumps per hasted climber and five passes through the top portal.
+    # Purpose: The CWKPQ clear-time estimate's prior for stage three, the Test of Agility climb to the five sigils and the passes through the top portal.
+    # Technical: AgentCwkpqPaceProfile.priors "agility" (a COMPANION Fixed segment); a lineup with no hasted, Flash Jump or Teleport climber is Jack's sigil warning, not a longer time.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.AGILITY_MS: '360000'
+    # Values: 30000-600000 milliseconds. Recommended: 180000 until the first live runs measure it.
+    # Purpose: The CWKPQ clear-time estimate's prior for stage four, the companions testing the eight shuffled sigil spots and turning five real ones.
+    # Technical: AgentCwkpqPaceProfile.priors "wit" (a COMPANION Fixed segment); fakes flip on a plain test hit, real sigils need the class skill, so the time is walking and casting.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.WIT_MS: '180000'
+    # Values: 0.05-1.0. Recommended: 0.30, RJPQ's tunnel and EPQ's tree clears.
+    # Purpose: The share of a class's raw damage that lands while it clears the CWKPQ warrior room (21 Crimson Guardians) or mage room (Firebrands, Stormbreakers, Elderwraiths).
+    # Technical: AgentCwkpqPaceProfile.priors "warriorRoom" and "mageRoom", the efficiency of each room's Clear of its Map.wz census that only the room's class fights (AgentPqPaceSegment.Clear fighters).
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.ROOM_EFFICIENCY: '0.30'
+    # Values: 0.05-1.0. Recommended: 0.45; five large guardians that stand and take arrows lose less to walking than a room of small mobs.
+    # Purpose: The share of the bowmen's raw damage that lands on the CWKPQ bowman room's five Master Guardians, the plan's slowest room.
+    # Technical: AgentCwkpqPaceProfile.priors "bowmanRoom", the efficiency of the Clear of 5 x 9400594 (CWKPQ.js setup) that only bowmen fight; the slow limit ROOM_SLOW_MS names it at the desk.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.BOWMAN_ROOM_EFFICIENCY: '0.45'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 until the first live runs measure it.
+    # Purpose: The CWKPQ clear-time estimate's prior for the thief room, a thief climbing to the five eyes, breaking each and talking to the master for the claw.
+    # Technical: AgentCwkpqPaceProfile.priors "thiefRoom" (a COMPANION Fixed segment, a branch of the unity Parallel); the eyes take any hit, so the room is climbing, not damage.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.THIEF_ROOM_MS: '120000'
+    # Values: 30000-600000 milliseconds. Recommended: 90000 until the first live runs measure it.
+    # Purpose: The CWKPQ clear-time estimate's prior for the pirate room, a pirate breaking the shuffled chests until the real one drops the gun, then picking it up.
+    # Technical: AgentCwkpqPaceProfile.priors "pirateRoom" (a COMPANION Fixed segment, a branch of the unity Parallel); each chest takes four hits of any kind.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.PIRATE_ROOM_MS: '90000'
+    # Values: 30000-600000 milliseconds. Recommended: 120000 until the first live runs measure it; each relic takes its weapon five seconds after the drop.
+    # Purpose: The CWKPQ clear-time estimate's prior for the five weapon carriers walking back through the hall and dropping each weapon on its relic.
+    # Technical: AgentCwkpqPaceProfile.priors "relics" (a COMPANION Fixed segment) after the unity Parallel; ActivateItemReactor fires 5000 ms after a quantity-1 drop lands in the relic's area.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.RELICS_MS: '120000'
+    # Values: 10000-300000 milliseconds. Recommended: 30000 until the first live runs measure it.
+    # Purpose: The CWKPQ clear-time estimate's prior for the event leader's three talks to the Battle Statue that call the guards, the Grandmasters and the clear.
+    # Technical: AgentCwkpqPaceProfile.priors "statue" (a LEADER Fixed segment, learned per leader); 9201115.js lets only the event leader drive the Council Hall.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.STATUE_MS: '30000'
+    # Values: 0.05-1.0. Recommended: 0.30, the rooms' clear efficiency.
+    # Purpose: The share of the expedition's raw damage that lands on the Council Hall's guards, the ten Master and twenty Crimson Guardians the statue's first talk spawns.
+    # Technical: AgentCwkpqPaceProfile.priors "guards", the efficiency of the Clear every member fights, the leader included (9201115.js spawns them across the left half of the hall).
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.GUARDS_EFFICIENCY: '0.30'
+    # Values: 0.05-1.0. Recommended: 0.40; four stationary bosses and two revives, fought together while their summons get in the way.
+    # Purpose: The share of the expedition's raw damage that lands on the four Grandmasters and Red Nirg's two revives in the Council Hall.
+    # Technical: AgentCwkpqPaceProfile.priors "masters", the efficiency of the Clear of 9400590-9400593, 9400596 and 9400597 that every member fights; MASTERS_SLOW_MS names it at the desk.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.MASTERS_EFFICIENCY: '0.40'
+    # Values: 300000-1200000 milliseconds. Recommended: 900000, three quarters of the Test of Unity's 20-minute clock.
+    # Purpose: Past what mean time a CWKPQ class room (warrior, bowman or mage) is named slow, so Jack can warn that its class may not bring the weapon back in time.
+    # Technical: AgentCwkpqPaceProfile.thresholds slowMs for "warriorRoom", "bowmanRoom" and "mageRoom"; AgentPqPaceEstimator adds a SLOW weakness when the segment's mean passes it.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.ROOM_SLOW_MS: '900000'
+    # Values: 900000-3600000 milliseconds. Recommended: 2400000, the Council Hall's 60 minutes less the guards and the talks.
+    # Purpose: Past what mean time the CWKPQ Grandmaster fight is named slow, so Jack can warn that the list may not finish the Council Hall in time.
+    # Technical: AgentCwkpqPaceProfile.thresholds slowMs for "masters"; AgentPqPaceEstimator adds a SLOW weakness when the segment's mean passes it, the same as for every other leaf segment.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.MASTERS_SLOW_MS: '2400000'
+    # Values: 1-50. Recommended: 7, RJPQ's and OPQ's.
+    # Purpose: Below how many touches of a Crimson Guardian a member is named fragile in the CWKPQ clear-time estimate's weaknesses.
+    # Technical: AgentCwkpqPaceProfile.thresholds fragileTouches; AgentPqPaceEstimator compares each member's touchesToDown against the danger mob 9400582, the keep's hardest-touching guard.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6.
+    # Purpose: Below what chance to hit a CWKPQ mob it fights a member is named as missing it in the clear-time estimate's weaknesses.
+    # Technical: AgentCwkpqPaceProfile.thresholds weakHitChance; AgentPqPaceEstimator compares each member's hit chance on the mobs of every clear its class fights (a class room only for its own class).
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when a CWKPQ pace change lands.
+    # Purpose: Keeps CWKPQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentCwkpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs; no cwkpq run is recorded yet, so the estimate stands on its priors alone.
+    server.agents.capabilities.expedition.cwkpq.AgentCwkpqPaceProfile.PACE_EPOCH: '1'
     # Values: 1000-30000 milliseconds. Recommended: 5000, OPQ's and LMPQ's value, so MagatiaPQ has registered and warped the whole party.
     # Purpose: Bounds how long after an RJPQ run binds its event a member the event has not registered yet still counts as entering, so a member the event started without departs instead of stalling the run.
     # Technical: AgentRjpqCompanionRun.observeDepartures marks a member the bound event never held as departed ('RJPQ departed: ... reason=never-registered', its Agent handed back) once this long has passed since the bind; one held and then lost departs after LEFT_CONFIRM_MS.

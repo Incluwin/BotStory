@@ -43,8 +43,7 @@ final class AgentPqPaceModel {
     }
 
     static Fill waterFill(AgentPqPaceSegment.Clear clear, List<AgentPqMemberPower> members) {
-        List<AgentPqMemberPower> fighters = members.stream()
-                .filter(member -> clear.leaderFights() || !member.humanLeader()).toList();
+        List<AgentPqMemberPower> fighters = members.stream().filter(clear::fights).toList();
         Map<Integer, Double> hp = new TreeMap<>();
         clear.counts().forEach((mobId, count) -> hp.put(mobId, (double) count * clear.hp().get(mobId)));
         List<Integer> ids = memberIds(fighters);
