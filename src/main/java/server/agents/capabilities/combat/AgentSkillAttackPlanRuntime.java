@@ -55,6 +55,87 @@ public final class AgentSkillAttackPlanRuntime {
                 AgentSkillGatewayRuntime.skills(), objectivePoint);
     }
 
+    /**
+     * Plans {@code skillId} swung at {@code aim} with no monster in it (CWKPQ plan B3: a sigil, which only a hit of one
+     * of its skills turns): the same gates as a monster attack (combo, form, charge, energy, cooldown, level, cost,
+     * weapon, ammo, a ranged route that is not degenerate) and the same packet fields and timing, aimed at the point,
+     * with no targets. Its hit box is the skill's own area from where the Agent stands, facing the point (a skill with
+     * none: a 1x1 box at the point, which its caller then holds the Agent close enough for). Null when a gate refuses
+     * ({@link #lastRejection} says which). Meso Explosion is never planned so: it needs mesos to blow up.
+     */
+    public static AgentAttackPlan planSkillAttackAt(Character bot, java.awt.Point aim, int skillId) {
+        return planSkillAttackAt(bot, aim, skillId, AgentSkillGatewayRuntime.skills());
+    }
+
+    static AgentAttackPlan planSkillAttackAt(Character bot, java.awt.Point aim, int skillId, SkillGateway skills) {
+        LAST_REJECTION.remove();
+        if (bot == null || aim == null || skillId <= 0) {
+            return reject("invalid");
+        }
+        if (skillId == constants.skills.ChiefBandit.MESO_EXPLOSION) {
+            return reject("needs-mesos");
+        }
+        Skill skill = skills.getSkill(skillId);
+        int skillLevel = skill == null ? 0 : bot.getSkillLevel(skill);
+        StatEffect effect = skill == null || skillLevel <= 0 ? null : skill.getEffect(skillLevel);
+        if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
+            return reject("combo-orbs");
+        }
+        if (!AgentClientSkillRules.usableInCurrentForm(bot, skillId)) {
+            return reject("needs-super-transformation");
+        }
+        if (!AgentClientSkillRules.chargeReady(bot, skillId)) {
+            return reject("needs-charge");
+        }
+        if (AgentCombatSkillClassifier.isEnergyAttackSkill(skillId) && bot.getEnergyBar() < ENERGY_BAR_FULL) {
+            return reject("energy-charge-not-full");
+        }
+        AgentSkillAttackPlanner.SkillAttackReadiness readiness = AgentSkillAttackPlanner.skillAttackReadiness(
+                skillId,
+                bot.skillIsCooling(skillId),
+                skill != null,
+                skillLevel,
+                () -> effect.canPaySkillCost(bot),
+                () -> AgentCombatWeaponPolicy.canUseAttackSkillWithWeapon(
+                        skillId, AgentAttackExecutionProvider.getEquippedWeaponType(bot)));
+        if (readiness != AgentSkillAttackPlanner.SkillAttackReadiness.READY) {
+            return reject("readiness:" + readiness);
+        }
+        WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        AgentAttackRoute route = AgentAttackExecutionProvider.determineSkillRoute(bot, skillId);
+        if (AgentSkillAttackPlanner.skillAmmoReadiness(
+                effect.getBulletCount(),
+                effect.getBulletConsume(),
+                AgentCombatHitCounter.shadowPartnerHitMultiplier(bot, route),
+                route,
+                () -> AgentCombatAmmoCounter.countAmmo(bot, weaponType))
+                != AgentSkillAttackPlanner.SkillAmmoReadiness.READY) {
+            return reject("ammo");
+        }
+        if (!AgentAttackExecutionProvider.isShortRangeProjectileSkill(skillId)
+                && !AgentAttackExecutionProvider.canUseRangedAttackRoute(route, weaponType, bot.getPosition(), aim)) {
+            return reject("ranged-route-degenerate");
+        }
+        String action = AgentAttackExecutionProvider.resolveSkillAttackAction(bot, skill, skillLevel, weaponType);
+        boolean facingLeft = aim.x < bot.getPosition().x;
+        Rectangle hitBox = effect.hasBoundingBox() ? effect.calculateBoundingBox(bot.getPosition(), facingLeft)
+                : new Rectangle(aim.x, aim.y, 1, 1);
+        int attackCount = AgentCombatHitCounter.packetSafeHitCount(
+                bot, route, AgentCombatHitCounter.effectiveHitCount(effect));
+        AgentAttackExecutionProvider.BasicAttackData fallbackAttackData =
+                AgentAttackExecutionProvider.buildBasicAttackData(bot, aim);
+        String fallbackAction = AgentAttackDataProvider.getInstance().getBasicAttackSpec(weaponType).primaryAction();
+        AgentSkillAttackPlanner.SkillAttackPacketFields packetFields =
+                AgentSkillAttackPlanner.resolveSkillAttackPacketFields(
+                        route, weaponType, bot.getPosition(), aim, action, fallbackAction);
+        AgentAttackExecutionProvider.SkillAttackTiming skillTiming =
+                AgentAttackExecutionProvider.resolveSkillAttackTiming(skill, action, bot, fallbackAttackData);
+        return new AgentAttackPlan(skillId, skillLevel, attackCount, hitBox, List.of(),
+                route, packetFields.display(), packetFields.direction(), packetFields.rangedDirection(),
+                packetFields.stance(), fallbackAttackData.speed(), skillTiming.hitDelayMs(), skillTiming.cooldownMs(),
+                AgentCombatWeaponPolicy.damageWeaponTypeForAction(skillId, weaponType, action));
+    }
+
     private static AgentAttackPlan planSkillAttack(
             Character bot, Monster primaryTarget, int skillId,
             AgentCombatConfig.Config config, SkillGateway skills,

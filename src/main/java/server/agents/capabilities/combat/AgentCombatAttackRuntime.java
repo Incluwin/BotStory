@@ -194,6 +194,70 @@ public final class AgentCombatAttackRuntime {
                 committedAtMs);
     }
 
+    /**
+     * Swings {@code attackPlan} (AgentSkillAttackPlanRuntime.planSkillAttackAt: no targets) at nothing, as a player's
+     * attack that hits no monster (CWKPQ plan B3: a sigil, which the caller then hits with the skill's id). The same
+     * readiness as {@link #attackMonster} (the Agent's attack lock, ammo, weapon, seal, cost, reuse lock, form, ground)
+     * and the same handler: it is broadcast to the map, and its MP, ammo and cooldown are paid. It deals no damage, so
+     * neither the skill usage histogram nor the learner hears of it; the Agent's attack lock and facing are kept.
+     */
+    public static AgentAttackTransactionResult attackAtNothing(AgentRuntimeEntry entry, Character bot,
+                                                                AgentAttackPlan attackPlan) {
+        if (entry == null || bot == null || attackPlan == null || attackPlan.route == null
+                || attackPlan.targets == null || !attackPlan.targets.isEmpty() || attackPlan.skillId <= 0
+                || attackPlan.skillId == ChiefBandit.MESO_EXPLOSION) {
+            return AgentAttackTransactionResult.rejected(
+                    AgentAttackTransactionResult.Reason.INVALID_REQUEST, mapId(bot), skillId(attackPlan));
+        }
+        AgentCombatAttackExecutionPolicy.AttackExecutionReadiness readiness =
+                AgentCombatAttackExecutionPolicy.attackExecutionReadiness(
+                        AgentCombatCooldownStateRuntime.hasAttackCooldown(entry),
+                        AgentAmmoStateRuntime.noAmmo(entry) && attackPlan.route == AgentAttackRoute.RANGED,
+                        attackPlan.skillId,
+                        () -> AgentCombatWeaponPolicy.canUseAttackSkillWithWeapon(
+                                        attackPlan.skillId,
+                                        AgentAttackExecutionProvider.getEquippedWeaponType(bot))
+                                && !bot.hasDisease(Disease.SEAL)
+                                && !bot.skillIsCooling(attackPlan.skillId)
+                                && AgentCombatSkillUsePolicy.canPaySkillCost(
+                                        bot, attackPlan.skillId, attackPlan.skillLevel)
+                                && !AgentClientSkillRules.reuseLocked(entry, attackPlan.skillId)
+                                && AgentClientSkillRules.usableInCurrentForm(bot, attackPlan.skillId),
+                        () -> AgentCombatRangePolicy.canUseAttackPlanNow(
+                                AgentMovementStateRuntime.grounded(entry),
+                                AgentAttackExecutionProvider.getEquippedWeaponType(bot),
+                                attackPlan.route));
+        if (readiness != AgentCombatAttackExecutionPolicy.AttackExecutionReadiness.READY) {
+            return AgentAttackTransactionResult.deferred(reason(readiness), bot.getMapId(), attackPlan.skillId);
+        }
+        int numDamage = AgentAttackPacketPolicy.damageLineCount(attackPlan.numDamage);
+        AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
+        attack.skill = attackPlan.skillId;
+        attack.skilllevel = attackPlan.skillLevel;
+        attack.numDamage = numDamage;
+        attack.numAttacked = 0;
+        attack.numAttackedAndDamage = AgentAttackPacketPolicy.packCounts(0, numDamage);
+        attack.speed = attackPlan.speed;
+        attack.stance = attackPlan.stance;
+        attack.display = attackPlan.display;
+        attack.direction = attackPlan.direction;
+        attack.rangedirection = attackPlan.rangedDirection;
+        attack.ranged = attackPlan.route == AgentAttackRoute.RANGED;
+        attack.magic = attackPlan.route == AgentAttackRoute.MAGIC;
+        attack.targets = new HashMap<>();
+        CombatAttackApplicationResult application =
+                AgentAttackExecutionProvider.applyAttackRoute(attackPlan.route, attack, bot);
+        if (application == null || !application.applied()) {
+            return AgentAttackTransactionResult.rejected(
+                    AgentAttackTransactionResult.Reason.HANDLER_REJECTED, bot.getMapId(), attackPlan.skillId);
+        }
+        long committedAtMs = System.currentTimeMillis();
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, attackPlan.cooldownMs);
+        AgentCombatFacingRuntime.rememberAttackFacing(entry, attackPlan.stance);
+        return AgentAttackTransactionResult.committed(bot.getMapId(), attackPlan.skillId, List.of(), 0, 0,
+                committedAtMs);
+    }
+
     /** Object ids of unclaimed meso drops inside the blast, as the client would list them. */
     static List<Integer> explodableMesos(MapleMap map, Rectangle hitBox) {
         if (map == null || hitBox == null) {

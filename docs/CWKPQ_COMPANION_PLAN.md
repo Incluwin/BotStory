@@ -137,6 +137,28 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     owner comes in), and the call reads its bag again; one with none whispers so and stays at camp.
   - Not built: a line when a held member goes down (the stock "down" line comes after the clear); a picker choice that
     sends a keystone-less ally on its errand.
+- **C4, first part, built 2026-10-20 on feat/cwkpq** (the sigil cast and stages 1, 2 and 4):
+  - `AgentSkillAttackPlanRuntime.planSkillAttackAt` plans a skill at a point with no monster (the same gates as a
+    monster plan, minus targets; Meso Explosion refused, it needs mesos). `AgentCombatAttackRuntime.attackAtNothing`
+    swings it through the same handler as any attack: shown to the map, MP, ammo and cooldown paid, no damage, the
+    learner not told. `PrimitiveCapabilityGateway.hitReactorWithSkill` then hits the reactor with that skill's id
+    (the old `hitReactor` keeps skill 0 for every other reactor).
+  - `AgentCwkpqSigilCast` (B3): of the sigil skills a member holds it tries attacks, then summons, then buffs (Chakra
+    through the debuff runtime). A Paladin with only Charged Blow puts a charge up first. It stands 45 px beside the
+    sigil, 100 px for a projectile, facing it; the hit is checked against the sigil's Reactor.wz area (lt -125,-19 /
+    rb 123,122, pinned by a test). Outcomes CAST / CHARGING / NOT_READY / NO_SKILL; the play reads the sigil's state
+    on a later tick.
+  - `AgentCwkpqStagePlays` (B5), ticked by `AgentCwkpqRun` through `AgentCwkpqPorts`:
+    - Stage 1: the first member by slot takes the hidden portal (next01) and says once "the way's behind the pillar
+      under the lion's head"; the others wait by next00; with glpq1 set everyone takes next00.
+    - Stage 2: per archetype whose sigil still waits, the first member by slot who can cast a sigil skill turns it; a
+      sigil a player turned is left alone; with glpq2 = 5 everyone leaves.
+    - Stage 4: a member of the spot picture's class takes each spot. Bowman and pirate pictures are always real (no
+      fake shows them), so they cast at once; any other is tried with one plain hit (a fake turns and is spent; a real
+      sigil ignores it) and, still standing after 800 ms, takes the class skill. Spot claims and verdicts are kept per
+      run. With glpq4 >= 5 everyone leaves.
+  - Not built yet (rest of C4): the shared "the right one up top is fake" line, and `!cwkpqtest` (party prod,
+    checkpoint per stage, status, stop).
 
 ## Questions for you (answered, kept for the record)
 
@@ -404,7 +426,7 @@ C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 | **C1** | Keystone road and quest data: Haunted House in the masteria group, NLC taxi leg, Valley climb edges (from C0), Firebrand revive link in the hunt planner, prereq states in the knowledge export, `Quest.canStart` before any bot scripted start, keep SETUP quest items out of sell plans | M | C0 |
 | **C2** | Keystone errand (A3): errand states, live or ledger hunting, interrupts, lines | M | C1, Question 1 |
 | **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionBossKeys` (built 2026-10-20) | L | - |
-| **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest party prod / checkpoint <s2..s6, armory> / status / stop` | M | C0, C3 |
+| **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest party prod / checkpoint <s2..s6, armory> / status / stop` (primitive and stages built 2026-10-20) | M | C0, C3 |
 | **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes | L | C0, C4 |
 | **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |
 | **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters | M | C3 |

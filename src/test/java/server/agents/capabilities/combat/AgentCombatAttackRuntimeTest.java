@@ -212,4 +212,80 @@ class AgentCombatAttackRuntimeTest {
         assertEquals(1000, AgentCombatAttackRuntime.linePercent(constants.skills.DragonKnight.SPEAR_CRUSHER, 1000));
         assertEquals(100, AgentCombatAttackRuntime.linePercent(0, 100), "outside a boss run nothing changes");
     }
+    // CWKPQ plan B3: a skill swung at nothing (a sigil)
+
+    @Test
+    void aSwingAtNothingTakesOnlyAPlanWithNoTargetsAndARealSkill() {
+        Character agent = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        Monster target = mock(Monster.class);
+        AgentAttackPlan withTarget = new AgentAttackPlan(Pirate.FLASH_FIST, 1, 1, null, List.of(target),
+                AgentAttackRoute.CLOSE, 0, 0, 0, 0, 4, 0, 600, null);
+        AgentAttackPlan basic = new AgentAttackPlan(0, 0, 1, null, List.of(), AgentAttackRoute.CLOSE,
+                0, 0, 0, 0, 4, 0, 600, null);
+        AgentAttackPlan mesoExplosion = new AgentAttackPlan(constants.skills.ChiefBandit.MESO_EXPLOSION, 1, 1, null,
+                List.of(), AgentAttackRoute.CLOSE, 0, 0, 0, 0, 4, 0, 600, null);
+
+        for (AgentAttackPlan plan : List.of(withTarget, basic, mesoExplosion)) {
+            AgentAttackTransactionResult result = AgentCombatAttackRuntime.attackAtNothing(entry, agent, plan);
+            assertEquals(AgentAttackTransactionResult.Reason.INVALID_REQUEST, result.reason(), plan.skillId + "");
+        }
+        verify(agent, never()).getMap();
+    }
+
+    @Test
+    void aSealedAgentSwingsNothing() {
+        Character agent = mock(Character.class);
+        when(agent.hasDisease(Disease.SEAL)).thenReturn(true);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentAttackPlan plan = new AgentAttackPlan(Pirate.FLASH_FIST, 1, 1, null, List.of(),
+                AgentAttackRoute.CLOSE, 0, 0, 0, 0, 4, 0, 600, null);
+
+        try (MockedStatic<AgentAttackExecutionProvider> execution = Mockito.mockStatic(
+                AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(agent))
+                    .thenReturn(WeaponType.KNUCKLE);
+            AgentAttackTransactionResult result = AgentCombatAttackRuntime.attackAtNothing(entry, agent, plan);
+
+            assertEquals(AgentAttackTransactionResult.Status.DEFERRED, result.status());
+            assertEquals(AgentAttackTransactionResult.Reason.CANNOT_USE_SKILL, result.reason());
+            execution.verify(() -> AgentAttackExecutionProvider.applyAttackRoute(Mockito.any(), Mockito.any(),
+                    Mockito.any()), never());
+        }
+    }
+
+    @Test
+    void aSwingAtNothingGoesThroughTheHandlerWithNoTargetsAndKeepsTheAttackLock() {
+        Character agent = mock(Character.class);
+        when(agent.getMapId()).thenReturn(610_030_200);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentAttackPlan strafe = new AgentAttackPlan(3_111_006, 20, 4, new Rectangle(0, 0, 300, 80), List.of(),
+                AgentAttackRoute.RANGED, 9, 1, 0, 0x8a, 4, 0, 900, WeaponType.BOW);
+        List<net.server.channel.handlers.AbstractDealDamageHandler.AttackInfo> sent = new java.util.ArrayList<>();
+
+        try (MockedStatic<AgentAttackExecutionProvider> execution = Mockito.mockStatic(
+                AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentCombatSkillUsePolicy> cost = Mockito.mockStatic(AgentCombatSkillUsePolicy.class);
+             MockedStatic<AgentCombatRangePolicy> range = Mockito.mockStatic(AgentCombatRangePolicy.class)) {
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(agent)).thenReturn(WeaponType.BOW);
+            execution.when(() -> AgentAttackExecutionProvider.applyAttackRoute(Mockito.eq(AgentAttackRoute.RANGED),
+                    Mockito.any(), Mockito.eq(agent))).thenAnswer(inv -> {
+                        sent.add(inv.getArgument(1));
+                        return CombatAttackApplicationResult.appliedResult();
+                    });
+            cost.when(() -> AgentCombatSkillUsePolicy.canPaySkillCost(agent, 3_111_006, 20)).thenReturn(true);
+            range.when(() -> AgentCombatRangePolicy.canUseAttackPlanNow(Mockito.anyBoolean(), Mockito.any(),
+                    Mockito.any())).thenReturn(true);
+
+            AgentAttackTransactionResult result = AgentCombatAttackRuntime.attackAtNothing(entry, agent, strafe);
+
+            assertTrue(result.committed(), result.toString());
+            assertEquals(1, sent.size());
+            assertTrue(sent.get(0).targets.isEmpty());
+            assertEquals(0, sent.get(0).numAttacked);
+            assertEquals(3_111_006, sent.get(0).skill);
+            assertTrue(sent.get(0).ranged);
+            assertTrue(AgentCombatCooldownStateRuntime.hasAttackCooldown(entry), "its animation holds the Agent");
+        }
+    }
 }

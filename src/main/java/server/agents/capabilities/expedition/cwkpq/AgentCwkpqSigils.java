@@ -76,7 +76,22 @@ public final class AgentCwkpqSigils {
         }
     }
 
+    /**
+     * Every sigil's hit area from its position (Reactor.wz lt -125,-19 and rb 123,122, the same for all ten): a cast
+     * whose area meets it reaches the sigil, from up to 122 px below it, as a player hits one hanging over the floor.
+     */
+    public static final int AREA_LEFT = -125;
+    public static final int AREA_TOP = -19;
+    public static final int AREA_RIGHT = 123;
+    public static final int AREA_BOTTOM = 122;
+
     private AgentCwkpqSigils() {
+    }
+
+    /** The hit area of a sigil standing at {@code position}. */
+    public static java.awt.Rectangle area(java.awt.Point position) {
+        return new java.awt.Rectangle(position.x + AREA_LEFT, position.y + AREA_TOP, AREA_RIGHT - AREA_LEFT,
+                AREA_BOTTOM - AREA_TOP);
     }
 
     /** The archetype of a job id; null for a Beginner, a GM or a job outside the five niches. */

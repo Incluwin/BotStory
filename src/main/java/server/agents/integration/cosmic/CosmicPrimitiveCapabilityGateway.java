@@ -859,6 +859,17 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public boolean hitReactorWithSkill(Character agent, int objectId, int skillId) {
+        Reactor reactor = agent.getMap().getReactorByOid(objectId);
+        if (reactor == null || !reactor.isAlive() || !reactor.isActive()) {
+            return false;
+        }
+        short reactorStance = (short) (agent.getPosition().x <= reactor.getPosition().x ? 0 : 2);
+        reactor.hitReactor(true, agent.getPosition().x, reactorStance, skillId, agent.getClient());
+        return true;
+    }
+
+    @Override
     public boolean lootNearby(Character agent, Set<Integer> itemIds) {
         boolean found = false;
         for (MapItem item : server.agents.perception.AgentMapPerception.items(agent.getMap())) {

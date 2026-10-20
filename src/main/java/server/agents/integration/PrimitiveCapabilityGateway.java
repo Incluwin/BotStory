@@ -333,6 +333,16 @@ public interface PrimitiveCapabilityGateway {
 
     boolean hitReactor(Character agent, int objectId);
 
+    /**
+     * Hits reactor {@code objectId} with {@code skillId}, as the client reports a hit of a skill the Agent just cast
+     * (CWKPQ plan B3: a sigil turns only for one of its skills, Reactor.wz activeSkillID). It broadcasts nothing: the
+     * caller cast the skill itself. False when the reactor is gone or in a state that takes no hit; true does not mean
+     * the reactor moved, so a caller reads its state again.
+     */
+    default boolean hitReactorWithSkill(Character agent, int objectId, int skillId) {
+        return false;
+    }
+
     boolean lootNearby(Character agent, Set<Integer> itemIds);
 
     /**

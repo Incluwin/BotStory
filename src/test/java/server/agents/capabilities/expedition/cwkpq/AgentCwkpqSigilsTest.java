@@ -44,6 +44,26 @@ class AgentCwkpqSigilsTest {
     }
 
     @Test
+    void everySigilsHitAreaIsTheOneTheTableHolds() throws IOException {
+        Pattern lt = Pattern.compile("name=\"lt\" x=\"(-?\\d+)\" y=\"(-?\\d+)\"");
+        Pattern rb = Pattern.compile("name=\"rb\" x=\"(-?\\d+)\" y=\"(-?\\d+)\"");
+        for (Archetype archetype : Archetype.values()) {
+            for (int reactorId : new int[] {archetype.sigilReactorId(), archetype.witSigilReactorId()}) {
+                String reactor = Files.readString(Path.of("wz/Reactor.wz/" + reactorId + ".img.xml"),
+                        StandardCharsets.UTF_8);
+                Matcher left = lt.matcher(reactor);
+                Matcher right = rb.matcher(reactor);
+                assertEquals(true, left.find() && right.find(), reactorId + "");
+                assertEquals(List.of(AgentCwkpqSigils.AREA_LEFT, AgentCwkpqSigils.AREA_TOP, AgentCwkpqSigils.AREA_RIGHT,
+                        AgentCwkpqSigils.AREA_BOTTOM), List.of(Integer.parseInt(left.group(1)),
+                        Integer.parseInt(left.group(2)), Integer.parseInt(right.group(1)),
+                        Integer.parseInt(right.group(2))), reactorId + "");
+            }
+        }
+        assertEquals(new java.awt.Rectangle(-62, 67, 248, 141), AgentCwkpqSigils.area(new java.awt.Point(63, 86)));
+    }
+
+    @Test
     void jackNamesTheSkillsAsTheGameDoes() throws IOException {
         String strings = Files.readString(Path.of("wz/String.wz/Skill.img.xml"), StandardCharsets.UTF_8);
         for (Archetype archetype : Archetype.values()) {
