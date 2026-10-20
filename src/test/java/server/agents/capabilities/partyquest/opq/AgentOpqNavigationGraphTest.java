@@ -168,6 +168,10 @@ class AgentOpqNavigationGraphTest {
     private static Point followCoordinatorTargets(int mapId, Point start, int speed, int phase,
                                                   Function<Point, Point> targetFor, Predicate<Point> done) {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
+        AgentMovementProfile profile = new AgentMovementProfile(speed, 100);
+        // The tick only asks for the graph in the background; live, a room's graph is warm before its runner arrives.
+        // Without this the loop raced that build; in a full suite run the build never landed and the Agent never moved.
+        AgentNavigationGraphService.getGraph(map, profile);
         AtomicReference<Point> position = new AtomicReference<>(new Point(start));
         Character agent = mock(Character.class);
         when(agent.getPosition()).thenAnswer(invocation -> new Point(position.get()));
@@ -184,7 +188,7 @@ class AgentOpqNavigationGraphTest {
         when(agent.getTotalMoveSpeedStat()).thenReturn(speed);
         when(agent.getTotalJumpStat()).thenReturn(100);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
-        AgentMovementStateRuntime.setMovementProfile(entry, new AgentMovementProfile(speed, 100));
+        AgentMovementStateRuntime.setMovementProfile(entry, profile);
         entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
         for (int tick = 0; tick < 480 && !done.test(position.get()); tick++) {
             AgentModeService.startMoveTo(entry, targetFor.apply(position.get()), true);
