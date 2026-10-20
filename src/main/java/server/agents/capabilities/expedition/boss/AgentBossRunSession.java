@@ -400,6 +400,8 @@ public final class AgentBossRunSession {
         tickReentering(ports, host, nowMs);
         if (phase == Phase.FIGHTING) {
             tickFight(ports, nowMs);
+        } else if (phase == Phase.POST_CLEAR) {
+            tickAfterClear(ports, nowMs);
         }
         if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
                 + count(AgentBossRunMember.Phase.REGISTERED) + count(AgentBossRunMember.Phase.REENTERING) == 0) {
@@ -846,7 +848,8 @@ public final class AgentBossRunSession {
 
     /**
      * The boss fell: the members inside stop fighting, and the followers follow their owner again (a self-led member
-     * stays stopped); the fight is not ticked after.
+     * stays stopped); the fight is not ticked after, unless it plays on after the clear where a member stands
+     * ({@link AgentBossFight#playsAfterClear}: the member is left to it, a follower too).
      */
     private void clear(AgentBossRunPorts ports) {
         cleared = true;
@@ -857,7 +860,9 @@ public final class AgentBossRunSession {
             int agentId = member.agentId();
             ports.stop(agentId);
             ports.clearBoundary(agentId);
-            if (member.kind() == AgentBossRunMember.Kind.FOLLOWER) {
+            Character agent = ports.agent(agentId);
+            boolean playsOn = agent != null && fight.playsAfterClear(agent.getMapId());
+            if (member.kind() == AgentBossRunMember.Kind.FOLLOWER && !playsOn) {
                 ports.follow(agentId);
             }
             member.clearedInside();
@@ -892,6 +897,33 @@ public final class AgentBossRunSession {
         } catch (RuntimeException failure) {
             log.warn("Boss run fight tick failed: session={} boss={} fighters={}", sessionId, definition.key(),
                     fighters.size(), failure);
+        }
+    }
+
+    /**
+     * After the clear, ticks the fight for the alive members inside that stand on a map it plays on after the clear
+     * (AgentBossFight.playsAfterClear; no boss but CWKPQ names one); a failure is logged.
+     */
+    private void tickAfterClear(AgentBossRunPorts ports, long nowMs) {
+        List<Character> players = new ArrayList<>();
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent != null && agent.isAlive() && agent.getEventInstance() == event
+                    && fight.playsAfterClear(agent.getMapId()) && !AgentBossDisabledState.disabled(agent)) {
+                players.add(agent);
+            }
+        }
+        if (players.isEmpty()) {
+            return;
+        }
+        try {
+            fight.tickAfterClear(players, event, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("Boss run after-clear tick failed: session={} boss={} members={}", sessionId, definition.key(),
+                    players.size(), failure);
         }
     }
 

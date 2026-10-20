@@ -341,6 +341,28 @@ class AgentBossRunSessionStartTest {
     }
 
     @Test
+    void aFightThatPlaysOnAfterTheClearKeepsItsFollowersAndIsTickedWhereItPlays() {
+        fight.afterClearMaps.add(BATTLE_MAP);
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE), List.of());
+        inside(THANE);
+        inside(ISOLDE);
+        session.tick(ports, host, START + 500L);
+        ports.calls.clear();
+        fight.calls.clear();
+
+        when(event.isEventCleared()).thenReturn(true);
+        session.tick(ports, host, START + 600_000L);
+
+        assertEquals(List.of("stop " + THANE, "clearBoundary " + THANE, "stop " + ISOLDE,
+                "clearBoundary " + ISOLDE), ports.calls, "left to the fight, not sent to follow");
+        assertEquals(AgentBossRunSession.Phase.POST_CLEAR, session.phase());
+
+        ports.place(ISOLDE, CLEAR_MAP, 100, 0, 70); // walked on where the fight does not play
+        session.tick(ports, host, START + 600_500L);
+        assertEquals(List.of("afterClear [" + THANE + "]"), fight.calls, "only where it plays after the clear");
+    }
+
+    @Test
     void endedRunReportsItsStartItsClearAndThePartySizeAndEndsTheFight() {
         AgentBossRunSession session = started(List.of(THANE), List.of());
         inside(THANE);

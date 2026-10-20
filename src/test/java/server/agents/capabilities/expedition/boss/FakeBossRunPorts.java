@@ -312,7 +312,19 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     /** A fight that only records what the session asked of it; a set {@link #tickFailure} is thrown from tick. */
     static final class Fight implements AgentBossFight {
         final List<String> calls = new ArrayList<>();
+        /** The maps it plays on after the clear (none: it ends at its clear, as every boss but CWKPQ). */
+        final Set<Integer> afterClearMaps = new HashSet<>();
         RuntimeException tickFailure;
+
+        @Override
+        public boolean playsAfterClear(int mapId) {
+            return afterClearMaps.contains(mapId);
+        }
+
+        @Override
+        public void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+            calls.add("afterClear " + members.stream().map(Character::getId).toList());
+        }
 
         @Override
         public void adopt(int characterId, int ordinal) {

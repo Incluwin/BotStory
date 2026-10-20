@@ -19,4 +19,16 @@ public interface AgentBossFight {
 
     /** Releases fight-owned state when the run ends. */
     void end(EventInstanceManager event);
+
+    /**
+     * Whether the fight still drives its members on {@code mapId} after the clear (CWKPQ plan C8: the keep's Secret
+     * Chamber and bonus Armory); a fight that ends at its clear says no, and its followers follow their owner again.
+     */
+    default boolean playsAfterClear(int mapId) {
+        return false;
+    }
+
+    /** After the clear: drives the alive members inside that stand on a map {@link #playsAfterClear} names. */
+    default void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+    }
 }

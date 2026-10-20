@@ -85,6 +85,11 @@ class AgentCwkpqCouncilPlayTest {
             public boolean pickUp(Character member, int itemId) {
                 return false;
             }
+
+            @Override
+            public server.maps.MapItem nearestLoot(Character member, int seekPx) {
+                return null;
+            }
         };
     }
 

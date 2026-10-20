@@ -8,9 +8,15 @@ import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.maps.MapItem;
+import server.maps.MapleMap;
 
+import java.awt.Point;
+import java.util.Comparator;
 import java.util.Set;
 
 /** What the CWKPQ stage plays reach in the game; {@link #LIVE} is the server, a test fakes it. */
@@ -35,7 +41,29 @@ interface AgentCwkpqPorts {
      */
     boolean pickUp(Character member, int itemId);
 
+    /**
+     * The nearest drop within {@code seekPx} that {@code member} may take by the loot rules every Agent keeps (its
+     * owner's party share, its age, bag room and the Armory's own rule, AgentCwkpqLootRule); null for none.
+     */
+    MapItem nearestLoot(Character member, int seekPx);
+
     AgentCwkpqPorts LIVE = new AgentCwkpqPorts() {
+        @Override
+        public MapItem nearestLoot(Character member, int seekPx) {
+            MapleMap map = member.getMap();
+            AgentRuntimeEntry entry = entry(member.getId());
+            Point at = member.getPosition();
+            if (map == null || entry == null || at == null) {
+                return null;
+            }
+            long now = System.currentTimeMillis();
+            return AgentMapPerception.items(map).stream()
+                    .filter(drop -> drop.getPosition() != null
+                            && drop.getPosition().distanceSq(at) <= (long) seekPx * seekPx
+                            && AgentLootEligibility.canBotTargetLoot(entry, member, map, drop, now))
+                    .min(Comparator.comparingDouble(drop -> drop.getPosition().distanceSq(at))).orElse(null);
+        }
+
         @Override
         public AgentRuntimeEntry entry(int characterId) {
             return AgentRuntimeRegistry.findByAgentCharacterId(characterId);

@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.expedition.boss.AgentBossPriorityFight;
+import server.maps.Reactor;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -23,8 +25,9 @@ import java.util.function.Supplier;
  * phase (C4, built: hallway, storage chamber and wit; C5: agility; C6: unity and the class rooms; C7: the Council
  * Hall); a stage with no play yet leaves its members standing where they are, logged once per run, so the run stays
  * switched off until all are built.
- * The run's clear is the Battle Statue's third talk (eim.clearPQ), after which the boss track lets members follow their
- * owners through the Secret Chamber and the Armory.
+ * The run's clear is the Battle Statue's third talk (eim.clearPQ); after it the run still plays the Council Hall, the
+ * Secret Chamber and the Armory (C8, AgentCwkpqArmoryPlay): the members walk on, wait until someone has started the
+ * Armory's minute, and break their share of its boxes.
  */
 public final class AgentCwkpqRun implements AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentCwkpqRun.class);
@@ -91,19 +94,47 @@ public final class AgentCwkpqRun implements AgentBossFight {
     /** The Council Hall's fight: the boss track's priority fight under boss-rules.json cwkpq, made on first use. */
     private final Supplier<AgentBossFight> councilFight;
     private AgentBossFight council;
+    /** After the clear (C8): the walk on through the Secret Chamber and the Armory's boxes; null plays nothing. */
+    private final StagePlay afterClear;
+    /** Armory box (reactor object id) -> the member whose share it is. */
+    private final Map<Integer, Integer> boxOwners = new ConcurrentHashMap<>();
+    /** The members the boxes were last shared among, in share order. */
+    private List<Integer> sharedAmong = List.of();
+    /** Member id -> the Armory box it is breaking. */
+    private final Map<Integer, Integer> working = new ConcurrentHashMap<>();
 
     AgentCwkpqRun(Map<Stage, StagePlay> plays) {
-        this(plays, AgentBossPriorityFight.forKey("cwkpq"));
+        this(plays, AgentBossPriorityFight.forKey("cwkpq"), null);
     }
 
     AgentCwkpqRun(Map<Stage, StagePlay> plays, Supplier<AgentBossFight> councilFight) {
-        this.plays = plays.isEmpty() ? Map.of() : new EnumMap<>(plays);
-        this.councilFight = councilFight;
+        this(plays, councilFight, null);
     }
 
-    /** A fresh run for one boss run session, with every stage play built so far. */
+    AgentCwkpqRun(Map<Stage, StagePlay> plays, Supplier<AgentBossFight> councilFight, StagePlay afterClear) {
+        this.plays = plays.isEmpty() ? Map.of() : new EnumMap<>(plays);
+        this.councilFight = councilFight;
+        this.afterClear = afterClear;
+    }
+
+    /** A fresh run for one boss run session, with every stage play built so far and the walk on to the Armory. */
     public static AgentCwkpqRun forCompanions() {
-        return new AgentCwkpqRun(AgentCwkpqStagePlays.all(AgentCwkpqPorts.LIVE));
+        AgentCwkpqPorts ports = AgentCwkpqPorts.LIVE;
+        return new AgentCwkpqRun(AgentCwkpqStagePlays.all(ports), AgentBossPriorityFight.forKey("cwkpq"),
+                (members, event, run, nowMs) -> AgentCwkpqArmoryPlay.tick(ports, members, event, run, nowMs));
+    }
+
+    /** The Council Hall, the Secret Chamber and the Armory: the walk on and the boxes, once the keep is cleared. */
+    @Override
+    public boolean playsAfterClear(int mapId) {
+        return afterClear != null && AgentCwkpqArmoryPlay.playsOn(mapId);
+    }
+
+    @Override
+    public void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+        if (afterClear != null && !members.isEmpty()) {
+            afterClear.tick(members, event, this, nowMs);
+        }
     }
 
     /** The maps before the battle map (boss-rules.json stageMaps for cwkpq), in order. */
@@ -155,6 +186,11 @@ public final class AgentCwkpqRun implements AgentBossFight {
         testedAt.clear();
         knownReal.clear();
         counts.clear();
+        boxOwners.clear();
+        working.clear();
+        synchronized (this) {
+            sharedAmong = List.of();
+        }
         AgentBossFight fight;
         synchronized (this) {
             fight = council;
@@ -224,6 +260,42 @@ public final class AgentCwkpqRun implements AgentBossFight {
     /** Counts {@code key} once more; the new count. */
     int bump(String key) {
         return counts.merge(key, 1, Integer::sum);
+    }
+
+    /**
+     * Shares the live Armory boxes among {@code sharers} (humans first, then companions), each a run of neighbouring
+     * boxes along the shelves (AgentCwkpqArmoryPlay.path); kept while the same members share, cut again over the boxes
+     * still standing when one comes or goes. True when this call cut the shares.
+     */
+    synchronized boolean shareBoxes(List<Integer> sharers, Collection<Reactor> liveBoxes) {
+        if (sharers.isEmpty() || sharers.equals(sharedAmong)) {
+            return false;
+        }
+        sharedAmong = List.copyOf(sharers);
+        boxOwners.clear();
+        List<Reactor> path = AgentCwkpqArmoryPlay.path(liveBoxes);
+        for (int index = 0; index < path.size(); index++) {
+            boxOwners.put(path.get(index).getObjectId(), sharers.get(index * sharers.size() / path.size()));
+        }
+        return true;
+    }
+
+    /** The member whose share the box is, or null. */
+    Integer boxOwner(int boxObjectId) {
+        return boxOwners.get(boxObjectId);
+    }
+
+    /** The Armory box {@code memberId} is breaking, or null. */
+    Integer boxOf(int memberId) {
+        return working.get(memberId);
+    }
+
+    void workOn(int memberId, Integer boxObjectId) {
+        if (boxObjectId == null) {
+            working.remove(memberId);
+        } else {
+            working.put(memberId, boxObjectId);
+        }
     }
 
     /** The Council Hall's priority fight, one per run (it keeps per-member state). */

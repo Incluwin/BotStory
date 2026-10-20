@@ -94,6 +94,11 @@ class AgentCwkpqUnityPlaysTest {
                 picked.add(member.getName() + ":" + itemId);
                 return true;
             }
+
+            @Override
+            public server.maps.MapItem nearestLoot(Character member, int seekPx) {
+                return null;
+            }
         };
         when(gateway.grounded(any())).thenReturn(true);
         when(gateway.groundPoint(any(), any())).thenAnswer(inv -> new Point((Point) inv.getArgument(1)));
