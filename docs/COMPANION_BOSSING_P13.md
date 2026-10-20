@@ -153,3 +153,20 @@ the path and keeps the mode. Two new tests fail on the old code. Suite on int/p9
 - Jr. Balrog (MAD 605) can one-shot a Lv40 companion once mirrored.
 - Other humans may hold control of the boss. The mirror works for any controller.
 - The door hold ships on. A companion that used to follow its owner into a Demon's Doorway map now waits outside.
+
+## On by default (2026-10-19)
+
+Every field group ships on (user: turn on what was built). Two guards came with it, because 20 of the field bosses'
+spawn maps (scripts/event/AreaBoss*.js) are citizen training fields and the bosses respawn every 3 hours and mostly
+stay up. A field boss attacks only while a human client drives it (AgentBossScope.engaged), so both guards matter
+while a player fights one:
+
+- **A companion sits a fight out** (`living_world.COMPANION_FIELD_BOSS_SIT_OUT_DEATHS`, 2): after that many deaths
+  beside a covered boss on one map it says so once in party chat and waits in town while the boss stands there and
+  its owner stays on that map, at most `COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS` (30 min) from its first death there.
+  Before, an owner fighting a boss far above their companions' level had them die, rest, walk back and die again.
+- **A citizen trains elsewhere** (`population.FIELD_BOSS_AVOID_MS`, 1 h): a citizen that died beside a covered boss
+  re-plans at the next sweep and the field picker leaves that map out while the boss stands there.
+
+Tests: `CompanionFieldBossTest` (sit-out, its line, the owner leaving, the boss falling, the kill switch) and
+`CitizenFieldBossAvoidTest`.
