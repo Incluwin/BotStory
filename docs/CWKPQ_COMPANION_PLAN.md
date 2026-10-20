@@ -61,7 +61,18 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
 
 ## Progress
 
-- **C0** runs in its own session (offline nav probes and data checks); results go to docs/CWKPQ_C0_RESULTS.md.
+- **C0 offline part done 2026-10-19** (docs/CWKPQ_C0_RESULTS.md, probes in docs/cwkpq-c0/). What it changes:
+  - Stage 3 needs Haste 20 or better (B4); the nav graph must obey CANNOTJUMPDOWN there (C5).
+  - Stage 4's fakes look exactly like real sigils, so companions test a spot with an ordinary hit first (B5).
+  - Stage 4/5, the warrior room, the relic drop spots and the Valley climb are all reachable at base stats.
+  - The lineup rule cannot stop at archetypes: a Crusader or White Knight under the shaping build gets its sigil
+    skill only at about Lv100 and an Outlaw at about Lv96 (a Gunslinger never takes Flash Fist). C3's lineup checks
+    each member's own sigil skill.
+  - The stirge plate script fails twice (`killAllMonsters(true)` arity, then `eim` undefined): Question 4 (b) fixes
+    both.
+  - The quest mirror gave a companion that had completed 8223 a second keystone. Fixed on feat/cwkpq (97c4cb0d0): the
+    start and complete mirrors skip a quest an Agent completed for good.
+  - Still open (live client): trap damage values and what field limit 0x1000 does to potions.
 - **C1, first part, built 2026-10-19 on feat/cwkpq:**
   - Haunted House 682000000 joins the masteria route group (exporter + regenerated graph: 4 new edges with Bent
     Tree 610010000 and 610010002).
@@ -72,7 +83,9 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     `canComplete` there, which is a possible later fix.
   - Economy sell plans never sell the Marker 3992039, the Map 3992040 or the Keystone 3992041 to an NPC (all three
     are trade-blocked, so stalls already refuse them).
-- **C1, left:** Valley of Heroes climb edges wait for the C0 probe. Two items moved:
+- **C1, left:** nothing for the Valley of Heroes: C0 found the in-map routes to CM1_E, CM2_F and Lower Ascent's CM3_2
+  COMPLETE at base stats (the only stats a bot has there, MOVEMENTSKILLS), so the world graph's portal edges stand and
+  the nav graph does the climb. Two items moved:
   - The Firebrand revive link needs no export change: the knowledge file's mobs already carry a `revive` column
     (9400577 revives into 9400578). C2's hunt choice reads it.
   - Quest prereqs in the knowledge export move to C2 item 7, together with the chat answer that uses them, so the
@@ -285,11 +298,19 @@ This is narrow on purpose. The existing `hitReactor` stays as it is for every ot
 
 ### B4. Stage 3, the jump quest (phase C5)
 
-This is the part most likely to change after C0.
+C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 
-- **C0 probe first.** On the real Map.wz 610030300, build the nav graph at each test member's speed and jump (with
-  and without Haste), and check: does a route reach each of the five sigils, and the top portal, without jumping
-  down? The RJPQ Dark Lab probe did the same (Lab 1 reachable only at jump 120).
+- **Haste is the key.** At base 100/100 a climber reaches only the two low sigils; a 110 px flat gap at y -684 stops
+  it. With Haste 20 (145/120), or from 120/120 or 145/110 up, all five sigils and the top portal are reachable (38-55
+  jumps). Flash Jump or Teleport reach everything even at base. Every thief at 3rd job or above holds Haste 20, and
+  Haste is a party buff, so a thief casts it on the climbers before they set off (the RJPQ Dark Lab runner already
+  casts Haste through `AgentCombatBuffRuntime.tryCastExplicitUtilityBuff`). With no Haste in the run, the high sigils
+  are a human's job and the desk says so.
+- **The graph must obey the map's no-jump-down limit.** The server never reads CANNOTJUMPDOWN, and the nav graph
+  authors down-jumps everywhere; on 610030300 and the warrior room 610030510 a bot must not take them (walk-off
+  drops stay). C5 adds that rule to the graph.
+- **The top portal is targeted on its long floor** (footholds 397-479, x 145..295 at y -1104), not on the short
+  duplicate foothold 442 its point snaps to, which only a down-jump reaches.
 - **Traps.** The menhirs are `trapGL` map objects that move with `moveEnvironment("menhirN", 1)` after each sigil.
   Their damage is client-side. C0 measures, with a human client, which hits land where and for how much
   (damagefrom -3/-4 in `TakeDamageHandler`). With your yes (Question 3), the server applies the same hit to a bot whose
@@ -298,8 +319,7 @@ This is the part most likely to change after C0.
   the companion yields once the human's sigil turns. Each climber hits its sigil, then takes the top portal, which
   counts a pass and drops it to the bottom. Five passes are needed in total, so climbers who finish early climb again
   if fewer than five passes are counted.
-- **Fallback if the probe fails.** If some sigil cannot be reached at any bot's stats, that archetype's sigil
-  becomes a human's job, and the desk says so. I do not want a teleport cheat here.
+- **No teleport cheat.** A climber without Haste (or its own Flash Jump or Teleport) never goes for a high sigil.
 
 ### B5. Stages 1, 2 and 4 (phase C4)
 
@@ -308,10 +328,12 @@ This is the part most likely to change after C0.
   lion's head".
 - **Stage 2.** Each archetype's nearest member takes its sigil (claim leases like RJPQ's `claimDoor`); the others hold
   by the exit.
-- **Stage 4.** Each sigil spot shows its class picture to a player. C0 checks in Reactor.wz whether the fakes
-  (6108000, 6108001, 6108005) look like real sigils. If they look different, a bot may read a spot's class from the
-  reactor id, as a player reads it from the picture. If they look the same, a bot must try spots and remember which
-  failed. The flame plates are optional; companions step on them only if the trap damage of Question 3 is on.
+- **Stage 4.** C0 found the fakes pixel-identical to real sigils (6108001 the warrior's, 6108000 the mage's, 6108005
+  the thief's), so neither a player nor a bot can read a spot's class from its picture. But a fake turns on any hit
+  and a real sigil ignores a wrong skill. So companions test a spot the way a player does: one ordinary hit. A spot
+  that turns was a fake (and is spent); one that does not is real, and the member of the class whose picture it shows
+  hits it with its sigil skill. Spots tried are shared in party chat ("the right one up top is fake"). The flame
+  plates are optional; companions step on them only if the trap damage of Question 3 is on.
 
 ### B6. Stage 5, the class rooms (phase C6)
 
