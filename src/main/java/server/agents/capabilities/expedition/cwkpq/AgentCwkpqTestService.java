@@ -266,10 +266,10 @@ public final class AgentCwkpqTestService {
 
     /** The companion run on the CWKPQ list registering on {@code operator}'s channel, or null. */
     private static AgentBossRunSession registering(Character operator) {
-        if (operator.getClient() == null || operator.getClient().getChannelServer() == null) {
+        if (operator.getMap() == null || operator.getMap().getChannelServer() == null) {
             return null;
         }
-        Expedition expedition = operator.getClient().getChannelServer().getExpedition(ExpeditionType.CWKPQ);
+        Expedition expedition = operator.getMap().getChannelServer().getExpedition(ExpeditionType.CWKPQ);
         return expedition == null ? null : AgentBossRunRegistry.forExpedition(expedition);
     }
 
