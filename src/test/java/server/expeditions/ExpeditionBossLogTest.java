@@ -10,7 +10,9 @@ import server.living.LivingWorldHooks;
 import server.maps.MapleMap;
 import testutil.BossLogDatabase;
 
+import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -68,6 +70,25 @@ class ExpeditionBossLogTest {
                 ExpeditionBossLog.BossLogEntry.getBossEntryByName("PAPULATUS"));
         assertEquals(ExpeditionBossLog.BossLogEntry.SCARGA,
                 ExpeditionBossLog.BossLogEntry.getBossEntryByName("SCARGA"));
+    }
+
+    @Test
+    void theResetCutsAtMidnightOfTheDayEvenInTheAfternoon() {
+        // 2026-10-20: Calendar.HOUR is the 12-hour field, so a server start at 16:35 GMT cut at 12:00 and cleared the
+        // ZAKUM entries logged at 01:17 that day.
+        Calendar afternoon = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+        afternoon.clear();
+        afternoon.set(2026, Calendar.OCTOBER, 20, 16, 35, 12);
+        afternoon.set(Calendar.MILLISECOND, 345);
+        Calendar morning = (Calendar) afternoon.clone();
+        morning.set(Calendar.HOUR_OF_DAY, 1);
+
+        Calendar expected = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+        expected.clear();
+        expected.set(2026, Calendar.OCTOBER, 20, 0, 0, 0);
+        assertEquals(expected.getTimeInMillis(), ExpeditionBossLog.midnight(afternoon).getTimeInMillis());
+        assertEquals(expected.getTimeInMillis(), ExpeditionBossLog.midnight(morning).getTimeInMillis());
+        assertEquals(16, afternoon.get(Calendar.HOUR_OF_DAY), "the caller's calendar is left as it was");
     }
 
     @Test

@@ -111,13 +111,10 @@ public class ExpeditionBossLog {
         Boss logs resets 12am, weekly thursday 12AM - thanks Smitty Werbenjagermanjensen (superadlez) - https://www.reddit.com/r/Maplestory/comments/61tiup/about_reset_time/
         */
 
-        Calendar thursday = Calendar.getInstance();
-        thursday.set(Calendar.DAY_OF_WEEK, Calendar.THURSDAY);
-        thursday.set(Calendar.HOUR, 0);
-        thursday.set(Calendar.MINUTE, 0);
-        thursday.set(Calendar.SECOND, 0);
-
         Calendar now = Calendar.getInstance();
+        Calendar thursday = (Calendar) now.clone();
+        thursday.set(Calendar.DAY_OF_WEEK, Calendar.THURSDAY);
+        thursday = midnight(thursday);
 
         long weekLength = DAYS.toMillis(7);
         long halfDayLength = HOURS.toMillis(12);
@@ -131,11 +128,21 @@ public class ExpeditionBossLog {
             ExpeditionBossLog.resetBossLogTable(true, thursday);
         }
 
-        now.set(Calendar.HOUR, 0);
-        now.set(Calendar.MINUTE, 0);
-        now.set(Calendar.SECOND, 0);
+        ExpeditionBossLog.resetBossLogTable(false, midnight(now));
+    }
 
-        ExpeditionBossLog.resetBossLogTable(false, now);
+    /**
+     * 00:00 of {@code time}'s day in its time zone. 2026-10-20: the reset set Calendar.HOUR, the 12-hour field, so a
+     * server start in the afternoon cut at noon and cleared that morning's entries (a Zakum run at 01:17 GMT could run
+     * again after a restart at 16:00 GMT).
+     */
+    static Calendar midnight(Calendar time) {
+        Calendar midnight = (Calendar) time.clone();
+        midnight.set(Calendar.HOUR_OF_DAY, 0);
+        midnight.set(Calendar.MINUTE, 0);
+        midnight.set(Calendar.SECOND, 0);
+        midnight.set(Calendar.MILLISECOND, 0);
+        return midnight;
     }
 
     private static void resetBossLogTable(boolean week, Calendar c) {
