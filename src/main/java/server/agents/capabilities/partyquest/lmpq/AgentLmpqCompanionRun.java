@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.looting.AgentLootEligibility;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeConfig;
@@ -424,6 +427,32 @@ final class AgentLmpqCompanionRun {
             if (loaded == null) loaded = agent;
         }
         return up != null ? up : loaded;
+    }
+
+    // ---- pace (Step 4) ---------------------------------------------------------------------------------------------
+
+    /**
+     * The party is inside the maze: each member's power from the warmed LMPQ profile, for the pace record's members
+     * (the farm quota's seek is fitted against them). Nothing while the profile is cold or a member cannot be read;
+     * never throws.
+     */
+    static void markEntered(AgentLmpqSession session) {
+        if (!session.companionAdopted()) return;
+        try {
+            AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(AgentLmpqPaceProfile.QUEST_KEY);
+            if (profile == null) return;
+            List<AgentPqMemberPower> power = new ArrayList<>();
+            for (AgentLmpqMemberState member : session.members()) {
+                Character character = AgentLmpqCoordinator.character(member.characterId());
+                if (character == null) return;
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentLmpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            }
+            session.recordPowersAtEntry(power);
+        } catch (RuntimeException | LinkageError failure) {
+            log.debug("LMPQ pace power unreadable: session={}", session.sessionId(), failure);
+        }
     }
 
     // ---- speakers -------------------------------------------------------------------------------------------------

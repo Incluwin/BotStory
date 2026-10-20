@@ -294,6 +294,7 @@ public final class AgentLmpqCoordinator {
             } catch (RuntimeException failure) {
                 log.warn("LMPQ potions failed: session={}", session.sessionId(), failure);
             }
+            AgentLmpqCompanionRun.markEntered(session);
         }
         session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
     }
