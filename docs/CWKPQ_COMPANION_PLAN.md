@@ -137,7 +137,7 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     owner comes in), and the call reads its bag again; one with none whispers so and stays at camp.
   - Not built: a line when a held member goes down (the stock "down" line comes after the clear); a picker choice that
     sends a keystone-less ally on its errand.
-- **C4, first part, built 2026-10-20 on feat/cwkpq** (the sigil cast and stages 1, 2 and 4):
+- **C4 built 2026-10-20 on feat/cwkpq** (the sigil cast, stages 1, 2 and 4, and `!cwkpqtest`):
   - `AgentSkillAttackPlanRuntime.planSkillAttackAt` plans a skill at a point with no monster (the same gates as a
     monster plan, minus targets; Meso Explosion refused, it needs mesos). `AgentCombatAttackRuntime.attackAtNothing`
     swings it through the same handler as any attack: shown to the map, MP, ammo and cooldown paid, no damage, the
@@ -156,9 +156,15 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     - Stage 4: a member of the spot picture's class takes each spot. Bowman and pirate pictures are always real (no
       fake shows them), so they cast at once; any other is tried with one plain hit (a fake turns and is spent; a real
       sigil ignores it) and, still standing after 800 ms, takes the class skill. Spot claims and verdicts are kept per
-      run. With glpq4 >= 5 everyone leaves.
-  - Not built yet (rest of C4): the shared "the right one up top is fake" line, and `!cwkpqtest` (party prod,
-    checkpoint per stage, status, stop).
+      run; a fake's tester says once which one it was ("the right one up top's a fake"). With glpq4 >= 5 everyone
+      leaves.
+  - `!cwkpqtest` (GM6, `AgentCwkpqTestService`): there is no "party prod" step, since the run starts at the real desk.
+    `status` reads the run you stand in, or the list registering on your channel: run phase, stage and every glpq
+    flag, each companion (job, level, which sigil it turns, phase, map, down, deaths) and the stage-4 spots with what
+    each really is. `checkpoint <storage|agility|wit|unity|council|armory>` sets the earlier stages' flags as their
+    clears do, sets `current_instance` to the stage before (CWKPQ.js restarts a stage's timer only when the counter is
+    one short), runs the event's clearPQ for the armory, and moves everyone alive inside the instance to the stage's
+    first portal; the down stay where they fell. `stop` runs the event's own end.
 
 ## Questions for you (answered, kept for the record)
 
@@ -426,7 +432,7 @@ C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 | **C1** | Keystone road and quest data: Haunted House in the masteria group, NLC taxi leg, Valley climb edges (from C0), Firebrand revive link in the hunt planner, prereq states in the knowledge export, `Quest.canStart` before any bot scripted start, keep SETUP quest items out of sell plans | M | C0 |
 | **C2** | Keystone errand (A3): errand states, live or ledger hunting, interrupts, lines | M | C1, Question 1 |
 | **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionBossKeys` (built 2026-10-20) | L | - |
-| **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest party prod / checkpoint <s2..s6, armory> / status / stop` (primitive and stages built 2026-10-20) | M | C0, C3 |
+| **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest status / checkpoint <stage> / stop` (built 2026-10-20) | M | C0, C3 |
 | **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes | L | C0, C4 |
 | **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |
 | **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters | M | C3 |

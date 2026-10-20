@@ -30,8 +30,8 @@ import java.util.Map;
  * <li>Stage 4, the Test of Wit: each of the 8 spots shows a class's picture, and the fakes show the warrior's, the
  * mage's or the thief's (C0). A member of the picture's class takes the spot. A bowman or pirate picture is always a
  * real sigil, so it casts at once; any other is tried with one plain hit first, as a player does: a fake turns at once
- * and is spent, a real sigil does not move and then takes the class skill. Once five are turned (glpq4), everyone
- * takes the exit.</li>
+ * and is spent (its tester says which one: "the right one up top's a fake"), a real sigil does not move and then takes
+ * the class skill. Once five are turned (glpq4), everyone takes the exit.</li>
  * </ul>
  * Walks and portals are those of the PQ plays: walk up, stand on the ground within reach, then act, with a pause after
  * each portal or cast so one tick never acts twice.
@@ -131,10 +131,14 @@ final class AgentCwkpqStagePlays {
             return;
         }
         List<Character> bySlot = bySlot(members, run);
+        Map<Integer, Reactor> pictured = new HashMap<>();
         Map<Integer, Reactor> spots = new HashMap<>();
         for (Reactor reactor : ports.gateway().reactors(bySlot.getFirst())) {
-            if (picture(reactor.getId()) != null && reactor.isAlive() && reactor.getState() == 1) {
-                spots.put(reactor.getObjectId(), reactor);
+            if (picture(reactor.getId()) != null && reactor.isAlive()) {
+                pictured.put(reactor.getObjectId(), reactor);
+                if (reactor.getState() == 1) {
+                    spots.put(reactor.getObjectId(), reactor);
+                }
             }
         }
         for (Reactor spot : spots.values()) {
@@ -147,6 +151,11 @@ final class AgentCwkpqStagePlays {
             Integer held = run.spotOf(member.getId());
             if (held != null && !spots.containsKey(held)) {
                 run.assign(member.getId(), null); // spent: turned, or a fake that turned at the test hit
+                if (run.testedAt(held) != null && !run.knownReal(held) && run.once("fake-" + held)) {
+                    Reactor fake = pictured.get(held);
+                    ports.sayInParty(member, fake == null ? "that one was a fake"
+                            : "the " + where(fake.getPosition()) + "'s a fake");
+                }
                 held = null;
             }
             Archetype archetype = caster(member);
@@ -176,6 +185,16 @@ final class AgentCwkpqStagePlays {
             }
         }
         return FAKE_PICTURES.get(reactorId);
+    }
+
+    /**
+     * Where a stage-4 spot is, as a player would say it: "right one up top", "left one low". The 8 spots stand at x
+     * -804..1181 and y -969..172 on 610030400.
+     */
+    static String where(Point spot) {
+        String side = spot.x < -300 ? "left" : spot.x > 600 ? "right" : "middle";
+        String height = spot.y < -800 ? "up top" : spot.y > -300 ? "low" : "halfway up";
+        return side + " one " + height;
     }
 
     /** No fake shows the bowman's or the pirate's picture. */

@@ -208,6 +208,17 @@ class AgentCwkpqStagePlaysTest {
         AgentCwkpqStagePlays.wit(ports, List.of(orrin), event, run, 2_000L);
         verify(casting, never()).hitWithSkill(any(), anyInt(), anyInt());
         verify(gateway).navigate(entries.get(10), new Point(-433, 635), false);
+        AgentCwkpqStagePlays.wit(ports, List.of(orrin), event, run, 3_000L);
+        assertEquals(List.of("Orrin: the middle one up top's a fake"), party, "said once, where it is");
+    }
+
+    @Test
+    void theSpotsAreNamedAsAPlayerWouldSayThem() {
+        assertEquals("right one up top", AgentCwkpqStagePlays.where(new Point(998, -847)));
+        assertEquals("right one halfway up", AgentCwkpqStagePlays.where(new Point(1175, -547)));
+        assertEquals("left one low", AgentCwkpqStagePlays.where(new Point(-804, 52)));
+        assertEquals("left one halfway up", AgentCwkpqStagePlays.where(new Point(-799, -668)));
+        assertEquals("middle one up top", AgentCwkpqStagePlays.where(new Point(7, -969)));
     }
 
     @Test
