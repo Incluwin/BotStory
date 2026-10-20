@@ -175,6 +175,7 @@ final class AgentLmpqTerminationService {
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
         });
         if (companionRun) {
+            quietly(session, "release-full-rate", () -> AgentLmpqFullRateSimulation.releaseAll(session));
             quietly(session, "log-potions", () -> log.info("LMPQ potions: session={} start={} end={}",
                     session.sessionId(), session.potionsAtEntry(), potions(session)));
         }

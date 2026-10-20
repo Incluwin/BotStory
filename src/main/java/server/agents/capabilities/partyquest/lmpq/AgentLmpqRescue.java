@@ -23,13 +23,22 @@ final class AgentLmpqRescue {
      * the member. It never throws.
      */
     static void note(AgentLmpqSession session, Kind kind, String site, Character member, String detail) {
+        note(session, kind, site, member, detail, true);
+    }
+
+    /**
+     * As {@link #note(AgentLmpqSession, Kind, String, Character, String)}, with whether the rescue was applied: a
+     * companion run notes the vacuum it no longer applies (applied=false) where it would have (P6h Step 2d).
+     */
+    static void note(AgentLmpqSession session, Kind kind, String site, Character member, String detail,
+                     boolean applied) {
         try {
             AgentLmpqSession run = session != null ? session
                     : member == null ? null : AgentLmpqSessionRegistry.forMember(member.getId());
             log.warn("LMPQ rescue: session={} kind={} site={} phase={} member={}({}) applied={} companionRun={} "
                             + "detail={}", run == null ? "-" : run.sessionId(), kind, site,
                     run == null ? "-" : run.phase(), member == null ? "-" : member.getName(),
-                    member == null ? "-" : member.getId(), true, run != null && run.companionAdopted(),
+                    member == null ? "-" : member.getId(), applied, run != null && run.companionAdopted(),
                     detail == null || detail.isEmpty() ? "-" : detail);
         } catch (RuntimeException failure) {
             log.warn("LMPQ rescue note failed: kind={} site={}", kind, site, failure);

@@ -1610,6 +1610,46 @@ tuning:
     # Purpose: Bounds how long an LMPQ run keeps farming for the Tauromacis rooms (6 and 7) once it holds the 30 coupons Pietri needs, before it regroups anyway.
     # Technical: AgentLmpqCoordinator.readyToRegroup counts from the run's FARMING entry; before this budget is spent it does not regroup while a room in AgentLmpqDefinition.TAUROMACIS_ROOMS is available, reserved or worked ('LMPQ hold:' once); after it, or at 0, the old rule (36 coupons, or 30 after 120 s) applies, and no room left to farm always regroups.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TAUROMACIS_BUDGET_MS: '300000'
+    # Values: 15000-180000 milliseconds. Recommended: 45000 so a leader still standing in a room hears the way once more while the maze's fifteen minutes still allow the walk.
+    # Purpose: Sets how long after its first direction a companion reminds an LMPQ companion run's human of the portal to take while he stays in the same maze room.
+    # Technical: AgentLmpqCompanionRun.guide says one party-chat line ('LMPQ line: key=direction') for each room a counted human enters and at most one reminder ('direction-again') once this has passed; the same window spaces the 'short' line when the run goes back to the rooms. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.DIRECTION_REPEAT_MS: '45000'
+    # Values: 20-120 map pixels. Recommended: 60 so a stack dropped there lands within the leader's own pickup reach.
+    # Purpose: Sets how near an LMPQ companion stands to its human leader, on both axes, before it drops its coupons at his feet in the rendezvous room.
+    # Technical: AgentLmpqHandOver compares the carrier's and the leader's grounded positions and the drop landing the gateway predicts (predictDropLanding); a landing within this of him is at his feet, one on his level beside him; also the line window's place. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_HANDOVER_REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000, longer than a walk across Room 16 or Room 9 and short of a stall.
+    # Purpose: Bounds how long an LMPQ companion walks toward its human leader with its coupons before it drops them where it stands and tells him so.
+    # Technical: AgentLmpqHandOver starts the clock when the hand-over begins (the leader is in the rendezvous room); past it, or when canReach says he cannot be reached, the stack is dropped in place ('LMPQ handover: place=HERE' unless it lands by him). Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_HANDOVER_TIMEOUT_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000 so a leader busy for a moment is not rushed and a forgotten stack is pointed out well before it expires.
+    # Purpose: Sets how long a coupon stack an LMPQ companion dropped for its human leader lies before that companion points it out once in party chat.
+    # Technical: AgentLmpqHandOver compares the stack's drop time; the nudge ('LMPQ line: key=handover-nudge') is said once per stack, and at most once in this window across the companions. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds, clamped below ITEM_EXPIRE_TIME less ITEM_EXPIRE_CHECK with one WARN. Recommended: 150000 so a stack is saved before the server's 180 s item expiry.
+    # Purpose: Sets how long a coupon stack dropped for an LMPQ companion run's leader may lie before a companion picks it back up and drops it for him again.
+    # Technical: AgentLmpqHandOver lets its dropper, else the lowest-id companion standing in the room, claim the stack (AgentLmpqSession.beginClaim), pick it up through lootItem (the loot rule lets only the claimer) and hand it over again with the 'picked them back up' line ('LMPQ recollect:'). Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_RECOLLECT_MS: '150000'
+    # Values: 0-5 re-collects per stack (0 turns it off). Recommended: 2 so a leader who walked away gets two more chances before the coupons are left to expire.
+    # Purpose: Bounds how often one coupon stack an LMPQ companion dropped for its leader is picked back up and dropped for him again before it is left to expire.
+    # Technical: AgentLmpqSession carries a lineage's re-collect count to each new stack (setRecollectCount); AgentLmpqHandOver.recollectDue refuses a claim once the count reaches this. The run's short count sees an expired stack and sends the party back to the rooms. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_RECOLLECT_MAX: '2'
+    # Values: 2000-30000 milliseconds. Recommended: 8000 so companions handing over one after another say one line between them.
+    # Purpose: Keeps LMPQ companions converging on the human leader with coupons to one hand-over line between them instead of one each.
+    # Technical: AgentLmpqHandOver claims this window (AgentLmpqSession.claimLineWindow) before its at-feet, beside, over-here or picked-back-up line; a drop inside the window is logged ('LMPQ handover:') but says nothing. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.COUPON_HANDOVER_LINE_WINDOW_MS: '8000'
+    # Values: 51-71 character levels. Recommended: 65 (provisional, from the plan; the Step 0 live smoke that was to set it never ran) so a Lv51-64 companion stays away from the Lv73 Tauromacis (16000 HP, 290 weapon attack).
+    # Purpose: Sets the level below which an LMPQ companion keeps out of Room 6, leaves Room 7's Tauromacis box alone and walks out of a room where a Tauromacis is loose.
+    # Technical: AgentLmpqCompanionRun.keepsOut, leavesBox and beforeFarming compare the companion's level; mobsFor drops 9400218 from its grind; the Tauromacis hold (TAUROMACIS_BUDGET_MS) waits in a companion run only while a counted companion reaches it. 'LMPQ danger:' logs each decision. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TAUROMACIS_MIN_LEVEL: '65'
+    # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold, so both fire together.
+    # Purpose: Sets the HP fraction under which an LMPQ companion holding fewer than POT_STOP HP potions stops farming and rests in the rendezvous room, where nothing spawns.
+    # Technical: AgentLmpqCompanionRun.rests applies AgentLmpqCompanionPlay.resting with server.agents.runtime.AgentRuntimeConfig.POT_STOP and the gateway's HP-potion count; the companion gives up its room, walks to the rendezvous room and waits at its spot ('LMPQ rest: state=START', one line). Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REST_HP_FRACTION: '0.4'
+    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested companion goes back to the rooms with room for a hit.
+    # Purpose: Sets the HP fraction at which a resting LMPQ companion with fewer than POT_STOP HP potions goes back to farming.
+    # Technical: AgentLmpqCompanionRun.rests ends the rest ('LMPQ rest: state=END') once the companion's HP reaches this share of its maximum or it holds POT_STOP HP potions again; it then picks a room as before. Companion runs only.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.RESUME_HP_FRACTION: '0.7'
     # Values: 250-5000 milliseconds. Recommended: 1000 for timely LMPQ liveness checks with modest scheduler overhead.
     # Purpose: Scans active LMPQ runs for an expired or dead coordinator lease, or the loss of every loaded Agent, so each run still ticks, fails or completes.
     # Technical: AgentLmpqWatchdogRuntime iterates only AgentLmpqSessionRegistry, ticks a run through its first live Agent when the lease has run out, and releases a run that ended through the idempotent LMPQ termination path.

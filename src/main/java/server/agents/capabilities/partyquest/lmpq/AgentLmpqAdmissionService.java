@@ -153,7 +153,11 @@ public final class AgentLmpqAdmissionService {
                 ? AgentLmpqMemberState.MemberType.AGENT : AgentLmpqMemberState.MemberType.HUMAN));
         int executor = validation.agentMembers().getFirst().getId();
         session.setLeadership(eventLeader.getId(), executor);
-        if (companionRun) session.setCompanionAdopted(true);
+        if (companionRun) {
+            session.setCompanionAdopted(true);
+            // P6h Step 2c: a companion run meets in Room 16, Pietri's room: one destination for its leader.
+            session.setRendezvousRoom(AgentLmpqDefinition.CLEAR_ROOM);
+        }
         boolean published = false;
         try {
             lobby.reserve(nowMs);

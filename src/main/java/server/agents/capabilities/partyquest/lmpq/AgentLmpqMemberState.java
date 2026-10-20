@@ -62,6 +62,46 @@ public final class AgentLmpqMemberState {
     /** The claims this Agent made at the reward Rolly while it stayed on the reward map. */
     public synchronized int rewardAttempts() { return rewardAttempts; }
     public synchronized void noteRewardAttempt() { rewardAttempts++; }
+    // ---- companion run (P6h Step 2) -------------------------------------------------------------------------------
+    private long handOverStartedAtMs;
+    private int handOverRecollectCount;
+    private int claimObjectId;
+    private int heldBefore;
+    private boolean resting;
+    private final Set<Integer> avoidedRooms = new HashSet<>();
+
+    /** Starts a hand-over of this companion's coupons to the leader ({@code recollectCount}: the lineage's re-collects). */
+    synchronized void startHandOver(long nowMs, int recollectCount) {
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverRecollectCount = Math.max(0, recollectCount);
+    }
+
+    synchronized void endHandOver() {
+        handOverStartedAtMs = 0L;
+        handOverRecollectCount = 0;
+    }
+
+    synchronized long handOverStartedAtMs() { return handOverStartedAtMs; }
+    synchronized int handOverRecollectCount() { return handOverRecollectCount; }
+
+    /** Sets out to pick a stack back up, holding {@code held} coupons before it. */
+    synchronized void claimStack(int objectId, int held) {
+        claimObjectId = objectId;
+        heldBefore = Math.max(0, held);
+    }
+
+    synchronized void clearClaim() { claimObjectId = 0; }
+    synchronized int claimObjectId() { return claimObjectId; }
+    synchronized int heldBefore() { return heldBefore; }
+
+    /** Whether this companion rests out of potions now. */
+    synchronized boolean resting() { return resting; }
+    synchronized void setResting(boolean value) { resting = value; }
+
+    /** A room this companion keeps out of (a Tauromacis loose in it, above its level); true the first time. */
+    synchronized boolean avoidRoom(int room) { return room > 0 && avoidedRooms.add(room); }
+    synchronized boolean avoids(int room) { return avoidedRooms.contains(room); }
+
     public synchronized int initialRoom() { return initialRoom; }
     public synchronized List<Integer> route() { return List.copyOf(route); }
     public synchronized List<Integer> assignments() { return List.copyOf(assignments); }

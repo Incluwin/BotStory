@@ -56,6 +56,19 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
     private final Set<String> notes = new java.util.HashSet<>();
     private final java.util.concurrent.atomic.AtomicBoolean coordinating =
             new java.util.concurrent.atomic.AtomicBoolean();
+    // P6h Steps 2-4: a companion run's own state (lines, hand-over claims, full rate, downs, pace).
+    private final Map<String, Long> lineWindows = new java.util.HashMap<>();
+    private final Map<Integer, Integer> claims = new java.util.HashMap<>();
+    private final Map<Integer, Integer> recollectCounts = new java.util.HashMap<>();
+    private final Map<Integer, Boolean> fullRateHeld = new LinkedHashMap<>();
+    private final Map<Integer, Long> downSinceMs = new java.util.HashMap<>();
+    private final Map<Integer, Guide> guides = new java.util.HashMap<>();
+    private int speakerTurn;
+    private long leaderArrivedAtMs;
+    private boolean failureClaimed;
+    private String floorDeparture;
+    private int couponsAtRegroup;
+    private List<server.agents.capabilities.partyquest.pace.AgentPqMemberPower> powersAtEntry = List.of();
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -346,6 +359,163 @@ public final class AgentLmpqSession implements AgentCompanionRunSession {
 
     /** Dead members the departure gate holds on the map now. */
     synchronized int heldDeadCount() { return heldSinceMs.size(); }
+
+    // ---- companion run (P6h Steps 2-4) ----------------------------------------------------------------------------
+
+    /**
+     * A companion run that came up short in REGROUPING (a departed companion's coupons went with it) goes back to
+     * FARMING: the only backward step a run takes. Logged as any phase change; the first entries keep the first
+     * time each phase was entered. False in any other phase.
+     */
+    synchronized boolean resumeFarming(long nowMs) {
+        if (phase != Phase.REGROUPING) return false;
+        logPhase(Phase.FARMING, nowMs);
+        phase = Phase.FARMING;
+        phaseEnteredAtMs = nowMs;
+        markProgress(nowMs);
+        return true;
+    }
+
+    /**
+     * True when no line of this kind was said within {@code windowMs}; the window then starts now. Companions handing
+     * coupons over one after another say one line between them.
+     */
+    synchronized boolean claimLineWindow(String key, long nowMs, long windowMs) {
+        if (key == null) return false;
+        Long last = lineWindows.get(key);
+        if (last != null && nowMs - last < windowMs) return false;
+        lineWindows.put(key, nowMs);
+        return true;
+    }
+
+    /** Whether this id is an Agent member of the run. */
+    synchronized boolean agentOfRun(int id) {
+        AgentLmpqMemberState member = members.get(id);
+        return member != null && member.memberType() == AgentLmpqMemberState.MemberType.AGENT;
+    }
+
+    /** Claims a coupon stack lying for the leader, to pick it back up before it expires; false when one already did. */
+    synchronized boolean beginClaim(int objectId, int agentId) {
+        if (objectId == 0 || agentId <= 0 || claims.containsKey(objectId)) return false;
+        claims.put(objectId, agentId);
+        return true;
+    }
+
+    /** The Agent that claimed this stack, or 0. */
+    synchronized int claimerOf(int objectId) {
+        Integer agent = claims.get(objectId);
+        return agent == null ? 0 : agent;
+    }
+
+    /** Ends a stack's claim (picked up, or gone); answers how often its lineage had been picked back up before. */
+    synchronized int endClaim(int objectId) {
+        claims.remove(objectId);
+        Integer count = recollectCounts.remove(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** How often this stack's lineage has been picked back up. */
+    synchronized int recollectCount(int objectId) {
+        Integer count = recollectCounts.get(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** Carries a lineage's re-collect count to the stack dropped again. */
+    synchronized void setRecollectCount(int objectId, int count) {
+        if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
+    }
+
+    /** Records this run's full-rate hold on an Agent: true the first time, with what was required before it. */
+    synchronized boolean holdFullRate(int id, boolean requiredBefore) {
+        return fullRateHeld.putIfAbsent(id, requiredBefore) == null;
+    }
+
+    /** Forgets this run's full-rate hold: whether something else required full rate before it, or null if not held. */
+    synchronized Boolean releaseFullRate(int id) {
+        return fullRateHeld.remove(id);
+    }
+
+    /** The Agents this run holds at full rate. */
+    synchronized Set<Integer> fullRateHeld() {
+        return Set.copyOf(fullRateHeld.keySet());
+    }
+
+    /** Marks a member down at {@code nowMs}; true the first time (until it is up again). */
+    synchronized boolean markDown(int id, long nowMs) {
+        return members.containsKey(id) && downSinceMs.putIfAbsent(id, Math.max(1L, nowMs)) == null;
+    }
+
+    /** When the member was first seen down, or 0 when it is not down. */
+    synchronized long downSinceMs(int id) {
+        Long since = downSinceMs.get(id);
+        return since == null ? 0L : since;
+    }
+
+    /** The member is up again. */
+    synchronized void clearDown(int id) { downSinceMs.remove(id); }
+
+    /** Where a human the companions guide was last told the way: his room, when, and how many lines there. */
+    record Guide(int room, long saidAtMs, int lines) { }
+
+    /** The last direction said to this human, or null. */
+    synchronized Guide guide(int id) { return guides.get(id); }
+
+    /** Notes a direction said to this human in {@code room} now. */
+    synchronized void noteGuide(int id, int room, long nowMs) {
+        Guide previous = guides.get(id);
+        int lines = previous != null && previous.room() == room ? previous.lines() + 1 : 1;
+        guides.put(id, new Guide(room, nowMs, lines));
+    }
+
+    /** The next speaker's turn of {@code size} candidates, round-robin. */
+    synchronized int nextSpeakerTurn(int size) {
+        if (size <= 0) return 0;
+        int turn = Math.floorMod(speakerTurn, size);
+        speakerTurn++;
+        return turn;
+    }
+
+    /** Notes the leader's first arrival in the rendezvous room after the maze entry (the walk's end); the first wins. */
+    synchronized boolean noteLeaderArrived(long nowMs) {
+        if (leaderArrivedAtMs > 0L) return false;
+        leaderArrivedAtMs = Math.max(1L, nowMs);
+        return true;
+    }
+
+    /** When the leader first stood in the rendezvous room after the entry, or 0. */
+    synchronized long leaderArrivedAtMs() { return leaderArrivedAtMs; }
+
+    /** Claims the run's one failure with a parting (the first caller wins). */
+    synchronized boolean claimFailure() {
+        if (failureClaimed) return false;
+        failureClaimed = true;
+        return true;
+    }
+
+    /** The death gate let a dead companion leave at the floor: its name, for the parting when the event ends. */
+    synchronized void noteFloorDeparture(String name) {
+        if (floorDeparture == null) floorDeparture = name == null ? "" : name;
+    }
+
+    /** The name of the companion whose departure at the floor ended the event; null when none did. */
+    synchronized String floorDeparture() { return floorDeparture; }
+
+    /** The coupons the run counted as secured when it regrouped (the farm span's work); 0 until then. */
+    synchronized int couponsAtRegroup() { return couponsAtRegroup; }
+
+    synchronized void setCouponsAtRegroup(int coupons) {
+        if (couponsAtRegroup == 0) couponsAtRegroup = Math.max(0, coupons);
+    }
+
+    /** Each member's power as the run entered the maze (the pace's members); empty while unread. */
+    synchronized List<server.agents.capabilities.partyquest.pace.AgentPqMemberPower> powersAtEntry() {
+        return powersAtEntry;
+    }
+
+    /** Keeps the members' power at the entry; the first non-empty read wins. */
+    synchronized void recordPowersAtEntry(List<server.agents.capabilities.partyquest.pace.AgentPqMemberPower> powers) {
+        if (powersAtEntry.isEmpty() && powers != null) powersAtEntry = List.copyOf(powers);
+    }
 
     /**
      * Takes a member out of the run (a companion that tapped out); the event leader is never taken out. The
