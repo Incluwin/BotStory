@@ -8,6 +8,7 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
@@ -528,7 +529,9 @@ public final class PresenceScheduler {
         int level = Math.max(1, population.store().characterProgress(citizen.characterId())[0]);
         switch (activity) {
             case TRAIN -> {
-                Field field = population.fields().trainingField(citizen, level, random, true);
+                long now = System.currentTimeMillis();
+                Field field = population.fields().trainingField(citizen, level, random, true,
+                        mapId -> avoiding(session, mapId, now));
                 return field == null ? population.fields().homeTown(citizen, random) : field.mapId();
             }
             case PQ -> {
@@ -610,6 +613,9 @@ public final class PresenceScheduler {
         if (moveAfterSupplyTrip(session, now)) {
             return;
         }
+        if (leaveFieldBoss(session, now)) {
+            return;
+        }
         if (session.afkUntilMs > now) {
             return;
         }
@@ -636,6 +642,37 @@ public final class PresenceScheduler {
         Activity next = plan(session, now);
         int mapId = mapFor(session, next);
         travel(session, next, mapId, now);
+    }
+
+    /**
+     * A citizen training on the field it died on beside a field boss that still stands (PopulationHooks.died) plans
+     * again at once, alive, so it trains elsewhere instead of walking back to die again. True when it moved on.
+     */
+    private boolean leaveFieldBoss(CitizenSession session, long now) {
+        Character agent = session.agent();
+        if (session.activity != Activity.TRAIN || agent == null || !agent.isAlive()
+                || !avoiding(session, session.mapId, now)) {
+            return false;
+        }
+        session.afkUntilMs = 0L;
+        session.lastPlanAtMs = now;
+        Activity next = plan(session, now);
+        int mapId = mapFor(session, next);
+        log.debug("citizen {} leaves field {}: a field boss it died beside still stands there", session.name(), session.mapId);
+        travel(session, next, mapId, now);
+        return true;
+    }
+
+    /** True while {@code session} avoids {@code mapId}: it died there beside a field boss that still stands. */
+    boolean avoiding(CitizenSession session, int mapId, long now) {
+        if (mapId == 0 || mapId != session.avoidMapId) {
+            return false;
+        }
+        if (now >= session.avoidUntilMs || !AgentBossField.near(population.map(session.channel, mapId))) {
+            session.avoidMapId = 0;
+            return false;
+        }
+        return true;
     }
 
     private void resume(CitizenSession session, long now) {

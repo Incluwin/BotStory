@@ -85,6 +85,12 @@ public class PopulationConfig {
     /** Meso a citizen may spend per day buying from human shops. */
     public long MARKET_BUY_BUDGET_PER_DAY = 200000L;
 
+    /**
+     * A citizen that died beside a field boss whose group is on trains elsewhere while that boss stands there, at most
+     * this long from its death (0-10800000 ms; 0 = it goes back as before).
+     */
+    public int FIELD_BOSS_AVOID_MS = 3600000;
+
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
             throw new IllegalArgumentException("population.TARGET_CITIZENS/ONLINE_MAX must be >= 0 and MAP_VISIBLE_MAX >= 1");
@@ -100,6 +106,9 @@ public class PopulationConfig {
         }
         if (SHUTDOWN_LOGOUT_THREADS < 1 || SHUTDOWN_LOGOUT_BUDGET_MS < 0) {
             throw new IllegalArgumentException("population.SHUTDOWN_LOGOUT_THREADS must be >= 1 and SHUTDOWN_LOGOUT_BUDGET_MS >= 0");
+        }
+        if (FIELD_BOSS_AVOID_MS < 0 || FIELD_BOSS_AVOID_MS > 10800000) {
+            throw new IllegalArgumentException("population.FIELD_BOSS_AVOID_MS must be within 0..10800000");
         }
     }
 }

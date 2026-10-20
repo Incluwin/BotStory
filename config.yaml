@@ -1081,6 +1081,11 @@ population:
     MARKET_ENABLED: true
     MARKET_STALLS_MAX: 30
     MARKET_BUY_BUDGET_PER_DAY: 200000
+    # A citizen that died beside a field boss whose group COMPANION_BOSS_ENABLED_TYPES lists (2026-10-19) trains
+    # elsewhere while that boss stands on the map, at most FIELD_BOSS_AVOID_MS from its death. Citizens never attack a
+    # listed boss but take its hits while a player fights it, so they used to walk straight back to die again.
+    # 0 = they go back as before.
+    FIELD_BOSS_AVOID_MS: 3600000
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live
