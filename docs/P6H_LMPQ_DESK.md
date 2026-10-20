@@ -114,3 +114,25 @@ Unchanged elsewhere: `AgentSupplyReadiness.PARTY_QUEST_STANDARDS` already lists 
 Rolly answers with his window ("<Party Quest: Ludibrium Maze>", the leader, Dorran Lv75 and Lioren Lv77 kept waiting
 as "past the maze", Let me choose / the bench call / Never mind). No full run: the test crew is Lv75-78, above the
 maze's 51-70, and lowering them with `!setlevel` can drop skills a restore does not give back.
+
+## Live 2026-10-20 (89d38f027, Lv55 test party): full run PASS
+
+Crew: a fresh GM test owner, Pqfriend (Cleric Lv55, `!setlevel me 55 cleric auto`), with five granted companions
+called from the Crew window: Jinx (Assassin Lv59), Vex (Bandit Lv52), Sadie (Fighter), Marrow (Hunter) and Kettle
+(Brawler), the last three raised 45/44/33 -> 55 with `!setlevel <name> 55` (level up only, no skills dropped) and
+released with `keep`. Potions topped up with `!giveitem` (three of them were broke and asked the owner for supplies).
+
+- **L3** PASS. Rolly's window: portrait, "<Party Quest: Ludibrium Maze>", "Six of you, then?". Six members overflow
+  the text area, so the client shows Next; Next confirms the highlighted first option ("Yes, send us in."), which is
+  the stock v83 behaviour for a long menu, not a desk bug. Admitted HUMAN_LEADER, members=6.
+- **L4/L5** PASS. The bench call brought all five to Ludibrium (fixed 180 s ETA); Jinx went straight from Rolly to
+  restock at the nearby shop.
+- **L1/L6** PASS, 10:32-10:38. Rooms 6 and 7 skipped (Kettle's line; everyone is under TAUROMACIS_MIN_LEVEL). 36
+  coupons after 40 s. The directions were right in every room (portal ids 2/3/4 checked against Map.wz x in all 16
+  rooms), so the leader reached Room 16 by directions alone (D5 not needed). Four stacks dropped at the leader's feet,
+  a nudge after 40 s, the leader picked up 38; Pietri, reward, the party whole at 809050017 and back in Ludibrium
+  220000000 together, still in the party.
+- Clear 177 s against the prior's p10/p50/p90 of 235/275/330 s. pq_run_pace 'lmpq' row: farm 40.3 s, walk 98.8 s,
+  handin 106.3 s, pietri 28.2 s, claim 1.7 s, coupons drawn 38. companion_performance: five rows, cleared, 0 deaths.
+  Zero 'LMPQ session failure:' lines, zero ERROR lines.
+- Not run this time: L8-L12 (tap-out, 3-member, leader death, TIMEOUT parting), L14 tick percentiles, L15 video.

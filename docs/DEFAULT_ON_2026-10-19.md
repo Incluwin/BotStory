@@ -46,6 +46,25 @@ Party quest desks (owner Crewfriend Lv78 with Dorran, Lioren, Kestrel):
 The test bench has no Lv51-70 crew for LMPQ and OPQ, and `!setlevel` down can drop skills a restore does not give
 back. Run those two with a fresh Lv55 test party.
 
+## Live checks (2026-10-20)
+
+Test party for LMPQ and OPQ: a fresh GM test owner, Pqfriend (Cleric Lv55), with five granted companions at Lv52-59:
+Jinx (Assassin, the only one with Haste), Vex (Bandit), Sadie (Fighter), Marrow (Hunter) and Kettle (Brawler). The
+three below 55 were raised with `!setlevel <name> 55` and released with `keep`; raising a level drops nothing.
+
+- LMPQ, Rolly: full run PASS in 177 s. Desk window, admission, directions in every room, coupons dropped at the
+  leader's feet, Pietri, reward, and the party back in Ludibrium whole. Details in docs/P6H_LMPQ_DESK.md.
+- OPQ, Wonky: the desk PASSES. Window, five-branch blessing, 30-35 min estimate, Yes, admitted with six. Restocks
+  before entry. Entrance cleared in about 90 s. Both runs FAILED the 45-minute clock in the room stage, then released
+  cleanly with the party whole on the exit map. Storage and the walkway completed. The lounge, the lobby and the way up
+  never did:
+  - Lounge: three of its four subrooms sit up ledges a base jump cannot climb (jump 115 needed). The plan handed the
+    room to a Fighter.
+  - Lobby: every jump off its rope fell 11 px short of the ledge. This is a general movement bug: air steering pulled
+    rope jump-offs back toward the rope.
+  - Way up: the authored jump to its long rope carried no climbing intent.
+  Fixed with tests on fix/opq-room-climbs; the live re-run follows below.
+
 ## Findings
 
 - Leafre restocks a Lv160 crew to Pink Bean's 1500-potion standard (since P20, before this change).
