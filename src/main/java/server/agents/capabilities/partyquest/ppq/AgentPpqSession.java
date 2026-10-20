@@ -81,6 +81,26 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Integer> recollectCounts = new HashMap<>();
     /** When a hand-over line of this kind was last said, so carriers converging on the leader say one between them. */
     private final Map<String, Long> lineWindows = new HashMap<>();
+    /** Companion runs: each companion's full-rate hold, with whether full rate was already required before it. */
+    private final Map<Integer, Boolean> fullRateHeld = new LinkedHashMap<>();
+    /** Companion runs: when each member was first seen down this time (id -> ms). */
+    private final Map<Integer, Long> downSinceMs = new HashMap<>();
+    /** Companion runs: when each Agent member was first seen unloaded (id -> ms). */
+    private final Map<Integer, Long> missingSinceMs = new HashMap<>();
+    /** Companion runs: the names of members who left the run, for the next pass's line (said only if the run goes on). */
+    private final List<String> departedNames = new java.util.ArrayList<>();
+    /** Companion runs: one-shot log keys, apart from the lines'. */
+    private final Set<String> logMarks = new HashSet<>();
+    /** Companion runs: when each boundary of the run's pace was first seen (P6i Step 5). */
+    private final AgentPpqPaceMarks pace = new AgentPpqPaceMarks();
+    /** Companion runs: the leader lay dead in the bound event at the last pass. */
+    private boolean leaderDown;
+    /** Companion runs: the leader's name as the last pass saw it, for a parting said once he is gone. */
+    private String eventLeaderName;
+    /** Companion runs: the bound event's time left at the last pass; Long.MAX_VALUE until read. */
+    private long lastTimeLeftMs = Long.MAX_VALUE;
+    /** Companion runs: the players the bound event held at the last pass; -1 until read. */
+    private int lastRegistered = -1;
 
     public AgentPpqSession(Mode mode, long seed, int operatorId, boolean skipChestRooms, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid PPQ session required");
@@ -190,6 +210,8 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
         members.remove(id);
         departuresInFlight.remove(id);
         heldSinceMs.remove(id);
+        downSinceMs.remove(id);
+        missingSinceMs.remove(id);
         if (executionAgentId == id) {
             executionAgentId = next;
             executionLeaseUntilMs = 0L;
@@ -357,6 +379,92 @@ public final class AgentPpqSession implements AgentCompanionRunSession {
 
     /** Dead members the departure gate holds on the map now. */
     synchronized int heldDeadCount() { return heldSinceMs.size(); }
+
+    /** Whether the departure gate holds this dead member on the map now. */
+    synchronized boolean held(int id) { return heldSinceMs.containsKey(id); }
+
+    /** When the run first saw its clear, or -1 before. */
+    synchronized long clearedAtMs() { return clearedAtMs; }
+
+    /** Records a companion's full-rate hold; false when it already had one. */
+    synchronized boolean holdFullRate(int id, boolean requiredBefore) {
+        return fullRateHeld.putIfAbsent(id, requiredBefore) == null;
+    }
+
+    /** Ends a companion's full-rate hold: whether full rate was required before it, or null when it had none. */
+    synchronized Boolean releaseFullRate(int id) { return fullRateHeld.remove(id); }
+
+    synchronized Set<Integer> fullRateHeld() { return Set.copyOf(fullRateHeld.keySet()); }
+
+    /** A member seen down: true the first time this time down. */
+    synchronized boolean markDown(int id, long nowMs) { return downSinceMs.putIfAbsent(id, Math.max(1L, nowMs)) == null; }
+
+    synchronized void clearDown(int id) { downSinceMs.remove(id); }
+
+    /** When this member was first seen down this time; 0 when it is not down. */
+    synchronized long downSinceMs(int id) {
+        Long since = downSinceMs.get(id);
+        return since == null ? 0L : since;
+    }
+
+    /** How long this Agent member has been unloaded, counting from the first call that saw it so. */
+    synchronized long missingFor(int id, long nowMs) {
+        Long since = missingSinceMs.putIfAbsent(id, nowMs);
+        return since == null ? 0L : Math.max(0L, nowMs - since);
+    }
+
+    synchronized void clearMissing(int id) { missingSinceMs.remove(id); }
+
+    /** A member left the run: its name waits for the next pass, which says it only if the run is still going. */
+    synchronized void queueDeparted(String name) {
+        if (name != null && !name.isBlank()) departedNames.add(name);
+    }
+
+    /** The names queued since the last call. */
+    synchronized List<String> takeDeparted() {
+        List<String> names = List.copyOf(departedNames);
+        departedNames.clear();
+        return names;
+    }
+
+    /** True the first time a log key is used in this run. */
+    synchronized boolean claimLogMark(String key) { return key != null && logMarks.add(key); }
+
+    /**
+     * The leader is down in the bound event (or up again): true the first time he is seen down this time. A run whose
+     * event ends while he lies there ends DEFEATED.
+     */
+    synchronized boolean observeLeaderDown(boolean down) {
+        boolean first = down && !leaderDown;
+        leaderDown = down;
+        return first;
+    }
+
+    synchronized boolean leaderDown() { return leaderDown; }
+
+    /** The run's pace marks; they lock themselves. */
+    AgentPpqPaceMarks pace() { return pace; }
+
+    synchronized void noteLeaderName(String name) {
+        if (name != null && !name.isBlank()) eventLeaderName = name;
+    }
+
+    /** The leader's name as the last pass saw it; null before any. */
+    synchronized String eventLeaderName() { return eventLeaderName; }
+
+    /** Whether this member's departure is in flight (its gate let it go and its respawn has not returned). */
+    synchronized boolean departing(int id) { return departuresInFlight.contains(id); }
+
+    /** The bound event as the last pass read it, outside this monitor: its time left and how many it held. */
+    synchronized void observeEvent(long timeLeftMs, int registered) {
+        lastTimeLeftMs = timeLeftMs;
+        lastRegistered = registered;
+    }
+
+    synchronized long lastTimeLeftMs() { return lastTimeLeftMs; }
+
+    synchronized int lastRegistered() { return lastRegistered; }
+
     public long startedAtMs() { return startedAtMs; }
     public synchronized Phase phase() { return phase; }
     public synchronized int eventLeaderId() { return eventLeaderId; }

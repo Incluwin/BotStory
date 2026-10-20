@@ -45,6 +45,7 @@ public final class AgentPpqTerminationService {
         });
         EventInstanceManager event = session.eventInstance();
         if (companionRun) {
+            AgentPpqFullRateSimulation.releaseAll(session);
             logPotions(session);
             if (event != null && !cleared(event)) {
                 exitAgentsOnly(session, event);
@@ -86,9 +87,10 @@ public final class AgentPpqTerminationService {
         return companionRun;
     }
 
-    /** The run's pace for the host's records; none until the PPQ pace step. */
+    /** The run's pace for the host's records (P6i Step 5), with one 'PPQ pace span:' line per begun span. */
     static AgentPqPace pace(AgentPpqSession session, long nowMs) {
-        return null;
+        AgentPpqPaceReport.logSpans(session, nowMs);
+        return AgentPpqPaceReport.of(session, nowMs);
     }
 
     /** "{name:hp/mp, ...}" of the run's companions, for the 'PPQ potions:' line. Never throws. */

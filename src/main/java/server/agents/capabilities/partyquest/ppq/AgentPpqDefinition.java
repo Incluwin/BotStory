@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.ppq;
 
+import java.util.List;
 import java.util.Set;
 
 /** Authoritative Pirate PQ maps, drops, reactors, and combat templates. */
@@ -19,6 +20,8 @@ public final class AgentPpqDefinition {
     public static final int SIDE_TWO_MAP = 925_100_302;
     /** The hidden room's portal 1 'out00' back to its deck. */
     public static final int SIDE_ROOM_EXIT_PORTAL = 1;
+    /** Portal 1 of a deck ('in00', into its chest room) and of a chest room ('out00', back to its deck). */
+    public static final int CHEST_ROOM_PORTAL = 1;
     public static final int DOOR_MAP = 925_100_400;
     public static final int BOSS_MAP = 925_100_500;
     public static final int CLEAR_MAP = 925_100_600;
@@ -41,6 +44,26 @@ public final class AgentPpqDefinition {
     /** PiratePQ.js minPlayers: the event ends when a departure would leave fewer registered. */
     public static final int STOCK_FLOOR = 3;
     public static final Set<Integer> MEDALS = Set.of(ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL);
+    /** Each wave's medal pirate on 925100100, waves one to three (PiratePQ.js respawnStages: 9300114 + stage2). */
+    public static final List<Integer> MEDAL_MOBS = List.of(9_300_114, 9_300_115, 9_300_116);
+    /** A medal's chance per kill of its wave's pirate: 10% in the drop data (152-drop-data.sql) at world drop rate 3. */
+    public static final double MEDAL_DROP_CHANCE = 0.3d;
+    /** The deck pirates PiratePQ.js setup spawns on each deck: five rounds of two of each type, no respawn. */
+    public static final int DECK_PIRATE_MOB = 9_300_124;
+    public static final int DECK_GUNNER_MOB = 9_300_125;
+    public static final int DECK_PIRATES_PER_TYPE = 10;
+    /** The Lord Pirate of a run that opened no chest (davy_next4.js; the Angry ones follow opened chests). */
+    public static final int LORD_PIRATE_MOB = 9_300_119;
+    /** PiratePQ.js's stage timers: stage one runs on eventTime (4 minutes). */
+    public static final long STAGE_ONE_BUDGET_MS = 240_000L;
+    /** Each medal wave: 8 minutes (PiratePQ.js on the medal map, 2094002.js again at each hand-in). */
+    public static final long MEDAL_WAVE_BUDGET_MS = 480_000L;
+    /** Each deck: 6 minutes (PiratePQ.js changedMapInside). */
+    public static final long DECK_BUDGET_MS = 360_000L;
+    /** The door map: 6 minutes. */
+    public static final long DOORS_BUDGET_MS = 360_000L;
+    /** The Lord Pirate's deck: 8 minutes. */
+    public static final long BOSS_BUDGET_MS = 480_000L;
     /** The items whose count changing in a member's bag is progress: the medals and both keys. */
     public static final Set<Integer> PROGRESS_ITEMS =
             Set.of(ROOKIE_MEDAL, RISING_MEDAL, VETERAN_MEDAL, OLD_METAL_KEY, CHEST_KEY);

@@ -1692,6 +1692,74 @@ tuning:
     # Purpose: Keeps carriers converging on the leader with pirate marks to one line between them instead of one each.
     # Technical: AgentPpqSession.claimLineWindow per line kind (at feet, by Guon) and mark; the twenty line is always said once per wave, and the window starts again with it.
     server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.LINE_WINDOW_MS: '8000'
+    # Values: 60-400 pixels. Recommended: 150, about three character widths either side of the boss door.
+    # Purpose: How near the boss door (next00 on 925100400) a PPQ human leader must stand for his companions to go through it with him, and where they keep the door map clear while they wait for him.
+    # Technical: AgentPpqCoordinator.companionDoors (companion runs, every door open): the companions grind from the door (grindFromAnchor) and enter only while the map is empty and the leader stands on the door map within this Euclidean distance of the portal, or is already on the boss map; davy_next4.js spawns the Lord Pirate on the first entry.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EXIT_WAIT_RADIUS_PX: '150'
+    # Values: 30000-280000 milliseconds, below AFTER_CLEAR_LIMIT_MS. Recommended: 180000, time for the leader to take his own Feather or the Pirate Hat first.
+    # Purpose: How long PPQ companions wait by Wu Yang after the clear while their human leader is still in his room, so they never leave before him and get pulled back into a room with no exit by follow.
+    # Technical: AgentPpqCoordinator.waitByWuYang (companion runs, decision D-f'): a companion on 925100600 stands by Wu Yang while the leader is on 925100600 and this long has not passed since AgentPpqSession.clearedAtMs; then it runs Wu Yang's selection 0 (Feather and warp to 251010404). AFTER_CLEAR_LIMIT_MS still bounds the whole after-clear.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_AFTER_CLEAR_WAIT_MS: '180000'
+    # Values: 5-60 percent of max HP. Recommended: 25.
+    # Purpose: Below this share of its HP, a PPQ companion with no HP potion left drops the wave's medals at its feet, so its death does not delete them, and gathers no more until it is better.
+    # Technical: AgentPpqCompanionPlay.dying (hp * 100 <= this * currentMaxHp and hpPotionCount 0) on 925100100 in companion runs; the stack is a companion drop, so the nudge and the re-collect of AgentPpqMedalHandOver bring it on to the leader ('PPQ medals left:', line M6 once a wave).
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT: '25'
+    # Values: 10000-300000 milliseconds. Recommended: 45000, EPQ's member recovery timeout.
+    # Purpose: How long a PPQ companion run waits for one of its companions to load back in before it lets that companion go and carries on without it.
+    # Technical: AgentPpqCompanionRun.verdicts (companion runs, before the clear): an Agent member with no character online (AgentPpqMemberVerdicts MISSING) for this long since first seen so leaves the run as a departed one does (AgentPpqCoordinator.departMissing: tap-out, hand-back); its last Agent releases the run with the humans carrying on.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 500-10000 milliseconds. Recommended: 2000, a few session ticks.
+    # Purpose: How close to the end of its stage timer a PPQ event must have been at the run's last look for its end to count as the timer running out, in the companions' parting.
+    # Technical: AgentPpqCompanionRun.pass stores the event's getTimeLeft on every pass (AgentPpqSession.observeEvent); when the event is disposed before the clear and the last read was at most this, AgentPpqParting.endedCause names TIMEOUT ("out of time... let's head back.").
+    server.agents.capabilities.partyquest.ppq.AgentPpqCompanionRun.TIMEOUT_SLACK_MS: '2000'
+    # Values: 0.05-1.0. Recommended: 0.30, as the other quests' first clears.
+    # Purpose: The share of a party's raw damage that lands while it clears the PPQ stage-one pirates outside the ship. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "stage1", the efficiency of the Clear of 925100000's Map.wz census (9300108-9300111) that every member fights, the leader included; AgentPqPaceCalibration replaces it with the fitted value once ppq runs are recorded.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.STAGE_ONE_EFFICIENCY: '0.30'
+    # Values: 500-30000 milliseconds. Recommended: 3000; the medal deck holds over thirty spawn points, refilled every 10 seconds.
+    # Purpose: The PPQ clear-time estimate's prior for how long a member walks to its next medal pirate while the party hunts a wave's twenty medals. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "medals1.seek", "medals2.seek" and "medals3.seek", the seek terms of the three medal Quotas: each kill costs this plus the wave pirate's HP over the member's damage at the wave's ".combat" efficiency.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.MEDALS_SEEK_MS: '3000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it fights the medal pirates of one PPQ wave on 925100100. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "medals1.combat", "medals2.combat" and "medals3.combat", the efficiencies of the Quotas of 9300114, 9300115 and 9300116 kills drawn from AgentPpqPaceProfile.medalKills (twenty medals at AgentPpqDefinition.MEDAL_DROP_CHANCE 30%).
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.MEDALS_EFFICIENCY: '0.30'
+    # Values: 0.0-1.0. Recommended: 0.5.
+    # Purpose: How much of a human leader's own kill rate counts toward a PPQ medal wave, since he also picks up the companions' medals and hands them in. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile builds each medal Quota (AgentPqPaceSegment.Quota.leaderCredit) with this leader credit; every companion, and a human beside the leader, counts in full.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.LEADER_MEDAL_CREDIT: '0.5'
+    # Values: 5000-180000 milliseconds. Recommended: 30000.
+    # Purpose: The PPQ clear-time estimate's prior for how long the leader takes to hand a wave's twenty medals to Guon once he holds them. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "handin", the term the LEADER Fixed segments handin1, handin2 and handin3 share (learned per leader); AgentPpqPaceReport cuts each from twenty in his bag to the event's stage2 counter moving on.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.HANDIN_MS: '30000'
+    # Values: 0.05-1.0. Recommended: 0.30.
+    # Purpose: The share of a party's raw damage that lands while it clears the twenty pirates PiratePQ.js puts on each of the two PPQ decks. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "deck1" and "deck2", the efficiencies of the Clears of ten 9300124 and ten 9300125 per deck (AgentPpqDefinition.DECK_PIRATES_PER_TYPE) that every member fights; a deck span with a chest or side-room detour is reported incomplete.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.DECK_EFFICIENCY: '0.30'
+    # Values: 0.05-1.0. Recommended: 0.25; the keys and the four doors cost time no damage buys.
+    # Purpose: The share of a party's raw damage that turns into progress on the PPQ door map, where the pirates are killed for keys and the keys go into the doors. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "doors", the efficiency of the Clear of 925100400's Map.wz census (9300120, 9300121, 9300122, 9300126); the key looting and the door drops are inside this efficiency.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.DOORS_EFFICIENCY: '0.25'
+    # Values: 0.05-1.0. Recommended: 0.35.
+    # Purpose: The share of a party's raw damage that lands on the Lord Pirate while the whole party fights him on 925100500. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "boss", the efficiency of the Clear of one Lord Pirate 9300119 (Mob.wz HP 420000) that every member fights, the leader included; the Angry Lord Pirates after opened chests are inside this efficiency.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.BOSS_EFFICIENCY: '0.35'
+    # Values: 5000-120000 milliseconds. Recommended: 20000.
+    # Purpose: The PPQ clear-time estimate's prior for how long the leader takes from the Lord Pirate's fall to his talk with Wu Yang that clears the run. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile.priors "wuyang", a LEADER Fixed segment learned per leader; AgentPpqPaceReport cuts it from the Lord Pirate down (BOSS_DOWN) to the event's clear (CLEARED).
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.WUYANG_MS: '20000'
+    # Values: 1-20 touches. Recommended: 7; the Lord Pirate hits far harder than the deck pirates.
+    # Purpose: Names a companion that the Lord Pirate would put down in fewer touches as fragile, for Guon's caution at the desk. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile passes it as Thresholds.fragileTouches; AgentPqPaceEstimator names a non-leader member FRAGILE when its effective HP over the danger mob 9300119's expected touch damage (AgentPqMemberPower.touchesToDown) is below it.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.3-0.9. Recommended: 0.6, as the other party quests' desks.
+    # Purpose: Names a companion whose best attack lands under this chance on the PPQ pirates, for Guon's caution at the desk. A guess until measured PPQ runs refine it (no live PPQ companion run has been timed yet).
+    # Technical: AgentPpqPaceProfile passes it as Thresholds.weakHitChance; AgentPqPaceEstimator names a non-leader member MISSES when its best attack lands under it on one of the profile's mobs (the medal pirates, the deck pirates and the Lord Pirate).
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: whole numbers from 1. Recommended: 1; bump it when a pace change lands so older records are not learned from.
+    # Purpose: Marks which PPQ pace records the clear-time calibration may learn from, so a changed run model does not learn from older runs.
+    # Technical: AgentPpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for ppq.
+    server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.PACE_EPOCH: '1'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 

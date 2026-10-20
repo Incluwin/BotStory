@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atMostOnce;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -30,7 +31,8 @@ import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.TOBI;
  * PPQ medal hand-over (PQ retrospective, 2026-10-17): only the event leader may hand Guon a wave's twenty marks, so in
  * a companion run the companions gather the current wave's marks and drop them at the human leader's feet (or by
  * Guon when he cannot be reached), saying so in words, never by item id. The guide line is said once per run, not
- * once by every companion.
+ * once by every companion. P6i Step 3: the companions' lines are AgentPpqCompanionPlay's (lower case, player chat),
+ * said in map chat beside the leader; a stock run keeps its guide line word for word.
  */
 class AgentPpqMedalHandOverTest {
     private static final int ROOKIE = AgentPpqDefinition.ROOKIE_MEDAL;
@@ -75,16 +77,17 @@ class AgentPpqMedalHandOverTest {
 
     @Test
     void theLinesNameTheMarksNotTheirItemIds() {
+        // the stock guide line, word for word
         assertEquals("Ben, we'll gather the Rookie Pirate marks for you. Talk to Guon at twenty.",
                 AgentPpqMedalHandOver.waveLine(ROOKIE, "Ben"));
-        assertEquals("Rising Pirate marks at your feet, Ben.",
-                AgentPpqMedalHandOver.atFeetLine(AgentPpqDefinition.RISING_MEDAL, "Ben", true));
-        assertEquals("Ben, that makes twenty Veteran Pirate marks. Talk to Guon.",
-                AgentPpqMedalHandOver.twentyLine(AgentPpqDefinition.VETERAN_MEDAL, "Ben"));
+        assertEquals("medals at your feet, Ben.", AgentPpqCompanionPlay.medalsAtFeet("Ben", true));
+        assertEquals("that's twenty with these, Ben. grab them and talk to guon.",
+                AgentPpqCompanionPlay.twentyWithThese("Ben"));
         for (int medal : AgentPpqDefinition.MEDALS) {
             for (String line : new String[] {AgentPpqMedalHandOver.waveLine(medal, "Ben"),
-                    AgentPpqMedalHandOver.byGuonLine(medal, "Ben"), AgentPpqMedalHandOver.nudgeLine(medal, "Ben"),
-                    AgentPpqMedalHandOver.recollectedLine(medal), AgentPpqMedalHandOver.twentyLine(medal, "Ben")}) {
+                    AgentPpqCompanionPlay.waveStart(medal), AgentPpqCompanionPlay.medalsByGuon("Ben"),
+                    AgentPpqCompanionPlay.medalsStillLying("Ben"), AgentPpqCompanionPlay.medalsPickedBackUp(),
+                    AgentPpqCompanionPlay.twentyWithThese("Ben")}) {
                 assertFalse(line.contains(String.valueOf(medal)), line);
                 assertTrue(line.length() <= 100, line);
             }
@@ -142,7 +145,7 @@ class AgentPpqMedalHandOverTest {
 
             drops.verify(() -> AgentScriptItemActionService.dropItem(run.entries.get(MIRA), InventoryType.ETC,
                     ROOKIE, (short) 5));
-            verify(run.party).sendPartyChat(mira, "Rookie Pirate marks at your feet, c865.");
+            verify(run.packets).broadcastChatText(mira, "medals at your feet, c865.", false, 0);
         }
     }
 
@@ -157,7 +160,8 @@ class AgentPpqMedalHandOverTest {
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), mira, 5_000L);
 
-            verify(run.party).sendPartyChat(mira, "c865, that makes twenty Rookie Pirate marks. Talk to Guon.");
+            verify(run.packets).broadcastChatText(mira, "that's twenty with these, c865. grab them and talk to guon.",
+                    false, 0);
         }
     }
 
@@ -173,7 +177,8 @@ class AgentPpqMedalHandOverTest {
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), mira, 5_000L);
 
-            verify(run.party).sendPartyChat(mira, "c865, I left the Rookie Pirate marks by Guon.");
+            verify(run.packets).broadcastChatText(mira,
+                    "c865, couldn't get to you. left the medals under guon's ledge.", false, 0);
         }
     }
 
@@ -193,7 +198,8 @@ class AgentPpqMedalHandOverTest {
 
     @Test
     void theWaveLineIsSaidOnceNotOnceByEveryCompanion() {
-        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.MEDAL_MAP)) {
+        // a stock human-led run: the coordinator's own guide line, word for word
+        try (PpqRunFixture run = new PpqRunFixture(false, AgentPpqDefinition.MEDAL_MAP)) {
             run.properties.put("stage2", "0");
 
             run.tick(5_000L);
@@ -206,6 +212,37 @@ class AgentPpqMedalHandOverTest {
                     + " and talk to Guon. We will keep killing."));
             // the fixture's run never left PREPARING: its entry line too comes once, not once per companion
             verify(run.party, atMostOnce()).sendPartyChat(any(), eq("c865, talk to Guon to enter Pirate PQ."));
+        }
+    }
+
+    @Test
+    void aCompanionRunsWaveLineIsTheCompanionsOwnOnceAWave() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.MEDAL_MAP)) {
+            run.properties.put("stage2", "0");
+
+            run.tick(5_000L);
+            run.tick(6_000L);
+            run.properties.put("stage2", "1");
+            run.tick(7_000L);
+
+            verify(run.packets, times(1)).broadcastChatText(run.character(MIRA),
+                    "we'll grab the medals and bring them to you.", false, 0);
+            verify(run.packets, times(1)).broadcastChatText(run.character(MIRA),
+                    "rising pirate medals now. we'll bring them to you.", false, 0);
+            verify(run.party, never()).sendPartyChat(any(), anyString());
+        }
+    }
+
+    @Test
+    void aBatchIsNeverStartedForALeaderLyingDead() {
+        try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.MEDAL_MAP);
+             MockedStatic<AgentScriptItemActionService> drops = mockStatic(AgentScriptItemActionService.class)) {
+            Character mira = carrier(run, 5, new Point(110, 50));
+            when(run.character(BEN).getHp()).thenReturn(0);
+
+            AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), mira, 5_000L);
+
+            drops.verifyNoInteractions();
         }
     }
 
