@@ -46,7 +46,11 @@ public final class CwkpqRelicWeapons {
             return itemId;
         }
 
-        static Weapon of(int itemId) {
+        public int relicReactorId() {
+            return relicReactorId;
+        }
+
+        public static Weapon of(int itemId) {
             for (Weapon weapon : values()) {
                 if (weapon.itemId == itemId) {
                     return weapon;
@@ -65,21 +69,36 @@ public final class CwkpqRelicWeapons {
      */
     public static boolean lost(EventInstanceManager event, int itemId) {
         Weapon weapon = Weapon.of(itemId);
-        if (event == null || weapon == null || reissued(event, weapon) || relicTook(event, weapon)) {
-            return false;
-        }
+        return event != null && weapon != null && !reissued(event, weapon) && !relicTook(event, weapon)
+                && !anyCopy(event, itemId);
+    }
+
+    /** True when weapon {@code itemId} is still wanted: its relic is empty and no copy is held or lying anywhere. */
+    public static boolean wanted(EventInstanceManager event, int itemId) {
+        Weapon weapon = Weapon.of(itemId);
+        return event != null && weapon != null && !relicTook(event, weapon) && !anyCopy(event, itemId);
+    }
+
+    /** True when weapon {@code itemId}'s relic in the hall already took one. */
+    public static boolean relicTook(EventInstanceManager event, int itemId) {
+        Weapon weapon = Weapon.of(itemId);
+        return event != null && weapon != null && relicTook(event, weapon);
+    }
+
+    /** True when a player in the event holds weapon {@code itemId}, or one lies on a map of the stage. */
+    public static boolean anyCopy(EventInstanceManager event, int itemId) {
         for (Character player : event.getPlayers()) {
             if (player.getItemQuantity(itemId, false) > 0) {
-                return false;
+                return true;
             }
         }
         for (int mapId : STAGE_MAPS) {
             MapleMap map = event.getMapInstance(mapId);
             if (map != null && map.getDroppedItemsCountById(itemId) > 0) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     /** True when the pirate room's real chest was broken (the gun dropped once); before that the gun is not lost. */

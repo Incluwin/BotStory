@@ -24,7 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The CWKPQ stage plays built so far (CWKPQ plan B5, phase C4), each for the companions standing on its map:
+ * The CWKPQ stage plays (CWKPQ plan B5, phases C4-C5; stage 5 in AgentCwkpqUnityPlays, stage 6 in
+ * AgentCwkpqCouncilPlay), each for the companions standing on its map:
  * <ul>
  * <li>Stage 1, the Inner Sanctum Hallway: the first member by its slot takes the hidden portal under the lion's head
  * (next01, glpqPortalDummy.js: it sets glpq1 and sends the taker back to the start), saying once where the way is;
@@ -81,6 +82,15 @@ final class AgentCwkpqStagePlays {
         plays.put(Stage.STORAGE, (members, event, run, nowMs) -> storage(ports, members, event, run, nowMs));
         plays.put(Stage.AGILITY, (members, event, run, nowMs) -> agility(ports, members, event, run, nowMs));
         plays.put(Stage.WIT, (members, event, run, nowMs) -> wit(ports, members, event, run, nowMs));
+        plays.put(Stage.UNITY, (members, event, run, nowMs) ->
+                AgentCwkpqUnityPlays.hall(ports, members, event, run, nowMs));
+        Map<Stage, Archetype> rooms = Map.of(Stage.WARRIOR_ROOM, Archetype.WARRIOR,
+                Stage.MAGICIAN_ROOM, Archetype.MAGICIAN, Stage.THIEF_ROOM, Archetype.THIEF,
+                Stage.BOWMAN_ROOM, Archetype.BOWMAN, Stage.PIRATE_ROOM, Archetype.PIRATE);
+        rooms.forEach((stage, archetype) -> plays.put(stage, (members, event, run, nowMs) ->
+                AgentCwkpqUnityPlays.room(ports, archetype, members, event, run, nowMs)));
+        plays.put(Stage.COUNCIL, (members, event, run, nowMs) ->
+                AgentCwkpqCouncilPlay.council(ports, members, event, run, nowMs));
         return plays;
     }
 
@@ -410,7 +420,7 @@ final class AgentCwkpqStagePlays {
     }
 
     /** The members in the order they were adopted (their formation slots). */
-    private static List<Character> bySlot(List<Character> members, AgentCwkpqRun run) {
+    static List<Character> bySlot(List<Character> members, AgentCwkpqRun run) {
         List<Character> out = new ArrayList<>(members);
         out.sort(Comparator.comparingInt(member -> run.ordinal(member.getId())));
         return out;

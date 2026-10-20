@@ -85,6 +85,16 @@ class AgentCwkpqStagePlaysTest {
             public void sayInParty(Character member, String line) {
                 party.add(member.getName() + ": " + line);
             }
+
+            @Override
+            public boolean dropOne(Character member, int itemId) {
+                return false;
+            }
+
+            @Override
+            public boolean pickUp(Character member, int itemId) {
+                return false;
+            }
         };
         portal("next00", 1, new Point(824, 328));
         portal("next01", 2, new Point(1547, 336));

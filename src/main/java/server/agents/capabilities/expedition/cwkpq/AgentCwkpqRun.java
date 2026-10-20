@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
+import server.agents.capabilities.expedition.boss.AgentBossPriorityFight;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * The Crimsonwood Keep run for adopted companions (CWKPQ plan Part B), the boss run's fight for key cwkpq: the boss
@@ -84,9 +86,19 @@ public final class AgentCwkpqRun implements AgentBossFight {
     private final Set<Integer> knownReal = ConcurrentHashMap.newKeySet();
     /** What a member said once this run ("hallway-hint"). */
     private final Set<String> said = ConcurrentHashMap.newKeySet();
+    /** Counters the plays keep over the run (a member's talks to a master that gave nothing). */
+    private final Map<String, Integer> counts = new ConcurrentHashMap<>();
+    /** The Council Hall's fight: the boss track's priority fight under boss-rules.json cwkpq, made on first use. */
+    private final Supplier<AgentBossFight> councilFight;
+    private AgentBossFight council;
 
     AgentCwkpqRun(Map<Stage, StagePlay> plays) {
+        this(plays, AgentBossPriorityFight.forKey("cwkpq"));
+    }
+
+    AgentCwkpqRun(Map<Stage, StagePlay> plays, Supplier<AgentBossFight> councilFight) {
         this.plays = plays.isEmpty() ? Map.of() : new EnumMap<>(plays);
+        this.councilFight = councilFight;
     }
 
     /** A fresh run for one boss run session, with every stage play built so far. */
@@ -142,6 +154,15 @@ public final class AgentCwkpqRun implements AgentBossFight {
         spots.clear();
         testedAt.clear();
         knownReal.clear();
+        counts.clear();
+        AgentBossFight fight;
+        synchronized (this) {
+            fight = council;
+            council = null;
+        }
+        if (fight != null) {
+            fight.end(event);
+        }
     }
 
     // ---- what the stage plays remember over the run ----
@@ -193,5 +214,23 @@ public final class AgentCwkpqRun implements AgentBossFight {
     /** True the first time {@code what} is said this run. */
     boolean once(String what) {
         return said.add(what);
+    }
+
+    /** How many times {@code key} was counted this run. */
+    int count(String key) {
+        return counts.getOrDefault(key, 0);
+    }
+
+    /** Counts {@code key} once more; the new count. */
+    int bump(String key) {
+        return counts.merge(key, 1, Integer::sum);
+    }
+
+    /** The Council Hall's priority fight, one per run (it keeps per-member state). */
+    synchronized AgentBossFight council() {
+        if (council == null) {
+            council = councilFight.get();
+        }
+        return council;
     }
 }

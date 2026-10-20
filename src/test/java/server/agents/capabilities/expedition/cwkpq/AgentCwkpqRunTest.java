@@ -59,6 +59,32 @@ class AgentCwkpqRunTest {
     }
 
     @Test
+    void everyStageHasItsPlay() {
+        assertEquals(java.util.EnumSet.allOf(Stage.class), AgentCwkpqStagePlays.all(AgentCwkpqPorts.LIVE).keySet());
+    }
+
+    @Test
+    void theCouncilFightIsMadeOncePerRunAndEndedWithIt() {
+        List<server.agents.capabilities.expedition.AgentBossFight> made = new ArrayList<>();
+        AgentCwkpqRun run = new AgentCwkpqRun(Map.of(), () -> {
+            server.agents.capabilities.expedition.AgentBossFight fight =
+                    mock(server.agents.capabilities.expedition.AgentBossFight.class);
+            made.add(fight);
+            return fight;
+        });
+        assertSame(run.council(), run.council());
+        run.bump("talks");
+        run.bump("talks");
+        assertEquals(2, run.count("talks"));
+
+        run.end(event);
+        org.mockito.Mockito.verify(made.getFirst()).end(event);
+        assertEquals(0, run.count("talks"));
+        run.council();
+        assertEquals(2, made.size(), "a new run's fight after the end");
+    }
+
+    @Test
     void adoptionGivesEachMemberItsSlotAndTheEndForgetsThem() {
         AgentCwkpqRun run = AgentCwkpqRun.forCompanions();
         run.adopt(10, 0);

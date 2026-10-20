@@ -190,6 +190,32 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     count reaches 5 (five standing on the plates at once), once; stepping off never takes the count below 0. Bots send
     no touch packets, so the plates stay a human's job.
   - Knowledge re-exported for the script edits (only fingerprints and the timestamp change).
+- **C6 stage 5 play built 2026-10-20** (`AgentCwkpqUnityPlays`):
+  - Hall: a member holding a weapon walks to its drop spot (C0 check 1c: the first spot whose own drop lands in the
+    relic's area) and drops it there once `predictDropLanding` falls inside `Reactor.getArea()`, then waits 6 s for
+    the relic. A member whose archetype's weapon is still wanted (`CwkpqRelicWeapons.wanted`: relic empty, no copy
+    held or lying) takes its room's portal (in01-in05); the rest wait by next00, which everyone takes at glpq5 = 5.
+  - Rooms: once the weapon is held (by anyone, a human too) or a member holds it, it leaves by out00 (from the
+    warrior master's ledge by down00 beside him). Otherwise: warrior, bowman and magician rooms are ground clear
+    (`grind(entry, Set.of())`, the never-targets left alone) and the first by slot asks the master when
+    `countMonsters()` is 0 (his own test); in the thief room each member breaks the nearest eye nobody else is on,
+    then the first asks the master; in the pirate room each breaks the nearest chest (the real one and the decoys
+    look alike) and the nearest pirate picks the gun up where it fell (`lootNearby`, since the weapons are marker
+    items the shared loot rules keep members off). A taker says once "got the master sword, taking it to its relic".
+    One asked three times without a weapon says "the master won't give me the ..." and leaves.
+- **C7 built 2026-10-20** (`AgentCwkpqCouncilPlay`, boss-rules `cwkpq`):
+  - Only the event leader (the human who made the expedition at Jack) can talk to the Battle Statue, so with the hall
+    empty a companion says once per step "talk to the statue when you're ready" (before the guards) or "hall's clear,
+    talk to the statue".
+  - With monsters up, a magician takes the master its element hurts most (Mob.wz): fire/poison Rellik then Azure
+    Ocelot, ice/lightning Hsalf then Scarlet Phoenix, the cleric line Red Nirg then both revives; Margana resists every
+    mage element. Everyone else, and a mage with none of its masters up, fights `AgentBossPriorityFight` under the cwkpq
+    rules: targetPriority Margana, Rellik, Hsalf, Red Nirg (last: his revive adds two), then the revives; adds the
+    summons and guards; neverTarget now also Margana's invincible summon 9400598. One priority fight per run, ended with
+    the run.
+  - Not changed: `AgentBossScope.EXPEDITION_TYPES`. Its note says a type is added only after its live check, so the
+    masters' skill attacks reach companions only once C9 adds CWKPQ there; until then companions take touch damage
+    only in the hall.
 - **C8, first part, built 2026-10-20** (`AgentCwkpqLootRule`, a refuse-only clause in AgentLootEligibility): in the
   Armory a companion takes an equip its archetype may wear (Item.wz reqJob bits), a book that teaches its job a skill,
   a weapon scroll for the weapon in its hand, and any potion; it leaves Gelt Chocolate (2022121) to physical attackers
@@ -464,8 +490,8 @@ C0 answered the reach question (docs/CWKPQ_C0_RESULTS.md, check 1a):
 | **C3** | Expedition desk: hooks in 9201113.js, sign-up of party companions and bench allies through the boss track, lineup rule (Question 5), keystone filter, follow guard (companions without a keystone wait in Hall of Mastery and say why), CWKPQ death gate, `cwkpq` key in `CompanionBossKeys` (built 2026-10-20) | L | - |
 | **C4** | Skill-on-reactor primitive (B3) + stages 1, 2, 4 (B5) + `!cwkpqtest status / checkpoint <stage> / stop` (built 2026-10-20) | M | C0, C3 |
 | **C5** | Stage 3 jump quest (B4), trap damage if Question 3 is yes (stage 3 built 2026-10-20; traps wait for the live measurement) | L | C0, C4 |
-| **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes | M | C4 |
-| **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters | M | C3 |
+| **C6** | Stage 5 rooms and relics (B6), weapon re-issue if Question 4 is yes (built 2026-10-20) | M | C4 |
+| **C7** | Stage 6 Council Hall (B7): boss rules, statue calls, mirror for the masters (built 2026-10-20; the mirror waits for C9) | M | C3 |
 | **C8** | Armory, claims, release, pace profile and desk estimate, guidance lines once per run | M | C6, C7 |
 | **C9** | Live checks with crew C, GM-first (`!cwkpqtest checkpoint` per stage), then one full human-led run | M | all, Question 6 |
 | **C10** | Optional exchange chain and Joko badge trades for bots | M | C2, Question 2 |
