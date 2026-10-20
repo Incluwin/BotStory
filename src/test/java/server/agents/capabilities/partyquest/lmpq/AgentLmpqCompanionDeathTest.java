@@ -210,6 +210,44 @@ class AgentLmpqCompanionDeathTest {
     }
 
     @Test
+    void afterTheClearALeaderGoneOfflineIsNoFailureAndTheRunCompletesOnceItsCompanionsAreOut() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, true,
+                AgentLmpqSession.Phase.REWARD, ben, mira, kes);
+        session.setMemberCoordinationChatEnabled(true);
+        when(run.event.isEventCleared()).thenReturn(true);
+        when(run.characters.findOnlineCharacterById(40)).thenReturn(null);
+        when(mira.getMapId()).thenReturn(AgentLmpqDefinition.REWARD_MAP);
+        when(kes.getMapId()).thenReturn(AgentLmpqDefinition.EXIT_MAP);
+
+        AgentLmpqCoordinator.tickSession(session, 3_000L);
+
+        assertEquals(AgentLmpqSession.Phase.REWARD, session.phase(), "Mira is still claiming at Rolly");
+        when(mira.getMapId()).thenReturn(AgentLmpqDefinition.EXIT_MAP);
+
+        AgentLmpqCoordinator.tickSession(session, 3_500L);
+
+        assertEquals(AgentLmpqSession.Phase.COMPLETED, session.phase(), "cleared, not 'LMPQ leader left'");
+        verify(run.party, never()).sendPartyChat(any(), anyString());
+    }
+
+    @Test
+    void afterTheClearWithItsLeaderOfflineACompanionStuckAtRollyStillEndsTheRunAsAStall() {
+        AgentLmpqSession session = run.session(AgentLmpqSession.Mode.HUMAN_LEADER, true,
+                AgentLmpqSession.Phase.REWARD, ben, mira, kes);
+        when(run.event.isEventCleared()).thenReturn(true);
+        when(run.characters.findOnlineCharacterById(40)).thenReturn(null);
+        when(mira.getMapId()).thenReturn(AgentLmpqDefinition.REWARD_MAP);
+        when(kes.getMapId()).thenReturn(AgentLmpqDefinition.REWARD_MAP);
+
+        AgentLmpqCoordinator.tickSession(session, 3_000L);
+        AgentLmpqCoordinator.tickSession(session, 3_000L + 120_000L);
+
+        assertEquals(AgentLmpqSession.Phase.FAILED, session.phase());
+        assertEquals("LMPQ reward stalled", session.failure(), "REWARD_STALL_MS still bounds it");
+        verify(run.party, never()).sendPartyChat(any(), anyString());
+    }
+
+    @Test
     void theLeaderWalkingOutOfTheMazeIsTold() {
         AgentLmpqSession session = farming(true);
         when(ben.getMapId()).thenReturn(AgentLmpqDefinition.RECRUIT_MAP);

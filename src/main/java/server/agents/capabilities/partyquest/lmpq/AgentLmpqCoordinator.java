@@ -84,6 +84,18 @@ public final class AgentLmpqCoordinator {
             return;
         }
         Character leader = character(session.eventLeaderId());
+        if (leader == null && session.companionAdopted() && AgentLmpqTerminationService.pastTheClear(session)) {
+            // P6h Step 3: after the clear a companion run never fails for its leader, offline included (he claims when
+            // he is back); it completes once its companions are out, and REWARD_STALL_MS still bounds it.
+            session.transition(AgentLmpqSession.Phase.REWARD, nowMs);
+            if (AgentLmpqCompanionRun.companionsOut(session)) {
+                session.complete(nowMs);
+                return;
+            }
+            session.observeProgressSignature(progressSignature(session), nowMs);
+            if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) fail(session, "LMPQ reward stalled", nowMs);
+            return;
+        }
         if (leader == null) {
             parting(session, AgentLmpqParting.Kind.GONE, session.leaderName());
             fail(session, "LMPQ leader left", nowMs);
