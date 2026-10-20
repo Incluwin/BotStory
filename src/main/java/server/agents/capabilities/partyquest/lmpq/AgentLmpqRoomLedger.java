@@ -43,7 +43,21 @@ public final class AgentLmpqRoomLedger {
      * (LMPQ base fix 6): marking it HUMAN_OCCUPIED let humanLeft reopen an empty room.
      */
     public synchronized void humanOccupied(int room, long nowMs) {
+        humanOccupied(room, nowMs, false);
+    }
+
+    /**
+     * As {@link #humanOccupied(int, long)}; with {@code keepOwner} (a companion run, P6h R17) a room an Agent has
+     * reserved or works keeps its owner: the human only walks through, as the leader does on his way to the
+     * rendezvous room.
+     */
+    public synchronized void humanOccupied(int room, long nowMs, boolean keepOwner) {
         if (room < 1 || room > 15 || rooms.get(room).state() == State.DEPLETED) return;
+        Lease current = rooms.get(room);
+        if (keepOwner && current.ownerId() != 0
+                && (current.state() == State.RESERVED || current.state() == State.WORKING)) {
+            return;
+        }
         rooms.put(room, new Lease(room, 0, State.HUMAN_OCCUPIED, nowMs));
     }
 

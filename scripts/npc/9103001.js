@@ -72,6 +72,10 @@ function action(mode, type, selection) {
                     cm.sendOk("If you DO decide to tackle it, please have your Party Leader notify me!");
                     cm.dispose();
                 } else {
+                    // companions in the party: the living world answers the click (living_world.COMPANION_PQ_ENABLED_KEYS)
+                    if (Java.type('server.living.LivingWorldHooks').partyQuestEntry(cm, "lmpq")) {
+                        return;
+                    }
                     var eli = em.getEligibleParty(cm.getParty());
                     if (eli.size() > 0) {
                         if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {

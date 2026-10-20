@@ -10,28 +10,32 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * A companion run's pace as measured so far, following {@link AgentPqPace}'s contract with provisional keys: "farm"
- * (FARMING to REGROUPING), "regroup" (REGROUPING to CLEARING), "clear" (CLEARING to REWARD) and "reward" (REWARD to
- * the completion), each from the phase's first entry to the first entry of the next boundary the run reached. A span
- * whose end was not seen runs to the report's time and is incomplete ("open"). Every span is fixed time (work 0); the
- * coupons the leader held at the clearing are drawn content. Step 4's pace profile defines the real segments and this
- * report is rewritten to them before anything consumes it. At the release each span gets one 'LMPQ pace span:' line.
+ * A companion run's pace as measured so far, following {@link AgentPqPace}'s contract under the segment keys of
+ * {@link AgentLmpqPaceProfile} (P6h Step 4): "farm" (FARMING to REGROUPING, its work the coupons the run counted as
+ * secured when it regrouped), "walk" (FARMING to the leader's first arrival in the rendezvous room, run alongside the
+ * farm), "handin" (REGROUPING to CLEARING), "pietri" (CLEARING to REWARD) and "claim" (REWARD to the completion), each
+ * from its first entry to the first entry of the next boundary the run reached. A span whose end was not seen runs to
+ * the report's time and is incomplete ("open"). The members are their power as the run entered the maze (none while
+ * the profile was cold); the coupons the leader held at the clearing are drawn content. At the release each span gets
+ * one 'LMPQ pace span:' line.
  */
 final class AgentLmpqPaceReport {
     private static final Logger log = LoggerFactory.getLogger(AgentLmpqPaceReport.class);
-    static final String QUEST_KEY = "lmpq";
+    static final String QUEST_KEY = AgentLmpqPaceProfile.QUEST_KEY;
+    /** The phase spans, in run order, each from its phase to the next boundary reached. */
     private static final List<AgentLmpqSession.Phase> BOUNDARIES = List.of(
             AgentLmpqSession.Phase.FARMING, AgentLmpqSession.Phase.REGROUPING, AgentLmpqSession.Phase.CLEARING,
             AgentLmpqSession.Phase.REWARD, AgentLmpqSession.Phase.COMPLETED);
-    private static final List<String> KEYS = List.of("farm", "regroup", "clear", "reward");
+    private static final List<String> PHASE_KEYS = List.of(AgentLmpqPaceProfile.FARM, AgentLmpqPaceProfile.HANDIN,
+            AgentLmpqPaceProfile.PIETRI, AgentLmpqPaceProfile.CLAIM);
 
     private AgentLmpqPaceReport() {
     }
 
-    /** One span as the report cut it, with why it is incomplete ("" when complete). */
-    record SpanReport(String key, long fromMs, long toMs, boolean complete, String why) {
+    /** One span as the report cut it, with its work and why it is incomplete ("" when complete). */
+    record SpanReport(String key, long fromMs, long toMs, double work, boolean complete, String why) {
         AgentPqPace.Span span() {
-            return new AgentPqPace.Span(key, fromMs, toMs, 0.0d, complete);
+            return new AgentPqPace.Span(key, fromMs, toMs, work, complete);
         }
     }
 
@@ -43,7 +47,8 @@ final class AgentLmpqPaceReport {
                 ? Map.of("coupons", session.couponsAtClearing()) : Map.of();
         return new AgentPqPace(QUEST_KEY, session.sessionId(), session.eventLeaderId(), started,
                 session.firstEnteredAtMs(AgentLmpqSession.Phase.REWARD),
-                spans(session, nowMs).stream().map(SpanReport::span).toList(), List.of(), List.of(), drawn);
+                spans(session, nowMs).stream().map(SpanReport::span).toList(), session.powersAtEntry(), List.of(),
+                drawn);
     }
 
     /** At the release: one line per span. Never throws. */
@@ -62,20 +67,32 @@ final class AgentLmpqPaceReport {
                 + " why=" + (span.complete() ? "-" : span.why());
     }
 
-    /** The entered phases' spans in phase order; {@code endMs} closes one whose end was not seen. */
+    /**
+     * The entered spans in the profile's leaf order (farm, walk, handin, pietri, claim); {@code endMs} closes one whose
+     * end was not seen.
+     */
     static List<SpanReport> spans(AgentLmpqSession session, long endMs) {
         List<SpanReport> spans = new ArrayList<>();
-        for (int i = 0; i < KEYS.size(); i++) {
+        for (int i = 0; i < PHASE_KEYS.size(); i++) {
             long from = session.firstEnteredAtMs(BOUNDARIES.get(i));
             if (from == 0L) continue;
             long to = 0L;
             for (int next = i + 1; next < BOUNDARIES.size() && to == 0L; next++) {
                 to = session.firstEnteredAtMs(BOUNDARIES.get(next));
             }
-            String why = to == 0L ? "open" : to < from ? "out-of-order" : "";
-            if (to == 0L) to = Math.max(from, endMs);
-            spans.add(new SpanReport(KEYS.get(i), from, to, why.isEmpty(), why));
+            String key = PHASE_KEYS.get(i);
+            double work = key.equals(AgentLmpqPaceProfile.FARM) && to > 0L ? session.couponsAtRegroup() : 0.0d;
+            spans.add(span(key, from, to, work, endMs));
+            if (key.equals(AgentLmpqPaceProfile.FARM)) {
+                spans.add(span(AgentLmpqPaceProfile.WALK, from, session.leaderArrivedAtMs(), 0.0d, endMs));
+            }
         }
         return spans;
+    }
+
+    private static SpanReport span(String key, long from, long to, double work, long endMs) {
+        String why = to == 0L ? "open" : to < from ? "out-of-order" : "";
+        long end = to == 0L ? Math.max(from, endMs) : to;
+        return new SpanReport(key, from, end, why.isEmpty() ? work : 0.0d, why.isEmpty(), why);
     }
 }
