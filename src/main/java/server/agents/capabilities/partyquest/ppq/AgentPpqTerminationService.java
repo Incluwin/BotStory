@@ -45,6 +45,7 @@ public final class AgentPpqTerminationService {
         });
         EventInstanceManager event = session.eventInstance();
         if (companionRun) {
+            AgentPpqFullRateSimulation.releaseAll(session);
             logPotions(session);
             if (event != null && !cleared(event)) {
                 exitAgentsOnly(session, event);

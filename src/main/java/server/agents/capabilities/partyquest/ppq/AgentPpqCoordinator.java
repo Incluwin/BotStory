@@ -49,6 +49,12 @@ public final class AgentPpqCoordinator {
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_ENTRY_WAIT_MS");
     private static final long PRE_ENTRY_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.PRE_ENTRY_TIMEOUT_MS");
+    static final int EXIT_WAIT_RADIUS_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EXIT_WAIT_RADIUS_PX");
+    static final long COMPANION_AFTER_CLEAR_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_AFTER_CLEAR_WAIT_MS");
+    static final int MEDAL_DYING_HP_PERCENT = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT");
 
     private AgentPpqCoordinator() { }
 
@@ -76,6 +82,8 @@ public final class AgentPpqCoordinator {
                 && AgentPpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance(), nowMs);
             session.setPotionsAtEntry(AgentPpqTerminationService.potions(session));
+            // Wu Yang's exit is the companions' own talk after the clear: compiled now, off the tick that needs it.
+            if (session.companionAdopted()) partyQuest().prepareNpcScripts(AgentPpqDefinition.RESCUE_NPC);
             logChange(session, session.transition(AgentPpqSession.Phase.ACTIVE, nowMs));
         }
         if (capReached(session, nowMs)) return;
@@ -97,7 +105,9 @@ public final class AgentPpqCoordinator {
                 && session.phase().ordinal() < AgentPpqSession.Phase.CLEARING.ordinal()) {
             session.fail("PPQ event instance was disposed before clear", nowMs); return;
         }
-        if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER
+        boolean companionRun = session.companionAdopted();
+        // A companion run says nothing before entry: its leader clicks Guon himself (plan 7.1).
+        if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER && !companionRun
                 && session.phase() == AgentPpqSession.Phase.PREPARING) {
             announce(session, "human-enter", leader.getName() + ", talk to Guon to enter Pirate PQ.");
         }
@@ -106,13 +116,17 @@ public final class AgentPpqCoordinator {
             if (openedChests >= 1) session.markChestComplete(AgentPpqDefinition.CHEST_ONE_MAP, nowMs);
             if (openedChests >= 2) session.markChestComplete(AgentPpqDefinition.CHEST_TWO_MAP, nowMs);
         }
-        if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) guideHumanLeader(session, leader);
+        // The stock guide lines; a companion run's companions coach in their own words instead (plan 8).
+        if (companionRun) AgentPpqCompanionRun.coach(session, leader);
+        else if (session.mode() == AgentPpqSession.Mode.HUMAN_LEADER) guideHumanLeader(session, leader);
         if (leader.getMapId() == AgentPpqDefinition.BOSS_MAP
                 && actions().liveMonsterCount(leader, AgentPpqDefinition.COMBAT_MOBS) == 0) {
             if (isAgent(leader) && leader.getHp() > 0) {
                 runNpc(entry(leader.getId()), leader, AgentPpqDefinition.RESCUE_NPC);
             }
-            else announce(session, "human-clear", leader.getName() + ", talk to Wu Yang after Lord Pirate falls.");
+            else if (!companionRun) {
+                announce(session, "human-clear", leader.getName() + ", talk to Wu Yang after Lord Pirate falls.");
+            }
         }
         if (leader.getMapId() == AgentPpqDefinition.CLEAR_MAP) {
             logChange(session, session.transition(AgentPpqSession.Phase.CLEARING, nowMs));
@@ -181,6 +195,7 @@ public final class AgentPpqCoordinator {
      */
     private static void handBack(AgentPpqSession session, int id, long nowMs) {
         try {
+            AgentPpqFullRateSimulation.apply(session, id, entry(id), false);
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(id);
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
             AgentPpqSessionRegistry.unindexMember(session, id);
@@ -257,7 +272,10 @@ public final class AgentPpqCoordinator {
         AgentPpqMemberState member = session.member(agent.getId());
         // A run that ended or whose release began (a stop off the central tick thread) does nothing more.
         if (member == null || member.memberType() != AgentPpqMemberState.MemberType.AGENT
-                || session.terminal() || session.terminationStarted() || nowMs < member.nextActionAtMs()) return;
+                || session.terminal() || session.terminationStarted()) return;
+        boolean companionRun = session.companionAdopted();
+        if (companionRun) AgentPpqCompanionRun.memberPrelude(session, entry, agent);
+        if (nowMs < member.nextActionAtMs()) return;
         // No instance is not another instance: the clear warps everyone to 925100600 and ends the event under them.
         if (session.eventInstance() != null && AgentPpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
@@ -267,11 +285,18 @@ public final class AgentPpqCoordinator {
         if (mapId == AgentPpqDefinition.RECRUIT_MAP) { enter(session, entry, agent, member, nowMs); return; }
         if (mapId == AgentPpqDefinition.MEDAL_MAP) { medals(session, entry, agent, member, nowMs); return; }
         if (mapId == AgentPpqDefinition.CHEST_ONE_MAP || mapId == AgentPpqDefinition.CHEST_TWO_MAP) {
-            chest(session, entry, agent, member, nowMs); return;
+            if (companionRun) companionChest(session, entry, agent, member, nowMs);
+            else chest(session, entry, agent, member, nowMs);
+            return;
         }
-        if (mapId == AgentPpqDefinition.DOOR_MAP) { doors(session, entry, agent, member, nowMs); return; }
+        if (mapId == AgentPpqDefinition.DOOR_MAP) {
+            if (companionRun) companionDoors(session, entry, agent, member, nowMs);
+            else doors(session, entry, agent, member, nowMs);
+            return;
+        }
         if (mapId == AgentPpqDefinition.BOSS_MAP) { boss(session, entry, agent); return; }
         if (mapId == AgentPpqDefinition.CLEAR_MAP) {
+            if (companionRun && waitByWuYang(session, entry, agent, nowMs)) return;
             if (!roomForFeather(agent)) {
                 // Wu Yang refuses the Feather to a full Etc tab, and his room has no exit: it leaves without it.
                 log.info("PPQ feather skipped: session={} member={} reason=no-etc-room", session.sessionId(),
@@ -285,7 +310,9 @@ public final class AgentPpqCoordinator {
         }
         if (mapId == AgentPpqDefinition.ENTRY_MAP
                 || mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP) {
-            clearAndAdvance(session, entry, agent, member, nowMs); return;
+            if (companionRun) companionAdvance(session, entry, agent, member, nowMs);
+            else clearAndAdvance(session, entry, agent, member, nowMs);
+            return;
         }
         if (mapId == AgentPpqDefinition.SIDE_ONE_MAP || mapId == AgentPpqDefinition.SIDE_TWO_MAP) {
             sideRoom(session, entry, agent, member, nowMs); return;
@@ -326,10 +353,18 @@ public final class AgentPpqCoordinator {
             if (itemId != 0 && collectObjectiveDrop(
                     session, entry, agent, Set.of(itemId), nowMs)) return;
         } else if (session.companionAdopted() && itemId != 0) {
-            // Only the event leader may hand Guon the marks: the companions gather this wave's and bring them to him.
-            if (AgentPpqMedalHandOver.tick(session, entry, agent, member, itemId, leader, nowMs)) return;
-            if (AgentPpqMedalHandOver.gatherWanted(session, agent, leader, itemId)
-                    && collectObjectiveDrop(session, entry, agent, Set.of(itemId), nowMs)) return;
+            // A companion about to go down with no potion leaves its medals where it stands (its death would delete
+            // them) and gathers no more; the hand-over and the re-collect take them on to the leader.
+            boolean dying = AgentPpqCompanionPlay.dying(agent.getHp(), agent.getCurrentMaxHp(),
+                    actions().hpPotionCount(agent), MEDAL_DYING_HP_PERCENT);
+            if (dying) {
+                if (leaveMedals(session, entry, agent, member, itemId, leader, nowMs)) return;
+            } else {
+                // Only the event leader may hand Guon the marks: the companions gather this wave's and bring them.
+                if (AgentPpqMedalHandOver.tick(session, entry, agent, member, itemId, leader, nowMs)) return;
+                if (AgentPpqMedalHandOver.gatherWanted(session, agent, leader, itemId)
+                        && collectObjectiveDrop(session, entry, agent, Set.of(itemId), nowMs)) return;
+            }
         }
         if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
             actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS); return;
@@ -367,6 +402,173 @@ public final class AgentPpqCoordinator {
             return;
         }
         usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(mapId), nowMs);
+    }
+
+    /**
+     * A companion on stage one or a deck (plan 7.2, 7.3, 7.5): it follows a leader already in this deck's chest room in
+     * at once; else it clears the map, then goes on through the exit without waiting for him, except while he can
+     * still open this deck's chest (he holds a chest key, chests are played, the chest is not done and he has not gone
+     * past the deck): then it waits by the chest room's portal and tells him once, when he is on the deck, to go first.
+     */
+    private static void companionAdvance(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                         AgentPpqMemberState member, long nowMs) {
+        int mapId = agent.getMapId();
+        boolean deck = mapId == AgentPpqDefinition.DECK_ONE_MAP || mapId == AgentPpqDefinition.DECK_TWO_MAP;
+        Character leader = character(session.eventLeaderId());
+        int chestMap = mapId == AgentPpqDefinition.DECK_ONE_MAP
+                ? AgentPpqDefinition.CHEST_ONE_MAP : AgentPpqDefinition.CHEST_TWO_MAP;
+        boolean leaderInChest = deck && leader != null && leader.getHp() > 0 && leader.getMapId() == chestMap;
+        boolean leaderKey = leader != null && leader.getItemQuantity(AgentPpqDefinition.CHEST_KEY, false) > 0;
+        boolean leaderPast = leader != null && AgentPpqCompanionPlay.past(
+                AgentPpqDefinition.stageOf(leader.getMapId()), AgentPpqDefinition.stageOf(mapId));
+        AgentPpqCompanionPlay.DeckMove move = AgentPpqCompanionPlay.deckMove(deck, leaderInChest,
+                actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0, session.skipChestRooms(),
+                session.chestCompleteForDeck(mapId), leaderKey, leaderPast);
+        switch (move) {
+            case FOLLOW_INTO_CHEST -> usePortal(entry, agent, member, AgentPpqDefinition.CHEST_ROOM_PORTAL, nowMs);
+            case FIGHT -> actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+            case WAIT_BY_CHEST -> {
+                if (standNear(entry, agent, actions().portalPosition(agent, AgentPpqDefinition.CHEST_ROOM_PORTAL))) {
+                    AgentPpqCompanionRun.chestRoomHere(session, agent, leader);
+                }
+            }
+            case GO_ON -> usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(mapId), nowMs);
+        }
+    }
+
+    /**
+     * A companion in a chest room (decision D-c): it came in after the leader, fights beside him while he is here, and
+     * leaves by out00 once he has left. It never talks to the chest room's Guon nor touches a chest key.
+     */
+    private static void companionChest(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                       AgentPpqMemberState member, long nowMs) {
+        Character leader = character(session.eventLeaderId());
+        if (leader == null || leader.getMapId() != agent.getMapId()) {
+            member.clearChestDrop();
+            usePortal(entry, agent, member, AgentPpqDefinition.CHEST_ROOM_PORTAL, nowMs);
+            return;
+        }
+        if (actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0) {
+            actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+        } else {
+            actions().stop(entry);
+        }
+    }
+
+    /**
+     * A companion on the door map (plan 7.7, 7.2 b): it picks up the Old Metal Keys; no key goes into a door until the
+     * companions' keys and those still lying here cover every closed door (keys a human holds are his to spend); then
+     * each key holder takes the nearest door nobody claimed and drops one key in it. With every door open it keeps the
+     * map clear by the boss door and goes through only with the leader beside it (or already inside): the first one
+     * through spawns the Lord Pirate, and the door opens only on an empty map.
+     */
+    private static void companionDoors(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                       AgentPpqMemberState member, long nowMs) {
+        if (collectObjectiveDrop(session, entry, agent, Set.of(AgentPpqDefinition.OLD_METAL_KEY), nowMs)) return;
+        boolean mobs = actions().liveMonsterCount(agent, AgentPpqDefinition.COMBAT_MOBS) > 0;
+        int closed = AgentPpqCompanionRun.closedDoors(agent);
+        if (closed > 0) {
+            boolean holdsKey = agent.getItemQuantity(AgentPpqDefinition.OLD_METAL_KEY, false) > 0;
+            if (holdsKey && AgentPpqCompanionPlay.mayDropKeys(AgentPpqCompanionRun.companionKeys(session),
+                    AgentPpqCompanionRun.floorKeys(agent), closed)) {
+                Reactor door = committedDoor(agent, member.committedReactorObjectId());
+                if (door == null) door = nearestUnclaimedDoor(session, agent);
+                if (door != null) {
+                    dropKeyInDoor(session, entry, agent, member, door, nowMs);
+                    return;
+                }
+            }
+            if (mobs) actions().grind(entry, AgentPpqDefinition.COMBAT_MOBS);
+            else actions().stop(entry);
+            return;
+        }
+        Point door = actions().portalPosition(agent, AgentPpqDefinition.nextPortalId(AgentPpqDefinition.DOOR_MAP));
+        Character leader = character(session.eventLeaderId());
+        boolean leaderAtDoor = leader != null && leader.getHp() > 0 && leader.getMapId() == agent.getMapId()
+                && within(leader.getPosition(), door, EXIT_WAIT_RADIUS_PX);
+        boolean leaderInside = leader != null && leader.getMapId() == AgentPpqDefinition.BOSS_MAP;
+        switch (AgentPpqCompanionPlay.bossDoor(mobs, leaderAtDoor, leaderInside)) {
+            case FIGHT -> actions().grindFromAnchor(entry, door, AgentPpqDefinition.COMBAT_MOBS, Set.of());
+            case WAIT -> standNear(entry, agent, door);
+            case ENTER -> {
+                if (leaderAtDoor) AgentPpqCompanionRun.bossDoor(session, agent, leader);
+                usePortal(entry, agent, member, AgentPpqDefinition.nextPortalId(AgentPpqDefinition.DOOR_MAP), nowMs);
+            }
+        }
+    }
+
+    /** Walks into the door's area and drops one Old Metal Key there (the stock door rule, shared by every mode). */
+    private static void dropKeyInDoor(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                      AgentPpqMemberState member, Reactor door, long nowMs) {
+        member.commitReactor(door.getObjectId());
+        Point trigger = reactorDropPoint(door);
+        if (!door.getArea().contains(agent.getPosition())) {
+            Point ground = actions().groundPoint(agent.getMap(), trigger);
+            if (ground != null) actions().navigate(entry, ground, true);
+            return;
+        }
+        actions().stop(entry);
+        if (AgentScriptItemActionService.dropItem(entry, InventoryType.ETC,
+                AgentPpqDefinition.OLD_METAL_KEY, (short) 1)) {
+            member.clearReactor(); member.deferUntil(nowMs + RETRY_MS); session.markProgress(nowMs);
+        }
+    }
+
+    /**
+     * After the clear (decision D-f'): while the leader is still in Wu Yang's room, a companion waits by Wu Yang (the
+     * first there says E1 once) instead of leaving before him; once he left, or COMPANION_AFTER_CLEAR_WAIT_MS after the
+     * clear, it takes Wu Yang's exit. True while it waits.
+     */
+    private static boolean waitByWuYang(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                        long nowMs) {
+        Character leader = character(session.eventLeaderId());
+        boolean leaderInRoom = leader != null && leader.getMapId() == AgentPpqDefinition.CLEAR_MAP;
+        long clearedAt = session.clearedAtMs();
+        long sinceClearMs = clearedAt < 0L ? 0L : nowMs - clearedAt;
+        if (!AgentPpqCompanionPlay.waitByWuYang(leaderInRoom, sinceClearMs, COMPANION_AFTER_CLEAR_WAIT_MS)) {
+            return false;
+        }
+        if (standNear(entry, agent, actions().npcPosition(agent, AgentPpqDefinition.RESCUE_NPC))) {
+            AgentPpqCompanionRun.feathers(session, agent, leader);
+        }
+        return true;
+    }
+
+    /** Walks to {@code spot} and stands there; true once it stands within INTERACTION_RADIUS of it. */
+    private static boolean standNear(AgentRuntimeEntry entry, Character agent, Point spot) {
+        if (spot == null) {
+            actions().stop(entry);
+            return false;
+        }
+        if (!near(agent.getPosition(), spot)) {
+            actions().navigate(entry, spot, true);
+            return false;
+        }
+        actions().stop(entry);
+        return true;
+    }
+
+    /**
+     * A companion about to go down with no potion leaves the wave's medals it holds at its feet, once per holding
+     * (M6, said once a wave between the companions), so its death does not delete them ('PPQ medals left:'). True
+     * when it dropped them.
+     */
+    private static boolean leaveMedals(AgentPpqSession session, AgentRuntimeEntry entry, Character agent,
+                                       AgentPpqMemberState member, int itemId, Character leader, long nowMs) {
+        int held = Math.max(0, actions().itemCount(agent, itemId));
+        if (held <= 0) return false;
+        member.endHandOver();
+        actions().stop(entry);
+        if (!dropEtc(entry, itemId, (short) held)) return false;
+        session.markProgress(nowMs);
+        log.info("PPQ medals left: session={} member={} item={} count={} hp={}", session.sessionId(), agent.getName(),
+                itemId, held, agent.getHp());
+        AgentPpqDialogue.narrate(session, "M6-" + itemId, agent, leader, AgentPpqCompanionPlay.leavingMyMedals());
+        return true;
+    }
+
+    private static boolean within(Point first, Point second, int px) {
+        return first != null && second != null && first.distanceSq(second) <= (long) px * px;
     }
 
     /**

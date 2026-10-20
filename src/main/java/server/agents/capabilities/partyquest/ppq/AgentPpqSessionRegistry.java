@@ -65,11 +65,19 @@ public final class AgentPpqSessionRegistry {
      * Whether this bot may loot this drop of a PPQ objective item. In a companion run the companions gather the medal
      * stage's current marks for the human leader (only he may hand them to Guon): a natural drop of the wave's mark is
      * theirs to pick up, a stack a companion dropped for him is his, and only the companion that claimed it back before
-     * it can expire may take it. Everything else is {@link #canLootExclusive(Character, int)}, unchanged.
+     * it can expire may take it. A companion never takes a chest key (decision D-b: only the leader's key opens a
+     * chest). Everything else is {@link #canLootExclusive(Character, int)}, unchanged.
      */
     public static boolean canLootExclusive(Character character, MapItem drop) {
         if (character == null || drop == null) return false;
         int itemId = drop.getItemId();
+        if (itemId == AgentPpqDefinition.CHEST_KEY) {
+            AgentPpqSession session = forMember(character.getId());
+            if (session != null && session.companionAdopted() && character.getId() != session.eventLeaderId()
+                    && session.agentOfRun(character.getId())) {
+                return false;
+            }
+        }
         if (AgentPpqDefinition.MEDALS.contains(itemId)) {
             AgentPpqSession session = forMember(character.getId());
             if (session != null && session.companionAdopted() && character.getId() != session.eventLeaderId()

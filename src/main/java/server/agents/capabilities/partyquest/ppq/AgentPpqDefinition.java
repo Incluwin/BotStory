@@ -19,6 +19,8 @@ public final class AgentPpqDefinition {
     public static final int SIDE_TWO_MAP = 925_100_302;
     /** The hidden room's portal 1 'out00' back to its deck. */
     public static final int SIDE_ROOM_EXIT_PORTAL = 1;
+    /** Portal 1 of a deck ('in00', into its chest room) and of a chest room ('out00', back to its deck). */
+    public static final int CHEST_ROOM_PORTAL = 1;
     public static final int DOOR_MAP = 925_100_400;
     public static final int BOSS_MAP = 925_100_500;
     public static final int CLEAR_MAP = 925_100_600;

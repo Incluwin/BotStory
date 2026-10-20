@@ -1692,6 +1692,18 @@ tuning:
     # Purpose: Keeps carriers converging on the leader with pirate marks to one line between them instead of one each.
     # Technical: AgentPpqSession.claimLineWindow per line kind (at feet, by Guon) and mark; the twenty line is always said once per wave, and the window starts again with it.
     server.agents.capabilities.partyquest.ppq.AgentPpqMedalHandOver.LINE_WINDOW_MS: '8000'
+    # Values: 60-400 pixels. Recommended: 150, about three character widths either side of the boss door.
+    # Purpose: How near the boss door (next00 on 925100400) a PPQ human leader must stand for his companions to go through it with him, and where they keep the door map clear while they wait for him.
+    # Technical: AgentPpqCoordinator.companionDoors (companion runs, every door open): the companions grind from the door (grindFromAnchor) and enter only while the map is empty and the leader stands on the door map within this Euclidean distance of the portal, or is already on the boss map; davy_next4.js spawns the Lord Pirate on the first entry.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.EXIT_WAIT_RADIUS_PX: '150'
+    # Values: 30000-280000 milliseconds, below AFTER_CLEAR_LIMIT_MS. Recommended: 180000, time for the leader to take his own Feather or the Pirate Hat first.
+    # Purpose: How long PPQ companions wait by Wu Yang after the clear while their human leader is still in his room, so they never leave before him and get pulled back into a room with no exit by follow.
+    # Technical: AgentPpqCoordinator.waitByWuYang (companion runs, decision D-f'): a companion on 925100600 stands by Wu Yang while the leader is on 925100600 and this long has not passed since AgentPpqSession.clearedAtMs; then it runs Wu Yang's selection 0 (Feather and warp to 251010404). AFTER_CLEAR_LIMIT_MS still bounds the whole after-clear.
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.COMPANION_AFTER_CLEAR_WAIT_MS: '180000'
+    # Values: 5-60 percent of max HP. Recommended: 25.
+    # Purpose: Below this share of its HP, a PPQ companion with no HP potion left drops the wave's medals at its feet, so its death does not delete them, and gathers no more until it is better.
+    # Technical: AgentPpqCompanionPlay.dying (hp * 100 <= this * currentMaxHp and hpPotionCount 0) on 925100100 in companion runs; the stack is a companion drop, so the nudge and the re-collect of AgentPpqMedalHandOver bring it on to the leader ('PPQ medals left:', line M6 once a wave).
+    server.agents.capabilities.partyquest.ppq.AgentPpqCoordinator.MEDAL_DYING_HP_PERCENT: '25'
 
     # ---- RJPQ keys go below (RJPQ branch only) ----
 
