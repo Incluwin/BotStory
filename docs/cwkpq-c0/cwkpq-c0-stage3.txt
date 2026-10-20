@@ -1,0 +1,1088 @@
+## 610030300 sweep: A* (findNextEdgeSelectionVaried) result per target / graph BFS reach, down-jump forbidden (CANNOTJUMPDOWN) | with down-jump allowed (control)
+100/100 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/100 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/100 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/110 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/110 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/110 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+100/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+120/115 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+120/115 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+120/115 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+120/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+120/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+120/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/100 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+145/100 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+145/100 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO
+145/110 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/110 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/110 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/115 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/115 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+145/115 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+Haste20 145/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+Haste20 145/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+Haste20 145/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+160/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+160/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+160/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK
+FJ 100/100 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+FJ 100/100 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+FJ 100/100 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+FJ+Haste 145/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+FJ+Haste 145/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+FJ+Haste 145/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+Teleport 100/100 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+Teleport 100/100 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+Teleport 100/100 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=OK/bfs-yes|OK
+
+## diagnose Haste20 145/120 (regions reached from sp: 139 of 145)
+target (215,-1107) ground (215,-1104) region 17 x 145..295 y -1104..-1104 rope=false reached=false
+    in  DROP from r5 x -125..1025 y -1524 start (191,-1524) end (191,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (195,-1524) end (195,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (200,-1524) end (200,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (208,-1524) end (208,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (217,-1524) end (217,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (226,-1524) end (226,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (235,-1524) end (235,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (244,-1524) end (244,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (253,-1524) end (253,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (258,-1524) end (258,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (262,-1524) end (262,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (271,-1524) end (271,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (277,-1524) end (277,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (282,-1524) end (282,-1104) step 0 allowed=false sourceReached=true
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (595,-1104) end (234,-1104) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r20 x -210..-140 y -1044 start (-140,-1044) end (181,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r21 x -120..-50 y -1044 start (-120,-1044) end (201,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r21 x -120..-50 y -1044 start (-84,-1044) end (237,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r21 x -120..-50 y -1044 start (-50,-1044) end (271,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r22 x -30..40 y -1044 start (-30,-1044) end (291,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r22 x -30..40 y -1044 start (6,-1044) end (156,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r22 x -30..40 y -1044 start (40,-1044) end (190,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r24 x 58..145 y -988 start (145,-988) end (145,-1104) step 0 allowed=true sourceReached=true
+    out DROP to r37 x 55..595 y -684 start (169,-1104) end (169,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (174,-1104) end (174,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (181,-1104) end (181,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (190,-1104) end (190,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (199,-1104) end (199,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (208,-1104) end (208,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (215,-1104) end (215,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (217,-1104) end (217,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (226,-1104) end (226,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (232,-1104) end (232,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (235,-1104) end (235,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (244,-1104) end (244,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (253,-1104) end (253,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (262,-1104) end (262,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (267,-1104) end (267,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (272,-1104) end (272,-684) step 0
+    out JUMP to r22 x -30..40 y -1044 start (159,-1104) end (24,-1044) step -9
+    out JUMP to r16 x 55..325 y -1104 start (183,-1104) end (303,-1104) step 9
+    out JUMP to r16 x 55..325 y -1104 start (242,-1104) end (122,-1104) step -9
+    out JUMP to r37 x 55..595 y -684 start (251,-1104) end (476,-684) step 9
+    out TELEPORT to r22 x -30..40 y -1044 start (145,-1104) end (-5,-1044) step -1
+    out TELEPORT to r24 x 58..145 y -988 start (145,-1104) end (145,-988) step 0
+    out FLASH_JUMP to r27 x -1045..-305 y -924 start (145,-1104) end (-351,-924) step -9
+    out FLASH_JUMP to r26 x 595..755 y -984 start (145,-1104) end (610,-984) step 9
+    out TELEPORT to r16 x 55..325 y -1104 start (226,-1104) end (76,-1104) step -1
+    out FLASH_JUMP to r20 x -210..-140 y -1044 start (226,-1104) end (-180,-1044) step -9
+    out FLASH_JUMP to r18 x 595..755 y -1104 start (226,-1104) end (598,-1104) step 9
+    out FLASH_JUMP to r21 x -120..-50 y -1044 start (295,-1104) end (-111,-1044) step -9
+    out FLASH_JUMP to r18 x 595..755 y -1104 start (295,-1104) end (667,-1104) step 9
+target (322,-789) ground (322,-684) region 37 x 55..595 y -684..-684 rope=false reached=true
+    in  DROP from r5 x -125..1025 y -1524 start (340,-1524) end (340,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (344,-1524) end (344,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (352,-1524) end (352,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (361,-1524) end (361,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (370,-1524) end (370,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (379,-1524) end (379,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (388,-1524) end (388,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (397,-1524) end (397,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (406,-1524) end (406,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (415,-1524) end (415,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (424,-1524) end (424,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (433,-1524) end (433,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (442,-1524) end (442,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (450,-1524) end (450,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (451,-1524) end (451,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (460,-1524) end (460,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (469,-1524) end (469,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (478,-1524) end (478,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (485,-1524) end (485,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (490,-1524) end (490,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (585,-1524) end (585,-684) step 0 allowed=false sourceReached=true
+    in  FLASH_JUMP from r11 x 1135..1205 y -1344 start (1135,-1344) end (279,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r12 x 1045..1115 y -1284 start (1045,-1284) end (234,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r12 x 1045..1115 y -1284 start (1081,-1284) end (270,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (160,-1104) end (160,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (164,-1104) end (164,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (172,-1104) end (172,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (181,-1104) end (181,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (190,-1104) end (190,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (199,-1104) end (199,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (208,-1104) end (208,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (217,-1104) end (217,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (226,-1104) end (226,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (235,-1104) end (235,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (244,-1104) end (244,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (253,-1104) end (253,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (262,-1104) end (262,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (271,-1104) end (271,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (280,-1104) end (280,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (289,-1104) end (289,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (296,-1104) end (296,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r16 x 55..325 y -1104 start (300,-1104) end (300,-684) step 0 allowed=false sourceReached=true
+    in  JUMP from r16 x 55..325 y -1104 start (261,-1104) end (486,-684) step 9 allowed=true sourceReached=true
+    in  DROP from r17 x 145..295 y -1104 start (169,-1104) end (169,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (174,-1104) end (174,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (181,-1104) end (181,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (190,-1104) end (190,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (199,-1104) end (199,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (208,-1104) end (208,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (215,-1104) end (215,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (217,-1104) end (217,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (226,-1104) end (226,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (232,-1104) end (232,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (235,-1104) end (235,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (244,-1104) end (244,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (253,-1104) end (253,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (262,-1104) end (262,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (267,-1104) end (267,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (272,-1104) end (272,-684) step 0 allowed=false sourceReached=false
+    in  JUMP from r17 x 145..295 y -1104 start (251,-1104) end (476,-684) step 9 allowed=true sourceReached=false
+    in  JUMP from r18 x 595..755 y -1104 start (632,-1104) end (407,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (755,-1104) end (79,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r19 x 865..1495 y -1104 start (865,-1104) end (189,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (775,-1044) end (144,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (811,-1044) end (180,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (845,-1044) end (214,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (91,-988) end (275,-684) step 9 allowed=true sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (82,-988) end (82,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (87,-988) end (87,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (94,-988) end (94,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (103,-988) end (103,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (112,-988) end (112,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (117,-988) end (117,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r24 x 58..145 y -988 start (122,-988) end (122,-684) step 0 allowed=false sourceReached=true
+    in  JUMP from r26 x 595..755 y -984 start (617,-984) end (422,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r26 x 595..755 y -984 start (676,-984) end (90,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r26 x 595..755 y -984 start (755,-984) end (169,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r28 x -235..58 y -924 start (4,-924) end (170,-684) step 9 allowed=true sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (559,-924) end (393,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (529,-924) end (529,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (534,-924) end (534,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (541,-924) end (541,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (547,-924) end (547,-684) step 0 allowed=false sourceReached=true
+    in  DROP from r29 x 505..575 y -924 start (551,-924) end (551,-684) step 0 allowed=false sourceReached=true
+    in  JUMP from r29 x 505..575 y -924 start (540,-924) end (360,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r31 x 595..755 y -864 start (649,-864) end (500,-684) step -9 allowed=true sourceReached=true
+    in  JUMP from r31 x 595..755 y -864 start (600,-864) end (435,-684) step -9 allowed=true sourceReached=true
+    in  JUMP from r31 x 595..755 y -864 start (699,-864) end (534,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r31 x 595..755 y -864 start (595,-864) end (99,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r31 x 595..755 y -864 start (676,-864) end (180,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r31 x 595..755 y -864 start (755,-864) end (259,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r32 x 775..845 y -804 start (845,-804) end (394,-684) step -9 allowed=true sourceReached=true
+    in  DROP from r34 x 595..755 y -744 start (649,-744) end (537,-684) step -9 allowed=true sourceReached=true
+    in  JUMP from r34 x 595..755 y -744 start (617,-744) end (482,-684) step -9 allowed=true sourceReached=true
+    in  JUMP from r34 x 595..755 y -744 start (695,-744) end (560,-684) step -9 allowed=true sourceReached=true
+    in  TELEPORT from r34 x 595..755 y -744 start (595,-744) end (445,-684) step -1 allowed=true sourceReached=true
+    in  TELEPORT from r34 x 595..755 y -744 start (595,-744) end (595,-684) step 0 allowed=true sourceReached=true
+    in  FLASH_JUMP from r34 x 595..755 y -744 start (595,-744) end (189,-684) step -9 allowed=true sourceReached=true
+    in  TELEPORT from r34 x 595..755 y -744 start (676,-744) end (526,-684) step -1 allowed=true sourceReached=true
+    in  FLASH_JUMP from r34 x 595..755 y -744 start (676,-744) end (270,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r34 x 595..755 y -744 start (755,-744) end (349,-684) step -9 allowed=true sourceReached=true
+    in  JUMP from r36 x -215..-55 y -684 start (-63,-684) end (57,-684) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-215,-684) end (157,-684) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-134,-684) end (238,-684) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r36 x -215..-55 y -684 start (-55,-684) end (95,-684) step 1 allowed=true sourceReached=true
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-55,-684) end (317,-684) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r38 x 755..865 y -684 start (755,-684) end (394,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r38 x 755..865 y -684 start (809,-684) end (448,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r38 x 755..865 y -684 start (865,-684) end (504,-684) step -9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r39 x -325..-235 y -624 start (-280,-624) end (55,-684) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r39 x -325..-235 y -624 start (-235,-624) end (86,-684) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r40 x -215..-55 y -564 start (-55,-564) end (187,-684) step 9 allowed=true sourceReached=true
+    out DROP to r47 x -145..305 y -384 start (109,-684) end (-74,-384) step -9
+    out DROP to r52 x 685..845 y -204 start (541,-684) end (774,-204) step 9
+    out DROP to r47 x -145..305 y -384 start (79,-684) end (79,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (84,-684) end (84,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (91,-684) end (91,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (100,-684) end (100,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (109,-684) end (109,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (118,-684) end (118,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (127,-684) end (127,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (136,-684) end (136,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (145,-684) end (145,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (154,-684) end (154,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (163,-684) end (163,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (172,-684) end (172,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (181,-684) end (181,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (190,-684) end (190,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (199,-684) end (199,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (208,-684) end (208,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (217,-684) end (217,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (226,-684) end (226,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (235,-684) end (235,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (244,-684) end (244,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (253,-684) end (253,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (262,-684) end (262,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (271,-684) end (271,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (280,-684) end (280,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (287,-684) end (287,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (290,-684) end (290,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (291,-684) end (291,-384) step 0
+    out DROP to r80 x -35..575 y 156 start (315,-684) end (315,156) step 0
+    out DROP to r48 x 325..485 y -384 start (335,-684) end (335,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (339,-684) end (339,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (344,-684) end (344,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (352,-684) end (352,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (361,-684) end (361,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (370,-684) end (370,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (379,-684) end (379,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (388,-684) end (388,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (397,-684) end (397,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (406,-684) end (406,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (415,-684) end (415,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (424,-684) end (424,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (433,-684) end (433,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (442,-684) end (442,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (451,-684) end (451,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (460,-684) end (460,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (467,-684) end (467,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (471,-684) end (471,-384) step 0
+    out DROP to r80 x -35..575 y 156 start (495,-684) end (495,156) step 0
+    out DROP to r59 x 505..575 y -84 start (515,-684) end (515,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (519,-684) end (519,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (524,-684) end (524,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (532,-684) end (532,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (541,-684) end (541,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (550,-684) end (550,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (557,-684) end (557,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (561,-684) end (561,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (565,-684) end (565,-84) step 0
+    out DROP to r87 x 575..665 y 216 start (580,-684) end (580,216) step 0
+    out JUMP to r36 x -215..-55 y -684 start (63,-684) end (-57,-684) step -9
+    out JUMP to r40 x -215..-55 y -564 start (85,-684) end (-65,-564) step -9
+    out JUMP to r47 x -145..305 y -384 start (137,-684) end (-58,-384) step -9
+    out JUMP to r52 x 685..845 y -204 start (482,-684) end (722,-204) step 9
+    out JUMP to r34 x 595..755 y -744 start (536,-684) end (637,-744) step 9
+    out TELEPORT to r36 x -215..-55 y -684 start (55,-684) end (-95,-684) step -1
+    out FLASH_JUMP to r39 x -325..-235 y -624 start (55,-684) end (-324,-624) step -9
+    out FLASH_JUMP to r36 x -215..-55 y -684 start (325,-684) end (-55,-684) step -9
+    out FLASH_JUMP to r34 x 595..755 y -744 start (325,-684) end (646,-744) step 9
+    out TELEPORT to r34 x 595..755 y -744 start (595,-684) end (745,-744) step 1
+    out TELEPORT to r34 x 595..755 y -744 start (595,-684) end (595,-744) step 0
+    out FLASH_JUMP to r32 x 775..845 y -804 start (595,-684) end (837,-804) step 9
+target (982,-1209) ground (982,-1104) region 19 x 865..1495 y -1104..-1104 rope=false reached=true
+    in  DROP from r1 x -1205..1475 y -1764 start (1035,-1764) end (1035,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1125,-1764) end (1125,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1216,-1764) end (1216,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1221,-1764) end (1221,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1225,-1764) end (1225,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1234,-1764) end (1234,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1243,-1764) end (1243,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1252,-1764) end (1252,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1261,-1764) end (1261,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1270,-1764) end (1270,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1279,-1764) end (1279,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1288,-1764) end (1288,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1297,-1764) end (1297,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1306,-1764) end (1306,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1315,-1764) end (1315,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1324,-1764) end (1324,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1333,-1764) end (1333,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1342,-1764) end (1342,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1351,-1764) end (1351,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1360,-1764) end (1360,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1369,-1764) end (1369,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1378,-1764) end (1378,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1387,-1764) end (1387,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1396,-1764) end (1396,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1405,-1764) end (1405,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1412,-1764) end (1412,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1414,-1764) end (1414,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1423,-1764) end (1423,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1432,-1764) end (1432,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1441,-1764) end (1441,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1447,-1764) end (1447,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1451,-1764) end (1451,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1429,-1764) end (1429,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1434,-1764) end (1434,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1441,-1764) end (1441,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1450,-1764) end (1450,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1459,-1764) end (1459,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1468,-1764) end (1468,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1475,-1764) end (1475,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1479,-1764) end (1479,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1480,-1764) end (1480,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r4 x 1495..1582 y -1674 start (1549,-1674) end (1291,-1104) step -9 allowed=true sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (875,-1524) end (875,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (879,-1524) end (879,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (884,-1524) end (884,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (892,-1524) end (892,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (901,-1524) end (901,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (910,-1524) end (910,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (919,-1524) end (919,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (928,-1524) end (928,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (937,-1524) end (937,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (946,-1524) end (946,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (955,-1524) end (955,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (962,-1524) end (962,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (964,-1524) end (964,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (973,-1524) end (973,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (982,-1524) end (982,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (991,-1524) end (991,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (997,-1524) end (997,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r5 x -125..1025 y -1524 start (1001,-1524) end (1001,-1104) step 0 allowed=false sourceReached=true
+    in  JUMP from r6 x 1045..1115 y -1524 start (1093,-1524) end (1318,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r8 x 1135..1205 y -1464 start (1151,-1464) end (1350,-1104) step 9 allowed=true sourceReached=true
+    in  JUMP from r8 x 1135..1205 y -1464 start (1140,-1464) end (930,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r8 x 1135..1205 y -1464 start (1170,-1464) end (1380,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r10 x 1045..1115 y -1404 start (1099,-1404) end (916,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r10 x 1045..1115 y -1404 start (1082,-1404) end (887,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r10 x 1045..1115 y -1404 start (1110,-1404) end (1305,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r11 x 1135..1205 y -1344 start (1151,-1344) end (1317,-1104) step 9 allowed=true sourceReached=true
+    in  JUMP from r11 x 1135..1205 y -1344 start (1140,-1344) end (960,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r11 x 1135..1205 y -1344 start (1182,-1344) end (1362,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r12 x 1045..1115 y -1284 start (1099,-1284) end (950,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r12 x 1045..1115 y -1284 start (1067,-1284) end (902,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r12 x 1045..1115 y -1284 start (1110,-1284) end (1275,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1151,-1224) end (1283,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1159,-1224) end (1159,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1164,-1224) end (1164,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1171,-1224) end (1171,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1177,-1224) end (1177,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r13 x 1135..1205 y -1224 start (1181,-1224) end (1181,-1104) step 0 allowed=false sourceReached=true
+    in  JUMP from r13 x 1135..1205 y -1224 start (1140,-1224) end (990,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r13 x 1135..1205 y -1224 start (1182,-1224) end (1332,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1135,-1224) end (1135,-1104) step 0 allowed=true sourceReached=true
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1171,-1224) end (1171,-1104) step 0 allowed=true sourceReached=true
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1205,-1224) end (1205,-1104) step 0 allowed=true sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1099,-1164) end (987,-1104) step -9 allowed=true sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1061,-1164) end (1173,-1104) step 9 allowed=true sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1069,-1164) end (1069,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1074,-1164) end (1074,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1081,-1164) end (1081,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1087,-1164) end (1087,-1104) step 0 allowed=false sourceReached=true
+    in  DROP from r15 x 1045..1115 y -1164 start (1091,-1164) end (1091,-1104) step 0 allowed=false sourceReached=true
+    in  JUMP from r15 x 1045..1115 y -1164 start (1067,-1164) end (932,-1104) step -9 allowed=true sourceReached=true
+    in  JUMP from r15 x 1045..1115 y -1164 start (1109,-1164) end (1244,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (895,-1104) step -1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (1195,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (1045,-1104) step 0 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1081,-1164) end (931,-1104) step -1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1081,-1164) end (1231,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1081,-1164) end (1081,-1104) step 0 allowed=true sourceReached=true
+    in  FLASH_JUMP from r15 x 1045..1115 y -1164 start (1081,-1164) end (1494,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (965,-1104) step -1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (1265,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (1115,-1104) step 0 allowed=true sourceReached=true
+    in  JUMP from r18 x 595..755 y -1104 start (747,-1104) end (867,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (595,-1104) end (967,-1104) step 9 allowed=true sourceReached=true
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (676,-1104) end (1048,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r18 x 595..755 y -1104 start (755,-1104) end (905,-1104) step 1 allowed=true sourceReached=true
+    in  JUMP from r23 x 775..845 y -1044 start (810,-1044) end (911,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r23 x 775..845 y -1044 start (775,-1044) end (925,-1104) step 1 allowed=true sourceReached=true
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (775,-1044) end (1096,-1104) step 9 allowed=true sourceReached=true
+    in  TELEPORT from r23 x 775..845 y -1044 start (811,-1044) end (961,-1104) step 1 allowed=true sourceReached=true
+    in  TELEPORT from r23 x 775..845 y -1044 start (845,-1044) end (995,-1104) step 1 allowed=true sourceReached=true
+    in  FLASH_JUMP from r26 x 595..755 y -984 start (755,-984) end (997,-1104) step 9 allowed=true sourceReached=true
+    out DROP to r23 x 775..845 y -1044 start (919,-1104) end (807,-1044) step -9
+    out DROP to r43 x 1295..1655 y -504 start (1441,-1104) end (1655,-504) step 9
+    out DROP to r45 x 865..1074 y -420 start (889,-1104) end (889,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (894,-1104) end (894,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (901,-1104) end (901,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (910,-1104) end (910,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (919,-1104) end (919,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (928,-1104) end (928,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (937,-1104) end (937,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (946,-1104) end (946,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (955,-1104) end (955,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (964,-1104) end (964,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (973,-1104) end (973,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (982,-1104) end (982,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (991,-1104) end (991,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1000,-1104) end (1000,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1009,-1104) end (1009,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1018,-1104) end (1018,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1025,-1104) end (1025,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1027,-1104) end (1027,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1036,-1104) end (1036,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1045,-1104) end (1045,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1053,-1104) end (1053,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1058,-1104) end (1058,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1062,-1104) end (1062,-420) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1084,-1104) end (1084,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1087,-1104) end (1087,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1092,-1104) end (1092,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1099,-1104) end (1099,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1108,-1104) end (1108,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1115,-1104) end (1115,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1117,-1104) end (1117,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1126,-1104) end (1126,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1135,-1104) end (1135,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1144,-1104) end (1144,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1153,-1104) end (1153,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1162,-1104) end (1162,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1171,-1104) end (1171,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1180,-1104) end (1180,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1189,-1104) end (1189,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1198,-1104) end (1198,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1205,-1104) end (1205,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1207,-1104) end (1207,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1216,-1104) end (1216,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1225,-1104) end (1225,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1234,-1104) end (1234,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1243,-1104) end (1243,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1252,-1104) end (1252,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1261,-1104) end (1261,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1270,-1104) end (1270,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1279,-1104) end (1279,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1285,-1104) end (1285,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1288,-1104) end (1288,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1297,-1104) end (1297,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1306,-1104) end (1306,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1315,-1104) end (1315,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1324,-1104) end (1324,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1333,-1104) end (1333,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1342,-1104) end (1342,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1351,-1104) end (1351,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1360,-1104) end (1360,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1369,-1104) end (1369,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1378,-1104) end (1378,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1387,-1104) end (1387,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1396,-1104) end (1396,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1405,-1104) end (1405,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1414,-1104) end (1414,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1423,-1104) end (1423,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1432,-1104) end (1432,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1441,-1104) end (1441,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1450,-1104) end (1450,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1459,-1104) end (1459,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1466,-1104) end (1466,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1469,-1104) end (1469,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1470,-1104) end (1470,-746) step 0
+    out JUMP to r18 x 595..755 y -1104 start (873,-1104) end (753,-1104) step -9
+    out JUMP to r26 x 595..755 y -984 start (895,-1104) end (745,-984) step -9
+    out JUMP to r23 x 775..845 y -1044 start (954,-1104) end (819,-1044) step -9
+    out JUMP to r15 x 1045..1115 y -1164 start (968,-1104) end (1069,-1164) step 9
+    out JUMP to r15 x 1045..1115 y -1164 start (1080,-1104) end (1080,-1164) step 0
+    out JUMP to r15 x 1045..1115 y -1164 start (1170,-1104) end (1069,-1164) step -9
+    out JUMP to r43 x 1295..1655 y -504 start (1431,-1104) end (1655,-504) step 9
+    out TELEPORT to r18 x 595..755 y -1104 start (865,-1104) end (715,-1104) step -1
+    out FLASH_JUMP to r37 x 55..595 y -684 start (865,-1104) end (189,-684) step -9
+    out TELEPORT to r13 x 1135..1205 y -1224 start (1180,-1104) end (1180,-1224) step 0
+    out FLASH_JUMP to r26 x 595..755 y -984 start (1180,-1104) end (729,-984) step -9
+    out FLASH_JUMP to r43 x 1295..1655 y -504 start (1180,-1104) end (1655,-504) step 9
+    out FLASH_JUMP to r43 x 1295..1655 y -504 start (1495,-1104) end (1655,-504) step 9
+    reached high: r5 x -125..1025 y -1524
+    reached high: r6 x 1045..1115 y -1524
+    reached high: r7 x -215..-125 y -1464
+    reached high: r8 x 1135..1205 y -1464
+    reached high: r9 x -305..-215 y -1404
+    reached high: r10 x 1045..1115 y -1404
+    reached high: r11 x 1135..1205 y -1344
+    reached high: r12 x 1045..1115 y -1284
+
+## diagnose 100/100 (regions reached from sp: 105 of 145)
+target (215,-1107) ground (215,-1104) region 17 x 145..295 y -1104..-1104 rope=false reached=false
+    in  DROP from r5 x -125..1025 y -1524 start (192,-1524) end (192,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (195,-1524) end (195,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (198,-1524) end (198,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (201,-1524) end (201,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (207,-1524) end (207,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (213,-1524) end (213,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (219,-1524) end (219,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (225,-1524) end (225,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (231,-1524) end (231,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (237,-1524) end (237,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (243,-1524) end (243,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (249,-1524) end (249,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (255,-1524) end (255,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (258,-1524) end (258,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (261,-1524) end (261,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (267,-1524) end (267,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (273,-1524) end (273,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (277,-1524) end (277,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (280,-1524) end (280,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (283,-1524) end (283,-1104) step 0 allowed=false sourceReached=false
+    in  FLASH_JUMP from r9 x -305..-215 y -1404 start (-305,-1404) end (246,-1104) step 6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (595,-1104) end (288,-1104) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r21 x -120..-50 y -1044 start (-50,-1044) end (204,-1104) step 6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r22 x -30..40 y -1044 start (-30,-1044) end (224,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r22 x -30..40 y -1044 start (8,-1044) end (158,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r22 x -30..40 y -1044 start (8,-1044) end (262,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r22 x -30..40 y -1044 start (40,-1044) end (190,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r22 x -30..40 y -1044 start (40,-1044) end (294,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r24 x 58..145 y -988 start (145,-988) end (145,-1104) step 0 allowed=true sourceReached=false
+    out DROP to r37 x 55..595 y -684 start (167,-1104) end (167,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (170,-1104) end (170,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (173,-1104) end (173,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (177,-1104) end (177,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (181,-1104) end (181,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (183,-1104) end (183,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (189,-1104) end (189,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (195,-1104) end (195,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (201,-1104) end (201,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (207,-1104) end (207,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (213,-1104) end (213,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (215,-1104) end (215,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (219,-1104) end (219,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (225,-1104) end (225,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (231,-1104) end (231,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (237,-1104) end (237,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (243,-1104) end (243,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (249,-1104) end (249,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (255,-1104) end (255,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (259,-1104) end (259,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (261,-1104) end (261,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (265,-1104) end (265,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (268,-1104) end (268,-684) step 0
+    out DROP to r37 x 55..595 y -684 start (271,-1104) end (271,-684) step 0
+    out JUMP to r16 x 55..325 y -1104 start (196,-1104) end (129,-1104) step -6
+    out JUMP to r16 x 55..325 y -1104 start (238,-1104) end (305,-1104) step 6
+    out JUMP to r37 x 55..595 y -684 start (277,-1104) end (415,-684) step 6
+    out TELEPORT to r22 x -30..40 y -1044 start (145,-1104) end (-5,-1044) step -1
+    out TELEPORT to r24 x 58..145 y -988 start (145,-1104) end (145,-988) step 0
+    out FLASH_JUMP to r20 x -210..-140 y -1044 start (145,-1104) end (-208,-1044) step -6
+    out FLASH_JUMP to r31 x 595..755 y -864 start (145,-1104) end (649,-864) step 6
+    out TELEPORT to r16 x 55..325 y -1104 start (219,-1104) end (69,-1104) step -1
+    out FLASH_JUMP to r20 x -210..-140 y -1044 start (219,-1104) end (-140,-1044) step -6
+    out FLASH_JUMP to r26 x 595..755 y -984 start (219,-1104) end (630,-984) step 6
+    out FLASH_JUMP to r21 x -120..-50 y -1044 start (295,-1104) end (-58,-1044) step -6
+    out FLASH_JUMP to r18 x 595..755 y -1104 start (295,-1104) end (612,-1104) step 6
+target (322,-789) ground (322,-684) region 37 x 55..595 y -684..-684 rope=false reached=false
+    in  DROP from r5 x -125..1025 y -1524 start (336,-1524) end (336,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (339,-1524) end (339,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (342,-1524) end (342,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (345,-1524) end (345,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (351,-1524) end (351,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (357,-1524) end (357,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (363,-1524) end (363,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (369,-1524) end (369,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (375,-1524) end (375,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (381,-1524) end (381,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (387,-1524) end (387,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (393,-1524) end (393,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (399,-1524) end (399,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (405,-1524) end (405,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (411,-1524) end (411,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (417,-1524) end (417,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (423,-1524) end (423,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (429,-1524) end (429,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (435,-1524) end (435,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (441,-1524) end (441,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (447,-1524) end (447,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (450,-1524) end (450,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (453,-1524) end (453,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (459,-1524) end (459,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (465,-1524) end (465,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (471,-1524) end (471,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (477,-1524) end (477,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (483,-1524) end (483,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (486,-1524) end (486,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (489,-1524) end (489,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (492,-1524) end (492,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (585,-1524) end (585,-684) step 0 allowed=false sourceReached=false
+    in  FLASH_JUMP from r10 x 1045..1115 y -1404 start (1045,-1404) end (197,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r10 x 1045..1115 y -1404 start (1083,-1404) end (235,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r10 x 1045..1115 y -1404 start (1115,-1404) end (267,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (156,-1104) end (156,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (159,-1104) end (159,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (162,-1104) end (162,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (165,-1104) end (165,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (171,-1104) end (171,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (177,-1104) end (177,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (183,-1104) end (183,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (189,-1104) end (189,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (190,-1104) end (190,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (195,-1104) end (195,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (201,-1104) end (201,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (207,-1104) end (207,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (213,-1104) end (213,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (219,-1104) end (219,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (225,-1104) end (225,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (231,-1104) end (231,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (237,-1104) end (237,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (243,-1104) end (243,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (249,-1104) end (249,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (255,-1104) end (255,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (261,-1104) end (261,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (267,-1104) end (267,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (273,-1104) end (273,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (279,-1104) end (279,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (285,-1104) end (285,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (289,-1104) end (289,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (291,-1104) end (291,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (295,-1104) end (295,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (298,-1104) end (298,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r16 x 55..325 y -1104 start (301,-1104) end (301,-684) step 0 allowed=false sourceReached=false
+    in  JUMP from r16 x 55..325 y -1104 start (285,-1104) end (423,-684) step 6 allowed=true sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (167,-1104) end (167,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (170,-1104) end (170,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (173,-1104) end (173,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (177,-1104) end (177,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (181,-1104) end (181,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (183,-1104) end (183,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (189,-1104) end (189,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (195,-1104) end (195,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (201,-1104) end (201,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (207,-1104) end (207,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (213,-1104) end (213,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (215,-1104) end (215,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (219,-1104) end (219,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (225,-1104) end (225,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (231,-1104) end (231,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (237,-1104) end (237,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (243,-1104) end (243,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (249,-1104) end (249,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (255,-1104) end (255,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (259,-1104) end (259,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (261,-1104) end (261,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (265,-1104) end (265,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (268,-1104) end (268,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r17 x 145..295 y -1104 start (271,-1104) end (271,-684) step 0 allowed=false sourceReached=false
+    in  JUMP from r17 x 145..295 y -1104 start (277,-1104) end (415,-684) step 6 allowed=true sourceReached=false
+    in  JUMP from r18 x 595..755 y -1104 start (599,-1104) end (461,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (755,-1104) end (132,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r19 x 865..1495 y -1104 start (865,-1104) end (242,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (775,-1044) end (197,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (813,-1044) end (235,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (105,-988) end (234,-684) step 6 allowed=true sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (80,-988) end (80,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (83,-988) end (83,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (86,-988) end (86,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (90,-988) end (90,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (94,-988) end (94,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (96,-988) end (96,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (102,-988) end (102,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (108,-988) end (108,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (109,-988) end (109,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (114,-988) end (114,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (117,-988) end (117,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (120,-988) end (120,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r24 x 58..145 y -988 start (123,-988) end (123,-684) step 0 allowed=false sourceReached=false
+    in  JUMP from r26 x 595..755 y -984 start (657,-984) end (539,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r26 x 595..755 y -984 start (595,-984) end (62,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r26 x 595..755 y -984 start (675,-984) end (142,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r28 x -235..58 y -924 start (18,-924) end (134,-684) step 6 allowed=true sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (545,-924) end (429,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (527,-924) end (527,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (530,-924) end (530,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (533,-924) end (533,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (537,-924) end (537,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (543,-924) end (543,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (546,-924) end (546,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (549,-924) end (549,-684) step 0 allowed=false sourceReached=false
+    in  DROP from r29 x 505..575 y -924 start (552,-924) end (552,-684) step 0 allowed=false sourceReached=false
+    in  JUMP from r29 x 505..575 y -924 start (538,-924) end (430,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r29 x 505..575 y -924 start (575,-924) end (87,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r31 x 595..755 y -864 start (635,-864) end (531,-684) step -6 allowed=true sourceReached=false
+    in  JUMP from r31 x 595..755 y -864 start (645,-864) end (547,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r31 x 595..755 y -864 start (595,-864) end (152,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r31 x 595..755 y -864 start (675,-864) end (232,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r32 x 775..845 y -804 start (775,-804) end (377,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r32 x 775..845 y -804 start (813,-804) end (415,-684) step -6 allowed=true sourceReached=false
+    in  DROP from r34 x 595..755 y -744 start (635,-744) end (557,-684) step -6 allowed=true sourceReached=false
+    in  JUMP from r34 x 595..755 y -744 start (628,-744) end (550,-684) step -6 allowed=true sourceReached=false
+    in  TELEPORT from r34 x 595..755 y -744 start (595,-744) end (445,-684) step -1 allowed=true sourceReached=false
+    in  TELEPORT from r34 x 595..755 y -744 start (595,-744) end (595,-684) step 0 allowed=true sourceReached=false
+    in  FLASH_JUMP from r34 x 595..755 y -744 start (595,-744) end (242,-684) step -6 allowed=true sourceReached=false
+    in  TELEPORT from r34 x 595..755 y -744 start (675,-744) end (525,-684) step -1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r34 x 595..755 y -744 start (675,-744) end (322,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-215,-684) end (102,-684) step 6 allowed=true sourceReached=true
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-135,-684) end (182,-684) step 6 allowed=true sourceReached=true
+    in  TELEPORT from r36 x -215..-55 y -684 start (-55,-684) end (95,-684) step 1 allowed=true sourceReached=true
+    in  FLASH_JUMP from r36 x -215..-55 y -684 start (-55,-684) end (262,-684) step 6 allowed=true sourceReached=true
+    in  FLASH_JUMP from r38 x 755..865 y -684 start (755,-684) end (448,-684) step -6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r38 x 755..865 y -684 start (811,-684) end (504,-684) step -6 allowed=true sourceReached=false
+    out DROP to r47 x -145..305 y -384 start (95,-684) end (-33,-384) step -6
+    out DROP to r47 x -145..305 y -384 start (77,-684) end (77,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (80,-684) end (80,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (83,-684) end (83,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (87,-684) end (87,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (91,-684) end (91,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (93,-684) end (93,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (99,-684) end (99,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (105,-684) end (105,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (111,-684) end (111,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (117,-684) end (117,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (123,-684) end (123,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (129,-684) end (129,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (135,-684) end (135,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (141,-684) end (141,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (145,-684) end (145,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (147,-684) end (147,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (153,-684) end (153,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (159,-684) end (159,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (165,-684) end (165,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (171,-684) end (171,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (177,-684) end (177,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (183,-684) end (183,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (189,-684) end (189,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (195,-684) end (195,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (201,-684) end (201,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (207,-684) end (207,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (213,-684) end (213,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (219,-684) end (219,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (225,-684) end (225,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (231,-684) end (231,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (235,-684) end (235,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (237,-684) end (237,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (243,-684) end (243,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (249,-684) end (249,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (255,-684) end (255,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (261,-684) end (261,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (267,-684) end (267,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (273,-684) end (273,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (279,-684) end (279,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (285,-684) end (285,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (288,-684) end (288,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (290,-684) end (290,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (291,-684) end (291,-384) step 0
+    out DROP to r47 x -145..305 y -384 start (294,-684) end (294,-384) step 0
+    out DROP to r80 x -35..575 y 156 start (315,-684) end (315,156) step 0
+    out DROP to r48 x 325..485 y -384 start (335,-684) end (335,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (336,-684) end (336,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (339,-684) end (339,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (342,-684) end (342,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (345,-684) end (345,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (351,-684) end (351,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (357,-684) end (357,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (363,-684) end (363,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (369,-684) end (369,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (375,-684) end (375,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (381,-684) end (381,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (387,-684) end (387,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (393,-684) end (393,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (399,-684) end (399,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (405,-684) end (405,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (411,-684) end (411,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (415,-684) end (415,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (417,-684) end (417,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (423,-684) end (423,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (429,-684) end (429,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (435,-684) end (435,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (441,-684) end (441,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (447,-684) end (447,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (453,-684) end (453,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (459,-684) end (459,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (465,-684) end (465,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (468,-684) end (468,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (471,-684) end (471,-384) step 0
+    out DROP to r48 x 325..485 y -384 start (474,-684) end (474,-384) step 0
+    out DROP to r80 x -35..575 y 156 start (495,-684) end (495,156) step 0
+    out DROP to r59 x 505..575 y -84 start (515,-684) end (515,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (516,-684) end (516,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (519,-684) end (519,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (522,-684) end (522,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (525,-684) end (525,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (531,-684) end (531,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (537,-684) end (537,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (543,-684) end (543,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (549,-684) end (549,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (555,-684) end (555,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (557,-684) end (557,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (558,-684) end (558,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (561,-684) end (561,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (564,-684) end (564,-84) step 0
+    out DROP to r59 x 505..575 y -84 start (565,-684) end (565,-84) step 0
+    out DROP to r87 x 575..665 y 216 start (580,-684) end (580,216) step 0
+    out JUMP to r47 x -145..305 y -384 start (88,-684) end (-30,-384) step -6
+    out JUMP to r60 x 685..845 y -84 start (531,-684) end (699,-84) step 6
+    out JUMP to r52 x 685..845 y -204 start (537,-684) end (685,-204) step 6
+    out JUMP to r34 x 595..755 y -744 start (561,-684) end (610,-744) step 6
+    out TELEPORT to r36 x -215..-55 y -684 start (55,-684) end (-95,-684) step -1
+    out FLASH_JUMP to r39 x -325..-235 y -624 start (55,-684) end (-298,-624) step -6
+    out FLASH_JUMP to r40 x -215..-55 y -564 start (325,-684) end (-73,-564) step -6
+    out FLASH_JUMP to r45 x 865..1074 y -420 start (325,-684) end (865,-420) step 6
+    out TELEPORT to r34 x 595..755 y -744 start (595,-684) end (745,-744) step 1
+    out TELEPORT to r34 x 595..755 y -744 start (595,-684) end (595,-744) step 0
+    out FLASH_JUMP to r72 x 1225..1405 y 36 start (595,-684) end (1404,36) step 6
+target (982,-1209) ground (982,-1104) region 19 x 865..1495 y -1104..-1104 rope=false reached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1035,-1764) end (1035,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1125,-1764) end (1125,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1217,-1764) end (1217,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1220,-1764) end (1220,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1223,-1764) end (1223,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1227,-1764) end (1227,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1233,-1764) end (1233,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1239,-1764) end (1239,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1245,-1764) end (1245,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1251,-1764) end (1251,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1257,-1764) end (1257,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1263,-1764) end (1263,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1269,-1764) end (1269,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1275,-1764) end (1275,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1281,-1764) end (1281,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1287,-1764) end (1287,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1293,-1764) end (1293,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1299,-1764) end (1299,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1305,-1764) end (1305,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1311,-1764) end (1311,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1317,-1764) end (1317,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1323,-1764) end (1323,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1329,-1764) end (1329,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1335,-1764) end (1335,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1341,-1764) end (1341,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1347,-1764) end (1347,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1353,-1764) end (1353,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1359,-1764) end (1359,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1365,-1764) end (1365,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1371,-1764) end (1371,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1377,-1764) end (1377,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1383,-1764) end (1383,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1389,-1764) end (1389,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1395,-1764) end (1395,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1401,-1764) end (1401,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1407,-1764) end (1407,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1413,-1764) end (1413,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1419,-1764) end (1419,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1425,-1764) end (1425,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1431,-1764) end (1431,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1437,-1764) end (1437,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1439,-1764) end (1439,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1443,-1764) end (1443,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1446,-1764) end (1446,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1449,-1764) end (1449,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r1 x -1205..1475 y -1764 start (1452,-1764) end (1452,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1427,-1764) end (1427,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1430,-1764) end (1430,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1433,-1764) end (1433,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1437,-1764) end (1437,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1441,-1764) end (1441,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1443,-1764) end (1443,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1449,-1764) end (1449,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1455,-1764) end (1455,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1461,-1764) end (1461,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1467,-1764) end (1467,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1473,-1764) end (1473,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1476,-1764) end (1476,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1479,-1764) end (1479,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r2 x 1405..1565 y -1764 start (1482,-1764) end (1482,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r4 x 1495..1582 y -1674 start (1535,-1674) end (1355,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r4 x 1495..1582 y -1674 start (1528,-1674) end (1365,-1104) step -6 allowed=true sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (876,-1524) end (876,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (879,-1524) end (879,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (882,-1524) end (882,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (885,-1524) end (885,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (891,-1524) end (891,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (897,-1524) end (897,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (903,-1524) end (903,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (909,-1524) end (909,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (915,-1524) end (915,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (921,-1524) end (921,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (927,-1524) end (927,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (933,-1524) end (933,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (939,-1524) end (939,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (945,-1524) end (945,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (951,-1524) end (951,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (957,-1524) end (957,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (963,-1524) end (963,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (969,-1524) end (969,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (975,-1524) end (975,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (981,-1524) end (981,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (987,-1524) end (987,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (989,-1524) end (989,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (993,-1524) end (993,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (996,-1524) end (996,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (999,-1524) end (999,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r5 x -125..1025 y -1524 start (1002,-1524) end (1002,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r6 x 1045..1115 y -1524 start (1085,-1524) end (934,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r6 x 1045..1115 y -1524 start (1104,-1524) end (966,-1104) step -6 allowed=true sourceReached=false
+    in  DROP from r8 x 1135..1205 y -1464 start (1165,-1464) end (1304,-1104) step 6 allowed=true sourceReached=false
+    in  JUMP from r8 x 1135..1205 y -1464 start (1172,-1464) end (1300,-1104) step 6 allowed=true sourceReached=false
+    in  DROP from r10 x 1045..1115 y -1404 start (1085,-1404) end (957,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r10 x 1045..1115 y -1404 start (1078,-1404) end (960,-1104) step -6 allowed=true sourceReached=false
+    in  DROP from r11 x 1135..1205 y -1344 start (1165,-1344) end (1281,-1104) step 6 allowed=true sourceReached=false
+    in  JUMP from r11 x 1135..1205 y -1344 start (1172,-1344) end (1280,-1104) step 6 allowed=true sourceReached=false
+    in  DROP from r12 x 1045..1115 y -1284 start (1085,-1284) end (981,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r12 x 1045..1115 y -1284 start (1078,-1284) end (980,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r12 x 1045..1115 y -1284 start (1052,-1284) end (1150,-1104) step 6 allowed=true sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1165,-1224) end (1258,-1104) step 6 allowed=true sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1157,-1224) end (1157,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1160,-1224) end (1160,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1163,-1224) end (1163,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1167,-1224) end (1167,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1173,-1224) end (1173,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1176,-1224) end (1176,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1179,-1224) end (1179,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r13 x 1135..1205 y -1224 start (1182,-1224) end (1182,-1104) step 0 allowed=false sourceReached=false
+    in  JUMP from r13 x 1135..1205 y -1224 start (1171,-1224) end (1259,-1104) step 6 allowed=true sourceReached=false
+    in  JUMP from r13 x 1135..1205 y -1224 start (1198,-1224) end (1110,-1104) step -6 allowed=true sourceReached=false
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1135,-1224) end (1135,-1104) step 0 allowed=true sourceReached=false
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1173,-1224) end (1173,-1104) step 0 allowed=true sourceReached=false
+    in  TELEPORT from r13 x 1135..1205 y -1224 start (1205,-1224) end (1205,-1104) step 0 allowed=true sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1085,-1164) end (1007,-1104) step -6 allowed=true sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1075,-1164) end (1153,-1104) step 6 allowed=true sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1067,-1164) end (1067,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1070,-1164) end (1070,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1073,-1164) end (1073,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1077,-1164) end (1077,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1083,-1164) end (1083,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1086,-1164) end (1086,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1089,-1164) end (1089,-1104) step 0 allowed=false sourceReached=false
+    in  DROP from r15 x 1045..1115 y -1164 start (1092,-1164) end (1092,-1104) step 0 allowed=false sourceReached=false
+    in  JUMP from r15 x 1045..1115 y -1164 start (1078,-1164) end (1000,-1104) step -6 allowed=true sourceReached=false
+    in  JUMP from r15 x 1045..1115 y -1164 start (1064,-1164) end (1142,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (895,-1104) step -1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (1195,-1104) step 1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1045,-1164) end (1045,-1104) step 0 allowed=true sourceReached=false
+    in  FLASH_JUMP from r15 x 1045..1115 y -1164 start (1045,-1164) end (1409,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1083,-1164) end (933,-1104) step -1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1083,-1164) end (1233,-1104) step 1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1083,-1164) end (1083,-1104) step 0 allowed=true sourceReached=false
+    in  FLASH_JUMP from r15 x 1045..1115 y -1164 start (1083,-1164) end (1447,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (965,-1104) step -1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (1265,-1104) step 1 allowed=true sourceReached=false
+    in  TELEPORT from r15 x 1045..1115 y -1164 start (1115,-1164) end (1115,-1104) step 0 allowed=true sourceReached=false
+    in  FLASH_JUMP from r15 x 1045..1115 y -1164 start (1115,-1164) end (1479,-1104) step 6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (595,-1104) end (912,-1104) step 6 allowed=true sourceReached=false
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (675,-1104) end (992,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r18 x 595..755 y -1104 start (755,-1104) end (905,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r18 x 595..755 y -1104 start (755,-1104) end (1072,-1104) step 6 allowed=true sourceReached=false
+    in  JUMP from r23 x 775..845 y -1044 start (828,-1044) end (877,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r23 x 775..845 y -1044 start (775,-1044) end (925,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (775,-1044) end (1029,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r23 x 775..845 y -1044 start (813,-1044) end (963,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (813,-1044) end (1067,-1104) step 6 allowed=true sourceReached=false
+    in  TELEPORT from r23 x 775..845 y -1044 start (845,-1044) end (995,-1104) step 1 allowed=true sourceReached=false
+    in  FLASH_JUMP from r23 x 775..845 y -1044 start (845,-1044) end (1099,-1104) step 6 allowed=true sourceReached=false
+    out DROP to r23 x 775..845 y -1044 start (905,-1104) end (827,-1044) step -6
+    out DROP to r45 x 865..1074 y -420 start (887,-1104) end (887,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (890,-1104) end (890,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (893,-1104) end (893,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (897,-1104) end (897,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (901,-1104) end (901,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (903,-1104) end (903,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (909,-1104) end (909,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (915,-1104) end (915,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (921,-1104) end (921,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (927,-1104) end (927,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (933,-1104) end (933,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (939,-1104) end (939,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (945,-1104) end (945,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (951,-1104) end (951,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (957,-1104) end (957,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (963,-1104) end (963,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (969,-1104) end (969,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (975,-1104) end (975,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (981,-1104) end (981,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (987,-1104) end (987,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (993,-1104) end (993,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (999,-1104) end (999,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1005,-1104) end (1005,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1011,-1104) end (1011,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1017,-1104) end (1017,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1023,-1104) end (1023,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1025,-1104) end (1025,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1029,-1104) end (1029,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1035,-1104) end (1035,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1041,-1104) end (1041,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1045,-1104) end (1045,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1047,-1104) end (1047,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1053,-1104) end (1053,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1056,-1104) end (1056,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1059,-1104) end (1059,-420) step 0
+    out DROP to r45 x 865..1074 y -420 start (1062,-1104) end (1062,-420) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1084,-1104) end (1084,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1085,-1104) end (1085,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1088,-1104) end (1088,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1091,-1104) end (1091,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1095,-1104) end (1095,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1101,-1104) end (1101,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1107,-1104) end (1107,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1113,-1104) end (1113,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1115,-1104) end (1115,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1119,-1104) end (1119,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1125,-1104) end (1125,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1131,-1104) end (1131,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1135,-1104) end (1135,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1137,-1104) end (1137,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1143,-1104) end (1143,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1149,-1104) end (1149,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1155,-1104) end (1155,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1161,-1104) end (1161,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1167,-1104) end (1167,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1173,-1104) end (1173,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1179,-1104) end (1179,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1180,-1104) end (1180,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1185,-1104) end (1185,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1191,-1104) end (1191,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1197,-1104) end (1197,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1203,-1104) end (1203,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1205,-1104) end (1205,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1209,-1104) end (1209,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1215,-1104) end (1215,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1221,-1104) end (1221,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1227,-1104) end (1227,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1233,-1104) end (1233,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1239,-1104) end (1239,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1245,-1104) end (1245,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1251,-1104) end (1251,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1257,-1104) end (1257,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1263,-1104) end (1263,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1269,-1104) end (1269,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1275,-1104) end (1275,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1281,-1104) end (1281,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1285,-1104) end (1285,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1287,-1104) end (1287,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1293,-1104) end (1293,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1299,-1104) end (1299,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1305,-1104) end (1305,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1311,-1104) end (1311,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1317,-1104) end (1317,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1323,-1104) end (1323,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1329,-1104) end (1329,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1335,-1104) end (1335,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1341,-1104) end (1341,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1347,-1104) end (1347,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1353,-1104) end (1353,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1359,-1104) end (1359,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1365,-1104) end (1365,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1371,-1104) end (1371,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1377,-1104) end (1377,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1383,-1104) end (1383,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1389,-1104) end (1389,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1395,-1104) end (1395,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1401,-1104) end (1401,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1405,-1104) end (1405,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1407,-1104) end (1407,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1413,-1104) end (1413,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1419,-1104) end (1419,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1425,-1104) end (1425,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1431,-1104) end (1431,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1437,-1104) end (1437,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1443,-1104) end (1443,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1449,-1104) end (1449,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1455,-1104) end (1455,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1459,-1104) end (1459,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1461,-1104) end (1461,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1465,-1104) end (1465,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1468,-1104) end (1468,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1469,-1104) end (1469,-746) step 0
+    out DROP to r33 x 1074..1582 y -746 start (1471,-1104) end (1471,-746) step 0
+    out JUMP to r23 x 775..845 y -1044 start (894,-1104) end (816,-1044) step -6
+    out JUMP to r32 x 775..845 y -804 start (927,-1104) end (809,-804) step -6
+    out JUMP to r15 x 1045..1115 y -1164 start (1023,-1104) end (1072,-1164) step 6
+    out JUMP to r15 x 1045..1115 y -1164 start (1080,-1104) end (1080,-1164) step 0
+    out JUMP to r15 x 1045..1115 y -1164 start (1136,-1104) end (1087,-1164) step -6
+    out JUMP to r33 x 1074..1582 y -746 start (1436,-1104) end (1564,-746) step 6
+    out JUMP to r43 x 1295..1655 y -504 start (1469,-1104) end (1637,-504) step 6
+    out TELEPORT to r18 x 595..755 y -1104 start (865,-1104) end (715,-1104) step -1
+    out FLASH_JUMP to r37 x 55..595 y -684 start (865,-1104) end (242,-684) step -6
+    out TELEPORT to r13 x 1135..1205 y -1224 start (1180,-1104) end (1180,-1224) step 0
+    out FLASH_JUMP to r43 x 1295..1655 y -504 start (1180,-1104) end (1655,-504) step 6
+    out FLASH_JUMP to r43 x 1295..1655 y -504 start (1495,-1104) end (1655,-504) step 6
+    reached high: r36 x -215..-55 y -684
+    reached high: r39 x -325..-235 y -624
+    reached high: r40 x -215..-55 y -564
+    reached high: r42 x -325..-235 y -504
+    reached high: r44 x -215..-145 y -444
+    reached high: r46 x -325..-215 y -384
+    reached high: r47 x -145..305 y -384
+    reached high: r48 x 325..485 y -384

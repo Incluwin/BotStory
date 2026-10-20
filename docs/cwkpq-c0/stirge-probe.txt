@@ -1,0 +1,8 @@
+[CWKPQ-C0 stirge] stock: touch() at glpq_s=5 -> javax.script.ScriptException: TypeError: invokeMember (killAllMonsters) on server.maps.MapleMap failed due to: Arity error - expected: 0 actual: 1 in <eval> at line number 5 at column number 5
+[CWKPQ-C0 stirge] stock: eim calls = [eventInstanceManager.getIntProperty(
+    "glpq_s"
+);]
+[CWKPQ-C0 stirge] arity fixed only: touch() at glpq_s=5 -> javax.script.ScriptException: ReferenceError: eim is not defined in <eval> at line number 6 at column number 5
+[CWKPQ-C0 stirge] arity fixed only: eim calls = [eventInstanceManager.getIntProperty(
+    "glpq_s"
+);]

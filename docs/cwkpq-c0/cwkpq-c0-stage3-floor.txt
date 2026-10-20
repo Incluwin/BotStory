@@ -1,0 +1,16 @@
+## 610030300 sweep: A* (findNextEdgeSelectionVaried) result per target / graph BFS reach, down-jump forbidden (CANNOTJUMPDOWN) | with down-jump allowed (control)
+100/100 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO next00-floor-x100=NO/bfs-no|NO next00-floor-x310=NO/bfs-no|NO
+100/100 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO next00-floor-x100=NO/bfs-no|NO next00-floor-x310=NO/bfs-no|NO
+100/100 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=NO/bfs-no|NO 6109003=NO/bfs-no|NO 6109004=NO/bfs-no|NO next00=NO/bfs-no|NO next00-floor-x100=NO/bfs-no|NO next00-floor-x310=NO/bfs-no|NO
+120/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+120/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+120/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+145/110 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+145/110 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+145/110 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+Haste20 145/120 from sp (-483,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+Haste20 145/120 from floor left end (-590,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+Haste20 145/120 from floor right end (950,1536) r145: 6109000=OK/bfs-yes|OK 6109001=OK/bfs-yes|OK 6109002=OK/bfs-yes|OK 6109003=OK/bfs-yes|OK 6109004=OK/bfs-yes|OK next00=NO/bfs-no|OK next00-floor-x100=OK/bfs-yes|OK next00-floor-x310=OK/bfs-yes|OK
+ground (100,-1110) -> (100,-1104) region 16 foothold 424
+ground (310,-1110) -> (310,-1104) region 16 foothold 479
+ground (215,-1107) -> (215,-1104) region 17 foothold 442

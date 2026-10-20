@@ -1,0 +1,336 @@
+
+## 610030300 fieldLimit=0x22378 CANNOTJUMPDOWN=true MOVEMENTSKILLS=false (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-684
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=0 {} cost=10720
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=15 {JUMP=15} lowestY=1536 cost=14014
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+base 100/100 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+gear 120/110 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-684
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=5 {JUMP=4, DROP=1} lowestY=1536 cost=8777
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=15 {JUMP=15} lowestY=1536 cost=12250
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+gear 120/110 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+haste 140/120 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-1524
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=3 {JUMP=2, DROP=1} lowestY=1536 cost=7618
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=15 {JUMP=15} lowestY=1536 cost=13685
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): COMPLETE edges=38 {JUMP=38} lowestY=1536 cost=35943
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): COMPLETE edges=45 {JUMP=45} lowestY=1536 cost=43041
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): COMPLETE edges=55 {JUMP=54, DROP=1} lowestY=1536 cost=56319
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region 145 x -595..955 y 1536
+haste 140/120 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+flashjump 100/100 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-1524
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=3 {JUMP=1, FLASH_JUMP=2} lowestY=1536 cost=7512
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=15 {JUMP=12, FLASH_JUMP=3} lowestY=1536 cost=13300
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): COMPLETE edges=39 {JUMP=27, FLASH_JUMP=12} lowestY=1536 cost=29562
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): COMPLETE edges=46 {JUMP=32, FLASH_JUMP=14} lowestY=1536 cost=38276
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): COMPLETE edges=57 {JUMP=39, FLASH_JUMP=15, DROP=3} lowestY=1536 cost=52398
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): COMPLETE edges=47 {JUMP=32, FLASH_JUMP=15} lowestY=1536 cost=39734
+flashjump 100/100 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+flashjump+haste 140/120 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-1524
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=2 {JUMP=1, FLASH_JUMP=1} lowestY=1536 cost=6286
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=8 {JUMP=1, FLASH_JUMP=7} lowestY=1536 cost=8585
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): COMPLETE edges=23 {JUMP=4, FLASH_JUMP=19} lowestY=1536 cost=21810
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): COMPLETE edges=27 {JUMP=4, FLASH_JUMP=23} lowestY=1536 cost=25386
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): COMPLETE edges=31 {JUMP=6, FLASH_JUMP=25} lowestY=1536 cost=29292
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): COMPLETE edges=29 {JUMP=6, FLASH_JUMP=23} lowestY=1536 cost=27284
+flashjump+haste 140/120 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+teleport 100/100 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-1524
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=7 {JUMP=1, TELEPORT=5, DROP=1} lowestY=1536 cost=7392
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=10 {JUMP=2, TELEPORT=8} lowestY=1536 cost=6780
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): COMPLETE edges=30 {JUMP=1, TELEPORT=29} lowestY=1536 cost=17536
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): COMPLETE edges=35 {JUMP=1, TELEPORT=34} lowestY=1536 cost=21166
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): COMPLETE edges=43 {JUMP=4, TELEPORT=39} lowestY=1536 cost=32852
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): COMPLETE edges=43 {JUMP=3, TELEPORT=38, DROP=2} lowestY=1536 cost=32996
+teleport 100/100 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+teleport+haste 140/120 | from spawn sp (-483,1470) ground (-483,1536) region 145 | highest reachable ground y=-1524
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): COMPLETE edges=7 {JUMP=1, TELEPORT=5, DROP=1} lowestY=1536 cost=6111
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): COMPLETE edges=8 {JUMP=1, TELEPORT=7} lowestY=1536 cost=5204
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): COMPLETE edges=29 {JUMP=1, TELEPORT=28} lowestY=1536 cost=13782
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): COMPLETE edges=34 {JUMP=1, TELEPORT=33} lowestY=1536 cost=16589
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): COMPLETE edges=42 {JUMP=3, TELEPORT=39} lowestY=1536 cost=25290
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): COMPLETE edges=42 {JUMP=2, TELEPORT=38, DROP=2} lowestY=1536 cost=25367
+teleport+haste 140/120 | from bottom right (1300,1535) ground (1300,1500) region -1 | highest reachable ground y=2147483647
+    -> sigil 6109000 (857,1431) ground (857,1536) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109001 (240,531) ground (240,636) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109002 (322,-789) ground (322,-684) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109003 (982,-1209) ground (982,-1104) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> sigil 6109004 (-480,-1269) ground (-480,-1164) (dy 105): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+    -> top portal next00 (215,-1107) ground (215,-1104) (dy 3): UNREACHABLE edges=0 {} cost=2147483647 closest region -1
+
+## 610030400 fieldLimit=0x13f8 CANNOTJUMPDOWN=false MOVEMENTSKILLS=false (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=16 {JUMP=14, DROP=2} lowestY=636 cost=18608
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=22 {JUMP=21, DROP=1} lowestY=636 cost=21196
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=21194
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=21314
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=24 {JUMP=24} lowestY=636 cost=22158
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=20 {JUMP=19, DROP=1} lowestY=636 cost=20632
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=14 {JUMP=11, DROP=3} lowestY=636 cost=17092
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=12 {JUMP=9, DROP=3} lowestY=636 cost=17360
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=3264
+gear 120/110 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=16 {JUMP=15, DROP=1} lowestY=636 cost=15329
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=22 {JUMP=21, DROP=1} lowestY=636 cost=18219
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=19413
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=19340
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=24 {JUMP=24} lowestY=636 cost=19259
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=20 {JUMP=19, DROP=1} lowestY=636 cost=17367
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=13 {JUMP=12, DROP=1} lowestY=636 cost=14155
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=11 {JUMP=10, DROP=1} lowestY=636 cost=14342
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=2720
+haste 140/120 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=15 {JUMP=15} lowestY=636 cost=15147
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=21 {JUMP=21} lowestY=636 cost=18928
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=21427
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=25 {JUMP=25} lowestY=636 cost=21227
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=24 {JUMP=24} lowestY=636 cost=20682
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=19 {JUMP=19} lowestY=636 cost=17705
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=12 {JUMP=11, DROP=1} lowestY=636 cost=13394
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=10 {JUMP=9, DROP=1} lowestY=636 cost=12753
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=2331
+flashjump 100/100 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=13 {JUMP=9, FLASH_JUMP=4} lowestY=636 cost=15016
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=20 {JUMP=16, FLASH_JUMP=4} lowestY=636 cost=18752
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=25 {JUMP=23, FLASH_JUMP=2} lowestY=636 cost=20622
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=25 {JUMP=24, FLASH_JUMP=1} lowestY=636 cost=20724
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=23 {JUMP=20, FLASH_JUMP=3} lowestY=636 cost=19588
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=18 {JUMP=14, FLASH_JUMP=4} lowestY=636 cost=17628
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=10 {JUMP=7, FLASH_JUMP=3} lowestY=636 cost=13426
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=8 {JUMP=5, FLASH_JUMP=3} lowestY=636 cost=12566
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=3264
+flashjump+haste 140/120 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=9 {JUMP=2, FLASH_JUMP=7} lowestY=636 cost=11545
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=13 {JUMP=2, FLASH_JUMP=11} lowestY=636 cost=13631
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=13 {JUMP=1, FLASH_JUMP=12} lowestY=636 cost=14155
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=14 {JUMP=3, FLASH_JUMP=11} lowestY=636 cost=14132
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=14 {JUMP=2, FLASH_JUMP=12} lowestY=636 cost=14076
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=11 {JUMP=2, FLASH_JUMP=9} lowestY=636 cost=12853
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=7 {JUMP=2, FLASH_JUMP=5} lowestY=636 cost=10166
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=6 {JUMP=2, FLASH_JUMP=4} lowestY=636 cost=9559
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=2331
+teleport 100/100 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=12 {JUMP=1, TELEPORT=11} lowestY=636 cost=9724
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=15 {JUMP=1, TELEPORT=14} lowestY=636 cost=10366
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=16 {JUMP=1, TELEPORT=15} lowestY=636 cost=9892
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=14 {JUMP=1, TELEPORT=13} lowestY=636 cost=10064
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=16 {JUMP=1, TELEPORT=15} lowestY=636 cost=10380
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=14 {JUMP=1, TELEPORT=13} lowestY=636 cost=9976
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=10 {JUMP=1, TELEPORT=9} lowestY=636 cost=9656
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=10 {JUMP=1, TELEPORT=9} lowestY=636 cost=9384
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=3264
+teleport+haste 140/120 | from spawn sp (-841,584) ground (-841,636) region 158 | highest reachable ground y=-864
+    -> spot A (1181,-189) row0 ground (1181,-84) (dy 105): COMPLETE edges=12 {JUMP=1, TELEPORT=11} lowestY=636 cost=7410
+    -> spot B (-799,-668) row1 ground (-799,-564) (dy 104): COMPLETE edges=15 {JUMP=1, TELEPORT=14} lowestY=636 cost=7962
+    -> spot C (7,-969) row2 ground (7,-864) (dy 105): COMPLETE edges=16 {JUMP=1, TELEPORT=15} lowestY=636 cost=7701
+    -> spot D (374,-969) row3 ground (374,-864) (dy 105): COMPLETE edges=14 {JUMP=1, TELEPORT=13} lowestY=636 cost=7739
+    -> spot E (998,-847) row4 ground (998,-744) (dy 103): COMPLETE edges=16 {JUMP=1, TELEPORT=15} lowestY=636 cost=8050
+    -> spot F (1175,-547) row5 ground (1175,-444) (dy 103): COMPLETE edges=14 {JUMP=1, TELEPORT=13} lowestY=636 cost=7676
+    -> spot G (-804,52) row6 ground (-804,156) (dy 104): COMPLETE edges=10 {JUMP=1, TELEPORT=9} lowestY=636 cost=7241
+    -> spot H (1176,172) row7 ground (1176,276) (dy 104): COMPLETE edges=10 {JUMP=1, TELEPORT=9} lowestY=636 cost=7082
+    -> exit next00 (-433,635) ground (-433,636) (dy 1): COMPLETE edges=0 {} cost=2331
+
+## 610030500 fieldLimit=0x37c relic drop spots
+base 100/100 | 6109005 warrior 4001259 @(781,-777) | area x 1093..1293 y -665..-454 | standing spots whose drop lands inside: 53 x 1093..1288 ground y [-659, -658, -657, -656, -655, -653, -652, -650, -649, -646, -600, -599, -598, -597, -595, -593, -592, -591, -590, -589, -588, -587, -586, -585, -582, -580, -578, -576, -573, -571, -569, -567, -565, -564, -563, -562, -561]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1093,-586) landing (1093,-586) edges=15 {JUMP=15} lowestY=396 cost=16278
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1093,-586) landing (1093,-586) edges=10 {JUMP=10} lowestY=156 cost=18158
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1093,-586) landing (1093,-586) edges=6 {JUMP=5, DROP=1} lowestY=-324 cost=9162
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1093,-586) landing (1093,-586) edges=4 {JUMP=2, DROP=2} lowestY=-554 cost=8952
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1093,-586) landing (1093,-586) edges=11 {JUMP=11} lowestY=156 cost=14518
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1093,-586) landing (1093,-586) edges=5 {JUMP=5} lowestY=-324 cost=11128
+base 100/100 | 6109006 bowman 4001258 @(1249,-281) | area x 1280..1444 y -453..-316 | standing spots whose drop lands inside: 18 x 1280..1440 ground y [-451, -449, -448, -447, -446, -445, -444, -443, -442, -441, -440, -437, -435, -429, -422, -415]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1280,-415) landing (1280,-415) edges=13 {JUMP=13} lowestY=396 cost=13722
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1280,-415) landing (1280,-415) edges=8 {JUMP=8} lowestY=156 cost=15602
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1280,-415) landing (1280,-415) edges=7 {JUMP=5, DROP=2} lowestY=-324 cost=11302
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1280,-415) landing (1280,-415) edges=5 {JUMP=2, DROP=3} lowestY=-427 cost=11092
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1280,-415) landing (1280,-415) edges=9 {JUMP=9} lowestY=156 cost=11962
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1280,-415) landing (1280,-415) edges=5 {JUMP=4, DROP=1} lowestY=-324 cost=9460
+base 100/100 | 6109007 mage 4001257 @(794,-782) | area x 795..994 y -959..-831 | standing spots whose drop lands inside: 40 x 795..990 ground y [-955, -954, -952, -951, -950, -949, -947, -946, -943, -942, -939, -938, -935, -933, -931, -927, -926, -924, -920, -917, -916, -909, -901, -899, -898, -897, -895, -891, -886, -884, -882]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (795,-916) landing (795,-916) edges=20 {JUMP=20} lowestY=396 cost=19714
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (795,-916) landing (795,-916) edges=15 {JUMP=15} lowestY=156 cost=21594
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (795,-916) landing (795,-916) edges=11 {JUMP=10, DROP=1} lowestY=-324 cost=14270
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (795,-916) landing (795,-916) edges=3 {JUMP=3} lowestY=-804 cost=6668
+    from in04 (2454,153) ground (2454,156): COMPLETE to (795,-916) landing (795,-916) edges=16 {JUMP=16} lowestY=156 cost=17954
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (795,-916) landing (795,-916) edges=10 {JUMP=10} lowestY=-324 cost=14564
+base 100/100 | 6109008 thief 4001256 @(1332,-835) | area x 1343..1534 y -1027..-860 | standing spots whose drop lands inside: 39 x 1343..1533 ground y [-987, -984, -983, -980, -978, -976, -974, -972, -970, -968, -965, -964, -961, -960, -957, -956, -955, -951, -945, -939, -932, -926, -920, -914, -910, -909, -908, -903, -900, -899, -897, -892, -887]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1343,-887) landing (1343,-887) edges=20 {JUMP=20} lowestY=396 cost=17658
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1343,-887) landing (1343,-887) edges=15 {JUMP=15} lowestY=156 cost=19538
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1343,-887) landing (1343,-887) edges=11 {JUMP=10, DROP=1} lowestY=-324 cost=12214
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1343,-887) landing (1343,-887) edges=3 {JUMP=3} lowestY=-804 cost=11052
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1343,-887) landing (1343,-887) edges=16 {JUMP=16} lowestY=156 cost=15898
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1343,-887) landing (1343,-887) edges=10 {JUMP=10} lowestY=-324 cost=12508
+base 100/100 | 6109009 pirate 4001260 @(1297,-484) | area x 1266..1480 y -607..-506 | standing spots whose drop lands inside: 47 x 1266..1476 ground y [-565, -564, -563, -562, -561, -560, -559, -558, -557, -555, -554, -553, -552, -551, -550, -549, -548, -546, -545, -544, -543, -542, -540, -536, -463, -462, -460, -459, -458]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1266,-565) landing (1266,-565) edges=15 {JUMP=15} lowestY=396 cost=14894
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1266,-565) landing (1266,-565) edges=10 {JUMP=10} lowestY=156 cost=16774
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1266,-565) landing (1266,-565) edges=6 {JUMP=5, DROP=1} lowestY=-324 cost=10546
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1266,-565) landing (1266,-565) edges=4 {JUMP=2, DROP=2} lowestY=-554 cost=10336
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1266,-565) landing (1266,-565) edges=11 {JUMP=11} lowestY=156 cost=13134
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1266,-565) landing (1266,-565) edges=5 {JUMP=5} lowestY=-324 cost=9744
+haste 140/120 | 6109005 warrior 4001259 @(781,-777) | area x 1093..1293 y -665..-454 | standing spots whose drop lands inside: 53 x 1093..1288 ground y [-659, -658, -657, -656, -655, -653, -652, -650, -649, -646, -600, -599, -598, -597, -595, -593, -592, -591, -590, -589, -588, -587, -586, -585, -582, -580, -578, -576, -573, -571, -569, -567, -565, -564, -563, -562, -561]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1093,-586) landing (1093,-586) edges=14 {JUMP=13, DROP=1} lowestY=396 cost=10765
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1093,-586) landing (1093,-586) edges=14 {JUMP=12, DROP=2} lowestY=156 cost=11865
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1093,-586) landing (1093,-586) edges=6 {JUMP=5, DROP=1} lowestY=-324 cost=6332
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1093,-586) landing (1093,-586) edges=4 {JUMP=1, DROP=3} lowestY=-584 cost=6216
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1093,-586) landing (1093,-586) edges=11 {JUMP=10, DROP=1} lowestY=156 cost=9261
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1093,-586) landing (1093,-586) edges=8 {JUMP=6, DROP=2} lowestY=-321 cost=7618
+haste 140/120 | 6109006 bowman 4001258 @(1249,-281) | area x 1280..1444 y -453..-316 | standing spots whose drop lands inside: 18 x 1280..1440 ground y [-451, -449, -448, -447, -446, -445, -444, -443, -442, -441, -440, -437, -435, -429, -422, -415]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1280,-415) landing (1280,-415) edges=11 {JUMP=11} lowestY=396 cost=9775
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1280,-415) landing (1280,-415) edges=11 {JUMP=10, DROP=1} lowestY=156 cost=10875
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1280,-415) landing (1280,-415) edges=7 {JUMP=5, DROP=2} lowestY=-324 cost=8003
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1280,-415) landing (1280,-415) edges=5 {JUMP=1, DROP=4} lowestY=-427 cost=7887
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1280,-415) landing (1280,-415) edges=8 {JUMP=8} lowestY=156 cost=8271
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1280,-415) landing (1280,-415) edges=5 {JUMP=4, DROP=1} lowestY=-324 cost=6595
+haste 140/120 | 6109007 mage 4001257 @(794,-782) | area x 795..994 y -959..-831 | standing spots whose drop lands inside: 40 x 795..990 ground y [-955, -954, -952, -951, -950, -949, -947, -946, -943, -942, -939, -938, -935, -933, -931, -927, -926, -924, -920, -917, -916, -909, -901, -899, -898, -897, -895, -891, -886, -884, -882]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (795,-916) landing (795,-916) edges=16 {JUMP=16} lowestY=396 cost=13673
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (795,-916) landing (795,-916) edges=16 {JUMP=15, DROP=1} lowestY=156 cost=14773
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (795,-916) landing (795,-916) edges=10 {JUMP=9, DROP=1} lowestY=-324 cost=10331
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (795,-916) landing (795,-916) edges=3 {JUMP=3} lowestY=-804 cost=4667
+    from in04 (2454,153) ground (2454,156): COMPLETE to (795,-916) landing (795,-916) edges=13 {JUMP=13} lowestY=156 cost=12169
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (795,-916) landing (795,-916) edges=10 {JUMP=9, DROP=1} lowestY=-321 cost=10526
+haste 140/120 | 6109008 thief 4001256 @(1332,-835) | area x 1343..1534 y -1027..-860 | standing spots whose drop lands inside: 39 x 1343..1533 ground y [-987, -984, -983, -980, -978, -976, -974, -972, -970, -968, -965, -964, -961, -960, -957, -956, -955, -951, -945, -939, -932, -926, -920, -914, -910, -909, -908, -903, -900, -899, -897, -892, -887]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1343,-887) landing (1343,-887) edges=16 {JUMP=16} lowestY=396 cost=12233
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1343,-887) landing (1343,-887) edges=16 {JUMP=15, DROP=1} lowestY=156 cost=13333
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1343,-887) landing (1343,-887) edges=10 {JUMP=9, DROP=1} lowestY=-324 cost=8891
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1343,-887) landing (1343,-887) edges=3 {JUMP=3} lowestY=-804 cost=7798
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1343,-887) landing (1343,-887) edges=13 {JUMP=13} lowestY=156 cost=10729
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1343,-887) landing (1343,-887) edges=10 {JUMP=9, DROP=1} lowestY=-321 cost=9086
+haste 140/120 | 6109009 pirate 4001260 @(1297,-484) | area x 1266..1480 y -607..-506 | standing spots whose drop lands inside: 47 x 1266..1476 ground y [-565, -564, -563, -562, -561, -560, -559, -558, -557, -555, -554, -553, -552, -551, -550, -549, -548, -546, -545, -544, -543, -542, -540, -536, -463, -462, -460, -459, -458]
+    from spawn sp (1215,342) ground (1215,396): COMPLETE to (1266,-565) landing (1266,-565) edges=12 {JUMP=12} lowestY=396 cost=9842
+    from in01 warrior return (-25,153) ground (-25,156): COMPLETE to (1266,-565) landing (1266,-565) edges=12 {JUMP=11, DROP=1} lowestY=156 cost=10942
+    from in02 (-26,-327) ground (-26,-324): COMPLETE to (1266,-565) landing (1266,-565) edges=6 {JUMP=5, DROP=1} lowestY=-324 cost=7320
+    from in03 (-22,-809) ground (-22,-804): COMPLETE to (1266,-565) landing (1266,-565) edges=4 {JUMP=1, DROP=3} lowestY=-584 cost=7204
+    from in04 (2454,153) ground (2454,156): COMPLETE to (1266,-565) landing (1266,-565) edges=9 {JUMP=9} lowestY=156 cost=8338
+    from in05 (2456,-326) ground (2456,-324): COMPLETE to (1266,-565) landing (1266,-565) edges=6 {JUMP=5, DROP=1} lowestY=-321 cost=6695
+
+## 610030510 fieldLimit=0x233f8 CANNOTJUMPDOWN=true MOVEMENTSKILLS=false (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=23 {JUMP=5, CLIMB=18} lowestY=156 cost=72758
+gear 120/110 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=18 {JUMP=2, CLIMB=16} lowestY=156 cost=61256
+haste 140/120 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=16 {CLIMB=16} lowestY=156 cost=52342
+flashjump 100/100 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=22 {FLASH_JUMP=6, CLIMB=16} lowestY=156 cost=61524
+flashjump+haste 140/120 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=22 {FLASH_JUMP=6, CLIMB=16} lowestY=156 cost=46646
+teleport 100/100 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=22 {TELEPORT=6, CLIMB=16} lowestY=156 cost=65100
+teleport+haste 140/120 | from spawn sp (0,0) ground (0,156) region 24 | highest reachable ground y=-2244
+    -> master 9201107 (117,-2259) ground (117,-2244) (dy 15): COMPLETE edges=22 {TELEPORT=6, CLIMB=16} lowestY=156 cost=49271
+
+## 610020000 fieldLimit=0x4a CANNOTJUMPDOWN=false MOVEMENTSKILLS=true (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=41373
+base 100/100 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=42477
+gear 120/110 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=33 {JUMP=29, CLIMB=4} lowestY=208 cost=34581
+gear 120/110 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=33 {JUMP=29, CLIMB=4} lowestY=208 cost=35501
+haste 140/120 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=33217
+haste 140/120 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=34005
+flashjump 100/100 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=41373
+flashjump 100/100 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=42477
+flashjump+haste 140/120 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=33217
+flashjump+haste 140/120 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=34005
+teleport 100/100 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=41373
+teleport 100/100 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=25 {JUMP=19, DROP=2, CLIMB=4} lowestY=208 cost=42477
+teleport+haste 140/120 | from spawn sp (-1672,-32) ground (-1672,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=33217
+teleport+haste 140/120 | from from Forgotten Path CM1_AA (-1810,83) ground (-1810,88) region 59 | highest reachable ground y=-1472
+    -> CM1_E (1882,-1476) ground (1882,-1472) (dy 4): COMPLETE edges=24 {JUMP=17, DROP=3, CLIMB=4} lowestY=208 cost=34005
+
+## 610020001 fieldLimit=0x4a CANNOTJUMPDOWN=false MOVEMENTSKILLS=true (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=42331
+base 100/100 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=41715
+gear 120/110 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=27, DROP=2, CLIMB=4} lowestY=-32 cost=34347
+gear 120/110 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=27, DROP=2, CLIMB=4} lowestY=-32 cost=33833
+haste 140/120 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27893
+haste 140/120 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27453
+flashjump 100/100 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=42331
+flashjump 100/100 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=41715
+flashjump+haste 140/120 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27893
+flashjump+haste 140/120 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27453
+teleport 100/100 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=42331
+teleport 100/100 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=33 {JUMP=25, DROP=4, CLIMB=4} lowestY=-32 cost=41715
+teleport+haste 140/120 | from arrival CM2_A (-2085,-817) ground (-2085,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27893
+teleport+haste 140/120 | from spawn sp (-2008,-943) ground (-2008,-812) region 88 | highest reachable ground y=-1892
+    -> CM2_F (1784,-1655) ground (1784,-1652) (dy 3): COMPLETE edges=31 {JUMP=25, DROP=4, CLIMB=2} lowestY=-692 cost=27453
+
+## 610020002 fieldLimit=0x8 CANNOTJUMPDOWN=false MOVEMENTSKILLS=false (bots then move at base 100/100: AgentMovementProfile.fromCharacter)
+base 100/100 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=6 {DROP=3, CLIMB=2, PORTAL=1} lowestY=28 cost=10321
+gear 120/110 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=4 {JUMP=1, CLIMB=2, PORTAL=1} lowestY=28 cost=8440
+haste 140/120 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=5 {DROP=2, CLIMB=2, PORTAL=1} lowestY=28 cost=8096
+flashjump 100/100 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=5 {FLASH_JUMP=1, DROP=1, CLIMB=2, PORTAL=1} lowestY=28 cost=8597
+flashjump+haste 140/120 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=5 {FLASH_JUMP=1, DROP=1, CLIMB=2, PORTAL=1} lowestY=28 cost=7115
+teleport 100/100 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=7 {TELEPORT=2, DROP=2, CLIMB=2, PORTAL=1} lowestY=28 cost=9247
+teleport+haste 140/120 | from arrival CM3_1 (164,24) ground (164,28) region 39 | highest reachable ground y=-2012
+    -> CM3_2 to Cavern of Pain (-1196,-938) ground (-1196,-932) (dy 6): COMPLETE edges=6 {TELEPORT=1, DROP=2, CLIMB=2, PORTAL=1} lowestY=28 cost=7758

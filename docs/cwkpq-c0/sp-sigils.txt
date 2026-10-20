@@ -1,0 +1,33 @@
+100 mapleroyals-optimal-2026-warrior-first-job (Lv10-30): NO sigil skill
+200 mapleroyals-optimal-2026-magician-first-job (Lv8-30): 2001005 2001005 +20 (SP #17 of the job, ~Lv14)
+300 mapleroyals-optimal-2026-bowman-first-job (Lv10-30): NO sigil skill
+400 mapleroyals-optimal-2026-rogue-assassin-first-job (Lv10-30): NO sigil skill
+400 mapleroyals-optimal-2026-rogue-bandit-first-job (Lv10-30): NO sigil skill
+500 mapleroyals-optimal-2026-pirate-brawler-first-job (Lv10-30): 5001001 5001001 +1 (SP #1 of the job, ~Lv10); 5001001 5001001 +19 (SP #22 of the job, ~Lv17)
+500 mapleroyals-optimal-2026-pirate-gunslinger-first-job (Lv10-30): NO sigil skill
+111 mapleroyals-optimal-2026-crusader (Lv70-120): Shout 1111008 +30 (SP #91 of the job, ~Lv100)
+121 mapleroyals-optimal-2026-white-knight (Lv70-120): Charged Blow 1211002 +3 (SP #91 of the job, ~Lv100); Charged Blow 1211002 +27 (SP #125 of the job, ~Lv112)
+131 mapleroyals-optimal-2026-dragon-knight-hybrid (Lv70-120): Dragon Fury: Pole Arm 1311004 +30 (SP #1 of the job, ~Lv70); Dragon Fury: Spear 1311003 +1 (SP #31 of the job, ~Lv80)
+131 mapleroyals-optimal-2026-dragon-knight-spear (Lv70-120): Dragon Fury: Spear 1311003 +1 (SP #1 of the job, ~Lv70); Dragon Fury: Spear 1311003 +12 (SP #85 of the job, ~Lv98)
+211 mapleroyals-optimal-2026-fp-mage (Lv70-120): 2001005 2001005 inherited 20; Explosion 2111002 +1 (SP #1 of the job, ~Lv70); Explosion 2111002 +27 (SP #32 of the job, ~Lv81); Explosion 2111002 +2 (SP #93 of the job, ~Lv101)
+221 mapleroyals-optimal-2026-il-mage (Lv70-120): 2001005 2001005 inherited 20; Ice Strike 2211002 +30 (SP #1 of the job, ~Lv70)
+231 mapleroyals-optimal-2026-priest (Lv70-120): 2001005 2001005 inherited 20
+311 mapleroyals-optimal-2026-ranger (Lv70-120): Strafe 3111006 +1 (SP #1 of the job, ~Lv70); Strafe 3111006 +29 (SP #37 of the job, ~Lv82); Silver Hawk 3111005 +29 (SP #123 of the job, ~Lv111)
+321 mapleroyals-optimal-2026-sniper (Lv70-120): Strafe 3211006 +1 (SP #1 of the job, ~Lv70); Strafe 3211006 +29 (SP #38 of the job, ~Lv83); Golden Eagle 3211005 +15 (SP #136 of the job, ~Lv115)
+411 mapleroyals-optimal-2026-hermit (Lv70-120): Avenger 4111005 +1 (SP #1 of the job, ~Lv70); Shadow Partner 4111002 +30 (SP #2 of the job, ~Lv71); Avenger 4111005 +4 (SP #32 of the job, ~Lv81); Avenger 4111005 +25 (SP #56 of the job, ~Lv89)
+421 mapleroyals-optimal-2026-chief-bandit (Lv70-120): Meso Explosion 4211006 +1 (SP #1 of the job, ~Lv70); Chakra 4211001 +3 (SP #3 of the job, ~Lv71); Meso Explosion 4211006 +29 (SP #7 of the job, ~Lv72); Band of Thieves 4211004 +30 (SP #36 of the job, ~Lv82); Chakra 4211001 +18 (SP #133 of the job, ~Lv114)
+511 mapleroyals-optimal-2026-marauder (Lv70-120): 5001001 5001001 inherited 20; Transformation 5111005 +1 (SP #1 of the job, ~Lv70); Transformation 5111005 +19 (SP #133 of the job, ~Lv114)
+521 mapleroyals-optimal-2026-outlaw (Lv70-120): 5001001 5001001 inherited 1; Gaviota 5211002 +1 (SP #77 of the job, ~Lv96); Gaviota 5211002 +14 (SP #108 of the job, ~Lv106)
+112 mapleroyals-optimal-2026-hero (Lv120-200): Shout 1111008 inherited 30
+122 mapleroyals-optimal-2026-paladin (Lv120-200): Charged Blow 1211002 inherited 30
+132 mapleroyals-optimal-2026-dark-knight-hybrid (Lv120-200): Dragon Fury: Spear 1311003 inherited 1; Dragon Fury: Pole Arm 1311004 inherited 30; Dragon Fury: Spear 1311003 +29 (SP #203 of the job, ~Lv187)
+132 mapleroyals-optimal-2026-dark-knight-spear (Lv120-200): Dragon Fury: Spear 1311003 inherited 13; Dragon Fury: Spear 1311003 +17 (SP #200 of the job, ~Lv186)
+212 mapleroyals-optimal-2026-fp-arch-mage (Lv120-200): 2001005 2001005 inherited 20; Explosion 2111002 inherited 30
+222 mapleroyals-optimal-2026-il-arch-mage (Lv120-200): 2001005 2001005 inherited 20; Ice Strike 2211002 inherited 30
+232 mapleroyals-optimal-2026-bishop (Lv120-200): 2001005 2001005 inherited 20; Bahamut 2321003 +30 (SP #51 of the job, ~Lv136)
+312 mapleroyals-optimal-2026-bowmaster (Lv120-200): Silver Hawk 3111005 inherited 29; Strafe 3111006 inherited 30
+322 mapleroyals-optimal-2026-marksman (Lv120-200): Golden Eagle 3211005 inherited 15; Strafe 3211006 inherited 30; Piercing Arrow 3221001 +30 (SP #94 of the job, ~Lv151); dump: Golden Eagle
+412 mapleroyals-optimal-2026-night-lord (Lv120-200): Shadow Partner 4111002 inherited 30; Avenger 4111005 inherited 30
+422 mapleroyals-optimal-2026-shadower (Lv120-200): Chakra 4211001 inherited 21; Band of Thieves 4211004 inherited 30; Meso Explosion 4211006 inherited 30; Chakra 4211001 +9 (SP #205 of the job, ~Lv188)
+512 mapleroyals-optimal-2026-buccaneer (Lv120-200): 5001001 5001001 inherited 20; Transformation 5111005 inherited 20; Dragon Strike 5121001 +1 (SP #2 of the job, ~Lv120); Dragon Strike 5121001 +29 (SP #46 of the job, ~Lv135)
+522 mapleroyals-optimal-2026-corsair (Lv120-200): 5001001 5001001 inherited 1; Gaviota 5211002 inherited 15; Rapid Fire 5221004 +1 (SP #1 of the job, ~Lv120); Rapid Fire 5221004 +29 (SP #66 of the job, ~Lv141); dump: Gaviota
