@@ -180,6 +180,21 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     everyone takes it.
   - Not built: trap damage (decision 3). It waits for the live measurement of what a menhir hit does to a human
     client; bots take none until then, as today.
+- **C6 stock fixes built 2026-10-20 on feat/cwkpq** (Question 4, user-approved content changes):
+  - (a) Lost weapon: each room master (9201107-9201110) gives its weapon once more when the room's bit is already set
+    but `server.partyquest.CwkpqRelicWeapons.lost` holds: its relic in the hall is still empty, no player in the event
+    holds one, none lies on any stage-5 map, and it was not re-issued before (event property `glpq5_reissued`, one bit
+    per weapon). The pirate room has no master, so the pirate master in the hall (9201111) gives a pirate the gun once
+    its real chest is broken and the gun is lost.
+  - (b) Stirge plates (6109013.js): `killAllMonsters()` and the event instance passed in; it fires when the shared
+    count reaches 5 (five standing on the plates at once), once; stepping off never takes the count below 0. Bots send
+    no touch packets, so the plates stay a human's job.
+  - Knowledge re-exported for the script edits (only fingerprints and the timestamp change).
+- **C8, first part, built 2026-10-20** (`AgentCwkpqLootRule`, a refuse-only clause in AgentLootEligibility): in the
+  Armory a companion takes an equip its archetype may wear (Item.wz reqJob bits), a book that teaches its job a skill,
+  a weapon scroll for the weapon in its hand, and any potion; it leaves Gelt Chocolate (2022121) to physical attackers
+  and the Tao materials, storybooks and the chair to the humans. This server's Armory drops no Pie; its other potion
+  is Sunblock (2022277).
 
 ## Questions for you (answered, kept for the record)
 
