@@ -11,6 +11,9 @@ public interface AgentQuestSyncHandle {
 
     QuestStatus.Status status(Character character);
 
+    /** Completed and not repeatable: the character can never start it again. */
+    boolean completedForGood(Character character);
+
     int npc(Character character);
 
     void forceStartWithActions(Character character, int npc);

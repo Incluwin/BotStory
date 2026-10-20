@@ -30,7 +30,7 @@ public final class AgentPartyQuestSyncService {
         }
 
         for (Character agent : partyAgents(source)) {
-            if (quest.status(agent) == QuestStatus.Status.STARTED) {
+            if (quest.status(agent) == QuestStatus.Status.STARTED || quest.completedForGood(agent)) {
                 continue;
             }
             quest.forceStartWithActions(agent, resolveQuestNpc(source, quest, npc));
@@ -107,6 +107,9 @@ public final class AgentPartyQuestSyncService {
 
         int resolvedNpc = resolveQuestNpc(source, quest, npc);
         for (Character agent : partyAgents(source)) {
+            if (quest.completedForGood(agent)) {
+                continue; // done already: running its rewards again gave a second Crimsonwood Keystone (2026-10-19)
+            }
             ensureQuestStarted(agent, quest, resolvedNpc);
             quest.forceCompleteWithActions(agent, resolvedNpc, selection);
         }

@@ -84,6 +84,43 @@ class AgentPartyQuestSyncServiceTest {
     }
 
     @Test
+    void aQuestAnAgentCompletedForGoodIsNeitherStartedNorCompletedAgain() {
+        Character source = character(1, mock(Client.class));
+        Character done = character(2, new BotClient(0, 0));
+        Character doing = character(3, new BotClient(0, 0));
+        AgentQuestSyncHandle quest = mock(AgentQuestSyncHandle.class);
+        AgentQuestSyncGateway quests = questGateway(8223, quest);
+        when(source.getParty()).thenReturn(mock(Party.class));
+        when(source.getPartyMembersOnline()).thenReturn(List.of(done, doing));
+        when(quest.status(done)).thenReturn(QuestStatus.Status.COMPLETED);
+        when(quest.completedForGood(done)).thenReturn(true);
+        when(quest.status(doing)).thenReturn(QuestStatus.Status.STARTED);
+
+        AgentPartyQuestSyncService.syncPartyAgentsQuestStart(source, 8223, 9201098, quests);
+        AgentPartyQuestSyncService.syncPartyAgentsQuestComplete(source, 8223, 9201098, null, quests);
+
+        verify(quest, never()).forceStartWithActions(done, 9201098);
+        verify(quest, never()).forceCompleteWithActions(done, 9201098, null);
+        verify(quest).forceCompleteWithActions(doing, 9201098, null);
+    }
+
+    @Test
+    void aRepeatableQuestAnAgentCompletedIsMirroredAgain() {
+        Character source = character(1, mock(Client.class));
+        Character agent = character(2, new BotClient(0, 0));
+        AgentQuestSyncHandle quest = mock(AgentQuestSyncHandle.class);
+        AgentQuestSyncGateway quests = questGateway(1000, quest);
+        when(source.getParty()).thenReturn(mock(Party.class));
+        when(source.getPartyMembersOnline()).thenReturn(List.of(agent));
+        when(quest.status(agent)).thenReturn(QuestStatus.Status.COMPLETED);
+
+        AgentPartyQuestSyncService.syncPartyAgentsQuestComplete(source, 1000, 2000, null, quests);
+
+        verify(quest).forceStartWithActions(agent, 2000);
+        verify(quest).forceCompleteWithActions(agent, 2000, null);
+    }
+
+    @Test
     void sharesKingPepeYetiProgressBetweenAgentsInTheSameInstance() {
         Character source = character(1, new BotClient(0, 0));
         Character agent = character(2, new BotClient(0, 0));

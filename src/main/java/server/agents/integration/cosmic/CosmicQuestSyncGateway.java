@@ -27,6 +27,11 @@ public enum CosmicQuestSyncGateway implements AgentQuestSyncGateway {
         }
 
         @Override
+        public boolean completedForGood(Character character) {
+            return status(character) == QuestStatus.Status.COMPLETED && !quest.canStartQuestByStatus(character);
+        }
+
+        @Override
         public int npc(Character character) {
             return character.getQuest(quest).getNpc();
         }
