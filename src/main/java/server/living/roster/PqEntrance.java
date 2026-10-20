@@ -164,6 +164,7 @@ public final class PqEntrance {
         register(entrances, OpqEntrance.create());
 
         // slot: ppq
+        register(entrances, PpqEntrance.create());
 
         // slot: rjpq
         register(entrances, RjpqEntrance.create(AgentRjpqSide.ZENUMIST));

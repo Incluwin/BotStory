@@ -30,6 +30,7 @@ public final class CompanionPqKeys {
         keys.add("opq");
 
         // slot: ppq
+        keys.add("ppq");
 
         // slot: rjpq
         keys.add("rjpq");
