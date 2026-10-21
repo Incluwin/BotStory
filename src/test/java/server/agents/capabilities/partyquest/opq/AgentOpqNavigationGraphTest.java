@@ -15,10 +15,14 @@ import server.agents.capabilities.navigation.AgentPortalApproachService;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.simulation.AgentSimulationMode;
+import server.maps.Foothold;
 import server.maps.MapleMap;
+import server.maps.ReactorFactory;
+import server.maps.ReactorStats;
 import server.maps.Rope;
 
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +32,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -115,6 +120,25 @@ class AgentOpqNavigationGraphTest {
                 .findFirst().orElseThrow();
         assertRopeRoute(map, firstRope,
                 new Point(-1_598, -556), new Point(-1_777, -528));
+    }
+
+    @Test
+    void lobbyMusicPlayerDropSpotIsFloorInsideThePlayersDropBox() {
+        // 2026-10-20 live: Marrow carried the LP to the reactor's own point (-1706,-240), 68 px above the floor, and
+        // never dropped it. The drop spot must be standable and every drop within the radius must reach the reactor.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.LOBBY_MAP);
+        Point drop = AgentOpqCoordinator.MUSIC_PLAYER_DROP;
+        Foothold floor = map.getFootholds().findBelow(new Point(drop.x, drop.y - 1));
+        assertNotNull(floor);
+        assertEquals(drop.y, floor.calculateFooting(drop.x));
+        ReactorStats musicPlayer = ReactorFactory.getReactor(2_008_006);
+        Point reactor = new Point(-1_706, -240); // Map.wz 920010400 reactor "music"
+        Rectangle box = new Rectangle(reactor.x + musicPlayer.getTL().x, reactor.y + musicPlayer.getTL().y,
+                musicPlayer.getBR().x - musicPlayer.getTL().x, musicPlayer.getBR().y - musicPlayer.getTL().y);
+        int radius = AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX;
+        for (int x = drop.x - radius; x <= drop.x + radius; x++) {
+            assertTrue(box.contains(new Point(x, drop.y)), "drop at x " + x + " outside " + box);
+        }
     }
 
     @Test

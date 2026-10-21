@@ -69,7 +69,12 @@ final class AgentOpqCoordinator {
     private static final Point ENTRANCE_EAK = new Point(377, 66);
     private static final Point WALKWAY_EAK = new Point(552, -138);
     private static final Point LOUNGE_EAK = new Point(97, -737);
-    private static final Point MUSIC_PLAYER = new Point(-1706, -240);
+    /**
+     * Where the lobby runner drops the day's LP: the floor under the music player (reactor 2008006 at -1706,-240), in
+     * the middle of the box a drop must land in (x -1758..-1666, y -304..-161). 2026-10-20 live: the runner was sent to
+     * the reactor's own point, 68 px above the only floor there, never came within the drop radius and never dropped.
+     */
+    static final Point MUSIC_PLAYER_DROP = new Point(-1712, -172);
     private static final Point LOBBY_FIRST_ROPE_BOTTOM = new Point(-1598, -408);
     private static final Point LOBBY_FIRST_ROPE_TOP = new Point(-1598, -581);
     private static final Point LOBBY_SECOND_ROPE_BOTTOM = new Point(-1777, -528);
@@ -651,7 +656,7 @@ final class AgentOpqCoordinator {
             exitRoom(entry, agent, AgentOpqDefinition.Room.LOBBY, nowMs, member); return;
         }
         if (agent.getItemQuantity(lpItem, false) > 0) {
-            if (!moveTo(entry, agent, MUSIC_PLAYER, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
+            if (!moveTo(entry, agent, MUSIC_PLAYER_DROP, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             dropItem(entry, InventoryType.ETC, lpItem, (short) 1);
             member.deferUntil(nowMs + ACTION_RETRY_MS); return;
         }
