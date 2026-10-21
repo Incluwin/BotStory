@@ -36,6 +36,13 @@ public final class AgentGroundActionPlanner {
         if (stepX == 0) {
             return AgentGroundAction.idle();
         }
+        Integer restX = !directionalDrop && !footholdDetour && !walkOffWaypoint
+                && AgentNavigationDebugStateRuntime.navPreciseTarget(entry)
+                && AgentGroundMovementPolicy.restsOnPreciseWaypoint(navEdge) ? targetPos.x : null;
+        if (restX != null && AgentGroundPhysicsService.coastsOnto(
+                entry, currentFoothold, Integer.signum(stepX), restX)) {
+            return AgentGroundAction.idle();
+        }
         boolean canWalkStep = AgentGroundCollisionService.canWalkGroundStep(
                 AgentRuntimeIdentityRuntime.botMap(entry), botPos, currentFoothold, stepX);
         if (!canWalkStep) {
@@ -63,6 +70,6 @@ public final class AgentGroundActionPlanner {
                 entry, currentFoothold, botPos, targetPos, stepX, System.currentTimeMillis())) {
             return AgentGroundAction.jump(stepX);
         }
-        return AgentGroundAction.walk(stepX);
+        return restX == null ? AgentGroundAction.walk(stepX) : AgentGroundAction.walkToRest(stepX, restX);
     }
 }

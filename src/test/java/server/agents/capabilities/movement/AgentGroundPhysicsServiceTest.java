@@ -80,6 +80,60 @@ class AgentGroundPhysicsServiceTest {
     }
 
     @Test
+    void applyGroundMotionReportsNoVelocityForAnAgentAtRest() {
+        // 2026-10-20 OPQ way up: a runner that stopped at x -112 with its continuous X at -112.432 reported
+        // vx -9 for as long as it stood there, so it never settled (applyIdleOrInPlaceMotion needs vx 0).
+        MapleMap map = createEmptyTestMap(910000304);
+        Foothold foothold = new Foothold(new Point(0, 100), new Point(400, 100), 1);
+        map.getFootholds().insert(foothold);
+        for (double physicsX : new double[] {99.568, 100.432}) {
+            Character agent = mockAgent(new Point(100, 100), map);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentMovementPhysicsStateRuntime.setPhysicsX(entry, physicsX);
+
+            AgentGroundMotion motion = AgentGroundPhysicsService.applyGroundMotion(entry, agent, foothold);
+
+            assertEquals(0, motion.stepX());
+            assertEquals(0, AgentMovementStateRuntime.movementVelocityX(entry), "continuous X " + physicsX);
+        }
+    }
+
+    @Test
+    void restXReleasesTheWalkInputWhereFrictionAloneStopsTheAgentOnIt() {
+        MapleMap map = createEmptyTestMap(910000305);
+        Foothold foothold = new Foothold(new Point(0, 100), new Point(400, 100), 1);
+        map.getFootholds().insert(foothold);
+        for (double offset : new double[] {-0.432, 0.0, 0.431}) {
+            Character agent = mockAgent(new Point(100, 100), map);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentMovementPhysicsStateRuntime.setPhysicsX(entry, 100 + offset);
+            AgentMovementStateRuntime.setMoveDirection(entry, 1);
+
+            int farthest = 100;
+            for (int substep = 0; substep < 10; substep++) {
+                AgentGroundPhysicsService.applyGroundMotion(entry, agent, foothold, 104);
+                farthest = Math.max(farthest, agent.getPosition().x);
+            }
+
+            assertEquals(104, agent.getPosition().x, "start offset " + offset);
+            assertEquals(104, farthest, "start offset " + offset + " overran");
+            assertEquals(0.0, AgentMovementPhysicsStateRuntime.horizontalSpeed(entry));
+        }
+    }
+
+    @Test
+    void coastsOntoPredictsWhereFrictionStopsAWalkingAgent() {
+        Foothold flat = new Foothold(new Point(0, 100), new Point(400, 100), 1);
+        // Walking speed (1 px per client step) slides 5.9 px once the input stops.
+        assertTrue(AgentGroundPhysicsService.coastsOnto(100.0, 1.0, flat, 1, 106));
+        assertFalse(AgentGroundPhysicsService.coastsOnto(100.0, 1.0, flat, 1, 107));
+        assertTrue(AgentGroundPhysicsService.coastsOnto(100.0, 0.0, flat, 1, 100));
+        assertFalse(AgentGroundPhysicsService.coastsOnto(100.0, 0.0, flat, 1, 101));
+        assertFalse(AgentGroundPhysicsService.coastsOnto(100.0, -1.0, flat, 1, 100), "moving away");
+        assertTrue(AgentGroundPhysicsService.coastsOnto(100.0, -1.0, flat, -1, 94));
+    }
+
+    @Test
     void syncAndDetectGroundStartsFallWhenNoGroundExists() {
         MapleMap map = createEmptyTestMap(910000302);
         Character agent = mockAgent(new Point(100, 100), map);

@@ -63,6 +63,16 @@ class AgentGroundMovementPolicyTest {
         assertFalse(AgentGroundMovementPolicy.isDirectionalDropEdge(null));
     }
 
+    @Test
+    void everyPreciseWaypointButWalkIsApproachedToRest() {
+        assertTrue(AgentGroundMovementPolicy.restsOnPreciseWaypoint(edge(AgentNavigationGraph.EdgeType.CLIMB, 6)));
+        assertTrue(AgentGroundMovementPolicy.restsOnPreciseWaypoint(edge(AgentNavigationGraph.EdgeType.JUMP, 1)));
+        assertTrue(AgentGroundMovementPolicy.restsOnPreciseWaypoint(edge(AgentNavigationGraph.EdgeType.DROP, 0)));
+        assertTrue(AgentGroundMovementPolicy.restsOnPreciseWaypoint(edge(AgentNavigationGraph.EdgeType.PORTAL, 0)));
+        assertFalse(AgentGroundMovementPolicy.restsOnPreciseWaypoint(edge(AgentNavigationGraph.EdgeType.WALK, 0)));
+        assertFalse(AgentGroundMovementPolicy.restsOnPreciseWaypoint(null));
+    }
+
     private static AgentNavigationGraph.Edge edge(AgentNavigationGraph.EdgeType type, int launchStepX) {
         return new AgentNavigationGraph.Edge(1, 2, type, new Point(10, 20), new Point(30, 40),
                 launchStepX, 0, 0, 0, 0, 0);

@@ -18,7 +18,9 @@ import server.maps.MapPerceptionSnapshot;
 import server.maps.MapleMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -110,6 +112,55 @@ class AgentGroundActionPlannerTest {
         AgentGroundAction action = AgentGroundActionPlanner.planGroundAction(entry, foothold, new Point(100, 100), new Point(250, 100));
 
         assertEquals(AgentGroundAction.Type.JUMP, action.type());
+    }
+
+    @Test
+    void preciseLaunchApproachFromAStandingStopRestsInsideItsWindow() {
+        // 2026-10-20 OPQ way up 920010700, CLIMB r81->r100: waypoint -108, window -109..-107, platform end -106. From a
+        // stop at -112 with its continuous X at -112.432 the runner walked 20 px in one background tick and off the end.
+        MapleMap map = new MapleMap(910000013, 0, 0, 910000013, 1.0f);
+        Foothold platform = new Foothold(new Point(-300, -846), new Point(-106, -846), 1);
+        map.setFootholds(footholds(platform));
+        AgentNavigationGraph.Edge ropeGrab = new AgentNavigationGraph.Edge(81, 100, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(-108, -846), new Point(-43, -883), -109, -107, 6, 0, -43, -1_623, -878, 100);
+        Point waypoint = new Point(-108, -846);
+        for (double offset : new double[] {-0.432, 0.0, 0.431}) {
+            Character bot = mockBot(new Point(-112, -846), map);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+            AgentMovementPhysicsStateRuntime.setPhysicsX(entry, -112 + offset);
+            AgentNavigationDebugStateRuntime.setActiveNavigationEdge(entry, ropeGrab);
+            AgentNavigationDebugStateRuntime.setNavPreciseTarget(entry, true);
+
+            // One background tick (five substeps) and the next.
+            for (int substep = 0; substep < 10; substep++) {
+                Point position = bot.getPosition();
+                AgentGroundAction action = AgentGroundActionPlanner.planGroundAction(entry, platform, position, waypoint);
+                AgentGroundActionExecutor.applyGroundAction(entry, platform, action);
+                assertFalse(AgentMovementStateRuntime.inAir(entry), "offset " + offset + " walked off at substep " + substep);
+            }
+
+            int x = bot.getPosition().x;
+            assertTrue(x >= -109 && x <= -107, "offset " + offset + " rests at " + x);
+            assertEquals(0, AgentMovementStateRuntime.movementVelocityX(entry), "offset " + offset);
+        }
+    }
+
+    @Test
+    void preciseWalkWaypointKeepsItsSpeed() {
+        MapleMap map = new MapleMap(910000014, 0, 0, 910000014, 1.0f);
+        Foothold floor = new Foothold(new Point(0, 100), new Point(400, 100), 1);
+        map.setFootholds(footholds(floor));
+        Character bot = mockBot(new Point(100, 100), map);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentNavigationDebugStateRuntime.setActiveNavigationEdge(entry, new AgentNavigationGraph.Edge(
+                1, 2, AgentNavigationGraph.EdgeType.WALK, new Point(100, 100), new Point(200, 100),
+                0, 0, 0, 0, 0, 100));
+        AgentNavigationDebugStateRuntime.setNavPreciseTarget(entry, true);
+
+        AgentGroundAction action = AgentGroundActionPlanner.planGroundAction(entry, floor, new Point(100, 100), new Point(108, 100));
+
+        assertEquals(AgentGroundAction.Type.WALK, action.type());
+        assertNull(action.restX());
     }
 
     private static FootholdTree footholds(Foothold foothold) {
