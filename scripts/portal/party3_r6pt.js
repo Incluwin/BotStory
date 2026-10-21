@@ -49,7 +49,10 @@ function enter(pi) {
     } else {    //fail
         pRow--;
         pi.playPortalSound();
-        pi.warp(pi.getMapId(), (pRow / 4) > 1 ? (pRow / 4) : 5);  // thanks Chloek3, seth1 for noticing next plaform issues
+        // 2026-10-20: pRow / 4 is fractional on most rows and warp(int, double) has no overload, so a wrong door
+        // threw instead of dropping the player back (556 errors in one OPQ run). Same sections, whole numbers.
+        var section = Math.floor(pRow / 4);
+        pi.warp(pi.getMapId(), section > 1 ? section : 5);  // thanks Chloek3, seth1 for noticing next plaform issues
     }
 
     return true;
