@@ -204,6 +204,17 @@ class AdobisHookScriptTest {
             + "            allyWindow(allyCall(selection));\n";
     private static final List<String> BLOCKS = List.of(FUNCTIONS, LEADER_LIST, ALREADY_LISTED, JOINING, CREATED,
             LEADERS_CHOICES, MEMBERS_CHOICES_AND_PICKER);
+    /** Not a companion block: a leader's page that outlives the expedition ends the talk (see
+     * ExpeditionLeaderExpiryScriptTest). */
+    private static final String EXPIRY_GUARD = ""
+            + "        // a leader's page can outlive the expedition (its registration clock ran out while it was open): say so\n"
+            + "        // instead of starting, listing or ending a missing one\n"
+            + "        if (expedition == null && (status == 2 || status == 4 || status == 6)) {\n"
+            + "            cm.sendOk(\"This expedition has already ended. Talk to me again to form a new one.\");\n"
+            + "            cm.dispose();\n"
+            + "            return;\n"
+            + "        }\n"
+            + "\n";
 
     private static final String OPTION = "#L1#My party will register too.#l";
     private static final String ALLY_OPTION = "#L3#Call allies from my bench...#l";
@@ -351,6 +362,9 @@ class AdobisHookScriptTest {
             assertTrue(b >= 0 && b != '\r', "2030013.js stays US-ASCII and LF");
         }
 
+        String script = script();
+        assertEquals(script.indexOf(EXPIRY_GUARD), script.lastIndexOf(EXPIRY_GUARD), "one expiry guard");
+        assertTrue(script.contains(EXPIRY_GUARD + "        if (status == 0) {\n"), "the guard before the status branches");
         assertEquals(STOCK_SHA_256, HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                 .digest(stockScript().getBytes(StandardCharsets.US_ASCII))), "nothing else in his script changed");
     }
@@ -673,9 +687,9 @@ class AdobisHookScriptTest {
         return Files.readString(SCRIPT, StandardCharsets.US_ASCII);
     }
 
-    /** His script with the seven blocks taken out (its SHA-256 is checked above). */
+    /** His script with the seven blocks and the expiry guard taken out (its SHA-256 is checked above). */
     private static String stockScript() throws IOException {
-        String stock = script();
+        String stock = script().replace(EXPIRY_GUARD, "");
         for (String block : BLOCKS) {
             stock = stock.replace(block, "");
         }

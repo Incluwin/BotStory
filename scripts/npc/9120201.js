@@ -108,6 +108,14 @@ function action(mode, type, selection) {
             return;
         }
 
+        // a leader's page can outlive the expedition (its registration clock ran out while it was open): say so
+        // instead of starting, listing or ending a missing one
+        if (expedition == null && (status == 2 || status == 4 || status == 6)) {
+            cm.sendOk("This expedition has already ended. Talk to me again to form a new one.");
+            cm.dispose();
+            return;
+        }
+
         if (status == 0) {
             if (player.getLevel() < exped.getMinLevel() || player.getLevel() > exped.getMaxLevel()) { //Don't fit requirement, thanks Conrad
                 cm.sendOk("You do not meet the criteria to battle " + expedBoss + "!");
