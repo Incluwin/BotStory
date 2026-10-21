@@ -2,6 +2,7 @@ package server.agents.capabilities.navigation;
 
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.Foothold;
 import server.maps.Rope;
@@ -62,6 +63,74 @@ class AgentNavigationEdgeValidationServiceTest {
     }
 
     @Test
+    void launchedJumpAndDropsStayInProgressThroughTheirFlight() {
+        // An airborne Agent has no current region (-1). The source-region check ran first and
+        // rejected every committed flight at its first AI tick, charging the edge a failure.
+        AgentNavigationGraph graph = graphWithLowerFloor();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentNavigationGraph.Edge walkOff = new AgentNavigationGraph.Edge(
+                1, 4, AgentNavigationGraph.EdgeType.DROP,
+                new Point(40, 100), new Point(45, 200),
+                40, 45, 4, -1, 0, 0, 0, 100);
+        AgentNavigationGraph.Edge downJump = new AgentNavigationGraph.Edge(
+                1, 4, AgentNavigationGraph.EdgeType.DROP,
+                new Point(0, 100), new Point(0, 200),
+                0, 0, 0, -1, 0, 0, 0, 100);
+
+        for (AgentNavigationGraph.Edge edge : List.of(jump(), walkOff, downJump)) {
+            AgentNavigationEdgeValidationService.Result result =
+                    AgentNavigationEdgeValidationService.validate(
+                            graph, entry, 100, -1, new Point(30, 60), edge, 1_000);
+
+            assertEquals(AgentNavigationEdgeValidationService.Status.IN_PROGRESS, result.status(),
+                    edge.type + " step " + edge.launchStepX);
+            assertEquals("airborne-traversal", result.reason());
+        }
+    }
+
+    @Test
+    void ropeJumpOffStaysInProgressAndAirborneRopeEntryStillApproachesTheRope() {
+        AgentNavigationGraph graph = graphWithRope();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentNavigationGraph.Edge jumpOff = new AgentNavigationGraph.Edge(
+                3, 2, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(50, 50), new Point(100, 100),
+                1, -1, 50, 50, 150, 100);
+        AgentNavigationGraph.Edge jumpGrab = new AgentNavigationGraph.Edge(
+                1, 3, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(30, 100), new Point(50, 80),
+                1, -1, 50, 50, 150, 100);
+
+        AgentNavigationEdgeValidationService.Result exit =
+                AgentNavigationEdgeValidationService.validate(
+                        graph, entry, 100, -1, new Point(70, 40), jumpOff, 1_000);
+        AgentNavigationEdgeValidationService.Result entryResult =
+                AgentNavigationEdgeValidationService.validate(
+                        graph, entry, 100, -1, new Point(40, 70), jumpGrab, 1_000);
+
+        assertEquals(AgentNavigationEdgeValidationService.Status.IN_PROGRESS, exit.status());
+        assertEquals("climb-exit-airborne", exit.reason());
+        assertEquals(AgentNavigationEdgeValidationService.Status.APPROACH, entryResult.status());
+        assertEquals("rope-entry-airborne", entryResult.reason());
+    }
+
+    @Test
+    void airborneAgentResolvedToAnotherRegionIsStillRejected() {
+        AgentNavigationGraph graph = graph();
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+
+        AgentNavigationEdgeValidationService.Result result =
+                AgentNavigationEdgeValidationService.validate(
+                        graph, entry, 100, 2, new Point(120, 60), jump(), 1_000);
+
+        assertTrue(result.rejected());
+        assertEquals("unexpected-source-region", result.reason());
+    }
+
+    @Test
     void validFixedJumpRemainsExecutableAndOffGraphLandingIsRejected() {
         AgentNavigationGraph graph = graph();
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
@@ -84,6 +153,10 @@ class AgentNavigationEdgeValidationServiceTest {
 
     private static AgentNavigationGraph graph() {
         return graph(List.of(ground(1, -50, 50, 100), ground(2, 50, 150, 100)));
+    }
+
+    private static AgentNavigationGraph graphWithLowerFloor() {
+        return graph(List.of(ground(1, -50, 50, 100), ground(2, 50, 150, 100), ground(4, -50, 50, 200)));
     }
 
     private static AgentNavigationGraph graphWithRope() {

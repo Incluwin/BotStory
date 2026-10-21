@@ -66,6 +66,29 @@ class AgentVerticalTraversalServiceTest {
     }
 
     @Test
+    void jumpOffExitNudgesNoCloserToTheRopeThanItsLanding() {
+        // A rope jump-off landed 79 px from the rope (610020004). Its traversal completed on the
+        // ledge, and the nudge to the rope's side (rope x + 32) walked the Agent back off it.
+        Fixture fixture = fixture();
+        AgentNavigationGraph.Edge jumpOff = new AgentNavigationGraph.Edge(
+                2, 3, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(100, 200), new Point(179, 100), 100, 100, 6, 0, 100, 100, 300, 100);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Character bot = mock(Character.class);
+        assertTrue(AgentVerticalTraversalService.beginIfRopeEntry(
+                fixture.graph, entry, bot, fixture.entryEdge, 3, new Point(179, 100),
+                (graph, candidate, startPosition, startRegionId, targetRegionId, targetPosition) -> jumpOff));
+        AgentClimbStateRuntime.setClimbingOnRope(entry, mock(Rope.class));
+        assertSame(jumpOff, resolve(fixture, entry, bot, 2, true).edge());
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+
+        assertTrue(resolve(fixture, entry, bot, 3, true).holdGroundedExit());
+        assertNull(resolve(fixture, entry, bot, 3, true));
+        assertEquals(new Point(179, 100), AgentVerticalTraversalService.recentExitNudgeTarget(
+                fixture.graph, entry, 3, System.currentTimeMillis()));
+    }
+
+    @Test
     void caughtDestinationRopeCompletesARopeToRopeExitOnTheNextAiTick() {
         RopeTransfer fixture = ropeTransfer();
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);

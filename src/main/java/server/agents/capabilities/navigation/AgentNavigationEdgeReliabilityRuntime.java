@@ -65,13 +65,14 @@ public final class AgentNavigationEdgeReliabilityRuntime {
     public static AgentNavigationGraph.Edge observeAttempt(AgentRuntimeEntry entry,
                                                             int mapId,
                                                             int regionId,
+                                                            boolean standing,
                                                             Point position,
                                                             long nowMs) {
         if (entry == null || !AgentNavigationReliabilityConfig.tracksReliability()) {
             return null;
         }
         AgentNavigationGraph.Edge timedOut = state(entry).observeAttempt(
-                mapId, regionId, position, nowMs,
+                mapId, regionId, standing, position, nowMs,
                 AgentNavigationReliabilityConfig.attemptTimeoutMs(),
                 AgentNavigationReliabilityConfig.progressTolerancePx());
         if (timedOut != null) {

@@ -103,7 +103,7 @@ public final class AgentNavigationEdgeReliabilityState {
             return;
         }
         attempt = new Attempt(signature, currentRegionId,
-                position.distance(signature.endPoint()), nowMs);
+                position.distance(signature.endPoint()), nowMs, false);
     }
 
     /**
@@ -116,13 +116,18 @@ public final class AgentNavigationEdgeReliabilityState {
         synchronizeMap(currentMapId);
         if (attempt != null) {
             attempt = new Attempt(attempt.edge, attempt.startedRegionId,
-                    attempt.bestDistanceToEndPx, nowMs);
+                    attempt.bestDistanceToEndPx, nowMs, attempt.inFlight);
         }
     }
 
-    /** Returns the edge whose attempt timed out, or null while progress remains valid. */
+    /**
+     * Returns the edge whose attempt failed, or null while progress remains valid. An attempt fails
+     * when it stops making progress, or when its flight (no current region) ends with the Agent
+     * standing anywhere but the edge's destination.
+     */
     public synchronized AgentNavigationGraph.Edge observeAttempt(int currentMapId,
                                                                  int currentRegionId,
+                                                                 boolean standing,
                                                                  Point position,
                                                                  long nowMs,
                                                                  long timeoutMs,
@@ -137,11 +142,25 @@ public final class AgentNavigationEdgeReliabilityState {
             attempt = null;
             return null;
         }
+        if (attempt.inFlight && standing && currentRegionId >= 0 && attempt.startedRegionId >= 0) {
+            // The arc missed. Replanning from another region begins another edge's attempt and
+            // would drop this one uncharged. Back on the source, the Agent walks to the launch and
+            // flies the same short arc again, charged only once per attempt timeout (100000000: a
+            // standing jump the graph flies off the ledge lands back on it, every 1.5 s).
+            AgentNavigationGraph.Edge missed = attempt.edge.toEdge(attempt.startedRegionId);
+            attempt = null;
+            return missed;
+        }
+        boolean inFlight = !standing && currentRegionId < 0;
         double distanceToEnd = position.distance(attempt.edge.endPoint());
         if (distanceToEnd + Math.max(0, progressTolerancePx) < attempt.bestDistanceToEndPx) {
             attempt = new Attempt(attempt.edge, attempt.startedRegionId,
-                    distanceToEnd, nowMs);
+                    distanceToEnd, nowMs, inFlight);
             return null;
+        }
+        if (inFlight != attempt.inFlight) {
+            attempt = new Attempt(attempt.edge, attempt.startedRegionId,
+                    attempt.bestDistanceToEndPx, attempt.lastProgressAtMs, inFlight);
         }
         if (nowMs - attempt.lastProgressAtMs < Math.max(1L, timeoutMs)) {
             return null;
@@ -271,7 +290,8 @@ public final class AgentNavigationEdgeReliabilityState {
     private record Attempt(EdgeSignature edge,
                            int startedRegionId,
                            double bestDistanceToEndPx,
-                           long lastProgressAtMs) {
+                           long lastProgressAtMs,
+                           boolean inFlight) {
     }
 
     private record EdgeSignature(int toRegionId,
