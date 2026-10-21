@@ -191,7 +191,7 @@ public final class AgentNavigationTargetService {
 
             if (edge == null) {
                 Point verticalExitNudge = AgentVerticalTraversalService.recentExitNudgeTarget(
-                        graph, entry, startRegionId, nowMs);
+                        graph, entry, startRegionId, targetRegionId, pathTargetPos, nowMs);
                 if (verticalExitNudge != null) {
                     AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);
                     AgentNavigationDebugStateRuntime.clearNavJumpLaunch(entry);

@@ -60,7 +60,12 @@ class AgentVerticalTraversalServiceTest {
         assertTrue(AgentVerticalTraversalService.blocksRecentInverseEntry(
                 fixture.graph, entry, fixture.inverseEntryEdge, System.currentTimeMillis()));
         assertEquals(new Point(132, 100), AgentVerticalTraversalService.recentExitNudgeTarget(
-                fixture.graph, entry, 3, System.currentTimeMillis()));
+                fixture.graph, entry, 3, -1, null, System.currentTimeMillis()));
+        assertNull(AgentVerticalTraversalService.recentExitNudgeTarget(
+                fixture.graph, entry, 3, 3, new Point(40, 100), System.currentTimeMillis()),
+                "a target on the exit ground farther from the rope than the nudge is walked to instead");
+        assertEquals(new Point(132, 100), AgentVerticalTraversalService.recentExitNudgeTarget(
+                fixture.graph, entry, 3, 3, new Point(110, 100), System.currentTimeMillis()));
         assertFalse(AgentVerticalTraversalService.blocksRecentInverseEntry(
                 fixture.graph, entry, fixture.unrelatedEntryEdge, System.currentTimeMillis()));
     }
@@ -85,7 +90,7 @@ class AgentVerticalTraversalServiceTest {
         assertTrue(resolve(fixture, entry, bot, 3, true).holdGroundedExit());
         assertNull(resolve(fixture, entry, bot, 3, true));
         assertEquals(new Point(179, 100), AgentVerticalTraversalService.recentExitNudgeTarget(
-                fixture.graph, entry, 3, System.currentTimeMillis()));
+                fixture.graph, entry, 3, -1, null, System.currentTimeMillis()));
     }
 
     @Test
@@ -106,7 +111,7 @@ class AgentVerticalTraversalServiceTest {
         long nowMs = System.currentTimeMillis();
         assertTrue(AgentVerticalTraversalService.blocksRecentInverseEntry(
                 fixture.graph, entry, fixture.jumpBack, nowMs));
-        assertNull(AgentVerticalTraversalService.recentExitNudgeTarget(fixture.graph, entry, 4, nowMs),
+        assertNull(AgentVerticalTraversalService.recentExitNudgeTarget(fixture.graph, entry, 4, -1, null, nowMs),
                 "a rope has no step-off spot to nudge toward");
     }
 

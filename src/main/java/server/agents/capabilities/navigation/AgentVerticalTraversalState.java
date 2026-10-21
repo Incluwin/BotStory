@@ -124,6 +124,10 @@ public final class AgentVerticalTraversalState {
         return recentExitNudgeTarget == null ? null : new Point(recentExitNudgeTarget);
     }
 
+    int recentExitRopeRegionId() {
+        return recentExitRopeRegionId;
+    }
+
     public void clear() {
         clearActive();
         recentExitGraph = null;
