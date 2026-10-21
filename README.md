@@ -16,7 +16,8 @@ gameplay rules:
 - An admin control port (used by the MapleEdit dashboard), TypeSafe Jev
   judgments for chat and intent, and a skill-probe harness.
 
-The game client is the stock GMS v83 client with the BotStory fork of
+The game client is the stock GMS v83 client with
+[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake), the BotStory fork of
 [kaentake](https://github.com/iw2d/kaentake), running on either the clean Cosmic
 WZ files or the Community Repack WZ files; see [the game client](docs/SETUP.md#2-the-game-client).
 
@@ -243,8 +244,11 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
   affected. See [docs/CLIENT_FEATURE_HANDSHAKE.md](docs/CLIENT_FEATURE_HANDSHAKE.md).
 - **Server mods** with switches (`mods.SWITCHES`) and a `!mods` report per client.
 - **The BotStory client:** the native Crew window, the head-height quest markers and the feature
-  toggles come from the BotStory kaentake build and its `Custom.wz`, which are not public yet.
-  See [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
+  toggles come from [BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake) and its
+  `Custom.wz`. There is no prebuilt download yet; build its Release preset with CMake
+  (`cmake --preset release-win32`, then `cmake --build --preset release-win32`). Some of the
+  host's client content stays private: see
+  [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
 
 ### Commands
 

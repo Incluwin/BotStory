@@ -229,8 +229,10 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
   client such an item shows as an empty inventory slot. Double-clicking it closes the game,
   and a character wearing one closes the game at the character list.
 
-The BotStory build of kaentake is not published yet either. It adds the Crew window, the client
-feature toggles, the feature handshake and the Fusion Anvil (`fusion_anvil`).
+The BotStory build of kaentake is public as
+[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake), with no prebuilt download yet.
+It adds the Crew window, the client feature toggles, the feature handshake and the Fusion Anvil
+(`fusion_anvil`).
 `tools/wz-patcher/README.md` describes how that pack is applied.
 
 Without them, you manage companions with:
