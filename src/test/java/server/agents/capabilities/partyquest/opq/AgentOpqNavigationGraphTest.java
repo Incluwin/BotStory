@@ -89,11 +89,34 @@ class AgentOpqNavigationGraphTest {
         // long rope (x -43) below its bottom; the graph's edge onto it launches from x -108.
         for (int speed : new int[] {100, 102}) {
             for (int phase = 0; phase < 2; phase++) {
+                AgentOpqMemberState runner = new AgentOpqMemberState(1, AgentOpqMemberState.MemberType.AGENT);
                 Point end = followCoordinatorTargets(AgentOpqDefinition.ON_WAY_UP_MAP, new Point(-150, -846), speed,
-                        phase, AgentOpqCoordinator::wayUpAscentTarget, position -> position.y <= -1_600);
+                        phase, position -> AgentOpqCoordinator.wayUpAscentTarget(position, runner),
+                        position -> position.y <= -1_600);
                 assertTrue(end.y <= -1_600, "speed " + speed + " phase " + phase + " ended at " + end);
             }
         }
+    }
+
+    @Test
+    void wayUpRunnerLeavesTheLaunchStagingOnlyFromRest() {
+        // 2026-10-20: the route to the long rope was planned while the runner still slid into its staging spot and
+        // overran the launch off the platform's end; offline, live code got up only when an AI tick fell after it stopped.
+        AgentOpqMemberState runner = new AgentOpqMemberState(1, AgentOpqMemberState.MemberType.AGENT);
+        Point staging = new Point(-114, -846);
+        Point rope = new Point(-43, -1_623);
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-150, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-119, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner), "still one tick");
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner));
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-109, -846), runner), "walking to the launch");
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-80, -872), runner), "in flight");
+        assertEquals(new Point(-173, -844), AgentOpqCoordinator.wayUpAscentTarget(new Point(-120, -700), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner), "a new lap waits");
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner), "moved");
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner));
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner));
     }
 
     @Test
