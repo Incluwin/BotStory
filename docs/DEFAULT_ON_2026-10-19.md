@@ -90,6 +90,9 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
     Nath, waited there (211000000), and rejoined the owner when the run ended. A death before the clear was not seen.
   - The owner left by Amon at 22:04:35. All eight members inside followed by Amon (out=EXITED) within 6 s, and the run
     ended with cleared=true. All four allies were sent home. No ERROR lines from 21:22 to the end.
+- Deployed 2026-10-21 06:44: fix/opq-run3 and fix/expedition-expired-start merged into feat/companion-manager, with the
+  knowledge file refreshed (e6644310f). Full suite 14,290 / 0 / 37. Restarted at players=0 with no ERROR lines at boot.
+  OPQ run 4 waits for the airborne-edge branch.
 
 ## Findings
 
@@ -98,5 +101,5 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
   (AgentTownLifeRuntime.terminateLocal, graft code, not touched here).
 - The stock Adobis script (2030013.js) can throw "Multiple applicable overloads" for startInstance when the
   expedition is started right after a disband. Seen again 2026-10-20; fixed for Zakum, Horntail, Pink Bean, Showa and
-  Scarga on fix/expedition-expired-start (not merged). Balrog keeps the expedition object across clicks and CWKPQ is
+  Scarga on fix/expedition-expired-start (live since 2026-10-21). Balrog keeps the expedition object across clicks and CWKPQ is
   being rewritten, so both are left as they are.
