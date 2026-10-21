@@ -31,7 +31,7 @@ Full suite on 89d38f027: 14,265 tests, 0 failures, 37 skipped (9:33).
 
 Bosses (owner Bossfriend, Lv160 crew; details in docs/COMPANION_BOSSING_P13.md):
 
-- Zakum: sign-up with allies, arms, two of three bodies; lost when the owner died. Rerun pending.
+- Zakum: sign-up with allies, arms, two of three bodies; lost when the owner died. Rerun 2026-10-20: cleared (below).
 - Aufheben, Oberon, Nibelung: cleared, everyone out with the owner.
 - Field groups: Manon (Leafre) fought down to 21%; Zeno (Ludus) and King Sage Cat (Mu Lung) engaged.
 
@@ -64,6 +64,32 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
     rope jump-offs back toward the rope.
   - Way up: the authored jump to its long rope carried no climbing intent.
   Fixed with tests on fix/opq-room-climbs; the live re-run follows below.
+- OPQ run 3 (20:14-20:59, server 503900c37 with fix/opq-room-climbs and fix/bosslog-reset-midnight): FAILED the
+  45-minute clock again. It released cleanly with the party whole on the exit map. The fixes held: the lounge went to
+  Jinx, who cast Haste and climbed to the top row; the lobby runner reached the upper row; the way-up runner passed the
+  long rope. Storage and the walkway completed again. Still blocking:
+  - Lobby: the music player's stand point is in the air, so the LP dropped from the floor below missed the reactor.
+    Fixed on fix/opq-run3 (089ac8a56). Also, on Tuesdays and Wednesdays (server day, GMT) the LP box is out of reach
+    at any jump up to 123. That is a design question and is not fixed.
+  - Way up: every wrong door from row 6 up threw in party3_r6pt.js (no warp(int, double)), 556 times, and left the
+    runner standing. Fixed on fix/opq-run3 (6baed68e7).
+  - Lounge top and way-up top: the runners loop on short platform jumps the graph calls reachable. Open; the
+    airborne-edge work (fix/airborne-launched-edges) is looking at it.
+  - Vex, a Bandit, wields a claw, so the desk held her back for stars she could not afford. Topped up by GM.
+- Zakum (owner Bossfriend Lv202 Hero; party Thane, Isolde, Ingrid, Sorrel, Flint; allies Gunnar, Magna, Orrin, Tamsin):
+  CLEARED.
+  - The first attempt never went in. The 5-minute clock ran out while Adobis's "The expedition will begin" page was
+    open, and the OK then made the script call startInstance(null). The allies were sent home and no boss-log rows
+    were written. Fixed on fix/expedition-expired-start (630753174).
+  - Second attempt: squad 21:22:52, allies called 21:23:16 (ETA 180 s), party signed up by 21:24:15, allies by
+    21:26:29, Start 21:26:41, nine inside at 21:26:51. ZAKUM boss-log rows were written at entry for all ten.
+  - The Eye of Fire must be dropped on the altar (reactor 2111001 at -10,-204); `!drop 4001017 1` at the entrance
+    does nothing. Summoned 21:28:22. Arms down by 21:35, cleared 21:45:59 with nine inside and no deaths. The owner fell
+    to 1 HP once (Zakum's HP-to-1 attack); the healer brought him back.
+  - Dead member, forced after the clear with `!hpmp Flint 0` (`!kill` refuses Agents): Flint said he would wait in El
+    Nath, waited there (211000000), and rejoined the owner when the run ended. A death before the clear was not seen.
+  - The owner left by Amon at 22:04:35. All eight members inside followed by Amon (out=EXITED) within 6 s, and the run
+    ended with cleared=true. All four allies were sent home. No ERROR lines from 21:22 to the end.
 
 ## Findings
 
@@ -71,4 +97,6 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
 - A TownLife citizen tick failed once with "valid TownLife lifecycle event fields are required"
   (AgentTownLifeRuntime.terminateLocal, graft code, not touched here).
 - The stock Adobis script (2030013.js) can throw "Multiple applicable overloads" for startInstance when the
-  expedition is started right after a disband.
+  expedition is started right after a disband. Seen again 2026-10-20; fixed for Zakum, Horntail, Pink Bean, Showa and
+  Scarga on fix/expedition-expired-start (not merged). Balrog keeps the expedition object across clicks and CWKPQ is
+  being rewritten, so both are left as they are.
