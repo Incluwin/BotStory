@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -175,6 +176,20 @@ class AgentCwkpqStagePlaysTest {
     }
 
     @Test
+    void aSigilSeenTurnedIsNotTurnedAgainWhenItComesBack() {
+        Reactor warriorSigil = reactor(32, 6_109_000, new Point(-751, 2), 1, false);
+        Character orrin = member(11, "Orrin", Job.HERO, new Point(-706, 2), 1_111_008);
+
+        AgentCwkpqStagePlays.storage(ports, List.of(orrin), event, run, 1_000L);
+        when(warriorSigil.getState()).thenReturn((byte) 0);
+        when(warriorSigil.isActive()).thenReturn(true); // back about 10 s later, and a turn would count again
+        AgentCwkpqStagePlays.storage(ports, List.of(orrin), event, run, 12_000L);
+
+        verify(casting, never()).hitWithSkill(any(), anyInt(), anyInt());
+        verify(gateway, times(2)).navigate(entries.get(11), new Point(824, 328), false);
+    }
+
+    @Test
     void withAllFiveTurnedEveryoneTakesTheExit() {
         when(event.getIntProperty("glpq2")).thenReturn(5);
         Character fenna = member(10, "Fenna", Job.HERMIT, new Point(824, 328), 4_111_005);
@@ -238,6 +253,23 @@ class AgentCwkpqStagePlaysTest {
         when(event.getIntProperty("glpq3_p")).thenReturn(5);
         AgentCwkpqStagePlays.agility(ports, List.of(orrin, dorran), event, run, 3_000L);
         verify(partyQuest).enterPortal(orrin, 1); // no pass wanted: it waits below
+    }
+
+    @Test
+    void aTurnerWhoseSigilComesBackTakesTheTopPortalInstead() {
+        agilityPortals();
+        Reactor warriorSigil = reactor(31, 6_109_000, new Point(857, 1431), 1, false);
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(310, -1104), 1_111_008);
+        hasted(orrin);
+
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin), event, run, 1_000L);
+        when(warriorSigil.getState()).thenReturn((byte) 0);
+        when(warriorSigil.isActive()).thenReturn(true);
+        AgentCwkpqStagePlays.agility(ports, List.of(orrin), event, run, 12_000L);
+
+        verify(casting, never()).hitWithSkill(any(), anyInt(), anyInt());
+        verify(partyQuest, times(2)).enterPortal(orrin, 1);
+        assertEquals("pass through the top portal", run.roleOf(10));
     }
 
     @Test

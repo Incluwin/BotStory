@@ -96,6 +96,8 @@ public final class AgentCwkpqRun implements AgentBossFight {
     private final Set<String> said = ConcurrentHashMap.newKeySet();
     /** Each member's job in its stage as the plays last set it (role / roleOf). */
     private final Map<Integer, String> roles = new ConcurrentHashMap<>();
+    /** Stage 2-3 sigils seen turned, by anyone ("AGILITY:WARRIOR"): one comes back later and must not be turned again. */
+    private final Set<String> turnedSigils = ConcurrentHashMap.newKeySet();
     /** Counters the plays keep over the run (a member's talks to a master that gave nothing). */
     private final Map<String, Integer> counts = new ConcurrentHashMap<>();
     /** The Council Hall's fight: the boss track's priority fight under boss-rules.json cwkpq, made on first use. */
@@ -304,6 +306,16 @@ public final class AgentCwkpqRun implements AgentBossFight {
     /** The job a stage play last gave {@code memberId}, or null. */
     public String roleOf(int memberId) {
         return roles.get(memberId);
+    }
+
+    /** Records that {@code archetype}'s sigil on {@code stage} was turned. */
+    void sigilTurned(Stage stage, AgentCwkpqSigils.Archetype archetype) {
+        turnedSigils.add(stage + ":" + archetype);
+    }
+
+    /** True once {@code archetype}'s sigil on {@code stage} was seen turned. */
+    boolean wasTurned(Stage stage, AgentCwkpqSigils.Archetype archetype) {
+        return turnedSigils.contains(stage + ":" + archetype);
     }
 
     /** True the first time {@code what} is said this run. */

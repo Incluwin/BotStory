@@ -126,14 +126,7 @@ final class AgentCwkpqStagePlays {
             return;
         }
         List<Character> bySlot = bySlot(members, run);
-        Map<Archetype, Reactor> waiting = new EnumMap<>(Archetype.class);
-        for (Reactor reactor : ports.gateway().reactors(bySlot.getFirst())) {
-            for (Archetype archetype : Archetype.values()) {
-                if (reactor.getId() == archetype.sigilReactorId() && reactor.isAlive() && reactor.isActive()) {
-                    waiting.put(archetype, reactor);
-                }
-            }
-        }
+        Map<Archetype, Reactor> waiting = sigilsToTurn(ports, bySlot.getFirst(), run, Stage.STORAGE);
         Map<Integer, Archetype> turners = new HashMap<>();
         for (Map.Entry<Archetype, Reactor> sigil : waiting.entrySet()) {
             bySlot.stream().filter(member -> !turners.containsKey(member.getId())
@@ -168,14 +161,7 @@ final class AgentCwkpqStagePlays {
                 }
             }
         }
-        Map<Archetype, Reactor> waiting = new EnumMap<>(Archetype.class);
-        for (Reactor reactor : ports.gateway().reactors(bySlot.getFirst())) {
-            for (Archetype archetype : Archetype.values()) {
-                if (reactor.getId() == archetype.sigilReactorId() && reactor.isAlive() && reactor.isActive()) {
-                    waiting.put(archetype, reactor);
-                }
-            }
-        }
+        Map<Archetype, Reactor> waiting = sigilsToTurn(ports, bySlot.getFirst(), run, Stage.AGILITY);
         Map<Integer, Archetype> turners = new HashMap<>();
         for (Map.Entry<Archetype, Reactor> sigil : waiting.entrySet()) {
             Point at = sigil.getValue().getPosition();
@@ -343,6 +329,30 @@ final class AgentCwkpqStagePlays {
     }
 
     // ---- shared moves ----
+
+    /**
+     * The class sigils on {@code stage} still to turn, as {@code viewer} sees its map. A turned sigil vanishes and
+     * comes back about 10 s later, and the stock scripts count every turn (C9 live: Hadrik turned the warrior sigil
+     * three times, glpq3 reached 5 with two sigils done, and a count past 5 skips the stage's clear reward), so a sigil
+     * seen turned, by a member or a player, stays done for the rest of the stage.
+     */
+    static Map<Archetype, Reactor> sigilsToTurn(AgentCwkpqPorts ports, Character viewer, AgentCwkpqRun run,
+                                                Stage stage) {
+        Map<Archetype, Reactor> waiting = new EnumMap<>(Archetype.class);
+        for (Reactor reactor : ports.gateway().reactors(viewer)) {
+            for (Archetype archetype : Archetype.values()) {
+                if (reactor.getId() != archetype.sigilReactorId()) {
+                    continue;
+                }
+                if (!reactor.isAlive() || !reactor.isActive()) {
+                    run.sigilTurned(stage, archetype);
+                } else if (!run.wasTurned(stage, archetype)) {
+                    waiting.put(archetype, reactor);
+                }
+            }
+        }
+        return waiting;
+    }
 
     /** Walks up to {@code sigil}, stands beside it on the ground, faces it and casts one of its skills on it. */
     static void turnSigil(AgentCwkpqPorts ports, AgentCwkpqRun run, Character member, Reactor sigil,
