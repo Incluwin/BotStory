@@ -41,9 +41,13 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -51,6 +55,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntPredicate;
 
 /**
  * Who is online when (plan 3.2/3.3): every sweep, offline citizens log in with a probability
@@ -69,6 +74,16 @@ public final class PresenceScheduler {
     private static final int WANDER_MAX_DROP_PX = 40;
     private static final int CIRCLE_BOOST = 3;
     private static final double MAX_LOGIN_CHANCE = 0.5d;
+    /**
+     * How often the sweep runs. Population.start registers it at this period after a first delay of SWEEP_MS
+     * (TimerManager.register takes the period before the delay), and every live online count so far came from sweeps
+     * this far apart, while loginChance counts SWEEP_MS a sweep: so citizens log in four times as often as it reckons.
+     */
+    static final long SWEEP_PERIOD_MS = 15_000L;
+    /** Boot warm start: how far back its replay of sweeps begins; three times the longest session (afk-townie, 8 h). */
+    private static final int WARM_START_REPLAY_HOURS = 24;
+    /** Boot warm start: characters it loads a sweep (about 0.45 s each live, 2026-10-20), a third of the sweep period. */
+    static final int WARM_START_LOADS_PER_SWEEP = 10;
     /** An old hand this close below knowledge.VETERAN_LEVEL talks like a veteran (exact chances, rate numbers). */
     private static final int VETERAN_EARLY_LEVELS = 20;
     private static final int VETERAN_DAYS = 120;
@@ -79,6 +94,8 @@ public final class PresenceScheduler {
     private volatile long lastSweepMs;
     private volatile long lastSweepDurationMs;
     private volatile int forcedOnline;
+    /** Boot warm start: who logs in next, each with the session end its replay drew; null until the first sweep. */
+    private Map<Integer, Long> warmStart;
 
     PresenceScheduler(Population population) {
         this(population, new Random(population.config().SEED ^ 0x5eedL));
@@ -133,6 +150,11 @@ public final class PresenceScheduler {
         return forcedOnline;
     }
 
+    /** Citizens the boot warm start has still to log in. */
+    synchronized int warmStartWaiting() {
+        return warmStart == null ? 0 : warmStart.size();
+    }
+
     // ---- sweep ---------------------------------------------------------------------------
 
     public synchronized void sweep() {
@@ -163,10 +185,19 @@ public final class PresenceScheduler {
             int loaded = loadedCount();
             List<Citizen> offline = new ArrayList<>();
             for (Citizen citizen : population.citizens()) {
-                if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && !sessions.containsKey(citizen.characterId())
-                        && !rostered(citizen.characterId())) {
+                if (free(citizen)) {
                     offline.add(citizen); // a hired hand is the roster's: never logged in here, at boot or after
                 }
+            }
+            if (warmStart == null) {
+                long replayStarted = System.currentTimeMillis();
+                warmStart = replay(offline, now, moment);
+                log.info("presence warm start: {} citizens online as if the server had been up ({} h of sweeps replayed in {} ms)",
+                        warmStart.size(), WARM_START_REPLAY_HOURS, System.currentTimeMillis() - replayStarted);
+            }
+            if (!warmStart.isEmpty()) {
+                loaded = warmUp(loaded, now);
+                offline.removeIf(citizen -> sessions.containsKey(citizen.characterId()) || warmStart.containsKey(citizen.characterId()));
             }
             Collections.shuffle(offline, random);
             for (Citizen citizen : offline) {
@@ -188,8 +219,126 @@ public final class PresenceScheduler {
         }
     }
 
+    /** True when the citizen may log in here: active, not hired or on a roster, and not online already. */
+    private boolean free(Citizen citizen) {
+        return citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && !sessions.containsKey(citizen.characterId())
+                && !rostered(citizen.characterId());
+    }
+
+    /**
+     * Boot warm start (2026-10-21: a restart at 06:44 came back with 1 citizen online where 76 had been, and took three
+     * hours to fill again): who would be online now had the server been up all along. Replays the last
+     * {@code WARM_START_REPLAY_HOURS} of sweeps ({@link #SWEEP_PERIOD_MS} apart) in memory, nothing loaded: each sweep
+     * ends the replayed sessions that are over, then logs in the others with the sweep's own chance and session length,
+     * a circle's boost read from the replayed sessions. The sessions still running now, in random order, each with the
+     * end it was drawn: they log in with the time they have left, so they never all log off together.
+     */
+    Map<Integer, Long> replay(List<Citizen> candidates, long nowMs, ZonedDateTime moment) {
+        return replay(candidates, nowMs, moment, WARM_START_REPLAY_HOURS * 3_600_000L);
+    }
+
+    /**
+     * The replay over the last {@code replayMs}; from boot, a replay over the time since is the sweeps without a warm
+     * start. A citizen's chance before its circle's boost holds until the next hour on its cohort's clock, so it is worked
+     * out once an hour, not each of the 5,760 sweeps of a day.
+     */
+    Map<Integer, Long> replay(List<Citizen> candidates, long nowMs, ZonedDateTime moment, long replayMs) {
+        List<Citizen> order = new ArrayList<>(candidates);
+        Collections.shuffle(order, random);
+        int size = order.size();
+        long[] endsAt = new long[size]; // 0: offline in the replay
+        double[] chance = new double[size];
+        long[] chanceUntil = new long[size];
+        Map<Integer, Integer> circles = new HashMap<>();
+        IntPredicate circleOnline = circle -> circles.getOrDefault(circle, 0) > 0;
+        for (long step = replayMs / SWEEP_PERIOD_MS; step >= 1; step--) { // the sweep running now draws for "now" itself
+            long at = nowMs - step * SWEEP_PERIOD_MS;
+            for (int i = 0; i < size; i++) {
+                Citizen citizen = order.get(i);
+                if (endsAt[i] != 0L) {
+                    if (at < endsAt[i]) {
+                        continue;
+                    }
+                    endsAt[i] = 0L;
+                    circles.merge(citizen.circleId(), -1, Integer::sum);
+                }
+                if (at >= chanceUntil[i]) {
+                    ZonedDateTime when = moment.minusNanos((nowMs - at) * 1_000_000L);
+                    chance[i] = chanceAlone(citizen, when);
+                    chanceUntil[i] = nextHourMs(citizen, when);
+                }
+                if (chance[i] > 0.0d && random.nextDouble() < boosted(citizen, chance[i], circleOnline)) {
+                    endsAt[i] = at + sessionMinutes(citizen) * 60_000L;
+                    circles.merge(citizen.circleId(), 1, Integer::sum);
+                }
+            }
+        }
+        Map<Integer, Long> online = new LinkedHashMap<>();
+        for (int i = 0; i < size; i++) {
+            if (endsAt[i] > nowMs) {
+                online.put(order.get(i).characterId(), endsAt[i]);
+            }
+        }
+        return online;
+    }
+
+    /** When the citizen's hour weight next changes: the next hour on its cohort's clock, its offset counted. */
+    private long nextHourMs(Citizen citizen, ZonedDateTime when) {
+        Cohort cohort = population.content().cohort(citizen.cohort());
+        if (cohort == null) {
+            return Long.MAX_VALUE;
+        }
+        ZonedDateTime local = when.plusMinutes(citizen.offsetMinutes()).withZoneSameInstant(cohort.zone());
+        return local.truncatedTo(ChronoUnit.HOURS).plusHours(1).toInstant().toEpochMilli() - citizen.offsetMinutes() * 60_000L;
+    }
+
+    /**
+     * Logs in the warm start's next citizens, each until the end its replay drew: loaded while fewer than
+     * {@code ONLINE_MAX} are, else virtual. At most {@link #WARM_START_LOADS_PER_SWEEP} loads a sweep; a virtual login
+     * loads nothing, so those never wait. One that is no longer free, or whose session would be over, is dropped.
+     * Returns the loaded count.
+     */
+    private int warmUp(int loaded, long now) {
+        int loads = 0;
+        int max = population.config().ONLINE_MAX;
+        Iterator<Map.Entry<Integer, Long>> waiting = warmStart.entrySet().iterator();
+        while (waiting.hasNext() && (loads < WARM_START_LOADS_PER_SWEEP || loaded >= max)) {
+            Map.Entry<Integer, Long> next = waiting.next();
+            waiting.remove();
+            Citizen citizen = population.citizen(next.getKey());
+            if (citizen == null || !free(citizen) || next.getValue() <= now) {
+                continue;
+            }
+            boolean virtual = loaded >= max;
+            CitizenSession session = login(citizen, now, next.getValue(), virtual);
+            if (!virtual) {
+                loads++;
+                if (session != null) {
+                    loaded++;
+                }
+            }
+        }
+        if (warmStart.isEmpty()) {
+            log.info("presence warm start done: {} loaded, {} virtual", loaded, virtualCount());
+        }
+        return loaded;
+    }
+
     /** Per-sweep login probability so the steady-state online fraction tracks the cohort's hour weight. */
     double loginChance(Citizen citizen, ZonedDateTime now) {
+        return boosted(citizen, chanceAlone(citizen, now), this::circleOnline);
+    }
+
+    /** Three times the chance while one of its circle is online (live, or in the warm start's replay); capped. */
+    private static double boosted(Citizen citizen, double chance, IntPredicate circleOnline) {
+        if (chance > 0.0d && citizen.circleId() > 0 && circleOnline.test(citizen.circleId())) {
+            chance *= CIRCLE_BOOST;
+        }
+        return Math.min(MAX_LOGIN_CHANCE, chance);
+    }
+
+    /** Its login chance before a circle's boost; 0 off its cohort's hours. */
+    private double chanceAlone(Citizen citizen, ZonedDateTime now) {
         Cohort cohort = population.content().cohort(citizen.cohort());
         if (cohort == null) {
             return 0.0d;
@@ -201,11 +350,7 @@ public final class PresenceScheduler {
         }
         double meanSessionMinutes = (cohort.sessionMin() + cohort.sessionMax()) / 2.0d;
         double sweepMinutes = population.config().SWEEP_MS / 60_000.0d;
-        double chance = fraction * sweepMinutes / Math.max(1.0d, meanSessionMinutes * (1.0d - Math.min(0.9d, fraction)));
-        if (citizen.circleId() > 0 && circleOnline(citizen.circleId())) {
-            chance *= CIRCLE_BOOST;
-        }
-        return Math.min(MAX_LOGIN_CHANCE, chance);
+        return fraction * sweepMinutes / Math.max(1.0d, meanSessionMinutes * (1.0d - Math.min(0.9d, fraction)));
     }
 
     private boolean circleOnline(int circleId) {
@@ -220,9 +365,17 @@ public final class PresenceScheduler {
     // ---- login / logout ------------------------------------------------------------------
 
     public CitizenSession login(Citizen citizen, long now, boolean virtual) {
+        return login(citizen, now, now + sessionMinutes(citizen) * 60_000L, virtual);
+    }
+
+    /** A session length drawn from the citizen's cohort. */
+    private int sessionMinutes(Citizen citizen) {
         Cohort cohort = population.content().cohort(citizen.cohort());
-        int minutes = cohort == null ? 90 : cohort.sessionMin() + random.nextInt(Math.max(1, cohort.sessionMax() - cohort.sessionMin() + 1));
-        CitizenSession session = new CitizenSession(citizen, now, now + minutes * 60_000L, virtual);
+        return cohort == null ? 90 : cohort.sessionMin() + random.nextInt(Math.max(1, cohort.sessionMax() - cohort.sessionMin() + 1));
+    }
+
+    private CitizenSession login(Citizen citizen, long now, long endsAtMs, boolean virtual) {
+        CitizenSession session = new CitizenSession(citizen, now, endsAtMs, virtual);
         if (!virtual && !materialize(session, now)) {
             return null;
         }
