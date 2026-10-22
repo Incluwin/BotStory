@@ -9,8 +9,12 @@ import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils.Archetype;
+import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationDebugStateRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
+import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -21,6 +25,7 @@ import server.maps.MapleMap;
 import server.maps.Portal;
 import server.maps.Reactor;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -83,6 +88,7 @@ public final class AgentCwkpqTestService {
         try {
             return switch (params[0].toLowerCase(Locale.ROOT)) {
                 case "status" -> status(operator);
+                case "why" -> why(operator);
                 case "checkpoint" -> checkpoint(operator, params);
                 case "stop" -> stop(operator);
                 default -> help();
@@ -273,6 +279,44 @@ public final class AgentCwkpqTestService {
         return expedition == null ? null : AgentBossRunRegistry.forExpedition(expedition);
     }
 
+    // ---- why ----
+
+    /**
+     * "why": each companion in the run you stand in, one line each in the chat and the server log: where it stands
+     * and on what (ground, rope, air), its speed and jump, the job the stage play last gave it, where it is walking,
+     * and the navigation's last decision.
+     */
+    private static List<String> why(Character operator) {
+        EventInstanceManager event = cwkpqEvent(operator);
+        AgentBossRunSession session = event == null ? null : AgentBossRunRegistry.forEvent(event);
+        if (session == null) {
+            return List.of("Stand inside a CWKPQ run with companions in it.");
+        }
+        AgentCwkpqRun run = session.fight() instanceof AgentCwkpqRun cwkpq ? cwkpq : null;
+        PrimitiveCapabilityGateway gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
+        List<String> lines = new ArrayList<>();
+        lines.add(flags(event));
+        for (AgentBossRunMember member : session.members()) {
+            Character agent = character(member.agentId());
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.agentId());
+            if (agent == null || entry == null) {
+                continue;
+            }
+            Point target = AgentMoveTargetStateRuntime.moveTarget(entry);
+            String line = agent.getName() + " " + member.phase().name().toLowerCase(Locale.ROOT) + " on "
+                    + agent.getMapId() + " at " + AgentCwkpqStagePlays.pointText(agent.getPosition()) + " "
+                    + gateway.footing(agent).name().toLowerCase(Locale.ROOT) + ", speed "
+                    + agent.getTotalMoveSpeedStat() + " jump " + agent.getTotalJumpStat()
+                    + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")
+                    + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
+                    + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
+                    + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry);
+            log.info("CWKPQ why: {}", line);
+            lines.add(line);
+        }
+        return lines;
+    }
+
     private static Character character(int id) {
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(id);
         Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
@@ -282,6 +326,7 @@ public final class AgentCwkpqTestService {
     private static List<String> help() {
         return List.of(
                 "!cwkpqtest status (a CWKPQ run you stand in, or the list registering on your channel)",
+                "!cwkpqtest why (inside a CWKPQ run: each companion's footing, job and walk, also in the server log)",
                 "!cwkpqtest checkpoint <storage|agility|wit|unity|council|armory> (inside a CWKPQ run)",
                 "!cwkpqtest stop (inside a CWKPQ run: the event ends for everyone in it)");
     }

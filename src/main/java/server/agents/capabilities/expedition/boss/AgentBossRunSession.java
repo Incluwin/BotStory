@@ -123,6 +123,11 @@ public final class AgentBossRunSession {
         return List.copyOf(members);
     }
 
+    /** The fight this run plays (a GM test command reads its state). */
+    public AgentBossFight fight() {
+        return fight;
+    }
+
     public AgentBossRunMember member(int agentId) {
         for (AgentBossRunMember member : members) {
             if (member.agentId() == agentId) {

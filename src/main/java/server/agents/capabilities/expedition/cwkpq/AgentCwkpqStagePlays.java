@@ -43,6 +43,7 @@ import java.util.Map;
  * each portal or cast so one tick never acts twice.
  */
 final class AgentCwkpqStagePlays {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AgentCwkpqStagePlays.class);
     static final String HIDDEN_PORTAL = "next01";
     static final String EXIT_PORTAL = "next00";
     /** How close a member stands to a portal to take it, and to a spot or sigil to hit it. */
@@ -191,13 +192,19 @@ final class AgentCwkpqStagePlays {
         boolean passesWanted = event.getIntProperty("glpq3_p") < 5;
         for (Character member : bySlot) {
             Archetype archetype = turners.get(member.getId());
+            String role;
             if (archetype != null) {
+                role = "turn the " + archetype.name().toLowerCase(java.util.Locale.ROOT) + " sigil at "
+                        + pointText(waiting.get(archetype).getPosition());
                 turnSigil(ports, run, member, waiting.get(archetype), archetype, nowMs);
             } else if (passesWanted && climbsHigh(member)) {
+                role = "pass through the top portal";
                 takePortalFrom(ports, run, member, TOP_PORTAL, TOP_STAND, TOP_REACH_PX, nowMs);
             } else {
+                role = "wait by the bottom portal";
                 waitBy(ports, member, BOTTOM_PORTAL);
             }
+            noteRole(run, member, "agility", role);
         }
     }
 
@@ -404,6 +411,22 @@ final class AgentCwkpqStagePlays {
         Point candidate = new Point(target.x + side * offset, target.y);
         Point ground = ports.gateway().groundPoint(member.getMap(), candidate);
         return ground != null ? ground : candidate;
+    }
+
+    /**
+     * Records {@code member}'s job in {@code stage} and logs it when it changes, with what decides it on the climb:
+     * where it stands, its speed and jump, and whether it is hasted.
+     */
+    static void noteRole(AgentCwkpqRun run, Character member, String stage, String role) {
+        if (run.role(member.getId(), role)) {
+            log.info("CWKPQ {}: {} will {} (at {}, speed {} jump {}{})", stage, member.getName(), role,
+                    pointText(member.getPosition()), member.getTotalMoveSpeedStat(), member.getTotalJumpStat(),
+                    member.getBuffedValue(BuffStat.SPEED) != null ? ", hasted" : "");
+        }
+    }
+
+    static String pointText(Point at) {
+        return at == null ? "?" : "(" + at.x + "," + at.y + ")";
     }
 
     static boolean near(Point a, Point b, int reachPx) {

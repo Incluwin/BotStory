@@ -94,6 +94,8 @@ public final class AgentCwkpqRun implements AgentBossFight {
     private final Set<Integer> knownReal = ConcurrentHashMap.newKeySet();
     /** What a member said once this run ("hallway-hint"). */
     private final Set<String> said = ConcurrentHashMap.newKeySet();
+    /** Each member's job in its stage as the plays last set it (role / roleOf). */
+    private final Map<Integer, String> roles = new ConcurrentHashMap<>();
     /** Counters the plays keep over the run (a member's talks to a master that gave nothing). */
     private final Map<String, Integer> counts = new ConcurrentHashMap<>();
     /** The Council Hall's fight: the boss track's priority fight under boss-rules.json cwkpq, made on first use. */
@@ -289,6 +291,19 @@ public final class AgentCwkpqRun implements AgentBossFight {
 
     void markReal(int spot) {
         knownReal.add(spot);
+    }
+
+    /**
+     * Records the job a stage play gave {@code memberId} this tick, in words; true when it changed (the play logs the
+     * change, and !cwkpqtest why shows the last one).
+     */
+    boolean role(int memberId, String role) {
+        return !role.equals(roles.put(memberId, role));
+    }
+
+    /** The job a stage play last gave {@code memberId}, or null. */
+    public String roleOf(int memberId) {
+        return roles.get(memberId);
     }
 
     /** True the first time {@code what} is said this run. */
