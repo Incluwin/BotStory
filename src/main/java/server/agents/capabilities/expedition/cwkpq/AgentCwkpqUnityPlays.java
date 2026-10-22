@@ -4,6 +4,7 @@ import client.Character;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils.Archetype;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -14,6 +15,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -170,11 +172,15 @@ final class AgentCwkpqUnityPlays {
             }
             default -> {
                 if (map.countMonsters() > 0) {
+                    // The room's own kinds, preferred: an empty set lets the grind see only what is within its seek
+                    // range (800 px), and the mage room's arrival spot (3371,-384) is farther than that from every
+                    // spawn (C9 live: iWantPanda stood there with no target); preferred kinds are sought map-wide.
+                    Set<Integer> kinds = roomKinds(map);
                     for (Character member : working) {
                         AgentCwkpqStagePlays.noteRole(run, member, "unity", "clear the room");
                         AgentRuntimeEntry entry = ports.entry(member.getId());
                         if (entry != null) {
-                            ports.gateway().grind(entry, Set.of());
+                            ports.gateway().grind(entry, kinds);
                         }
                     }
                 } else {
@@ -183,6 +189,15 @@ final class AgentCwkpqUnityPlays {
                 }
             }
         }
+    }
+
+    /** The kinds of monster alive in a room. */
+    static Set<Integer> roomKinds(MapleMap map) {
+        Set<Integer> kinds = new HashSet<>();
+        for (Monster monster : map.getAllMonsters()) {
+            kinds.add(monster.getId());
+        }
+        return Set.copyOf(kinds);
     }
 
     /** The master's own test passed (the room is empty, or the eyes broken): the claimer walks up and asks. */

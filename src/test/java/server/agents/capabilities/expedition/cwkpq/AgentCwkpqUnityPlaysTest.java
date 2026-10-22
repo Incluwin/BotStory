@@ -9,6 +9,7 @@ import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils.Archetype;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
@@ -173,11 +174,17 @@ class AgentCwkpqUnityPlaysTest {
         Character orrin = member(10, "Orrin", Job.HERO, new Point(117, -2259));
         Character dorran = member(11, "Dorran", Job.PALADIN, new Point(0, 156));
         when(map.countMonsters()).thenReturn(3);
+        Monster guardian = mock(Monster.class);
+        when(guardian.getId()).thenReturn(9_400_582);
+        Monster add = mock(Monster.class);
+        when(add.getId()).thenReturn(9_400_581);
+        when(map.getAllMonsters()).thenReturn(List.of(guardian, guardian, add));
 
         AgentCwkpqUnityPlays.room(ports, Archetype.WARRIOR, List.of(orrin, dorran), event, run, 1_000L);
 
-        verify(gateway).grind(entries.get(10), Set.of());
-        verify(gateway).grind(entries.get(11), Set.of());
+        // the room's kinds, preferred, so a member out of seek range of every spawn still looks map-wide
+        verify(gateway).grind(entries.get(10), Set.of(9_400_582, 9_400_581));
+        verify(gateway).grind(entries.get(11), Set.of(9_400_582, 9_400_581));
 
         when(map.countMonsters()).thenReturn(0);
         when(gateway.npcPosition(orrin, 9_201_107)).thenReturn(new Point(117, -2259));
