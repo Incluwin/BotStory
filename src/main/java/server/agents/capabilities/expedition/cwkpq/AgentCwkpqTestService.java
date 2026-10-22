@@ -144,6 +144,16 @@ public final class AgentCwkpqTestService {
         return line.toString();
     }
 
+    /** Whether the Agent grinds or follows, and the monster its grind is after. */
+    private static String combatText(AgentRuntimeEntry entry) {
+        String mode = server.agents.runtime.AgentModeStateRuntime.grinding(entry) ? "grinding"
+                : server.agents.runtime.AgentModeStateRuntime.following(entry) ? "following" : "idle";
+        server.life.Monster mob = server.agents.capabilities.combat.AgentGrindTargetStateRuntime.target(entry);
+        return "combat: " + mode + (mob == null ? ", no target"
+                : ", target " + mob.getId() + " at " + AgentCwkpqStagePlays.pointText(mob.getPosition())
+                + (mob.isAlive() ? "" : " (dead)"));
+    }
+
     /** Each class sigil on the operator's map: where it is, its state and whether it still takes a hit. */
     private static String sigilText(Character operator) {
         StringBuilder text = new StringBuilder("; sigils:");
@@ -336,6 +346,7 @@ public final class AgentCwkpqTestService {
                     + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")
                     + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
                     + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
+                    + "; " + combatText(entry)
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
                     + "; physics: " + (entry.movementPhysicsState().inAir() ? "in the air" : "grounded")
                     + " at (" + Math.round(entry.movementPhysicsState().physicsX()) + ","
