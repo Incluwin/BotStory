@@ -3,7 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Kaentake C:\src\BotStory-Kaentake
 #
 # The checkout needs `cmake --preset release-win32` and `cmake --build --preset release-win32` run first
-# (see its README). Needs Inno Setup 6 (https://jrsoftware.org/isdl.php).
+# (installer\README.md, "Building", lists what that needs). Needs Inno Setup 6 (https://jrsoftware.org/isdl.php).
 param(
     [Parameter(Mandatory = $true)][string]$Kaentake
 )

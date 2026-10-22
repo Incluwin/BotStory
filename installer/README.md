@@ -3,7 +3,7 @@
 A Windows installer for people who run **their own** BotStory server. It adds the BotStory launcher
 ([BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake)) to a MapleStory v83 client you already
 have, pointed at your server. It downloads nothing and connects to nothing else: no game files, no Tailscale,
-no patch server, no accounts.
+no patch server, no accounts. There is no prebuilt download yet: [build it](#building) first.
 
 ## Before you run it
 
@@ -50,9 +50,34 @@ without admin rights, with the shortcut and uninstall entry for your user only.
 
 ## Building
 
-1. Build BotStory-Kaentake's Release preset (`cmake --preset release-win32`, then
-   `cmake --build --preset release-win32`).
-2. Install [Inno Setup 6](https://jrsoftware.org/isdl.php).
-3. `powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Kaentake <BotStory-Kaentake checkout>`
+There is no prebuilt installer yet, so build it from source. You need:
 
-The installer lands in `installer\dist\`.
+- [Git](https://git-scm.com/downloads);
+- Visual Studio 2022, or its Build Tools, with the **Desktop development with C++** workload (it
+  includes CMake);
+- [Python 3](https://www.python.org/downloads/) as `python` on `PATH`: the WzLib build runs a Python script;
+- [Inno Setup 6](https://jrsoftware.org/isdl.php).
+
+1. Clone BotStory-Kaentake with its submodules (Detours and WzLib). Keep the folder path short: MSBuild
+   fails with `FTK1011` when its file paths pass Windows' 260-character limit.
+
+   ```
+   git clone --recursive https://github.com/Incluwin/BotStory-Kaentake.git C:\src\BotStory-Kaentake
+   ```
+
+2. In that folder, from a **Developer PowerShell for VS 2022** (which has `cmake` on `PATH`), build the
+   Release preset:
+
+   ```
+   cmake --preset release-win32
+   cmake --build --preset release-win32
+   ```
+
+3. From this repository's folder:
+
+   ```
+   powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Kaentake C:\src\BotStory-Kaentake
+   ```
+
+The installer lands in `installer\dist\`. Tested 2026-10-22 from a fresh clone of BotStory-Kaentake
+(`feat/feature-handshake`, 2a40f32) with the Visual Studio 2022 Build Tools.

@@ -111,8 +111,9 @@ The server creates the `cosmic` database on its first start (`createDatabaseIfNo
 BotStory's client is the stock Global MapleStory v83 client with the Cosmic WZ files (or a
 Community Repack set). There are two ways to make one from public files:
 
-- **The BotStory client installer** ([`installer/`](../installer/README.md)). Do step 1 yourself
-  first: the installer downloads nothing. It then checks which WZ set the folder has, does the
+- **The BotStory client installer** ([`installer/`](../installer/README.md)). There is no prebuilt
+  download yet: build it first ([Building](../installer/README.md#building)). Do step 1 yourself
+  too: the installer downloads nothing. It then checks which WZ set the folder has, does the
   cleanup in step 1 and step 3, and adds BotStory's launcher
   ([BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake)) pointed at your server: its
   Features page, the Crew window and the quest markers over Residents. Given your server folder, it
@@ -224,10 +225,9 @@ line `Server mods: ...` at server start shows both switches.
 
 ### What the public client does not have yet
 
-The BotStory host's own client adds Nexon-derived WZ content, which is not in this repository:
+The BotStory host's own client adds Nexon-derived WZ content, which is in neither public
+repository:
 
-- `Custom.wz` with the native Crew window, the head-height quest markers and the mob HP bar. The
-  BotStory client installer adds it (from BotStory-Kaentake); plain kaentake lacks it.
 - BotStory's item, skill and cash-shop edits, and the large quick-slot bar.
 - The Evolving Rings (`botstory_wz`).
 - Images for 303 equips the server took from the Community Repack (168 shoulder pads, 126
@@ -237,13 +237,13 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
   client such an item shows as an empty inventory slot. Double-clicking it closes the game,
   and a character wearing one closes the game at the character list.
 
-The BotStory build of kaentake is public as
-[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake), with no prebuilt download yet.
-It adds the Crew window, the client feature toggles, the feature handshake and the Fusion Anvil
-(`fusion_anvil`).
 `tools/wz-patcher/README.md` describes how that pack is applied.
 
-Without them, you manage companions with:
+The installer client has the rest of BotStory's client, from
+[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake): its launcher and DLL (the
+Features page, the client feature toggles, the feature handshake and the Fusion Anvil,
+`fusion_anvil`) and its public `Custom.wz` (the native Crew window, the head-height quest markers
+and the mob HP bar). Plain kaentake has none of them; with it, you manage companions with:
 
 - the stock party window: invite calls a companion, expel benches it;
 - chat commands;

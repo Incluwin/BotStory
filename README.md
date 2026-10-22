@@ -245,10 +245,9 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
 - **Server mods** with switches (`mods.SWITCHES`) and a `!mods` report per client.
 - **The BotStory client:** the native Crew window, the head-height quest markers and the feature
   toggles come from [BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake) and its
-  `Custom.wz`. There is no prebuilt download yet; build its Release preset with CMake
-  (`cmake --preset release-win32`, then `cmake --build --preset release-win32`). Some of the
-  host's client content stays private: see
-  [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
+  `Custom.wz`. [`installer/`](installer/README.md) builds an installer that adds them to your own
+  v83 client; there is no prebuilt download yet. Some of the host's client content stays private:
+  see [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
 
 ### Commands
 
@@ -314,13 +313,17 @@ Docker, the game client, hosting friends and troubleshooting.
 2. **Run `setup.bat`.**
    - It checks for Java 21 and offers to install it.
    - It finds MySQL, or offers to start one in Docker.
-   - It saves the database login in `.env` and builds the server.
+   - It saves the database login in `.env`, sets `MOD_FUSION_ANVIL=on` there for the BotStory
+     client, and builds the server.
 3. **Run `start-server.bat`** and wait for `Cosmic is now online`.
-4. **Set up a v83 client** from public files (P0nk's v83 setup and kaentake): see
+4. **Set up a v83 client** from public files: install v83 with the Cosmic WZ files, then add
+   BotStory's launcher with the client installer ([`installer/`](installer/README.md), built from
+   source). Plain kaentake works too, with `MOD_FUSION_ANVIL=off` in `.env`. See
    [docs/SETUP.md](docs/SETUP.md#2-the-game-client).
 5. **Log in** as `admin` / `admin` (a GM), or with any new username and password.
 
-With Docker on any OS, set `DB_PASS` in `.env`, then start everything:
+With Docker on any OS, set `DB_PASS` in `.env` (and `MOD_FUSION_ANVIL=on` for the BotStory client
+installer's client), then start everything:
 
 ```bash
 cp .env.example .env
