@@ -9,8 +9,14 @@ import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils.Archetype;
+import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationDebugStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationGraph;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.navigation.AgentNavigationRegionService;
+import server.maps.Foothold;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -319,11 +325,29 @@ public final class AgentCwkpqTestService {
                     + "; sim " + entry.simulationState().mode().name().toLowerCase(Locale.ROOT)
                     + (entry.simulationState().fullRateSimulationRequired() ? " full-rate" : "")
                     + "; ticked " + (System.currentTimeMillis() - entry.tickState().lastTickAtMs()) + " ms ago"
-                    + (entry.tickState().lastTickWasAi() ? " (ai)" : "");
+                    + (entry.tickState().lastTickWasAi() ? " (ai)" : "") + "; " + graphText(entry, agent, target);
             log.info("CWKPQ why: {}", line);
             lines.add(line);
         }
         return lines;
+    }
+
+    /**
+     * The navigation graph the Agent's stats pick on its map: its size, the foothold found under the Agent and the
+     * regions of where it stands and where it walks to (-1: no region, so no route can be planned).
+     */
+    private static String graphText(AgentRuntimeEntry entry, Character agent, Point target) {
+        MapleMap map = agent.getMap();
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(map,
+                AgentMovementStateRuntime.movementProfile(entry));
+        if (graph == null) {
+            return "graph: none built";
+        }
+        Foothold under = AgentGroundingService.findGroundFoothold(map, agent.getPosition());
+        return "graph: " + graph.regions.size() + " regions, foothold under " + (under == null ? "none" : under.getId())
+                + ", region here " + graph.findRegionId(map, agent.getPosition()) + ", region at target "
+                + (target == null ? "-" : String.valueOf(AgentNavigationRegionService.resolvePointTargetRegionId(
+                graph, map, target)));
     }
 
     private static Character character(int id) {
