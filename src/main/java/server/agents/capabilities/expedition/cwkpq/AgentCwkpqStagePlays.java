@@ -355,7 +355,13 @@ final class AgentCwkpqStagePlays {
         }
         ports.gateway().stop(entry);
         ports.gateway().facePosition(member, sigil.getPosition());
-        AgentCwkpqSigilCast.cast(ports.casting(), entry, member, sigil, archetype);
+        byte before = sigil.getState();
+        AgentCwkpqSigilCast.Outcome outcome = AgentCwkpqSigilCast.cast(ports.casting(), entry, member, sigil, archetype);
+        if (outcome == AgentCwkpqSigilCast.Outcome.CAST) {
+            log.info("CWKPQ sigil: {} cast on the {} sigil (oid {}) at {}: state {} -> {}{}", member.getName(),
+                    archetype.name().toLowerCase(java.util.Locale.ROOT), sigil.getObjectId(),
+                    pointText(sigil.getPosition()), before, sigil.getState(), sigil.isActive() ? ", still waiting" : "");
+        }
         run.busy(member.getId(), nowMs + CAST_PAUSE_MS);
     }
 

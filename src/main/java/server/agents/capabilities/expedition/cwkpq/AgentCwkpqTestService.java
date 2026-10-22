@@ -144,6 +144,23 @@ public final class AgentCwkpqTestService {
         return line.toString();
     }
 
+    /** Each class sigil on the operator's map: where it is, its state and whether it still takes a hit. */
+    private static String sigilText(Character operator) {
+        StringBuilder text = new StringBuilder("; sigils:");
+        for (server.maps.MapObject object : operator.getMap().getReactors()) {
+            server.maps.Reactor reactor = (server.maps.Reactor) object;
+            for (Archetype archetype : Archetype.values()) {
+                if (reactor.getId() == archetype.sigilReactorId()) {
+                    text.append(' ').append(archetype.name().toLowerCase(Locale.ROOT))
+                            .append(AgentCwkpqStagePlays.pointText(reactor.getPosition())).append(" state ")
+                            .append(reactor.getState()).append(reactor.isAlive() ? "" : " dead")
+                            .append(reactor.isActive() ? " waiting" : " turned");
+                }
+            }
+        }
+        return text.toString();
+    }
+
     private static String memberLine(AgentBossRunMember member) {
         Character agent = character(member.agentId());
         if (agent == null) {
@@ -301,7 +318,9 @@ public final class AgentCwkpqTestService {
         AgentCwkpqRun run = session.fight() instanceof AgentCwkpqRun cwkpq ? cwkpq : null;
         PrimitiveCapabilityGateway gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
         List<String> lines = new ArrayList<>();
-        lines.add(flags(event));
+        String flags = flags(event) + sigilText(operator);
+        log.info("CWKPQ why: {}", flags);
+        lines.add(flags);
         for (AgentBossRunMember member : session.members()) {
             Character agent = character(member.agentId());
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.agentId());
