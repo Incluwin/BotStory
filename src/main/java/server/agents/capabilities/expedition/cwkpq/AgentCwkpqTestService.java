@@ -329,7 +329,8 @@ public final class AgentCwkpqTestService {
             }
             Point target = AgentMoveTargetStateRuntime.moveTarget(entry);
             String line = agent.getName() + " " + member.phase().name().toLowerCase(Locale.ROOT) + " on "
-                    + agent.getMapId() + " at " + AgentCwkpqStagePlays.pointText(agent.getPosition()) + " "
+                    + agent.getMapId() + " (" + agent.getMap().countMonsters() + " monsters) at "
+                    + AgentCwkpqStagePlays.pointText(agent.getPosition()) + " "
                     + gateway.footing(agent).name().toLowerCase(Locale.ROOT) + ", speed "
                     + agent.getTotalMoveSpeedStat() + " jump " + agent.getTotalJumpStat()
                     + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")

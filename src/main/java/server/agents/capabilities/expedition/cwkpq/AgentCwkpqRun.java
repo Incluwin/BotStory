@@ -96,6 +96,8 @@ public final class AgentCwkpqRun implements AgentBossFight {
     private final Set<String> said = ConcurrentHashMap.newKeySet();
     /** Each member's job in its stage as the plays last set it (role / roleOf). */
     private final Map<Integer, String> roles = new ConcurrentHashMap<>();
+    /** The stage each member was on at its last tick. */
+    private final Map<Integer, Stage> stagesOf = new ConcurrentHashMap<>();
     /** Stage 2-3 sigils seen turned, by anyone ("AGILITY:WARRIOR"): one comes back later and must not be turned again. */
     private final Set<String> turnedSigils = ConcurrentHashMap.newKeySet();
     /** Counters the plays keep over the run (a member's talks to a master that gave nothing). */
@@ -212,6 +214,9 @@ public final class AgentCwkpqRun implements AgentBossFight {
             Stage stage = Stage.of(fighter.getMapId());
             if (stage != null) {
                 byStage.computeIfAbsent(stage, ignored -> new ArrayList<>()).add(fighter);
+                if (stagesOf.put(fighter.getId(), stage) != stage) {
+                    roles.remove(fighter.getId()); // its last stage's job no longer applies
+                }
             }
         }
         for (Map.Entry<Stage, List<Character>> here : byStage.entrySet()) {

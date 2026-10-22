@@ -76,19 +76,26 @@ final class AgentCwkpqUnityPlays {
     static void hall(AgentCwkpqPorts ports, List<Character> members, EventInstanceManager event, AgentCwkpqRun run,
                      long nowMs) {
         if (event.getIntProperty("glpq5") >= 5) {
-            members.forEach(member -> AgentCwkpqStagePlays.takePortal(ports, run, member, HALL_EXIT, nowMs));
+            for (Character member : members) {
+                AgentCwkpqStagePlays.noteRole(run, member, "unity", "take the exit");
+                AgentCwkpqStagePlays.takePortal(ports, run, member, HALL_EXIT, nowMs);
+            }
             return;
         }
         for (Character member : AgentCwkpqStagePlays.bySlot(members, run)) {
             Integer held = heldWeapon(ports, member);
             if (held != null && !CwkpqRelicWeapons.relicTook(event, held)) {
+                AgentCwkpqStagePlays.noteRole(run, member, "unity", "carry the " + weaponName(held) + " to its relic");
                 carry(ports, run, member, held, nowMs);
                 continue;
             }
             Archetype archetype = AgentCwkpqSigils.archetypeOf(member.getJob().getId());
             if (archetype != null && CwkpqRelicWeapons.wanted(event, WEAPONS.get(archetype))) {
+                AgentCwkpqStagePlays.noteRole(run, member, "unity",
+                        "go for the " + WEAPON_NAMES.get(archetype) + " in its room");
                 AgentCwkpqStagePlays.takePortal(ports, run, member, ROOM_PORTALS.get(archetype), nowMs);
             } else {
+                AgentCwkpqStagePlays.noteRole(run, member, "unity", "wait by the exit");
                 AgentCwkpqStagePlays.waitBy(ports, member, HALL_EXIT);
             }
         }
@@ -139,6 +146,7 @@ final class AgentCwkpqUnityPlays {
                 && run.count("master-talks-" + member.getId()) < MAX_MASTER_TALKS).toList();
         for (Character member : bySlot) {
             if (!working.contains(member)) {
+                AgentCwkpqStagePlays.noteRole(run, member, "unity", "leave the room");
                 leaveRoom(ports, run, member, nowMs);
             }
         }
@@ -147,20 +155,28 @@ final class AgentCwkpqUnityPlays {
         }
         switch (archetype) {
             case THIEF -> {
-                if (!breakEach(ports, run, working, THIEF_EYE, nowMs)) {
+                if (breakEach(ports, run, working, THIEF_EYE, nowMs)) {
+                    working.forEach(member -> AgentCwkpqStagePlays.noteRole(run, member, "unity", "break an eye"));
+                } else {
+                    AgentCwkpqStagePlays.noteRole(run, working.getFirst(), "unity", "ask the master");
                     askMaster(ports, run, working.getFirst(), archetype, nowMs);
                 }
             }
-            case PIRATE -> breakEach(ports, run, working, GUN_CHEST, nowMs);
+            case PIRATE -> {
+                working.forEach(member -> AgentCwkpqStagePlays.noteRole(run, member, "unity", "break a chest"));
+                breakEach(ports, run, working, GUN_CHEST, nowMs);
+            }
             default -> {
                 if (map.countMonsters() > 0) {
                     for (Character member : working) {
+                        AgentCwkpqStagePlays.noteRole(run, member, "unity", "clear the room");
                         AgentRuntimeEntry entry = ports.entry(member.getId());
                         if (entry != null) {
                             ports.gateway().grind(entry, Set.of());
                         }
                     }
                 } else {
+                    AgentCwkpqStagePlays.noteRole(run, working.getFirst(), "unity", "ask the master");
                     askMaster(ports, run, working.getFirst(), archetype, nowMs);
                 }
             }
@@ -258,6 +274,7 @@ final class AgentCwkpqUnityPlays {
         if (entry == null) {
             return true;
         }
+        AgentCwkpqStagePlays.noteRole(run, taker, "unity", "pick up the gun");
         Point ground = ports.gateway().groundPoint(map, at);
         if (!AgentCwkpqStagePlays.standAt(ports, entry, taker, ground != null ? ground : at, LOOT_REACH_PX)
                 || !run.ready(taker.getId(), nowMs)) {
@@ -282,6 +299,16 @@ final class AgentCwkpqUnityPlays {
         } else {
             AgentCwkpqStagePlays.takePortal(ports, run, member, ROOM_EXIT, nowMs);
         }
+    }
+
+    /** What a player calls {@code weapon} ("master sword"). */
+    static String weaponName(int weapon) {
+        for (Map.Entry<Archetype, Integer> kind : WEAPONS.entrySet()) {
+            if (kind.getValue() == weapon) {
+                return WEAPON_NAMES.get(kind.getKey());
+            }
+        }
+        return "weapon";
     }
 
     /** The first stage-5 weapon in its bag, or null. */
