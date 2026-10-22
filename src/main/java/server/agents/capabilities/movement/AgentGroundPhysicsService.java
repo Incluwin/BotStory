@@ -17,8 +17,6 @@ public final class AgentGroundPhysicsService {
     private static final double GROUNDSLIP = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentGroundPhysicsService.GROUNDSLIP");
     private static final double FRICTION = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentGroundPhysicsService.FRICTION");
     private static final double SLOPEFACTOR = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentGroundPhysicsService.SLOPEFACTOR");
-    // Friction takes about 17 client steps from walking speed to rest; the bound only guards odd tuning.
-    private static final int MAX_COAST_STEPS = 256;
 
     private AgentGroundPhysicsService() {
     }
@@ -156,8 +154,13 @@ public final class AgentGroundPhysicsService {
     static boolean coastsOnto(double physicsX, double horizontalSpeed, Foothold foothold, int direction, int restX) {
         double x = physicsX;
         double speed = horizontalSpeed;
-        for (int i = 0; i < MAX_COAST_STEPS && speed != 0.0; i++) {
-            speed = applyGroundPhysicsStep(speed, foothold, 0, null);
+        while (speed != 0.0) {
+            double next = applyGroundPhysicsStep(speed, foothold, 0, null);
+            if (Math.abs(next) >= Math.abs(speed)) {
+                // Friction no longer slows it (a steep slope at speed): it slides past anything ahead of it.
+                return Math.signum(speed) == direction;
+            }
+            speed = next;
             x += speed;
         }
         return (x - restX) * direction >= -0.5;
