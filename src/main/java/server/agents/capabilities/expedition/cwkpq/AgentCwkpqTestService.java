@@ -310,7 +310,16 @@ public final class AgentCwkpqTestService {
                     + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")
                     + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
                     + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
-                    + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry);
+                    + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
+                    + "; physics: " + (entry.movementPhysicsState().inAir() ? "in the air" : "grounded")
+                    + " at (" + Math.round(entry.movementPhysicsState().physicsX()) + ","
+                    + Math.round(entry.movementPhysicsState().physicsY()) + ") vy "
+                    + entry.movementPhysicsState().verticalVelocity() + " vx "
+                    + Math.round(entry.movementPhysicsState().horizontalSpeed())
+                    + "; sim " + entry.simulationState().mode().name().toLowerCase(Locale.ROOT)
+                    + (entry.simulationState().fullRateSimulationRequired() ? " full-rate" : "")
+                    + "; ticked " + (System.currentTimeMillis() - entry.tickState().lastTickAtMs()) + " ms ago"
+                    + (entry.tickState().lastTickWasAi() ? " (ai)" : "");
             log.info("CWKPQ why: {}", line);
             lines.add(line);
         }
