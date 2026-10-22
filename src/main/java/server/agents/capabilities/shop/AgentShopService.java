@@ -30,6 +30,7 @@ import server.agents.capabilities.inventory.AgentInventoryItemPolicy;
 import server.agents.capabilities.inventory.AgentInventorySellTrashService;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
 import server.agents.capabilities.inventory.demand.AgentEtcSaleCandidate;
 import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
@@ -486,6 +487,11 @@ public final class AgentShopService {
     }
 
     private static void executePurchases(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory, Point npcPos) {
+        executePurchases(entry, bot, inventory, npcPos, false);
+    }
+
+    private static void executePurchases(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory,
+                                         Point npcPos, boolean roomSold) {
         if (!isShopSequenceValid(entry, bot, npcPos)) {
             abortShop(entry, bot, AgentDialogueCatalog.shopKeeperUnreachableReply());
             return;
@@ -494,13 +500,31 @@ public final class AgentShopService {
         if (AgentShopStateRuntime.shopSellTrashPending(entry)) {
             startSellTrashSequence(new AgentShopPurchaseSequence<>(
                     entry, bot, inventory, npcPos, List.of(), new ArrayList<>(), null),
-                    () -> executePurchases(entry, bot, inventory, npcPos));
+                    () -> executePurchases(entry, bot, inventory, npcPos, roomSold));
+            return;
+        }
+
+        // 2026-10-22 (CWKPQ C9): a readiness trip for an activity with an ETC room standard sells monster drops for
+        // that room first (AgentEtcRoomPlan), once a visit
+        List<AgentEtcSaleCandidate> room = roomSold ? List.of() : etcRoomSales(entry, bot);
+        if (!room.isEmpty()) {
+            AgentShopStateRuntime.extendShopSequence(entry, (long) room.size() * SHOP_SEQUENCE_SALE_ALLOWANCE_MS);
+            scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
+                    () -> runEtcSaleStep(entry, bot, npcPos, new SaleTally(0, 0, 0, 0), 0, room, new ArrayList<>(),
+                            null, inventory, () -> executePurchases(entry, bot, inventory, npcPos, true)));
             return;
         }
 
         WeaponType wt = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
         runPurchaseStep(new AgentShopPurchaseSequence<>(entry, bot, inventory, npcPos,
                 purchaseActions(entry, bot, inventory, wt), new ArrayList<>(), null), 0);
+    }
+
+    /** The stacks a readiness trip sells for its activity's ETC room standard; empty off a trip or with room. */
+    static List<AgentEtcSaleCandidate> etcRoomSales(AgentRuntimeEntry entry, Character bot) {
+        AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
+        int wanted = trip == null ? 0 : AgentSupplyReadiness.etcRoomStandard(trip);
+        return wanted <= 0 ? List.of() : AgentEtcRoomPlan.plan(bot, wanted);
     }
 
     /**

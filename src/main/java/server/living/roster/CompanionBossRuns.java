@@ -1322,13 +1322,16 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * companions, or there is nothing to say (CwkpqClearTime.text).
      */
     public String cwkpqClearTime(Character leader) {
-        if (!world.config().COMPANION_PQ_CLEAR_TIME
-                || !world.config().companionBossEnabled(AgentBossRunCatalog.CWKPQ.key())) {
+        if (!world.config().companionBossEnabled(AgentBossRunCatalog.CWKPQ.key())) {
             return null;
         }
         Expedition expedition = leader == null ? null : expeditionOf(leader, AgentBossRunCatalog.CWKPQ);
         if (expedition == null) {
             return null;
+        }
+        String bags = cwkpqFullBags(expedition.getActiveMembers());
+        if (!world.config().COMPANION_PQ_CLEAR_TIME) {
+            return bags;
         }
         CwkpqClearTime.Shown shown = CwkpqClearTime.show(leader, expedition.getActiveMembers(),
                 CwkpqClearTime.Pace.live(world.partyQuests() == null ? null : world.partyQuests().paceLedger()),
@@ -1339,7 +1342,25 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         } else {
             cwkpqLastShown.remove(leader.getId());
         }
-        return shown.text();
+        String time = shown.text();
+        return time == null ? bags : bags == null ? time : time + "\r\n" + bags;
+    }
+
+    /**
+     * 2026-10-22 (CWKPQ C9, user decision): Jack's caution naming the companions on the list whose Etc bags still
+     * lack the keep's room (AgentSupplyReadiness.ETC_ROOM_STANDARDS cwkpq) after the loot they could sell; null for
+     * none. A companion short of room sells first on its own (its readiness trip); one left short has nothing it may
+     * sell, so its owner decides.
+     */
+    static String cwkpqFullBags(List<Character> members) {
+        AgentSupplyReadiness.Activity keep = AgentSupplyReadiness.Activity.partyQuest(AgentBossRunCatalog.CWKPQ.key());
+        List<String> full = new ArrayList<>();
+        for (Character member : members) {
+            if (AgentPresence.isAgent(member) && AgentSupplyReadiness.etcRoomLacking(member, keep) > 0) {
+                full.add(member.getName());
+            }
+        }
+        return JackLines.fullBags(full);
     }
 
     /**

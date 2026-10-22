@@ -172,7 +172,7 @@ public final class AgentSupplyReadinessRuntime {
         AgentProcurementRequest request = new AgentProcurementRequest(
                 REQUEST_PREFIX + category + ':' + nowMs, category,
                 potions.hp() > 0 ? potions.hp() : potions.mp() > 0 ? potions.mp()
-                        : potions.ammo() > 0 ? potions.ammo() : potions.cure(),
+                        : potions.ammo() > 0 ? potions.ammo() : Math.max(1, potions.cure()), // ETC room alone: 1
                 Math.max(0, assessment.spendable()),
                 List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.CRITICAL, "",
                 nowMs + AgentSupplyReadiness.requestTtlMs(assessment.hops()));

@@ -191,7 +191,21 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         }
         Character bot = bot(agentCharacterId);
         String bossKey = activity == null ? null : activity.partyQuestKey();
-        String supplyWord = bot == null ? null : supplyWord(bot, AgentSupplyReadiness.shortfall(bot, activity));
+        AgentSupplyReadiness.Shortfall lacking = bot == null ? null : AgentSupplyReadiness.shortfall(bot, activity);
+        if (roomOnly(lacking)) {
+            ammoTrips.put(agentCharacterId, CompanionRestockLines.ROOM);
+            if (boss(activity)) {
+                int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
+                world.executor().submit("companion.restock.boss_go_room " + agentCharacterId,
+                        () -> BossRunLines.say(world, bossKey, bot(agentCharacterId), BossRunLines.GO_ROOM, null,
+                                minutes));
+            } else {
+                world.executor().submit("companion.restock.go " + agentCharacterId,
+                        () -> say(agentCharacterId, CompanionRestockLines.GO));
+            }
+            return;
+        }
+        String supplyWord = bot == null ? null : supplyWord(bot, lacking);
         if (supplyWord != null) {
             String word = supplyWord;
             ammoTrips.put(agentCharacterId, word);
@@ -266,9 +280,12 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return;
         }
         if (outcome == AgentSupplyReadiness.Outcome.READY) {
+            String back = CompanionRestockLines.ROOM.equals(word) ? CompanionRestockLines.BACK_ROOM
+                    : word != null ? CompanionRestockLines.BACK_AMMO : CompanionRestockLines.BACK;
             world.executor().submit("companion.restock.back " + agentCharacterId,
-                    () -> say(agentCharacterId, word != null ? CompanionRestockLines.BACK_AMMO
-                            : CompanionRestockLines.BACK, word));
+                    () -> say(agentCharacterId, back, word));
+        } else if (CompanionRestockLines.ROOM.equals(word)) {
+            return; // a trip for room spends nothing: no broke line
         } else if (outcome == AgentSupplyReadiness.Outcome.SHORT_MESOS
                 && mayAsk(agentCharacterId, CompanionRestockLines.BROKE, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             String broke = word != null ? word : ammoWordAtTheEnd(agentCharacterId, activity);
@@ -404,6 +421,12 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     /** True when only projectiles are short: the trip's lines are its ammo lines. */
     private static boolean ammoOnly(AgentSupplyReadiness.Shortfall shortfall) {
         return shortfall != null && shortfall.potionsNone() && shortfall.ammo() > 0;
+    }
+
+    /** True when the trip is for room in its ETC tab alone: no potions, projectiles or cures lacking. */
+    private static boolean roomOnly(AgentSupplyReadiness.Shortfall shortfall) {
+        return shortfall != null && shortfall.potionsNone() && shortfall.ammo() <= 0 && shortfall.cure() <= 0
+                && shortfall.etcRoom() > 0;
     }
 
     /**

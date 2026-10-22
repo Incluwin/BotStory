@@ -41,7 +41,10 @@ class CompanionRestockLinesTest {
             CompanionRestockLines.BACK_AMMO, CompanionRestockLines.BROKE_AMMO, CompanionRestockLines.NO_SHOP_AMMO);
     /** Its owner (or anyone) handed it mesos or potions after its broke line, not enough yet (2026-10-09). */
     private static final List<String> HELP_INTENTS = List.of(CompanionRestockLines.STILL_SHORT);
-    private static final List<String> INTENTS = concat(concat(POTION_INTENTS, AMMO_INTENTS), HELP_INTENTS);
+    /** Back from selling loot for room in its Etc bag before CWKPQ (2026-10-22). */
+    private static final List<String> ROOM_INTENTS = List.of(CompanionRestockLines.BACK_ROOM);
+    private static final List<String> INTENTS = concat(concat(concat(POTION_INTENTS, AMMO_INTENTS), HELP_INTENTS),
+            ROOM_INTENTS);
 
     @Test
     void everyGenericLineIsInAPlayersVoice() {

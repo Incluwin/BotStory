@@ -71,6 +71,11 @@ final class BossRunLines {
      * about when it will be back, as {@link #GO} says it.
      */
     static final String GO_AMMO = "boss.goAmmo";
+    /**
+     * 2026-10-22 (CWKPQ C9): off to the shop from the boss's entrance to sell loot for room in its bag
+     * (AgentSupplyReadiness.etcRoomStandard), with about when it will be back, as {@link #GO} says it.
+     */
+    static final String GO_ROOM = "boss.goRoom";
     static final String ALLY_ON_MY_WAY = "boss.ally.onmyway";
     static final String ALLY_NO_ROOM = "boss.ally.noroom";
     static final String ALLY_CANT_COME = "boss.ally.cantcome";
@@ -196,6 +201,9 @@ final class BossRunLines {
             Map.entry(GO_AMMO, List.of(
                     "low on {ammo}, running to the shop. back in ~{n} min.",
                     "gonna grab {ammo} first. back in ~{n} min.")),
+            Map.entry(GO_ROOM, List.of(
+                    "bag's full, selling some loot first. back in ~{n} min.",
+                    "gotta make room in my bag. back in ~{n} min.")),
             Map.entry(ALLY_ON_MY_WAY, List.of(
                     "on my way, {eta}.",
                     "coming! be there in {eta}.")),

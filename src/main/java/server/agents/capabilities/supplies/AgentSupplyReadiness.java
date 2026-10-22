@@ -6,6 +6,7 @@ import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.inventory.demand.AgentEtcRoomPlan;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
@@ -77,10 +78,17 @@ public final class AgentSupplyReadiness {
      * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles, and
      * for a points standard ({@link #recoveryStandard}) gives HP and MP points instead of potions, which a shop turns
      * into a count of the potion it buys. {@code cure} counts the seal cures (Holy Water, All Cure) lacking for a
-     * CURE_STANDARDS key ({@link #cureStandard}); 0 everywhere else.
+     * CURE_STANDARDS key ({@link #cureStandard}); 0 everywhere else. {@code etcRoom} counts the free ETC slots lacking
+     * for an ETC_ROOM_STANDARDS key ({@link #etcRoomStandard}) that selling its monster drops would free; 0 everywhere
+     * else.
      */
-    public record Shortfall(int hp, int mp, int ammo, int cure) {
+    public record Shortfall(int hp, int mp, int ammo, int cure, int etcRoom) {
         public static final Shortfall NONE = new Shortfall(0, 0, 0, 0);
+
+        /** Potions, projectiles and cures: no ETC room lacking. */
+        public Shortfall(int hp, int mp, int ammo, int cure) {
+            this(hp, mp, ammo, cure, 0);
+        }
 
         /** Potions and projectiles: no cures lacking. */
         public Shortfall(int hp, int mp, int ammo) {
@@ -94,7 +102,7 @@ public final class AgentSupplyReadiness {
 
         /** Nothing lacking at all. */
         public boolean none() {
-            return potionsNone() && ammo <= 0 && cure <= 0;
+            return potionsNone() && ammo <= 0 && cure <= 0 && etcRoom <= 0;
         }
 
         /** No potions lacking, whatever the projectiles. */
@@ -539,12 +547,42 @@ public final class AgentSupplyReadiness {
         }
         RecoveryStandard points = recoveryStandard(activity);
         if (points != null) {
-            return recoveryShortfall(agent, activity, points);
+            Shortfall lacking = recoveryShortfall(agent, activity, points);
+            return new Shortfall(lacking.hp(), lacking.mp(), lacking.ammo(), lacking.cure(),
+                    etcRoomShortfall(agent, activity));
         }
         int[] potions = countFor(agent, activity);
         Shortfall lacking = shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
         return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity),
-                cureShortfall(agent, activity));
+                cureShortfall(agent, activity), etcRoomShortfall(agent, activity));
+    }
+
+    /**
+     * 2026-10-22 (CWKPQ C9): the free ETC slots an Agent goes into {@code activity} with at least: the count
+     * ETC_ROOM_STANDARDS lists for its key ("cwkpq=4"), else 0. An activity that hands its members ETC items (CWKPQ's
+     * stage-5 weapons, its Armory loot) cannot give them to a full tab. Read from agent-engine.yaml at every call;
+     * never negative.
+     */
+    public static int etcRoomStandard(Activity activity) {
+        Integer own = activity == null ? null : listedCount(activity.partyQuestKey(), config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.ETC_ROOM_STANDARDS"));
+        return Math.max(0, own != null ? own : 0);
+    }
+
+    /**
+     * The free ETC slots the Agent lacks of {@code activity}'s standard that selling its monster drops would free
+     * (AgentEtcRoomPlan): what no shop can fix is not a trip's business, so an Agent with nothing to sell never walks
+     * to one for room (the desk names it instead).
+     */
+    public static int etcRoomShortfall(Character agent, Activity activity) {
+        int standard = etcRoomStandard(activity);
+        return agent == null || standard <= 0 ? 0 : AgentEtcRoomPlan.fixableShortfall(agent, standard);
+    }
+
+    /** The free ETC slots the Agent lacks of {@code activity}'s standard, whether or not selling would free them. */
+    public static int etcRoomLacking(Character agent, Activity activity) {
+        int standard = etcRoomStandard(activity);
+        return agent == null || standard <= 0 ? 0 : Math.max(0, standard - AgentEtcRoomPlan.freeSlots(agent));
     }
 
     /**

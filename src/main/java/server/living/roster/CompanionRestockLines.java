@@ -40,6 +40,12 @@ final class CompanionRestockLines {
     /** 2026-10-17: what a companion short only of darkness cures (a party quest's) says it lacks. */
     static final String DARKNESS_CURES = "eyedrops";
     /**
+     * 2026-10-22 (CWKPQ C9): a trip that only sells loot for room in its ETC tab (AgentSupplyReadiness.etcRoomStandard):
+     * the mark CompanionRestock keeps for it, and the line it says back with that room.
+     */
+    static final String ROOM = "room";
+    static final String BACK_ROOM = "restock.backRoom";
+    /**
      * After its broke line, someone handed it mesos or supplies that still do not pay for its trip
      * (AgentSupplyReadiness.Rule.stillShort): it says it is still short of "{need}". The gift's own path thanks
      * already (the trade window's "ty!", the card's coin line), so this one does not.
@@ -79,6 +85,9 @@ final class CompanionRestockLines {
             BACK_AMMO, List.of(
                     "{ammo} restocked. let's do this.",
                     "picked up more {ammo}. lead the way."),
+            BACK_ROOM, List.of(
+                    "sold off my junk, got room in my bag now.",
+                    "bag's cleared out. ready when you are."),
             BROKE_AMMO, List.of(
                     "no mesos left for {ammo}. could someone chip in?",
                     "can't pay for the {ammo} i need. mind lending me some mesos?"),

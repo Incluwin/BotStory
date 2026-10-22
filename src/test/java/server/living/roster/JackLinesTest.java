@@ -95,4 +95,13 @@ class JackLinesTest {
         }
         assertEquals(List.of(), JackLines.lines(null, List.of(LEADER)));
     }
+
+    @Test
+    void heNamesTheCompanionsWhoseBagsAreTooFullForTheWeapons() {
+        assertEquals(null, JackLines.fullBags(List.of()));
+        assertEquals("#bOrrin#k has no room in their Etc bag for the keep's weapons. Make some first.",
+                JackLines.fullBags(List.of("Orrin")));
+        assertEquals("#bOrrin, Kate and Vex#k have no room in their Etc bag for the keep's weapons. Make some first.",
+                JackLines.fullBags(List.of("Orrin", "Kate", "Vex")));
+    }
 }

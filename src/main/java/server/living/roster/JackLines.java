@@ -56,8 +56,24 @@ final class JackLines {
             + " an hour after you reach it, guards and all.";
     static final String FRAGILE = "#b%s#k might not last long against the Crimson Guardians.";
     static final String MISSES = "#b%s#k will hardly land a hit on %s.";
+    /**
+     * 2026-10-22 (CWKPQ C9, user decision): companions on the list whose bags still lack the room the keep's weapons
+     * need (AgentSupplyReadiness.etcRoomLacking), after the loot they could sell: a full Etc tab takes no master's
+     * weapon and no chest's gun.
+     */
+    static final String FULL_BAGS = "#b%s#k %s no room in their Etc bag for the keep's weapons. Make some first.";
 
     private JackLines() {
+    }
+
+    /** His caution about the companions whose Etc bags are too full ({@link #FULL_BAGS}); null for none. */
+    static String fullBags(List<String> names) {
+        if (names.isEmpty()) {
+            return null;
+        }
+        String who = names.size() == 1 ? names.getFirst()
+                : String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.getLast();
+        return FULL_BAGS.formatted(who, names.size() == 1 ? "has" : "have");
     }
 
     /** Everything he says over the list: the time, then the cautions; empty with no estimate. */
