@@ -25,6 +25,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.capabilities.expedition.boss.AgentBossRunService.Enlisted;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -1326,8 +1327,38 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return null;
         }
         Expedition expedition = leader == null ? null : expeditionOf(leader, AgentBossRunCatalog.CWKPQ);
-        return expedition == null ? null
-                : CwkpqClearTime.text(leader, expedition.getActiveMembers(), CwkpqClearTime.Pace.LIVE);
+        if (expedition == null) {
+            return null;
+        }
+        CwkpqClearTime.Shown shown = CwkpqClearTime.show(leader, expedition.getActiveMembers(),
+                CwkpqClearTime.Pace.live(world.partyQuests() == null ? null : world.partyQuests().paceLedger()),
+                AgentPresence::isAgent);
+        // the leader's last look at his list before Start is the estimate his run's record is weighed against
+        if (shown.estimate() != null) {
+            cwkpqLastShown.put(leader.getId(), shown.estimate());
+        } else {
+            cwkpqLastShown.remove(leader.getId());
+        }
+        return shown.text();
+    }
+
+    /**
+     * CWKPQ plan C8: the estimate Jack last showed each leader over his list (his window shows it every time he talks
+     * to Jack, the time he chooses Start included), taken by his run's record as it ends; one entry a human leader.
+     */
+    private final Map<Integer, AgentPqPaceEstimate> cwkpqLastShown = new ConcurrentHashMap<>();
+
+    /**
+     * CWKPQ plan C8, on companion-ops as a run ends: a run that measured its pace (only CWKPQ does) goes to the
+     * clear-time ledger with the estimate Jack showed its leader at Start, which the ledger learns from.
+     */
+    private void recordPace(RunEnded ended) {
+        if (ended.pace() == null || world.partyQuests() == null) {
+            return;
+        }
+        AgentPqPaceEstimate shown = cwkpqLastShown.remove(ended.pace().leaderId());
+        world.partyQuests().paceLedger().recordBoss(ended.pace(), ended.partySize(), ended.cleared(), shown,
+                ended.endedAtMs());
     }
 
     /** CWKPQ plan C8, on companion-ops at boot: warms the profile Jack's clear time reads, while it can be shown. */
@@ -1736,6 +1767,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         List<MemberResult> wentIn = ended.members().stream()
                 .filter(member -> member.wentIn() && taken.containsKey(member.enlistedBy())).toList();
         record(ended, wentIn, taken);
+        recordPace(ended);
         logPotions(ended, wentIn, taken);
         if (ended.cleared()) {
             befriend(ended, wentIn, taken, hitters == null ? Set.of() : hitters);

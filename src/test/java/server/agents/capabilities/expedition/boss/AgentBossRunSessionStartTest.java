@@ -20,6 +20,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -381,6 +382,36 @@ class AgentBossRunSessionStartTest {
         assertTrue(ended.members().getFirst().wentIn());
         assertTrue(ended.members().getFirst().inAtClear());
         assertEquals("end", fight.calls.getLast());
+        assertNull(ended.pace(), "a fight that measures nothing reports no pace");
+    }
+
+    /** CWKPQ plan C8: what the fight measured is read before its end clears it, and goes out with the run's end. */
+    @Test
+    void whatTheFightMeasuredIsReadBeforeItsEndAndReported() {
+        fight.measured = new server.agents.capabilities.partyquest.pace.AgentPqPace("cwkpq", "cwkpq-x", 7, START,
+                START + 600_000L, List.of(), List.of(), List.of(), java.util.Map.of());
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+        session.tick(ports, host, START + 500L);
+
+        session.end(ports, host, "test", START + 700_000L);
+
+        assertSame(fight.measured, host.ended.getFirst().pace());
+        assertEquals(List.of("pace " + START + " " + (START + 700_000L), "end"),
+                fight.calls.subList(fight.calls.size() - 2, fight.calls.size()), "read before the fight ends");
+    }
+
+    @Test
+    void aPaceThatFailsToReadStillEndsTheRunWithoutOne() {
+        fight.paceFailure = new IllegalStateException("broken marks");
+        AgentBossRunSession session = started(List.of(THANE), List.of());
+        inside(THANE);
+        session.tick(ports, host, START + 500L);
+
+        session.end(ports, host, "test", START + 700_000L);
+
+        assertNull(host.ended.getFirst().pace());
+        assertEquals("end", fight.calls.getLast(), "the fight still ends");
     }
 
     @Test

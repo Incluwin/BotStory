@@ -2,6 +2,7 @@ package server.agents.capabilities.expedition;
 
 import client.Character;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 
 import java.util.List;
 
@@ -30,5 +31,13 @@ public interface AgentBossFight {
 
     /** After the clear: drives the alive members inside that stand on a map {@link #playsAfterClear} names. */
     default void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+    }
+
+    /**
+     * How the run went segment by segment, for the clear-time records (CWKPQ plan C8), read once as the run ends and
+     * before {@link #end}; null for a fight that measures none (every boss but CWKPQ).
+     */
+    default AgentPqPace pace(long sessionId, long startedAtMs, long endedAtMs) {
+        return null;
     }
 }

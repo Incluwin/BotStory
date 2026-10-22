@@ -4,6 +4,7 @@ import client.Character;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.expedition.cwkpq.CwkpqPaceTestProfiles;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 
 import java.util.ArrayList;
@@ -14,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -124,6 +127,48 @@ class CwkpqClearTimeTest {
 
         assertEquals(List.of(), CwkpqClearTime.lines(leader, members, cold, agents::contains));
         assertEquals(List.of(), CwkpqClearTime.lines(leader, members, failing, agents::contains));
+    }
+
+    @Test
+    void theEstimateReadsWhatTheRecordsTaughtForTheLeaderAndIsHandedBackWithItsWords() {
+        Character leader = listOf(9);
+        List<Integer> askedFor = new ArrayList<>();
+        CwkpqClearTime.Pace base = pace(300_000.0d);
+        CwkpqClearTime.Pace learned = new CwkpqClearTime.Pace() {
+            @Override
+            public AgentPqPaceProfile profile() {
+                return base.profile();
+            }
+
+            @Override
+            public AgentPqMemberPower power(Character member, AgentPqPaceProfile profile, boolean human,
+                                            boolean isLeader) {
+                return base.power(member, profile, human, isLeader);
+            }
+
+            @Override
+            public AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId) {
+                askedFor.add(leaderId);
+                return AgentPqPaceCalibration.prior(profile);
+            }
+        };
+
+        CwkpqClearTime.Shown shown = CwkpqClearTime.show(leader, members, learned, agents::contains);
+
+        assertEquals(List.of(1), askedFor, "the leader's own records, once");
+        assertNotNull(shown.estimate(), "the estimate is kept for the run's record");
+        assertEquals(String.join("\r\n", shown.lines()), shown.text());
+        assertEquals(CwkpqClearTime.lines(leader, members, base, agents::contains), shown.lines());
+    }
+
+    @Test
+    void theLivePaceFallsBackToThePriorsWithNoRecordsRead() {
+        PqPaceLedger empty = new PqPaceLedger(mock(server.living.LivingWorld.class), key -> null);
+
+        assertEquals(AgentPqPaceCalibration.prior(KEEP), CwkpqClearTime.Pace.live(empty).calibration(KEEP, 1));
+        assertEquals(AgentPqPaceCalibration.prior(KEEP), CwkpqClearTime.Pace.live(null).calibration(KEEP, 1));
+        assertNull(CwkpqClearTime.show(null, members, pace(1.0d), agents::contains).estimate());
+        assertNull(CwkpqClearTime.Shown.NOTHING.text());
     }
 
     @Test

@@ -399,6 +399,94 @@ class PqPaceLedgerTest {
         assertTrue(warm >= 0 && load > warm, "loaded on companion-ops, after the warm-up it fits against");
     }
 
+    /**
+     * CWKPQ plan C8: a boss-track run (Jack's expedition) is written and learned from like a desk's run, its members
+     * and companions the pace's own and its estimate the one Jack showed its leader; it reads back at boot while
+     * companions may run CWKPQ.
+     */
+    @Test
+    void aCwkpqRunIsWrittenAndLearnedFromAndReadAtBootWhileItIsOn() {
+        config.COMPANION_BOSS_ENABLED_TYPES = "cwkpq";
+        AgentPqPaceProfile keep = server.agents.capabilities.expedition.cwkpq.CwkpqPaceTestProfiles.keep();
+        PqPaceLedger cwkpq = new PqPaceLedger(world, key -> "cwkpq".equals(key) ? keep : null);
+        AgentPqPace run = keepRun(keep, "cwkpq-1790000000000-4", ANN, true);
+
+        cwkpq.recordBoss(run, 10, true, SHOWN, START + 4_000_000L);
+        while (!ops.isEmpty()) {
+            ops.removeFirst().run();
+        }
+
+        assertEquals(1, store.paces.size());
+        assertEquals("cwkpq cwkpq-1790000000000-4 leader 10 size 10 humans 1 epoch " + keep.epoch()
+                + " cleared est 810/1062/1399 records 2 actual 2880", describe(store.paces.getFirst()));
+        AgentPqPaceCalibration learned = cwkpq.calibration("cwkpq", ANN);
+        assertNotNull(learned, "learned from at once");
+        assertNotEquals(AgentPqPaceCalibration.prior(keep), learned);
+        assertEquals(ids(901, 902, 903, 904, 905, 906, 907, 908, 909), PqPaceJson.companions(store.paces.getFirst()
+                .members()), "the pace's companions");
+
+        PqPaceLedger booted = new PqPaceLedger(world, key -> "cwkpq".equals(key) ? keep : null);
+        booted.load();
+        verify(store.store).pqRunPaces("cwkpq", keep.epoch(), AgentPqPaceCalibration.maxRows());
+        assertEquals(learned, booted.calibration("cwkpq", ANN), "a restart learns the same");
+
+        clearInvocations(store.store);
+        config.COMPANION_BOSS_ENABLED_TYPES = "";
+        new PqPaceLedger(world, key -> "cwkpq".equals(key) ? keep : null).load();
+        verify(store.store, never()).pqRunPaces(org.mockito.ArgumentMatchers.eq("cwkpq"), anyInt(), anyInt());
+    }
+
+    @Test
+    void aBossRunThatMeasuredNoPaceWritesNothing() {
+        ledger.recordBoss(null, 10, true, SHOWN, START);
+
+        assertTrue(ops.isEmpty());
+        assertEquals(0, store.paces.size());
+    }
+
+    /**
+     * A ten-member CWKPQ run as AgentCwkpqRun reports it: a human leader, nine companions at 300 000 damage a second,
+     * every segment a minute, except the Grandmasters' 40, every span complete; cleared or not.
+     */
+    private static AgentPqPace keepRun(AgentPqPaceProfile keep, String sessionId, int leaderId, boolean cleared) {
+        List<server.agents.capabilities.partyquest.pace.AgentPqMemberPower> members = new ArrayList<>();
+        for (int id = 900; id <= 909; id++) {
+            boolean human = id == 900;
+            Map<Integer, Double> damage = new java.util.HashMap<>();
+            Map<Integer, Double> hit = new java.util.HashMap<>();
+            for (int mobId : keep.mobIds()) {
+                damage.put(mobId, human ? 0.0d : 300_000.0d);
+                hit.put(mobId, 1.0d);
+            }
+            members.add(new server.agents.capabilities.partyquest.pace.AgentPqMemberPower(human ? leaderId : id,
+                    "m" + id, human, human, 140, 112 + (id % 5) * 100, damage, hit, Map.of(), 20.0d));
+        }
+        Map<String, Long> hp = new java.util.HashMap<>();
+        collectHp(keep.segments(10), hp);
+        List<AgentPqPace.Span> spans = new ArrayList<>();
+        long at = START;
+        for (String key : keep.segmentKeys(10)) {
+            long took = "masters".equals(key) ? 2_400_000L : 60_000L;
+            spans.add(new AgentPqPace.Span(key, at, at + took, hp.getOrDefault(key, 0L), true));
+            if (!key.endsWith("Room") || "pirateRoom".equals(key)) {
+                at += took; // the five rooms side by side
+            }
+        }
+        return new AgentPqPace("cwkpq", sessionId, leaderId, START, cleared ? at : 0L, spans, members, List.of(),
+                Map.of());
+    }
+
+    private static void collectHp(List<server.agents.capabilities.partyquest.pace.AgentPqPaceSegment> segments,
+                                  Map<String, Long> hp) {
+        for (var segment : segments) {
+            if (segment instanceof server.agents.capabilities.partyquest.pace.AgentPqPaceSegment.Parallel parallel) {
+                parallel.branches().forEach(branch -> collectHp(branch, hp));
+            } else if (segment instanceof server.agents.capabilities.partyquest.pace.AgentPqPaceSegment.Clear clear) {
+                hp.put(clear.key(), clear.totalHp());
+            }
+        }
+    }
+
     /** Ends the run and runs companion-ops' work at once. */
     private void record(CompanionRun run, AgentPqPace pace, long nowMs) {
         ledger.record(run, pace, nowMs);

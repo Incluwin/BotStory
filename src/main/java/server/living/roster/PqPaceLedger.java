@@ -39,6 +39,8 @@ public final class PqPaceLedger {
     static final int ANY_LEADER = 0;
     /** pq_run_pace.outcome of a run its leader left in stage 1 to run again (AgentPartyQuestHandback.REROLLED). */
     static final String REROLLED = "rerolled";
+    /** The boss-track key whose runs are recorded here too (AgentCwkpqPaceProfile.QUEST_KEY). */
+    static final String CWKPQ_KEY = "cwkpq";
 
     private final LivingWorld world;
     private final Function<String, AgentPqPaceProfile> profiles;
@@ -175,15 +177,56 @@ public final class PqPaceLedger {
         if (!run.started) {
             return;
         }
-        if (pace == null) {
-            log.info("PQ pace: session={} leader={} size={} not recorded: the run reported no pace", run.sessionId,
-                    run.leaderId, run.partySize);
-            return;
-        }
-        world.executor().submit("pq.pace.record " + run.sessionId, () -> write(run, pace, nowMs));
+        record(RunFacts.of(run), pace, nowMs);
     }
 
-    private void write(CompanionRun run, AgentPqPace pace, long nowMs) {
+    /**
+     * CWKPQ plan C8, on companion-ops as a boss-track run ends (CompanionBossRuns.finish): its record is written and
+     * learned from like a PQ desk's run. The members and companions are the pace's own (the expedition has no lineup).
+     */
+    void recordBoss(AgentPqPace pace, int partySize, boolean cleared, AgentPqPaceEstimate shown, long nowMs) {
+        if (pace == null) {
+            return;
+        }
+        Set<Integer> members = new LinkedHashSet<>();
+        Set<Integer> companions = new LinkedHashSet<>();
+        for (var member : pace.members()) {
+            members.add(member.characterId());
+            if (!member.human()) {
+                companions.add(member.characterId());
+            }
+        }
+        record(new RunFacts(pace.sessionId(), pace.leaderId(), partySize, members, companions, shown, cleared, false),
+                pace, nowMs);
+    }
+
+    private void record(RunFacts run, AgentPqPace pace, long nowMs) {
+        if (pace == null) {
+            log.info("PQ pace: session={} leader={} size={} not recorded: the run reported no pace", run.sessionId(),
+                    run.leaderId(), run.partySize());
+            return;
+        }
+        world.executor().submit("pq.pace.record " + run.sessionId(), () -> write(run, pace, nowMs));
+    }
+
+    /**
+     * What a row needs of a run besides its pace: its session, leader and size, who was in it and which of them were
+     * companions, the estimate its entry NPC showed (null: none), and whether it cleared or was re-rolled.
+     */
+    record RunFacts(String sessionId, int leaderId, int partySize, Set<Integer> memberIds, Set<Integer> companionIds,
+                    AgentPqPaceEstimate estimateAtYes, boolean cleared, boolean rerolled) {
+        RunFacts {
+            memberIds = Set.copyOf(memberIds);
+            companionIds = Set.copyOf(companionIds);
+        }
+
+        static RunFacts of(CompanionRun run) {
+            return new RunFacts(run.sessionId, run.leaderId, run.partySize, run.memberIds,
+                    run.ownerByCompanion.keySet(), run.estimateAtYes, run.cleared, run.rerolled);
+        }
+    }
+
+    private void write(RunFacts run, AgentPqPace pace, long nowMs) {
         AgentPqPaceProfile profile = profile(pace.questKey());
         PqRunPaceRow row = row(run, pace, profile == null ? 0 : profile.epoch(), nowMs);
         boolean written = world.store().savePqRunPace(row);
@@ -203,7 +246,7 @@ public final class PqPaceLedger {
                         row.sessionId(), failure);
             }
         }
-        log.info(line(row, pace, run.estimateAtYes, snapshot == null ? null : snapshot.anyLeader(), written));
+        log.info(line(row, pace, run.estimateAtYes(), snapshot == null ? null : snapshot.anyLeader(), written));
     }
 
     /**
@@ -214,18 +257,22 @@ public final class PqPaceLedger {
      * the clear (null unless the pace saw the clear), and its pace.
      */
     static PqRunPaceRow row(CompanionRun run, AgentPqPace pace, int epoch, long nowMs) {
-        AgentPqPaceEstimate estimate = run.estimateAtYes;
+        return row(RunFacts.of(run), pace, epoch, nowMs);
+    }
+
+    static PqRunPaceRow row(RunFacts run, AgentPqPace pace, int epoch, long nowMs) {
+        AgentPqPaceEstimate estimate = run.estimateAtYes();
         AgentPqPaceEstimate timed = estimate != null && estimate.clearable() ? estimate : null;
-        Set<Integer> companions = run.ownerByCompanion.keySet();
+        Set<Integer> companions = run.companionIds();
         Integer actualS = pace.cleared()
                 ? (int) Math.round(Math.max(0L, pace.clearedAtMs() - pace.startedAtMs()) / 1000.0d) : null;
-        return new PqRunPaceRow(0L, pace.questKey(), pace.sessionId().isEmpty() ? run.sessionId : pace.sessionId(),
-                pace.leaderId(), run.partySize, Math.max(0, run.memberIds.size() - companions.size()), epoch,
-                pace.cleared() || run.cleared ? "cleared" : run.rerolled ? REROLLED : "failed",
+        return new PqRunPaceRow(0L, pace.questKey(), pace.sessionId().isEmpty() ? run.sessionId() : pace.sessionId(),
+                pace.leaderId(), run.partySize(), Math.max(0, run.memberIds().size() - companions.size()), epoch,
+                pace.cleared() || run.cleared() ? "cleared" : run.rerolled() ? REROLLED : "failed",
                 timed == null ? null : seconds(timed.p10S()), timed == null ? null : seconds(timed.p50S()),
                 timed == null ? null : seconds(timed.p90S()), estimate == null ? null : estimate.recordsUsed(),
                 actualS, pace.startedAtMs(), pace.clearedAtMs(), PqPaceJson.spans(pace),
-                PqPaceJson.members(pace, run.memberIds, companions), PqPaceJson.drawn(pace), nowMs);
+                PqPaceJson.members(pace, run.memberIds(), companions), PqPaceJson.drawn(pace), nowMs);
     }
 
     /**
@@ -323,7 +370,10 @@ public final class PqPaceLedger {
         }
     }
 
-    /** The quests whose entry NPC weighs lineups (living_world.COMPANION_PQ_ENABLED_KEYS). */
+    /**
+     * The quests whose entry NPC weighs lineups (living_world.COMPANION_PQ_ENABLED_KEYS), and CWKPQ while companions
+     * may run it (CWKPQ plan C8: a boss-track run whose records Jack's estimate learns from).
+     */
     private Set<String> questKeys() {
         Set<String> keys = new LinkedHashSet<>();
         String listed = world.config().COMPANION_PQ_ENABLED_KEYS;
@@ -331,6 +381,9 @@ public final class PqPaceLedger {
             if (!entry.isBlank()) {
                 keys.add(entry.trim().toLowerCase(Locale.ROOT));
             }
+        }
+        if (world.config().companionBossEnabled(CWKPQ_KEY)) {
+            keys.add(CWKPQ_KEY);
         }
         return keys;
     }

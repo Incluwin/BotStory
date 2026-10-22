@@ -227,7 +227,7 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   fought by their class alone, and a member is weighed only on the clears it fights. Jack shows the estimate and up
   to two cautions over the leader's list when companions are on it (living_world.COMPANION_PQ_CLEAR_TIME and the
   cwkpq boss switch on). The estimate's horizon went from one hour to two (`HORIZON_MS` 7200000): the stage clocks add
-  to 112 minutes. Priors only; recording cwkpq runs into pq_run_pace is not built.
+  to 112 minutes. Priors only at first; recorded runs since 2026-10-21 (below).
   - Found while building it: the Grandmasters and Red Nirg's revives hold about 929M HP and cwkpq sets no
     `companionDamagePercent`, so ten companions at 30,000 damage a second take them past the 40-minute slow limit.
     Whether companions get a damage scale here (as Pink Bean's 2000%) is for the C9 live check.
@@ -245,6 +245,16 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   break only their own share of the 30 boxes: everyone on the Armory shares them along the shelves, the humans first,
   and one companion says which boxes are the humans' ("the top left boxes are yours, we'll break the rest"). With its
   share broken a companion picks up what the loot rules let it.
+- **C8, clear-time records, built 2026-10-21** (`AgentCwkpqPaceMarks`, `PqPaceLedger.recordBoss`): each CWKPQ run
+  now notes when it reached each step the stock scripts set (current_instance 1-5, each class room's glpq5_room bit,
+  the pirate room's real chest broken, glpq6 1-3 and the clear) and, as it ends, reports one span per segment of the
+  pace profile with every member's power read at its first tick. A boss fight may report a pace
+  (`AgentBossFight.pace`, read before its end, carried on `RunEnded`); only cwkpq does. The run goes into pq_run_pace
+  under pq_key cwkpq with the estimate Jack last showed its leader, is learned from at once, and is read back at boot
+  while the cwkpq boss switch is on. Jack's estimate now reads what the records taught for the leader (any leader's
+  while he has none, the priors until a run is recorded). Not seen by the marks: the walk into a room before its
+  first kill (each room's span runs from the hall of unity) and the relics' carrying apart from the last room's
+  weapon.
 
 ## Questions for you (answered, kept for the record)
 

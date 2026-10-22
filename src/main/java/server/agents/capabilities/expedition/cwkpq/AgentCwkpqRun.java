@@ -6,6 +6,10 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.expedition.boss.AgentBossPriorityFight;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.Reactor;
 
 import java.util.ArrayList;
@@ -16,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 
 /**
@@ -102,6 +107,12 @@ public final class AgentCwkpqRun implements AgentBossFight {
     private List<Integer> sharedAmong = List.of();
     /** Member id -> the Armory box it is breaking. */
     private final Map<Integer, Integer> working = new ConcurrentHashMap<>();
+    /** C8: when the run reached each step, for the clear-time records. */
+    private final AgentCwkpqPaceMarks marks = new AgentCwkpqPaceMarks();
+    private Supplier<AgentPqPaceProfile> paceProfile =
+            () -> AgentPqPaceProfiles.cached(AgentCwkpqPaceProfile.QUEST_KEY);
+    private IntPredicate isAgent = id -> AgentRuntimeRegistry.findByAgentCharacterId(id) != null;
+    private volatile int leaderId;
 
     AgentCwkpqRun(Map<Stage, StagePlay> plays) {
         this(plays, AgentBossPriorityFight.forKey("cwkpq"), null);
@@ -132,9 +143,40 @@ public final class AgentCwkpqRun implements AgentBossFight {
 
     @Override
     public void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+        observe(event, nowMs);
         if (afterClear != null && !members.isEmpty()) {
             afterClear.tick(members, event, this, nowMs);
         }
+    }
+
+    /**
+     * C8: how the run went, one span per segment of the CWKPQ pace profile, for the clear-time ledger; null while the
+     * profile is cold or the members' power could not be read. Its session id carries the start, since a boss run's
+     * id restarts with the server.
+     */
+    @Override
+    public AgentPqPace pace(long sessionId, long startedAtMs, long endedAtMs) {
+        return marks.pace(paceProfile.get(), AgentCwkpqPaceProfile.QUEST_KEY + "-" + startedAtMs + "-" + sessionId,
+                leaderId, startedAtMs, endedAtMs);
+    }
+
+    /** Notes the steps the event shows now (every tick, before and after the clear). */
+    private void observe(EventInstanceManager event, long nowMs) {
+        if (event == null) {
+            return;
+        }
+        leaderId = event.getLeaderId();
+        marks.observe(event, paceProfile.get(), isAgent, nowMs);
+    }
+
+    /** Tests: the pace profile and which characters are Agents. */
+    void measuredWith(Supplier<AgentPqPaceProfile> profile, IntPredicate agents) {
+        this.paceProfile = profile;
+        this.isAgent = agents;
+    }
+
+    AgentCwkpqPaceMarks marks() {
+        return marks;
     }
 
     /** The maps before the battle map (boss-rules.json stageMaps for cwkpq), in order. */
@@ -160,6 +202,7 @@ public final class AgentCwkpqRun implements AgentBossFight {
 
     @Override
     public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
+        observe(event, nowMs);
         Map<Stage, List<Character>> byStage = new EnumMap<>(Stage.class);
         for (Character fighter : fighters) {
             Stage stage = Stage.of(fighter.getMapId());
@@ -180,6 +223,7 @@ public final class AgentCwkpqRun implements AgentBossFight {
 
     @Override
     public void end(EventInstanceManager event) {
+        marks.clear();
         ordinals.clear();
         busyUntil.clear();
         spots.clear();

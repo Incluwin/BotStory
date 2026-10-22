@@ -315,10 +315,23 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         /** The maps it plays on after the clear (none: it ends at its clear, as every boss but CWKPQ). */
         final Set<Integer> afterClearMaps = new HashSet<>();
         RuntimeException tickFailure;
+        /** What it measured (null: none, as every boss but CWKPQ); a set {@link #paceFailure} is thrown instead. */
+        server.agents.capabilities.partyquest.pace.AgentPqPace measured;
+        RuntimeException paceFailure;
 
         @Override
         public boolean playsAfterClear(int mapId) {
             return afterClearMaps.contains(mapId);
+        }
+
+        @Override
+        public server.agents.capabilities.partyquest.pace.AgentPqPace pace(long sessionId, long startedAtMs,
+                                                                          long endedAtMs) {
+            calls.add("pace " + startedAtMs + " " + endedAtMs);
+            if (paceFailure != null) {
+                throw paceFailure;
+            }
+            return measured;
         }
 
         @Override

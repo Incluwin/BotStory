@@ -72,10 +72,17 @@ public final class AgentBossRunHost {
      * A run ended. {@code started} is false when the expedition never started with the run (a disbanded list);
      * {@code startedAtMs} is 0 then. {@code partySize} counts the event's players when the first member went in.
      */
+    /** {@code pace}: how the run went segment by segment (CWKPQ plan C8), null for a fight that measures none. */
     public record RunEnded(long sessionId, String bossKey, boolean started, boolean cleared, String reason,
-                           long startedAtMs, long endedAtMs, int partySize, List<MemberResult> members) {
+                           long startedAtMs, long endedAtMs, int partySize, List<MemberResult> members,
+                           server.agents.capabilities.partyquest.pace.AgentPqPace pace) {
         public RunEnded {
             members = List.copyOf(members);
+        }
+
+        public RunEnded(long sessionId, String bossKey, boolean started, boolean cleared, String reason,
+                        long startedAtMs, long endedAtMs, int partySize, List<MemberResult> members) {
+            this(sessionId, bossKey, started, cleared, reason, startedAtMs, endedAtMs, partySize, members, null);
         }
     }
 

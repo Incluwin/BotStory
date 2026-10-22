@@ -4,6 +4,7 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
@@ -951,7 +952,14 @@ public final class AgentBossRunSession {
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
+        AgentPqPace pace = null;
         if (anyAdopted) {
+            try {
+                // CWKPQ plan C8: what the fight measured, read before its end clears it (null: it keeps none)
+                pace = fight.pace(sessionId, startedAtMs, nowMs);
+            } catch (RuntimeException failure) {
+                log.warn("Boss run pace failed: session={} boss={}", sessionId, definition.key(), failure);
+            }
             try {
                 fight.end(event);
             } catch (RuntimeException failure) {
@@ -962,7 +970,7 @@ public final class AgentBossRunSession {
         log.info("Boss run ended: session={} boss={} reason={} started={} cleared={} members={}", sessionId,
                 definition.key(), reason, started, cleared, results.size());
         host.runEnded(new AgentBossRunHost.RunEnded(sessionId, definition.key(), started, cleared, reason,
-                started ? startedAtMs : 0L, nowMs, partySize, results));
+                started ? startedAtMs : 0L, nowMs, partySize, results, pace));
     }
 
     /**
