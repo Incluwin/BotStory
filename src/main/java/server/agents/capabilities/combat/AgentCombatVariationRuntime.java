@@ -89,7 +89,9 @@ public final class AgentCombatVariationRuntime {
             return;
         }
         Set<Integer> allowed = allowedMobIds == null ? Set.of() : Set.copyOf(allowedMobIds);
-        if (!allowed.contains(anchoredMobId)) {
+        // no ids allow every mob, as the objective's own filter reads them (2026-10-22, CWKPQ C9: a stage-5 room grind
+        // re-sent Set.of() each tick and so dropped the anchor's patrol each tick)
+        if (!allowed.isEmpty() && !allowed.contains(anchoredMobId)) {
             clearAutomaticAnchor(entry);
         }
     }

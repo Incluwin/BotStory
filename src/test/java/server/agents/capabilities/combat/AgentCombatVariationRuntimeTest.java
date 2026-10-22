@@ -87,6 +87,21 @@ class AgentCombatVariationRuntimeTest {
     }
 
     @Test
+    void anUnrestrictedGrindKeepsItsAutomaticAnchor() {
+        AgentRuntimeEntry entry = entry();
+        AgentCombatVariationState state = entry.capabilityStates()
+                .require(AgentCombatVariationState.STATE_KEY);
+        AgentPatrolStateRuntime.startPatrol(entry, 7, 10000);
+        state.markAutomaticAnchor(100100, 10000, 7);
+
+        AgentCombatVariationRuntime.retainAutomaticAnchorFor(entry, List.of());
+        AgentCombatVariationRuntime.retainAutomaticAnchorFor(entry, null);
+
+        assertTrue(AgentCombatVariationRuntime.isAutomaticPlatformAnchor(entry), "no ids allow every mob");
+        assertTrue(AgentPatrolStateRuntime.hasPatrolRegion(entry));
+    }
+
+    @Test
     void automaticAnchorCleanupDoesNotClearAReplacementManualPatrol() {
         AgentRuntimeEntry entry = entry();
         AgentCombatVariationState state = entry.capabilityStates()
