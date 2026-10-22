@@ -367,6 +367,7 @@ public final class AgentCwkpqTestService {
                     + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
                     + "; " + combatText(entry)
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
+                    + " goal " + entry.navigationDebugState().goalText()
                     + "; physics: " + (entry.movementPhysicsState().inAir() ? "in the air" : "grounded")
                     + " at (" + Math.round(entry.movementPhysicsState().physicsX()) + ","
                     + Math.round(entry.movementPhysicsState().physicsY()) + ") vy "

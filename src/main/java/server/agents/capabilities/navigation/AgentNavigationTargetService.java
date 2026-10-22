@@ -79,6 +79,9 @@ public final class AgentNavigationTargetService {
             int startRegionId = AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, bot.getMap(), botPos);
             int targetRegionId = AgentNavigationRegionService.resolveTargetRegionId(graph, entry, bot.getMap(), rawTargetPos);
             Point pathTargetPos = adjustPathTarget(entry, graph, targetRegionId, rawTargetPos);
+            if (rawTargetPos != null) {
+                entry.navigationDebugState().noteGoal(rawTargetPos.x, rawTargetPos.y, startRegionId, targetRegionId);
+            }
             long nowMs = System.currentTimeMillis();
             AgentNavigationProgressState progressState =
                     entry.capabilityStates().require(AgentNavigationProgressState.STATE_KEY);
