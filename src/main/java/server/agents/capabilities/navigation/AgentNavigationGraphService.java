@@ -487,17 +487,34 @@ public final class AgentNavigationGraphService {
         return map.getFootholds().getAllFootholds().size() <= FAST_WARMUP_MAX_FOOTHOLDS;
     }
 
+    /**
+     * The disk graph for {@code key}, else one built from {@code map} and saved. A disk graph with no regions is built
+     * again: one came from a map an event had already disposed (MapleMap.dispose drops the footholds), and it would
+     * leave every Agent on that map without a route for good (CWKPQ C9: the Test of Agility). A map whose footholds
+     * are gone is refused rather than built, so nothing empty is cached or saved and the next request on a live
+     * instance builds the graph; an empty graph is never saved.
+     */
     private static AgentNavigationGraph loadOrBuildGraph(MapleMap map,
                                                        AgentMovementProfile movementProfile,
                                                        GraphCacheKey key) {
         AgentNavigationGraph cached = loadGraph(key);
-        if (cached != null && satisfiesScopedMovementRequirements(cached)) {
+        if (cached != null && !cached.regions.isEmpty() && satisfiesScopedMovementRequirements(cached)) {
             return cached;
         }
+        requireFootholds(map);
 
         AgentNavigationGraph built = buildGraph(map, movementProfile);
-        saveGraph(built);
+        if (!built.regions.isEmpty()) {
+            saveGraph(built);
+        }
         return built;
+    }
+
+    /** Refuses a map whose footholds are gone (an event instance disposed while its graph waited to be built). */
+    static void requireFootholds(MapleMap map) {
+        if (map.getFootholds() == null) {
+            throw new IllegalStateException("map " + map.getId() + " has no footholds: disposed before its graph was built");
+        }
     }
 
     private static boolean satisfiesScopedMovementRequirements(AgentNavigationGraph graph) {
