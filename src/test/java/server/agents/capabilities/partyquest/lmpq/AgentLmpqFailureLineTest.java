@@ -121,6 +121,7 @@ class AgentLmpqFailureLineTest {
     void noSiteFailsTheSessionDirectly() throws Exception {
         assertEquals(Map.of("fail", 1), LmpqSource.of("AgentLmpqCoordinator").callers("\\bsession\\s*\\.\\s*fail\\s*\\("));
         Map<String, Integer> sites = LmpqSource.of("AgentLmpqCoordinator").callers("\\bfail\\s*\\(\\s*session\\s*,");
-        assertEquals(Map.of("tickMember", 1, "tickSession", 8), sites);
+        // tickSession 9: P6h Step 3 adds the reward stall of a companion run whose leader went offline after the clear
+        assertEquals(Map.of("tickMember", 1, "tickSession", 9), sites);
     }
 }

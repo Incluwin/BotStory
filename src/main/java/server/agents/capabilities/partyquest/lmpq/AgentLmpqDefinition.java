@@ -37,6 +37,20 @@ public final class AgentLmpqDefinition {
      * works these rooms out before it regroups (AgentLmpqCoordinator.readyToRegroup).
      */
     public static final Set<Integer> TAUROMACIS_ROOMS = Set.of(6, 7);
+    /** Tauromacis (JP), Mob.wz 9400218: level 73, 16000 HP, 290 weapon attack. */
+    public static final int TAUROMACIS = 9_400_218;
+    /** Room 6, where every box summons Tauromacis (8098000.js with b = 0, and 8091004.js). */
+    public static final int TAUROMACIS_ROOM = 6;
+    /** The box that summons two Tauromacis wherever it stands (8091004.js): one in Room 6, Room 7's own. */
+    public static final int TAUROMACIS_BOX = 8_091_004;
+    /**
+     * Where companions wait in Room 16 (Map.wz 809050015) in a companion run: on its floor (foothold 6, y 145, x -400
+     * to 400), right of Pietri's steps (footholds 3-5 end at x -159; he stands at x -231 on the top one) and clear of
+     * the portal back to Room 9 (t000 at x -23), so the leader's click spot and the way out stay free.
+     */
+    public static final List<Integer> CLEAR_ROOM_WAIT_XS = List.of(-125, -95, -65, 25, 55);
+    /** Room 16's floor (Map.wz 809050015 foothold 6). */
+    public static final int CLEAR_ROOM_FLOOR_Y = 145;
     public static final Set<Integer> COUPON_MOBS = Set.of(
             9_400_209, 9_400_210, 9_400_211, 9_400_212, 9_400_213,
             9_400_214, 9_400_215, 9_400_216, 9_400_217, 9_400_218);

@@ -23,6 +23,8 @@ public final class AgentOpqDefinition {
             920_010_601, 920_010_602, 920_010_603, 920_010_604);
     public static final int ON_WAY_UP_MAP = 920_010_700;
     public static final int GARDEN_MAP = 920_010_800;
+    /** The centre's hidden room (portal in06, party3_room8.js), open once Minerva is free; its Eak leads on. */
+    public static final int HIDDEN_ROOM_MAP = 920_011_000;
     public static final int CLEAR_MAP = 920_011_300;
     public static final int EXIT_MAP = 920_011_200;
     public static final int MIN_LEVEL = 51;
@@ -59,6 +61,7 @@ public final class AgentOpqDefinition {
             9_300_048, 9_300_049, 9_300_054, 9_300_055, 9_300_056);
     public static final Set<Integer> GARDEN_MOBS = Set.of(
             9_300_048, 9_300_049, 9_300_054, 9_300_055, 9_300_056, PAPA_PIXIE);
+    public static final Set<Integer> HIDDEN_ROOM_MOBS = Set.of(9_300_051, 9_300_052, 9_300_053);
     public static final Set<Integer> ALL_COMBAT_MOBS = Set.of(
             9_300_041, 9_300_042, 9_300_043, 9_300_045, 9_300_046,
             9_300_047, 9_300_048, 9_300_049, 9_300_054, 9_300_055,
@@ -74,6 +77,9 @@ public final class AgentOpqDefinition {
     public static final Map<Integer, Integer> LOUNGE_SUBROOM_ENTRY_PORTALS = Map.of(
             920_010_601, 3, 920_010_602, 4, 920_010_603, 5, 920_010_604, 6);
     public static final int LOUNGE_SUBROOM_EXIT_PORTAL = 9;
+    /** The centre's in06 into the hidden room, and the hidden room's st00 back (party3_roomout.js). */
+    public static final int HIDDEN_ROOM_PORTAL = 16;
+    public static final int HIDDEN_ROOM_EXIT_PORTAL = 1;
 
     public static final Map<Integer, String> STATUE_SCAR_BY_ITEM = Map.of(
             4_001_044, "scar4", 4_001_045, "scar6", 4_001_046, "scar1",

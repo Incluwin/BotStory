@@ -70,14 +70,65 @@ public final class AgentOpqSessionRegistry {
      * run of the player who asked ({@code characterId}); nothing outside a run. Only what Eak tells the party.
      */
     public static void recordSealedVerdict(int characterId, boolean onePlatformRight) {
+        recordSealedVerdict(characterId, onePlatformRight, null);
+    }
+
+    /**
+     * 2026-10-18: {@link #recordSealedVerdict(int, boolean)} with the players Eak counted on the left, middle and right
+     * platform ({@code observed}, "111"; 2013001.js joins its count). In a companion run its human leader leads, his
+     * check is kept with that split for the next coordinator pass (AgentOpqConductor), so a check made while the
+     * holders were still moving prunes the search right; every other talker's answer is kept as before.
+     */
+    public static void recordSealedVerdict(int characterId, boolean onePlatformRight, String observed) {
         AgentOpqSession session = forMember(characterId);
-        if (session != null) session.recordSealedVerdict(onePlatformRight);
+        if (session == null) return;
+        if (AgentOpqConductor.humanLeaderCheck(session, characterId)) {
+            session.recordHumanSealedCheck(AgentOpqSealedSearch.Split.parse(observed), onePlatformRight);
+        } else {
+            session.recordSealedVerdict(onePlatformRight);
+        }
+    }
+
+    /**
+     * 2026-10-18: Eak's answer to a wrong lever check on the way up, called by 2013001.js as he says it: true for "One
+     * of the pushed levers is correct", false for "Both of the pushed levers are wrong", with the five levers as they
+     * stood ({@code observed}, "01010"). Kept only for a companion run its human leader leads, when he asked; the
+     * runner then sets the next pair (AgentOpqConductor). Only what Eak tells the party.
+     */
+    public static void recordWayUpVerdict(int characterId, boolean oneLeverRight, String observed) {
+        AgentOpqSession session = forMember(characterId);
+        if (session != null && AgentOpqConductor.humanLeaderCheck(session, characterId)) {
+            session.recordHumanLeverCheck(AgentOpqLeverSearch.Pair.parse(observed), oneLeverRight);
+        }
     }
     public static Collection<AgentOpqSession> sessions() { return List.copyOf(SESSIONS.values()); }
     public static synchronized void remove(AgentOpqSession session) {
         if (session == null || !SESSIONS.remove(session.sessionId(), session)) return;
         BY_OPERATOR.remove(session.operatorId(), session.sessionId());
         session.members().forEach(member -> BY_MEMBER.remove(member.characterId(), session.sessionId()));
+    }
+
+    /**
+     * 2026-10-18: whether this bot may loot this drop of an OPQ objective item. In a companion run its human leader
+     * leads, a stack of walkway or lounge fragments or the Root of Life a companion dropped for him is his, and so is
+     * a statue piece or the Root he dropped himself: only the companion that claimed the stack (to pick it back up
+     * before it expires, or to take it to the statue) may take it. Everything else is
+     * {@link #canLootExclusive(Character, int)}, unchanged.
+     */
+    public static boolean canLootExclusive(Character character, MapItem drop) {
+        if (character == null || drop == null) return false;
+        int itemId = drop.getItemId();
+        AgentOpqSession session = forMember(character.getId());
+        if (session != null && drop.isPlayerDrop() && AgentOpqConductor.conducts(session)
+                && session.eventInstance() != null && character.getEventInstance() == session.eventInstance()) {
+            boolean forHim = (itemId == AgentOpqDefinition.WALKWAY_FRAGMENT
+                    || itemId == AgentOpqDefinition.LOUNGE_FRAGMENT || itemId == AgentOpqDefinition.ROOT_OF_LIFE)
+                    && session.agentOfRun(drop.getOwnerId());
+            boolean his = AgentOpqConductor.LEADER_DROPS.contains(itemId)
+                    && drop.getOwnerId() == session.eventLeaderId();
+            if (forHim || his) return session.claimerOf(drop.getObjectId()) == character.getId();
+        }
+        return canLootExclusive(character, itemId);
     }
 
     public static boolean canLootExclusive(Character character, int itemId) {

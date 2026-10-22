@@ -18,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.agents.capabilities.partyquest.rjpq.RjpqStageFixture.BEN;
@@ -125,6 +127,102 @@ class AgentRjpqDarkLabsTest {
 
         verify(fixture.actions).hitReactor(fixture.character(MIRA), 52);
         verify(fixture.actions, never()).hitReactor(fixture.character(MIRA), 51);
+    }
+
+    /**
+     * Live 2026-10-18 (Kestrel, Lab 1): Lab 1's decoys (reactorTime -1) are never destroyed, so a broken one stands on
+     * at state 4, which has no event (alive, not active). The runner hit it 309 more times and gave the lab up. It
+     * goes on to the next box, and takes the files the real one drops.
+     */
+    @Test
+    void aBrokenDecoyThatStillStandsIsLeftForTheNextBoxAndTheFilesAreTaken() {
+        on(AgentRjpqDefinition.DARK_LAB_ONE_MAP);
+        fixture.session.chooseLabRunners(TOBI, AgentRjpqDarkLabs.NO_RUNNER);
+        when(fixture.character(TOBI).getTotalJumpStat()).thenReturn(AgentRjpqDarkLabs.LAB_ONE_JUMP);
+        Reactor decoy = box(61, AgentRjpqDefinition.DECOY_BOX_REACTOR_ID, 20, 0);
+        Reactor real = box(62, AgentRjpqDefinition.REAL_BOX_LAB_ONE_REACTOR_ID, 40, 0);
+        fixture.reactors(decoy, real);
+        fixture.at(TOBI, 0, 0);
+
+        fixture.tick(TOBI, 2_000L);
+        verify(fixture.actions).hitReactor(fixture.character(TOBI), 61);
+
+        when(decoy.isActive()).thenReturn(false);
+        when(decoy.getState()).thenReturn((byte) 4);
+        fixture.tick(TOBI, 3_000L);
+        verify(fixture.actions, times(1)).hitReactor(fixture.character(TOBI), 61);
+        verify(fixture.actions).hitReactor(fixture.character(TOBI), 62);
+
+        // the real box (reactorTime 0, so a respawn delay) is destroyed as it breaks, and its files lie below it
+        when(real.isAlive()).thenReturn(false);
+        when(real.isActive()).thenReturn(false);
+        fixture.drop(90, ALCADNO_FILES, 40, 0);
+        fixture.tick(TOBI, 4_000L);
+        verify(fixture.actions).lootItem(eq(fixture.character(TOBI)), eq(90), anyInt());
+        verify(fixture.actions, times(1)).hitReactor(fixture.character(TOBI), 61);
+        verify(fixture.actions, times(1)).hitReactor(fixture.character(TOBI), 62);
+    }
+
+    /**
+     * Boxes with a respawn delay (every box in Lab 2, the real one in Lab 1: reactorTime 0 under the server's reactor
+     * respawn override) stand up again at state 0 ten seconds after they break. The runner never breaks a box twice:
+     * with every box broken and no files here, it leaves.
+     */
+    @Test
+    void aBoxTheRunnerBrokeIsNotBrokenAgainWhenItStandsUpAgain() {
+        on(AgentRjpqDefinition.DARK_LAB_TWO_MAP);
+        fixture.session.chooseLabRunners(AgentRjpqDarkLabs.NO_RUNNER, MIRA);
+        Reactor first = box(61, AgentRjpqDefinition.DECOY_BOX_REACTOR_ID, 20, 0);
+        Reactor second = box(62, AgentRjpqDefinition.DECOY_BOX_REACTOR_ID, 40, 0);
+        fixture.reactors(first, second);
+        fixture.portal(AgentRjpqDarkLabs.LAB_EXIT_PORTAL, 1, 0, 0);
+        fixture.at(MIRA, 0, 0);
+        when(fixture.partyQuest.enterPortal(fixture.character(MIRA), 1)).thenReturn(true);
+
+        fixture.tick(MIRA, 2_000L);
+        verify(fixture.actions).hitReactor(fixture.character(MIRA), 61);
+
+        when(first.isAlive()).thenReturn(false);
+        when(first.isActive()).thenReturn(false);
+        fixture.tick(MIRA, 3_000L);
+        verify(fixture.actions).hitReactor(fixture.character(MIRA), 62);
+
+        when(second.isAlive()).thenReturn(false);
+        when(second.isActive()).thenReturn(false);
+        when(first.isAlive()).thenReturn(true);
+        when(first.isActive()).thenReturn(true);
+        fixture.tick(MIRA, 4_000L);
+
+        verify(fixture.actions, times(1)).hitReactor(fixture.character(MIRA), 61);
+        verify(fixture.partyQuest).enterPortal(fixture.character(MIRA), 1);
+    }
+
+    /**
+     * Live 2026-10-18 (Lioren, Lab 2): the runner dropped the files at the leader's feet, then ran its lab again twice
+     * while the earlier stacks lay on the floor. A stack a companion of the run handed over that still lies on the
+     * Special Lab means the lab is done; once it is gone (and nobody holds the files) the lab is wanted again.
+     */
+    @Test
+    void filesLyingAtTheLeadersFeetMeanTheLabIsDone() {
+        on(AgentRjpqDefinition.SPECIAL_LAB_MAP);
+        fixture.session.chooseLabRunners(AgentRjpqDarkLabs.NO_RUNNER, MIRA);
+        doors(0, 1);
+        when(fixture.event.getMapInstance(AgentRjpqSide.ZENUMIST.map(AgentRjpqDefinition.SPECIAL_LAB_MAP)))
+                .thenReturn(fixture.map);
+        fixture.portal(AgentRjpqDarkLabs.LAB_TWO_ENTRY_PORTAL, 5, 808, 174);
+        fixture.at(MIRA, 808, 174);
+        when(fixture.partyQuest.enterPortal(fixture.character(MIRA), 5)).thenReturn(true);
+        fixture.floor.add(files(ZENUMIST_FILES, true, MIRA, 1_000L));
+
+        fixture.tick(MIRA, 2_000L);
+
+        verify(fixture.partyQuest, never()).enterPortal(fixture.character(MIRA), 5);
+        assertFalse(AgentRjpqDarkLabs.labWanted(fixture.session, fixture.character(MIRA), AgentRjpqDarkLabs.LAB_TWO));
+        assertTrue(AgentRjpqDarkLabs.labWanted(fixture.session, fixture.character(MIRA), AgentRjpqDarkLabs.LAB_ONE),
+                "only Lab 2's files lie there");
+
+        fixture.floor.clear();
+        assertTrue(AgentRjpqDarkLabs.labWanted(fixture.session, fixture.character(MIRA), AgentRjpqDarkLabs.LAB_TWO));
     }
 
     @Test
@@ -254,6 +352,7 @@ class AgentRjpqDarkLabsTest {
         when(box.getObjectId()).thenReturn(objectId);
         when(box.getId()).thenReturn(reactorId);
         when(box.isAlive()).thenReturn(true);
+        when(box.isActive()).thenReturn(true);
         return box;
     }
 

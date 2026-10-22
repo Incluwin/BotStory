@@ -24,7 +24,9 @@ import static server.agents.capabilities.partyquest.ppq.PpqRunFixture.UNA;
  * (past PiratePQ.js's maxMapId) unregisters everyone, and Wu Yang's room has no exit: a companion with a full Etc tab
  * leaves it at once without its Feather, nobody holds the run open past AFTER_CLEAR_LIMIT_MS (5 minutes), and the
  * release takes any Agent still there to Guon's map. A companion run waits for its companions only, never a human,
- * and no run completes while its members are still on the boss map between setEventCleared and clearPQ's warp.
+ * and no run completes while its members are still on the boss map between setEventCleared and clearPQ's warp. In a
+ * companion run (decision D-f') the companions take Wu Yang's exit only after their leader left his room: the
+ * Feather cases here have him gone already; AgentPpqWuYangWaitTest has the wait itself.
  */
 class AgentPpqAfterClearTest {
     private static final long MINUTE = 60_000L;
@@ -43,6 +45,7 @@ class AgentPpqAfterClearTest {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP);
              PpqLogLines lines = new PpqLogLines(AgentPpqCoordinator.class)) {
             PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 0);
+            run.onMap(BEN, AgentPpqDefinition.RECRUIT_MAP); // he took his Feather first (decision D-f')
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
@@ -67,6 +70,7 @@ class AgentPpqAfterClearTest {
     void aFullEtcTabWithAFeatherStackStillHasRoomForOneMore() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
             fullTabWithFeathers(run, MIRA, (short) 3, "");
+            run.onMap(BEN, AgentPpqDefinition.RECRUIT_MAP); // he took his Feather first (decision D-f')
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
@@ -79,6 +83,7 @@ class AgentPpqAfterClearTest {
     void aFullFeatherStackWithNoFreeSlotIsNoRoom() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
             fullTabWithFeathers(run, MIRA, (short) 200, "");
+            run.onMap(BEN, AgentPpqDefinition.RECRUIT_MAP); // he took his Feather first (decision D-f')
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
@@ -91,6 +96,7 @@ class AgentPpqAfterClearTest {
     void aGmTaggedFeatherStackIsNoRoom() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
             fullTabWithFeathers(run, MIRA, (short) 199, "Crewfriend"); // '!giveitem' tags the stack with the GM's name
+            run.onMap(BEN, AgentPpqDefinition.RECRUIT_MAP); // he took his Feather first (decision D-f')
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 
@@ -103,6 +109,7 @@ class AgentPpqAfterClearTest {
     void pinACompanionWithRoomAsksWuYangForItsFeather() {
         try (PpqRunFixture run = new PpqRunFixture(true, AgentPpqDefinition.CLEAR_MAP)) {
             PpqAdmitFixture.room(run.character(MIRA), client.inventory.InventoryType.ETC, 1);
+            run.onMap(BEN, AgentPpqDefinition.RECRUIT_MAP); // he took his Feather first (decision D-f')
 
             AgentPpqCoordinator.tickMember(run.session, run.entries.get(MIRA), run.character(MIRA), 5_000L);
 

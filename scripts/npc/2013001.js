@@ -173,7 +173,7 @@ function action(mode, type, selection) {
                             // the run's search hears Eak's answer as the party does (2026-10-17); a server without
                             // the hook, or any failure in it, never costs the party his answer
                             try {
-                                AgentOpqSessionRegistry.recordSealedVerdict(cm.getPlayer().getId(), num_correct > 0);
+                                AgentOpqSessionRegistry.recordSealedVerdict(cm.getPlayer().getId(), num_correct > 0, players.join(""));
                             } catch (e) {
                             }
                             if (num_correct > 0) {
@@ -271,6 +271,12 @@ function action(mode, type, selection) {
                             clearStage(6, eim);
                         } else {
                             eim.showWrongEffect();
+                            // a human leader's run hears Eak's lever answer as the party does (2026-10-18); a server
+                            // without the hook, or any failure in it, never costs the party his answer
+                            try {
+                                AgentOpqSessionRegistry.recordWayUpVerdict(cm.getPlayer().getId(), psh_correct >= 1, react);
+                            } catch (e) {
+                            }
                             if (psh_correct >= 1) {
                                 cm.sendOk("One of the pushed levers is correct.");
                             } else {

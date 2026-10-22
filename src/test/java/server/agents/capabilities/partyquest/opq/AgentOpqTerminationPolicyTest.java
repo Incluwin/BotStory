@@ -269,9 +269,13 @@ class AgentOpqTerminationPolicyTest {
     void theTicksStallAfterTheClearLetsOnlyTheCompanionsGo() {
         AgentOpqSession session = companionRun(AgentOpqSession.Phase.RESTORING_MINERVA);
         minervaFreed();
+        // Ben left the event after the clear: a human leader still in it is never timed out (humanLeaderInEvent).
+        when(ben.getEventInstance()).thenReturn(null);
+        when(ben.getMapId()).thenReturn(AgentOpqDefinition.EXIT_MAP);
+        AgentOpqCoordinator.tickSession(session, 3_000L); // the first sight of the clear is progress
 
-        // No progress since 2 000 ms, one millisecond past the coordinator's phase timeout.
-        AgentOpqCoordinator.tickSession(session, 2_000L + AgentOpqCoordinator.phaseTimeoutMs() + 1L);
+        // No progress since 3 000 ms, one millisecond past the coordinator's phase timeout.
+        AgentOpqCoordinator.tickSession(session, 3_000L + AgentOpqCoordinator.phaseTimeoutMs() + 1L);
 
         assertEquals("No legal OPQ progress before timeout", session.failure());
         verifyCompanionsOnlyLeft();

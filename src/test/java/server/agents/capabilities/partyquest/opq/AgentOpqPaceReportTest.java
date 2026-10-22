@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * P6h OPQ step 1 (C5): a companion run's pace, cut from when each part of the run was first entered (provisional keys
- * until Step 4's profile): entrance, rooms, statue, garden, minerva and claim, the last to the completion. A part
+ * P6h OPQ step 1 (C5): a companion run's pace, cut from when each part of the run was first entered (under the keys
+ * of AgentOpqPaceProfile): entrance, rooms, statue, garden, root and claim, the last to the completion. A part
  * whose end was not seen is open; a part the run skipped (a checkpoint) has no span and the one before it runs to the
  * next part it entered. The run started at the entrance and cleared when the coordinator first saw Minerva freed.
  */
@@ -55,7 +55,7 @@ class AgentOpqPaceReportTest {
                 new AgentPqPace.Span("rooms", 130_000L, 900_000L, 0.0d, true),
                 new AgentPqPace.Span("statue", 900_000L, 960_000L, 0.0d, true),
                 new AgentPqPace.Span("garden", 960_000L, 1_500_000L, 0.0d, true),
-                new AgentPqPace.Span("minerva", 1_500_000L, 1_560_000L, 0.0d, true),
+                new AgentPqPace.Span("root", 1_500_000L, 1_560_000L, 0.0d, true),
                 new AgentPqPace.Span("claim", 1_560_000L, 1_620_000L, 0.0d, true)), pace.spans());
         assertEquals(Map.of(), pace.drawn(), "no puzzle counter moved in a human-led run");
         assertEquals(List.of(), pace.members());

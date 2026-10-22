@@ -81,7 +81,8 @@ class AgentOpqLeaderRuleTest {
 
         AgentOpqCoordinator.tickSession(session, 3_000L);
 
-        assertEquals(AgentOpqSession.Phase.RESTORING_MINERVA, session.phase());
+        // 2026-10-18: a human-led run's claims begin with the clear (OPQ plan Step 2d), not a failure.
+        assertEquals(AgentOpqSession.Phase.CLAIMING_REWARD, session.phase());
         verify(run.event, never()).exitPlayer(mira);
     }
 

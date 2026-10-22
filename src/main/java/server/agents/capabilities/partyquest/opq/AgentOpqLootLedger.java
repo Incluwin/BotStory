@@ -40,6 +40,17 @@ public final class AgentOpqLootLedger {
         return true;
     }
 
+    /**
+     * Ends {@code ownerId}'s custody of {@code itemId} (2026-10-18, a human-led run's garden: a seeder that planted its
+     * seed, or no longer seeds and holds none), so the next reserve may take it. False when it is not that owner's.
+     */
+    public synchronized boolean release(int itemId, int ownerId) {
+        Reservation reservation = byItem.get(itemId);
+        if (reservation == null || reservation.ownerId() != ownerId) return false;
+        byItem.remove(itemId);
+        return true;
+    }
+
     public synchronized Reservation reservation(int itemId) { return byItem.get(itemId); }
     public synchronized Map<Integer, Reservation> snapshot() { return Map.copyOf(byItem); }
 }

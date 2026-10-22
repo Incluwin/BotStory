@@ -299,10 +299,13 @@ final class CompanionPqFixture implements AutoCloseable {
         entrances.put("epq", new EpqFixtureEntrance());
 
         // slot: lmpq
+        entrances.put("lmpq", new LmpqFixtureEntrance());
 
         // slot: opq
+        entrances.put("opq", new OpqFixtureEntrance());
 
         // slot: ppq
+        entrances.put("ppq", new PpqFixtureEntrance());
 
         // slot: rjpq
         entrances.put("rjpq", new RjpqFixtureEntrance(AgentRjpqSide.ZENUMIST));

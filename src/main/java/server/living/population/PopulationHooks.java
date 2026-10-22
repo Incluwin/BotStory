@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.integration.AgentPresence;
+import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.life.Monster;
 import server.maps.MapleMap;
 
@@ -75,6 +76,12 @@ public final class PopulationHooks {
             CitizenSession self = population.presence().sessionOf(chr);
             if (self != null) {
                 self.journal.add("death", "died at " + population.fields().name(chr.getMapId()).toLowerCase(java.util.Locale.ROOT));
+                int avoidMs = population.config().FIELD_BOSS_AVOID_MS;
+                if (avoidMs > 0 && AgentBossField.near(chr.getMap())) {
+                    // beside a field boss it never fights: it trains elsewhere while the boss stands (PresenceScheduler)
+                    self.avoidUntilMs = System.currentTimeMillis() + avoidMs;
+                    self.avoidMapId = chr.getMapId();
+                }
                 population.chatter().event(ChatterEngine.Event.of("death.self", chr.getMapId(), channelOf(chr)).self(self).subject(chr));
             }
             population.chatter().event(ChatterEngine.Event.of("death.other", chr.getMapId(), channelOf(chr)).subject(chr));

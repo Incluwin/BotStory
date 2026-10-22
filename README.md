@@ -16,7 +16,8 @@ gameplay rules:
 - An admin control port (used by the MapleEdit dashboard), TypeSafe Jev
   judgments for chat and intent, and a skill-probe harness.
 
-The game client is the stock GMS v83 client with the BotStory fork of
+The game client is the stock GMS v83 client with
+[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake), the BotStory fork of
 [kaentake](https://github.com/iw2d/kaentake), running on either the clean Cosmic
 WZ files or the Community Repack WZ files; see [the game client](docs/SETUP.md#2-the-game-client).
 
@@ -144,28 +145,29 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
 
 ### Party quests
 
-- **KPQ, HPQ, LPQ and EPQ** with companions (`COMPANION_PQ_ENABLED_KEYS`):
-  - The entry NPC proposes a lineup and can call from your bench, while extras wait beside her.
+- **Every party quest is on by default** (`COMPANION_PQ_ENABLED_KEYS`): KPQ, HPQ, LPQ, EPQ, LMPQ, OPQ,
+  PPQ and RJPQ (both the Romeo and the Juliet side).
+  - The entry NPC (Lakelis, Tory, the Red Sign, Ellin, Rolly, Wonky, Guon, Romeo, Juliet) proposes a
+    lineup and can call from your bench, while extras wait beside them.
   - Downed companions tap out.
   - Run records and clear-time estimates.
-- **RJPQ** with companions (the Romeo and Juliet desks, Dark Lab runners): built, off by default.
-  Add `rjpq,rjpqj` to the key list.
-- **OPQ, LMPQ and PPQ** companion runs (sealed-room learning, the LMPQ regroup, the PPQ medal
-  hand-over): started by a GM only, with `!opqtest`, `!lmpqtest` or `!ppqtest party`.
+  - In the run, companions play their part: the LMPQ coupons and regroup, the OPQ sealed rooms and
+    garden, the PPQ medals at your feet, the RJPQ books and Dark Lab runners.
 - **Fixed:** the PPQ side-room portals.
 
 ### Bosses
 
 - **Companion boss runs:** the server moves the boss, and its attacks hit companions.
   - Companions spend their own daily entries and always leave two seats for players.
-  - A companion that dies to a field boss rests in town first.
-  - You can call bench allies into a run.
-- **On by default:** Easy Balrog and Pink Bean (`COMPANION_BOSS_ENABLED_TYPES`).
-- **Built, off by default:**
-  - Normal Balrog, Zakum, Papulatus, Scarga, Horntail, Showa, Latanica and the five Neo City
-    bosses.
+  - A companion that dies to a field boss rests in town first. One that keeps dying to it sits
+    that fight out in town and says so.
+  - You can call bench allies into any boss with a sign-up list.
+- **Every boss is on by default** (`COMPANION_BOSS_ENABLED_TYPES`):
+  - Easy and Normal Balrog, Zakum, Papulatus, Scarga, Horntail, Showa, Pink Bean, Latanica and
+    the five Neo City bosses.
   - Field-boss groups for Victoria, Ossyria, Ludus, Mu Lung, Nihal, Pianus, Leafre, the Temple of
-    Time, Zipangu and Masteria.
+    Time, Zipangu and Masteria. Citizens never attack a field boss; one that dies beside it
+    trains elsewhere while the boss stands.
 - **Test kit:** `!bossgear` gives a companion a boss kit and puts its own gear back afterwards.
 
 ### Residents: the living world
@@ -242,8 +244,11 @@ Items marked *(cosmic_agents)* came with the Agent platform; BotStory tuned or e
   affected. See [docs/CLIENT_FEATURE_HANDSHAKE.md](docs/CLIENT_FEATURE_HANDSHAKE.md).
 - **Server mods** with switches (`mods.SWITCHES`) and a `!mods` report per client.
 - **The BotStory client:** the native Crew window, the head-height quest markers and the feature
-  toggles come from the BotStory kaentake build and its `Custom.wz`, which are not public yet.
-  See [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
+  toggles come from [BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake) and its
+  `Custom.wz`. There is no prebuilt download yet; build its Release preset with CMake
+  (`cmake --preset release-win32`, then `cmake --build --preset release-win32`). Some of the
+  host's client content stays private: see
+  [docs/SETUP.md](docs/SETUP.md#what-the-public-client-does-not-have-yet).
 
 ### Commands
 

@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
  *
  * <p>An Agent without a PPQ session respawns exactly as before, in the same tick. The gate is inert once the event is
  * cleared, disposed or unbound, for the event leader (whose departure ends the stock event at any count), for a member
- * the event does not hold, and for a run that is ending. The LPQ, EPQ, LMPQ and OPQ gates stay outside: this one runs
+ * the event does not hold, and for a run that is ending. In a companion run (P6i Step 4), a companion held at the floor
+ * with no other companion standing ends the run in its own words ('PPQ parting: kind=WENT_DOWN'). The LPQ, EPQ, LMPQ and OPQ gates stay outside: this one runs
  * inside the respawn the OPQ gate hands on, and hands its own respawn to the RJPQ gate.
  */
 public final class AgentPpqDeathDepartureGate {
@@ -71,8 +72,28 @@ public final class AgentPpqDeathDepartureGate {
             return true;
         }
         EventInstanceManager event = session.eventInstance();
-        return respawnOrHold(session, agent.getId(), agent.getName(),
+        // The event deletes its exclusive items as it lets a member go: a companion run says what went with it.
+        int medals = session.companionAdopted() && event != null && !event.isEventCleared() ? medals(agent) : 0;
+        boolean respawned = respawnOrHold(session, agent.getId(), agent.getName(),
                 event == null ? null : EventView.of(event), respawn, nowMs);
+        if (respawned && medals > 0) {
+            log.info("PPQ medals lost with member: session={} member={}({}) count={}", session.sessionId(),
+                    agent.getName(), agent.getId(), medals);
+        }
+        return respawned;
+    }
+
+    /** The medals of every wave this character holds. Never throws. */
+    private static int medals(Character agent) {
+        try {
+            int count = 0;
+            for (int medal : AgentPpqDefinition.MEDALS) {
+                count += Math.max(0, agent.getItemQuantity(medal, false));
+            }
+            return count;
+        } catch (RuntimeException unreadable) {
+            return 0;
+        }
     }
 
     static boolean respawnOrHold(AgentPpqSession session, int id, String name, EventView event,
@@ -91,6 +112,12 @@ public final class AgentPpqDeathDepartureGate {
         if (!departure.proceed()) {
             if (departure.firstHold()) {
                 logDeparture(session, id, name, "HOLD", departure.registered(), departure.othersInFlight(), 0L);
+            }
+            // A companion run's short-handed clause (plan 9.1): held at the floor with no other companion standing,
+            // the run ends in this companion's words; the next tick finds it ended and releases it.
+            if (session.companionAdopted()
+                    && AgentPpqCompanionRun.standingByTheGate(session, id, event.registeredIds()) == 0) {
+                AgentPpqCompanionRun.shortHanded(session, id, name, nowMs);
             }
             return false;
         }

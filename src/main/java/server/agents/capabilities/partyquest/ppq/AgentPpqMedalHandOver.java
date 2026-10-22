@@ -3,7 +3,6 @@ package server.agents.capabilities.partyquest.ppq;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -83,7 +82,8 @@ final class AgentPpqMedalHandOver {
             }
             member.endHandOver();
         }
-        if (held > 0 && due(session, agent, itemId, held, leader)) {
+        // Nothing is handed to a leader lying dead: the companions keep fighting and carry on once he is up.
+        if (held > 0 && leader != null && leader.getHp() > 0 && due(session, agent, itemId, held, leader)) {
             member.startHandOver(itemId, nowMs, 0);
             walkOrDrop(session, entry, agent, member, itemId, held, leader, nowMs);
             return true;
@@ -160,19 +160,25 @@ final class AgentPpqMedalHandOver {
         String name = leader.getName();
         if (lineage > 0) {
             if (session.claimLineWindow("medal-feet-" + itemId, nowMs, LINE_WINDOW_MS)) {
-                say(agent, recollectedLine(itemId));
+                AgentPpqDialogue.say(session, "M4", agent, leader, AgentPpqCompanionPlay.medalsPickedBackUp());
             }
             return;
         }
         if (place != Place.NPC && makesTwenty(held, leaderHeld, lyingBefore, AgentPpqDefinition.MEDALS_PER_WAVE)
-                && session.narrateOnce("medal-twenty-" + itemId)) {
+                && AgentPpqDialogue.narrate(session, twentyKey(itemId), agent, leader,
+                AgentPpqCompanionPlay.twentyWithThese(name))) {
             session.claimLineWindow("medal-feet-" + itemId, nowMs, LINE_WINDOW_MS);
-            say(agent, twentyLine(itemId, name));
             return;
         }
         String kind = place == Place.NPC ? "medal-npc-" : "medal-feet-";
         if (!session.claimLineWindow(kind + itemId, nowMs, LINE_WINDOW_MS)) return;
-        say(agent, place == Place.NPC ? byGuonLine(itemId, name) : atFeetLine(itemId, name, place == Place.FEET));
+        AgentPpqDialogue.say(session, place == Place.NPC ? "M2b" : "M2", agent, leader, place == Place.NPC
+                ? AgentPpqCompanionPlay.medalsByGuon(name) : AgentPpqCompanionPlay.medalsAtFeet(name, place == Place.FEET));
+    }
+
+    /** The once-a-wave key of the twenty line, shared by the hand-over that makes twenty and M5 (he holds twenty). */
+    static String twentyKey(int itemId) {
+        return "medal-twenty-" + itemId;
     }
 
     /**
@@ -210,7 +216,7 @@ final class AgentPpqMedalHandOver {
         String key = "medal-nudge-" + stack.getObjectId();
         if (!session.narrateOnce(key)) return;
         if (!session.claimLineWindow("medal-nudge-" + itemId, nowMs, PICKUP_NUDGE_MS)) return;
-        say(agent, nudgeLine(itemId, leader.getName()));
+        AgentPpqDialogue.say(session, "M3", agent, leader, AgentPpqCompanionPlay.medalsStillLying(leader.getName()));
     }
 
     /** Who picks this stack back up: its dropper while it stands here, else the lowest-id companion standing here. */
@@ -282,14 +288,6 @@ final class AgentPpqMedalHandOver {
                         && drop.getItemId() == itemId && drop.getOwnerId() == agent.getId())
                 .max(Comparator.comparingInt(MapItem::getObjectId))
                 .map(MapItem::getObjectId).orElse(0);
-    }
-
-    private static void say(Character agent, String line) {
-        try {
-            AgentPartyGatewayRuntime.party().sendPartyChat(agent, line);
-        } catch (RuntimeException e) {
-            log.warn("PPQ medal line failed: member={}", agent.getId(), e);
-        }
     }
 
     /** 'PPQ handover:' for every medal hand-over drop. Nothing decides by it; never throws. */
@@ -383,29 +381,12 @@ final class AgentPpqMedalHandOver {
         };
     }
 
-    /** The wave's opening line to a human leader. */
+    /**
+     * The wave's opening guide line to a human leader of a stock (not companion) run, as the coordinator's guide says
+     * it; a companion run's companions say AgentPpqCompanionPlay's lines instead.
+     */
     static String waveLine(int itemId, String leader) {
         return leader + ", we'll gather the " + markName(itemId) + " marks for you. Talk to Guon at twenty.";
-    }
-
-    static String atFeetLine(int itemId, String leader, boolean atHisFeet) {
-        return markName(itemId) + " marks " + (atHisFeet ? "at your feet, " : "right next to you, ") + leader + ".";
-    }
-
-    static String twentyLine(int itemId, String leader) {
-        return leader + ", that makes twenty " + markName(itemId) + " marks. Talk to Guon.";
-    }
-
-    static String byGuonLine(int itemId, String leader) {
-        return leader + ", I left the " + markName(itemId) + " marks by Guon.";
-    }
-
-    static String nudgeLine(int itemId, String leader) {
-        return leader + ", the " + markName(itemId) + " marks are on the floor by you.";
-    }
-
-    static String recollectedLine(int itemId) {
-        return "Picked the " + markName(itemId) + " marks back up before they vanished. Here they are.";
     }
 
     // ---- helpers --------------------------------------------------------------------------------------------------

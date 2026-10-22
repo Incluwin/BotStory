@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 /** Where citizens go (plan 3.3): training fields by level and region with occupancy, towns, lobbies, FM. */
 public final class FieldCatalog {
@@ -111,10 +112,16 @@ public final class FieldCatalog {
      * undead-majority ones (docs/SERVER_KNOWLEDGE_PLAN.md 8.5); prefers maps humans are on when {@code social}.
      */
     public Field trainingField(Citizen citizen, int level, Random random, boolean social) {
+        return trainingField(citizen, level, random, social, mapId -> false);
+    }
+
+    /** As above, never on a map {@code avoided} names (one it died on beside a field boss that still stands). */
+    public Field trainingField(Citizen citizen, int level, Random random, boolean social, IntPredicate avoided) {
         List<Field> candidates = new ArrayList<>();
         String region = citizen.homeRegion();
         for (Field field : population.content().fields().values()) {
-            if (field.town() || field.capacity() <= 0 || field.mobLevel() <= 0 || !field.region().equals(region)) {
+            if (field.town() || field.capacity() <= 0 || field.mobLevel() <= 0 || !field.region().equals(region)
+                    || avoided.test(field.mapId())) {
                 continue;
             }
             if (field.mobLevel() < level - LEVEL_BELOW || field.mobLevel() > level + LEVEL_ABOVE) {
@@ -128,7 +135,7 @@ public final class FieldCatalog {
         if (candidates.isEmpty()) {
             for (Field field : population.content().fields().values()) {
                 if (!field.town() && field.capacity() > 0 && field.mobLevel() > 0 && Math.abs(field.mobLevel() - level) <= LEVEL_BELOW + 4
-                        && occupancy(field.mapId()) < field.capacity()) {
+                        && occupancy(field.mapId()) < field.capacity() && !avoided.test(field.mapId())) {
                     candidates.add(field);
                 }
             }

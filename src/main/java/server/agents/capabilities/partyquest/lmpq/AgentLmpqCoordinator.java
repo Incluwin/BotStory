@@ -60,6 +60,14 @@ public final class AgentLmpqCoordinator {
     }
 
     /**
+     * A companion run's parting before the failure that follows it (P6h Step 3); nothing for any other run, after the
+     * clear, or for a run already ending.
+     */
+    private static void parting(AgentLmpqSession session, AgentLmpqParting.Kind kind, String subject) {
+        if (session.companionAdopted()) AgentLmpqCompanionRun.parting(session, AgentLmpqParting.of(kind, subject));
+    }
+
+    /**
      * The 'LMPQ session failure:' line alone, the phase left as it is: for a caller that releases the run itself and
      * must keep the release (the GM fixture harness), since a run marked FAILED is released by the next member tick.
      */
@@ -71,15 +79,33 @@ public final class AgentLmpqCoordinator {
     public static void tickSession(AgentLmpqSession session, long nowMs) {
         if (session.terminal() || session.paused()) return;
         if (eventTimerExpired(session, nowMs)) {
+            parting(session, AgentLmpqParting.Kind.TIMEOUT, null);
             fail(session, "LMPQ event timer expired", nowMs);
             return;
         }
         Character leader = character(session.eventLeaderId());
+        if (leader == null && session.companionAdopted() && AgentLmpqTerminationService.pastTheClear(session)) {
+            // P6h Step 3: after the clear a companion run never fails for its leader, offline included (he claims when
+            // he is back); it completes once its companions are out, and REWARD_STALL_MS still bounds it.
+            session.transition(AgentLmpqSession.Phase.REWARD, nowMs);
+            if (AgentLmpqCompanionRun.companionsOut(session)) {
+                session.complete(nowMs);
+                return;
+            }
+            session.observeProgressSignature(progressSignature(session), nowMs);
+            if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) fail(session, "LMPQ reward stalled", nowMs);
+            return;
+        }
         if (leader == null) {
+            parting(session, AgentLmpqParting.Kind.GONE, session.leaderName());
             fail(session, "LMPQ leader left", nowMs);
             return;
         }
-        if (leader.getHp() <= 0) {
+        session.noteLeaderName(leader.getName());
+        // P6h Step 3: after the clear a companion run never fails for its leader (he claims when he likes).
+        if (leader.getHp() <= 0
+                && !(session.companionAdopted() && AgentLmpqTerminationService.pastTheClear(session))) {
+            parting(session, AgentLmpqParting.Kind.DEFEATED, leader.getName());
             fail(session, "LMPQ event leader is unavailable", nowMs);
             return;
         }
@@ -96,6 +122,7 @@ public final class AgentLmpqCoordinator {
         // A companion run waits at Rolly for its leader no longer than its harness and host promise him.
         if (session.companionAdopted() && session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING) == 0L
                 && nowMs - session.startedAtMs() >= humanIdleLimitMs()) {
+            parting(session, AgentLmpqParting.Kind.SILENT, null);
             fail(session, "LMPQ was never entered", nowMs);
             return;
         }
@@ -104,10 +131,17 @@ public final class AgentLmpqCoordinator {
             // LMPQ base fix 3: before the clear, an event that ended, or a leader it no longer holds (LudiMazePQ.js
             // ends the event when its leader leaves the maze), ends the run at once with the honest reason.
             if (bound.isEventDisposed()) {
+                if (session.companionAdopted()) {
+                    long entered = session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING);
+                    AgentLmpqCompanionRun.parting(session, AgentLmpqParting.eventEnded(session.floorDeparture(),
+                            entered == 0L ? 0L : nowMs - entered, AgentPartyQuestCatalog.require("lmpq").eventTimerMs(),
+                            ENTRY_HOLD_GRACE_MS + TIMEOUT_SLACK_MS));
+                }
                 fail(session, "LMPQ event ended before the clear", nowMs);
                 return;
             }
             if (leader.getEventInstance() != bound || !AgentLmpqDefinition.isEventMap(leader.getMapId())) {
+                parting(session, AgentLmpqParting.Kind.LEFT, leader.getName());
                 fail(session, "LMPQ leader left", nowMs);
                 return;
             }
@@ -117,10 +151,12 @@ public final class AgentLmpqCoordinator {
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
             session.noteHeld(heldIds(bound)); // a member held now is one this event was seen holding
             if (memberInAnotherInstance(session, bound)) {
+                parting(session, AgentLmpqParting.Kind.GENERIC, null);
                 fail(session, "An LMPQ participant left the active maze", nowMs);
                 return;
             }
             observeDepartures(session, bound, nowMs);
+            AgentLmpqCompanionRun.downs(session, heldIds(bound), nowMs);
             // P6h review: the last companion has departed and humans stay in the maze: they carry on without the run.
             if (AgentLmpqTerminationService.humansCarryOn(session, nowMs)) return;
         }
@@ -131,17 +167,29 @@ public final class AgentLmpqCoordinator {
             log.info("LMPQ room: session={} expired={} runMs={}", session.sessionId(), expired,
                     nowMs - session.startedAtMs());
         }
-
+        boolean companionRun = session.companionAdopted();
         int secured = usableCoupons(session);
+        if (companionRun && bound != null && !AgentLmpqTerminationService.pastTheClear(session)) {
+            if (AgentLmpqCompanionRun.backToTheRoomsWhenShort(session, leader, secured, nowMs)) {
+                logCoupons(session, leader, secured);
+            }
+            AgentLmpqCompanionRun.pass(session, leader, nowMs);
+        }
+
         if (session.phase() == AgentLmpqSession.Phase.FARMING && readyToRegroup(session, secured, nowMs)) {
             session.members().forEach(member -> {
                 session.rooms().releaseOwner(member.characterId(), nowMs);
                 member.clearTargetRoom();
             });
             logCoupons(session, leader, secured);
+            session.setCouponsAtRegroup(secured);
             session.transition(AgentLmpqSession.Phase.REGROUPING, nowMs);
-            announceOnce(session, "regroup", "Coupon target secured. Meet in Maze Room "
-                    + session.rendezvousRoom() + '.');
+            if (companionRun) {
+                AgentLmpqCompanionRun.onRegroup(session, leader);
+            } else {
+                announceOnce(session, "regroup", "Coupon target secured. Meet in Maze Room "
+                        + session.rendezvousRoom() + '.');
+            }
         }
         if (session.phase() == AgentLmpqSession.Phase.REGROUPING
                 && leader.getItemQuantity(AgentLmpqDefinition.COUPON, false)
@@ -150,13 +198,17 @@ public final class AgentLmpqCoordinator {
             session.setCouponsAtClearing(leader.getItemQuantity(AgentLmpqDefinition.COUPON, false));
             logCoupons(session, leader, usableCoupons(session));
             session.transition(AgentLmpqSession.Phase.CLEARING, nowMs);
-            if (session.rendezvousRoom() == AgentLmpqDefinition.RENDEZVOUS_ROOM) {
+            if (companionRun) {
+                if (session.rendezvousRoom() == AgentLmpqDefinition.CLEAR_ROOM) {
+                    AgentLmpqCompanionRun.onClearing(session, leader);
+                }
+            } else if (session.rendezvousRoom() == AgentLmpqDefinition.RENDEZVOUS_ROOM) {
                 announceOnce(session, "enter-clear", "All ready. Take Room 9's middle portal into Room 16.");
             } else {
                 announceOnce(session, "enter-clear", "All ready in Room 16.");
             }
         }
-        guideHumans(session);
+        if (!companionRun) guideHumans(session);
         if (session.phase() == AgentLmpqSession.Phase.CLEARING
                 && allMembersInRoom(session, AgentLmpqDefinition.CLEAR_ROOM)) {
             if (isAgent(leader)) {
@@ -165,22 +217,34 @@ public final class AgentLmpqCoordinator {
                         && runNearbyNpc(entry(leader.getId()), leader, AgentLmpqDefinition.CLEAR_NPC, 1)) {
                     state.deferUntil(nowMs + ACTION_RETRY_MS);
                 }
+            } else if (companionRun) {
+                AgentLmpqCompanionRun.onClearing(session, leader);
             } else {
                 announceOnce(session, "human-clear", leader.getName()
                         + ", everyone is together. Please talk to Pietri to finish the maze.");
             }
         }
-        if (leader.getMapId() == AgentLmpqDefinition.REWARD_MAP) {
+        // A companion run reads the clear from the event too: a leader who claims at once may be off the reward map
+        // before a pass sees him there.
+        if (leader.getMapId() == AgentLmpqDefinition.REWARD_MAP
+                || companionRun && AgentLmpqTerminationService.pastTheClear(session)) {
+            AgentLmpqSession.Phase before = session.phase();
             session.transition(AgentLmpqSession.Phase.REWARD, nowMs);
+            if (companionRun && before != AgentLmpqSession.Phase.REWARD
+                    && session.phase() == AgentLmpqSession.Phase.REWARD) {
+                AgentLmpqCompanionRun.onReward(session, leader);
+            }
         }
-        if (session.phase() == AgentLmpqSession.Phase.REWARD
-                && session.members().stream().map(member -> character(member.characterId()))
+        if (session.phase() == AgentLmpqSession.Phase.REWARD && (companionRun
+                ? AgentLmpqCompanionRun.companionsOut(session)
+                : session.members().stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
-                .noneMatch(member -> AgentLmpqDefinition.isEventMap(member.getMapId()))) {
+                .noneMatch(member -> AgentLmpqDefinition.isEventMap(member.getMapId())))) {
             session.complete(nowMs);
         }
         session.observeProgressSignature(progressSignature(session), nowMs);
         if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) {
+            parting(session, AgentLmpqParting.Kind.TOO_LONG, null);
             fail(session, session.phase() == AgentLmpqSession.Phase.REWARD
                     ? "LMPQ reward stalled" : "LMPQ stalled in " + session.phase(), nowMs);
         }
@@ -203,11 +267,17 @@ public final class AgentLmpqCoordinator {
     public static void tickMember(
             AgentLmpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentLmpqMemberState member = session.member(agent.getId());
-        if (member == null || member.memberType() != AgentLmpqMemberState.MemberType.AGENT
-                || nowMs < member.nextActionAtMs()) return;
+        if (member == null || member.memberType() != AgentLmpqMemberState.MemberType.AGENT) return;
+        if (session.companionAdopted()) {
+            // P6h Step 2f: alone in a room no player sees, a companion would otherwise farm at the background cadence.
+            AgentLmpqFullRateSimulation.apply(session, agent.getId(), entry,
+                    !session.terminal() && AgentLmpqDefinition.isEventMap(agent.getMapId()));
+        }
+        if (nowMs < member.nextActionAtMs()) return;
         member.observeRoom(AgentLmpqDefinition.roomForMap(agent.getMapId()));
         if (session.eventInstance() != null && AgentLmpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
+            parting(session, AgentLmpqParting.Kind.GENERIC, null);
             fail(session, "LMPQ member entered a different event instance", nowMs);
             return;
         }
@@ -236,6 +306,7 @@ public final class AgentLmpqCoordinator {
             } catch (RuntimeException failure) {
                 log.warn("LMPQ potions failed: session={}", session.sessionId(), failure);
             }
+            AgentLmpqCompanionRun.markEntered(session);
         }
         session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
     }
@@ -258,6 +329,10 @@ public final class AgentLmpqCoordinator {
     private static void farm(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
                              AgentLmpqMemberState member, long nowMs) {
         int currentRoom = AgentLmpqDefinition.roomForMap(agent.getMapId());
+        boolean companionRun = session.companionAdopted();
+        if (companionRun && AgentLmpqCompanionRun.beforeFarming(session, entry, agent, member, currentRoom, nowMs)) {
+            return;
+        }
         if (currentRoom < 1 || currentRoom > 15) { actions().stop(entry); return; }
         if (member.portalMarked(currentRoom, 0)) member.clearPortalMarker();
         int target = member.targetRoom();
@@ -280,16 +355,22 @@ public final class AgentLmpqCoordinator {
             return;
         }
         session.rooms().heartbeat(currentRoom, agent.getId(), nowMs);
-        if (vacuumCoupons(session, "farm-loot", agent)) {
-            member.deferUntil(nowMs + ACTION_RETRY_MS);
+        if (companionRun ? pickCoupon(session, "farm-loot", entry, agent, nowMs)
+                : vacuumCoupons(session, "farm-loot", agent)) {
+            if (!companionRun) member.deferUntil(nowMs + ACTION_RETRY_MS);
             session.markProgress(nowMs);
             return;
         }
-        if (actions().liveMonsterCount(agent, AgentLmpqDefinition.COUPON_MOBS) > 0) {
-            actions().grind(entry, AgentLmpqDefinition.COUPON_MOBS);
+        Set<Integer> mobs = AgentLmpqCompanionRun.mobsFor(session, agent);
+        if (actions().liveMonsterCount(agent, mobs) > 0) {
+            actions().grind(entry, mobs);
             return;
         }
         Reactor reactor = activeBox(agent, member.committedReactorObjectId());
+        if (reactor != null && AgentLmpqCompanionRun.leavesBox(session, agent, reactor.getId())) {
+            member.clearReactor();
+            reactor = null;
+        }
         if (reactor == null) reactor = nearestUnclaimedBox(session, agent);
         if (reactor != null) {
             member.commitReactor(reactor.getObjectId());
@@ -306,7 +387,8 @@ public final class AgentLmpqCoordinator {
             }
             return;
         }
-        if (couponDropPresent(agent)) {
+        // A companion run picked up every coupon it may loot above (the walk-and-pick); what is left is not its own.
+        if (!companionRun && couponDropPresent(agent)) {
             vacuumCoupons(session, "farm-sweep", agent);
             return;
         }
@@ -326,6 +408,13 @@ public final class AgentLmpqCoordinator {
             if (room >= 1 && room <= 16) navigateToRoom(session, entry, agent, member, room,
                     session.rendezvousRoom(), nowMs);
             else actions().stop(entry);
+            return;
+        }
+        if (session.companionAdopted()) {
+            // P6h Step 2d: the coupons go to the leader's feet, then the companion waits at its spot.
+            if (!AgentLmpqHandOver.tick(session, entry, agent, member, nowMs)) {
+                AgentLmpqCompanionRun.waitAtSpot(session, entry, agent);
+            }
             return;
         }
         Character leader = character(session.eventLeaderId());
@@ -355,6 +444,13 @@ public final class AgentLmpqCoordinator {
                                   AgentLmpqMemberState member, long nowMs) {
         int room = AgentLmpqDefinition.roomForMap(agent.getMapId());
         if (room == AgentLmpqDefinition.CLEAR_ROOM) {
+            if (session.companionAdopted()) {
+                // Extra coupons still go to him (50 EXP each at Pietri); otherwise off his click spot.
+                if (!AgentLmpqHandOver.tick(session, entry, agent, member, nowMs)) {
+                    AgentLmpqCompanionRun.waitAtSpot(session, entry, agent);
+                }
+                return;
+            }
             // The coordinator guides the leader toward Pietri, so do not let the member tick
             // immediately cancel that navigation. Followers should remain settled in place.
             if (agent.getId() != session.eventLeaderId()) actions().stop(entry);
@@ -413,22 +509,41 @@ public final class AgentLmpqCoordinator {
 
     private static int selectAndReserveRoom(AgentLmpqSession session, Character agent, long nowMs) {
         int current = AgentLmpqDefinition.roomForMap(agent.getMapId());
+        // A companion run scores the way out to its own rendezvous room (Room 16 by default); stock runs to Room 9.
+        int exitRoom = session.companionAdopted() ? session.rendezvousRoom() : AgentLmpqDefinition.RENDEZVOUS_ROOM;
+        AgentLmpqMemberState member = session.member(agent.getId());
         List<Integer> candidates = session.rooms().snapshot().values().stream()
                 .filter(lease -> lease.state() == AgentLmpqRoomLedger.State.AVAILABLE
                         || lease.ownerId() == agent.getId())
                 .map(AgentLmpqRoomLedger.Lease::room)
-                .sorted(Comparator.<Integer>comparingInt(room -> roomScore(current, room)).reversed()
+                .sorted(Comparator.<Integer>comparingInt(room -> roomScore(current, room, exitRoom)).reversed()
                         .thenComparingInt(Integer::intValue)).toList();
+        boolean bestKeptOut = true;
         for (int room : candidates) {
             if (occupiedByAnother(session, agent, room)) continue;
+            if (AgentLmpqCompanionRun.keepsOut(session, agent, member, room)) {
+                // P6h Step 2e: below Tauromacis's level a companion keeps out of Room 6; it says so once when that
+                // was the room it would have taken.
+                if (bestKeptOut && room == AgentLmpqDefinition.TAUROMACIS_ROOM) {
+                    AgentLmpqCompanionRun.skippedRoomSix(session, agent);
+                }
+                bestKeptOut = false;
+                continue;
+            }
+            bestKeptOut = false;
             if (session.rooms().reserve(room, agent.getId(), nowMs)) return room;
         }
         return 0;
     }
 
     static int roomScore(int currentRoom, int targetRoom) {
+        return roomScore(currentRoom, targetRoom, AgentLmpqDefinition.RENDEZVOUS_ROOM);
+    }
+
+    /** {@code exitRoom}: where the farmer goes once the run regroups. */
+    static int roomScore(int currentRoom, int targetRoom, int exitRoom) {
         int travel = AgentLmpqDefinition.distance(currentRoom, targetRoom);
-        int exit = AgentLmpqDefinition.distance(targetRoom, AgentLmpqDefinition.RENDEZVOUS_ROOM);
+        int exit = AgentLmpqDefinition.distance(targetRoom, exitRoom);
         return AgentLmpqDefinition.yieldPriority(targetRoom) - travel * 8 - exit * 2;
     }
 
@@ -471,6 +586,20 @@ public final class AgentLmpqCoordinator {
         return picked;
     }
 
+    /**
+     * P6h Step 2d: a companion run never vacuums. Where the vacuum would have applied (a coupon on the companion's
+     * map), the rescue is noted once per companion and site with applied=false, and the companion walks to the
+     * nearest coupon it may loot and picks it up within the loot radius. True while it has one to pick up.
+     */
+    private static boolean pickCoupon(AgentLmpqSession session, String site, AgentRuntimeEntry entry,
+                                      Character agent, long nowMs) {
+        if (couponDropPresent(agent) && session.claimNote("rescue-suppressed-" + site + '-' + agent.getId())) {
+            AgentLmpqRescue.note(session, AgentLmpqRescue.Kind.VACUUM, site, agent,
+                    "walk-and-pick", false);
+        }
+        return AgentLmpqCompanionRun.pickCoupon(session, entry, agent, nowMs);
+    }
+
     private static Reactor activeBox(Character agent, int objectId) {
         if (objectId == 0) return null;
         return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
@@ -485,6 +614,7 @@ public final class AgentLmpqCoordinator {
         return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(Reactor::isAlive).filter(Reactor::isActive)
                 .filter(reactor -> AgentLmpqDefinition.BOX_REACTORS.contains(reactor.getId()))
+                .filter(reactor -> !AgentLmpqCompanionRun.leavesBox(session, agent, reactor.getId()))
                 .filter(reactor -> !claimed.contains(reactor.getObjectId()))
                 .min(Comparator.comparingDouble(reactor ->
                         reactor.getPosition().distanceSq(agent.getPosition()))).orElse(null);
@@ -502,8 +632,19 @@ public final class AgentLmpqCoordinator {
                 .anyMatch(member -> member.getMapId() == mapId);
     }
 
+    /**
+     * Whether another member stands in the room a farmer works, so it gives the room up. In a companion run only
+     * another companion counts (P6h R17): a human walking through, the leader on his way to the rendezvous, never
+     * evicts the companion working it.
+     */
     private static boolean otherMemberPresent(AgentLmpqSession session, Character self, int room) {
-        return occupiedByAnother(session, self, room);
+        if (!session.companionAdopted()) return occupiedByAnother(session, self, room);
+        int mapId = AgentLmpqDefinition.mapForRoom(room);
+        return session.members().stream().filter(member -> member.characterId() != self.getId())
+                .filter(member -> member.memberType() == AgentLmpqMemberState.MemberType.AGENT)
+                .filter(member -> !session.departed(member.characterId()))
+                .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
+                .anyMatch(member -> member.getMapId() == mapId);
     }
 
     private static void updateHumanOccupancy(AgentLmpqSession session, long nowMs) {
@@ -512,8 +653,10 @@ public final class AgentLmpqCoordinator {
                 .map(member -> character(member.characterId())).filter(java.util.Objects::nonNull)
                 .map(Character::getMapId).filter(AgentLmpqDefinition::isFarmMap)
                 .map(AgentLmpqDefinition::roomForMap).collect(java.util.stream.Collectors.toSet());
+        // P6h R17: in a companion run a room a human only walks through keeps its working owner.
+        boolean keepOwner = session.companionAdopted();
         for (int room = 1; room <= 15; room++) {
-            if (occupied.contains(room)) session.rooms().humanOccupied(room, nowMs);
+            if (occupied.contains(room)) session.rooms().humanOccupied(room, nowMs, keepOwner);
             else session.rooms().humanLeft(room, nowMs);
         }
     }
@@ -524,6 +667,11 @@ public final class AgentLmpqCoordinator {
      * registers a party one member at a time, so it is still entering). Before the binding, every member that has
      * not departed.
      */
+    /** The members the run counts now ({@link #active}), for the companion play. */
+    static List<AgentLmpqMemberState> counted(AgentLmpqSession session) {
+        return active(session);
+    }
+
     private static List<AgentLmpqMemberState> active(AgentLmpqSession session) {
         EventInstanceManager bound = session.eventInstance();
         Set<Integer> held = bound == null ? null : heldIds(bound);
@@ -574,6 +722,7 @@ public final class AgentLmpqCoordinator {
             session.rooms().releaseOwner(id, nowMs);
             state.clearTargetRoom();
             Character member = character(id);
+            AgentLmpqCompanionRun.departed(session, state, member, left, nowMs);
             log.info("LMPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}"
                             + " reason={}", session.sessionId(), member == null ? "-" : member.getName(), id,
                     state.memberType(), member == null ? "-" : String.valueOf(member.getMapId()), session.phase(),
@@ -591,6 +740,7 @@ public final class AgentLmpqCoordinator {
      */
     private static void handBack(AgentLmpqSession session, int id, long nowMs) {
         try {
+            AgentLmpqFullRateSimulation.apply(session, id, entry(id), false);
             AgentLmpqSessionRegistry.unindexMember(session, id);
             AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
             if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
@@ -637,7 +787,9 @@ public final class AgentLmpqCoordinator {
         if (secured < AgentLmpqDefinition.REQUIRED_COUPONS) return false;
         if (noAvailableFarmRooms(session)) return true;
         long farmingMs = nowMs - session.phaseEnteredAtMs();
-        List<Integer> open = farmingMs < TAUROMACIS_BUDGET_MS ? openTauromacisRooms(session) : List.of();
+        // A companion run holds only while one of its companions may face Tauromacis (P6h Step 2e).
+        List<Integer> open = farmingMs < TAUROMACIS_BUDGET_MS && AgentLmpqCompanionRun.tauromacisFarmable(session)
+                ? openTauromacisRooms(session) : List.of();
         if (!open.isEmpty()) {
             if (session.claimNote("tauromacis-hold")) {
                 log.info("LMPQ hold: session={} secured={} open={} runMs={}", session.sessionId(), secured, open,
@@ -748,11 +900,42 @@ public final class AgentLmpqCoordinator {
         }
     }
 
+    /** Walks a companion one portal on toward {@code targetRoom}, marking it as the farmers do (the companion play). */
+    static void walkToRoom(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
+                           AgentLmpqMemberState member, int currentRoom, int targetRoom, long nowMs) {
+        if (currentRoom < 1 || currentRoom > AgentLmpqDefinition.CLEAR_ROOM) {
+            actions().stop(entry);
+            return;
+        }
+        navigateToRoom(session, entry, agent, member, currentRoom, targetRoom, nowMs);
+    }
+
+    /** Drops {@code count} of the companion's coupons where it stands (the hand-over), through the item action. */
+    static boolean dropCoupons(AgentRuntimeEntry entry, int count) {
+        return count > 0 && AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, AgentLmpqDefinition.COUPON,
+                (short) Math.min(count, Short.MAX_VALUE));
+    }
+
+    /** The pause after an action before the companion's next one. */
+    static long actionRetryMs() {
+        return ACTION_RETRY_MS;
+    }
+
+    /** The Agents' pickup radius (AgentRuntimeConfig LOOT_RADIUS). */
+    static int lootRadius() {
+        return server.agents.runtime.AgentRuntimeConfig.cfg.LOOT_RADIUS;
+    }
+
+    /** Whether a drop at {@code drop} is within the pickup radius of {@code agent}. */
+    static boolean withinLootRadius(Point agent, Point drop) {
+        return near(agent, drop, lootRadius());
+    }
+
     /**
      * The primitive gateway as installed now. Resolved per call, never captured at class load: the gateway is one
      * adapter singleton, so this is behaviour-identical, and a test's stand-in installed after the class loaded is seen.
      */
-    private static PrimitiveCapabilityGateway actions() {
+    static PrimitiveCapabilityGateway actions() {
         return AgentPrimitiveCapabilityGatewayRuntime.gateway();
     }
 

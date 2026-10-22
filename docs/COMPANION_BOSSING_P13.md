@@ -153,3 +153,42 @@ the path and keeps the mode. Two new tests fail on the old code. Suite on int/p9
 - Jr. Balrog (MAD 605) can one-shot a Lv40 companion once mirrored.
 - Other humans may hold control of the boss. The mirror works for any controller.
 - The door hold ships on. A companion that used to follow its owner into a Demon's Doorway map now waits outside.
+
+## On by default (2026-10-19)
+
+Every field group ships on (user: turn on what was built). Two guards came with it, because 20 of the field bosses'
+spawn maps (scripts/event/AreaBoss*.js) are citizen training fields and the bosses respawn every 3 hours and mostly
+stay up. A field boss attacks only while a human client drives it (AgentBossScope.engaged), so both guards matter
+while a player fights one:
+
+- **A companion sits a fight out** (`living_world.COMPANION_FIELD_BOSS_SIT_OUT_DEATHS`, 2): after that many deaths
+  beside a covered boss on one map it says so once in party chat and waits in town while the boss stands there and
+  its owner stays on that map, at most `COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS` (30 min) from its first death there.
+  Before, an owner fighting a boss far above their companions' level had them die, rest, walk back and die again.
+- **A citizen trains elsewhere** (`population.FIELD_BOSS_AVOID_MS`, 1 h): a citizen that died beside a covered boss
+  re-plans at the next sweep and the field picker leaves that map out while the boss stands there.
+
+Tests: `CompanionFieldBossTest` (sit-out, its line, the owner leaving, the boss falling, the kill switch) and
+`CitizenFieldBossAvoidTest`.
+
+### Live 2026-10-19 (live tree 6e5b96928, then 89d38f027)
+
+Owner Bossfriend (GM6, Lv202 Hero) with Thane, Isolde, Ingrid, Sorrel and Flint (Lv160), allies Gunnar, Magna, Orrin
+and Tamsin. GM queue for warps, spawns and heals. 0 ERROR lines at each boot.
+
+- **Zakum (session 4, 21:17-21:41).** Sign-up with allies, the Eye drop, all eight arms, the first body (66M) and the
+  second (88M) went down; the third body (110M) was being fought when the owner died (Zakum's HP-to-1 skill while my
+  GM heal script missed a beat). With no human left every companion left and the allies went home, as designed. Not
+  cleared. Two allies died mid-fight with no HP potion left: Gunnar arrived with 17,047 mesos and no potion and bought
+  nothing at the El Nath store, though he carried about 3 M mesos of loot. Fix d9cfd9b9a: a boss ally's arrival
+  provisioning sells its trash equips and the ETC no quest wants before it buys, as a walk-in readiness trip does.
+  Gunnar waited in El Nath after his death (PASS).
+- **Neo City (sessions 5-7).** Aufheben cleared in 10 s, Oberon in 2 s, Nibelung in 8 s; five companions inside each
+  time, all left with the owner and said "gg". Entering: the gate maps are crowded and the knockback pushes the
+  leader off the portal, so `!killall`, `!stepto <portal>`, then up.
+- **Field groups.** Leafre: Manon engaged once a party player had damaged it (Power Guard's reflect counts); the field
+  mirror applied its hits to the companions and they took it from 96.9% to 21.5% in about 90 s. Ludus: Zeno spawned and
+  was hit by the companions. Mu Lung: King Sage Cat spawned and was gone within 4 s. The sit-out and the citizens'
+  avoidance were not provoked live (unit tests only).
+- **Finding, not new (P20):** in Leafre a Lv160 crew restocks to Pink Bean's 1500-potion standard. Isolde spent 5.0 M
+  mesos there; Ingrid could not afford it and stayed put.

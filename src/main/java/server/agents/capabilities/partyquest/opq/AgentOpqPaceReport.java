@@ -11,22 +11,24 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * A companion run's pace as measured so far, following {@link AgentPqPace}'s contract with provisional keys: one span
- * per part of the run it entered, from that part's first phase entry to the first entry of a later part: "entrance"
- * (ENTRANCE), "rooms" (SPLIT_ROOMS), "statue" (RESTORING_STATUE), "garden" (GARDEN), "minerva" (RESTORING_MINERVA) and
- * "claim" (CLAIMING_REWARD, to the completion). A part whose end was not seen runs to the report's time and is
- * incomplete. Every span is fixed time (work 0). The puzzle counters are drawn only when they moved (they are capped at
- * 9, and a human-led run does not advance them). Step 4's pace profile defines the real segments and this report is
- * rewritten to them before anything consumes it. At the release each span gets one 'OPQ pace span:' line.
+ * A companion run's pace as measured so far, following {@link AgentPqPace}'s contract under the segment keys of
+ * {@link AgentOpqPaceProfile}: one span per part of the run it entered, from that part's first phase entry to the first
+ * entry of a later part: "entrance" (ENTRANCE), "rooms" (SPLIT_ROOMS), "statue" (RESTORING_STATUE), "garden" (GARDEN),
+ * "root" (RESTORING_MINERVA) and "claim" (CLAIMING_REWARD, to the completion). A part whose end was not seen runs to
+ * the report's time and is incomplete. Every span is fixed time (work 0). The puzzle counters are drawn only when they
+ * moved (they are capped at 9, and a human-led run does not advance them). At the release each span gets one
+ * 'OPQ pace span:' line.
  */
 final class AgentOpqPaceReport {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqPaceReport.class);
-    static final String QUEST_KEY = "opq";
+    static final String QUEST_KEY = AgentOpqPaceProfile.QUEST_KEY;
     private static final List<AgentOpqSession.Phase> BOUNDARIES = List.of(
             AgentOpqSession.Phase.ENTRANCE, AgentOpqSession.Phase.SPLIT_ROOMS, AgentOpqSession.Phase.RESTORING_STATUE,
             AgentOpqSession.Phase.GARDEN, AgentOpqSession.Phase.RESTORING_MINERVA,
             AgentOpqSession.Phase.CLAIMING_REWARD, AgentOpqSession.Phase.COMPLETED);
-    private static final List<String> KEYS = List.of("entrance", "rooms", "statue", "garden", "minerva", "claim");
+    private static final List<String> KEYS = List.of(AgentOpqPaceProfile.ENTRANCE, AgentOpqPaceProfile.ROOMS,
+            AgentOpqPaceProfile.STATUE, AgentOpqPaceProfile.GARDEN, AgentOpqPaceProfile.ROOT,
+            AgentOpqPaceProfile.CLAIM);
 
     private AgentOpqPaceReport() {
     }

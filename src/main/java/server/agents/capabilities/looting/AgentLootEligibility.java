@@ -113,7 +113,7 @@ public final class AgentLootEligibility {
                 && !AgentLmpqSessionRegistry.canLootCoupon(bot)) return false;
 
         if (AgentOpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
-                && !AgentOpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
+                && !AgentOpqSessionRegistry.canLootExclusive(bot, drop)) return false;
 
         if ((AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId) || itemId == AgentEpqDefinition.GOLEMS_MARBLE)
                 && !AgentEpqSessionRegistry.canLootExclusive(bot, drop)) return false;

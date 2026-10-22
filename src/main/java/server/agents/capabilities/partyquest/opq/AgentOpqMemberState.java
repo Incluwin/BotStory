@@ -136,6 +136,43 @@ public final class AgentOpqMemberState {
         clearBossCombat();
     }
 
+    // 2026-10-18, a human-led run's hand-over of fragments to the leader (AgentOpqHandOver), as PPQ's medals go.
+    private int handOverItemId;
+    private long handOverStartedAtMs;
+    private boolean handOverByEak;
+    private int handOverRecollectCount;
+    private int claimObjectId;
+    private int heldBefore;
+
+    /** A hand-over of {@code itemId} to the leader opens: {@code recollectCount} is its lineage's re-collects so far. */
+    void startHandOver(int itemId, long nowMs, int recollectCount) {
+        handOverItemId = itemId;
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverByEak = false;
+        handOverRecollectCount = Math.max(0, recollectCount);
+    }
+    void endHandOver() {
+        handOverItemId = 0;
+        handOverStartedAtMs = 0L;
+        handOverByEak = false;
+        handOverRecollectCount = 0;
+    }
+    /** The walk to the leader timed out, or he cannot be reached: the stack goes by Eak instead. */
+    void sendHandOverByEak() { handOverByEak = true; }
+    int handOverItemId() { return handOverItemId; }
+    long handOverStartedAtMs() { return handOverStartedAtMs; }
+    boolean handOverByEak() { return handOverByEak; }
+    int handOverRecollectCount() { return handOverRecollectCount; }
+
+    /** This Agent set out to pick a stack up (back for the leader, or for the statue) while it held {@code held}. */
+    void claimStack(int objectId, int held) {
+        claimObjectId = objectId;
+        heldBefore = Math.max(0, held);
+    }
+    void clearClaim() { claimObjectId = 0; }
+    int claimObjectId() { return claimObjectId; }
+    int heldBefore() { return heldBefore; }
+
     /** Counts one more refusal of this member's reward (still on the reward map after Minerva ran); the new count. */
     int recordRewardRefusal() { return ++rewardRefusals; }
     int rewardRefusals() { return rewardRefusals; }

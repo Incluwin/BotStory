@@ -382,6 +382,13 @@ public class LivingWorldConfig {
     public int COMPANION_FIELD_BOSS_REST_PERCENT = 100;
     /** The longest a companion rests after a death beside a field boss, from its death (0-600000 ms). */
     public int COMPANION_FIELD_BOSS_REST_MAX_MS = 120000;
+    /**
+     * A companion that went down this many times beside a field boss on one map sits that fight out in town while the
+     * boss stands there and its owner stays on that map (0-10; 0 = never: it rests and follows again every time).
+     */
+    public int COMPANION_FIELD_BOSS_SIT_OUT_DEATHS = 2;
+    /** The longest a companion sits a field boss's fight out, from its first death beside that boss (0-7200000 ms). */
+    public int COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS = 1800000;
 
     // Boss clears are not party-quest clears (2026-10-08)
     /**
@@ -756,6 +763,12 @@ public class LivingWorldConfig {
         }
         if (COMPANION_FIELD_BOSS_REST_MAX_MS < 0 || COMPANION_FIELD_BOSS_REST_MAX_MS > 600000) {
             throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_REST_MAX_MS must be within 0..600000");
+        }
+        if (COMPANION_FIELD_BOSS_SIT_OUT_DEATHS < 0 || COMPANION_FIELD_BOSS_SIT_OUT_DEATHS > 10) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_SIT_OUT_DEATHS must be within 0..10");
+        }
+        if (COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS < 0 || COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS > 7200000) {
+            throw new IllegalArgumentException("living_world.COMPANION_FIELD_BOSS_SIT_OUT_MAX_MS must be within 0..7200000");
         }
         for (String script : BOSS_EVENT_SCRIPTS == null ? new String[0] : BOSS_EVENT_SCRIPTS.split(",")) {
             if (!script.isBlank() && !script.trim().matches("[A-Za-z0-9_]+")) {

@@ -8,6 +8,7 @@ import server.agents.integration.AgentClientGateway;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
+import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -15,6 +16,7 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.MapGateway;
+import server.agents.integration.PacketGateway;
 import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
@@ -49,6 +51,8 @@ final class PpqRunFixture implements AutoCloseable {
     final PrimitiveCapabilityGateway actions = mock(PrimitiveCapabilityGateway.class);
     final PartyQuestGateway partyQuest = mock(PartyQuestGateway.class);
     final PartyGateway party = mock(PartyGateway.class);
+    /** Map chat: a companion run's lines go here when the leader stands on the speaker's map. */
+    final PacketGateway packets = mock(PacketGateway.class);
     final CharacterGateway online = mock(CharacterGateway.class);
     final EventInstanceManager event = mock(EventInstanceManager.class);
     final MapGateway maps = mock(MapGateway.class);
@@ -71,6 +75,7 @@ final class PpqRunFixture implements AutoCloseable {
         open(AgentPartyQuestGatewayRuntime.class).when(AgentPartyQuestGatewayRuntime::partyQuest)
                 .thenReturn(partyQuest);
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
+        open(AgentPacketGatewayRuntime.class).when(AgentPacketGatewayRuntime::packets).thenReturn(packets);
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(online);
         open(AgentMapGatewayRuntime.class).when(AgentMapGatewayRuntime::map).thenReturn(maps);
         open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
@@ -101,6 +106,8 @@ final class PpqRunFixture implements AutoCloseable {
         when(online.findOnlineCharacterById(anyInt())).thenAnswer(call -> characters.get((Integer) call.getArgument(0)));
         session.setLeadership(mode == AgentPpqSession.Mode.HUMAN_LEADER ? BEN : MIRA, MIRA);
         session.setCompanionAdopted(companionRun);
+        // a companion run's guidance on, as '!ppqtest party prod' and the desk (COMPANION_PQ_GUIDANCE) set it
+        session.setMemberCoordinationChatEnabled(companionRun);
         session.bindEventInstance(event);
         when(partyQuest.property(any(), any())).thenAnswer(call -> properties.get((String) call.getArgument(1)));
         when(event.getPlayers()).thenAnswer(call -> characters.values().stream()

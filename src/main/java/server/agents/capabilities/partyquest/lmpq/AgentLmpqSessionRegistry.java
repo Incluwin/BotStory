@@ -65,11 +65,27 @@ public final class AgentLmpqSessionRegistry {
                 && AgentLmpqDefinition.isEventMap(character.getMapId());
     }
 
+    /**
+     * Whether this bot leaves this drop alone: a farmer's 10-meso portal marker while the run farms, and (P6h Step 2d,
+     * a companion run) a coupon stack one of the run's companions dropped for the leader, which only the companion
+     * that claimed it back (before it expires) may take. AgentLootEligibility asks it for every drop.
+     */
     public static boolean preservesPortalMarker(Character character, MapItem drop) {
-        if (character == null || drop == null || drop.getMeso() != AgentLmpqDefinition.ROOM_MARKER_MESOS) return false;
+        if (character == null || drop == null) return false;
+        if (drop.getItemId() == AgentLmpqDefinition.COUPON) return keepsHandOverStack(character, drop);
+        if (drop.getMeso() != AgentLmpqDefinition.ROOM_MARKER_MESOS) return false;
         AgentLmpqSession session = forMember(character.getId());
         return session != null && session.eventInstance() != null
                 && character.getEventInstance() == session.eventInstance()
                 && session.phase() == AgentLmpqSession.Phase.FARMING;
+    }
+
+    /** The hand-over clause of {@link #preservesPortalMarker}: a run Agent's coupon stack, claimed by someone else. */
+    static boolean keepsHandOverStack(Character character, MapItem drop) {
+        AgentLmpqSession session = forMember(character.getId());
+        return session != null && session.companionAdopted() && drop.isPlayerDrop()
+                && session.agentOfRun(drop.getOwnerId()) && session.eventInstance() != null
+                && character.getEventInstance() == session.eventInstance()
+                && session.claimerOf(drop.getObjectId()) != character.getId();
     }
 }

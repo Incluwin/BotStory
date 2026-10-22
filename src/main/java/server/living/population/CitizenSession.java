@@ -35,6 +35,9 @@ public final class CitizenSession {
     volatile Move latestMove;
     /** A move that waited for its own supply trip, made at the first presence sweep after the trip; null when none. */
     final AtomicReference<Move> waitingMove = new AtomicReference<>();
+    /** The field it died on beside a field boss (PopulationHooks.died), avoided until {@link #avoidUntilMs}; 0: none. */
+    volatile int avoidMapId;
+    volatile long avoidUntilMs;
 
     /** A move to another map and the activity it starts there. */
     record Move(Activity activity, int mapId) {
