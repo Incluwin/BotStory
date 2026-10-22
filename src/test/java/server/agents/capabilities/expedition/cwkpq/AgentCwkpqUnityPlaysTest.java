@@ -43,6 +43,7 @@ class AgentCwkpqUnityPlaysTest {
 
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final PartyQuestGateway partyQuest = mock(PartyQuestGateway.class);
+    private final AgentCwkpqSigilCast.Casting casting = mock(AgentCwkpqSigilCast.Casting.class);
     private final MapleMap map = mock(MapleMap.class);
     private final EventInstanceManager event = mock(EventInstanceManager.class);
     private final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
@@ -75,7 +76,7 @@ class AgentCwkpqUnityPlaysTest {
 
             @Override
             public AgentCwkpqSigilCast.Casting casting() {
-                return mock(AgentCwkpqSigilCast.Casting.class);
+                return casting;
             }
 
             @Override
@@ -241,6 +242,20 @@ class AgentCwkpqUnityPlaysTest {
         AgentCwkpqUnityPlays.room(ports, Archetype.THIEF, List.of(fenna, vex), event, run, 2_000L);
         verify(partyQuest).runNpc(fenna, 9_201_110);
         verify(partyQuest, never()).runNpc(eq(vex), anyInt());
+    }
+
+    @Test
+    void aThiefPutsItsHasteUpInItsRoomForTheHighEyes() {
+        reactor(31, 6_108_004, new Point(857, -767));
+        Character vex = member(11, "Vex", Job.CHIEFBANDIT, new Point(503, -24));
+        when(vex.getSkillLevel(anyInt())).thenReturn(0);
+        when(vex.getSkillLevel(constants.skills.Bandit.HASTE)).thenReturn(20);
+        when(vex.getBuffedValue(client.BuffStat.SPEED)).thenReturn(null);
+        when(casting.buff(any(), any(), anyInt())).thenReturn(true);
+
+        AgentCwkpqUnityPlays.room(ports, Archetype.THIEF, List.of(vex), event, run, 1_000L);
+
+        verify(casting).buff(entries.get(11), vex, constants.skills.Bandit.HASTE);
     }
 
     @Test

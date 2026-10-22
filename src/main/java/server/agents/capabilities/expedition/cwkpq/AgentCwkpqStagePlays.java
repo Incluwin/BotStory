@@ -152,15 +152,7 @@ final class AgentCwkpqStagePlays {
             return;
         }
         List<Character> bySlot = bySlot(members, run);
-        for (Character member : bySlot) {
-            if (hasteSkill(member) != 0 && member.getBuffedValue(BuffStat.SPEED) == null
-                    && run.ready(member.getId(), nowMs)) {
-                AgentRuntimeEntry entry = ports.entry(member.getId());
-                if (entry != null && ports.casting().buff(entry, member, hasteSkill(member))) {
-                    run.busy(member.getId(), nowMs + CAST_PAUSE_MS); // a party buff: the climbers by it get it too
-                }
-            }
-        }
+        bySlot.forEach(member -> keepHaste(ports, run, member, nowMs)); // a party buff: the climbers by it get it too
         Map<Archetype, Reactor> waiting = sigilsToTurn(ports, bySlot.getFirst(), run, Stage.AGILITY);
         Map<Integer, Archetype> turners = new HashMap<>();
         for (Map.Entry<Archetype, Reactor> sigil : waiting.entrySet()) {
@@ -209,6 +201,18 @@ final class AgentCwkpqStagePlays {
         int jump = member.getTotalJumpStat();
         return speed >= 120 && jump >= 120 || speed >= 145 && jump >= 110
                 || AgentMovementSkillPolicy.canUseAnyActiveMovementSkill(member);
+    }
+
+    /** A member with Haste puts it up again whenever it has run out. */
+    static void keepHaste(AgentCwkpqPorts ports, AgentCwkpqRun run, Character member, long nowMs) {
+        if (hasteSkill(member) == 0 || member.getBuffedValue(BuffStat.SPEED) != null
+                || !run.ready(member.getId(), nowMs)) {
+            return;
+        }
+        AgentRuntimeEntry entry = ports.entry(member.getId());
+        if (entry != null && ports.casting().buff(entry, member, hasteSkill(member))) {
+            run.busy(member.getId(), nowMs + CAST_PAUSE_MS);
+        }
     }
 
     /** Its Haste (a thief at 2nd job or above), or 0. */

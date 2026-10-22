@@ -153,6 +153,8 @@ final class AgentCwkpqUnityPlays {
         if (working.isEmpty() || map == null) {
             return;
         }
+        // The thief room's high eyes are out of reach at base stats (C9 live: no path to the eye at (857,-767)).
+        working.forEach(member -> AgentCwkpqStagePlays.keepHaste(ports, run, member, nowMs));
         switch (archetype) {
             case THIEF -> {
                 if (breakEach(ports, run, working, THIEF_EYE, nowMs)) {
@@ -274,7 +276,7 @@ final class AgentCwkpqUnityPlays {
         if (entry == null) {
             return true;
         }
-        AgentCwkpqStagePlays.noteRole(run, taker, "unity", "pick up the gun");
+        AgentCwkpqStagePlays.noteRole(run, taker, "unity", "pick up the gun at " + AgentCwkpqStagePlays.pointText(at));
         Point ground = ports.gateway().groundPoint(map, at);
         if (!AgentCwkpqStagePlays.standAt(ports, entry, taker, ground != null ? ground : at, LOOT_REACH_PX)
                 || !run.ready(taker.getId(), nowMs)) {
