@@ -149,9 +149,28 @@ public final class AgentCwkpqTestService {
         String mode = server.agents.runtime.AgentModeStateRuntime.grinding(entry) ? "grinding"
                 : server.agents.runtime.AgentModeStateRuntime.following(entry) ? "following" : "idle";
         server.life.Monster mob = server.agents.capabilities.combat.AgentGrindTargetStateRuntime.target(entry);
-        return "combat: " + mode + (mob == null ? ", no target"
+        String text = "combat: " + mode + (mob == null ? ", no target"
                 : ", target " + mob.getId() + " at " + AgentCwkpqStagePlays.pointText(mob.getPosition())
                 + (mob.isAlive() ? "" : " (dead)"));
+        var decision = entry.capabilityStates()
+                .find(server.agents.capabilities.combat.AgentCombatDecisionTraceState.STATE_KEY)
+                .map(server.agents.capabilities.combat.AgentCombatDecisionTraceState::snapshot).orElse(null);
+        if (decision != null) {
+            text += ", decided " + decision.mode() + "/" + decision.outcome() + " "
+                    + (System.currentTimeMillis() - decision.recordedAtMs()) + " ms ago (candidates "
+                    + decision.baseCandidates() + "/" + decision.objectiveCandidates() + "/"
+                    + decision.policyCandidates() + "/" + decision.claimCandidates() + "/"
+                    + decision.scoredCandidates() + ")";
+        }
+        var search = entry.capabilityStates()
+                .find(server.agents.capabilities.combat.AgentCombatDecisionState.STATE_KEY)
+                .map(state -> state.targetSearch().snapshot()).orElse(null);
+        if (search != null) {
+            text += ", search " + search.mode() + " (" + search.transitionReason() + ") to region "
+                    + search.destinationRegionId() + ", local " + search.localCandidateCount() + " preferred "
+                    + search.preferredCandidateCount();
+        }
+        return text;
     }
 
     /** Each class sigil on the operator's map: where it is, its state and whether it still takes a hit. */
