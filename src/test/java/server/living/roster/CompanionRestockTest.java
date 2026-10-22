@@ -302,6 +302,34 @@ class CompanionRestockTest {
                 said.toString());
     }
 
+    /**
+     * CWKPQ C9 (2026-10-22): Jack's hall holds trips like Adobis's room. A companion whose potions are fine but whose
+     * ETC tab is too full for the stage-5 weapons has no potion or arrow line to say there, and none at a refusal:
+     * Jack names it at the start check.
+     */
+    @Test
+    void aCompanionShortOfEtcRoomAloneSaysNoNoShopLine() {
+        AgentSupplyReadiness.Activity cwkpq = AgentSupplyReadiness.Activity.partyQuest("cwkpq");
+        when(fenna.getMapId()).thenReturn(ADOBIS_ROOM);
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(FENNA);
+        when(member.isBot()).thenReturn(true);
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(member));
+        when(ann.getParty()).thenReturn(party);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+        AgentSupplyReadiness.Shortfall roomOnly = new AgentSupplyReadiness.Shortfall(0, 0, 0, 0, 3);
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.shortfall(any(Character.class),
+                    any(AgentSupplyReadiness.Activity.class))).thenReturn(roomOnly);
+            restock.bossGate(ANN, ADOBIS_ROOM, cwkpq);
+        }
+        assertFalse(restock.refused(FENNA, cwkpq, AgentSupplyReadiness.Refusal.NO_SUPPLIER, roomOnly, 0));
+        queue.forEach(Runnable::run);
+        assertEquals(List.of(), said);
+    }
+
     @Test
     void atABossGateACompanionShortOfPotionsStillSaysThereIsNoShop() {
         when(fenna.getMapId()).thenReturn(PAPULATUS_GATE); // it carries no potions at all

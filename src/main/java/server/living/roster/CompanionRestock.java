@@ -236,12 +236,16 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
      * a boss's entrance with no shop in reach (an ACTIVE companion) says there is none out here; each at most once per
      * COMPANION_RESTOCK_ASK_EVERY_MS, in its ammo words when only projectiles are short (one memory per news: a potion
      * and an ammo broke line never both within it). True when it says one: only then does the Agent forget a gift it
-     * has not told yet.
+     * has not told yet. One short of ETC room alone says nothing: no potion or ammo line fits it, and Jack names it
+     * at the start check (2026-10-22, CWKPQ C9).
      */
     @Override
     public boolean refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                            AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall,
                            int missingMesos) {
+        if (roomOnly(shortfall)) {
+            return false;
+        }
         String word = supplyWord(bot(agentCharacterId), shortfall);
         if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
@@ -363,7 +367,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     /**
      * {@link #bossGate(int, int)} measured against {@code activity}'s standard: a boss's entry NPC room that holds its
      * companions' trips (CompanionBossRuns.ownerArrived, Adobis's room for Zakum, P8), where none can set off for the
-     * boss's standard and so never hears its own no-shop refusal.
+     * boss's standard and so never hears its own no-shop refusal. One short of ETC room alone stays quiet: Jack names
+     * it at the start check (2026-10-22, CWKPQ C9), and its sale belongs to the store on the way in.
      */
     void bossGate(int ownerId, int mapId, AgentSupplyReadiness.Activity activity) {
         Character owner = world.roster().onlineCharacter(ownerId);
@@ -381,7 +386,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                 continue;
             }
             AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(bot, activity);
-            if (!lacking.none()
+            if (!lacking.none() && !roomOnly(lacking)
                     && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
                 if (lacking.potionsNone()) {
                     String word = supplyWord(bot, lacking);
