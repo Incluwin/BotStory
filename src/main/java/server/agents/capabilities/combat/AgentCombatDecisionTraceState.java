@@ -50,6 +50,41 @@ public final class AgentCombatDecisionTraceState {
         this.selectedMobId = Math.max(0, selectedMobId);
     }
 
+    /** How the last grind tick left the engagement step (debug only: !cwkpqtest why). */
+    private String engagementExit = "-";
+    private long engagementAtMs;
+    private int planSkillId = -1;
+    private AgentAttackRoute planRoute;
+    private boolean planInRange;
+    private AgentAttackTransactionResult lastAttack;
+    private long lastAttackAtMs;
+
+    public synchronized void noteEngagement(String exit, AgentAttackPlan plan, boolean inRange, long nowMs) {
+        engagementExit = exit;
+        engagementAtMs = nowMs;
+        planSkillId = plan == null ? -1 : plan.skillId;
+        planRoute = plan == null ? null : plan.route;
+        planInRange = inRange;
+    }
+
+    public synchronized void noteAttack(AgentAttackTransactionResult result, long nowMs) {
+        lastAttack = result;
+        lastAttackAtMs = nowMs;
+    }
+
+    /** "engage <exit> N ms ago, plan skill S ROUTE in range|out of range, last attack STATUS/REASON ...". */
+    public synchronized String engagementText(long nowMs) {
+        String text = "engage " + engagementExit + " " + (nowMs - engagementAtMs) + " ms ago, plan "
+                + (planSkillId < 0 ? "none" : "skill " + planSkillId + " " + planRoute
+                + (planInRange ? " in range" : " out of range"));
+        if (lastAttack != null) {
+            text += ", last attack " + lastAttack.status() + "/" + lastAttack.reason() + " skill " + lastAttack.skillId()
+                    + " hits " + lastAttack.hitLines() + " misses " + lastAttack.missLines() + " "
+                    + (nowMs - lastAttackAtMs) + " ms ago";
+        }
+        return text;
+    }
+
     public synchronized Snapshot snapshot() {
         return new Snapshot(mode, outcome, recordedAtMs, baseCandidates,
                 objectiveCandidates, policyCandidates, claimCandidates,

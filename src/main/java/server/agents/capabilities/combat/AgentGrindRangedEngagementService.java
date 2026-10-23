@@ -191,8 +191,8 @@ public final class AgentGrindRangedEngagementService {
                         target.getId(), targetPosition, "crowd jump attack", System.currentTimeMillis());
                 hooks.fixedArcJumpInitiator().initiate(
                         entry, agent, crowdJumpTarget.x - agentPosition.x);
-                return new Result(true, crowdJumpTarget, null, null,
-                        shouldRetreatForRangedSpacing, false, weaponType, spacingRoute);
+                return noted(entry, "crowd-jump", attackPlan, true, new Result(true, crowdJumpTarget, null, null,
+                        shouldRetreatForRangedSpacing, false, weaponType, spacingRoute));
             }
         }
 
@@ -209,6 +209,8 @@ public final class AgentGrindRangedEngagementService {
                     AgentMovementStateRuntime.grounded(entry), weaponType, attackPlan.route)) {
                 attackAttemptedInRange = true;
                 AgentAttackTransactionResult attackResult = hooks.attackExecutor().attack(entry, agent, attackPlan);
+                entry.capabilityStates().require(AgentCombatDecisionTraceState.STATE_KEY)
+                        .noteAttack(attackResult, System.currentTimeMillis());
                 boolean attacked = attackResult != null && attackResult.committed();
                 if (attacked && attackPlan.isCloseRangeRoute()
                         && hooks.rangedAmmoWeaponPolicy().isRangedAmmoWeapon(weaponType)) {
@@ -223,8 +225,9 @@ public final class AgentGrindRangedEngagementService {
                                     AgentCombatPostureChangedEvent.Posture.SAFE_SHOT,
                                     target.getId(), targetPosition,
                                     "holding a reachable firing anchor", System.currentTimeMillis());
-                            return new Result(false, firingPosition, firingPosition, aoeRepositionPos,
-                                    shouldRetreatForRangedSpacing, false, weaponType, spacingRoute);
+                            return noted(entry, "attacked, holding a firing spot", attackPlan, true,
+                                    new Result(false, firingPosition, firingPosition, aoeRepositionPos,
+                                    shouldRetreatForRangedSpacing, false, weaponType, spacingRoute));
                         }
                     }
                     AgentCombatPostureRuntime.observe(entry, agent,
@@ -235,8 +238,9 @@ public final class AgentGrindRangedEngagementService {
                             target.getId(), targetPosition,
                             AgentMovementStateRuntime.inAir(entry) ? "airborne committed attack"
                                     : "committed in-range attack", System.currentTimeMillis());
-                    return new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
-                            shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute);
+                    return noted(entry, "attacked", attackPlan, true,
+                            new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
+                            shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute));
                 }
             } else if (!AgentMovementStateRuntime.inAir(entry)
                     && attackPlan != null
@@ -252,8 +256,9 @@ public final class AgentGrindRangedEngagementService {
                         AgentCombatPostureChangedEvent.Posture.JUMP_ATTACK,
                         target.getId(), targetPosition, "jumping into legal attack range",
                         System.currentTimeMillis());
-                return new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
-                        shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute);
+                return noted(entry, "jumping into range", attackPlan, false,
+                        new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
+                        shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute));
             }
         }
 
@@ -264,8 +269,9 @@ public final class AgentGrindRangedEngagementService {
                 && hooks.targetRangePolicy().isInRange(attackPlan, agent, target)) {
             hooks.idleOnGround().idle(entry, agent);
             hooks.movementBroadcaster().broadcast(entry);
-            return new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
-                    shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute);
+            return noted(entry, "in range, holding", attackPlan, true,
+                    new Result(true, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
+                    shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute));
         }
 
         if (aoeRepositionPos != null) {
@@ -281,7 +287,16 @@ public final class AgentGrindRangedEngagementService {
                     System.currentTimeMillis());
         }
 
-        return new Result(false, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
-                shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute);
+        return noted(entry, attackAttemptedInRange ? "attack not taken, walking" : "walking", attackPlan,
+                hooks.targetRangePolicy().isInRange(attackPlan, agent, target),
+                new Result(false, currentMovementTarget, crossRegionRetreatPos, aoeRepositionPos,
+                shouldRetreatForRangedSpacing, attackAttemptedInRange, weaponType, spacingRoute));
+    }
+
+    private static Result noted(AgentRuntimeEntry entry, String exit, AgentAttackPlan plan, boolean inRange,
+                                Result result) {
+        entry.capabilityStates().require(AgentCombatDecisionTraceState.STATE_KEY)
+                .noteEngagement(exit, plan, inRange, System.currentTimeMillis());
+        return result;
     }
 }

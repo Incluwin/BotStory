@@ -162,6 +162,9 @@ public final class AgentCwkpqTestService {
                     + decision.policyCandidates() + "/" + decision.claimCandidates() + "/"
                     + decision.scoredCandidates() + ")";
         }
+        text += entry.capabilityStates()
+                .find(server.agents.capabilities.combat.AgentCombatDecisionTraceState.STATE_KEY)
+                .map(state -> ", " + state.engagementText(System.currentTimeMillis())).orElse("");
         var search = entry.capabilityStates()
                 .find(server.agents.capabilities.combat.AgentCombatDecisionState.STATE_KEY)
                 .map(state -> state.targetSearch().snapshot()).orElse(null);
@@ -367,6 +370,7 @@ public final class AgentCwkpqTestService {
                     + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
                     + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
                     + "; " + combatText(entry)
+                    + (agent.hasDisease(client.Disease.SEAL) ? " (sealed)" : "")
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
                     + " goal " + entry.navigationDebugState().goalText()
                     + " air from " + entry.navigationDebugState().airSource()
