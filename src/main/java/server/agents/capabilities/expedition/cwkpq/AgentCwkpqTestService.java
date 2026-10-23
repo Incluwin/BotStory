@@ -48,11 +48,14 @@ import java.util.Locale;
  * the move's own changedMap starts that stage's timer as the stock run would. The armory is after the clear: the
  * event's own clearPQ runs first.</li>
  * <li>{@code stop}: the event's own end, which sends everyone in it to the Hall to Inner Sanctum.</li>
+ * <li>{@code statue}: the operator talks to the Council Hall's Battle Statue (9201115) without a click, as the stock
+ * script's leader (C9 live 2026-10-23: double-clicking the statue opened no window).</li>
  * </ul>
  */
 public final class AgentCwkpqTestService {
     private static final Logger log = LoggerFactory.getLogger(AgentCwkpqTestService.class);
     static final String EVENT_PREFIX = "CWKPQ";
+    static final int BATTLE_STATUE = 9_201_115;
 
     /** The stages a checkpoint can go forward to, each with the stage counter CWKPQ.js keeps while it is played. */
     enum Checkpoint {
@@ -97,6 +100,7 @@ public final class AgentCwkpqTestService {
                 case "why" -> why(operator);
                 case "checkpoint" -> checkpoint(operator, params);
                 case "stop" -> stop(operator);
+                case "statue" -> statue(operator);
                 default -> help();
             };
         } catch (RuntimeException failure) {
@@ -337,6 +341,23 @@ public final class AgentCwkpqTestService {
         return List.of("CWKPQ stopped: everyone in it goes back to the Hall to Inner Sanctum.");
     }
 
+    // ---- statue ----
+
+    private static List<String> statue(Character operator) {
+        if (cwkpqEvent(operator) == null || operator.getMapId() != AgentCwkpqRun.COUNCIL_HALL_MAP_ID) {
+            return List.of("Stand in the CWKPQ Council Hall to talk to the statue.");
+        }
+        for (server.maps.MapObject object : operator.getMap().getMapObjects()) {
+            if (object instanceof server.life.NPC npc && npc.getId() == BATTLE_STATUE) {
+                boolean started = scripting.npc.NPCScriptManager.getInstance()
+                        .start(operator.getClient(), npc.getId(), npc.getObjectId(), null);
+                log.info("CWKPQ statue: talk started={} oid={} by={}", started, npc.getObjectId(), operator.getId());
+                return List.of(started ? "The statue speaks." : "The statue's script did not start.");
+            }
+        }
+        return List.of("No Battle Statue on this map.");
+    }
+
     // ---- lookups ----
 
     /** The CWKPQ instance {@code operator} stands in, or null. */
@@ -439,6 +460,7 @@ public final class AgentCwkpqTestService {
                 "!cwkpqtest status (a CWKPQ run you stand in, or the list registering on your channel)",
                 "!cwkpqtest why (inside a CWKPQ run: each companion's footing, job and walk, also in the server log)",
                 "!cwkpqtest checkpoint <storage|agility|wit|unity|council|armory> (inside a CWKPQ run)",
+                "!cwkpqtest statue (in the Council Hall: talk to the Battle Statue without a click)",
                 "!cwkpqtest stop (inside a CWKPQ run: the event ends for everyone in it)");
     }
 }
