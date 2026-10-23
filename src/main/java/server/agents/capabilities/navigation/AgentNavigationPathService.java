@@ -704,7 +704,11 @@ public final class AgentNavigationPathService {
         return findPath(graph, map, startPos, startRegionId, targetRegionId, targetPos, "target-score");
     }
 
-    /** Complete-result contract used by combat target acceptance and reliability-aware scoring. */
+    /**
+     * Complete-result contract used by combat target acceptance and reliability-aware scoring. {@code skillAgent}'s
+     * movement-skill edges count as its live route does (2026-10-22, CWKPQ C9: with none, a magician in the Teleport
+     * room scored every monster beyond walking reach unreachable and never picked one); null walks only.
+     */
     public static SearchOutcome findRouteForTargetScore(
             AgentNavigationGraph graph,
             MapleMap map,
@@ -712,13 +716,14 @@ public final class AgentNavigationPathService {
             int startRegionId,
             int targetRegionId,
             Point targetPos,
+            Character skillAgent,
             Predicate<AgentNavigationGraph.Edge> edgeAllowed,
             ToIntFunction<AgentNavigationGraph.Edge> edgePenalty) {
         return runSearch(graph, map, startPos, startRegionId, targetRegionId, targetPos,
                 "target-score", USE_ZERO_HEURISTIC, true, MAX_EDGE_CHECKS,
                 null, AgentNavigationDangerCostService.intermediateRegionCosts(
                         graph, map, startRegionId, targetRegionId),
-                null, false, edgeAllowed, edgePenalty);
+                skillAgent, false, edgeAllowed, edgePenalty);
     }
 
     /**
@@ -748,7 +753,7 @@ public final class AgentNavigationPathService {
         ToIntFunction<AgentNavigationGraph.Edge> reliabilityPenalty =
                 AgentNavigationEdgeReliabilityRuntime.edgePenalty(entry, graph.mapId, nowMs);
         SearchOutcome outcome = findRouteForTargetScore(
-                graph, map, startPos, startRegionId, targetRegionId, targetPos,
+                graph, map, startPos, startRegionId, targetRegionId, targetPos, agent,
                 AgentNavigationEdgeReliabilityRuntime.edgeFilter(entry, graph.mapId, nowMs),
                 reliabilityPenalty);
         if (completeRouteCost(outcome, unreachableCost) == unreachableCost

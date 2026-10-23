@@ -71,6 +71,11 @@ class AgentCwkpqMageRoomNavigationTest {
                         route(graph, map, member, ARRIVAL, spawn, true).completeness(), "to " + spawn);
                 assertNotEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
                         route(graph, map, member, ARRIVAL, spawn, false).completeness(), "on foot to " + spawn);
+                // combat target scoring counts the member's Teleport too, so the grind picks these monsters
+                assertEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                        scored(graph, map, member, spawn).completeness(), "scored to " + spawn);
+                assertNotEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                        scored(graph, map, null, spawn).completeness(), "scored on foot to " + spawn);
             }
         }
     }
@@ -81,6 +86,12 @@ class AgentCwkpqMageRoomNavigationTest {
         return AgentNavigationPathService.findNextEdgeSelectionVaried(graph, agent, from,
                 graph.findRegionId(map, from), graph.findRegionId(map, to), to, null,
                 edge -> teleport || edge.type != AgentNavigationGraph.EdgeType.TELEPORT);
+    }
+
+    private static AgentNavigationPathService.SearchOutcome scored(AgentNavigationGraph graph, MapleMap map,
+                                                                   Character agent, Point to) {
+        return AgentNavigationPathService.findRouteForTargetScore(graph, map, ARRIVAL,
+                graph.findRegionId(map, ARRIVAL), graph.findRegionId(map, to), to, agent, edge -> true, edge -> 0);
     }
 
     private static Character cleric(int id, MapleMap map, EventInstanceManager event) {
