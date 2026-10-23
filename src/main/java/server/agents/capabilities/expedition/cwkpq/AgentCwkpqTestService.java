@@ -392,11 +392,7 @@ public final class AgentCwkpqTestService {
         PrimitiveCapabilityGateway gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
         List<String> lines = new ArrayList<>();
         String flags = flags(event) + sigilText(operator) + "; server clock "
-                + (System.currentTimeMillis() - net.server.Server.getInstance().getCurrentTime()) + " ms behind"
-                + "; leader talk gates: conversation " + (operator.getClient().getCM() != null) + ", quest "
-                + (operator.getClient().getQM() != null) + ", living window "
-                + server.living.resident.LivingTalk.active(operator.getClient()) + ", cooldown age "
-                + (net.server.Server.getInstance().getCurrentTime() - operator.getNpcCooldown()) + " ms";
+                + (System.currentTimeMillis() - net.server.Server.getInstance().getCurrentTime()) + " ms behind";
         log.info("CWKPQ why: {}", flags);
         lines.add(flags);
         for (AgentBossRunMember member : session.members()) {
