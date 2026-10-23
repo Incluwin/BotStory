@@ -283,6 +283,33 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   - The companions going ahead leave the human leader in the hall. A checkpoint to the stage the run is on now brings
     whoever is still behind; a GM `!warpto` to a companion inside the event takes the leader out of it and ends the
     run.
+  - Stage 6: a member entering a stage now drops the walk its last stage's play gave it (they stood at the Council
+    Hall's spawn, aiming for the unity hall's portal). The Battle Statue opened nothing for a GM-hidden leader: the
+    client sends no NPC talk while its player is hidden, so a test leader unhides for each talk. The guards (72M HP)
+    fall in about 4-5 minutes.
+  - The Grandmasters need a damage scale: crew C dealt them about 10M a minute against 929M HP, so the first run ran
+    out the Council Hall's hour with Rellik at 69%. boss-rules `companionDamagePercent` 700 on the six Grandmaster
+    ids (adds keep their own strength), and the pace profile reads their HP through it. The second run took about
+    68M a minute.
+  - Ranged members with low HP (Storm383, NonThePriest: 6,716) stood 1-30 px outside a Grandmaster's touch keep-out
+    and never moved, since a walk ends 30 px from its target: the Pink Bean fix for this (walk 30 px inside the edge)
+    is ported. Storm383 went from 10-18 attacks a minute to 45-63.
+  - A member inside a touch by the wall was sent to the gap beyond it (Storm383, 0 attacks for four minutes, then dead).
+    A gap with no floor under it now gives way to the one on the other side (the platform comes from the member's
+    navigation-graph region).
+  - NonThePriest ran out of stars: New Leaf City's store sells no stars, so his restock had nowhere to go. Mo
+    (9201099, Phantom Forest 610010004) is in the supplier catalog now (Icicles, arrows, Unagi, Pure Water).
+  - CWKPQ had no boss supply standards, so companions came in with the party quest default (20/25 potions, 500
+    projectiles): Storm383, Hadrik and iWantPanda died in the Council Hall with none left, and NonThePriest threw 2,400
+    stars in 18 minutes. `BOSS_STANDARDS` cwkpq=600/600 and `AMMO_STANDARDS` cwkpq=4800 now.
+  - **Stage 6 and the Armory pass live (2026-10-23 14:29-15:23, from the Council checkpoint):** guards 4 minutes,
+    the Grandmasters about 30 minutes at 700% (Hsalf, physical defence 8000, last, with two fighters left), the third
+    statue talk cleared the keep, the companions walked through the Secret Chamber, waited for the leader, and broke
+    their box shares in the Armory ("the top left boxes are yours, we'll break the rest"). The record: 2,980 s, cleared;
+    its masters span (2,627 s) includes 13 minutes the leader took to make the third talk.
+  - Open: Margana (she heals every monster within 800 px for 500k every 30 s) is never targeted first; the grind takes
+    the nearest Grandmaster. NonThePriest has no Triple Throw at Lv140 (a persona build gap). The Armory loot the
+    companions took is not logged.
 
 ## Questions for you (answered, kept for the record)
 
