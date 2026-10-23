@@ -14,6 +14,9 @@ import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.mobcontrol.AgentBossScope;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationGraph;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
@@ -376,7 +379,7 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return null;
         }
         if (side == null) {
-            return gap(areas, foot.x);
+            return gap(areas, foot.x, ports.floorSpan(member, map, foot));
         }
         long left = Long.MAX_VALUE;
         long right = Long.MIN_VALUE;
@@ -396,8 +399,13 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * The band of the free gap at {@code x} between the deadly {@code areas} ({x0, x1, mobile}), each widened by its
      * margin to the last x a member may stand at, overlapping ones joined; standing inside a joined area, the gap
      * beside its nearer edge (the left one at the middle).
+     *
+     * <p>2026-10-23 (CWKPQ C9): with {@code floor} ({minX, maxX} of the platform under the member, null when unknown),
+     * a gap with no floor in it gives way to the one on the other side, and with neither, the member keeps out of
+     * nothing. Storm383 stood against the Council Hall's left wall inside a Grandmaster's touch for ten minutes, sent
+     * each tick to the gap beside the nearer edge: beyond the wall.</p>
      */
-    private static int[] gap(List<long[]> areas, int x) {
+    private static int[] gap(List<long[]> areas, int x, int[] floor) {
         List<long[]> spans = new ArrayList<>();
         for (long[] area : areas) {
             int margin = area[2] != 0 ? Math.max(keepOutMarginPx(), mobileKeepOutMarginPx()) : keepOutMarginPx();
@@ -417,15 +425,26 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         while (i < joined.size() && joined.get(i)[1] <= x) {
             i++;
         }
-        if (i < joined.size() && joined.get(i)[0] < x) {
-            long[] inside = joined.get(i);
-            if (x > (inside[0] + inside[1]) / 2) {
-                i++;
-            }
+        boolean inside = i < joined.size() && joined.get(i)[0] < x;
+        int nearer = inside && x > (joined.get(i)[0] + joined.get(i)[1]) / 2 ? i + 1 : i;
+        if (!inside || onFloor(joined, nearer, floor)) {
+            return gapBand(joined, nearer);
         }
-        long low = i == 0 ? Integer.MIN_VALUE : joined.get(i - 1)[1];
-        long high = i == joined.size() ? Integer.MAX_VALUE : joined.get(i)[0];
+        int other = nearer == i ? i + 1 : i;
+        return onFloor(joined, other, floor) ? gapBand(joined, other) : null;
+    }
+
+    /** The band of the {@code g}th gap of {@code joined}: between span g-1 and span g. */
+    private static int[] gapBand(List<long[]> joined, int g) {
+        long low = g == 0 ? Integer.MIN_VALUE : joined.get(g - 1)[1];
+        long high = g == joined.size() ? Integer.MAX_VALUE : joined.get(g)[0];
         return new int[] {clamp(low), clamp(high)};
+    }
+
+    /** True when the {@code g}th gap has floor in it, or the floor is unknown. */
+    private static boolean onFloor(List<long[]> joined, int g, int[] floor) {
+        int[] band = gapBand(joined, g);
+        return floor == null || Math.max(band[0], floor[0]) <= Math.min(band[1], floor[1]);
     }
 
     private static int clamp(long x) {
@@ -831,10 +850,28 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             return 30;
         }
 
+        /**
+         * 2026-10-23: {minX, maxX} of the platform under {@code foot} (the member's navigation-graph region), or null
+         * when unknown; a keep-out gap with no floor in it is not chosen ({@link #gap}).
+         */
+        default int[] floorSpan(Character member, MapleMap map, Point foot) {
+            return null;
+        }
+
         Ports LIVE = new Ports() {
             @Override
             public int walkArrivalPx() {
                 return AgentMovementPhysicsConfig.configuredStopDist();
+            }
+
+            @Override
+            public int[] floorSpan(Character member, MapleMap map, Point foot) {
+                AgentRuntimeEntry entry = entry(member.getId());
+                AgentNavigationGraph graph = entry == null ? null : AgentNavigationGraphService.peekBestGraph(map,
+                        AgentMovementStateRuntime.movementProfile(entry));
+                int regionId = graph == null ? -1 : graph.findRegionId(map, foot);
+                AgentNavigationGraph.Region region = regionId < 0 ? null : graph.getRegion(regionId);
+                return region == null || region.isRopeRegion ? null : new int[] {region.minX, region.maxX};
             }
 
             @Override

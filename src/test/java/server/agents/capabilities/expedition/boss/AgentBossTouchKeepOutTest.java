@@ -60,6 +60,7 @@ class AgentBossTouchKeepOutTest {
     private final Map<Integer, Double> touches = new HashMap<>();
     private final EventInstanceManager event = mock(EventInstanceManager.class);
     private int maxHp = 19_776;
+    private int[] floor;
     private AgentBossPriorityFight fight;
 
     @BeforeEach
@@ -107,6 +108,11 @@ class AgentBossTouchKeepOutTest {
             @Override
             public int maxHp(Character member) {
                 return maxHp;
+            }
+
+            @Override
+            public int[] floorSpan(Character member, MapleMap map, Point foot) {
+                return floor;
             }
         });
     }
@@ -267,6 +273,28 @@ class AgentBossTouchKeepOutTest {
 
         // the gap between them is -448..-428: 10 px in, at its middle, and precisely
         verify(gateway).navigate(member, new Point(-438, -99), true);
+    }
+
+    @Test
+    void aMemberInsideATouchByAWallWalksToTheGapOnTheFloorNotTheNearerOneBeyondTheWall() {
+        // 2026-10-23 (CWKPQ C9): Storm383 stood against the Council Hall's left wall inside a Grandmaster's touch and
+        // was sent each tick to the gap beside the nearer edge, beyond the wall, for ten minutes. The legs and tail
+        // join at -217..528 with their margins; the floor here starts at -200
+        mobs(LEGS, TAIL);
+        assertArrayEquals(new int[] {Integer.MIN_VALUE, -217},
+                fight.touchBand(altar, member(10, new Point(-150, 260)), null), "the nearer gap, with no floor known");
+
+        floor = new int[] {-200, 900};
+        assertArrayEquals(new int[] {528, Integer.MAX_VALUE},
+                fight.touchBand(altar, member(11, new Point(-150, 260)), null), "the gap on the floor");
+    }
+
+    @Test
+    void aTouchCoveringTheWholeFloorKeepsNoMemberOut() {
+        floor = new int[] {-200, 500};
+        mobs(LEGS, TAIL);
+
+        assertNull(fight.touchBand(altar, member(10, new Point(-150, 260)), null));
     }
 
     @Test
