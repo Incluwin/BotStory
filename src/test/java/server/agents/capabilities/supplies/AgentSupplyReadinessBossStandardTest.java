@@ -71,7 +71,7 @@ class AgentSupplyReadinessBossStandardTest {
                         + "neo_dunas=150/100,neo_aufheben=200/150,neo_oberon=200/150,neo_nibelung=250/250,"
                         + "papulatus=450/300,scarga=900/500,horntail=900/900,showa=600/600,pinkbean=1500/600,"
                         + "field_pianus=500/300,field_leafre=300/200,field_temple=500/300,field_zipangu=500/300,"
-                        + "field_masteria=400/300",
+                        + "field_masteria=400/300,cwkpq=600/600",
                 AgentYamlConfig.config.tuning.get(BOSS_STANDARDS_KEY));
         assertEquals(new AgentSupplyReadiness.Standard(100, 60), standardFor("easy_balrog"));
         assertEquals(new AgentSupplyReadiness.Standard(500, 300), standardFor("field_pianus"),
@@ -196,9 +196,12 @@ class AgentSupplyReadinessBossStandardTest {
         assertEquals(partyQuestAmmo, ammoStandardFor("chaos_horntail"), "an unlisted boss: the default");
         assertEquals("lpq=1600,epq=1600,easy_balrog=2000,zakum=4000,balrog_normal=2500,latanica=1000,neo_bergamot=1000,"
                         + "neo_dunas=1000,neo_aufheben=1500,neo_oberon=1500,neo_nibelung=2000,papulatus=2500,"
-                        + "scarga=5000,horntail=4800,showa=4000,pinkbean=4800",
+                        + "scarga=5000,horntail=4800,showa=4000,pinkbean=4800,cwkpq=4800",
                 AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
         assertEquals(2500, ammoStandardFor("balrog_normal"), "P11: 25 minutes at 100 a minute");
+        assertEquals(new AgentSupplyReadiness.Standard(600, 600), standardFor("cwkpq"),
+                "CWKPQ C9 live: three companions died in the Council Hall on the party quest default");
+        assertEquals(4800, ammoStandardFor("cwkpq"), "a Night Lord threw 2,400 stars in 18 minutes there");
     }
 
     @Test
