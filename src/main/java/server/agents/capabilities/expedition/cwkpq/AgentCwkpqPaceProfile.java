@@ -4,6 +4,7 @@ import provider.Data;
 import provider.DataProviderFactory;
 import provider.DataTool;
 import provider.wz.WZFiles;
+import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceSegment;
@@ -33,7 +34,8 @@ import java.util.TreeMap;
  * ones. A host registers it under {@link #QUEST_KEY} with {@link #load}.
  *
  * <p>Not modelled: the damage policy treats an element a mob is immune to as normal (Master Guardians are immune to
- * all five, Margana to holy), so a party of elemental attackers reads faster than it is.</p>
+ * all five, Margana to holy), so a party of elemental attackers reads faster than it is; and the human leader's own
+ * hits on the Grandmasters count at the companions' scaled strength ({@link #load}).</p>
  */
 public final class AgentCwkpqPaceProfile implements AgentPqPaceProfile {
     public static final String QUEST_KEY = "cwkpq";
@@ -194,15 +196,20 @@ public final class AgentCwkpqPaceProfile implements AgentPqPaceProfile {
         return profile;
     }
 
-    /** The profile from this census: the warrior and mage rooms as Map.wz places them, HP as Mob.wz has it. */
+    /**
+     * The profile from this census: the warrior and mage rooms as Map.wz places them, HP as Mob.wz has it, a
+     * Grandmaster's divided by the boss rules' companionDamagePercent (C9 live 2026-10-23: companions hit them 7 times
+     * harder, so the estimate and the run records read the fight as it is fought).
+     */
     static AgentCwkpqPaceProfile load(Census census) {
+        AgentBossRules.Boss rules = AgentBossRules.of(QUEST_KEY);
         Map<Integer, Integer> hp = new TreeMap<>();
         for (int mobId : MOB_IDS) {
             Integer mobHp = census.mobHp(mobId);
             if (mobHp == null || mobHp <= 0) {
                 throw new IllegalStateException("Mob.wz has no HP for " + mobId);
             }
-            hp.put(mobId, mobHp);
+            hp.put(mobId, rules == null ? mobHp : (int) (mobHp * 100L / rules.damagePercentOn(mobId)));
         }
         return new AgentCwkpqPaceProfile(placed(census, WARRIOR_ROOM_MAP_ID, WARRIOR_ROOM_MOB_IDS),
                 placed(census, MAGE_ROOM_MAP_ID, MAGE_ROOM_MOB_IDS), hp);

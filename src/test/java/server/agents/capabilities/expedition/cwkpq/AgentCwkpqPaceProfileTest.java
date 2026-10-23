@@ -91,7 +91,8 @@ class AgentCwkpqPaceProfileTest {
         assertEquals(Set.of(9_400_590, 9_400_591, 9_400_592, 9_400_593, 9_400_596, 9_400_597),
                 clears.get("masters").counts().keySet(), "four Grandmasters (no Mikhal) and Red Nirg's revives");
         assertEquals(7_000_000, clears.get("bowmanRoom").hp().get(9_400_594), "Mob.wz");
-        assertTrue(clears.get("masters").totalHp() > 900_000_000L, "about 929M HP of Grandmasters");
+        assertEquals(929_000_000.0d / 7, clears.get("masters").totalHp(), 10.0d,
+                "929M HP of Grandmasters, which companions hit 7 times harder (boss-rules companionDamagePercent)");
         assertTrue(clears.values().stream().allMatch(AgentPqPaceSegment.Clear::leaderFights));
     }
 
@@ -154,12 +155,12 @@ class AgentCwkpqPaceProfileTest {
     @Test
     void aStrongerListIsEstimatedFasterAndAWeakOneFallsAtTheGrandmasters() {
         AgentPqPaceEstimate strong = estimate(crew(400_000.0d, null));
-        AgentPqPaceEstimate weak = estimate(crew(30_000.0d, null));
+        AgentPqPaceEstimate weak = estimate(crew(10_000.0d, null));
 
         assertTrue(strong.clearable() && weak.clearable());
         assertTrue(strong.p50S() < weak.p50S());
         assertTrue(weak.weaknesses().stream().anyMatch(w -> w.kind() == Kind.SLOW && w.characterId() == 0
-                && w.segmentKey().equals("masters")), "ten at 30,000 a second take the Grandmasters past 40 minutes");
+                && w.segmentKey().equals("masters")), "ten at 10,000 a second take the Grandmasters past 40 minutes");
         assertFalse(strong.weaknesses().stream().anyMatch(w -> w.kind() == Kind.SLOW));
     }
 

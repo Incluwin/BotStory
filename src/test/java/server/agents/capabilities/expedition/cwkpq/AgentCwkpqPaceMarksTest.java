@@ -117,7 +117,8 @@ class AgentCwkpqPaceMarksTest {
         assertEquals(60_000L, pace.span("statue").durationMs(), "the walk to the statue and its first talk");
         assertEquals(340_000L, pace.span("guards").durationMs());
         assertEquals(1_100_000L, pace.span("masters").durationMs());
-        assertTrue(pace.span("masters").work() > 900_000_000.0d, "a clear segment reports the HP it killed");
+        assertTrue(pace.span("masters").work() > 130_000_000.0d,
+                "a clear segment reports the HP it killed, at the companions' scaled strength");
         assertEquals(0.0d, pace.span("statue").work(), "a fixed segment reports none");
         assertEquals("cwkpq", pace.questKey());
         assertEquals("cwkpq-1-7", pace.sessionId());

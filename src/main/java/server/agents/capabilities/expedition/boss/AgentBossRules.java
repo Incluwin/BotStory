@@ -73,6 +73,8 @@ import java.util.TreeMap;
  * this boss's parts are scaled to (AgentBossClientLoad.scaled), so a crew overpowers a boss whose HP is out of reach of
  * level-200 Agents in its time limit (user: bosses take big numbers, never a kill in seconds). Pink Bean's 7.65 billion
  * HP over 140 minutes needs about 55 million a minute; twelve Lv200 companions dealt about 17 million (P20 run 1).
+ * CWKPQ's 929 million HP of Grandmasters have the Council Hall's 60 minutes less the guards; crew C (five Lv140
+ * companions) dealt about 10 million a minute (C9 live, 2026-10-23), about 90 minutes; at 700 about 13.
  * At most 5000; a line is clamped at Integer.MAX_VALUE.</li>
  * <li>{@code markerItems}: drops a run member leaves on the floor, items the boss's own script takes (Zakum's Eye of
  * Fire). The run catalog (AgentBossRunCatalog) reads this and {@code neverTargetFakes} from here.</li>

@@ -175,7 +175,7 @@ class CwkpqClearTimeTest {
     void aWeakListHearsTheGrandmastersCaution() {
         Character leader = listOf(9);
 
-        List<String> lines = CwkpqClearTime.lines(leader, members, pace(30_000.0d), agents::contains);
+        List<String> lines = CwkpqClearTime.lines(leader, members, pace(10_000.0d), agents::contains);
 
         assertTrue(lines.contains(JackLines.MASTERS_SLOW), () -> String.valueOf(lines));
     }

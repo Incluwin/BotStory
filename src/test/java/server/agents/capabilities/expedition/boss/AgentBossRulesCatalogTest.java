@@ -179,6 +179,16 @@ class AgentBossRulesCatalogTest {
     }
 
     @Test
+    void cwkpqsCompanionsHitTheGrandmastersSevenTimesHarderAndTheirGuardsAtTheirOwnStrength() {
+        AgentBossRules.Boss keep = AgentBossRules.of("cwkpq");
+        for (int grandmaster : List.of(9_400_590, 9_400_591, 9_400_592, 9_400_593, 9_400_596, 9_400_597)) {
+            assertEquals(700, keep.damagePercentOn(grandmaster), "929M HP in the Council Hall's hour: " + grandmaster);
+        }
+        assertEquals(100, keep.damagePercentOn(9_400_594), "a Master Guardian is an add");
+        assertEquals(100, keep.damagePercentOn(9_400_582), "a Crimson Guardian is an add");
+    }
+
+    @Test
     void aCompanionDamagePercentReachesTheFocusAndMeleeListsAndStaysInItsBounds() {
         AgentBossRules.Boss boss = new AgentBossRules.Boss("test_strong", "Test strong", null, List.of(100), null,
                 null, null, false, null, 0, 0, false, null, null, List.of(200), 0, null, null,
