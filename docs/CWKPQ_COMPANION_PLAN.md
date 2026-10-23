@@ -255,6 +255,26 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   while he has none, the priors until a run is recorded). Not seen by the marks: the walk into a room before its
   first kill (each room's span runs from the hall of unity) and the relics' carrying apart from the last room's
   weapon.
+- **C9 live checks, 2026-10-22/23** (crew C: Keepfriend leads Hadrik, Storm383, SpearKnight, iWantPanda and
+  NonThePriest; `!cwkpqtest checkpoint <stage>` per stage, `!cwkpqtest why` for each member's job, walk goal, combat
+  step, accuracy and navigation graph):
+  - The keystone gate, Jack's start check and estimate, the sign-up, the hallway and stages 2-4 pass live.
+  - Stage 3 froze on empty navigation graphs: a graph queued against an event map disposed before it was built
+    (`MapleMap.dispose` drops its footholds) was saved to disk with no regions and reused for that map. A cached graph
+    with no regions is now rebuilt, a map without footholds is refused, and an empty graph is never saved.
+  - A turned stage 2/3 sigil respawns about 10 s later and the stock reactor script counts every turn, so the run
+    remembers the sigils it saw turned and never turns one twice.
+  - Before a run a companion with fewer than 4 free ETC slots sells its monster drops at a shop (ores and quest items
+    kept); Jack's start check names whoever is still short.
+  - Stage 5: the magician room gets Teleport edges and the thief room Flash Jump edges (only for run members in that
+    room); Jack cautions when no thief can Flash Jump. A room grind prefers the room's own monster kinds.
+  - Stage 5 relics: C0's drop spots lay on each relic area's left edge, and two carriers stopped 3 px short with drops
+    that would miss, for good. The spots sit 30-40 px inside now (a test on the hall's geometry checks every drop
+    within reach), and a carrier drops as soon as its drop would land in the area.
+  - The warrior room needs accuracy: Hadrik (DEX 40) hit nothing on the Guardians (level 120, avoid 40) and swung Shout
+    from 277 px forever, since a swing that reaches holds the grind where it is. `!bossgear Hadrik cwkpq` (accuracy for
+    the Grandmasters, avoid up to 55 at level 130) took him to 208 accuracy and every hit lands. The kit refuses a
+    companion inside an event, so it goes on before the run.
 
 ## Questions for you (answered, kept for the record)
 
