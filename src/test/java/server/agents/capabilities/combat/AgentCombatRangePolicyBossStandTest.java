@@ -53,13 +53,37 @@ class AgentCombatRangePolicyBossStandTest {
     }
 
     @Test
-    void rangedPlansAndOrdinaryMobsAreUnchanged() {
+    void aHeroWalksInToALoneGuardianInsteadOfShoutingFromAfar() {
+        // CWKPQ warrior room (C9 live 2026-10-23): Guardian 9400582 at x=188, body x 88..280 (WZ stand lt/rb).
+        Monster guardian = mob(9400582, new Point(188, -42));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+
+        assertFalse(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-89), plan(guardian, AgentAttackRoute.CLOSE), guardian),
+                "Shout reaches the body from 177 px; Brandish does not");
+        assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(20), plan(guardian, AgentAttackRoute.CLOSE), guardian),
+                "68 px from the body edge");
+    }
+
+    @Test
+    void aLongBoxOnACrowdOrOnAMonsterAboveStillSwingsFromWhereItIs() {
+        Monster guardian = mob(9400582, new Point(188, -42));
+        Monster other = mob(9400582, new Point(-150, -42));
+        Monster above = mob(9400582, new Point(188, -142));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+
+        assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-89), crowd(guardian, other), guardian));
+        assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-89), plan(above, AgentAttackRoute.CLOSE), above));
+    }
+
+    @Test
+    void rangedPlansAndOrdinaryCrowdsAreUnchanged() {
         Monster solomon = part(8820003, true);
         Monster notBoss = part(8820003, false);
+        Monster beside = part(8820003, false);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
 
         assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-165), plan(solomon, AgentAttackRoute.RANGED), solomon));
-        assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-899), plan(notBoss, AgentAttackRoute.CLOSE), notBoss));
+        assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-899), crowd(notBoss, beside), notBoss));
         assertTrue(AgentCombatRangePolicy.closeSwingHoldsHere(entry, heroAt(-899), null, solomon));
     }
 
@@ -73,6 +97,17 @@ class AgentCombatRangePolicyBossStandTest {
         when(m.getStats()).thenReturn(stats);
         when(stats.getFixedStance()).thenReturn(4);
         return m;
+    }
+
+    private static Monster mob(int id, Point at) {
+        Monster m = part(id, false);
+        when(m.getPosition()).thenReturn(at);
+        return m;
+    }
+
+    private static AgentAttackPlan crowd(Monster first, Monster second) {
+        return new AgentAttackPlan(1111008, 30, 1, new Rectangle(0, 0, 1, 1), List.of(first, second),
+                AgentAttackRoute.CLOSE, 0, 1, 1, 0, 6, 0, 0, WeaponType.SWORD2H);
     }
 
     private static Character heroAt(int x) {

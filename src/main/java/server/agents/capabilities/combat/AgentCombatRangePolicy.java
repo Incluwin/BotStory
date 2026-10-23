@@ -11,6 +11,9 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 
 public final class AgentCombatRangePolicy {
+    private static final int SAME_LEVEL_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.combat.AgentCombatRangePolicy.SAME_LEVEL_PX");
+
     private AgentCombatRangePolicy() {
     }
 
@@ -83,17 +86,23 @@ public final class AgentCombatRangePolicy {
      * long, weak box (Shout: +-200 px, 30% x1) reaches one from where the main swing (Brandish: 150 px) does not, and a
      * Hero knocked back to the wall at x=-899 stood there Shouting for minutes at 1/20 of its damage. Such a swing
      * holds only within ATTACK_RANGE_X of the body; farther out the Agent walks in, unless its horizontal boundary
-     * keeps it out (then it swings from where it is, as before). Every other plan and target holds wherever it is in
-     * range.
+     * keeps it out (then it swings from where it is, as before).
+     * <p>2026-10-23 (CWKPQ C9 live, the warrior room): the same holds for any monster a close plan reaches alone on the
+     * Agent's own level. A Hero Shouted a Guardian (120,000 HP) from 196 px for minutes, one 25% line a swing, where a
+     * walk of 116 px brings Brandish's three 169% lines. A plan whose box holds more than one monster still swings from
+     * where it is: there the long box earns its range. Every other plan and target holds wherever it is in range.
      */
     public static boolean closeSwingHoldsHere(AgentRuntimeEntry entry, Character agent, AgentAttackPlan plan,
                                               Monster target) {
         if (plan == null || plan.route != AgentAttackRoute.CLOSE || agent == null || agent.getPosition() == null
-                || target == null || !target.isBoss()) {
+                || target == null || target.getPosition() == null) {
             return true;
         }
         Rectangle body = AgentMobHitboxProvider.getInstance().getMobBounds(target);
-        if (!AgentCombatTargetPositionPolicy.isHorizontallyDetached(target.getPosition(), body)) {
+        boolean walkInFirst = target.isBoss()
+                ? AgentCombatTargetPositionPolicy.isHorizontallyDetached(target.getPosition(), body)
+                : aloneOnTheAgentsLevel(agent, plan, target);
+        if (body == null || !walkInFirst) {
             return true;
         }
         int reach = AgentCombatConfig.cfg.ATTACK_RANGE_X;
@@ -106,6 +115,12 @@ public final class AgentCombatRangePolicy {
         int stand = x < left ? left - reach : right + reach;
         int allowed = AgentPrimitiveCapabilityGatewayRuntime.gateway().clampHorizontalX(entry, agent.getMapId(), stand);
         return gapX(allowed, left, right) > reach;
+    }
+
+    /** The plan's box holds only {@code target}, which stands within SAME_LEVEL_PX of the Agent's height. */
+    private static boolean aloneOnTheAgentsLevel(Character agent, AgentAttackPlan plan, Monster target) {
+        return plan.targets != null && plan.targets.size() <= 1
+                && Math.abs(target.getPosition().y - agent.getPosition().y) <= SAME_LEVEL_PX;
     }
 
     private static int gapX(int x, int left, int right) {
