@@ -10,6 +10,8 @@ public final class AgentNavigationDebugState {
     private int goalStartRegionId = -1;
     private int goalTargetRegionId = -1;
     private boolean hasGoal;
+    private boolean goalInAir;
+    private boolean goalClimbing;
 
     public String lastDecision() {
         return lastDecision;
@@ -35,7 +37,9 @@ public final class AgentNavigationDebugState {
         this.graphWarmupFallback = graphWarmupFallback;
     }
 
-    public void noteGoal(int x, int y, int startRegionId, int targetRegionId) {
+    public void noteGoal(int x, int y, int startRegionId, int targetRegionId, boolean inAir, boolean climbing) {
+        goalInAir = inAir;
+        goalClimbing = climbing;
         goalX = x;
         goalY = y;
         goalStartRegionId = startRegionId;
@@ -45,6 +49,7 @@ public final class AgentNavigationDebugState {
 
     /** "(x,y) region s->t" for the last goal, or "-" before any. */
     public String goalText() {
-        return hasGoal ? "(" + goalX + "," + goalY + ") region " + goalStartRegionId + "->" + goalTargetRegionId : "-";
+        return hasGoal ? "(" + goalX + "," + goalY + ") region " + goalStartRegionId + "->" + goalTargetRegionId
+                + (goalInAir ? " (in the air)" : "") + (goalClimbing ? " (climbing)" : "") : "-";
     }
 }
