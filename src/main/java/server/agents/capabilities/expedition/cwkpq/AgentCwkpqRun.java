@@ -9,6 +9,7 @@ import server.agents.capabilities.expedition.boss.AgentBossPriorityFight;
 import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.Reactor;
 
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 
@@ -119,6 +121,13 @@ public final class AgentCwkpqRun implements AgentBossFight {
             () -> AgentPqPaceProfiles.cached(AgentCwkpqPaceProfile.QUEST_KEY);
     private IntPredicate isAgent = id -> AgentRuntimeRegistry.findByAgentCharacterId(id) != null;
     private volatile int leaderId;
+    /**
+     * As a member enters a stage, the live run stops the walk its last stage's play gave it: a point on that map, which
+     * on the next one may lie under the floor (C9 live 2026-10-23: the hallway's portal spot (824,328) held four
+     * companions at the Council Hall's spawn, where the play gives no orders while the hall is empty).
+     */
+    private Consumer<Character> enteredStage = member -> {
+    };
 
     AgentCwkpqRun(Map<Stage, StagePlay> plays) {
         this(plays, AgentBossPriorityFight.forKey("cwkpq"), null);
@@ -137,8 +146,16 @@ public final class AgentCwkpqRun implements AgentBossFight {
     /** A fresh run for one boss run session, with every stage play built so far and the walk on to the Armory. */
     public static AgentCwkpqRun forCompanions() {
         AgentCwkpqPorts ports = AgentCwkpqPorts.LIVE;
-        return new AgentCwkpqRun(AgentCwkpqStagePlays.all(ports), AgentBossPriorityFight.forKey("cwkpq"),
+        AgentCwkpqRun created = new AgentCwkpqRun(AgentCwkpqStagePlays.all(ports),
+                AgentBossPriorityFight.forKey("cwkpq"),
                 (members, event, run, nowMs) -> AgentCwkpqArmoryPlay.tick(ports, members, event, run, nowMs));
+        created.enteredStage = member -> {
+            AgentRuntimeEntry entry = ports.entry(member.getId());
+            if (entry != null) {
+                ports.gateway().stop(entry);
+            }
+        };
+        return created;
     }
 
     /** The Council Hall, the Secret Chamber and the Armory: the walk on and the boxes, once the keep is cleared. */
@@ -173,6 +190,11 @@ public final class AgentCwkpqRun implements AgentBossFight {
         }
         leaderId = event.getLeaderId();
         marks.observe(event, paceProfile.get(), isAgent, nowMs);
+    }
+
+    /** Tests: what happens as a member enters a stage. */
+    void onEnteredStage(Consumer<Character> hook) {
+        this.enteredStage = hook;
     }
 
     /** Tests: the pace profile and which characters are Agents. */
@@ -216,6 +238,7 @@ public final class AgentCwkpqRun implements AgentBossFight {
                 byStage.computeIfAbsent(stage, ignored -> new ArrayList<>()).add(fighter);
                 if (stagesOf.put(fighter.getId(), stage) != stage) {
                     roles.remove(fighter.getId()); // its last stage's job no longer applies
+                    enteredStage.accept(fighter);
                 }
             }
         }

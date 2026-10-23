@@ -45,6 +45,24 @@ class AgentCwkpqRunTest {
     }
 
     @Test
+    void aMemberEnteringAStageHasItsLastStagesWalkStoppedOnce() {
+        List<String> entered = new ArrayList<>();
+        AgentCwkpqRun run = new AgentCwkpqRun(Map.of());
+        run.onEnteredStage(member -> entered.add(member.getName() + "@" + Stage.of(member.getMapId())));
+        Character orrin = mock(Character.class);
+        when(orrin.getName()).thenReturn("Orrin");
+        when(orrin.getMapId()).thenReturn(Stage.HALLWAY.mapId());
+
+        run.tick(List.of(orrin), event, 1L);
+        run.tick(List.of(orrin), event, 2L);
+        when(orrin.getMapId()).thenReturn(Stage.COUNCIL.mapId());
+        run.tick(List.of(orrin), event, 3L);
+        run.tick(List.of(orrin), event, 4L);
+
+        assertEquals(List.of("Orrin@HALLWAY", "Orrin@COUNCIL"), entered);
+    }
+
+    @Test
     void theStageMapsAreTheBossRulesStageMapsAndTheCouncilIsTheBattleMap() {
         assertEquals(AgentBossRules.stageMaps("cwkpq"), AgentCwkpqRun.stageMapsBeforeCouncil());
         AgentBossRunDefinition cwkpq = AgentBossRunCatalog.of("cwkpq");
