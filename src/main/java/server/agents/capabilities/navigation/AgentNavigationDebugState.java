@@ -66,6 +66,17 @@ public final class AgentNavigationDebugState {
         return airSource;
     }
 
+    /** While tracing (see traceAir): where the Agent's walk target was last set (debug only: !cwkpqtest why). */
+    private volatile String moveTargetSource = "-";
+
+    public void noteMoveTargetSource(String source) {
+        moveTargetSource = source;
+    }
+
+    public String moveTargetSource() {
+        return moveTargetSource;
+    }
+
     /** "(x,y) region s->t" for the last goal, or "-" before any. */
     public String goalText() {
         return hasGoal ? "(" + goalX + "," + goalY + ") region " + goalStartRegionId + "->" + goalTargetRegionId

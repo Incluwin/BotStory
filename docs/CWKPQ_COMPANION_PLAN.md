@@ -274,7 +274,15 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   - The warrior room needs accuracy: Hadrik (DEX 40) hit nothing on the Guardians (level 120, avoid 40) and swung Shout
     from 277 px forever, since a swing that reaches holds the grind where it is. `!bossgear Hadrik cwkpq` (accuracy for
     the Grandmasters, avoid up to 55 at level 130) took him to 208 accuracy and every hit lands. The kit refuses a
-    companion inside an event, so it goes on before the run.
+    companion inside an event, so it goes on before the run. A close swing that reaches a lone monster on the Agent's
+    level from afar now walks in first (as it already did for detached boss bodies): Shout from 196 px gave a kill a
+    minute, Brandish cleared the room's 21 monsters in about 3 minutes.
+  - **Stage 5 passes live (2026-10-23 12:41-12:51):** every room cleared or broken, every master asked, all five
+    weapons placed (glpq5=5) in 9.5 minutes, and the companions took the hall's exit to the Council Hall on their own.
+    The archer room's five Master Guardians (7,000,000 HP each) are its longest fight.
+  - The companions going ahead leave the human leader in the hall. A checkpoint to the stage the run is on now brings
+    whoever is still behind; a GM `!warpto` to a companion inside the event takes the leader out of it and ends the
+    run.
 
 ## Questions for you (answered, kept for the record)
 

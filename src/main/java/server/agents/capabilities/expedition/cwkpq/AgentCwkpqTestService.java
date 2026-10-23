@@ -370,7 +370,8 @@ public final class AgentCwkpqTestService {
         AgentCwkpqRun run = session.fight() instanceof AgentCwkpqRun cwkpq ? cwkpq : null;
         PrimitiveCapabilityGateway gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
         List<String> lines = new ArrayList<>();
-        String flags = flags(event) + sigilText(operator);
+        String flags = flags(event) + sigilText(operator) + "; server clock "
+                + (System.currentTimeMillis() - net.server.Server.getInstance().getCurrentTime()) + " ms behind";
         log.info("CWKPQ why: {}", flags);
         lines.add(flags);
         for (AgentBossRunMember member : session.members()) {
@@ -388,7 +389,7 @@ public final class AgentCwkpqTestService {
                     + agent.getTotalMoveSpeedStat() + " jump " + agent.getTotalJumpStat()
                     + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")
                     + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
-                    + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
+                    + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target) + " set by " + entry.navigationDebugState().moveTargetSource())
                     + "; " + combatText(entry, agent)
                     + (agent.hasDisease(client.Disease.SEAL) ? " (sealed)" : "")
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)

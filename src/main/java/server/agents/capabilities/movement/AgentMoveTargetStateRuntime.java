@@ -24,6 +24,12 @@ public final class AgentMoveTargetStateRuntime {
     }
 
     public static void setMoveTarget(AgentRuntimeEntry entry, Point target, boolean precise) {
+        if (entry.navigationDebugState().tracingAir() && !entry.moveTargetState().targetEquals(target)) {
+            entry.navigationDebugState().noteMoveTargetSource(StackWalker.getInstance().walk(frames -> frames.skip(1)
+                    .limit(7).map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1)
+                            + "." + frame.getMethodName() + ":" + frame.getLineNumber())
+                    .collect(java.util.stream.Collectors.joining(" < "))));
+        }
         entry.moveTargetState().setTarget(target, precise);
     }
 
