@@ -54,12 +54,14 @@ final class AgentCwkpqUnityPlays {
             Archetype.BOWMAN, "ancestral bow", Archetype.MAGICIAN, "staff", Archetype.THIEF, "primal claw",
             Archetype.PIRATE, "forbidden gun"));
     /**
-     * Where a member stands to drop each weapon (C0 check 1c: the first ground point routed to whose own drop lands in
-     * the relic's area, reachable at base stats from the hall's spawn and every room return).
+     * Where a member stands to drop each weapon: 30-40 px inside the left edge of the relic's area, on the ground (and
+     * in the navigation region) of C0 check 1c's first routed point, so a drop from anywhere within DROP_REACH_PX lands
+     * inside it. C0's own points lay on the edge itself, and C9 live (2026-10-23) members stopped 3 px short of two of
+     * them: their drops would land outside and they stood there for good.
      */
-    static final Map<Integer, Point> DROP_SPOTS = Map.of(4_001_259, new Point(1093, -586),
-            4_001_258, new Point(1280, -415), 4_001_257, new Point(795, -916), 4_001_256, new Point(1343, -887),
-            4_001_260, new Point(1266, -565));
+    static final Map<Integer, Point> DROP_SPOTS = Map.of(4_001_259, new Point(1133, -589),
+            4_001_258, new Point(1310, -443), 4_001_257, new Point(835, -946), 4_001_256, new Point(1383, -903),
+            4_001_260, new Point(1306, -557));
     static final int THIEF_EYE = 6_108_004;
     static final int GUN_CHEST = 6_102_001;
     static final int DECOY_CHEST = 6_108_003;
@@ -103,17 +105,24 @@ final class AgentCwkpqUnityPlays {
         }
     }
 
-    /** Walks to its weapon's drop spot and drops it there, once its drop would land in the relic's area. */
+    /**
+     * Walks to its weapon's drop spot and drops it, as soon as it stands where its drop lands in the relic's area (on
+     * the way there too). At the spot with a drop that would still miss, it steps onto the spot itself.
+     */
     static void carry(AgentCwkpqPorts ports, AgentCwkpqRun run, Character member, int weapon, long nowMs) {
         AgentRuntimeEntry entry = ports.entry(member.getId());
         Point spot = DROP_SPOTS.get(weapon);
-        if (entry == null || spot == null || !AgentCwkpqStagePlays.standAt(ports, entry, member, spot, DROP_REACH_PX)
-                || !run.ready(member.getId(), nowMs)) {
+        if (entry == null || spot == null || !run.ready(member.getId(), nowMs)) {
             return;
         }
         Rectangle area = relicArea(ports, member, weapon);
-        Point landing = ports.gateway().predictDropLanding(member, member.getPosition());
-        if (area != null && landing != null && !area.contains(landing)) {
+        Point landing = area == null || !ports.gateway().grounded(member) ? null
+                : ports.gateway().predictDropLanding(member, member.getPosition());
+        boolean landsInArea = landing != null && area.contains(landing);
+        if (!landsInArea && !AgentCwkpqStagePlays.standAt(ports, entry, member, spot, DROP_REACH_PX)) {
+            return;
+        }
+        if (!landsInArea && landing != null) {
             ports.gateway().navigate(entry, spot, true);
             return;
         }

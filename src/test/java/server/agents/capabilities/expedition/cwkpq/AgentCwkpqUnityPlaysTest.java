@@ -8,6 +8,8 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils.Archetype;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 import server.maps.MapItem;
@@ -26,6 +28,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -146,14 +149,27 @@ class AgentCwkpqUnityPlaysTest {
     @Test
     void aDropThatWouldLandOutsideTheAreaIsNotMade() {
         relic(6_109_005, new Rectangle(1093, -665, 200, 211));
-        Character orrin = member(10, "Orrin", Job.HERO, new Point(1093, -586));
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(1130, -589));
         when(gateway.itemCount(orrin, SWORD)).thenReturn(1);
         when(gateway.predictDropLanding(eq(orrin), any())).thenReturn(new Point(1093, -300));
 
         AgentCwkpqUnityPlays.hall(ports, List.of(orrin), event, run, 1_000L);
 
         assertEquals(List.of(), dropped);
-        verify(gateway).navigate(entries.get(10), new Point(1093, -586), true);
+        verify(gateway).navigate(entries.get(10), new Point(1133, -589), true);
+    }
+
+    @Test
+    void aHolderPassingThroughTheAreaDropsOnTheWay() {
+        relic(6_109_005, new Rectangle(1093, -665, 200, 211));
+        Character orrin = member(10, "Orrin", Job.HERO, new Point(1250, -575));
+        when(gateway.itemCount(orrin, SWORD)).thenReturn(1);
+        when(gateway.predictDropLanding(eq(orrin), any())).thenReturn(new Point(1250, -575));
+
+        AgentCwkpqUnityPlays.hall(ports, List.of(orrin), event, run, 1_000L);
+
+        assertEquals(List.of("Orrin:" + SWORD), dropped);
+        verify(gateway, never()).navigate(any(), any(), anyBoolean());
     }
 
     @Test
@@ -286,13 +302,25 @@ class AgentCwkpqUnityPlaysTest {
         assertEquals(List.of("Kyra: got the forbidden gun, taking it to its relic"), party);
     }
 
+    /**
+     * On the hall's own geometry, a drop from any ground within DROP_REACH_PX of each spot lands in its relic's area
+     * (the areas: each relic's position in Map.wz plus its drop event's lt/rb in Reactor.wz).
+     */
     @Test
-    void theDropSpotsLieInTheirRelicsAreas() {
+    void aDropFromAnywhereNearEachSpotLandsInItsRelicsArea() {
+        MapleMap hall = AgentNavigationMapLoader.loadMapGeometry(610_030_500);
+        hall.generateMapDropRangeCache();
         Map<Integer, Rectangle> areas = Map.of(4_001_259, new Rectangle(1093, -665, 200, 211),
                 4_001_258, new Rectangle(1280, -453, 164, 137), 4_001_257, new Rectangle(795, -959, 199, 128),
                 4_001_256, new Rectangle(1343, -1027, 191, 167), 4_001_260, new Rectangle(1266, -607, 214, 101));
-        AgentCwkpqUnityPlays.DROP_SPOTS.forEach((weapon, spot) -> assertTrue(areas.get(weapon).contains(spot),
-                weapon + " at " + spot));
+        AgentCwkpqUnityPlays.DROP_SPOTS.forEach((weapon, spot) -> {
+            for (int dx = -AgentCwkpqUnityPlays.DROP_REACH_PX; dx <= AgentCwkpqUnityPlays.DROP_REACH_PX; dx++) {
+                Point ground = AgentGroundingService.findGroundPoint(hall, new Point(spot.x + dx, spot.y - 30));
+                Point landing = ground == null ? null : hall.calcDropPos(new Point(ground), new Point(ground));
+                assertTrue(landing != null && areas.get(weapon).contains(landing),
+                        weapon + " dropped " + dx + " px from " + spot + " lands at " + landing);
+            }
+        });
         assertEquals(5, AgentCwkpqUnityPlays.WEAPONS.size());
     }
 
