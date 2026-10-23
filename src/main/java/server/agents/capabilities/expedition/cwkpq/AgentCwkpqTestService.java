@@ -241,7 +241,10 @@ public final class AgentCwkpqTestService {
     /**
      * "checkpoint <stage>": the run must be inside CWKPQ and short of that stage. The flags of every stage before it
      * are set as their clears set them, the stage counter to the one before, then everyone alive in the event moves to
-     * the stage's first portal inside the instance (never a !warp). The down stay where they fell.
+     * the stage's first portal inside the instance (never a !warp). The down stay where they fell. A run already on
+     * that stage (its companions went ahead) only brings everyone alive still behind (C9 live 2026-10-23: the
+     * companions took the hall's exit and left the leader in the hall; a !warpto to them took him out of the event and
+     * ended the run).
      */
     private static List<String> checkpoint(Character operator, String[] params) {
         Checkpoint target = params.length < 2 ? null : Checkpoint.of(params[1]);
@@ -252,15 +255,22 @@ public final class AgentCwkpqTestService {
         if (event == null) {
             return List.of("Enter CWKPQ through Jack before a checkpoint.");
         }
-        if (event.getIntProperty("current_instance") >= target.instance) {
-            return List.of("The run is already at or past that stage.");
+        int at = event.getIntProperty("current_instance");
+        if (at > target.instance) {
+            return List.of("The run is already past that stage.");
         }
-        prepare(event, target);
+        boolean catchUp = at == target.instance;
+        if (!catchUp) {
+            prepare(event, target);
+        }
         MapleMap map = event.getMapInstance(target.mapId);
         Portal portal = map.getPortal(0);
         int moved = 0;
         int down = 0;
         for (Character player : new ArrayList<>(event.getPlayers())) {
+            if (catchUp && player.getMapId() == target.mapId) {
+                continue;
+            }
             if (!player.isAlive()) {
                 down++;
                 continue;
@@ -274,6 +284,10 @@ public final class AgentCwkpqTestService {
         }
         log.info("CWKPQ checkpoint: event={} stage={} moved={} down={} by={}", event.getName(),
                 target.name().toLowerCase(Locale.ROOT), moved, down, operator.getId());
+        if (catchUp) {
+            return List.of("CWKPQ checkpoint: the run is on the " + target.name().toLowerCase(Locale.ROOT) + "; "
+                    + moved + " caught up" + (down > 0 ? ", " + down + " down stay where they fell" : "") + ".");
+        }
         return List.of("CWKPQ checkpoint: " + moved + " moved to the " + target.name().toLowerCase(Locale.ROOT)
                 + (down > 0 ? ", " + down + " down stay where they fell" : "")
                 + ". Earlier stages are skipped for this run only.");

@@ -118,9 +118,32 @@ class AgentCwkpqTestServiceTest {
     }
 
     @Test
+    void aRunAlreadyOnTheStageBringsOnlyThoseStillBehind() {
+        MapleMap council = mock(MapleMap.class);
+        Portal start = mock(Portal.class);
+        when(start.getPosition()).thenReturn(new Point(0, 0));
+        when(council.getPortal(0)).thenReturn(start);
+        when(event.getMapInstance(610_030_600)).thenReturn(council);
+        Character ahead = mock(Character.class);
+        when(ahead.getMapId()).thenReturn(610_030_600);
+        when(operator.getMapId()).thenReturn(610_030_500);
+        when(operator.isAlive()).thenReturn(true);
+        when(event.getPlayers()).thenReturn(List.of(operator, ahead));
+        flags.put("current_instance", 5);
+        flags.put("glpq5", 5);
+
+        assertEquals(List.of("CWKPQ checkpoint: the run is on the council; 1 caught up."),
+                AgentCwkpqTestService.execute(operator, new String[]{"checkpoint", "council"}, 0L));
+
+        verify(operator).changeMap(council, start);
+        verify(ahead, never()).changeMap(any(MapleMap.class), any(Portal.class));
+        assertEquals(5, flags.get("current_instance"));
+    }
+
+    @Test
     void neverBackwardsNorOutsideARun() {
         flags.put("current_instance", 3);
-        assertEquals(List.of("The run is already at or past that stage."),
+        assertEquals(List.of("The run is already past that stage."),
                 AgentCwkpqTestService.execute(operator, new String[]{"checkpoint", "agility"}, 0L));
         assertEquals(3, flags.get("current_instance"));
 
