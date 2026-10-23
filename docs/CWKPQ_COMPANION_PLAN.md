@@ -297,11 +297,16 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
   - A member inside a touch by the wall was sent to the gap beyond it (Storm383, 0 attacks for four minutes, then dead).
     A gap with no floor under it now gives way to the one on the other side (the platform comes from the member's
     navigation-graph region).
-  - NonThePriest ran out of stars: New Leaf City's store sells no stars, so his restock had nowhere to go. Mo
-    (9201099, Phantom Forest 610010004) is in the supplier catalog now (Icicles, arrows, Unagi, Pure Water).
   - CWKPQ had no boss supply standards, so companions came in with the party quest default (20/25 potions, 500
     projectiles): Storm383, Hadrik and iWantPanda died in the Council Hall with none left, and NonThePriest threw 2,400
-    stars in 18 minutes. `BOSS_STANDARDS` cwkpq=600/600 and `AMMO_STANDARDS` cwkpq=4800 now.
+    stars in 18 minutes. `BOSS_STANDARDS` cwkpq=600/600 and `AMMO_STANDARDS` cwkpq=4800 now. Checked live: passing
+    through New Leaf City (the approach town; trips out of Jack's hall are held) four of five bought up to 600/600, and
+    New Leaf City's store recharged NonThePriest's Ilbis to 5,200 (it sells no stars, but recharges stacks he owns).
+    Mo (9201099, Phantom Forest 610010004) is in the supplier catalog too: the only star seller near the keep, for a
+    claw user with no stacks left, and a potion shop for keystone errands in Crimsonwood.
+  - The boss gate fires when the owner enters Jack's hall, not when they log in there: logged in beside Jack, the
+    crew said nothing until he walked out and back. iWantPanda's readiness trip expired while an earlier general potion
+    visit of hers was still open (she retries five minutes later).
   - **Stage 6 and the Armory pass live (2026-10-23 14:29-15:23, from the Council checkpoint):** guards 4 minutes,
     the Grandmasters about 30 minutes at 700% (Hsalf, physical defence 8000, last, with two fighters left), the third
     statue talk cleared the keep, the companions walked through the Secret Chamber, waited for the leader, and broke
