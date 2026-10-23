@@ -145,13 +145,19 @@ public final class AgentCwkpqTestService {
     }
 
     /** Whether the Agent grinds or follows, and the monster its grind is after. */
-    private static String combatText(AgentRuntimeEntry entry) {
+    private static String combatText(AgentRuntimeEntry entry, Character agent) {
         String mode = server.agents.runtime.AgentModeStateRuntime.grinding(entry) ? "grinding"
                 : server.agents.runtime.AgentModeStateRuntime.following(entry) ? "following" : "idle";
         server.life.Monster mob = server.agents.capabilities.combat.AgentGrindTargetStateRuntime.target(entry);
         String text = "combat: " + mode + (mob == null ? ", no target"
                 : ", target " + mob.getId() + " at " + AgentCwkpqStagePlays.pointText(mob.getPosition())
                 + (mob.isAlive() ? "" : " (dead)"));
+        if (mob != null) {
+            boolean magic = agent.getJob().getId() / 100 % 10 == 2;
+            text += String.format(Locale.ROOT, " (accuracy %d, hits %.0f%%)",
+                    server.combat.CombatFormulaProvider.getInstance().getTotalAccuracy(agent),
+                    100 * server.combat.CombatFormulaProvider.getInstance().calculateMobHitChance(agent, mob, magic));
+        }
         var decision = entry.capabilityStates()
                 .find(server.agents.capabilities.combat.AgentCombatDecisionTraceState.STATE_KEY)
                 .map(server.agents.capabilities.combat.AgentCombatDecisionTraceState::snapshot).orElse(null);
@@ -369,7 +375,7 @@ public final class AgentCwkpqTestService {
                     + (agent.getBuffedValue(client.BuffStat.SPEED) != null ? " hasted" : "")
                     + "; job: " + (run == null ? "-" : String.valueOf(run.roleOf(agent.getId())))
                     + "; walking to " + (target == null ? "nothing" : AgentCwkpqStagePlays.pointText(target))
-                    + "; " + combatText(entry)
+                    + "; " + combatText(entry, agent)
                     + (agent.hasDisease(client.Disease.SEAL) ? " (sealed)" : "")
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
                     + " goal " + entry.navigationDebugState().goalText()
