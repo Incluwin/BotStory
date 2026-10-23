@@ -105,6 +105,12 @@ public final class AgentMovementStateRuntime {
     }
 
     public static void setInAir(AgentRuntimeEntry entry, boolean inAir) {
+        if (inAir && entry.navigationDebugState().tracingAir() && !entry.movementPhysicsState().inAir()) {
+            entry.navigationDebugState().noteAirSource(StackWalker.getInstance().walk(frames -> frames.skip(1)
+                    .limit(4).map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1)
+                            + "." + frame.getMethodName() + ":" + frame.getLineNumber())
+                    .collect(java.util.stream.Collectors.joining(" < "))));
+        }
         entry.movementPhysicsState().setInAir(inAir);
     }
 

@@ -12,6 +12,9 @@ public final class AgentNavigationDebugState {
     private boolean hasGoal;
     private boolean goalInAir;
     private boolean goalClimbing;
+    /** Debug only (!cwkpqtest why): when on, where the Agent last went from grounded to in the air. */
+    private volatile boolean tracingAir;
+    private volatile String airSource = "-";
 
     public String lastDecision() {
         return lastDecision;
@@ -45,6 +48,22 @@ public final class AgentNavigationDebugState {
         goalStartRegionId = startRegionId;
         goalTargetRegionId = targetRegionId;
         hasGoal = true;
+    }
+
+    public boolean tracingAir() {
+        return tracingAir;
+    }
+
+    public void traceAir() {
+        tracingAir = true;
+    }
+
+    public void noteAirSource(String source) {
+        airSource = source;
+    }
+
+    public String airSource() {
+        return airSource;
     }
 
     /** "(x,y) region s->t" for the last goal, or "-" before any. */

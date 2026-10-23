@@ -356,6 +356,7 @@ public final class AgentCwkpqTestService {
             if (agent == null || entry == null) {
                 continue;
             }
+            entry.navigationDebugState().traceAir(); // from now on the next why names where it last left the ground
             Point target = AgentMoveTargetStateRuntime.moveTarget(entry);
             String line = agent.getName() + " " + member.phase().name().toLowerCase(Locale.ROOT) + " on "
                     + agent.getMapId() + " (" + agent.getMap().countMonsters() + " monsters) at "
@@ -368,6 +369,7 @@ public final class AgentCwkpqTestService {
                     + "; " + combatText(entry)
                     + "; nav: " + AgentNavigationDebugStateRuntime.decisionWithBlockReason(entry)
                     + " goal " + entry.navigationDebugState().goalText()
+                    + " air from " + entry.navigationDebugState().airSource()
                     + "; physics: " + (entry.movementPhysicsState().inAir() ? "in the air" : "grounded")
                     + " at (" + Math.round(entry.movementPhysicsState().physicsX()) + ","
                     + Math.round(entry.movementPhysicsState().physicsY()) + ") vy "
