@@ -170,6 +170,19 @@ class CompanionBossRunsCwkpqTest {
                 .anyMatch(wording -> wording.replace("{name}", name == null ? "" : name).equals(line));
     }
 
+    /** C9 live 2026-10-22: three of the thieves' room's eyes need Flash Jump; Jack says so when no thief holds it. */
+    @Test
+    void jackCautionsAListWhoseThievesCannotFlashJump() {
+        Character shadower = member(Job.SHADOWER, 4_211_001);
+        Character nightLord = member(Job.NIGHTLORD, 4_111_005);
+        when(nightLord.getSkillLevel(4_111_006)).thenReturn(20); // Flash Jump
+        Character hero = member(Job.HERO, 1_111_008);
+
+        assertEquals(JackLines.NO_FLASH_JUMP, CompanionBossRuns.cwkpqThiefReach(List.of(hero, shadower)));
+        assertNull(CompanionBossRuns.cwkpqThiefReach(List.of(hero, shadower, nightLord)));
+        assertNull(CompanionBossRuns.cwkpqThiefReach(List.of(hero)), "no thief: the start check refuses that list");
+    }
+
     private static void turns(Character member, Job job, int skillId) {
         when(member.getJob()).thenReturn(job);
         when(member.getSkillLevel(anyInt())).thenReturn(0);

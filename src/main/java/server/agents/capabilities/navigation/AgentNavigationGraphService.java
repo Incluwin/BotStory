@@ -12,6 +12,7 @@ import server.agents.physics.AgentWallCollisionPolicy;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.partyquest.lpq.AgentLpqMovementSkillPolicy;
+import server.agents.capabilities.expedition.cwkpq.AgentCwkpqMovementSkillPolicy;
 import server.agents.capabilities.partyquest.rjpq.AgentRjpqMovementSkillPolicy;
 
 import org.slf4j.Logger;
@@ -519,12 +520,16 @@ public final class AgentNavigationGraphService {
 
     private static boolean satisfiesScopedMovementRequirements(AgentNavigationGraph graph) {
         if (!AgentLpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)
-                && !AgentRjpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)) {
+                && !AgentRjpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)
+                && !AgentCwkpqMovementSkillPolicy.authorsTeleportEdges(graph.mapId)
+                && !AgentCwkpqMovementSkillPolicy.authorsFlashJumpEdges(graph.mapId)) {
             return true;
         }
+        AgentNavigationGraph.EdgeType scoped = AgentCwkpqMovementSkillPolicy.authorsFlashJumpEdges(graph.mapId)
+                ? AgentNavigationGraph.EdgeType.FLASH_JUMP : AgentNavigationGraph.EdgeType.TELEPORT;
         return graph.regions.stream()
                 .flatMap(region -> graph.getOutgoing(region.id).stream())
-                .anyMatch(edge -> edge.type == AgentNavigationGraph.EdgeType.TELEPORT);
+                .anyMatch(edge -> edge.type == scoped);
     }
 
     private static AgentNavigationGraph loadGraph(GraphCacheKey key) {
@@ -1266,12 +1271,14 @@ public final class AgentNavigationGraphService {
                 if (server.agents.capabilities.movement.AgentMovementSkillConfig
                         .TELEPORT_MODE.visibleToShadowRouting()
                         || AgentLpqMovementSkillPolicy.authorsTeleportEdges(map.getId())
-                        || AgentRjpqMovementSkillPolicy.authorsTeleportEdges(map.getId())) {
+                        || AgentRjpqMovementSkillPolicy.authorsTeleportEdges(map.getId())
+                        || AgentCwkpqMovementSkillPolicy.authorsTeleportEdges(map.getId())) {
                     addTeleportEdges(map, from, regionsById, regionIdByFootholdId,
                             anchor, outgoing, edgeKeys);
                 }
                 if (server.agents.capabilities.movement.AgentMovementSkillConfig
-                        .FLASH_JUMP_MODE.visibleToShadowRouting()) {
+                        .FLASH_JUMP_MODE.visibleToShadowRouting()
+                        || AgentCwkpqMovementSkillPolicy.authorsFlashJumpEdges(map.getId())) {
                     addFlashJumpEdges(map, from, regionsById, regionIdByFootholdId,
                             anchor, outgoing, edgeKeys, movementProfile);
                 }

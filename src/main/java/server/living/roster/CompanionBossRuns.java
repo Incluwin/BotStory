@@ -4,6 +4,8 @@ import client.Character;
 import client.Client;
 import config.LivingWorldConfig;
 import constants.skills.Cleric;
+import constants.skills.Hermit;
+import constants.skills.NightWalker;
 import net.server.channel.Channel;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -1330,8 +1332,10 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return null;
         }
         String bags = cwkpqFullBags(expedition.getActiveMembers());
+        String reach = cwkpqThiefReach(expedition.getActiveMembers());
+        String cautions = bags == null ? reach : reach == null ? bags : bags + "\r\n" + reach;
         if (!world.config().COMPANION_PQ_CLEAR_TIME) {
-            return bags;
+            return cautions;
         }
         CwkpqClearTime.Shown shown = CwkpqClearTime.show(leader, expedition.getActiveMembers(),
                 CwkpqClearTime.Pace.live(world.partyQuests() == null ? null : world.partyQuests().paceLedger()),
@@ -1343,7 +1347,25 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             cwkpqLastShown.remove(leader.getId());
         }
         String time = shown.text();
-        return time == null ? bags : bags == null ? time : time + "\r\n" + bags;
+        return time == null ? cautions : cautions == null ? time : time + "\r\n" + cautions;
+    }
+
+    /**
+     * 2026-10-22 (CWKPQ C9): Jack's caution when the list has thieves and none of them, human or companion, holds Flash
+     * Jump (JackLines.NO_FLASH_JUMP); null otherwise. With no thief at all the start check refuses the list already.
+     */
+    static String cwkpqThiefReach(List<Character> members) {
+        boolean thief = false;
+        for (Character member : members) {
+            if (member.getJob() != null
+                    && AgentCwkpqSigils.archetypeOf(member.getJob().getId()) == AgentCwkpqSigils.Archetype.THIEF) {
+                thief = true;
+                if (member.getSkillLevel(Hermit.FLASH_JUMP) > 0 || member.getSkillLevel(NightWalker.FLASH_JUMP) > 0) {
+                    return null;
+                }
+            }
+        }
+        return thief ? JackLines.NO_FLASH_JUMP : null;
     }
 
     /**

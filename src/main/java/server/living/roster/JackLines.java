@@ -62,6 +62,12 @@ final class JackLines {
      * weapon and no chest's gun.
      */
     static final String FULL_BAGS = "#b%s#k %s no room in their Etc bag for the keep's weapons. Make some first.";
+    /**
+     * 2026-10-22 (CWKPQ C9): three of the thieves' room's five eyes sit where only Flash Jump reaches (the offline graph:
+     * no walk or jump gets there, even hasted to 160/120), so a list whose thieves hold none cannot break them.
+     */
+    static final String NO_FLASH_JUMP = "None of your thieves can #bFlash Jump#k. Three of the eyes in the thieves'"
+            + " room are out of reach without it.";
 
     private JackLines() {
     }
