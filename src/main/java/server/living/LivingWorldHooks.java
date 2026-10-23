@@ -807,6 +807,8 @@ public final class LivingWorldHooks {
                 return false;
             }
             Character resident = world.markers().hitboxOwner(clicker, objectId);
+            log.info("living world: {} clicked hitbox {} on map {} (resident {})", clicker.getName(), objectId,
+                    clicker.getMapId(), resident == null ? "none" : resident.getName());
             if (resident == null || !world.dialogue().onCharacterClicked(clicker, resident)) {
                 clicker.sendPacket(tools.PacketCreator.enableActions());
             }
