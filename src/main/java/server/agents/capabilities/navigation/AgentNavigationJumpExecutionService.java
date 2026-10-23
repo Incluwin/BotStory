@@ -44,6 +44,14 @@ public final class AgentNavigationJumpExecutionService {
         AgentNavigationDebugStateRuntime.clearLastEdgeBlockReason(entry);
         AgentNavigationEdgeExecutionStateService.setEdgeExecutionTarget(entry, edge);
         AgentJumpActionService.initiateJump(entry, agent, edge.launchStepX);
+        if (entry.navigationDebugState().tracingAir()) {
+            entry.navigationDebugState().noteAirSource("jump edge " + edge.fromRegionId + "->" + edge.toRegionId
+                    + " from (" + edge.startPoint.x + "," + edge.startPoint.y + ") to (" + edge.endPoint.x + ","
+                    + edge.endPoint.y + ") step " + edge.launchStepX + " at (" + agentPos.x + "," + agentPos.y
+                    + ") toward goal " + entry.navigationDebugState().goalText() + ", planned "
+                    + AgentNavigationDebugStateRuntime.plannedNavigationTargetPosition(entry) + " region "
+                    + AgentNavigationDebugStateRuntime.navTargetRegionId(entry));
+        }
         return true;
     }
 
