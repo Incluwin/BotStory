@@ -13,6 +13,7 @@ import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.mobcontrol.AgentBossScope;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
@@ -563,6 +564,12 @@ public final class AgentBossPriorityFight implements AgentBossFight {
      * P20: keeps a ranged or magic member to {@code band} (null: no keep-out part lives, so its boundary goes). Outside
      * the band it walks in and spends the tick (true); inside, its horizontal boundary is set to the band, once per
      * change, and it fights on (false).
+     *
+     * <p>2026-10-16 (ported from feat/pinkbean-ledge-reach e822bcc9d on 2026-10-23, CWKPQ C9): it walks to
+     * {@link Ports#walkArrivalPx} inside the edge it stands beyond (at most to the band's middle, and then precisely),
+     * since a walk ends once that near its target. Aimed at the edge itself, the walk of a member standing that close
+     * outside it ended where it began, and every tick sent it again instead of a fight: ranged members up to 30 px past
+     * Pink Bean's keep-outs landed 0-3 attacks a minute, and NonThePriest none for five minutes beside Rellik.</p>
      */
     private boolean keepOut(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member,
                             MapleMap map, int[] band) {
@@ -578,9 +585,10 @@ public final class AgentBossPriorityFight implements AgentBossFight {
             if (bands.remove(id) != null) {
                 gateway.clearHorizontalBoundary(entry);
             }
-            Point inside = new Point(Math.max(band[0], Math.min(band[1], at.x)), at.y);
+            long inset = Math.min(ports.walkArrivalPx(), ((long) band[1] - band[0]) / 2);
+            Point inside = new Point(clamp(at.x < band[0] ? band[0] + inset : band[1] - inset), at.y);
             Point ground = gateway.groundPoint(map, inside);
-            gateway.navigate(entry, ground != null ? ground : inside, false);
+            gateway.navigate(entry, ground != null ? ground : inside, inset < ports.walkArrivalPx());
             return true;
         }
         int[] was = bands.put(id, new int[] {band[0], band[1], map.getId()});
@@ -818,7 +826,17 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         default void heldLastStand(Character member) {
         }
 
+        /** 2026-10-16: how near its target a member's walk ends (STOP_DIST). */
+        default int walkArrivalPx() {
+            return 30;
+        }
+
         Ports LIVE = new Ports() {
+            @Override
+            public int walkArrivalPx() {
+                return AgentMovementPhysicsConfig.configuredStopDist();
+            }
+
             @Override
             public int hpPotions(Character member) {
                 return gateway().hpPotionCount(member);

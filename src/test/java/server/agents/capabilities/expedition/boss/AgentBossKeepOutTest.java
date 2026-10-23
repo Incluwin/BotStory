@@ -138,7 +138,8 @@ class AgentBossKeepOutTest {
         mobs(BATTLE, mob(SOLOMON, 5), mob(PINK_BEAN, 300));
         AgentRuntimeEntry thane = entry(10);
         Character member = member(10, BATTLE, new Point(-500, -42));
-        Point edge = new Point(5 - 200 + margin, -42);
+        // 30 px inside the edge: a walk ends within STOP_DIST (30) of its target
+        Point edge = new Point(5 - 200 + margin + 30, -42);
         when(gateway.groundPoint(any(), eq(edge))).thenReturn(edge);
 
         fight.tick(List.of(member), event, 0L);
