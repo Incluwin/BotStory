@@ -114,6 +114,14 @@ class AgentPotionSupplierCatalogTest {
     }
 
     @Test
+    void moInThePhantomForestSellsTheStarsACrimsonwoodRunRestocksFrom() {
+        // CWKPQ C9 (2026-10-23): NonThePriest ran out of stars in the Council Hall; New Leaf City's store sells arrows
+        // but no stars, and Mo sells Icicles (2070010) besides Unagi and Pure Water (db/data/102-shopitems-data.sql)
+        assertTrue(AgentPotionSupplierCatalog.suppliers().contains(
+                new AgentPotionSupplierCatalog.Supplier(610010004, 9201099, "Phantom Forest")));
+    }
+
+    @Test
     void antTunnelParksMobileStoreIsTheLastEntryTheStopOnTheWayDownToEasyBalrog() {
         // fix L7 (2026-10-08): no shop is in reach of Mu Young's room; this store on the walk down sells Unagi
         // (2022003) and Pure Water (2022000) (db/data/102-shopitems-data.sql), appended so earlier ties break as before
