@@ -2,7 +2,8 @@
 # an existing .env is kept and only its blank database login is filled in.
 #   1. Java 21 or newer (offers winget install of Amazon Corretto 21)
 #   2. MySQL 8 on port 3306: an installed server, or one this script starts in Docker
-#   3. .env with the database login (DB_USER, DB_PASS), checked against MySQL
+#   3. .env with the database login (DB_USER, DB_PASS), checked against MySQL, and MOD_FUSION_ANVIL=on
+#      for the BotStory client installer (kept when .env already gives it a value)
 #   4. the first build (target\Cosmic.jar)
 param([switch]$SkipBuild)
 
@@ -167,6 +168,16 @@ Set-EnvValue 'DB_USER' $dbUser
 Set-EnvValue 'DB_PASS' $dbPass
 Say 'Saved the database login in .env.'
 
+# The BotStory client installer's DLL always reads an item's Fusion Anvil field, so the server must send it.
+# A value already in .env wins (MOD_FUSION_ANVIL=off for a plain kaentake client).
+$anvil = Get-EnvValue 'MOD_FUSION_ANVIL'
+if (-not $anvil) {
+    Set-EnvValue 'MOD_FUSION_ANVIL' 'on'
+    Say 'Set MOD_FUSION_ANVIL=on in .env, for the BotStory client installer.'
+} else {
+    Say "Keeping MOD_FUSION_ANVIL=$anvil from .env."
+}
+
 # --- 4. First build -----------------------------------------------------------------------------
 if (-not $SkipBuild) {
     Say 'Building the server. The first build downloads its libraries and takes a few minutes...'
@@ -177,7 +188,8 @@ if (-not $SkipBuild) {
 
 Say ''
 Say 'Setup is done. Start the server with start-server.bat; it is ready when the window says'
-Say '"Cosmic is now online". Then set up the game client: docs/SETUP.md, section "The game client".'
+Say '"Cosmic is now online". Then set up the game client: docs/SETUP.md, section "The game client"'
+Say '(install v83 with your own WZ files, then the BotStory client installer, installer\README.md).'
 Say 'Log in as admin / admin (its character Admin is a GM), or type any new username and password:'
 Say 'accounts are created on first login. Change the admin password before other people connect.'
 if (Confirm-Step 'Start the server now?') {

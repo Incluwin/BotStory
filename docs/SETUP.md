@@ -108,26 +108,34 @@ The server creates the `cosmic` database on its first start (`createDatabaseIfNo
 
 ## 2. The game client
 
-BotStory's client is the stock Global MapleStory v83 client. The steps below make one from public
-files (P0nk's v83 setup, `cosmic-wz` and kaentake v3.4.1). It plays on a server that runs
-`config.yaml` as shipped. Tested 2026-10-18 with a new account and character:
+BotStory's client is the stock Global MapleStory v83 client with the Cosmic WZ files (or a
+Community Repack set). There are two ways to make one from public files:
 
-- entering the game;
-- a Resident's menu, quest log and quest markers;
-- accepting a Resident quest and handing it in.
+- **The BotStory client installer** ([`installer/`](../installer/README.md)). There is no prebuilt
+  download yet: build it first ([Building](../installer/README.md#building)). Do step 1 yourself
+  too: the installer downloads nothing. It then checks which WZ set the folder has, does the
+  cleanup in step 1 and step 3, and adds BotStory's launcher
+  ([BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake)) pointed at your server: its
+  Features page, the Crew window and the quest markers over Residents. Given your server folder, it
+  also offers step 4 at the end; otherwise do step 4 yourself.
+- **By hand, with plain kaentake v3.4.1**: steps 1 to 5 below. Tested 2026-10-18 with a new
+  account and character: entering the game, a Resident's menu, quest log and quest markers, and
+  accepting a Resident quest and handing it in.
 
-Two server mods in `config.yaml` (`mods.SWITCHES`) are for the BotStory host's own client. They
-ship off, and must stay off for this client:
+Two server mods in `config.yaml` (`mods.SWITCHES`) decide which client a server serves:
 
-| Mod | When on | A client made from public files |
-|---|---|---|
-| `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Misreads every item and closes as soon as a character enters the game |
-| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands and SoloMapling's bots may hand out the 303 Community Repack equips | Closes when a character wearing any of them enters the game |
+| Mod | When on | Installer client | Plain kaentake client |
+|---|---|---|---|
+| `fusion_anvil` | Every equip carries its Fusion Anvil transmog id, and the Fusion Anvil works | Needs it **on**: its DLL always reads that id, so with it off it misreads every item | Needs it **off**: misreads every item and closes as soon as a character enters the game |
+| `botstory_wz` | Characters get an Evolving Ring (1112499-1112502), the Hunter's Codex becomes a cash medal, and GM commands and SoloMapling's bots may hand out the 303 Community Repack equips | Keep it off | Keep it off |
 
-The BotStory client needs both on (`MOD_FUSION_ANVIL=on` and `MOD_BOTSTORY_WZ=on` in `.env`): its
-kaentake DLL always reads the Fusion Anvil id, so with `fusion_anvil` off it misreads every item.
-A server therefore serves one kind of client at a time. The line `Server mods: ...` at server
-start shows both switches.
+Both ship off in `config.yaml`. `setup.bat` sets `MOD_FUSION_ANVIL=on` in `.env` when it is blank,
+for the installer client; for plain kaentake, set `MOD_FUSION_ANVIL=off` there. With Docker or a
+server started by hand, nothing sets it: put `MOD_FUSION_ANVIL=on` in `.env` yourself for the
+installer client (Docker passes it on; by hand, set it in the environment). `botstory_wz` is
+only for the BotStory host's own client, whose WZ files have those items: any other client closes
+when a character wearing one enters the game. A server serves one kind of client at a time. The
+line `Server mods: ...` at server start shows both switches.
 
 1. **Install v83 with the Cosmic WZ files.** From [P0nk/Cosmic-client](https://github.com/P0nk/Cosmic-client):
    1. Download `MapleGlobal-v83-setup.exe` and the 12 files in `cosmic-wz`. Open each file on
@@ -217,9 +225,9 @@ start shows both switches.
 
 ### What the public client does not have yet
 
-The BotStory host's own client adds Nexon-derived WZ content, which is not in this repository:
+The BotStory host's own client adds Nexon-derived WZ content, which is in neither public
+repository:
 
-- `Custom.wz` with the native Crew window, the head-height quest markers and the mob HP bar.
 - BotStory's item, skill and cash-shop edits, and the large quick-slot bar.
 - The Evolving Rings (`botstory_wz`).
 - Images for 303 equips the server took from the Community Repack (168 shoulder pads, 126
@@ -229,13 +237,13 @@ The BotStory host's own client adds Nexon-derived WZ content, which is not in th
   client such an item shows as an empty inventory slot. Double-clicking it closes the game,
   and a character wearing one closes the game at the character list.
 
-The BotStory build of kaentake is public as
-[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake), with no prebuilt download yet.
-It adds the Crew window, the client feature toggles, the feature handshake and the Fusion Anvil
-(`fusion_anvil`).
 `tools/wz-patcher/README.md` describes how that pack is applied.
 
-Without them, you manage companions with:
+The installer client has the rest of BotStory's client, from
+[BotStory-Kaentake](https://github.com/Incluwin/BotStory-Kaentake): its launcher and DLL (the
+Features page, the client feature toggles, the feature handshake and the Fusion Anvil,
+`fusion_anvil`) and its public `Custom.wz` (the native Crew window, the head-height quest markers
+and the mob HP bar). Plain kaentake has none of them; with it, you manage companions with:
 
 - the stock party window: invite calls a companion, expel benches it;
 - chat commands;
