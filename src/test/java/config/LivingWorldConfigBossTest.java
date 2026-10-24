@@ -75,13 +75,16 @@ class LivingWorldConfigBossTest {
         }
     }
 
-    /** Keys whose companion play is still being built, which ship off: Crimsonwood Keep (CWKPQ plan C3-C8). */
-    static final List<String> STILL_BUILT = List.of("cwkpq");
+    /**
+     * Keys whose companion play is still being built, which ship off: none since Crimsonwood Keep went on on
+     * 2026-10-23 (user), after its live check (CWKPQ plan C9) cleared the keep.
+     */
+    static final List<String> STILL_BUILT = List.of();
     /** Every boss the catalog knows but those, in its order: what config.yaml ships on since 2026-10-19. */
     static final String EVERY_BOSS = String.join(",",
             CompanionBossKeys.KNOWN.stream().filter(key -> !STILL_BUILT.contains(key)).toList());
     /** The expedition bosses (a sign-up list at an NPC), which take bench allies. */
-    static final String EXPEDITION_BOSSES = "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean";
+    static final String EXPEDITION_BOSSES = "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean,cwkpq";
 
     @Test
     void configYamlShipsEveryBossOnWithServerAuthorityAndSaysWhy() throws IOException {

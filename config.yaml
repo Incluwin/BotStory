@@ -981,8 +981,10 @@ living_world:
     # Timings: agent-engine.yaml AgentBossRunSession.
     # Every boss below is on by default since 2026-10-19 (user: turn on what was built); live results per boss are in
     # docs/COMPANION_BOSSING_P8.md .. P20.md. Take a key out of the list to turn that boss back to stock.
-    # "cwkpq" (Jack's Crimsonwood Keep expedition, docs/CWKPQ_COMPANION_PLAN.md) is known but not listed: companions
-    # sign up and go in, but its stages have no companion play yet. It goes on once they do.
+    # "cwkpq" (Jack's Crimsonwood Keep expedition, docs/CWKPQ_COMPANION_PLAN.md): companions with their own keystone
+    # sign up, play every stage and class room, and fight the Council Hall; the human leader talks to the Battle
+    # Statue. They top up in New Leaf City on the way in (no shop is in reach of Jack's hall). On since 2026-10-23
+    # (user): its live check (C9) cleared the keep and the Armory.
     # "zakum" (Adobis, P8): the arms, then the body; a companion that goes down waits in El Nath.
     # "balrog_normal" (Mu Young's Normal choice, P11): a Normal fight a companion signed up for is the server's own
     # (stock BalrogBattle.js for every other).
@@ -1013,7 +1015,7 @@ living_world:
     # "pinkbean" (P20): Pink Bean at the Forgotten Temple Manager, signed up as at Adobis. A companion that dies revives
     # inside, as a player does, and walks back in through the resurrection map; every death counts toward the stock
     # 5-death wipe and costs EXP. On since 2026-10-16 (user): its live check cleared on run 17.
-    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,zakum,balrog_normal,field_victoria,field_ossyria,field_ludus,field_mulung,field_nihal,latanica,neo_bergamot,neo_dunas,neo_aufheben,neo_oberon,neo_nibelung,papulatus,field_pianus,field_leafre,field_temple,field_zipangu,field_masteria,scarga,horntail,showa,pinkbean"
+    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog,zakum,balrog_normal,field_victoria,field_ossyria,field_ludus,field_mulung,field_nihal,latanica,neo_bergamot,neo_dunas,neo_aufheben,neo_oberon,neo_nibelung,papulatus,field_pianus,field_leafre,field_temple,field_zipangu,field_masteria,scarga,horntail,showa,pinkbean,cwkpq"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
     # COMPANION_BOSS_ENABLED_TYPES, the entry NPC also offers an owner on her list "Call allies from my bench...".
@@ -1023,12 +1025,13 @@ living_world:
     # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them. Bench allies come to every
     # expedition boss (a sign-up list at an NPC) since 2026-10-19 (user: turn on what was built); party bosses and field
     # groups have no list, so they take none. "easy_balrog" since 2026-10-08, "pinkbean" since 2026-10-16: allies come
-    # through Leafre's store toward Pink Bean's potion standard on their way in.
+    # through Leafre's store toward Pink Bean's potion standard on their way in. "cwkpq" since 2026-10-23: only an
+    # ally with its own Crimsonwood Keystone is called (CompanionKeystoneGate).
     # OWNERS_MAX: owners whose companions may sign up for one expedition (1 = Part A's one-owner rule).
     # HUMAN_SEATS: seats of the list's 30 that companions always leave free for players.
     # ALLY_WALK_OUT_MS: how long an ally walks to the room's way out after the run (Mu Young to the outPerrion portal
     # is about 1,300 px) before it goes where it stands.
-    COMPANION_BOSS_ALLY_TYPES: "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean"
+    COMPANION_BOSS_ALLY_TYPES: "easy_balrog,zakum,balrog_normal,scarga,horntail,showa,pinkbean,cwkpq"
     COMPANION_BOSS_OWNERS_MAX: 1
     COMPANION_BOSS_HUMAN_SEATS: 2
     COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
