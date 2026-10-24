@@ -93,6 +93,23 @@ public final class ContentAnswers {
             + " and starting Stemming the Tide with Jack in the Cavern of Pain; nothing drops it and no shop sells it;"
             + " the gate to Crimsonwood Keep's party quest takes it";
     private static final int[] JOB_LEVELS = {0, 10, 30, 70, 120};
+    /** A training answer says a guide's own line for the spot this often (else the spot templates). */
+    private static final double GUIDE_SAY_CHANCE = 0.5;
+    /** Guide claims per entity handed to the model with an opinion question. */
+    private static final int GUIDE_FACTS = 2;
+    private static final Set<String> SPOT_TOPICS = Set.of("training_spot");
+    private static final Set<String> HOW_TOPICS = Set.of("party_quest", "boss", "quest", "job_advance", "gear", "item_value",
+            "meso_making", "mechanic", "travel", "skill_use", "general_tip");
+    private static final Set<String> AP_TOPICS = Set.of("build_ap");
+    private static final Set<String> SP_TOPICS = Set.of("build_sp", "skill_use");
+    private static final Set<String> BUILD_TOPICS = Set.of("build_ap", "build_sp");
+    /** HOW_TO subjects in priority order: "zakum" is the boss before the helm. */
+    private static final List<EntityKind> HOW_TO_KINDS = List.of(EntityKind.PQ, EntityKind.MOB, EntityKind.QUEST, EntityKind.REGION,
+            EntityKind.MAP, EntityKind.NPC, EntityKind.ITEM);
+    /** Guide claims a reply chooses its line from (best first), and hands the model as facts. */
+    private static final int GUIDE_CHOICES = 3;
+    private static final Map<String, Integer> BRANCH_JOBS = Map.of("warrior", 100, "magician", 200, "bowman", 300, "thief", 400,
+            "pirate", 500);
     private static final int MAGICIAN_FIRST_JOB = 8;
     private static final List<EntityKind> ITEMS = List.of(EntityKind.ITEM);
     private static final List<EntityKind> MOBS = List.of(EntityKind.MOB);
@@ -213,6 +230,7 @@ public final class ContentAnswers {
     private static final AtomicLong clarified = new AtomicLong();
 
     private final Supplier<WorldKnowledge> knowledge;
+    private Supplier<GuideKnowledge> guides = GuideKnowledge::current;
     private final IntFunction<Rates> rates;
     private final IntFunction<PriceQuote> prices;
     private final KnowledgeHorizon horizon;
@@ -233,6 +251,12 @@ public final class ContentAnswers {
         this.horizon = new KnowledgeHorizon(horizonSlack);
         this.maxChars = maxChars;
         this.logUnresolved = logUnresolved;
+    }
+
+    /** Tests: answer with these guide claims instead of the published ones. */
+    ContentAnswers withGuides(Supplier<GuideKnowledge> source) {
+        this.guides = source;
+        return this;
     }
 
     /** The server's instance: the published {@link WorldKnowledge}, live World rates, config.yaml {@code knowledge:}. */
@@ -368,6 +392,7 @@ public final class ContentAnswers {
             case MAP_GOOD -> mapGood(c, shape);
             case RULES -> rules(c, shape);
             case OPINION -> opinion(c, shape);
+            case BUILD -> build(c, shape);
             default -> slotted(c, shape, shape.kind(), shape.slot());
         };
     }
@@ -770,6 +795,7 @@ public final class ContentAnswers {
             case ROUTE -> route(c, subject, shape);
             case PRICE -> price(c, subject);
             case LEVEL_OF -> levelAnswer(c, subject);
+            case HOW_TO -> howTo(c, subject);
             default -> new Composed(Outcome.SILENT, null, Map.of());
         };
     }
@@ -1403,7 +1429,8 @@ public final class ContentAnswers {
         boolean own = named == 0 || named == c.ask.asker().level();
         String region = c.k.map(c.ask.asker().mapId()).map(MapFact::region).orElse(null);
         List<Integer> maps = personalSpots(c, level);
-        if (maps != null) { // the spots it trained at, and the fields it knows, at that level
+        boolean personal = maps != null;
+        if (personal) { // the spots it trained at, and the fields it knows, at that level
             if (maps.isEmpty()) {
                 String key = level > c.ask.bot().level() ? own ? "train.high" : "train.high.other" : "train.unknown";
                 return reply(c, Outcome.DEFLECTED, shape, Kind.TRAIN_WHERE, null, null, line(c, key, Map.of()),
@@ -1424,11 +1451,23 @@ public final class ContentAnswers {
         }
         List<Integer> ranked = new ArrayList<>(maps);
         int asker = c.ask.asker().mapId();
-        // its own spots first (they may lie across the sea: those on the asker's side first), then the fields it knows
+        int job = trainJob(c, shape);
+        GuideKnowledge guide = guides.get();
+        Map<Integer, Integer> guided = guide.spotsFor(job, level);
+        if (!personal) { // the level horizon: the spots players recommend on this side of the sea
+            for (int map : guided.keySet()) {
+                if (!ranked.contains(map) && c.k.rides(asker, map) == 0 && c.k.names().entity(EntityKind.MAP, map).map(e -> knows(c, e)).orElse(false)) {
+                    ranked.add(map);
+                }
+            }
+        }
+        // its own spots first (they may lie across the sea: those on the asker's side first), then what players
+        // recommend, then the fields it knows
         boolean lived = known(c) != null;
         IntList trained = lived ? known(c).spots() : IntList.EMPTY;
         ranked.sort(Comparator.comparingInt((Integer map) -> lived && c.k.rides(asker, map) != 0 ? 1 : 0)
                 .thenComparingInt(map -> trained.contains(map) ? 0 : 1)
+                .thenComparingInt(map -> -guided.getOrDefault(map, 0))
                 .thenComparingInt(map -> c.k.fieldCapacity(map) > 0 ? 0 : 1)
                 .thenComparingInt(map -> hidden(c, map) ? 1 : 0) // a named field beats a Hidden Street nobody can find
                 .thenComparingInt(map -> Math.abs(c.k.map(map).map(MapFact::mobLevel).orElse(level) - level) / TRAIN_ABOVE)
@@ -1443,9 +1482,15 @@ public final class ContentAnswers {
                     .append(", lv ").append(c.k.map(ranked.get(i)).map(MapFact::mobLevel).orElse(0)).append(')');
         }
         put(facts, "content.training", spots.toString());
+        GuideKnowledge.Claim said = spotClaim(c, guide, pick, job, level);
+        if (said != null) {
+            put(facts, "content.guide", said.text());
+        }
         boolean victoria = "victoria".equals(region);
         String text;
-        if (victoria && level >= KPQ_MIN && level < KPQ_MAX && named == 0 && c.rng.nextDouble() < KPQ_CHANCE) {
+        if (said != null && said.say().length() <= maxChars - 6 && c.rng.nextDouble() < GUIDE_SAY_CHANCE) {
+            text = done(c, "guide", said.say());
+        } else if (victoria && level >= KPQ_MIN && level < KPQ_MAX && named == 0 && c.rng.nextDouble() < KPQ_CHANCE) {
             text = line(c, "train.kpq", Map.of()); // "kpq till 30": not to someone who is already 30
         } else {
             Map<String, String> vars = Map.of("map", placeSay(c, pick), "mobs", mainMobSay(c, pick), "lvl", String.valueOf(level),
@@ -1455,6 +1500,105 @@ public final class ContentAnswers {
         }
         ContentAnswer limited = limits(c, shape, Kind.TRAIN_WHERE, map);
         return limited != null ? limited : reply(c, Outcome.ANSWERED, shape, Kind.TRAIN_WHERE, null, map, text, facts);
+    }
+
+    /** "how do i do zakum", "tips for apq": what players say about it that this bot is far enough along to know. */
+    private Composed howTo(Context c, Entity subject) {
+        List<GuideKnowledge.Claim> claims = reachable(c, guides.get().about(subject.key(), c.ask.asker().jobId(), 0, HOW_TOPICS));
+        if (claims.isEmpty()) {
+            return new Composed(Outcome.SILENT, null, Map.of()); // nothing from the guides: as before
+        }
+        String own = switch (subject.kind()) { // "tips for kpq": how the party quest runs before the gear it gives
+            case PQ -> "party_quest";
+            case MOB -> "boss";
+            case QUEST -> "quest";
+            default -> "";
+        };
+        claims.sort(Comparator.comparingInt(claim -> claim.topic().equals(own) ? 0 : 1)); // stable: specific first within each
+        Map<String, String> facts = guideFacts(c, claims);
+        String say = guideSay(c, claims);
+        return say == null ? new Composed(Outcome.FACTS_ONLY, null, facts) : new Composed(Outcome.ANSWERED, done(c, "guide", say), facts);
+    }
+
+    /** "what do i put my ap in", "how much dex for a sin": the build guides give for the class at that level. */
+    private ContentAnswer build(Context c, Shape shape) {
+        GuideKnowledge guide = guides.get();
+        int job = trainJob(c, shape);
+        if (guide.isEmpty() || job < 0) {
+            return ContentAnswer.silent(shape); // no guides, or someone else's unnamed class
+        }
+        int level = shape.level() > 0 ? shape.level() : c.ask.asker().level();
+        Set<String> topics = switch (shape.topic()) {
+            case "ap" -> AP_TOPICS;
+            case "sp" -> SP_TOPICS;
+            default -> BUILD_TOPICS;
+        };
+        List<GuideKnowledge.Claim> claims = reachable(c, guide.forTopics(topics, job, level));
+        if (claims.isEmpty()) {
+            return reply(c, Outcome.DEFLECTED, shape, Kind.BUILD, null, null, line(c, "build.none", Map.of()),
+                    facts(c, "content.boundary", "you don't know a build for that class at that level; say so"));
+        }
+        Map<String, String> facts = guideFacts(c, claims);
+        String say = guideSay(c, claims);
+        return say == null ? new ContentAnswer(Outcome.FACTS_ONLY, Kind.BUILD, shape, null, null, null, facts)
+                : reply(c, Outcome.ANSWERED, shape, Kind.BUILD, null, null, done(c, "guide", say), facts);
+    }
+
+    /** The claims a bot of its level would have come across: none about levels past its horizon. */
+    private List<GuideKnowledge.Claim> reachable(Context c, List<GuideKnowledge.Claim> claims) {
+        List<GuideKnowledge.Claim> out = new ArrayList<>();
+        for (GuideKnowledge.Claim claim : claims) {
+            if (claim.min() == 0 || horizon.withinReach(knower(c), claim.min())) {
+                out.add(claim);
+            }
+        }
+        return out;
+    }
+
+    private Map<String, String> guideFacts(Context c, List<GuideKnowledge.Claim> claims) {
+        Map<String, String> facts = facts(c);
+        for (int i = 0; i < claims.size() && i < GUIDE_CHOICES; i++) {
+            put(facts, "content.guide." + i, claims.get(i).text());
+        }
+        return facts;
+    }
+
+    /** One of the best claims' chat lines that fits a reply, or null. */
+    private String guideSay(Context c, List<GuideKnowledge.Claim> claims) {
+        List<String> fit = new ArrayList<>();
+        for (int i = 0; i < claims.size() && i < GUIDE_CHOICES; i++) {
+            if (claims.get(i).say().length() <= maxChars - 6) {
+                fit.add(claims.get(i).say());
+            }
+        }
+        return fit.isEmpty() ? null : fit.get(c.rng.nextInt(fit.size()));
+    }
+
+    /** The class a training question is about: one named in the line, else the asker's own; -1 for someone else's unnamed class. */
+    private int trainJob(Context c, Shape shape) {
+        Optional<AliasCatalog.JobBranch> named = jobIn(c, NameIndex.normalize(shape.frame() == null ? "" : shape.frame()));
+        if (named.isPresent()) {
+            return BRANCH_JOBS.getOrDefault(named.get().branch(), -1);
+        }
+        return shape.forOther() ? -1 : c.ask.asker().jobId();
+    }
+
+    /** A guide's training claim about this map or its monsters for the class and level, or null. */
+    private GuideKnowledge.Claim spotClaim(Context c, GuideKnowledge guide, int map, int job, int level) {
+        if (guide.isEmpty()) {
+            return null;
+        }
+        List<GuideKnowledge.Claim> about = guide.about(c.k.names().entity(EntityKind.MAP, map).map(Entity::key).orElse(0L), job, level, SPOT_TOPICS);
+        if (!about.isEmpty()) {
+            return about.get(0);
+        }
+        for (int mob : c.k.map(map).map(MapFact::mobs).orElse(IntList.EMPTY)) {
+            about = guide.about(c.k.names().entity(EntityKind.MOB, mob).map(Entity::key).orElse(0L), job, level, SPOT_TOPICS);
+            if (!about.isEmpty()) {
+                return about.get(0);
+            }
+        }
+        return null;
     }
 
     private ContentAnswer jobAdvance(Context c, Shape shape, AliasCatalog.JobBranch chosen) {
@@ -1633,6 +1777,10 @@ public final class ContentAnswers {
             put(facts, "content.about." + entity.say().replace(' ', '_'), entity.say() + ": " + entity.kind().name().toLowerCase(Locale.ROOT)
                     + (level > 0 ? ", level " + level : "") + (entity.kind() == EntityKind.MAP || entity.kind() == EntityKind.REGION
                     ? ", " + placeFact(c, nearestMap(c, entity.ids())) : ""));
+            List<GuideKnowledge.Claim> claims = guides.get().about(entity.key(), c.ask.asker().jobId(), 0, Set.of());
+            for (int i = 0; i < claims.size() && i < GUIDE_FACTS; i++) { // what players say about it, for the model
+                put(facts, "content.guide." + entity.say().replace(' ', '_') + "." + i, claims.get(i).text());
+            }
         }
         return facts.size() <= 1 ? ContentAnswer.silent(shape)
                 : new ContentAnswer(Outcome.FACTS_ONLY, Kind.OPINION, shape, null, null, null, facts);
@@ -2248,6 +2396,7 @@ public final class ContentAnswers {
             case WHERE_IS -> WHERE;
             case ROUTE -> PLACES;
             case LEVEL_OF -> LEVELLED;
+            case HOW_TO -> HOW_TO_KINDS;
             default -> ANY;
         };
     }

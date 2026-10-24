@@ -121,11 +121,15 @@ public final class KnowledgeLoader {
             KnowledgeOverlay overlay = KnowledgeOverlayLoader.load();
             long overlayNanos = System.nanoTime() - started - fileNanos;
             WorldKnowledge previous = WorldKnowledge.current();
-            WorldKnowledge next = previous.ready() && previous.isFrom(file)
-                    ? previous.withOverlay(overlay, generation)
-                    : WorldKnowledge.build(file, travel, aliases, fields, overlay, generation);
+            boolean rebuilt = !(previous.ready() && previous.isFrom(file));
+            WorldKnowledge next = rebuilt
+                    ? WorldKnowledge.build(file, travel, aliases, fields, overlay, generation)
+                    : previous.withOverlay(overlay, generation);
             if (fileLoaded) {
                 checkStaleness(file); // before the publish: a content lint caches the stale list with the snapshot
+            }
+            if (rebuilt) {
+                loadGuides(dir.resolve(GuideImport.FILE_NAME), next); // composite refs resolve against this snapshot's names
             }
             WorldKnowledge.publish(next);
             lastOverlay = Instant.now() + " (" + overlayNanos / 1_000_000 + " ms)";
@@ -148,6 +152,22 @@ public final class KnowledgeLoader {
                 log.warn("[knowledge] load failed ({}): {}", WorldKnowledge.current().ready()
                         ? "keeping the previous snapshot" : "content answers stay off until a reload succeeds", failure.toString());
             }
+        }
+    }
+
+    /** The guide claims for a new snapshot; a broken guide file costs the guide answers, never the snapshot. */
+    private static void loadGuides(Path path, WorldKnowledge next) {
+        if (!YamlConfig.config.knowledge.GUIDES) {
+            GuideKnowledge.publish(GuideKnowledge.EMPTY);
+            return;
+        }
+        try {
+            GuideKnowledge guides = GuideKnowledge.load(path, next);
+            GuideKnowledge.publish(guides);
+            log.info("[knowledge] {}", guides.status());
+        } catch (Exception failure) {
+            GuideKnowledge.publish(GuideKnowledge.EMPTY);
+            log.warn("[knowledge] guide file {} not loaded: {}", path, failure.toString());
         }
     }
 
@@ -227,6 +247,7 @@ public final class KnowledgeLoader {
                 + " mobs, " + knowledge.items().size() + " items, " + knowledge.overlay().dropRows() + " drops, "
                 + knowledge.overlay().shopRows() + " shop rows, " + knowledge.names().aliasCount() + " aliases ("
                 + aliases.dropped.size() + " dropped), ~" + Math.max(1, knowledge.approxBytes() / MB) + " MB; "
-                + (stale.isEmpty() ? "fresh" : "stale: " + String.join(", ", stale)) + "; last overlay " + lastOverlay;
+                + (stale.isEmpty() ? "fresh" : "stale: " + String.join(", ", stale)) + "; last overlay " + lastOverlay
+                + "; " + GuideKnowledge.current().status();
     }
 }

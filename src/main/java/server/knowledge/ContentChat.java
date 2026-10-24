@@ -175,6 +175,9 @@ public final class ContentChat {
     /** The question shape of a line (null when it is not a content question); OPINION goes to the model with facts. */
     public static Kind kind(String line) {
         Shape shape = ContentQuestionDetector.shape(line);
+        if (shape != null && (shape.kind() == Kind.BUILD || shape.kind() == Kind.HOW_TO) && GuideKnowledge.current().isEmpty()) {
+            return null; // no guide claims loaded (or knowledge.GUIDES off): plain chat, as before
+        }
         return shape == null ? null : shape.kind();
     }
 

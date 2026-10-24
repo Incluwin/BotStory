@@ -31,6 +31,8 @@ public class KnowledgeConfig {
     public boolean DECISIONS = true;
     /** Generated citizens wear obtainable gear fitting their level and job (gear already given stays when this is off). */
     public boolean CITIZEN_GEAR = true;
+    /** Bots also know what players learn from guides (guide-knowledge.json, docs/GUIDE_KNOWLEDGE_PLAN.md). */
+    public boolean GUIDES = true;
 
     public void validate() {
         if (CONTENT_DIR == null || CONTENT_DIR.isBlank()) {

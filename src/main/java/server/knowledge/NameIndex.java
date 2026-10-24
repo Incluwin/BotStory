@@ -609,6 +609,17 @@ public final class NameIndex {
         return Optional.empty();
     }
 
+    /** The composite of this kind, name and first id (guide refs: composite ids shift when aliases.yaml changes). */
+    Optional<Entity> composite(EntityKind kind, String name, int firstId) {
+        for (Entity composite : composites) {
+            if (composite.kind() == kind && composite.name().equalsIgnoreCase(name) && !composite.ids().isEmpty()
+                    && composite.ids().getInt(0) == firstId) {
+                return Optional.of(composite);
+            }
+        }
+        return Optional.empty();
+    }
+
     /** The entity for a game id (ITEM..QUEST) or a composite (REGION/PQ/ROLE), with its spoken name. */
     public Optional<Entity> entity(EntityKind kind, int id) {
         if (kind == EntityKind.REGION || kind == EntityKind.PQ || kind == EntityKind.ROLE) {

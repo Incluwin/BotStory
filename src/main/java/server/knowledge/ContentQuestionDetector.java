@@ -25,7 +25,9 @@ import java.util.regex.Pattern;
 public final class ContentQuestionDetector {
     public enum Kind {
         DROP_SOURCE, MOB_DROPS, BUY_WHERE, GET_WHERE, WHERE_IS, ROUTE, TRAIN_WHERE, PRICE, LEVEL_OF, JOB_ADVANCE,
-        WHERE_AM_I, MAP_DROPS, MAP_GOOD, RULES, OPINION, FOLLOW_UP, THANKS
+        WHERE_AM_I, MAP_DROPS, MAP_GOOD, RULES, OPINION, FOLLOW_UP, THANKS,
+        /** Guide knowledge (docs/GUIDE_KNOWLEDGE_PLAN.md section 9): how to build a class, how to do a PQ, boss or quest. */
+        BUILD, HOW_TO
     }
 
     /**
@@ -35,7 +37,7 @@ public final class ContentQuestionDetector {
      * @param from        ROUTE: the start the asker named ("from henesys"), else ""
      * @param level       a level number in the line (TRAIN_WHERE "at 35", JOB_ADVANCE), 0 when none
      * @param advancement JOB_ADVANCE: 1-4 when named ("2nd job"), 0 when not
-     * @param topic       RULES: rates, gear, pets, slots; JOB_ADVANCE: the class word after "become a"
+     * @param topic       RULES: rates, gear, pets, slots; JOB_ADVANCE: the class word after "become a"; BUILD: ap, sp or ""
      * @param follow      FOLLOW_UP: the kind to ask about the last subject, null for "and X" / "what about X"
      * @param weak        an unresolved slot stays silent ("nice drops" is not a mob question)
      * @param whoSells    "who sells X": a trade call in the Free Market, an NPC-shop question elsewhere
@@ -68,6 +70,20 @@ public final class ContentQuestionDetector {
             + "|change jobs?|job instructor|job npc|job guy|(?:1st|2nd|3rd|4th|first|second|third|fourth) job"
             + "|become an? (?<job>[a-z]+(?: [a-z]+)?))\\b");
     private static final Pattern JOB_START = Pattern.compile("^(?:how|where|who|when|what level|which|is there|can i|should i|whats|what is)\\b");
+    /**
+     * "what should i put my ap in", "where do i put sp at 30", "how much dex for a sin", "whats a good bandit build",
+     * "what skills do i max first": a build question (checked before training: "where ... at level 30").
+     */
+    private static final Pattern BUILD_CUE = Pattern.compile("\\b(?:(?:ap|sp|stats?|skills?|skill points|ability points|points)"
+            + " (?:in|into|on|to|first|build|order|distribution)|(?:put|add|spend|use|distribute|dump) (?:my |all |the |ur )?(?:ap|sp|stats?"
+            + "|skill points|ability points|points)|(?:max|level|lvl|get) (?:which|what) skills?|(?:which|what) skills? (?:should|do|to)"
+            + "|how (?:much|many) (?:base )?(?:str|dex|int|luk|luck|acc|accuracy) (?:should|do i|does|for|is|to|on|at|as)|builds?)\\b");
+    /** "how much int do you have", "what skills do you have": a companion asked about itself (its stats/skills commands). */
+    private static final Pattern BUILD_OF_YOU = Pattern.compile("\\b(?:you|your|yours)\\b");
+    private static final Pattern BUILD_START = Pattern.compile("^(?:what|where|how|should|which|whats|any|best|good|is|do|can|need"
+            + "|recommend|suggest)\\b");
+    private static final Pattern SP_WORD = Pattern.compile("\\b(?:sp|skills?|skill points)\\b");
+    private static final Pattern AP_WORD = Pattern.compile("\\b(?:ap|stats?|ability points|str|dex|int|luk|luck|acc|accuracy|base)\\b");
     private static final Pattern TRAIN_WORD = Pattern.compile("\\b(?:train|training|level|leveling|levelling|grind|grinding|hunt|hunting|exp|xp)\\b");
     private static final Pattern PLACE_WORD = Pattern.compile("\\b(?:where|spot|spots|place|places|map|maps|area|areas)\\b"
             + "|^what (?:should|do|can) (?:i|you) (?:train|hunt|grind|level)\\b");
@@ -237,6 +253,17 @@ public final class ContentQuestionDetector {
         rule(Kind.GET_WHERE, "^how (?:to|2) (?:get|obtain|find|make) (?!into )(?:some |more |a |an )?(?<x>.+?)$", false, null);
         rule(Kind.GET_WHERE, "^where (?:does|do) (?:the )?(?<x>.+?) come from$", false, null);
         rule(Kind.GET_WHERE, "^(?:any |is there an? )?(?:good )?(?:place|spot) to get (?<x>.+)$", false, null);
+        // how to do a party quest, boss or quest (guide knowledge); an unresolved subject stays silent
+        rule(Kind.HOW_TO, "^how (?:do|can|should|would|to|2) (?:i |we |you )?(?:do|start|finish|complete) (?:the )?(?<x>.+?)"
+                + " (?:prequests?|pre ?quests?|quest line|questline)$", true, null);
+        rule(Kind.HOW_TO, "^how (?:do|can|should|would|to|2) (?:i |we |you )?(?:beat|kill|clear|solo|duo|finish|complete|fight|survive"
+                + "|pass|win) (?:the |a |an )?(?<x>.+?)$", true, null);
+        rule(Kind.HOW_TO, "^how (?:does|do|is) (?:the |a |an )?(?<x>.+?) work$", true, null);
+        rule(Kind.HOW_TO, "^(?:any |got any |some )?(?:tips|advice|strats?|strategy|strategies) (?:for|on|with|about) (?:the |a |an |doing )?(?<x>.+?)$",
+                true, null);
+        rule(Kind.HOW_TO, "^what (?:do|should|must|can) (?:i|we|you) (?:bring|need|take|prepare)(?: to bring| to have)?"
+                + " (?:for|to|into|in) (?:do |doing |the |a |an )?(?<x>.+?)$", true, null);
+        anyRule(Kind.HOW_TO, "^(?:the )?(?<x>.+?) (?:tips|strats?|strategy|prequests?|pre ?quests?)$", true);
         // where things are
         // "how do i join kpq" / "where do i start lpq": where the PQ (or place) is; an unresolved subject stays silent
         rule(Kind.WHERE_IS, "^(?:how|where) (?:do|can|should|would|could) (?:i|we|you) (?:join|start|do|enter|sign up for|get into)"
@@ -360,19 +387,29 @@ public final class ContentQuestionDetector {
             return new Shape(Kind.JOB_ADVANCE, "", "", 0, advancement, become == null ? "" : become, null, false, false,
                     false, frame);
         }
+        if (BUILD_CUE.matcher(frame).find() && BUILD_START.matcher(frame).find() && !BUILD_OF_YOU.matcher(frame).find()) {
+            boolean sp = SP_WORD.matcher(frame).find();
+            boolean ap = AP_WORD.matcher(frame).find();
+            return new Shape(Kind.BUILD, "", "", levelIn(frame), 0, sp == ap ? "" : sp ? "sp" : "ap", null, false, false,
+                    FOR_OTHER.matcher(frame).find(), frame);
+        }
         boolean statement = STATEMENT_START.matcher(frame).find()
                 && (!asked && !STATEMENT_ASKS.matcher(frame).find() || STATEMENT_SAYS.matcher(frame).find());
         if (TRAIN_WORD.matcher(frame).find() && PLACE_WORD.matcher(frame).find() && TRAIN_START.matcher(frame).find()
                 && !statement && !WHERE_IS_THING.matcher(frame).find() && !HUNT_TARGET.matcher(frame).find()) {
-            Matcher number = LEVEL_NUMBER.matcher(frame);
-            int level = 0;
-            while (number.find() && level == 0) {
-                int value = Integer.parseInt(number.group(1));
-                level = value >= 1 && value <= 250 ? value : 0;
-            }
-            return new Shape(Kind.TRAIN_WHERE, "", "", level, 0, "", null, false, false, FOR_OTHER.matcher(frame).find(), frame);
+            return new Shape(Kind.TRAIN_WHERE, "", "", levelIn(frame), 0, "", null, false, false, FOR_OTHER.matcher(frame).find(), frame);
         }
         return null;
+    }
+
+    private static int levelIn(String frame) {
+        Matcher number = LEVEL_NUMBER.matcher(frame);
+        int level = 0;
+        while (number.find() && level == 0) {
+            int value = Integer.parseInt(number.group(1));
+            level = value >= 1 && value <= 250 ? value : 0;
+        }
+        return level;
     }
 
     private static String topic(String frame, String slot) {
