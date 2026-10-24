@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** CWKPQ plan C8: Jack's words over the leader's list, from an estimate. */
 class JackLinesTest {
-    private static final AgentPqMemberPower LEADER = power(1, "Ganre", true);
+    private static final AgentPqMemberPower LEADER = power(1, "Rowan", true);
     private static final AgentPqMemberPower ORRIN = power(2, "Orrin", false);
     private static final AgentPqMemberPower KATE = power(3, "Kate", false);
 

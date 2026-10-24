@@ -150,14 +150,14 @@ class AgentCwkpqArmoryPlayTest {
 
     @Test
     void theHumansShareComesFirstAndACompanionBreaksOnlyItsOwn() {
-        Character ganre = human(1, "Ganre");
+        Character rowan = human(1, "Rowan");
         Character orrin = member(10, "Orrin", Job.HERO, new Point(-359, 153), 610_030_800);
         Character magna = member(11, "Magna", Job.BISHOP, new Point(0, 336), 610_030_800);
 
         AgentCwkpqArmoryPlay.tick(ports, List.of(orrin, magna), event, run, 1_000L);
 
         // three share 30: the human the top three left shelves, Orrin the low left and the low right, Magna the rest
-        Set<Integer> humans = owned(ganre.getId());
+        Set<Integer> humans = owned(rowan.getId());
         assertEquals(Set.of(18, 12, 28, 1, 0, 17, 29, 11, 19, 24), humans);
         assertEquals(Set.of(22, 7, 5, 10, 23, 9, 21, 4, 8, 6), owned(orrin.getId()));
         verify(gateway).hitReactor(orrin, 7);
@@ -172,7 +172,7 @@ class AgentCwkpqArmoryPlayTest {
 
     @Test
     void aBrokenBoxIsLeftForTheNextOfItsShareAndTheLineIsSaidOnce() {
-        human(1, "Ganre");
+        human(1, "Rowan");
         // two share 30: the human the left half, Orrin the right
         Character orrin = member(10, "Orrin", Job.HERO, new Point(162, 333), 610_030_800);
         AgentCwkpqArmoryPlay.tick(ports, List.of(orrin), event, run, 1_000L);
@@ -188,7 +188,7 @@ class AgentCwkpqArmoryPlayTest {
 
     @Test
     void withItsShareBrokenACompanionWalksToADropItMayTakeAndPicksItUp() {
-        human(1, "Ganre");
+        human(1, "Rowan");
         Character orrin = member(10, "Orrin", Job.HERO, new Point(0, 336), 610_030_800);
         AgentCwkpqArmoryPlay.tick(ports, List.of(orrin), event, run, 1_000L);
         for (int id : owned(orrin.getId())) {

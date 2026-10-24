@@ -42,7 +42,7 @@ class CwkpqClearTimeTest {
     }
 
     private Character listOf(int companions) {
-        Character leader = member(1, "Ganre", 112, false);
+        Character leader = member(1, "Rowan", 112, false);
         for (int id = 2; id <= companions + 1; id++) {
             member(id, "c" + id, JOBS[(id - 1) % JOBS.length], true);
         }
@@ -86,7 +86,7 @@ class CwkpqClearTimeTest {
 
     @Test
     void nothingWithoutACompanionOrOutsideSixToThirty() {
-        Character alone = member(1, "Ganre", 112, false);
+        Character alone = member(1, "Rowan", 112, false);
         for (int id = 2; id <= 6; id++) member(id, "h" + id, 212, false);
         assertEquals(List.of(), CwkpqClearTime.lines(alone, members, pace(300_000.0d), agents::contains),
                 "humans alone: the stock list");
