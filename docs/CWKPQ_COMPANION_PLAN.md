@@ -213,9 +213,12 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     rules: targetPriority Margana, Rellik, Hsalf, Red Nirg (last: his revive adds two), then the revives; adds the
     summons and guards; neverTarget now also Margana's invincible summon 9400598. One priority fight per run, ended with
     the run.
-  - Not changed: `AgentBossScope.EXPEDITION_TYPES`. Its note says a type is added only after its live check, so the
-    masters' skill attacks reach companions only once C9 adds CWKPQ there; until then companions take touch damage
-    only in the hall.
+  - `AgentBossScope.EXPEDITION_TYPES` gained CWKPQ on 2026-10-24, after C9 cleared the keep with touch damage only.
+    It guards CWKPQ parts in the Council Hall only: the Grandmasters and the hall's guards (adds 9400594, 9400582)
+    stay with the leader's client, and the boss mirror plays their attacks on the companions. The stage maps and
+    class rooms stay unguarded: no human stands in the rooms, and a guarded part counts as a target only while a
+    visible human drives it. So a hidden leader (`!hide`) leaves the companions holding in the hall: a live check
+    keeps the leader visible there.
 - **C8, first part, built 2026-10-20** (`AgentCwkpqLootRule`, a refuse-only clause in AgentLootEligibility): in the
   Armory a companion takes an equip its archetype may wear (Item.wz reqJob bits), a book that teaches its job a skill,
   a weapon scroll for the weapon in its hand, and any potion; it leaves Gelt Chocolate (2022121) to physical attackers
