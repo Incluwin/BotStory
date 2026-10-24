@@ -219,6 +219,14 @@ You answered "do recommended for all" on 2026-10-19, so every question below tak
     class rooms stay unguarded: no human stands in the rooms, and a guarded part counts as a target only while a
     visible human drives it. So a hidden leader (`!hide`) leaves the companions holding in the hall: a live check
     keeps the leader visible there.
+  - Checked live 2026-10-24 (53c5da449, guard wave only). With the leader visible, all five companions fought the
+    guards (13M+ a minute); hidden, all five held. The guards' attacks reached the mirror from the leader's client
+    (143 attacks, 125 mirrored, 0 unengaged), and once the companions fought beside him it hit them (2 dispatched,
+    1 applied). A client only plays a monster's attack at its own player, so companions far from the leader are
+    never hit; a real leader fights in the hall.
+  - Live-check gotchas: `!unhide` toggles (it casts GM Hide again), so a second one hides the leader. A visible
+    leader who stands still dies to the guards in about 90 s, which ends the run: the check fed `!heal` once a
+    second. After Jack's dialog, `!dispose` before the first statue talk, or the click opens nothing.
 - **C8, first part, built 2026-10-20** (`AgentCwkpqLootRule`, a refuse-only clause in AgentLootEligibility): in the
   Armory a companion takes an equip its archetype may wear (Item.wz reqJob bits), a book that teaches its job a skill,
   a weapon scroll for the weapon in its hand, and any potion; it leaves Gelt Chocolate (2022121) to physical attackers
