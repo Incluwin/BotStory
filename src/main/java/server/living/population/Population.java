@@ -127,7 +127,7 @@ public final class Population {
         });
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
-                15_000L, config.SWEEP_MS));
+                PresenceScheduler.SWEEP_PERIOD_MS, config.SWEEP_MS));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.ledger::tick,
                 config.LEDGER_MS, config.LEDGER_MS));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.churn::tick,
