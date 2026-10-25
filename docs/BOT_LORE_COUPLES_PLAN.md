@@ -161,7 +161,20 @@ example Jasper + Saskia and Ansel + Vesna, both Lv60). Everyone's partner is on 
 
 ## Results
 
-(filled in after the full suite)
+Full split suite (`tools/suite/run-split-suite.ps1`), base 70a29efa4 (baseline 14,706 / 0 / 37):
+
+| Group | Commit | Run | Failures | Errors | Skipped |
+| --- | --- | --- | --- | --- | --- |
+| capabilities | 38153bbee | 6,215 | 0 | 0 | 1 |
+| agents | 38153bbee | 2,378 | 0 | 0 | 21 |
+| rest | 3e3d539bc | 6,141 | 0 | 0 | 15 |
+| **total** | | **14,734** | **0** | **0** | **37** |
+
+The first rest run on 38153bbee had one failure, `KnowledgeLintTest.installOfflineReadsTheFileAndTheSeed`: the two
+altar-script hook lines changed the `scripts/npc` size fingerprint in `scripts/config/knowledge/server-knowledge.json`.
+`tools\knowledge-export.bat` refreshed it (3e3d539bc: only `generatedAt` and that one fingerprint changed), and the
+rest group passed. Another branch that edits `scripts/npc` will conflict on that fingerprint line: re-export after the
+merge rather than merging the line by hand.
 
 ## Live checks (after deploy; not run: this branch never touched the live server or the client)
 
