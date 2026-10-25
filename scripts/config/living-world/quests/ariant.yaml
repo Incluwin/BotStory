@@ -49,7 +49,7 @@
   persona: nadira
   title: "A Pump and a Still"
   length: MEDIUM
-  requires: { level: { min: 44 }, flags: [ariant.heard-well, magatia.bench.crossed], questsCompleted: [nadira-the-tunnel-mouth] }
+  requires: { level: { min: 44 }, flags: [ariant.heard-well, magatia.bench.crossed], notFlags: [ariant.well.flowing], questsCompleted: [nadira-the-tunnel-mouth] }
   steps:
     - { id: talk, type: TALK }
     - { id: gilda, type: TALK_TO, persona: gilda, say: ["a pump for Ariant's old well? to bring the vein back up? ...an Alcadno pump with a Zenumist still on top. it's never been done. that's the best reason i've heard all year. tell her yes."] }

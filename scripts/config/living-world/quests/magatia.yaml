@@ -34,7 +34,7 @@
   persona: gilda
   title: "Through the Other Door"
   length: SHORT
-  requires: { level: { min: 44 }, flags: [magatia.heard-bench], questsCompleted: [gilda-mithril-for-the-clock] }
+  requires: { level: { min: 44 }, flags: [magatia.heard-bench], notFlags: [magatia.bench.crossed], questsCompleted: [gilda-mithril-for-the-clock] }
   steps:
     - { id: talk, type: TALK }
     - { id: aurel, type: TALK_TO, persona: aurel, say: ["did i mean it? i've meant it for twenty years. i only needed to say it where someone could hear. noon tomorrow. i'll wear my good coat. tell her to wear hers."] }

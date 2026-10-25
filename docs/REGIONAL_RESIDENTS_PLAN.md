@@ -217,6 +217,12 @@ copy of 261020301-261020330), so the steps that use it list all thirty copies.
 A rumor repeats on its schedule with no end gate, so every rumor line reads true both before and after the beat it
 sets up; base dialogue that a chapter would make untrue is either worded to hold in every chapter or overridden.
 
+Each arc's last beat happens once per server (asked for 2026-10-25): `hessa-carry-it-home`, `oksun-dig-the-root`,
+`meiwen-the-seventh-form`, `nadira-a-new-spring` and `gilda-the-other-door` name the world flag they set in
+`requires.notFlags`, so the first player to do one turns the arc for everyone and nobody is offered it afterwards (a
+player already on it can still finish). Nothing requires these quests as completed, so no later quest is cut off.
+`ArcFinalBeatOncePerServerTest` pins this. Wave 1's last beats are still offered after their flags are set.
+
 Wave 1 is touched in two lines: Corliss gained `about.elsk` (Orbis), Jasper `about.maren` (Ludibrium). Errands cross
 towns along the real routes: Leafre to Orbis by ship, Mu Lung to Herb Town on foot (and Mu Lung to Orbis by crane),
 Ariant to Magatia up the Sahel road.
@@ -300,7 +306,8 @@ GM commands (`!world`, `!warp`, `!level`, `!item`) are fine for setup; the behav
    `nadira-the-tunnel-mouth` (world flag; the well argument plays 19-21 on the middle central street). In Magatia:
    `gilda-mithril-for-the-clock`, then stand on the lower central street 19-21 for `magatia-out-loud`, then
    `gilda-the-other-door` (Gilda's chapter 3). Back in Ariant `nadira-a-new-spring`: talk to Gilda and Aurel, return;
-   Nadira's and Gilda's last chapters open together. The Mu Lung/Herb Town thread is the same shape
+   Nadira's and Gilda's last chapters open together. A second character that has heard both rumors is now offered
+   neither `gilda-the-other-door` nor `nadira-a-new-spring` (once per server). The Mu Lung/Herb Town thread is the same shape
    (`meiwen-the-library-card`, `oksun-the-old-gardens`, the two rumors, `oksun-dig-the-root`, `meiwen-the-seventh-form`).
 6. **A recruit.** Quickest: Sefa. Stand by Ariant's station platform door 17-19 until `ariant-sefas-terms` plays, then
    `Sefa join me`: 40,000; `follow me`, `Sefa bench`, `call Sefa` from Magatia, `release Sefa`. A kill-proof one: Harun

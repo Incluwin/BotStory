@@ -48,7 +48,7 @@
   persona: meiwen
   title: "The Seventh Form"
   length: MEDIUM
-  requires: { level: { min: 62 }, flags: [mu-lung.heard-page, herb-town.root.dug], questsCompleted: [meiwen-the-library-card] }
+  requires: { level: { min: 62 }, flags: [mu-lung.heard-page, herb-town.root.dug], notFlags: [mu-lung.forms.whole], questsCompleted: [meiwen-the-library-card] }
   steps:
     - { id: talk, type: TALK }
     - { id: oksun, type: TALK_TO, persona: oksun, say: ["the paper round my mother's marker? here. i borrowed it thirty years ago. i meant to bring it back the next spring. i'm sorry it took thirty springs. tell her the root's out of the ground. tell her the page kept it company."] }

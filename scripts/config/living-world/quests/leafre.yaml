@@ -49,7 +49,7 @@
   persona: hessa
   title: "Carry It Home"
   length: LONG
-  requires: { level: { min: 105 }, flags: [leafre.heard-home], questsCompleted: [hessa-the-shell-that-matches] }
+  requires: { level: { min: 105 }, flags: [leafre.heard-home], notFlags: [leafre.egg.home], questsCompleted: [hessa-the-shell-that-matches] }
   steps:
     - { id: talk, type: TALK }
     - { id: golems, type: KILL_MOBS, mobIds: [8190005], count: 20, mapIds: [240040521, 240040600] }

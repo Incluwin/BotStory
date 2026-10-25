@@ -341,6 +341,11 @@ Persona dialogue intents the runtime looks up (chapter overrides first, then the
 `questComplete.<quest>`, `questRoom.<quest>` (no equip slot free for its gear), `about.<persona>`, `aboutUnknown`, `bond.<stage>`,
 `chapterEnter`, `friend.close`, `friend.best`, `famed`, `defamed`, `gift`, `gift.favorite`, `gift.again`, `gift.gone`, `gift.none`.
 
+Once-per-server beats: a quest whose `rewards.worldFlags` turns an arc for everyone can name that flag in
+`requires.notFlags` (flags and notFlags read world flags as well as the player's). It is then offered only until someone
+on the server has done it; a player already on it when that happens can still finish. The regional arcs' last beats
+work this way (docs/REGIONAL_RESIDENTS_PLAN.md section 5).
+
 Friendship quests: `requires: { friendship: 4 }` gates on the giver's friendship level (0-10). A
 `rewards.gear` entry is one scrolled piece (see Friendship above), in one of two forms:
 

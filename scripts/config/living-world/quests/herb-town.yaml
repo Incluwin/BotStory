@@ -32,7 +32,7 @@
   persona: oksun
   title: "A Hand's Width at a Time"
   length: MEDIUM
-  requires: { level: { min: 54 }, flags: [herb-town.heard-root], questsCompleted: [oksun-the-old-gardens] }
+  requires: { level: { min: 54 }, flags: [herb-town.heard-root], notFlags: [herb-town.root.dug], questsCompleted: [oksun-the-old-gardens] }
   steps:
     - { id: talk, type: TALK }
     - { id: old-roots, type: KILL_MOBS, mobIds: [5120502], count: 30, mapIds: [251010200, 251010300] }
