@@ -50,8 +50,16 @@ different). A session lasts a cohort-typical time and picks an activity by cohor
 `TRAIN` at a field in its region whose mob level fits (capacity-aware, biased to maps humans are
 on), `TOWN` (town-life visit where a profile exists, standing spots otherwise), `PQ` at the
 region's lobby if the level fits, `MARKET` (Free Market), `AFK`. Every 25-45 minutes it re-plans;
-15% of the time it goes AFK for 5-15 minutes ("afk"/"back"). Travel between maps is instant when
-nobody can see either side and paced by the road-hop ETA when someone can.
+15% of the time it goes AFK for 5-15 minutes ("afk"/"back").
+
+**Travel** (docs/CITIZEN_PORTAL_TRAVEL_PLAN.md, `PORTAL_TRAVEL_*`). A citizen on a map a player is on goes to
+another map on foot. It walks to the right portal and goes through it, map to map along the route graphs. At a dock it
+walks up to the boarding NPC and is gone the way a boarding player is. As soon as the map it stands on is empty, it
+takes the cheap way: it stands there for the old pause (1 s, or the road-hop ETA's quarter when a player is on the
+destination) and changes map. A player on the destination sees it come in at the portal its route enters by. A player
+who comes onto its map during the pause sees it walk from where it stands. With no way on that a player could watch,
+it goes back to what it was doing until nobody watches ("waits for nobody to watch" in the log); it never vanishes in
+front of a player. `PORTAL_TRAVEL_ENABLED: false` restores the delayed map change everywhere.
 
 **Progression.** Loaded citizens level by fighting. The ledger raises the stored level of offline
 citizens toward their life-curve target (`0.5 + level/20` hours per level, 1.2 h a day times pace,
@@ -225,7 +233,7 @@ in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 
 Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ has one lobby a channel; OPQ after the
 OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
-invite you); no expeditions; no alliances; travel is a
-map change with a delay rather than walking through portals; conversation memory of a human is the
+invite you); no expeditions; no alliances; travel on foot ends on the first map nobody watches (no citizen walks a
+whole multi-map trip unseen) and rides no real ship; conversation memory of a human is the
 social relationship memory plus the journal, not a per-human summary; the client-side visible cap
 (`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.

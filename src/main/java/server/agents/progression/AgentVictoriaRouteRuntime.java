@@ -206,6 +206,37 @@ public final class AgentVictoriaRouteRuntime {
         return AgentVictoriaTrainingRouteCatalog.distance(sourceMapId, destinationMapId, blockedEdges);
     }
 
+    /** One step of a planned way: a portal from one map to the next ({@code boardingNpcId} 0), or a leg boarded there. */
+    public record PlannedStep(int fromMapId, int toMapId, int boardingNpcId) {
+        public boolean ride() {
+            return boardingNpcId > 0;
+        }
+    }
+
+    /**
+     * The whole way from sourceMapId to destinationMapId, for a host that plans around a walk (a citizen choosing where
+     * it boards, or which map it comes into its destination from): the portal hops while a portal path reaches it, with
+     * the edges this Agent has blocked left out as travelStatus leaves them out; else the cheapest way that also boards
+     * the travel legs (RIDE_HOP_COST a leg), fares and tickets not counted, and legs that kept refusing it left out.
+     * Empty when nothing reaches the destination, or the Agent is there. Ties go as ridePath breaks them, so the hops
+     * may differ from nextHop's where two walking paths are as short.
+     */
+    public static List<PlannedStep> plannedRoute(AgentRuntimeEntry entry,
+                                                 int sourceMapId,
+                                                 int destinationMapId,
+                                                 long nowMs) {
+        Set<Long> blockedEdges = entry == null ? Set.of()
+                : entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY).blockedEdges(nowMs);
+        List<AgentVictoriaTrainingRouteCatalog.Step> path = AgentVictoriaTrainingRouteCatalog.ridePath(
+                sourceMapId, destinationMapId, blockedEdges, leg -> false, RIDE_HOP_COST);
+        if (path.isEmpty()) {
+            path = AgentVictoriaTrainingRouteCatalog.ridePath(sourceMapId, destinationMapId, blockedEdges,
+                    leg -> !blockedEdges.contains(legKey(leg)), RIDE_HOP_COST);
+        }
+        return path.stream().map(step -> new PlannedStep(step.fromMapId(), step.toMapId(),
+                step.leg() == null ? 0 : step.leg().npcId())).toList();
+    }
+
     /**
      * Keeps this Agent's route off the hop from sourceMapId to nextMapId until untilMs, as if its portal had kept
      * refusing entry (FAILED_EDGE_BLOCK_MS): travelStatus and routeHops walk around it, or find no route. For a caller

@@ -5172,6 +5172,14 @@ tuning:
     # Purpose: How close an Agent walks to a ticket seller or a boarding NPC (Joel, Agatha, Isa, Hak...) before it talks to them.
     # Technical: AgentVictoriaRouteRuntime passes this to AgentNpcInteractionReachabilityService.canInteract before PrimitiveCapabilityGateway.runNpcScript for a travel leg; farther, it navigates toward the NPC first.
     server.agents.progression.AgentVictoriaRouteRuntime.NPC_INTERACTION_DISTANCE_PX: '100'
+    # Values: map pixels from 20 to 90. Recommended: 45, the distance AgentVictoriaRouteRuntime enters portals from.
+    # Purpose: How close a host-driven walk (a citizen someone can see, walking to another map) comes to the portal it was sent to before it goes through it or counts as standing at it.
+    # Technical: AgentMapWalk, on its target map for an ENTER_PORTAL or REACH_PORTAL target: farther than this it navigates to the portal (PrimitiveCapabilityGateway.navigate, precise); within it, it stops and, to enter, calls PrimitiveCapabilityGateway.enterPortal, which runs a scripted portal's script (the Free Market's market portals).
+    server.agents.capabilities.navigation.AgentMapWalk.PORTAL_REACH_PX: '45'
+    # Values: map pixels from 40 to 200. Recommended: 100, the distance the travel legs talk to boarding NPCs from.
+    # Purpose: How close a host-driven walk comes to the NPC it was sent to (a citizen boarding at a dock's NPC) before it stops, faces the NPC and counts as arrived.
+    # Technical: AgentMapWalk, on its target map for an NPC target: a plain distance from PrimitiveCapabilityGateway.npcPosition; farther, it navigates to the NPC each tick. The host (CitizenTravel) does the boarding itself; the walk only gets it there.
+    server.agents.capabilities.navigation.AgentMapWalk.NPC_REACH_PX: '100'
     # Values: milliseconds from 1000 to 60000. Recommended: 5000, under the subway's few seconds of open boarding gate on this server's travel rate.
     # Purpose: Spaces an Agent's conversations with a travel NPC, so a boarding gate that is still closed is asked again a little later instead of every tick, and a map change after boarding has landed before it plans again.
     # Technical: AgentVictoriaRouteState.npcRetryAtMs is set to now plus this after every travel-NPC conversation; AgentVictoriaRouteRuntime holds still until then. A scheduled ride that refuses boarding is retried this way without counting as a failure; an instant ride that refuses counts toward FAILED_EDGE_BLOCK_MS like a portal.

@@ -1119,6 +1119,21 @@ population:
     JOB_ERRANDS_ENABLED: true
     JOB_ERRAND_TALK_MS: 6000
     JOB_ERRAND_WALK_MAX_MS: 45000
+    # Citizens travel on foot while someone can see them (2026-10-25, docs/CITIZEN_PORTAL_TRAVEL_PLAN.md): a citizen on a
+    # map a player is on walks to the right portal and through it, map to map along the route graphs, and at a dock walks
+    # up to the boarding NPC and is gone the way a boarding player is (no ticket, no ride map). Once the map it stands on
+    # is empty it goes the cheap way (the delayed map change), and lands at the portal its route enters by when a player
+    # is on the destination. It never vanishes in front of a player: with no way on it waits until nobody watches.
+    # false = the kill switch, every move the delayed map change as before. CHECK_MS: how often a move on foot is
+    # checked. HOP_TIMEOUT_MS: a walk standing on one map this long gives up its way. MAX_MS: a move on foot this long
+    # waits for nobody to watch. TOWNLIFE_GRACE_MS: how long its town life may finish first. BOARD_MS: how long it stands
+    # at the boarding NPC.
+    PORTAL_TRAVEL_ENABLED: true
+    PORTAL_TRAVEL_CHECK_MS: 1000
+    PORTAL_TRAVEL_HOP_TIMEOUT_MS: 120000
+    PORTAL_TRAVEL_MAX_MS: 600000
+    PORTAL_TRAVEL_TOWNLIFE_GRACE_MS: 30000
+    PORTAL_TRAVEL_BOARD_MS: 2000
     CHATTER_ENABLED: true
     CHATTER_TOWN_LINES_PER_MINUTE: 18
     CHATTER_CITIZEN_COOLDOWN_MS: 45000
