@@ -1,6 +1,7 @@
 package server.agents.capabilities.dialogue;
 
 import server.agents.commands.AgentReplyQueue;
+import server.agents.commands.AgentReplyRoute;
 
 public final class AgentChatReplyRuntime {
     private AgentChatReplyRuntime() {
@@ -12,6 +13,11 @@ public final class AgentChatReplyRuntime {
 
     public static void queueReply(AgentReplyQueue.State state, String message, AgentReplyQueue.Dispatcher dispatcher) {
         queueReplyWithEstimatedDelay(state, message, dispatcher);
+    }
+
+    public static void queueReply(AgentReplyQueue.State state, String message, AgentReplyRoute route,
+                                  AgentReplyQueue.Dispatcher dispatcher) {
+        AgentReplyQueue.queueReply(state, message, route, dispatcher);
     }
 
     public static long queueSayWithEstimatedDelay(

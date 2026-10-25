@@ -43,7 +43,33 @@ public final class PopulationContent {
                         List<String> petPhrases, double petPhraseRate, int delayMsPerChar, double ignoreRate) { }
 
     public record GuildNames(List<NamePattern> patterns, Map<String, List<String>> lists, List<String> mottos,
-                             List<Integer> backgrounds, List<Integer> logos, List<Integer> colors) { }
+                             Emblems emblems) { }
+
+    /**
+     * Bot guild emblems (guild-names.yaml {@code emblems}, read by GuildEmblems): the 16 colours with their sampled
+     * background fill and mark ink (0xRRGGBB), the background shapes to choose from, the mark colours for a name with no
+     * colour word, and per word (keys lower case) its marks, colours and shape.
+     */
+    public record Emblems(double minContrast, Map<Integer, EmblemColor> colors, List<Integer> backgrounds,
+                          List<String> defaultColors, Map<String, EmblemWord> words) {
+        public static Emblems none() {
+            return new Emblems(0.0d, Map.of(), List.of(), List.of(), Map.of());
+        }
+
+        public EmblemColor color(String name) {
+            for (EmblemColor color : colors.values()) {
+                if (color.name().equalsIgnoreCase(name)) {
+                    return color;
+                }
+            }
+            return null;
+        }
+    }
+
+    public record EmblemColor(int id, String name, int backgroundRgb, int markRgb) { }
+
+    /** {@code background} 0 = the word picks no shape. */
+    public record EmblemWord(List<Integer> marks, List<String> colors, int background) { }
 
     public record Lobby(String id, int mapId, int levelMin, int levelMax, String name) { }
 
@@ -146,7 +172,7 @@ public final class PopulationContent {
 
     public static PopulationContent empty() {
         return new PopulationContent(Map.of(), Map.of(), new Names(List.of(), Map.of(), List.of(), List.of(), List.of()),
-                Map.of(), new GuildNames(List.of(), Map.of(), List.of(), List.of(), List.of(), List.of()),
+                Map.of(), new GuildNames(List.of(), Map.of(), List.of(), Emblems.none()),
                 Map.of(), Map.of(), List.of(), List.of(), 5140000, List.of());
     }
 

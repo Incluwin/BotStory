@@ -11,6 +11,9 @@ param(
 # catalog, and AgentWorldPortalRouteGraphFreshnessTest re-derives the edges from WZ with it.
 # The Haunted House 682000000 is part of Masteria: the NLC taxi lands there, and its right portal is the only
 # way into the Phantom Forest (Crimsonwood). Only that one map joins the group, not the mansion behind it.
+# Amoria is two ranges: the village and its road (6800xxxxx up to 680010100), then Purplewood Forest and Amos'
+# Training Ground (670000100-670010000). The Amorian Challenge's own maps from 670010100 on stay out: only Amos the
+# Strong's ticket warp leads in.
 
 $ErrorActionPreference = "Stop"
 
@@ -22,6 +25,8 @@ $groups = @(
     [ordered]@{ id = "malaysia"; firstMapId = 550000000; endMapId = 560000000 },
     [ordered]@{ id = "masteria"; firstMapId = 600000000; endMapId = 620000000 },
     [ordered]@{ id = "masteria"; firstMapId = 682000000; endMapId = 682000001 },
+    [ordered]@{ id = "amoria"; firstMapId = 670000000; endMapId = 670010001 },
+    [ordered]@{ id = "amoria"; firstMapId = 680000000; endMapId = 680100000 },
     [ordered]@{ id = "zipangu"; firstMapId = 800000000; endMapId = 810000000 }
 )
 $excludedRanges = @(

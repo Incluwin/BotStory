@@ -1,0 +1,410 @@
+# Mu Lung quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# Sky Forest chipmunk 4230500, red porky 4230501 (thimble 4000277; entrance 250010000, the train 250010100), black porky
+# 4230502 (needle pouch 4000278; 250010100, deep 250010200), blue flower serpent 4230503 (snake leather 4000281) and red
+# flower serpent 4230504 (necki flower 4000279) in the snake area 250010300 and where the sky forest ends 250010400.
+# Wild bear areas: grizzly 5120500 (yellow belt 4000284; 250010301, 250010302). Peach farms 1-3 250010500/250010600/
+# 250010700: reindeer 5120505 (broken deer horn 4000288), peach monkey 6130207 (peach seed 4000282). Foggy forest
+# 250010501 and virtuous forest 250010502: the book ghost 5120506 (old paper 4000298); sage cat 6130209 (cat doll
+# 4000289; 250010502, goblin forests 250010503/250010504). Practice fields: straw target dummy 5120503 (straw doll
+# 4000286; 250020000, 250020100), wooden target dummy 5120504 (wooden doll 4000287; 250020100-250020300).
+# Off Mu Lung: Herb Town kru 6130208 (mark of the pirate 4000296; red-nose pirate dens 251010401/251010402); Leafre rash
+# 7130500 (anesthetic powder 4000228; 240010000, 240010101), dark rash 7130501 (curse powder 4000230; 240010100,
+# 240010101), blue kentaurus 8140103 (marrow 4000233; 240020300-240020500), blue wyvern 8150301 (gill 4000269; canyon
+# crossroad 240040100, blue wyvern's nest 240040210, wyvern canyon 240040400), dark cornian 8150201 (skull shoulder pad
+# 4000267; 240030101, 240030102, hidden dragon tomb II 240030104); Aqua Road bone fish 8140600 (lime powder bottle
+# 4000182; deep sea gorge I/II 230040000/230040100).
+# Gear: Baojun's polearms Skylar 1442010 L60 / The Gold Dragon 1442008 L70 / Eclipse 1442019 L80; Suyin's knuckles Beia
+# Crash 1482009 L70 / Steelno 1482010 L80 / White Fangz 1482011 L90. Fengzi's gloves for the player's class (warrior,
+# magician, bowman, thief, pirate) L90 / L100 / L110.
+
+# ---- Meiwen, teacher of the forms: her arc --------------------------------------------------------------------------
+
+- id: meiwen-the-first-pages
+  persona: meiwen
+  title: "The First Pages"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [5120506], count: 30, mapIds: [250010501, 250010502] }
+    - { id: pages, type: COLLECT_ITEM, itemId: 4000298, count: 15 }
+    - { id: forms, type: DELIVER, to: meiwen, take: { itemId: 4000298, count: 15 } }
+  rewards: { meso: 20000, exp: 24000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: meiwen-the-book-of-forms, to: chapter-2 } }
+
+- id: meiwen-the-library-card
+  persona: meiwen
+  title: "The Library Card"
+  length: MEDIUM
+  requires: { level: { min: 62 }, questsCompleted: [meiwen-the-first-pages] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cats, type: KILL_MOBS, mobIds: [6130209], count: 30, mapIds: [250010502, 250010503, 250010504] }
+    - { id: qing, type: TALK_TO, persona: qing, say: ["the seventh form? here's the card. borrowed thirty years ago. 'Oksun, Herb Town. to wrap a root marker. will return.' ...she never did. tell Meiwen it wasn't lost. tell her gently."] }
+    - { id: report, type: DELIVER, to: meiwen }
+  rewards: { meso: 30000, exp: 40000, bondPoints: 45, worldFlags: [mu-lung.page.traced] }
+
+- id: meiwen-the-seventh-form
+  persona: meiwen
+  title: "The Seventh Form"
+  length: MEDIUM
+  requires: { level: { min: 62 }, flags: [mu-lung.heard-page, herb-town.root.dug], notFlags: [mu-lung.forms.whole], questsCompleted: [meiwen-the-library-card] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: oksun, type: TALK_TO, persona: oksun, say: ["the paper round my mother's marker? here. i borrowed it thirty years ago. i meant to bring it back the next spring. i'm sorry it took thirty springs. tell her the root's out of the ground. tell her the page kept it company."] }
+    - { id: page, type: DELIVER, to: meiwen }
+  rewards: { meso: 40000, exp: 50000, bondPoints: 60, items: [{ itemId: 2022001, count: 20 }], worldFlags: [mu-lung.forms.whole] }
+
+- id: meiwen-paper-for-the-binding
+  persona: meiwen
+  title: "Paper for the Binding"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 55 }, questsCompleted: [meiwen-the-first-pages] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: paper, type: COLLECT_ITEM, itemId: 4000298, count: 15 }
+    - { id: binding, type: DELIVER, to: meiwen, take: { itemId: 4000298, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 10 }
+
+# ---- Qing, keeper of the walking library ----------------------------------------------------------------------------
+
+- id: qing-snake-leather-bindings
+  persona: qing
+  title: "New Hinges"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: serpents, type: KILL_MOBS, mobIds: [4230503], count: 25, mapIds: [250010300, 250010400] }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000281, count: 15 }
+    - { id: hinges, type: DELIVER, to: qing, take: { itemId: 4000281, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30 }
+
+- id: qing-straw-for-the-shelves
+  persona: qing
+  title: "Straw for the Shelves"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dummies, type: KILL_MOBS, mobIds: [5120503], count: 25, mapIds: [250020000, 250020100] }
+    - { id: straw, type: COLLECT_ITEM, itemId: 4000286, count: 15 }
+    - { id: shelves, type: DELIVER, to: qing, take: { itemId: 4000286, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30 }
+
+- id: qing-the-overdue-books
+  persona: qing
+  title: "Overdue"
+  length: SHORT
+  requires: { level: { min: 55 }, questsCompleted: [qing-snake-leather-bindings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [5120506], count: 25, mapIds: [250010502, 250010503] }
+    - { id: deepest, type: VISIT_MAP, mapIds: [250010504] }
+    - { id: report, type: DELIVER, to: qing }
+  rewards: { meso: 18000, exp: 22000, bondPoints: 35 }
+
+# ---- Baojun, guard of the sky road (recruitable; his polearms) ------------------------------------------------------
+
+- id: baojun-the-sky-road
+  persona: baojun
+  title: "The Sky Road"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: porkies, type: KILL_MOBS, mobIds: [4230502], count: 30, mapIds: [250010100, 250010200] }
+    - { id: end, type: VISIT_MAP, mapIds: [250010400] }
+    - { id: report, type: DELIVER, to: baojun }
+  rewards: { meso: 16000, exp: 16000, bondPoints: 30, flags: [baojun.intro.done] }
+
+- id: baojun-skylar
+  persona: baojun
+  title: "Skylar"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [baojun-the-sky-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: reindeer, type: KILL_MOBS, mobIds: [5120505], count: 30, mapIds: [250010500, 250010600, 250010700] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000288, count: 15 }
+    - { id: haft, type: DELIVER, to: baojun, take: { itemId: 4000288, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1442010, scrolls: [{ success: 100 }] }
+
+- id: baojun-gold-dragon
+  persona: baojun
+  title: "The Gold Dragon"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [baojun-skylar] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kru, type: KILL_MOBS, mobIds: [6130208], count: 30, mapIds: [251010401, 251010402] }
+    - { id: marks, type: COLLECT_ITEM, itemId: 4000296, count: 15 }
+    - { id: fire, type: DELIVER, to: baojun, take: { itemId: 4000296, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1442008, scrolls: [{ success: 60 }] }
+
+- id: baojun-eclipse
+  persona: baojun
+  title: "The Eclipse"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [baojun-gold-dragon] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rashes, type: KILL_MOBS, mobIds: [7130501], count: 30, mapIds: [240010100, 240010101] }
+    - { id: powder, type: COLLECT_ITEM, itemId: 4000230, count: 15 }
+    - { id: blade, type: DELIVER, to: baojun, take: { itemId: 4000230, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1442019, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: baojun-needle-tally
+  persona: baojun
+  title: "The Needle Tally"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 45 }, questsCompleted: [baojun-the-sky-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pouches, type: COLLECT_ITEM, itemId: 4000278, count: 15 }
+    - { id: tally, type: DELIVER, to: baojun, take: { itemId: 4000278, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Suyin, brawler of the practice field (recruitable; her knuckles) -----------------------------------------------
+
+- id: suyin-the-practice-field
+  persona: suyin
+  title: "Warm Up"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dummies, type: KILL_MOBS, mobIds: [5120504], count: 30, mapIds: [250020200, 250020300] }
+    - { id: report, type: DELIVER, to: suyin }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 30, flags: [suyin.intro.done] }
+
+- id: suyin-beia-crash
+  persona: suyin
+  title: "Beia Crash"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [suyin-the-practice-field] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cats, type: KILL_MOBS, mobIds: [6130209], count: 30, mapIds: [250010502, 250010503, 250010504] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000289, count: 15 }
+    - { id: losses, type: DELIVER, to: suyin, take: { itemId: 4000289, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 90000
+    bondPoints: 35
+    gear:
+      - { itemId: 1482009, scrolls: [{ success: 100 }] }
+
+- id: suyin-steelno
+  persona: suyin
+  title: "Steelno"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [suyin-beia-crash] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rashes, type: KILL_MOBS, mobIds: [7130500], count: 30, mapIds: [240010000, 240010101] }
+    - { id: powder, type: COLLECT_ITEM, itemId: 4000228, count: 15 }
+    - { id: bruises, type: DELIVER, to: suyin, take: { itemId: 4000228, count: 15 } }
+  rewards:
+    meso: 120000
+    exp: 140000
+    bondPoints: 50
+    gear:
+      - { itemId: 1482010, scrolls: [{ success: 60 }] }
+
+- id: suyin-white-fangz
+  persona: suyin
+  title: "White Fangz"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 10, questsCompleted: [suyin-steelno] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fish, type: KILL_MOBS, mobIds: [8140600], count: 30, mapIds: [230040000, 230040100] }
+    - { id: chalk, type: COLLECT_ITEM, itemId: 4000182, count: 15 }
+    - { id: grip, type: DELIVER, to: suyin, take: { itemId: 4000182, count: 15 } }
+  rewards:
+    meso: 180000
+    exp: 220000
+    bondPoints: 60
+    gear:
+      - { itemId: 1482011, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: suyin-cat-dolls
+  persona: suyin
+  title: "Another Loss"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 66 }, questsCompleted: [suyin-the-practice-field] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000289, count: 15 }
+    - { id: losses, type: DELIVER, to: suyin, take: { itemId: 4000289, count: 15 } }
+  rewards: { meso: 14000, exp: 14000, bondPoints: 10 }
+
+# ---- Fengzi, glover (gloves for the player's class) -----------------------------------------------------------------
+
+- id: fengzi-practice-wood
+  persona: fengzi
+  title: "Wooden Hands"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dummies, type: KILL_MOBS, mobIds: [5120504], count: 25, mapIds: [250020100, 250020200] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000287, count: 15 }
+    - { id: hands, type: DELIVER, to: fengzi, take: { itemId: 4000287, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30 }
+
+- id: fengzi-kentaurus-marrow
+  persona: fengzi
+  title: "Marrow-Cured"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [fengzi-practice-wood] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kentaurus, type: KILL_MOBS, mobIds: [8140103], count: 30, mapIds: [240020300, 240020400, 240020500] }
+    - { id: marrow, type: COLLECT_ITEM, itemId: 4000233, count: 15 }
+    - { id: leather, type: DELIVER, to: fengzi, take: { itemId: 4000233, count: 15 } }
+  rewards:
+    meso: 120000
+    exp: 180000
+    bondPoints: 35
+    gear:
+      - { pool: [1082128, 1082131, 1082125, 1082142, 1082210], scrolls: [{ success: 100 }] }
+
+- id: fengzi-wyvern-gill
+  persona: fengzi
+  title: "Thin as Skin"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [fengzi-kentaurus-marrow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wyverns, type: KILL_MOBS, mobIds: [8150301], count: 30, mapIds: [240040100, 240040210, 240040400] }
+    - { id: gills, type: COLLECT_ITEM, itemId: 4000269, count: 15 }
+    - { id: tanning, type: DELIVER, to: fengzi, take: { itemId: 4000269, count: 15 } }
+  rewards:
+    meso: 180000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { pool: [1082139, 1082151, 1082158, 1082135, 1082213], scrolls: [{ success: 60 }] }
+
+- id: fengzi-skull-plates
+  persona: fengzi
+  title: "Knuckle Plates"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [fengzi-wyvern-gill] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cornians, type: KILL_MOBS, mobIds: [8150201], count: 30, mapIds: [240030101, 240030102, 240030104] }
+    - { id: pads, type: COLLECT_ITEM, itemId: 4000267, count: 15 }
+    - { id: plates, type: DELIVER, to: fengzi, take: { itemId: 4000267, count: 15 } }
+  rewards:
+    meso: 250000
+    exp: 450000
+    bondPoints: 60
+    gear:
+      - { pool: [1082168, 1082164, 1082163, 1082167, 1082216], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: fengzi-wood-for-the-forms
+  persona: fengzi
+  title: "Wood for the Forms"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [fengzi-practice-wood] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000287, count: 15 }
+    - { id: hands, type: DELIVER, to: fengzi, take: { itemId: 4000287, count: 15 } }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 10 }
+
+# ---- Lai, peach farmer ----------------------------------------------------------------------------------------------
+
+- id: lai-thimbles-for-the-sacks
+  persona: lai
+  title: "Thimbles for the Sacks"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: porkies, type: KILL_MOBS, mobIds: [4230501], count: 25, mapIds: [250010000, 250010100] }
+    - { id: thimbles, type: COLLECT_ITEM, itemId: 4000277, count: 15 }
+    - { id: sewing, type: DELIVER, to: lai, take: { itemId: 4000277, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 30 }
+
+- id: lai-the-peach-thieves
+  persona: lai
+  title: "The Peach Thieves"
+  length: SHORT
+  requires: { level: { min: 60 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: monkeys, type: KILL_MOBS, mobIds: [6130207], count: 30, mapIds: [250010500, 250010600, 250010700] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4000282, count: 15 }
+    - { id: row, type: DELIVER, to: lai, take: { itemId: 4000282, count: 15 } }
+  rewards: { meso: 22000, exp: 26000, bondPoints: 35 }
+
+- id: lai-peaches-for-sookja
+  persona: lai
+  title: "A Crate Coming"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sookja, type: TALK_TO, persona: sookja, say: ["Lai's crate? tell her to take her time. tell her the tea house has peaches enough till spring. tell her i said so twice, because she won't believe me once."] }
+    - { id: reply, type: DELIVER, to: lai }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30 }
+
+# ---- Xiaobo, pupil of the practice field ----------------------------------------------------------------------------
+
+- id: xiaobo-necki-flowers
+  persona: xiaobo
+  title: "Flowers for Mother"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: serpents, type: KILL_MOBS, mobIds: [4230504], count: 25, mapIds: [250010300, 250010400] }
+    - { id: flowers, type: COLLECT_ITEM, itemId: 4000279, count: 15 }
+    - { id: mother, type: DELIVER, to: xiaobo, take: { itemId: 4000279, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30 }
+
+- id: xiaobo-a-yellow-belt
+  persona: xiaobo
+  title: "A Belt, Earned"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: grizzlies, type: KILL_MOBS, mobIds: [5120500], count: 25, mapIds: [250010301, 250010302] }
+    - { id: belts, type: COLLECT_ITEM, itemId: 4000284, count: 15 }
+    - { id: knot, type: DELIVER, to: xiaobo, take: { itemId: 4000284, count: 15 } }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 35 }
+
+- id: xiaobo-ask-suyin
+  persona: xiaobo
+  title: "What Am I Doing Wrong?"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: suyin, type: TALK_TO, persona: suyin, say: ["what's he doing wrong? nothing. tell him nothing. he loses because i'm better. that's all. tell him that's going to stop being true one day, and not to tell me when."] }
+    - { id: report, type: DELIVER, to: xiaobo }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 30 }

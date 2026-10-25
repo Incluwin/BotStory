@@ -58,6 +58,24 @@ public class PopulationConfig {
     /** How long a citizen walks up to its instructor at most; then it advances where it stands. */
     public int JOB_ERRAND_WALK_MAX_MS = 45000;
 
+    // Travel on foot while someone can see it (docs/CITIZEN_PORTAL_TRAVEL_PLAN.md)
+    /**
+     * A citizen on a map a player is on goes to another map on foot: to the right portal and through it, map to map, up
+     * to the boarding NPC at a dock; once nobody can see it, the cheap way. false = the kill switch: every move is the
+     * delayed map change, as before.
+     */
+    public boolean PORTAL_TRAVEL_ENABLED = true;
+    /** How often a move on foot is checked: walk or cheap, arrived, stuck. */
+    public int PORTAL_TRAVEL_CHECK_MS = 1000;
+    /** A walk that stands on one map this long without crossing gives up its way (out by the nearest portal, then waits). */
+    public int PORTAL_TRAVEL_HOP_TIMEOUT_MS = 120000;
+    /** A move still on foot after this long waits for nobody to watch, then goes the cheap way. */
+    public int PORTAL_TRAVEL_MAX_MS = 600000;
+    /** How long its TownLife may finish what it is doing before it sets off anyway. */
+    public int PORTAL_TRAVEL_TOWNLIFE_GRACE_MS = 30000;
+    /** How long it stands at a dock's boarding NPC, as if talking, before it is gone. */
+    public int PORTAL_TRAVEL_BOARD_MS = 2000;
+
     // Chatter (plan 5)
     public boolean CHATTER_ENABLED = true;
     /** Map chat lines per minute allowed on a crowded town map; fields get a third of this. */
@@ -84,6 +102,12 @@ public class PopulationConfig {
     public boolean GUILDS_ENABLED = true;
     /** Bot guilds to keep alive. */
     public int GUILD_TARGET = 8;
+    /**
+     * GPQ plan decision 8: a citizen guild master promotes a human member of its guild to Jr. Master once they have
+     * shared this many minutes (map minutes plus party minutes twice, as the guild invite counts them), so the human can
+     * register the guild for the Guild Quest at Shuang. 0 = never.
+     */
+    public int GUILD_PROMOTE_AFTER_MINUTES = 180;
     public boolean BUDDIES_ENABLED = true;
     /** Shared party minutes with a human before a citizen sends one buddy request. */
     public int BUDDY_REQUEST_AFTER_MINUTES = 30;
@@ -104,8 +128,8 @@ public class PopulationConfig {
     // Party quests citizens run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md)
     /** Kill switch: false = citizens at a PQ lobby only gather and invite, as before. */
     public boolean PQ_RUNS_ENABLED = true;
-    /** Comma list of the quests citizen parties go into (kpq). */
-    public String PQ_RUN_QUESTS = "kpq";
+    /** Comma list of the quests citizen parties go into (kpq, hpq). */
+    public String PQ_RUN_QUESTS = "kpq,hpq";
     /** Citizen runs at once on one channel. */
     public int PQ_RUNS_PER_CHANNEL = 1;
     /** Citizen runs at once in all. */
@@ -116,6 +140,8 @@ public class PopulationConfig {
     public int PQ_HUMAN_SEAT_HOLD_MS = 60000;
     /** No PQ plan for a citizen this long after its run ended. */
     public int PQ_RUN_COOLDOWN_MS = 1800000;
+    /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
+    public int PQ_CALLS_PER_PARTY = 4;
 
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
@@ -130,6 +156,11 @@ public class PopulationConfig {
         if (JOB_ERRAND_TALK_MS < 0 || JOB_ERRAND_WALK_MAX_MS < 0) {
             throw new IllegalArgumentException("population.JOB_ERRAND_TALK_MS and JOB_ERRAND_WALK_MAX_MS must be >= 0");
         }
+        if (PORTAL_TRAVEL_CHECK_MS < 100 || PORTAL_TRAVEL_HOP_TIMEOUT_MS < 1000 || PORTAL_TRAVEL_MAX_MS < 1000
+                || PORTAL_TRAVEL_TOWNLIFE_GRACE_MS < 0 || PORTAL_TRAVEL_BOARD_MS < 0) {
+            throw new IllegalArgumentException("population.PORTAL_TRAVEL_CHECK_MS must be >= 100, PORTAL_TRAVEL_HOP_TIMEOUT_MS"
+                    + " and PORTAL_TRAVEL_MAX_MS >= 1000, PORTAL_TRAVEL_TOWNLIFE_GRACE_MS and PORTAL_TRAVEL_BOARD_MS >= 0");
+        }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");
         }
@@ -140,8 +171,9 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.FIELD_BOSS_AVOID_MS must be within 0..10800000");
         }
         if (PQ_RUNS_PER_CHANNEL < 0 || PQ_RUNS_MAX < 0 || PQ_FORM_PATIENCE_MS < 0 || PQ_HUMAN_SEAT_HOLD_MS < 0
-                || PQ_RUN_COOLDOWN_MS < 0) {
-            throw new IllegalArgumentException("population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX and the PQ_*_MS must be >= 0");
+                || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
+            throw new IllegalArgumentException(
+                    "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
         }
     }
 }

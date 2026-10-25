@@ -1,0 +1,36 @@
+# Magatia arc: an Alcadno clockmaker and a Zenumist archivist who have shared a bench and a tin of notes for twenty
+# years without a word aloud, the evening they speak, the doors they walk through, and the pump and still they carry
+# down to Ariant together (arcs/ariant.yaml).
+- id: gilda-the-bench-between
+  persona: gilda
+  chapters:
+    - id: chapter-1
+      title: "Twenty Years of Notes"
+    - id: chapter-2
+      title: "On Time"
+      dialogueOverrides:
+        greet: ["the clock's on time. so am i. every evening. you might come by the bench at seven. you might hear something.", "hello. i've been winding things all day. nerves. clockmakers don't get nerves. i've got nerves."]
+        who: ["Gilda. clockmaker to the Alcadno society. twenty years on a bench beside a Zenumist, and all of it in notes. i've started to think a note is a way of not saying something."]
+        smallTalk: ["twenty years of notes in a tin. i've started to think i'd like to say something. out loud. in the square. it's terrifying. i recommend it."]
+        chapterEnter: ["(sets the mended bench clock on the seat beside her, exactly in the middle, and looks at the empty half)"]
+      unlocks:
+        rumors: [magatia-out-loud]
+    - id: chapter-3
+      title: "The Other Door"
+      enterWhen: { flags: [magatia.bench.crossed] }
+      dialogueOverrides:
+        greet: ["i walked through the Zenumist door at noon. nothing exploded. Vael says that's a first.", "hello. i'm wearing my good coat. i've been wearing it all week. i might never take it off."]
+        who: ["Gilda. clockmaker to the Alcadno society. i walked through the Zenumist door last week, in daylight, in my good coat. Aurel walked through ours. both societies are pretending it didn't happen. it happened."]
+        idle: ["(reads a note in green ink, out loud, quietly, and smiles at the end of it)", "(polishes the brass buttons of a good coat she is already wearing)"]
+        smallTalk: ["we still keep the tin. we still write notes. we just read them to each other now. it takes longer. it's better."]
+        chapterEnter: ["(empties twenty years of folded notes from a tin onto the bench and sorts them into two neat piles, then one)"]
+    - id: chapter-4
+      title: "Down the Sahel Road"
+      enterWhen: { flags: [ariant.well.flowing] }
+      dialogueOverrides:
+        greet: ["we built Ariant a pump and a still. Alcadno brass, Zenumist glass. the first thing the two societies have made together in a hundred years.", "hello. i've been to Ariant. it was very hot. Aurel walked beside the cart the whole way with one hand on the still. he wouldn't let me take a turn. i let him not let me."]
+        who: ["Gilda. clockmaker to the Alcadno society. i walked through the Zenumist door in my good coat, and then i walked a pump down the Sahel road beside a Zenumist. both societies pretend neither happened. both happened."]
+        idle: ["(reads a note in green ink, out loud, quietly, and smiles at the end of it)", "(turns a spare brass pump gear over in her fingers, holding it to her ear as if it might tick)"]
+        smallTalk: ["Nadira gave the water away the first day. all of it. Tariq stood by the well and complained the whole time. he was smiling. the Alcadno and the Zenumist are arguing about whose part matters more. that's progress. they used to argue about nothing."]
+        about.nadira: ["Nadira. i met her at last. she gave me a cup from the well the first day and wouldn't take a coin. Alcadno don't take orders from water-sellers. we took one. it was the best order i've had."]
+        chapterEnter: ["(sets a small brass pump gear, a spare from the Ariant well, on the bench between the two halves)"]

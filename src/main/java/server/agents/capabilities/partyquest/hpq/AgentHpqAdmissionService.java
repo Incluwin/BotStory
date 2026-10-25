@@ -37,6 +37,20 @@ public final class AgentHpqAdmissionService {
      */
     public static AdmissionResult admit(
             Character operator, Character eventLeader, List<Character> members, long seed, long nowMs) {
+        return admit(operator, eventLeader, members, seed, nowMs, false);
+    }
+
+    /**
+     * The population's entry of a citizen party that formed below Tory (CitizenPartyQuests): its citizen leader is
+     * operator and event leader, the party stays its own (EXTERNAL), the leader picks the bonus as an Agent leader does,
+     * and the session is a citizen run, not a companion run, from its first tick. Same threading as {@link #admit}.
+     */
+    public static AdmissionResult admitCitizens(Character leader, List<Character> members, long seed, long nowMs) {
+        return admit(leader, leader, members, seed, nowMs, true);
+    }
+
+    private static AdmissionResult admit(Character operator, Character eventLeader, List<Character> members, long seed,
+                                         long nowMs, boolean citizenRun) {
         Validation validation = validate(operator, eventLeader, members);
         if (!validation.success()) return AdmissionResult.failure(validation.message());
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
@@ -87,7 +101,7 @@ public final class AgentHpqAdmissionService {
             AgentPartyQuestLobbyRuntime.register(lobby, nowMs);
             AdmissionResult result = admitFromLobby(
                     engagement, lobby, operator, eventLeader, validation.members(),
-                    seed, nowMs, AgentHpqSession.Mode.PRODUCTION, true);
+                    seed, nowMs, AgentHpqSession.Mode.PRODUCTION, !citizenRun, citizenRun);
             if (!result.success()) {
                 AgentPartyQuestLobbyRuntime.unregister(lobby.lobbyId(), nowMs);
                 engagement.beginRecovery(result.message(), nowMs);
@@ -116,6 +130,22 @@ public final class AgentHpqAdmissionService {
             long nowMs,
             AgentHpqSession.Mode mode,
             boolean companionRun) {
+        return admitFromLobby(engagement, lobby, operator, eventLeader, partyMembers, seed, nowMs, mode, companionRun,
+                false);
+    }
+
+    /** As above; {@code citizenRun} (only from {@link #admitCitizens}) flags a citizen run before it is published. */
+    private static AdmissionResult admitFromLobby(
+            AgentPartyQuestEngagement engagement,
+            AgentPartyQuestLobbySession lobby,
+            Character operator,
+            Character eventLeader,
+            List<Character> partyMembers,
+            long seed,
+            long nowMs,
+            AgentHpqSession.Mode mode,
+            boolean companionRun,
+            boolean citizenRun) {
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return restoreFailure(engagement, lobby, validation.message(), nowMs);
         if (engagement == null || lobby == null
@@ -139,7 +169,7 @@ public final class AgentHpqAdmissionService {
 
         AgentHpqSession session = new AgentHpqSession(
                 mode, seed, operator.getId(), validation.members().size(), nowMs);
-        session.setPartyOwnership(isAgent(eventLeader)
+        session.setPartyOwnership(isAgent(eventLeader) && !citizenRun
                 ? AgentHpqSession.PartyOwnership.HPQ_OWNED
                 : AgentHpqSession.PartyOwnership.EXTERNAL);
         session.setBonusMode(isAgent(eventLeader)
@@ -152,6 +182,7 @@ public final class AgentHpqAdmissionService {
         session.setLeadership(eventLeader.getId(), validation.agentMembers().getFirst().getId());
         assignInitialRoles(session);
         if (companionRun) session.setCompanionAdopted(true);
+        if (citizenRun) session.setCitizenRun(true);
 
         boolean published = false;
         try {

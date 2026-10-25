@@ -154,6 +154,10 @@ public final class PartySearchBench {
         if (keystones != null && keystones.underway(persona.id())) {
             return 0; // out for its Crimsonwood Keystone: the same
         }
+        TicketErrands tickets = world.ticketErrands();
+        if (tickets != null && tickets.underway(persona.id())) {
+            return 0; // out for its Entrance Ticket to the Amorian Challenge: the same
+        }
         int level = rested.of(owner, entry, persona);
         if (level <= 0) {
             return 0;

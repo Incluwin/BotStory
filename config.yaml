@@ -848,6 +848,14 @@ living_world:
     BENCH_RESUPPLY_MAX_MS: 300000
     BENCH_RESUPPLY_MAX_HOPS: 10
     BENCH_YIELD_PRIOR_SLICES: 1.0
+    # Live GATHER, SELL and STALL (docs/BENCH_LIVE_DUTIES_PLAN.md, user 2026-10-25). A STALL learns its price: each of
+    # its own last slices that listed an item for its whole length and sold none of it takes BENCH_STALL_MARKDOWN_STEP
+    # of the index off that item, down to SELL's 0.85 where browsing citizens buy (they buy only under 0.9; Ilse's stall
+    # at the index sold nothing in 346 slices); a sale puts it back at the index (0 = always the index). A gatherer whose
+    # camp has no monster dropping what its owner's quests need goes to the best field for it, where a round of kills
+    # brings the most, as the ledger already credits (false = always its camp).
+    BENCH_STALL_MARKDOWN_STEP: 0.05
+    BENCH_GATHER_AT_DROPPERS: true
     # Decision 19 (b): bench upkeep is 30 meso per level an hour (paid ahead as wages, else out of the haul; a hired
     # hand's hourly wage is the same number), but never more than BENCH_UPKEEP_MAX_SHARE of the meso an hour the
     # companion is predicted to pick up at its camp (what live slices measured there, shrunk toward the ledger's
@@ -895,7 +903,7 @@ living_world:
     AUTO_ROTATE_LEVEL_GAP: 10
     # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list of "kpq", Lakelis;
     # "hpq", Tory, whose desk also has the owner's companions wait off her ledge; "lpq", the Red Sign; "epq", Ellin;
-    # "lmpq", Rolly; "opq", Wonky; "ppq", Guon; "rjpq" and "rjpqj", Romeo and Juliet) offers a party leader with
+    # "lmpq", Rolly; "opq", Wonky; "ppq", Guon; "rjpq" and "rjpqj", Romeo and Juliet; "apq", Amos) offers a party leader with
     # companions in their party a lineup to take in; empty = off, the NPC is stock. Every built desk is on by default
     # since 2026-10-19; drop a key to make its NPC stock again.
     # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
@@ -904,7 +912,7 @@ living_world:
     # PACE_EXCLUDED_LEADERS: character ids (a comma list) whose runs as leader teach the clear-time records no leader
     # term; their companions' times still count. 2 (ohboy) and 865 (Crewfriend) are led by the scripted test driver,
     # which talks and works the puzzles far slower than a person; empty this to learn from every leader.
-    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq,lpq,epq,lmpq,opq,ppq,rjpq,rjpqj"
+    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq,lpq,epq,lmpq,opq,ppq,rjpq,rjpqj,apq"
     COMPANION_PQ_GUIDANCE: true
     COMPANION_PQ_CLEAR_TIME: true
     COMPANION_PQ_PACE_EXCLUDED_LEADERS: "2,865"
@@ -963,6 +971,20 @@ living_world:
     # MIN_LEVEL: the hunts are Lv80-100 mobs (Lukan's own gate is 70). false = the kill switch.
     COMPANION_KEYSTONE_ERRANDS_ENABLED: true
     COMPANION_KEYSTONE_ERRAND_MIN_LEVEL: 85
+    # Companions earn their own Entrance Ticket to the Amorian Challenge (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md
+    # A2; TicketErrands): asked by its owner ("casse get your ticket", "everyone get tickets"), a companion hunts ten
+    # Lip Lock Keys from the Indigo Eyes and Crystal Boars of Purplewood Forest 2 and trades them with Amos the Strong
+    # as a player does: out with its owner it walks out keeping its seat, a benched one goes between its duties. Hunts
+    # run live when a field seat is free, else on the ledger at the key rate the companion measured live there.
+    # MIN_LEVEL: the challenge's own (40). false = the kill switch.
+    COMPANION_TICKET_ERRANDS_ENABLED: true
+    COMPANION_TICKET_ERRAND_MIN_LEVEL: 40
+    # A player founds a guild with their companions (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md decision 9;
+    # CompanionGuildFounding): at the Guild Headquarters a guildless companion in the party its owner leads counts as a
+    # cofounder (the stock founding counts only characters in no party), answers the founding prompt yes a moment later
+    # as a player would, and joins as a Jr. Master; the founder keeps their companion party. A companion already in a
+    # guild says so and does not count. false = the kill switch (stock founding).
+    COMPANION_GUILD_COFOUNDERS_ENABLED: true
     # Party Search fills from the bench (2026-10-06, P9 flow 11; PartySearchBench): while an owner's stock Party
     # Search runs, a rested bench companion of theirs whose level and job it asks for answers each search round
     # (about every 10 s) that no human answered: it whispers that it saw the search and comes like a call
@@ -1060,6 +1082,11 @@ living_world:
     BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
+    # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
+    # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
+    # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
+    # the stock 200 ms whisper spam gate and Residents nobody owns stay silent, as before. 0 = answer every one.
+    COMPANION_WHISPER_REFUSAL_GAP_MS: 5000
 
 # Populated server: generated citizens with schedules, progression, chatter, guilds, conversation and
 # market participation (docs/POPULATED_SERVER_PLAN.md). Runs inside the living world. ASCII only.
@@ -1092,6 +1119,21 @@ population:
     JOB_ERRANDS_ENABLED: true
     JOB_ERRAND_TALK_MS: 6000
     JOB_ERRAND_WALK_MAX_MS: 45000
+    # Citizens travel on foot while someone can see them (2026-10-25, docs/CITIZEN_PORTAL_TRAVEL_PLAN.md): a citizen on a
+    # map a player is on walks to the right portal and through it, map to map along the route graphs, and at a dock walks
+    # up to the boarding NPC and is gone the way a boarding player is (no ticket, no ride map). Once the map it stands on
+    # is empty it goes the cheap way (the delayed map change), and lands at the portal its route enters by when a player
+    # is on the destination. It never vanishes in front of a player: with no way on it waits until nobody watches.
+    # false = the kill switch, every move the delayed map change as before. CHECK_MS: how often a move on foot is
+    # checked. HOP_TIMEOUT_MS: a walk standing on one map this long gives up its way. MAX_MS: a move on foot this long
+    # waits for nobody to watch. TOWNLIFE_GRACE_MS: how long its town life may finish first. BOARD_MS: how long it stands
+    # at the boarding NPC.
+    PORTAL_TRAVEL_ENABLED: true
+    PORTAL_TRAVEL_CHECK_MS: 1000
+    PORTAL_TRAVEL_HOP_TIMEOUT_MS: 120000
+    PORTAL_TRAVEL_MAX_MS: 600000
+    PORTAL_TRAVEL_TOWNLIFE_GRACE_MS: 30000
+    PORTAL_TRAVEL_BOARD_MS: 2000
     CHATTER_ENABLED: true
     CHATTER_TOWN_LINES_PER_MINUTE: 18
     CHATTER_CITIZEN_COOLDOWN_MS: 45000
@@ -1104,6 +1146,10 @@ population:
     CONVERSATION_JEV_PER_PLAYER_PER_DAY: 60
     GUILDS_ENABLED: true
     GUILD_TARGET: 24
+    # A citizen guild master promotes a human member to Jr. Master after this many shared minutes (map minutes plus
+    # party minutes twice, as its guild invite counts them), so they can register the guild for the Guild Quest at
+    # Shuang (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md decision 8). 0 = never.
+    GUILD_PROMOTE_AFTER_MINUTES: 180
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true
@@ -1115,20 +1161,24 @@ population:
     # 0 = they go back as before.
     FIELD_BOSS_AVOID_MS: 3600000
     # Citizens run party quests themselves (2026-10-24, docs/CITIZEN_PARTY_QUESTS_PLAN.md): citizens on a PQ session
-    # wait beside the quest's NPC at their region's lobby, form a party there (inviting a human who fits first), go
-    # in, run it, and go back to their day. Player first: never the last lobby a human could enter, never while a human
+    # wait beside the quest's NPC at their region's lobby, form a party there (inviting a human who fits first), go in,
+    # run it, and go back to their day. Player first: never the last lobby a human could enter, never while a human
     # party waits for one or an invite to a human is out, never a party a human leads. false = the kill switch: they
-    # only gather and invite, as before. PQ_RUN_QUESTS: the quests they go into (kpq). PQ_RUNS_PER_CHANNEL /
-    # PQ_RUNS_MAX: citizen runs at once on a channel / in all. PQ_FORM_PATIENCE_MS: a party short of the quest's
-    # minimum gives up after this. PQ_HUMAN_SEAT_HOLD_MS: how long a seat waits for an invited human's answer.
-    # PQ_RUN_COOLDOWN_MS: no PQ plan for a citizen this long after its run.
+    # only gather and invite, as before. PQ_RUN_QUESTS: the quests they go into (kpq, hpq; LPQ waits, see the plan
+    # doc's round 2: LudiPQ has one lobby a channel). PQ_RUNS_PER_CHANNEL / PQ_RUNS_MAX: citizen runs at once on a
+    # channel / in all. PQ_FORM_PATIENCE_MS: a party short of the quest's minimum gives up after this.
+    # PQ_HUMAN_SEAT_HOLD_MS: how long a seat waits for an invited human's answer. PQ_RUN_COOLDOWN_MS: no PQ plan for a
+    # citizen this long after its run. PQ_CALLS_PER_PARTY (2026-10-25): a party short of its seats calls at most this
+    # many citizens over (circle and guild mates first, then townsfolk of its region idling in town), one a minute,
+    # never more than it needs.
     PQ_RUNS_ENABLED: true
-    PQ_RUN_QUESTS: "kpq"
+    PQ_RUN_QUESTS: "kpq,hpq"
     PQ_RUNS_PER_CHANNEL: 1
     PQ_RUNS_MAX: 2
     PQ_FORM_PATIENCE_MS: 600000
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
+    PQ_CALLS_PER_PARTY: 4
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

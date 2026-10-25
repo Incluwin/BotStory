@@ -79,6 +79,28 @@ class AgentOpqNavigationGraphTest {
     }
 
     @Test
+    void everyLoungeSubroomRunnerFindsItsWayBackToTheLounge() {
+        // 2026-10-25 live (runs 4 and 5): the low subroom has no portal 9, its out00 is portal 1. Looking for 9 there,
+        // Sadie stood at (-857,-385) with her ten pieces until the clock ran out, both runs.
+        for (int mapId : AgentOpqDefinition.LOUNGE_ROOM_MAPS) {
+            server.maps.Portal out = AgentNavigationMapLoader.loadMapGeometry(mapId)
+                    .getPortal(AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(mapId));
+            assertNotNull(out, "subroom " + mapId);
+            assertEquals("out00", out.getName(), "subroom " + mapId);
+            assertEquals(AgentOpqDefinition.LOUNGE_MAP, out.getTargetMapId(), "subroom " + mapId);
+        }
+        int low = AgentOpqCoordinator.LOUNGE_LOW_SUBROOM;
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(low);
+        server.maps.Portal out = map.getPortal(AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(low));
+        Point target = AgentPortalApproachService.navigableTarget(map, out);
+        for (int phase = 0; phase < 2; phase++) {
+            Point end = followCoordinatorTargets(low, new Point(-857, -385), 100, phase, position -> target,
+                    position -> AgentOpqInteractionPolicy.mayEnterPortal(position, out.getPosition()));
+            assertTrue(AgentOpqInteractionPolicy.mayEnterPortal(end, out.getPosition()), "phase " + phase + " ended at " + end);
+        }
+    }
+
+    @Test
     void lobbyRunnerReachesTheBoxOfEveryDayItsMovementReaches() {
         // Every LP box sits in a walled cell of its own (Map.wz 920010400) and the runner goes for the day's box by the
         // graph. 2026-10-24 live (run 4, a Sunday on the server): the old two-rope ascent led only into Monday's cell,

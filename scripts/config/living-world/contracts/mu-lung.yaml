@@ -1,0 +1,31 @@
+# Mu Lung contracts: a road guard who wants a kill proof first, a brawler who wants you to have heard her first.
+- id: baojun-the-road-toll
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [baojun.intro.done]
+  price:
+    meso: 25000
+    proof: { killMobs: { mobIds: [4230502], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 12000 }
+
+- id: suyin-the-sparring-fee
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [suyin.intro.done, mu-lung.heard-challenge]
+  price:
+    meso: 50000
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 15000 }

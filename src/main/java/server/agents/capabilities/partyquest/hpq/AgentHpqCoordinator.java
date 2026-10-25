@@ -130,13 +130,19 @@ final class AgentHpqCoordinator {
                 return;
             }
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
-                AgentHpqTerminationService.fail(session, "No HPQ progress before the phase timeout", nowMs);
+                fail(session, "No HPQ progress before the phase timeout",
+                        AgentHpqParting.of(AgentHpqParting.Kind.TOO_LONG), nowMs);
                 return;
             }
             holdFullRateSimulation(session);
             Character leader = character(session.eventLeaderId());
+            // The parting words are a citizen run's (a stock run fails as it always did, reading nothing more).
+            boolean words = playersRun(session);
             if (leader == null || leader.getHp() <= 0) {
-                AgentHpqTerminationService.fail(session, "The HPQ event leader is unavailable", nowMs);
+                fail(session, "The HPQ event leader is unavailable", !words ? AgentHpqParting.GENERIC : leader == null
+                        ? new AgentHpqParting(AgentHpqParting.Kind.GONE, session.eventLeaderId(),
+                                memberName(session, session.eventLeaderId()))
+                        : AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, leader), nowMs);
                 return;
             }
             if (session.eventInstance() == null && hpq().event(leader) != null) {
@@ -144,8 +150,13 @@ final class AgentHpqCoordinator {
             }
             if (insideEvent(session.phase()) && session.eventInstance() != null
                     && hpq().event(leader) != session.eventInstance()) {
-                AgentHpqTerminationService.fail(
-                        session, "The HPQ event ended or the leader left its instance", nowMs);
+                fail(session, "The HPQ event ended or the leader left its instance",
+                        words ? AgentHpqParting.of(endedCause(session, nowMs)) : AgentHpqParting.GENERIC, nowMs);
+                return;
+            }
+            // A citizen run has players in it: departures and deaths as a companion run has them, before the stage.
+            if (session.citizenRun() && insideEvent(session.phase())
+                    && (!reconcileLiveParty(session, nowMs) || !membersAlive(session, leader, nowMs))) {
                 return;
             }
             switch (session.phase()) {
@@ -423,9 +434,25 @@ final class AgentHpqCoordinator {
 
     private static void defend(AgentHpqSession session, Character leader, long nowMs) {
         guardBunny(session, leader, nowMs, false);
+        if (session.citizenRun()) askHumansForCakes(session, leader);
         if (leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false)
                 >= AgentHpqDefinition.REQUIRED_RICE_CAKES) {
             transition(session, AgentHpqSession.Phase.DELIVERING_CAKES, nowMs);
+        }
+    }
+
+    /**
+     * Growlie takes the cakes only from the event leader: a citizen leader asks a human of its run who picked some up to
+     * drop them by it, once (it loots the cakes a player drops, as every stock Agent leader does).
+     */
+    private static void askHumansForCakes(AgentHpqSession session, Character leader) {
+        for (AgentHpqMemberState member : session.members()) {
+            if (member.memberType() != AgentHpqMemberState.MemberType.HUMAN) continue;
+            Character human = character(member.characterId());
+            if (human != null && inRun(session, human) && human.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false) > 0) {
+                narrate(session, leader, "cakes-" + member.characterId(),
+                        human.getName() + " drop the rice cakes by me pls, growlie only takes them from the leader");
+            }
         }
     }
 
@@ -596,10 +623,16 @@ final class AgentHpqCoordinator {
         if (!agentRemaining) transition(session, AgentHpqSession.Phase.CLAIMING_REWARD, nowMs);
     }
 
+    /**
+     * Each Agent claims at Tory, the leader last. A stock run waits for its humans too and reminds them in system text;
+     * a citizen run's leader tells a human once, in chat, and nobody waits for them (the cleared event stays theirs).
+     */
     private static void claim(AgentHpqSession session, long nowMs) {
         session.freezeRewardEligibility();
+        boolean waitForHumans = !session.citizenRun();
         boolean nonLeaderRewardsResolved = session.members().stream()
                 .filter(member -> member.characterId() != session.eventLeaderId())
+                .filter(member -> waitForHumans || member.memberType() == AgentHpqMemberState.MemberType.AGENT)
                 .allMatch(AgentHpqMemberState::rewardResolved);
         for (AgentHpqMemberState member : session.members()) {
             if (member.rewardResolved()) continue;
@@ -608,6 +641,11 @@ final class AgentHpqCoordinator {
             if (participant.getMapId() == AgentHpqDefinition.CLEAR_MAP
                     || participant.getMapId() == AgentHpqDefinition.REWARD_EXIT_MAP) {
                 if (member.memberType() == AgentHpqMemberState.MemberType.HUMAN) {
+                    if (session.citizenRun()) {
+                        narrate(session, character(session.eventLeaderId()), "claim-" + member.characterId(),
+                                participant.getName() + " talk to tory for ur reward, we're heading out");
+                        continue;
+                    }
                     String line = voice(session, null, STOCK_CLAIM_LINE);
                     if (line != null && nowMs >= member.nextActionAtMs()) {
                         participant.dropMessage(6, line);
@@ -629,7 +667,15 @@ final class AgentHpqCoordinator {
                 }
             }
         }
-        if (session.allRewardsResolved()) transition(session, AgentHpqSession.Phase.EXITING, nowMs);
+        boolean resolved = waitForHumans ? session.allRewardsResolved() : agentRewardsResolved(session);
+        if (resolved) transition(session, AgentHpqSession.Phase.EXITING, nowMs);
+    }
+
+    /** Every Agent of the run has its reward (or gave it up), once eligibility is frozen. */
+    private static boolean agentRewardsResolved(AgentHpqSession session) {
+        return session.members().stream()
+                .filter(member -> member.memberType() == AgentHpqMemberState.MemberType.AGENT)
+                .allMatch(AgentHpqMemberState::rewardResolved);
     }
 
     private static void exit(AgentHpqSession session, long nowMs) {
@@ -1730,13 +1776,13 @@ final class AgentHpqCoordinator {
     }
 
     /**
-     * A companion run's end. The first standing companion (else the first companion, even down) puts it in its own
+     * A companion or citizen run's end. The first standing Agent (else the first one, even down) puts it in its own
      * words, SILENT before the run got going; the raw reason goes only to the log. Before the clear the event is
-     * disposed, as a stock failure does; after it only the companions leave, through the event's exit, and the event
+     * disposed, as a stock failure does; after it only the Agents leave, through the event's exit, and the event
      * and its players stay. A stock run fails as it always did.
      */
     private static void fail(AgentHpqSession session, String reason, AgentHpqParting parting, long nowMs) {
-        if (!session.companionAdopted()) {
+        if (!playersRun(session)) {
             AgentHpqTerminationService.fail(session, reason, nowMs);
             return;
         }
@@ -1791,7 +1837,7 @@ final class AgentHpqCoordinator {
     /** The watchdog found no live Agent to run the session: a companion run hears it end, a stock run ends as ever. */
     static void failWithoutLiveAgent(AgentHpqSession session, long nowMs) {
         String reason = "No live Agent execution participant remains";
-        if (!session.companionAdopted()) {
+        if (!playersRun(session)) {
             AgentHpqTerminationService.fail(session, reason, nowMs);
             return;
         }
@@ -1813,7 +1859,8 @@ final class AgentHpqCoordinator {
 
     /**
      * A companion run's companions standing in its instance after the clear, their reward still to claim, run at full
-     * rate; nobody else's are held.
+     * rate; a citizen run's citizens do from entry to their claim (an instance nobody watches otherwise runs them at the
+     * background cadence, which left KPQ's background runs stuck in stage 1); nobody else's are held.
      */
     private static void holdFullRateSimulation(AgentHpqSession session) {
         AgentHpqSession.Phase phase = session.phase();
@@ -1823,8 +1870,8 @@ final class AgentHpqCoordinator {
         for (AgentHpqMemberState member : session.members()) {
             if (member.memberType() != AgentHpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
-            boolean wanted = !ending && session.companionAdopted() && claimPhase && agent != null
-                    && inRun(session, agent) && !member.rewardResolved();
+            boolean held = session.companionAdopted() ? claimPhase : session.citizenRun() && !member.down();
+            boolean wanted = !ending && held && agent != null && inRun(session, agent) && !member.rewardResolved();
             AgentHpqFullRateSimulation.apply(
                     member, AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()), wanted);
         }
@@ -1871,7 +1918,15 @@ final class AgentHpqCoordinator {
      * line; a stock or test run keeps the plain lines it always had.
      */
     static String voice(AgentHpqSession session, String companionLine, String stockLine) {
-        return session.companionAdopted() ? companionLine : stockLine;
+        return playersRun(session) ? companionLine : stockLine;
+    }
+
+    /**
+     * A run with players in it beside its Agents: a companion run, or a citizen run (its citizens are the server's
+     * players). Either talks like players and ends in a player's words; stock and test runs keep their status lines.
+     */
+    static boolean playersRun(AgentHpqSession session) {
+        return session.companionAdopted() || session.citizenRun();
     }
 
     /** True when the line was said now; each key is said once a run. */
@@ -1889,9 +1944,9 @@ final class AgentHpqCoordinator {
 
     /** One line per phase with its time, for every run: its pace reads straight from the log. */
     private static void transition(AgentHpqSession session, AgentHpqSession.Phase phase, long nowMs) {
-        log.info("HPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}",
+        log.info("HPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={} citizenRun={}",
                 session.sessionId(), session.phase(), phase, nowMs - session.phaseEnteredAtMs(),
-                nowMs - session.startedAtMs(), session.companionAdopted());
+                nowMs - session.startedAtMs(), session.companionAdopted(), session.citizenRun());
         session.transition(phase, nowMs);
     }
 

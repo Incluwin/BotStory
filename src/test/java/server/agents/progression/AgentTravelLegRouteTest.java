@@ -71,6 +71,21 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void reachesAmosTrainingGroundByThomasSwiftAmoriaAndPurplewoodForest() {
+        List<AgentVictoriaTrainingRouteCatalog.Step> there = AgentVictoriaTrainingRouteCatalog.ridePath(
+                101000000, 670010000, Set.of(), leg -> true, RIDE_HOP_COST);
+
+        assertEquals(List.of("henesys-to-amoria"), legs(there), "Ellinia walks to Henesys and Thomas Swift");
+        assertEquals(List.of(670000100, 670000200, 670010000),
+                there.stream().map(AgentVictoriaTrainingRouteCatalog.Step::toMapId).toList()
+                        .subList(there.size() - 3, there.size()), "through both Purplewood Forests");
+        assertEquals(List.of("amoria-to-henesys"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                670010000, 100000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(100000000, 680000000, Set.of(),
+                leg -> !leg.id().equals("henesys-to-amoria"), RIDE_HOP_COST), "no portal leads to Amoria");
+    }
+
+    @Test
     void aLegItCannotUseIsLeftOutAndWithoutItThereIsNoWay() {
         assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(
                 200000000, 220000000, Set.of(), leg -> !leg.id().equals("orbis-to-ludibrium"), RIDE_HOP_COST));

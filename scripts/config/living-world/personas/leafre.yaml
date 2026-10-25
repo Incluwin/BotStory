@@ -1,0 +1,477 @@
+# Leafre cast: the village under the dragons. 7 residents, 2 recruitable (Bastian the border knight for a kill proof,
+# Runa the canyon axe for a day rate), 1 arc (Hessa's cold egg, carried down from the dragon nest forty winters ago).
+# Ids in quests/leafre.yaml.
+- id: hessa
+  name: Hessa
+  look: { gender: female }
+  title: "Keeper of the Cold Egg"
+  job: BEGINNER
+  level: { min: 40, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 6, to: 11, spot: "venue:lower-west-street", activity: REST }
+      - { from: 11, to: 15, spot: "venue:itos-house-door", activity: SOCIALIZE }
+      - { from: 15, to: 19, spot: "venue:lower-west-street-2", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [leafre, jr. newtie, nest golem]
+  questLines: [hessa-a-blanket-of-furballs, hessa-the-shell-that-matches, hessa-carry-it-home, hessa-furball-lining]
+  arc: hessa-the-cold-egg
+  rumors: [leafre-should-it-go-home]
+  relationships:
+    - { persona: arlo, kind: GRANDMOTHER_OF }
+    - { persona: mirelle, kind: OLD_FRIEND }
+    - { persona: dovan, kind: TRUSTS }
+  giftItemIds: [4000226, 2022001]
+  dialogue:
+    greetFirst: ["mind the basket, dear. no, don't touch it. just mind it.", "you've come over the forest. the halflings don't get many big folk. sit, if you like. quietly."]
+    greet: ["back again. the basket's warm. it's always warm.", "hello, dear. keep your voice down. it doesn't like noise. it never has."]
+    idle: ["(tucks a fold of fur tighter around something in a covered basket on her knees)", "(hums an old halfling song very low, one hand flat on the basket's lid)"]
+    noWork: ["nothing today, dear. today i just sit with it."]
+    nothingDue: ["you owe me nothing. sit a while, that's all."]
+    who: ["Hessa. i keep a dragon's egg. i have kept it forty winters. it hasn't hatched. i haven't stopped."]
+    bye: ["go gently over the roots. they trip the careless and the careful both."]
+    thanks: ["oh, you're kind. warm hands. good."]
+    smallTalk: ["the dragons used to fly over the village every evening. the whole sky went dark and nobody minded. it was like a roof.", "i was nine when the nest above the canyon burned. i went up after. i shouldn't have. i came down with this."]
+    speakPlainly: ["plainly: an egg, a basket, an old woman. that's the whole of it."]
+    questOffer.hessa-a-blanket-of-furballs: ["the basket's lining is worn through. the rashes in the west forest shed the softest fur there is. thirty of them, fifteen furballs? i'll tell you something about the egg while i sew. something nobody knows."]
+    questAccept.hessa-a-blanket-of-furballs: ["the west forest, just past the gate, and the peach monkey forest beyond it. the rashes look sleepy. they aren't."]
+    questWaiting.hessa-a-blanket-of-furballs: ["fifteen furballs, dear. the old lining's more hole than fur."]
+    questComplete.hessa-a-blanket-of-furballs: ["oh, that's soft. there. ...everyone knows it's an egg from the nest that burned. what nobody knows is that in forty winters it's never once moved. not once. i'd like you to know that. somebody should."]
+    questOffer.hessa-the-shell-that-matches: ["the dragon nest that burned isn't empty, they say. little newties nest in the ruins. thirty of them, and fifteen pieces of their shells. i want to hold a shell against mine. i want to know if they're kin."]
+    questAccept.hessa-the-shell-that-matches: ["the destroyed nest is past the canyon, at the very top. i've not been since i was nine. go carefully. carefully for me."]
+    questWaiting.hessa-the-shell-that-matches: ["fifteen shells. i keep lifting the lid to look at mine, as if it'll tell me first."]
+    questComplete.hessa-the-shell-that-matches: ["...the same. the same blue under the grey, the same little ridges. they're kin. the nest's alive, dear. it never stopped being a nest. it just stopped being mine."]
+    questOffer.hessa-carry-it-home: ["you heard Arlo and me. it should go home. the little beast made me say it out loud. take it to the peak of the big nest and lay it down where the golems keep the old one warm. clear them back first. they won't know you mean well."]
+    questAccept.hessa-carry-it-home: ["the peak of the big nest. the very top. the golems are slow and they don't forgive. go before i change my mind. i'll change it every hour you're gone. ignore me."]
+    questWaiting.hessa-carry-it-home: ["is it there? is it warm? don't tell me if it's cold. tell me it's there."]
+    questComplete.hessa-carry-it-home: ["it's home. forty winters and it's home. ...i'm going to sit with an empty basket for a while. it's lighter. i didn't know it was heavy."]
+    questOffer.hessa-furball-lining: ["the lining wants changing again. fifteen rash furballs? you know where."]
+    questAccept.hessa-furball-lining: ["the west forest. the sleepy ones."]
+    questWaiting.hessa-furball-lining: ["fifteen. soft ones."]
+    questComplete.hessa-furball-lining: ["lovely and soft. thank you, dear."]
+    about.arlo: ["Arlo's my grandson. he wants to ride a dragon. he wants it the way i wanted it at his age. i hope he gets to. i hope it's soon."]
+    about.mirelle: ["Mirelle and i were girls together. she made me a bonnet the winter of the fire. i still have it. it doesn't fit. it never will again."]
+    about.dovan: ["Dovan mended the basket's handle for me. he didn't ask what was in it. that's a rare kind of man."]
+    about.elsk: ["Elsk meets the ship. he tells me who came over from Orbis. nobody ever comes for the egg. i don't know why i ask."]
+    aboutUnknown: ["i don't know them, dear. i don't get about much."]
+    friend.close: ["you can hold the basket, if you like. a little while. both hands."]
+    friend.best: ["forty winters with a cold egg and one warm friend at the end of it. i call that a fair trade."]
+    famed: ["they're saying good things about you in the village. i said i knew."]
+    defamed: ["they're saying hard things about you. i said they didn't know you. i'm not sure i was right."]
+    gift: ["oh, for me? thank you, dear."]
+    gift.favorite: ["oh, you remembered what i like. sit down. sit with me."]
+    gift.again: ["one's plenty for today, dear."]
+
+- id: arlo
+  name: Arlo
+  look: { gender: male }
+  title: "Would-Be Dragon Rider"
+  job: BEGINNER
+  level: { min: 22, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-max", activity: SHOW_OFF }
+      - { from: 12, to: 16, spot: "venue:upper-east-street", activity: STROLL }
+      - { from: 16, to: 19, spot: "venue:kumos-house-door", activity: SHOW_OFF }
+      - { from: 19, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [leafre, beetle, harp]
+  questLines: [arlo-beetle-horns, arlo-the-station-errand, arlo-a-riding-cap]
+  rumors: [leafre-should-it-go-home]
+  relationships:
+    - { persona: hessa, kind: GRANDSON_OF }
+    - { persona: elsk, kind: PESTERS }
+    - { persona: runa, kind: ADMIRES }
+  giftItemIds: [4000236, 2000002]
+  dialogue:
+    greetFirst: ["are you a dragon rider? you look like you could be. are you? you're not. that's fine. i'm not either. yet.", "big folk! from Orbis? did you see a dragon on the way? any dragon? a small one?"]
+    greet: ["hi! still no dragon. i'm keeping a lookout.", "you're back! i've been practising holding on. you hold on with your knees."]
+    idle: ["(sits astride a fence rail and leans into a turn that isn't there)", "(stares up at the sky over the forest, shading his eyes with both hands)"]
+    noWork: ["nothing today. grandma says i've done enough helping for one week. i haven't."]
+    nothingDue: ["we're even! i think. i'm not good at even."]
+    who: ["Arlo! Hessa's grandson. i'm going to ride a dragon. the first halfling ever. everyone says that's not how it works. i'm working on how it works."]
+    bye: ["look up on the way! you might see one!"]
+    thanks: ["thanks! grandma will say thank you properly. she does it better."]
+    smallTalk: ["grandma hums the same song every evening. she says it's older than the village. i've learned it. i hum it at the sky in case anything up there's listening.", "Runa says dragons can smell fear. i've been practising not smelling of anything."]
+    speakPlainly: ["plainly: i want to fly. that's all. that's everything."]
+    questOffer.arlo-beetle-horns: ["i'm making a dragon. a pretend one, for now. it needs horns. the beetles in the east forest have the best horns. twenty-five beetles, fifteen horns?"]
+    questAccept.arlo-beetle-horns: ["the east forest, right past the village. the beetles charge. you have to jump. i jump too early. you'll be fine."]
+    questWaiting.arlo-beetle-horns: ["fifteen horns! the pretend dragon's got none and it looks sad."]
+    questComplete.arlo-beetle-horns: ["fifteen! it's got horns now. it looks fierce. it's made of a barrel. it still looks fierce."]
+    questOffer.arlo-the-station-errand: ["Elsk at the station knows everything that comes off the ship. ask him if anyone ever came over from Orbis to ride a dragon. please? he only ever says no to me. he might say more to you. he says i'll get ideas."]
+    questAccept.arlo-the-station-errand: ["Elsk's at the station entrance, up top. he's always there. he's part of the station."]
+    questWaiting.arlo-the-station-errand: ["did Elsk say? did someone? who was it?"]
+    questComplete.arlo-the-station-errand: ["nobody, ever? ...then i'll be the first. that's better, actually. that's much better."]
+    questOffer.arlo-a-riding-cap: ["every rider needs a cap. a proper one, with flaps. Mirelle makes hats for adventurers. would you ask her to make me one? a small one. she says i'm too young. she might say yes to you."]
+    questAccept.arlo-a-riding-cap: ["Mirelle's by the department store door all day. tell her it's for flying. she likes flying."]
+    questWaiting.arlo-a-riding-cap: ["did she say yes? did she say flaps?"]
+    questComplete.arlo-a-riding-cap: ["she said when i'm taller? ...that's a yes. that's a yes later. i'll take a yes later."]
+    about.hessa: ["grandma's the best. she sits with her basket and sings. she doesn't think i hear. i hear."]
+    about.elsk: ["Elsk won't tell me anything good. he tells me the ship's late. it's always late. that's not news."]
+    about.runa: ["Runa's fought a wyvern! a real one! she says it's not something you want to do twice. i want to do it once."]
+    about.bastian: ["Bastian's a knight. he's very polite. too polite. he says sorry to the hobis."]
+    aboutUnknown: ["i don't know them! are they a rider?"]
+    friend.close: ["you're my best big-folk friend. you're my only big-folk friend. you'd be my best anyway."]
+    friend.best: ["when i get a dragon you get the first ride. after grandma. she'd say no anyway."]
+    famed: ["everyone's talking about you! i told them we're friends!"]
+    defamed: ["people are saying bad stuff about you. i don't believe it. mostly."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh, that's perfect! how did you know? you know everything!"]
+    gift.again: ["you already gave me something today! i'm keeping count. grandma taught me."]
+
+- id: bastian
+  name: Bastian
+  look: { gender: male }
+  title: "Knight of the West Border"
+  job: WHITEKNIGHT
+  level: { min: 70, max: 72 }
+  strength: VETERAN
+  loadout: leafre-sword-l70
+  personality: efficient-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:by-koscu", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [hobi, dark rash, black kentaurus]
+  contract: bastian-the-border-oath
+  questLines: [bastian-the-west-border, bastian-red-katana, bastian-khan, bastian-fraute, bastian-furball-count]
+  rumors: [leafre-the-canyon-watch]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: runa, kind: RIVAL }
+    - { persona: arlo, kind: HUMOURS }
+  giftItemIds: [4000229, 2000004]
+  dialogue:
+    greetFirst: ["good day. forgive me. i'm told i stand too straight for a village of halflings. i'm trying to slouch.", "a traveller. welcome to Leafre. mind the border on your way back. i mind it for you, but mind it as well."]
+    greet: ["good day to you.", "well met. the border's quiet. i'd like to keep it that way. i'm not boasting. i'm hoping."]
+    idle: ["(polishes a sword that is already polished, then checks it against the light)", "(bows very slightly to a halfling passing by, who does not notice)"]
+    noWork: ["no work today. the border holds. i'm almost disappointed."]
+    nothingDue: ["you owe me nothing. honour's square."]
+    who: ["Bastian. i came to Leafre to hunt kentaurus and stayed to keep the west border. the halflings put up with me. i'm grateful. i say so too often."]
+    bye: ["go with care. the forest is kinder to the polite."]
+    thanks: ["you're very kind. i'm obliged."]
+    smallTalk: ["the hobis steal laundry off the halflings' lines. shorts, mostly. they wear them. i've never known what to do about that.", "a kentaurus once asked me my name before it charged. i told it. it seemed the decent thing."]
+    speakPlainly: ["plainly: a sword, a border, and too many apologies."]
+    offer: ["sixty dark rashes off the west border, counted fairly, and thirty thousand for the hours it goes unkept. then my sword is yours for a shift."]
+    join: ["an honour. i'll take the left. i always take the left."]
+    bench: ["i'll be on the border. three days, and then the border will want me more than you do."]
+    leave: ["the shift's done. thank you for the company. truly."]
+    refuse.bond: ["forgive me. i don't leave my post with someone i don't know. it's not you. it's the post."]
+    refuse.flags: ["walk the west border with me once first. then ask again. i'd be glad to be asked."]
+    refuseOwnErrand: ["that's my duty. you may share it. you may not take it. forgive me."]
+    questOffer.bastian-the-west-border: ["the dark rashes have pushed past the west border. thirty of them, then walk on to the forest crossroad so you know where the border ends. i'll know you've seen it."]
+    questAccept.bastian-the-west-border: ["the west border, then the peach monkey forest. the crossroad's further on, where the birks graze. don't fight the birks. just look."]
+    questWaiting.bastian-the-west-border: ["thirty, and the crossroad. the border's a line. you have to walk a line to know it."]
+    questComplete.bastian-the-west-border: ["thank you. now you know the border as i do. it's a short line and a long watch."]
+    questOffer.bastian-red-katana: ["the Red Katana. the first sword i ever earned. i'd give it to you, if you'd do the village a kindness first. the hobis have stolen half the halflings' washing. thirty hobis, and fifteen pairs of shorts back."]
+    questAccept.bastian-red-katana: ["the west border and the cranky forest. the hobis wear the shorts on their heads. i don't know why. i've never asked."]
+    questWaiting.bastian-red-katana: ["fifteen pairs. the washing lines are bare and the halflings are cold."]
+    questComplete.bastian-red-katana: ["fifteen. the village will be dressed by evening. the Red Katana. seven safe scrolls, every one took. it cut true for me. it will for you."]
+    questOffer.bastian-khan: ["the Khan. a heavier blade. it wants a crown. the blood harps in the second sky nest wear little crowns of bone. thirty harps, fifteen crowns."]
+    questAccept.bastian-khan: ["the second sky nest, up past the antelope valley. they dive. step aside. don't step back."]
+    questWaiting.bastian-khan: ["fifteen crowns. the Khan's grip is bare."]
+    questComplete.bastian-khan: ["fifteen crowns. the Khan. seven sixties, every one took. it's heavier than it looks. so are you."]
+    questOffer.bastian-fraute: ["the Fraute. i've never carried it. i've never felt i'd earned it. the black kentaurus took a friend of mine on their field. thirty of them, and fifteen skulls for his grave. then it's yours."]
+    questAccept.bastian-fraute: ["the black kentaurus field, and the battlefields either side. they ask your name. tell them, if you like. they charge anyway."]
+    questWaiting.bastian-fraute: ["fifteen skulls. i've kept his grave tidy. it wants marking."]
+    questComplete.bastian-fraute: ["fifteen. i'll ring his grave with them. ...the Fraute. two tens and five sixties, every one took. carry it better than i would have. i think he'd have liked that."]
+    questOffer.bastian-furball-count: ["the dark rashes are creeping back. fifteen of their furballs, so i know how many crossed?"]
+    questAccept.bastian-furball-count: ["the west border, the peach monkey forest."]
+    questWaiting.bastian-furball-count: ["fifteen furballs. the dark ones."]
+    questComplete.bastian-furball-count: ["fifteen. the border's held another week. thank you."]
+    about.runa: ["Runa keeps the canyon road. she says knights talk too much. she's right. i've apologised. she says that's talking."]
+    about.arlo: ["Arlo asks me every morning if i've seen a dragon. i say not today. he says tomorrow, then. he's never once been discouraged. i admire that."]
+    about.hessa: ["i offered to carry Mistress Hessa's basket once. i shouldn't have. she was very kind about it."]
+    aboutUnknown: ["forgive me. i don't know them."]
+    friend.close: ["i'd trust you with my left side. i don't say that lightly. i don't say much lightly. i'm working on it."]
+    friend.best: ["if i fall on this border, i'd like you to be the one who tells the village. you'd tell it plainly. they'd like that."]
+    famed: ["they speak well of you. as they should."]
+    defamed: ["they speak ill of you. i've asked them to stop. politely."]
+    gift: ["thank you. you needn't have."]
+    gift.favorite: ["oh, that's thoughtful. truly. i'm obliged."]
+    gift.again: ["you're very generous. one is plenty for a day."]
+
+- id: runa
+  name: Runa
+  look: { gender: female }
+  title: "Axe of the Canyon Road"
+  job: CRUSADER
+  level: { min: 80, max: 82 }
+  strength: VETERAN
+  loadout: leafre-axe-l80
+  personality: efficient-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 7, to: 13, spot: "venue:beside-danger-zone-taxi", activity: LINGER }
+      - { from: 13, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:by-koscu", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [wyvern canyon, red wyvern, dual birk]
+  contract: runa-day-rate
+  questLines: [runa-the-antelope-road, runa-gaea, runa-vifennis, runa-tomahawk, runa-horn-tally]
+  rumors: [leafre-the-canyon-watch]
+  benchToleranceDays: 2
+  paceGap: 4
+  relationships:
+    - { persona: bastian, kind: RIVAL }
+    - { persona: dovan, kind: CUSTOMER_OF }
+  giftItemIds: [4000268, 2000004]
+  dialogue:
+    greetFirst: ["you're blocking the taxi. no, stay. i'm not going anywhere. i'm watching the canyon road.", "new. you've got Orbis dust on you. it comes off in the canyon. so does everything else."]
+    greet: ["mm. you.", "road's open. for now."]
+    idle: ["(runs a thumb along the edge of an axe, listening to the sound it makes)", "(watches the far ridge where the canyon starts, not blinking much)"]
+    noWork: ["nothing. go hunt something. come back when it's interesting."]
+    nothingDue: ["we're square."]
+    who: ["Runa. i keep the canyon road clear for anyone stupid enough to walk to the wyverns. i'm paid by the day. i'm worth it."]
+    bye: ["don't fight in the canyon with your back to the drop."]
+    thanks: ["mm."]
+    smallTalk: ["red wyverns hunt in pairs. blue ones hunt alone. dark ones hunt whatever's moving. stand still. it doesn't help.", "the knight thinks i'm rude. i'm not rude. i'm brief. he'd know the difference if he were briefer."]
+    speakPlainly: ["plainly: road, axe, wyverns, pay."]
+    offer: ["a hundred and twenty thousand for a day. i don't haggle. i don't do half days. i do the whole day and i do it properly."]
+    join: ["fine. walk where i walk."]
+    bench: ["two days on the bench and i'm back on the road. that's not a threat. that's the road."]
+    leave: ["day's done. good day, actually. don't tell the knight."]
+    refuse.bond: ["i don't sell days to strangers. come back when you're not one."]
+    refuse.flags: ["do one run of the antelope road with me first. pay talk after."]
+    refuseOwnErrand: ["my road. you can walk it with me. you don't walk it for me."]
+    questOffer.runa-the-antelope-road: ["the dual beetles have dug up the east border again. thirty of them, then walk out to the valley of the antelope and back so you know how far the road runs before it gets serious."]
+    questAccept.runa-the-antelope-road: ["east border, the beetle forest. then the antelope valley, past the crossroad. look at the birks. don't start anything."]
+    questWaiting.runa-the-antelope-road: ["thirty beetles, the valley. the road doesn't walk itself."]
+    questComplete.runa-the-antelope-road: ["good. you've seen the easy half. the canyon's the other half."]
+    questOffer.runa-gaea: ["Gaea. my first axe. the hankies in the cranky forest play pan flutes and the music gets in your arms. thirty of them, fifteen flutes. i bind the haft with flute reed. don't ask. it works."]
+    questAccept.runa-gaea: ["the cranky forest and the steep hill. cover your ears if you have to. i didn't."]
+    questWaiting.runa-gaea: ["fifteen flutes. i'm humming. stop me."]
+    questComplete.runa-gaea: ["fifteen. Gaea, bound in reed. seven safe scrolls, every one took. it swings light. don't let it fool you."]
+    questOffer.runa-vifennis: ["Vifennis. heavier. the dual birks in the antelope valley have tails like rope. thirty of them, fifteen tails. i'll wrap the grip."]
+    questAccept.runa-vifennis: ["the valley of the antelope. the dual ones. two heads, both stubborn."]
+    questWaiting.runa-vifennis: ["fifteen tails. the grip's bare."]
+    questComplete.runa-vifennis: ["fifteen. Vifennis. seven sixties, every one took. that's lucky. don't get used to lucky."]
+    questOffer.runa-tomahawk: ["the Tomahawk. i've kept it six years for the day my arm's ready for it. yours is ready first. i'm giving it to you because you've earned it, not because i'm soft. thirty red wyverns in the canyon, fifteen wings. i want the wings."]
+    questAccept.runa-tomahawk: ["the dragon canyon, the crossroad, the red nest. back to the wall. always."]
+    questWaiting.runa-tomahawk: ["fifteen wings. i'm making a cloak. don't laugh."]
+    questComplete.runa-tomahawk: ["fifteen. ...the Tomahawk. two tens, five sixties, every one took. look after it. it looked after me."]
+    questOffer.runa-horn-tally: ["fifteen dual beetle horns. i count them to know how many crossed the east border."]
+    questAccept.runa-horn-tally: ["the east border."]
+    questWaiting.runa-horn-tally: ["fifteen."]
+    questComplete.runa-horn-tally: ["fifteen. road's clear another week."]
+    about.bastian: ["Bastian apologises to things before he hits them. it doesn't slow him down. that's what annoys me."]
+    about.dovan: ["Dovan made my boots. wyvern hide. i've walked off two cliffs in them and they've never once slipped. i have."]
+    about.arlo: ["the kid wants a dragon. i told him dragons don't want riders. he said that's because they haven't met him. ...fair."]
+    aboutUnknown: ["don't know them."]
+    friend.close: ["i'd let you set the pace on the canyon road. i've never said that. don't make me regret it."]
+    friend.best: ["you're the only one i'd let walk ahead of me on the canyon road. i still won't, but i'd let you."]
+    famed: ["mm. heard about you. good."]
+    defamed: ["heard about you. sort it out."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh. that's the good kind. you noticed. fine."]
+    gift.again: ["one's plenty."]
+
+- id: mirelle
+  name: Mirelle
+  look: { gender: female }
+  title: "Hatter of Leafre"
+  job: BEGINNER
+  level: { min: 35, max: 35 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 8, to: 13, spot: "venue:department-store-door", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:lower-central-street-2", activity: REST }
+      - { from: 14, to: 18, spot: "venue:department-store-door", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:lower-central-street-2", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [harp, red kentaurus, skelegon]
+  questLines: [mirelle-feathers-for-a-brim, mirelle-the-kentaurus-crest, mirelle-the-cornian-pads, mirelle-the-dragon-crown, mirelle-feather-bundles]
+  relationships:
+    - { persona: hessa, kind: OLD_FRIEND }
+    - { persona: arlo, kind: PUTS_OFF }
+  giftItemIds: [4000238, 4000232]
+  dialogue:
+    greetFirst: ["oh, look at your head. no, don't touch it. it's not your fault. it's whoever made that hat.", "a traveller with a bare head in dragon country. come here. let me look at you."]
+    greet: ["hello, love. your hat's crooked. it's always crooked.", "back again. let me see the brim. hm. hm."]
+    idle: ["(turns a half-finished hat on one finger, frowning at the brim)", "(pins a long red feather into a hatband, takes it out, pins it again an inch to the left)"]
+    noWork: ["nothing on the block today. i'm resting my hands. they don't like it."]
+    nothingDue: ["nothing owed, love."]
+    who: ["Mirelle. i make hats. for halflings, mostly, and for the big folk who come to fight the dragons' leftovers. a good hat keeps your wits in."]
+    bye: ["keep your hat on in the canyon. the wyverns go for heads."]
+    thanks: ["oh, you're a love."]
+    smallTalk: ["a hat for a halfling is a little hat. a hat for a big adventurer is a little hat on a big head. you'd be surprised how many get that wrong.", "Hessa and i were girls together. i made her a bonnet the year of the fire. she says it still fits. it doesn't. she's lying to be kind."]
+    speakPlainly: ["plainly: hats. good ones."]
+    questOffer.mirelle-feathers-for-a-brim: ["i need feathers that hold their shape in the wind. the harps in the first sky nest have the stiffest tails in the world. twenty-five harps, fifteen tail feathers?"]
+    questAccept.mirelle-feathers-for-a-brim: ["the entrance to the sky nest and the first nest past it. they scream before they dive. you'll hear them."]
+    questWaiting.mirelle-feathers-for-a-brim: ["fifteen feathers, love. the stiff ones."]
+    questComplete.mirelle-feathers-for-a-brim: ["oh, lovely. look at them stand up. i'll have a brim out of these by morning."]
+    questOffer.mirelle-the-kentaurus-crest: ["i'll make you a proper helmet. the red kentaurus carry a little flame in them that never goes out. thirty of them, fifteen flames, and i'll set one in a crest for you."]
+    questAccept.mirelle-the-kentaurus-crest: ["the red kentaurus field and the battlefields beside it. they'll set you alight if you let them. don't let them."]
+    questWaiting.mirelle-the-kentaurus-crest: ["fifteen flames. the crest's empty and it looks it."]
+    questComplete.mirelle-the-kentaurus-crest: ["there. cut to your head, every scroll took. the flame's in the crest. you'll feel it when it's cold out."]
+    questOffer.mirelle-the-cornian-pads: ["the next one wants padding, and the green cornians in the burning forest wear the best wooden shoulder pads there are. thirty of them, fifteen pads. i'll line the crown with them."]
+    questAccept.mirelle-the-cornian-pads: ["the burning forest, past the dragon forest. it's on fire. it's always on fire. it doesn't seem to mind."]
+    questWaiting.mirelle-the-cornian-pads: ["fifteen pads. the crown wants lining."]
+    questComplete.mirelle-the-cornian-pads: ["there. fitted to your head, every scroll took. light, isn't it? wood's light. people forget."]
+    questOffer.mirelle-the-dragon-crown: ["one more, and it's the best i'll ever make. the skelegons in the nest of the dead dragon were dragons once. thirty of them, fifteen broken horns. i'll make you a crown fit for what they were."]
+    questAccept.mirelle-the-dragon-crown: ["the nest of the dead dragon, past the canyon. go with respect. they were somebody's."]
+    questWaiting.mirelle-the-dragon-crown: ["fifteen horns. i've cleared the block for it. i've never cleared the block."]
+    questComplete.mirelle-the-dragon-crown: ["there. made for you and no one else, two tens and the rest sixties, every one took. the horns are in the crown. wear it like they'd want."]
+    questOffer.mirelle-feather-bundles: ["fifteen harp tail feathers, love? i go through them like nothing."]
+    questAccept.mirelle-feather-bundles: ["the first sky nest."]
+    questWaiting.mirelle-feather-bundles: ["fifteen. stiff ones."]
+    questComplete.mirelle-feather-bundles: ["lovely. that's a week of brims."]
+    about.hessa: ["Hessa and i have taken tea every week since we were girls. i hold the cup when her hands are full. they're often full."]
+    about.arlo: ["Arlo wants a riding cap. with flaps. i've told him when he's taller. i'll make it the day he's taller. i've already cut the felt."]
+    about.dovan: ["Dovan does boots. i do hats. between us we've got everyone covered except the middle. the middle can see to itself."]
+    aboutUnknown: ["never made them a hat, love. i'd remember the head."]
+    friend.close: ["i've got your head measured in my book. that's a list i keep very short."]
+    friend.best: ["if i ever make a hat for a dragon rider, it'll be for Arlo. the second one's for you."]
+    famed: ["they're talking about you in the store. i said i'd made you a hat. i haven't. i will."]
+    defamed: ["they're saying things, love. hold your head up. that's what hats are for."]
+    gift: ["oh, thank you, love."]
+    gift.favorite: ["oh, that's just what i needed. you've got an eye."]
+    gift.again: ["you've given me plenty for one day, love."]
+
+- id: dovan
+  name: Dovan
+  look: { gender: male }
+  title: "Cobbler of Wyvern Hide"
+  job: BEGINNER
+  level: { min: 38, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 7, to: 13, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:lower-west-street", activity: REST }
+      - { from: 14, to: 20, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 20, to: 23, spot: "venue:free-market-entrance", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [dragon forest, rexton, dark wyvern]
+  questLines: [dovan-turtle-soles, dovan-rexton-leather, dovan-wyvern-hobnails, dovan-old-bones, dovan-shell-buckets]
+  relationships:
+    - { persona: runa, kind: MAKES_BOOTS_FOR }
+    - { persona: hessa, kind: MENDED_THE_BASKET_FOR }
+  giftItemIds: [4000264, 4000021]
+  dialogue:
+    greetFirst: ["what size? don't tell me. i'll look. ...as i thought. you've been walking on the wrong boots for years.", "stand still. let me see how you stand. that's a cobbler's hello."]
+    greet: ["you're back. how are the feet?", "boots holding? good."]
+    idle: ["(taps a row of tiny nails into a boot heel without looking at his hammer)", "(holds a strip of scaly hide up to the light and bends it, listening to it creak)"]
+    noWork: ["nothing on the last today. go walk on something. come back when it's worn."]
+    nothingDue: ["you owe me nothing."]
+    who: ["Dovan. cobbler. turtle shell for soles, rexton for uppers, wyvern for nails. a boot that's walked the canyon road has earned its name."]
+    bye: ["walk on the outside of your feet in the canyon. the stones roll."]
+    thanks: ["mm. good."]
+    smallTalk: ["a halfling wears out a boot a year. an adventurer wears out a boot a month. a dragon never wore a boot in its life and look how far it got.", "Runa's walked off two cliffs in my boots. the boots were fine."]
+    speakPlainly: ["plainly: soles, uppers, nails."]
+    questOffer.dovan-turtle-soles: ["soles first. the blue dragon turtles at the forest's edge shed shell that's hard as stone and lighter than bark. thirty of them, fifteen cracked shells?"]
+    questAccept.dovan-turtle-soles: ["the entrance to the dragon forest and the first stretch in. they're slow. don't stand in front of them anyway."]
+    questWaiting.dovan-turtle-soles: ["fifteen shells. i've no soles to speak of."]
+    questComplete.dovan-turtle-soles: ["fifteen. good shell. that's a winter of soles."]
+    questOffer.dovan-rexton-leather: ["now a proper pair for you. rexton hide, from the second dragon forest. thirty of them, fifteen pieces of leather. i'll cut the uppers to your foot."]
+    questAccept.dovan-rexton-leather: ["the second dragon forest. the rextons charge with their heads down. so step sideways."]
+    questWaiting.dovan-rexton-leather: ["fifteen hides. the last's waiting."]
+    questComplete.dovan-rexton-leather: ["there. cut to your stride, every scroll took. walk in them. ...see? quiet. that's good leather."]
+    questOffer.dovan-wyvern-hobnails: ["the next pair wants nails that bite rock. dark wyvern toenails. the canyon's east and west roads. thirty of them, fifteen nails."]
+    questAccept.dovan-wyvern-hobnails: ["the canyon roads, east and west. they're the angry ones. you'll know."]
+    questWaiting.dovan-wyvern-hobnails: ["fifteen toenails. i've nothing to nail with."]
+    questComplete.dovan-wyvern-hobnails: ["there. soled for the canyon, every scroll took. you'll walk up a wall in those. don't."]
+    questOffer.dovan-old-bones: ["the last pair. the best i'll make. the skelosaurus in the dead dragon's nest have neck bones you could build a house on. thirty of them, fifteen bones. i'll make the frame."]
+    questAccept.dovan-old-bones: ["the nest of the dead dragon, the nest left behind, the peak. they're old and they're angry about it."]
+    questWaiting.dovan-old-bones: ["fifteen bones. i've cleared the bench."]
+    questComplete.dovan-old-bones: ["there. built to your feet and nobody else's, two tens and the rest sixties, every one took. they'll outlast you. i say that to everyone. this time it's true."]
+    questOffer.dovan-shell-buckets: ["fifteen cracked shells? soles don't grow on trees. they grow on turtles."]
+    questAccept.dovan-shell-buckets: ["the dragon forest entrance."]
+    questWaiting.dovan-shell-buckets: ["fifteen."]
+    questComplete.dovan-shell-buckets: ["fifteen. good."]
+    about.runa: ["Runa walks through boots like nobody i've met. i've started making hers with spare heels built in. she hasn't noticed. she will."]
+    about.hessa: ["i mended Hessa's basket handle. she didn't say what's inside. i didn't ask. some things you carry, you don't explain."]
+    about.mirelle: ["Mirelle makes hats. we've agreed never to make each other's things. it's kept us friends forty years."]
+    aboutUnknown: ["never seen their feet."]
+    friend.close: ["i've got your last on the shelf. the wooden foot. it's next to mine. i don't do that for everyone."]
+    friend.best: ["i'll cobble for you till my hands give out. after that, i'll tell you who's good."]
+    famed: ["heard good things about you. your boots will be pleased."]
+    defamed: ["heard less good things. mind where you walk."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh, that's useful. that's going straight on the bench."]
+    gift.again: ["one a day. i'm a simple man."]
+
+- id: elsk
+  name: Elsk
+  look: { gender: male }
+  title: "Porter of the Orbis Ship"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: leafre
+    routine:
+      - { from: 5, to: 12, spot: "venue:station-entrance", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-central-street-2", activity: REST }
+      - { from: 14, to: 21, spot: "venue:station-entrance", activity: LINGER }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [leafre, orbis, green hobi]
+  questLines: [elsk-a-letter-for-corliss, elsk-fruit-for-the-crossing, elsk-a-charm-for-the-crossing]
+  relationships:
+    - { persona: corliss, kind: WRITES_TO }
+    - { persona: arlo, kind: PUT_UPON_BY }
+  giftItemIds: [4000227, 2022001]
+  dialogue:
+    greetFirst: ["off the Orbis ship? you'll want the village down the steps. or the forest. or the dragons. everyone wants the dragons.", "bags? no bags. good. i carry bags. i don't carry adventurers. i've been asked."]
+    greet: ["ship's late.", "you again. ship's late again."]
+    idle: ["(counts the crates by the station door, then counts them again)", "(squints at the sky toward Orbis, waiting for a sail)"]
+    noWork: ["nothing to carry. the ship's late. it's always late."]
+    nothingDue: ["we're square."]
+    who: ["Elsk. i carry for the Orbis ship. crates down, crates up. i've carried a lot of things for a lot of people. never an egg. Hessa never let anyone."]
+    bye: ["mind the station steps. they're steeper going down."]
+    thanks: ["mm. good."]
+    smallTalk: ["Corliss in Orbis keeps a ledger of every soul who comes up on the ship. i keep a ledger of every crate. we write each other. we compare.", "the Arlo boy asks me every day if a dragon rider came off the ship. i say no. i mean no. i've stopped saying 'yet'."]
+    speakPlainly: ["plainly: crates and a late ship."]
+    questOffer.elsk-a-letter-for-corliss: ["i've a letter for Corliss at the Orbis station. the crate counts don't match his passenger counts and one of us is wrong. take it over, would you? ask him to write back."]
+    questAccept.elsk-a-letter-for-corliss: ["the ship to Orbis. Corliss stands at the station door. he'll ask your name. he asks everyone."]
+    questWaiting.elsk-a-letter-for-corliss: ["did Corliss write back? he always writes back. it takes him a while to be sure."]
+    questComplete.elsk-a-letter-for-corliss: ["he's counted a crate as a passenger. a crate of chickens. ...that's fair, actually. i'll let it stand."]
+    questOffer.elsk-fruit-for-the-crossing: ["the ship's crew like fruit for the crossing. the rashes in the west forest drop tree fruit the size of your fist. twenty-five of them, fifteen fruit?"]
+    questAccept.elsk-fruit-for-the-crossing: ["the west forest and the peach monkey forest. mind the ones that look asleep."]
+    questWaiting.elsk-fruit-for-the-crossing: ["fifteen fruit. the crew's getting grumpy."]
+    questComplete.elsk-fruit-for-the-crossing: ["fifteen. the crew will sing all the way to Orbis. they sing badly."]
+    questOffer.elsk-a-charm-for-the-crossing: ["the sailors want charms against the long drop. the green hobis carry little pin charms. twenty-five hobis, fifteen charms. sailors are superstitious. so am i. don't tell them."]
+    questAccept.elsk-a-charm-for-the-crossing: ["the west border and the steep hill. the green ones."]
+    questWaiting.elsk-a-charm-for-the-crossing: ["fifteen charms. the sailors keep looking over the side."]
+    questComplete.elsk-a-charm-for-the-crossing: ["fifteen. one for every sailor and one for the ship. and one for me."]
+    about.corliss: ["Corliss in Orbis. we've written each other nine years. i've never met him. i think i'd know him by his handwriting."]
+    about.arlo: ["Arlo. every day. 'did a rider come?' every day i say no. he says that means the first one's still coming. i've no answer to that."]
+    about.hessa: ["Hessa asks me who came over on the ship. nobody comes for her. she asks anyway. i've started making someone up. a merchant. a nice one."]
+    aboutUnknown: ["never came off my ship."]
+    friend.close: ["i'd carry for you. i don't carry for adventurers. i'd carry for you."]
+    friend.best: ["if you ever come off that ship and i'm not at the door, something's wrong with me. come and find me."]
+    famed: ["heard about you on the ship."]
+    defamed: ["heard about you on the ship. not the good bits."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh. that's one for the crossing. good."]
+    gift.again: ["one a day. i've a ledger for that too."]

@@ -109,6 +109,8 @@ class ChatVerbBoundaryTest {
             // reads that parse the line and check ownership on the chat thread
             entry("roster.ownerOf", Door.NONE), entry("roster.entry", Door.NONE), entry("roster.isOwned", Door.NONE),
             entry("roster.hasCompanions", Door.NONE),
+            // a memory-only owner check before a whispered call reads the row (fourth deploy review 2026-10-10)
+            entry("roster.cachedOwnerOf", Door.NONE),
             // a conversation with a Resident nobody owns; accepting its contract recruits through RosterService.recruit,
             // which applies ROSTER_MAX and the seat check (moving the recruit onto companion-ops comes with P3)
             entry("contracts.askToJoin", Door.NONE), entry("contracts.blocker", Door.NONE), entry("contracts.pay", Door.NONE));

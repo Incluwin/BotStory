@@ -216,9 +216,35 @@ final class AgentOpqCoordinator {
                     .sorted(Comparator.comparingDouble(drop -> drop.getPosition().distanceSq(agent.getPosition())))
                     .limit(3).map(drop -> drop.getItemId() + "@" + drop.getPosition().x + "," + drop.getPosition().y)
                     .collect(java.util.stream.Collectors.joining(";"));
-            return "drops=[" + drops + "] liveMobs=" + agent.getMap().countMonsters();
+            String mobs = AgentMapPerception.monsters(agent.getMap()).stream()
+                    .filter(Monster::isAlive)
+                    .sorted(Comparator.comparingDouble(mob -> mob.getPosition().distanceSq(agent.getPosition())))
+                    .limit(3).map(mob -> mob.getId() + "@" + mob.getPosition().x + "," + mob.getPosition().y)
+                    .collect(java.util.stream.Collectors.joining(";"));
+            return "drops=[" + drops + "] liveMobs=" + agent.getMap().countMonsters() + " nearestMobs=[" + mobs + "]";
         } catch (RuntimeException unreadable) {
             return "drops=? liveMobs=?";
+        }
+    }
+
+    /**
+     * 'grinding= grind=MODE/OUTCOME candidates=base/objective/policy/claim/scored ago=' for the stall line: the combat
+     * layer's last target decision, where a stalled grinder's mobs dropped out (2026-10-25, run 5: Vex stood by the
+     * walkway's left wall for 29 minutes with 28 mobs alive, attacking none). Logging only.
+     */
+    private static String grindDecision(AgentRuntimeEntry entry) {
+        try {
+            var decision = entry.capabilityStates()
+                    .find(server.agents.capabilities.combat.AgentCombatDecisionTraceState.STATE_KEY)
+                    .map(server.agents.capabilities.combat.AgentCombatDecisionTraceState::snapshot).orElse(null);
+            String grinding = "grinding=" + server.agents.runtime.AgentModeStateRuntime.grinding(entry);
+            if (decision == null) return grinding + " grind=none";
+            return grinding + " grind=" + decision.mode() + "/" + decision.outcome() + " candidates="
+                    + decision.baseCandidates() + "/" + decision.objectiveCandidates() + "/"
+                    + decision.policyCandidates() + "/" + decision.claimCandidates() + "/" + decision.scoredCandidates()
+                    + " ago=" + (System.currentTimeMillis() - decision.recordedAtMs()) + "ms";
+        } catch (RuntimeException unreadable) {
+            return "grind=?";
         }
     }
 
@@ -245,7 +271,8 @@ final class AgentOpqCoordinator {
                             + " role={} pos={} reactor={} activeClouds={} cloudDrops={} heldClouds={} {}",
                     session.sessionId(), agent.getId(), agent.getMapId(), member.role(),
                     agent.getPosition(), reactor, activeClouds, cloudDrops,
-                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false), stallSurroundings(agent));
+                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false),
+                    stallSurroundings(agent) + " " + grindDecision(entry));
             return;
         }
         switch (session.phase()) {
@@ -391,7 +418,8 @@ final class AgentOpqCoordinator {
             return;
         }
         int held = agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false);
-        if (agent.getId() != session.eventLeaderId() && held > 0) {
+        int carrier = entranceCarrier(session);
+        if (agent.getId() != carrier && held > 0) {
             Point handoffGround = ACTIONS.groundPoint(agent.getMap(), ENTRANCE_HANDOFF);
             if (!moveTo(entry, agent, handoffGround, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             if (dropItem(entry, InventoryType.ETC,
@@ -399,6 +427,10 @@ final class AgentOpqCoordinator {
             return;
         }
         Character leader = character(session.eventLeaderId());
+        if (agent.getId() == carrier && carrier != session.eventLeaderId()) {
+            tickEntranceCarrier(session, entry, agent, leader, held, nowMs, member);
+            return;
+        }
         if (agent.getId() == session.eventLeaderId()) {
             if (entranceOfferingReady(agent)) {
                 // The authored drop reactor consumes this stack and spawns Eak. Do not
@@ -431,6 +463,50 @@ final class AgentOpqCoordinator {
                     && !cloudDropRemaining) {
                 runEak(session, entry, leader, EakKind.ENTRANCE, 0);
             }
+        }
+    }
+
+    /**
+     * Who takes the clouds to Eak: the leader, or in a run a human leads the lowest-id counted companion standing in the
+     * entrance; 0 when none. 2026-10-25 live (run 5): the companions left their clouds in five stacks by the hand-off
+     * point and waited; nobody told Pqfriend, and the 20-piece offering waited on him for eight minutes.
+     */
+    static int entranceCarrier(AgentOpqSession session) {
+        if (!AgentOpqConductor.conducts(session)) return session.eventLeaderId();
+        return AgentOpqConductor.companions(session).stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .map(member -> character(member.characterId()))
+                .filter(character -> character != null && character.getHp() > 0
+                        && character.getMapId() == AgentOpqDefinition.ENTRANCE_MAP)
+                .mapToInt(Character::getId).min().orElse(0);
+    }
+
+    /**
+     * A human-led run's cloud carrier: it gathers the stacks the others leave by the hand-off point, offers twenty at
+     * Eak's light, and once Eak stands there tells the leader to talk to him (Eak's script talks only to the leader).
+     */
+    private static void tickEntranceCarrier(AgentOpqSession session, AgentRuntimeEntry entry, Character agent,
+                                            Character leader, int held, long nowMs, AgentOpqMemberState member) {
+        if (ACTIONS.npcPosition(agent, AgentOpqDefinition.EAK_NPC) != null) {
+            if (leader != null) {
+                AgentOpqDialogue.narrate(session, "entrance-eak", agent, leader,
+                        AgentOpqCompanionPlay.entranceEak(leader.getName()));
+            }
+            moveTo(entry, agent, ACTIONS.groundPoint(agent.getMap(), ENTRANCE_HANDOFF),
+                    AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
+            return;
+        }
+        if (entranceOfferingReady(agent)) {
+            ACTIONS.stop(entry); // the light takes the offering and calls Eak; never pick it back up meanwhile
+            return;
+        }
+        if (collectGroundItem(entry, agent, AgentOpqDefinition.CLOUD_PIECE, false, nowMs)) return;
+        if (held < 20) return;
+        Point eakGround = ACTIONS.groundPoint(agent.getMap(), ENTRANCE_EAK);
+        if (!moveTo(entry, agent, eakGround, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
+        if (dropItem(entry, InventoryType.ETC, AgentOpqDefinition.CLOUD_PIECE, (short) 20)) {
+            session.markProgress(nowMs);
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
         }
     }
 
@@ -798,7 +874,8 @@ final class AgentOpqCoordinator {
             int currentCount = agent.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false);
             if (member.loungeCollected(agent.getMapId(), currentCount) >= 10) {
                 session.completeLoungeSubroom(agent.getMapId(), nowMs);
-                enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+                enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                        nowMs, member);
                 return;
             }
             if (ACTIONS.liveMonsterCount(agent, AgentOpqDefinition.LOUNGE_MOBS) > 0) {
@@ -806,7 +883,8 @@ final class AgentOpqCoordinator {
             }
             List<Reactor> boxes = activeReactors(agent).stream().filter(r -> r.getId() == 2_002_002).toList();
             if (!boxes.isEmpty()) { hitNearestLegalReactor(entry, agent, member, boxes, nowMs); return; }
-            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                    nowMs, member);
             return;
         }
         int partyFragments = partyItemCount(session, AgentOpqDefinition.LOUNGE_FRAGMENT);
@@ -856,7 +934,8 @@ final class AgentOpqCoordinator {
             return false;
         }
         if (AgentOpqDefinition.LOUNGE_ROOM_MAPS.contains(agent.getMapId())) {
-            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                    nowMs, member);
         } else if (inLounge) {
             moveTo(entry, agent, LOUNGE_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
         }
@@ -865,22 +944,33 @@ final class AgentOpqCoordinator {
 
     private static void tickLoungePortalDiscovery(AgentOpqSession session, AgentRuntimeEntry entry,
                                                    Character agent, AgentOpqMemberState member, long nowMs) {
-        if (member.portalObservationPending(agent.getMapId())) {
-            boolean advanced = agent.getPosition().y < member.pendingPortalSourceY() - 70;
-            session.loungeRoute().observe(member.pendingPortalRow(), member.pendingPortalChoice(), advanced);
-            member.clearPortalObservation();
-        }
         int row = agent.getPosition().y > -1_560 ? 0 : 1;
         int choice = session.loungeRoute().choice(row);
         int portalId = (row == 0 ? 11 : 14) + choice;
+        tryTrialDoor(session.loungeRoute(), entry, agent, member, row, choice, portalId, nowMs);
+    }
+
+    /**
+     * Walks to a trial door (the lounge's and the way up's rows), goes through it standing on it, and learns from where
+     * it lands: a right door puts the runner on the row above, a wrong one drops it back below. The warp is done when
+     * enterPortal returns, so the landing is read at once, and the runner stops there: its move target was still the
+     * door it just used, now below it, so it dropped back to it, and the read 650 ms later took every right door for a
+     * wrong one (2026-10-25 live, run 5: Kettle and Jinx never got past their first row; offline the way up's runner
+     * never solved row 0 in 30 min). It waits to land first: taken mid-hop, the door cut the hop off, the hop counted
+     * as a failed edge, and three of them shut the hop between two doors for 30 s.
+     */
+    private static void tryTrialDoor(AgentOpqPortalRoute route, AgentRuntimeEntry entry, Character agent,
+                                     AgentOpqMemberState member, int row, int choice, int portalId, long nowMs) {
         Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal)) {
+        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal) || !ACTIONS.grounded(agent)) {
             if (portal != null) ACTIONS.navigate(entry, portal, true);
             return;
         }
-        member.beginPortalObservation(agent.getMapId(), row, choice, agent.getPosition().y);
-        if (OPQ.enterPortal(agent, portalId)) member.deferUntil(nowMs + ACTION_RETRY_MS);
-        else member.clearPortalObservation();
+        int sourceY = agent.getPosition().y;
+        if (!OPQ.enterPortal(agent, portalId)) return;
+        route.observe(row, choice, agent.getPosition().y < sourceY - 70);
+        ACTIONS.stop(entry);
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
     }
 
     private static void tickWayUp(AgentOpqSession session, AgentRuntimeEntry entry,
@@ -911,11 +1001,6 @@ final class AgentOpqCoordinator {
 
     private static void tickWayUpPortalDiscovery(AgentOpqSession session, AgentRuntimeEntry entry,
                                                   Character agent, AgentOpqMemberState member, long nowMs) {
-        if (member.portalObservationPending(agent.getMapId())) {
-            boolean advanced = agent.getPosition().y < member.pendingPortalSourceY() - 70;
-            session.wayUpRoute().observe(member.pendingPortalRow(), member.pendingPortalChoice(), advanced);
-            member.clearPortalObservation();
-        }
         int row = wayUpRow(agent.getPosition().y);
         if (row < 0) {
             navigateWayUpInitialAscent(entry, agent, member);
@@ -929,14 +1014,7 @@ final class AgentOpqCoordinator {
         }
         int choice = session.wayUpRoute().choice(row);
         int portalId = 24 + row * 4 + choice;
-        Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal)) {
-            if (portal != null) ACTIONS.navigate(entry, portal, true);
-            return;
-        }
-        member.beginPortalObservation(agent.getMapId(), row, choice, agent.getPosition().y);
-        if (OPQ.enterPortal(agent, portalId)) member.deferUntil(nowMs + ACTION_RETRY_MS);
-        else member.clearPortalObservation();
+        tryTrialDoor(session.wayUpRoute(), entry, agent, member, row, choice, portalId, nowMs);
     }
 
     /** The server's day for the lobby's LP (Calendar.DAY_OF_WEEK; OrbisPQ.js sets the music player by Date.getDay()). */

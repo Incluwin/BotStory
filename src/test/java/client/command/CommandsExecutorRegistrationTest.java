@@ -21,12 +21,15 @@ class CommandsExecutorRegistrationTest {
         assertRanks(commands, 4, "givemeso", "giveitem", "hpmp", "maxhpmp");
         assertRanks(commands, 5, "reloadevents", "monitor", "mobcapture", "serverhealth");
         assertRanks(commands, 6, "spawnbot", "deleteagent", "healagent", "kpqtest",
-                "lmpqtest", "ppqtest", "rjpqtest", "cwkpqtest", "agentpop", "companionprobe", "grantcompanion", "setlevel", "stepto",
+                "lmpqtest", "ppqtest", "apqtest", "rjpqtest", "cwkpqtest", "gpqtest", "agentpop", "companionprobe", "grantcompanion", "setlevel", "stepto",
                 "balrogprobe", "bossgear", "bossmirror");
 
         assertEquals(commands.get("help").getClass(), commands.get("commands").getClass());
         assertEquals(commands.get("warphere").getClass(), commands.get("summon").getClass());
         assertEquals(commands.get("warpto").getClass(), commands.get("follow").getClass());
+        assertEquals(commands.get("whodrops").getClass(), commands.get("wd").getClass());
+        assertEquals(commands.get("mobdrops").getClass(), commands.get("md").getClass());
+        assertRanks(commands, 0, "wd", "md");
     }
 
     @Test

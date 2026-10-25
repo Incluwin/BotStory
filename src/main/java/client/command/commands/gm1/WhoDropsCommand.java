@@ -51,6 +51,10 @@ public class WhoDropsCommand extends Command {
             player.dropMessage(5, "Please do @whodrops <item name>");
             return;
         }
+        if (DropBrowser.available()) {
+            DropBrowser.searchItems(player, player.getLastCommandMessage());
+            return;
+        }
 
         if (!c.tryacquireClient()) {
             player.dropMessage(5, "Please wait a while for your request to be processed.");

@@ -20,8 +20,8 @@ line per persona per tick when a Resident does not show up.
 
 ## What players do
 
-Residents stand in their home towns (all seven Victoria towns have a cast, and Orbis, El Nath and
-Ludibrium have seven each: `docs/REGIONAL_RESIDENTS_PLAN.md`). Talk to them in map
+Residents stand in their home towns (all seven Victoria towns have a cast, and Orbis, El Nath, Ludibrium,
+Leafre, Mu Lung, Herb Town, Ariant and Magatia have seven each: `docs/REGIONAL_RESIDENTS_PLAN.md`). Talk to them in map
 chat with their name anywhere in the line, or stand next to one and speak, or whisper them.
 
 | Say | Effect |
@@ -113,11 +113,13 @@ offered to those classes. The weapon Residents are recruitable (a contract once 
 and have done their intro quest), so party quests and bosses with them count toward friendship;
 the armourers are townsfolk, befriended through their quests, gifts and fame.
 
-Off Victoria the same recipes continue one tier up (`docs/REGIONAL_RESIDENTS_PLAN.md` section 4): Orbis's Vesna (wands)
+Off Victoria the same recipes continue one tier up (`docs/REGIONAL_RESIDENTS_PLAN.md` sections 4 and 5): Orbis's Vesna (wands)
 and Ansel (bows), El Nath's Sigrun (two-handed swords) and Bjarke (spears) and Ludibrium's Saskia (claws) and Jasper
 (guns) give weapons at L58-90 and are recruitable; the armourers Aster (hats) and Perrin (earrings) in Orbis, Ulla
 (gloves) and Oskar (shoes) in El Nath, and Della (coats) and Marlow (capes, up to the Ludibrium Cape) in Ludibrium
-give pieces at L60-100.
+give pieces at L60-100. Wave 2 adds the other ten weapon lines, one recruit each (Bastian and Runa in Leafre, Baojun
+and Suyin in Mu Lung, Taejin and Maren in Herb Town, Sefa and Harun in Ariant, Vael and Kipp in Magatia; L50-100),
+and the next hat, glove and shoe tiers (Mirelle and Dovan in Leafre, Fengzi in Mu Lung; L90-120).
 
 The armour piece:
 
@@ -338,6 +340,11 @@ Persona dialogue intents the runtime looks up (chapter overrides first, then the
 `refuseOwnErrand`, `delegate`, `onMyWay`, `leaveDeaths`, `questOffer.<quest>`, `questAccept.<quest>`, `questWaiting.<quest>`,
 `questComplete.<quest>`, `questRoom.<quest>` (no equip slot free for its gear), `about.<persona>`, `aboutUnknown`, `bond.<stage>`,
 `chapterEnter`, `friend.close`, `friend.best`, `famed`, `defamed`, `gift`, `gift.favorite`, `gift.again`, `gift.gone`, `gift.none`.
+
+Once-per-server beats: a quest whose `rewards.worldFlags` turns an arc for everyone can name that flag in
+`requires.notFlags` (flags and notFlags read world flags as well as the player's). It is then offered only until someone
+on the server has done it; a player already on it when that happens can still finish. The regional arcs' last beats
+work this way (docs/REGIONAL_RESIDENTS_PLAN.md section 5).
 
 Friendship quests: `requires: { friendship: 4 }` gates on the giver's friendship level (0-10). A
 `rewards.gear` entry is one scrolled piece (see Friendship above), in one of two forms:

@@ -207,3 +207,119 @@ Setting `PQ_RUNS_ENABLED` and the other keys needs a restart; `!citizens reload`
    jump beyond the run's 3-4 Agents, and nothing starts while the scheduler sheds load.
 7. **Kill switch.** `PQ_RUNS_ENABLED: false` and a restart: citizens at Lakelis gather and invite as before and never
    go in; `!citizens pq` shows `0 in`.
+
+## Round 2: HPQ and wider recruiting; LPQ waits (2026-10-25)
+
+Branch `feat/citizen-pq-lpq-hpq` from `feat/companion-manager` 21eb70855 (KPQ citizen runs live since 05:11).
+
+### What live showed first
+
+In the first hour after the deploy two citizen parties formed beside Lakelis and gave up with "nobody came"
+(`citizen PinkOcean party at map 103000000 gives up`, 05:23 and 05:52). The run is not the limit; supply at the
+lobby is. A party only ever calls one circle or guild mate, and a citizen whose plan is not PQ never hears an "lf".
+
+### Order: HPQ before LPQ
+
+- **HPQ** takes 3-6 (prefers 4) from level 10, at Henesys Park beside Henesys, the town most Victoria citizens are in.
+  Its admission takes an Agent leader, and its stock Agent-led path is a whole run: the leader walks to Tory and
+  clicks her, Agents fetch and plant seeds, guard the Moon Bunny, the leader loots the cakes and hands them to
+  Growlie, everyone claims at Tory. Its background director is off (`AgentHpqPopulationRuntime.ENABLED: 'false'`).
+- **LPQ** takes 5-6 (an Agent-led stock run exactly 6) at lv35-50 in Ludibrium, and its admission wants a Teleport
+  mage, a Dark Sight thief, a weapon-ranged attacker and a physical attacker among them. Its stock Agent-led path has
+  never cleared live, its stage-9 Alishar fight wiped Lv48 crews, and it leans on about 40 rescue paths (item vacuum,
+  Agent teleports) the user turned off for companion runs because a human sees them; its stock path also sends a human
+  member system text ("LPQ Stage 5: you own room ..."). And `LudiPQ.js` has one lobby a channel (`maxLobbies = 1`), so a
+  citizen run would hold the only LPQ for up to 45 minutes: no lobby could stay free for humans. LPQ waits (decision
+  below).
+
+### HPQ design (engine seam, like KPQ's)
+
+- `AgentHpqSession.citizenRun`; `AgentHpqAdmissionService.admitCitizens(leader, members, seed, now)`: the same
+  adoption as the companion desk's, but the party stays its own (EXTERNAL), the citizen leader picks the bonus as an
+  Agent leader does (`AgentHpqBonusPolicy.defaultMode()`), and the session is a citizen run, not a companion run.
+- The coordinator runs a citizen run on its stock (Agent-led) path, plus what a run with players in it needs:
+  full rate for its Agents in the instance (stock runs sat at the background cadence, KPQ's stage-1 lesson); no
+  status lines (`voice`: "Party ready. Everyone is here. Starting HPQ in 5 seconds." and the rest say nothing; the
+  citizens' own chatter covers the moments); the companion run's departures and deaths (`reconcileLiveParty`,
+  `membersAlive`: a downed citizen taps out and the run goes on while three stand, a human who drops is left
+  behind); its failure words and a failure after the clear that leaves the event and its humans alone; the watchdog
+  waits for a downed citizen's respawn as it does for a companion; the party is kept after release (the population
+  takes each citizen out of it). At Tory a human is told once, in the leader's words, to claim, and never waited for.
+- `AgentHpqLobbyPolicy` counts citizen runs with background ones, so the old director never takes the lobby kept
+  for humans beside a citizen run.
+
+### Population side
+
+- `CitizenPqDoor.Hpq` (Tory, 1012112, Henesys Park): seats 3-6, preferred 4; citizens wait on the floor below her
+  ledge (`PqEntrance` BELOW_TORY), a human counts as gathered within HPQ's own gather box (GATHER_RADIUS_PX 160).
+- Doors get `preferredSeats()`: a party fills to it (KPQ 4 = its most, HPQ 4 of 6) and waits 90 s for it after the
+  minimum, as now.
+- `regions.yaml` victoria gets `{ id: hpq, mapId: 100000200, levels: 10-20 }` beside KPQ's 21-30, so a lv10-20
+  Victoria citizen's PQ plan now has somewhere to go (it had none).
+- **Recruiting (all quests).** A party short of its preferred seats after a minute calls, at most once a minute and
+  at most as many as it needs: first loaded circle and guild mates whose level fits and who are training or in town
+  (as now, but more than one), then citizens of the lobby's region idling in town (TOWN, not on a supply trip, not
+  AFK, no party, not cooling down) whose level fits. Each answers in its own voice and travels to the lobby on a PQ
+  plan. Bounded by the seats it needs and by `PQ_CALLS_PER_PARTY` (default 4).
+- `PQ_RUN_QUESTS: "kpq,hpq"`.
+
+### Decision (the user, 2026-10-25)
+
+**LPQ: defer** (the recommendation; the others were a second LPQ lobby in `LudiPQ.js` with citizen-only runs, or
+citizen-only runs on the single lobby while no human in the 35-50 band is on the channel). Citizens keep gathering
+and inviting at the LPQ lobby as before. What LPQ would need, when it comes: a free lobby for humans (a second lobby or
+that rule), citizen-only runs (no invite: the stock path's system text and rescues), six citizens covering Teleport
+and magic, Dark Sight, a weapon-ranged and a physical attacker (forming would recruit for a missing role), and a live
+proof that the stock Agent-led path clears (it never has; stage 9 wiped Lv48 crews).
+
+### Done (branch `feat/citizen-pq-lpq-hpq`, offline)
+
+Code: HPQ's citizen-run mark, `admitCitizens`, coordinator, watchdog, termination and lobby-policy seams;
+`CitizenPqDoor.Hpq` and `preferredSeats`; recruiting (`callOver`, `PQ_CALLS_PER_PARTY`); the Henesys Park lobby;
+`PQ_RUN_QUESTS: "kpq,hpq"`; a quest-neutral guild call line.
+
+Tests (new or changed, all green):
+- `CitizenHpqRunReplayTest`: through HPQ's real admission, registries and lobby policy, then the run's end as HPQ's
+  release reports it through the living world's handback rule: three citizens with no human go in (after the 90 s
+  wait for a fourth) and their clear comes home (journal, gg, tally, re-plan, cooldown); three citizens and a human
+  who took the invite go in at once (the human a HUMAN member) and the human is thanked; a human run in one of HPQ's
+  two lobbies keeps them out; with `hpq` out of `PQ_RUN_QUESTS` they only gather and invite.
+- `HpqCitizenRunCoordinatorTest` (11): full rate in the instance (a stock run of the same Agents keeps the cadence);
+  gathering at Tory without the stock ready line (a stock run still says it); a downed citizen taps out and the run
+  goes on with three (a stock run never asks); the leader going down ends it in a player's words; a human with cakes
+  is asked for them once; a human is told to claim and nobody waits (a stock run waits and sends system text); back
+  at Tory it completes quietly and keeps its party; a citizen run fills HPQ's background lobby cap.
+- `HpqCitizenAdmissionTest` (4): a citizen run of its own party (EXTERNAL, the Agent leader's bonus), a human member,
+  a citizen away from Henesys Park keeps the party out, the companion desk still adopts a companion run.
+- `CitizenPartyQuestsTest` (+5): as many mates called as seats need, one a minute; an arrival joins and the next call
+  fills the last seat; with no mate free a townsfolk of the band walks over (not a trainer, not another band);
+  `PQ_CALLS_PER_PARTY` caps it; a party fills to the door's preferred seats, not its most.
+- `SocialFabricPqCitizensTest` (+1): neither old director gets citizens for a quest citizens run themselves.
+
+Not proven offline: HPQ's stages with citizens (its stock path's seeds, Bunny guard and Growlie hand-in run in the
+existing stock tests; what a citizen run changes is covered above), the walk to Tory from the floor below her ledge,
+and a real clear's time. Those are the live checks.
+
+### Live checks after deploy (round 2)
+
+Channel 1, a GM6 character, GM commands for setup only.
+
+1. **Recruiting at KPQ.** Watch a citizen party form beside Lakelis (or `!citizens pq send` two citizens there): after
+   a minute the line `citizen <leader> party at KPQ calls <name> (mate or townsfolk)` appears once a minute, at most
+   as many as seats are short and 4 in all; a mate answers in guild chat ("omw"), a townsfolk just walks in and joins.
+   Count `gives up: nobody came` lines over a day against the round-1 baseline (two in the first hour).
+2. **All-citizen HPQ.** `!citizens pq send` three or four Victoria citizens lv10-20 (`!citizens online`): they wait on
+   the floor right of Tory's ledge, form a party, and the log shows `citizen pq run in: quest=hpq`, then `HPQ phase:`
+   lines with `citizenRun=true`, seeds, DEFENDING_BUNNY, DELIVERING_CAKES (the leader at Growlie), CLAIMING_REWARD and
+   `citizen pq run: quest=hpq ... outcome=cleared`, with no "Party ready." or "HPQ complete." lines in map chat;
+   afterwards journals ("cleared HPQ with ..."), `!citizens pq` `hpq 1 runs 1 cleared`, each back to its day.
+3. **A human by invite.** A test character lv10-20 party-less below Tory while citizens form gets the leader's invite;
+   accept: the citizen leader clicks Tory, the human plays along; if he picks up rice cakes the leader asks for them
+   once ("drop the rice cakes by me pls ..."); after the clear the leader says "talk to tory for ur reward, we're
+   heading out" and the citizens leave without waiting; the human claims his reward at Tory; party chat thanks him.
+4. **Player first at HPQ.** With a human party inside one HPQ lobby the citizens wait (DEBUG `waits: no lobby free
+   beside the humans'`); a human party standing below Tory keeps them out; a second citizen party waits while one
+   citizen run is in.
+5. **A death.** A citizen other than the leader that dies on Primrose Hill taps out (`HPQ companion tapped out` and
+   `citizen pq run: <name> taps out of ...`) and the other three carry on.
+6. **Kill switch.** `PQ_RUN_QUESTS: "kpq"` and a restart: citizens below Tory only gather and invite.

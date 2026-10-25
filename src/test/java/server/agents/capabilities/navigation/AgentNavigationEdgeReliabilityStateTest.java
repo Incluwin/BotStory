@@ -163,6 +163,25 @@ class AgentNavigationEdgeReliabilityStateTest {
         assertEquals(0, state.trackedEdgeCount(100, 2_200, 60_000), "landing on the destination clears failures");
     }
 
+    /**
+     * 2026-10-25 (OPQ run 5): a runner landed a hop on an OPQ trial door and took the door at once; the door's warp put
+     * it standing on another row, and the next observation charged the hop as a missed arc. A teleport abandons the
+     * attempt (AgentMovementStateResetService.resetEntryStateAfterTeleport), so the hop is not charged.
+     */
+    @Test
+    void anAbandonedFlightIsNotChargedWhereverTheAgentStandsNext() {
+        AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+        assertNull(state.observeAttempt(100, -1, false, new Point(40, 60), 1_200, 3_500, 6));
+
+        state.abandonAttempt();
+
+        assertNull(state.observeAttempt(100, 5, true, new Point(30, -20), 1_400, 3_500, 6));
+        assertNull(state.observeAttempt(100, 5, true, new Point(30, -20), 9_000, 3_500, 6));
+        assertEquals(0, state.trackedEdgeCount(100, 9_000, 60_000));
+    }
+
     @Test
     void syntheticCollapsedHandoffMatchesUnderlyingRiskyGraphEdge() {
         AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();

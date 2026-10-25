@@ -12,6 +12,7 @@ import server.TimerManager;
 import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.navigation.AgentMapWalk;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
@@ -99,6 +100,7 @@ public final class PresenceScheduler {
     private final Map<Integer, CitizenSession> sessions = new ConcurrentHashMap<>();
     private final Random random;
     private final CitizenJobErrands jobs;
+    private final CitizenTravel onFoot;
     private volatile long lastSweepMs;
     private volatile long lastSweepDurationMs;
     private volatile int forcedOnline;
@@ -114,6 +116,7 @@ public final class PresenceScheduler {
         this.population = population;
         this.random = random;
         this.jobs = new CitizenJobErrands(population, this);
+        this.onFoot = new CitizenTravel(population, this);
     }
 
     /** Third and fourth jobs taken at the instructor (activity JOB). */
@@ -474,6 +477,8 @@ public final class PresenceScheduler {
     /** Ends the session and runs the logout hooks; the loaded agent that is still to unload, else null. */
     private Character unhook(CitizenSession session) {
         sessions.remove(session.characterId);
+        onFoot.cancel(session);
+        AgentMapWalk.stopAll(session.characterId);
         Character agent = session.agent();
         if (session.virtual || agent == null) {
             return null;
@@ -567,6 +572,7 @@ public final class PresenceScheduler {
             return loaded;
         }
         sessions.remove(characterId);
+        onFoot.cancel(session); // the roster adopts it where it stands, not halfway to a portal
         if (loaded) {
             try {
                 population.market().onLeave(session);
@@ -860,6 +866,9 @@ public final class PresenceScheduler {
         if (moveAfterSupplyTrip(session, now)) {
             return;
         }
+        if (session.trip != null) {
+            return; // on its way on foot (CitizenTravel): no wander, AFK or re-plan until it gets there
+        }
         if (leaveFieldBoss(session, now)) {
             return;
         }
@@ -957,7 +966,8 @@ public final class PresenceScheduler {
     }
 
     /**
-     * Moves a loaded citizen to another map: instantly when nobody can see either side, else after a short pause. Its
+     * Moves a loaded citizen to another map: on foot while someone can see the map it stands on (CitizenTravel,
+     * population.PORTAL_TRAVEL_ENABLED), else instantly when nobody can see either side, else after a short pause. Its
      * activity changes as it arrives, never before: a move that waits (a supply trip) or is still on its pause leaves
      * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs. A citizen
      * whose Agent runs abstract leaves BACKGROUND_ABSTRACT before it is moved.
@@ -970,6 +980,7 @@ public final class PresenceScheduler {
         }
         CitizenSession.Move asked = new CitizenSession.Move(next, mapId);
         session.latestMove = asked;
+        onFoot.cancel(session); // a newer move replaces the walk of an older one
         if (onSupplyTrip(session)) {
             waitForSupplyTrip(session, agent, asked);
             return;
@@ -984,6 +995,22 @@ public final class PresenceScheduler {
             AgentMovementCommandRuntime.stop(entry);
         }
         population.market().onLeave(session);
+        if (onFoot.walks(agent, target)) {
+            onFoot.begin(session, asked, target, now);
+            return;
+        }
+        cheapMove(session, asked, target);
+    }
+
+    /**
+     * The cheap way: the citizen stands where it is for the pause, then changes map (arrive). 1 s when nobody can see
+     * either map, else the road-hop ETA's quarter, 4-90 s.
+     */
+    void cheapMove(CitizenSession session, CitizenSession.Move asked, MapleMap target) {
+        Character agent = session.agent();
+        if (agent == null) {
+            return;
+        }
         boolean observed = Population.humansIn(agent.getMap()) > 0 || Population.humansIn(target) > 0;
         long delay = observed ? Math.min(90_000L, Math.max(4_000L, server.living.roster.RecallTravel.etaMs(agent.getMapId(), target.getId()) / 4)) : 1_000L;
         TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
@@ -994,7 +1021,9 @@ public final class PresenceScheduler {
      * Makes a move after its pause. A citizen whose Agent is still in BACKGROUND_ABSTRACT is not moved yet: the abstract
      * window reconciles only while the citizen stands where the window began, so the move waits for the mode decision
      * that {@link #leaveAbstract} woke. After ABSTRACT_EXIT_CHECKS checks it moves anyway, and the Agent leaves the
-     * window through the scheduler's bounded abandon (a WARN).
+     * window through the scheduler's bounded abandon (a WARN). With portal travel on, a player who came onto its map
+     * during the pause sees it walk from where it stands instead, and a player on the target map sees it come in at
+     * the portal its route enters by (CitizenTravel.entryPortal), not on the map's start point.
      */
     private void arrive(CitizenSession session, CitizenSession.Move asked, MapleMap target, int abstractChecksLeft) {
         try {
@@ -1015,15 +1044,72 @@ public final class PresenceScheduler {
                         () -> arrive(session, asked, target, abstractChecksLeft - 1), ABSTRACT_EXIT_CHECK_MS);
                 return;
             }
+            long now = System.currentTimeMillis();
             if (current.getMapId() != target.getId()) {
-                current.changeMap(target, target.getPortal(0));
+                if (onFoot.walks(current, target)) {
+                    log.info("citizen {}: someone came onto map {} during its move to {}; it walks", session.name(),
+                            current.getMapId(), target.getId());
+                    onFoot.begin(session, asked, target, now);
+                    return;
+                }
+                if (onFoot.enabled()) {
+                    stopTownLife(session.entry, current); // nobody on its map: a stroll it lingered on stops at once
+                }
+                place(current, target, arrivalPortal(session, current.getMapId(), target, now));
             }
-            session.mapId = target.getId();
-            session.activity = asked.activity();
-            startActivity(session, target, System.currentTimeMillis());
-            population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
+            landed(session, asked, target, now);
         } catch (RuntimeException failure) {
             log.debug("citizen {} travel failed", session.name(), failure);
+        }
+    }
+
+    /** The move is made: its activity starts on the map it came to. */
+    void landed(CitizenSession session, CitizenSession.Move move, MapleMap target, long now) {
+        session.mapId = target.getId();
+        session.activity = move.activity();
+        startActivity(session, target, now);
+        population.chatter().event(ChatterEngine.Event.of("enter", target.getId(), session.channel).self(session));
+    }
+
+    /** Changes the citizen's map, at {@code portal} (portal 0 when null). */
+    void place(Character agent, MapleMap target, server.maps.Portal portal) {
+        agent.changeMap(target, portal != null ? portal : target.getPortal(0));
+    }
+
+    /**
+     * Where a cheap move comes into {@code target}: portal 0 as always while nobody is there (or portal travel is off);
+     * with a player there, the portal its route enters by.
+     */
+    private server.maps.Portal arrivalPortal(CitizenSession session, int fromMapId, MapleMap target, long now) {
+        server.maps.Portal entry = onFoot.enabled() && CitizenTravel.watched(target)
+                ? onFoot.entryPortal(session, fromMapId, target, now) : null;
+        return entry != null ? entry : target.getPortal(0);
+    }
+
+    /**
+     * A move on foot with no way on a player could watch (CitizenTravel): it goes back to what it was doing on that map
+     * until nobody watches, a grind on a field it trains on, else a stroll.
+     */
+    void linger(CitizenSession session, MapleMap map, long now) {
+        if (session.entry == null) {
+            return;
+        }
+        if (session.activity == Activity.TRAIN) {
+            AgentMovementCommandRuntime.grind(session.entry);
+        } else {
+            stroll(session, map, now);
+        }
+    }
+
+    /** True while {@code session} is this scheduler's live session for its citizen. */
+    boolean holds(CitizenSession session) {
+        return sessions.get(session.characterId) == session;
+    }
+
+    private static void stopTownLife(AgentRuntimeEntry entry, Character agent) {
+        if (entry != null && AgentTownLifeRuntime.active(entry)) {
+            AgentTownLifeRuntime.forceStop(entry, agent, "citizen travel");
+            AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
         }
     }
 
@@ -1064,7 +1150,7 @@ public final class PresenceScheduler {
      * dropped here was lost for good: SocialFabric.partyUp sends a circle party to train once, and skips a citizen that
      * has a party. An older move whose delay ran out during the trip gives way to the newer one.
      */
-    private void waitForSupplyTrip(CitizenSession session, Character agent, CitizenSession.Move move) {
+    void waitForSupplyTrip(CitizenSession session, Character agent, CitizenSession.Move move) {
         if (move != session.latestMove) {
             log.debug("citizen {}: its move to {} gives way to a newer one", session.name(), move.mapId());
             return;

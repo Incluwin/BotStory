@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntFunction;
 
 /**
  * Guilds, buddies, circles that party up, fame (plan 4). Bot guilds are real guilds with a bot
@@ -64,6 +65,7 @@ public final class SocialFabric {
     private final Map<Integer, Long> lastFameAtMs = new ConcurrentHashMap<>();
     private final Map<String, Long> acquaintanceTouchedAtMs = new ConcurrentHashMap<>();
     private long lastPartyFormingMs;
+    private boolean emblemsChecked;
 
     SocialFabric(Population population) {
         this.population = population;
@@ -154,6 +156,13 @@ public final class SocialFabric {
         long now = System.currentTimeMillis();
         try {
             if (population.config().GUILDS_ENABLED) {
+                try {
+                    emblemOldGuilds(guildId -> Server.getInstance().getGuild(guildId,
+                            population.world().config().WORLD));
+                } catch (RuntimeException failure) {
+                    // the emblems wait for the next boot; the guilds, circles and the rest of the tick go on
+                    log.warn("bot guild emblems could not be checked this boot", failure);
+                }
                 ensureGuilds();
                 recruitCitizens();
             }
@@ -205,12 +214,9 @@ public final class SocialFabric {
             }
             population.store().setGuild(leader.characterId(), guildId, 1);
             setCapacity(guildId);
-            if (!names.backgrounds().isEmpty() && !names.logos().isEmpty() && !names.colors().isEmpty()) {
-                Guild guild = Server.getInstance().getGuild(guildId, population.world().config().WORLD);
-                if (guild != null) {
-                    guild.setGuildEmblem((short) pick(names.backgrounds()), (byte) pick(names.colors()),
-                            (short) pick(names.logos()), (byte) pick(names.colors()));
-                }
+            Guild guild = Server.getInstance().getGuild(guildId, population.world().config().WORLD);
+            if (guild != null) {
+                wearEmblem(guild, names);
             }
             String motto = names.mottos().isEmpty() ? "" : names.mottos().get(random.nextInt(names.mottos().size()));
             GuildMeta meta = new GuildMeta(guildId, "open", Math.max(1, leaderLevel - GUILD_LEVEL_SPREAD),
@@ -220,6 +226,40 @@ public final class SocialFabric {
             population.update(leader.characterId(), current -> current.withGuild(guildId).withFlag(Citizen.FLAG_RECRUITER));
             log.info("bot guild '{}' ({}) founded by {} lv{}", name, guildId, leader.name(), leaderLevel);
         }
+    }
+
+    /**
+     * Once per boot, before any founding: a bot guild whose emblem the client cannot draw (founded before emblems named
+     * real GuildMark.img art: backgrounds 1-18, marks 1-25) wears the emblem its name gives it. A guild already wearing
+     * real art keeps it.
+     */
+    void emblemOldGuilds(IntFunction<Guild> guildById) {
+        if (emblemsChecked) {
+            return;
+        }
+        emblemsChecked = true;
+        GuildNames names = population.content().guildNames();
+        int fixed = 0;
+        for (GuildMeta meta : guilds.values()) {
+            Guild guild = guildById.apply(meta.guildId());
+            if (guild == null || GuildEmblems.isClientArt(guild.getLogoBG(), guild.getLogoBGColor(), guild.getLogo(),
+                    guild.getLogoColor())) {
+                continue;
+            }
+            wearEmblem(guild, names);
+            fixed++;
+        }
+        if (fixed > 0) {
+            log.info("bot guild emblems: {} of {} bot guilds now wear the emblem their name gives them", fixed, guilds.size());
+        }
+    }
+
+    private void wearEmblem(Guild guild, GuildNames names) {
+        GuildEmblems.Emblem emblem = GuildEmblems.pick(guild.getName(), names.emblems());
+        guild.setGuildEmblem((short) emblem.background(), (byte) emblem.backgroundColor(), (short) emblem.mark(),
+                (byte) emblem.markColor());
+        log.info("bot guild '{}' ({}) emblem: mark {} colour {} on background {} colour {}", guild.getName(), guild.getId(),
+                emblem.mark(), emblem.markColor(), emblem.background(), emblem.backgroundColor());
     }
 
     private void setCapacity(int guildId) {
@@ -299,6 +339,28 @@ public final class SocialFabric {
             }
         }
         return count;
+    }
+
+    /**
+     * GPQ plan decision 8: the master of a citizen guild promotes a human member it knows well to Jr. Master, once, so
+     * they can register the guild for the Guild Quest (only a master or Jr. Master may): a human of its own guild below
+     * Jr. Master, after GUILD_PROMOTE_AFTER_MINUTES shared minutes, counted as the guild invite counts them.
+     */
+    void maybePromoteHuman(CitizenSession session, Character human, Acquaintance acquaintance) {
+        Character agent = session.agent();
+        int minutes = population.config().GUILD_PROMOTE_AFTER_MINUTES;
+        if (agent == null || human == null || minutes <= 0 || !population.config().GUILDS_ENABLED
+                || agent.getGuildId() <= 0 || agent.getGuildRank() != 1 || human.getGuildId() != agent.getGuildId()
+                || human.getGuildRank() <= 2
+                || acquaintance.mapMinutes() + acquaintance.partyMinutes() * 2 < minutes) {
+            return;
+        }
+        Server.getInstance().changeRank(agent.getGuildId(), human.getId(), 2);
+        population.chatter().whisper(session, human, "you've done a lot for the guild. made you a jr. master, so you "
+                + "can sign us up for the guild quest with shuang");
+        session.journal.add("social", "made " + human.getName() + " a jr. master");
+        log.info("citizen guild master {} promoted {} to Jr. Master in guild {}", session.characterId, human.getId(),
+                agent.getGuildId());
     }
 
     /** A recruiter in a guild invites a human it has been around for a while (once). */
@@ -518,6 +580,7 @@ public final class SocialFabric {
                 if (session.citizen.has(Citizen.FLAG_RECRUITER)) {
                     maybeInviteHuman(session, chr);
                 }
+                maybePromoteHuman(session, chr, updated);
             }
         }
     }
@@ -627,10 +690,6 @@ public final class SocialFabric {
             return TIE_CIRCLE;
         }
         return a.guild() != 0 && a.guild() == b.guild() ? TIE_GUILD : 0d;
-    }
-
-    private int pick(List<Integer> values) {
-        return values.get(random.nextInt(values.size()));
     }
 
     public List<Circle> circles() {

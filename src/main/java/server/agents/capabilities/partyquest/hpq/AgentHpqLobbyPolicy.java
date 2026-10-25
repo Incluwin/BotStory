@@ -16,11 +16,16 @@ public final class AgentHpqLobbyPolicy {
                 "server.agents.capabilities.partyquest.hpq.AgentHpqLobbyPolicy.MAX_LOBBIES")));
     }
 
-    static boolean backgroundSlotAvailable(int world, int channel) {
+    /**
+     * True when the population may take another HPQ lobby on this channel: background runs and citizen runs (a citizen
+     * party the population sent in, CitizenPartyQuests) count together against the background caps, and one lobby
+     * stays for humans.
+     */
+    public static boolean backgroundSlotAvailable(int world, int channel) {
         int total = 0;
         int onChannel = 0;
         for (AgentHpqSession session : AgentHpqSessionRegistry.sessions()) {
-            if (session.mode() != AgentHpqSession.Mode.BACKGROUND_POPULATION) continue;
+            if (session.mode() != AgentHpqSession.Mode.BACKGROUND_POPULATION && !session.citizenRun()) continue;
             total++;
             Character anchor = anchor(session);
             if (anchor != null

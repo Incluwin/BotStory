@@ -203,6 +203,7 @@ public enum RecvOpcode {
     MTS_OPERATION(0xFD),
     USE_MAPLELIFE(0x100),
     USE_HAMMER(0x104),
+    // BotStory's own opcodes; take a new one from docs/CUSTOM_OPCODES.md first
     BOT_EQUIP(0x112),               // Android/bot equip window (Kaentake client CP_BotEquip)
     OBSERVER_CHARACTERS(0x113),
     OBSERVER_NAV_GRAPH(0x114),

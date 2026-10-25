@@ -76,12 +76,13 @@ class AgentBossRunPartyEventTest {
     void theFirstThreeCatalogBossesAreExpeditionsThePartyBossesAreNotAndEveryDeadOneWaitsOutside() {
         for (AgentBossRunDefinition definition : AgentBossRunCatalog.all()) {
             boolean party = definition.key().equals("latanica") || definition.key().startsWith("neo_")
-                    || definition.key().equals("papulatus");
+                    || definition.key().equals("papulatus") || definition.key().equals("gpq");
             assertEquals(party, definition.partyInstance(), definition.key());
             AgentBossRunDefinition.DeathMode expected = Set.of("scarga", "horntail").contains(definition.key())
                     ? AgentBossRunDefinition.DeathMode.REENTER
                     : definition.key().equals("pinkbean") ? AgentBossRunDefinition.DeathMode.REVIVE_INSIDE
                     : definition.key().equals("cwkpq") ? AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR
+                    : definition.key().equals("gpq") ? AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE
                     : AgentBossRunDefinition.DeathMode.WAIT_OUTSIDE;
             assertEquals(expected, definition.deathMode(), definition.key());
         }

@@ -5,6 +5,7 @@ import server.agents.capabilities.movement.AgentMovementBroadcastService;
 
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.navigation.AgentCollisionPortalService;
+import server.agents.capabilities.navigation.AgentMapWalk;
 import server.agents.capabilities.trade.AgentOfferService;
 import server.agents.capabilities.social.airshow.AgentAirshowStateRuntime;
 import server.agents.capabilities.supplies.AgentSupplyProcurementRuntime;
@@ -46,6 +47,10 @@ public final class AgentTickPreflightRuntime {
             }
             if (walk == AgentBossDeathWalk.Step.MOVING) {
                 return result; // the movement step makes the walk's move; the world director plans nothing meanwhile
+            }
+            // a citizen someone can see walks to another map through its portals (CitizenTravel starts the walk)
+            if (AgentMapWalk.tick(entry, result.agent(), nowMs)) {
+                return result;
             }
             AgentWorldDirectorObserveRuntime.tick(entry, result.agent(), nowMs);
             AgentWorldDirectorExecutionRuntime.tick(entry, result.agent(), nowMs);

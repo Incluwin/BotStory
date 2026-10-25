@@ -11,6 +11,8 @@ regions:
     # Hubs draw the crowd: Henesys and Kerning City carry most of Victoria's town life, like a real server.
     townWeights: [40, 10, 8, 30, 4, 4, 4, 3]
     lobbies:
+      # Henesys Park: Tory's HPQ for lv10-20 (its admission takes 10+); KPQ for 21-30.
+      - { id: hpq, mapId: 100000200, levels: { min: 10, max: 20 }, name: "HPQ" }
       - { id: kpq, mapId: 103000000, levels: { min: 21, max: 30 }, name: "KPQ" }
     fm: 910000000
     weight: 60

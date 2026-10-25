@@ -215,8 +215,9 @@ public final class AgentChatReportOperationsRuntime {
         AgentChatReportRuntime.reportHelp(line -> AgentDialogueTransportRuntime.queueReply(entry, line));
     }
 
+    /** "any upgrades": gear for the asker (AgentRelationshipRuntime.requester, fourth deploy review 2026-10-10). */
     public static void reportRecommendedGear(AgentRuntimeEntry entry, Character bot) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         AgentChatReportRuntime.reportRecommendedGear(
                 AgentStatusStateRuntime.recommendedGearReportState(entry),
                 AgentOfferRuntime.recommendedGearActions(entry, bot, owner),

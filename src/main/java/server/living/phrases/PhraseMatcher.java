@@ -105,9 +105,56 @@ public final class PhraseMatcher {
         return match(compiled, normalized);
     }
 
+    /**
+     * What {@link #resolve} reads {@code message} as (a canonical command, or {@code reply:<text>} for a planned one),
+     * the command the Agents' prejudge would act on, or null; nothing is recorded (a learned phrase's hit counts when
+     * the Agent resolves it).
+     */
+    public String commandFor(String message) {
+        String normalized = normalize(message);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String remembered = learned.get(normalized);
+        return remembered != null ? remembered : match(compiled, normalized);
+    }
+
+    /**
+     * The canonical command (a planned one's too, not its reply) when {@code message} is one whole phrase: a learned
+     * phrase, or prefix, alias and tails with no unknown word left over; else null. "heals off" and "sell your junk"
+     * are; "stay close to" and "stop olwen" are not (fourth deploy review 2026-10-10: a name after them is the verb's
+     * object, or one of several addressees). A tail is read normalized, so "wait for" is one ("for now").
+     */
+    public String wholeCommandFor(String message) {
+        String normalized = normalize(message);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String remembered = learned.get(normalized);
+        return remembered != null ? remembered : whole(compiled, normalized);
+    }
+
+    /** {@link #wholeCommandFor} on the packs only (no learned phrases). */
+    static String whole(List<Compiled> commands, String normalized) {
+        String[] words = normalized.split(" ");
+        Compiled best = best(commands, words);
+        return best != null && consumed(best, words) / 10 == words.length ? best.phrase().canonical() : null;
+    }
+
     /** Pack resolution only (no learned phrases): canonical, {@code reply:...}, or null. */
     static String match(List<Compiled> commands, String normalized) {
-        String[] words = normalized.split(" ");
+        Compiled best = best(commands, normalized.split(" "));
+        if (best == null) {
+            return null;
+        }
+        if ("PLANNED".equals(best.phrase().status())) {
+            return "reply:" + (best.phrase().reply() == null ? "can't do that yet." : best.phrase().reply());
+        }
+        return best.phrase().canonical();
+    }
+
+    /** The command that explains the most of {@code words} ({@link #consumed}), or null when none matches. */
+    private static Compiled best(List<Compiled> commands, String[] words) {
         Compiled best = null;
         int bestConsumed = -1;
         for (Compiled command : commands) {
@@ -117,13 +164,7 @@ public final class PhraseMatcher {
                 best = command;
             }
         }
-        if (best == null) {
-            return null;
-        }
-        if ("PLANNED".equals(best.phrase().status())) {
-            return "reply:" + (best.phrase().reply() == null ? "can't do that yet." : best.phrase().reply());
-        }
-        return best.phrase().canonical();
+        return best;
     }
 
     /**

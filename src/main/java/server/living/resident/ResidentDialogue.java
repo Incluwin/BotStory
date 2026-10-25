@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.TimerManager;
+import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.commands.AgentDismissCommandService;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.integration.AgentPresence;
@@ -80,17 +82,24 @@ public final class ResidentDialogue {
     private static final Pattern TALK = Pattern.compile("^(talk|lets talk|menu|options|speak|chat|talk to me|can we talk|got a minute|a word)$");
 
     /** Borrowed townsperson portraits for personas with neither portraitNpcId nor a generated one (portrait-npc-ids.yaml). */
-    private static final Map<String, int[]> PORTRAITS = Map.of(
-            "lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005},
-            "henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109},
-            "kerning-city", new int[] {1052002, 1052003, 1052004, 1052005, 1052006, 1052017, 1052102, 1052103},
-            "perion", new int[] {1022002, 1022003, 1022004, 1022005},
-            "ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102},
-            "nautilus", new int[] {1092000, 1092001, 1092002, 1092003},
-            "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004},
-            "orbis", new int[] {2010000, 2012012, 2012019, 2012011},
-            "el-nath", new int[] {2020003, 2020006, 2020007, 2020002},
-            "ludibrium", new int[] {2041004, 2040046, 9103001, 2041014});
+    private static final Map<String, int[]> PORTRAITS = Map.ofEntries(
+            Map.entry("lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005}),
+            Map.entry("henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109}),
+            Map.entry("kerning-city", new int[] {1052002, 1052003, 1052004, 1052005, 1052006, 1052017, 1052102, 1052103}),
+            Map.entry("perion", new int[] {1022002, 1022003, 1022004, 1022005}),
+            Map.entry("ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102}),
+            Map.entry("nautilus", new int[] {1092000, 1092001, 1092002, 1092003}),
+            Map.entry("sleepywood", new int[] {1061000, 1061002, 1061003, 1061004}),
+            Map.entry("ereve", new int[] {1101004, 1101005, 1101006, 1101007}),
+            Map.entry("rien", new int[] {1200000, 1200001, 1200002}),
+            Map.entry("orbis", new int[] {2010000, 2012012, 2012019, 2012011}),
+            Map.entry("el-nath", new int[] {2020003, 2020006, 2020007, 2020002}),
+            Map.entry("ludibrium", new int[] {2041004, 2040046, 9103001, 2041014}),
+            Map.entry("leafre", new int[] {2080000, 2080002, 2080004, 2080005}),
+            Map.entry("mu-lung", new int[] {2090006, 2090102, 2090103, 2090104}),
+            Map.entry("herb-town", new int[] {2092000, 2093000, 2093001, 2093002}),
+            Map.entry("ariant", new int[] {2100003, 2100005, 2100006, 2100007, 2100008}),
+            Map.entry("magatia", new int[] {2110000, 2110001, 2111004, 2111005}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);
@@ -123,8 +132,37 @@ public final class ResidentDialogue {
     private static final Pattern EVERYONE_PARK = Pattern.compile("^(park|park (everyone|all|everybody)|(everyone|all|everybody) park)$");
     private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
     private static final Pattern EVERYONE_KEYSTONE = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?keystones$");
+    private static final Pattern EVERYONE_TICKET = Pattern.compile("^((everyone|all|everybody) )?get (your |a |the )?(entrance )?tickets$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
     private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
+    /**
+     * Sell-now lines (live 2026-10-10): to a companion out with its owner they are the Agent's own sell-trash command,
+     * never the bench job; to a benched or away one they are the job SELL, as "sell", "sell it all", "sell the haul"
+     * and "sell and come back" always are.
+     */
+    private static final Set<String> SELL_NOW = Set.of("sell junk", "sell trash", "sell my junk", "sell my trash");
+    /**
+     * The phrase packs' commands an owner's map line may give one companion by its name last ({@link #agentCommandFor},
+     * fourth deploy review 2026-10-10): what it does to itself, its own gear, settings and supplies, or answers about
+     * itself, so a name after them can only be whom it is said to. Not the ones whose name last is often the verb's
+     * object ("fame tamsin", "help tamsin", "attack tamsin", "guard tamsin", "greet tamsin", "trade tamsin", "go to",
+     * "focus", "avoid", the formation and the planned tank and skill lines): those keep the untargeted Agent route.
+     */
+    private static final Set<String> NAME_LAST_COMMANDS = Set.of("follow me", "stop", "move here", "patrol", "stats",
+            "inventory", "slots", "range", "build", "skills", "mesos", "speed", "exp", "scrolls", "pots", "buff list",
+            "support on", "support off", "heals on", "heals off", "buff on", "buff off", "buff cheap", "buff max",
+            "need hp pot", "need mp pot", "need ammo", "need pot", "any upgrades?", "need anything?", "sell trash",
+            "autoequip", "unequip everything", "change build", "relog", "kite", "retreat at hp", "loot mode", "restock",
+            "bank", "train until", "quiet", "what are you doing");
+    /**
+     * Words after which a name is the verb's object, not whom the line is said to ("wait for tamsin", "heals on
+     * tamsin"): the phrase packs read some as tails ("for now" normalizes to "for"), so a whole command can end in one.
+     */
+    private static final Set<String> BEFORE_AN_OBJECT = Set.of("for", "with", "to", "at", "on", "in", "into", "onto",
+            "behind", "near", "beside", "by", "after", "from", "of", "about", "toward", "towards", "around", "against",
+            "past", "over", "under", "than", "like", "and", "or");
+    /** A whispered call with a tail the roster's own call words do not list ("come back to me", "come back here"). */
+    private static final Pattern RECALL = Pattern.compile("^(come|get) back( here| to me| with me| over here)?$");
 
     private final LivingWorld world;
     private final ResidentIntentJudge judge;
@@ -167,18 +205,67 @@ public final class ResidentDialogue {
         if (!AgentPresence.isAgent(speaker) && answeredOffer(speaker, targetName, text)) {
             return true;
         }
+        if (AgentPresence.isAgent(speaker)) {
+            return false;
+        }
         Persona persona = world.content().personaByName(targetName);
-        if (persona == null || AgentPresence.isAgent(speaker)) {
+        if (persona == null) {
+            // hires are no content: the owner's hired citizen goes by its own name, as in map chat, so a whispered "come
+            // back" reaches the roster (deploy review 2026-10-10: a hire on a live bench slice said "call me back first")
+            persona = hiredHandNamed(speaker, targetName);
+        }
+        if (persona == null) {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
-        if (rosterCommandFor(speaker, persona, normalized)) {
+        String command = addressedTo(persona, normalized);
+        if (rosterCommandFor(speaker, persona, command, true) || recalled(speaker, persona, command)) {
             return true;
         }
         if (world.roster().ownerOf(persona.id()) == speaker.getId()) {
             return false; // companion commands travel the agent whisper bridge
         }
         return converse(speaker, persona, normalized, text) || true;
+    }
+
+    /** The whisper without its addressee's name, first or last ("tamsin come back", "come here tamsin"), as map chat. */
+    private static String addressedTo(Persona persona, String normalized) {
+        String name = persona.name().toLowerCase(Locale.ROOT);
+        String[] words = normalized.split(" ");
+        if (words.length < 2) {
+            return normalized;
+        }
+        if (words[0].equals(name)) {
+            return normalized.substring(name.length()).trim();
+        }
+        return words[words.length - 1].equals(name)
+                ? normalized.substring(0, normalized.length() - name.length()).trim() : normalized;
+    }
+
+    /**
+     * The owner's whispered call to a companion that is not out with them (fourth deploy review 2026-10-10): a call
+     * whose tail the roster's call words do not list ("come back to me", "come back here"), or what its Agent would
+     * read as "follow me" or "come here" ("get over here", "lets go", "come to me"), calls it. Before, such a whisper
+     * went on to the whisper bridge, which a live bench slice refuses, and the companion whispered back "call me back
+     * first". Out with its owner, those lines stay its Agent's. Only the owner's call reads the roster row.
+     */
+    private boolean recalled(Character owner, Persona persona, String command) {
+        if (world.roster().cachedOwnerOf(persona.id()) != owner.getId()) {
+            return false;
+        }
+        PhraseMatcher phrases = world.phrases();
+        String canonical = phrases == null ? null : phrases.commandFor(command);
+        boolean toOwner = ("follow me".equals(canonical) || "move here".equals(canonical))
+                && AgentChatCommandClassifier.matchFollowTarget(command) == null; // not "follow hadrik"
+        if (!RECALL.matcher(command).matches() && !toOwner) {
+            return false;
+        }
+        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        if (entry == null || entry.state() == RosterState.RELEASED || entry.state() == RosterState.ACTIVE) {
+            return false;
+        }
+        world.chatVerbs().say(owner, "roster.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+        return true;
     }
 
     /**
@@ -769,23 +856,69 @@ public final class ResidentDialogue {
             verbs.show(owner, "roster.keystone_all", 5, () -> keystones(owner));
             return true;
         }
+        if (EVERYONE_TICKET.matcher(normalized).matches() && world.roster().hasCompanions(owner)) {
+            verbs.show(owner, "roster.ticket_all", 5, () -> tickets(owner));
+            return true;
+        }
         // "<name> <assignment or haul command>"
         String[] words = normalized.split(" ");
         if (words.length >= 2) {
             Persona persona = ownedPersona(owner, words[0]);
             if (persona != null) {
-                return rosterCommandFor(owner, persona, normalized.substring(words[0].length()).trim());
+                return rosterCommandFor(owner, persona, normalized.substring(words[0].length()).trim(), false);
             }
             persona = ownedPersona(owner, words[words.length - 1]);
             if (persona != null) {
-                return rosterCommandFor(owner, persona, normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim());
+                String command = normalized.substring(0, normalized.length() - words[words.length - 1].length()).trim();
+                return rosterCommandFor(owner, persona, command, false)
+                        || agentCommandFor(owner, persona, command, normalized);
             }
         }
         return false;
     }
 
-    /** Companion-directed roster commands: assignments, camp, haul. */
-    private boolean rosterCommandFor(Character owner, Persona persona, String command) {
+    /**
+     * "&lt;Agent command&gt; &lt;name&gt;" in map chat (second deploy review 2026-10-10): the Agent routes take a name
+     * only as the first word, and their phrase packs allow two unknown trailing words, so "stop tamsin", "heals off
+     * tamsin" or "sell your junk tamsin" reached every companion out. A line the phrase packs read as an Agent command
+     * goes to the named companion's Agent alone, as the line with the name first does (CompanionChatVerbs.toAgent).
+     * To a companion that is not out with its owner it reaches no companion out: a sell-now command is the job SELL,
+     * as "sell junk tamsin" is, and any other is nobody's: the owner is told it is not out (third deploy review
+     * 2026-10-10: the line went nowhere, unanswered). "follow &lt;name&gt;" and "dismiss &lt;name&gt;" stay the
+     * Agent routes' own.
+     *
+     * <p>Only a line whose words before the name are one whole command ({@link PhraseMatcher#wholeCommandFor}: no
+     * unknown word, so the name is the line's one extra word) that takes no person ({@link #NAME_LAST_COMMANDS}), with
+     * no preposition right before the name ({@link #BEFORE_AN_OBJECT}), is this companion's (fourth deploy review
+     * 2026-10-10): "fame tamsin" made Tamsin fame her owner, not the crew fame her; "wait for tamsin" and "stay close
+     * to tamsin" stopped only the laggard, or told the owner one on her way was not out while nobody waited; "stop
+     * hadrik tamsin" stopped only Tamsin. Those, and the social lines that end with the name ("here you go tamsin",
+     * "stop being silly tamsin", third deploy review 2026-10-10), go on to the untargeted Agent route as they always
+     * did.
+     */
+    private boolean agentCommandFor(Character owner, Persona persona, String command, String line) {
+        PhraseMatcher phrases = world.phrases();
+        String canonical = phrases == null ? null : phrases.wholeCommandFor(command);
+        String[] words = command.split(" ");
+        if (canonical == null || !NAME_LAST_COMMANDS.contains(canonical)
+                || BEFORE_AN_OBJECT.contains(words[words.length - 1])
+                || AgentChatCommandClassifier.matchFollowTarget(line) != null
+                || AgentDismissCommandService.dismissTarget(line) != null) {
+            return false;
+        }
+        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        if (entry != null && entry.state() == RosterState.ACTIVE) {
+            world.chatVerbs().toAgent(owner, persona, command);
+        } else if (SELL_NOW.contains(canonical)) {
+            rosterCommandFor(owner, persona, canonical, false);
+        } else {
+            world.chatVerbs().say(owner, "roster.not_out", () -> persona.name() + " is not out with you right now.");
+        }
+        return true;
+    }
+
+    /** Companion-directed roster commands: assignments, camp, haul; {@code whispered}: the owner whispered the line to it. */
+    private boolean rosterCommandFor(Character owner, Persona persona, String command, boolean whispered) {
         RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return false;
@@ -808,7 +941,22 @@ public final class ResidentDialogue {
             case "release", "youre free", "go home": verbs.say(owner, "roster.release", () -> world.contracts().dismiss(owner, persona)); return true;
             case "get your keystone", "get a keystone", "get the keystone", "go get your keystone", "go get a keystone",
                     "keystone": verbs.say(owner, "roster.keystone", () -> world.keystoneErrands().ask(owner, persona)); return true;
+            case "get your ticket", "get a ticket", "get the ticket", "go get your ticket", "go get a ticket",
+                    "get your entrance ticket", "get an entrance ticket", "ticket":
+                verbs.say(owner, "roster.ticket", () -> world.ticketErrands().ask(owner, persona)); return true;
             default: break;
+        }
+        // "sell junk" to a companion out with its owner is the Agent's own sell-now command (plan 12.2 "Supplies and
+        // loot"), so the bench job stays; benched or away it is the job SELL. A whisper goes on to the Agent bridge,
+        // which has this one companion. A map line goes to its Agent from here: the Agent routes take a name only as the
+        // first word, so a line naming it last reached every companion out (deploy review 2026-10-10)
+        boolean sellNow = SELL_NOW.contains(command);
+        if (sellNow && entry.state() == RosterState.ACTIVE) {
+            if (whispered) {
+                return false;
+            }
+            verbs.sellNow(owner, persona);
+            return true;
         }
         // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
         boolean go = command.startsWith("go ");
@@ -818,7 +966,8 @@ public final class ResidentDialogue {
             job = job.substring(0, job.length() - " here".length()).trim();
             mapId = owner.getMapId();
         }
-        Assignment assignment = assignmentOf(job);
+        // "go sell trash" is no errand (fourth deploy review 2026-10-10): the Agent route sells it now, as it always did
+        Assignment assignment = sellNow ? Assignment.SELL : assignmentOf(job);
         int itemId = 0;
         int count = 0;
         if (assignment == null) {
@@ -864,6 +1013,18 @@ public final class ResidentDialogue {
      * Runs {@code verb} (on companion-ops) for each companion {@code which} picks; one line each, except that the
      * leader cap is said once (the rest would only repeat it).
      */
+    /** "everyone get tickets": each companion out or benched answers for its own Entrance Ticket to the Amorian Challenge. */
+    private List<String> tickets(Character owner) {
+        List<String> lines = new ArrayList<>();
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona != null && (entry.state() == RosterState.ACTIVE || entry.state() == RosterState.BENCHED)) {
+                lines.add(world.ticketErrands().ask(owner, persona));
+            }
+        }
+        return lines;
+    }
+
     /** "everyone get keystones": each companion out or benched answers for its own Crimsonwood Keystone. */
     private List<String> keystones(Character owner) {
         List<String> lines = new ArrayList<>();

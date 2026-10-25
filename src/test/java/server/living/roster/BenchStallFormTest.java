@@ -404,6 +404,103 @@ class BenchStallFormTest {
         assertEquals(500, command().listings().get(0).price(), "a stall asks the index price");
     }
 
+    /** The store hands a stall its own bench events back (LivingStore.personaEvents: oldest first, as {kind, detail}). */
+    private void recordKept() {
+        when(game.store.store.personaEvents(anyInt(), anyString(), any(), anyInt())).thenAnswer(inv -> {
+            String who = inv.getArgument(0) + " " + inv.getArgument(1);
+            List<String> kinds = inv.getArgument(2);
+            List<String[]> out = new ArrayList<>();
+            for (String line : game.store.events) {
+                String[] row = line.split(" ", 4);
+                if ((row[0] + " " + row[1]).equals(who) && kinds.contains(row[2])) {
+                    out.add(new String[] {row[2], row.length > 3 ? row[3] : ""});
+                }
+            }
+            return out;
+        });
+    }
+
+    /** The bundle price the last stall command lists {@code itemId} at. */
+    private int priceOf(int itemId) {
+        for (AgentFreeMarketStallService.Listing listing : command().listings()) {
+            if (itemAt(listing.inventoryType(), listing.slot()) == itemId) {
+                return listing.price();
+            }
+        }
+        throw new AssertionError("not listed: " + itemId);
+    }
+
+    /** A bundle of {@code per} units at {@code share} of the {@code index}, as a listing prices it. */
+    private static long bundle(long index, double share, int per) {
+        return Math.round(index * share) * per;
+    }
+
+    /** Its stall opens, nobody buys for the whole slice, and its next stall begins (alone in its pool). */
+    private void aSliceGoesBy() {
+        opens();
+        game.duty.tick();
+        game.now += game.config.COMMERCE_SLICE_MS + 1L;
+        game.duty.tick();
+    }
+
+    @Test
+    void aStallLearnsItsPriceMarkingDownWhatDidNotSellToTheQuickSaleAndASaleBringsItBack() {
+        recordKept();
+        gwen(Assignment.STALL, Map.of(POTION, 25, SHELL, 100));
+        game.duty.tick();
+        assertEquals(500, priceOf(POTION), "its first stall asks the index");
+
+        aSliceGoesBy();
+        assertEquals(bundle(50, 1.0d - 0.05d, 10), priceOf(POTION), "a whole slice and nothing sold: 5% off");
+        assertTrue(game.store.events("bench.stall").get(1).contains("2000002=95%"), game.store.events("bench.stall").toString());
+        aSliceGoesBy();
+        assertEquals(bundle(50, 1.0d - 0.05d * 2, 10), priceOf(POTION));
+        aSliceGoesBy();
+        assertEquals(bundle(50, BenchStallForm.QUICK_SALE, 10), priceOf(POTION), "SELL's price, where browsing citizens buy");
+        aSliceGoesBy();
+        assertEquals(bundle(50, BenchStallForm.QUICK_SALE, 10), priceOf(POTION), "never under it");
+
+        opens();
+        game.duty.tick();
+        buys(POTION, 1, 10, (int) bundle(50, BenchStallForm.QUICK_SALE, 10));
+        game.duty.tick();
+        game.now += game.config.COMMERCE_SLICE_MS + 1L;
+        game.duty.tick();
+
+        assertEquals(500, priceOf(POTION), "it sold: back at the index");
+        assertEquals(bundle(10, BenchStallForm.QUICK_SALE, 100), priceOf(SHELL), "what still did not sell stays marked down");
+    }
+
+    @Test
+    void onlyWholeSlicesThatSoldNoneOfAnItemCountAndASaleOfItEndsTheCount() {
+        List<String[]> events = List.of(
+                new String[] {"bench.stall", "stocked {2000002=20, 4000019=100} in room 910000004 at {2000002=100%}"},
+                new String[] {"bench.stall-close", "slice elapsed; sold {}"},
+                new String[] {"bench.stall", "stocked {2000002=20, 4000019=100} in room 910000004"},
+                new String[] {"bench.stall-close", "slice elapsed; sold {2000002=10}"}, // a potion sold: its count ends here
+                new String[] {"bench.stall", "stocked {2000002=10, 4000019=100} in room 910000004"},
+                new String[] {"bench.stall-close", "server shutdown; sold {}"}, // cut short: neither counts nor ends it
+                new String[] {"bench.stall", "stocked {2000002=10, 4000019=100} in room 910000004"},
+                new String[] {"bench.stall-close", "slice elapsed; sold {}"},
+                new String[] {"bench.stall", "stocked {2000002=10} in room 910000004"}); // still open
+
+        assertEquals(Map.of(POTION, 1, SHELL, 3, SWORD, 0), BenchStallForm.unsoldSlices(events, Set.of(POTION, SHELL, SWORD)));
+        assertEquals(Map.of(POTION, 0), BenchStallForm.unsoldSlices(List.of(), Set.of(POTION)));
+    }
+
+    @Test
+    void withNoMarkdownStepAStallAlwaysAsksTheIndex() {
+        game.config.BENCH_STALL_MARKDOWN_STEP = 0.0d;
+        recordKept();
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        game.duty.tick();
+
+        aSliceGoesBy();
+        aSliceGoesBy();
+
+        assertEquals(500, priceOf(POTION));
+    }
+
     @Test
     void withNothingItMaySellItStaysInTheLedger() {
         gwen(Assignment.STALL, Map.of(QUEST_GOOD, 5, CASH_ONLY, 3));

@@ -360,10 +360,18 @@ public final class AgentBossRunSession {
      */
     private void tickStarted(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         boolean graceOver = nowMs - startedAtMs >= startGraceMs();
+        // GPQ plan B4: members of a join-after-start run come in one by one while the event takes joiners
+        boolean joining = definition.joinsAfterStart() && joinOpen();
+        boolean turnTaken = false;
         for (AgentBossRunMember member : members) {
             switch (member.phase()) {
                 case WAITING -> refuse(host, member, AgentBossRunHost.Refusal.LATE);
-                case REGISTERED -> adoptOrMiss(ports, host, member, graceOver, nowMs);
+                case REGISTERED -> {
+                    if (joining && !turnTaken) {
+                        turnTaken = joinTurn(ports, host, member, nowMs);
+                    }
+                    adoptOrMiss(ports, host, member, graceOver && !joining, nowMs);
+                }
                 default -> {
                 }
             }
@@ -413,6 +421,48 @@ public final class AgentBossRunSession {
                 + count(AgentBossRunMember.Phase.REGISTERED) + count(AgentBossRunMember.Phase.REENTERING) == 0) {
             end(ports, host, "members-out", nowMs);
         }
+    }
+
+    /** True while the event of a join-after-start run takes joiners (GuildQuest.js canJoin 1, its first 3 minutes). */
+    private boolean joinOpen() {
+        return event != null && !event.isEventDisposed()
+                && "1".equals(event.getProperty(AgentBossRunDefinition.CAN_JOIN_PROPERTY));
+    }
+
+    /**
+     * GPQ plan B4, a REGISTERED member of a join-after-start run outside its event: on the recruit map it walks to its
+     * spot by the entry NPC (the host's, else the NPC itself) and, in reach of her, talks to her with the run's join
+     * choices, as a player joining their guild's quest does (Shuang: eim.registerPlayer, which warps it in). One
+     * conversation per tick across the run, and one per member every REENTER_TALK_EVERY_MS. True when it talked.
+     */
+    private boolean joinTurn(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                             long nowMs) {
+        Character agent = ports.agent(member.agentId());
+        if (agent == null || !agent.isAlive() || agent.getEventInstance() == event
+                || agent.getMapId() != definition.recruitMapId()) {
+            return false;
+        }
+        if (!inReach(ports, agent)) {
+            Point spot = host.joinAt(member.seat(definition.key(), sessionId), agent.getMap(), member.ordinal());
+            Point npc = spot != null ? spot : ports.npcPosition(agent, definition.entryNpcId());
+            if (npc != null) {
+                ports.navigate(member.agentId(), npc, true);
+            }
+            return false;
+        }
+        if (member.joinTalkedAtMs() > 0 && nowMs - member.joinTalkedAtMs() < reenterTalkEveryMs()) {
+            return false;
+        }
+        member.joinTalked(nowMs);
+        ports.stop(member.agentId());
+        try {
+            ports.runNpc(agent, definition.entryNpcId(), definition.joinSelectionArray());
+        } catch (RuntimeException failure) {
+            log.warn("Boss run join conversation failed: session={} member={}", sessionId, agent.getId(), failure);
+        }
+        log.info("Boss run member joins: session={} boss={} member={} npc={} in={}", sessionId, definition.key(),
+                member.agentId(), definition.entryNpcId(), agent.getEventInstance() == event);
+        return true;
     }
 
     /**

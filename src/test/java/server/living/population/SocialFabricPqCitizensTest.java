@@ -53,8 +53,19 @@ class SocialFabricPqCitizensTest {
      * KPQ director took citizens off Kerning City's roofs, and none of its 291 runs cleared.
      */
     @Test
-    void theBackgroundKpqDirectorGetsNoCitizensWhileCitizensRunKpqThemselves() {
-        List<Supplier<Set<Integer>>> ids = installedIds(new PopulationConfig());
+    void theBackgroundDirectorsGetNoCitizensWhileCitizensRunTheirQuestsThemselves() {
+        List<Supplier<Set<Integer>>> ids = installedIds(new PopulationConfig()); // ships "kpq,hpq"
+
+        assertEquals(Set.of(), ids.get(0).get());
+        assertEquals(Set.of(), ids.get(1).get());
+    }
+
+    @Test
+    void aQuestCitizensDoNotRunIsStillTheDirectorsToFeed() {
+        PopulationConfig config = new PopulationConfig();
+        config.PQ_RUN_QUESTS = "kpq";
+
+        List<Supplier<Set<Integer>>> ids = installedIds(config);
 
         assertEquals(Set.of(), ids.get(0).get());
         assertEquals(Set.of(CITIZEN, UNLEASED), ids.get(1).get());

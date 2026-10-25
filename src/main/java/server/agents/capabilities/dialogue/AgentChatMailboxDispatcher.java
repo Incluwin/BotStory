@@ -1,5 +1,6 @@
 package server.agents.capabilities.dialogue;
 
+import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.runtime.AgentMailboxRuntime;
@@ -25,6 +26,18 @@ public final class AgentChatMailboxDispatcher {
             AgentRuntimeEntry entry,
             String message,
             AgentReplyChannel replyChannel) {
+        return handleChat(entry, message, replyChannel, null);
+    }
+
+    /**
+     * {@code speaker}: who said the line, whom a whispered line's answers go back to however late they are sent (second
+     * deploy review 2026-10-10); null: the Agent's interaction target when each one is sent.
+     */
+    public static CompletableFuture<Boolean> handleChat(
+            AgentRuntimeEntry entry,
+            String message,
+            AgentReplyChannel replyChannel,
+            Character speaker) {
         if (entry == null) {
             return CompletableFuture.completedFuture(false);
         }
@@ -34,7 +47,7 @@ public final class AgentChatMailboxDispatcher {
                     server.agents.integration.AgentRuntimeIdentityRuntime.bot(entry),
                     System.currentTimeMillis());
         }
-        var result = AgentMailboxRuntime.dispatch(entry, new AgentChatMailboxAction(message, replyChannel));
+        var result = AgentMailboxRuntime.dispatch(entry, new AgentChatMailboxAction(message, replyChannel, speaker));
         if (!AgentMailboxRuntime.enabled()) {
             AgentSocialsSystem.completeChat(entry);
             return result;

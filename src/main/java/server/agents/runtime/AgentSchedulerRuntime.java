@@ -2,6 +2,7 @@ package server.agents.runtime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentSchedulerGatewayRuntime;
 
 import java.util.concurrent.ScheduledFuture;
@@ -17,12 +18,18 @@ public final class AgentSchedulerRuntime {
     private AgentSchedulerRuntime() {
     }
 
+    /**
+     * An answer after a human pause. {@code action} keeps the route of the chat line being handled now, if any
+     * (AgentReplyRoute.carried): what it says goes back on that line's channel, to the one who whispered it,
+     * however the Agent's reply channel or interaction target has moved by then (second deploy review 2026-10-10).
+     */
     public static void afterRandomDelay(int minMs, int maxMs, Runnable action) {
-        afterDelay(randomDelayMs(minMs, maxMs), action);
+        afterDelay(randomDelayMs(minMs, maxMs), AgentReplyRoute.carried(action));
     }
 
+    /** {@link #afterRandomDelay(int, int, Runnable)} on the Agent's own mailbox, while its session lasts. */
     public static void afterRandomDelay(AgentRuntimeEntry entry, int minMs, int maxMs, Runnable action) {
-        afterDelay(entry, randomDelayMs(minMs, maxMs), action);
+        afterDelay(entry, randomDelayMs(minMs, maxMs), AgentReplyRoute.carried(action));
     }
 
     public static void afterDelay(long delayMs, Runnable action) {

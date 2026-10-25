@@ -1,6 +1,8 @@
 package server.living.population;
 
 import client.Character;
+import server.agents.capabilities.partyquest.hpq.AgentHpqAdmissionService;
+import server.agents.capabilities.partyquest.hpq.AgentHpqLobbyPolicy;
 import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
 import server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy;
 import server.agents.integration.AgentClientGatewayRuntime;
@@ -17,7 +19,7 @@ import java.util.Map;
 /**
  * A party quest's door as a citizen party goes in by it (CitizenPartyQuests), keyed by its lobby id in regions.yaml:
  * the quest's own entry NPC, seats, admission words and registry (from its companion entrance, PqEntrance), the
- * engine's lobby policy, and the quest's citizen admission. KPQ's Lakelis only, for now.
+ * engine's lobby policy, and the quest's citizen admission. KPQ's Lakelis and HPQ's Tory.
  */
 interface CitizenPqDoor {
     /** How admission went: on success the quest's session id; else why not, in admission's own words. */
@@ -28,6 +30,11 @@ interface CitizenPqDoor {
     int minSeats();
 
     int maxSeats();
+
+    /** How many a party fills to before it goes in (it waits a while for them once it has the minimum). */
+    default int preferredSeats() {
+        return maxSeats();
+    }
 
     /** Why the member cannot go in, in the quest's admission words; "" when it can. */
     String memberProblem(Character member, boolean leader);
@@ -58,20 +65,24 @@ interface CitizenPqDoor {
 
     /** The doors that ship, by lobby id. */
     static Map<String, CitizenPqDoor> shipped() {
-        return Map.of("kpq", new Kpq());
+        return Map.of("kpq", new Kpq(), "hpq", new Hpq());
     }
 
-    /** Lakelis, at the Kerning City party-quest door. */
-    final class Kpq implements CitizenPqDoor {
-        private static final String EVENT = "KerningPQ";
+    /** What every door reads from its quest's companion entrance (PqEntrance). */
+    abstract class ByEntrance implements CitizenPqDoor {
+        private final String key;
 
-        private PqEntrance entrance() {
-            return PqEntrance.of("kpq");
+        ByEntrance(String key) {
+            this.key = key;
+        }
+
+        PqEntrance entrance() {
+            return PqEntrance.of(key);
         }
 
         @Override
         public String key() {
-            return "kpq";
+            return key;
         }
 
         @Override
@@ -85,6 +96,11 @@ interface CitizenPqDoor {
         }
 
         @Override
+        public int preferredSeats() {
+            return entrance().seatRules().preferred();
+        }
+
+        @Override
         public String memberProblem(Character member, boolean leader) {
             return entrance().memberProblem(member, leader);
         }
@@ -92,6 +108,42 @@ interface CitizenPqDoor {
         @Override
         public String registrationBlocker(int leaderId, Collection<Integer> characterIds) {
             return entrance().registrationBlocker(leaderId, characterIds);
+        }
+
+        @Override
+        public boolean holds(int characterId, String sessionId) {
+            return entrance().holds(characterId, sessionId);
+        }
+
+        @Override
+        public Point beside(MapleMap map, int index) {
+            return entrance().beside(map, index);
+        }
+
+        /** Within the quest coordinator's own gather box around its entry NPC (both axes). */
+        boolean withinGatherBox(MapleMap map, Point at, String radiusKey) {
+            NPC npc = map == null ? null : map.getNPCById(entrance().entryNpcId());
+            Point spot = npc == null ? null : npc.getPosition();
+            int radius = config.AgentTuning.intValue(radiusKey);
+            return spot != null && at != null && Math.abs(at.x - spot.x) <= radius && Math.abs(at.y - spot.y) <= radius;
+        }
+
+        /**
+         * After this party takes a lobby, one still stays free for each human party waiting, and the instances open
+         * now (human ones included) leave more than {@code reserved} free.
+         */
+        static boolean lobbiesLeft(Character anchor, String event, int maxLobbies, int reserved, int humanPartiesWaiting) {
+            int free = maxLobbies - AgentPartyQuestGatewayRuntime.partyQuest().openInstances(anchor, event);
+            return free > reserved && free - 1 >= humanPartiesWaiting;
+        }
+    }
+
+    /** Lakelis, at the Kerning City party-quest door. */
+    final class Kpq extends ByEntrance {
+        private static final String EVENT = "KerningPQ";
+
+        Kpq() {
+            super("kpq");
         }
 
         @Override
@@ -114,23 +166,46 @@ interface CitizenPqDoor {
         }
 
         @Override
-        public boolean holds(int characterId, String sessionId) {
-            return entrance().holds(characterId, sessionId);
+        public boolean atEntry(MapleMap map, Point at) {
+            return withinGatherBox(map, at, "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.GATHER_RADIUS_PX");
+        }
+    }
+
+    /** Tory, on her ledge in Henesys Park. Citizens wait on the floor below it, past its end. */
+    final class Hpq extends ByEntrance {
+        private static final String EVENT = "HenesysPQ";
+
+        Hpq() {
+            super("hpq");
+        }
+
+        /**
+         * HPQ's lobby policy counts background and citizen runs against its caps; its open instances (human ones too)
+         * must leave the lobby kept for humans free, and one more for each human party waiting.
+         */
+        @Override
+        public boolean lobbyFree(Character anchor, int humanPartiesWaiting) {
+            int world = AgentClientGatewayRuntime.clients().world(anchor);
+            int channel = AgentClientGatewayRuntime.clients().channel(anchor);
+            if (!AgentHpqLobbyPolicy.backgroundSlotAvailable(world, channel)) {
+                return false;
+            }
+            int reserved = Math.max(0, config.AgentTuning.intValue(
+                    "server.agents.capabilities.partyquest.hpq.AgentHpqLobbyPolicy.HUMAN_RESERVED_LOBBIES"));
+            return lobbiesLeft(anchor, EVENT, AgentHpqLobbyPolicy.maxLobbies(), reserved, humanPartiesWaiting);
         }
 
         @Override
-        public Point beside(MapleMap map, int index) {
-            return entrance().beside(map, index);
+        public Entered admit(Character leader, List<Character> members, long seed, long nowMs) {
+            AgentHpqAdmissionService.AdmissionResult result =
+                    AgentHpqAdmissionService.admitCitizens(leader, members, seed, nowMs);
+            return new Entered(result.success(), result.message(),
+                    result.session() == null ? null : result.session().sessionId());
         }
 
-        /** Within the coordinator's own gather box around Lakelis (GATHER_RADIUS_PX, both axes). */
         @Override
         public boolean atEntry(MapleMap map, Point at) {
-            NPC lakelis = map == null ? null : map.getNPCById(entrance().entryNpcId());
-            Point npc = lakelis == null ? null : lakelis.getPosition();
-            int radius = config.AgentTuning.intValue(
-                    "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.GATHER_RADIUS_PX");
-            return npc != null && at != null && Math.abs(at.x - npc.x) <= radius && Math.abs(at.y - npc.y) <= radius;
+            return withinGatherBox(map, at, "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.GATHER_RADIUS_PX");
         }
     }
 }

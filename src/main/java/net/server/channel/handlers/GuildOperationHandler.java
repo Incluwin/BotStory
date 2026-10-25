@@ -95,7 +95,8 @@ public final class GuildOperationHandler extends AbstractPacketHandler {
                     return;
                 }
 
-                if (!Party.createParty(mc, true)) {
+                // a founder leading a party of their own companions keeps it (GPQ plan decision 9)
+                if (!server.living.LivingWorldHooks.guildFoundingKeepsParty(mc) && !Party.createParty(mc, true)) {
                     mc.dropMessage(1, "You cannot create a new Guild while in a party.");
                     return;
                 }
@@ -106,6 +107,7 @@ public final class GuildOperationHandler extends AbstractPacketHandler {
                 }
 
                 c.getWorldServer().getMatchCheckerCoordinator().createMatchConfirmation(MatchCheckerType.GUILD_CREATION, c.getWorld(), mc.getId(), eligibleCids, guildName);
+                server.living.LivingWorldHooks.guildFoundingAsked(mc, eligibleCids); // their companions answer yes
                 break;
             case 0x05:
                 if (mc.getGuildId() <= 0 || mc.getGuildRank() > 2) {

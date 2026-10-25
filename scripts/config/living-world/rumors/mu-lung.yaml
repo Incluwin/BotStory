@@ -1,0 +1,31 @@
+# Mu Lung rumors.
+- id: mu-lung-the-borrowed-page
+  participants: [meiwen, qing]
+  where: { town: mu-lung, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+    requiresArc: { arc: meiwen-the-book-of-forms, chapterAtLeast: chapter-3 }
+  setsFlagOnListeners: mu-lung.heard-page
+  lines:
+    - { by: qing, text: "i should have looked at the cards thirty years ago, Meiwen. i was too busy reading them." }
+    - { by: meiwen, text: "you were too busy being a terrible pupil." }
+    - { by: qing, text: "yes. that too. she wrote 'will return'. she meant it." }
+    - { by: meiwen, text: "i know. she wrapped it round a root. a hundred years of root. i can forgive a root." }
+    - { by: qing, text: "thirty years, and it was only ever on loan." }
+    - { by: meiwen, text: "a page that's lent is always on its way home, Qing. that's what lending is. it only ever wanted good feet, and patience, and a please." }
+
+- id: mu-lung-the-challenge
+  participants: [suyin, xiaobo]
+  where: { town: mu-lung, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 1
+  setsFlagOnListeners: mu-lung.heard-challenge
+  lines:
+    - { by: xiaobo, text: "two hundred and twelve. you can't keep doing this, Suyin." }
+    - { by: suyin, text: "i can. watch me. chin down." }
+    - { by: xiaobo, text: "you could let me win once. just once. nobody'd know." }
+    - { by: suyin, text: "i'd know. you'd know. and the day you really win, you'd never be sure. i don't hold back, kid. not for you. not for anyone." }
+    - { by: xiaobo, text: "...that's the nicest thing you've ever said to me." }
+    - { by: suyin, text: "don't tell anyone. up. again." }

@@ -585,6 +585,15 @@ public final class BenchDutyDispatcher {
         return world.store().personaEvents(ownerId, personaId, CAMP_HISTORY_KINDS, CAMP_HISTORY_EVENTS);
     }
 
+    /**
+     * True when the companion died in {@link #ROUGH_CAMP_DEATHS} of its own last {@link #ROUGH_CAMP_WINDOW} slices at
+     * {@code mapId} ({@link #campRecord} over its bench events): a gatherer passes over a field it keeps dying at
+     * (BenchGatherForm), as a camp's own record moves a grinder off it.
+     */
+    boolean diesAt(int ownerId, String personaId, int mapId) {
+        return campRecord(campHistory.apply(ownerId, personaId), mapId, ROUGH_CAMP_WINDOW)[1] >= ROUGH_CAMP_DEATHS;
+    }
+
     private static int parseMap(String text) {
         int end = 0;
         while (end < text.length() && java.lang.Character.isDigit(text.charAt(end))) {

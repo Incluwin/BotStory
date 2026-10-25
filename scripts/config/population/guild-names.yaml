@@ -20,7 +20,102 @@ mottos:
   - "recruiting mages and clerics"
   - "old school players welcome back"
   - "help each other, that's it"
+# Emblems are real GuildMark.img art from the client's UI.wz: a background shape (1000-1029) in one of 16 colours under
+# a mark in another (animals 2000-2020, plants 3000-3006, patterns 4000-4021, letters A-Z 5000-5025, digits 5026-5035,
+# symbols 9000-9025). A bot guild reads its emblem off its own name (GuildEmblems): the head word with marks (the words
+# before "Of", else the whole name) gives the mark, the first word with colours the mark's colour, and a name with no
+# mark word wears its initial. The background colour is one whose fill stands out from the mark's ink by at least
+# minContrast (WCAG contrast ratio on the colours below, each the mean opaque pixel of that colour's art in UI.wz).
 emblems:
-  backgrounds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-  logos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-  colors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  minContrast: 3.0
+  colors:
+    1: { name: red, background: "#eb1616", mark: "#b32323" }
+    2: { name: orange, background: "#e18638", mark: "#bb6315" }
+    3: { name: gold, background: "#ebd416", mark: "#bba625" }
+    4: { name: cream, background: "#ebe6bc", mark: "#b9b087" }
+    5: { name: brown, background: "#8d5647", mark: "#703e34" }
+    6: { name: olive, background: "#4d5f41", mark: "#3a4a2e" }
+    7: { name: green, background: "#168e55", mark: "#007c42" }
+    8: { name: lime, background: "#7fa65f", mark: "#75b722" }
+    9: { name: teal, background: "#56a799", mark: "#0a9c7b" }
+    10: { name: sky, background: "#23a6d3", mark: "#1893b7" }
+    11: { name: blue, background: "#162feb", mark: "#102eb5" }
+    12: { name: steel, background: "#6885b8", mark: "#4a6db2" }
+    13: { name: purple, background: "#654793", mark: "#5c37b9" }
+    14: { name: pink, background: "#944391", mark: "#b750b0" }
+    15: { name: white, background: "#ebebeb", mark: "#a4a4a4" }
+    16: { name: black, background: "#161616", mark: "#141414" }
+  # plain shapes that read well under a mark: square, framed and lined squares, rounded square, circle, diamond, oval
+  backgrounds: [1000, 1001, 1002, 1010, 1016, 1017, 1018, 1024, 1028, 1029]
+  # the mark's colour when no word in the name has colours
+  defaultColors: [red, orange, gold, green, teal, sky, blue, steel, purple, pink, white, black]
+  # per word (matched without case, a trailing "s" either way): marks to choose from, colours for the mark, a shape
+  words:
+    # adjectives colour the mark
+    Eternal: { colors: [purple, teal] }
+    Silent: { colors: [steel, white] }
+    Crimson: { colors: [red] }
+    Golden: { colors: [gold] }
+    Shadow: { colors: [black, purple] }
+    Frozen: { colors: [sky, white] }
+    Sacred: { colors: [white, gold] }
+    Rising: { colors: [orange, gold] }
+    Fallen: { colors: [black, brown] }
+    Lunar: { colors: [white, steel] }
+    Solar: { colors: [orange, gold] }
+    Wild: { colors: [green, lime] }
+    Iron: { colors: [steel, black] }
+    Velvet: { colors: [purple, pink] }
+    Noble: { colors: [purple, gold] }
+    Chaos: { colors: [red, black] }
+    Divine: { colors: [white, gold] }
+    Ancient: { colors: [brown, olive] }
+    # nouns give the mark (9004/9023 crowns, 9005 shield, 9003 sword, 9016 paw print, 2000 eagle, 9018 fire,
+    # 2003/2004/2006 dragons, 4002/4013/4017 crosses, 9006 flag, 2001 dove, 3003 tree, 9009 lightning, 9017 medal,
+    # 4015 four-leaf clover, 9001 heart, 4008 winged circle, 4005 key, 4018 spade)
+    Legacy: { marks: [9004, 9023], colors: [gold, purple] }
+    Knights: { marks: [9005, 9003], colors: [steel, blue] }
+    Wolves: { marks: [9016], colors: [steel, black, brown] }
+    Phoenix: { marks: [2000, 9018], colors: [red, orange] }
+    Dragons: { marks: [2003, 2004, 2006], colors: [red, green, black] }
+    Blade: { marks: [9003], colors: [steel, white] }
+    Order: { marks: [4002, 4017], colors: [white, gold], background: 1020 }
+    Guard: { marks: [9005], colors: [steel, blue] }
+    Legion: { marks: [9006], colors: [red, steel] }
+    Empire: { marks: [9023, 9004], colors: [gold, purple] }
+    Haven: { marks: [2001, 3003], colors: [white, green] }
+    Crusade: { marks: [4002, 4017, 4013], colors: [red, white], background: 1020 }
+    Storm: { marks: [9009], colors: [sky, gold] }
+    Valor: { marks: [9017], colors: [gold, red] }
+    Union: { marks: [4015, 9001], colors: [green, pink], background: 1021 }
+    Circle: { marks: [4008], colors: [gold, teal], background: 1024 }
+    Pact: { marks: [4005, 4018], colors: [purple, black] }
+    Court: { marks: [9004, 9023], colors: [gold, purple], background: 1010 }
+    # places (3003 the mushroom-capped tree, 2020 butterfly, 3001 leaf, 4020 wings, 9010 dice, 4001 star, 9000 skull)
+    Henesys: { marks: [3003], colors: [orange, green] }
+    Ellinia: { marks: [3003, 2020], colors: [green, lime] }
+    Perion: { marks: [9003, 9018], colors: [brown, orange] }
+    Orbis: { marks: [4020], colors: [white, sky] }
+    Ludi: { marks: [9010], colors: [pink, gold] }
+    Victoria: { marks: [3001], colors: [orange, red] }
+    Ossyria: { marks: [4001], colors: [sky, white] }
+    Sleepywood: { marks: [9000], colors: [olive, purple] }
+    # single-word names (9008 note, 9012 anchor, 4007 omega, 4014 diamond, 9020 light bulb, 9022 rocket, 3004 rose,
+    # 2016 rabbit)
+    Reborn: { marks: [2000, 9018], colors: [orange, red] }
+    Serenity: { marks: [2001], colors: [sky, white] }
+    Equinox: { marks: [4007], colors: [gold, steel] }
+    Zenith: { marks: [4001], colors: [gold, white] }
+    Vanguard: { marks: [9006, 9005], colors: [red, steel] }
+    Nostalgia: { marks: [3001, 3004], colors: [brown, orange] }
+    Genesis: { marks: [4001, 3003], colors: [white, green] }
+    Infinity: { marks: [4007], colors: [teal, purple] }
+    Exile: { marks: [9012], colors: [steel, black] }
+    Harmony: { marks: [9008], colors: [pink, sky] }
+    Ascend: { marks: [4020, 9022], colors: [white, sky] }
+    Remedy: { marks: [4013, 9001], colors: [red, white] }
+    Solace: { marks: [2001, 9001], colors: [white, pink] }
+    Insomnia: { marks: [9020], colors: [purple, gold] }
+    Fable: { marks: [2016, 3004], colors: [pink, purple] }
+    Aurora: { marks: [4001], colors: [teal, lime, pink] }
+    Nexus: { marks: [4014, 4008], colors: [teal, purple] }

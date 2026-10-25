@@ -1,0 +1,449 @@
+# Ariant cast: the town that carries its water. 7 residents, 2 recruitable (Sefa the ex-bandit once you have heard her
+# terms, Harun the palace guard for a kill proof), 1 arc (Nadira's dry well, which only Magatia's two societies working
+# together can open again). Ids in quests/ariant.yaml.
+- id: nadira
+  name: Nadira
+  look: { gender: female }
+  title: "Water-Seller of the Market"
+  job: BEGINNER
+  level: { min: 35, max: 35 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 6, to: 11, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 11, to: 14, materialize: false }
+      - { from: 14, to: 19, spot: "venue:by-ahmad", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [ariant, sand dwarf, dark sand dwarf]
+  questLines: [nadira-empty-sacks, nadira-the-tunnel-mouth, nadira-a-new-spring, nadira-sack-count]
+  arc: nadira-the-dry-well
+  rumors: [ariant-the-well-argument]
+  relationships:
+    - { persona: tariq, kind: BUYS_WATER_FROM }
+    - { persona: farid, kind: EMPLOYS }
+    - { persona: gilda, kind: NEEDS }
+  giftItemIds: [4000334, 2000002]
+  dialogue:
+    greetFirst: ["water? it's dear. it's always dear. one jar, then. you look like you've walked from the west entrance.", "a traveller. drink first. we talk after. in Ariant that's manners."]
+    greet: ["back again. jar?", "the heat's up and so is the price. sit in the shade a moment."]
+    idle: ["(tips a clay jar to check how much is left, then sets it carefully back in the shade)", "(wipes sand from the lip of a jar with the end of her scarf)"]
+    noWork: ["nothing today. the jars are full. that's rare enough to sit and enjoy."]
+    nothingDue: ["you owe me nothing. drink."]
+    who: ["Nadira. i sell water in the market. there was a well, once, in the middle of town. it went dry seven years ago. now Tariq's caravans bring water from Magatia by the jar and i sell it by the cup."]
+    bye: ["drink before you're thirsty. by the time you're thirsty it's late."]
+    thanks: ["mm. good."]
+    smallTalk: ["the well didn't dry slowly. it was full one week and sand the next. wells don't do that. something drank it.", "the sand dwarves come out of the red desert with sacks, empty ones, and the cloth is damp. i asked one where the damp came from. it threw the sack at me. i kept the sack."]
+    speakPlainly: ["plainly: water costs money because the well won't sing."]
+    questOffer.nadira-empty-sacks: ["the sand dwarves in the red desert drop empty sacks, and the cloth comes back damp. damp, out of a desert. thirty of them, and fifteen of their sacks. i want to know where they've been digging."]
+    questAccept.nadira-empty-sacks: ["the north desert road, the second stretch, and the desert of red sand. the dwarves throw what they carry. duck."]
+    questWaiting.nadira-empty-sacks: ["fifteen sacks. i've been turning the old ones inside out."]
+    questComplete.nadira-empty-sacks: ["...damp. every one. and the grains caught in the seams are from under the well. i'd know them anywhere. they're the colour of my childhood. they've been digging under Ariant."]
+    questOffer.nadira-the-tunnel-mouth: ["the dark sand dwarves dig deepest. twenty-five of them, ten handfuls of the burnt sand from their tunnels, and then go to the giant of the sunset. that's where the tunnels come up. i want to know what drank my well."]
+    questAccept.nadira-the-tunnel-mouth: ["the desert of serenity and the desert of dreams, past Sahel. then north to the ruins, where the giant stands. look at the ground round his feet. don't wake him if he's sleeping. he isn't."]
+    questWaiting.nadira-the-tunnel-mouth: ["ten handfuls, and the giant's ground. what's down there?"]
+    questComplete.nadira-the-tunnel-mouth: ["a hollow under the giant's feet, and the water all gone into it. the dwarves cut the vein the well drank from. it isn't gone. it's lost. lost can be found."]
+    questOffer.nadira-a-new-spring: ["you heard Tariq and me. a pump from the Alcadno and a still from the Zenumist could bring the vein back up. they'd have to work together. they never have. but Gilda and Aurel walked through each other's doors. ask them both. please."]
+    questAccept.nadira-a-new-spring: ["Magatia, up the Sahel road. Gilda by the Alcadno door, Aurel by the Zenumist. ask them in either order. ask them as if they'll say yes."]
+    questWaiting.nadira-a-new-spring: ["did they say yes? both of them?"]
+    questComplete.nadira-a-new-spring: ["both. a pump and a still, and they'll bring them down together. ...seven years. i'm going to give the water away the first day. all of it. Tariq will have a fit."]
+    questOffer.nadira-sack-count: ["fifteen sand dwarf sacks? i keep track of where they're digging."]
+    questAccept.nadira-sack-count: ["the red desert."]
+    questWaiting.nadira-sack-count: ["fifteen."]
+    questComplete.nadira-sack-count: ["fifteen. still damp. still digging."]
+    about.tariq: ["Tariq's caravan brings the water from Magatia. he charges me a fair price and i charge Ariant a fair price and everyone hates us both. it's honest work."]
+    about.farid: ["Farid runs the jars for me. he's fast. he's honest. he drinks one cup a day on the job and thinks i don't notice. i notice. i let him."]
+    about.gilda: ["Gilda in Magatia is an Alcadno. they build things. if anyone could build a pump to bring the water up, it's an Alcadno. i've never asked. Alcadno don't take orders from water-sellers."]
+    about.aurel: ["Aurel is Zenumist. they make things out of nothing, they say. i'd settle for water out of sand."]
+    aboutUnknown: ["never bought water from me."]
+    friend.close: ["you drink free at my stall. don't tell anyone. they'd all become my friend."]
+    friend.best: ["when the well sings again, you'll have the first cup. after Farid. he's earned it."]
+    famed: ["they speak well of you in the market. that's hard to earn in a market."]
+    defamed: ["they speak ill of you. in Ariant that means you owe someone water. pay it."]
+    gift: ["thank you. that's kind."]
+    gift.favorite: ["oh. that's thoughtful. you've been watching what i keep."]
+    gift.again: ["one's plenty. water's scarce. so is kindness. don't spend it all on me."]
+
+- id: farid
+  name: Farid
+  look: { gender: male }
+  title: "Jar-Runner"
+  job: BEGINNER
+  level: { min: 14, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-sagat", activity: STROLL }
+      - { from: 11, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:station-platform-door", activity: SOCIALIZE }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [desert rabbit (f), meerkat, ariant]
+  questLines: [farid-rabbit-clover, farid-a-telescope, farid-ask-sefa]
+  rumors: [ariant-sefas-terms]
+  relationships:
+    - { persona: nadira, kind: RUNS_FOR }
+    - { persona: sefa, kind: ADMIRES }
+  giftItemIds: [4000324, 2000002]
+  dialogue:
+    greetFirst: ["water? i'm not selling, i'm running. Nadira sells. i run. you want Nadira. no, wait, you want me. what do you want?", "hi! you're new! are you a caravan? you're not a caravan. are you with a caravan?"]
+    greet: ["hi! jars are full!", "you're back! i ran the whole market twice today."]
+    idle: ["(balances a jar on his shoulder and practises not spilling it while hopping on one foot)", "(squints toward the north road, shading his eyes, looking for a caravan)"]
+    noWork: ["nothing today! the jars are full and Nadira says sit. i'm sitting. i'm sitting very fast."]
+    nothingDue: ["we're even!"]
+    who: ["Farid! i run the jars for Nadira. i'm the fastest runner in Ariant. Sefa's faster, but she's grown up, so she doesn't count."]
+    bye: ["drink! everyone forgets to drink!"]
+    thanks: ["thanks! i'll run you something."]
+    smallTalk: ["the meerkats on the north road can see a caravan before anyone. they stand up and point. i want a telescope so i can do that without standing up.", "Sefa used to be a sand bandit. she says she wasn't very good at it. i think she was too good at it and stopped."]
+    speakPlainly: ["plainly: jars. fast."]
+    questOffer.farid-rabbit-clover: ["the desert rabbits by the tent of the entertainers eat lucky clover. i want some for luck on the long runs. twenty rabbits, fifteen clovers? the girls have the clover. the boys have carrots. i don't need carrots."]
+    questAccept.farid-rabbit-clover: ["the tent of the entertainers and the east entrance. the girl rabbits. they're quicker than they look. so am i."]
+    questWaiting.farid-rabbit-clover: ["fifteen clovers! i'm running without luck."]
+    questComplete.farid-rabbit-clover: ["fifteen! i'll put one in every jar sling. lucky jars."]
+    questOffer.farid-a-telescope: ["the meerkats carry little telescopes. i want one! to see the caravans. twenty-five meerkats, ten telescopes? i'll keep one and sell the rest to Tariq. he'll pay. he likes to see things coming."]
+    questAccept.farid-a-telescope: ["out the north entrance, and the first north desert road. the meerkats stand up when they see you. that's when you go."]
+    questWaiting.farid-a-telescope: ["ten telescopes! i'm squinting."]
+    questComplete.farid-a-telescope: ["ten! i can see the whole road! i can see Tariq's camel yawning! this is the best thing that's ever happened."]
+    questOffer.farid-ask-sefa: ["are the sand bandits coming back? everyone's saying. would you ask Sefa? she'd know. she won't tell me. she says i'll tell everyone. i would."]
+    questAccept.farid-ask-sefa: ["Sefa's on the ledges in the mornings and by the station door in the evening. she pretends not to listen to anything. she listens to everything."]
+    questWaiting.farid-ask-sefa: ["did she say? are they coming?"]
+    questComplete.farid-ask-sefa: ["not this year, and not while she's here? ...good. i'm telling everyone. she said i would."]
+    about.nadira: ["Nadira's the best. she pays me in water and coins and sometimes a date. she thinks i don't know she gives me the good dates."]
+    about.sefa: ["Sefa's the coolest person in Ariant. she used to be a bandit. now she's just Sefa. she says that's harder."]
+    about.tariq: ["Tariq's camel bites. Tariq doesn't. that's the only difference."]
+    aboutUnknown: ["never ran a jar for them!"]
+    friend.close: ["you're my best friend who isn't a jar."]
+    friend.best: ["when i'm grown up i'll run your water for free. forever. well, mostly free."]
+    famed: ["everyone's talking about you! i ran it round the whole market!"]
+    defamed: ["people are saying stuff about you. i didn't run that one round."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh, that's lucky! how did you know?"]
+    gift.again: ["you already gave me something today!"]
+
+- id: sefa
+  name: Sefa
+  look: { gender: female }
+  title: "Once a Sand Bandit"
+  job: BANDIT
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: ariant-dagger-l60
+  personality: efficient-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 8, to: 12, spot: "venue:middle-east-ledges", activity: SHOW_OFF }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:station-platform-door", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: true
+  knows: [kiyo, homun, homunculus]
+  contract: sefa-a-clean-cut
+  questLines: [sefa-the-old-road, sefa-deadly-fin, sefa-kandine, sefa-dragons-tail, sefa-beak-count]
+  rumors: [ariant-sefas-terms]
+  benchToleranceDays: 2
+  paceGap: 4
+  relationships:
+    - { persona: farid, kind: LOOKS_OUT_FOR }
+    - { persona: harun, kind: WATCHED_BY }
+  giftItemIds: [4000335, 2000004]
+  dialogue:
+    greetFirst: ["you're checking your pockets. good. keep doing that. not because of me. not any more.", "new face. relax. i don't do that anymore. mostly i watch the people who still do."]
+    greet: ["hm. you.", "pockets still full? good."]
+    idle: ["(flips a dagger end over end and catches it by the blade without looking)", "(watches the crowd in the market with an expression of mild professional interest)"]
+    noWork: ["nothing. go. i'm watching the market. somebody has to."]
+    nothingDue: ["we're square. i don't keep debts. they're a bandit thing."]
+    who: ["Sefa. i rode with the sand bandits six years. i was good at it. that's why i stopped. now i watch the market for the ones who haven't stopped. Harun watches me. it's a whole system."]
+    bye: ["hand on your purse in the market. not because of me."]
+    thanks: ["sure."]
+    smallTalk: ["the bandits don't steal water. that's the one rule. even bandits have a rule. it's a good rule.", "Harun follows me round the market every evening. i've started taking him the long way. he's getting fit."]
+    speakPlainly: ["plainly: an ex-bandit with a knife and nothing to prove."]
+    offer: ["forty thousand. you heard what i told the kid, so you know what i won't do. that's the price for what i will."]
+    join: ["fine. i'll take the shadows. you take the noise."]
+    bench: ["two days. after that i get restless. restless is how i used to get into trouble."]
+    leave: ["that's me done. i'll be watching the market."]
+    refuse.bond: ["i don't ride with people i don't know. i did that once. it's how i became a bandit."]
+    refuse.flags: ["come by the station door some evening. hear what i tell Farid. then ask."]
+    refuseOwnErrand: ["mine. you can watch. you're good at watching. i can tell."]
+    questOffer.sefa-the-old-road: ["the kiyos on the north road are the bandits' lookouts. they always were. thirty of them, then walk out to the ruins of the desert nomads. that's where we used to camp. i want to know if anyone still does."]
+    questAccept.sefa-the-old-road: ["the north desert road, the second stretch, and the red desert. then the ruins. look for ash. if there's ash, they're back."]
+    questWaiting.sefa-the-old-road: ["thirty kiyos, and the ruins. any ash?"]
+    questComplete.sefa-the-old-road: ["no ash. ...good. they're not back. i don't know whether i'm relieved or sorry. relieved. i'll go with relieved."]
+    questOffer.sefa-deadly-fin: ["the Deadly Fin. my first knife after i left. i bound the grip in red. every bandit wore a red sash and i wanted to remember why i'd stopped. the pandas past Mu Lung wear red belts. thirty pandas, fifteen belts."]
+    questAccept.sefa-deadly-fin: ["Mu Lung, the wild bear country. the second and third areas and the wandering bear's territory. the pandas hug. don't let them."]
+    questWaiting.sefa-deadly-fin: ["fifteen belts. red ones."]
+    questComplete.sefa-deadly-fin: ["fifteen. bound in red. the Deadly Fin. seven safe scrolls, every one took. use it on things that deserve it."]
+    questOffer.sefa-kandine: ["the Kandine. sharper. the homuns in the Zenumist labs carry beakers. glass, alchemical glass. i grind the edge on it. thirty homuns, fifteen beakers."]
+    questAccept.sefa-kandine: ["Magatia, up the Sahel road. the Zenumist institute, the second floor, unit two-oh-one. the homuns. they're quicker than they look. so's glass."]
+    questWaiting.sefa-kandine: ["fifteen beakers. the stone's dry."]
+    questComplete.sefa-kandine: ["fifteen. edged. the Kandine. seven sixties, every one took. that's luck. bandits don't believe in luck. i do now."]
+    questOffer.sefa-dragons-tail: ["the Dragon's Tail. my best. it wants a quench in may mist, the stuff the homunculi in the Zenumist labs breathe. thirty homunculi, fifteen mists."]
+    questAccept.sefa-dragons-tail: ["the Zenumist second floor, units two-oh-two and two-oh-three. the homunculi. they're what the homuns want to be when they grow up. hit them first."]
+    questWaiting.sefa-dragons-tail: ["fifteen mists. the blade's waiting."]
+    questComplete.sefa-dragons-tail: ["fifteen. quenched. the Dragon's Tail. two tens and five sixties, every one took. ...i never earned anything clean before i stopped. this is clean. take it."]
+    questOffer.sefa-beak-count: ["fifteen kiyo beaks. i count the lookouts. old habit."]
+    questAccept.sefa-beak-count: ["the north road."]
+    questWaiting.sefa-beak-count: ["fifteen."]
+    questComplete.sefa-beak-count: ["fifteen. fewer lookouts than last month. good."]
+    about.farid: ["Farid's the fastest runner in Ariant. he thinks i'm cool. i'm not cool. i'm careful. he'll learn the difference."]
+    about.harun: ["Harun watches me every evening. he thinks i don't know. i've started waving. he's started waving back. we're friends now. he'd deny it."]
+    about.nadira: ["Nadira's water is the only thing in Ariant i've never once thought about stealing. that's how you know it matters."]
+    aboutUnknown: ["never robbed them. probably."]
+    friend.close: ["i'd trust you to hold my knife while i tie my boots. that's more than i've trusted anyone."]
+    friend.best: ["if i ever went back to the sand, you'd be the one i'd let come and fetch me home."]
+    famed: ["heard about you. good things. don't let it go to your head. heads are easy to take."]
+    defamed: ["heard about you. bad things. i've been there. it gets better."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh. that's thoughtful. you noticed. careful. noticing's how i started."]
+    gift.again: ["one's plenty. i'm out of practice taking things."]
+
+- id: harun
+  name: Harun
+  look: { gender: male }
+  title: "Guard of the Palace Gate"
+  job: PAGE
+  level: { min: 50, max: 52 }
+  strength: VETERAN
+  loadout: ariant-blunt-l50
+  personality: efficient-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 6, to: 14, spot: "venue:castle-entrance", activity: LINGER }
+      - { from: 14, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [desert giant, roid, saitie]
+  contract: harun-the-gate-oath
+  questLines: [harun-the-sunset-giants, harun-knuckle-mace, harun-tamus, harun-the-judgement, harun-sand-for-the-gate]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: sefa, kind: WATCHES }
+    - { persona: nadira, kind: GUARDS_THE_MARKET_FOR }
+  giftItemIds: [4000332, 2000004]
+  dialogue:
+    greetFirst: ["halt. ...that's habit. you may pass. you could always pass. i just like to say it.", "welcome to Ariant. the palace gate is closed to visitors. the rest of Ariant is open. mostly."]
+    greet: ["good day.", "you again. pass."]
+    idle: ["(stands very straight at the gate, eyes moving, mace resting on his shoulder)", "(checks the hinge of the palace gate, nods to it, and goes back to standing)"]
+    noWork: ["nothing today. the gate holds. i hold the gate."]
+    nothingDue: ["you owe the gate nothing."]
+    who: ["Harun. i guard the palace gate in the day and the market in the evening. there's not much difference. the gate is quieter."]
+    bye: ["walk in the shade. the sun has no mercy."]
+    thanks: ["the gate is grateful."]
+    smallTalk: ["the desert giant at the ruins has stood there longer than the palace. some say he's the first guard of Ariant. i don't argue with him either.", "i watch Sefa every evening. she watches the market. between us, nobody gets robbed. we've never discussed it."]
+    speakPlainly: ["plainly: a gate, a mace, and a market."]
+    offer: ["forty sunset giants put down at the ruins, and fifteen thousand. a guard who leaves his gate pays someone to stand it. then my mace is yours a shift."]
+    join: ["very well. i'll stand where you stand. slightly in front."]
+    bench: ["three days. then the gate will want me. it always does."]
+    leave: ["my shift is done. the gate is waiting."]
+    refuse.bond: ["i don't leave the gate with strangers. that's the first rule of gates."]
+    refuse.flags: ["stand one watch with me at the ruins first. then ask."]
+    refuseOwnErrand: ["that's my watch. you may stand it with me."]
+    questOffer.harun-the-sunset-giants: ["the desert giants at the ruins are coming closer to the road. twenty of them back, and ten handfuls of their sand. i keep a jar of it by the gate. every guard does."]
+    questAccept.harun-the-sunset-giants: ["the ruins of the desert nomads and the giant of the sunset beyond. they're slow. they're very strong. be fast."]
+    questWaiting.harun-the-sunset-giants: ["twenty, and ten handfuls. the jar's empty."]
+    questComplete.harun-the-sunset-giants: ["ten. the jar's full. that's how a gate knows it's been guarded."]
+    questOffer.harun-knuckle-mace: ["the Knuckle Mace. my first. the Alcadno labs in Magatia breed iron creatures. the reinforced ones carry hardened steel. thirty of them, fifteen pieces. i'll stud the head."]
+    questAccept.harun-knuckle-mace: ["Magatia, up the Sahel road, the Alcadno institute. area A-3. the reinforced iron mutae. they're stubborn. so is steel."]
+    questWaiting.harun-knuckle-mace: ["fifteen pieces. the head's bare."]
+    questComplete.harun-knuckle-mace: ["fifteen. studded. the Knuckle Mace. seven safe scrolls, every one took. it has guarded a gate. let it guard you."]
+    questOffer.harun-tamus: ["the Tamus. heavier. it wants wire for the grip. the roids in area C-1 are full of it. thirty roids, fifteen coils."]
+    questAccept.harun-tamus: ["the Alcadno institute, area C-1, and the room behind it where they go wrong. the roids. they spark. stand back from the sparks."]
+    questWaiting.harun-tamus: ["fifteen coils. the grip slips."]
+    questComplete.harun-tamus: ["fifteen. wound tight. the Tamus. seven sixties, every one took. the gate would be proud."]
+    questOffer.harun-the-judgement: ["the Judgement. the best mace at the gate. i've kept it for the day i'm ready to swing it. it wants a seal. the saities in the Zenumist labs carry entry passes. i'll set one in the pommel. a gate's mace should carry a pass. thirty saities, fifteen passes."]
+    questAccept.harun-the-judgement: ["the Zenumist institute, units two-oh-one and two-oh-three, and the Alcadno room marked authorised personnel only. the saities. they don't like visitors. neither do i."]
+    questWaiting.harun-the-judgement: ["fifteen passes. the pommel's empty."]
+    questComplete.harun-the-judgement: ["fifteen. sealed. the Judgement. two tens and five sixties, every one took. guard something with it. anything. it'll know."]
+    questOffer.harun-sand-for-the-gate: ["ten handfuls of sunset sand for the gate jar?"]
+    questAccept.harun-sand-for-the-gate: ["the ruins."]
+    questWaiting.harun-sand-for-the-gate: ["ten."]
+    questComplete.harun-sand-for-the-gate: ["ten. the jar's full."]
+    about.sefa: ["Sefa was a bandit. now she watches the market better than i do. i watch her. she waves. i wave. it's very irregular."]
+    about.nadira: ["Nadira sells water in the market. i guard her stall in the evening. she gives me a cup. i'd guard it anyway. guards don't say that."]
+    about.farid: ["the Farid boy runs past the gate twelve times a day. he salutes every time. i salute back every time. it's the best part of the day."]
+    aboutUnknown: ["they have never passed my gate."]
+    friend.close: ["you may pass my gate any time. even the palace one. no. not the palace one. but you may ask."]
+    friend.best: ["if i ever leave the gate, it will be because you asked. that has never been true of anyone."]
+    famed: ["the gate has heard good things about you."]
+    defamed: ["the gate has heard hard things. walk straighter."]
+    gift: ["the gate thanks you. i thank you."]
+    gift.favorite: ["oh. that's thoughtful. that goes by the gate."]
+    gift.again: ["one is plenty. the gate is simple."]
+
+- id: imran
+  name: Imran
+  look: { gender: male }
+  title: "Cactus Farmer"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 5, to: 10, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 20, spot: "venue:by-sagat", activity: SOCIALIZE }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  knows: [royal cactus, cactus, ariant]
+  questLines: [imran-thorns-for-the-fence, imran-cactus-flowers]
+  relationships:
+    - { persona: yasmin, kind: TRADES_WITH }
+    - { persona: nadira, kind: OLD_NEIGHBOUR }
+  giftItemIds: [4000331, 2022001]
+  dialogue:
+    greetFirst: ["careful where you sit. it's Ariant. everything has thorns. even the chairs.", "a traveller! you'll want water. Nadira sells it. i grow cactus. cactus is water with patience."]
+    greet: ["hello again. the cactus are growing. slowly. so am i.", "sit. not there. there. good."]
+    idle: ["(picks a thorn out of his thumb, examines it, and flicks it away)", "(holds a pink cactus flower under his nose and closes his eyes)"]
+    noWork: ["nothing today. the cactus are growing without me. they always do."]
+    nothingDue: ["you owe me nothing. cactus don't keep accounts."]
+    who: ["Imran. i farm cactus west of town. seventy years. my father farmed it before me. it's the only crop in Ariant that never asks for water. i respect that."]
+    bye: ["don't hug anything green on the way out."]
+    thanks: ["oh, you're a good one."]
+    smallTalk: ["a cactus flower lasts one day. the cactus waits a year for it. i think about that a lot. i'm old.", "the royal cactus in the far desert grow flowers like crowns. Yasmin dyes with them. she makes scarves the colour of a desert sunset. i'd buy one if i ever went anywhere."]
+    speakPlainly: ["plainly: cactus, thorns, an old man."]
+    questOffer.imran-thorns-for-the-fence: ["the fence round my farm wants new thorns. the cactus monsters past the west entrance grow the sharpest. twenty-five of them, fifteen thorns?"]
+    questAccept.imran-thorns-for-the-fence: ["the first cactus desert and the second. the plain ones. the royal ones are for later."]
+    questWaiting.imran-thorns-for-the-fence: ["fifteen thorns. the goats are getting ideas."]
+    questComplete.imran-thorns-for-the-fence: ["fifteen. the fence will hold. the goats will sulk."]
+    questOffer.imran-cactus-flowers: ["Yasmin needs royal cactus flowers for her dye and my legs won't take me to the far desert any more. twenty-five royal cactus, fifteen flowers? she'll pay me in scarves. i'll pay you in thanks. it's a poor rate. i'm sorry."]
+    questAccept.imran-cactus-flowers: ["the second cactus desert and the royal catthus desert past it. the big ones with the crowns."]
+    questWaiting.imran-cactus-flowers: ["fifteen flowers. Yasmin's vats are waiting."]
+    questComplete.imran-cactus-flowers: ["fifteen. lovely. Yasmin will make something that'll make the whole market stop. and i'll get a scarf. i'll wear it to the farm."]
+    about.yasmin: ["Yasmin dyes with my cactus flowers. she pays me in scarves. i have forty scarves. i wear one. i keep the rest for the day i go somewhere."]
+    about.nadira: ["Nadira's father and i drew water from the old well together, sixty years ago. she has his hands. careful with water, and generous with it. he was the same."]
+    about.farid: ["Farid runs past my farm twice a day. i've started leaving a cup of cactus water on the fence for him. he thinks it's magic."]
+    aboutUnknown: ["never bought a cactus from me."]
+    friend.close: ["you can have a cactus. a little one. it'll outlive us both."]
+    friend.best: ["when i'm gone, i'd like you to have my father's spade. it's dug every cactus on the farm."]
+    famed: ["they speak well of you. good. good people should be spoken of."]
+    defamed: ["they speak ill of you. well. so did they of my father. he was all right."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, you know what an old farmer likes."]
+    gift.again: ["one's plenty for an old man."]
+
+- id: yasmin
+  name: Yasmin
+  look: { gender: female }
+  title: "Dyer of Sunset Scarves"
+  job: BEGINNER
+  level: { min: 26, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-ahmad", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-west-street", activity: REST }
+      - { from: 14, to: 19, spot: "venue:middle-east-ledges", activity: SOCIALIZE }
+      - { from: 19, to: 21, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [scarf plead, ear plug plead, ariant]
+  questLines: [yasmin-ragged-scarves, yasmin-felt-for-the-vats]
+  relationships:
+    - { persona: imran, kind: TRADES_WITH }
+    - { persona: sefa, kind: SOLD_A_RED_SASH_TO }
+  giftItemIds: [4000327, 4000331]
+  dialogue:
+    greetFirst: ["oh, your colours are all wrong for the desert. sorry. it's my trade. you look like you're dressed for a different sky.", "hello! look at my hands. no, it's dye. it doesn't come off. nothing comes off in Ariant."]
+    greet: ["hello! i've a new red. come and see.", "you're back! the vats are bubbling."]
+    idle: ["(holds a dripping scarf up against the sky, comparing the colour)", "(wrings out a length of cloth and drapes it over a line to dry in the sun)"]
+    noWork: ["nothing today. the dye's setting. you can't hurry red."]
+    nothingDue: ["we're even!"]
+    who: ["Yasmin. i dye scarves. sunset red from Imran's cactus flowers, sand gold, dusk blue. every scarf in the market is one of mine or a bad copy of one of mine."]
+    bye: ["wear a scarf in the sand! over your mouth! any colour. well, not that colour."]
+    thanks: ["oh, you're sweet."]
+    smallTalk: ["the scarf pleads in the dry desert wear rags of old scarves. some of them are mine, years old. i'd know my red anywhere. it fades to pink. it never fades to nothing.", "Sefa bought a red sash from me the year she left the bandits. she's never worn it. she keeps it folded. i think it's a promise."]
+    speakPlainly: ["plainly: dye, cloth, colour."]
+    questOffer.yasmin-ragged-scarves: ["the scarf pleads in the dry desert wear old scarves to rags. i unpick the threads and dye them new. twenty-five of them, fifteen scarves? some will be mine. i'd like them home."]
+    questAccept.yasmin-ragged-scarves: ["the dry desert and the frilled field. the ones with scarves. obviously."]
+    questWaiting.yasmin-ragged-scarves: ["fifteen scarves! i've a red waiting for them."]
+    questComplete.yasmin-ragged-scarves: ["fifteen! ...and that one's mine. look. pink. it never fades to nothing. i told you."]
+    questOffer.yasmin-felt-for-the-vats: ["the ear plug pleads wear earmuffs. in the desert. i don't ask. the felt takes dye like nothing else. twenty-five of them, fifteen earmuffs?"]
+    questAccept.yasmin-felt-for-the-vats: ["the scorching desert and the dry desert. they're the ones that look like they're ignoring you. they are."]
+    questWaiting.yasmin-felt-for-the-vats: ["fifteen earmuffs! the vats are hungry."]
+    questComplete.yasmin-felt-for-the-vats: ["fifteen! i'll make a felt scarf in dusk blue. the market won't know what hit it."]
+    about.imran: ["Imran grows the cactus that makes my red. i pay him in scarves. he has forty. he wears one. i think he's saving them for something."]
+    about.sefa: ["Sefa bought a red sash from me seven years ago. she's never worn it. she folds it every morning. i've never asked why. some colours mean something."]
+    about.nadira: ["Nadira's scarf is one of mine. dusk blue. it's faded to grey. i've offered her a new one. she says the old one's been through the dry years with her."]
+    aboutUnknown: ["never bought a scarf from me. tell them i'll do them a good price."]
+    friend.close: ["i'm dyeing you a scarf. i won't say what colour. you'll know when you see it."]
+    friend.best: ["i've named a colour after you. i won't tell you which. it's a good one."]
+    famed: ["everyone's talking about you! good things! wear something bright!"]
+    defamed: ["people are talking. wear something bright anyway."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's lovely! that's going in the vats. well. near the vats."]
+    gift.again: ["you've given me plenty today!"]
+
+- id: tariq
+  name: Tariq
+  look: { gender: male }
+  title: "Caravan Master of the Sahel Road"
+  job: BEGINNER
+  level: { min: 38, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ariant
+    routine:
+      - { from: 7, to: 12, spot: "venue:station-platform-entrance", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [scorpion, sand rat, magatia]
+  questLines: [tariq-tent-pegs, tariq-the-sahel-road, tariq-a-word-with-hedda]
+  rumors: [ariant-the-well-argument]
+  relationships:
+    - { persona: nadira, kind: SELLS_WATER_TO }
+    - { persona: hedda, kind: BUYS_IRON_FROM }
+  giftItemIds: [4000351, 2000002]
+  dialogue:
+    greetFirst: ["you're blocking the caravan road. no, it's fine, the camels will walk round you. they walk round everything. it's their whole philosophy.", "a traveller. going to Magatia? i leave at noon. i'll be back at dusk. i'm always back at dusk."]
+    greet: ["the road's waiting. what do you need?", "camels are fed. i'm not. talk quickly."]
+    idle: ["(writes something in a battered ledger, licks the pencil, and writes something else)", "(checks a camel's hoof, then his own boot, with the same expression)"]
+    noWork: ["nothing today. the road's quiet. the camels are thinking."]
+    nothingDue: ["we're square. i keep a ledger. you're square in it."]
+    who: ["Tariq. i run the caravan up the Sahel road to Magatia and back every day. water, iron and glass from Magatia, cactus and cloth back. without the caravan Ariant would be a lot of sand with a palace in it."]
+    bye: ["drink, cover your head, don't argue with the camel."]
+    thanks: ["fine. it's in the ledger."]
+    smallTalk: ["the scorpions on the Sahel road sting through boots. i carry a kit for it. i've used it on every one of my drivers and twice on a camel.", "Magatia has two societies. i deal with both. separately. at different hours. it's like running two caravans."]
+    speakPlainly: ["plainly: a road, some camels, and two cities that need each other."]
+    questOffer.tariq-tent-pegs: ["the tent pegs keep snapping. the sand rats on the Sahel road carry little wooden hammers. good hard wood. twenty-five rats, fifteen hammers?"]
+    questAccept.tariq-tent-pegs: ["Sahel, the third stretch and the second. the rats. they're quick and rude."]
+    questWaiting.tariq-tent-pegs: ["fifteen hammers. the tents are leaning."]
+    questComplete.tariq-tent-pegs: ["fifteen. i'll cut them into pegs. the tents will stand like palaces."]
+    questOffer.tariq-the-sahel-road: ["the scorpions on the Sahel road are thick this season. twenty-five of them off the road, and fifteen stings for the antivenom kit."]
+    questAccept.tariq-the-sahel-road: ["Sahel one and two. the scorpions sit in the shade by the road. that's where you'll want to sit. don't."]
+    questWaiting.tariq-the-sahel-road: ["fifteen stings. the kit's thin."]
+    questComplete.tariq-the-sahel-road: ["fifteen. the kit's full. my drivers will sleep tonight."]
+    questOffer.tariq-a-word-with-hedda: ["Hedda in Magatia sells me iron for the wheel rims. the last load was shorter than usual. she always keeps a little back. never this much. would you ask her? she'll tell you. she won't tell me. she says i haggle."]
+    questAccept.tariq-a-word-with-hedda: ["Magatia, up the Sahel road. Hedda's by the east benches in the mornings and Rosen's in the evening. she builds birds. don't ask about the birds unless you've got an hour."]
+    questWaiting.tariq-a-word-with-hedda: ["did Hedda say? was it short?"]
+    questComplete.tariq-a-word-with-hedda: ["she kept some back for a bird's wing? ...a bird. of course. i'll pay for the whole load anyway. don't tell her. she'll make another bird."]
+    about.nadira: ["Nadira and i have argued about the price of water for seven years. everyone hates the price. nobody hates Nadira. that's a skill."]
+    about.hedda: ["Hedda sells the best iron in Magatia and puts the best of it into mechanical birds. none of them fly. she's very close, she says. she's been very close for fifteen years."]
+    about.farid: ["the Farid boy wants to drive a caravan. i've told him he'll need to learn to sit still first. he's practising. it's painful to watch."]
+    aboutUnknown: ["not in the ledger."]
+    friend.close: ["you can ride the caravan free. sit on the water. it's cool."]
+    friend.best: ["if i ever stop driving, the road's yours. i'll leave you the camels. they won't care. they never do."]
+    famed: ["you're in the ledger as a good one."]
+    defamed: ["you're in the ledger. in pencil. fix it."]
+    gift: ["fine. thank you. it's in the ledger."]
+    gift.favorite: ["oh. that's useful. that's going on the caravan."]
+    gift.again: ["one a day. the ledger's strict."]

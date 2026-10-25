@@ -83,7 +83,17 @@ public final class AgentBossDeathDepartureGate {
      * its event; else null.
      */
     static EventInstanceManager reviveEvent(Character agent) {
-        return insideEvent(agent, AgentBossRunDefinition.DeathMode.REVIVE_INSIDE);
+        EventInstanceManager event = insideEvent(agent, AgentBossRunDefinition.DeathMode.REVIVE_INSIDE);
+        if (event != null) {
+            return event;
+        }
+        event = insideEvent(agent, AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+        return event != null && revivable(event) ? event : null;
+    }
+
+    /** True once a HOLD_UNTIL_REVIVABLE run's event allows revives (GuildQuest.js: the kinggate sets canRevive 1). */
+    static boolean revivable(EventInstanceManager event) {
+        return "1".equals(event.getProperty(AgentBossRunDefinition.CAN_REVIVE_PROPERTY));
     }
 
     /**
@@ -92,7 +102,12 @@ public final class AgentBossDeathDepartureGate {
      */
     static EventInstanceManager holdEvent(Character agent) {
         EventInstanceManager event = insideEvent(agent, AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
-        return event != null && !event.isEventCleared() ? event : null;
+        if (event != null) {
+            return !event.isEventCleared() ? event : null;
+        }
+        // GPQ: down until the kinggate lets revives keep it in the event (then reviveEvent takes it)
+        event = insideEvent(agent, AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+        return event != null && !event.isEventCleared() && !revivable(event) ? event : null;
     }
 
     private static EventInstanceManager insideEvent(Character agent, AgentBossRunDefinition.DeathMode mode) {

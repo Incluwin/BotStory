@@ -1,0 +1,35 @@
+# Leafre arc: the egg Hessa carried down from the burning dragon nest when she was nine, kept warm forty winters, and
+# the nest that turns out never to have died. It stands alone; no other arc gates it.
+- id: hessa-the-cold-egg
+  persona: hessa
+  chapters:
+    - id: chapter-1
+      title: "Kept Warm"
+    - id: chapter-2
+      title: "Forty Winters"
+      dialogueOverrides:
+        greet: ["you know it's never moved now. that makes two of us in all of Leafre. three. Arlo pretends he doesn't.", "sit, dear. it's warm. it's always warm. that's the trouble."]
+        smallTalk: ["forty winters and it's never moved. i've wondered if it's sleeping. i've wondered if it's waiting. i've never once let myself wonder the other thing."]
+        chapterEnter: ["(lifts the lid of the basket a finger's width, looks inside a long while, and lowers it again)"]
+    - id: chapter-3
+      title: "The Nest Remembers"
+      enterWhen: { flags: [leafre.nest.alive] }
+      dialogueOverrides:
+        greet: ["the nest's alive, dear. little newties in the ruins. kin to mine. i keep saying it to myself so it'll stay true.", "Arlo thinks it should go home. i think he's right. i hate that he's right."]
+        smallTalk: ["i took it away to save it. i was nine. you do things at nine that you spend forty winters understanding."]
+        chapterEnter: ["(holds a newtie's egg shell against the basket's lid, side by side, and doesn't say anything for a long time)"]
+      unlocks:
+        rumors: [leafre-should-it-go-home]
+    - id: chapter-4
+      title: "Home"
+      enterWhen: { flags: [leafre.egg.home] }
+      dialogueOverrides:
+        greet: ["it's home, dear. up at the peak, with its kin. i sit with an empty basket now. it's the lightest thing i own.", "hello. sit. there's room on the bench now. there's room everywhere."]
+        who: ["Hessa. i kept a dragon's egg forty winters. it's home now. i'm just Hessa. i'm getting used to it."]
+        idle: ["(sits with an empty basket on her knees, lid open, watching the sky over the canyon)", "(hums the old halfling song, a little louder than she used to)"]
+        smallTalk: ["the dragons used to fly over every evening. one day they will again. i'd like to be here for it. i've decided to be."]
+        greetFirst: ["you've come over the forest. the halflings don't get many big folk. sit, if you like. i've the time now."]
+        speakPlainly: ["plainly: an old woman with an empty basket and a sky to watch."]
+        friend.close: ["sit with me any evening. bring nothing. that's the best kind of visit."]
+        about.elsk: ["Elsk still meets the ship and tells me who came over from Orbis. nobody needed to come for the egg in the end. somebody big was already here."]
+        chapterEnter: ["(sets the empty basket down on the bench beside her, and for the first time in forty winters takes both hands off it)"]
