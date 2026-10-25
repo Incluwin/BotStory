@@ -2,7 +2,7 @@
     "schemaVersion":  1,
     "catalogId":  "world-standard-portal-route-graph-v1",
     "sourcePath":  "wz/Map.wz/Map",
-    "sourceSha256":  "bc541f01d86c07243752eb405f3fff08f232ac298d1cc3f4273a3d56da72483d",
+    "sourceSha256":  "72efe745e792be355041eeec28ae47ea4f0174be2b42c208e14e5186159a8b6e",
     "groups":  [
                    {
                        "id":  "ereve",
@@ -38,6 +38,16 @@
                        "id":  "masteria",
                        "firstMapId":  682000000,
                        "endMapId":  682000001
+                   },
+                   {
+                       "id":  "amoria",
+                       "firstMapId":  670000000,
+                       "endMapId":  670010001
+                   },
+                   {
+                       "id":  "amoria",
+                       "firstMapId":  680000000,
+                       "endMapId":  680100000
                    },
                    {
                        "id":  "zipangu",
@@ -5700,6 +5710,70 @@
                   {
                       "fromMapId":  610030800,
                       "toMapId":  610030010
+                  },
+                  {
+                      "fromMapId":  670000100,
+                      "toMapId":  670000200
+                  },
+                  {
+                      "fromMapId":  670000100,
+                      "toMapId":  680010100
+                  },
+                  {
+                      "fromMapId":  670000200,
+                      "toMapId":  670000100
+                  },
+                  {
+                      "fromMapId":  670000200,
+                      "toMapId":  670010000
+                  },
+                  {
+                      "fromMapId":  670010000,
+                      "toMapId":  670000200
+                  },
+                  {
+                      "fromMapId":  680000000,
+                      "toMapId":  680000001
+                  },
+                  {
+                      "fromMapId":  680000000,
+                      "toMapId":  680000002
+                  },
+                  {
+                      "fromMapId":  680000000,
+                      "toMapId":  680000003
+                  },
+                  {
+                      "fromMapId":  680000000,
+                      "toMapId":  680010000
+                  },
+                  {
+                      "fromMapId":  680000001,
+                      "toMapId":  680000000
+                  },
+                  {
+                      "fromMapId":  680000002,
+                      "toMapId":  680000000
+                  },
+                  {
+                      "fromMapId":  680000003,
+                      "toMapId":  680000000
+                  },
+                  {
+                      "fromMapId":  680010000,
+                      "toMapId":  680000000
+                  },
+                  {
+                      "fromMapId":  680010000,
+                      "toMapId":  680010100
+                  },
+                  {
+                      "fromMapId":  680010100,
+                      "toMapId":  670000100
+                  },
+                  {
+                      "fromMapId":  680010100,
+                      "toMapId":  680010000
                   },
                   {
                       "fromMapId":  682000000,

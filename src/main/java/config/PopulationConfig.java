@@ -84,6 +84,12 @@ public class PopulationConfig {
     public boolean GUILDS_ENABLED = true;
     /** Bot guilds to keep alive. */
     public int GUILD_TARGET = 8;
+    /**
+     * GPQ plan decision 8: a citizen guild master promotes a human member of its guild to Jr. Master once they have
+     * shared this many minutes (map minutes plus party minutes twice, as the guild invite counts them), so the human can
+     * register the guild for the Guild Quest at Shuang. 0 = never.
+     */
+    public int GUILD_PROMOTE_AFTER_MINUTES = 180;
     public boolean BUDDIES_ENABLED = true;
     /** Shared party minutes with a human before a citizen sends one buddy request. */
     public int BUDDY_REQUEST_AFTER_MINUTES = 30;

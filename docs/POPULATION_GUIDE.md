@@ -82,8 +82,8 @@ of recent templates. Slots are filled (`{name} {level} {item} {price} {map} {gui
 the voice pack lowercases/abbreviates/typos the line, and it is delivered after a typing delay on
 map, party, guild or buddy chat or as a megaphone. Nothing here calls a model.
 
-**Social.** `GUILD_TARGET` bot guilds are founded by level-10+ citizens (real guilds with emblem,
-motto, capacity 30) and recruit citizens whose level fits, same cohort preferred. Citizens form
+**Social.** `GUILD_TARGET` bot guilds are founded by level-10+ citizens (real guilds with an emblem
+that fits the name, motto, capacity 30; see `GuildEmblems`) and recruit citizens whose level fits, same cohort preferred. Citizens form
 circles of 3-5 (mutual buddies) that log in near each other and party up when on the same map;
 at a PQ lobby a forming party invites a fitting human. Shared minutes with a human on a map or in
 a party accumulate; after `BUDDY_REQUEST_AFTER_MINUTES` one buddy request is sent, and recruiters
@@ -197,7 +197,7 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `careers.yaml` | job path (final job name), popularity, level cap, loadout by level band (living-world loadout ids) |
 | `names.yaml` | name patterns with slots and syllable lists; era flavour |
 | `voices.yaml` | how a citizen types: style id, lowercase/typo/abbreviation/emoticon rates, pet phrases, typing speed, ignore rate |
-| `guild-names.yaml` | guild name patterns, mottos, emblem palette |
+| `guild-names.yaml` | guild name patterns, mottos, emblems: the 16 client colours, background shapes, and per name word its marks, colours and shape (an old bot guild whose emblem the client cannot draw gets its name's emblem on the first social tick) |
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
 | `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |

@@ -9,6 +9,9 @@ import server.living.config.LivingContent;
 import server.living.config.Node;
 import server.living.population.PopulationContent.Career;
 import server.living.population.PopulationContent.Cohort;
+import server.living.population.PopulationContent.EmblemColor;
+import server.living.population.PopulationContent.EmblemWord;
+import server.living.population.PopulationContent.Emblems;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.GuildNames;
 import server.living.population.PopulationContent.Intent;
@@ -233,6 +236,7 @@ public final class PopulationLoader {
                 }
             }
         }
+        out.addAll(GuildEmblems.lint(content.guildNames().emblems()));
         return out;
     }
 
@@ -304,12 +308,45 @@ public final class PopulationLoader {
 
     private static GuildNames guildNames(Path file) {
         if (!Files.exists(file)) {
-            return new GuildNames(List.of(), Map.of(), List.of(), List.of(), List.of(), List.of());
+            return new GuildNames(List.of(), Map.of(), List.of(), Emblems.none());
         }
         Node root = ContentLoader.read(file);
-        Node emblems = root.get("emblems");
         return new GuildNames(patterns(root.get("patterns")), stringLists(root.get("lists")), root.get("mottos").strings(),
-                emblems.get("backgrounds").integers(), emblems.get("logos").integers(), emblems.get("colors").integers());
+                emblems(root.get("emblems")));
+    }
+
+    private static Emblems emblems(Node node) {
+        if (node.isMissing()) {
+            return Emblems.none();
+        }
+        Map<Integer, EmblemColor> colors = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> entry : node.get("colors").entries().entrySet()) {
+            Node color = entry.getValue();
+            int id;
+            try {
+                id = Integer.parseInt(entry.getKey().trim());
+            } catch (NumberFormatException invalid) {
+                throw new ContentException(color.path() + ": a colour id must be a whole number");
+            }
+            colors.put(id, new EmblemColor(id, color.get("name").string(), rgb(color.get("background")),
+                    rgb(color.get("mark"))));
+        }
+        Map<String, EmblemWord> words = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> entry : node.get("words").entries().entrySet()) {
+            Node word = entry.getValue();
+            words.put(entry.getKey().toLowerCase(Locale.ROOT), new EmblemWord(word.get("marks").integers(),
+                    word.get("colors").strings(), word.get("background").integer(0)));
+        }
+        return new Emblems(node.get("minContrast").decimal(3.0d), colors, node.get("backgrounds").integers(),
+                node.get("defaultColors").strings(), words);
+    }
+
+    private static int rgb(Node node) {
+        String raw = node.string();
+        if (!raw.matches("#[0-9a-fA-F]{6}")) {
+            throw new ContentException(node.path() + " must be a #rrggbb colour, got '" + raw + "'");
+        }
+        return Integer.parseInt(raw.substring(1), 16);
     }
 
     private static Region region(Node node) {

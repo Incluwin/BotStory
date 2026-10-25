@@ -14,6 +14,7 @@ import server.agents.capabilities.movement.AgentMovementSkillConfig;
 import server.agents.capabilities.movement.AgentMovementSkillStateRuntime;
 import server.agents.capabilities.partyquest.lpq.AgentLpqMovementSkillPolicy;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqMovementSkillPolicy;
+import server.agents.capabilities.expedition.gpq.AgentGpqMovementSkillPolicy;
 import server.agents.capabilities.partyquest.rjpq.AgentRjpqMovementSkillPolicy;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.FieldLimit;
@@ -155,9 +156,11 @@ public final class AgentMovementSkillPolicy {
             case TELEPORT -> AgentMovementSkillConfig.TELEPORT_MODE.active()
                     || AgentLpqMovementSkillPolicy.allowsActiveTeleport(agent)
                     || AgentRjpqMovementSkillPolicy.allowsActiveTeleport(agent)
-                    || AgentCwkpqMovementSkillPolicy.allowsActiveTeleport(agent);
+                    || AgentCwkpqMovementSkillPolicy.allowsActiveTeleport(agent)
+                    || AgentGpqMovementSkillPolicy.allowsActiveTeleport(agent);
             case FLASH_JUMP -> AgentMovementSkillConfig.FLASH_JUMP_MODE.active()
-                    || AgentCwkpqMovementSkillPolicy.allowsActiveFlashJump(agent);
+                    || AgentCwkpqMovementSkillPolicy.allowsActiveFlashJump(agent)
+                    || AgentGpqMovementSkillPolicy.allowsActiveFlashJump(agent);
             default -> false;
         };
     }

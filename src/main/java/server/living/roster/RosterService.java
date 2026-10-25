@@ -128,6 +128,8 @@ public final class RosterService {
     private final java.util.Set<String> offFollow = ConcurrentHashMap.newKeySet();
     /** Where each owner came into the map they are on: their companions follow them in there. */
     private final PortalFollow portalFollow = new PortalFollow();
+    /** APQ plan A2: no Entrance Ticket, no way past Amos the Strong (CompanionTicketGate). */
+    private final CompanionTicketGate ticketGate;
     /**
      * Persona id -> where its HOLD waits (the map, and the spot when it was given one), from its {@link #hold}: a held
      * companion whose potion trip ends walks back there (CompanionRestock.afterRestock). Dropped by any other write.
@@ -157,6 +159,7 @@ public final class RosterService {
 
     public RosterService(LivingWorld world) {
         this.world = world;
+        this.ticketGate = new CompanionTicketGate(world);
         this.channelFollow = new CompanionChannelFollow(world, this);
         this.handoff = new InstanceLogoutHandoff(world, this);
         this.settings = new CompanionSettingsApplier(world, this);
@@ -1127,6 +1130,11 @@ public final class RosterService {
             return;
         }
         MapleMap map = owner.getMap();
+        int arrivalMapId = ticketGate.arrivalMapId(owner.getMapId());
+        if (arrivalMapId != owner.getMapId()) {
+            // APQ A2: sent for to the entrance, it comes in by Amos the Strong's gate like any player
+            map = owner.getClient().getChannelServer().getMapFactory().getMap(arrivalMapId);
+        }
         if (bot.getMap() != map) {
             Point portal = ArrivalPlacement.nearestPortal(map, owner.getPosition());
             bot.changeMap(map, portal != null ? portal : owner.getPosition()); // no usable portal: beside them, as P1.5
@@ -3050,6 +3058,11 @@ public final class RosterService {
         return new RosterResult.Ok(persona.name() + " rejoins your party.");
     }
 
+    /** APQ plan A2, from memory: true while the companion is held at Amos' Training Ground on its way in. */
+    boolean heldAtTicketGate(int companionId) {
+        return ticketGate.holds(companionId);
+    }
+
     /** As {@link #ownerEnteredMap(Character, MapleMap, Point)}, for an owner already standing where they came in. */
     public void ownerEnteredMap(Character owner, MapleMap map) {
         ownerEnteredMap(owner, map, owner.getPosition());
@@ -3075,6 +3088,7 @@ public final class RosterService {
         if (gateRuns != null) {
             gateRuns.ownerAtKeystoneGate(owner.getId(), map.getId()); // CWKPQ C3: no keystone, no Hall to Inner Sanctum
         }
+        ticketGate.ownerEntered(owner.getId(), map.getId()); // APQ A2: each companion hands Amos the Strong its own ticket
         if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())
                 && !CompanionRestock.tripsFromGate(world, map.getId())) { // P12 G9: a desk trip goes instead
             int ownerId = owner.getId();

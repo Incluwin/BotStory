@@ -65,6 +65,8 @@ public final class CompanionBossKeys {
 
         // slot: cwkpq (CWKPQ plan C3): Crimsonwood Keep, Jack's expedition; on once every stage has its companion play
         keys.add("cwkpq");
+        // slot: gpq (GPQ plan B4): Sharenian, the Guild Quest, joined at Shuang after the guild is called in
+        keys.add("gpq");
         return List.copyOf(keys);
     }
 

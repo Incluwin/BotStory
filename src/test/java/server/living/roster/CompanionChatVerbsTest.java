@@ -66,6 +66,7 @@ class CompanionChatVerbsTest {
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final KeystoneErrands keystones = mock(KeystoneErrands.class);
+    private final TicketErrands tickets = mock(TicketErrands.class);
     private final RosterService roster = mock(RosterService.class);
     private final ContractService contracts = mock(ContractService.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
@@ -121,6 +122,8 @@ class CompanionChatVerbsTest {
         when(contracts.dismiss(eq(alice), any())).thenAnswer(inv -> line("release", inv.getArgument(1)));
         when(world.keystoneErrands()).thenReturn(keystones);
         when(keystones.ask(eq(alice), any())).thenAnswer(inv -> line("keystone", inv.getArgument(1)));
+        when(world.ticketErrands()).thenReturn(tickets);
+        when(tickets.ask(eq(alice), any())).thenAnswer(inv -> line("ticket", inv.getArgument(1)));
     }
 
     @AfterEach
@@ -159,6 +162,9 @@ class CompanionChatVerbsTest {
             "olwen get your keystone,    keystone olwen",
             "get a keystone olwen,       keystone olwen",
             "brin keystone,              keystone brin",
+            "olwen get your ticket,      ticket olwen",
+            "get an entrance ticket olwen, ticket olwen",
+            "brin ticket,                ticket brin",
     })
     void everyRosterChatCommandRunsItsVerbOnCompanionOps(String said, String verb) throws Exception {
         assertTrue(dialogue.onMapChat(alice, said), "the roster takes '" + said + "'");
@@ -174,6 +180,14 @@ class CompanionChatVerbsTest {
         drain();
 
         assertEquals(List.of("keystone olwen " + CompanionExecutor.THREAD_NAME, "keystone brin " + CompanionExecutor.THREAD_NAME), ran);
+    }
+
+    @Test
+    void everyoneGetTicketsAsksEachCompanionOutOrBenched() throws Exception {
+        assertTrue(dialogue.onMapChat(alice, "everyone get tickets"));
+        drain();
+
+        assertEquals(List.of("ticket olwen " + CompanionExecutor.THREAD_NAME, "ticket brin " + CompanionExecutor.THREAD_NAME), ran);
     }
 
     @Test

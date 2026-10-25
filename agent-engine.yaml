@@ -1849,6 +1849,160 @@ tuning:
     # Technical: AgentPpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for ppq.
     server.agents.capabilities.partyquest.ppq.AgentPpqPaceProfile.PACE_EPOCH: '1'
 
+    # ---- APQ companion-run and pace keys go below (APQ branch only) ----
+    # Values: 4500000-7200000 milliseconds. Recommended: 4800000, AmoriaPQ.js's 75 minutes plus five minutes of slack for the stage-5 timer bank.
+    # Purpose: The longest an APQ run may last from entering its event before the coordinator fails it, a cap over AmoriaPQ.js's own timer that never cuts a run the stock timer still allows.
+    # Technical: AgentApqCoordinator.capReached fails the session with "APQ event timer expired" (parting TIMEOUT) once this long has passed since AgentApqSession.enteredAtMs, never after the bound event reports its clear; before entry COMPANION_ENTRY_WAIT_MS applies instead.
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.EVENT_TIMEOUT_MS: '4800000'
+    # Values: 120000-1800000 milliseconds. Recommended: 600000, longer than any APQ stage takes a working party.
+    # Purpose: How long an APQ run may go without progress before the coordinator calls it stalled, so a stuck run hands its party back in a companion's words.
+    # Technical: AgentApqCoordinator.tickSession fails the session with "APQ stalled" (parting TOO_LONG) when AgentApqSession.lastProgressAtMs is this old, never after the clear; progress is marked by stage changes, kills, objective items changing hands, reactor states, Amos's wrong effects, hand-overs and pickups.
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.STALL_TIMEOUT_MS: '600000'
+    # Values: 300-5000 milliseconds. Recommended: 900, the pause the other party quests' coordinators take after an action.
+    # Purpose: How long an APQ Agent waits after an NPC talk, a portal or an item drop before its next action, so the server has applied the last one.
+    # Technical: AgentApqCoordinator.usePortal, AgentApqHandOver and the stage plays defer the member's next action by this much (AgentApqMemberState.deferUntil) after a portal, a talk to Amos or the Glimmer Man and every item drop.
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.RETRY_MS: '900'
+    # Values: 30-150 pixels. Recommended: 70.
+    # Purpose: How close an APQ Agent stands to an NPC, a portal, a floor drop or a spot before it talks, enters, picks up or counts as standing there.
+    # Technical: AgentApqCoordinator.near compares the Agent's position with the target's by Euclidean distance against this radius in standNear, usePortal, runNpc and collectObjectiveDrop.
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.INTERACTION_RADIUS: '70'
+    # Values: 60000-900000 milliseconds. Recommended: 300000, long enough for Amos' Vault (one minute) or the couples' vault (two) and the walk out.
+    # Purpose: How long after the clear an APQ run keeps its companions before it completes, so they finish the vault and leave with the leader.
+    # Technical: AgentApqCoordinator.afterClear completes a CLEARING session once no companion stands on an APQ map or the exit room, or this long after it first saw the clear ('APQ after clear:').
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.AFTER_CLEAR_LIMIT_MS: '300000'
+    # Values: 10000-120000 milliseconds. Recommended: 30000, the other desks' wait.
+    # Purpose: How long an admitted APQ run waits for the leader's event to start before it gives up silently and hands its companions back.
+    # Technical: AgentApqCoordinator.capReached fails a session with no bound event ("The APQ leader did not start the event in time", parting SILENT) once this long has passed since AgentApqSession.startedAtMs.
+    server.agents.capabilities.partyquest.apq.AgentApqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 1000-10000 milliseconds. Recommended: 3000, the lease the other party quests use.
+    # Purpose: Bounds how long one APQ Agent keeps the right to run the run's shared coordinator tick before another member may take it over.
+    # Technical: AgentApqRuntime.tick claims AgentApqSession.claimExecutionTick with this lease after the member's own tick; the holder renews it on each of its ticks.
+    server.agents.capabilities.partyquest.apq.AgentApqRuntime.COORDINATOR_LEASE_MS: '3000'
+    # Values: 50-1000 milliseconds. Recommended: 250.
+    # Purpose: The shortest coordinator lease an APQ session grants, whatever a caller asks for, so the shared tick never changes hands on every Agent tick.
+    # Technical: AgentApqSession.claimExecutionTick sets the lease to the larger of the caller's lease and this floor.
+    server.agents.capabilities.partyquest.apq.AgentApqSession.MIN_LEASE_MS: '250'
+    # Values: 10000-180000 milliseconds. Recommended: 45000, PPQ's.
+    # Purpose: How long a companion of an APQ run may be missing from the run's maps (a relog, a stray warp) before the run counts it gone and ends.
+    # Technical: AgentApqCompanionRun.pass fails the session (parting LEFT) once AgentApqSession.missingFor reaches this for an Agent member; AmoriaPQ.js itself ends the event when a member leaves below six.
+    server.agents.capabilities.partyquest.apq.AgentApqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 500-10000 milliseconds. Recommended: 2000, PPQ's.
+    # Purpose: How close to zero the APQ event timer's last read must be for an event that ended under the run to be called out of time, not a departure.
+    # Technical: AgentApqParting.endedCause names a disposed event TIMEOUT when the run's last read of the timer had at most this much left and no member was seen down.
+    server.agents.capabilities.partyquest.apq.AgentApqCompanionRun.TIMEOUT_SLACK_MS: '2000'
+    # Values: 30-150 pixels. Recommended: 60, PPQ's medal hand-over reach.
+    # Purpose: How close an APQ companion stands to its leader before it drops an objective item (shard, pieces, fang) at his feet for him to pick up.
+    # Technical: AgentApqHandOver.tick walks the companion to the leader until it is within this distance, then drops the stack where it stands as a player does.
+    server.agents.capabilities.partyquest.apq.AgentApqHandOver.REACH_PX: '60'
+    # Values: 5000-120000 milliseconds. Recommended: 20000.
+    # Purpose: How long an APQ companion tries to reach its leader with an objective item before it gives up this hand-over and goes back to its stage work.
+    # Technical: AgentApqHandOver.tick ends a hand-over begun at AgentApqMemberState.handOverStartedAtMs once this long has passed without the companion getting within REACH_PX of the leader.
+    server.agents.capabilities.partyquest.apq.AgentApqHandOver.TIMEOUT_MS: '20000'
+    # Values: 5000-120000 milliseconds. Recommended: 15000.
+    # Purpose: How long a stack a companion dropped at the APQ leader's feet may lie there before a companion reminds him to pick it up.
+    # Technical: AgentApqHandOver.nudge says the nudge line when a player drop of an objective item on the leader's map is at least this old (MapItem.getDropTime) and still lies there; each nudge of an item doubles the wait before the next, to eight times this.
+    server.agents.capabilities.partyquest.apq.AgentApqHandOver.PICKUP_NUDGE_MS: '15000'
+    # Values: 30000-170000 milliseconds. Recommended: 120000, well inside the 180 s before a floor drop expires.
+    # Purpose: How long a stack a companion dropped for the APQ leader may lie untouched before that companion picks it back up, so it is never lost to expiry.
+    # Technical: AgentApqHandOver.recollect sends the dropper back for its own player drop once it is this old; AgentApqSessionRegistry.canLootExclusive lets only that companion take it again.
+    server.agents.capabilities.partyquest.apq.AgentApqHandOver.RECOLLECT_MS: '120000'
+    # Values: 2000-60000 milliseconds. Recommended: 8000.
+    # Purpose: The shortest time between two APQ hand-over lines of one kind, so six companions handing in pieces do not each say it.
+    # Technical: AgentApqHandOver claims AgentApqSession.claimLineWindow("hand-" + item) for this long before a companion says its at-your-feet line.
+    server.agents.capabilities.partyquest.apq.AgentApqHandOver.LINE_WINDOW_MS: '8000'
+    # Values: 500-10000 milliseconds. Recommended: 1500.
+    # Purpose: How long the companions' formation on the APQ ropes or platforms must hold still before one tells the leader to ask Amos, so he never asks mid-move.
+    # Technical: AgentApqStagePlay.observePuzzle says the ready (or talk-to-Amos-first) line once AgentApqPuzzle.observeFormed has reported the planned formation, five bodies on the areas, for at least this long.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.FORMATION_STABLE_MS: '1500'
+    # Values: 1-50. Recommended: 10, five trips for the fifty pieces.
+    # Purpose: How many Cupid Code Pieces an APQ companion gathers on Last Man Standing before it takes them to the leader.
+    # Technical: AgentApqStagePlay.pieces starts a hand-over once the companion holds this many, or sooner when no mob is left, when its pieces finish the leader's fifty, or when a hand-over is under way.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.PIECE_BATCH: '10'
+    # Values: 300-3000 milliseconds. Recommended: 700, a little over one basic attack.
+    # Purpose: How long an APQ companion waits between two hits on a gate or a vault box, so each hit lands as a separate attack.
+    # Technical: AgentApqStagePlay.gates and breakBoxes defer the member's next action by this much after a successful PrimitiveCapabilityGateway.hitReactor.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.REACTOR_HIT_MS: '700'
+    # Values: 40-200 pixels. Recommended: 80.
+    # Purpose: How close an APQ companion stands to a gate or a vault box before it hits it, so its hit reaches the reactor as a player's would.
+    # Technical: AgentApqStagePlay.gates and breakBoxes walk the companion until its position is within this distance of the reactor's, then face it and hit.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.REACTOR_REACH_PX: '80'
+    # Values: 10000-300000 milliseconds. Recommended: 60000.
+    # Purpose: How long APQ companions wait by the Glimmer Man in the exit room after the clear while their leader is still there, before they leave.
+    # Technical: AgentApqStagePlay.exit keeps a companion standing beside the Glimmer Man while the leader is on 670011000 and less than this has passed since the run first stood in the room (AgentApqSession.observeAtExit), then talks to him to leave.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.EXIT_WAIT_MS: '60000'
+    # Values: 0-60000 milliseconds. Recommended: 8000, a moment for the leader to heal and buff.
+    # Purpose: How long after Amos clears Fluttering Hearts an APQ companion waits before it asks him to send the team to Geist Balrog's stage.
+    # Technical: AgentApqStagePlay.gates has the companion beside the leader talk to Amos (9201045.js warps the event team on any member's talk once 5stageclear is set) this long after AgentApqSession.observeStageClear first saw the flag.
+    server.agents.capabilities.partyquest.apq.AgentApqStagePlay.BOSS_CALL_DELAY_MS: '8000'
+    # Values: 0.05-1.0. Recommended: 0.30, PPQ's first stage and RJPQ's tunnel; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for how much of its theoretical damage a party lands while clearing the Magik Mirror's gender rooms and Magik Fierry B.
+    # Technical: AgentApqPaceProfile's mirror Clear segment divides the rooms' Map.wz HP by the party's summed damage times this efficiency until calibration learns it from 'apq' pq_run_pace rows.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.MIRROR_EFFICIENCY: '0.30'
+    # Values: 5000-300000 milliseconds. Recommended: 45000; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for the leader's part of the Mirror: the Glimmer Man, the hammer, the shard back to him and Amos.
+    # Technical: AgentApqPaceProfile's mirrortalk Fixed segment (the leader's side) uses this many milliseconds until calibration learns the leader's own time from 'apq' pq_run_pace rows.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.MIRROR_TALK_MS: '45000'
+    # Values: 1-7. Recommended: 5; the deduction solver never needed more than five checks of the seven Amos allows.
+    # Purpose: The number of checks the APQ clear-time estimate spreads Heart Strings over, so its rope stage is neither one lucky try nor seven.
+    # Technical: AgentApqPaceProfile's ropes Puzzle segment takes the judged checks as uniform on 1..this (mean 3.0 for 5; the solver's simulated mean is 3.2).
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.ROPE_CHECKS: '5'
+    # Values: 1-20. Recommended: 9; the deduction solver averaged five checks (worst seven) over the stock draws.
+    # Purpose: The number of checks the APQ clear-time estimate spreads the Twisted Switcher over, so its platform stage matches the solver's average.
+    # Technical: AgentApqPaceProfile's platforms Puzzle segment takes the judged checks as uniform on 1..this (mean 5.0 for 9, the solver's simulated mean).
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.PLATFORM_CHECKS: '9'
+    # Values: 2000-60000 milliseconds. Recommended: 8000; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for one of the leader's checks with Amos on the ropes or platforms, his talk and the answer.
+    # Technical: AgentApqPaceProfile's puzzle.check term, shared by both Puzzle segments, costs each judged check after the first this many milliseconds until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.CHECK_MS: '8000'
+    # Values: 2000-60000 milliseconds. Recommended: 15000; a rope change is a fall, a walk to another gate and a climb.
+    # Purpose: The APQ clear-time estimate's prior for the companions re-forming on the ropes between two of the leader's checks.
+    # Technical: AgentApqPaceProfile's ropes.move term costs each judged check after the first this many milliseconds (move share 1.0) until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.ROPE_MOVE_MS: '15000'
+    # Values: 1000-60000 milliseconds. Recommended: 8000, a platform change plus the slimes a miss brings.
+    # Purpose: The APQ clear-time estimate's prior for the companions killing a miss's slimes and re-forming on the platforms between two checks.
+    # Technical: AgentApqPaceProfile's platforms.move term costs each judged check after the first this many milliseconds (move share 1.0) until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.PLATFORM_MOVE_MS: '8000'
+    # Values: 500-30000 milliseconds. Recommended: 3000, PPQ's medal seek.
+    # Purpose: The APQ clear-time estimate's prior for the walking between kills while the party gathers Last Man Standing's fifty Cupid Code Pieces.
+    # Technical: AgentApqPaceProfile's pieces Quota segment adds this per kill (the pieces.seek term) until calibration learns it from 'apq' pq_run_pace rows.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.PIECES_SEEK_MS: '3000'
+    # Values: 0.05-1.0. Recommended: 0.30, PPQ's medals; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for how much of its theoretical damage a party lands on Last Man Standing's mobs.
+    # Technical: AgentApqPaceProfile's pieces Quota segment scales the party's kill rate by this (the pieces.combat term) until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.PIECES_EFFICIENCY: '0.30'
+    # Values: 0.0-1.0. Recommended: 0.5, PPQ's.
+    # Purpose: How much of the human leader's own kill rate counts toward APQ's fifty pieces, since he also picks up what his companions bring him.
+    # Technical: AgentApqPaceProfile's pieces Quota segment counts the leader's damage at this share of a companion's.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.LEADER_PIECE_CREDIT: '0.5'
+    # Values: 5000-120000 milliseconds. Recommended: 20000; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for the leader handing Amos the fifty pieces on Last Man Standing.
+    # Technical: AgentApqPaceProfile's handin Fixed segment (the leader's side) uses this many milliseconds until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.HANDIN_MS: '20000'
+    # Values: 60000-240000 milliseconds. Recommended: 170000, the 136 s walk of the A0 replays plus 28 gate hits and the wait for the leader.
+    # Purpose: The APQ clear-time estimate's prior for Fluttering Hearts, the seven gates and the run to Amos inside the stage's four minutes.
+    # Technical: AgentApqPaceProfile's gates Fixed segment (the companions' side) uses this many milliseconds until calibration learns it; a learned time over the stage's 240 s timer is named slow.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.GATES_MS: '170000'
+    # Values: 0.05-1.0. Recommended: 0.35, PPQ's boss; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for how much of its theoretical damage a party lands on Geist Balrog's three phases.
+    # Technical: AgentApqPaceProfile's boss Clear segment divides the phases' Mob.wz HP (1.9M in all) by the party's summed damage times this efficiency until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.BOSS_EFFICIENCY: '0.35'
+    # Values: 5000-120000 milliseconds. Recommended: 20000; a guess until the first live APQ run.
+    # Purpose: The APQ clear-time estimate's prior for the Geist Fang reaching the leader and his talk to Amos that clears the run.
+    # Technical: AgentApqPaceProfile's fang Fixed segment (the leader's side) uses this many milliseconds until calibration learns it.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.FANG_MS: '20000'
+    # Values: 1-50. Recommended: 7, RJPQ's and PPQ's.
+    # Purpose: Below how many touches of Geist Balrog's last phase a member is named fragile in the APQ clear-time estimate's weaknesses.
+    # Technical: AgentApqPaceProfile.thresholds hands this to the estimator, which divides the member's HP by the last phase's touch damage from Mob.wz.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6, PPQ's.
+    # Purpose: Below what chance to hit Geist Balrog's last phase a member is named as missing it in the APQ clear-time estimate's weaknesses.
+    # Technical: AgentApqPaceProfile.thresholds hands this to the estimator, which reads each member's hit chance against the danger mob's level and avoid.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when an APQ pace change lands.
+    # Purpose: Keeps APQ clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentApqPaceProfile.epoch tags every 'apq' pq_run_pace row; the calibration reads only rows of the current epoch.
+    server.agents.capabilities.partyquest.apq.AgentApqPaceProfile.PACE_EPOCH: '1'
+
     # ---- RJPQ keys go below (RJPQ branch only) ----
 
     # Values: 35-50. Recommended: 45 to provide learned second-job utility skills and legal equipment without approaching the entry ceiling.
@@ -4880,10 +5034,10 @@ tuning:
     # Purpose: MP potions an Agent that fights with skills (any job past a beginner's) goes into a party quest with, so it never asks for some mid-run.
     # Technical: AgentSupplyReadiness.standard validates it against POT_STOP; at or below it the value is clamped to POT_STOP + 1 with one WARN instead of throwing, because a critical MP request would otherwise start the moment the run begins.
     server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_MP_POTIONS: '25'
-    # Values: comma-separated key=HP/MP pairs (lowercase party quest keys, whole potion counts, MP above POT_STOP; every stack of a kind takes a free Use slot); never blank (the loader refuses a blank value), so it lists at least one party quest. Recommended: lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50 (agreed 2026-10-03 for 30-45 minute runs against Lv43-85 monsters; rjpqj, Juliet's side of RJPQ, added 2026-10-09 with rjpq's standard; epq raised 2026-10-06 after one live golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion, mostly White and Blue; epq HP raised to 350 on 2026-10-07 by user decision after three of five companions ran dry of HP potions in one golem fight at 250; retune from the per-run potion counts the desks log).
+    # Values: comma-separated key=HP/MP pairs (lowercase party quest keys, whole potion counts, MP above POT_STOP; every stack of a kind takes a free Use slot); never blank (the loader refuses a blank value), so it lists at least one party quest. Recommended: lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50,apq=100/100 (agreed 2026-10-03 for 30-45 minute runs against Lv43-85 monsters; rjpqj, Juliet's side of RJPQ, added 2026-10-09 with rjpq's standard; apq added 2026-10-25 for the Amorian Challenge's 75 minutes and Geist Balrog's 1.9M HP; epq raised 2026-10-06 after one live golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion, mostly White and Blue; epq HP raised to 350 on 2026-10-07 by user decision after three of five companions ran dry of HP potions in one golem fight at 250; retune from the per-run potion counts the desks log).
     # Purpose: Gives the longer, harder party quests a bigger potion standard than KPQ and HPQ, so their desks and their companions' standing duty agree on what to carry in.
     # Technical: AgentSupplyReadiness.standard(Activity.partyQuest(key)) reads this at every call; a key not listed (kpq, hpq) or a malformed pair keeps PARTY_QUEST_HP_POTIONS / PARTY_QUEST_MP_POTIONS, and an MP count at or under POT_STOP is clamped to POT_STOP + 1 with one WARN. BUY_TO_PERCENT applies to it as to the default. A count above MAX_CARRIED_QUANTITY or MAX_PURCHASE_QUANTITY_PER_VISIT raises those limits to itself for the readiness floor only (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it, and nothing buys past the larger of it and MAX_CARRIED_QUANTITY; AgentSupplyReadinessRuntime.useSlotsNeeded then asks one free Use slot per stack (AgentShopService.potionStackSize).
-    server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS: 'lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50'
+    server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS: 'lmpq=30/40,ppq=30/40,lpq=40/50,opq=40/50,rjpq=40/50,epq=350/350,rjpqj=40/50,apq=100/100'
     # Values: a whole projectile count from 0 to 5000 (AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD; the loader refuses anything else); 0 turns the check off for every activity AMMO_STANDARDS does not list. Recommended: 500, what the integration session proposed after a claw companion entered LPQ with no throwing stars (2026-10-05); AMMO_STANDARDS raises it per party quest or boss; retune from the "readiness restock ... ammo" log lines.
     # Purpose: Projectiles a companion that fights with a claw, bow, crossbow or gun goes into a party quest or boss run with at least, unless AMMO_STANDARDS lists that activity; the desk keeps one below it waiting "low on ammo", and its standing readiness duty walks to the store for them as it does for potions, at a party quest desk and in an ordinary town.
     # Technical: AgentSupplyReadiness.ammoStandard returns it for an activity AMMO_STANDARDS does not list; ammoShortfall measures AgentAmmoService.carriedProjectiles (the stacks for the equipped weapon, Soul Arrow and Shadow Claw ignored; Integer.MAX_VALUE for no ammo weapon) against it. CompanionPartyQuestService.waitingReason checks it after the potions, AgentSupplyReadinessRuntime.select starts a readiness trip for it, and the trip's counter tops it up after the potions at any potion supplier (AgentShopService.buyReadinessAmmo).
@@ -6364,6 +6518,58 @@ tuning:
     # Purpose: Lets a CWKPQ magician teleport between the magician room's platforms, and a CWKPQ thief Flash Jump to the thief room's high eyes, without turning either movement skill on globally.
     # Technical: Only 610030521 receives Teleport graph edges and only 610030530 Flash Jump edges (AgentNavigationGraphService); routing over them still requires a member of a CWKPQ boss run in the room's event (AgentCwkpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
     server.agents.capabilities.expedition.cwkpq.AgentCwkpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
+    # Values: true or false. Recommended: true for the Guild Quest's Room of Justice (stage 2's altar towers).
+    # Purpose: Lets a Guild Quest magician Teleport, or a hermit Flash Jump, up the two altar towers walking and jumping never reach (spear1's rope jump, spear4's 140 px floors), without turning either movement skill on globally.
+    # Technical: Only 990000440 receives Teleport and Flash Jump graph edges (AgentNavigationGraphService); routing over them still requires a member of a GPQ boss run in the room's event (AgentGpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
+    server.agents.capabilities.expedition.gpq.AgentGpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
+    # Values: 0-300000 milliseconds. Recommended: 180000, GuildQuest.js's three minutes of strategy time.
+    # Purpose: The Guild Quest clear-time records' prior for the strategy time, from the guild called in to the way in opening.
+    # Technical: AgentGpqPaceProfile.priors "strategy" (a COMPANION Fixed segment), the run's first; the event's entryTimestamp ends it, so live runs only confirm it.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STRATEGY_MS: '180000'
+    # Values: 30000-600000 milliseconds. Recommended: 90000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the rocks, every member breaking a guardian stone and wearing its Protector Rock on the way to the Gatekeeper.
+    # Technical: AgentGpqPaceProfile.priors "rocks"; from the way in opening to the first member in the Gatekeeper's room 990000300 (AgentGpqPaceMarks).
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ROCKS_MS: '90000'
+    # Values: 60000-1200000 milliseconds. Recommended: 240000 until the first live runs measure it; three patterns of 4-6 statues, each shown 3.5 s a statue, with the leader's talks between.
+    # Purpose: The Guild Quest clear-time records' prior for the Gatekeeper's statues.
+    # Technical: AgentGpqPaceProfile.priors "statues"; from the first member in 990000300 to stage1clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STATUES_MS: '240000'
+    # Values: 120000-2400000 milliseconds. Recommended: 600000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the Longinus spears: the Key, the debris and the Rusty Key, and the four spears on their altars.
+    # Technical: AgentGpqPaceProfile.priors "spears"; from stage1clear to the speargate's fourth state.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.SPEARS_MS: '600000'
+    # Values: 120000-2400000 milliseconds. Recommended: 420000 until the first live runs measure it; seven tries at most per draw of the vassals' offerings.
+    # Purpose: The Guild Quest clear-time records' prior for the fountain's vassals: knights fought for medals and scrolls, plates and boxes tried for food and drink, offerings set until the fountain accepts them.
+    # Technical: AgentGpqPaceProfile.priors "vassals"; from the speargate's fourth state to stage3clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.VASSALS_MS: '420000'
+    # Values: 120000-2400000 milliseconds. Recommended: 720000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the waterway: the four rooms' marks and garments, the clothes onto Sharen III's remains, and the ghost's word to the leader.
+    # Technical: AgentGpqPaceProfile.priors "waterway"; from stage3clear to stage4clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WATERWAY_MS: '720000'
+    # Values: 10000-600000 milliseconds. Recommended: 60000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the King's Corridor, a member giving the gate its Protector Rock.
+    # Technical: AgentGpqPaceProfile.priors "corridor"; from stage4clear to the gate's canRevive 1.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.CORRIDOR_MS: '60000'
+    # Values: 0.05-1.0. Recommended: 0.40; one stationary boss that heals and turns weapon or magic immune, with his statues and summons in the way.
+    # Purpose: The share of the team's raw damage that lands on Ergoth on his throne.
+    # Technical: AgentGpqPaceProfile.priors "ergoth", the efficiency of the Clear of 9300028 that every member fights, the leader included, at the boss rules' companionDamagePercent; it spans the seal broken and the Rubian turned in.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_EFFICIENCY: '0.40'
+    # Values: 300000-3600000 milliseconds. Recommended: 1800000, a third of the 90-minute clock.
+    # Purpose: Past what mean time the Ergoth fight is named slow in the Guild Quest clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds slowMs for "ergoth"; AgentPqPaceEstimator adds a SLOW weakness when the segment's mean passes it.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_SLOW_MS: '1800000'
+    # Values: 1-50. Recommended: 7, RJPQ's, OPQ's and CWKPQ's.
+    # Purpose: Below how many of Ergoth's touches a member is named fragile in the Guild Quest clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds fragileTouches; AgentPqPaceEstimator compares each member's touchesToDown against the danger mob 9300028.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6.
+    # Purpose: Below what chance to hit Ergoth a member is named as missing him in the clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds weakHitChance; AgentPqPaceEstimator compares each member's hit chance on 9300028.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when a GPQ pace change lands.
+    # Purpose: Keeps Guild Quest clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentGpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs; no gpq run is recorded yet.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.PACE_EPOCH: '1'
     # Values: 105-123. Recommended: 120, the offline graph's threshold on Map.wz 926100201.
     # Purpose: The jump stat a companion needs, with its Haste on, to be chosen as the runner of RJPQ Dark Lab 1, whose boxes stand on high conveyor ledges.
     # Technical: AgentRjpqDarkLabs.chooseRunners compares Character.getTotalJumpStat plus its best Haste's jump (Skill.wz effect) with this; the navigation graph of 926100201 reaches all six box ledges and the exit at 120 and none at 110 (AgentRjpqDarkLabNavigationTest). Inside the lab the runner recasts Haste while its jump is below this.

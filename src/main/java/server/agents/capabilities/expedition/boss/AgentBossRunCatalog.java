@@ -3,6 +3,7 @@ package server.agents.capabilities.expedition.boss;
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogScenario;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqRun;
+import server.agents.capabilities.expedition.gpq.AgentGpqRun;
 import server.agents.capabilities.expedition.zakum.AgentZakumDefinition;
 import server.agents.capabilities.expedition.zakum.AgentZakumScenario;
 import server.expeditions.ExpeditionType;
@@ -168,9 +169,26 @@ public final class AgentBossRunCatalog {
             AgentCwkpqRun::forCompanions, false, AgentBossRules.markerItems("cwkpq"),
             AgentBossRules.neverTargetFakes("cwkpq"), true, AgentBossRunDefinition.DeathMode.HOLD_UNTIL_CLEAR);
 
+    // slot: gpq
+    /**
+     * Sharenian, the Guild Quest (GPQ plan B4), a party-instance run joined after its start: the human registers their
+     * guild with Shuang (9040000) on the Excavation Site camp 101030104 and goes in alone when the guild is called
+     * (GuildQuest.js afterSetup opens the run); for the next three minutes (canJoin 1) each companion standing at the
+     * camp joins by her "Join your guild's Guild Quest" (selection 1), one conversation per tick. The run plays every
+     * Sharenian map before Ergoth's Throne 990000900, its battle map (boss-rules.json stageMaps), stage by stage
+     * (AgentGpqRun); the Treasure Warehouse 990001000 is its clear map, and its timer, not a portal, takes the team
+     * out to the Returning Path. A member that dies stays down until the King's Corridor gate lets revives keep it in
+     * the event (HOLD_UNTIL_REVIVABLE), then revives at the Entrance to the Remains and walks back.
+     */
+    public static final AgentBossRunDefinition GPQ = new AgentBossRunDefinition("gpq", null, AgentGpqRun.CAMP_MAP_ID,
+            AgentGpqRun.THRONE_MAP_ID, AgentGpqRun.WAREHOUSE_MAP_ID, AgentGpqRun.SHUANG_NPC_ID,
+            List.of(AgentGpqRun.JOIN_SELECTION), -1, -1, AgentGpqRun::forCompanions, false,
+            AgentBossRules.markerItems("gpq"), AgentBossRules.neverTargetFakes("gpq"), true,
+            AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+
     private static final List<AgentBossRunDefinition> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA,
             NEO_BERGAMOT, NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA,
-            PINKBEAN, CWKPQ);
+            PINKBEAN, CWKPQ, GPQ);
 
     private AgentBossRunCatalog() {
     }

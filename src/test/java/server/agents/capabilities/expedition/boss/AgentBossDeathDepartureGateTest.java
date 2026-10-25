@@ -145,6 +145,47 @@ class AgentBossDeathDepartureGateTest {
         assertEquals(2, townRespawns[0]);
     }
 
+    // GPQ plan B4: hold until the event allows revives (Sharenian: before the kinggate a revive unregisters the member)
+
+    @Test
+    void aDeadMemberOfARevivableRunStaysDownUntilTheGateOpens() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+        when(event.getProperty("canRevive")).thenReturn("0"); // GuildQuest.js setup
+
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L));
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 250L), "and on its next tick");
+
+        assertEquals(0, townRespawns[0]);
+        verify(event, never()).revivePlayer(any());
+    }
+
+    @Test
+    void aHeldMemberOfARevivableRunRevivesInsideOnceTheGateOpens() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(THANE);
+        when(event.getProperty("canRevive")).thenReturn("0");
+        assertFalse(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L));
+        when(event.getProperty("canRevive")).thenReturn("1"); // reactor/9208009.js, the kinggate
+
+        assertTrue(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 250L));
+
+        verify(event).revivePlayer(thane);
+        respawns.verify(() -> AgentRespawnCoordinator.respawnInto(entry, thane, returnInstance));
+        assertEquals(0, townRespawns[0]);
+    }
+
+    @Test
+    void aHeldMemberOfARevivableRunRespawnsInTownOnceTheEventIsCleared() {
+        Character thane = insideMember(AgentBossRunDefinition.DeathMode.HOLD_UNTIL_REVIVABLE);
+        when(event.getProperty("canRevive")).thenReturn("0");
+        when(event.isEventCleared()).thenReturn(true);
+
+        assertTrue(AgentBossDeathDepartureGate.respawnOrHold(thane, () -> townRespawns[0]++, 0L));
+
+        assertEquals(1, townRespawns[0]);
+        verify(event, never()).revivePlayer(any());
+    }
+
     /** Thane: a loaded INSIDE member of a run of {@code mode}, dead on the battle map in its event. */
     private Character insideMember(AgentBossRunDefinition.DeathMode mode) {
         AgentBossRunDefinition definition = new AgentBossRunDefinition("pinkbean_test", null, 270050000, BATTLE_MAP,

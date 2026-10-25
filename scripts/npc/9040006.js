@@ -115,11 +115,13 @@ function start() {
                             spawnMob(9300036, -350, 150, cm.getPlayer().getMap());
                             spawnMob(9300037, 400, 150, cm.getPlayer().getMap());
 
+                            sayAloud(string);
                             cm.sendOk(string);
                             eim.setProperty("stage3attempt", attempt + 1);
                         } else {
                             //reset the combo and mass spawn monsters
                             eim.setProperty("stage3combo", "reset");
+                            sayAloud("You have failed the test. Please compose yourselves and try again later.");
                             cm.sendOk("You have failed the test. Please compose yourselves and try again later.");
 
                             for (var i = 0; i < 6; i++) {
@@ -208,6 +210,17 @@ function removeGroundItems() {
     var rawItems = getRawItems();
     for (var j = 0; j < rawItems.length; j++) {
         map.makeDisappearItemFromMap(rawItems[j]);
+    }
+}
+
+// BotStory (GPQ plan decision 7): the fountain's verdict is said to the whole map, one line each, so every guild
+// member hears what the vassals think, not only the leader in the dialog
+function sayAloud(text) {
+    var lines = text.split("\r\n");
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].length > 0) {
+            cm.mapMessage(5, "Fountain: " + lines[i]);
+        }
     }
 }
 
