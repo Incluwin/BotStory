@@ -391,7 +391,8 @@ final class AgentOpqCoordinator {
             return;
         }
         int held = agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false);
-        if (agent.getId() != session.eventLeaderId() && held > 0) {
+        int carrier = entranceCarrier(session);
+        if (agent.getId() != carrier && held > 0) {
             Point handoffGround = ACTIONS.groundPoint(agent.getMap(), ENTRANCE_HANDOFF);
             if (!moveTo(entry, agent, handoffGround, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             if (dropItem(entry, InventoryType.ETC,
@@ -399,6 +400,10 @@ final class AgentOpqCoordinator {
             return;
         }
         Character leader = character(session.eventLeaderId());
+        if (agent.getId() == carrier && carrier != session.eventLeaderId()) {
+            tickEntranceCarrier(session, entry, agent, leader, held, nowMs, member);
+            return;
+        }
         if (agent.getId() == session.eventLeaderId()) {
             if (entranceOfferingReady(agent)) {
                 // The authored drop reactor consumes this stack and spawns Eak. Do not
@@ -431,6 +436,50 @@ final class AgentOpqCoordinator {
                     && !cloudDropRemaining) {
                 runEak(session, entry, leader, EakKind.ENTRANCE, 0);
             }
+        }
+    }
+
+    /**
+     * Who takes the clouds to Eak: the leader, or in a run a human leads the lowest-id counted companion standing in the
+     * entrance; 0 when none. 2026-10-25 live (run 5): the companions left their clouds in five stacks by the hand-off
+     * point and waited; nobody told Pqfriend, and the 20-piece offering waited on him for eight minutes.
+     */
+    static int entranceCarrier(AgentOpqSession session) {
+        if (!AgentOpqConductor.conducts(session)) return session.eventLeaderId();
+        return AgentOpqConductor.companions(session).stream()
+                .filter(member -> !session.departed(member.characterId()))
+                .map(member -> character(member.characterId()))
+                .filter(character -> character != null && character.getHp() > 0
+                        && character.getMapId() == AgentOpqDefinition.ENTRANCE_MAP)
+                .mapToInt(Character::getId).min().orElse(0);
+    }
+
+    /**
+     * A human-led run's cloud carrier: it gathers the stacks the others leave by the hand-off point, offers twenty at
+     * Eak's light, and once Eak stands there tells the leader to talk to him (Eak's script talks only to the leader).
+     */
+    private static void tickEntranceCarrier(AgentOpqSession session, AgentRuntimeEntry entry, Character agent,
+                                            Character leader, int held, long nowMs, AgentOpqMemberState member) {
+        if (ACTIONS.npcPosition(agent, AgentOpqDefinition.EAK_NPC) != null) {
+            if (leader != null) {
+                AgentOpqDialogue.narrate(session, "entrance-eak", agent, leader,
+                        AgentOpqCompanionPlay.entranceEak(leader.getName()));
+            }
+            moveTo(entry, agent, ACTIONS.groundPoint(agent.getMap(), ENTRANCE_HANDOFF),
+                    AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
+            return;
+        }
+        if (entranceOfferingReady(agent)) {
+            ACTIONS.stop(entry); // the light takes the offering and calls Eak; never pick it back up meanwhile
+            return;
+        }
+        if (collectGroundItem(entry, agent, AgentOpqDefinition.CLOUD_PIECE, false, nowMs)) return;
+        if (held < 20) return;
+        Point eakGround = ACTIONS.groundPoint(agent.getMap(), ENTRANCE_EAK);
+        if (!moveTo(entry, agent, eakGround, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
+        if (dropItem(entry, InventoryType.ETC, AgentOpqDefinition.CLOUD_PIECE, (short) 20)) {
+            session.markProgress(nowMs);
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
         }
     }
 
