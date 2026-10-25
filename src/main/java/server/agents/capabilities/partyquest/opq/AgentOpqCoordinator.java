@@ -216,9 +216,35 @@ final class AgentOpqCoordinator {
                     .sorted(Comparator.comparingDouble(drop -> drop.getPosition().distanceSq(agent.getPosition())))
                     .limit(3).map(drop -> drop.getItemId() + "@" + drop.getPosition().x + "," + drop.getPosition().y)
                     .collect(java.util.stream.Collectors.joining(";"));
-            return "drops=[" + drops + "] liveMobs=" + agent.getMap().countMonsters();
+            String mobs = AgentMapPerception.monsters(agent.getMap()).stream()
+                    .filter(Monster::isAlive)
+                    .sorted(Comparator.comparingDouble(mob -> mob.getPosition().distanceSq(agent.getPosition())))
+                    .limit(3).map(mob -> mob.getId() + "@" + mob.getPosition().x + "," + mob.getPosition().y)
+                    .collect(java.util.stream.Collectors.joining(";"));
+            return "drops=[" + drops + "] liveMobs=" + agent.getMap().countMonsters() + " nearestMobs=[" + mobs + "]";
         } catch (RuntimeException unreadable) {
             return "drops=? liveMobs=?";
+        }
+    }
+
+    /**
+     * 'grinding= grind=MODE/OUTCOME candidates=base/objective/policy/claim/scored ago=' for the stall line: the combat
+     * layer's last target decision, where a stalled grinder's mobs dropped out (2026-10-25, run 5: Vex stood by the
+     * walkway's left wall for 29 minutes with 28 mobs alive, attacking none). Logging only.
+     */
+    private static String grindDecision(AgentRuntimeEntry entry) {
+        try {
+            var decision = entry.capabilityStates()
+                    .find(server.agents.capabilities.combat.AgentCombatDecisionTraceState.STATE_KEY)
+                    .map(server.agents.capabilities.combat.AgentCombatDecisionTraceState::snapshot).orElse(null);
+            String grinding = "grinding=" + server.agents.runtime.AgentModeStateRuntime.grinding(entry);
+            if (decision == null) return grinding + " grind=none";
+            return grinding + " grind=" + decision.mode() + "/" + decision.outcome() + " candidates="
+                    + decision.baseCandidates() + "/" + decision.objectiveCandidates() + "/"
+                    + decision.policyCandidates() + "/" + decision.claimCandidates() + "/" + decision.scoredCandidates()
+                    + " ago=" + (System.currentTimeMillis() - decision.recordedAtMs()) + "ms";
+        } catch (RuntimeException unreadable) {
+            return "grind=?";
         }
     }
 
@@ -245,7 +271,8 @@ final class AgentOpqCoordinator {
                             + " role={} pos={} reactor={} activeClouds={} cloudDrops={} heldClouds={} {}",
                     session.sessionId(), agent.getId(), agent.getMapId(), member.role(),
                     agent.getPosition(), reactor, activeClouds, cloudDrops,
-                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false), stallSurroundings(agent));
+                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false),
+                    stallSurroundings(agent) + " " + grindDecision(entry));
             return;
         }
         switch (session.phase()) {
