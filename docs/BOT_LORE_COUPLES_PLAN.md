@@ -177,7 +177,13 @@ example Jasper + Saskia and Ansel + Vesna, both Lv60). Everyone's partner is on 
 
 ## Results
 
-Full split suite (`tools/suite/run-split-suite.ps1`), base 70a29efa4 (baseline 14,706 / 0 / 37):
+**Current: e9a5ce4ae**, the branch with `feat/companion-manager` 02506c3b0 merged in (the bride's path included):
+capabilities 6,318 / 0 / 1, agents 2,390 / 0 / 21, rest 6,351 / 0 / 15, **total 15,059 / 0 / 37**. 35 of those tests
+are this branch's (28 lore-couple tests, 7 for the bride's path). The merge's one conflict was the `scripts/npc`
+fingerprint in `server-knowledge.json`, re-exported on the merged tree.
+
+Earlier, on the first build only, full split suite (`tools/suite/run-split-suite.ps1`), base 70a29efa4 (baseline
+14,706 / 0 / 37):
 
 | Group | Commit | Run | Failures | Errors | Skipped |
 | --- | --- | --- | --- | --- | --- |
