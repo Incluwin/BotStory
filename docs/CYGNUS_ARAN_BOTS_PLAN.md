@@ -125,7 +125,7 @@ The user's answers (2026-10-24), each to a question put with a recommendation:
   energy attacks, Night Walker Disorder (its constant was a wrong id), the Knights' morphs (Transformation, Eagle Eye)
   and Blaze Wizard Slow/Seal like their Explorer counterparts; each Knight/Aran job holds its line's one weapon and its
   weapon-bound skills need it; Blaze Wizards count as mages; Final Charge dashes; probe and arena weapons per line.
-- **Population, Residents, hires** (POPULATION_COMMIT): `living_world.CYGNUS_ARAN_CAREERS_ENABLED` (ships on). Six
+- **Population, Residents, hires** (98754de1b, quest-log fix 54ec63cc9): `living_world.CYGNUS_ARAN_CAREERS_ENABLED` (ships on). Six
   careers (Aran 13, each Knight 4 against the Explorers' 100: 25.6% of births); `regions.yaml` `line` makes Ereve the
   Knights' and Rien the Aran's home (only that line lives there; one below Lv10 lives nowhere else; a Knight seeded
   elsewhere is Lv10+); citizens are created on their line's beginner. Residents: Aldric (Dawn Warrior, recruitable)
@@ -151,11 +151,15 @@ The user's answers (2026-10-24), each to a question put with a recommendation:
   Rien seeds are Knights/Arans; a Knight seeded into Victoria is Lv10+; with the switch off, births draw exactly the
   pre-branch golden sequence. `CitizenJobErrandsTest`: a Night Walker's third job at Eckhart on Ereve, an Aran's
   third/fourth at Maha in Rien, no Knight fourth job. `ResidentLineSwitchTest`: with the switch off Aldric, Linnea and
-  Torvin are not materialized, the Explorers' Residents are.
+  Torvin are not materialized, the Explorers' Residents are. `QuestLogIdsShippedTest`: every quest-log key is a
+  shipped quest, each client id used once (a rename here had broken Halvard's key; restored in 54ec63cc9).
 - Engine, paths, instructors, kits, bundles and profiles: `JobProgressionPolicyTest`, `AgentJobPathTest`,
   `JobErrandsTest`, `JobInstructorsTest`, `CitizenJobPathTest`, `AgentStarterKitCatalogTest`, the bundle/profile
   repository tests. Content lint on the shipped content: no errors.
-- Full split suite: SUITE_TOTALS.
+- Full split suite on 54ec63cc9 (2026-10-25): 14,641 tests, 0 failures, 0 errors, 37 skipped, PASS (baseline
+  bc6f46d8d: 14,601 / 0 / 37; the 40 more are this branch's).
+- Not verified offline: a real `!skillprobe` run (it needs the running server), what observers' clients draw, the
+  walks to Ereve/Rien instructors on live maps, and Residents materializing there: the live checks below.
 
 ## 7. Live checks after deploy
 
