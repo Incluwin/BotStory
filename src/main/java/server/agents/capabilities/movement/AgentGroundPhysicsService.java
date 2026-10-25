@@ -42,6 +42,17 @@ public final class AgentGroundPhysicsService {
     }
 
     public static AgentGroundMotion applyGroundMotion(AgentRuntimeEntry entry, Character agent, Foothold foothold) {
+        return applyGroundMotion(entry, agent, foothold, null);
+    }
+
+    /**
+     * {@code restX} non-null: the walk input is released at the client step from which friction alone brings
+     * the Agent to rest on that pixel ({@link #coastsOnto}), so a precise approach stops on its waypoint.
+     */
+    public static AgentGroundMotion applyGroundMotion(AgentRuntimeEntry entry,
+                                                      Character agent,
+                                                      Foothold foothold,
+                                                      Integer restX) {
         MapleMap map = agent.getMap();
         Point currentPosition = agent.getPosition();
         int desiredDirection = AgentMovementStateRuntime.moveDirection(entry);
@@ -49,7 +60,7 @@ public final class AgentGroundPhysicsService {
                 new AgentGroundTravelState(AgentMovementPhysicsStateRuntime.physicsX(entry),
                         AgentMovementPhysicsStateRuntime.horizontalSpeed(entry),
                         AgentMovementPhysicsStateRuntime.groundPhysicsCarryMs(entry)),
-                AgentMovementStateRuntime.movementProfile(entry));
+                AgentMovementStateRuntime.movementProfile(entry), restX);
 
         int boundedX = AgentHorizontalBoundaryStateRuntime.clampX(
                 entry, map == null ? -1 : map.getId(), step.point().x);
@@ -130,6 +141,31 @@ public final class AgentGroundPhysicsService {
         return moved;
     }
 
+    /** {@link #coastsOnto(double, double, Foothold, int, int)} from the Agent's current ground physics state. */
+    public static boolean coastsOnto(AgentRuntimeEntry entry, Foothold foothold, int direction, int restX) {
+        return coastsOnto(AgentMovementPhysicsStateRuntime.physicsX(entry),
+                AgentMovementPhysicsStateRuntime.horizontalSpeed(entry), foothold, direction, restX);
+    }
+
+    /**
+     * Whether friction alone, from {@code physicsX} at {@code horizontalSpeed}, brings the Agent to rest within half
+     * a pixel of {@code restX} or beyond it, walking in {@code direction}: any more input carries it past.
+     */
+    static boolean coastsOnto(double physicsX, double horizontalSpeed, Foothold foothold, int direction, int restX) {
+        double x = physicsX;
+        double speed = horizontalSpeed;
+        while (speed != 0.0) {
+            double next = applyGroundPhysicsStep(speed, foothold, 0, null);
+            if (Math.abs(next) >= Math.abs(speed)) {
+                // Friction no longer slows it (a steep slope at speed): it slides past anything ahead of it.
+                return Math.signum(speed) == direction;
+            }
+            speed = next;
+            x += speed;
+        }
+        return (x - restX) * direction >= -0.5;
+    }
+
     public static void stopGroundMotion(AgentRuntimeEntry entry) {
         AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, 0.0);
     }
@@ -151,11 +187,22 @@ public final class AgentGroundPhysicsService {
                                                  int desiredDirection,
                                                  AgentGroundTravelState state,
                                                  AgentMovementProfile profile) {
+        return simulateGroundMotion(map, currentPosition, foothold, desiredDirection, state, profile, null);
+    }
+
+    static GroundStepResult simulateGroundMotion(MapleMap map,
+                                                 Point currentPosition,
+                                                 Foothold foothold,
+                                                 int desiredDirection,
+                                                 AgentGroundTravelState state,
+                                                 AgentMovementProfile profile,
+                                                 Integer restX) {
         if (map == null || currentPosition == null || foothold == null || state == null) {
             return new GroundStepResult(currentPosition, foothold, state, 0, 0, true);
         }
 
-        AgentGroundTravelState displaced = applyGroundDisplacement(map, foothold, desiredDirection, state, profile);
+        AgentGroundTravelState displaced = applyGroundDisplacement(
+                map, foothold, desiredDirection, state, profile, restX);
         int newX = (int) Math.round(displaced.physX());
         int stepX = newX - currentPosition.x;
         AgentGroundCollisionService.GroundStepPreview preview =
@@ -173,8 +220,10 @@ public final class AgentGroundPhysicsService {
                     stepX, velocityFromDeltaX(displaced.physX() - currentPosition.x), true);
         }
 
+        // At rest the continuous X keeps its subpixel offset from the rendered X; reporting that offset as a
+        // velocity (e.g. -9 forever) also kept applyIdleOrInPlaceMotion from ever settling the Agent.
         return new GroundStepResult(preview.point(), preview.foothold() != null ? preview.foothold() : foothold, displaced,
-                stepX, velocityFromDeltaX(displaced.physX() - currentPosition.x), false);
+                stepX, displaced.hspeed() == 0.0 ? 0 : velocityFromDeltaX(displaced.physX() - currentPosition.x), false);
     }
 
     static AgentGroundTravelState initialGroundTravelState(Point position) {
@@ -185,7 +234,8 @@ public final class AgentGroundPhysicsService {
                                                                   Foothold foothold,
                                                                   int desiredDirection,
                                                                   AgentGroundTravelState state,
-                                                                  AgentMovementProfile profile) {
+                                                                  AgentMovementProfile profile,
+                                                                  Integer restX) {
         GroundStepCounter counter = groundPhysicsSteps(state.carryMs(), map);
         if (counter.steps() == 0) {
             return state;
@@ -194,7 +244,10 @@ public final class AgentGroundPhysicsService {
         double physicsX = state.physX();
         double horizontalSpeed = state.hspeed();
         for (int i = 0; i < counter.steps(); i++) {
-            horizontalSpeed = applyGroundPhysicsStep(horizontalSpeed, foothold, desiredDirection, profile);
+            int direction = restX != null
+                    && coastsOnto(physicsX, horizontalSpeed, foothold, desiredDirection, restX)
+                    ? 0 : desiredDirection;
+            horizontalSpeed = applyGroundPhysicsStep(horizontalSpeed, foothold, direction, profile);
             physicsX += horizontalSpeed;
         }
         return new AgentGroundTravelState(physicsX, horizontalSpeed, counter.carryMs());

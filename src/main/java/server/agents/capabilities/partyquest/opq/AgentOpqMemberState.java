@@ -33,6 +33,9 @@ public final class AgentOpqMemberState {
     private int bossHp = -1;
     private int rewardRefusals;
     private boolean rewardAskPending;
+    private Point wayUpStagingPosition;
+    private int wayUpStagingStillTicks;
+    private boolean wayUpStagingSettled;
 
     public AgentOpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) throw new IllegalArgumentException("valid OPQ member required");
@@ -123,11 +126,31 @@ public final class AgentOpqMemberState {
         return lastMovementProgressAtMs == 0L ? 0L : Math.max(0L, nowMs - lastMovementProgressAtMs);
     }
 
+    /**
+     * Observes the way-up runner at its launch staging; true once it stood on the same spot for two ticks (one AI
+     * tick's worth, in the background and in the foreground), and from then on until clearWayUpStaging (it left the
+     * staging window).
+     */
+    public boolean settledAtWayUpStaging(Point position) {
+        if (!wayUpStagingSettled) {
+            wayUpStagingStillTicks = position.equals(wayUpStagingPosition) ? wayUpStagingStillTicks + 1 : 0;
+            wayUpStagingPosition = new Point(position);
+            wayUpStagingSettled = wayUpStagingStillTicks >= 2;
+        }
+        return wayUpStagingSettled;
+    }
+    public void clearWayUpStaging() {
+        wayUpStagingPosition = null;
+        wayUpStagingStillTicks = 0;
+        wayUpStagingSettled = false;
+    }
+
     public void clearLocalWork() {
         nextActionAtMs = 0L;
         clearReactor();
         lastPosition = null;
         lastMovementProgressAtMs = 0L;
+        clearWayUpStaging();
         portalRow = 0;
         portalChoice = 0;
         clearPortalObservation();

@@ -43,6 +43,16 @@ public final class AgentGroundMovementPolicy {
         return 4;
     }
 
+    /**
+     * Whether a precise approach to this edge's waypoint comes to rest on it. Every precise edge but WALK
+     * launches (or enters its rope or portal) only from where the Agent stands at the end of an AI tick, and
+     * walking into a narrow window at speed overruns it (OPQ way up r81->r100: window -109..-107, 1 px from
+     * the platform end). WALK waypoints are passed through, so they keep their speed.
+     */
+    public static boolean restsOnPreciseWaypoint(AgentNavigationGraph.Edge navEdge) {
+        return navEdge != null && navEdge.type != AgentNavigationGraph.EdgeType.WALK;
+    }
+
     public static boolean isDirectionalDropEdge(AgentNavigationGraph.Edge navEdge) {
         return navEdge != null
                 && navEdge.type == AgentNavigationGraph.EdgeType.DROP

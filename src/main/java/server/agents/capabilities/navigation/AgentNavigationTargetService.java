@@ -89,7 +89,9 @@ public final class AgentNavigationTargetService {
             progressState.observe(bot.getMapId(), pathTargetPos, startRegionId, nowMs);
             AgentNavigationGraph.Edge timedOutEdge = runAiTick
                     ? AgentNavigationEdgeReliabilityRuntime.observeAttempt(
-                            entry, bot.getMapId(), startRegionId, botPos, nowMs)
+                            entry, bot.getMapId(), startRegionId,
+                            !AgentMovementStateRuntime.inAir(entry) && !AgentClimbStateRuntime.climbing(entry),
+                            botPos, nowMs)
                     : null;
             if (timedOutEdge != null) {
                 // Invalidate only the live step. The local pathTarget is replanned below while
@@ -193,7 +195,7 @@ public final class AgentNavigationTargetService {
 
             if (edge == null) {
                 Point verticalExitNudge = AgentVerticalTraversalService.recentExitNudgeTarget(
-                        graph, entry, startRegionId, nowMs);
+                        graph, entry, startRegionId, targetRegionId, pathTargetPos, nowMs);
                 if (verticalExitNudge != null) {
                     AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);
                     AgentNavigationDebugStateRuntime.clearNavJumpLaunch(entry);

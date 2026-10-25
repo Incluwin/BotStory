@@ -124,6 +124,10 @@ public final class AgentVerticalTraversalState {
         return recentExitNudgeTarget == null ? null : new Point(recentExitNudgeTarget);
     }
 
+    int recentExitRopeRegionId() {
+        return recentExitRopeRegionId;
+    }
+
     public void clear() {
         clearActive();
         recentExitGraph = null;
@@ -166,7 +170,10 @@ public final class AgentVerticalTraversalState {
         if (direction == 0) {
             direction = ropeX - ground.minX <= ground.maxX - ropeX ? 1 : -1;
         }
-        int targetX = Math.clamp(ropeX + direction * Math.max(1, nudgePx), ground.minX, ground.maxX);
+        // A jump-off lands farther out than the nudge. Stepping to the rope's side would walk the
+        // Agent back toward the rope it left, and off a ledge it landed near (610020004).
+        int offset = Math.max(Math.max(1, nudgePx), Math.abs(exitEdge.endPoint.x - ropeX));
+        int targetX = Math.clamp(ropeX + direction * offset, ground.minX, ground.maxX);
         return ground.pointAt(targetX);
     }
 }

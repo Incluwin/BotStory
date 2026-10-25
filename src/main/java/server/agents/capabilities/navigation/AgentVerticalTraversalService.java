@@ -186,15 +186,30 @@ public final class AgentVerticalTraversalService {
                 && entry.verticalTraversalState().blocksRecentInverseEntry(graph, edge, nowMs);
     }
 
+    /**
+     * The step away from the rope just left, while its exit guard lasts. A target of the caller's own
+     * on that ground at least as far from the rope takes precedence: walking there leaves the rope
+     * anyway. A top step-off picks the nudge's side from the platform's extents, and on 920010700's
+     * way up it walked the Agent away from its target for the whole guard.
+     */
     public static Point recentExitNudgeTarget(AgentNavigationGraph graph,
                                               AgentRuntimeEntry entry,
                                               int currentRegionId,
+                                              int targetRegionId,
+                                              Point targetPosition,
                                               long nowMs) {
         if (entry == null
                 || !entry.verticalTraversalState().hasRecentExitGuard(graph, currentRegionId, nowMs)) {
             return null;
         }
-        return entry.verticalTraversalState().recentExitNudgeTarget();
+        AgentVerticalTraversalState state = entry.verticalTraversalState();
+        Point nudge = state.recentExitNudgeTarget();
+        AgentNavigationGraph.Region rope = graph.getRegion(state.recentExitRopeRegionId());
+        if (nudge != null && rope != null && targetPosition != null && targetRegionId == currentRegionId
+                && Math.abs(targetPosition.x - rope.minX) >= Math.abs(nudge.x - rope.minX)) {
+            return null;
+        }
+        return nudge;
     }
 
     private static TraversalDirective directive(AgentVerticalTraversalState state,

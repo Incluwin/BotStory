@@ -88,9 +88,9 @@ class AgentNavigationEdgeReliabilityStateTest {
         AgentNavigationGraph.Edge edge = edge(1, 2, 0);
         state.beginAttempt(100, edge, 1, new Point(-20, 100), 1_000);
 
-        assertNull(state.observeAttempt(100, 1, new Point(-10, 100), 4_400, 3_500, 6));
-        assertNull(state.observeAttempt(100, 1, new Point(-10, 100), 7_899, 3_500, 6));
-        assertNotNull(state.observeAttempt(100, 1, new Point(-10, 100), 7_900, 3_500, 6));
+        assertNull(state.observeAttempt(100, 1, true, new Point(-10, 100), 4_400, 3_500, 6));
+        assertNull(state.observeAttempt(100, 1, true, new Point(-10, 100), 7_899, 3_500, 6));
+        assertNotNull(state.observeAttempt(100, 1, true, new Point(-10, 100), 7_900, 3_500, 6));
     }
 
     @Test
@@ -101,8 +101,8 @@ class AgentNavigationEdgeReliabilityStateTest {
 
         state.deferAttemptTimeout(100, 4_400);
 
-        assertNull(state.observeAttempt(100, 1, new Point(-20, 100), 7_899, 3_500, 6));
-        assertNotNull(state.observeAttempt(100, 1, new Point(-20, 100), 7_900, 3_500, 6));
+        assertNull(state.observeAttempt(100, 1, true, new Point(-20, 100), 7_899, 3_500, 6));
+        assertNotNull(state.observeAttempt(100, 1, true, new Point(-20, 100), 7_900, 3_500, 6));
     }
 
     @Test
@@ -111,10 +111,10 @@ class AgentNavigationEdgeReliabilityStateTest {
         AgentNavigationGraph.Edge edge = edge(22, 20, 2_211);
         state.beginAttempt(100, edge, 22, new Point(2_211, 100), 1_000);
 
-        assertNull(state.observeAttempt(100, 28, new Point(2_180, 140), 2_000, 3_500, 6));
-        assertNull(state.observeAttempt(100, 22, new Point(2_211, 100), 3_000, 3_500, 6));
-        assertNull(state.observeAttempt(100, 28, new Point(2_180, 140), 4_499, 3_500, 6));
-        assertNotNull(state.observeAttempt(100, 22, new Point(2_211, 100), 4_500, 3_500, 6));
+        assertNull(state.observeAttempt(100, 28, true, new Point(2_180, 140), 2_000, 3_500, 6));
+        assertNull(state.observeAttempt(100, 22, true, new Point(2_211, 100), 3_000, 3_500, 6));
+        assertNull(state.observeAttempt(100, 28, true, new Point(2_180, 140), 4_499, 3_500, 6));
+        assertNotNull(state.observeAttempt(100, 22, true, new Point(2_211, 100), 4_500, 3_500, 6));
     }
 
     @Test
@@ -124,8 +124,43 @@ class AgentNavigationEdgeReliabilityStateTest {
         state.recordFailure(100, edge, 900, 3, 30_000, 60_000, 32);
         state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
 
-        assertNull(state.observeAttempt(100, 2, new Point(100, 100), 1_500, 3_500, 6));
+        assertNull(state.observeAttempt(100, 2, true, new Point(100, 100), 1_500, 3_500, 6));
         assertEquals(0, state.penalty(100, edge, 1_500, 60_000, 2_000, 10_000));
+    }
+
+    @Test
+    void flightLandingAnywhereButItsDestinationFailsTheEdge() {
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        for (int landing : new int[] {5, 1}) {
+            AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+            state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+
+            assertNull(state.observeAttempt(100, -1, false, new Point(40, 60), 1_200, 3_500, 6));
+            AgentNavigationGraph.Edge missed =
+                    state.observeAttempt(100, landing, true, new Point(30, 100), 1_400, 3_500, 6);
+
+            assertNotNull(missed, "landed on r" + landing);
+            assertEquals(1, missed.fromRegionId);
+            assertEquals(2, missed.toRegionId);
+        }
+    }
+
+    @Test
+    void flightLandingOnItsDestinationOrARopeIsNoMiss() {
+        AgentNavigationEdgeReliabilityState state = new AgentNavigationEdgeReliabilityState();
+        AgentNavigationGraph.Edge edge = edge(1, 2, 0);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_000);
+
+        assertNull(state.observeAttempt(100, -1, false, new Point(30, 60), 1_200, 3_500, 6));
+        assertNull(state.observeAttempt(100, 7, false, new Point(60, 70), 1_400, 3_500, 6),
+                "a rope caught in flight belongs to the vertical traversal");
+        assertNull(state.observeAttempt(100, 5, true, new Point(60, 160), 1_600, 3_500, 6),
+                "no flight since the last observation");
+        state.recordFailure(100, edge, 1_700, 3, 30_000, 60_000, 32);
+        state.beginAttempt(100, edge, 1, new Point(0, 100), 1_800);
+        assertNull(state.observeAttempt(100, -1, false, new Point(40, 60), 2_000, 3_500, 6));
+        assertNull(state.observeAttempt(100, 2, true, new Point(100, 100), 2_200, 3_500, 6));
+        assertEquals(0, state.trackedEdgeCount(100, 2_200, 60_000), "landing on the destination clears failures");
     }
 
     @Test

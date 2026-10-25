@@ -41,7 +41,13 @@ public final class AgentNavigationEdgeValidationService {
         }
         boolean climbing = AgentClimbStateRuntime.climbing(entry);
         boolean airborne = AgentMovementStateRuntime.inAir(entry);
-        if (currentRegionId != edge.fromRegionId) {
+        // An airborne Agent has no current region (AgentNavigationRegionService), so a JUMP, DROP or
+        // rope jump-off in flight cannot match its source region until it lands. Rejecting it here
+        // cleared every committed flight at its first AI tick, charged the edge a failure and handed
+        // air steering a hold at the mid-air point, which pulled the Agent back against its launch.
+        // The airborne cases below keep the edge; the landing region completes or replaces it.
+        boolean inFlight = airborne && !climbing && currentRegionId < 0;
+        if (currentRegionId != edge.fromRegionId && !inFlight) {
             return new Result(Status.REJECTED, "unexpected-source-region");
         }
         if (!validAnchors(graph, edge)) {
@@ -63,6 +69,8 @@ public final class AgentNavigationEdgeValidationService {
                         : new Result(Status.REJECTED, "climb-exit-not-climbing");
             }
             if (entryEdge && airborne) {
+                // A rope entry is done only once the Agent hangs on the rope; in the air, launched or
+                // falling past it, it is still approaching that attachment.
                 return new Result(Status.APPROACH, "rope-entry-airborne");
             }
         } else if (climbing) {

@@ -868,7 +868,7 @@ final class AgentOpqCoordinator {
         }
         int row = wayUpRow(agent.getPosition().y);
         if (row < 0) {
-            navigateWayUpInitialAscent(entry, agent);
+            navigateWayUpInitialAscent(entry, agent, member);
             return;
         }
         if (row >= 16) return;
@@ -907,8 +907,9 @@ final class AgentOpqCoordinator {
         return new Point(LOBBY_UPPER_PLATFORM);
     }
 
-    private static void navigateWayUpInitialAscent(AgentRuntimeEntry entry, Character agent) {
-        ACTIONS.navigate(entry, wayUpAscentTarget(agent.getPosition()), true);
+    private static void navigateWayUpInitialAscent(AgentRuntimeEntry entry, Character agent,
+                                                   AgentOpqMemberState member) {
+        ACTIONS.navigate(entry, wayUpAscentTarget(agent.getPosition(), member), true);
     }
 
     /**
@@ -917,14 +918,19 @@ final class AgentOpqCoordinator {
      * the climbing intent a grab needs (2026-10-20 live: an authored jump from x -117 had none, passed the rope below
      * its bottom, and the runner fell back to y -406 for the whole run). The launch is 1 px from the platform's end,
      * so the runner stops at WAY_UP_LAUNCH_STAGING first: walked into at speed, the launch is overrun off the end.
+     * It keeps that target until it has stood still there for an AI tick, so the route to the rope is planned from rest;
+     * switching while it still slid in was planned at speed and overran every time, and the live runner got up only
+     * when its AI tick happened to fall after it had stopped.
      */
-    static Point wayUpAscentTarget(Point position) {
+    static Point wayUpAscentTarget(Point position, AgentOpqMemberState member) {
         int y = position.y;
+        boolean staging = y > -870 && y <= -820 && position.x >= WAY_UP_LAUNCH_STAGING.x - 6;
+        if (!staging) member.clearWayUpStaging();
         if (y > -540) return new Point(-176, -551);
         if (y > -820) return new Point(-173, -844);
         if (y > -1_590) {
-            return position.x < WAY_UP_LAUNCH_STAGING.x - 6 && y > -870
-                    ? new Point(WAY_UP_LAUNCH_STAGING) : new Point(-43, -1_623);
+            boolean waits = y > -870 && (!staging || !member.settledAtWayUpStaging(position));
+            return waits ? new Point(WAY_UP_LAUNCH_STAGING) : new Point(-43, -1_623);
         }
         if (y > -1_840) return Math.abs(position.x - 178) > 28 ? new Point(178, -1_664) : new Point(178, -1_862);
         return Math.abs(position.x - 100) > 28 ? new Point(100, -1_866) : new Point(100, -2_022);

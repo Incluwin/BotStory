@@ -27,7 +27,8 @@ public final class AgentGroundActionExecutor {
             return;
         }
 
-        AgentGroundMotion motion = AgentGroundPhysicsService.applyGroundMotion(entry, bot, currentFoothold);
+        AgentGroundMotion motion = AgentGroundPhysicsService.applyGroundMotion(
+                entry, bot, currentFoothold, action.restX());
         if (motion.lostGround()) {
             AgentMovementBroadcastService.broadcastMovement(entry);
             return;

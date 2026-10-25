@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.opq;
 import client.Character;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.movement.AgentMovementPhysicsStateRuntime;
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.movement.AgentJumpProbeService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
@@ -24,9 +25,11 @@ import server.maps.Rope;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -94,11 +97,58 @@ class AgentOpqNavigationGraphTest {
         // long rope (x -43) below its bottom; the graph's edge onto it launches from x -108.
         for (int speed : new int[] {100, 102}) {
             for (int phase = 0; phase < 2; phase++) {
+                AgentOpqMemberState runner = new AgentOpqMemberState(1, AgentOpqMemberState.MemberType.AGENT);
                 Point end = followCoordinatorTargets(AgentOpqDefinition.ON_WAY_UP_MAP, new Point(-150, -846), speed,
-                        phase, AgentOpqCoordinator::wayUpAscentTarget, position -> position.y <= -1_600);
+                        phase, position -> AgentOpqCoordinator.wayUpAscentTarget(position, runner),
+                        position -> position.y <= -1_600);
                 assertTrue(end.y <= -1_600, "speed " + speed + " phase " + phase + " ended at " + end);
             }
         }
+    }
+
+    @Test
+    void wayUpRunnerStandingBesideTheLaunchCatchesTheLongRopeOnItsFirstJump() {
+        // 2026-10-20: a runner stopped at x -112 kept its continuous X 0.43 px off the pixel (reported as vx -9 or +9).
+        // From a stop the precise approach to the launch (-108, window -109..-107) overran the platform's end at -106 and
+        // fell to the row below unless that offset happened to end its first substep 1 px out: 0/40 first laps offline.
+        for (int speed : new int[] {100, 104}) {
+            for (double offset : new double[] {-0.432, 0.0, 0.431}) {
+                for (int phase = 0; phase < 2; phase++) {
+                    List<Point> path = new ArrayList<>();
+                    Point end = followCoordinatorTargets(AgentOpqDefinition.ON_WAY_UP_MAP, new Point(-112, -846), speed,
+                            phase, entry -> AgentMovementPhysicsStateRuntime.setPhysicsX(entry, -112 + offset),
+                            position -> {
+                                path.add(position);
+                                return new Point(-43, -1_623);
+                            },
+                            position -> position.y <= -1_600);
+                    String run = "speed " + speed + " offset " + offset + " phase " + phase;
+                    assertTrue(end.y <= -1_600, run + " ended at " + end);
+                    assertTrue(path.stream().allMatch(position -> position.y <= -820), run + " fell off the platform");
+                }
+            }
+        }
+    }
+
+    @Test
+    void wayUpRunnerLeavesTheLaunchStagingOnlyFromRest() {
+        // 2026-10-20: the route to the long rope was planned while the runner still slid into its staging spot and
+        // overran the launch off the platform's end; offline, live code got up only when an AI tick fell after it stopped.
+        AgentOpqMemberState runner = new AgentOpqMemberState(1, AgentOpqMemberState.MemberType.AGENT);
+        Point staging = new Point(-114, -846);
+        Point rope = new Point(-43, -1_623);
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-150, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-119, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner), "still one tick");
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner));
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-109, -846), runner), "walking to the launch");
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-80, -872), runner), "in flight");
+        assertEquals(new Point(-173, -844), AgentOpqCoordinator.wayUpAscentTarget(new Point(-120, -700), runner));
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-115, -846), runner), "a new lap waits");
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner), "moved");
+        assertEquals(staging, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner));
+        assertEquals(rope, AgentOpqCoordinator.wayUpAscentTarget(new Point(-116, -846), runner));
     }
 
     @Test
@@ -191,6 +241,12 @@ class AgentOpqNavigationGraphTest {
      */
     private static Point followCoordinatorTargets(int mapId, Point start, int speed, int phase,
                                                   Function<Point, Point> targetFor, Predicate<Point> done) {
+        return followCoordinatorTargets(mapId, start, speed, phase, entry -> { }, targetFor, done);
+    }
+
+    private static Point followCoordinatorTargets(int mapId, Point start, int speed, int phase,
+                                                  Consumer<AgentRuntimeEntry> prepare,
+                                                  Function<Point, Point> targetFor, Predicate<Point> done) {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
         AgentMovementProfile profile = new AgentMovementProfile(speed, 100);
         // The tick only asks for the graph in the background; live, a room's graph is warm before its runner arrives.
@@ -214,6 +270,7 @@ class AgentOpqNavigationGraphTest {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         AgentMovementStateRuntime.setMovementProfile(entry, profile);
         entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);
+        prepare.accept(entry);
         for (int tick = 0; tick < 480 && !done.test(position.get()); tick++) {
             AgentModeService.startMoveTo(entry, targetFor.apply(position.get()), true);
             AgentStandaloneMoveTargetCoordinator.tickStandaloneMoveTarget(entry, agent, (tick + phase) % 2 == 0);
