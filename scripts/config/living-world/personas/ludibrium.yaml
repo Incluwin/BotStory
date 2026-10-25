@@ -176,6 +176,7 @@
 - id: saskia
   name: Saskia
   look: { gender: female }
+  spouse: jasper
   title: "Path Runner"
   job: ASSASSIN
   level: { min: 60, max: 63 }
@@ -239,7 +240,8 @@
     questWaiting.saskia-errand-run: ["twenty-five!"]
     questComplete.saskia-errand-run: ["twenty-five. faster than last time. barely. i'll take it."]
     about.ignatz: ["Ignatz is the slowest man in Ludibrium and the only one who's never once been late. i don't understand it. i love him for it."]
-    about.jasper: ["Jasper hunts ghosts on the warped path for bounties. i run errands past them. we split the difference. it's a long story. it's a fast story."]
+    about.jasper: ["Jasper hunts ghosts on the warped path for bounties. i run errands past them. we split the difference. it's a long story. it's a fast story. it ends with us married."]
+    spouse.parted: ["{name} and i split up. fast. like everything i do. don't ask."]
     about.prue: ["Prue's line never stops. i respect that. i've never once seen her run, though."]
     aboutUnknown: ["never ran past them."]
     friend.close: ["you're the only person i slow down for. don't make it weird. it's weird."]
@@ -253,6 +255,7 @@
 - id: jasper
   name: Jasper
   look: { gender: male }
+  spouse: saskia
   title: "Bounty Hunter"
   job: GUNSLINGER
   level: { min: 60, max: 63 }
@@ -315,7 +318,8 @@
     questAccept.jasper-bounty: ["the third warped stretch."]
     questWaiting.jasper-bounty: ["ten keys."]
     questComplete.jasper-bounty: ["ten. paid. the board's lighter."]
-    about.saskia: ["Saskia owes me a favour. i owe her three. we don't count. that's how you know it's real."]
+    about.saskia: ["Saskia owes me a favour. i owe her three. we don't count. that's how you know it's real. she married me anyway. that's four."]
+    spouse.parted: ["{name} and i are finished. the board's still full. i'll manage."]
     about.ansel: ["Ansel sends people to me to ask about the deep buffoons. i tell them where to stand. he could just come. he won't. Orbis people."]
     about.kettle: ["Kettle. he's still bosun of the Nautilus, i hear. still won't sit in the captain's cabin. good. somebody should leave it empty."]
     about.flint: ["Flint still keeps the Nautilus powder? tell him i said keep it dry. he'll know who said it."]

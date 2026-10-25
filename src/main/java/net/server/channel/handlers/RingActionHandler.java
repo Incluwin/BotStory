@@ -146,6 +146,54 @@ public final class RingActionHandler extends AbstractPacketHandler {
 
         source.setMarriageItemId(itemid);
         target.sendPacket(WeddingPackets.onMarriageRequest(source.getName(), source.getId()));
+        server.living.LivingWorldHooks.proposalSent(source, target); // a companion has no window: it answers itself
+    }
+
+    /**
+     * {@code target}'s answer to the proposal {@code source} (id {@code sourceId}) sent (the client's Accept/Deny,
+     * mode 2), which engages them; a companion answers through it too (LivingWorldHooks.proposalSent).
+     */
+    public static void answerProposal(Character source, Character target, int sourceId, boolean accepted) {
+        final int itemid = source.getMarriageItemId();
+        if (target.getPartnerId() > 0 || source.getId() != sourceId || itemid <= 0 || !source.haveItem(itemid) || source.getPartnerId() > 0 || !source.isAlive() || !target.isAlive()) {
+            target.sendPacket(PacketCreator.enableActions());
+            return;
+        }
+
+        if (accepted) {
+            final int newItemId = getEngagementBoxId(itemid);
+            if (!InventoryManipulator.checkSpace(target.getClient(), newItemId, 1, "") || !InventoryManipulator.checkSpace(source.getClient(), newItemId, 1, "")) {
+                target.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+
+            try {
+                InventoryManipulator.removeById(source.getClient(), InventoryType.USE, itemid, 1, false, false);
+
+                int marriageId = target.getWorldServer().createRelationship(source.getId(), target.getId());
+                source.setPartnerId(target.getId()); // engage them (new marriageitemid, partnerid for both)
+                target.setPartnerId(source.getId());
+
+                source.setMarriageItemId(newItemId);
+                target.setMarriageItemId(newItemId + 1);
+
+                InventoryManipulator.addById(source.getClient(), newItemId, (short) 1);
+                InventoryManipulator.addById(target.getClient(), (newItemId + 1), (short) 1);
+
+                source.sendPacket(WeddingPackets.OnMarriageResult(marriageId, source, false));
+                target.sendPacket(WeddingPackets.OnMarriageResult(marriageId, source, false));
+
+                source.sendPacket(WeddingPackets.OnNotifyWeddingPartnerTransfer(target.getId(), target.getMapId()));
+                target.sendPacket(WeddingPackets.OnNotifyWeddingPartnerTransfer(source.getId(), source.getMapId()));
+            } catch (Exception e) {
+                log.error("Error with engagement", e);
+            }
+        } else {
+            source.dropMessage(1, "She has politely declined your engagement request.");
+            source.sendPacket(WeddingPackets.OnMarriageResult((byte) 0));
+
+            source.setMarriageItemId(-1);
+        }
     }
 
     private static void eraseEngagementOffline(int characterId) {
@@ -339,46 +387,7 @@ public final class RingActionHandler extends AbstractPacketHandler {
                     return;
                 }
 
-                final int itemid = source.getMarriageItemId();
-                if (target.getPartnerId() > 0 || source.getId() != id || itemid <= 0 || !source.haveItem(itemid) || source.getPartnerId() > 0 || !source.isAlive() || !target.isAlive()) {
-                    target.sendPacket(PacketCreator.enableActions());
-                    return;
-                }
-
-                if (accepted) {
-                    final int newItemId = getEngagementBoxId(itemid);
-                    if (!InventoryManipulator.checkSpace(c, newItemId, 1, "") || !InventoryManipulator.checkSpace(source.getClient(), newItemId, 1, "")) {
-                        target.sendPacket(PacketCreator.enableActions());
-                        return;
-                    }
-
-                    try {
-                        InventoryManipulator.removeById(source.getClient(), InventoryType.USE, itemid, 1, false, false);
-
-                        int marriageId = c.getWorldServer().createRelationship(source.getId(), target.getId());
-                        source.setPartnerId(target.getId()); // engage them (new marriageitemid, partnerid for both)
-                        target.setPartnerId(source.getId());
-
-                        source.setMarriageItemId(newItemId);
-                        target.setMarriageItemId(newItemId + 1);
-
-                        InventoryManipulator.addById(source.getClient(), newItemId, (short) 1);
-                        InventoryManipulator.addById(c, (newItemId + 1), (short) 1);
-
-                        source.sendPacket(WeddingPackets.OnMarriageResult(marriageId, source, false));
-                        target.sendPacket(WeddingPackets.OnMarriageResult(marriageId, source, false));
-
-                        source.sendPacket(WeddingPackets.OnNotifyWeddingPartnerTransfer(target.getId(), target.getMapId()));
-                        target.sendPacket(WeddingPackets.OnNotifyWeddingPartnerTransfer(source.getId(), source.getMapId()));
-                    } catch (Exception e) {
-                        log.error("Error with engagement", e);
-                    }
-                } else {
-                    source.dropMessage(1, "She has politely declined your engagement request.");
-                    source.sendPacket(WeddingPackets.OnMarriageResult((byte) 0));
-
-                    source.setMarriageItemId(-1);
-                }
+                answerProposal(source, target, id, accepted);
                 break;
 
             case 3: // Break Engagement

@@ -402,6 +402,7 @@
 - id: gunnar
   name: Gunnar
   look: { gender: male }
+  spouse: { name: Rowena, gender: female }
   title: "Logger of the East Forest"
   job: FIGHTER
   level: { min: 32, max: 35 }
@@ -433,7 +434,7 @@
     who: ["Gunnar. i logged the East Forest thirty seasons. it's still standing, so i must have done it right."]
     bye: ["mind the roots.", "go steady."]
     thanks: ["no need. a tree doesn't thank the rain."]
-    smallTalk: ["an oak takes a hundred years and a good axe takes an afternoon. that's why you think before you swing.", "the stumps on the East Rocky Mountain were trees i knew once. now they walk. i try not to take it personal."]
+    smallTalk: ["an oak takes a hundred years and a good axe takes an afternoon. that's why you think before you swing.", "the stumps on the East Rocky Mountain were trees i knew once. now they walk. i try not to take it personal.", "my wife Rowena says i smell of sap. thirty seasons married. she'd worry if i didn't."]
     speakPlainly: ["slow down. say it like you're telling a tree. trees are patient."]
     offer: ["thirty-three thousand meso and i walk with you eight hours. a fair day's felling. i swing where you point."]
     join: ["right. you lead, i'll clear.", "eight hours. a short season. let's not waste it."]
@@ -470,6 +471,8 @@
     about.marrow: ["Marrow. i felled the yew for the bow he still draws. he nods at me like i'm a tree he respects."]
     about.rurik: ["every post on Rurik's fence came off my saw. the boars still get through. that's not the posts' fault."]
     about.sorrel: ["Sorrel buys my oak offcuts for her stocks. she talks about springs the way i talk about trees."]
+    about.rowena: ["Rowena's my wife. she says i talk to trees more than to her. the trees never answer back. she does. i married the right one."]
+    spouse.parted: ["{name} and i aren't together anymore. thirty seasons. the forest's quieter than i'd like."]
     aboutUnknown: ["never shared a fire with them."]
 
 - id: sorrel

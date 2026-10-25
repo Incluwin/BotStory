@@ -73,10 +73,33 @@ public final class Content {
                           List<Integer> giftItemIds,
                           int portraitNpcId,
                           Look look,
-                          String file) {
+                          String file,
+                          Spouse spouse) {
+        public Persona(String id, String name, String title, String job, LevelBand level, Strength strength,
+                       String loadout, String personality, String dialogueStyle, String homeTown,
+                       List<RoutineSlot> routine, boolean recruitable, String contract, List<String> questLines,
+                       String arc, List<Relationship> relationships, List<String> rumors,
+                       Map<String, List<String>> dialogue, int benchToleranceDays, int paceGap, int maxLag,
+                       List<Integer> giftItemIds, int portraitNpcId, Look look, String file) {
+            this(id, name, title, job, level, strength, loadout, personality, dialogueStyle, homeTown, routine,
+                    recruitable, contract, questLines, arc, relationships, rumors, dialogue, benchToleranceDays, paceGap,
+                    maxLag, giftItemIds, portraitNpcId, look, file, null);
+        }
+
         public List<String> lines(String intent) {
             List<String> lines = dialogue.get(intent);
             return lines == null ? List.of() : lines;
+        }
+    }
+
+    /**
+     * A lore couple (docs/BOT_LORE_COUPLES_PLAN.md): the persona is married in its story. {@code persona} names another
+     * persona whose own {@code spouse} names this one back; otherwise {@code name} and {@code gender} describe a spouse
+     * who is no Resident, born as a citizen of the persona's home region.
+     */
+    public record Spouse(String persona, String name, String gender) {
+        public boolean citizen() {
+            return persona == null;
         }
     }
 

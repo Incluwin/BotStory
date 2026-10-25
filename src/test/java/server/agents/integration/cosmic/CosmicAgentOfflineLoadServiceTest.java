@@ -3,7 +3,9 @@ package server.agents.integration.cosmic;
 import client.Character;
 import client.Client;
 import client.Disease;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import server.agents.integration.AgentLoadHook;
 import server.life.MobSkill;
 import server.maps.MapleMap;
 import tools.Pair;
@@ -91,5 +93,56 @@ class CosmicAgentOfflineLoadServiceTest {
                 "channelAdd",
                 "worldAdd",
                 "mapAdd"), calls);
+    }
+
+    @AfterEach
+    void uninstallLoadRule() {
+        AgentLoadHook.install(null);
+    }
+
+    /** The installed load rule (lore couples) sees the character once, loaded and before it is registered anywhere. */
+    @Test
+    void theLoadRuleRunsAfterTheLoadAndBeforeAnyRegistration() throws Exception {
+        List<String> calls = new ArrayList<>();
+        Character agent = mock(Character.class);
+        AgentLoadHook.install(loaded -> {
+            assertSame(agent, loaded);
+            calls.add("rule");
+        });
+
+        CosmicAgentOfflineLoadService.loadOfflineAgent(55, 0, 1, mock(MapleMap.class), new Point(), recording(agent, calls));
+
+        assertEquals(List.of("load", "rule", "channelAdd", "worldAdd", "mapAdd"), calls);
+    }
+
+    @Test
+    void aFailingLoadRuleNeverFailsTheLoad() throws Exception {
+        List<String> calls = new ArrayList<>();
+        Character agent = mock(Character.class);
+        AgentLoadHook.install(loaded -> {
+            throw new IllegalStateException("broken rule");
+        });
+
+        Character loaded = CosmicAgentOfflineLoadService.loadOfflineAgent(55, 0, 1, mock(MapleMap.class), new Point(),
+                recording(agent, calls));
+
+        assertSame(agent, loaded);
+        assertEquals(List.of("load", "channelAdd", "worldAdd", "mapAdd"), calls);
+    }
+
+    private static CosmicAgentOfflineLoadService.Hooks recording(Character agent, List<String> calls) {
+        return new CosmicAgentOfflineLoadService.Hooks(
+                (world, channel) -> mock(Client.class),
+                (characterId, loadClient) -> {
+                    calls.add("load");
+                    return agent;
+                },
+                characterId -> null,
+                (world, channel, mapId) -> null,
+                (map, desired) -> desired,
+                tickAgent -> { },
+                (world, channel, tickAgent) -> calls.add("channelAdd"),
+                (world, channel, tickAgent) -> calls.add("worldAdd"),
+                (map, tickAgent) -> calls.add("mapAdd"));
     }
 }

@@ -2,7 +2,10 @@ package server.living.population;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.living.config.Content.Persona;
+import server.living.config.Content.Spouse;
 import server.living.population.PopulationContent.Region;
+import server.living.resident.ResidentSpots;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -37,6 +40,7 @@ public final class Churn {
     private long lastBirthMs;
     private long lastRetirementCheckMs;
     private volatile boolean seeding;
+    private boolean loreSpousesChecked;
 
     Churn(Population population) {
         this.population = population;
@@ -53,6 +57,7 @@ public final class Churn {
      * BIRTHS_PER_DAY handle the last tenth.
      */
     void step(long now) {
+        birthLoreSpouses();
         int queued = seedQueued();
         int active = population.activeCount();
         int target = population.config().TARGET_CITIZENS;
@@ -149,6 +154,46 @@ public final class Churn {
     /** Queued seeds dropped since boot: the band went out of reach (a reload) or creation failed. */
     public int seedsSkipped() {
         return seedsSkipped.get();
+    }
+
+    /**
+     * Lore couples (docs/BOT_LORE_COUPLES_PLAN.md): on the first sweep after boot, every persona's citizen spouse not
+     * born yet is born in the region of the persona's home town. One that fails (its name taken) waits for a restart.
+     */
+    private void birthLoreSpouses() {
+        if (loreSpousesChecked) {
+            return;
+        }
+        loreSpousesChecked = true;
+        if (population.world() == null || population.world().content() == null) {
+            return;
+        }
+        for (Persona persona : population.world().content().personas().values()) {
+            Spouse spouse = persona.spouse();
+            if (spouse == null || !spouse.citizen() || population.citizenByName(spouse.name()) != null) {
+                continue;
+            }
+            Citizen born = population.generator().birthSpouse(spouse.name(), "female".equals(spouse.gender()),
+                    regionOfTown(persona.homeTown()));
+            if (born != null) {
+                log.info("lore spouse {} of {} born ({})", born.name(), persona.id(), born.characterId());
+            }
+        }
+    }
+
+    /** The region whose towns include {@code town}'s map; the first region when none does. */
+    private String regionOfTown(String town) {
+        int mapId = ResidentSpots.townMapId(town);
+        String first = null;
+        for (Region region : population.content().regions().values()) {
+            if (region.towns().contains(mapId)) {
+                return region.id();
+            }
+            if (first == null) {
+                first = region.id();
+            }
+        }
+        return first;
     }
 
     /** Births up to SEED_BATCH queued seeds; returns how many it took off the queue. */

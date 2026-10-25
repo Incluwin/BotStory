@@ -55,6 +55,7 @@ public final class LivingWorld {
     private final LivingStore store;
     private final BondService bonds;
     private final server.living.bond.Friendship friendship;
+    private final server.living.bond.CompanionWeddings weddings;
     private final ArcService arcs;
     private final QuestLedger quests;
     private final QuestLog questLog;
@@ -108,6 +109,7 @@ public final class LivingWorld {
         this.store = new LivingStore();
         this.bonds = new BondService(this);
         this.friendship = new server.living.bond.Friendship(this);
+        this.weddings = new server.living.bond.CompanionWeddings(this);
         this.arcs = new ArcService(this);
         this.quests = new QuestLedger(this);
         this.questLog = new QuestLog(this);
@@ -196,6 +198,8 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
+        // lore couples: a bot its content writes as married wears its half of a real marriage from its next load
+        server.agents.integration.AgentLoadHook.install(server.living.bond.LoreCouples.of(world));
         // a companion a party quest lets go goes back to its owner, not to Kerning TownLife (P6); before any admission,
         // whose own rollback recovers its Agents
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
@@ -347,6 +351,7 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
+        server.agents.integration.AgentLoadHook.install(null);
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(null);
         world.roster.installInstanceDelegation(null);
         server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);
@@ -443,6 +448,10 @@ public final class LivingWorld {
 
     public server.living.bond.Friendship friendship() {
         return friendship;
+    }
+
+    public server.living.bond.CompanionWeddings weddings() {
+        return weddings;
     }
 
     public ArcService arcs() {

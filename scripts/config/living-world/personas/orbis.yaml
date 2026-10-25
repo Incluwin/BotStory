@@ -184,6 +184,7 @@
 - id: vesna
   name: Vesna
   look: { gender: female }
+  spouse: ansel
   title: "Cloud Park Warden"
   job: IL_WIZARD
   level: { min: 60, max: 62 }
@@ -246,7 +247,8 @@
     questAccept.vesna-moon-tally: ["lunar pixies, the middle parks."]
     questWaiting.vesna-moon-tally: ["fifteen. the scale's empty."]
     questComplete.vesna-moon-tally: ["fifteen. heavy month. the parks are healthy."]
-    about.ansel: ["Ansel shoots the pixies i'm counting. we have words. the words are numbers."]
+    about.ansel: ["Ansel shoots the pixies i'm counting. we have words. the words are numbers. i married him anyway. the numbers were good."]
+    spouse.parted: ["{name} and i are through. i still count the pixies. nobody shoots them now."]
     about.corliss: ["Corliss asks me for the pixie count before the evening ship. i don't know what he does with it. i think it goes in the ledger."]
     about.ottilie: ["Ottilie sweeps her steps every evening. the pixies leave her alone. they know."]
     aboutUnknown: ["not on the clouds. not in my count."]
@@ -261,6 +263,7 @@
 - id: ansel
   name: Ansel
   look: { gender: male }
+  spouse: vesna
   title: "Garden Hunter"
   job: HUNTER
   level: { min: 60, max: 62 }
@@ -323,7 +326,8 @@
     questAccept.ansel-fletching: ["soft ones, not stiff. the stiff ones whistle."]
     questWaiting.ansel-fletching: ["twenty feathers."]
     questComplete.ansel-fletching: ["twenty. a quiver's worth. quiet ones."]
-    about.vesna: ["Vesna counts the pixies. i shoot some of them. she counts that too. we're working on it."]
+    about.vesna: ["Vesna counts the pixies. i shoot some of them. she counts that too. we're married. we're still working on it."]
+    spouse.parted: ["{name} and i are done. the gardens are quiet. too quiet."]
     about.bjarke: ["Bjarke and i hunted Wolf Territory one winter. he talked the whole time. the wolves heard us coming for a week."]
     about.jasper: ["Jasper shoots ghosts in Ludibrium. says it's the same as hunting. it isn't. ghosts don't run."]
     about.corliss: ["Corliss logs me out every morning and in every night. i've never once told him where i'm going. he writes 'gardens'. he's right."]

@@ -2,6 +2,7 @@
 - id: kettle
   name: Kettle
   look: { gender: male }
+  spouse: mae
   title: "Bosun Without a Captain"
   job: BRAWLER
   level: { min: 30, max: 33 }
@@ -47,7 +48,8 @@
     questComplete.kettle-deck-drill: ["twenty. you'd pass drill."]
     questOffer.kettle-what-the-tide-took: ["the tide took the captain's chest. torties nest where it went down. ten tortie shells, and whatever's under them."]
     questComplete.kettle-what-the-tide-took: ["ten shells and no chest. the sea keeps what it takes. still. thank you."]
-    about.mae: ["Mae keeps the guns. she'd have been captain if she wanted it. she doesn't."]
+    about.mae: ["Mae keeps the guns. she'd have been captain if she wanted it. she doesn't. she wanted me. still can't work out why."]
+    spouse.parted: ["{name} and i are finished. the sea keeps what it takes."]
     about.pike: ["the cabin boy. good hands, bad ideas."]
     aboutUnknown: ["not crew."]
     questOffer.kettle-deck-boots: ["you slide on a wet deck like a landsman. Tilda at the dock makes grip soles from lorang claws. twenty."]
@@ -75,6 +77,7 @@
 - id: mae
   name: Mae
   look: { gender: female }
+  spouse: kettle
   title: "Gunner"
   job: GUNSLINGER
   level: { min: 30, max: 31 }
@@ -100,7 +103,8 @@
     smallTalk: ["a captain's job is to point. a gunner's job is to hit. i know which is harder."]
     questOffer.mae-powder-and-shot: ["clangs on the shore. their claws make good shot. fifteen claws."]
     questComplete.mae-powder-and-shot: ["fifteen. that's a broadside."]
-    about.kettle: ["Kettle runs the ship. he just won't call himself captain."]
+    about.kettle: ["Kettle runs the ship. he just won't call himself captain. i married him anyway. somebody has to keep him from doing anything stupid."]
+    spouse.parted: ["{name} and i are done. the guns are still mine."]
     aboutUnknown: ["not on the gun deck."]
 
 - id: pike

@@ -3,6 +3,7 @@ package server.agents.integration.cosmic;
 import client.Character;
 import client.Client;
 import client.Disease;
+import server.agents.integration.AgentLoadHook;
 import server.life.MobSkill;
 import server.maps.MapleMap;
 import tools.Pair;
@@ -81,6 +82,7 @@ public final class CosmicAgentOfflineLoadService {
         Character agent = hooks.characterLoader().load(characterId, client);
         client.setPlayer(agent);
         client.setAccID(agent.getAccountID());
+        AgentLoadHook.loaded(agent);
 
         Map<Disease, Pair<Long, MobSkill>> diseases = hooks.diseaseStorageLoader().load(characterId);
         if (diseases != null) {

@@ -171,6 +171,9 @@ public final class LivingWorldHooks {
             if (AgentPresence.isAgent(chr)) {
                 PersonalKnowledge.shared().visited(chr.getId(), map.getId());
             }
+            if (world.weddings() != null) {
+                world.weddings().enteredMap(chr, map.getId()); // an engaged companion dresses for its wedding
+            }
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }
@@ -353,6 +356,35 @@ public final class LivingWorldHooks {
             world.friendship().onFame(giver, target, delta);
         } catch (RuntimeException failure) {
             log.warn("living world famed hook failed", failure);
+        }
+    }
+
+    /** {@code source} proposed to {@code target} with an engagement ring; a companion answers it (CompanionWeddings). */
+    public static void proposalSent(Character source, Character target) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || source == null || target == null) {
+            return;
+        }
+        try {
+            world.weddings().proposed(source, target);
+        } catch (RuntimeException failure) {
+            log.warn("living world proposalSent hook failed", failure);
+        }
+    }
+
+    /**
+     * {@code player} confirmed their vows to the officiant {@code officiantNpcId} (9201002.js at the cathedral,
+     * 9201011.js at the chapel); a companion partner confirms its own.
+     */
+    public static void vowsConfirmed(Character player, int officiantNpcId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || player == null) {
+            return;
+        }
+        try {
+            world.weddings().vowsConfirmed(player, officiantNpcId);
+        } catch (RuntimeException failure) {
+            log.warn("living world vowsConfirmed hook failed", failure);
         }
     }
 

@@ -233,7 +233,21 @@ public final class ContentLoader {
                 node.get("giftItemIds").integers(),
                 node.get("portraitNpcId").integer(0),
                 look(node.get("look")),
-                node.path());
+                node.path(),
+                spouse(node.get("spouse")));
+    }
+
+    /** {@code spouse: <persona id>}, or {@code spouse: { name: ..., gender: male|female }} for a citizen spouse. */
+    static Content.Spouse spouse(Node node) {
+        if (node.isMissing()) {
+            return null;
+        }
+        if (!node.isMap()) {
+            return new Content.Spouse(node.string(), null, null);
+        }
+        String gender = node.get("gender").string(null);
+        return new Content.Spouse(null, node.get("name").string(),
+                gender == null ? null : gender.toLowerCase(java.util.Locale.ROOT));
     }
 
     static Look look(Node node) {

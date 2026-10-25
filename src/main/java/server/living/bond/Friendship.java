@@ -136,6 +136,10 @@ public final class Friendship {
      * more, and a Resident takes {@code FRIENDSHIP_GIFTS_PER_DAY} gifts a day from one player and turns the rest down.
      */
     public void gift(Character chr, Persona persona, Item item) {
+        CompanionWeddings weddings = world.weddings();
+        if (weddings != null && weddings.keepsGarment(chr, persona, item)) {
+            return; // a wedding garment for the companion engaged to them: it keeps it for the altar, no friendship gift
+        }
         int perDay = world.config().FRIENDSHIP_GIFTS_PER_DAY;
         if (perDay > 0 && world.store().countEvents(chr.getId(), persona.id(), GIFT, world.routineDayStartMs()) >= perDay) {
             say(chr, persona, "gift.again", "you already brought me something today. keep it.");

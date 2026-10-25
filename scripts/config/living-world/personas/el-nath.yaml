@@ -77,6 +77,7 @@
 - id: sigrun
   name: Sigrun
   look: { gender: female }
+  spouse: bjarke
   title: "Warden of the Door"
   job: CRUSADER
   level: { min: 70, max: 73 }
@@ -110,7 +111,7 @@
     who: ["Sigrun. warden of the door. below El Nath there's a cave, and below the cave there's a door, and behind the door there's Zakum. i decide who gets that far."]
     bye: ["don't go past the cave without telling me."]
     thanks: ["good."]
-    smallTalk: ["the cave of trial is called that because it tries people. some pass. some stay. the cerebes don't care which.", "Kalle asks me every day if he's ready. every day i say no. one day i'll say yes and he won't believe me."]
+    smallTalk: ["the cave of trial is called that because it tries people. some pass. some stay. the cerebes don't care which.", "Kalle asks me every day if he's ready. every day i say no. one day i'll say yes and he won't believe me.", "my husband talks to wolves before he shoots them. i guard a door and talk to nobody. between us it comes out about right."]
     speakPlainly: ["plainly: there's a door. i stand in front of it."]
     offer: ["sixty young cerebes in the cave, counted, and twenty thousand for the hours the door goes unwatched. then i'll swing beside you."]
     join: ["stand clear of the backswing. i won't say it twice."]
@@ -141,7 +142,8 @@
     questComplete.sigrun-firebomb-watch: ["fifteen. the cave mouth's quiet."]
     about.edric: ["Edric doesn't freeze. he's told me that every morning for six years. one day he'll believe it."]
     about.kalle: ["Kalle wants the third door. Tylus's door, not mine. he's closer than he thinks. don't tell him i said that."]
-    about.bjarke: ["Bjarke talks. it's how he tells the wolves he's coming. they come anyway. he's very good."]
+    about.bjarke: ["Bjarke talks. it's how he tells the wolves he's coming. they come anyway. he's very good. i married him for the quiet bits in between."]
+    spouse.parted: ["{name} and i are done. the door's still here. so am i."]
     aboutUnknown: ["they haven't been tried."]
     friend.close: ["you've been tried, and you're still here. i'd stand at a door with you."]
     friend.best: ["if i ever open the door, you're the one i'd want beside me. that's the highest thing i know how to say."]
@@ -154,6 +156,7 @@
 - id: bjarke
   name: Bjarke
   look: { gender: male }
+  spouse: sigrun
   title: "Wolf Hunter"
   job: DRAGONKNIGHT
   level: { min: 70, max: 73 }
@@ -221,6 +224,8 @@
     about.ulla: ["Ulla buys my pelts and tells me they're terrible. then she makes gloves from them that cost a fortune. we're very happy."]
     about.maud: ["Maud reads the miners' names at night. i go and listen. somebody should. she doesn't say thank you. she reads my name at the end, as a joke. i think it's a joke."]
     about.edric: ["Edric? the sentry. never laughs. i'm working on it. it's a long hunt."]
+    about.sigrun: ["Sigrun! my wife. warden of the door. she says ten words a day and i get eight of them. lucky man."]
+    spouse.parted: ["{name} and i... we're not together anymore. the snow's too quiet. i hate it."]
     aboutUnknown: ["never hunted with them! yet!"]
     friend.close: ["you're the friend i tell the true version of the stories to. the boring version. that's love, for me."]
     friend.best: ["i'd stop talking for you. a whole hunt. maybe two."]

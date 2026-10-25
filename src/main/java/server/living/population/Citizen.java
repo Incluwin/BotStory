@@ -43,6 +43,11 @@ public record Citizen(int characterId,
      * off-screen with its next catch-up, then the flag is gone. Every later one is an errand (CitizenJobPath).
      */
     public static final String FLAG_JOB_BACKLOG = "job-backlog";
+    /**
+     * A lore couple's citizen spouse (docs/BOT_LORE_COUPLES_PLAN.md): a persona's content named it, so it was born
+     * with that name and gender and never retires on its own.
+     */
+    public static final String FLAG_LORE_SPOUSE = "lore-spouse";
 
     public boolean has(String flag) {
         return flags.contains(flag);

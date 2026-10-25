@@ -99,13 +99,43 @@ public final class CitizenGenerator {
         return birth(cohort, plan.career(), plan.backdateDays(), plan);
     }
 
+    /**
+     * A lore couple's citizen spouse (docs/BOT_LORE_COUPLES_PLAN.md): seeded in {@code regionId} like {@link #seed}, but
+     * named and gendered by the persona's content, flagged {@link Citizen#FLAG_LORE_SPOUSE} and never due to retire.
+     * Null when the name is taken by another character, no career lands in the region's band, or creation failed.
+     */
+    public Citizen birthSpouse(String name, boolean female, String regionId) {
+        if (population.store().nameTaken(name) || !Character.canCreateChar(name)) {
+            log.warn("lore spouse {} not born: the name is taken", name);
+            return null;
+        }
+        PopulationContent content = population.content();
+        Region region = content.region(regionId);
+        Cohort cohort = region == null ? null : pickCohort();
+        boolean lines = linesEnabled();
+        SeedPlan plan = cohort == null ? null : planSeed(region, CitizenLines.drawable(content.careers().values(), lines),
+                career -> CitizenLines.band(region, career, lines), population.config().SEED_BACKDATE_DAYS,
+                population.config().LIFE_PACE, random);
+        if (plan == null) {
+            log.warn("lore spouse {} not born in {}: no cohort or career fits", name, regionId);
+            return null;
+        }
+        return birth(cohort, plan.career(), plan.backdateDays(), plan, name, female);
+    }
+
     /** {@code plan} null draws the pace and picks the region by level; otherwise both come from the plan. */
     private Citizen birth(Cohort cohort, Career career, int backdateDays, SeedPlan plan) {
-        String name = pickName();
+        return birth(cohort, career, backdateDays, plan, null, null);
+    }
+
+    /** {@code spouseName} non-null: a lore spouse of that name and gender ({@link #birthSpouse}). */
+    private Citizen birth(Cohort cohort, Career career, int backdateDays, SeedPlan plan, String spouseName,
+                          Boolean spouseFemale) {
+        String name = spouseName != null ? spouseName : pickName();
         if (name == null) {
             return null;
         }
-        int characterId = createCharacter(name, CitizenLines.beginner(career));
+        int characterId = createCharacter(name, CitizenLines.beginner(career), spouseFemale);
         if (characterId <= 0) {
             return null;
         }
@@ -117,9 +147,16 @@ public final class CitizenGenerator {
         String personality = AgentPersonalityProfileRepository.defaultRepository().deterministicFor(characterId).profileId();
         String style = DialogueStyleProfileRepository.defaultRepository().resolve(personality).styleId();
         double pace = plan == null ? PACE_MIN + random.nextDouble() * PACE_SPAN : plan.pace();
+        String voice = pickVoice(style); // drawn in the order the arguments always were
+        int offset = random.nextInt(120) - 60;
+        int channel = pickChannel();
+        Set<String> flags = flags(cohort);
+        if (spouseName != null) {
+            flags.add(Citizen.FLAG_LORE_SPOUSE);
+        }
         Citizen citizen = new Citizen(characterId, name, cohort.id(), 0, 0, "victoria", career.id(), personality,
-                pickVoice(style), pace, random.nextInt(120) - 60, pickChannel(), flags(cohort), State.ACTIVE, joined,
-                joined + lifeDays * 86_400_000L, 0L, now, 0L, 0, "");
+                voice, pace, offset, channel, flags, State.ACTIVE, joined,
+                spouseName != null ? 0L : joined + lifeDays * 86_400_000L, 0L, now, 0L, 0, "");
         int level = LifeCurve.levelTarget(citizen.ageDays(now), pace, career.levelCap(), population.config().LIFE_PACE);
         citizen = citizen.withRegion(plan == null ? regionFor(level, citizen.characterId(), career) : plan.region());
         population.save(citizen);
@@ -468,8 +505,11 @@ public final class CitizenGenerator {
         return null;
     }
 
-    /** A character starting {@code beginner}'s line: a Legend in the Aran's starting clothes and Basic Polearm. */
-    private int createCharacter(String name, Job beginner) {
+    /**
+     * A character starting {@code beginner}'s line: a Legend in the Aran's starting clothes and Basic Polearm.
+     * {@code fixedFemale} null draws the gender; otherwise it is drawn all the same (the draws after it do not move).
+     */
+    private int createCharacter(String name, Job beginner, Boolean fixedFemale) {
         try {
             AgentAccountResolution account = AgentPersistenceGatewayRuntime.persistence().resolveOrCreateAgentAccount(name);
             if (!account.isSuccess()) {
@@ -484,7 +524,8 @@ public final class CitizenGenerator {
                     population.world().config().CHANNEL);
             creation.setAccID(account.accountId());
             creation.setAccountName(name);
-            boolean female = random.nextBoolean();
+            boolean drawn = random.nextBoolean();
+            boolean female = fixedFemale != null ? fixedFemale : drawn;
             int face = (female ? FEMALE_FACES : MALE_FACES)[random.nextInt(6)] + 100 * random.nextInt(8);
             int hair = (female ? FEMALE_HAIR : MALE_HAIR)[random.nextInt(6)] + random.nextInt(8);
             int skin = random.nextInt(4); // drawn in the order the arguments always were

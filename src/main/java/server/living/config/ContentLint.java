@@ -109,10 +109,14 @@ public final class ContentLint {
                     out.add("WARN " + where + ": relationship to unknown persona '" + relationship.persona() + "'");
                 }
             }
+            if (persona.spouse() != null) {
+                lintSpouse(content, persona, where, out);
+            }
             if (persona.lines("greet").isEmpty()) {
                 out.add("WARN " + where + ": no greet lines; the generic catalog will be used");
             }
         }
+        lintCitizenSpouseNames(content, out);
 
         for (Quest quest : content.quests().values()) {
             String where = quest.file() + " quest " + quest.id();
@@ -489,6 +493,65 @@ public final class ContentLint {
      */
     private static Persona authored(LivingContent content, String id) {
         return id == null || LivingContent.isHire(id) ? null : content.personas().get(id);
+    }
+
+    /**
+     * A lore couple (docs/BOT_LORE_COUPLES_PLAN.md): both genders written and opposite, as a stock marriage needs; a
+     * persona spouse names this persona back; a citizen spouse has a name a character can carry.
+     */
+    private static void lintSpouse(LivingContent content, Persona persona, String where, List<String> out) {
+        Content.Spouse spouse = persona.spouse();
+        String gender = persona.look().gender();
+        if (gender == null) {
+            out.add("ERROR " + where + ": a married persona needs look.gender");
+        }
+        if (!spouse.citizen()) {
+            Persona other = authored(content, spouse.persona());
+            if (other == null) {
+                out.add("ERROR " + where + ": spouse '" + spouse.persona() + "' not found");
+                return;
+            }
+            if (other.id().equals(persona.id())) {
+                out.add("ERROR " + where + ": a persona cannot marry itself");
+                return;
+            }
+            if (other.spouse() == null || !persona.id().equals(other.spouse().persona())) {
+                out.add("ERROR " + where + ": spouse '" + other.id() + "' does not name " + persona.id() + " back");
+            }
+            if (gender != null && gender.equals(other.look().gender())) {
+                out.add("ERROR " + where + ": spouse '" + other.id() + "' has the same gender");
+            }
+            return;
+        }
+        String name = spouse.name();
+        if (name == null || !name.matches("[A-Za-z]{4,12}")) {
+            out.add("ERROR " + where + ": citizen spouse name '" + name + "' must be 4-12 letters");
+        }
+        if (!"male".equals(spouse.gender()) && !"female".equals(spouse.gender())) {
+            out.add("ERROR " + where + ": citizen spouse gender must be male or female, not '" + spouse.gender() + "'");
+        } else if (spouse.gender().equals(gender)) {
+            out.add("ERROR " + where + ": citizen spouse '" + name + "' has the same gender");
+        }
+    }
+
+    /** A citizen spouse's name is unique: no persona carries it and no other persona's citizen spouse does. */
+    private static void lintCitizenSpouseNames(LivingContent content, List<String> out) {
+        Map<String, String> taken = new LinkedHashMap<>();
+        for (Persona persona : content.personas().values()) {
+            taken.put(persona.name().toLowerCase(java.util.Locale.ROOT), "persona " + persona.id());
+        }
+        for (Persona persona : content.personas().values()) {
+            Content.Spouse spouse = persona.spouse();
+            if (spouse == null || !spouse.citizen() || spouse.name() == null) {
+                continue;
+            }
+            String previous = taken.putIfAbsent(spouse.name().toLowerCase(java.util.Locale.ROOT),
+                    "the citizen spouse of " + persona.id());
+            if (previous != null) {
+                out.add("ERROR " + persona.file() + " persona " + persona.id() + ": citizen spouse name '"
+                        + spouse.name() + "' is already " + previous);
+            }
+        }
     }
 
     private static Map<String, AgentTownLifeProfile> profilesById() {

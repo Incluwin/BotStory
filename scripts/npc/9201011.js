@@ -255,6 +255,7 @@ function action(mode, type, selection) {
                                 } else {
                                     eim.setIntProperty("confirmedVows", player.getId());
                                     cm.getMap().dropMessage(6, "Wedding Assistant: " + player.getName() + " has confirmed vows! Alright, one step away to make it official. Tighten your seatbelts!");
+                                    Java.type('server.living.LivingWorldHooks').vowsConfirmed(player, cm.getNpc()); // a companion partner confirms its own
                                 }
 
                                 break;

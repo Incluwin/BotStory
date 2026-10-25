@@ -311,6 +311,7 @@
 - id: brunhild
   name: Brunhild
   look: { gender: female }
+  spouse: corvin
   title: "Champion of the Burnt Land"
   job: FIGHTER
   level: { min: 38, max: 41 }
@@ -376,12 +377,14 @@
     gift.favorite: ["now that's a fighter's gift. sit down, we'll split it. i insist."]
     gift.again: ["another one? i'm generous, not greedy. tomorrow."]
     about.garrick: ["Garrick. best sword-arm the guard ever had. i put him on his back once. then he quit the guard and climbed a ledge. i'm still waiting."]
-    about.corvin: ["Corvin logs every duel i fight in the square. i've read them. 'loud. won.' best reviews in Perion."]
+    about.corvin: ["Corvin logs every duel i fight in the square. i've read them. 'loud. won.' best reviews in Perion. i married the critic."]
+    spouse.parted: ["{name} and i are done. no more reviews. i'll just duel louder."]
     aboutUnknown: ["never crossed swords with them. tell them i'm looking."]
 
 - id: corvin
   name: Corvin
   look: { gender: male }
+  spouse: brunhild
   title: "Watch Spearman of the West Gate"
   job: SPEARMAN
   level: { min: 35, max: 38 }
@@ -448,6 +451,8 @@
     gift.favorite: ["this is what gets me through the dawn watch. you noticed. nobody notices the dawn watch."]
     gift.again: ["one is kind. two is a bribe. the watch accepts no bribes. tomorrow."]
     about.tamsin: ["the captain. she counts us every morning. four. she says it like it is still twelve."]
+    about.brunhild: ["the champion. my wife. the log has a column for her duels. every entry reads 'won'."]
+    spouse.parted: ["report: {name} and i are no longer married. logged. the log does not ask why. i do."]
     about.garrick: ["i stood beside Garrick the night the gate held. in the morning his post was empty. i logged both. the log does not ask why. i do."]
     aboutUnknown: ["no record of them at the gate."]
 

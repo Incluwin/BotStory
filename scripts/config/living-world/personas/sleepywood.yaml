@@ -2,6 +2,7 @@
 - id: thane
   name: Thane
   look: { gender: male }
+  spouse: magna
   title: "Dungeon Guide"
   job: CRUSADER
   level: { min: 40, max: 43 }
@@ -49,7 +50,9 @@
     questAccept.thane-walk-me-down: ["lead, then. i'll be right behind."]
     questComplete.thane-walk-me-down: ["you led. i followed. i can work with that."]
     about.orrin: ["Orrin i carried out of the fourth tunnel. he went back the next week. miners."]
-    about.wilhelmina: ["she keeps my room. i keep her guests alive. fair trade."]
+    about.wilhelmina: ["she keeps our room. i keep her guests alive. fair trade."]
+    about.magna: ["my wife cuts the roads. i walk them. when i come back up she checks my boots first and me second. fair."]
+    spouse.parted: ["{name} and i are no longer together. the tunnel takes things. so does the surface."]
     about.wendell: ["Wendell makes the cloaks i go down in. he made his brother's too. i brought that one back. not his brother."]
     aboutUnknown: ["never guided them."]
     questOffer.thane-a-guides-cloak: ["the deep tunnels are cold, and the drakes are colder. thirty of them. come back and i'll give you my spare cloak. i only own two."]
@@ -150,7 +153,7 @@
     smallTalk: ["every guest leaves a story in the sheets. i wash the stories out."]
     questOffer.wilhelmina-clean-sheets: ["evil eyes drool on the guests' packs. twenty of them fewer and my laundry halves."]
     questComplete.wilhelmina-clean-sheets: ["twenty. the laundry is grateful. i am the laundry."]
-    about.thane: ["he pays on time and leaves the room cleaner than he found it. i'd marry him if he weren't so grim."]
+    about.thane: ["he and Magna keep the corner room. pays on time, leaves it cleaner than he found it. she's a lucky woman, even if he is grim."]
     aboutUnknown: ["never lodged here."]
 
 - id: hesper
@@ -215,6 +218,7 @@
 - id: magna
   name: Magna
   look: { gender: female }
+  spouse: thane
   title: "Tunnel Breaker"
   job: PAGE
   level: { min: 40, max: 43 }
@@ -281,7 +285,8 @@
     gift: ["useful. thanks."]
     gift.favorite: ["that goes straight into the work. one way or the other."]
     gift.again: ["one's enough. i've got pockets, not a vault."]
-    about.thane: ["Thane walks every road i cut. never says they're good. never falls through one either. that's the review."]
+    about.thane: ["Thane walks every road i cut. never says they're good. never falls through one either. that's the review. married him for it."]
+    spouse.parted: ["{name} and i are finished. one swing, one crack. that's how it went."]
     about.orrin: ["Orrin digs for ore. i dig for roads. his holes go nowhere and he's happy in them. i don't get it."]
     aboutUnknown: ["never cut a road for them."]
 
