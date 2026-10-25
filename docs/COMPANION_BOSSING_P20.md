@@ -287,6 +287,12 @@ Full suite on bbf4f205b: 13,467 tests, 0 failures, 37 skipped (10:54 min).
    `easy_balrog,pinkbean`, b00fc73cc); `OWNERS_MAX` stays 1. Runs 4-17 used no bench allies. An ally tops up at
    Leafre on its way in under the 1500/0 floor (run 3's ally bought White Potions before it); one short of mesos
    arrives short of 1,500 and says so, and the dry and last-stand holds keep it from spending the run's last lives.
+   From P20 run 3 (branch fix/ally-crew-pot-share, 2026-10-16) a short ally asks for potions on arrival ("spent all
+   i had on pots and i'm still short. anyone spare some?"). The potion share then asks its crew: the run's members who
+   stay with the same human (`AgentBossRunRegistry.crewOf`), not only its own party of bots. The best-stocked one on
+   its map with more than 300 gives a third, before the fight and again when it runs dry in it. Its owner also gets
+   "Let's trade" on its bench card while it stands on the owner's map. In run 3 nobody answered Gunnar's 14:23:26
+   ask, while his owner's ten companions still held 328 to 1,976 HP potions each. Not yet seen live.
 3. Warriors still die with full potion bags to a deadly hit (HP to 1) followed by another before the autopot fires:
    Solomon's attack1 stuns as it drops HP to 1 (Thane, run 16), and seduce walks a member into the next hit. Deadly
    attacks are left out of both keep-outs on purpose.

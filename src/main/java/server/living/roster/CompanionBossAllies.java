@@ -22,6 +22,7 @@ import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.capabilities.shop.AgentShopProvisioning;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.progression.AgentPotionSupplierCatalog;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
@@ -196,6 +197,14 @@ final class CompanionBossAllies {
             return 0;
         }
 
+        /**
+         * 2026-10-15 (P20 run 3): the Agent, still short of {@code bossKey}'s potions after its arrival purchase, has
+         * asked its crew for some: its potion share is asked of its owner's companions and other allies in the run
+         * (AgentPotionService.requestCrewPotShare), once for each kind it lacks.
+         */
+        default void askCrewForPotions(Character agent, String bossKey) {
+        }
+
         /** The ally joins {@code lead}'s party; a lead in no party makes one first. */
         JoinOutcome join(Character lead, Character ally);
 
@@ -255,6 +264,18 @@ final class CompanionBossAllies {
             public int provisionCures(Character agent, String bossKey, int storeNpcId) {
                 return AgentShopProvisioning.provisionCuresAt(agent, storeNpcId,
                         AgentSupplyReadiness.Activity.partyQuest(bossKey + "_cure"));
+            }
+
+            @Override
+            public void askCrewForPotions(Character agent, String bossKey) {
+                AgentSupplyReadiness.Shortfall lacking =
+                        AgentSupplyReadiness.shortfall(agent, AgentSupplyReadiness.Activity.partyQuest(bossKey));
+                if (lacking.hp() > 0) {
+                    AgentPotionService.requestCrewPotShare(agent, true);
+                }
+                if (lacking.mp() > 0) {
+                    AgentPotionService.requestCrewPotShare(agent, false);
+                }
             }
 
             @Override
@@ -379,6 +400,12 @@ final class CompanionBossAllies {
     /** The persona's trip, or null. */
     Trip trip(String personaId) {
         return personaId == null ? null : trips.get(personaId);
+    }
+
+    /** The persona's loaded ally while it is at its boss (HERE: the entry NPC's room or the fight), else null. */
+    Character here(String personaId) {
+        Trip trip = trip(personaId);
+        return trip != null && trip.state == State.HERE ? trip.agent : null;
     }
 
     /** The most EXPEDITION leases held at once since the living world started (any thread; /runtime/budget). */
@@ -711,8 +738,9 @@ final class CompanionBossAllies {
      * On companion-ops, at the ally's ETA: it loads at the entry NPC room's arrival portal of the expedition's own copy
      * of the room, on the expedition's channel, as an idle Agent that leads itself; it comes back whole, drinks by its
      * own settings, takes its banked EXP and any stall stock back (the order a live slice loads in), buys what it lacks
-     * of the boss's standard at the store on the boss's approach ({@link #provision}), says it is here, and says once
-     * when it is still short of the boss's potions, and of its projectiles. A stale timer (another generation, a trip
+     * of the boss's standard at the store on the boss's approach ({@link #provision}), says it is here, asks its crew
+     * once for potions when it is still short of the boss's ({@link #askCrew}), and says once when it is short of its
+     * projectiles. A stale timer (another generation, a trip
      * no longer on its way) does nothing. A member no longer waiting to sign up, or a run no longer taking sign-ups,
      * turns it back with a whisper; one loaded elsewhere whispers that it cannot come; both let everything go.
      */
@@ -756,6 +784,7 @@ final class CompanionBossAllies {
         BossRunLines.tell(world, agent, BossRunLines.ALLY_HERE, null, null, run, trip.ownerId);
         if (ports.shortOfPotions(agent, trip.bossKey)) {
             BossRunLines.tell(world, agent, BossRunLines.ALLY_LOW_POTS, null, null, run, trip.ownerId);
+            askCrew(trip, agent);
         }
         if (provisioned && ports.shortOfAmmo(agent, trip.bossKey)) {
             BossRunLines.tell(world, agent, BossRunLines.ALLY_LOW_AMMO, null, null, run, trip.ownerId,
@@ -795,6 +824,24 @@ final class CompanionBossAllies {
             }
         }
         return true;
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3): an ally still short of the boss's potions after its arrival purchase has asked for some
+     * (BossRunLines.ALLY_LOW_POTS), and its owner's companions and other allies in the run who stand in the room answer
+     * by the potion share before the fight, the best-stocked one giving a third of its own (AgentPotionService). Gunnar
+     * (Hero, 446,887 mesos) ran dry in about seven minutes and died four times, while his owner's ten companions in the
+     * same fight still held 328 to 1,976 HP potions each; under Pink Bean's potion floor his purse buys 64 Melting
+     * Cheese and leaves him short, and he used to say only that he would make it work. In the fight a dry ally asks
+     * them again by the same share. A failure never undoes its arrival.
+     */
+    private void askCrew(Trip trip, Character agent) {
+        try {
+            ports.askCrewForPotions(agent, trip.bossKey);
+            log.info("Boss ally asked its crew for potions: session={} ally={}", trip.sessionId, trip.characterId);
+        } catch (RuntimeException failure) {
+            log.warn("boss ally {} could not ask its crew for potions", trip.characterId, failure);
+        }
     }
 
     /**

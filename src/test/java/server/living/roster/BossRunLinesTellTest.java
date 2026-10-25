@@ -262,8 +262,10 @@ class BossRunLinesTellTest {
                         "something came up, can't make it this time.")),
                 Map.entry(BossRunLines.ALLY_HERE, List.of("made it down. signing up.", "here! putting my name down.",
                         "phew, long way down. where do i sign?")),
-                Map.entry(BossRunLines.ALLY_LOW_POTS, List.of("bit low on pots, i'll make it work.",
-                        "running low on pots and no shop down here. i'll manage.")),
+                // 2026-10-15 (P20 run 3): a short ally asks its crew, whose potion share answers it
+                Map.entry(BossRunLines.ALLY_LOW_POTS, List.of(
+                        "spent all i had on pots and i'm still short. anyone spare some?",
+                        "bit low on pots and no shop down here. can anyone spare a few?")),
                 Map.entry(BossRunLines.ALLY_LOW_AMMO, List.of("low on {ammo}, i'll make it last.",
                         "not many {ammo} left and no shop down here. i'll make them count.")),
                 Map.entry(BossRunLines.ALLY_TURNED_BACK, List.of(
@@ -384,7 +386,8 @@ class BossRunLinesTellTest {
                         "omw to adobis, {eta}.")),
                 Map.entry(BossRunLines.ALLY_HERE, List.of("made it to the door. signing up.",
                         "here! putting my name down.")),
-                Map.entry(BossRunLines.ALLY_LOW_POTS, List.of("bit low on pots and no shop up here. i'll manage.")),
+                Map.entry(BossRunLines.ALLY_LOW_POTS, List.of(
+                        "bit low on pots and no shop up here. can anyone spare a few?")),
                 Map.entry(BossRunLines.ALLY_LOW_AMMO, List.of(
                         "not many {ammo} left and no shop up here. i'll make them count.")),
                 Map.entry(BossRunLines.GG, List.of("gg! zakum's down.", "we did it! gg.")),

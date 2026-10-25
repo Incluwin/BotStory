@@ -824,14 +824,18 @@ public final class CompanionManager {
      * until {@code openByMs} (the click's deadline: never long after it), with no talk or script window awaiting a
      * reply, no trade, shop, mini-game, merchant or storage open, and the companion still on the owner's map; else the
      * companion says to ask again. The trusted-trader name list the REQ TRADE button asks is not asked here: the
-     * companion is the owner's own.
+     * companion is the owner's own. 2026-10-15 (P20 run 3): a bench ally at its boss ({@link #allyHere}) trades too,
+     * so its owner can hand it potions when it says on arrival it is short; its row stays BENCHED meanwhile, and it
+     * takes the trade as its owner's because its owner is the human it stays with in the run
+     * (AgentInventoryTickRuntime.tradeOwner), so its interaction target, itself, is left alone.
      */
     public RosterResult openTrade(Character owner, Persona persona, long openByMs) {
         Out out = out(owner, persona, true);
-        if (out.refusal() != null) {
+        Character ally = out.refusal() == null ? null : allyHere(owner, persona);
+        if (out.refusal() != null && ally == null) {
             return out.refusal();
         }
-        Character bot = out.bot();
+        Character bot = ally != null ? ally : out.bot();
         Client client = owner.getClient();
         if (client == null || bot.getMap() == null || bot.getMap() != owner.getMap()) {
             return new RosterResult.Failed(persona.name() + " is too far away to trade.");
@@ -852,13 +856,25 @@ public final class CompanionManager {
                     return;
                 }
                 Trade.startTrade(owner);
-                AgentRelationshipRuntime.setInteractionTarget(AgentRuntimeRegistry.findByAgentCharacterId(bot.getId()), owner);
+                if (ally == null) {
+                    AgentRelationshipRuntime.setInteractionTarget(
+                            AgentRuntimeRegistry.findByAgentCharacterId(bot.getId()), owner);
+                }
                 Trade.inviteTrade(owner, bot);
             } finally {
                 client.releaseClient();
             }
         });
         return new RosterResult.Ok(persona.name() + " opens a trade with you.");
+    }
+
+    /**
+     * The owner's bench ally while it is at its boss (CompanionBossRuns.allyHere), else null: the trade's other way in
+     * for a companion not out with them ({@link #openTrade}).
+     */
+    private Character allyHere(Character owner, Persona persona) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        return bossRuns == null || row(owner, persona) == null ? null : bossRuns.allyHere(persona.id());
     }
 
     /** True while the owner has a stock window of another kind open: a trade, a shop, a mini-game, a merchant, storage. */

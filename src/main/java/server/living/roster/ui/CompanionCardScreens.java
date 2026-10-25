@@ -33,6 +33,7 @@ import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionBossRuns;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionPartyQuestService;
@@ -279,6 +280,12 @@ final class CompanionCardScreens {
         options.add(new Option("Supplies & loot...", () -> supplies(owner, persona, "")));
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
+        if (allyHereWith(owner, persona)) { // 2026-10-15 (P20 run 3): hand a short ally potions at its boss
+            options.add(new Option("Let's trade", () -> {
+                long openBy = System.currentTimeMillis() + CompanionMenus.LATE_OUTCOME_MS; // never long after the click
+                order(owner, persona, "menu.trade", manager -> manager.openTrade(owner, persona, openBy));
+            }));
+        }
         options.add(new Option("We should part ways", () -> partWays(owner, persona)));
         String errand = menus.errand(view);
         String status = view.travelMs() > 0 ? onTheWay(view) : errand != null ? errand : duty(view, entry.assignment());
@@ -290,6 +297,16 @@ final class CompanionCardScreens {
         String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();
+    }
+
+    /**
+     * True while the companion is a bench ally at its boss (CompanionBossRuns.allyHere) standing on the owner's map,
+     * where the stock trade window can open: one that says on arrival it is short of potions can be handed some.
+     */
+    private boolean allyHereWith(Character owner, Persona persona) {
+        CompanionBossRuns bossRuns = world.bossRuns();
+        Character ally = bossRuns == null ? null : bossRuns.allyHere(persona.id());
+        return ally != null && ally.getMap() != null && ally.getMap() == owner.getMap();
     }
 
     /**

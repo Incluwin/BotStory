@@ -41,6 +41,7 @@ import server.living.quest.QuestLedger;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
@@ -465,6 +466,45 @@ class CompanionManagerTest {
         InOrder lock = inOrder(client);
         lock.verify(client).tryacquireClient(); // the stock PLAYER_INTERACTION handler's dupe guard
         lock.verify(client).releaseClient();
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3): a bench ally at its boss (its row stays BENCHED) trades with its owner too, so the owner
+     * can hand it potions when it says on arrival it is short. Its interaction target, itself, is left alone: it takes
+     * the trade as its owner's because its owner is the human it stays with in the run. A benched companion that is
+     * not at a boss still cannot trade, nor can the ally from another map.
+     */
+    @Test
+    void letsTradeReachesABenchAllyAtItsBossOnTheOwnersMap() {
+        h.moveAnn(270_050_000, -600, -41);
+        Client client = h.ann.getClient();
+        List<Runnable> io = new ArrayList<>();
+        doAnswer(inv -> io.add(inv.getArgument(0))).when(client).runOnIoThread(any());
+        when(client.tryacquireClient()).thenReturn(true);
+        when(h.ann.isAlive()).thenReturn(true);
+        CompanionBossRuns bossRuns = mock(CompanionBossRuns.class);
+        when(h.world.bossRuns()).thenReturn(bossRuns);
+        assertEquals("Mira is not out with you right now.",
+                RosterVoice.line(mira, manager.openTrade(h.ann, mira, Long.MAX_VALUE)), "benched, not at a boss");
+        Character ally = mock(Character.class);
+        MapleMap fight = h.map(270_050_100);
+        when(ally.getMap()).thenReturn(fight);
+        when(bossRuns.allyHere("mira")).thenReturn(ally);
+        assertEquals("Mira is too far away to trade.",
+                RosterVoice.line(mira, manager.openTrade(h.ann, mira, Long.MAX_VALUE)));
+        MapleMap room = h.ann.getMap();
+        when(ally.getMap()).thenReturn(room);
+
+        try (MockedStatic<Trade> trade = mockStatic(Trade.class);
+             MockedStatic<AgentRelationshipRuntime> relationship = mockStatic(AgentRelationshipRuntime.class)) {
+            assertTrue(manager.openTrade(h.ann, mira, Long.MAX_VALUE).ok());
+            assertEquals(1, io.size());
+            io.get(0).run();
+
+            trade.verify(() -> Trade.startTrade(h.ann));
+            trade.verify(() -> Trade.inviteTrade(h.ann, ally));
+            relationship.verifyNoInteractions();
+        }
     }
 
     @Test

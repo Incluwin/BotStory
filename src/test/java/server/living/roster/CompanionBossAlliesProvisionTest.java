@@ -41,11 +41,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static server.living.roster.BossAllyHarness.SLEEPYWOOD_CAMP;
 import static server.living.roster.BossAllyHarness.isLine;
@@ -57,10 +59,11 @@ import static server.living.roster.BossAllyHarness.isLine;
  * Store's (1061001) prices and with the picks a readiness trip's counter makes there (the same shop code path, with no
  * walk), on toward BUY_TO_PERCENT of the standard. Since user decision 2 (2026-10-08) its potions are measured in HP
  * and MP points (BOSS_RECOVERY_STANDARDS, 130,000 / 32,000), so the counter buys the store's Unagi and Pure Water to
- * the points it lacks, however many weak potions it carries. Still short, it says the lowpots line, and a low-ammo
- * line when its projectiles fall short. A stocked ally buys nothing; with COMPANION_BOSS_ALLY_TYPES not listing the
- * boss nothing is bought and it says what it said before. The store's stock here is its potions and projectiles as
- * 102-shopitems-data.sql lists them (its food is left out); the shop gateway, item effects and stack sizes are stubs.
+ * the points it lacks, however many weak potions it carries. Still short, it says the lowpots line (since 2026-10-15
+ * an ask of its crew, whose potion share answers it), and a low-ammo line when its projectiles fall short. A stocked
+ * ally buys nothing; with COMPANION_BOSS_ALLY_TYPES not listing the boss nothing is bought and it says what it said
+ * before. The store's stock here is its potions and projectiles as 102-shopitems-data.sql lists them (its food is left
+ * out); the shop gateway, item effects and stack sizes are stubs.
  */
 class CompanionBossAlliesProvisionTest {
     private static final int ORRIN = 911;
@@ -115,6 +118,7 @@ class CompanionBossAlliesProvisionTest {
     private final ShopGateway gateway = mock(ShopGateway.class);
     private final InventoryGateway inventory = mock(InventoryGateway.class);
     private final List<MockedStatic<?>> statics = new ArrayList<>();
+    private MockedStatic<AgentPotionService> potions;
     private Character orrin;
     private Inventory use;
     private int weaponId = SWORD;
@@ -178,7 +182,7 @@ class CompanionBossAlliesProvisionTest {
                 .thenAnswer(inv -> inv.getArgument(0) != null);
         classification.when(() -> AgentUseItemClassificationPolicy.itemEffect(anyInt()))
                 .thenAnswer(inv -> effects.get((int) inv.getArgument(0)));
-        MockedStatic<AgentPotionService> potions = open(AgentPotionService.class);
+        potions = open(AgentPotionService.class);
         potions.when(() -> AgentPotionService.countPotions(orrin))
                 .thenAnswer(inv -> AgentPotionInventoryPolicy.countRecoveryPotions(use.list(), effects::get));
     }
@@ -235,6 +239,28 @@ class CompanionBossAlliesProvisionTest {
         assertEquals(2, h.mapChat.size(), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_LOW_POTS, null, said(1)), h.mapChat.toString());
+        assertEquals(List.of("crew Orrin easy_balrog"), h.ports.crewAsks);
+    }
+
+    /**
+     * 2026-10-15 (P20 run 3), the Gunnar case at its arrival: an ally whose purse fell short of the boss's potions
+     * after buying what it could asks its crew for the kind it still lacks, by the potion share
+     * (AgentPotionService.requestCrewPotShare), and not for the kind it has enough of.
+     */
+    @Test
+    void anAllyShortOfHpPotionsAfterItsPurchaseAsksItsCrewForHpPotionsOnly() {
+        AgentSupplyReadiness.RecoveryStandard standard = AgentSupplyReadiness.recoveryStandard(EASY_BALROG);
+        carry(10, (int) (standard.mp() / 800)); // its MP points met, its HP points short
+        purse = AgentSupplyRecoveryPolicy.minimumWalletReserve(orrin) + 30_000; // 27 Unagi at most
+
+        h.game.runDueTimers();
+
+        AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(orrin, EASY_BALROG);
+        assertTrue(lacking.hp() > 0 && lacking.mp() == 0, lacking.toString());
+        assertTrue(isLine(BossRunLines.ALLY_LOW_POTS, null, said(1)), h.mapChat.toString());
+        assertEquals(List.of("crew Orrin easy_balrog"), h.ports.crewAsks);
+        potions.verify(() -> AgentPotionService.requestCrewPotShare(orrin, true));
+        potions.verify(() -> AgentPotionService.requestCrewPotShare(orrin, false), never());
     }
 
     @Test
@@ -278,6 +304,8 @@ class CompanionBossAlliesProvisionTest {
         assertEquals(1_000_000, purse);
         assertEquals(1, h.mapChat.size(), h.mapChat.toString());
         assertTrue(isLine(BossRunLines.ALLY_HERE, null, said(0)), h.mapChat.toString());
+        assertEquals(List.of(), h.ports.crewAsks, "it asks nobody for potions");
+        potions.verify(() -> AgentPotionService.requestCrewPotShare(any(), anyBoolean()), never());
     }
 
     @ParameterizedTest
