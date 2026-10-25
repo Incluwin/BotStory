@@ -49,6 +49,15 @@ public class WhatDropsFromCommand extends Command {
     @Override
     public void execute(Client c, String[] params) {
         Character player = c.getPlayer();
+        if (DropBrowser.available()) {
+            if (params.length < 1) {
+                DropBrowser.mapMobs(player, player.getMap().getMonsterSpawn().stream()
+                        .map(SpawnPoint::getMonsterId).distinct().sorted().toList());
+            } else {
+                DropBrowser.searchMobs(player, player.getLastCommandMessage());
+            }
+            return;
+        }
         String output = "";
         Set<Integer> uniqueMobs = new HashSet<>();
         List<Pair<Integer, String>> monsters = new ArrayList<>();

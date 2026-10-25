@@ -438,8 +438,8 @@ public class CommandsExecutor {
         addCommand("mapowner", MapOwnerCommand.class);
         addCommand("bosshp", BossHpCommand.class);
         addCommand("mobhp", MobHpCommand.class);
-        addCommand("mobdrops", WhatDropsFromCommand.class);
-        addCommand("whodrops", WhoDropsCommand.class);
+        addCommand(new String[]{"mobdrops", "md"}, WhatDropsFromCommand.class);
+        addCommand(new String[]{"whodrops", "wd"}, WhoDropsCommand.class);
         addCommand("search", SearchCommand.class);
         addCommand("id", IdCommand.class);
         addCommand("unbug", UnBugCommand.class);

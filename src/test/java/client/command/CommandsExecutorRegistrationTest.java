@@ -27,6 +27,9 @@ class CommandsExecutorRegistrationTest {
         assertEquals(commands.get("help").getClass(), commands.get("commands").getClass());
         assertEquals(commands.get("warphere").getClass(), commands.get("summon").getClass());
         assertEquals(commands.get("warpto").getClass(), commands.get("follow").getClass());
+        assertEquals(commands.get("whodrops").getClass(), commands.get("wd").getClass());
+        assertEquals(commands.get("mobdrops").getClass(), commands.get("md").getClass());
+        assertRanks(commands, 0, "wd", "md");
     }
 
     @Test
