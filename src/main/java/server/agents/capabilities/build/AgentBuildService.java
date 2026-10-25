@@ -479,6 +479,13 @@ public final class AgentBuildService {
             }
             return null;
         }
+        if (job == Job.NOBLESSE) {
+            if (lvl >= 10 && prompted < 10) {
+                AgentBuildStateRuntime.setJobPromptSent(entry, 10);
+                return AgentBuildPromptReporter.noblesseJobPrompt(lvl);
+            }
+            return null;
+        }
 
         if (lvl >= 30 && prompted < 30) {
             String msg = AgentBuildPromptReporter.secondJobPrompt(job);

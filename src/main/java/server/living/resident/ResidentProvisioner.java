@@ -1,6 +1,7 @@
 package server.living.resident;
 
 import client.Client;
+import client.JobProgressionPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.auth.AgentControlService;
@@ -66,7 +67,8 @@ final class ResidentProvisioner {
             creation.setAccID(account.accountId());
             creation.setAccountName(persona.name());
             int characterId = AgentClientGatewayRuntime.clients().createBackingCharacter(creation, persona.name(),
-                    ResidentLooks.gender(persona, world.config().RESIDENT_LOOK_SEED));
+                    ResidentLooks.gender(persona, world.config().RESIDENT_LOOK_SEED),
+                    JobProgressionPolicy.beginnerOf(ResidentShaper.job(persona.job()))); // a Knight or Aran: its own beginner
             if (characterId == -1) {
                 log.warn("Persona {}: character creation for '{}' failed (name invalid or taken)", persona.id(), persona.name());
                 return 0;

@@ -10,7 +10,8 @@ import server.agents.capabilities.build.AgentJobPath;
  * The jobs a citizen's life leads through (2026-10-06). careers.yaml names a second job (FIGHTER); its line goes on to
  * the third and fourth job of that branch (CRUSADER, HERO), with no choice left to make. The first and second job come
  * off-screen with the catch-up when the citizen loads (ProgressionLedger); the third and fourth it takes at its
- * instructor, as a player does (CitizenJobErrands: El Nath's chiefs, Leafre's elders). A citizen already past its Lv70
+ * instructor, as a player does (CitizenJobErrands: El Nath's chiefs, Leafre's elders; a Cygnus Knight's Chief Knight on
+ * Ereve, an Aran's Maha in Rien). A citizen already past its Lv70
  * when this shipped is a backlog citizen: its overdue job comes off-screen once ({@link Citizen#FLAG_JOB_BACKLOG}).
  */
 public final class CitizenJobPath {
@@ -20,13 +21,15 @@ public final class CitizenJobPath {
     private CitizenJobPath() {
     }
 
-    /** Its career's own line to the fourth job (FIGHTER: HERO); a career job that is not a second job is its own end. */
+    /**
+     * Its career's own line to its last job (FIGHTER: HERO, ARAN2: ARAN4, a Cygnus Knight to its third job: v83 has no
+     * fourth); a career job that is not a second job is its own end.
+     */
     public static Job line(Job careerJob) {
         if (careerJob == null || GameConstants.getJobBranch(careerJob) != 2) {
             return careerJob;
         }
-        Job fourth = Job.getById(careerJob.getId() + 2);
-        return fourth == null ? careerJob : fourth;
+        return JobProgressionPolicy.lastJobOfLine(careerJob);
     }
 
     /**

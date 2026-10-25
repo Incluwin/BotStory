@@ -51,15 +51,36 @@ public class BotCreator extends CharacterFactory {
         return 0;
     }
 
+    /**
+     * An Aran's starting clothes and Basic Polearm, the same for both genders (Etc.wz MakeCharInfo OrientCharMale,
+     * OrientCharFemale). A Noblesse starts in the Beginner's clothes (PremiumChar).
+     */
+    public static final int ARAN_TOP = 1042167;
+    public static final int ARAN_BOTTOM = 1062115;
+    public static final int ARAN_SHOES = 1072383;
+    public static final int BASIC_POLEARM = 1442079;
+
     public static int createCharacter(Client c, String name) {
         return createCharacter(c, name, 0);
     }
 
     /** A character of this gender (0 male, 1 female) in that gender's starting look. */
     public static int createCharacter(Client c, String name, int gender) {
+        return createCharacter(c, name, gender, Job.BEGINNER);
+    }
+
+    /**
+     * A character of this gender starting {@code beginner}'s line: a Beginner, a Noblesse (Cygnus Knights) or a Legend
+     * (Aran), in that line's starting look.
+     */
+    public static int createCharacter(Client c, String name, int gender, Job beginner) {
         StarterLook look = gender == 1 ? FEMALE_START : MALE_START;
+        if (beginner == Job.LEGEND) {
+            return createCharacter(c, name, look.face(), look.hair(), 0, gender,
+                    ARAN_TOP, ARAN_BOTTOM, ARAN_SHOES, BASIC_POLEARM, beginner);
+        }
         return createCharacter(c, name, look.face(), look.hair(), 0, gender,
-                look.top(), look.bottom(), look.shoes(), look.weapon());
+                look.top(), look.bottom(), look.shoes(), look.weapon(), beginner);
     }
 
     public static int createCharacter(Client c,
@@ -72,6 +93,34 @@ public class BotCreator extends CharacterFactory {
                                       int bottomId,
                                       int shoesId,
                                       int weaponId) {
+        return createCharacter(c, name, face, hair, skin, gender, topId, bottomId, shoesId, weaponId, Job.BEGINNER);
+    }
+
+    /**
+     * Where {@code beginner}'s line begins: a Beginner in Henesys (bots skip Maple Island), a Noblesse in Ereve's Forest
+     * of Beginning, a Legend in Rien (the Black Road tutorial is a cutscene; the story wakes it on Snow Island).
+     */
+    public static int startMapOf(Job beginner) {
+        if (beginner == Job.NOBLESSE) {
+            return MapId.STARTING_MAP_NOBLESSE;
+        }
+        return beginner == Job.LEGEND ? MapId.RIEN : MapId.HENESYS;
+    }
+
+    /** {@code beginner}: BEGINNER, NOBLESSE or LEGEND (anything else is made a Beginner). */
+    public static int createCharacter(Client c,
+                                      String name,
+                                      int face,
+                                      int hair,
+                                      int skin,
+                                      int gender,
+                                      int topId,
+                                      int bottomId,
+                                      int shoesId,
+                                      int weaponId,
+                                      Job beginner) {
+        Job job = beginner == Job.NOBLESSE || beginner == Job.LEGEND ? beginner : Job.BEGINNER;
+        int mapId = startMapOf(job);
         if (!Character.canCreateChar(name)) {
             log.warn("Bot creation rejected — invalid name '{}'", name);
             return -1;
@@ -84,9 +133,9 @@ public class BotCreator extends CharacterFactory {
         botChar.setName(name);
         botChar.setHair(hair);
         botChar.setFace(face);
-        botChar.setJob(Job.BEGINNER);
+        botChar.setJob(job);
         botChar.setLevel(1);
-        botChar.setMapId(MapId.HENESYS);
+        botChar.setMapId(mapId);
 
         // Equip standard beginner starting gear (mirrors CharacterFactory.createNewCharacter)
         Inventory equipped = botChar.getInventory(InventoryType.EQUIPPED);
@@ -109,7 +158,7 @@ public class BotCreator extends CharacterFactory {
         equipped.addItemFromDB(weapon.copy());
 
         CharacterFactoryRecipe recipe = new CharacterFactoryRecipe(
-                Job.BEGINNER, 1, MapId.HENESYS, topId, bottomId, shoesId, weaponId);
+                job, 1, mapId, topId, bottomId, shoesId, weaponId);
 
         if (!botChar.insertNewChar(recipe)) {
             log.error("insertNewChar failed for bot '{}'", name);

@@ -161,7 +161,7 @@ public final class AgentCharacterShaper {
             int_ = ap * stats.getOrDefault("int", 0) / total;
             luk = ap * stats.getOrDefault("luk", 0) / total;
         } else {
-            int family = job == null ? 0 : job.getId() / 100;
+            int family = job == null ? 0 : job.getJobNiche(); // a Cygnus Knight or Aran as its Explorer archetype
             switch (family) {
                 case 1 -> { str = ap * 4 / 5; dex = ap - str; int_ = 0; luk = 0; }
                 case 2 -> { int_ = ap * 4 / 5; luk = ap - int_; str = 0; dex = 0; }

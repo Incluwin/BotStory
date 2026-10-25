@@ -3,6 +3,7 @@ package server.agents.integration.cosmic;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import client.Job;
 import client.creator.BotCreator;
 import server.ScrollTransactionService;
 import server.agents.integration.AgentClientGateway;
@@ -25,6 +26,11 @@ public enum CosmicAgentClientGateway implements AgentClientGateway {
     @Override
     public int createBackingCharacter(Client client, String name, int gender) {
         return BotCreator.createCharacter(client, name, gender);
+    }
+
+    @Override
+    public int createBackingCharacter(Client client, String name, int gender, Job beginner) {
+        return BotCreator.createCharacter(client, name, gender, beginner);
     }
 
     @Override

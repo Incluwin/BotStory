@@ -10,14 +10,59 @@ public final class JobProgressionPolicy {
     public static boolean isLegalAdvancement(Job oldJob, Job newJob, int level) {
         return oldJob != null
                 && newJob != null
-                && isExplorerJob(newJob)
+                && isAdvancementLine(newJob)
                 && oldJob != newJob
                 && parentOf(newJob) == oldJob
                 && level >= minimumLevel(newJob);
     }
 
-    private static boolean isExplorerJob(Job job) {
-        return job.getId() >= 0 && job.getId() < 1_000;
+    /**
+     * The lines v83 lets a character advance along: Explorers, the Cygnus Knights to their third job (Skill.wz has no
+     * skills for 1112 ... 1512, and they stop at Lv120) and Aran. Evan is not in this client.
+     */
+    private static boolean isAdvancementLine(Job job) {
+        int id = job.getId();
+        if (id >= 0 && id < 1_000) {
+            return true;
+        }
+        if (GameConstants.isCygnus(id)) {
+            return GameConstants.getJobBranch(job) < 4;
+        }
+        return GameConstants.isAran(id);
+    }
+
+    /** The beginner job {@code job}'s line starts from: Beginner, Noblesse (Cygnus Knights) or Legend (Aran). */
+    public static Job beginnerOf(Job job) {
+        if (job == null) {
+            return null;
+        }
+        if (GameConstants.isCygnus(job.getId())) {
+            return Job.NOBLESSE;
+        }
+        return GameConstants.isAran(job.getId()) ? Job.LEGEND : Job.BEGINNER;
+    }
+
+    /**
+     * The last job of the line {@code job} is on once no choice is left: an Explorer's or an Aran's fourth job, a Cygnus
+     * Knight's third. An Explorer's first job (its branch is still open), a Beginner or a Noblesse (five knighthoods) and
+     * anything outside these lines: {@code job} itself. A Legend, a Cygnus Knight's or an Aran's first job has one way on.
+     */
+    public static Job lastJobOfLine(Job job) {
+        if (job == Job.LEGEND) {
+            return Job.ARAN4;
+        }
+        if (job == null || !isAdvancementLine(job)) {
+            return job;
+        }
+        int id = job.getId();
+        boolean oneBranch = GameConstants.isCygnus(id) || GameConstants.isAran(id);
+        int branch = GameConstants.getJobBranch(job);
+        if (branch < (oneBranch ? 1 : 2)) {
+            return job;
+        }
+        int second = branch == 1 ? id + 10 : id / 10 * 10;
+        Job last = Job.getById(second + (GameConstants.isCygnus(id) ? 1 : 2));
+        return last == null ? job : last;
     }
 
     public static int classLevelCap(Job job, boolean gameMaster) {

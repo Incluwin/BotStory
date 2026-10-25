@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Job;
+import constants.game.GameConstants;
 import server.agents.capabilities.dialogue.AgentDialogueReportFormatter;
 
 import java.util.List;
@@ -32,6 +33,13 @@ final class JobErrandLines {
         return line.replace("{tier}", JobInstructors.tier(job))
                 .replace("{instructor}", instructor.name().toLowerCase(Locale.ROOT))
                 .replace("{town}", instructor.town().toLowerCase(Locale.ROOT))
-                .replace("{job}", AgentDialogueReportFormatter.jobDisplayName(job));
+                .replace("{job}", jobName(job));
+    }
+
+    /** A Cygnus Knight or an Aran keeps its class name from job to job, so a player says which: "2nd job aran". */
+    private static String jobName(Job job) {
+        String name = AgentDialogueReportFormatter.jobDisplayName(job);
+        boolean sameName = GameConstants.isCygnus(job.getId()) || GameConstants.isAran(job.getId());
+        return sameName && GameConstants.getJobBranch(job) >= 2 ? JobInstructors.tier(job) + " job " + name : name;
     }
 }

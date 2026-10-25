@@ -38,16 +38,18 @@ public final class AgentJobPath {
     }
 
     /**
-     * The job after {@code current} on the legal chain to {@code path} (Beginner, first job, ... {@code path}) when the
-     * game allows it at {@code level}; null when there is none now or {@code current} is not on that chain.
+     * The job after {@code current} on the legal chain to {@code path} (its line's beginner: Beginner, Noblesse or
+     * Legend, then first job, ... {@code path}) when the game allows it at {@code level}; null when there is none now
+     * or {@code current} is not on that chain.
      */
     public static Job next(Job current, Job path, int level) {
         if (current == null || path == null || current == path) {
             return null;
         }
         List<Job> chain = AgentCharacterShaper.advancementChain(path);
-        int at = current == Job.BEGINNER ? -1 : chain.indexOf(current);
-        if ((at < 0 && current != Job.BEGINNER) || at + 1 >= chain.size()) {
+        boolean beginner = current == JobProgressionPolicy.beginnerOf(path);
+        int at = beginner ? -1 : chain.indexOf(current);
+        if ((at < 0 && !beginner) || at + 1 >= chain.size()) {
             return null;
         }
         Job step = chain.get(at + 1);

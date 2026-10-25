@@ -2,6 +2,7 @@ package server.agents.integration;
 
 import client.Character;
 import client.Client;
+import client.Job;
 import server.ScrollTransactionService;
 
 import java.sql.SQLException;
@@ -15,6 +16,9 @@ public interface AgentClientGateway {
     int createBackingCharacter(Client client, String name);
 
     int createBackingCharacter(Client client, String name, int gender);
+
+    /** A character of this gender starting {@code beginner}'s line: BEGINNER, NOBLESSE (Cygnus Knights) or LEGEND (Aran). */
+    int createBackingCharacter(Client client, String name, int gender, Job beginner);
 
     Character loadBackingCharacter(int characterId, Client client) throws SQLException;
 

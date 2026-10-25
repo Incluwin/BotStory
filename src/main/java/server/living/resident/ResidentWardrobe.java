@@ -2,6 +2,7 @@ package server.living.resident;
 
 import client.Character;
 import client.Job;
+import client.creator.BotCreator;
 import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
@@ -140,11 +141,12 @@ final class ResidentWardrobe {
             ids.addAll(loadout.equipIds());
             ids.addAll(loadout.outfit().getOrDefault("weapon", List.of()));
         }
-        for (Job job : List.of(Job.WARRIOR, Job.MAGICIAN, Job.BOWMAN, Job.THIEF, Job.PIRATE)) {
+        for (Job job : AgentStarterKitCatalog.kittedFirstJobs()) {
             for (AgentStarterItemGrant grant : AgentStarterKitCatalog.firstJobKitFor(job)) {
                 ids.add(grant.itemId());
             }
         }
+        ids.add(BotCreator.BASIC_POLEARM); // an Aran's, made with it
         ids.removeIf(id -> !ItemConstants.isWeapon(id));
         return ids;
     }

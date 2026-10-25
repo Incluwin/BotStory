@@ -2,6 +2,7 @@ package server.living.roster;
 
 import client.Character;
 import client.Job;
+import client.JobProgressionPolicy;
 import constants.game.GameConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,21 +156,24 @@ public final class JobErrands implements AgentJobPath.Rule {
     }
 
     /**
-     * The job a companion holding {@code current} is set on: from second job on, its line's fourth job; at first job or
-     * as a Beginner, its persona's job when {@code current} lies on the way to it; else none.
+     * The job a companion holding {@code current} is set on: once no choice is left (an Explorer from second job on, a
+     * Cygnus Knight or an Aran from first job on), its line's last job (an Explorer's or an Aran's fourth, a Cygnus
+     * Knight's third); before that, as its line's beginner (Beginner, Noblesse, Legend) or an Explorer at first job, its
+     * persona's job when {@code current} lies on the way to it; else none.
      */
     static Job pathFor(Job current, Job personaJob) {
-        if (current == null || current.getId() >= 1000) {
-            return null; // Explorers only
+        if (current == null) {
+            return null;
         }
-        if (GameConstants.getJobBranch(current) >= 2) {
-            return Job.getById(current.getId() / 10 * 10 + 2);
+        Job last = JobProgressionPolicy.lastJobOfLine(current);
+        if (last != current || GameConstants.getJobBranch(current) >= 2) {
+            return last; // at its end: its own job, nothing left to ask
         }
         if (personaJob == null || personaJob == current) {
             return null;
         }
-        return current == Job.BEGINNER || AgentCharacterShaper.advancementChain(personaJob).contains(current)
-                ? personaJob : null;
+        return current == JobProgressionPolicy.beginnerOf(personaJob)
+                || AgentCharacterShaper.advancementChain(personaJob).contains(current) ? personaJob : null;
     }
 
     /** The job its persona names; null for a hire (its owner picks, as for any character they brought). */
