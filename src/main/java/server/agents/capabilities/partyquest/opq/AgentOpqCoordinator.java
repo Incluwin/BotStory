@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -75,13 +76,14 @@ final class AgentOpqCoordinator {
      * the reactor's own point, 68 px above the only floor there, never came within the drop radius and never dropped.
      */
     static final Point MUSIC_PLAYER_DROP = new Point(-1712, -172);
-    private static final Point LOBBY_FIRST_ROPE_BOTTOM = new Point(-1598, -408);
-    private static final Point LOBBY_FIRST_ROPE_TOP = new Point(-1598, -581);
-    private static final Point LOBBY_SECOND_ROPE_BOTTOM = new Point(-1777, -528);
-    private static final Point LOBBY_SECOND_ROPE_TOP = new Point(-1777, -905);
-    private static final Point LOBBY_UPPER_PLATFORM = new Point(-1717, -926);
     /** Where the way-up runner stops before its last steps to the long rope's launch at x -108 (wayUpAscentTarget). */
     private static final Point WAY_UP_LAUNCH_STAGING = new Point(-114, -846);
+    /** The y of each way-up door row, bottom to top (Map.wz 920010700 portals rp011-rp164). */
+    private static final int[] WAY_UP_ROW_YS = {-2092, -2212, -2328, -2444, -2874, -2994, -3113, -3230,
+            -3641, -3762, -3881, -4005, -4423, -4547, -4667, -4794};
+    /** The standing point atop the rope from each section's landing, by the section's first door row (wayUpSectionStage). */
+    private static final Map<Integer, Point> WAY_UP_SECTION_ROPE_TOPS = Map.of(
+            4, new Point(-178, -2810), 8, new Point(98, -3569), 12, new Point(-179, -4350));
     private static final Point ROOT_POT = new Point(-755, 19);
     static final Point MINERVA_BASE = new Point(-48, -916);
 
@@ -200,6 +202,26 @@ final class AgentOpqCoordinator {
         }
     }
 
+    /**
+     * 'drops=[item@x,y;...] liveMobs=' for the stall line: the nearest three OPQ drops the stalled companion may loot and
+     * the live mobs on its map, what it was likely going for (2026-10-24, run 4: four companions stood still for most of
+     * the run and the line did not say why). Logging only.
+     */
+    private static String stallSurroundings(Character agent) {
+        try {
+            String drops = AgentMapPerception.items(agent.getMap()).stream()
+                    .filter(drop -> !drop.isPickedUp()
+                            && AgentOpqDefinition.EXCLUSIVE_ITEMS.contains(drop.getItemId())
+                            && AgentOpqSessionRegistry.canLootExclusive(agent, drop))
+                    .sorted(Comparator.comparingDouble(drop -> drop.getPosition().distanceSq(agent.getPosition())))
+                    .limit(3).map(drop -> drop.getItemId() + "@" + drop.getPosition().x + "," + drop.getPosition().y)
+                    .collect(java.util.stream.Collectors.joining(";"));
+            return "drops=[" + drops + "] liveMobs=" + agent.getMap().countMonsters();
+        } catch (RuntimeException unreadable) {
+            return "drops=? liveMobs=?";
+        }
+    }
+
     static void tickMember(AgentOpqSession session, AgentRuntimeEntry entry,
                            Character agent, long nowMs) {
         if (session == null || entry == null || agent == null || session.terminal()) return;
@@ -209,6 +231,7 @@ final class AgentOpqCoordinator {
                 || nowMs < member.nextActionAtMs()) return;
         member.observeMovement(agent.getPosition(), nowMs);
         if (member.movementStalledFor(nowMs) >= NAVIGATION_STALL_MS) {
+            int reactor = member.committedReactorObjectId(); // before clearLocalWork clears it
             ACTIONS.refreshNavigation(entry, agent);
             member.clearLocalWork();
             member.deferUntil(nowMs + ACTION_RETRY_MS);
@@ -219,10 +242,10 @@ final class AgentOpqCoordinator {
                     .filter(drop -> !drop.isPickedUp() && drop.getItemId() == AgentOpqDefinition.CLOUD_PIECE)
                     .count() : -1L;
             log.warn("OPQ legal navigation route refreshed after local stall: session={} member={} map={}"
-                            + " role={} pos={} reactor={} activeClouds={} cloudDrops={} heldClouds={}",
+                            + " role={} pos={} reactor={} activeClouds={} cloudDrops={} heldClouds={} {}",
                     session.sessionId(), agent.getId(), agent.getMapId(), member.role(),
-                    agent.getPosition(), member.committedReactorObjectId(), activeClouds, cloudDrops,
-                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false));
+                    agent.getPosition(), reactor, activeClouds, cloudDrops,
+                    agent.getItemQuantity(AgentOpqDefinition.CLOUD_PIECE, false), stallSurroundings(agent));
             return;
         }
         switch (session.phase()) {
@@ -645,7 +668,7 @@ final class AgentOpqCoordinator {
 
     private static void tickLobby(AgentOpqSession session, AgentRuntimeEntry entry,
                                   Character agent, AgentOpqMemberState member, long nowMs) {
-        int day = new GregorianCalendar().get(GregorianCalendar.DAY_OF_WEEK);
+        int day = lobbyDay();
         int lpItem = 4_001_055 + day;
         int piece = AgentOpqDefinition.STATUE_PIECES.get(2);
         reserve(session, lpItem, agent, AgentOpqDefinition.LOBBY_MAP, nowMs);
@@ -660,7 +683,13 @@ final class AgentOpqCoordinator {
             dropItem(entry, InventoryType.ETC, lpItem, (short) 1);
             member.deferUntil(nowMs + ACTION_RETRY_MS); return;
         }
-        if (navigateLobbyLpAscent(entry, agent)) return;
+        // 2026-10-24: the runner goes for the day's box by the graph (its ascent up the two ropes reached only Monday's
+        // cell; every box sits in a walled cell of its own). On a day whose box wants a climber it casts its Haste first.
+        if (lobbyWantsClimber(day) && propertyInt(agent, "statusStg3") == -1
+                && AgentPartyQuestHaste.needsHaste(agent, LOUNGE_JUMP) && AgentPartyQuestHaste.castHaste(entry, agent)) {
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
+            return;
+        }
         if (propertyInt(agent, "statusStg3") == 0 && agent.getId() == session.eventLeaderId()) {
             if (runEak(session, entry, agent, EakKind.LOBBY, 0)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
@@ -872,6 +901,11 @@ final class AgentOpqCoordinator {
             return;
         }
         if (row >= 16) return;
+        Point stage = wayUpSectionStage(agent.getPosition(), row);
+        if (stage != null) {
+            ACTIONS.navigate(entry, stage, true);
+            return;
+        }
         int choice = session.wayUpRoute().choice(row);
         int portalId = 24 + row * 4 + choice;
         Point portal = ACTIONS.portalPosition(agent, portalId);
@@ -884,27 +918,19 @@ final class AgentOpqCoordinator {
         else member.clearPortalObservation();
     }
 
-    private static boolean navigateLobbyLpAscent(AgentRuntimeEntry entry, Character agent) {
-        Point position = agent.getPosition();
-        Point target = lobbyAscentTarget(position);
-        if (target != null) {
-            ACTIONS.navigate(entry, target, true);
-            return true;
-        }
-        return false;
+    /** The server's day for the lobby's LP (Calendar.DAY_OF_WEEK; OrbisPQ.js sets the music player by Date.getDay()). */
+    static int lobbyDay() {
+        return new GregorianCalendar().get(GregorianCalendar.DAY_OF_WEEK);
     }
 
-    static Point lobbyAscentTarget(Point position) {
-        if (position == null || position.y <= -850) return null;
-        if (position.y > -540) {
-            boolean committedToFirstExit = position.x <= -1650
-                    || (Math.abs(position.x - LOBBY_FIRST_ROPE_BOTTOM.x) <= 34
-                    && position.y <= LOBBY_FIRST_ROPE_BOTTOM.y
-                    && position.y >= LOBBY_FIRST_ROPE_TOP.y);
-            return committedToFirstExit ? new Point(LOBBY_SECOND_ROPE_BOTTOM)
-                    : new Point(LOBBY_FIRST_ROPE_BOTTOM);
-        }
-        return new Point(LOBBY_UPPER_PLATFORM);
+    /**
+     * Whether the day's LP box wants a climber (a companion with Haste, cast before it goes for the box): Sunday's
+     * (2002004, x -838) sits in a cell whose last ledge is 100 px up, and Tuesday's (2002006, x -3055) behind a rope a
+     * base run-up does not reach (Haste's speed does). Monday's, Thursday's, Friday's and Saturday's take a base jump;
+     * Wednesday's (2002007) is out of reach at any speed and jump (AgentOpqNavigationGraphTest), an open design question.
+     */
+    static boolean lobbyWantsClimber(int dayOfWeek) {
+        return dayOfWeek == GregorianCalendar.SUNDAY || dayOfWeek == GregorianCalendar.TUESDAY;
     }
 
     private static void navigateWayUpInitialAscent(AgentRuntimeEntry entry, Character agent,
@@ -991,7 +1017,7 @@ final class AgentOpqCoordinator {
         for (int piece : AgentOpqDefinition.STATUE_PIECES) {
             if (agent.getItemQuantity(piece, false) <= 0) continue;
             String scar = AgentOpqDefinition.STATUE_SCAR_BY_ITEM.get(piece);
-            Point target = reactorPosition(agent, scar, AgentOpqDefinition.STATUE_SCAR_POSITION.get(scar));
+            Point target = AgentOpqDefinition.STATUE_SCAR_DROP.get(scar);
             if (!moveTo(entry, agent, target, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             if (dropItem(entry, InventoryType.ETC, piece, (short) 1)) {
                 session.loot().delivered(piece, agent.getId(), nowMs);
@@ -1502,11 +1528,6 @@ final class AgentOpqCoordinator {
         return true;
     }
 
-    private static Point reactorPosition(Character agent, String name, Point fallback) {
-        Reactor reactor = agent == null || agent.getMap() == null ? null : agent.getMap().getReactorByName(name);
-        return reactor == null ? fallback : reactor.getPosition();
-    }
-
     static List<Reactor> activeReactors(Character agent) {
         List<Reactor> result = new ArrayList<>();
         for (Reactor reactor : ACTIONS.reactors(agent)) if (reactor != null && reactor.isAlive() && reactor.isActive()) result.add(reactor);
@@ -1626,12 +1647,28 @@ final class AgentOpqCoordinator {
         return true;
     }
 
-    private static int wayUpRow(int y) {
-        int[] ys = {-2092,-2212,-2328,-2444,-2874,-2994,-3113,-3230,
-                -3641,-3762,-3881,-4005,-4423,-4547,-4667,-4794};
-        int best = -1, distance = Integer.MAX_VALUE;
-        for (int i = 0; i < ys.length; i++) if (Math.abs(y - ys[i]) < distance) { distance = Math.abs(y - ys[i]); best = i; }
-        return distance <= 150 ? best : -1;
+    /**
+     * The door row the way-up runner works: the lowest row whose doors stand no more than 100 px below it (a jump's rise,
+     * less than the 116-120 px between rows); -1 under the first row, 16 above the last. A section's first door (rows
+     * 4, 8 and 12) warps the runner to a landing (pt00-pt02) 120-140 px above the row it passed and a rope below the next
+     * row: 2026-10-24 live (run 4), the nearest row was the one behind it, and Kettle went back for its door for 30
+     * minutes.
+     */
+    static int wayUpRow(int y) {
+        if (y > WAY_UP_ROW_YS[0] + 150) return -1;
+        for (int row = 0; row < WAY_UP_ROW_YS.length; row++) if (WAY_UP_ROW_YS[row] <= y + 100) return row;
+        return WAY_UP_ROW_YS.length;
+    }
+
+    /**
+     * Where the way-up runner stands before a section's first door row (rows 4, 8 and 12), or null: the top of the rope up
+     * from that section's landing, while it is below it. Off the rope the graph takes a jump that touches down 2-4 px
+     * from the end of that small platform toward the doors; landing at speed, the runner slid off and fell back to the
+     * landing (2026-10-24 live, and offline at every landing). From the rope's top it steps off standing.
+     */
+    static Point wayUpSectionStage(Point position, int row) {
+        Point top = WAY_UP_SECTION_ROPE_TOPS.get(row);
+        return top != null && position.y > top.y ? new Point(top) : null;
     }
 
     private static boolean near(Point first, Point second, int radius) {

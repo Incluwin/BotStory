@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.opq;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,8 +60,18 @@ final class AgentOpqConductorPlan {
     private AgentOpqConductorPlan() {
     }
 
-    /** Every companion's assignment, by id in id order. */
+    /** Every companion's assignment, by id in id order, on a day only the lounge wants a climber. */
     static Map<Integer, Assignment> plan(List<Companion> companions, Set<AgentOpqDefinition.Room> complete) {
+        return plan(companions, complete, EnumSet.of(AgentOpqDefinition.Room.LOUNGE));
+    }
+
+    /**
+     * Every companion's assignment, by id in id order. {@code climbRooms}: the rooms that want a climber, taken in
+     * SOLO_ROOMS order (2026-10-24: the lobby on a day whose LP box sits above a base jump, before the lounge, so a lone
+     * climber clears the lobby first and then joins the lounge as a free climber).
+     */
+    static Map<Integer, Assignment> plan(List<Companion> companions, Set<AgentOpqDefinition.Room> complete,
+                                         Set<AgentOpqDefinition.Room> climbRooms) {
         Map<AgentOpqDefinition.Room, List<Integer>> owners = new EnumMap<>(AgentOpqDefinition.Room.class);
         for (AgentOpqDefinition.Room room : AgentOpqDefinition.Room.values()) owners.put(room, new ArrayList<>());
         Map<Integer, Assignment> plan = new LinkedHashMap<>();
@@ -79,8 +90,10 @@ final class AgentOpqConductorPlan {
                 owners.get(room).add(free.remove(0));
             }
         }
-        if (!complete.contains(AgentOpqDefinition.Room.LOUNGE)) {
-            seatAClimberInTheLounge(owners, free, taken, climbers(ordered));
+        for (AgentOpqDefinition.Room room : SOLO_ROOMS) {
+            if (climbRooms.contains(room) && !complete.contains(room)) {
+                seatAClimber(room, owners, free, taken, climbers(ordered), climbRooms);
+            }
         }
         List<Integer> holders = owners.get(AgentOpqDefinition.Room.SEALED);
         boolean sealedOpen = !complete.contains(AgentOpqDefinition.Room.SEALED);
@@ -105,30 +118,31 @@ final class AgentOpqConductorPlan {
     }
 
     /**
-     * The lounge wants a climber. When none of its workers climbs, a climber this pass handed another room takes the
-     * lounge and the non-climber this pass handed the lounge takes that room; failing that, a free climber joins it.
+     * {@code room} wants a climber. When none of its workers climbs, a climber this pass handed a room that wants none
+     * takes it and the non-climber this pass handed it takes that room; failing that, a free climber joins it.
      * {@code taken}: the companions this pass handed a room.
      */
-    private static void seatAClimberInTheLounge(Map<AgentOpqDefinition.Room, List<Integer>> owners, List<Integer> free,
-                                                Set<Integer> taken, Set<Integer> climbers) {
-        List<Integer> lounge = owners.get(AgentOpqDefinition.Room.LOUNGE);
-        if (lounge.stream().anyMatch(climbers::contains)) return;
-        Integer newLounger = lounge.stream().filter(taken::contains).findFirst().orElse(null);
-        if (newLounger != null) {
-            for (AgentOpqDefinition.Room room : SOLO_ROOMS) {
-                List<Integer> workers = owners.get(room);
-                if (room == AgentOpqDefinition.Room.LOUNGE || workers.size() != 1) continue;
+    private static void seatAClimber(AgentOpqDefinition.Room room, Map<AgentOpqDefinition.Room, List<Integer>> owners,
+                                     List<Integer> free, Set<Integer> taken, Set<Integer> climbers,
+                                     Set<AgentOpqDefinition.Room> climbRooms) {
+        List<Integer> seated = owners.get(room);
+        if (seated.stream().anyMatch(climbers::contains)) return;
+        Integer newcomer = seated.stream().filter(taken::contains).findFirst().orElse(null);
+        if (newcomer != null) {
+            for (AgentOpqDefinition.Room other : SOLO_ROOMS) {
+                List<Integer> workers = owners.get(other);
+                if (climbRooms.contains(other) || workers.size() != 1) continue;
                 Integer worker = workers.get(0);
                 if (taken.contains(worker) && climbers.contains(worker)) {
-                    workers.set(0, newLounger);
-                    lounge.set(lounge.indexOf(newLounger), worker);
+                    workers.set(0, newcomer);
+                    seated.set(seated.indexOf(newcomer), worker);
                     return;
                 }
             }
         }
         free.stream().filter(climbers::contains).findFirst().ifPresent(climber -> {
             free.remove(climber);
-            lounge.add(climber);
+            seated.add(climber);
         });
     }
 

@@ -26,7 +26,9 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -77,16 +79,37 @@ class AgentOpqNavigationGraphTest {
     }
 
     @Test
-    void lobbyRunnerClimbsFromTheFloorToTheUpperPlatform() {
-        // 2026-10-20 live (Marrow, two whole runs): each jump off the x -1598 rope landed 11 px short of the ledge it
-        // ends on at x -1664. The rope's traversal settled as she left it, the next resolve planned that jump-off again
-        // from beside the rope, and air steering toward its start pulled her back
-        // (AgentNavigationClimbExitExecutionService). The runner follows the coordinator's targets as it does live.
-        for (int speed : new int[] {100, 103}) {
+    void lobbyRunnerReachesTheBoxOfEveryDayItsMovementReaches() {
+        // Every LP box sits in a walled cell of its own (Map.wz 920010400) and the runner goes for the day's box by the
+        // graph. 2026-10-24 live (run 4, a Sunday on the server): the old two-rope ascent led only into Monday's cell,
+        // and Sunday's cell takes a climber (its last ledge is 100 px up), as Tuesday's does (a rope a base run-up does
+        // not reach). A climber is a companion with Haste 19 on: speed and jump 100 + 38 and + 19. 2026-10-20 live: the
+        // first rope's jump-off (x -1598 to the ledge ending at x -1664) landed 11 px short until rope jumps flew a
+        // fixed arc.
+        int[] boxX = {-838, -1_717, -3_055, -357, -2_615, -1_285, -2_176}; // Sunday..Saturday: 2002004-2002010
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.LOBBY_MAP);
+        Point floor = new Point(-1_633, -127);
+        for (int dayOfWeek = Calendar.SUNDAY; dayOfWeek <= Calendar.SATURDAY; dayOfWeek++) {
+            Point box = new Point(boxX[dayOfWeek - 1], -907);
+            if (dayOfWeek == Calendar.WEDNESDAY) {
+                // Out of reach at any speed and jump: the open design question (docs/DEFAULT_ON_2026-10-19.md, OPQ).
+                AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map, new AgentMovementProfile(160, 123));
+                assertFalse(reaches(graph, map, floor, box), "Wednesday at speed 160 jump 123");
+                continue;
+            }
+            boolean climber = AgentOpqCoordinator.lobbyWantsClimber(dayOfWeek);
+            int speed = climber ? 138 : 100;
+            int jump = climber ? 119 : 100;
+            if (climber) {
+                AgentNavigationGraph base = AgentNavigationGraphService.rebuildGraph(map, AgentMovementProfile.base());
+                assertFalse(reaches(base, map, floor, box), "day " + dayOfWeek + " without a climber");
+            }
             for (int phase = 0; phase < 2; phase++) {
-                Point end = followCoordinatorTargets(AgentOpqDefinition.LOBBY_MAP, new Point(-1_633, -127), speed,
-                        phase, AgentOpqCoordinator::lobbyAscentTarget, position -> position.y <= -850);
-                assertTrue(end.y <= -850, "speed " + speed + " phase " + phase + " ended at " + end);
+                Point end = followCoordinatorTargets(AgentOpqDefinition.LOBBY_MAP, floor, speed, jump, phase,
+                        entry -> { }, position -> box,
+                        position -> Math.abs(position.x - box.x) <= 30 && position.y == box.y);
+                assertTrue(Math.abs(end.x - box.x) <= 30 && end.y == box.y,
+                        "day " + dayOfWeek + " speed " + speed + " jump " + jump + " phase " + phase + " ended at " + end);
             }
         }
     }
@@ -152,6 +175,45 @@ class AgentOpqNavigationGraphTest {
     }
 
     @Test
+    void wayUpRowsCountASectionsLandingWithTheRowAboveIt() {
+        assertEquals(-1, AgentOpqCoordinator.wayUpRow(-1_865), "r6fail, below the first row");
+        assertEquals(0, AgentOpqCoordinator.wayUpRow(-2_024), "atop the rope to the first row");
+        assertEquals(0, AgentOpqCoordinator.wayUpRow(-2_093));
+        assertEquals(3, AgentOpqCoordinator.wayUpRow(-2_449));
+        assertEquals(3, AgentOpqCoordinator.wayUpRow(-2_526), "a jump's top above the fourth row");
+        assertEquals(4, AgentOpqCoordinator.wayUpRow(-2_583), "pt00, the landing past the fourth row");
+        assertEquals(4, AgentOpqCoordinator.wayUpRow(-2_810), "atop the rope from that landing");
+        assertEquals(8, AgentOpqCoordinator.wayUpRow(-3_352), "pt01");
+        assertEquals(12, AgentOpqCoordinator.wayUpRow(-4_134), "pt02");
+        assertEquals(15, AgentOpqCoordinator.wayUpRow(-4_796));
+    }
+
+    @Test
+    void wayUpRunnerFromEachSectionsLandingReachesEveryDoorOfItsFirstRow() {
+        // 2026-10-24 live (run 4, Kettle, 30 minutes): past the fourth row the runner took its landing for that row, went
+        // back for its door, and for the doors right of the rope climbed it, came off its top on a jump that touched
+        // down 2 px from the end of that small platform, slid off and fell back to the landing, every 3 seconds.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.ON_WAY_UP_MAP);
+        List<Point> landings = List.of(new Point(-107, -2_582), new Point(98, -3_353), new Point(-190, -4_138));
+        for (Point landing : landings) {
+            int row = AgentOpqCoordinator.wayUpRow(landing.y);
+            for (int choice = 0; choice < 4; choice++) {
+                Point door = map.getPortal(24 + row * 4 + choice).getPosition();
+                for (int phase = 0; phase < 2; phase++) {
+                    Point end = followCoordinatorTargets(AgentOpqDefinition.ON_WAY_UP_MAP, landing, 100, phase,
+                            position -> {
+                                Point stage = AgentOpqCoordinator.wayUpSectionStage(position,
+                                        AgentOpqCoordinator.wayUpRow(position.y));
+                                return stage != null ? stage : door;
+                            }, position -> AgentOpqInteractionPolicy.mayEnterPortal(position, door));
+                    assertTrue(AgentOpqInteractionPolicy.mayEnterPortal(end, door),
+                            "from " + landing + " door " + door + " phase " + phase + " ended at " + end);
+                }
+            }
+        }
+    }
+
+    @Test
     void wayUpInitialRopesConnectSpawnToFirstPuzzleRow() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.ON_WAY_UP_MAP);
         Rope longRope = map.getRopes().stream()
@@ -192,17 +254,29 @@ class AgentOpqNavigationGraphTest {
     }
 
     @Test
-    void lobbyAscentTargetsTheNextRegionInsteadOfTheCurrentRopeHead() {
-        assertEquals(new Point(-1_598, -408), AgentOpqCoordinator.lobbyAscentTarget(
-                new Point(-1_623, -127)));
-        assertEquals(new Point(-1_777, -528), AgentOpqCoordinator.lobbyAscentTarget(
-                new Point(-1_598, -438)));
-        assertEquals(new Point(-1_777, -528), AgentOpqCoordinator.lobbyAscentTarget(
-                new Point(-1_702, -511)));
-        assertEquals(new Point(-1_717, -926), AgentOpqCoordinator.lobbyAscentTarget(
-                new Point(-1_777, -616)));
-        assertEquals(null, AgentOpqCoordinator.lobbyAscentTarget(
-                new Point(-1_717, -900)));
+    void everyStatueScarDropSpotIsFloorInsideItsScarsDropBox() {
+        // 2026-10-24 live (run 4): Jinx carried the storage piece to scar6's own point, 40 px above the floor she stood
+        // on, and never dropped it; scar2, 3 and 4 sit 77-88, 88 and 41 px above theirs. A piece dropped from anywhere
+        // a carrier may stand within the drop radius of the spot must land in the scar's box.
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(AgentOpqDefinition.CENTER_MAP);
+        Map<String, Integer> reactorIds = Map.of("scar1", 2_008_000, "scar2", 2_008_001, "scar3", 2_008_002,
+                "scar4", 2_008_003, "scar5", 2_008_004, "scar6", 2_008_005);
+        int radius = AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX;
+        for (String scar : AgentOpqDefinition.STATUE_SCAR_BY_ITEM.values()) {
+            Point drop = AgentOpqDefinition.STATUE_SCAR_DROP.get(scar);
+            Foothold floor = map.getFootholds().findBelow(new Point(drop.x, drop.y - 1));
+            assertNotNull(floor, scar);
+            assertEquals(drop.y, floor.calculateFooting(drop.x), scar + " drop spot is not on its floor");
+            ReactorStats stats = ReactorFactory.getReactor(reactorIds.get(scar));
+            Point reactor = AgentOpqDefinition.STATUE_SCAR_POSITION.get(scar);
+            Rectangle box = new Rectangle(reactor.x + stats.getTL().x, reactor.y + stats.getTL().y,
+                    stats.getBR().x - stats.getTL().x, stats.getBR().y - stats.getTL().y);
+            for (int x = drop.x - radius; x <= drop.x + radius; x++) {
+                Foothold below = map.getFootholds().findBelow(new Point(x, drop.y - 1));
+                if (below == null || below.calculateFooting(x) != drop.y) continue; // nowhere to stand there
+                assertTrue(box.contains(new Point(x, drop.y)), scar + " drop at x " + x + " outside " + box);
+            }
+        }
     }
 
     @Test
@@ -247,8 +321,14 @@ class AgentOpqNavigationGraphTest {
     private static Point followCoordinatorTargets(int mapId, Point start, int speed, int phase,
                                                   Consumer<AgentRuntimeEntry> prepare,
                                                   Function<Point, Point> targetFor, Predicate<Point> done) {
+        return followCoordinatorTargets(mapId, start, speed, 100, phase, prepare, targetFor, done);
+    }
+
+    private static Point followCoordinatorTargets(int mapId, Point start, int speed, int jump, int phase,
+                                                  Consumer<AgentRuntimeEntry> prepare,
+                                                  Function<Point, Point> targetFor, Predicate<Point> done) {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(mapId);
-        AgentMovementProfile profile = new AgentMovementProfile(speed, 100);
+        AgentMovementProfile profile = new AgentMovementProfile(speed, jump);
         // The tick only asks for the graph in the background; live, a room's graph is warm before its runner arrives.
         // Without this the loop raced that build; in a full suite run the build never landed and the Agent never moved.
         AgentNavigationGraphService.getGraph(map, profile);
@@ -266,7 +346,7 @@ class AgentOpqNavigationGraphTest {
         when(agent.getMaxHp()).thenReturn(100);
         when(agent.isAlive()).thenReturn(true);
         when(agent.getTotalMoveSpeedStat()).thenReturn(speed);
-        when(agent.getTotalJumpStat()).thenReturn(100);
+        when(agent.getTotalJumpStat()).thenReturn(jump);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         AgentMovementStateRuntime.setMovementProfile(entry, profile);
         entry.simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 0L);

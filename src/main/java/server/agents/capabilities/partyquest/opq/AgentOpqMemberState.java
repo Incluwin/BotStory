@@ -61,7 +61,13 @@ public final class AgentOpqMemberState {
 
     public void assign(Role role, AgentOpqDefinition.Room room, int subroomMapId) {
         if (role == null || subroomMapId < 0) throw new IllegalArgumentException("valid OPQ assignment required");
-        if (assignedRoom != room || assignedSubroomMapId != subroomMapId) clearLocalWork();
+        if (assignedRoom != room || assignedSubroomMapId != subroomMapId) {
+            clearLocalWork();
+            // A new subroom counts its ten afresh. A stall refresh (clearLocalWork alone) keeps the count: re-taken at
+            // the runner's current bag, a half-done subroom could never reach ten (2026-10-24, run 4 review).
+            loungeBaselineMapId = 0;
+            loungeBaselineCount = 0;
+        }
         this.role = role;
         this.assignedRoom = room;
         this.assignedSubroomMapId = subroomMapId;
@@ -154,8 +160,6 @@ public final class AgentOpqMemberState {
         portalRow = 0;
         portalChoice = 0;
         clearPortalObservation();
-        loungeBaselineMapId = 0;
-        loungeBaselineCount = 0;
         clearBossCombat();
     }
 

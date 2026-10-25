@@ -94,6 +94,39 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
   knowledge file refreshed (e6644310f). Full suite 14,290 / 0 / 37. Restarted at players=0 with no ERROR lines at boot.
   OPQ run 4 waits for the airborne-edge branch.
 
+## OPQ run 4 (2026-10-24)
+
+Server bc6f46d8d (since 21:09, with the room-climb, run-3, airborne-edge and ground-stop fixes). Same test party:
+Pqfriend (Cleric 55) with Jinx, Vex, Sadie, Marrow and Kettle. The server day was Sunday (GMT).
+
+- Desk at Wonky: PASS. Lineup window, five-branch blessing, 30-35 min estimate, Yes, admitted at 22:07:52 with six.
+  Vex's stars were topped up by GM beforehand (800 Subi), and Vex, Sadie and Marrow got 200,000 mesos each.
+- Entrance: 84.5 s. Split into rooms at 22:09:17 (Vex walkway, Jinx storage, Marrow lobby, Kettle way up, Sadie
+  lounge).
+- FAILED the 45-minute clock at 22:52:53 in the room stage. It released cleanly, with all six whole on 920011200.
+- Time per room (from the split): storage COMPLETE at 2:44 (4:10 into the run). No other room completed.
+  - Lounge: Sadie, not Jinx. Wonky's blessing (item 2022093) adds jump +10, and the climber check read any jump buff
+    as "Haste already on". So Jinx (Haste 19) counted as jump 110, below the 115 the high subrooms need, and never cast
+    Haste. Sadie cleared the low subroom (10 fragments by 22:2x), then stood on its top-left platform (-865,-385)
+    until the end. The cause is not proven. Offline, the exit is reached from there in about 40 ticks.
+  - Storage piece: Jinx carried it to the statue and stood under scar6 for 40 minutes. scar6 sits 40 px above the
+    only floor under it, beyond the 38 px drop radius. scar2 (77 px), scar3 (88 px) and scar4 (41 px) are out of
+    reach the same way; earlier runs placed scar4 and scar6 only from mid-jump.
+  - Lobby: Sunday's LP box (2002004, x -838) sits in a cell whose last ledge is 100 px up. Marrow (jump 100) climbed
+    the two ropes into Monday's cell (the old ascent goes nowhere else) and stood there. Given Sunday's LP by GM at
+    22:15, she dropped it on the music player and called the leader at 22:16:04. Eak's music line came at about 22:21,
+    but she went back to her cell instead of breaking the box that appeared.
+  - Way up: Kettle passed the long rope and rows 1-4 (both stuck there in run 3). Past the fourth row the door warps
+    to a landing (pt00, y -2581) that the row picker read as row 4 again. For the doors right of the rope, her route
+    climbed the rope, came off its top on a jump that touched down 2 px from the end of the small platform there, slid
+    off and fell back to the landing, every 3 seconds for 30 minutes.
+  - Walkway: Vex had 25 of 30 fragments by 22:26. She then stood on the walled top-right floor she reaches by the
+    one-way pt15 to pt05 link, until the end. The cause is not proven.
+  - The human leader died twice in the centre within two minutes of the split (centre mobs, 1438 HP). Revived with
+    `!heal` and `!stepto`, never with the death OK, which leaves the event. After that the leader waited GM-hidden.
+- Fixes on fix/opq-run4 (not merged): see the branch log. Offline, the way-up landings reached the next row's door
+  0/96 on the old code and 96/96 with the fix.
+
 ## Findings
 
 - Leafre restocks a Lv160 crew to Pink Bean's 1500-potion standard (since P20, before this change).

@@ -75,7 +75,10 @@ final class AgentOpqConductor {
         List<AgentOpqConductorPlan.Companion> input = companions.stream()
                 .map(member -> new AgentOpqConductorPlan.Companion(member.characterId(), member.assignedRoom(),
                         carrying(member), AgentOpqCoordinator.climbsLounge(member.characterId()))).toList();
-        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete);
+        Set<AgentOpqDefinition.Room> climbRooms = AgentOpqCoordinator.lobbyWantsClimber(AgentOpqCoordinator.lobbyDay())
+                ? EnumSet.of(AgentOpqDefinition.Room.LOBBY, AgentOpqDefinition.Room.LOUNGE)
+                : EnumSet.of(AgentOpqDefinition.Room.LOUNGE);
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(input, complete, climbRooms);
         List<AgentOpqMemberState> holders = new ArrayList<>();
         for (AgentOpqMemberState member : companions) {
             AgentOpqConductorPlan.Assignment assignment = plan.get(member.characterId());

@@ -88,6 +88,15 @@ public final class AgentOpqDefinition {
             "scar1", new Point(-164, -1064), "scar2", new Point(99, -1048),
             "scar3", new Point(74, -843), "scar4", new Point(-145, -830),
             "scar5", new Point(-3, -1006), "scar6", new Point(-134, -937));
+    /**
+     * Where a carrier stands to drop each scar's piece: the floor under the scar, inside the scar's drop box (Reactor.wz
+     * 2008000-2008005 lt/rb). 2026-10-24 live (run 4): scar2, 3, 4 and 6 sit 40-88 px above their floors, beyond the
+     * drop radius, so Jinx stood under scar6 with the storage piece for the rest of the run.
+     */
+    public static final Map<String, Point> STATUE_SCAR_DROP = Map.of(
+            "scar1", new Point(-164, -1040), "scar2", new Point(96, -971),
+            "scar3", new Point(82, -755), "scar4", new Point(-157, -789),
+            "scar5", new Point(0, -969), "scar6", new Point(-119, -897));
 
     public enum Room { WALKWAY, STORAGE, LOBBY, SEALED, LOUNGE, ON_WAY_UP }
 

@@ -20,10 +20,14 @@ public final class AgentPartyQuestHaste {
     private AgentPartyQuestHaste() {
     }
 
-    /** Its jump stat with its Haste on: its own when Haste (or another jump buff) is on, else plus Haste's jump. */
+    /**
+     * Its jump stat with its Haste on. The strongest jump buff is the one in force (Character.registerEffect), so Haste
+     * replaces a weaker one: 2026-10-24 live (OPQ run 4), Wonky's blessing (item 2022093, jump +10) read as "Haste
+     * already on", so Jinx (Haste 19) counted as jump 110 and the lounge went to a Fighter again.
+     */
     public static int jumpWithHaste(Character companion) {
-        int jump = companion.getTotalJumpStat();
-        return companion.getBuffedValue(BuffStat.JUMP) != null ? jump : jump + hasteJump(companion);
+        int buff = jumpBuff(companion);
+        return companion.getTotalJumpStat() - buff + Math.max(buff, hasteJump(companion));
     }
 
     /** The jump its best Haste adds (Skill.wz: one per level, 20 at max); 0 without Haste. */
@@ -45,9 +49,14 @@ public final class AgentPartyQuestHaste {
         return best;
     }
 
-    /** Whether it must cast Haste to reach {@code jump}: below it, with no jump buff on. */
+    /** Whether it must cast Haste to reach {@code jump}: below it, with no jump buff on as strong as its Haste. */
     public static boolean needsHaste(Character agent, int jump) {
-        return agent.getTotalJumpStat() < jump && agent.getBuffedValue(BuffStat.JUMP) == null;
+        return agent.getTotalJumpStat() < jump && hasteJump(agent) > jumpBuff(agent);
+    }
+
+    private static int jumpBuff(Character companion) {
+        Integer buff = companion.getBuffedValue(BuffStat.JUMP);
+        return buff == null ? 0 : buff;
     }
 
     /** Casts its Haste; false when it has none or the cast was refused (mid-jump, on a rope, no MP). */
