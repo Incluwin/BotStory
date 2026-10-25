@@ -963,6 +963,14 @@ living_world:
     # MIN_LEVEL: the hunts are Lv80-100 mobs (Lukan's own gate is 70). false = the kill switch.
     COMPANION_KEYSTONE_ERRANDS_ENABLED: true
     COMPANION_KEYSTONE_ERRAND_MIN_LEVEL: 85
+    # Companions earn their own Entrance Ticket to the Amorian Challenge (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md
+    # A2; TicketErrands): asked by its owner ("casse get your ticket", "everyone get tickets"), a companion hunts ten
+    # Lip Lock Keys from the Indigo Eyes and Crystal Boars of Purplewood Forest 2 and trades them with Amos the Strong
+    # as a player does: out with its owner it walks out keeping its seat, a benched one goes between its duties. Hunts
+    # run live when a field seat is free, else on the ledger at the key rate the companion measured live there.
+    # MIN_LEVEL: the challenge's own (40). false = the kill switch.
+    COMPANION_TICKET_ERRANDS_ENABLED: true
+    COMPANION_TICKET_ERRAND_MIN_LEVEL: 40
     # Party Search fills from the bench (2026-10-06, P9 flow 11; PartySearchBench): while an owner's stock Party
     # Search runs, a rested bench companion of theirs whose level and job it asks for answers each search round
     # (about every 10 s) that no human answered: it whispers that it saw the search and comes like a call

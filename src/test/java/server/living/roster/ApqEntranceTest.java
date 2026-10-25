@@ -146,7 +146,24 @@ class ApqEntranceTest {
         when(una.isMarried()).thenReturn(true);
         assertEquals("", AgentApqAdmissionService.memberProblem(una));
         when(una.getMapId()).thenReturn(AgentApqDefinition.GATE_MAP);
-        assertEquals("Una is not at APQ", AgentApqAdmissionService.memberProblem(una));
+        assertEquals("Una has no Entrance Ticket", AgentApqAdmissionService.memberProblem(una),
+                "held outside Amos the Strong's gate");
+        when(una.getItemQuantity(AgentApqDefinition.LIP_LOCK_KEY, false)).thenReturn(10);
+        assertEquals("Una is not at APQ", AgentApqAdmissionService.memberProblem(una), "ten keys: she trades and comes");
+        when(una.getItemQuantity(AgentApqDefinition.LIP_LOCK_KEY, false)).thenReturn(0);
+        when(una.getItemQuantity(AgentApqDefinition.ENTRANCE_TICKET, false)).thenReturn(1);
+        assertEquals("Una is not at APQ", AgentApqAdmissionService.memberProblem(una), "a ticket: on her way in");
+    }
+
+    @Test
+    void amosNamesACompanionWithNoTicket() {
+        DeskVoice amos = AmosLines.VOICE;
+        assertEquals("Una has no Entrance Ticket. Ten Lip Lock Keys from Purplewood get one from Amos the Strong.",
+                amos.forAdmit("Una has no Entrance Ticket", "Ben"));
+        assertEquals("You need an Entrance Ticket from Amos the Strong first.",
+                amos.forAdmit("Ben has no Entrance Ticket", "Ben"));
+        assertEquals(AmosLines.NO_TICKET, amos.reason("Una has no Entrance Ticket", 55));
+        assertEquals(AmosLines.NOT_AT_THE_ENTRANCE, amos.reason("Una is not at APQ", 55));
     }
 
     private static Character person(int id, int gender, Map<Integer, Character> people) {

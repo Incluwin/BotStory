@@ -35,6 +35,8 @@ public final class AmosLines {
     static final String NOT_AT_THE_ENTRANCE = "not at the entrance";
     static final String NOT_READY = "not ready for this yet";
     static final String UNMARRIED = "not married";
+    /** Held outside Amos the Strong's gate with no ticket and fewer than ten keys (CompanionTicketGate). */
+    static final String NO_TICKET = "no entrance ticket";
     static final String NEEDS_A_WOMAN = "The challenge needs at least one lady in the party.";
     static final String NEEDS_A_MAN = "The challenge needs at least one gentleman in the party.";
     /** What a companion he sent for from its bench tells the party as it arrives (lower-case, as they talk). */
@@ -51,6 +53,9 @@ public final class AmosLines {
 
     /** In order: the first rule whose text the refusal holds answers it. */
     private static final List<DeskLines.Rule> ADMIT_RULES = List.of(
+            new DeskLines.Rule(" has no Entrance Ticket", true,
+                    "<name> has no Entrance Ticket. Ten Lip Lock Keys from Purplewood get one from Amos the Strong.",
+                    "You need an Entrance Ticket from Amos the Strong first."),
             new DeskLines.Rule(" is not at APQ", true, DeskLines.NOT_HERE,
                     "You need to be here at the entrance first."),
             new DeskLines.Rule(" must be level 40-255", true,
@@ -180,6 +185,9 @@ public final class AmosLines {
             }
             if (problem.contains(" is not married")) {
                 return UNMARRIED;
+            }
+            if (problem.contains(" has no Entrance Ticket")) {
+                return NO_TICKET;
             }
             return NOT_AT_THE_ENTRANCE;
         }

@@ -1,7 +1,8 @@
 # Companions in the Amorian Challenge (APQ) and Sharenian (GPQ)
 
-Written 2026-10-25. Exploration only: nothing here is built. Every fact was read from this server's scripts, WZ data,
-drop tables and Java on `feat/companion-manager` 087948862, not from GMS guides. File references are to that tree.
+Written 2026-10-25 from this server's scripts, WZ data, drop tables and Java on `feat/companion-manager` 087948862,
+not from GMS guides. File references are to that tree. Part A (APQ) is built on `feat/apq-companions` (cut from
+21eb70855): A0-A8 below, each marked **built** with its classes; "Result" and Part B are the plan as first written.
 
 ## Result
 
@@ -181,6 +182,14 @@ Each step ends with targeted tests; the full suite runs before the branch is rep
   BossEntrance `approachMapId` idea: companions top up there on the way, and a trip out of the entrance is held.
 - **A2. Tickets** (as Question 2 decides): keys looted like any drop; the trade at Amos the Strong; the errand "get
   your ticket" hunting Purplewood; the economy never sells keys or tickets.
+  **Built:** `CompanionTicketGate` (as the owner walks into 670010100, each of their companions on 670010000 is held
+  off follow and talks to Amos the Strong itself: his script trades ten keys if it must, takes its ticket and sends
+  it in; one with neither says so once in party chat and waits until the owner leaves the entrance; a bench call to
+  the entrance lands at the training ground). `TicketErrands` ("<name> get your ticket", "everyone get tickets";
+  KeystoneErrands' shape: a field slice on Purplewood Forest 2 against the Indigo Eyes and Crystal Boars, the ledger
+  at the companion's own measured key rate, a town slice trading at Amos the Strong; kill switch
+  `living_world.COMPANION_TICKET_ERRANDS_ENABLED`, `COMPANION_TICKET_ERRAND_MIN_LEVEL` 40). Amos's desk names a
+  companion held at the gate: "no entrance ticket" (`AgentApqAdmissionService.memberProblem`, `AmosLines`).
 - **A3. Engine (other PQs' Step 1/1b).** `apq` in `AgentPartyQuestCatalog` (AmoriaPQ, recruit 670010100, entry
   670010200, clear 670010800, exit 670011000, Lv40-255, 6-6, 4,500,000 ms); `AgentApqDefinition` (maps, NPCs, areas,
   reactors, items, mobs, pinned to Map.wz/Mob.wz/scripts by tests); session, member state, registry, coordinator

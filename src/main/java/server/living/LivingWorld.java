@@ -98,6 +98,7 @@ public final class LivingWorld {
     private final server.living.roster.GmLevelHolds gmLevelHolds;
     private final server.living.roster.JobErrands jobErrands;
     private final server.living.roster.KeystoneErrands keystoneErrands;
+    private final server.living.roster.TicketErrands ticketErrands;
     private final server.living.roster.CompanionBossRuns bossRuns;
     private final server.living.roster.ui.NativeCrewWindow crewWindow;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
@@ -152,6 +153,7 @@ public final class LivingWorld {
         this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
         this.jobErrands = new server.living.roster.JobErrands(this); // companions go for their next job (2026-10-05)
         this.keystoneErrands = new server.living.roster.KeystoneErrands(this); // companions earn their keystones (2026-10-19)
+        this.ticketErrands = new server.living.roster.TicketErrands(this); // and their Amorian Challenge tickets (2026-10-25)
         this.bossRuns = new server.living.roster.CompanionBossRuns(this); // P7: boss runs with companions
         this.crewWindow = new server.living.roster.ui.NativeCrewWindow(this); // P10: the native Crew window
     }
@@ -235,6 +237,8 @@ public final class LivingWorld {
         world.jobErrands.install();
         // and go for their Crimsonwood Keystone when their owner asks; the same restart rule (2026-10-19)
         world.keystoneErrands.install();
+        // and their Entrance Ticket to the Amorian Challenge; the same restart rule (2026-10-25)
+        world.ticketErrands.install();
         // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         // the yields live bench slices measured (companion_yield), before the first ledger tick credits them
@@ -254,6 +258,7 @@ public final class LivingWorld {
                 () -> {
                     world.executor.submit("job_errands.sweep", world.jobErrands::sweep);
                     world.executor.submit("keystone_errands.sweep", world.keystoneErrands::sweep);
+                    world.executor.submit("ticket_errands.sweep", world.ticketErrands::sweep);
                 },
                 world.config.COMPANION_JOB_ERRAND_SWEEP_MS, world.config.COMPANION_JOB_ERRAND_SWEEP_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
@@ -576,6 +581,11 @@ public final class LivingWorld {
     /** Companions earning their own Crimsonwood Keystone (2026-10-19): the errands out. */
     public server.living.roster.KeystoneErrands keystoneErrands() {
         return keystoneErrands;
+    }
+
+    /** Companions earning their own Entrance Ticket to the Amorian Challenge (2026-10-25): the errands out. */
+    public server.living.roster.TicketErrands ticketErrands() {
+        return ticketErrands;
     }
 
     /** P6: party quests with companions, which start at the quest's entry NPC (Lakelis). */

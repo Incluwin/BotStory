@@ -107,6 +107,11 @@ public final class AgentApqAdmissionService {
      */
     public static String memberProblem(Character member) {
         if (member == null) return "";
+        if (member.getMapId() == AgentApqDefinition.GATE_MAP
+                && member.getItemQuantity(AgentApqDefinition.ENTRANCE_TICKET, false) <= 0
+                && member.getItemQuantity(AgentApqDefinition.LIP_LOCK_KEY, false) < AgentApqDefinition.KEYS_PER_TICKET) {
+            return member.getName() + " has no Entrance Ticket"; // held outside Amos the Strong's gate (plan A2)
+        }
         if (member.getMapId() != AgentApqDefinition.RECRUIT_MAP) return member.getName() + " is not at APQ";
         if (member.getLevel() < AgentApqDefinition.MIN_LEVEL || member.getLevel() > AgentApqDefinition.MAX_LEVEL) {
             return member.getName() + " must be level " + AgentApqDefinition.MIN_LEVEL + '-'

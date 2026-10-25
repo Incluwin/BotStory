@@ -44,6 +44,9 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
             return true; // CWKPQ C3: no Crimsonwood Keystone: it waits in the Hall of Mastery
         }
         RosterService roster = world.roster();
+        if (roster != null && roster.heldAtTicketGate(agentCharacterId)) {
+            return true; // APQ A2: on its way past Amos the Strong, on its own ticket, or waiting for want of one
+        }
         if (!roster.keepsAnyOffFollow()) {
             return false;
         }
