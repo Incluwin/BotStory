@@ -138,6 +138,23 @@ public final class AgentGrindRangedEngagementService {
         void broadcast(AgentRuntimeEntry entry);
     }
 
+    /**
+     * The attack plan, or null while the Agent walks in to a wide, raised boss body instead of holding a close swing
+     * ({@link AgentCombatRangePolicy#closeSwingHoldsHere}). 2026-10-16 (P20 run 15): the walk in starts even when it is
+     * shorter than FOLLOW_DIST. The grind walk holds the body's edge GRIND_EDGE_MARGIN inside the end of the Agent's
+     * platform (Hugin's edge -397 on the ledge ending at -384 became -424), so 81-107 px from the body the walk lay
+     * within FOLLOW_DIST and an idle Agent never stepped: Corvin stood at x=-486 for three minutes without a swing. It
+     * stops STOP_DIST short of that point, within reach (GRIND_EDGE_MARGIN + STOP_DIST < ATTACK_RANGE_X).
+     */
+    static AgentAttackPlan walkInUnlessSwingHolds(AgentRuntimeEntry entry, Character agent, AgentAttackPlan plan,
+                                                  Monster target) {
+        if (AgentCombatRangePolicy.closeSwingHoldsHere(entry, agent, plan, target)) {
+            return plan;
+        }
+        AgentMovementStateRuntime.setWasMovingX(entry, true);
+        return null;
+    }
+
     public static Result engage(AgentRuntimeEntry entry,
                                 Character agent,
                                 Point agentPosition,
