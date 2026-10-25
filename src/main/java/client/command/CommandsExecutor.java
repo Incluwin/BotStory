@@ -231,6 +231,7 @@ import client.command.commands.gm6.LpqTestCommand;
 import client.command.commands.gm6.LmpqTestCommand;
 import client.command.commands.gm6.OpqTestCommand;
 import client.command.commands.gm6.PpqTestCommand;
+import client.command.commands.gm6.ApqTestCommand;
 import client.command.commands.gm6.EpqTestCommand;
 import client.command.commands.gm6.RjpqTestCommand;
 import client.command.commands.gm6.CwkpqTestCommand;
@@ -691,6 +692,7 @@ public class CommandsExecutor {
         addCommand("lmpqtest", 6, LmpqTestCommand.class);
         addCommand("opqtest", 6, OpqTestCommand.class);
         addCommand("ppqtest", 6, PpqTestCommand.class);
+        addCommand("apqtest", 6, ApqTestCommand.class);
         addCommand("epqtest", 6, EpqTestCommand.class);
         addCommand("rjpqtest", 6, RjpqTestCommand.class);
         addCommand("cwkpqtest", 6, CwkpqTestCommand.class);
