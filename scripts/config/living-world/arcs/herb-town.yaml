@@ -1,0 +1,32 @@
+# Herb Town arc: the bellflower root Oksun's mother planted the spring Oksun was born, its marker wrapped thirty years
+# ago in a page borrowed from the Mu Lung library (arcs/mu-lung.yaml), the digging, and the page going home.
+- id: oksun-the-hundred-year-root
+  persona: oksun
+  chapters:
+    - id: chapter-1
+      title: "Planted Before Me"
+    - id: chapter-2
+      title: "A Hundred Springs"
+      dialogueOverrides:
+        greet: ["it's nearly a hundred springs, child. i can feel it in my knees. the root can feel it in the ground.", "sit. Dohyun's been sharpening the spade again. he's sharpened it to nothing."]
+        smallTalk: ["the paper round my mother's marker is from the Mu Lung library. it has writing on it. a stance, i think. i never read it properly. it wasn't mine to read."]
+        chapterEnter: ["(rubs soil from an old stone marker wrapped in faded, careful paper, and doesn't unwrap it)"]
+      unlocks:
+        rumors: [herb-town-dig-it-this-year]
+    - id: chapter-3
+      title: "Up"
+      enterWhen: { flags: [herb-town.root.dug] }
+      dialogueOverrides:
+        greet: ["it's up, child. a hundred springs, the size of my arm. i keep going to look at it.", "hello. i've a root on my table and a page to give back. that's two things more than most days."]
+        who: ["Oksun. i keep the herb gardens. my mother's hundred-year root is out of the ground now. i'm planting the next one. it's for someone i'll never meet."]
+        idle: ["(sits beside a great pale root laid out on a cloth, one hand resting on it)", "(smooths a muddy library page flat with both palms and folds it into a clean cloth)"]
+        smallTalk: ["the page has to go back to Mu Lung. Meiwen has waited thirty springs. that's a long time for someone who isn't a root."]
+        chapterEnter: ["(lays a great pale root on a clean cloth, and beside it a muddy page she has kept thirty years)"]
+    - id: chapter-4
+      title: "Returned"
+      enterWhen: { flags: [mu-lung.forms.whole] }
+      dialogueOverrides:
+        greet: ["the page went home to Mu Lung. Meiwen sent tea back. Sookja says it's very bad tea. i've drunk all of it.", "hello, child. the new root's in. a hundred springs from now someone will dig it. i've written their name on the marker. it says 'whoever'."]
+        who: ["Oksun. i keep the herb gardens. my mother's hundred-year root is out of the ground and her page has gone home to Mu Lung. i'm planting the next root now. it's for someone i'll never meet."]
+        smallTalk: ["i kept a stranger's page thirty years and gave it back. it's the oldest promise i've ever kept. it feels lighter than i thought. promises are like that."]
+        chapterEnter: ["(presses a new marker into the earth of the hundred-year garden, unwrapped this time, and pats the soil around it)"]

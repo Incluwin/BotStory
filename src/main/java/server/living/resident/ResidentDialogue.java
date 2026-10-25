@@ -82,17 +82,24 @@ public final class ResidentDialogue {
     private static final Pattern TALK = Pattern.compile("^(talk|lets talk|menu|options|speak|chat|talk to me|can we talk|got a minute|a word)$");
 
     /** Borrowed townsperson portraits for personas with neither portraitNpcId nor a generated one (portrait-npc-ids.yaml). */
-    private static final Map<String, int[]> PORTRAITS = Map.of(
-            "lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005},
-            "henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109},
-            "kerning-city", new int[] {1052002, 1052003, 1052004, 1052005, 1052006, 1052017, 1052102, 1052103},
-            "perion", new int[] {1022002, 1022003, 1022004, 1022005},
-            "ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102},
-            "nautilus", new int[] {1092000, 1092001, 1092002, 1092003},
-            "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004},
-            "orbis", new int[] {2010000, 2012012, 2012019, 2012011},
-            "el-nath", new int[] {2020003, 2020006, 2020007, 2020002},
-            "ludibrium", new int[] {2041004, 2040046, 9103001, 2041014});
+    private static final Map<String, int[]> PORTRAITS = Map.ofEntries(
+            Map.entry("lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005}),
+            Map.entry("henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109}),
+            Map.entry("kerning-city", new int[] {1052002, 1052003, 1052004, 1052005, 1052006, 1052017, 1052102, 1052103}),
+            Map.entry("perion", new int[] {1022002, 1022003, 1022004, 1022005}),
+            Map.entry("ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102}),
+            Map.entry("nautilus", new int[] {1092000, 1092001, 1092002, 1092003}),
+            Map.entry("sleepywood", new int[] {1061000, 1061002, 1061003, 1061004}),
+            Map.entry("ereve", new int[] {1101004, 1101005, 1101006, 1101007}),
+            Map.entry("rien", new int[] {1200000, 1200001, 1200002}),
+            Map.entry("orbis", new int[] {2010000, 2012012, 2012019, 2012011}),
+            Map.entry("el-nath", new int[] {2020003, 2020006, 2020007, 2020002}),
+            Map.entry("ludibrium", new int[] {2041004, 2040046, 9103001, 2041014}),
+            Map.entry("leafre", new int[] {2080000, 2080002, 2080004, 2080005}),
+            Map.entry("mu-lung", new int[] {2090006, 2090102, 2090103, 2090104}),
+            Map.entry("herb-town", new int[] {2092000, 2093000, 2093001, 2093002}),
+            Map.entry("ariant", new int[] {2100003, 2100005, 2100006, 2100007, 2100008}),
+            Map.entry("magatia", new int[] {2110000, 2110001, 2111004, 2111005}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

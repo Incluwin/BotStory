@@ -1,0 +1,38 @@
+# Ariant arc: the market well that went to sand in a week, the dwarves' tunnels that cut its vein, and a pump and a
+# still that only Magatia's two societies working together can build (arcs/magatia.yaml).
+- id: nadira-the-dry-well
+  persona: nadira
+  chapters:
+    - id: chapter-1
+      title: "Seven Dry Years"
+    - id: chapter-2
+      title: "Damp Sacks"
+      dialogueOverrides:
+        greet: ["the sacks were damp. i keep turning that over. damp, out of a desert.", "back. sit in the shade. i've been thinking about tunnels all morning."]
+        smallTalk: ["the dark sand dwarves dig deeper than the others. their sand comes up black and hot. if anything found my well's vein, it was them."]
+        chapterEnter: ["(turns a sand dwarf's empty sack inside out and presses her palm flat against the damp cloth)"]
+    - id: chapter-3
+      title: "Lost Is Not Gone"
+      enterWhen: { flags: [ariant.well.traced] }
+      dialogueOverrides:
+        greet: ["the water's under the giant's feet. it isn't gone. i say it every morning. it helps.", "hello. Tariq says Magatia could fix it. Tariq says a lot of things at the end of a long road."]
+        who: ["Nadira. i sell water in the market. the old well's vein is lost under the sunset giant, not gone. i'm going to get it back."]
+        smallTalk: ["an Alcadno pump to lift the vein, a Zenumist still to clean it. that's what it would take. the two societies haven't built anything together in a hundred years.", "Tariq says a clockmaker of the Alcadno and an archivist of the Zenumist have shared a bench in Magatia's square every evening for twenty years. if those two ever spoke out loud, the societies might follow them."]
+        chapterEnter: ["(sits on the rim of the dry market well and looks down into the sand for a long time)"]
+      unlocks:
+        rumors: [ariant-the-well-argument]
+    - id: chapter-4
+      title: "The Well Sings"
+      enterWhen: { flags: [ariant.well.flowing] }
+      dialogueOverrides:
+        greet: ["the well's singing. listen. you can hear it from the gate.", "hello! drink. it's free today. Tariq's had a fit. it's lovely."]
+        who: ["Nadira. i sold water by the cup for seven years. now the well sings again, and i'm learning to sell it by the jar like my father did."]
+        idle: ["(lowers a bucket into the market well and listens to it splash before she pulls it up)", "(hands a cup of well water to a passing child and doesn't ask for a coin)"]
+        smallTalk: ["the pump is Alcadno brass and the still is Zenumist glass. they came down the Sahel road on one cart. Gilda and Aurel walked beside it the whole way. Tariq says they didn't stop talking once."]
+        greetFirst: ["a traveller. drink first. it's from the well, and it's free today. we talk after. in Ariant that's manners."]
+        speakPlainly: ["plainly: the well sings. i'm learning to sell water cheap. it's harder than you'd think."]
+        about.tariq: ["Tariq still runs the caravan. iron and glass now, not water. he complains about it every evening at the well. he drinks from it while he complains."]
+        about.gilda: ["Gilda built the pump. she walked beside it all the way down the Sahel road and tightened every bolt twice when it got here. an Alcadno, taking an order from a water-seller. i'll never forget it."]
+        about.aurel: ["Aurel built the still. glass, the colour of the sky. he says Zenumist make things out of nothing. he made water out of sand. that's close enough."]
+        friend.best: ["the first cup from the singing well went to Farid. the second went to you. i'd do it in that order again."]
+        chapterEnter: ["(drops a coin into the singing well for luck, the way her father did, and laughs when it splashes)"]

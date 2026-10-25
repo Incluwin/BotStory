@@ -1,0 +1,31 @@
+# Magatia rumors.
+- id: magatia-out-loud
+  participants: [gilda, aurel]
+  where: { town: magatia, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: gilda-the-bench-between, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: magatia.heard-bench
+  lines:
+    - { by: aurel, text: "your clock's on time tonight, Gilda." }
+    - { by: gilda, text: "you said that out loud, Aurel. in the square." }
+    - { by: aurel, text: "twenty years of notes. somebody ought to say something out loud." }
+    - { by: gilda, text: "half of Magatia can hear you." }
+    - { by: aurel, text: "good. then they can hear this. i'd walk through the Alcadno door any day you asked me to." }
+    - { by: gilda, text: "...you've said that out loud now, Aurel. in front of everyone. you can't take it back." }
+    - { by: aurel, text: "i don't want it back." }
+
+- id: magatia-the-sweepers-news
+  participants: [mott, hedda]
+  where: { town: magatia, spot: "venue:lower-east-street-2" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: hedda, text: "how's the dust, Mott?" }
+    - { by: mott, text: "political. the Zenumist had beetroot for lunch. so did the Alcadno. same hour. different benches." }
+    - { by: hedda, text: "they've done that for a hundred years." }
+    - { by: mott, text: "and never once noticed. how's the bird?" }
+    - { by: hedda, text: "it nearly flew today. it went sideways, very confidently." }
+    - { by: mott, text: "sideways is a direction. i'll sweep up the feathers in the morning." }

@@ -1,0 +1,30 @@
+# Leafre rumors.
+- id: leafre-should-it-go-home
+  participants: [hessa, arlo]
+  where: { town: leafre, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+    requiresArc: { arc: hessa-the-cold-egg, chapterAtLeast: chapter-3 }
+  setsFlagOnListeners: leafre.heard-home
+  lines:
+    - { by: arlo, text: "grandma. if the nest's alive, it's got a family up there." }
+    - { by: hessa, text: "it has, Arlo. kin to mine. i held the shells side by side." }
+    - { by: arlo, text: "you kept it warm forty winters. they kept the whole nest warm forty winters." }
+    - { by: hessa, text: "...you sound like your grandfather. he always said everything belongs somewhere." }
+    - { by: arlo, text: "where does it belong, grandma?" }
+    - { by: hessa, text: "up there, with its own. somebody big would have to carry it. i've known that since the shells." }
+
+- id: leafre-the-canyon-watch
+  participants: [runa, bastian]
+  where: { town: leafre, spot: "venue:by-koscu" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: bastian, text: "the dark rashes crossed the west border twice today. forgive me. i only turned them back once." }
+    - { by: runa, text: "you apologised to them, didn't you." }
+    - { by: bastian, text: "...the second time, yes." }
+    - { by: runa, text: "three red wyverns on the canyon road. i didn't apologise. none of them came back." }
+    - { by: bastian, text: "that's not a competition, Runa." }
+    - { by: runa, text: "it's three to one. it's a little bit of a competition." }

@@ -1,0 +1,309 @@
+# Herb Town quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# herb gardens jar 4230505 (broken piece of pot 4000291; 10-year garden 251010000, 50-year garden 251010100), ginseng jar
+# 4230506 (ginseng-boiled water 4000292; 251010100, 60-year garden 251010101), bellflower root 5120501 (bellflower
+# 4000293; 251010101, 80-year garden 251010102), sr. bellflower root 5120502 (100-year-old bellflower 4000294;
+# 100-year garden 251010200, bellflower valley 251010300). Old swamp 251010400 and isolated swamp 251010500: mr. alli
+# 6130204 (leather 4000295). Red-nose pirate dens 1-3 251010401/251010402/251010403: kru 6130208, captain 7130104
+# (captain's hat 4000297).
+# Off Herb Town: Mu Lung chipmunk 4230500 (acorn 4000276; 250010000, 250010100), blue flower serpent 4230503 (necki
+# swimming cap 4000280; 250010300, 250010400), panda 6130203 (bear foot 4000283; wild bear areas 250010302/250010303,
+# territory of wandering bear 250010304); Leafre birk 8140110 (chewed grass 4000241; forest crossroad 240010400, valley
+# of the antelope 240010500, entrance to sky nest 240010800); Ludibrium ghost pirate 7140000 (warped path of time 3
+# 220060200); Aqua Road squid 8141300 (ink bottle 4000183; dangerous sea gorge I/II 230040200/230040300).
+# Gear: Taejin's two-handed axes The Shining 1412007 L60 / Chrono 1412008 L70 / Helios 1412009 L80; Maren's
+# two-handed blunts Gigantic Sledge 1422010 L70 / The Morningstar 1422012 L80 / Leomite 1422013 L90.
+
+# ---- Oksun, keeper of the hundred-year garden: her arc --------------------------------------------------------------
+
+- id: oksun-the-old-gardens
+  persona: oksun
+  title: "The Old Gardens"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: roots, type: KILL_MOBS, mobIds: [5120501], count: 30, mapIds: [251010101, 251010102] }
+    - { id: bellflowers, type: COLLECT_ITEM, itemId: 4000293, count: 15 }
+    - { id: kettle, type: DELIVER, to: oksun, take: { itemId: 4000293, count: 15 } }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: oksun-the-hundred-year-root, to: chapter-2 } }
+
+- id: oksun-dig-the-root
+  persona: oksun
+  title: "A Hand's Width at a Time"
+  length: MEDIUM
+  requires: { level: { min: 54 }, flags: [herb-town.heard-root], notFlags: [herb-town.root.dug], questsCompleted: [oksun-the-old-gardens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: old-roots, type: KILL_MOBS, mobIds: [5120502], count: 30, mapIds: [251010200, 251010300] }
+    - { id: flowers, type: COLLECT_ITEM, itemId: 4000294, count: 15 }
+    - { id: dohyun, type: TALK_TO, persona: dohyun, say: ["it's time? ...all right. a hand's width at a time. ...there. it's up. it's up! it's the size of my arm. go tell her. no, i'll tell her. no, you tell her. i'm shaking."] }
+    - { id: up, type: DELIVER, to: oksun, take: { itemId: 4000294, count: 15 } }
+  rewards: { meso: 30000, exp: 36000, bondPoints: 60, items: [{ itemId: 2022001, count: 20 }], worldFlags: [herb-town.root.dug] }
+
+- id: oksun-bellflower-beds
+  persona: oksun
+  title: "Bellflower Beds"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [oksun-the-old-gardens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bellflowers, type: COLLECT_ITEM, itemId: 4000293, count: 15 }
+    - { id: beds, type: DELIVER, to: oksun, take: { itemId: 4000293, count: 15 } }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 10 }
+
+# ---- Dohyun, root-digger --------------------------------------------------------------------------------------------
+
+- id: dohyun-pot-shards
+  persona: dohyun
+  title: "Patching the Jars"
+  length: SHORT
+  requires: { level: { min: 47 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jars, type: KILL_MOBS, mobIds: [4230505], count: 25, mapIds: [251010000, 251010100] }
+    - { id: shards, type: COLLECT_ITEM, itemId: 4000291, count: 15 }
+    - { id: patch, type: DELIVER, to: dohyun, take: { itemId: 4000291, count: 15 } }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 30 }
+
+- id: dohyun-ask-gyuwon
+  persona: dohyun
+  title: "Will They Come?"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gyuwon, type: TALK_TO, persona: gyuwon, say: ["will they come for the root? not till it's ready. the captains don't know how to dig. they'd snap it like a carrot. tell the boy to dig first, and to dig properly. tell him i said properly."] }
+    - { id: report, type: DELIVER, to: dohyun }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 30 }
+
+# ---- Taejin, woodcutter of the old swamp (recruitable; his two-handed axes) -----------------------------------------
+
+- id: taejin-the-swamp-path
+  persona: taejin
+  title: "The Swamp Path"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jars, type: KILL_MOBS, mobIds: [4230506], count: 30, mapIds: [251010100, 251010101] }
+    - { id: swamp, type: VISIT_MAP, mapIds: [251010400] }
+    - { id: report, type: DELIVER, to: taejin }
+  rewards: { meso: 15000, exp: 15000, bondPoints: 30, flags: [taejin.intro.done] }
+
+- id: taejin-the-shining
+  persona: taejin
+  title: "The Shining"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [taejin-the-swamp-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pandas, type: KILL_MOBS, mobIds: [6130203], count: 30, mapIds: [250010302, 250010303, 250010304] }
+    - { id: feet, type: COLLECT_ITEM, itemId: 4000283, count: 15 }
+    - { id: grease, type: DELIVER, to: taejin, take: { itemId: 4000283, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1412007, scrolls: [{ success: 100 }] }
+
+- id: taejin-chrono
+  persona: taejin
+  title: "Chrono"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [taejin-the-shining] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: allis, type: KILL_MOBS, mobIds: [6130204], count: 30, mapIds: [251010400, 251010500] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000295, count: 15 }
+    - { id: grip, type: DELIVER, to: taejin, take: { itemId: 4000295, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1412008, scrolls: [{ success: 60 }] }
+
+- id: taejin-helios
+  persona: taejin
+  title: "Helios"
+  length: LONG
+  requires: { level: { min: 80 }, friendship: 10, questsCompleted: [taejin-chrono] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: birks, type: KILL_MOBS, mobIds: [8140110], count: 30, mapIds: [240010400, 240010500, 240010800] }
+    - { id: grass, type: COLLECT_ITEM, itemId: 4000241, count: 15 }
+    - { id: binding, type: DELIVER, to: taejin, take: { itemId: 4000241, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 160000
+    bondPoints: 60
+    gear:
+      - { itemId: 1412009, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: taejin-leather-run
+  persona: taejin
+  title: "Grips Wear Through"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 64 }, questsCompleted: [taejin-the-swamp-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000295, count: 15 }
+    - { id: grips, type: DELIVER, to: taejin, take: { itemId: 4000295, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 10 }
+
+# ---- Maren, hunter of the red-nose pirates (recruitable; her two-handed blunts) -------------------------------------
+
+- id: maren-the-red-noses
+  persona: maren
+  title: "The Red Noses"
+  length: SHORT
+  requires: { level: { min: 66 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kru, type: KILL_MOBS, mobIds: [6130208], count: 30, mapIds: [251010401, 251010402] }
+    - { id: third, type: VISIT_MAP, mapIds: [251010403] }
+    - { id: report, type: DELIVER, to: maren }
+  rewards: { meso: 20000, exp: 26000, bondPoints: 30, flags: [maren.intro.done] }
+
+- id: maren-gigantic-sledge
+  persona: maren
+  title: "The Gigantic Sledge"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [maren-the-red-noses] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: captains, type: KILL_MOBS, mobIds: [7130104], count: 30, mapIds: [251010402, 251010403] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000297, count: 15 }
+    - { id: pile, type: DELIVER, to: maren, take: { itemId: 4000297, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 90000
+    bondPoints: 35
+    gear:
+      - { itemId: 1422010, scrolls: [{ success: 100 }] }
+
+- id: maren-morningstar
+  persona: maren
+  title: "The Ship's Name"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [maren-gigantic-sledge] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [7140000], count: 30, mapIds: [220060200] }
+    - { id: jasper, type: TALK_TO, persona: jasper, say: ["the ghost crew on the warped path? they were the Brine Widow's. ...Maren asked? tell her i'm sorry about her cutter. tell her i heard. and tell her the next round's on me if she ever comes up the tower."] }
+    - { id: name, type: DELIVER, to: maren }
+  rewards:
+    meso: 120000
+    exp: 140000
+    bondPoints: 50
+    gear:
+      - { itemId: 1422012, scrolls: [{ success: 60 }] }
+
+- id: maren-leomite
+  persona: maren
+  title: "The Leomite"
+  length: LONG
+  requires: { level: { min: 89 }, friendship: 10, questsCompleted: [maren-morningstar] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: squid, type: KILL_MOBS, mobIds: [8141300], count: 30, mapIds: [230040200, 230040300] }
+    - { id: ink, type: COLLECT_ITEM, itemId: 4000183, count: 15 }
+    - { id: seal, type: DELIVER, to: maren, take: { itemId: 4000183, count: 15 } }
+  rewards:
+    meso: 180000
+    exp: 220000
+    bondPoints: 60
+    gear:
+      - { itemId: 1422013, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: maren-hat-count
+  persona: maren
+  title: "The Hat Pile"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 68 }, questsCompleted: [maren-the-red-noses] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000297, count: 15 }
+    - { id: pile, type: DELIVER, to: maren, take: { itemId: 4000297, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 10 }
+
+# ---- Sookja, keeper of the tea house --------------------------------------------------------------------------------
+
+- id: sookja-ginseng-tea
+  persona: sookja
+  title: "Tea for the Tired"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jars, type: KILL_MOBS, mobIds: [4230506], count: 25, mapIds: [251010100, 251010101] }
+    - { id: water, type: COLLECT_ITEM, itemId: 4000292, count: 15 }
+    - { id: pot, type: DELIVER, to: sookja, take: { itemId: 4000292, count: 15 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30 }
+
+- id: sookja-a-jar-for-meiwen
+  persona: sookja
+  title: "The Empty Jar"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: meiwen, type: TALK_TO, persona: meiwen, say: ["the last jar? it was perfect. that's why there was nothing to say. tell her that. she'll understand. she brews."] }
+    - { id: reply, type: DELIVER, to: sookja }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 35 }
+
+# ---- Gyuwon, radish farmer, formerly red-nosed ----------------------------------------------------------------------
+
+- id: gyuwon-the-alligator-path
+  persona: gyuwon
+  title: "The Old Way In"
+  length: SHORT
+  requires: { level: { min: 64 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: allis, type: KILL_MOBS, mobIds: [6130204], count: 20, mapIds: [251010400, 251010500] }
+    - { id: door, type: VISIT_MAP, mapIds: [251010401] }
+    - { id: report, type: DELIVER, to: gyuwon }
+  rewards: { meso: 16000, exp: 20000, bondPoints: 30 }
+
+- id: gyuwon-the-old-crew
+  persona: gyuwon
+  title: "A Map from Memory"
+  length: SHORT
+  requires: { level: { min: 64 }, questsCompleted: [gyuwon-the-alligator-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: maren, type: TALK_TO, persona: maren, say: ["a map of the dens. every way in. from him. ...fine. tell him thank you. tell him i said it through my teeth."] }
+    - { id: report, type: DELIVER, to: gyuwon }
+  rewards: { meso: 14000, exp: 16000, bondPoints: 40 }
+
+# ---- Aeri, apprentice herbalist -------------------------------------------------------------------------------------
+
+- id: aeri-acorn-flour
+  persona: aeri
+  title: "Acorn Flour"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chipmunks, type: KILL_MOBS, mobIds: [4230500], count: 25, mapIds: [250010000, 250010100] }
+    - { id: acorns, type: COLLECT_ITEM, itemId: 4000276, count: 15 }
+    - { id: flour, type: DELIVER, to: aeri, take: { itemId: 4000276, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 30 }
+
+- id: aeri-seed-caps
+  persona: aeri
+  title: "Caps for the Seeds"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: serpents, type: KILL_MOBS, mobIds: [4230503], count: 25, mapIds: [250010300, 250010400] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000280, count: 15 }
+    - { id: seeds, type: DELIVER, to: aeri, take: { itemId: 4000280, count: 15 } }
+  rewards: { meso: 11000, exp: 11000, bondPoints: 30 }

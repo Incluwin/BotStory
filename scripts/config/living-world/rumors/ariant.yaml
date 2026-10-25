@@ -1,0 +1,32 @@
+# Ariant rumors.
+- id: ariant-the-well-argument
+  participants: [nadira, tariq]
+  where: { town: ariant, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: nadira-the-dry-well, chapterAtLeast: chapter-3 }
+  setsFlagOnListeners: ariant.heard-well
+  lines:
+    - { by: tariq, text: "you'll put me out of business, Nadira. a well in the market. who'll buy a jar off a camel?" }
+    - { by: nadira, text: "nobody, Tariq. that's the idea." }
+    - { by: tariq, text: "the Alcadno could lift that vein in a week. a pump. brass. they build pumps in their sleep." }
+    - { by: nadira, text: "and drink sand? it's dirty water down there. it would want cleaning." }
+    - { by: tariq, text: "then a Zenumist still over the pump. glass. they clean anything. ...it'd take both societies at once." }
+    - { by: nadira, text: "a clockmaker and an archivist share a bench in Magatia's square every evening, Tariq. one from each society. you told me so yourself." }
+    - { by: tariq, text: "...i did, didn't i. you'll put me out of business yet, Nadira." }
+
+- id: ariant-sefas-terms
+  participants: [sefa, farid]
+  where: { town: ariant, spot: "venue:station-platform-door" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 1
+  setsFlagOnListeners: ariant.heard-sefa
+  lines:
+    - { by: farid, text: "Sefa! if a traveller wanted you on a hunt, would you go?" }
+    - { by: sefa, text: "for money? yes. i've got to eat like everyone else." }
+    - { by: farid, text: "would you rob anyone? if they asked?" }
+    - { by: sefa, text: "no. i don't rob, i don't steal water, and i don't ride with anyone who does. those are my terms. tell them that." }
+    - { by: farid, text: "i'll tell everyone!" }
+    - { by: sefa, text: "i know you will. that's why i told you." }

@@ -1,0 +1,451 @@
+# Leafre quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# Minar Forest rash 7130500 (furball 4000226, tree fruit 4000227; west forest 240010000, peach monkey forest 240010101),
+# dark rash 7130501 (furball 4000229; west border 240010100, 240010101), hobi 7130600 (hov's shorts 4000260; 240010100,
+# cranky forest 240010200), green hobi 7130601 (pin hov's charm 4000261; 240010100, steep hill 240010300), hankie
+# 7130004 (pan flute 4000231; 240010200, 240010300), beetle 7130002 (horn 4000236; east forest 240011000, beetle forest
+# 240010901), dual beetle 7130003 (horn 4000237; east border 240010900, 240010901), forest crossroad 240010400, dual
+# birk 8140111 (tiny tail 4000242; valley of the antelope 240010500), harp 8140001 (tail feather 4000238; sky nest I
+# 240010700, entrance 240010800), blood harp 8140002 (crown 4000239; sky nest II 240010600).
+# Kentaurus: red 8140102 (flame 4000232; 240020000, 240020100, 240020500), black 8140101 (skull 4000234; 240020100,
+# 240020200, 240020300). Dragon Forest: blue dragon turtle 8140700 (cracked shell 4000262; 240030000, 240030100), rexton
+# 8140702 (leather 4000264; 240030200), green cornian 8150200 (wooden shoulder pad 4000266; 240030101-240030103).
+# Canyon: red wyvern 8150300 (wing 4000268; 240040000, 240040100, red wyvern's nest 240040310), dark wyvern 8150302
+# (toenail 4000270; east/west road 240040200/240040300, wyvern canyon 240040400). Dragon Nest: skelegon 8190003 (broken
+# horn 4000274; 240040510, 240040511), skelosaurus 8190004 (old neck bone 4000273; 240040510, 240040511, peak of the
+# big nest 240040600), jr. newtie 8190000/8190001 (egg shell 4000272 from 8190000; destroyed / dangerous dragon nest
+# 240040520/240040521), nest golem 8190005 (240040521, 240040600).
+# Gear: Bastian's one-handed swords Red Katana 1302012 L70 / Khan 1302018 L80 / Fraute 1302023 L90; Runa's one-handed
+# axes Gaea 1312011 L80 / Vifennis 1312015 L90 / Tomahawk 1312030 L100. Mirelle's hats for the player's class
+# (warrior, magician, bowman, thief, pirate) L90 / L100 / L110, Dovan's shoes L100 / L110 / L120.
+
+# ---- Hessa, keeper of the cold egg: her arc -------------------------------------------------------------------------
+
+- id: hessa-a-blanket-of-furballs
+  persona: hessa
+  title: "A Blanket of Furballs"
+  length: SHORT
+  requires: { level: { min: 68 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rashes, type: KILL_MOBS, mobIds: [7130500], count: 30, mapIds: [240010000, 240010101] }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000226, count: 15 }
+    - { id: lining, type: DELIVER, to: hessa, take: { itemId: 4000226, count: 15 } }
+  rewards: { meso: 25000, exp: 30000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: hessa-the-cold-egg, to: chapter-2 } }
+
+- id: hessa-the-shell-that-matches
+  persona: hessa
+  title: "The Shell That Matches"
+  length: MEDIUM
+  requires: { level: { min: 100 }, questsCompleted: [hessa-a-blanket-of-furballs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: newties, type: KILL_MOBS, mobIds: [8190000, 8190001], count: 30, mapIds: [240040520, 240040521] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000272, count: 15 }
+    - { id: match, type: DELIVER, to: hessa, take: { itemId: 4000272, count: 15 } }
+  rewards: { meso: 80000, exp: 250000, bondPoints: 50, worldFlags: [leafre.nest.alive] }
+
+- id: hessa-carry-it-home
+  persona: hessa
+  title: "Carry It Home"
+  length: LONG
+  requires: { level: { min: 105 }, flags: [leafre.heard-home], notFlags: [leafre.egg.home], questsCompleted: [hessa-the-shell-that-matches] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [8190005], count: 20, mapIds: [240040521, 240040600] }
+    - { id: peak, type: VISIT_MAP, mapIds: [240040600] }
+    - { id: home, type: DELIVER, to: hessa }
+  rewards: { meso: 120000, exp: 400000, bondPoints: 60, items: [{ itemId: 2022001, count: 20 }], worldFlags: [leafre.egg.home] }
+
+- id: hessa-furball-lining
+  persona: hessa
+  title: "Fresh Lining"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 68 }, questsCompleted: [hessa-a-blanket-of-furballs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000226, count: 15 }
+    - { id: lining, type: DELIVER, to: hessa, take: { itemId: 4000226, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 10 }
+
+# ---- Arlo, would-be dragon rider ------------------------------------------------------------------------------------
+
+- id: arlo-beetle-horns
+  persona: arlo
+  title: "Horns for a Pretend Dragon"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beetles, type: KILL_MOBS, mobIds: [7130002], count: 25, mapIds: [240011000, 240010901] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000236, count: 15 }
+    - { id: dragon, type: DELIVER, to: arlo, take: { itemId: 4000236, count: 15 } }
+  rewards: { meso: 20000, exp: 26000, bondPoints: 30 }
+
+- id: arlo-the-station-errand
+  persona: arlo
+  title: "Anyone Ever?"
+  length: SHORT
+  requires: { level: { min: 68 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: elsk, type: TALK_TO, persona: elsk, say: ["a dragon rider off the Orbis ship? no. not once in all my years. tell him that. ...and tell him the first one's still coming. don't tell him i said it."] }
+    - { id: report, type: DELIVER, to: arlo }
+  rewards: { meso: 12000, exp: 14000, bondPoints: 30 }
+
+- id: arlo-a-riding-cap
+  persona: arlo
+  title: "A Cap with Flaps"
+  length: SHORT
+  requires: { level: { min: 72 }, questsCompleted: [arlo-beetle-horns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mirelle, type: TALK_TO, persona: mirelle, say: ["a riding cap for Arlo? with flaps. ...tell him when he's taller. tell him i've already cut the felt, and that he's not to know that."] }
+    - { id: report, type: DELIVER, to: arlo }
+  rewards: { meso: 14000, exp: 16000, bondPoints: 35 }
+
+# ---- Bastian, knight of the west border (recruitable; his one-handed swords) ----------------------------------------
+
+- id: bastian-the-west-border
+  persona: bastian
+  title: "The West Border"
+  length: SHORT
+  requires: { level: { min: 72 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rashes, type: KILL_MOBS, mobIds: [7130501], count: 30, mapIds: [240010100, 240010101] }
+    - { id: crossroad, type: VISIT_MAP, mapIds: [240010400] }
+    - { id: report, type: DELIVER, to: bastian }
+  rewards: { meso: 25000, exp: 30000, bondPoints: 30, flags: [bastian.intro.done] }
+
+- id: bastian-red-katana
+  persona: bastian
+  title: "The Red Katana"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [bastian-the-west-border] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hobis, type: KILL_MOBS, mobIds: [7130600], count: 30, mapIds: [240010100, 240010200] }
+    - { id: shorts, type: COLLECT_ITEM, itemId: 4000260, count: 15 }
+    - { id: washing, type: DELIVER, to: bastian, take: { itemId: 4000260, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 90000
+    bondPoints: 35
+    gear:
+      - { itemId: 1302012, scrolls: [{ success: 100 }] }
+
+- id: bastian-khan
+  persona: bastian
+  title: "The Khan"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [bastian-red-katana] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: harps, type: KILL_MOBS, mobIds: [8140002], count: 30, mapIds: [240010600] }
+    - { id: crowns, type: COLLECT_ITEM, itemId: 4000239, count: 15 }
+    - { id: grip, type: DELIVER, to: bastian, take: { itemId: 4000239, count: 15 } }
+  rewards:
+    meso: 120000
+    exp: 140000
+    bondPoints: 50
+    gear:
+      - { itemId: 1302018, scrolls: [{ success: 60 }] }
+
+- id: bastian-fraute
+  persona: bastian
+  title: "The Fraute"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 10, questsCompleted: [bastian-khan] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kentaurus, type: KILL_MOBS, mobIds: [8140101], count: 30, mapIds: [240020100, 240020200, 240020300] }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000234, count: 15 }
+    - { id: grave, type: DELIVER, to: bastian, take: { itemId: 4000234, count: 15 } }
+  rewards:
+    meso: 180000
+    exp: 220000
+    bondPoints: 60
+    gear:
+      - { itemId: 1302023, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: bastian-furball-count
+  persona: bastian
+  title: "The Border Count"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 68 }, questsCompleted: [bastian-the-west-border] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000229, count: 15 }
+    - { id: count, type: DELIVER, to: bastian, take: { itemId: 4000229, count: 15 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 10 }
+
+# ---- Runa, axe of the canyon road (recruitable; her one-handed axes) ------------------------------------------------
+
+- id: runa-the-antelope-road
+  persona: runa
+  title: "The Antelope Road"
+  length: SHORT
+  requires: { level: { min: 76 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beetles, type: KILL_MOBS, mobIds: [7130003], count: 30, mapIds: [240010900, 240010901] }
+    - { id: valley, type: VISIT_MAP, mapIds: [240010500] }
+    - { id: report, type: DELIVER, to: runa }
+  rewards: { meso: 28000, exp: 40000, bondPoints: 30, flags: [runa.intro.done] }
+
+- id: runa-gaea
+  persona: runa
+  title: "Gaea"
+  length: MEDIUM
+  requires: { level: { min: 78 }, friendship: 5, questsCompleted: [runa-the-antelope-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hankies, type: KILL_MOBS, mobIds: [7130004], count: 30, mapIds: [240010200, 240010300] }
+    - { id: flutes, type: COLLECT_ITEM, itemId: 4000231, count: 15 }
+    - { id: binding, type: DELIVER, to: runa, take: { itemId: 4000231, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 130000
+    bondPoints: 35
+    gear:
+      - { itemId: 1312011, scrolls: [{ success: 100 }] }
+
+- id: runa-vifennis
+  persona: runa
+  title: "Vifennis"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 7, questsCompleted: [runa-gaea] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: birks, type: KILL_MOBS, mobIds: [8140111], count: 30, mapIds: [240010500] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000242, count: 15 }
+    - { id: grip, type: DELIVER, to: runa, take: { itemId: 4000242, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 200000
+    bondPoints: 50
+    gear:
+      - { itemId: 1312015, scrolls: [{ success: 60 }] }
+
+- id: runa-tomahawk
+  persona: runa
+  title: "The Tomahawk"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 10, questsCompleted: [runa-vifennis] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wyverns, type: KILL_MOBS, mobIds: [8150300], count: 30, mapIds: [240040000, 240040100, 240040310] }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000268, count: 15 }
+    - { id: cloak, type: DELIVER, to: runa, take: { itemId: 4000268, count: 15 } }
+  rewards:
+    meso: 220000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1312030, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: runa-horn-tally
+  persona: runa
+  title: "The Horn Tally"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 76 }, questsCompleted: [runa-the-antelope-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000237, count: 15 }
+    - { id: tally, type: DELIVER, to: runa, take: { itemId: 4000237, count: 15 } }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 10 }
+
+# ---- Mirelle, hatter (hats for the player's class) ------------------------------------------------------------------
+
+- id: mirelle-feathers-for-a-brim
+  persona: mirelle
+  title: "Feathers for a Brim"
+  length: SHORT
+  requires: { level: { min: 80 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: harps, type: KILL_MOBS, mobIds: [8140001], count: 25, mapIds: [240010700, 240010800] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000238, count: 15 }
+    - { id: brim, type: DELIVER, to: mirelle, take: { itemId: 4000238, count: 15 } }
+  rewards: { meso: 30000, exp: 45000, bondPoints: 30 }
+
+- id: mirelle-the-kentaurus-crest
+  persona: mirelle
+  title: "The Kentaurus Crest"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [mirelle-feathers-for-a-brim] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kentaurus, type: KILL_MOBS, mobIds: [8140102], count: 30, mapIds: [240020000, 240020100, 240020500] }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000232, count: 15 }
+    - { id: crest, type: DELIVER, to: mirelle, take: { itemId: 4000232, count: 15 } }
+  rewards:
+    meso: 120000
+    exp: 180000
+    bondPoints: 35
+    gear:
+      - { pool: [1002530, 1002365, 1002402, 1002326, 1002643], scrolls: [{ success: 100 }] }
+
+- id: mirelle-the-cornian-pads
+  persona: mirelle
+  title: "Wooden Pads"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [mirelle-the-kentaurus-crest] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cornians, type: KILL_MOBS, mobIds: [8150200], count: 30, mapIds: [240030101, 240030102, 240030103] }
+    - { id: pads, type: COLLECT_ITEM, itemId: 4000266, count: 15 }
+    - { id: crown, type: DELIVER, to: mirelle, take: { itemId: 4000266, count: 15 } }
+  rewards:
+    meso: 180000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { pool: [1002377, 1002398, 1002408, 1002380, 1002646], scrolls: [{ success: 60 }] }
+
+- id: mirelle-the-dragon-crown
+  persona: mirelle
+  title: "A Crown for What They Were"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [mirelle-the-cornian-pads] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skelegons, type: KILL_MOBS, mobIds: [8190003], count: 30, mapIds: [240040510, 240040511] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000274, count: 15 }
+    - { id: crown, type: DELIVER, to: mirelle, take: { itemId: 4000274, count: 15 } }
+  rewards:
+    meso: 250000
+    exp: 450000
+    bondPoints: 60
+    gear:
+      - { pool: [1002551, 1002773, 1002547, 1002550, 1002649], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: mirelle-feather-bundles
+  persona: mirelle
+  title: "Feather Bundles"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 80 }, questsCompleted: [mirelle-feathers-for-a-brim] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000238, count: 15 }
+    - { id: bundle, type: DELIVER, to: mirelle, take: { itemId: 4000238, count: 15 } }
+  rewards: { meso: 18000, exp: 22000, bondPoints: 10 }
+
+# ---- Dovan, cobbler (shoes for the player's class) ------------------------------------------------------------------
+
+- id: dovan-turtle-soles
+  persona: dovan
+  title: "Turtle Soles"
+  length: SHORT
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: turtles, type: KILL_MOBS, mobIds: [8140700], count: 30, mapIds: [240030000, 240030100] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000262, count: 15 }
+    - { id: soles, type: DELIVER, to: dovan, take: { itemId: 4000262, count: 15 } }
+  rewards: { meso: 35000, exp: 60000, bondPoints: 30 }
+
+- id: dovan-rexton-leather
+  persona: dovan
+  title: "Rexton Uppers"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [dovan-turtle-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rextons, type: KILL_MOBS, mobIds: [8140702], count: 30, mapIds: [240030200] }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000264, count: 15 }
+    - { id: uppers, type: DELIVER, to: dovan, take: { itemId: 4000264, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { pool: [1072220, 1072223, 1072229, 1072213, 1072318], scrolls: [{ success: 100 }] }
+
+- id: dovan-wyvern-hobnails
+  persona: dovan
+  title: "Hobnails"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [dovan-rexton-leather] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wyverns, type: KILL_MOBS, mobIds: [8150302], count: 30, mapIds: [240040200, 240040300, 240040400] }
+    - { id: toenails, type: COLLECT_ITEM, itemId: 4000270, count: 15 }
+    - { id: nails, type: DELIVER, to: dovan, take: { itemId: 4000270, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 380000
+    bondPoints: 50
+    gear:
+      - { pool: [1072273, 1072268, 1072269, 1072272, 1072321], scrolls: [{ success: 60 }] }
+
+- id: dovan-old-bones
+  persona: dovan
+  title: "Old Bones"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [dovan-wyvern-hobnails] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skelosaurus, type: KILL_MOBS, mobIds: [8190004], count: 30, mapIds: [240040510, 240040511, 240040600] }
+    - { id: bones, type: COLLECT_ITEM, itemId: 4000273, count: 15 }
+    - { id: frame, type: DELIVER, to: dovan, take: { itemId: 4000273, count: 15 } }
+  rewards:
+    meso: 280000
+    exp: 550000
+    bondPoints: 60
+    gear:
+      - { pool: [1072355, 1072356, 1072357, 1072358, 1072359], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: dovan-shell-buckets
+  persona: dovan
+  title: "A Bucket of Shells"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 88 }, questsCompleted: [dovan-turtle-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000262, count: 15 }
+    - { id: bucket, type: DELIVER, to: dovan, take: { itemId: 4000262, count: 15 } }
+  rewards: { meso: 20000, exp: 26000, bondPoints: 10 }
+
+# ---- Elsk, porter of the Orbis ship ---------------------------------------------------------------------------------
+
+- id: elsk-a-letter-for-corliss
+  persona: elsk
+  title: "Crates and Passengers"
+  length: SHORT
+  requires: { level: { min: 68 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: corliss, type: TALK_TO, persona: corliss, say: ["Elsk's crate count? ...he's right, i'm wrong. i logged a crate of chickens as passengers. they had tickets. tell him it stands. tell him i'm glad he checks."] }
+    - { id: reply, type: DELIVER, to: elsk }
+  rewards: { meso: 15000, exp: 18000, bondPoints: 30 }
+
+- id: elsk-fruit-for-the-crossing
+  persona: elsk
+  title: "Fruit for the Crossing"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rashes, type: KILL_MOBS, mobIds: [7130500], count: 25, mapIds: [240010000, 240010101] }
+    - { id: fruit, type: COLLECT_ITEM, itemId: 4000227, count: 15 }
+    - { id: crates, type: DELIVER, to: elsk, take: { itemId: 4000227, count: 15 } }
+  rewards: { meso: 18000, exp: 24000, bondPoints: 30 }
+
+- id: elsk-a-charm-for-the-crossing
+  persona: elsk
+  title: "Charms for the Long Drop"
+  length: SHORT
+  requires: { level: { min: 74 }, questsCompleted: [elsk-fruit-for-the-crossing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hobis, type: KILL_MOBS, mobIds: [7130601], count: 25, mapIds: [240010100, 240010300] }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000261, count: 15 }
+    - { id: sailors, type: DELIVER, to: elsk, take: { itemId: 4000261, count: 15 } }
+  rewards: { meso: 22000, exp: 30000, bondPoints: 35 }

@@ -1,0 +1,441 @@
+# Magatia cast: the city of two doors. 7 residents, 2 recruitable (Vael the Zenumist for a day rate, Kipp the Alcadno
+# guard for a share of steel), 1 arc (Gilda and Aurel's bench between the societies, whose last chapter lets Ariant's
+# well be opened again). Ids in quests/magatia.yaml.
+- id: gilda
+  name: Gilda
+  look: { gender: female }
+  title: "Clockmaker of the Alcadno"
+  job: BEGINNER
+  level: { min: 45, max: 45 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 7, to: 12, spot: "venue:alcadno-society-door", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-east-benches", activity: REST }
+      - { from: 14, to: 19, spot: "venue:by-humanoid-a", activity: SOCIALIZE }
+      - { from: 19, to: 23, spot: "venue:lower-central-street", activity: REST }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [magatia, mithril mutae, iron mutae]
+  questLines: [gilda-mithril-for-the-clock, gilda-the-other-door, gilda-mithril-scraps]
+  arc: gilda-the-bench-between
+  rumors: [magatia-out-loud]
+  relationships:
+    - { persona: aurel, kind: SHARES_A_BENCH_WITH }
+    - { persona: kipp, kind: WORKS_WITH }
+    - { persona: nadira, kind: NEVER_MET }
+  giftItemIds: [4000359, 2022001]
+  dialogue:
+    greetFirst: ["you're standing between the two doors. most people pick a side before they get this far. no, don't. it's refreshing.", "a visitor. Alcadno or Zenumist? neither? good. sit, then. this bench is the only place in Magatia that doesn't ask."]
+    greet: ["good evening. or day. the clock says day. the clock's mine, so it's right.", "hello again. mind the gears on the bench. they're mine too."]
+    idle: ["(turns a tiny brass gear between two fingers, holding it to her ear as if it might tick)", "(glances toward the Zenumist door, then quickly back at the clockwork in her lap)"]
+    noWork: ["nothing today. the clock's wound. i'm not."]
+    nothingDue: ["you owe me nothing. the Alcadno keep ledgers. i keep clocks."]
+    who: ["Gilda. clockmaker to the Alcadno society. i build things that keep time. the Zenumist build things that keep living. we're not meant to speak. i've sat on this bench every evening for twenty years beside a Zenumist. we've never said a word aloud."]
+    bye: ["mind the doors on your way. they listen."]
+    thanks: ["noted. warmly."]
+    smallTalk: ["there's a tin under the bench. it's been there twenty years. it's full of paper. i won't say whose. i'll say it's not only mine.", "the Alcadno build. the Zenumist grow. Magatia's been arguing about which is alchemy for a hundred years. it's both. everyone knows it's both. nobody says."]
+    speakPlainly: ["plainly: two doors, one bench, and a tin of notes."]
+    questOffer.gilda-mithril-for-the-clock: ["the bench clock is running slow, and slow won't do. the mithril mutae in the Alcadno labs shed the pieces i need for its springs. thirty of them, fifteen pieces? i'll tell you why the clock matters."]
+    questAccept.gilda-mithril-for-the-clock: ["the Alcadno institute, areas A-1 and B-1. the mithril mutae. they're mine, in a way. we made them. don't tell them i said kill them."]
+    questWaiting.gilda-mithril-for-the-clock: ["fifteen pieces. the clock's six minutes slow. that's six minutes i miss."]
+    questComplete.gilda-mithril-for-the-clock: ["there. on time. ...the clock's so i'm never late to the bench. twenty years, every evening at the same hour, the same Zenumist on the other end. we write notes. we put them in the tin. we've never once spoken. that's the clock's job. to keep me honest about the hour."]
+    questOffer.gilda-the-other-door: ["you heard us. out loud, finally. he said he'd walk through the Alcadno door any day i asked. so i'm asking, and i'll walk through the Zenumist one too. ask him if he meant it. i've a coat i've been keeping for something. this is the something."]
+    questAccept.gilda-the-other-door: ["Aurel. by the Zenumist door in the mornings, by Phyllia in the afternoon. ask him plainly. he likes plain."]
+    questWaiting.gilda-the-other-door: ["did he mean it? don't soften it."]
+    questComplete.gilda-the-other-door: ["noon tomorrow. his good coat. my good coat. ...twenty years of notes and it comes down to a time and a coat. i'm going to wind every clock i own."]
+    questOffer.gilda-mithril-scraps: ["fifteen pieces of mithril? the clocks always want more."]
+    questAccept.gilda-mithril-scraps: ["areas A-1 and B-1."]
+    questWaiting.gilda-mithril-scraps: ["fifteen."]
+    questComplete.gilda-mithril-scraps: ["fifteen. on time again."]
+    about.aurel: ["Aurel. Zenumist. archivist. he writes in green ink and his threes have a little tail. that's all i'm going to say about Aurel."]
+    about.kipp: ["Kipp guards the Alcadno labs. he shoots very straight. he talks very crooked. he's a good boy."]
+    about.vael: ["Vael's Zenumist. she buys Alcadno mithril on the quiet. i sell it to her on the quiet. that's how most of Magatia actually works."]
+    about.nadira: ["a water-seller in Ariant. i've never met her. Tariq says her well's been dry seven years. an Alcadno could fix a well. i've never been asked."]
+    aboutUnknown: ["neither door knows them."]
+    friend.close: ["i've made you a small clock. it runs a minute fast. so you're early to things that matter."]
+    friend.best: ["if i ever leave Magatia, i'll leave the bench to you. you'll know who to share it with."]
+    famed: ["both doors speak well of you. that's never happened."]
+    defamed: ["both doors speak ill of you. well. that's never happened either."]
+    gift: ["thank you. warmly."]
+    gift.favorite: ["oh, that's thoughtful. that's going on the bench, right beside the clock."]
+    gift.again: ["one a day. the clock's counting."]
+
+- id: aurel
+  name: Aurel
+  look: { gender: male }
+  title: "Archivist of the Zenumist"
+  job: BEGINNER
+  level: { min: 45, max: 45 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 7, to: 12, spot: "venue:zenumist-society-door", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-west-benches", activity: REST }
+      - { from: 14, to: 19, spot: "venue:by-phyllia", activity: SOCIALIZE }
+      - { from: 19, to: 23, spot: "venue:lower-central-street", activity: REST }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [cube slime, rumo, magatia]
+  questLines: [aurel-gelatin-seals, aurel-the-rumo-flasks]
+  rumors: [magatia-out-loud]
+  relationships:
+    - { persona: gilda, kind: SHARES_A_BENCH_WITH }
+    - { persona: pellam, kind: TEACHES }
+    - { persona: vael, kind: COLLEAGUE_OF }
+  giftItemIds: [4000353, 2000002]
+  dialogue:
+    greetFirst: ["a visitor at the Zenumist door. we don't get many who aren't selling glass. you're not selling glass. good. come in. no, don't. it's complicated.", "hello. you have the look of someone who's walked between the two doors and noticed. most people don't notice."]
+    greet: ["hello. the archive's open. it's always open. nobody comes.", "hello again. mind the jars. they're older than both of us."]
+    idle: ["(writes something very small in green ink, blots it, and tucks it into his sleeve)", "(holds a sealed glass jar up to the light and reads the label inside it)"]
+    noWork: ["nothing today. the archive's quiet. it's always quiet. that's what archives are for."]
+    nothingDue: ["you owe me nothing. the archive forgives."]
+    who: ["Aurel. archivist to the Zenumist society. i keep the jars, the formulae, and the society's memory. i also sit on a bench in the evening. that isn't in the archive."]
+    bye: ["walk between the doors carefully. both of them are watching."]
+    thanks: ["oh, you're kind."]
+    smallTalk: ["the Zenumist keep everything in sealed jars. formulae, samples, the odd regret. the seals are gelatin, from the cube slimes. we've never found anything better. i've stopped looking.", "an Alcadno and a Zenumist both use the same word for 'transmutation'. they spell it differently. that's the whole war, mostly."]
+    speakPlainly: ["plainly: jars, ink, and a bench."]
+    questOffer.aurel-gelatin-seals: ["the archive jars want new seals. the cube slimes in the first-floor units are gelatin all the way through. twenty-five slimes, fifteen gelatins?"]
+    questAccept.aurel-gelatin-seals: ["the Zenumist institute, units one-oh-one and one-oh-two. the cube slimes. they wobble. you'll want to apologise. don't."]
+    questWaiting.aurel-gelatin-seals: ["fifteen gelatins. the jars are breathing."]
+    questComplete.aurel-gelatin-seals: ["fifteen. sealed. the archive's memory is safe for another year."]
+    questOffer.aurel-the-rumo-flasks: ["the rumos in units one-oh-two and one-oh-three carry flasks. the archive's old vials keep cracking. twenty-five rumos, fifteen flasks?"]
+    questAccept.aurel-the-rumo-flasks: ["units one-oh-two and one-oh-three. the plain rumos. the triple ones are Vael's problem."]
+    questWaiting.aurel-the-rumo-flasks: ["fifteen flasks. a formula's leaking."]
+    questComplete.aurel-the-rumo-flasks: ["fifteen. lovely. i've rebottled a hundred years of arguments. they'll keep."]
+    about.gilda: ["Gilda. Alcadno. clockmaker. her sevens have a line through them. that's all i'm going to say about Gilda."]
+    about.pellam: ["Pellam's my apprentice. he asks me why the Zenumist and Alcadno don't talk. i tell him it's in the archive. it isn't. i'm still looking for the page."]
+    about.vael: ["Vael is the society's best alchemist and its worst at keeping secrets. she buys Alcadno metal. everyone knows. nobody says. it's a very Magatian arrangement."]
+    about.nadira: ["Nadira sells water in Ariant. Tariq says she's the most careful person on the Sahel road. archivists could learn from her. we're careful with words. she's careful with everything."]
+    aboutUnknown: ["not in the archive."]
+    friend.close: ["i've given you a jar in the archive. it's empty. it's for whatever you'd like kept."]
+    friend.best: ["when i'm gone, the archive's yours. you'd read it. that's all it ever wanted."]
+    famed: ["the Zenumist speak well of you. so, i hear, do the Alcadno. remarkable."]
+    defamed: ["they speak ill of you. both doors. you must have done something interesting."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's useful. that's going in a jar. a good jar."]
+    gift.again: ["one a day. i'd only have to find another jar."]
+
+- id: vael
+  name: Vael
+  look: { gender: female }
+  title: "Alchemist of the Zenumist"
+  job: FP_WIZARD
+  level: { min: 65, max: 67 }
+  strength: VETERAN
+  loadout: magatia-staff-l65
+  personality: efficient-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 8, to: 13, spot: "venue:zenumist-society-door", activity: SOCIALIZE }
+      - { from: 13, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:lower-west-street", activity: SHOW_OFF }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: true
+  knows: [homun, homunscullo, deet and roi]
+  contract: vael-day-rate
+  questLines: [vael-triple-trouble, vael-evil-wings, vael-dark-ritual, vael-kage, vael-alcadno-mithril]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: aurel, kind: COLLEAGUE_OF }
+    - { persona: kipp, kind: TRADES_SECRETS_WITH }
+  giftItemIds: [4000360, 2000006]
+  dialogue:
+    greetFirst: ["careful. no, not you. the flask. you're fine. the flask's having a day.", "a visitor. you smell faintly of the desert and very faintly of fire. you've been near something i made. sorry about that."]
+    greet: ["hello. nothing's exploded yet. give it time.", "you again. good. i need a second pair of hands. not yours. but good."]
+    idle: ["(swirls a small flask of something that glows, holds it to her ear, frowns)", "(scribbles a formula on her own wrist with a stub of charcoal, then crosses half of it out)"]
+    noWork: ["nothing today. i'm thinking. thinking's the dangerous part."]
+    nothingDue: ["we're square."]
+    who: ["Vael. alchemist of the Zenumist. i make things that shouldn't burn burn, and things that should stop. i also buy Alcadno metal, which i'm not meant to. everyone knows. nobody says."]
+    bye: ["don't touch anything that hums."]
+    thanks: ["mm. good."]
+    smallTalk: ["the homunculi in the upper labs were meant to be helpers. they decided they'd rather be people. we've never agreed on whether they were wrong.", "Aurel and Gilda sit on that bench every night. everyone pretends not to see. i've been pretending for fifteen years. i'm very good at it now."]
+    speakPlainly: ["plainly: fire, flasks, and rules i ignore."]
+    offer: ["eighty thousand for a day. i'll bring my own flasks. you bring the targets."]
+    join: ["fine. stand back from me. no, further. there."]
+    bench: ["two days. then i'll have an idea and have to go home and burn something."]
+    leave: ["day's done. i've had three ideas. two of them are safe."]
+    refuse.bond: ["i don't work with people i don't know. i barely work with people i do."]
+    refuse.flags: ["clear the triple rumos out of the lower units with me first. then we'll talk."]
+    refuseOwnErrand: ["my experiment. you can hold the notes."]
+    questOffer.vael-triple-trouble: ["the triple rumos have got into the lower units and they're breaking my glass. thirty of them, please. don't bring me anything back. just come back."]
+    questAccept.vael-triple-trouble: ["the Zenumist institute, units one-oh-two and one-oh-three. the triple ones. three times the rumo, three times the trouble."]
+    questWaiting.vael-triple-trouble: ["thirty. i can hear them through the floor."]
+    questComplete.vael-triple-trouble: ["thirty. quiet. thank you. i can hear myself think. that's not always good."]
+    questOffer.vael-evil-wings: ["Evil Wings. my first staff. it wants the purple liquid that only the Alcadno's rurumo makes. one rurumo, one vial, and clear thirty homuns out of unit two-oh-one first so i can work. don't tell the Alcadno."]
+    questAccept.vael-evil-wings: ["unit two-oh-one for the homuns. then the Alcadno labs, B-1 or B-3 or C-2. the rurumo wanders between them. it's a big purple thing. you'll know."]
+    questWaiting.vael-evil-wings: ["one vial. purple. it'll be warm."]
+    questComplete.vael-evil-wings: ["oh, it's warm. perfect. Evil Wings. seven safe scrolls, every one took. it's never been quite right with Zenumist liquid. it's right now. don't tell anyone why."]
+    questOffer.vael-dark-ritual: ["Dark Ritual. it wants sand, the sand the homunscullos turn into when they come apart. there are only ever a couple of them in unit two-oh-two. ten of them, ten handfuls. it'll take a while. they're rare. that's why it works."]
+    questAccept.vael-dark-ritual: ["unit two-oh-two. the homunscullos. they're the ones that look like they're thinking. they are."]
+    questWaiting.vael-dark-ritual: ["ten handfuls. patience. i'm not good at it either."]
+    questComplete.vael-dark-ritual: ["ten. bound in. Dark Ritual. seven sixties, every one took. that's not alchemy. that's luck. i'll allow it."]
+    questOffer.vael-kage: ["Kage. my best. it wants a heart. Deet and Roi in unit two-oh-two carry a mechanical heart that doesn't work. the Alcadno made them. the Zenumist woke them. thirty homunculi out of the way, then the heart."]
+    questAccept.vael-kage: ["unit two-oh-two and two-oh-three. the homunculi first. then Deet and Roi. they're two of them and one of them. you'll see."]
+    questWaiting.vael-kage: ["the heart. useless, they call it. it isn't."]
+    questComplete.vael-kage: ["a heart from both societies, in a Zenumist staff. ...Kage. two tens and five sixties, every one took. that's the best thing i've ever made. it's yours. i'll make another. it won't be as good."]
+    questOffer.vael-alcadno-mithril: ["fifteen pieces of hardened mithril from the Alcadno's reinforced mutae? for the ferrules. don't tell anyone. everyone knows."]
+    questAccept.vael-alcadno-mithril: ["the Alcadno institute, area A-1. the reinforced ones."]
+    questWaiting.vael-alcadno-mithril: ["fifteen."]
+    questComplete.vael-alcadno-mithril: ["fifteen. thank you. this never happened. it happens every week."]
+    about.aurel: ["Aurel keeps the archive. he's the gentlest man in Magatia and he sits next to an Alcadno every night. that's the bravest thing anyone in the society does."]
+    about.kipp: ["Kipp guards the Alcadno labs. he lets me in the side door for a flask of something warming. he thinks i don't know he'd let me in anyway."]
+    about.gilda: ["Gilda sells me mithril and pretends she doesn't. i buy it and pretend i don't. we've never spoken. we've done business for ten years."]
+    aboutUnknown: ["not in either society. lucky them."]
+    friend.close: ["i've written you into a formula. it's a good one. it's a safe one. mostly."]
+    friend.best: ["if i ever blow up the lab, i'd want you to be the one to tell Aurel. gently."]
+    famed: ["they speak well of you. both doors. that's a rare reaction."]
+    defamed: ["they speak ill of you. both doors. that's a rare reaction too."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's useful. that's going straight into something. carefully."]
+    gift.again: ["one a day. i'd only set the second one on fire."]
+
+- id: kipp
+  name: Kipp
+  look: { gender: male }
+  title: "Watchman of the Alcadno Labs"
+  job: CROSSBOWMAN
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: magatia-crossbow-l60
+  personality: efficient-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 6, to: 12, spot: "venue:weapon-armor-shop-door", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:alcadno-society-door", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [neo huroid, d. roy, security camera]
+  contract: kipp-the-steel-share
+  questLines: [kipp-the-rounds, kipp-golden-crow, kipp-gross-jaeger, kipp-marine-raven, kipp-plug-count]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: vael, kind: LETS_IN_THE_SIDE_DOOR }
+    - { persona: gilda, kind: WORKS_WITH }
+    - { persona: pellam, kind: TEASED_BY }
+  giftItemIds: [4000365, 2000004]
+  dialogue:
+    greetFirst: ["halt. who goes— oh. a visitor. sorry. the security cameras make everyone jumpy. even me. especially me.", "you're not Alcadno. you're not Zenumist. you're a puzzle. i like puzzles. stay where i can see you."]
+    greet: ["evening. or morning. i'm on rounds either way.", "you again. still not a spy? good."]
+    idle: ["(sights along a crossbow at a far rooftop, then lowers it, satisfied)", "(checks a little brass key ring, counting the keys under his breath)"]
+    noWork: ["nothing today. the labs are quiet. that's worrying. i'll go and worry about it."]
+    nothingDue: ["we're square."]
+    who: ["Kipp. i watch the Alcadno labs. the robots, the doors, the cameras, the people who sneak past the cameras. the Zenumist alchemist sneaks past the cameras. i let her. don't tell her i let her."]
+    bye: ["stay out of the restricted rooms. there's a camera. it's very cross."]
+    thanks: ["sure. noted."]
+    smallTalk: ["the old security robots, the D. Roys, still walk the third C area. they've got broken hearts. mechanical ones. i still find it sad.", "the security camera in the restricted room has my name on its blacklist. i built half of it. it's got a sense of humour."]
+    speakPlainly: ["plainly: a crossbow and a lot of doors."]
+    offer: ["twenty thousand, and thirty pieces of iron mutae steel for the lab locks. the locks don't care who i'm with. they care that they're fed."]
+    join: ["fine. i'll watch the corners. you watch the middle."]
+    bench: ["three days. after that the labs start missing me. or the cameras do."]
+    leave: ["shift's done. back to the doors."]
+    refuse.bond: ["i don't leave the labs with strangers. that's literally my whole job."]
+    refuse.flags: ["walk my rounds with me once first. then ask."]
+    refuseOwnErrand: ["my rounds. you can walk them with me."]
+    questOffer.kipp-the-rounds: ["walk my rounds with me. the reinforced mithril mutae in area A-1 have got loose again. thirty of them, then go and look at area C-1 so you know where the rounds turn back."]
+    questAccept.kipp-the-rounds: ["the Alcadno institute, area A-1. then C-1. don't go past C-1. that's where it gets interesting."]
+    questWaiting.kipp-the-rounds: ["thirty, and C-1. the rounds aren't done till you've walked the turn."]
+    questComplete.kipp-the-rounds: ["good. that's my rounds. every day. twice. you'd be bored too."]
+    questOffer.kipp-golden-crow: ["Golden Crow. my first crossbow. the neo huroids in areas C-2 and C-3 are full of plugs. i wire the trigger with them. thirty huroids, fifteen plugs."]
+    questAccept.kipp-golden-crow: ["areas C-2 and C-3. the neo huroids. they march in step. shoot the one at the front."]
+    questWaiting.kipp-golden-crow: ["fifteen plugs. the trigger's sticky."]
+    questComplete.kipp-golden-crow: ["fifteen. smooth. Golden Crow. seven safe scrolls, every one took. it shoots where you look. so look carefully."]
+    questOffer.kipp-gross-jaeger: ["Gross Jaeger. it wants a heart. the D. Roys in area C-3 have broken mechanical hearts. there are only ever a couple of them. ten of them, ten hearts. it's slow work. it's sad work."]
+    questAccept.kipp-gross-jaeger: ["area C-3. the D. Roys. they were the first security robots. treat them like old guards. they were."]
+    questWaiting.kipp-gross-jaeger: ["ten hearts. i'll fix one, one day."]
+    questComplete.kipp-gross-jaeger: ["ten. ...i'll keep one. Gross Jaeger. seven sixties, every one took. the hearts are in the stock. it's heavier than it was."]
+    questOffer.kipp-marine-raven: ["Marine Raven. my best. it wants the blacklist from the security camera in the restricted room. it's the camera's whole memory. thirty saities in there first, they guard it, then the camera. bring me the list."]
+    questAccept.kipp-marine-raven: ["area C-2, then the room marked authorised personnel only. the saities first. then the camera. it hits harder than a camera should. i made sure of that. sorry."]
+    questWaiting.kipp-marine-raven: ["the list. i want to see if i'm on it."]
+    questComplete.kipp-marine-raven: ["...i'm on it. third from the top. 'too kind to intruders'. fair. Marine Raven. two tens and five sixties, every one took. i'm keeping the list."]
+    questOffer.kipp-plug-count: ["fifteen plugs from the neo huroids? the lab locks eat them."]
+    questAccept.kipp-plug-count: ["areas C-2 and C-3."]
+    questWaiting.kipp-plug-count: ["fifteen."]
+    questComplete.kipp-plug-count: ["fifteen. the locks are fed."]
+    about.vael: ["Vael sneaks into the Alcadno labs twice a week to buy metal. i let her in the side door. she brings me something warm in a flask. it's the best part of my week."]
+    about.gilda: ["Gilda keeps the society clocks. she's never once been late. she leaves the labs at seven sharp every evening. i've never asked where she goes. i know where she goes."]
+    about.pellam: ["Pellam's a Zenumist apprentice. he asks me if the Alcadno eat lunch. every week. i tell him different things. he writes them all down."]
+    aboutUnknown: ["not on my list."]
+    friend.close: ["you can walk past my cameras any time. i'll look the other way. i'm good at looking the other way."]
+    friend.best: ["if they ever put you on the blacklist, i'll take you off it. i know where the eraser is."]
+    famed: ["you're on a good list. not mine. a good one."]
+    defamed: ["you're on a list. not a good one. not mine either."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's useful. that's going in my rounds bag."]
+    gift.again: ["one a day. i'm a watchman, not a magpie."]
+
+- id: pellam
+  name: Pellam
+  look: { gender: male }
+  title: "Apprentice of the Archive"
+  job: BEGINNER
+  level: { min: 18, max: 18 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 8, to: 12, spot: "venue:lower-west-street-2", activity: STROLL }
+      - { from: 12, to: 16, spot: "venue:by-keeny", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:lower-west-benches", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [jr. cactus, magatia, cube slime]
+  questLines: [pellam-cactus-stems, pellam-ask-kipp]
+  relationships:
+    - { persona: aurel, kind: APPRENTICED_TO }
+    - { persona: kipp, kind: PESTERS }
+  giftItemIds: [4000329, 2000002]
+  dialogue:
+    greetFirst: ["are you Alcadno? you don't look Alcadno. are you Zenumist? you don't look Zenumist. what do you look like? i'm writing this down.", "hello! i'm an apprentice. i'm learning the archive. i've learned the first shelf. there are nine hundred shelves."]
+    greet: ["hello! i learned a new shelf!", "you're back! i've got a question. i've got lots of questions."]
+    idle: ["(copies something from one notebook into another in very careful handwriting)", "(peers across the street toward the Alcadno door, then quickly pretends to be reading)"]
+    noWork: ["nothing today! Aurel's locked the archive for lunch. i'm reading the door."]
+    nothingDue: ["we're even!"]
+    who: ["Pellam. apprentice to Aurel at the Zenumist archive. i'm learning every formula the society ever wrote. also i want to know why we don't talk to the Alcadno. nobody will tell me. so i'm asking the Alcadno."]
+    bye: ["don't trip on the doors! they're higher than they look."]
+    thanks: ["thank you! i'll write it down."]
+    smallTalk: ["the Zenumist use cactus stems from Ariant for a tonic. nobody knows who first thought of it. i think it was someone very thirsty.", "Kipp says the Alcadno don't eat lunch. last week he said they eat lunch twice. i'm keeping a list. the list is very confusing."]
+    speakPlainly: ["plainly: an apprentice with a lot of notebooks."]
+    questOffer.pellam-cactus-stems: ["Aurel needs cactus stems for the tonic and i'm not allowed to go to Ariant by myself. the jr. cactus by the west entrance have the juiciest stems. twenty-five of them, fifteen stems? please?"]
+    questAccept.pellam-cactus-stems: ["Ariant, down the Sahel road. out the west entrance, and the young catthus desert. the little ones. they're prickly. so is Aurel when he's out of tonic."]
+    questWaiting.pellam-cactus-stems: ["fifteen stems! Aurel's very prickly."]
+    questComplete.pellam-cactus-stems: ["fifteen! Aurel will be less prickly. i'll write down that you did it. in the archive. you'll be on a shelf."]
+    questOffer.pellam-ask-kipp: ["would you ask Kipp if the Alcadno eat lunch? the real answer. he keeps telling me different things. he might tell you the truth. you look honest."]
+    questAccept.pellam-ask-kipp: ["Kipp's by the weapon shop in the mornings and the Alcadno door at night. he's the one with the crossbow and the grin."]
+    questWaiting.pellam-ask-kipp: ["did he say? do they eat lunch?"]
+    questComplete.pellam-ask-kipp: ["they eat lunch at the same time as us, in the same square, on different benches? ...and nobody's ever said? i'm writing this down. i'm writing this down in red."]
+    about.aurel: ["Aurel knows everything in the archive. he says he's still looking for one page. i asked which page. he said 'the one that explains us'. i don't know what that means yet."]
+    about.kipp: ["Kipp's an Alcadno! he talks to me anyway. he says i'm too small to count as a Zenumist yet."]
+    about.vael: ["Vael set my notebook on fire once. by accident. she bought me two new ones. i like her very much."]
+    aboutUnknown: ["they're not in the archive! i'll add them!"]
+    friend.close: ["you're on my favourite shelf. it's the first shelf. it's the only one i've learned."]
+    friend.best: ["when i'm archivist, i'll give you a whole shelf. of your own. you can put anything on it."]
+    famed: ["everyone's talking about you! i'm writing it down!"]
+    defamed: ["people are saying things. i'm not writing those down."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh, that's perfect! how did you know? i'm writing that down."]
+    gift.again: ["you already gave me something! i wrote it down."]
+
+- id: mott
+  name: Mott
+  look: { gender: male }
+  title: "Sweeper of Both Houses"
+  job: BEGINNER
+  level: { min: 32, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 5, to: 9, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 9, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:lower-east-street-2", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [iron mutae, magatia, ariant]
+  questLines: [mott-sweeping-the-labs, mott-the-fish-tile]
+  rumors: [magatia-the-sweepers-news]
+  relationships:
+    - { persona: hedda, kind: GOSSIPS_WITH }
+    - { persona: nadira, kind: KNEW_THE_FATHER_OF }
+  giftItemIds: [4000357, 2022001]
+  dialogue:
+    greetFirst: ["mind the dust. no, the other dust. that's Zenumist dust. that's Alcadno. they're different. i'd know. i sweep both.", "hello! wipe your feet. both of them. on both sides."]
+    greet: ["hello. both houses swept, or about to be.", "hello again. the dust is very political today."]
+    idle: ["(leans on a broom and watches both society doors, one after the other)", "(sweeps a neat little pile of dust into a pan and squints at it, as if reading it)"]
+    noWork: ["nothing today. the dust's resting. so am i."]
+    nothingDue: ["you owe me nothing. i owe the dust everything."]
+    who: ["Mott. i sweep the Zenumist institute in the morning and the Alcadno in the afternoon. i'm the only person in Magatia who's allowed in both. nobody thinks a sweeper's listening. i'm always listening."]
+    bye: ["wipe your feet on the way out too. it's only polite."]
+    thanks: ["oh, you're kind."]
+    smallTalk: ["the Zenumist sweep left to right. the Alcadno sweep right to left. i sweep in a circle. nobody's ever complained.", "i was a boy in Ariant once. i swept the palace steps. there was a well in the market with a tile at the bottom shaped like a fish. i used to look down at it while i worked."]
+    speakPlainly: ["plainly: a broom, two houses, a lot of gossip."]
+    questOffer.mott-sweeping-the-labs: ["the iron mutae in the Alcadno labs shed filings everywhere. thirty of them out of my way in areas B-3 and A-3, then go and look at the Zenumist's unit one-oh-three. i want to know if their floor's as bad as ours."]
+    questAccept.mott-sweeping-the-labs: ["Alcadno areas B-3 and A-3. the iron mutae. then over to the Zenumist, unit one-oh-three. look at the floor. just look."]
+    questWaiting.mott-sweeping-the-labs: ["thirty, and the Zenumist floor. how bad was it?"]
+    questComplete.mott-sweeping-the-labs: ["just as bad? ...good. i knew it. same dust, both houses. i've been saying so for thirty years."]
+    questOffer.mott-the-fish-tile: ["you go to Ariant? ask Nadira the water-seller something for me. is the fish tile still at the bottom of the old well? i looked at it every day as a boy. i'd like to know it's there."]
+    questAccept.mott-the-fish-tile: ["Ariant, down the Sahel road. Nadira sells water in the market. her father gave me a cup every morning when i was a boy. she'll know the tile."]
+    questWaiting.mott-the-fish-tile: ["did she say? is it there?"]
+    questComplete.mott-the-fish-tile: ["still there. ...good. i'm glad. that's silly. i'm glad anyway."]
+    about.hedda: ["Hedda builds birds that don't fly. i sweep up the feathers. we talk every evening. she's the only one who asks how the dust is."]
+    about.nadira: ["Nadira's father was a water-carrier in Ariant when i swept the palace. he gave me a cup every morning for nothing. i've never forgotten. i sweep a little slower when i think of him."]
+    about.gilda: ["Gilda's Alcadno. she leaves the labs at seven every evening, exactly. i sweep past the bench at eight. there's a tin under it. i've never once swept it. some things you leave."]
+    about.aurel: ["Aurel's Zenumist. he writes in green ink. there's green ink in the tin under the bench. i've never mentioned it. i sweep around it."]
+    aboutUnknown: ["never swept up after them."]
+    friend.close: ["i'd sweep for you. not the floor. the gossip. i'd sweep the bad gossip away."]
+    friend.best: ["when i retire i'll leave you my broom. it's swept both houses. it's the only thing in Magatia that has."]
+    famed: ["both houses are talking about you. i heard it in both dusts."]
+    defamed: ["both houses are talking about you. i swept it under the rug. both rugs."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's thoughtful. that goes in my pocket. the good pocket."]
+    gift.again: ["one's plenty. i've only got the one good pocket."]
+
+- id: hedda
+  name: Hedda
+  look: { gender: female }
+  title: "Builder of Mechanical Birds"
+  job: BEGINNER
+  level: { min: 42, max: 42 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: magatia
+    routine:
+      - { from: 9, to: 13, spot: "venue:lower-east-benches", activity: LINGER }
+      - { from: 13, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:by-rosen", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [roid, kiyo, magatia]
+  questLines: [hedda-a-mechanical-bird, hedda-feathers-for-the-bird]
+  rumors: [magatia-the-sweepers-news]
+  relationships:
+    - { persona: mott, kind: GOSSIPS_WITH }
+    - { persona: tariq, kind: SELLS_IRON_TO }
+  giftItemIds: [4003004, 4000364]
+  dialogue:
+    greetFirst: ["oh, mind the wing. no, the left one. the right one's finished. the left one is very nearly finished. it has been for some time.", "a visitor! do you know anything about flight? no? nobody does. that's the trouble."]
+    greet: ["hello! the bird nearly flew today.", "you're back. sit. careful of the springs."]
+    idle: ["(adjusts a tiny brass wing joint with tweezers, then flaps it gently with one finger)", "(holds a little mechanical bird up and lets go; catches it immediately)"]
+    noWork: ["nothing today. the bird's resting. i'm thinking about the bird."]
+    nothingDue: ["you owe me nothing, dear."]
+    who: ["Hedda. i was an Alcadno engineer for forty years. now i'm retired and i build mechanical birds. none of them fly. the Alcadno say it can't be done. i've stopped asking them."]
+    bye: ["look up on the way. you never know."]
+    thanks: ["oh, that's lovely of you."]
+    smallTalk: ["the roids in area C-1 have wires that sing when they spark. i want that sound in a bird's throat. birds should sing.", "Tariq buys my iron for his wheels. i keep a little back for the wings. he pays for the whole load anyway. he thinks i don't know. i know."]
+    speakPlainly: ["plainly: an old engineer and a bird that won't fly."]
+    questOffer.hedda-a-mechanical-bird: ["the wires in the roids sing when they spark. i want the sound. twenty-five roids in area C-1, then go into the room behind it where they go wrong and listen. tell me what it sounds like."]
+    questAccept.hedda-a-mechanical-bird: ["the Alcadno institute, area C-1, then the critical error room behind it. listen to it. that's the important part."]
+    questWaiting.hedda-a-mechanical-bird: ["twenty-five, and the room. what did it sound like?"]
+    questComplete.hedda-a-mechanical-bird: ["like a lot of small birds arguing? ...oh, that's perfect. that's exactly the sound. i'll wire it in tonight."]
+    questOffer.hedda-feathers-for-the-bird: ["real feathers. i want to try real feathers on the wings. the kiyos on the north desert road drop stiff ones. twenty-five kiyos, eight feathers? they don't drop many. i'm patient."]
+    questAccept.hedda-feathers-for-the-bird: ["Ariant's north desert road, the second stretch, and the red desert. the kiyos. the birds that shouldn't fly and do. i want to know their secret."]
+    questWaiting.hedda-feathers-for-the-bird: ["eight feathers, dear. i'm patient. the bird's patient. it's very patient."]
+    questComplete.hedda-feathers-for-the-bird: ["eight. stiff and light. ...i'll try them tomorrow. if it flies, you'll hear about it. the whole city will hear about it."]
+    about.mott: ["Mott sweeps both houses. he's the only man in Magatia who knows everything and never tells. well. he tells me."]
+    about.tariq: ["Tariq drives the caravan to Ariant. he buys my iron and pretends he hasn't noticed the short loads. he's a gentleman. don't tell him i said so."]
+    about.gilda: ["Gilda was my apprentice, long ago. she builds clocks now. she's better than i ever was. she sits on a bench every evening. i don't ask. i built that bench."]
+    aboutUnknown: ["never built anything with them."]
+    friend.close: ["i've named a bird after you. it doesn't fly yet. neither did i, at first."]
+    friend.best: ["if a bird ever flies, it's going to you first. it'll know the way. i'll make sure."]
+    famed: ["they're saying lovely things about you, dear."]
+    defamed: ["they're saying hard things. let them. birds don't listen to gossip."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["oh, that's just what the bird needs. how did you know?"]
+    gift.again: ["one's plenty for today, dear."]
