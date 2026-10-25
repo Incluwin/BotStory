@@ -27,8 +27,9 @@ public final class AgentRelationshipRuntime {
      * Whom "me" means in the line the Agent is handling: the one who whispered it (AgentReplyRoute.current, which an
      * answer scheduled for later carries), else its interaction target. The whisper bridge gives an administrator's
      * companion back to its owner once the line is handled, but "fame me", "i need pots" and "give me mesos" act for
-     * the administrator 500-900 ms later (third deploy review 2026-10-10). What the owner decides (a job prompt, a gear
-     * offer) keeps {@link #interactionTarget}.
+     * the administrator 500-900 ms later (third deploy review 2026-10-10), as do "any upgrades" and "do you need any
+     * gear from me" (fourth). What the owner decides (a job prompt, a loot offer made unasked) keeps
+     * {@link #interactionTarget}.
      */
     public static Character requester(AgentRuntimeEntry entry) {
         AgentReplyRoute route = AgentReplyRoute.current(entry);

@@ -1,6 +1,7 @@
 package server.agents.social.conversation;
 
 import client.Character;
+import server.agents.commands.AgentReplyChannel;
 import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -168,7 +169,9 @@ public final class AgentSocialDialogueRuntime {
 
     /**
      * A host's answer goes out like a styled model reply (typing delay, same channel) and is remembered the same way;
-     * a line still waiting when the asker has changed maps is dropped (they left before it was typed).
+     * a line still waiting when the asker has changed maps is dropped (they left before it was typed). A whispered one
+     * is not: a whisper reaches its asker on any map, and the answer is remembered as said (fourth deploy review
+     * 2026-10-10: the next ask got "like i said, ..." about an answer never sent).
      */
     private static void deliverAnswer(AgentRuntimeEntry entry, Character speaker,
                                       AgentSocialDialogueRequestFactory.PreparedDialogue prepared, List<Styled> lines,
@@ -177,11 +180,12 @@ public final class AgentSocialDialogueRuntime {
             return;
         }
         int askedOn = speaker.getMapId();
+        boolean anyMap = route != null && route.channel() == AgentReplyChannel.WHISPER;
         StringBuilder said = new StringBuilder();
         for (Styled line : lines) {
             String text = line.text();
             AgentSchedulerRuntime.scheduleLowPriority(() -> {
-                if (speaker.getMapId() == askedOn) {
+                if (anyMap || speaker.getMapId() == askedOn) {
                     AgentDialogueTransportRuntime.replyNow(entry, text, route);
                 }
             }, Math.max(1L, line.delayMs()));

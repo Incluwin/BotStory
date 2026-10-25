@@ -60,6 +60,21 @@ class PhraseMatcherTest {
         assertTrue(PhraseMatcher.match(packs, PhraseMatcher.normalize("retreat under 30% hp")).startsWith("reply:"));
     }
 
+    /**
+     * A whole command explains every word (fourth deploy review 2026-10-10: the name after it is then the line's one
+     * extra word); a planned one gives its canonical, not its reply.
+     */
+    @Test
+    void aWholeCommandLeavesNoUnknownWord() {
+        assertEquals("heals off", PhraseMatcher.whole(packs, "heals off"));
+        assertEquals("sell trash", PhraseMatcher.whole(packs, "go sell my junk"));
+        assertEquals("what are you doing", PhraseMatcher.whole(packs, "where are you"));
+        assertNull(PhraseMatcher.whole(packs, "stay close to"), "an alias and an unknown word");
+        assertNull(PhraseMatcher.whole(packs, "stop hadrik"));
+        assertNull(PhraseMatcher.whole(packs, "here you go"));
+        assertEquals("move here", PhraseMatcher.match(packs, "here you go"), "which match still reads as a command");
+    }
+
     @Test
     void unknownConstructionsStillMiss() {
         assertNull(PhraseMatcher.match(packs, PhraseMatcher.normalize("get on the rope")));

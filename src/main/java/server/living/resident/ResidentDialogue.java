@@ -133,6 +133,28 @@ public final class ResidentDialogue {
      * and "sell and come back" always are.
      */
     private static final Set<String> SELL_NOW = Set.of("sell junk", "sell trash", "sell my junk", "sell my trash");
+    /**
+     * The phrase packs' commands an owner's map line may give one companion by its name last ({@link #agentCommandFor},
+     * fourth deploy review 2026-10-10): what it does to itself, its own gear, settings and supplies, or answers about
+     * itself, so a name after them can only be whom it is said to. Not the ones whose name last is often the verb's
+     * object ("fame tamsin", "help tamsin", "attack tamsin", "guard tamsin", "greet tamsin", "trade tamsin", "go to",
+     * "focus", "avoid", the formation and the planned tank and skill lines): those keep the untargeted Agent route.
+     */
+    private static final Set<String> NAME_LAST_COMMANDS = Set.of("follow me", "stop", "move here", "patrol", "stats",
+            "inventory", "slots", "range", "build", "skills", "mesos", "speed", "exp", "scrolls", "pots", "buff list",
+            "support on", "support off", "heals on", "heals off", "buff on", "buff off", "buff cheap", "buff max",
+            "need hp pot", "need mp pot", "need ammo", "need pot", "any upgrades?", "need anything?", "sell trash",
+            "autoequip", "unequip everything", "change build", "relog", "kite", "retreat at hp", "loot mode", "restock",
+            "bank", "train until", "quiet", "what are you doing");
+    /**
+     * Words after which a name is the verb's object, not whom the line is said to ("wait for tamsin", "heals on
+     * tamsin"): the phrase packs read some as tails ("for now" normalizes to "for"), so a whole command can end in one.
+     */
+    private static final Set<String> BEFORE_AN_OBJECT = Set.of("for", "with", "to", "at", "on", "in", "into", "onto",
+            "behind", "near", "beside", "by", "after", "from", "of", "about", "toward", "towards", "around", "against",
+            "past", "over", "under", "than", "like", "and", "or");
+    /** A whispered call with a tail the roster's own call words do not list ("come back to me", "come back here"). */
+    private static final Pattern RECALL = Pattern.compile("^(come|get) back( here| to me| with me| over here)?$");
 
     private final LivingWorld world;
     private final ResidentIntentJudge judge;
@@ -188,13 +210,54 @@ public final class ResidentDialogue {
             return false;
         }
         String normalized = PhraseMatcher.normalize(text);
-        if (rosterCommandFor(speaker, persona, normalized, true)) {
+        String command = addressedTo(persona, normalized);
+        if (rosterCommandFor(speaker, persona, command, true) || recalled(speaker, persona, command)) {
             return true;
         }
         if (world.roster().ownerOf(persona.id()) == speaker.getId()) {
             return false; // companion commands travel the agent whisper bridge
         }
         return converse(speaker, persona, normalized, text) || true;
+    }
+
+    /** The whisper without its addressee's name, first or last ("tamsin come back", "come here tamsin"), as map chat. */
+    private static String addressedTo(Persona persona, String normalized) {
+        String name = persona.name().toLowerCase(Locale.ROOT);
+        String[] words = normalized.split(" ");
+        if (words.length < 2) {
+            return normalized;
+        }
+        if (words[0].equals(name)) {
+            return normalized.substring(name.length()).trim();
+        }
+        return words[words.length - 1].equals(name)
+                ? normalized.substring(0, normalized.length() - name.length()).trim() : normalized;
+    }
+
+    /**
+     * The owner's whispered call to a companion that is not out with them (fourth deploy review 2026-10-10): a call
+     * whose tail the roster's call words do not list ("come back to me", "come back here"), or what its Agent would
+     * read as "follow me" or "come here" ("get over here", "lets go", "come to me"), calls it. Before, such a whisper
+     * went on to the whisper bridge, which a live bench slice refuses, and the companion whispered back "call me back
+     * first". Out with its owner, those lines stay its Agent's. Only the owner's call reads the roster row.
+     */
+    private boolean recalled(Character owner, Persona persona, String command) {
+        if (world.roster().cachedOwnerOf(persona.id()) != owner.getId()) {
+            return false;
+        }
+        PhraseMatcher phrases = world.phrases();
+        String canonical = phrases == null ? null : phrases.commandFor(command);
+        boolean toOwner = ("follow me".equals(canonical) || "move here".equals(canonical))
+                && AgentChatCommandClassifier.matchFollowTarget(command) == null; // not "follow hadrik"
+        if (!RECALL.matcher(command).matches() && !toOwner) {
+            return false;
+        }
+        RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
+        if (entry == null || entry.state() == RosterState.RELEASED || entry.state() == RosterState.ACTIVE) {
+            return false;
+        }
+        world.chatVerbs().say(owner, "roster.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+        return true;
     }
 
     /**
@@ -810,15 +873,24 @@ public final class ResidentDialogue {
      * To a companion that is not out with its owner it reaches no companion out: a sell-now command is the job SELL,
      * as "sell junk tamsin" is, and any other is nobody's: the owner is told it is not out (third deploy review
      * 2026-10-10: the line went nowhere, unanswered). "follow &lt;name&gt;" and "dismiss &lt;name&gt;" stay the
-     * Agent routes' own. The phrase packs read the whole line, the name one of its unknown trailing words, as the
-     * untargeted route read it (third deploy review 2026-10-10: the line without the name freed one more, and "here you
-     * go tamsin" became "move here", "stop being silly tamsin" "stop"); so this takes exactly the lines that reached
-     * every companion out as a command, and every other line keeps its social path.
+     * Agent routes' own.
+     *
+     * <p>Only a line whose words before the name are one whole command ({@link PhraseMatcher#wholeCommandFor}: no
+     * unknown word, so the name is the line's one extra word) that takes no person ({@link #NAME_LAST_COMMANDS}), with
+     * no preposition right before the name ({@link #BEFORE_AN_OBJECT}), is this companion's (fourth deploy review
+     * 2026-10-10): "fame tamsin" made Tamsin fame her owner, not the crew fame her; "wait for tamsin" and "stay close
+     * to tamsin" stopped only the laggard, or told the owner one on her way was not out while nobody waited; "stop
+     * hadrik tamsin" stopped only Tamsin. Those, and the social lines that end with the name ("here you go tamsin",
+     * "stop being silly tamsin", third deploy review 2026-10-10), go on to the untargeted Agent route as they always
+     * did.
      */
     private boolean agentCommandFor(Character owner, Persona persona, String command, String line) {
         PhraseMatcher phrases = world.phrases();
-        String canonical = phrases == null ? null : phrases.commandFor(line);
-        if (canonical == null || AgentChatCommandClassifier.matchFollowTarget(line) != null
+        String canonical = phrases == null ? null : phrases.wholeCommandFor(command);
+        String[] words = command.split(" ");
+        if (canonical == null || !NAME_LAST_COMMANDS.contains(canonical)
+                || BEFORE_AN_OBJECT.contains(words[words.length - 1])
+                || AgentChatCommandClassifier.matchFollowTarget(line) != null
                 || AgentDismissCommandService.dismissTarget(line) != null) {
             return false;
         }
@@ -860,10 +932,11 @@ public final class ResidentDialogue {
             default: break;
         }
         // "sell junk" to a companion out with its owner is the Agent's own sell-now command (plan 12.2 "Supplies and
-        // loot"), so the bench job stays; benched or away it is the job SELL (assignmentOf). A whisper goes on to the
-        // Agent bridge, which has this one companion. A map line goes to its Agent from here: the Agent routes take a
-        // name only as the first word, so a line naming it last reached every companion out (deploy review 2026-10-10)
-        if (SELL_NOW.contains(command) && entry.state() == RosterState.ACTIVE) {
+        // loot"), so the bench job stays; benched or away it is the job SELL. A whisper goes on to the Agent bridge,
+        // which has this one companion. A map line goes to its Agent from here: the Agent routes take a name only as the
+        // first word, so a line naming it last reached every companion out (deploy review 2026-10-10)
+        boolean sellNow = SELL_NOW.contains(command);
+        if (sellNow && entry.state() == RosterState.ACTIVE) {
             if (whispered) {
                 return false;
             }
@@ -878,7 +951,8 @@ public final class ResidentDialogue {
             job = job.substring(0, job.length() - " here".length()).trim();
             mapId = owner.getMapId();
         }
-        Assignment assignment = assignmentOf(job);
+        // "go sell trash" is no errand (fourth deploy review 2026-10-10): the Agent route sells it now, as it always did
+        Assignment assignment = sellNow ? Assignment.SELL : assignmentOf(job);
         int itemId = 0;
         int count = 0;
         if (assignment == null) {
@@ -969,7 +1043,6 @@ public final class ResidentDialogue {
             case "farm meso", "make money", "earn meso", "farm mesos", "farm" -> Assignment.FARM_MESO;
             case "gather", "gather for my quests", "help with my quests", "farm my quest items" -> Assignment.GATHER;
             case "sell", "sell the haul", "sell it all", "sell junk", "sell and come back" -> Assignment.SELL;
-            case "sell trash", "sell my junk", "sell my trash" -> Assignment.SELL; // SELL_NOW, to a benched or away one
             case "set up a stall", "run a stall", "open a stall", "sell in the fm" -> Assignment.STALL;
             case "rest", "do nothing", "take it easy" -> Assignment.REST;
             default -> null;

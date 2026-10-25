@@ -176,8 +176,8 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
      * The owner's map line "sell junk" to one companion out with them, its name first or last (plan 12.2 "Supplies and
      * loot", deploy review 2026-10-10): "&lt;name&gt; sell trash", the Agent's own sell-now command, as the owner's map
      * line over exactly that companion (CompanionManager.crewOrder's door), so the targeted route gives it to that
-     * Agent alone and it answers in map chat. Nothing happens while its Agent is not out with the owner yet, or the
-     * owner may not command it (AgentAuthorityService.mayOperate, AgentClaimGuard.mayControl), as on the Agent route.
+     * Agent alone and it answers in map chat. While its Agent is not out with the owner yet the owner is told so; the
+     * owner who may not command Agents at all (AgentAuthorityService.mayOperate) is ignored, as on the Agent route.
      */
     public void sellNow(Character owner, Persona persona) {
         toAgent(owner, persona, SELL_NOW);
@@ -187,10 +187,14 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
      * The owner's map line {@code command} to one companion out with them, its name last (second deploy review
      * 2026-10-10: "stop tamsin", "sell your junk tamsin" and "heals off tamsin" reached every companion out through
      * the phrase packs, which allow two unknown trailing words): "&lt;name&gt; &lt;command&gt;", the line with the
-     * name first, over exactly that companion, as {@link #sellNow} does. Nothing happens while its Agent is not out
-     * with the owner yet, or the owner may not command it.
+     * name first, over exactly that companion, as {@link #sellNow} does. While its row says it is out but its Agent is
+     * not registered under the owner yet (a login, a channel change), or the claim guard keeps it, the owner is told
+     * it is not out, as the Crew window says (fourth deploy review 2026-10-10: the line was taken and nobody answered).
      */
     public void toAgent(Character owner, Persona persona, String command) {
+        if (!AgentAuthorityService.mayOperate(owner)) {
+            return;
+        }
         AgentRuntimeEntry runtime = null;
         for (AgentRuntimeEntry entry : AgentRuntimeRegistry.entriesForLeader(owner.getId())) {
             if (AgentRuntimeIdentityRuntime.botNameEquals(entry, persona.name())) {
@@ -198,8 +202,8 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
                 break;
             }
         }
-        if (runtime == null || !AgentAuthorityService.mayOperate(owner)
-                || !AgentClaimGuard.mayControl(owner, AgentRuntimeIdentityRuntime.botId(runtime))) {
+        if (runtime == null || !AgentClaimGuard.mayControl(owner, AgentRuntimeIdentityRuntime.botId(runtime))) {
+            say(owner, "roster.not_out", () -> persona.name() + " is not out with you right now.");
             return;
         }
         AgentChatRouteCoordinator.handleChat(owner, AgentRuntimeIdentityRuntime.botName(runtime) + " " + command,

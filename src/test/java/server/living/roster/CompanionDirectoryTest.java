@@ -356,8 +356,8 @@ class CompanionDirectoryTest {
         when(world.config()).thenReturn(config);
         Character olwen = bot(OLWEN, "Olwen");
 
-        whisper(alice, olwen, "follow me");
-        whisper(alice, olwen, "follow me");
+        whisper(alice, olwen, "stats"); // a call ("follow me") calls her first (ResidentDialogue.onWhisper)
+        whisper(alice, olwen, "stats");
 
         verify(residents, times(2)).whisper(eq(olwenPersona), eq(alice), any());
         assertEquals(ON_THE_BENCH, CompanionWhisperRefusals.ON_THE_BENCH);

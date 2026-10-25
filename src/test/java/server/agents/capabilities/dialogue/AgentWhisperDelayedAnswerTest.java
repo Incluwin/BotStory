@@ -372,6 +372,99 @@ class AgentWhisperDelayedAnswerTest {
         }
     }
 
+    /**
+     * Fourth deploy review 2026-10-10: the check of whether the companion has anything for the asker ("give me
+     * upgrades", "do you have pots") runs on the async worker, out of the line's scope, after the companion went back
+     * to its owner. It was made for the owner, while the trade collected for the administrator: a yes with nothing
+     * fitting, or a no while it had gear the administrator could use. It is made for the administrator.
+     */
+    @Test
+    void anAdministratorsTransferCheckIsMadeForTheAdministrator() {
+        Lent lent = lent();
+        AsyncProbe async = new AsyncProbe();
+        List<Character> madeFor = new ArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentAsyncTaskGateway> gateway = mockStatic(AgentAsyncTaskGateway.class);
+             MockedStatic<AgentInventoryTransferService> transfer = mockStatic(AgentInventoryTransferService.class);
+             MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class, CALLS_REAL_METHODS)) {
+            gateway.when(AgentAsyncTaskGateway::runtime).thenReturn(async.gateway);
+            transfer.when(() -> AgentInventoryTransferService.hasTransferableItems(any(), any(), any()))
+                    .thenAnswer(call -> madeFor.add(AgentRelationshipRuntime.requester(lent.entry)));
+            transfer.when(() -> AgentInventoryTransferService.countTransferableItems(any(), any(), any()))
+                    .thenAnswer(call -> {
+                        madeFor.add(AgentRelationshipRuntime.requester(lent.entry));
+                        return 0;
+                    });
+            collectDelayed(scheduler);
+            chat.when(() -> AgentChatRuntime.handleChat(eq("give me upgrades"), any())).thenAnswer(call -> {
+                AgentTransferRuntime.handleTransferCommand(lent.entry, new AgentChatTransferFlow.TransferCommand(
+                        AgentChatTransferFlow.TransferMode.TRADE, "recommended"), "give me upgrades");
+                return true;
+            });
+            chat.when(() -> AgentChatRuntime.handleChat(eq("do you have pots"), any())).thenAnswer(call -> {
+                AgentTransferRuntime.itemQueryCallbacks(lent.entry).queryItem("pots");
+                return true;
+            });
+
+            for (String line : List.of("give me upgrades", "do you have pots")) {
+                CosmicAgentWhisperCommandBridge.handleWhisperToAgent(lent.admin, lent.target, line);
+                drainAll(lent.entry);
+                assertSame(lent.owner, AgentRelationshipRuntime.interactionTarget(lent.entry), "its owner's again");
+                async.complete(lent.entry);
+                runDelayed();
+            }
+        }
+
+        assertEquals(List.of(lent.admin, lent.admin), madeFor);
+    }
+
+    /**
+     * Fourth deploy review 2026-10-10: "do you need any gear from me" and "any upgrades" whispered by an
+     * administrator are answered 500-700 ms later, after the companion went back to its owner, and both read its
+     * interaction target: the upgrade was looked for in the owner's bag (and asked of the owner in map chat), and the
+     * gear offered was fitted to the owner. Both are about the administrator who asked.
+     */
+    @Test
+    void anAdministratorsGearQuestionsAreAboutTheAdministrator() {
+        Lent lent = lent();
+        List<Character> lookedAt = new ArrayList<>();
+
+        try (MockedStatic<AgentChatRuntime> chat = mockStatic(AgentChatRuntime.class);
+             MockedStatic<AgentEquipmentService> equipment = mockStatic(AgentEquipmentService.class);
+             MockedStatic<AgentOfferService> offers = mockStatic(AgentOfferService.class, CALLS_REAL_METHODS);
+             MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class, CALLS_REAL_METHODS)) {
+            collectDelayed(scheduler);
+            equipment.when(() -> AgentEquipmentService.findRecommendedEquips(any(), any())).thenAnswer(call -> {
+                lookedAt.add(call.getArgument(1));
+                return List.of();
+            });
+            offers.when(() -> AgentOfferService.offerBestRecommendedGear(any(), any(), any())).thenAnswer(call -> {
+                lookedAt.add(call.getArgument(2));
+                return false;
+            });
+            chat.when(() -> AgentChatRuntime.handleChat(eq("do you need any gear from me"), any())).thenAnswer(call -> {
+                AgentSchedulerRuntime.afterRandomDelay(lent.entry, 500, 700,
+                        () -> AgentOfferService.requestBestUpgradeFromOwner(lent.entry, lent.target));
+                return true;
+            });
+            chat.when(() -> AgentChatRuntime.handleChat(eq("any upgrades"), any())).thenAnswer(call -> {
+                AgentChatReportOperationsRuntime.reportCallbacks(lent.entry).recommendedGear();
+                return true;
+            });
+
+            for (String line : List.of("do you need any gear from me", "any upgrades")) {
+                CosmicAgentWhisperCommandBridge.handleWhisperToAgent(lent.admin, lent.target, line);
+                drainAll(lent.entry);
+                runDelayed();
+            }
+
+            verify(lent.owner, never()).sendPacket(any(Packet.class));
+        }
+
+        assertEquals(List.of(lent.admin, lent.admin), lookedAt);
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** Ohboy's companion, which the administrator Kiwi may command too. */
