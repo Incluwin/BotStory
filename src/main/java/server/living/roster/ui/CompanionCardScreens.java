@@ -311,7 +311,8 @@ final class CompanionCardScreens {
 
     /**
      * What the bench card says of the companion's bench now (plan flow 2, P5 "Living bench"): {@link #LIVE} while a field
-     * slice runs at its camp (the owner can walk there and watch), "stall open in FM room 3" or "resting in Henesys" while
+     * slice runs at its camp (the owner can walk there and watch), "gathering at Ant Tunnel I" while a gatherer works a
+     * field other than its camp (where its quests' droppers are), "stall open in FM room 3" or "resting in Henesys" while
      * it is out in the Free Market or in town, "restocking in Perion" while a field slice's own shop resupply runs,
      * {@link BenchDutyDispatcher#ROUGH_HUNT} (its own line) while it rests after a death, {@link #OUT_OF_SIGHT} while only
      * the ledger keeps its duty or its slice is not where it works (revived in town, say), and nothing for a parked one.
@@ -336,6 +337,9 @@ final class CompanionCardScreens {
         }
         if (at == null || at.getId() != slice.mapId()) {
             return OUT_OF_SIGHT; // not where it works: nobody walking there would find it
+        }
+        if (slice.duty() == Assignment.GATHER && slice.mapId() != entry.campMapId()) {
+            return "gathering at " + placeNames.apply(slice.mapId()); // gone where its quests' droppers are (BenchGatherForm)
         }
         // a stall reads open only once its shop is (BenchStallForm): until then it walks to its spot and sets up
         boolean open = !(bench.form(slice.duty()) instanceof BenchStallForm stall) || stall.open(entry.personaId());

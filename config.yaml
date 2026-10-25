@@ -848,6 +848,14 @@ living_world:
     BENCH_RESUPPLY_MAX_MS: 300000
     BENCH_RESUPPLY_MAX_HOPS: 10
     BENCH_YIELD_PRIOR_SLICES: 1.0
+    # Live GATHER, SELL and STALL (docs/BENCH_LIVE_DUTIES_PLAN.md, user 2026-10-25). A STALL learns its price: each of
+    # its own last slices that listed an item for its whole length and sold none of it takes BENCH_STALL_MARKDOWN_STEP
+    # of the index off that item, down to SELL's 0.85 where browsing citizens buy (they buy only under 0.9; Ilse's stall
+    # at the index sold nothing in 346 slices); a sale puts it back at the index (0 = always the index). A gatherer whose
+    # camp has no monster dropping what its owner's quests need goes to the best field for it, where a round of kills
+    # brings the most, as the ledger already credits (false = always its camp).
+    BENCH_STALL_MARKDOWN_STEP: 0.05
+    BENCH_GATHER_AT_DROPPERS: true
     # Decision 19 (b): bench upkeep is 30 meso per level an hour (paid ahead as wages, else out of the haul; a hired
     # hand's hourly wage is the same number), but never more than BENCH_UPKEEP_MAX_SHARE of the meso an hour the
     # companion is predicted to pick up at its camp (what live slices measured there, shrunk toward the ledger's

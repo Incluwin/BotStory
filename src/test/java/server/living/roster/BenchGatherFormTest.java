@@ -10,6 +10,9 @@ import server.agents.runtime.field.AgentFieldAdmissionMode;
 import server.agents.runtime.field.AgentFieldSessionResult;
 import server.agents.runtime.field.AgentFieldVisitLeaseRequest;
 import server.agents.runtime.field.AgentFieldVisitLeaseRuntime;
+import server.knowledge.Decisions;
+import server.knowledge.FarmSites;
+import server.knowledge.WorldKnowledge;
 import server.life.SpawnPoint;
 import server.living.config.Content.Quest;
 import server.living.config.Content.Step;
@@ -20,6 +23,7 @@ import server.living.store.LivingStore.QuestStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static server.living.roster.BenchHarness.ANN;
@@ -45,14 +51,20 @@ class BenchGatherFormTest {
     private static final int OTHER_LOOT = 4000020;
     private static final int SNAIL = 100100;
     private static final int ELSEWHERE = 100200;
+    /** Fields off its camp where shells drop: the nearer, a better one farther away, a third. */
+    private static final int NEAR = BenchHarness.OTHER_FIELD;
+    private static final int BEST = 104020000;
+    private static final int THIRD = 104030000;
 
     private final BenchHarness game = new BenchHarness();
     private final List<AgentFieldVisitLeaseRequest> visits = new ArrayList<>();
+    private final SpawnPoint snail = mock(SpawnPoint.class);
     private boolean visiting;
 
     @BeforeEach
     void setUp() {
         game.duty.register(Assignment.GATHER, new BenchGatherForm(game.world));
+        game.statics(Decisions.class); // no server knowledge unless a test loads it (knows): its camp, as before
         game.statics(AgentInteractionRuntime.class).when(() -> AgentInteractionRuntime.registerDirectorIdleAgent(any()))
                 .thenAnswer(inv -> {
                     Character agent = inv.getArgument(0);
@@ -67,7 +79,6 @@ class BenchGatherFormTest {
                 });
         game.statics(AgentFieldVisitLeaseRuntime.class).when(() -> AgentFieldVisitLeaseRuntime.active(any()))
                 .thenAnswer(inv -> visiting);
-        SpawnPoint snail = mock(SpawnPoint.class);
         when(snail.getMonsterId()).thenReturn(SNAIL);
         when(game.map(FIELD).getMonsterSpawn()).thenReturn(List.of(snail));
         when(game.store.store.mobsDropping(SHELL)).thenReturn(List.of(new int[] {SNAIL, 400_000}, new int[] {ELSEWHERE, 600_000}));
@@ -90,6 +101,103 @@ class BenchGatherFormTest {
         when(game.content.quest("shells")).thenReturn(quest);
         when(game.store.store.questStates(ANN, QuestStatus.ACTIVE)).thenReturn(List.of(
                 new QuestState(ANN, "shells", 0, 0, QuestStatus.ACTIVE, 0L, 0L, 0)));
+    }
+
+    /**
+     * Server knowledge is loaded, and FarmSites rates the fields it can reach for shells from its camp as {@code sites}
+     * (map id to what a round of kills there brings); {@code anyMonster}: every monster there drops them.
+     */
+    private WorldKnowledge knows(Map<Integer, Double> sites, boolean anyMonster) {
+        WorldKnowledge k = mock(WorldKnowledge.class);
+        game.statics(Decisions.class).when(Decisions::active).thenReturn(k);
+        game.statics(FarmSites.class).when(() -> FarmSites.gatherSites(eq(k), eq(SHELL), anyInt(), eq(FIELD), eq(true)))
+                .thenReturn(sites);
+        game.statics(FarmSites.class).when(() -> FarmSites.anyMonsterDrops(k, SHELL, FIELD)).thenReturn(anyMonster);
+        for (int mapId : sites.keySet()) {
+            when(game.map(mapId).getMonsterSpawn()).thenReturn(List.of(snail));
+        }
+        return k;
+    }
+
+    @Test
+    void withNoDropperAtItsCampItGathersAtTheBestFieldForItNotTheNearest() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        WorldKnowledge k = knows(Map.of(NEAR, 0.4d, BEST, 1.2d), false); // its camp is not among them: no dropper there
+        when(k.distance(FIELD, NEAR)).thenReturn(2);
+        when(k.distance(FIELD, BEST)).thenReturn(9);
+
+        game.duty.tick();
+
+        assertTrue(game.calls.contains("load Dara at " + BEST + " ch1"), "three times the shells a round: " + game.calls);
+        assertEquals(BEST, visits.get(0).entryRequest().visit().mapId());
+        assertEquals(Set.of(SNAIL), visits.get(0).entryRequest().visit().intent().requiredMobIds(), "the droppers there");
+        assertEquals(List.of(ANN + " dara bench.live gather live at map " + BEST), game.store.events("bench.live"));
+
+        game.duty.tick();
+        assertTrue(game.duty.live("dara"), "where it works: it gathers on");
+    }
+
+    @Test
+    void aDropperAtItsCampKeepsItThereAndATieGoesToTheNearerField() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        knows(Map.of(FIELD, 0.1d, BEST, 1.2d), false);
+
+        game.duty.tick();
+        assertTrue(game.calls.contains("load Dara at " + FIELD + " ch1"), "its owner's camp has shells: " + game.calls);
+        game.duty.endFor("dara", "called by owner");
+        game.calls.clear();
+
+        WorldKnowledge k = knows(Map.of(NEAR, 1.2d, BEST, 1.2d), false);
+        when(k.distance(FIELD, NEAR)).thenReturn(2);
+        when(k.distance(FIELD, BEST)).thenReturn(9);
+        game.now += BenchDutyDispatcher.TICK_MS;
+        game.duty.tick();
+        assertTrue(game.calls.contains("load Dara at " + NEAR + " ch1"), game.calls.toString());
+    }
+
+    @Test
+    void aFieldItsKindOrItKeepsDyingAtIsPassedOver() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        knows(Map.of(BEST, 1.2d, NEAR, 0.8d, THIRD, 0.3d), false);
+        when(game.roster.roughCampFor(904, BEST)).thenReturn(true); // its kind dies there (the yields measured it)
+        String[] there = {"bench.live", "gather live at map " + NEAR};
+        String[] died = {"bench.live-end", BenchDutyDispatcher.ROUGH_HUNT};
+        game.duty.campHistory = (owner, persona) -> List.of(there, died, there, died); // two of its last slices there
+
+        game.duty.tick();
+
+        assertTrue(game.calls.contains("load Dara at " + THIRD + " ch1"), game.calls.toString());
+    }
+
+    @Test
+    void withNowhereToGatherItStaysInTheLedgerUnlessAnyMonsterAtItsCampDropsIt() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        knows(Map.of(), false);
+
+        game.duty.tick();
+        assertFalse(game.duty.live("dara"), "nothing it could farm drops shells anywhere it can go");
+        assertEquals(List.of(), game.calls);
+
+        knows(Map.of(), true);
+        game.now += BenchDutyDispatcher.TICK_MS;
+        game.duty.tick();
+        assertTrue(game.calls.contains("load Dara at " + FIELD + " ch1"), "a drop of every monster: its camp will do");
+    }
+
+    @Test
+    void withTheSwitchOffItGathersAtItsCamp() {
+        game.config.BENCH_GATHER_AT_DROPPERS = false;
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        knows(Map.of(BEST, 1.2d), false);
+
+        game.duty.tick();
+
+        assertTrue(game.calls.contains("load Dara at " + FIELD + " ch1"), game.calls.toString());
     }
 
     @Test

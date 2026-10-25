@@ -127,6 +127,52 @@ public final class FarmSites {
     }
 
     /**
+     * Where GATHER's live slice may go for the item (BenchGatherForm goes to the best): every open field of a dropper it
+     * may farm ({@code questDrops}: its owner's quest is served) that it can reach from {@code anchorMapId}, map id to how
+     * much of the item a round of kills there brings, the dropper's chance per kill times its spawn points on the map,
+     * summed over the droppers there (a gatherer fights only them, so more of the likeliest dropper is more of the item).
+     * Empty when no monster it could farm drops it at an open field it can reach.
+     */
+    public static Map<Integer, Double> gatherSites(WorldKnowledge k, int itemId, int level, int anchorMapId,
+                                                   boolean questDrops) {
+        Map<Integer, Double> out = new LinkedHashMap<>();
+        for (DropSource source : k.dropSources(itemId)) {
+            if (source.global() || classify(k, source, level, questDrops) != Verdict.FARM) {
+                continue;
+            }
+            Map<Integer, DropSource> fields = new LinkedHashMap<>();
+            addFieldSites(k, source, fields);
+            for (int mapId : fields.keySet()) {
+                if (k.distance(anchorMapId, mapId) != Integer.MAX_VALUE) {
+                    out.merge(mapId, source.chance() / 1_000_000.0d * spawnPoints(k, mapId, source.mobId()), Double::sum);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** True when every monster of the map's continent drops the item (a global drop): no field of its own is needed. */
+    public static boolean anyMonsterDrops(WorldKnowledge k, int itemId, int mapId) {
+        for (DropSource source : k.dropSources(itemId)) {
+            if (source.global() && onContinent(source, mapId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The monster's spawn points on the map; one where it shows up with none of its own (revived there, say). */
+    private static int spawnPoints(WorldKnowledge k, int mapId, int mobId) {
+        MapFact map = k.map(mapId).orElse(null);
+        for (int i = 0; map != null && i < map.mobs().size(); i++) {
+            if (map.mobs().getInt(i) == mobId) {
+                return Math.max(1, map.mobCounts().getInt(i));
+            }
+        }
+        return 1;
+    }
+
+    /**
      * FARM when a farmer of {@code level} may farm the source (its field sites still decide where). A monster that is not
      * wild and that a script calls up is SCRIPT_ONLY; one that spawns only inside a party quest is PQ_ONLY at any level (a
      * run, not a farm); one with no spawn the file knows of (Zakum, from the altar's reactor) falls through to the level

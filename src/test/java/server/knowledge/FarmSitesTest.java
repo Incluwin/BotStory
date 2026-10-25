@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import server.knowledge.FarmSites.Plan;
 import server.knowledge.FarmSites.Verdict;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -54,6 +56,40 @@ class FarmSitesTest {
         assertNotNull(first.place());
         assertFalse(first.place().isEmpty());
         assertEquals("snails", plan.mobs());
+    }
+
+    @Test
+    void aGathererRatesEachFieldItCanReachByTheShellsARoundOfKillsBringsThere() {
+        Map<Integer, Double> sites = FarmSites.gatherSites(k, SNAIL_SHELL, 10, HENESYS, true);
+
+        assertFalse(sites.isEmpty());
+        double perKill = 0.0d; // snails are the only shell dropper it may farm (Mano is a script-spawned area boss)
+        for (DropSource source : k.dropSources(SNAIL_SHELL)) {
+            if (source.mobId() == SNAIL && !source.global()) {
+                perKill += source.chance() / 1_000_000.0d;
+            }
+        }
+        for (Map.Entry<Integer, Double> site : sites.entrySet()) {
+            MapFact map = k.map(site.getKey()).orElseThrow();
+            assertFalse(k.isTown(map.id()), "an open field: " + map.id());
+            assertTrue(k.distance(HENESYS, map.id()) != Integer.MAX_VALUE, "one it can reach: " + map.id());
+            assertEquals(1, map.id() / 100_000_000, "Victoria, never Maple Island: " + map.id());
+            int snails = 0;
+            for (int i = 0; i < map.mobs().size(); i++) {
+                snails += map.mobs().getInt(i) == SNAIL ? map.mobCounts().getInt(i) : 0;
+            }
+            assertEquals(perKill * Math.max(1, snails), site.getValue(), 1e-9, "chance x spawn points at " + map.id());
+        }
+    }
+
+    @Test
+    void nothingAGathererCannotFarmRatesAFieldAndAGlobalDropNeedsNone() {
+        assertTrue(FarmSites.gatherSites(k, ZAKUM_HELMET, 30, HENESYS, true).isEmpty(), "too strong");
+        assertTrue(FarmSites.gatherSites(k, 4001007, 25, 103000000, true).isEmpty(), "KPQ only");
+        assertTrue(FarmSites.gatherSites(k, FAIRY_WING, 30, ELLINIA, true).isEmpty(), "script only");
+        assertTrue(FarmSites.gatherSites(k, PERFECT_PITCH, 30, HENESYS, true).isEmpty(), "any monster: no field of its own");
+        assertTrue(FarmSites.anyMonsterDrops(k, PERFECT_PITCH, 100010000));
+        assertFalse(FarmSites.anyMonsterDrops(k, SNAIL_SHELL, HENESYS));
     }
 
     @Test
