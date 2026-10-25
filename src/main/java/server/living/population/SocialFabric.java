@@ -76,7 +76,9 @@ public final class SocialFabric {
     /**
      * Citizens on a PQ session become eligible for the engine's background KPQ/HPQ parties, unless some owner has
      * them (a hire) or the living world has them loaded for anything but the population (a companion, a live bench
-     * slice): a background party would otherwise pull them out from under their owner.
+     * slice): a background party would otherwise pull them out from under their owner. A quest citizen parties run
+     * themselves (CitizenPartyQuests, PQ_RUN_QUESTS) gets none: one system owns a citizen's party quests (live, the
+     * background KPQ director took citizens off the roofs of Kerning City, and none of its 291 runs cleared).
      */
     void installSeams() {
         java.util.function.Supplier<java.util.Set<Integer>> pqCitizens = () -> {
@@ -88,8 +90,10 @@ public final class SocialFabric {
             }
             return ids;
         };
-        server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
-        server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
+        server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED,
+                () -> CitizenPartyQuests.quests(population.config()).contains("kpq") ? java.util.Set.of() : pqCitizens.get());
+        server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED,
+                () -> CitizenPartyQuests.quests(population.config()).contains("hpq") ? java.util.Set.of() : pqCitizens.get());
     }
 
     /**
@@ -416,16 +420,21 @@ public final class SocialFabric {
         }
     }
 
-    /** Circle-mates loaded on the same map with no party form one and train or PQ together. */
+    /**
+     * Circle-mates loaded on the same map with no party form one and train or PQ together. A lobby whose quest citizens
+     * run themselves is CitizenPartyQuests' own, and so is a citizen in a run or back from one.
+     */
     private void partyUp(long now) {
         if (now - lastPartyFormingMs < 120_000L) {
             return;
         }
         lastPartyFormingMs = now;
+        CitizenPartyQuests partyQuests = population.partyQuests();
         Map<String, List<CitizenSession>> groups = new LinkedHashMap<>();
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
-            if (session.virtual || agent == null || session.citizen.circleId() == 0 || agent.getParty() != null) {
+            if (session.virtual || agent == null || session.citizen.circleId() == 0 || agent.getParty() != null
+                    || partyQuests != null && partyQuests.manages(session)) {
                 continue;
             }
             groups.computeIfAbsent(session.citizen.circleId() + ":" + session.channel + ":" + session.mapId, k -> new ArrayList<>()).add(session);

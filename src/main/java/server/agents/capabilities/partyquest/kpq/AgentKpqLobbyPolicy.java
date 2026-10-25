@@ -44,9 +44,10 @@ public final class AgentKpqLobbyPolicy {
     /**
      * True when the population may form another KPQ party on this channel. Instances already open there (read
      * through {@code anchor}, human ones included) and background lobbies still forming both use up free lobbies,
-     * so a background party never takes the last one a human could enter.
+     * so a background party never takes the last one a human could enter. The population asks it before a citizen
+     * party goes in (CitizenPartyQuests); a citizen run is operated by its citizen leader, so it counts here too.
      */
-    static boolean backgroundSlotAvailable(int world, int channel, Character anchor) {
+    public static boolean backgroundSlotAvailable(int world, int channel, Character anchor) {
         int total = 0;
         int onChannel = 0;
         int pendingOnChannel = 0;

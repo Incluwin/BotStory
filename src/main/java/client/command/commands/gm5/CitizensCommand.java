@@ -24,7 +24,7 @@ public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
                 + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation|"
-                + "level <name> <level>|login <name>");
+                + "level <name> <level>|login <name>|pq [send <name>]");
     }
 
     @Override
@@ -50,6 +50,21 @@ public class CitizensCommand extends Command {
                             + " (in memory, lost on restart)"));
                     gm.yellowMessage(population.conversation().report());
                     gm.yellowMessage(population.market().report());
+                    gm.yellowMessage(population.partyQuests().status());
+                }
+                case "pq" -> {
+                    if (params.length >= 3 && params[1].equalsIgnoreCase("send")) {
+                        Citizen target = population.citizenByName(params[2]);
+                        CitizenSession session = target == null ? null : population.presence().session(target.characterId());
+                        gm.yellowMessage(session == null ? params[2] + " is not online"
+                                : population.partyQuests().send(session, System.currentTimeMillis()));
+                        return;
+                    }
+                    gm.yellowMessage(population.partyQuests().status() + (population.config().PQ_RUNS_ENABLED ? ""
+                            : " (PQ_RUNS_ENABLED is off)"));
+                    for (String run : population.partyQuests().recentRuns()) {
+                        gm.yellowMessage("  " + run);
+                    }
                 }
                 case "online" -> {
                     for (CitizenSession session : population.presence().sessions()) {

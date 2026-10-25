@@ -10,6 +10,8 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.population.CitizenPartyQuests;
+import server.living.population.Population;
 
 import java.util.List;
 
@@ -114,7 +116,8 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
             RosterService roster = world.roster();
             int leaderId = AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId);
             if (!roster.isOwner(leaderId)) {
-                return service.runCompanion(agentCharacterId) ? AgentPartyQuestHandback.Handback.RELEASE : null;
+                return service.runCompanion(agentCharacterId) ? AgentPartyQuestHandback.Handback.RELEASE
+                        : citizenRuns() == null ? null : citizenRuns().handback(agentCharacterId);
             }
             Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
             int ownerId = persona == null ? 0 : roster.cachedOwnerOf(persona.id());
@@ -147,6 +150,9 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
     @Override
     public boolean tapOut(AgentPartyQuestHandback.TapOut request) {
         CompanionRun run = service.runForSession(request.sessionId());
+        if (run == null && citizenRuns() != null) {
+            return citizenRuns().tapOut(request); // a citizen party's run: its citizen steps out of the party
+        }
         int id = request.agentCharacterId();
         Integer ownerId = run == null ? null : run.ownerByCompanion.get(id);
         Persona persona = ownerId == null ? null : world.residents().personaOfCharacterId(id);
@@ -180,7 +186,18 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
                 run.rerolled = true; // before its end is submitted, which reads it on companion-ops
             }
             service.endRun(run, ended.pace());
+        } else if (citizenRuns() != null) {
+            citizenRuns().runEnded(ended);
         }
+    }
+
+    /**
+     * The population's citizen party quests (CitizenPartyQuests): the Agent layer has one handback rule, and this one
+     * answers for citizen parties' runs too. Null while the population is off.
+     */
+    private static CitizenPartyQuests citizenRuns() {
+        Population population = Population.get();
+        return population == null ? null : population.partyQuests();
     }
 
     /**

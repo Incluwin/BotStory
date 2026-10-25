@@ -79,7 +79,8 @@ class PaceMeasurementTest {
 
         assertEquals(AgentKpqSession.Phase.STAGE_1, session.phase());
         assertEquals(List.of("KPQ phase: session=" + session.sessionId()
-                        + " ENTERING->STAGE_1 phaseMs=2000 runMs=2000 earlyRejections=0 companionRun=true"),
+                        + " ENTERING->STAGE_1 phaseMs=2000 runMs=2000 earlyRejections=0 companionRun=true"
+                        + " citizenRun=false"),
                 coordinatorLog.startingWith("KPQ phase: "));
     }
 

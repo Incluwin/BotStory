@@ -155,6 +155,13 @@ final class KpqRunFixture implements AutoCloseable {
         return session(AgentKpqSession.Mode.PRODUCTION, companionAdopted, phase, members);
     }
 
+    /** A registered PRODUCTION citizen run in {@code phase}: the first member, a citizen, leads it. */
+    AgentKpqSession citizenSession(AgentKpqSession.Phase phase, Character... members) {
+        AgentKpqSession session = session(false, phase, members);
+        session.setCitizenRun(true);
+        return session;
+    }
+
     AgentKpqSession session(AgentKpqSession.Mode mode,
                             boolean companionAdopted,
                             AgentKpqSession.Phase phase,

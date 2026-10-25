@@ -1,0 +1,190 @@
+# Party quests citizens run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md). Self = the citizen speaking; {need} = how
+# many more the party wants, {pq} = the quest ("KPQ"), {levels} = its band, {name} = the human or mate it talks to.
+# These repeat as players repeat them ("lf2m kpq" again a minute later): each intent's cooldownMs, no recent-intent
+# memory. Per-style lines (`styles`) override `lines` for that voice style; the voice pack still types them.
+intents:
+  - id: pq.lf.map
+    trigger: pq.lf
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 45000
+    lines:
+      - "lf{need}m {pq}"
+      - "lf {need} more {pq}"
+      - "{pq} lf{need}m"
+      - "need {need} for {pq}"
+      - "{pq} anyone? need {need}"
+      - "lf{need}m {pq} {levels}"
+      - "anyone {levels} wanna {pq}"
+    styles:
+      quiet-practical-v1:
+        - "lf{need}m {pq}"
+        - "{pq} lf{need}"
+        - "{pq} {need} more"
+      playful-social-v1:
+        - "{pq} party!! need {need} more"
+        - "who wants {pq}? need {need}"
+        - "lf{need}m {pq} come on its fun"
+  - id: pq.join.party
+    trigger: pq.join
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hi"
+      - "hey"
+      - "ty for inv"
+      - "yo"
+      - "hii"
+      - "ty"
+  - id: pq.go.party
+    trigger: pq.go
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ok lets go"
+      - "going in"
+      - "ok we good, lets do it"
+      - "alright starting"
+      - "lets gooo"
+    styles:
+      quiet-practical-v1:
+        - "going in"
+        - "ok"
+        - "starting"
+  - id: pq.clear.party
+    trigger: pq.clear
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "gg"
+      - "ggs"
+      - "gg ty all"
+      - "ty all"
+      - "nice run"
+      - "ez"
+      - "that was quick"
+      - "ty guys"
+    styles:
+      quiet-practical-v1:
+        - "gg"
+        - "ty"
+        - "gg ty"
+      playful-social-v1:
+        - "GG!!"
+        - "we did it :D"
+        - "ggg ty everyone"
+  - id: pq.clear.map
+    trigger: pq.clear
+    where: any
+    channel: map
+    weight: 4
+    cooldownMs: 1000
+    lines:
+      - "gg"
+      - "finally done"
+      - "{pq} done"
+  - id: pq.fail.party
+    trigger: pq.fail
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "rip"
+      - "welp"
+      - "ugh"
+      - "that went bad"
+      - "sorry guys"
+      - "rip that run"
+      - "well that sucked"
+      - "next time"
+    styles:
+      quiet-practical-v1:
+        - "rip"
+        - "oh well"
+      playful-social-v1:
+        - "noooo"
+        - "rip us lol"
+  - id: pq.fail.map
+    trigger: pq.fail
+    where: any
+    channel: map
+    weight: 4
+    cooldownMs: 1000
+    lines:
+      - "rip {pq}"
+      - "that {pq} was a mess"
+      - "rip"
+  - id: pq.down.map
+    trigger: pq.down
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ugh died"
+      - "rip me"
+      - "died lol gl guys"
+      - "dc'd from the party, gl"
+      - "sorry i died"
+  - id: pq.giveup.map
+    trigger: pq.giveup
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "nvm no one around"
+      - "nvm gonna go train"
+      - "dead hours i guess"
+      - "ok forget it"
+      - "nobody wants {pq} huh"
+  - id: pq.call.guild
+    trigger: pq.call
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "anyone wanna {pq}? at the npc"
+      - "need ppl for {pq} {levels}"
+      - "{pq} anyone? kerning"
+      - "come {pq} with us"
+  - id: pq.call.answer.guild
+    trigger: pq.call.answer
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "omw"
+      - "sure, coming"
+      - "ok one sec"
+      - "me"
+      - "coming"
+  - id: pq.thanks.party
+    trigger: pq.thanks
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ty {name}"
+      - "ty {name} good run"
+      - "thx for coming {name}"
+      - "{name} gg"
+  - id: pq.wait.party
+    trigger: pq.wait
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}"

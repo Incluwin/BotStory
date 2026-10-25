@@ -108,6 +108,9 @@ class ClaimGuardBoundaryTest {
             "server/living/roster/CompanionBossAllies.java join 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",
+            // a party-less citizen at a PQ lobby joins the citizen party forming there: leader and joiner are both
+            // presence's own loaded sessions, which never hold a hired or rostered citizen
+            "server/living/population/CitizenPartyQuests.java join 1",
             "server/living/population/PresenceScheduler.java load 1",
             "server/living/population/CitizenGenerator.java load 1",
             // stock client handlers; op 4 asks CompanionPartyRouter first, so it loads only a plain Agent the inviter

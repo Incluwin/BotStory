@@ -39,6 +39,29 @@ class SocialFabricPqCitizensTest {
 
     @Test
     void ownedAndLeasedCitizensStayOutOfBackgroundPartyQuests() {
+        PopulationConfig config = new PopulationConfig();
+        config.PQ_RUNS_ENABLED = false; // citizens run no quest of their own: the directors get them as before
+
+        List<Supplier<Set<Integer>>> ids = installedIds(config);
+
+        assertEquals(Set.of(CITIZEN, UNLEASED), ids.get(0).get());
+        assertEquals(Set.of(CITIZEN, UNLEASED), ids.get(1).get());
+    }
+
+    /**
+     * A quest citizen parties run themselves (CitizenPartyQuests, PQ_RUN_QUESTS) is theirs alone: live, the background
+     * KPQ director took citizens off Kerning City's roofs, and none of its 291 runs cleared.
+     */
+    @Test
+    void theBackgroundKpqDirectorGetsNoCitizensWhileCitizensRunKpqThemselves() {
+        List<Supplier<Set<Integer>>> ids = installedIds(new PopulationConfig());
+
+        assertEquals(Set.of(), ids.get(0).get());
+        assertEquals(Set.of(CITIZEN, UNLEASED), ids.get(1).get());
+    }
+
+    /** What installSeams hands the KPQ director (first) and the HPQ director (second). */
+    private static List<Supplier<Set<Integer>>> installedIds(PopulationConfig config) {
         CompanionLeases leases = new CompanionLeases();
         leases.tryAcquire(COMPANION, CompanionLeases.Kind.COMPANION, 7);
         leases.tryAcquire(BENCH, CompanionLeases.Kind.BENCH_LIVE, 7);
@@ -53,7 +76,7 @@ class SocialFabricPqCitizensTest {
         for (int id : new int[] {OWNED, COMPANION, BENCH, CITIZEN, UNLEASED}) {
             sessions.add(onPq(id));
         }
-        Population population = population(world, sessions);
+        Population population = population(world, sessions, config);
 
         ArgumentCaptor<Supplier<Set<Integer>>> kpqIds = supplier();
         ArgumentCaptor<Supplier<Set<Integer>>> hpqIds = supplier();
@@ -64,9 +87,7 @@ class SocialFabricPqCitizensTest {
             kpq.verify(() -> AgentKpqPopulationRuntime.installHostManaged(any(), kpqIds.capture()));
             hpq.verify(() -> AgentHpqPopulationRuntime.installHostManaged(any(), hpqIds.capture()));
         }
-
-        assertEquals(Set.of(CITIZEN, UNLEASED), kpqIds.getValue().get());
-        assertEquals(Set.of(CITIZEN, UNLEASED), hpqIds.getValue().get());
+        return List.of(kpqIds.getValue(), hpqIds.getValue());
     }
 
     @SuppressWarnings("unchecked")
@@ -74,11 +95,11 @@ class SocialFabricPqCitizensTest {
         return ArgumentCaptor.forClass((Class<Supplier<Set<Integer>>>) (Class<?>) Supplier.class);
     }
 
-    private static Population population(LivingWorld world, List<CitizenSession> sessions) {
+    private static Population population(LivingWorld world, List<CitizenSession> sessions, PopulationConfig config) {
         Population population = mock(Population.class);
         CitizenStore store = mock(CitizenStore.class);
         PresenceScheduler presence = mock(PresenceScheduler.class);
-        when(population.config()).thenReturn(new PopulationConfig());
+        when(population.config()).thenReturn(config);
         when(population.store()).thenReturn(store);
         when(store.guilds()).thenReturn(List.of());
         when(population.presence()).thenReturn(presence);

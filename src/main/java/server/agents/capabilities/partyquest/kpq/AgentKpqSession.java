@@ -51,6 +51,7 @@ public final class AgentKpqSession implements AgentCompanionRunSession {
     private boolean paused;
     private boolean memberCoordinationChatEnabled = DEFAULT_MEMBER_COORDINATION_CHAT_ENABLED;
     private boolean companionAdopted;
+    private boolean citizenRun;
     private String failure = "";
     private final LinkedHashSet<String> narrationKeys = new LinkedHashSet<>();
     private final Map<String, Long> dialogueTimes = new LinkedHashMap<>();
@@ -202,6 +203,20 @@ public final class AgentKpqSession implements AgentCompanionRunSession {
 
     public synchronized void setCompanionAdopted(boolean adopted) {
         companionAdopted = adopted;
+    }
+
+    /**
+     * A party of the server's ambient citizens, led by a citizen, that went in on its own: with a human member who took
+     * a citizen's invite, or none. Its admission sets this before the session is published. Its Agents hold full rate
+     * in the instance and speak the casual lines, and a downed member who is not the leader taps out through its host
+     * as a companion does; none of a companion run's human-leader levers apply.
+     */
+    public synchronized boolean citizenRun() {
+        return citizenRun;
+    }
+
+    public synchronized void setCitizenRun(boolean citizen) {
+        citizenRun = citizen;
     }
 
     /**
