@@ -588,6 +588,10 @@ public final class AdminControlPort {
         for (String line : population.chatter().recentLines()) {
             recentChatter.rawEl(AdminJson.str(line));
         }
+        AdminJson.Arr recentRuns = new AdminJson.Arr();
+        for (String line : population.partyQuests().recentRuns()) {
+            recentRuns.rawEl(AdminJson.str(line));
+        }
         return new AdminJson.Obj()
                 .bool("ok", true)
                 .bool("enabled", true)
@@ -605,6 +609,8 @@ public final class AdminControlPort {
                 .str("census", population.content().census())
                 .str("conversation", population.conversation().report())
                 .str("market", population.market().report())
+                .str("partyQuests", population.partyQuests().status())
+                .raw("partyQuestRuns", recentRuns.toString())
                 .raw("online", online.toString())
                 .raw("cohorts", cohorts.toString())
                 .raw("chatter", recentChatter.toString())

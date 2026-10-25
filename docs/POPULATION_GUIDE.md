@@ -20,6 +20,8 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `CONVERSATION_*` | generated replies per player per day, per-citizen cooldown, concurrency |
 | `GUILDS_ENABLED`, `GUILD_TARGET`, `BUDDIES_ENABLED`, `BUDDY_REQUEST_AFTER_MINUTES` | social fabric |
 | `MARKET_ENABLED`, `MARKET_STALLS_MAX`, `MARKET_BUY_BUDGET_PER_DAY` | Free Market participation |
+| `PQ_RUNS_ENABLED`, `PQ_RUN_QUESTS`, `PQ_RUNS_PER_CHANNEL`, `PQ_RUNS_MAX` | citizen parties run party quests themselves (kill switch, which quests, runs at once per channel / in all) |
+| `PQ_FORM_PATIENCE_MS`, `PQ_HUMAN_SEAT_HOLD_MS`, `PQ_RUN_COOLDOWN_MS` | a lobby party gives up after; a seat waits for an invited human; no PQ plan after a run |
 | `SHUTDOWN_LOGOUT_THREADS`, `SHUTDOWN_LOGOUT_BUDGET_MS` | server shutdown: loaded citizens unload (a full save each) on this many threads for at most this long; the rest unload with their channel |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
@@ -87,6 +89,28 @@ at a PQ lobby a forming party invites a fitting human. Shared minutes with a hum
 a party accumulate; after `BUDDY_REQUEST_AFTER_MINUTES` one buddy request is sent, and recruiters
 send one guild invite. Famers fame buddies, guildmates and nearby humans once a day.
 
+**Party quests (2026-10-24, docs/CITIZEN_PARTY_QUESTS_PLAN.md).** A citizen on a `PQ` session at a lobby whose quest
+is in `PQ_RUN_QUESTS` (KPQ: Kerning City, Lakelis) waits beside the quest's NPC instead of strolling the town
+(`CitizenPartyQuests`, every 10 s). The first there opens a party and asks for people ("lf2m kpq"), the others whose
+level fits join it, and a party-less human whose level fits gets the leader's invite before the last seat goes to a
+citizen: the seat waits `PQ_HUMAN_SEAT_HOLD_MS` for the answer, and the party never goes in while it is out (the invite
+is withdrawn after). A party still short after a minute calls one loaded circle or guild mate whose level fits and who
+is training or in town ("anyone wanna kpq?", "omw"); one short of the quest's minimum after `PQ_FORM_PATIENCE_MS` gives
+up ("nvm gonna go train") and keeps out of party quests for 10 minutes. With the minimum in (KPQ 3, and 90 s for a
+fourth) it goes in by the quest's own admission (`AgentKpqAdmissionService.admitCitizens`), its citizen leader leading
+and clicking Lakelis, only when: fewer than `PQ_RUNS_PER_CHANNEL` / `PQ_RUNS_MAX` citizen runs are on; the Agent
+scheduler sheds no load; every member stands at the NPC, alive, in the quest's band with room for its items (a human who
+does not hears why, once); and the engine's lobby policy leaves a lobby free for humans plus one for each human party
+waiting there. Citizens in a party a human leads are that human's business. During the run presence leaves its citizens
+alone (no re-plan, AFK or logout; a session that runs out logs off after it), the KPQ coordinator holds full rate for them
+in the instance (the old background cadence never finished stage 1), they call puzzles and progress in the casual lines
+companion runs use, and a downed citizen who is not the leader taps out of the party ("died lol gl guys") while the rest
+carry on with three. The end books the run in each citizen's journal ("cleared KPQ with Ann, Bo"), the tally and the last
+ten runs (`!citizens pq`), says "gg"/"rip" in party and map chat and thanks a human who came along; each citizen leaves
+the quest's party once it stands outside the instance and plans its next activity (no PQ for `PQ_RUN_COOLDOWN_MS`), or
+logs off if its session ran out. The engine's older background KPQ director gets no citizens while citizens run KPQ
+themselves; `PQ_RUNS_ENABLED: false` gives them back to it and leaves citizens gathering and inviting as before.
+
 **Conversation.** A human line in map chat near citizens goes through: silence (the voice pack's
 ignore rate, unless called by name), templates (greetings, "where is X"), one Jev `citizen-address`
 Choice when several citizens are near and it is unclear who was meant, then generation through the
@@ -112,7 +136,8 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 `birth [cohort] [backdateDays]`, `seed [regionId count]` (below), `retire <name>`, `purge confirm` (retire everyone, reseed),
 `force <n>` (keep n loaded regardless of the hour - load tests), `sweep`, `reload`, `guilds`,
 `market`, `conversation`, `level <name> <level>` (raise an offline citizen's stored level as the ledger does; never
-lowers), `login <name>` (load that citizen now, replacing a ledger-only session).
+lowers), `login <name>` (load that citizen now, replacing a ledger-only session), `pq` (citizen runs now and since boot,
+the last ten), `pq send <name>` (a loaded citizen goes to the lobby its level fits, out for a party quest).
 
 **Testing job errands live.**
 1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
@@ -169,7 +194,7 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
 | `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
-| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles` |
+| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
 
 Lines are ASCII; `{slots}` that cannot be filled drop the line. The lint refuses unknown
 triggers, channels and jobs, loadouts that do not exist, and non-ASCII.
@@ -191,8 +216,8 @@ in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 
 ## Not done yet (from the plan)
 
-Citizens do not run party quests themselves (they gather at lobbies, form parties and invite you;
-the existing KPQ automation is not wired to them yet); no expeditions; no alliances; travel is a
+Citizen parties run KPQ only (LPQ, HPQ and OPQ next, docs/CITIZEN_PARTY_QUESTS_PLAN.md "Other quests"; at the LPQ and
+OPQ lobbies they still only gather and invite you); no expeditions; no alliances; travel is a
 map change with a delay rather than walking through portals; conversation memory of a human is the
 social relationship memory plus the journal, not a per-human summary; the client-side visible cap
 (`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.

@@ -184,7 +184,9 @@ public final class PresenceScheduler {
                     continue;
                 }
                 if (session.citizen.state() != Citizen.State.ACTIVE || now >= session.endsAtMs) {
-                    logout(session, "session over");
+                    if (!inPartyQuest(session)) { // one in a party quest logs off after it (CitizenPartyQuests)
+                        logout(session, "session over");
+                    }
                     continue;
                 }
                 if (!session.virtual && session.agent() == null) {
@@ -677,7 +679,8 @@ public final class PresenceScheduler {
         List<Integer> option = new ArrayList<>();
         for (Activity activity : Activity.values()) {
             int weight = weights.getOrDefault(activity.name(), 0);
-            if (activity == Activity.PQ && population.fields().lobbyFor(citizen, level) == null) {
+            if (activity == Activity.PQ && (population.fields().lobbyFor(citizen, level) == null
+                    || partyQuests() != null && partyQuests().coolingDown(citizen.characterId(), now))) {
                 weight = 0;
             }
             if (activity == Activity.MARKET && (!population.config().MARKET_ENABLED || !citizen.has(Citizen.FLAG_MERCHANT))) {
@@ -741,6 +744,7 @@ public final class PresenceScheduler {
         switch (session.activity) {
             case TRAIN -> AgentMovementCommandRuntime.grind(entry);
             case MARKET -> population.market().onArrive(session);
+            case PQ -> waitAtLobby(session, map, now);
             case JOB -> {
                 if (!jobs.begin(session, map)) { // nothing to go for here after all: an ordinary visit, re-planned soon
                     session.errandJob = null;
@@ -751,6 +755,51 @@ public final class PresenceScheduler {
             }
             default -> stroll(session, map, now);
         }
+    }
+
+    /**
+     * A citizen out for a party quest waits beside the quest's NPC, as players waiting for a party do, where citizens
+     * run that quest (CitizenPartyQuests forms the party there); anywhere else it strolls as before. Live, citizens
+     * strolling Kerning City's town life were up on its roofs when the old background director took them in, and
+     * never made it down to Lakelis in time.
+     */
+    private void waitAtLobby(CitizenSession session, MapleMap map, long now) {
+        Point spot = partyQuests() == null ? null : partyQuests().waitingSpot(session, map);
+        if (spot == null) {
+            stroll(session, map, now);
+            return;
+        }
+        AgentMovementCommandRuntime.moveTo(session.entry, spot, true);
+    }
+
+    /**
+     * Before its party goes in (CitizenPartyQuests): whatever it was doing on the lobby stops, its town life, its
+     * stall and its walk, so the quest's admission finds it free and its coordinator moves it.
+     */
+    void holdForRun(CitizenSession session) {
+        Character agent = session.agent();
+        AgentRuntimeEntry entry = session.entry;
+        if (agent == null || entry == null) {
+            return;
+        }
+        leaveAbstract(entry, agent);
+        if (AgentTownLifeRuntime.active(entry)) {
+            AgentTownLifeRuntime.stop(entry, agent);
+            AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
+        }
+        AgentMovementCommandRuntime.stop(entry);
+        population.market().onLeave(session);
+    }
+
+    /** The population's party quests; null before they exist (and in tests that leave them out). */
+    private CitizenPartyQuests partyQuests() {
+        return population.partyQuests();
+    }
+
+    /** True while the citizen is in a party quest of its party, or on its way back from one. */
+    private boolean inPartyQuest(CitizenSession session) {
+        CitizenPartyQuests partyQuests = partyQuests();
+        return partyQuests != null && partyQuests.holds(session.characterId);
     }
 
     private void stroll(CitizenSession session, MapleMap map, long now) {
@@ -800,6 +849,9 @@ public final class PresenceScheduler {
     }
 
     private void maybeReplan(CitizenSession session, long now) {
+        if (inPartyQuest(session)) {
+            return; // its party quest moves it, and sends it back to its day after (CitizenPartyQuests)
+        }
         if (onSupplyTrip(session)) {
             // no AFK, stroll or re-plan while its own shop trip runs: a re-plan that is due stays due for the next sweep
             log.debug("citizen {} is on a supply trip; its re-plan waits", session.name());
@@ -1001,7 +1053,7 @@ public final class PresenceScheduler {
      * (SHOP_VISIT_TIMEOUT_MS, one retry), and the session's end logs the citizen off whatever it is doing. A citizen
      * with no running Agent entry is never on one.
      */
-    private static boolean onSupplyTrip(CitizenSession session) {
+    static boolean onSupplyTrip(CitizenSession session) {
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(session.characterId);
         return entry != null && entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
                 .map(AgentSupplyProcurementState::isActive).orElse(false);

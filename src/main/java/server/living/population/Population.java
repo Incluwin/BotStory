@@ -50,6 +50,7 @@ public final class Population {
     private final SocialFabric social;
     private final Conversation conversation;
     private final Market market;
+    private final CitizenPartyQuests partyQuests;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -78,6 +79,7 @@ public final class Population {
         this.social = new SocialFabric(this);
         this.conversation = new Conversation(this);
         this.market = new Market(this);
+        this.partyQuests = new CitizenPartyQuests(this);
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }
@@ -141,6 +143,8 @@ public final class Population {
                 45_000L, 60_000L));
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
                 120_000L, 120_000L));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.partyQuests::tick,
+                CitizenPartyQuests.TICK_MS, CitizenPartyQuests.TICK_MS));
         instance = population;
         log.info("Population started: {} citizens ({}), {} target, {} online max, channels {}", population.registry.size(),
                 content.census(), config.TARGET_CITIZENS, config.ONLINE_MAX, population.channels);
@@ -246,6 +250,11 @@ public final class Population {
 
     public Market market() {
         return market;
+    }
+
+    /** Party quests citizen parties run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md). */
+    public CitizenPartyQuests partyQuests() {
+        return partyQuests;
     }
 
     public List<Integer> channels() {

@@ -52,6 +52,7 @@ public final class ChatterEngine {
         String item;
         String job;
         String text;
+        int need;
 
         private Event(String trigger, int mapId, int channel) {
             this.trigger = trigger;
@@ -97,6 +98,12 @@ public final class ChatterEngine {
 
         public Event withText(String fixedText) {
             this.text = fixedText;
+            return this;
+        }
+
+        /** The {need} slot: how many more a party quest's party wants ("lf{need}m kpq"). */
+        public Event need(int more) {
+            this.need = more;
             return this;
         }
     }
@@ -242,6 +249,9 @@ public final class ChatterEngine {
         List<Intent> fitting = new ArrayList<>();
         int total = 0;
         int level = session.agent() == null ? 0 : session.agent().getLevel();
+        // A party quest's own talk ("lf2m kpq" again, "gg") repeats as players repeat it: no memory of recent intents,
+        // the self cooldown on its channel, and each intent's own cooldown.
+        boolean partyQuest = trigger.startsWith("pq.");
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;
@@ -252,7 +262,7 @@ public final class ChatterEngine {
             if (!channelAvailable(session, intent.channel())) {
                 continue;
             }
-            if (session.recentIntents.contains(intent.id())) {
+            if (!partyQuest && session.recentIntents.contains(intent.id())) {
                 continue;
             }
             Long lastIntent = session.lastSpokeAtMs.get("intent:" + intent.id());
@@ -276,7 +286,8 @@ public final class ChatterEngine {
         }
         String channel = chosen.channel();
         Long lastOnChannel = session.lastSpokeAtMs.get(channel);
-        long cooldown = urgent || trigger.endsWith(".self") ? SELF_COOLDOWN_MS : population.config().CHATTER_CITIZEN_COOLDOWN_MS;
+        long cooldown = urgent || partyQuest || trigger.endsWith(".self") ? SELF_COOLDOWN_MS
+                : population.config().CHATTER_CITIZEN_COOLDOWN_MS;
         if (lastOnChannel != null && now - lastOnChannel < cooldown) {
             return false;
         }
@@ -373,6 +384,9 @@ public final class ChatterEngine {
         }
         slots.put("pq", lobby == null ? "pq" : lobby.name());
         slots.put("levels", lobby == null ? String.valueOf(level) : lobby.levelMin() + "-" + lobby.levelMax());
+        if (event.need > 0) {
+            slots.put("need", String.valueOf(event.need));
+        }
         Market.Listing listing = event.item != null ? null : population.market().talkAbout(session, random);
         slots.put("item", event.item != null ? event.item : listing == null ? "stuff" : listing.name());
         slots.put("price", listing == null ? "cheap" : Market.formatPrice(listing.price()));

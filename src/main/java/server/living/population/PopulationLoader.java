@@ -41,7 +41,10 @@ import java.util.stream.Stream;
 public final class PopulationLoader {
     private static final Set<String> TRIGGERS = Set.of("enter", "dwell", "levelup.other", "levelup.self", "death.other",
             "death.self", "drop.rare", "drop.rare.self", "boss", "jobadvance.other", "jobadvance.self", "jobadvance.offscreen.self", "login", "logout", "login.buddy",
-            "smega", "party.forming", "party.invite", "price", "afk", "back", "lag");
+            "smega", "party.forming", "party.invite", "price", "afk", "back", "lag",
+            // party quests citizens run (CitizenPartyQuests)
+            "pq.lf", "pq.join", "pq.go", "pq.clear", "pq.fail", "pq.down", "pq.giveup", "pq.call", "pq.call.answer",
+            "pq.thanks", "pq.wait");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
     private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega");
 

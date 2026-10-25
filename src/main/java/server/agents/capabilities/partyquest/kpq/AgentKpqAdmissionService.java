@@ -33,7 +33,17 @@ public final class AgentKpqAdmissionService {
     public static AdmissionResult admit(
             Character operator, Character eventLeader, List<Character> partyMembers, long seed, long nowMs) {
         return admit(operator, eventLeader, partyMembers, seed, nowMs, AgentKpqSession.Mode.PRODUCTION,
-                AgentKpqSession.PartyOwnership.EXTERNAL, isAgent(eventLeader));
+                AgentKpqSession.PartyOwnership.EXTERNAL, isAgent(eventLeader), false);
+    }
+
+    /**
+     * The population's entry of a citizen party that formed at Lakelis (CitizenPartyQuests): its citizen leader is
+     * operator and event leader, the party stays its own (EXTERNAL), and the session is a citizen run from its first
+     * tick. Its citizens say their own lines as they go in, so nobody says the stock "Joining KPQ." or "Party ready.".
+     */
+    public static AdmissionResult admitCitizens(Character leader, List<Character> partyMembers, long seed, long nowMs) {
+        return admit(leader, leader, partyMembers, seed, nowMs, AgentKpqSession.Mode.PRODUCTION,
+                AgentKpqSession.PartyOwnership.EXTERNAL, false, true);
     }
 
     static AdmissionResult admit(
@@ -58,7 +68,7 @@ public final class AgentKpqAdmissionService {
             long nowMs,
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership) {
-        return admit(operator, eventLeader, partyMembers, seed, nowMs, mode, ownership, true);
+        return admit(operator, eventLeader, partyMembers, seed, nowMs, mode, ownership, true, false);
     }
 
     private static AdmissionResult admit(
@@ -69,7 +79,8 @@ public final class AgentKpqAdmissionService {
             long nowMs,
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership,
-            boolean joinLines) {
+            boolean joinLines,
+            boolean citizenRun) {
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return AdmissionResult.failure(validation.message());
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
@@ -121,7 +132,7 @@ public final class AgentKpqAdmissionService {
             AgentPartyQuestLobbyRuntime.register(lobby, nowMs);
             AdmissionResult result = admitFromLobby(
                     engagement, lobby, operator, eventLeader, validation.members(),
-                    seed, nowMs, mode, ownership, joinLines);
+                    seed, nowMs, mode, ownership, joinLines, citizenRun);
             if (!result.success()) {
                 AgentPartyQuestLobbyRuntime.unregister(lobby.lobbyId(), nowMs);
                 engagement.beginRecovery(result.message(), nowMs);
@@ -147,7 +158,7 @@ public final class AgentKpqAdmissionService {
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership) {
         return admitFromLobby(engagement, lobby, operator, eventLeader, partyMembers, seed, nowMs, mode, ownership,
-                true);
+                true, false);
     }
 
     private static AdmissionResult admitFromLobby(
@@ -160,7 +171,8 @@ public final class AgentKpqAdmissionService {
             long nowMs,
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership,
-            boolean joinLines) {
+            boolean joinLines,
+            boolean citizenRun) {
         AgentKpqWatchdogRuntime.ensureStarted();
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return restoreFailure(engagement, lobby, validation.message(), nowMs);
@@ -191,6 +203,7 @@ public final class AgentKpqAdmissionService {
         AgentKpqSession session = new AgentKpqSession(
                 mode, seed, operator.getId(), validation.members().size(), nowMs);
         session.setPartyOwnership(ownership);
+        session.setCitizenRun(citizenRun);
         for (Character member : validation.members()) {
             AgentKpqMemberState.MemberType memberType = isAgent(member)
                     ? AgentKpqMemberState.MemberType.AGENT : AgentKpqMemberState.MemberType.HUMAN;
@@ -223,7 +236,7 @@ public final class AgentKpqAdmissionService {
                 AgentKpqDialogue.sayMapNow(member, "Joining KPQ.");
             }
         }
-        if (isAgent(eventLeader)) {
+        if (joinLines && isAgent(eventLeader)) {
             AgentKpqDialogue.sayMapNow(eventLeader, "Party ready.");
         }
         return new AdmissionResult(true, "KPQ party admitted", session, engagement);

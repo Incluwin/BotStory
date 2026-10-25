@@ -262,10 +262,11 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * A companion run's companions standing in its instance run at full rate until their reward; a stock run's, and
-     * every background KPQ's, keep the cadence their map's observers give them. A run whose release has begun (a
-     * force stop or removal from another thread, which lets go of the holds before the phase turns FAILED) takes
-     * none back.
+     * A companion run's companions, and a citizen run's citizens, standing in its instance run at full rate until
+     * their reward; a stock run's, and every background KPQ's, keep the cadence their map's observers give them (live,
+     * citizen parties the background director took in never finished stage 1 at a fifth of the combat rate). A run
+     * whose release has begun (a force stop or removal from another thread, which lets go of the holds before the
+     * phase turns FAILED) takes none back.
      */
     private static void holdFullRateSimulation(AgentKpqSession session) {
         AgentKpqSession.Phase phase = session.phase();
@@ -273,7 +274,7 @@ final class AgentKpqCoordinator {
         for (AgentKpqMemberState member : session.members()) {
             if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
-            boolean wanted = !ending && session.companionAdopted() && agent != null && standsInEvent(session, agent)
+            boolean wanted = !ending && playersRun(session) && agent != null && standsInEvent(session, agent)
                     && (insideEventPhase(phase)
                     || phase == AgentKpqSession.Phase.CLAIMING_REWARDS && !member.rewardResolved());
             AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
@@ -354,8 +355,8 @@ final class AgentKpqCoordinator {
     }
 
     private static void endStageOneForTimeout(AgentKpqSession session, Character leader, long nowMs) {
-        // A companion run's parting line says it in the players' own words.
-        if (!session.companionAdopted()) {
+        // A companion or citizen run's parting line says it in the players' own words.
+        if (!playersRun(session)) {
             narrate(session, narrator(session), "stage1-timeout",
                     "No KPQ progress in stage 1 for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L)
                             + " minutes. Ending KPQ and returning to Kerning.");
@@ -441,12 +442,13 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * A background party formed while a lobby was free may no longer take the last one a human could enter. An
-     * Agent-led !kpqtest run is KPQ_OWNED too, but it is not background and keeps the stock entry.
+     * A background party formed while a lobby was free may no longer take the last one a human could enter, and
+     * neither may a citizen party (its own party, so EXTERNAL). An Agent-led !kpqtest run is KPQ_OWNED too, but it is
+     * not background and keeps the stock entry.
      */
     private static boolean backgroundLobbyTaken(AgentKpqSession session, Character leader) {
-        return session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
-                && session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION
+        return (session.citizenRun() || session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
+                && session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION)
                 && !AgentKpqLobbyPolicy.backgroundEntryAllowed(KPQ.openInstances(leader, "KerningPQ"),
                         AgentKpqLobbyPolicy.maxLobbies(), AgentKpqLobbyPolicy.humanReservedLobbies());
     }
@@ -1004,7 +1006,7 @@ final class AgentKpqCoordinator {
             if (!movers.isEmpty()) {
                 // The attempt id changes when a reset formation is assigned again, so it is announced again.
                 coordinate(session, narrator, "s" + stage + "-a" + attempt + "-" + attemptId,
-                        formationInstruction(movers, leader, stage, session.companionAdopted()));
+                        formationInstruction(movers, leader, stage, playersRun(session)));
             }
         }
         boolean humanLeader = !isAgent(session, leader.getId());
@@ -2147,7 +2149,7 @@ final class AgentKpqCoordinator {
                 if (!member.rewardResolved()) allInBonus = false;
                 continue;
             }
-            if (session.companionAdopted() && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
+            if (playersRun(session) && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
                 // A member who died on the bonus map respawned outside the event and cannot come back for it.
                 session.forfeitReward(member.characterId());
                 continue;
@@ -2222,14 +2224,14 @@ final class AgentKpqCoordinator {
                         session.sessionId(), member.characterId());
                 continue;
             }
-            if (session.companionAdopted() && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
+            if (playersRun(session) && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
                 continue;
             }
             if (agent.getMapId() == AgentKpqDefinition.BONUS_MAP
                     || agent.getMapId() == AgentKpqDefinition.EXIT_MAP) {
                 allOutside = false;
                 if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
-                    if (session.companionAdopted() && agent.getHp() <= 0) {
+                    if (playersRun(session) && agent.getHp() <= 0) {
                         // Its respawn carries it outside, and then it is done.
                         allGathered = false;
                         continue;
@@ -2269,7 +2271,7 @@ final class AgentKpqCoordinator {
         }
         if (!allOutside || !allGathered) return;
         stopAll(session);
-        if (!session.companionAdopted()) {
+        if (!playersRun(session)) {
             coordinate(session, narrator(session), "wait-outside",
                     "Party is back in Kerning and waiting for the next command.");
         }
@@ -2433,7 +2435,7 @@ final class AgentKpqCoordinator {
             session.setCombination(initialCombination);
             if (!movers.isEmpty()) {
                 coordinate(session, narrator, "s" + definition.stageNumber() + "-initial-position-" + attemptId,
-                        formationInstruction(movers, leader, definition.stageNumber(), session.companionAdopted()));
+                        formationInstruction(movers, leader, definition.stageNumber(), playersRun(session)));
             }
         }
         for (AgentKpqMemberState participant : participants.subList(0, 3)) {
@@ -2489,18 +2491,29 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * A companion run hears its companions talk like players, never a status line; a stock or test run keeps the
-     * plain lines it always had.
+     * A companion or citizen run hears its members talk like players, never a status line; a stock or test run keeps
+     * the plain lines it always had.
      */
     private static String voice(AgentKpqSession session, String companionLine, String stockLine) {
-        return session.companionAdopted() ? companionLine : stockLine;
+        return playersRun(session) ? companionLine : stockLine;
+    }
+
+    /**
+     * A run of players rather than the stock Agent-led one: a companion run (its leader a human with his companions),
+     * or a citizen run (a citizen leads citizens, a human who took their invite among them or not). Both talk like
+     * players and hold full rate in the instance, and a downed member who is not the leader taps out through its host
+     * instead of failing the run. The companion run's human-leader levers stay its own.
+     */
+    static boolean playersRun(AgentKpqSession session) {
+        return session.companionAdopted() || session.citizenRun();
     }
 
     /** One line per phase with its time: a run's pace reads straight from the log instead of a 1 Hz sampler. */
     private static void transition(AgentKpqSession session, AgentKpqSession.Phase phase, long nowMs) {
-        log.info("KPQ phase: session={} {}->{} phaseMs={} runMs={} earlyRejections={} companionRun={}",
+        log.info("KPQ phase: session={} {}->{} phaseMs={} runMs={} earlyRejections={} companionRun={} citizenRun={}",
                 session.sessionId(), session.phase(), phase, nowMs - session.phaseEnteredAtMs(),
-                nowMs - session.startedAtMs(), session.earlyPuzzleRejections(), session.companionAdopted());
+                nowMs - session.startedAtMs(), session.earlyPuzzleRejections(), session.companionAdopted(),
+                session.citizenRun());
         session.transition(phase, nowMs);
     }
 
@@ -2560,7 +2573,7 @@ final class AgentKpqCoordinator {
         Character failureSpeaker = failureSpeakerId <= 0 ? null : character(failureSpeakerId);
         if (failureSpeaker != null) {
             narrate(session, failureSpeaker, "failed", failureLine(
-                    session.companionAdopted(), reason, parting, failureSpeakerId, pastTheClear(session)));
+                    playersRun(session), reason, parting, failureSpeakerId, pastTheClear(session)));
         }
         log.error("KPQ session failure: session={} phase={} reason={} blocker={} blockerMs={} diagnostics={}",
                 session.sessionId(), session.phase(), reason, session.blockerKey(),
@@ -3010,7 +3023,7 @@ final class AgentKpqCoordinator {
         session.removeMember(member.characterId());
         session.pace().markDeparture(nowMs);
         AgentKpqSessionRegistry.unindexMember(session, member.characterId());
-        if (engagement != null && session.companionAdopted()) {
+        if (engagement != null && playersRun(session)) {
             // Still listed, a tapped-out companion unloaded later (its owner logged out) answered TownLife at the
             // run's end, and that alone kept a cleared run's companions idle in the 90 s post-run hold.
             AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, member.characterId(), nowMs);
@@ -3021,7 +3034,7 @@ final class AgentKpqCoordinator {
             AgentPartyQuestLifecycleRuntime.recoverDetachedMember(member.characterId(), nowMs);
         }
         session.resetFormation();
-        if (session.companionAdopted()) session.restartBlockerClocks();
+        if (playersRun(session)) session.restartBlockerClocks();
     }
 
     /** False pauses the stage logic for this tick, or means the run just ended. */
@@ -3035,7 +3048,7 @@ final class AgentKpqCoordinator {
         for (AgentKpqMemberState member : session.members()) {
             Character character = memberCharacter(member.characterId(), eventAnchor);
             MemberVerdict verdict = memberVerdict(new MemberFacts(
-                    session.companionAdopted(), session.phase(), member.memberType(),
+                    playersRun(session), session.phase(), member.memberType(),
                     member.characterId() == session.eventLeaderId(), character != null,
                     character == null ? 0 : character.getHp(),
                     character != null && KPQ.event(character) == event, leaderInBoundEvent, cleared,
