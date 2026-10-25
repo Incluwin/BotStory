@@ -43,8 +43,18 @@ public record AgentBossRunDefinition(String key, ExpeditionType type, int recrui
          * death gate holds its respawn while the event lives, is not cleared and still holds it. Raised where it fell
          * (Resurrection), it plays on.
          */
-        HOLD_UNTIL_CLEAR
+        HOLD_UNTIL_CLEAR,
+        /**
+         * It stays down where it fell until its event allows revives, then revives inside (Sharenian, GPQ plan B4):
+         * before the King's Corridor gate opens (event property canRevive 1) a revive there unregisters the member and
+         * can end the run (GuildQuest.js playerRevive), so the death gate holds its respawn; after it, the script's
+         * standard respawn takes it to the event's own return map (990000200), as REVIVE_INSIDE does.
+         */
+        HOLD_UNTIL_REVIVABLE
     }
+
+    /** The event property a HOLD_UNTIL_REVIVABLE run's event sets to 1 once a revive keeps a member in it. */
+    public static final String CAN_REVIVE_PROPERTY = "canRevive";
 
     public AgentBossRunDefinition {
         if (key == null || key.isBlank() || fight == null || deathMode == null) {
@@ -92,6 +102,19 @@ public record AgentBossRunDefinition(String key, ExpeditionType type, int recrui
     public boolean partyInstance() {
         return type == null;
     }
+
+    /**
+     * GPQ plan B4: true for a party-instance run whose members join its event one by one after it started, each by
+     * the entry NPC's join choices on the recruit map while the event takes joiners (Sharenian: Shuang's "Join your
+     * guild's Guild Quest" while canJoin is 1). The other party bosses take their members in through the party's
+     * portal and name no entry NPC.
+     */
+    public boolean joinsAfterStart() {
+        return type == null && entryNpcId > 0 && !joinSelections.isEmpty();
+    }
+
+    /** The event property a join-after-start run's event holds at 1 while it takes joiners (GuildQuest.js). */
+    public static final String CAN_JOIN_PROPERTY = "canJoin";
 
     /** The join selections as the NPC gateway takes them. */
     public int[] joinSelectionArray() {

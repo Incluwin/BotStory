@@ -43,6 +43,9 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (bossRuns != null && bossRuns.heldOffKeystoneGate(agentCharacterId)) {
             return true; // CWKPQ C3: no Crimsonwood Keystone: it waits in the Hall of Mastery
         }
+        if (bossRuns != null && bossRuns.joiningAfterStart(agentCharacterId)) {
+            return true; // GPQ B4: its owner went into Sharenian alone; the run walks it to Shuang to join
+        }
         RosterService roster = world.roster();
         if (roster != null && roster.heldAtTicketGate(agentCharacterId)) {
             return true; // APQ A2: on its way past Amos the Strong, on its own ticket, or waiting for want of one

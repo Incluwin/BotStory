@@ -139,8 +139,18 @@ record BossEntrance(AgentBossRunDefinition definition, PqEntrance.Beside beside,
     static final BossEntrance CWKPQ = new BossEntrance(AgentBossRunCatalog.CWKPQ,
             new PqEntrance.Beside(-50, -30, true), 600_000_000, "out00", "out00", true, 0);
 
+    // slot: gpq
+    /**
+     * Shuang stands at -58,1305 (WZ 101030104 life) on the Excavation Site camp's lower floor: companions wait beside
+     * her, as at Adobis, until the run walks each to her to join (GPQ plan B4). Players come from Perion (102000000),
+     * whose stores are the last on the way; the camp is a short walk back, so trips out are not held. Allies come in and
+     * leave by out00 (-1996,703), the camp's way out to 101030103.
+     */
+    static final BossEntrance GPQ = new BossEntrance(AgentBossRunCatalog.GPQ,
+            new PqEntrance.Beside(-50, -30, true), 102_000_000, "out00", "out00", false, 0);
+
     private static final List<BossEntrance> ALL = List.of(EASY_BALROG, ZAKUM, BALROG_NORMAL, LATANICA, NEO_BERGAMOT,
-            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA, PINKBEAN, CWKPQ);
+            NEO_DUNAS, NEO_AUFHEBEN, NEO_OBERON, NEO_NIBELUNG, PAPULATUS, SCARGA, HORNTAIL, SHOWA, PINKBEAN, CWKPQ, GPQ);
 
     /** A party boss's entrance (P14): no entry NPC to stand beside, no ally portals, trips out of the gate held. */
     private static BossEntrance party(AgentBossRunDefinition definition, int approachMapId, int storeNpcId) {

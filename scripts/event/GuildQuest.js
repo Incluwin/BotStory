@@ -90,6 +90,10 @@ function setEventRewards(eim) {
     eim.setEventClearStageExp(expStages);
 }
 
+function guildOf(ch) {      // companions count in their owner's guild (living_world.COMPANION_BOSS_ENABLED_TYPES gpq)
+    return Java.type('server.living.LivingWorldHooks').guildQuestGuild(ch.getId(), ch.getGuildId());
+}
+
 function getEligibleParty(party) {      //selects, from the given party, the team that is allowed to attempt this event
     var eligible = [];
     var hasLeader = false;
@@ -102,7 +106,7 @@ function getEligibleParty(party) {      //selects, from the given party, the tea
         for (var i = 0; i < party.size(); i++) {
             var ch = partyList[i];
             if (ch.isLeader()) {
-                guildId = ch.getGuildId();
+                guildId = guildOf(ch);
                 break;
             }
         }
@@ -110,7 +114,7 @@ function getEligibleParty(party) {      //selects, from the given party, the tea
         for (var i = 0; i < party.size(); i++) {
             var ch = partyList[i];
 
-            if (ch.getMapId() == recruitMap && ch.getLevel() >= minLevel && ch.getLevel() <= maxLevel && ch.getGuildId() == guildId) {
+            if (ch.getMapId() == recruitMap && ch.getLevel() >= minLevel && ch.getLevel() <= maxLevel && guildOf(ch) == guildId) {
                 if (ch.isLeader()) {
                     hasLeader = true;
                 }
@@ -189,6 +193,8 @@ function afterSetup(eim) {
     if (leader != null) {
         eim.setProperty("guild", "" + leader.getGuildId());
     }
+    // GPQ plan B4: the leader's companions at the camp join as a companion boss run (nothing while gpq is off)
+    Java.type('server.living.LivingWorldHooks').bossPartyEntered(eim, 'gpq');
 }
 
 function respawnStages(eim) {}

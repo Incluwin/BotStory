@@ -6518,6 +6518,58 @@ tuning:
     # Purpose: Lets a CWKPQ magician teleport between the magician room's platforms, and a CWKPQ thief Flash Jump to the thief room's high eyes, without turning either movement skill on globally.
     # Technical: Only 610030521 receives Teleport graph edges and only 610030530 Flash Jump edges (AgentNavigationGraphService); routing over them still requires a member of a CWKPQ boss run in the room's event (AgentCwkpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
     server.agents.capabilities.expedition.cwkpq.AgentCwkpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
+    # Values: true or false. Recommended: true for the Guild Quest's Room of Justice (stage 2's altar towers).
+    # Purpose: Lets a Guild Quest magician Teleport, or a hermit Flash Jump, up the two altar towers walking and jumping never reach (spear1's rope jump, spear4's 140 px floors), without turning either movement skill on globally.
+    # Technical: Only 990000440 receives Teleport and Flash Jump graph edges (AgentNavigationGraphService); routing over them still requires a member of a GPQ boss run in the room's event (AgentGpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
+    server.agents.capabilities.expedition.gpq.AgentGpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
+    # Values: 0-300000 milliseconds. Recommended: 180000, GuildQuest.js's three minutes of strategy time.
+    # Purpose: The Guild Quest clear-time records' prior for the strategy time, from the guild called in to the way in opening.
+    # Technical: AgentGpqPaceProfile.priors "strategy" (a COMPANION Fixed segment), the run's first; the event's entryTimestamp ends it, so live runs only confirm it.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STRATEGY_MS: '180000'
+    # Values: 30000-600000 milliseconds. Recommended: 90000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the rocks, every member breaking a guardian stone and wearing its Protector Rock on the way to the Gatekeeper.
+    # Technical: AgentGpqPaceProfile.priors "rocks"; from the way in opening to the first member in the Gatekeeper's room 990000300 (AgentGpqPaceMarks).
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ROCKS_MS: '90000'
+    # Values: 60000-1200000 milliseconds. Recommended: 240000 until the first live runs measure it; three patterns of 4-6 statues, each shown 3.5 s a statue, with the leader's talks between.
+    # Purpose: The Guild Quest clear-time records' prior for the Gatekeeper's statues.
+    # Technical: AgentGpqPaceProfile.priors "statues"; from the first member in 990000300 to stage1clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STATUES_MS: '240000'
+    # Values: 120000-2400000 milliseconds. Recommended: 600000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the Longinus spears: the Key, the debris and the Rusty Key, and the four spears on their altars.
+    # Technical: AgentGpqPaceProfile.priors "spears"; from stage1clear to the speargate's fourth state.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.SPEARS_MS: '600000'
+    # Values: 120000-2400000 milliseconds. Recommended: 420000 until the first live runs measure it; seven tries at most per draw of the vassals' offerings.
+    # Purpose: The Guild Quest clear-time records' prior for the fountain's vassals: knights fought for medals and scrolls, plates and boxes tried for food and drink, offerings set until the fountain accepts them.
+    # Technical: AgentGpqPaceProfile.priors "vassals"; from the speargate's fourth state to stage3clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.VASSALS_MS: '420000'
+    # Values: 120000-2400000 milliseconds. Recommended: 720000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the waterway: the four rooms' marks and garments, the clothes onto Sharen III's remains, and the ghost's word to the leader.
+    # Technical: AgentGpqPaceProfile.priors "waterway"; from stage3clear to stage4clear.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WATERWAY_MS: '720000'
+    # Values: 10000-600000 milliseconds. Recommended: 60000 until the first live runs measure it.
+    # Purpose: The Guild Quest clear-time records' prior for the King's Corridor, a member giving the gate its Protector Rock.
+    # Technical: AgentGpqPaceProfile.priors "corridor"; from stage4clear to the gate's canRevive 1.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.CORRIDOR_MS: '60000'
+    # Values: 0.05-1.0. Recommended: 0.40; one stationary boss that heals and turns weapon or magic immune, with his statues and summons in the way.
+    # Purpose: The share of the team's raw damage that lands on Ergoth on his throne.
+    # Technical: AgentGpqPaceProfile.priors "ergoth", the efficiency of the Clear of 9300028 that every member fights, the leader included, at the boss rules' companionDamagePercent; it spans the seal broken and the Rubian turned in.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_EFFICIENCY: '0.40'
+    # Values: 300000-3600000 milliseconds. Recommended: 1800000, a third of the 90-minute clock.
+    # Purpose: Past what mean time the Ergoth fight is named slow in the Guild Quest clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds slowMs for "ergoth"; AgentPqPaceEstimator adds a SLOW weakness when the segment's mean passes it.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_SLOW_MS: '1800000'
+    # Values: 1-50. Recommended: 7, RJPQ's, OPQ's and CWKPQ's.
+    # Purpose: Below how many of Ergoth's touches a member is named fragile in the Guild Quest clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds fragileTouches; AgentPqPaceEstimator compares each member's touchesToDown against the danger mob 9300028.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.1-1.0. Recommended: 0.6.
+    # Purpose: Below what chance to hit Ergoth a member is named as missing him in the clear-time estimate's weaknesses.
+    # Technical: AgentGpqPaceProfile.thresholds weakHitChance; AgentPqPaceEstimator compares each member's hit chance on 9300028.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1-1000. Recommended: 1; bump it when a GPQ pace change lands.
+    # Purpose: Keeps Guild Quest clear-time records of an older companion behaviour out of the calibration once the behaviour changes.
+    # Technical: AgentGpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs; no gpq run is recorded yet.
+    server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.PACE_EPOCH: '1'
     # Values: 105-123. Recommended: 120, the offline graph's threshold on Map.wz 926100201.
     # Purpose: The jump stat a companion needs, with its Haste on, to be chosen as the runner of RJPQ Dark Lab 1, whose boxes stand on high conveyor ledges.
     # Technical: AgentRjpqDarkLabs.chooseRunners compares Character.getTotalJumpStat plus its best Haste's jump (Skill.wz effect) with this; the navigation graph of 926100201 reaches all six box ledges and the exit at 120 and none at 110 (AgentRjpqDarkLabNavigationTest). Inside the lab the runner recasts Haste while its jump is below this.

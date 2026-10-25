@@ -134,6 +134,14 @@ public final class AgentBossRunHost {
         }
 
         /**
+         * GPQ plan B4: where a REGISTERED member of a join-after-start run stands on the recruit {@code map} until it
+         * is in reach of the entry NPC to join, by its {@code ordinal} in the run; null walks it to the NPC herself.
+         */
+        default Point joinAt(Seat seat, MapleMap map, int ordinal) {
+            return null;
+        }
+
+        /**
          * The member went into the fight: the run adopted it, once per member and run (never for one that missed the
          * start). The host logs its boss entry then.
          */
@@ -321,6 +329,20 @@ public final class AgentBossRunHost {
                 return current.standAt(seat, map, ordinal);
             } catch (RuntimeException failure) {
                 log.warn("boss-run stand-at rule failed for {} (ordinal {})", seat, ordinal, failure);
+                return null;
+            }
+        }
+
+        @Override
+        public Point joinAt(Seat seat, MapleMap map, int ordinal) {
+            Rule current = current();
+            if (current == null) {
+                return null;
+            }
+            try {
+                return current.joinAt(seat, map, ordinal);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run join-at rule failed for {} (ordinal {})", seat, ordinal, failure);
                 return null;
             }
         }
