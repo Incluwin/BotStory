@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import server.mods.features.FeatureHandshake;
 import server.mods.features.FeaturePackets;
 import server.monitoring.ThrottledLogger;
+import server.set.SetItemSync;
 
 /**
  * The kaentake client's feature list (Recv opcode CLIENT_FEATURES 0x118, docs/CLIENT_FEATURE_HANDSHAKE.md): decoded
@@ -30,5 +31,8 @@ public final class ClientFeaturesHandler extends AbstractPacketHandler {
             return;
         }
         FeatureHandshake.get().receive(c, player, report);
+        if (report.applied()) {
+            SetItemSync.send(player); // the set tooltips need the worn sets before the first equip change
+        }
     }
 }

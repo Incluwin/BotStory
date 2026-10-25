@@ -133,6 +133,7 @@ import server.Shop;
 import server.StatEffect;
 import server.set.SetBonusTotal;
 import server.set.SetItemManager;
+import server.set.SetItemSync;
 import server.Storage;
 import server.ThreadManager;
 import server.admin.OperatorMessageTap;
@@ -3369,6 +3370,7 @@ public class Character extends AbstractCharacterObject {
         SetBonusTotal prevSetBonus = this.setBonus;
         updateLocalStats();  // recalcEquipStats refreshes this.setBonus
         SetItemManager.announceChanges(this, prevSetBonus, this.setBonus);
+        SetItemSync.send(this);
         if (getMessenger() != null) {
             getWorldServer().updateMessenger(getMessenger(), getName(), getWorld(), client.getChannel());
         }
