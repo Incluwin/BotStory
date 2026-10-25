@@ -48,19 +48,30 @@ public final class AgentGpqPaceProfile implements AgentPqPaceProfile {
     static final long TIMER_MS = 90 * 60_000L;
     static final List<Integer> MOB_IDS = List.of(AgentGpqThronePlays.ERGOTH);
 
-    private static final String TUNING = "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.";
-    private static final double STRATEGY_MS = config.AgentTuning.doubleValue(TUNING + "STRATEGY_MS");
-    private static final double ROCKS_MS = config.AgentTuning.doubleValue(TUNING + "ROCKS_MS");
-    private static final double STATUES_MS = config.AgentTuning.doubleValue(TUNING + "STATUES_MS");
-    private static final double SPEARS_MS = config.AgentTuning.doubleValue(TUNING + "SPEARS_MS");
-    private static final double VASSALS_MS = config.AgentTuning.doubleValue(TUNING + "VASSALS_MS");
-    private static final double WATERWAY_MS = config.AgentTuning.doubleValue(TUNING + "WATERWAY_MS");
-    private static final double CORRIDOR_MS = config.AgentTuning.doubleValue(TUNING + "CORRIDOR_MS");
-    private static final double ERGOTH_EFFICIENCY = config.AgentTuning.doubleValue(TUNING + "ERGOTH_EFFICIENCY");
-    private static final double ERGOTH_SLOW_MS = config.AgentTuning.doubleValue(TUNING + "ERGOTH_SLOW_MS");
-    private static final double FRAGILE_TOUCHES = config.AgentTuning.doubleValue(TUNING + "FRAGILE_TOUCHES");
-    private static final double WEAK_HIT_CHANCE = config.AgentTuning.doubleValue(TUNING + "WEAK_HIT_CHANCE");
-    private static final int PACE_EPOCH = config.AgentTuning.intValue(TUNING + "PACE_EPOCH");
+    private static final double STRATEGY_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STRATEGY_MS");
+    private static final double ROCKS_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ROCKS_MS");
+    private static final double STATUES_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STATUES_MS");
+    private static final double SPEARS_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.SPEARS_MS");
+    private static final double VASSALS_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.VASSALS_MS");
+    private static final double WATERWAY_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WATERWAY_MS");
+    private static final double CORRIDOR_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.CORRIDOR_MS");
+    private static final double ERGOTH_EFFICIENCY = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_EFFICIENCY");
+    private static final double ERGOTH_SLOW_MS = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.ERGOTH_SLOW_MS");
+    private static final double FRAGILE_TOUCHES = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.FRAGILE_TOUCHES");
+    private static final double WEAK_HIT_CHANCE = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WEAK_HIT_CHANCE");
+    private static final int PACE_EPOCH = config.AgentTuning.intValue(
+            "server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.PACE_EPOCH");
 
     private final List<AgentPqPaceSegment> segments;
     private final Map<String, Double> priors;

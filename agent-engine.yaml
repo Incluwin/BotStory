@@ -6544,7 +6544,7 @@ tuning:
     server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.STATUES_MS: '240000'
     # Values: 120000-2400000 milliseconds. Recommended: 600000 until the first live runs measure it.
     # Purpose: The Guild Quest clear-time records' prior for the Longinus spears: the Key, the debris and the Rusty Key, and the four spears on their altars.
-    # Technical: AgentGpqPaceProfile.priors "spears"; from stage1clear to the speargate's fourth state.
+    # Technical: AgentGpqPaceProfile.priors "spears"; from stage1clear until the speargate reaches its fourth state, all four spears on their altars.
     server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.SPEARS_MS: '600000'
     # Values: 120000-2400000 milliseconds. Recommended: 420000 until the first live runs measure it; seven tries at most per draw of the vassals' offerings.
     # Purpose: The Guild Quest clear-time records' prior for the fountain's vassals: knights fought for medals and scrolls, plates and boxes tried for food and drink, offerings set until the fountain accepts them.
@@ -6552,11 +6552,11 @@ tuning:
     server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.VASSALS_MS: '420000'
     # Values: 120000-2400000 milliseconds. Recommended: 720000 until the first live runs measure it.
     # Purpose: The Guild Quest clear-time records' prior for the waterway: the four rooms' marks and garments, the clothes onto Sharen III's remains, and the ghost's word to the leader.
-    # Technical: AgentGpqPaceProfile.priors "waterway"; from stage3clear to stage4clear.
+    # Technical: AgentGpqPaceProfile.priors "waterway"; from stage3clear to stage4clear, the ghost's word to the leader ending the waterway.
     server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.WATERWAY_MS: '720000'
     # Values: 10000-600000 milliseconds. Recommended: 60000 until the first live runs measure it.
     # Purpose: The Guild Quest clear-time records' prior for the King's Corridor, a member giving the gate its Protector Rock.
-    # Technical: AgentGpqPaceProfile.priors "corridor"; from stage4clear to the gate's canRevive 1.
+    # Technical: AgentGpqPaceProfile.priors "corridor"; from stage4clear until the gate takes its Protector Rock (canRevive 1).
     server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile.CORRIDOR_MS: '60000'
     # Values: 0.05-1.0. Recommended: 0.40; one stationary boss that heals and turns weapon or magic immune, with his statues and summons in the way.
     # Purpose: The share of the team's raw damage that lands on Ergoth on his throne.
