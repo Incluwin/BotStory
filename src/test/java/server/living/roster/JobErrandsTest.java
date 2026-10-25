@@ -90,7 +90,21 @@ class JobErrandsTest {
         assertNull(JobErrands.pathFor(Job.WARRIOR, Job.WARRIOR), "a persona naming only its first job: its owner picks");
         assertNull(JobErrands.pathFor(Job.BEGINNER, Job.BEGINNER), "a Beginner persona");
         assertNull(JobErrands.pathFor(Job.WARRIOR, Job.IL_WIZARD), "a persona of another class");
-        assertNull(JobErrands.pathFor(Job.DAWNWARRIOR2, null), "Explorers only");
+    }
+
+    @Test
+    void aCygnusKnightOrAranHasNoChoiceLeftFromFirstJobOn() {
+        assertEquals(Job.WINDARCHER2, JobErrands.pathFor(Job.NOBLESSE, Job.WINDARCHER2), "a Noblesse persona's class");
+        assertEquals(Job.ARAN4, JobErrands.pathFor(Job.LEGEND, Job.ARAN2), "a Legend has one way on");
+        assertEquals(Job.ARAN4, JobErrands.pathFor(Job.LEGEND, null), "a Legend hire too");
+        assertEquals(Job.DAWNWARRIOR3, JobErrands.pathFor(Job.DAWNWARRIOR1, null), "a hire too: one way on");
+        assertEquals(Job.NIGHTWALKER3, JobErrands.pathFor(Job.NIGHTWALKER2, Job.NIGHTWALKER2), "to third job: no 4th in v83");
+        assertEquals(Job.ARAN4, JobErrands.pathFor(Job.ARAN1, null));
+        assertEquals(Job.THUNDERBREAKER3, JobErrands.pathFor(Job.THUNDERBREAKER3, null), "at its end");
+
+        assertNull(JobErrands.pathFor(Job.NOBLESSE, null), "a Noblesse hire: its owner picks its class");
+        assertNull(JobErrands.pathFor(Job.NOBLESSE, Job.FIGHTER), "an Explorer persona on a Noblesse");
+        assertNull(JobErrands.pathFor(Job.BEGINNER, Job.DAWNWARRIOR2), "a Cygnus persona on a Beginner");
     }
 
     @Test

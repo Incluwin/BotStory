@@ -251,6 +251,30 @@ class CitizenJobErrandsTest {
         }
     }
 
+    @Test
+    void aKnightGoesToItsChiefKnightOnEreveAndAnAranToMahaInRien() {
+        PopulationContent content = population.content();
+        when(content.career("cygnus-night-walker")).thenReturn(new Career("cygnus-night-walker", "NIGHTWALKER2", 4, 80, List.of()));
+        when(content.career("aran")).thenReturn(new Career("aran", "ARAN2", 13, 75, List.of()));
+        Citizen walker = career("cygnus-night-walker");
+        Citizen aran = career("aran");
+
+        assertNull(errands.due(walker, Job.NIGHTWALKER2, 69));
+        assertEquals(Job.NIGHTWALKER3, errands.due(walker, Job.NIGHTWALKER2, 70));
+        assertNull(errands.due(walker, Job.NIGHTWALKER3, 120), "v83 has no fourth Knight job");
+        assertEquals(Job.ARAN3, errands.due(aran, Job.ARAN2, 70));
+        assertEquals(Job.ARAN4, errands.due(aran, Job.ARAN3, 120));
+        session.errandJob = Job.NIGHTWALKER3;
+        assertEquals(130_000_000, errands.mapFor(session), "Eckhart on Ereve");
+        session.errandJob = Job.ARAN4;
+        assertEquals(140_000_000, errands.mapFor(session), "Maha in Rien");
+    }
+
+    private static Citizen career(String careerId) {
+        return new Citizen(ID, "Tobi", "evening", 0, 0, "victoria", careerId, "relaxed-v1", "default", 1.0d, 0, 1,
+                new LinkedHashSet<>(), Citizen.State.ACTIVE, 0L, 0L, 0L, 0L, 0L, 0, "");
+    }
+
     private static Citizen citizen(Set<String> flags) {
         return new Citizen(ID, "Tobi", "evening", 0, 0, "victoria", "warrior-fighter", "relaxed-v1", "default", 1.0d, 0, 1,
                 new LinkedHashSet<>(flags), Citizen.State.ACTIVE, 0L, 0L, 0L, 0L, 0L, 0, "");

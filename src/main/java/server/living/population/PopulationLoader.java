@@ -321,7 +321,8 @@ public final class PopulationLoader {
         Node townWeights = node.get("townWeights");
         return new Region(node.get("id").string(), node.get("levels").get("min").integer(1), node.get("levels").get("max").integer(200),
                 node.get("towns").integers(), townWeights.isMissing() ? List.of() : townWeights.integers(),
-                lobbies, node.get("fm").integer(910000000), node.get("weight").integer(1));
+                lobbies, node.get("fm").integer(910000000), node.get("weight").integer(1),
+                node.get("line").isMissing() ? null : node.get("line").string());
     }
 
     private static Intent intent(Node node, String file) {

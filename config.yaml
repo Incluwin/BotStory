@@ -950,6 +950,11 @@ living_world:
     COMPANION_JOB_ERRAND_WALK_MAX_MS: 45000
     COMPANION_JOB_ERRAND_RETRY_MS: 1800000
     COMPANION_JOB_ERRAND_SWEEP_MS: 30000
+    # Bots play the Cygnus Knights and Aran (2026-10-24, docs/CYGNUS_ARAN_BOTS_PLAN.md): about a quarter of new
+    # citizens are Knights (born Noblesse in Ereve) or Arans (born Legends in Rien), living there until their first job
+    # (population careers.yaml, regions.yaml `line`); the Ereve and Rien Residents; the citizens one hires. false = the
+    # switch off: no new citizen of these lines, those Residents stay away; ones already on these lines keep playing.
+    CYGNUS_ARAN_CAREERS_ENABLED: true
     # Companions earn their own Crimsonwood Keystone (2026-10-19, docs/CWKPQ_COMPANION_PLAN.md A3; KeystoneErrands):
     # asked by its owner ("casse get your keystone", "everyone get keystones"), a companion does Lukan's and Jack's
     # quests (8222, start 8230, 8223) and their hunts by itself: out with its owner it walks out keeping its seat, a

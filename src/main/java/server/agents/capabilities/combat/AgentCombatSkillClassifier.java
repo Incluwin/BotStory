@@ -4,6 +4,7 @@ import client.Character;
 import client.BuffStat;
 import client.Skill;
 import constants.game.GameConstants;
+import constants.skills.Aran;
 import constants.skills.Assassin;
 import constants.skills.Bandit;
 import constants.skills.Bowmaster;
@@ -24,6 +25,7 @@ import constants.skills.Hero;
 import constants.skills.NightLord;
 import constants.skills.Shadower;
 import constants.skills.Bishop;
+import constants.skills.BlazeWizard;
 import constants.skills.ILArchMage;
 import constants.skills.FPArchMage;
 import constants.skills.Corsair;
@@ -40,6 +42,7 @@ import constants.skills.Spearman;
 import constants.skills.SuperGM;
 import constants.skills.ThunderBreaker;
 import constants.skills.WhiteKnight;
+import constants.skills.WindArcher;
 import server.StatEffect;
 import tools.Pair;
 
@@ -111,15 +114,20 @@ public final class AgentCombatSkillClassifier {
         IGNORE
     }
 
-    /** Attacks the generic offense test misses: fixed-damage Snipe and the cost-free energy attacks. */
+    /**
+     * Attacks the generic offense test misses: fixed-damage Snipe, the cost-free energy attacks and an Aran's combo
+     * skills, which its combo pays for (AgentAranCombo).
+     */
     private static final Set<Integer> SPECIAL_ATTACK_SKILL_IDS = Set.of(
             Marksman.SNIPE, Marauder.ENERGY_BLAST, Marauder.ENERGY_DRAIN, Buccaneer.ENERGY_ORB,
-            Beginner.THREE_SNAILS
+            ThunderBreaker.ENERGY_BLAST, ThunderBreaker.ENERGY_DRAIN, Beginner.THREE_SNAILS,
+            Aran.COMBO_SMASH, Aran.COMBO_FENRIR, Aran.COMBO_TEMPEST
     );
 
     /** Energy attacks: the client only allows them with a full Energy Charge bar. */
     private static final Set<Integer> ENERGY_ATTACK_SKILL_IDS = Set.of(
-            Marauder.ENERGY_BLAST, Marauder.ENERGY_DRAIN, Buccaneer.ENERGY_ORB
+            Marauder.ENERGY_BLAST, Marauder.ENERGY_DRAIN, Buccaneer.ENERGY_ORB,
+            ThunderBreaker.ENERGY_BLAST, ThunderBreaker.ENERGY_DRAIN // no mpCon in Skill.wz either: the bar pays
     );
 
     public static boolean isEnergyAttackSkill(int skillId) {
@@ -141,17 +149,19 @@ public final class AgentCombatSkillClassifier {
 
     /** Attack packets that carry no damage of their own but apply a status to the targets. */
     private static final Set<Integer> STATUS_ATTACK_SKILL_IDS = Set.of(
-            Shadower.TAUNT, NightLord.TAUNT, Rogue.DISORDER
+            Shadower.TAUNT, NightLord.TAUNT, Rogue.DISORDER, NightWalker.DISORDER
     );
 
     /** Castable buffs with no WZ action node (the generic support test needs one). */
     private static final Set<Integer> EXPLICIT_SUPPORT_SKILL_IDS = Set.of(
-            Hero.ENRAGE, NightLord.SHADOW_STARS, Marauder.TRANSFORMATION, Buccaneer.SUPER_TRANSFORMATION
+            Hero.ENRAGE, NightLord.SHADOW_STARS, Marauder.TRANSFORMATION, Buccaneer.SUPER_TRANSFORMATION,
+            ThunderBreaker.TRANSFORMATION, WindArcher.EAGLE_EYE // the Knights' morphs (StatEffect.isSkillMorph)
     );
 
     /** Mirrors StatEffect.isMonsterBuff plus Monster Magnet: cast as a special move, applied to mobs in the skill box. */
     private static final Set<Integer> MOB_DEBUFF_SKILL_IDS = Set.of(
             Page.THREATEN, FPWizard.SLOW, ILWizard.SLOW, FPMage.SEAL, ILMage.SEAL, Priest.DOOM,
+            BlazeWizard.SLOW, BlazeWizard.SEAL,
             NightLord.NINJA_AMBUSH, Shadower.NINJA_AMBUSH,
             Crusader.ARMOR_CRASH, DragonKnight.POWER_CRASH, WhiteKnight.MAGIC_CRASH,
             Priest.DISPEL, Hero.MONSTER_MAGNET, Paladin.MONSTER_MAGNET, DarkKnight.MONSTER_MAGNET,

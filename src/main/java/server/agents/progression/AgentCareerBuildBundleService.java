@@ -1,6 +1,8 @@
 package server.agents.progression;
 
 import client.Character;
+import client.Job;
+import client.JobProgressionPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.build.AgentBuildService;
@@ -35,6 +37,20 @@ public final class AgentCareerBuildBundleService {
             log.warn("Could not restore Agent career build bundle for {} ({})",
                     agent.getName(), agent.getId(), failure);
             return null;
+        }
+    }
+
+    /**
+     * Right after a job change: a bundle that no longer covers the new job is re-picked now (restoreOrAssign), not at
+     * the next login. A Noblesse drew one of five knighthoods by its id; the class it takes at its Chief Knight is the
+     * one its AP and SP follow from then on. Nothing happens for an Agent with no bundle or one that still covers.
+     */
+    public static void followJobChange(AgentRuntimeEntry entry, long nowMs) {
+        Character agent = entry == null ? null : entry.bot();
+        AgentCareerBuildBundle bundle = agent == null ? null : entry.capabilityStates()
+                .find(AgentCareerProgressionState.STATE_KEY).map(AgentCareerProgressionState::bundle).orElse(null);
+        if (bundle != null && !covers(bundle, agent.getJob().getId())) {
+            restoreOrAssign(entry, nowMs);
         }
     }
 
@@ -121,10 +137,11 @@ public final class AgentCareerBuildBundleService {
                 throw new IOException("assigned career bundle version changed without migration: "
                         + assignment.bundleId());
             }
-            // A Beginner draws from every bundle; one that then advanced into another class or branch
-            // (shaping, GM, owner chat) kept a bundle whose AP/SP profiles cannot serve its job.
+            // A Beginner draws from every Explorer bundle; one that then advanced into another class or branch
+            // (shaping, GM, owner chat) kept a bundle whose AP/SP profiles cannot serve its job. A Noblesse or a
+            // Legend assigned before its line had bundles holds an Explorer one.
             int jobId = agent.getJob().getId();
-            if (jobId != 0 && !covers(bundle, jobId)) {
+            if (!covers(bundle, jobId)) {
                 List<AgentCareerBuildBundle> choices = compatibleChoices(repository.all(), jobId);
                 AgentCareerBuildBundle repicked = choices.get(Math.floorMod(agent.getId(), choices.size()));
                 if (covers(repicked, jobId)) {
@@ -202,10 +219,11 @@ public final class AgentCareerBuildBundleService {
                 .assign(progressionProfile);
     }
 
+    /**
+     * The bundles that cover the job: a beginner job (Beginner, Noblesse, Legend) draws from its own line's bundles.
+     * None covering (a job outside every line): all of them, as before.
+     */
     private static List<AgentCareerBuildBundle> compatibleChoices(List<AgentCareerBuildBundle> all, int jobId) {
-        if (jobId == 0) {
-            return all;
-        }
         List<AgentCareerBuildBundle> compatible = all.stream()
                 .filter(bundle -> covers(bundle, jobId))
                 .toList();
@@ -213,12 +231,16 @@ public final class AgentCareerBuildBundleService {
     }
 
     /**
-     * The bundle's first job matches; from 2nd job on, its first-job SP profile must also be the one
-     * the Agent's branch descends from (claw vs dagger, gun vs knuckle).
+     * A beginner job: the bundle's first job starts from it (a Beginner never draws a Cygnus Knight bundle). A first
+     * job: it is the bundle's. From 2nd job on, the bundle's first-job SP profile must also be the one the Agent's
+     * branch descends from (claw vs dagger, gun vs knuckle).
      */
     private static boolean covers(AgentCareerBuildBundle bundle, int jobId) {
-        int firstJobId = jobId < 1_000 ? (jobId / 100) * 100 : jobId;
-        if (bundle.firstJobId() != firstJobId) {
+        Job job = Job.getById(jobId);
+        if (job != null && jobId % 1_000 == 0) {
+            return JobProgressionPolicy.beginnerOf(Job.getById(bundle.firstJobId())) == job;
+        }
+        if (bundle.firstJobId() != jobId / 100 * 100) {
             return false;
         }
         return jobId % 100 == 0

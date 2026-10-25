@@ -20,7 +20,8 @@ public final class AgentBuildDialogueClassifier {
             + "bowman|bowmen|archer|hunter|crossbow|xbow|sniper|ranger|bowmaster|bm|marksman|mm|"
             + "thief|assassin|sin|bandit|dit|hermit|chief bandit|cb|shadower|shad|night lord|nl|"
             + "pirate|brawler|gunslinger|gun|marauder|outlaw|bucc|buccaneer|corsair|"
-            + "white knight|wk|dragon knight)\\b", Pattern.CASE_INSENSITIVE);
+            + "white knight|wk|dragon knight|"
+            + "dawn warrior|dw|blaze wizard|bw|wind archer|wa|night walker|nw|thunder breaker|tb)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern SP_1H_PATTERN = Pattern.compile("\\b" + ONE_HANDED_SP_VARIANT + "\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern SP_2H_PATTERN = Pattern.compile("\\b" + TWO_HANDED_SP_VARIANT + "\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern AP_CHANGE_BUILD_PATTERN = Pattern.compile(
@@ -60,6 +61,12 @@ public final class AgentBuildDialogueClassifier {
                 if (level >= 10 && message.matches(".*\\b(pirate|brawler|gunslinger|gun|bucc)\\b.*")) yield Job.PIRATE;
                 yield null;
             }
+            case NOBLESSE -> level < 10 ? null :
+                    message.matches(".*\\b(dawn warrior|dw)\\b.*") ? Job.DAWNWARRIOR1 :
+                    message.matches(".*\\b(blaze wizard|bw)\\b.*") ? Job.BLAZEWIZARD1 :
+                    message.matches(".*\\b(wind archer|wa)\\b.*") ? Job.WINDARCHER1 :
+                    message.matches(".*\\b(night walker|nw)\\b.*") ? Job.NIGHTWALKER1 :
+                    message.matches(".*\\b(thunder breaker|tb)\\b.*") ? Job.THUNDERBREAKER1 : null;
             case WARRIOR -> level < 30 ? null :
                     message.matches(".*\\b(fighter|sader)\\b.*") ? Job.FIGHTER :
                     message.matches(".*\\bpage\\b.*") ? Job.PAGE :

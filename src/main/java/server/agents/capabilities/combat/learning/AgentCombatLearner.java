@@ -387,7 +387,8 @@ public final class AgentCombatLearner {
             double damage = AgentAttackPlanScoringPolicy.scoreAttackPlan(bot, candidate).rawDamage();
             damageAndSeconds.put(candidate.skillId, new double[] {damage, Math.max(1, candidate.cooldownMs) / 1000.0d});
             if (constants.game.GameConstants.isFinisherSkill(candidate.skillId)
-                    || server.agents.capabilities.combat.AgentCombatSkillClassifier.isEnergyAttackSkill(candidate.skillId)) {
+                    || server.agents.capabilities.combat.AgentCombatSkillClassifier.isEnergyAttackSkill(candidate.skillId)
+                    || server.agents.capabilities.combat.AgentAranCombo.spendsCombo(candidate.skillId)) {
                 spendsResource.add(candidate.skillId);
             }
         }

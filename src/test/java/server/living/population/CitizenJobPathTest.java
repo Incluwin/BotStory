@@ -63,4 +63,19 @@ class CitizenJobPathTest {
         assertFalse(CitizenJobPath.overdue(Job.FIGHTER, Job.CRUSADER, 85));
         assertFalse(CitizenJobPath.overdue(Job.FIGHTER, null, 85));
     }
+
+    @Test
+    void aCygnusKnightCareerEndsAtThirdJobAndAnAranCareerAtFourth() {
+        assertEquals(Job.DAWNWARRIOR3, CitizenJobPath.line(Job.DAWNWARRIOR2), "no Cygnus 4th job in v83");
+        assertEquals(Job.ARAN4, CitizenJobPath.line(Job.ARAN2));
+        assertEquals(Job.NIGHTWALKER2, CitizenJobPath.shapeTarget(Job.NIGHTWALKER2, Job.NOBLESSE, false));
+        assertEquals(Job.NIGHTWALKER3, CitizenJobPath.shapeTarget(Job.NIGHTWALKER2, Job.NIGHTWALKER2, true));
+        assertEquals(Job.WINDARCHER3, CitizenJobPath.errandStep(Job.WINDARCHER2, Job.WINDARCHER2, 70));
+        assertNull(CitizenJobPath.errandStep(Job.WINDARCHER2, Job.WINDARCHER3, 120), "nothing after the third job");
+        assertEquals(Job.ARAN3, CitizenJobPath.errandStep(Job.ARAN2, Job.ARAN2, 70));
+        assertEquals(Job.ARAN4, CitizenJobPath.errandStep(Job.ARAN2, Job.ARAN3, 120));
+        assertNull(CitizenJobPath.errandStep(Job.ARAN2, Job.ARAN1, 75), "the second job is the catch-up's");
+        assertTrue(CitizenJobPath.overdue(Job.BLAZEWIZARD2, Job.BLAZEWIZARD2, 70));
+        assertFalse(CitizenJobPath.overdue(Job.BLAZEWIZARD2, Job.BLAZEWIZARD3, 120), "its line is done");
+    }
 }

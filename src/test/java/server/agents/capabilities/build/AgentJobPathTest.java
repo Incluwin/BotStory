@@ -51,7 +51,19 @@ class AgentJobPathTest {
         assertNull(AgentJobPath.next(Job.WARRIOR, Job.IL_WIZARD, 30), "another class");
         assertNull(AgentJobPath.next(Job.MAGICIAN, null, 30));
         assertNull(AgentJobPath.next(null, Job.IL_WIZARD, 30));
-        assertNull(AgentJobPath.next(Job.NOBLESSE, Job.DAWNWARRIOR2, 30), "Explorers only");
+        assertNull(AgentJobPath.next(Job.BEGINNER, Job.DAWNWARRIOR2, 30), "a Beginner is no Noblesse");
+        assertNull(AgentJobPath.next(Job.NOBLESSE, Job.FIGHTER, 30), "nor a Noblesse a Beginner");
+        assertNull(AgentJobPath.next(Job.DAWNWARRIOR3, Job.DAWNWARRIOR4, 120), "no Cygnus 4th job in v83");
+    }
+
+    @Test
+    void theCygnusKnightsAndAranStartFromTheirOwnBeginner() {
+        assertNull(AgentJobPath.next(Job.NOBLESSE, Job.DAWNWARRIOR3, 9));
+        assertEquals(Job.DAWNWARRIOR1, AgentJobPath.next(Job.NOBLESSE, Job.DAWNWARRIOR3, 10));
+        assertEquals(Job.NIGHTWALKER2, AgentJobPath.next(Job.NIGHTWALKER1, Job.NIGHTWALKER3, 30));
+        assertEquals(Job.WINDARCHER3, AgentJobPath.next(Job.WINDARCHER2, Job.WINDARCHER3, 70));
+        assertEquals(Job.ARAN1, AgentJobPath.next(Job.LEGEND, Job.ARAN4, 10));
+        assertEquals(Job.ARAN4, AgentJobPath.next(Job.ARAN3, Job.ARAN4, 120));
     }
 
     @Test

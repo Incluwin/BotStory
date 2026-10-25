@@ -5,6 +5,7 @@ import client.Client;
 import io.netty.buffer.Unpooled;
 import net.PacketHandler;
 import net.PacketProcessor;
+import net.opcodes.RecvOpcode;
 import net.packet.ByteBufInPacket;
 import net.packet.InPacket;
 import net.server.Server;
@@ -47,6 +48,17 @@ public enum CosmicCombatGateway implements CombatGateway {
 
         handler.handlePacket(packet, client);
         return true;
+    }
+
+    @Override
+    public boolean dispatchAranComboCount(Character agent) {
+        int opcode = RecvOpcode.ARAN_COMBO_COUNTER.getValue();
+        return dispatchSyntheticPacket(agent, new byte[]{(byte) opcode, (byte) (opcode >>> 8)});
+    }
+
+    @Override
+    public long serverTimeMs() {
+        return Server.getInstance().getCurrentTime();
     }
 
     @Override

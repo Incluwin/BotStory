@@ -132,6 +132,12 @@
       "targetGainPerLevel": 1,
       "targetCap": 30,
       "supportedThroughLevel": 30
-    }
+    },
+    { "profileId": "dawn-warrior-dex40-str-lv30-v1", "profileVersion": 1, "jobFamily": "DAWN_WARRIOR", "primaryStat": "STR", "targetStat": "DEX", "progressionStartLevel": 10, "targetAtStartLevel": 4, "targetGainPerLevel": 2, "targetCap": 40, "supportedThroughLevel": 30 },
+    { "profileId": "blaze-wizard-luk4-int-lv30-v1", "profileVersion": 1, "jobFamily": "BLAZE_WIZARD", "primaryStat": "INT", "targetStat": "LUK", "progressionStartLevel": 10, "targetAtStartLevel": 4, "targetGainPerLevel": 0, "targetCap": 4, "supportedThroughLevel": 30 },
+    { "profileId": "wind-archer-str4-dex-lv30-v1", "profileVersion": 1, "jobFamily": "WIND_ARCHER", "primaryStat": "DEX", "targetStat": "STR", "progressionStartLevel": 10, "targetAtStartLevel": 4, "targetGainPerLevel": 0, "targetCap": 4, "supportedThroughLevel": 30 },
+    { "profileId": "night-walker-dex60-luk-lv30-v1", "profileVersion": 1, "jobFamily": "NIGHT_WALKER", "primaryStat": "LUK", "targetStat": "DEX", "progressionStartLevel": 10, "targetAtStartLevel": 20, "targetGainPerLevel": 2, "targetCap": 60, "supportedThroughLevel": 30 },
+    { "profileId": "thunder-breaker-dex30-str-lv30-v1", "profileVersion": 1, "jobFamily": "THUNDER_BREAKER", "primaryStat": "STR", "targetStat": "DEX", "progressionStartLevel": 10, "targetAtStartLevel": 10, "targetGainPerLevel": 1, "targetCap": 30, "supportedThroughLevel": 30 },
+    { "profileId": "aran-dex40-str-lv30-v1", "profileVersion": 1, "jobFamily": "ARAN", "primaryStat": "STR", "targetStat": "DEX", "progressionStartLevel": 10, "targetAtStartLevel": 4, "targetGainPerLevel": 2, "targetCap": 40, "supportedThroughLevel": 30 }
   ]
 }

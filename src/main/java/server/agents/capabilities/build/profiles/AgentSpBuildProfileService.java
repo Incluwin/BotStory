@@ -3,6 +3,7 @@ package server.agents.capabilities.build.profiles;
 import client.Character;
 import client.Skill;
 import constants.game.GameConstants;
+import constants.skills.Aran;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.integration.SkillGateway;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -43,6 +44,7 @@ public final class AgentSpBuildProfileService {
         }
         SkillGateway skills = AgentSkillGatewayRuntime.skills();
         AgentSpBuildProfileRepository repository = AgentSpBuildProfileRepository.defaultRepository();
+        AgentQuestSkills.teach(agent, skills); // the quests its level allows, done off-screen
         int before = learnedLevels(agent);
         int jobId = agent.getJob().getId();
         List<String> profileIds = new ArrayList<>();
@@ -75,16 +77,26 @@ public final class AgentSpBuildProfileService {
         return learnedLevels(agent) - before;
     }
 
-    /** The default first-job profile an Explorer job's branch descends from, or null outside Explorers. */
+    /**
+     * The default first-job profile a job's branch descends from: an Explorer's, a Cygnus Knight's or an Aran's; null
+     * for a beginner job and outside these lines.
+     */
     public static String firstJobProfileId(int jobId) {
         int family = jobId / 100;
         int branch = (jobId / 10) % 10;
+        String own = AgentSpBuildDefaultCatalog.CYGNUS_ARAN_SOURCE_ID;
         return switch (family) {
             case 1 -> AgentSpBuildDefaultCatalog.SOURCE_ID + "-warrior-first-job";
             case 2 -> AgentSpBuildDefaultCatalog.SOURCE_ID + "-magician-first-job";
             case 3 -> AgentSpBuildDefaultCatalog.SOURCE_ID + "-bowman-first-job";
             case 4 -> AgentSpBuildDefaultCatalog.SOURCE_ID + (branch == 2 ? "-rogue-bandit-first-job" : "-rogue-assassin-first-job");
             case 5 -> AgentSpBuildDefaultCatalog.SOURCE_ID + (branch == 2 ? "-pirate-gunslinger-first-job" : "-pirate-brawler-first-job");
+            case 11 -> own + "-dawn-warrior-first-job";
+            case 12 -> own + "-blaze-wizard-first-job";
+            case 13 -> own + "-wind-archer-first-job";
+            case 14 -> own + "-night-walker-first-job";
+            case 15 -> own + "-thunder-breaker-first-job";
+            case 21 -> own + "-aran-first-job";
             default -> null;
         };
     }
@@ -191,7 +203,7 @@ public final class AgentSpBuildProfileService {
     private static AgentSpBuildProfile transitionOptimalProfile(AgentRuntimeEntry entry,
                                                                  Character agent,
                                                                  AgentSpBuildProfile current) {
-        if (agent == null || agent.getJob() == null || !current.isMapleRoyalsOptimal2026()
+        if (agent == null || agent.getJob() == null || !current.followsDefaultCatalog()
                 || current.exactJobId() == agent.getJob().getId()) {
             return current;
         }
@@ -289,6 +301,7 @@ public final class AgentSpBuildProfileService {
                 agent.getMasterLevel(skill), agent.getSkillExpiration(skill))) {
             return false;
         }
+        followHiddenSwings(agent, skill);
         agent.gainSp(-1, book, false);
         if (agent.getId() > 0) {
             AgentProgressionEventPublisher.publish(entry, new AgentSkillLearnedEvent(
@@ -301,12 +314,33 @@ public final class AgentSpBuildProfileService {
         return true;
     }
 
+    /**
+     * Full Swing and Over Swing turn an Aran's Double and Triple Swing into their hidden swings, which take the same
+     * level and master level, as a player's SP point does (AssignSPProcessor).
+     */
+    private static void followHiddenSwings(Character agent, Skill skill) {
+        int[] hidden = switch (skill.getId()) {
+            case Aran.FULL_SWING -> new int[]{Aran.HIDDEN_FULL_DOUBLE, Aran.HIDDEN_FULL_TRIPLE};
+            case Aran.OVER_SWING -> new int[]{Aran.HIDDEN_OVER_DOUBLE, Aran.HIDDEN_OVER_TRIPLE};
+            default -> new int[0];
+        };
+        for (int id : hidden) {
+            Skill swing = AgentSkillGatewayRuntime.skills().getSkill(id);
+            if (swing != null) {
+                agent.changeSkillLevel(swing, (byte) agent.getSkillLevel(skill), agent.getMasterLevel(skill),
+                        agent.getSkillExpiration(skill));
+            }
+        }
+    }
+
+    /** A 4th-job skill, and a skill only a quest teaches (AgentQuestSkills), stop at the master level it holds. */
     private static int maxAssignableLevel(
             Character agent,
             Skill skill,
             AgentSpBuildProfileCatalog.SkillDefinition definition) {
         int maxLevel = Math.min(skill.getMaxLevel(), definition.maxLevel());
-        return skill.isFourthJob() ? Math.min(maxLevel, agent.getMasterLevel(skill)) : maxLevel;
+        return skill.isFourthJob() || AgentQuestSkills.questTaught(skill.getId())
+                ? Math.min(maxLevel, agent.getMasterLevel(skill)) : maxLevel;
     }
 
     private static boolean requirementsMet(Character agent,

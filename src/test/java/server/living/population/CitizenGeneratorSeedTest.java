@@ -2,6 +2,7 @@ package server.living.population;
 
 import client.Character;
 import client.Client;
+import client.Job;
 import client.creator.BotCreator;
 import config.LivingWorldConfig;
 import config.PopulationConfig;
@@ -52,6 +53,7 @@ class CitizenGeneratorSeedTest {
             ContentLoader.load(Path.of("scripts/config/living-world")));
 
     private final PopulationConfig config = new PopulationConfig();
+    private final LivingWorldConfig worldConfig = new LivingWorldConfig();
     private final Population population = mock(Population.class);
     private final List<Citizen> saved = new ArrayList<>();
     private final AtomicInteger characters = new AtomicInteger(5000);
@@ -69,7 +71,7 @@ class CitizenGeneratorSeedTest {
         when(population.store()).thenReturn(mock(CitizenStore.class));
         when(population.channels()).thenReturn(List.of(1, 2, 3));
         LivingWorld world = mock(LivingWorld.class);
-        when(world.config()).thenReturn(new LivingWorldConfig());
+        when(world.config()).thenReturn(worldConfig);
         when(world.residents()).thenReturn(mock(ResidentRuntime.class)); // no map: shaping is skipped
         when(population.world()).thenReturn(world);
         doAnswer(inv -> saved.add(inv.getArgument(0))).when(population).save(any());
@@ -89,7 +91,7 @@ class CitizenGeneratorSeedTest {
         names.when(() -> Character.canCreateChar(anyString())).thenReturn(true);
         MockedStatic<BotCreator> creator = track(mockStatic(BotCreator.class));
         creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt())).thenAnswer(inv -> {
+                anyInt(), anyInt(), any(Job.class))).thenAnswer(inv -> {
                     created.add(inv.getArguments());
                     return characters.incrementAndGet();
                 });
@@ -118,7 +120,13 @@ class CitizenGeneratorSeedTest {
                 assertTrue(citizen.retiresAtMs() > System.currentTimeMillis(), "a seed is not born retired");
             }
         }
-        assertEquals("victoria", generator.birth(null, 0).homeRegion(), "an untargeted newcomer still picks its region by level");
+        Citizen newcomer = generator.birth(null, 0);
+        String home = switch (CitizenLines.line(CONTENT.career(newcomer.career()))) {
+            case CitizenLines.CYGNUS -> "ereve";
+            case CitizenLines.ARAN -> "rien";
+            default -> "victoria";
+        };
+        assertEquals(home, newcomer.homeRegion(), "an untargeted lv1 newcomer still picks its region by level and line");
     }
 
     @Test
@@ -141,6 +149,7 @@ class CitizenGeneratorSeedTest {
     /** Draws captured from the generator before seeding (251fada32), regions as f2cb3bcc9's regions.yaml assigns them; an edit to the shipped population content changes these too. */
     @Test
     void untargetedBirthsDrawWhatTheyDrewBeforeSeeding() {
+        worldConfig.CYGNUS_ARAN_CAREERS_ENABLED = false; // switch off: the Explorers' careers only, drawn as before them
         CitizenGenerator generator = new CitizenGenerator(population);
         List<String> births = new ArrayList<>();
         for (int backdate : new int[] {0, 0, 7, 30, 45, 90, 120, 150, 180, 2, 60, 175}) {
@@ -186,6 +195,77 @@ class CitizenGeneratorSeedTest {
             }
         }
         assertEquals(Set.of(0, 1), genders, "40 births cover both genders");
+    }
+
+
+
+    /**
+     * Cygnus Knights and Arans (CYGNUS_ARAN_CAREERS_ENABLED, on as shipped): about a quarter of births, Aran 10% and each
+     * Knight 3%; made a Noblesse or a Legend (the Legend in the Aran's clothes and Basic Polearm); below its first job
+     * at home in Ereve or Rien, which take no one else. With the switch off none is born.
+     */
+    @Test
+    void aQuarterOfNewCitizensAreKnightsOrAransAndTheYoungOnesLiveInEreveAndRien() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        int knights = 0;
+        int arans = 0;
+        int births = 1200;
+        for (int i = 0; i < births; i++) {
+            Citizen c = generator.birth(null, i % 181);
+            Object[] call = created.get(created.size() - 1);
+            String line = CitizenLines.line(CONTENT.career(c.career()));
+            int level = LifeCurve.levelTarget(c.ageDays(System.currentTimeMillis()), c.pace(),
+                    CONTENT.career(c.career()).levelCap(), config.LIFE_PACE);
+            switch (line) {
+                case CitizenLines.CYGNUS -> {
+                    knights++;
+                    assertEquals(Job.NOBLESSE, call[10], c.career());
+                    if (level < 10) {
+                        assertEquals("ereve", c.homeRegion(), c.name() + " lv" + level);
+                    }
+                }
+                case CitizenLines.ARAN -> {
+                    arans++;
+                    assertEquals(Job.LEGEND, call[10]);
+                    assertEquals(List.of(BotCreator.ARAN_TOP, BotCreator.ARAN_BOTTOM, BotCreator.ARAN_SHOES,
+                            BotCreator.BASIC_POLEARM), List.of(call[6], call[7], call[8], call[9]));
+                    if (level < 10) {
+                        assertEquals("rien", c.homeRegion(), c.name() + " lv" + level);
+                    }
+                }
+                default -> {
+                    assertEquals(Job.BEGINNER, call[10]);
+                    assertTrue(!c.homeRegion().equals("ereve") && !c.homeRegion().equals("rien"),
+                            c.name() + " (" + c.career() + ") lives in " + c.homeRegion());
+                }
+            }
+        }
+        assertEquals(0.15, knights / (double) births, 0.03, "five Knights at 3% each");
+        assertEquals(0.10, arans / (double) births, 0.03, "Aran at 10%");
+
+        worldConfig.CYGNUS_ARAN_CAREERS_ENABLED = false;
+        for (int i = 0; i < 200; i++) {
+            assertEquals(CitizenLines.EXPLORER, CitizenLines.line(CONTENT.career(generator.birth(null, i).career())));
+        }
+    }
+
+    @Test
+    void ereveSeedsAreKnightsAndAKnightSeededIntoVictoriaHasItsFirstJob() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        for (int i = 0; i < 40; i++) {
+            Citizen ereve = generator.seed("ereve");
+            assertEquals(CitizenLines.CYGNUS, CitizenLines.line(CONTENT.career(ereve.career())), ereve.career());
+            Citizen rien = generator.seed("rien");
+            assertEquals(CitizenLines.ARAN, CitizenLines.line(CONTENT.career(rien.career())));
+        }
+        for (int i = 0; i < 300; i++) {
+            Citizen victoria = generator.seed("victoria");
+            int level = LifeCurve.levelTarget(victoria.ageDays(System.currentTimeMillis()), victoria.pace(),
+                    CONTENT.career(victoria.career()).levelCap(), config.LIFE_PACE);
+            if (!CitizenLines.EXPLORER.equals(CitizenLines.line(CONTENT.career(victoria.career())))) {
+                assertTrue(level >= 10, victoria.career() + " seeded into Victoria at lv" + level);
+            }
+        }
     }
 
     @Test

@@ -99,3 +99,55 @@ careers:
       - { maxLevel: 9, loadout: beginner-townsfolk }
       - { maxLevel: 29, loadout: nautilus-deckhand-l10 }
       - { maxLevel: 200, loadout: nautilus-gunslinger-l30 }
+  # Cygnus Knights and Aran (docs/CYGNUS_ARAN_BOTS_PLAN.md; LivingWorldConfig.CYGNUS_ARAN_CAREERS_ENABLED): about a
+  # quarter of new citizens, Aran 10% and each Knight 3% against the Explorers' 100. Born a Noblesse in Ereve or a
+  # Legend in Rien and living there until the first job at Lv10 (regions.yaml `line`). A Knight's line ends at its
+  # third job (v83 has no Cygnus fourth-job skills) and Lv120, its class's last level: casual ones plateau well below.
+  - id: cygnus-dawn-warrior
+    job: DAWNWARRIOR2
+    popularity: 4
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: dock-worker }
+      - { maxLevel: 200, loadout: perion-warrior-l30 }
+  - id: cygnus-blaze-wizard
+    job: BLAZEWIZARD2
+    popularity: 4
+    levelCap: 80
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: ellinia-apprentice-l8 }
+      - { maxLevel: 200, loadout: ellinia-mage-l30 }
+  - id: cygnus-wind-archer
+    job: WINDARCHER2
+    popularity: 4
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: henesys-archer-l10 }
+      - { maxLevel: 200, loadout: hunter-bowman-l35 }
+  - id: cygnus-night-walker
+    job: NIGHTWALKER2
+    popularity: 4
+    levelCap: 80
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: kerning-rogue-l10 }
+      - { maxLevel: 200, loadout: kerning-thief-l35 }
+  - id: cygnus-thunder-breaker
+    job: THUNDERBREAKER2
+    popularity: 4
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: nautilus-deckhand-l10 }
+      - { maxLevel: 200, loadout: nautilus-pirate-l30 }
+  - id: aran
+    job: ARAN2
+    popularity: 13
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: rien-legend }
+      - { maxLevel: 29, loadout: rien-polearm-l10 }
+      - { maxLevel: 200, loadout: lith-polearm-l30 }

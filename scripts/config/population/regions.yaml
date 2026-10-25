@@ -117,16 +117,20 @@ regions:
     fm: 910000000
     weight: 1
   - id: ereve
-    # The sky ferry from Ellinia or Orbis.
-    # Min 2 keeps level-1 newborns in Victoria; fill it with !citizens seed ereve <count>.
+    # The sky ferry from Ellinia or Orbis. The Cygnus Knights' home: while their careers are on only Knights live here,
+    # and a Noblesse below Lv10 lives nowhere else (CitizenLines). Min 2 keeps an Explorer's level-1 newborns in
+    # Victoria when the switch is off; fill it with !citizens seed ereve <count>.
+    line: cygnus
     levels: { min: 2, max: 15 }
     towns: [130000000]
     lobbies: []
     fm: 910000000
     weight: 1
   - id: rien
-    # Puro's boat from Lith Harbor.
-    # Min 2 keeps level-1 newborns in Victoria; fill it with !citizens seed rien <count>.
+    # Puro's boat from Lith Harbor. The Aran's home: while the careers are on only Arans live here, and a Legend below
+    # Lv10 lives nowhere else (CitizenLines). Min 2 keeps an Explorer's level-1 newborns in Victoria when the switch
+    # is off; fill it with !citizens seed rien <count>.
+    line: aran
     levels: { min: 2, max: 15 }
     towns: [140000000]
     lobbies: []

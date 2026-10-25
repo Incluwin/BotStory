@@ -1,6 +1,7 @@
 package server.living.resident;
 
 import client.Client;
+import client.Job;
 import client.creator.BotCreator;
 import config.LivingWorldConfig;
 import org.junit.jupiter.api.AfterEach;
@@ -80,8 +81,11 @@ class ResidentStarterOutfitTest {
         MockedStatic<BotCreator> creator = track(mockStatic(BotCreator.class));
         creator.when(() -> BotCreator.createCharacter(any(), anyString())).thenCallRealMethod();
         creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt())).thenCallRealMethod();
+        creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), any(Job.class))).thenCallRealMethod();
         creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt())).thenAnswer(inv -> {
+                anyInt(), anyInt())).thenCallRealMethod();
+        creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt(), any(Job.class))).thenAnswer(inv -> {
                     int[] look = new int[8];
                     for (int i = 0; i < look.length; i++) {
                         look[i] = inv.getArgument(i + 2);

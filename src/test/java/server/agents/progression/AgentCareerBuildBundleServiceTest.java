@@ -101,11 +101,11 @@ class AgentCareerBuildBundleServiceTest {
 
     @Test
     void restoreKeepsStoredBundleWhenNoBundleCoversTheAgentsJob() throws Exception {
-        Character agent = agent(92, "DawnFixture", Job.DAWNWARRIOR1);
+        Character agent = agent(92, "GmFixture", Job.GM);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         FileAgentCareerAssignmentStore store = new FileAgentCareerAssignmentStore(temp);
-        // Not the id-mod-7 pick (bowman), so a re-pick across all bundles would show.
-        AgentCareerAssignment stored = new AgentCareerAssignment(2, 92, "DawnFixture",
+        // Not the id-mod pick, so a re-pick across all bundles would show.
+        AgentCareerAssignment stored = new AgentCareerAssignment(2, 92, "GmFixture",
                 "magician-standard-v1", 1,
                 AgentProgressionProfileRepository.defaultRepository().deterministicFor(92).profileId(), 100L);
         store.save(stored);
@@ -115,6 +115,41 @@ class AgentCareerBuildBundleServiceTest {
 
         assertEquals("magician-standard-v1", bundle.bundleId());
         assertEquals(stored, store.load(92).orElseThrow());
+    }
+
+    @Test
+    void aDawnWarriorHoldingAnExplorerBundleIsRepickedToItsOwnLine() throws Exception {
+        Character agent = agent(92, "DawnFixture", Job.DAWNWARRIOR1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        FileAgentCareerAssignmentStore store = new FileAgentCareerAssignmentStore(temp);
+        store.save(new AgentCareerAssignment(2, 92, "DawnFixture", "magician-standard-v1", 1,
+                AgentProgressionProfileRepository.defaultRepository().deterministicFor(92).profileId(), 100L));
+
+        AgentCareerBuildBundle bundle = AgentCareerBuildBundleService.restoreOrAssign(
+                entry, agent, 500L, AgentCareerBuildBundleRepository.defaultRepository(), store, resets());
+
+        assertEquals("dawn-warrior-standard-v1", bundle.bundleId());
+        assertEquals("dawn-warrior-standard-v1", store.load(92).orElseThrow().bundleId());
+    }
+
+    @Test
+    void aNoblesseDrawsAKnighthoodAndALegendTheAranBundleButABeginnerNeither() throws Exception {
+        FileAgentCareerAssignmentStore store = new FileAgentCareerAssignmentStore(temp);
+        AgentCareerBuildBundleRepository repository = AgentCareerBuildBundleRepository.defaultRepository();
+        Character noblesse = agent(95, "KnightFixture", Job.NOBLESSE);
+        Character legend = agent(96, "LegendFixture", Job.LEGEND);
+        Character beginner = agent(97, "BeginnerFixture", Job.BEGINNER);
+
+        AgentCareerBuildBundle knight = AgentCareerBuildBundleService.restoreOrAssign(
+                new AgentRuntimeEntry(noblesse, null, null), noblesse, 500L, repository, store, resets());
+        AgentCareerBuildBundle aran = AgentCareerBuildBundleService.restoreOrAssign(
+                new AgentRuntimeEntry(legend, null, null), legend, 500L, repository, store, resets());
+        AgentCareerBuildBundle explorer = AgentCareerBuildBundleService.restoreOrAssign(
+                new AgentRuntimeEntry(beginner, null, null), beginner, 500L, repository, store, resets());
+
+        assertTrue(java.util.Set.of(1100, 1200, 1300, 1400, 1500).contains(knight.firstJobId()), knight.bundleId());
+        assertEquals("aran-standard-v1", aran.bundleId());
+        assertTrue(explorer.explorer(), explorer.bundleId());
     }
 
     @Test

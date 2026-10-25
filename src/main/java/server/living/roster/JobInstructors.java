@@ -4,9 +4,11 @@ import client.Job;
 import constants.game.GameConstants;
 
 /**
- * Who gives an Explorer each job advancement and where they stand, as in the stock NPC scripts: the first and second
- * job from the class's instructor in its town, the third from its chief in El Nath's Chief's Residence, the fourth
- * from its elder in Leafre's Forest of the Priest. A companion going for its next job walks up to this NPC
+ * Who gives each job advancement and where they stand, as in the stock NPC and quest scripts. An Explorer: the first
+ * and second job from the class's instructor in its town, the third from its chief in El Nath's Chief's Residence, the
+ * fourth from its elder in Leafre's Forest of the Priest. A Cygnus Knight: every advancement from its Chief Knight on
+ * Ereve (quests 20101-20105, 20201-20205, 20311-20315). An Aran: the first job from the Giant Polearm, the rest from
+ * Maha, both in Rien (21101, 21201, 21302, 21401). A companion going for its next job walks up to this NPC
  * (JobErrands), as does a citizen whose life reaches its next job (population.CitizenJobErrands). {@code name} is
  * what a player calls them.
  */
@@ -15,13 +17,31 @@ public final class JobInstructors {
 
     private static final int CHIEFS_RESIDENCE_MAP_ID = 211000001;
     private static final int FOREST_OF_THE_PRIEST_MAP_ID = 240010501;
+    private static final int EREVE_MAP_ID = 130000000;
+    private static final int RIEN_MAP_ID = 140000000;
 
     private JobInstructors() {
     }
 
-    /** The instructor who gives {@code job}; null for a Beginner and outside the Explorer classes. */
+    /** The instructor who gives {@code job}; null for a beginner job and outside the Explorer, Cygnus and Aran lines. */
     public static Instructor of(Job job) {
-        if (job == null || job.getId() <= 0 || job.getId() >= 600) {
+        if (job == null || job.getId() % 1000 == 0) {
+            return null;
+        }
+        if (GameConstants.isCygnus(job.getId())) {
+            return GameConstants.getJobBranch(job) > 3 ? null : switch (job.getJobNiche()) {
+                case 1 -> new Instructor(1101003, EREVE_MAP_ID, "Mihile", "Ereve");
+                case 2 -> new Instructor(1101004, EREVE_MAP_ID, "Oz", "Ereve");
+                case 3 -> new Instructor(1101005, EREVE_MAP_ID, "Irena", "Ereve");
+                case 4 -> new Instructor(1101006, EREVE_MAP_ID, "Eckhart", "Ereve");
+                default -> new Instructor(1101007, EREVE_MAP_ID, "Hawkeye", "Ereve");
+            };
+        }
+        if (GameConstants.isAran(job.getId())) {
+            return GameConstants.getJobBranch(job) == 1 ? new Instructor(1201001, RIEN_MAP_ID, "the Giant Polearm", "Rien")
+                    : new Instructor(1201002, RIEN_MAP_ID, "Maha", "Rien");
+        }
+        if (job.getId() >= 600) {
             return null;
         }
         int family = job.getId() / 100;

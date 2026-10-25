@@ -29,6 +29,12 @@ public final class AgentBuildPromptReporter {
         return "hero build: '1h' (1h sword, Brandish first) or '2h' (interleave AC + Brandish for faster charges)?";
     }
 
+    /** A Noblesse at Lv10 picks its knighthood (a Legend has one way on: it is never asked). */
+    public static String noblesseJobPrompt(int level) {
+        return level >= 10 ? "lv10! time to pick a knighthood~ dawn warrior, blaze wizard, wind archer, night walker, or thunder breaker?"
+                : null;
+    }
+
     public static String beginnerJobPrompt(int level) {
         if (level >= 10) {
             return "hey i can change jobs now!! warrior, mage, bowman, thief, or pirate?";

@@ -1,0 +1,95 @@
+# Ereve cast (2026-10-24, docs/CYGNUS_ARAN_BOTS_PLAN.md): Knights of Cygnus between the Training Forests and their
+# first posting. Here while living_world.CYGNUS_ARAN_CAREERS_ENABLED is on. 2 residents, 1 recruitable (Aldric).
+- id: aldric
+  name: Aldric
+  look: { gender: male }
+  title: "Knight-Apprentice of the Dawn"
+  job: DAWNWARRIOR2
+  level: { min: 32, max: 35 }
+  strength: SEASONED
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 6, to: 12, spot: "venue:by-mihile", activity: LINGER }
+      - { from: 12, to: 19, spot: "venue:beside-mihile", activity: SHOW_OFF }
+      - { from: 19, to: 23, spot: "venue:by-neinheart", activity: SOCIALIZE }
+      - { from: 23, to: 24, activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: true
+  contract: aldric-knights-leave
+  questLines: [aldric-tiru-patrol, aldric-tiguru-drill]
+  relationships:
+    - { persona: linnea, kind: ADMIRES }
+  dialogue:
+    greetFirst: ["a new face on the island. Mihile will want to see your stance.", "welcome to Ereve. mind the wind on the bridges."]
+    greet: ["good to see you.", "back from the forests?", "the Empress keeps early hours. so do i."]
+    idle: ["(runs through a sword form)", "dawn comes whether you are ready or not.", "(polishes the soul on his blade)"]
+    noWork: ["nothing for you today. train anyway."]
+    nothingDue: ["we are square, knight to knight."]
+    who: ["Aldric. Dawn Warrior, second rank. Mihile says i swing like i'm angry at the air."]
+    bye: ["walk in the light."]
+    thanks: ["you have my thanks."]
+    smallTalk: ["the Tigurus have been bolder this season.", "Neinheart counts everything twice. it's a gift, apparently."]
+    speakPlainly: ["plainly, then. what do you need?"]
+    offer: ["Mihile has given me leave to travel. i'd rather spend it fighting beside someone.", "you want a sword at your side? i can be bought, but not cheap."]
+    join: ["for the Empress. and for the fun of it.", "lead on. i'll keep up."]
+    bench: ["i'll drill in the forests while you're away.", "i'll be by Mihile. shout when you need me."]
+    leave: ["back to the island. it was an honor.", "my leave is up. Mihile will want a report."]
+    refuse.bond: ["i don't know your blade yet. help with the patrol first."]
+    refuse.flags: ["the Tiru patrol comes first. then we talk."]
+    refuseOwnErrand: ["that's my own patrol. a knight doesn't take pay for his own duty."]
+    restock.go: ["potions. back before you miss me.", "let me resupply. a knight doesn't fight dry."]
+    restock.back: ["stocked. let's go.", "back, and well supplied."]
+    restock.broke: ["i'm out of {need} and out of mesos. could you spare some? either will do.", "{need} cost more than a squire's pay. help a knight out?"]
+    restock.noShop: ["no shop out here and i'm low. careless of me.", "should have stocked up in Ereve."]
+    restock.stillShort: ["that helps, but i'm still short on {need}.", "almost. a little more for {need}?"]
+    questOffer.aldric-tiru-patrol: ["Training Forest II is overrun with Tirus again. twenty-five fewer and Kimu can teach in peace. walk the patrol with me?"]
+    questAccept.aldric-tiru-patrol: ["good. Training Forest II, past the bridge. i'll take the report."]
+    questWaiting.aldric-tiru-patrol: ["twenty-five Tirus. the forest won't clear itself."]
+    questComplete.aldric-tiru-patrol: ["clean work. Kimu owes you a lesson."]
+    questOffer.aldric-tiguru-drill: ["Mihile's drill: twenty Tigurus in Training Forest III, then report to me. it's what every squire does before the knighthood exam."]
+    questAccept.aldric-tiguru-drill: ["Training Forest III. they hit harder than they look."]
+    questWaiting.aldric-tiguru-drill: ["twenty Tigurus. report when it's done."]
+    questComplete.aldric-tiguru-drill: ["that's the drill done. you'd pass Mihile's exam, i think. take these, you earned them."]
+    about.linnea: ["Linnea watches the sky ferry like it owes her something. best eyes on the island."]
+    aboutUnknown: ["not someone i've trained with."]
+
+- id: linnea
+  name: Linnea
+  look: { gender: female }
+  title: "Ferry Lookout"
+  job: WINDARCHER1
+  level: { min: 18, max: 21 }
+  strength: ROOKIE
+  loadout: henesys-archer-l10
+  personality: relaxed-v1
+  home:
+    town: ereve
+    routine:
+      - { from: 7, to: 15, spot: "venue:by-irena", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:beside-irena", activity: STROLL }
+      - { from: 21, to: 24, activity: REST }
+      - { from: 0, to: 7, materialize: false }
+  recruitable: false
+  questLines: [linnea-tiv-feathers]
+  relationships:
+    - { persona: aldric, kind: FEEDS }
+  dialogue:
+    greetFirst: ["oh! you came on the ferry? i saw it from the lookout.", "hi! careful, the wind up here takes hats."]
+    greet: ["hey!", "the ferry's late again.", "you're back!"]
+    idle: ["(squints at the clouds)", "Irena says to feel the wind before the shot.", "(counts arrows, loses count)"]
+    noWork: ["nothing right now. the sky's quiet."]
+    nothingDue: ["you don't owe me a thing."]
+    who: ["Linnea. Wind Archer, first rank. i watch the ferry and i miss the Tivs less than i used to."]
+    bye: ["fair winds!"]
+    thanks: ["thank you!"]
+    smallTalk: ["did you know the ferry goes to Orbis too? i've never been.", "Aldric eats like he's still growing. i bring him bread."]
+    speakPlainly: ["sorry, the wind. say again?"]
+    questOffer.linnea-tiv-feathers: ["my fletching's all bald. the Tivs in Training Forest I drop the best feathers. twenty, and i'll make you a few potions' worth of thanks?"]
+    questAccept.linnea-tiv-feathers: ["thank you! Training Forest I, they're the little round ones."]
+    questWaiting.linnea-tiv-feathers: ["twenty Tiv feathers. the fluffy ones."]
+    questComplete.linnea-tiv-feathers: ["oh, these are perfect. my arrows will fly straight for once."]
+    about.aldric: ["he's nice. a bit loud. he practices at dawn and wakes the whole bridge."]
+    aboutUnknown: ["i don't think i know them."]

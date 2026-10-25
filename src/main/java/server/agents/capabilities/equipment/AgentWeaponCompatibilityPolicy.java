@@ -23,7 +23,8 @@ public final class AgentWeaponCompatibilityPolicy {
         return job == Job.MAGICIAN
                 || job == Job.FP_WIZARD || job == Job.FP_MAGE || job == Job.FP_ARCHMAGE
                 || job == Job.IL_WIZARD || job == Job.IL_MAGE || job == Job.IL_ARCHMAGE
-                || job == Job.CLERIC || job == Job.PRIEST || job == Job.BISHOP;
+                || job == Job.CLERIC || job == Job.PRIEST || job == Job.BISHOP
+                || job == Job.BLAZEWIZARD1 || job == Job.BLAZEWIZARD2 || job == Job.BLAZEWIZARD3;
     }
 
     public static boolean isWeaponCompatible(Character agent, WeaponType weaponType) {
@@ -109,6 +110,13 @@ public final class AgentWeaponCompatibilityPolicy {
             case BANDIT, CHIEFBANDIT, SHADOWER -> isThiefDagger(weaponType);
             case BRAWLER, MARAUDER, BUCCANEER -> weaponType == WeaponType.KNUCKLE;
             case GUNSLINGER, OUTLAW, CORSAIR -> weaponType == WeaponType.GUN;
+            // a Cygnus Knight or Aran line has one weapon (its Mastery and Booster): Noblesse and Legend hold any
+            case DAWNWARRIOR1, DAWNWARRIOR2, DAWNWARRIOR3 -> isSword(weaponType);
+            case BLAZEWIZARD1, BLAZEWIZARD2, BLAZEWIZARD3 -> weaponType == WeaponType.WAND || weaponType == WeaponType.STAFF;
+            case WINDARCHER1, WINDARCHER2, WINDARCHER3 -> weaponType == WeaponType.BOW;
+            case NIGHTWALKER1, NIGHTWALKER2, NIGHTWALKER3 -> weaponType == WeaponType.CLAW;
+            case THUNDERBREAKER1, THUNDERBREAKER2, THUNDERBREAKER3 -> weaponType == WeaponType.KNUCKLE;
+            case ARAN1, ARAN2, ARAN3, ARAN4 -> isPolearmWeapon(weaponType);
             default -> true;
         };
     }

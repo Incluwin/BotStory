@@ -43,16 +43,39 @@ class JobInstructorsTest {
     }
 
     @Test
-    void everyExplorerAdvancementHasOneAndNothingElseDoes() {
+    void theCygnusKnightsAdvanceAtTheirChiefKnightOnEreve() {
+        assertEquals(new JobInstructors.Instructor(1101003, 130000000, "Mihile", "Ereve"), JobInstructors.of(Job.DAWNWARRIOR1));
+        assertEquals(JobInstructors.of(Job.DAWNWARRIOR1), JobInstructors.of(Job.DAWNWARRIOR3));
+        assertEquals(1101004, JobInstructors.of(Job.BLAZEWIZARD2).npcId());
+        assertEquals(1101005, JobInstructors.of(Job.WINDARCHER3).npcId());
+        assertEquals(1101006, JobInstructors.of(Job.NIGHTWALKER1).npcId());
+        assertEquals(1101007, JobInstructors.of(Job.THUNDERBREAKER2).npcId());
+    }
+
+    @Test
+    void anAranTakesFirstJobAtTheGiantPolearmAndTheRestAtMahaInRien() {
+        assertEquals(new JobInstructors.Instructor(1201001, 140000000, "the Giant Polearm", "Rien"), JobInstructors.of(Job.ARAN1));
+        assertEquals(new JobInstructors.Instructor(1201002, 140000000, "Maha", "Rien"), JobInstructors.of(Job.ARAN2));
+        assertEquals(JobInstructors.of(Job.ARAN2), JobInstructors.of(Job.ARAN4));
+    }
+
+    @Test
+    void everyAdvancementOfTheV83LinesHasOneAndNothingElseDoes() {
         for (Job job : Job.values()) {
-            boolean explorerAdvancement = job.getId() > 0 && job.getId() < 600;
-            if (explorerAdvancement) {
+            int id = job.getId();
+            boolean explorer = id > 0 && id < 600;
+            boolean cygnus = id > 1000 && id < 2000 && id % 10 != 2;
+            boolean aran = id >= 2100 && id <= 2112;
+            if (explorer || cygnus || aran) {
                 assertNotNull(JobInstructors.of(job), job.name());
             }
         }
         assertNull(JobInstructors.of(Job.BEGINNER));
-        assertNull(JobInstructors.of(Job.DAWNWARRIOR2));
-        assertNull(JobInstructors.of(Job.ARAN2));
+        assertNull(JobInstructors.of(Job.NOBLESSE));
+        assertNull(JobInstructors.of(Job.LEGEND));
+        assertNull(JobInstructors.of(Job.DAWNWARRIOR4), "no Cygnus 4th job in v83");
+        assertNull(JobInstructors.of(Job.EVAN1));
+        assertNull(JobInstructors.of(Job.GM));
         assertNull(JobInstructors.of(null));
     }
 

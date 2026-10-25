@@ -184,6 +184,9 @@ public final class AgentCombatAttackRuntime {
         if (hitLines > 0) {
             AgentClientSkillRules.afterLandedHit(entry, attackPlan.skillId, committedAtMs, attackPlan.cooldownMs);
         }
+        // an Aran's client counts each monster the attack hit on its combo counter
+        AgentAranCombo.countHits(bot, attackPlan.skillId, (int) attack.targets.values().stream()
+                .filter(target -> target.damageLines().stream().anyMatch(damage -> damage > 0)).count());
         AgentCombatAlertRuntime.markAlerted(entry);
         return AgentAttackTransactionResult.committed(
                 bot.getMapId(),

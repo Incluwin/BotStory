@@ -24,7 +24,7 @@ class AgentApBuildProfileServiceTest {
 
     @Test
     void catalogContainsAllIndependentLevelThirtyProfiles() {
-        assertEquals(11, profiles.size());
+        assertEquals(17, profiles.size()); // 11 Explorer, 6 Cygnus Knight and Aran
     }
 
     @Test

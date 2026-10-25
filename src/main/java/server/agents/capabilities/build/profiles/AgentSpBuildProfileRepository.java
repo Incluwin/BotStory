@@ -14,10 +14,11 @@ public final class AgentSpBuildProfileRepository {
     private static final String DEFAULT_RESOURCE = "/agents/profiles/sp-build-profiles.json";
     private static final String MAPLEROYALS_2026_RESOURCE =
             "/agents/profiles/mapleroyals-optimal-2026-sp-build-profiles.json";
+    private static final String CYGNUS_ARAN_RESOURCE = "/agents/profiles/cygnus-aran-sp-build-profiles.json";
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final AgentSpBuildProfileRepository DEFAULT = loadResources(
-            DEFAULT_RESOURCE, MAPLEROYALS_2026_RESOURCE);
+            DEFAULT_RESOURCE, MAPLEROYALS_2026_RESOURCE, CYGNUS_ARAN_RESOURCE);
 
     private final Map<Integer, AgentSpBuildProfileCatalog.SkillDefinition> skills;
     private final Map<String, AgentSpBuildProfile> profilesById;

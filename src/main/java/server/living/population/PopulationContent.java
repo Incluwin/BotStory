@@ -47,13 +47,29 @@ public final class PopulationContent {
 
     public record Lobby(String id, int mapId, int levelMin, int levelMax, String name) { }
 
-    /** {@code townWeights} is parallel to {@code towns} (empty = uniform): hub towns draw more of the region's town life. */
+    /**
+     * {@code townWeights} is parallel to {@code towns} (empty = uniform): hub towns draw more of the region's town life.
+     * {@code line} (null for none) makes the region a job line's home, Ereve the Cygnus Knights' and Rien the Aran's:
+     * while their careers are on only that line's citizens live there, and a new one below its first job lives nowhere
+     * else (CitizenLines).
+     */
     public record Region(String id, int levelMin, int levelMax, List<Integer> towns, List<Integer> townWeights,
-                         List<Lobby> lobbies, int fm, int weight) {
+                         List<Lobby> lobbies, int fm, int weight, String line) {
         public Region {
             if (!townWeights.isEmpty() && townWeights.size() != towns.size()) {
                 throw new IllegalArgumentException("region " + id + ": townWeights must have one entry per town");
             }
+        }
+
+        public Region(String id, int levelMin, int levelMax, List<Integer> towns, List<Integer> townWeights,
+                      List<Lobby> lobbies, int fm, int weight) {
+            this(id, levelMin, levelMax, towns, townWeights, lobbies, fm, weight, null);
+        }
+
+        /** This region with its band starting no lower than {@code level}. */
+        public Region from(int level) {
+            return level <= levelMin ? this
+                    : new Region(id, level, levelMax, towns, townWeights, lobbies, fm, weight, line);
         }
 
         public boolean fits(int level) {

@@ -328,6 +328,15 @@ public class LivingWorldConfig {
     public int COMPANION_JOB_ERRAND_RETRY_MS = 1800000;
     /** How often the errands out are looked at (a return its owner was offline for, one called back meanwhile). */
     public int COMPANION_JOB_ERRAND_SWEEP_MS = 30000;
+
+    // Bots play the Cygnus Knights and Aran (docs/CYGNUS_ARAN_BOTS_PLAN.md)
+    /**
+     * Citizens, Residents and hires can be Cygnus Knights (born Noblesse in Ereve) and Arans (born Legends in Rien), as
+     * players of those lines are: about a quarter of new citizens (careers.yaml), the Ereve and Rien Residents, and the
+     * citizens one hires. false = the switch off: no new citizen of these lines and those Residents stay away; citizens
+     * and companions already on these lines keep playing them.
+     */
+    public boolean CYGNUS_ARAN_CAREERS_ENABLED = true;
     /**
      * A companion its owner asks ("casse get your keystone") goes for its own Crimsonwood Keystone (KeystoneErrands,
      * docs/CWKPQ_COMPANION_PLAN.md A3): Lukan's and Jack's quests and the hunts for them, live when a seat is free,

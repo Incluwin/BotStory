@@ -4,14 +4,19 @@ import client.BuffStat;
 import client.Character;
 import client.Skill;
 import client.status.MonsterStatus;
+import constants.game.GameConstants;
+import constants.skills.Aran;
 import server.StatEffect;
+import server.agents.capabilities.combat.AgentAranCombo;
 import server.agents.capabilities.combat.AgentComboFinisherPolicy;
 import server.agents.capabilities.combat.AgentCombatSkillCacheStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveState;
+import server.agents.integration.AgentCombatGatewayRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.life.Monster;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -21,7 +26,7 @@ import java.util.Set;
  *
  * <p>Buckets are coarse enough that a few minutes of arena play visit each one several times and
  * fine enough to separate the cases where the right skill differs: how many mobs the widest
- * candidate reaches, a boss target, the Combo orb stack, a full Energy Charge, a transformation, a
+ * candidate reaches, a boss target, the Combo orb stack, an Aran's combo, a full Energy Charge, a transformation, a
  * summon already up, and whether the target carries a monster buff or one of the Agent's own debuffs. Fields
  * that do not apply to the Agent are left out, so a Night Lord's table is not split by orbs.</p>
  */
@@ -51,18 +56,27 @@ public final class AgentCombatLearningContext {
         }
         return key(targetsInReach, target != null && target.isBoss(), orbs,
                 bot.getEnergyBar() >= ENERGY_BAR_FULL, bot.getBuffedValue(BuffStat.MORPH) != null,
-                summonUp, buffed, debuffed);
+                summonUp, buffed, debuffed, aranComboBucket(bot));
     }
 
     /** Readable key, e.g. {@code 1 target|boss|orbs 3-4|summon up|target debuffed}. */
     static String key(int targetsInReach, boolean boss, String orbs, boolean energyFull, boolean transformed,
                       Boolean summonUp, boolean targetBuffed, boolean targetDebuffed) {
+        return key(targetsInReach, boss, orbs, energyFull, transformed, summonUp, targetBuffed, targetDebuffed, null);
+    }
+
+    /** As above, with an Aran's combo bucket ({@link #aranComboBucket}); null for anyone else. */
+    static String key(int targetsInReach, boolean boss, String orbs, boolean energyFull, boolean transformed,
+                      Boolean summonUp, boolean targetBuffed, boolean targetDebuffed, String aranCombo) {
         StringBuilder key = new StringBuilder(targetsBucket(targetsInReach));
         if (boss) {
             key.append("|boss");
         }
         if (orbs != null) {
             key.append("|orbs ").append(orbs);
+        }
+        if (aranCombo != null) {
+            key.append("|combo ").append(aranCombo);
         }
         if (energyFull) {
             key.append("|energy full");
@@ -107,6 +121,37 @@ public final class AgentCombatLearningContext {
             return "1-2";
         }
         return orbs <= 4 ? "3-4" : Integer.toString(orbs);
+    }
+
+    /**
+     * An Aran's combo as the combo skills it knows can spend it (AgentAranCombo): the highest need its combo meets
+     * ("30+", "100+", "200+") or "under 30" (its lowest); null for a non-Aran or one with no combo skill yet, so its
+     * table is not split. Whether to cash in at 30 or hold for Fenrir at 100 is what the learner works out.
+     */
+    static String aranComboBucket(Character bot) {
+        if (bot == null || bot.getJob() == null || !GameConstants.isAran(bot.getJob().getId())) {
+            return null;
+        }
+        List<Integer> needs = new ArrayList<>();
+        for (int skillId : new int[]{Aran.COMBO_SMASH, Aran.COMBO_FENRIR, Aran.COMBO_TEMPEST}) {
+            if (bot.getSkillLevel(skillId) > 0) {
+                needs.add(AgentAranCombo.required(skillId));
+            }
+        }
+        return aranComboBucket(AgentAranCombo.current(bot, AgentCombatGatewayRuntime.combat().serverTimeMs()), needs);
+    }
+
+    static String aranComboBucket(int combo, List<Integer> needs) {
+        if (needs.isEmpty()) {
+            return null;
+        }
+        String bucket = "under " + needs.getFirst();
+        for (int need : needs) {
+            if (combo >= need) {
+                bucket = need + "+";
+            }
+        }
+        return bucket;
     }
 
     /** Monster statuses the Agent's own special-move debuffs apply; a target carrying one is a different situation. */
