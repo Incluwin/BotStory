@@ -895,7 +895,7 @@ living_world:
     AUTO_ROTATE_LEVEL_GAP: 10
     # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list of "kpq", Lakelis;
     # "hpq", Tory, whose desk also has the owner's companions wait off her ledge; "lpq", the Red Sign; "epq", Ellin;
-    # "lmpq", Rolly; "opq", Wonky; "ppq", Guon; "rjpq" and "rjpqj", Romeo and Juliet) offers a party leader with
+    # "lmpq", Rolly; "opq", Wonky; "ppq", Guon; "rjpq" and "rjpqj", Romeo and Juliet; "apq", Amos) offers a party leader with
     # companions in their party a lineup to take in; empty = off, the NPC is stock. Every built desk is on by default
     # since 2026-10-19; drop a key to make its NPC stock again.
     # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
@@ -904,7 +904,7 @@ living_world:
     # PACE_EXCLUDED_LEADERS: character ids (a comma list) whose runs as leader teach the clear-time records no leader
     # term; their companions' times still count. 2 (ohboy) and 865 (Crewfriend) are led by the scripted test driver,
     # which talks and works the puzzles far slower than a person; empty this to learn from every leader.
-    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq,lpq,epq,lmpq,opq,ppq,rjpq,rjpqj"
+    COMPANION_PQ_ENABLED_KEYS: "kpq,hpq,lpq,epq,lmpq,opq,ppq,rjpq,rjpqj,apq"
     COMPANION_PQ_GUIDANCE: true
     COMPANION_PQ_CLEAR_TIME: true
     COMPANION_PQ_PACE_EXCLUDED_LEADERS: "2,865"

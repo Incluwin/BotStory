@@ -170,6 +170,8 @@ public final class PqEntrance {
         // slot: rjpq
         register(entrances, RjpqEntrance.create(AgentRjpqSide.ZENUMIST));
         register(entrances, RjpqEntrance.create(AgentRjpqSide.ALCADNO));
+        // slot: apq
+        register(entrances, ApqEntrance.create());
         return entrances;
     }
 
