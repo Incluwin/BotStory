@@ -24,6 +24,7 @@ public final class AgentMovementStateResetService {
 
     public static void resetEntryStateAfterTeleport(AgentRuntimeEntry entry) {
         AgentHorizontalBoundaryStateRuntime.clear(entry);
+        AgentNavigationStateResetService.abandonTraversalAttempt(entry);
         clearTransientState(entry);
     }
 

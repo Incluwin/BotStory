@@ -76,7 +76,13 @@ public final class AgentOpqDefinition {
             Room.SEALED, 3, Room.LOUNGE, 17, Room.ON_WAY_UP, 23);
     public static final Map<Integer, Integer> LOUNGE_SUBROOM_ENTRY_PORTALS = Map.of(
             920_010_601, 3, 920_010_602, 4, 920_010_603, 5, 920_010_604, 6);
-    public static final int LOUNGE_SUBROOM_EXIT_PORTAL = 9;
+    /**
+     * Each subroom's out00 back to the lounge: portal 9 in the three high subrooms, portal 1 in the low one (920010604 has
+     * no other portal but its spawn). 2026-10-25 live (runs 4 and 5): with 9 everywhere the low subroom's runner found
+     * no portal and stood with its ten pieces for the rest of the run.
+     */
+    public static final Map<Integer, Integer> LOUNGE_SUBROOM_EXIT_PORTALS = Map.of(
+            920_010_601, 9, 920_010_602, 9, 920_010_603, 9, 920_010_604, 1);
     /** The centre's in06 into the hidden room, and the hidden room's st00 back (party3_roomout.js). */
     public static final int HIDDEN_ROOM_PORTAL = 16;
     public static final int HIDDEN_ROOM_EXIT_PORTAL = 1;

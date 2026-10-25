@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest.opq;
 
 import client.Character;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -123,6 +124,16 @@ final class OpqRunFixture implements AutoCloseable {
         sessions.add(session);
         when(event.getPlayers()).thenReturn(List.of(members));
         return session;
+    }
+
+    /**
+     * Forgets the calls recorded so far on the fixture's mocks and {@code more} (their stubs stay), for a test that
+     * ticks long enough for that record to fill its heap.
+     */
+    void clearInvocations(Object... more) {
+        Mockito.clearInvocations(event, map, characters, party, actions, partyQuest);
+        if (more.length > 0) Mockito.clearInvocations(more);
+        statics.forEach(MockedStatic::clearInvocations);
     }
 
     @Override

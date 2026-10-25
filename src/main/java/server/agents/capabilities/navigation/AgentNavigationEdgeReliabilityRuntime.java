@@ -81,6 +81,14 @@ public final class AgentNavigationEdgeReliabilityRuntime {
         return timedOut;
     }
 
+    /** Drops the Agent's traversal attempt uncharged (AgentNavigationEdgeReliabilityState.abandonAttempt). */
+    public static void abandonAttempt(AgentRuntimeEntry entry) {
+        if (entry != null) {
+            entry.capabilityStates().find(AgentNavigationEdgeReliabilityState.STATE_KEY)
+                    .ifPresent(AgentNavigationEdgeReliabilityState::abandonAttempt);
+        }
+    }
+
     public static void deferAttemptTimeout(AgentRuntimeEntry entry, int mapId, long nowMs) {
         if (entry != null && AgentNavigationReliabilityConfig.tracksReliability()) {
             state(entry).deferAttemptTimeout(mapId, nowMs);

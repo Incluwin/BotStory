@@ -134,6 +134,53 @@ Pqfriend (Cleric 55) with Jinx, Vex, Sadie, Marrow and Kettle. The server day wa
   (2026-10-25), so on a Wednesday the lobby runner says once that it can't get up to the box and waits by the music
   player for an LP a player brings. Without one, a Wednesday run fails in the lobby.
 
+## OPQ run 5 (2026-10-25)
+
+Server 21eb70855 (fix/opq-run4 live since 05:11). Same test party: Pqfriend (Cleric 55) with Jinx, Vex, Sadie, Marrow
+and Kettle. No GM supplies were needed. The server day was Sunday (GMT).
+
+- Desk at Wonky: PASS. Admitted at 05:29:47 with six; the clock ran to 06:14:47.
+- Entrance: 12:20 (84.5 s in run 4). The companions broke all twenty clouds in about two minutes, left their pieces
+  in five stacks by the hand-off point and waited: with a human leader the offering of twenty at Eak's light was his
+  to make, and nobody said so. Only 19 pieces were left by 05:32. The clouds never respawn (reactorTime -1) and floor
+  items expire after 3 minutes, so a stack most likely expired while it waited. The leader took a GM cloud to make
+  twenty, offered them, and talked to Eak.
+- Split into rooms at 05:42:07: Jinx lobby (the Sunday climber), Vex walkway, Marrow storage, Kettle way up, Sadie
+  lounge.
+- FAILED the 45-minute clock at 06:14:47 in the room stage. It released cleanly, with all six whole on 920011200.
+- Time per room (from the split):
+  - Storage: COMPLETE at 1:20. Marrow put its piece on scar6 at 05:43:35 (the run 4 drop point works).
+  - Lobby: COMPLETE at 5:13. Jinx climbed to Sunday's box with Haste and had the music on 0:42 after the split; the
+    leader reached Eak at 05:46:30, and Jinx put its piece on scar1 at 05:47:42. Jinx then went to the lounge.
+  - Lounge: Sadie cleared the low subroom (920010604) and stood at (-857,-385) with her pieces until the end, as in
+    run 4: that subroom's way out is its portal 1, not 9. Jinx, going for a high subroom, never got past the first
+    row of trial doors (y -1459), back on the floor every 12 s.
+  - Way up: Kettle climbed the long rope and the short one, then never got past the first row of doors (y -2093) in
+    32 minutes. Map.wz explains the floor visits: a wrong door warps to r6fail (-50,-1865).
+  - Both door rows, same cause: a right door warped the runner up a row, but its move target was still the door it
+    had just used, now below it, so it dropped back to it; the outcome was read 650 ms later at the old height, so
+    every right door was learned as a wrong one. The hop the runner had landed on the door with was also charged as a
+    missed arc, and three of those shut that hop for 30 s.
+  - Walkway: Vex stood by the left wall of the floor at y -307 (-1394,-307) from 05:45:26 to the end with 28 of the
+    30 mobs alive, attacking none (her HP only regenerated). Offline the walkway graph reaches all 30 spawn points
+    from there, so the cause is in target selection. Not proven.
+  - The sealed room never started: it takes three holders at once, and with the lounge and way up stuck no more
+    than two companions were ever free.
+- The leader waited GM-hidden in the centre and still took touch damage from its mobs (1438 to 812 HP); they were
+  cleared with `!killall` at 06:01.
+- Fixes on fix/opq-run5 (not merged):
+  - The low subroom's runner leaves by its own out00 (portal 1).
+  - In a run a human leads, a companion carries the entrance's twenty clouds to Eak's light and tells the leader to
+    talk to Eak once he appears.
+  - Trial doors (lounge and way up): the runner goes through a door standing on it, reads where the door put it at
+    once, and stops there. A teleport no longer charges the hop it ended. Offline, the coordinator's runner with the
+    real movement on Map.wz's rows, through doors that do what party3_r6pt.js and party3_r4pt.js do (deterministic):
+    way up, old code 0 of 6 runs solved a row in 30 minutes, new 6 of 6 reach the top in 4.2-6.1 minutes; lounge,
+    old 4 of 10 combinations reach the high landing, new 10 of 10 in 14-32 s.
+  - The stall line now names the nearest live mobs and the combat layer's last grind decision, for the walkway.
+- Still open: Vex's walkway stall (read the new stall line in run 6) and the human leader's centre damage. The
+  sealed room should start once the door rooms finish.
+
 ## Findings
 
 - Leafre restocks a Lv160 crew to Pink Bean's 1500-potion standard (since P20, before this change).

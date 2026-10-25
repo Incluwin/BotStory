@@ -30,6 +30,11 @@ final class AgentOpqCompanionPlay {
         return leader + ", the statue's done. talk to eak in the middle.";
     }
 
+    /** The entrance's clouds are offered and Eak stands in the light: the carrier's call, said once. */
+    static String entranceEak(String leader) {
+        return leader + ", the clouds are in. eak's up in the gazebo, go talk to him.";
+    }
+
     /** The lobby runner cannot get into the cell of the day's LP box (Wednesday's), said once. */
     static String lobbyBoxOutOfReach(String leader) {
         return leader + ", i can't get up to today's box. if you get the lp, drop it in the music player.";

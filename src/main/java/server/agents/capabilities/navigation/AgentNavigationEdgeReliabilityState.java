@@ -121,6 +121,16 @@ public final class AgentNavigationEdgeReliabilityState {
     }
 
     /**
+     * Drops the traversal attempt without charging it: a teleport (a portal on the same map, a respawn) ends it, and
+     * where it puts the Agent says nothing about the edge. A map change already drops it (synchronizeMap); on the same
+     * map the next observation took the Agent standing in another region for a missed arc (2026-10-25: every OPQ trial
+     * door the runner took right after a hop charged that hop, and three shut it for 30 s).
+     */
+    public synchronized void abandonAttempt() {
+        attempt = null;
+    }
+
+    /**
      * Returns the edge whose attempt failed, or null while progress remains valid. An attempt fails
      * when it stops making progress, or when its flight (no current region) ends with the Agent
      * standing anywhere but the edge's destination.

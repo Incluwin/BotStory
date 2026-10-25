@@ -15,6 +15,11 @@ public final class AgentNavigationStateResetService {
         AgentNavigationDebugStateRuntime.clearGraphWarmupFallback(entry);
     }
 
+    /** A teleport ends the traversal attempt uncharged (AgentNavigationEdgeReliabilityState.abandonAttempt). */
+    public static void abandonTraversalAttempt(AgentRuntimeEntry entry) {
+        AgentNavigationEdgeReliabilityRuntime.abandonAttempt(entry);
+    }
+
     public static void clearStep(AgentRuntimeEntry entry) {
         AgentVerticalTraversalStateRuntime.clear(entry);
         AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);

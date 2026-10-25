@@ -23,10 +23,6 @@ public final class AgentOpqMemberState {
     private long lastMovementProgressAtMs;
     private int portalRow;
     private int portalChoice;
-    private int pendingPortalMapId;
-    private int pendingPortalRow = -1;
-    private int pendingPortalChoice = -1;
-    private int pendingPortalSourceY;
     private int loungeBaselineMapId;
     private int loungeBaselineCount;
     private int bossObjectId;
@@ -54,10 +50,6 @@ public final class AgentOpqMemberState {
     public int committedReactorObjectId() { return committedReactorObjectId; }
     public int portalRow() { return portalRow; }
     public int portalChoice() { return portalChoice; }
-    public boolean portalObservationPending(int mapId) { return pendingPortalMapId == mapId && pendingPortalRow >= 0; }
-    public int pendingPortalRow() { return pendingPortalRow; }
-    public int pendingPortalChoice() { return pendingPortalChoice; }
-    public int pendingPortalSourceY() { return pendingPortalSourceY; }
 
     public void assign(Role role, AgentOpqDefinition.Room room, int subroomMapId) {
         if (role == null || subroomMapId < 0) throw new IllegalArgumentException("valid OPQ assignment required");
@@ -87,18 +79,6 @@ public final class AgentOpqMemberState {
     public void clearReactor() { committedReactorMapId = 0; committedReactorObjectId = 0; }
     public void advancePortalChoice() { portalChoice++; }
     public void solvePortalRow() { portalRow++; portalChoice = 0; }
-    public void beginPortalObservation(int mapId, int row, int choice, int sourceY) {
-        pendingPortalMapId = mapId;
-        pendingPortalRow = row;
-        pendingPortalChoice = choice;
-        pendingPortalSourceY = sourceY;
-    }
-    public void clearPortalObservation() {
-        pendingPortalMapId = 0;
-        pendingPortalRow = -1;
-        pendingPortalChoice = -1;
-        pendingPortalSourceY = 0;
-    }
     public void beginLoungeCollection(int mapId, int currentCount) {
         if (loungeBaselineMapId != mapId) {
             loungeBaselineMapId = mapId;
@@ -159,7 +139,6 @@ public final class AgentOpqMemberState {
         clearWayUpStaging();
         portalRow = 0;
         portalChoice = 0;
-        clearPortalObservation();
         clearBossCombat();
     }
 
