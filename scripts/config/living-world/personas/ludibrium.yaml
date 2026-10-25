@@ -1,0 +1,460 @@
+# Ludibrium cast: broken time. 7 residents, 2 recruitable (Saskia the runner once you have heard her terms at the
+# weapon store, Jasper the bounty hunter for a kill proof), 1 arc (Ignatz's lost hour). Ids in quests/ludibrium.yaml.
+- id: ignatz
+  name: Ignatz
+  look: { gender: male }
+  title: "Clockwinder"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-marcel", activity: REST }
+      - { from: 13, to: 19, spot: "venue:ticketing-place-door", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:lower-central-benches", activity: SOCIALIZE }
+      - { from: 23, to: 9, materialize: false }
+  recruitable: false
+  knows: [path of time, ludibrium, tick-tock]
+  questLines: [ignatz-oil-for-the-gears, ignatz-eleven-strikes, ignatz-the-twelfth-strike, ignatz-cogs]
+  arc: ignatz-the-lost-hour
+  rumors: [ludibrium-the-hour-argument]
+  relationships:
+    - { persona: prue, kind: ARGUES_WITH }
+    - { persona: perrin, kind: SELLS_SCRAP_TO }
+    - { persona: saskia, kind: SENDS_ON_ERRANDS }
+  giftItemIds: [4000113, 4000115]
+  dialogue:
+    greetFirst: ["you're early. no. late. no. you're exactly on time and the tower is wrong. it's always the tower.", "listen. hear it? the tower. it's a hair behind. it's been a hair behind for nine years. i wind it every night."]
+    greet: ["tick. tock. you.", "good afternoon. it isn't. it's an hour later than that. don't tell the tower."]
+    idle: ["(holds a pocket watch to one ear and the tower's chime to the other)", "(winds a tiny key in the air, out of habit)"]
+    noWork: ["no winding till dark. i'm resting my wrists. they're very old wrists."]
+    nothingDue: ["nothing owed. time's free. that's the trouble with it."]
+    who: ["Ignatz. i wind the Ludibrium clock tower every night. somebody has to, or the whole city runs down like a toy."]
+    bye: ["don't be late. it's catching."]
+    thanks: ["tick. that means thank you. tock means you're welcome."]
+    smallTalk: ["the tower lost an hour nine years ago. a crack, they said, in the clockwork under the city. i say the hour went somewhere. hours don't just stop.", "Prue's factory runs on the tower's time. if the tower's wrong, every toy in the world is an hour late. nobody notices. i notice."]
+    speakPlainly: ["plainly: the tower's wrong. i'm trying to make it right."]
+    questOffer.ignatz-oil-for-the-gears: ["the ticks at the crossroad of time have the best springs in the world inside them. twenty-five ticks, fifteen springs. the tower's gears are thirsty."]
+    questAccept.ignatz-oil-for-the-gears: ["the path of time, then the crossroad. the ticks are small. they're very punctual. be more punctual."]
+    questWaiting.ignatz-oil-for-the-gears: ["fifteen springs. i can hear the gears asking."]
+    questComplete.ignatz-oil-for-the-gears: ["fifteen. lovely. the tower will run a hair less behind tonight. a hair is a lot, in a tower."]
+    questOffer.ignatz-eleven-strikes: ["last night the tower struck eleven twice. twice! the tick-tocks keep table clocks in them. thirty tick-tocks, fifteen clocks. i need to hear what time they think it is."]
+    questAccept.ignatz-eleven-strikes: ["the crossroad and the whirlpool of time. the tick-tocks are cleverer than the ticks. not much."]
+    questWaiting.ignatz-eleven-strikes: ["fifteen clocks. bring them before eleven. either eleven."]
+    questComplete.ignatz-eleven-strikes: ["fifteen. and every one says eleven. eleven, eleven, eleven. the hour that's missing is twelve. somebody took midnight."]
+    questOffer.ignatz-the-twelfth-strike: ["you heard Prue and me. one hour, i said. stop the line and i'll wind the tower back by hand. she'll stop it if someone nice asks. that's you. then the master chronos in the deep path, thirty, so the old clocks stop pulling the hour backwards while we pull it forwards."]
+    questAccept.ignatz-the-twelfth-strike: ["ask Prue. nicely. she'll say yes. she'll say it like a no."]
+    questWaiting.ignatz-the-twelfth-strike: ["did Prue stop the line? the master chronos? i've got the key in my hand. i've had it in my hand all day."]
+    questComplete.ignatz-the-twelfth-strike: ["listen. listen! ...twelve. it struck twelve. nine years. i'm going to sit down. i'm going to sit down for exactly one hour."]
+    questOffer.ignatz-cogs: ["twenty cogs. the chronos carry them. the tower eats cogs like a child eats sweets."]
+    questAccept.ignatz-cogs: ["any of the chronos on the path of time."]
+    questWaiting.ignatz-cogs: ["twenty cogs."]
+    questComplete.ignatz-cogs: ["twenty. a week of winding. thank you."]
+    about.prue: ["Prue runs the toy factory on the tower's time and tells me the tower is fine. it isn't fine. her toys are an hour late. she says nobody minds. i mind."]
+    about.perrin: ["the Orbis jeweller buys the cases of clocks that stopped. i wrap them for him. it feels like a funeral. he's very respectful."]
+    about.saskia: ["Saskia runs my errands on the path of time. she's never late. she says late is a choice. she's wrong. it's a tower."]
+    aboutUnknown: ["never set my watch by them."]
+    friend.close: ["i've started winding my watch to your visits. it's the only thing in this city that's on time."]
+    friend.best: ["nine years i listened for twelve. now i listen for you."]
+    famed: ["tick! that's a very good tick."]
+    defamed: ["tock. that's a less good tock."]
+    gift: ["thank you. it'll go in the tower. everything does."]
+    gift.favorite: ["good tight work. you have a winder's eye."]
+    gift.again: ["one a day. like winding. too much breaks the spring."]
+
+- id: prue
+  name: Prue
+  look: { gender: female }
+  title: "Factory Forewoman"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-robert-holly", activity: LINGER }
+      - { from: 12, to: 16, materialize: false }
+      - { from: 16, to: 23, spot: "venue:lower-central-benches", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [toy factory, robo, master robo]
+  questLines: [prue-the-runaway-robots, prue-mechanical-hearts]
+  rumors: [ludibrium-the-hour-argument]
+  relationships:
+    - { persona: ignatz, kind: ARGUES_WITH }
+    - { persona: della, kind: SUPPLIES }
+  giftItemIds: [4000111, 4000112]
+  dialogue:
+    greetFirst: ["you're not a toy and you're not on my line. visitor, then. mind the conveyor.", "factory shift starts at noon. tower time. which is wrong. which i don't care about."]
+    greet: ["the line's running. so am i.", "back? good. i've got a robot problem. i always have a robot problem."]
+    idle: ["(checks a clipboard, makes a mark, checks it again)", "(winds a little tin soldier and sets it marching across the bench)"]
+    noWork: ["the line's clean today. don't touch it."]
+    nothingDue: ["nothing owed. the factory doesn't do favours. i do. we're square."]
+    who: ["Prue. forewoman at the toy factory. every toy in the world comes off my line. some of them walk off it. that's the robots."]
+    bye: ["back to work, both of us."]
+    thanks: ["fine. good. back to it."]
+    smallTalk: ["the robos in the factory were supposed to stack crates. now they stack themselves on people. it's a design flaw. it's a feature.", "Ignatz thinks the tower's an hour behind. i think Ignatz is an hour behind. we've been saying it at each other for nine years."]
+    speakPlainly: ["plainly: robots, toys, a line that doesn't stop."]
+    questOffer.prue-the-runaway-robots: ["the robos broke off the line again. twenty-five of them, and fifteen of their batteries back so i can find out which of them did it."]
+    questAccept.prue-the-runaway-robots: ["the factory zones past the apparatus room. they'll try to stack on you. don't be stackable."]
+    questWaiting.prue-the-runaway-robots: ["fifteen batteries. i'm going to read every one."]
+    questComplete.prue-the-runaway-robots: ["fifteen. and it was the same three. it's always the same three. thank you. the line runs."]
+    questOffer.prue-mechanical-hearts: ["the master robos run on mechanical hearts. twenty of them down and ten hearts back, and i'll fit the hearts into the toy soldiers. they march better with a heart."]
+    questAccept.prue-mechanical-hearts: ["the first zones of both processes. the master ones are bigger. so are their hearts."]
+    questWaiting.prue-mechanical-hearts: ["ten hearts. the soldiers are lined up empty."]
+    questComplete.prue-mechanical-hearts: ["ten. ten soldiers with hearts. they're marching already. look at them go."]
+    about.ignatz: ["Ignatz is the most stubborn man in Ludibrium. second most. i'm first. he's usually right. don't you dare tell him."]
+    about.della: ["Della stuffs the bears off my line. she says every bear needs a seam that remembers. i say every bear needs to ship on time. she's better with bears than me."]
+    about.benno: ["Benno marched on the terraces for thirty years. now he marches up to my factory gate every morning to tell me the soldiers are sloppy. they are."]
+    aboutUnknown: ["not on my line."]
+    friend.close: ["you're on my line now. the good end. where the finished things are."]
+    friend.best: ["i'd stop the line for you. i've stopped it once in nine years. i'd stop it again."]
+    famed: ["...noted. pinned to the board."]
+    defamed: ["noted. in red."]
+    gift: ["thank you. i'll put it to work."]
+    gift.favorite: ["something useful! you're the only person who's ever given me something useful."]
+    gift.again: ["one's enough. i can't run a line on gifts."]
+
+- id: benno
+  name: Benno
+  look: { gender: male }
+  title: "Retired Terrace Guard"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 8, to: 14, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:by-spiegelmann", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [cloud terrace, toy trojan]
+  questLines: [benno-the-trojan-swords, benno-terrace-patrol]
+  relationships:
+    - { persona: marlow, kind: SERVED_UNDER_THE_SAME_BANNER }
+    - { persona: prue, kind: INSPECTS_THE_SOLDIERS_OF }
+  giftItemIds: [4000110, 4000106]
+  dialogue:
+    greetFirst: ["halt! who goes there! ...sorry. thirty years on the terraces. it doesn't wash out.", "at ease. i'm retired. you're at ease. we're both at ease. left, right."]
+    greet: ["at ease!", "you again! fall in. no. stand where you like."]
+    idle: ["(marches three steps, turns smartly, marches back)", "(polishes a toy sword that was never sharp)"]
+    noWork: ["no patrol today. the terraces will have to defend themselves. they won't."]
+    nothingDue: ["nothing owed, soldier. dismissed. not really."]
+    who: ["Benno. i guarded the cloud terraces for thirty years, until my knees retired before i did. Marlow kept the banner. i kept the step."]
+    bye: ["left, right. left, right. there you go."]
+    thanks: ["carry on!"]
+    smallTalk: ["the toy trojans on the terraces carry swords. they're toy swords. they still hurt. that's the whole of Ludibrium in one sentence.", "Prue's new soldiers are sloppy. they march like they're late. everyone in this city marches like they're late."]
+    speakPlainly: ["plainly, soldier: i used to guard the terraces. now i talk about it."]
+    questOffer.benno-the-trojan-swords: ["the toy trojans on the upper terraces stole the old guard's swords. twenty-five trojans, fifteen swords back. they're ours. the swords. not the trojans."]
+    questAccept.benno-the-trojan-swords: ["the cloud terraces, three through five. they come at you in a line. break the line."]
+    questWaiting.benno-the-trojan-swords: ["fifteen swords, soldier. the rack's empty."]
+    questComplete.benno-the-trojan-swords: ["fifteen! the rack's full! the old guard thanks you. the old guard is me."]
+    questOffer.benno-terrace-patrol: ["walk the terraces for me. thirty teddies, brown or pink, any. it's not about the teddies. it's about the walking."]
+    questAccept.benno-terrace-patrol: ["start at the hall. work up. keep the pace."]
+    questWaiting.benno-terrace-patrol: ["thirty. you're not marching. i can tell. march."]
+    questComplete.benno-terrace-patrol: ["thirty. patrol complete. that's a good soldier."]
+    about.marlow: ["Marlow carried the banner when i carried a sword. he still carries it. it's in his shop. he takes it out on parade days. there aren't parade days any more. he takes it out anyway."]
+    about.prue: ["Prue makes soldiers in a factory. we used to make them on the terraces. by marching. hers have hearts in them now. i'll allow it."]
+    about.ignatz: ["Ignatz winds the tower. the guard used to march by it. now nobody marches by it. he winds it anyway. good man."]
+    aboutUnknown: ["not in the guard. not in my day."]
+    friend.close: ["you're in the guard now. honorary. i've written it on the board. the board is a napkin."]
+    friend.best: ["thirty years i guarded the terraces. i'd guard you longer."]
+    famed: ["ha! a medal! well. as good as."]
+    defamed: ["demerit noted, soldier."]
+    gift: ["for the guard? thank you!"]
+    gift.favorite: ["for the guard's rack or the mending box! either way, thank you!"]
+    gift.again: ["that's enough for one day, soldier."]
+
+- id: saskia
+  name: Saskia
+  look: { gender: female }
+  title: "Path Runner"
+  job: ASSASSIN
+  level: { min: 60, max: 63 }
+  strength: VETERAN
+  loadout: ludibrium-claw-l58
+  personality: relaxed-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 6, to: 11, spot: "venue:upper-central-street", activity: STROLL }
+      - { from: 11, to: 17, spot: "venue:free-market-entrance", activity: BROWSE }
+      - { from: 17, to: 22, spot: "venue:weapon-store-door", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [path of time, warped path of time, chronos]
+  contract: saskia-the-runners-cut
+  questLines: [saskia-the-quick-path, saskia-sapphire-gigantic, saskia-blue-scarab, saskia-black-mamba, saskia-errand-run]
+  rumors: [ludibrium-the-runners-cut]
+  benchToleranceDays: 2
+  paceGap: 4
+  relationships:
+    - { persona: ignatz, kind: RUNS_FOR }
+    - { persona: jasper, kind: OWES_A_FAVOUR_TO }
+  giftItemIds: [4000114, 2000004]
+  dialogue:
+    greetFirst: ["you walk like someone with time to spare. nobody in Ludibrium has time to spare. it's broken.", "hi. bye. no, wait. hi. i've got a minute. an actual one."]
+    greet: ["you're late. kidding. you're right on time. that's rare here.", "hey. quick. what do you need? i'm between errands. i'm always between errands."]
+    idle: ["(bounces on her toes, counting under her breath)", "(spins a throwing star on one finger and catches it without looking)"]
+    noWork: ["nothing to run today. i'm going to sit very still and hate it."]
+    nothingDue: ["we're square. i don't keep debts. they slow you down."]
+    who: ["Saskia. i run errands down the path of time for Ignatz and anyone who pays. the path runs in loops. i run faster than the loops."]
+    bye: ["don't stop on the crossroad. things catch up."]
+    thanks: ["sure, sure. go."]
+    smallTalk: ["late is a choice. i've never chosen it. Ignatz says that's not how towers work. Ignatz walks.", "the chronos on the path carry cogs because they think it'll make them faster. it doesn't. i've checked."]
+    speakPlainly: ["plainly: errands. fast ones."]
+    offer: ["forty thousand. and you heard what i said at the weapon store, so you know the rest. the runner's cut is a fifth of what we find on the path. i'll take it later. i'm fast, not greedy."]
+    join: ["great. try to keep up. i'll wait. a little."]
+    bench: ["i'll be on the path. two days and then i'm bored and then i'm gone."]
+    leave: ["that was fun! i've got errands. bye!"]
+    refuse.bond: ["i don't run with people i don't know. you'd hold me back. no offence. some offence."]
+    refuse.flags: ["race me on the path first. and come by the weapon store some evening. Jasper and i have a thing we say. you should hear it first."]
+    refuseOwnErrand: ["that's my errand. you can run it with me. i'll win."]
+    questOffer.saskia-the-quick-path: ["race me. not really. thirty chronos on the path of time, then touch the whirlpool and come back. i'll know if you dawdled. i always know."]
+    questAccept.saskia-the-quick-path: ["path of time two and three. then the whirlpool past lost time. go! you're already late! you're not! go!"]
+    questWaiting.saskia-the-quick-path: ["thirty, and the whirlpool. tick tock."]
+    questComplete.saskia-the-quick-path: ["not bad! you didn't stop at the crossroad. people always stop at the crossroad."]
+    questOffer.saskia-sapphire-gigantic: ["the Sapphire Gigantic. my first real claw. the buffies on the warped path wear hats that shouldn't exist. thirty buffies, fifteen hats. don't ask why i want hats. i want hats."]
+    questAccept.saskia-sapphire-gigantic: ["the warped path of time, first stretch. the buffies bounce. bounce first."]
+    questWaiting.saskia-sapphire-gigantic: ["fifteen hats. i'm going to wear one. just one."]
+    questComplete.saskia-sapphire-gigantic: ["the Sapphire Gigantic. seven safe scrolls, every one took. i threw a million stars with it. throw a million more."]
+    questOffer.saskia-blue-scarab: ["the Blue Scarab. faster than the Gigantic. the master soul teddies on the forgotten path have free spirits in them. let them out. thirty teddies, fifteen spirits."]
+    questAccept.saskia-blue-scarab: ["the forgotten path of time, first stretch. the soul teddies drift. don't drift with them."]
+    questWaiting.saskia-blue-scarab: ["fifteen spirits. they're wriggly. hold tight."]
+    questComplete.saskia-blue-scarab: ["the Blue Scarab. seven sixties, every one took. i've never been that lucky. i've never been that slow, either. i waited for every one."]
+    questOffer.saskia-black-mamba: ["the Black Mamba. the fastest claw i've ever held. it's in the room off the warped path where the dual ghost pirates spin. thirty of them, fifteen propellers. and tell Ignatz where you're going. he worries. he's slow about it, but he worries."]
+    questAccept.saskia-black-mamba: ["unbalanced time, off the third warped stretch. the pirates spin. don't spin. Ignatz first."]
+    questWaiting.saskia-black-mamba: ["fifteen propellers. and Ignatz. did you tell him? he'll have stopped his watch to worry."]
+    questComplete.saskia-black-mamba: ["the Black Mamba. two tens and five sixties, every one took. i stood still the whole time. me! still! it's yours. run with it."]
+    questOffer.saskia-errand-run: ["errand run! twenty-five tick-tocks. Ignatz wants their clocks quiet for an evening. i want to see if you're faster than last time."]
+    questAccept.saskia-errand-run: ["the crossroad and the whirlpool. go go go."]
+    questWaiting.saskia-errand-run: ["twenty-five!"]
+    questComplete.saskia-errand-run: ["twenty-five. faster than last time. barely. i'll take it."]
+    about.ignatz: ["Ignatz is the slowest man in Ludibrium and the only one who's never once been late. i don't understand it. i love him for it."]
+    about.jasper: ["Jasper hunts ghosts on the warped path for bounties. i run errands past them. we split the difference. it's a long story. it's a fast story."]
+    about.prue: ["Prue's line never stops. i respect that. i've never once seen her run, though."]
+    aboutUnknown: ["never ran past them."]
+    friend.close: ["you're the only person i slow down for. don't make it weird. it's weird."]
+    friend.best: ["i've run every path in this city. the one back to you is the only one i walk."]
+    famed: ["ooh! thanks! fast fame!"]
+    defamed: ["ouch. fast ouch."]
+    gift: ["for me? thanks! quick!"]
+    gift.favorite: ["for me? useful and quick. i'll take it on the run."]
+    gift.again: ["two? no, one's plenty. i travel light."]
+
+- id: jasper
+  name: Jasper
+  look: { gender: male }
+  title: "Bounty Hunter"
+  job: GUNSLINGER
+  level: { min: 60, max: 63 }
+  strength: VETERAN
+  loadout: ludibrium-gun-l58
+  personality: efficient-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 10, to: 16, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 16, to: 23, spot: "venue:weapon-store-door", activity: SOCIALIZE }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: true
+  knows: [warped path of time, ghost pirate, buffoon]
+  contract: jasper-bounty-share
+  questLines: [jasper-the-platoon, jasper-burning-hell, jasper-abyss-shooter, jasper-infinitys-wrath, jasper-bounty]
+  rumors: [ludibrium-the-runners-cut]
+  benchToleranceDays: 5
+  paceGap: 3
+  relationships:
+    - { persona: saskia, kind: IS_OWED_A_FAVOUR_BY }
+    - { persona: ansel, kind: SHOOTS_WITH }
+    - { persona: kettle, kind: SAILED_WITH }
+  giftItemIds: [4000132, 2000004]
+  dialogue:
+    greetFirst: ["you're not a ghost. good. i've got enough of those on the board.", "sit if you're sitting. stand if you're shooting. i'm shooting."]
+    greet: ["hm. you.", "you again. the board's full. that's good for me."]
+    idle: ["(spins the cylinder of a gun that has no cylinder)", "(pins a new bounty notice to the weapon store wall)"]
+    noWork: ["nothing on the board i'd give you. tomorrow."]
+    nothingDue: ["we're square. i keep it that way."]
+    who: ["Jasper. i hunt bounties on the warped path. there are pirates in the clockwork. don't ask me how pirates got into a clock. i've stopped asking."]
+    bye: ["keep your powder dry. there's water in the warped path. nobody knows why."]
+    thanks: ["sure."]
+    smallTalk: ["i sailed on the Nautilus before the captain went. i left before anyone could ask me to stay. now i shoot sailors who drowned in a clock. there's a lesson there. i don't want it.", "the ghost pirates carry keys. none of the keys fit anything. i collect them anyway. bounty's a bounty."]
+    speakPlainly: ["plainly: there's a board. i clear it."]
+    offer: ["fifty master chronos on my board, and twenty thousand for the shells. then i'll ride along with you for a shift."]
+    join: ["fine. you go loud. i'll take the long shots."]
+    bench: ["i'll be at the board. five days. then the bounties go stale."]
+    leave: ["good shooting. the board's calling."]
+    refuse.bond: ["i don't take partners off the street."]
+    refuse.flags: ["clear the platoon off the path first. then we'll talk shares."]
+    refuseOwnErrand: ["that's my bounty. you can shoot it with me."]
+    questOffer.jasper-the-platoon: ["the platoon chronos on the path of time march like they've got somewhere to be. thirty of them, and the first lost time. clear the line."]
+    questAccept.jasper-the-platoon: ["the first path of time and the first lost time. they come in ranks. shoot the ranks."]
+    questWaiting.jasper-the-platoon: ["thirty."]
+    questComplete.jasper-the-platoon: ["thirty. clean. you can shoot."]
+    questOffer.jasper-burning-hell: ["the Burning Hell. the gun i learned on. the lazy buffies on the warped path carry marbles that make good shot. thirty buffies, fifteen marbles."]
+    questAccept.jasper-burning-hell: ["the warped path of time, first stretch. they're lazy. they're not slow."]
+    questWaiting.jasper-burning-hell: ["fifteen marbles. the moulds are hot."]
+    questComplete.jasper-burning-hell: ["the Burning Hell. seven safe scrolls, every one took. i shot my first bounty with it. shoot yours."]
+    questOffer.jasper-abyss-shooter: ["the Abyss Shooter. it wants a sight made from a grandpa clock's face. the buffoons on the second warped stretch carry them. thirty buffoons, fifteen clocks."]
+    questAccept.jasper-abyss-shooter: ["the second and third stretches. the buffoons laugh. let them."]
+    questWaiting.jasper-abyss-shooter: ["fifteen clocks. i've cut the sight blanks."]
+    questComplete.jasper-abyss-shooter: ["the Abyss Shooter. seven sixties, every one took. look down the sight. you can see the second hand. it's still going."]
+    questOffer.jasper-infinitys-wrath: ["the Infinity's Wrath. the best gun i've owned. the ghost pirates on the third warped stretch have a captain's bounty on them. thirty of them, fifteen keys, and the bounty's yours. so's the gun."]
+    questAccept.jasper-infinitys-wrath: ["the third stretch. they float. aim where they'll be, not where they are. that's all of shooting."]
+    questWaiting.jasper-infinitys-wrath: ["fifteen keys. the bounty's posted."]
+    questComplete.jasper-infinitys-wrath: ["the Infinity's Wrath. two tens and five sixties, every one took. a sailor gave it to me. i'm giving it to you. that's how it's supposed to go."]
+    questOffer.jasper-bounty: ["standing bounty. ten ghost pirate keys. i don't know what they open. i pay anyway."]
+    questAccept.jasper-bounty: ["the third warped stretch."]
+    questWaiting.jasper-bounty: ["ten keys."]
+    questComplete.jasper-bounty: ["ten. paid. the board's lighter."]
+    about.saskia: ["Saskia owes me a favour. i owe her three. we don't count. that's how you know it's real."]
+    about.ansel: ["Ansel sends people to me to ask about the deep buffoons. i tell them where to stand. he could just come. he won't. Orbis people."]
+    about.kettle: ["Kettle. he's still bosun of the Nautilus, i hear. still won't sit in the captain's cabin. good. somebody should leave it empty."]
+    about.flint: ["Flint still keeps the Nautilus powder? tell him i said keep it dry. he'll know who said it."]
+    aboutUnknown: ["not on the board."]
+    friend.close: ["you're the only name i'd never put on a board. that's friendship, for a bounty hunter."]
+    friend.best: ["i left a ship because i couldn't stand to see who'd replace the captain. i'd stay on one with you."]
+    famed: ["...thanks. noted."]
+    defamed: ["noted. i've had worse bounties."]
+    gift: ["thanks."]
+    gift.favorite: ["hm. i'll keep it. i keep things that turn up on the path."]
+    gift.again: ["one's enough."]
+
+- id: della
+  name: Della
+  look: { gender: female }
+  title: "Toy Tailor"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 8, to: 14, spot: "venue:skin-care-door", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:by-robert-holly", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [brown teddy, soul teddy, death teddy]
+  questLines: [della-teddy-stuffing, della-the-good-cloth, della-sealed-seams, della-the-finest-stitch, della-ribbons]
+  relationships:
+    - { persona: prue, kind: STUFFS_THE_BEARS_OF }
+    - { persona: marlow, kind: TRADES_CLOTH_WITH }
+  giftItemIds: [4000106, 4000107]
+  dialogue:
+    greetFirst: ["oh, come here, your seam's coming. no, on your shoulder. hold still. there. every coat has a seam that remembers where it came from.", "hello, love. you look like you've come a long way. sit. i'll mend something."]
+    greet: ["hello, love. anything torn?", "there you are. your hem's down. it's always down."]
+    idle: ["(stitches the ear back onto a teddy bear without looking)", "(holds up a scrap of cloth to the light, then to her cheek)"]
+    noWork: ["nothing on the table today. the bears are all whole. i'll unpick one so i've something to do."]
+    nothingDue: ["nothing owed, love."]
+    who: ["Della. i stuff the bears that come off Prue's line, and i sew coats for people who go down the clock paths. the paths tear things. coats, mostly."]
+    bye: ["mind your seams on the path."]
+    thanks: ["oh, go on with you."]
+    smallTalk: ["the teddies on the terraces are Prue's that walked off. the ones on the forgotten path are older. much older. somebody sewed those. i'd like to know who.", "Marlow and i trade cloth. he gives me banner silk. i give him teddy stuffing. we both think we're getting the better deal."]
+    speakPlainly: ["simply, love: i sew things so they hold."]
+    questOffer.della-teddy-stuffing: ["the brown teddies on the lower terraces are full of the best cotton. twenty-five of them, twenty bags of cotton. they don't need it. the new bears do."]
+    questAccept.della-teddy-stuffing: ["the cloud terraces near the hall, and the sky terrace. they're soft. they still bite."]
+    questWaiting.della-teddy-stuffing: ["twenty cotton, love. the bears are flat."]
+    questComplete.della-teddy-stuffing: ["twenty. lovely. a dozen bears plumped. they'll ship tomorrow, on time, Prue will be insufferable."]
+    questOffer.della-the-good-cloth: ["a coat for you, love, made for how you fight. the cloth's from the zombie teddies on the forgotten path. i unpick them. the cloth is still good. thirty soul teddies, fifteen bears."]
+    questAccept.della-the-good-cloth: ["the forgotten path of time, first stretch. they're sad, the soul teddies. be quick about it."]
+    questWaiting.della-the-good-cloth: ["fifteen bears. i've chalked the pattern."]
+    questComplete.della-the-good-cloth: ["there. cut for how you move, every scroll took. try it. ...there. the seam remembers you now."]
+    questOffer.della-sealed-seams: ["the death teddies on the forgotten path have sealed bears inside. i unpick the seals and the cloth comes out like new. thirty of them, fifteen sealed bears."]
+    questAccept.della-sealed-seams: ["the third stretch. they're not sad. they're angry. be careful, love."]
+    questWaiting.della-sealed-seams: ["fifteen sealed bears. my scissors are sharpened."]
+    questComplete.della-sealed-seams: ["the second coat. fitted to your shoulders, every scroll took. it'll hold on the path. it'll hold anywhere."]
+    questOffer.della-the-finest-stitch: ["the last coat. it wants the dye from the phantom watches' sealed bottles, the colour that never fades. and ask Marlow for a length of banner silk for the lining. thirty phantom watches, fifteen bottles."]
+    questAccept.della-the-finest-stitch: ["the fourth forgotten stretch. the watches are very old and very cross. Marlow first, love."]
+    questWaiting.della-the-finest-stitch: ["fifteen bottles, and Marlow's silk."]
+    questComplete.della-the-finest-stitch: ["the last coat, love. cut for you and nobody else, two tens and the rest sixties, every one took. the lining's the old guard's banner silk. the seam remembers a lot of people now."]
+    questOffer.della-ribbons: ["the pink teddies wear yellow ribbons. twenty, love, for the new bears' necks."]
+    questAccept.della-ribbons: ["the terraces. the pink ones."]
+    questWaiting.della-ribbons: ["twenty ribbons."]
+    questComplete.della-ribbons: ["twenty. twenty bears with ribbons. very smart."]
+    about.prue: ["Prue says a bear only has to ship on time. then she takes the crooked ones home. she's got forty. don't tell her i told you."]
+    about.marlow: ["Marlow's very proud of his banner. he should be. it's the only thing in Ludibrium older than the forgotten path's teddies."]
+    about.ignatz: ["Ignatz brings me his coat to mend every spring. it's the same tear every spring. he catches it on the tower key. he won't change the key."]
+    aboutUnknown: ["never mended anything of theirs."]
+    friend.close: ["i've put a stitch of yours in every coat i've made you. a little one, inside. so the seam remembers."]
+    friend.best: ["i've mended a lot of bears, love. you're the one i'd mend first."]
+    famed: ["oh! well. thank you, love."]
+    defamed: ["oh. well. i'll mend it."]
+    gift: ["for me? oh, thank you."]
+    gift.favorite: ["the good soft stuff! you've been on the terraces, love."]
+    gift.again: ["that's enough for today, love."]
+
+- id: marlow
+  name: Marlow
+  look: { gender: male }
+  title: "Banner Keeper"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ludibrium
+    routine:
+      - { from: 7, to: 13, spot: "venue:pharmacy-door", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:by-marcel", activity: REST }
+      - { from: 19, to: 22, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [ludibrium, spirit viking, phantom watch]
+  questLines: [marlow-the-old-banner, marlow-giles-cape, marlow-musketeer-cape, marlow-the-ludibrium-cape, marlow-banner-thread]
+  relationships:
+    - { persona: benno, kind: SERVED_UNDER_THE_SAME_BANNER }
+    - { persona: della, kind: TRADES_CLOTH_WITH }
+  giftItemIds: [4000134, 4000108]
+  dialogue:
+    greetFirst: ["you'll stand up straight in front of the banner, if you please. it's carried the Ludibrium guard for forty years. it's carried me for thirty.", "ah. a traveller. you'll want a cape. everyone who goes down the clock paths wants a cape, eventually. usually after."]
+    greet: ["good day. shoulders back.", "ah. you. the banner remembers you."]
+    idle: ["(folds a faded banner into perfect thirds, then unfolds it to do it again)", "(brushes a cape on a stand with long, ceremonial strokes)"]
+    noWork: ["no parade today. there hasn't been a parade in nine years. i keep the banner ready."]
+    nothingDue: ["nothing owed. the guard's accounts are settled."]
+    who: ["Marlow. i keep the banner of the old Ludibrium guard, and i make capes for those who go where the guard used to. a cape is a small banner. you carry it on your back."]
+    bye: ["shoulders back. the paths respect posture."]
+    thanks: ["the guard thanks you."]
+    smallTalk: ["the guard stopped marching when the tower lost its hour. Ignatz thinks it'll come back. if it does, i'll call a parade.", "the spirit vikings on the deepest warped path sail ships that sank in a clock. their sails are the finest cape cloth i've ever handled."]
+    speakPlainly: ["plainly: capes. the best ones. for the brave."]
+    questOffer.marlow-the-old-banner: ["the banner's fraying at the ground. panda felt mends it. thirty panda teddies, fifteen dolls. i know. dolls. it's a very old banner. it's earned some softness."]
+    questAccept.marlow-the-old-banner: ["the last sky terrace and the toy factory. the pandas are everywhere. they're very proud of it."]
+    questWaiting.marlow-the-old-banner: ["fifteen dolls. the banner's on the table, waiting."]
+    questComplete.marlow-the-old-banner: ["fifteen. the banner's whole. the guard would weep. Benno will weep. he weeps at the banner."]
+    questOffer.marlow-giles-cape: ["you've gone deep enough for a real cape. a Giles, cut from spirit viking sailcloth. the deepest warped stretch. thirty vikings, fifteen sails."]
+    questAccept.marlow-giles-cape: ["the fourth warped stretch. they sail at you. hold your ground. that's what a cape is for."]
+    questWaiting.marlow-giles-cape: ["fifteen sails. the cloth's measured."]
+    questComplete.marlow-giles-cape: ["the Giles cape. every scroll took. stand straight in it. ...yes. the guard would have had you."]
+    questOffer.marlow-musketeer-cape: ["a Musketeer cape. it wants trim from the gigantic vikings' hats, off the twisted time. thirty of them, fifteen hats. a musketeer's cape must be very, very full."]
+    questAccept.marlow-musketeer-cape: ["the twisted time, off the deepest warped stretch. they are gigantic. it's in the name."]
+    questWaiting.marlow-musketeer-cape: ["fifteen hats. the trim's pinned."]
+    questComplete.marlow-musketeer-cape: ["the Musketeer cape. every scroll took. a little flourish, if you please. ...there. very good."]
+    questOffer.marlow-the-ludibrium-cape: ["the Ludibrium cape. the guard's own, the last one made. it wants ice pieces from the grim phantom watches in forbidden time, for the clasp that never warms. thirty watches, fifteen pieces. and ask Ignatz to wind the clasp's little clock. he's the only one who can."]
+    questAccept.marlow-the-ludibrium-cape: ["forbidden time, off the fourth forgotten stretch. it's very cold, and very old, and very angry. Ignatz first."]
+    questWaiting.marlow-the-ludibrium-cape: ["fifteen pieces, and Ignatz's winding. the cape's on the stand. it's been on the stand for nine years."]
+    questComplete.marlow-the-ludibrium-cape: ["the Ludibrium cape. two tens and the rest sixties, every one took. the last cape of the guard. i've never given it to anyone. i've never met anyone it was for, until now. shoulders back."]
+    questOffer.marlow-banner-thread: ["fifteen toy ducklings. the down makes the banner fringe. don't laugh."]
+    questAccept.marlow-banner-thread: ["the rolo-ducks on the sky terraces. whatever they are. they quack in time. it's unsettling."]
+    questWaiting.marlow-banner-thread: ["fifteen ducklings."]
+    questComplete.marlow-banner-thread: ["fifteen. a full fringe. the banner's very handsome."]
+    about.benno: ["Benno carried a sword, i carried the banner. he still salutes it every morning. so do i. we're the only two left who know how."]
+    about.della: ["Della trades me teddy stuffing for banner silk. she thinks i don't know she's giving me the good stuffing. i know. i give her the good silk."]
+    about.ignatz: ["Ignatz is the reason the guard stopped. the tower lost its hour and the guard lost its time to march. it's not his fault. he blames himself every night when he winds it."]
+    aboutUnknown: ["not of the guard."]
+    friend.close: ["i'd carry the banner for you. i've only ever carried it for the guard. you're the guard now."]
+    friend.best: ["nine years the banner's waited for a parade. if there's ever one again, you'll march at the front."]
+    famed: ["the guard thanks you. so do i."]
+    defamed: ["...noted. shoulders back, both of us."]
+    gift: ["thank you. it goes in the guard's chest."]
+    gift.favorite: ["a gift for the guard! the guard salutes you."]
+    gift.again: ["that will do for today."]

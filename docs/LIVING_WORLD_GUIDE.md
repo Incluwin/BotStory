@@ -20,7 +20,8 @@ line per persona per tick when a Resident does not show up.
 
 ## What players do
 
-Residents stand in their home towns (all seven Victoria towns have a cast). Talk to them in map
+Residents stand in their home towns (all seven Victoria towns have a cast, and Orbis, El Nath and
+Ludibrium have seven each: `docs/REGIONAL_RESIDENTS_PLAN.md`). Talk to them in map
 chat with their name anywhere in the line, or stand next to one and speak, or whisper them.
 
 | Say | Effect |
@@ -111,6 +112,12 @@ bowman shield exists past Lv 22 and no magician shield past Lv 33, so Brom's lat
 offered to those classes. The weapon Residents are recruitable (a contract once you are acquainted
 and have done their intro quest), so party quests and bosses with them count toward friendship;
 the armourers are townsfolk, befriended through their quests, gifts and fame.
+
+Off Victoria the same recipes continue one tier up (`docs/REGIONAL_RESIDENTS_PLAN.md` section 4): Orbis's Vesna (wands)
+and Ansel (bows), El Nath's Sigrun (two-handed swords) and Bjarke (spears) and Ludibrium's Saskia (claws) and Jasper
+(guns) give weapons at L58-90 and are recruitable; the armourers Aster (hats) and Perrin (earrings) in Orbis, Ulla
+(gloves) and Oskar (shoes) in El Nath, and Della (coats) and Marlow (capes, up to the Ludibrium Cape) in Ludibrium
+give pieces at L60-100.
 
 The armour piece:
 
@@ -279,7 +286,9 @@ have sub-directories last: its directory offsets assume that order.
 `bond <player> <persona> <points>`, `rumor play <id>`, `phrases [approve|reject <text>]`,
 `teach <canonical> <phrase...>`, `haul <player>`, `events <player>`.
 
-`tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors);
+`tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors; a home town is any TownLife
+profile in `agents/town-life/index.json`, and every routine and rumor spot must name a venue, hotspot or rest spot of
+that town's profile);
 `tools\living-world-questlog.bat` exports the quest log (above). Item, mob, map and NPC ids are checked
 against the server knowledge (`scripts/config/knowledge`, plus the Liquibase seed rows offline): an unknown
 item, mob or map is an error; quest items nobody can farm, mobs that never spawn and gear its holders never

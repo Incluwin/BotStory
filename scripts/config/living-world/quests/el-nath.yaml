@@ -1,0 +1,417 @@
+# El Nath quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# jr. yeti 5100000 (skin 4000048, icy path 211010000/211020000), hector 5130104 (tail 4000051, cold field 211030000/
+# 211040000), white fang 5140000 (white pang tail 4000052, icy cold field 211050000, wolf territory III-V 211040800-
+# 211041000), yeti 6300000 (horn 4000049, ice valley 211040100/211040200), yeti and pepe 7130102 (211040200, valley of
+# snowman 211040101), Snowman 8220001 (valley of snowman), dark jr. yeti 5130105 (skin 4000055, sharp cliff 211040300/
+# 211040400, dangerous cliff 211040700), dark yeti 6400000 (horn 4000056), dark yeti and pepe 8140100 (dark pepe beak
+# 4000057, dangerous cliff), werewolf 7130200 (toenail 4000053, leather 4000021, wolf territory I/II 211040500/
+# 211040600), lycanthrope 8140000 (toenail 4000054, wolf territory III-V), coolie zombie 5130107 (lost tooth 4000069,
+# forest of dead trees 211041100-211041400), miner zombie 5130108 (gold tooth 4000082, dead mine 211041500-211041800),
+# flyeye 4230107 (wing 4000076, dead mine and the passage 211041900), jr. cerebes 4230108 (tooth 4000078), cerebes
+# 7130001 (tooth 4000079), firebomb 5100002 (flame 4000081), bain 8140500 (spiky collar 4000080), cave of trial
+# 211042000/211042100/211042200, cave within the cave 211042101, the door to zakum 211042300; Snow Witch 6090001 (ice
+# tear 4000415, icy path and icy cold field). Off El Nath: Ludibrium master death teddy 7130300 (binding bridle
+# 4000148, lost time 220070201).
+# Gear: Sigrun's two-handed swords Doombringer 1402012 L70 / Blue Screamer 1402004 L80 / Berzerker 1402005 L90; Bjarke's
+# spears Redemption 1432007 L70 / Omega Spear 1432010 L80 / Fairfrozen 1432011 L90. Ulla's gloves and Oskar's shoes for
+# the player's class (warrior, magician, bowman, thief, pirate): gloves L60/L70/L80, shoes L70/L80/L90.
+
+# ---- Edric, snowfield sentry: the unwritten letter (recruitable through his arc) ---------------------------------
+
+- id: edric-the-watch
+  persona: edric
+  title: "The Watch"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hectors, type: KILL_MOBS, mobIds: [5130104], count: 30, mapIds: [211030000, 211040000] }
+    - { id: report, type: DELIVER, to: edric }
+  rewards: { meso: 22000, exp: 20000, bondPoints: 30 }
+
+- id: edric-the-unwritten-letter
+  persona: edric
+  title: "The Unwritten Letter"
+  length: MEDIUM
+  requires: { level: { min: 50 }, questsCompleted: [corliss-the-unclosed-page, edric-the-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ottilie, type: TALK_TO, persona: ottilie, say: ["from El Nath? from... oh. oh, that's his hand. he always crossed his sevens. ...he walked down the mountain? the silly thing. the silly, silly thing. tell him his step's swept. tell him to come and sit on it."] }
+    - { id: back, type: DELIVER, to: edric }
+  rewards: { meso: 35000, exp: 30000, bondPoints: 50, flags: [edric.letter.delivered], worldFlags: [edric.letter.delivered] }
+  onComplete: { arcAdvance: { arc: edric-the-unwritten-letter, to: chapter-3 } }
+
+- id: edric-steady-hands
+  persona: edric
+  title: "Steady Hands"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [edric-the-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 25, mapIds: [211010000, 211020000] }
+    - { id: report, type: DELIVER, to: edric }
+  rewards: { meso: 12000, exp: 11000, bondPoints: 10 }
+
+# ---- Sigrun, warden of the door (recruitable; her greatswords) ----------------------------------------------------
+
+- id: sigrun-the-trial-cave
+  persona: sigrun
+  title: "The Cave of Trial"
+  length: MEDIUM
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: young, type: KILL_MOBS, mobIds: [4230108], count: 30, mapIds: [211042000, 211042100, 211042200, 211042101] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000078, count: 15 }
+    - { id: door, type: VISIT_MAP, mapIds: [211042300] }
+    - { id: report, type: DELIVER, to: sigrun, take: { itemId: 4000078, count: 15 } }
+  rewards: { meso: 22000, exp: 22000, bondPoints: 30, flags: [sigrun.intro.done] }
+
+- id: sigrun-doombringer
+  persona: sigrun
+  title: "The Doombringer"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [sigrun-the-trial-cave] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cerebes, type: KILL_MOBS, mobIds: [7130001], count: 30, mapIds: [211042000, 211042100, 211042200] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000079, count: 15 }
+    - { id: grip, type: DELIVER, to: sigrun, take: { itemId: 4000079, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 80000
+    bondPoints: 35
+    gear:
+      - { itemId: 1402012, scrolls: [{ success: 100 }] }
+
+- id: sigrun-blue-screamer
+  persona: sigrun
+  title: "The Blue Screamer"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [sigrun-doombringer] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pairs, type: KILL_MOBS, mobIds: [8140100], count: 20, mapIds: [211040700] }
+    - { id: beaks, type: COLLECT_ITEM, itemId: 4000057, count: 15 }
+    - { id: blade, type: DELIVER, to: sigrun, take: { itemId: 4000057, count: 15 } }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 50
+    gear:
+      - { itemId: 1402004, scrolls: [{ success: 60 }] }
+
+- id: sigrun-berzerker
+  persona: sigrun
+  title: "The Sword for the Door"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 10, questsCompleted: [sigrun-blue-screamer] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: edric, type: TALK_TO, persona: edric, say: ["the bains, with her blessing? then i know where you'll be. i'll watch the cave road until you're back up it. ...don't make me stand there all night."] }
+    - { id: bains, type: KILL_MOBS, mobIds: [8140500], count: 30, mapIds: [211042200] }
+    - { id: collars, type: COLLECT_ITEM, itemId: 4000080, count: 15 }
+    - { id: sword, type: DELIVER, to: sigrun, take: { itemId: 4000080, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 60
+    gear:
+      - { itemId: 1402005, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: sigrun-firebomb-watch
+  persona: sigrun
+  title: "Firebomb Watch"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [sigrun-the-trial-cave] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 15 }
+    - { id: report, type: DELIVER, to: sigrun, take: { itemId: 4000081, count: 15 } }
+  rewards: { meso: 12000, exp: 11000, bondPoints: 10 }
+
+# ---- Bjarke, wolf hunter (recruitable; his spears) ----------------------------------------------------------------
+
+- id: bjarke-the-fang-road
+  persona: bjarke
+  title: "The Fang Road"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fangs, type: KILL_MOBS, mobIds: [5140000], count: 30, mapIds: [211050000, 211040800, 211040900, 211041000] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000052, count: 15 }
+    - { id: report, type: DELIVER, to: bjarke, take: { itemId: 4000052, count: 15 } }
+  rewards: { meso: 22000, exp: 22000, bondPoints: 30, flags: [bjarke.intro.done] }
+
+- id: bjarke-redemption
+  persona: bjarke
+  title: "The Redemption"
+  length: MEDIUM
+  requires: { level: { min: 70 }, friendship: 5, questsCompleted: [bjarke-the-fang-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wolves, type: KILL_MOBS, mobIds: [7130200], count: 30, mapIds: [211040500, 211040600] }
+    - { id: toenails, type: COLLECT_ITEM, itemId: 4000053, count: 15 }
+    - { id: story, type: DELIVER, to: bjarke, take: { itemId: 4000053, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 80000
+    bondPoints: 35
+    gear:
+      - { itemId: 1432007, scrolls: [{ success: 100 }] }
+
+- id: bjarke-omega-spear
+  persona: bjarke
+  title: "The Thing I'm Afraid Of"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [bjarke-redemption] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lycanthropes, type: KILL_MOBS, mobIds: [8140000], count: 30, mapIds: [211040800, 211040900, 211041000] }
+    - { id: toenails, type: COLLECT_ITEM, itemId: 4000054, count: 15 }
+    - { id: spear, type: DELIVER, to: bjarke, take: { itemId: 4000054, count: 15 } }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 50
+    gear:
+      - { itemId: 1432010, scrolls: [{ success: 60 }] }
+
+- id: bjarke-fairfrozen
+  persona: bjarke
+  title: "The Fairfrozen"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 10, questsCompleted: [bjarke-omega-spear] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ulla, type: TALK_TO, persona: ulla, say: ["the hidden valley? past the first ice valley, where the snow drifts against nothing. there's a way through. the snowman is older than the town. don't tell Bjarke where it is. he'd tell everyone."] }
+    - { id: snowman, type: KILL_MOBS, mobIds: [8220001], count: 1, mapIds: [211040101] }
+    - { id: pairs, type: KILL_MOBS, mobIds: [7130102], count: 30, mapIds: [211040101, 211040200] }
+    - { id: quiet, type: DELIVER, to: bjarke }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 60
+    gear:
+      - { itemId: 1432011, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: bjarke-wolf-tally
+  persona: bjarke
+  title: "The Wolf Tally"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 70 }, questsCompleted: [bjarke-the-fang-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wolves, type: KILL_MOBS, mobIds: [7130200], count: 25, mapIds: [211040500, 211040600] }
+    - { id: tally, type: DELIVER, to: bjarke }
+  rewards: { meso: 18000, exp: 18000, bondPoints: 10 }
+
+# ---- Ulla, furrier (gloves for the player's class) ----------------------------------------------------------------
+
+- id: ulla-skins-for-the-cold
+  persona: ulla
+  title: "Skins for the Cold"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 25, mapIds: [211010000, 211020000] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000048, count: 15 }
+    - { id: frame, type: DELIVER, to: ulla, take: { itemId: 4000048, count: 15 } }
+  rewards: { meso: 18000, exp: 17000, bondPoints: 30 }
+
+- id: ulla-the-hector-pair
+  persona: ulla
+  title: "The Hector Pair"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [ulla-skins-for-the-cold] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hectors, type: KILL_MOBS, mobIds: [5130104], count: 30, mapIds: [211030000, 211040000] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000051, count: 15 }
+    - { id: cuffs, type: DELIVER, to: ulla, take: { itemId: 4000051, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { pool: [1082059, 1082086, 1082089, 1082092, 1082201], scrolls: [{ success: 100 }] }
+
+- id: ulla-dark-hide
+  persona: ulla
+  title: "Dark Hide"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [ulla-the-hector-pair] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5130105, 5130106], count: 30, mapIds: [211040300, 211040400, 211040700] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000055, count: 15 }
+    - { id: pair, type: DELIVER, to: ulla, take: { itemId: 4000055, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { pool: [1082103, 1082098, 1082106, 1082095, 1082204], scrolls: [{ success: 60 }] }
+
+- id: ulla-the-witchs-lining
+  persona: ulla
+  title: "The Witch's Lining"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [ulla-dark-hide] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: witch, type: KILL_MOBS, mobIds: [6090001], count: 1, mapIds: [211010000, 211020000, 211050000] }
+    - { id: tear, type: COLLECT_ITEM, itemId: 4000415, count: 1 }
+    - { id: pelt, type: TALK_TO, persona: bjarke, say: ["a lycanthrope pelt for Ulla? for the last pair? sit down. this pelt has a story. it's a long story. it starts in a blizzard. ...fine. here. it's the best one i have. tell her it's terrible."] }
+    - { id: lining, type: DELIVER, to: ulla, take: { itemId: 4000415, count: 1 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { pool: [1082114, 1082121, 1082109, 1082118, 1082207], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ulla-mending
+  persona: ulla
+  title: "Mending Leather"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [ulla-skins-for-the-cold] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 15 }
+    - { id: mend, type: DELIVER, to: ulla, take: { itemId: 4000021, count: 15 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 10 }
+
+# ---- Oskar, bootmaker (shoes for the player's class) --------------------------------------------------------------
+
+- id: oskar-light-soles
+  persona: oskar
+  title: "Light Soles"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flyeyes, type: KILL_MOBS, mobIds: [4230107], count: 25, mapIds: [211041500, 211041600, 211041700, 211041800, 211041900] }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000076, count: 15 }
+    - { id: soles, type: DELIVER, to: oskar, take: { itemId: 4000076, count: 15 } }
+  rewards: { meso: 18000, exp: 17000, bondPoints: 30 }
+
+- id: oskar-the-carzen-boots
+  persona: oskar
+  title: "Teeth for the Ice"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [oskar-light-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [5130107], count: 30, mapIds: [211041100, 211041200, 211041300, 211041400] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000069, count: 15 }
+    - { id: studs, type: DELIVER, to: oskar, take: { itemId: 4000069, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 80000
+    bondPoints: 35
+    gear:
+      - { pool: [1072154, 1072157, 1072164, 1072161, 1072309], scrolls: [{ success: 100 }] }
+
+- id: oskar-wing-boots
+  persona: oskar
+  title: "Werewolf Leather"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 7, questsCompleted: [oskar-the-carzen-boots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wolves, type: KILL_MOBS, mobIds: [7130200], count: 30, mapIds: [211040500, 211040600] }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 20 }
+    - { id: uppers, type: DELIVER, to: oskar, take: { itemId: 4000021, count: 20 } }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 50
+    gear:
+      - { pool: [1072210, 1072177, 1072182, 1072172, 1072312], scrolls: [{ success: 60 }] }
+
+- id: oskar-the-last-last
+  persona: oskar
+  title: "The Last Last"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 10, questsCompleted: [oskar-wing-boots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [7130300], count: 30, mapIds: [220070201] }
+    - { id: bridles, type: COLLECT_ITEM, itemId: 4000148, count: 15 }
+    - { id: laces, type: DELIVER, to: oskar, take: { itemId: 4000148, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 60
+    gear:
+      - { pool: [1072196, 1072206, 1072203, 1072192, 1072315], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: oskar-resoling
+  persona: oskar
+  title: "Resoling"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [oskar-light-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000076, count: 15 }
+    - { id: soles, type: DELIVER, to: oskar, take: { itemId: 4000076, count: 15 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 10 }
+
+# ---- Maud, keeper of the miners' roll -----------------------------------------------------------------------------
+
+- id: maud-the-roll-of-the-mine
+  persona: maud
+  title: "The Roll of the Mine"
+  length: SHORT
+  requires: { level: { min: 55 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: miners, type: KILL_MOBS, mobIds: [5130108], count: 30, mapIds: [211041500, 211041600, 211041700, 211041800] }
+    - { id: report, type: DELIVER, to: maud }
+  rewards: { meso: 22000, exp: 22000, bondPoints: 30 }
+
+- id: maud-gold-teeth
+  persona: maud
+  title: "Gold Teeth"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 55 }, questsCompleted: [maud-the-roll-of-the-mine] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000082, count: 3, dropFrom: { mobIds: [5130108], chance: 0.1 } }
+    - { id: families, type: DELIVER, to: maud, take: { itemId: 4000082, count: 3 } }
+  rewards: { meso: 15000, exp: 14000, bondPoints: 10 }
+
+# ---- Kalle, hopeful ----------------------------------------------------------------------------------------------
+
+- id: kalle-the-third-door
+  persona: kalle
+  title: "Am I Ready?"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sigrun, type: TALK_TO, persona: sigrun, say: ["Kalle sent you to ask. of course he did. tell him no. tell him kindly. ...and tell him he's closer than he thinks. no. don't tell him that part."] }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5130105, 5130106], count: 20, mapIds: [211040300, 211040400] }
+    - { id: report, type: DELIVER, to: kalle }
+  rewards: { meso: 18000, exp: 18000, bondPoints: 30 }
+
+- id: kalle-trophy-horns
+  persona: kalle
+  title: "Trophy Horns"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 64 }, questsCompleted: [kalle-the-third-door] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000056, count: 10 }
+    - { id: wall, type: DELIVER, to: kalle, take: { itemId: 4000056, count: 10 } }
+  rewards: { meso: 14000, exp: 13000, bondPoints: 10 }

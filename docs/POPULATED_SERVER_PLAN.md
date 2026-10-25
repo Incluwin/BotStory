@@ -364,7 +364,8 @@ The market code exists (stalls, room allocator, valuation, negotiation) but is n
 - PQ rotations by level band (LPQ, OPQ, LMPQ exist) so lobbies are populated at the right hours;
   boss expeditions (Balrog exists; Zakum needs the prequest chain) recruited via smega.
 - Living world content for the new regions: Residents, quests, rumors in each town, so the
-  hand-authored layer travels with the population.
+  hand-authored layer travels with the population. Wave 1 (Orbis, El Nath, Ludibrium) and the waves after it:
+  `docs/REGIONAL_RESIDENTS_PLAN.md`.
 - Server "news": generalise `RumorScheduler` sources so citizens gossip about real events (first
   citizen to 70, a guild that cleared Zakum, a human who died to Mushmom three times).
 

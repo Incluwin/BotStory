@@ -1,0 +1,28 @@
+# El Nath arc: the sentry who walked off the stationmaster's ledger (arcs/orbis.yaml) and down the mountain, and the
+# letter he never sent his mother. He joins only once it is sent.
+- id: edric-the-unwritten-letter
+  persona: edric
+  chapters:
+    - id: chapter-1
+      title: "Sentry"
+    - id: chapter-2
+      title: "A Name in the Ledger"
+      enterWhen: { flags: [orbis.page.opened] }
+      dialogueOverrides:
+        greet: ["someone came down from Orbis asking the post about a ship. i told the post i don't take ships.", "the road's clear. it's always clear. that's not the problem."]
+        smallTalk: ["eleven years ago a boy got off a ship in Orbis without his name being called. the stationmaster was writing. the boy didn't stop."]
+        chapterEnter: ["(takes a folded, much-creased letter from inside his armour, looks at it, and puts it back)"]
+    - id: chapter-3
+      title: "Sent"
+      dialogueOverrides:
+        greet: ["she wrote back. Fitch brought it down. i've read it nine times. her spelling's worse.", "the road's clear. i might walk it. up, this time."]
+        smallTalk: ["four thousand and twelve steps to Orbis. Fitch counted them. i'm going to count them myself."]
+        chapterEnter: ["(stands a little less straight, as if something heavy had been taken off the shield)"]
+      unlocks:
+        contract: edric-sentrys-oath
+        rumors: [el-nath-what-the-ship-took]
+    - id: chapter-4
+      title: "The Step Is Swept"
+      enterWhen: { rumorPerformed: el-nath-what-the-ship-took, times: 1 }
+      dialogueOverrides:
+        greet: ["i told Sigrun about the ship. out loud. at the door. she didn't say anything. she put her hand on my shield.", "i sat on my step in Orbis. she'd swept it. eleven years of sweeping."]

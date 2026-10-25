@@ -1,0 +1,31 @@
+# Orbis contracts: a warden who wants a kill proof first, a hunter with a day rate.
+- id: vesna-wardens-terms
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [vesna.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [5120000], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }
+
+- id: ansel-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ansel.intro.done]
+  price:
+    meso: 90000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 30000 }

@@ -1,0 +1,29 @@
+# El Nath rumors.
+- id: el-nath-what-the-ship-took
+  participants: [edric, sigrun]
+  where: { town: el-nath, spot: "venue:chiefs-residence-door" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 1
+    requiresArc: { arc: edric-the-unwritten-letter, chapterAtLeast: chapter-3 }
+  lines:
+    - { by: sigrun, text: "you're standing differently, Edric. you've stood the same for six years." }
+    - { by: edric, text: "i was on the Ellinia ship the night the balrog boarded. i froze. a man i didn't know stood in front of me. he didn't get up." }
+    - { by: sigrun, text: "and you got off in Orbis and walked down here so you'd never freeze again." }
+    - { by: edric, text: "i stood on this road eleven years so i'd never have to walk up the other one." }
+    - { by: sigrun, text: "you didn't freeze. you were seventeen. the door knows the difference. so do i." }
+  setsFlagOnListeners: el-nath.heard-the-ship
+
+- id: el-nath-the-roll-call
+  participants: [maud, bjarke, kalle]
+  where: { town: el-nath, spot: "venue:by-jade" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: maud, text: "Halvar. Brekka. Old Tam. Sennet, the younger. Sennet, the elder." }
+    - { by: kalle, text: "did they want to be heroes? the miners?" }
+    - { by: maud, text: "they wanted to be paid on time and home for supper. that's what heroes want too, mostly." }
+    - { by: bjarke, text: "read mine at the end, Maud. go on." }
+    - { by: maud, text: "Bjarke. the loud one. still coming back. ...and Kalle. still getting ready." }
+    - { by: kalle, text: "i'm nearly ready." }

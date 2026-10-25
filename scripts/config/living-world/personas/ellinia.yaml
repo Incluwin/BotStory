@@ -253,6 +253,7 @@
     smallTalk: ["stirges nest under the platform. passengers scream. it's a whole thing."]
     questOffer.oda-wings-on-the-tracks: ["stirges under the platform. twelve wings and the passengers can stop screaming."]
     questComplete.oda-wings-on-the-tracks: ["twelve. quiet platform. i'd forgotten what that sounds like."]
+    about.corliss: ["Corliss keeps the Orbis end of my line. we've written for nine years and never met. his letters are long. mine are on time."]
     aboutUnknown: ["never bought a ticket from me."]
 
 - id: pell
