@@ -104,6 +104,83 @@ The user's answers (2026-10-24), each to a question put with a recommendation:
 5. **Players: creation stays closed** (not asked; my default). Bots only; opening player creation is a separate change
    (the advancement fix already lets the stock scripts advance a player who has such a character).
 
-## 5. Verification (filled in as it lands)
+## 5. What landed
 
-Offline: TBD. Live checks after deploy: TBD.
+- **Engine and creation** (a42729de9): the legal chains above; `BotCreator` makes a Noblesse (Forest of Beginning
+  130030000) or a Legend (Rien, Aran clothes, Basic Polearm); Residents start on their persona's line; `@spawnbot
+  <name> confirm noblesse|legend` makes a Knight or Aran test Agent (a Beginner can never become one).
+- **Builds** (5b87c9554): six career bundles, offered only to their own beginner (a companion that advances at its
+  instructor re-picks its line's bundle at once); AP profiles per line; 19 SP profiles in
+  `cygnus-aran-sp-build-profiles.json`. The service collapses a skill's segments into one target at its first position
+  (as the Explorer catalog's), so a repeated skill's later points are gated to the level where everything listed before
+  it is affordable: a bot spends in the listed order live (one level at a time) and when shaped at a level in one go.
+  `AgentQuestSkills` gives each quest-only skill's master level at its quest's level; Full/Over Swing carry the hidden
+  swings as a player's SP point does.
+- **Advancement**: companions (`JobErrands`, `AgentJobPath`) and citizens (`CitizenJobPath`, `CitizenJobErrands`) go
+  to Ereve's Chief Knights (Mihile, Oz, Irena, Eckhart, Hawkeye) and to the Giant Polearm / Maha in Rien. A Legend hire
+  is set on Aran (one path); a Noblesse hire's owner picks its knighthood in chat.
+- **Combat** (f7eee8ba6): the Aran combo counter (one ARAN_COMBO_COUNTER packet per monster a committed attack hit,
+  through `AranComboHandler`; Combo Smash/Fenrir/Tempest planned only with the 30/100/200 combo the client would show,
+  3 s decay); a combo bucket for the combat learner; the skill cache now uses the combo skills, Thunder Breaker's
+  energy attacks, Night Walker Disorder (its constant was a wrong id), the Knights' morphs (Transformation, Eagle Eye)
+  and Blaze Wizard Slow/Seal like their Explorer counterparts; each Knight/Aran job holds its line's one weapon and its
+  weapon-bound skills need it; Blaze Wizards count as mages; Final Charge dashes; probe and arena weapons per line.
+- **Population, Residents, hires** (POPULATION_COMMIT): `living_world.CYGNUS_ARAN_CAREERS_ENABLED` (ships on). Six
+  careers (Aran 13, each Knight 4 against the Explorers' 100: 25.6% of births); `regions.yaml` `line` makes Ereve the
+  Knights' and Rien the Aran's home (only that line lives there; one below Lv10 lives nowhere else; a Knight seeded
+  elsewhere is Lv10+); citizens are created on their line's beginner. Residents: Aldric (Dawn Warrior, recruitable)
+  and Linnea (Wind Archer) on Ereve, Torvin (Aran, recruitable) in Rien, 5 quests, 2 contracts; with the switch off
+  they stay away and no new Knight/Aran citizen is born.
+
+## 6. Verified offline
+
+- `CygnusAranBuildLineTest`: a Knight levelled from Lv1 (Noblesse) reaches its third job at Lv120 with every SP point
+  in its own line's skills; Brandish arrives at Lv100, Advanced Combo at Lv110; an Aran gets each quest skill at its
+  quest's level (no Combo Smash at Lv35) and reaches its fourth job with the hidden swings; a Night Walker banks no SP
+  while Triple Throw waits for its quest.
+- `CygnusAranSkillPlanTest` (the offline counterpart of a `!skillprobe` run, which needs a running server): every
+  line's attack skills plan through the real planner on WZ data with the line's weapon and a Snail in front, on the
+  client's packet family (Dawn Warrior, Thunder Breaker, Aran close 0xBA; Wind Archer, Night Walker, Shark Wave and the
+  Aran combo skills ranged 0xBB; Blaze Wizard magic 0xBC). The Aran combo skills plan only at 30/100/200 combo and not
+  on a count 3 s old; Thunder Breaker's energy attacks only on a full bar; an Aran's attacks need its polearm.
+- `CygnusAranCombatPolicyTest`: every Knight/Aran skill lands in the skill-cache bucket its Explorer counterpart does
+  (only a bucketed skill is ever used); weapon holding and weapon-bound skills; one combo count per monster hit, none
+  for a combo skill, a miss or a non-Aran; Final Charge's dash.
+- `CitizenGeneratorSeedTest`: 1,200 births give 15% Knights and 10% Arans (within 3 points), each created as a Noblesse
+  or a Legend (the Legend in the Aran's clothes), the young ones homed in Ereve/Rien, no Explorer homed there; Ereve and
+  Rien seeds are Knights/Arans; a Knight seeded into Victoria is Lv10+; with the switch off, births draw exactly the
+  pre-branch golden sequence. `CitizenJobErrandsTest`: a Night Walker's third job at Eckhart on Ereve, an Aran's
+  third/fourth at Maha in Rien, no Knight fourth job. `ResidentLineSwitchTest`: with the switch off Aldric, Linnea and
+  Torvin are not materialized, the Explorers' Residents are.
+- Engine, paths, instructors, kits, bundles and profiles: `JobProgressionPolicyTest`, `AgentJobPathTest`,
+  `JobErrandsTest`, `JobInstructorsTest`, `CitizenJobPathTest`, `AgentStarterKitCatalogTest`, the bundle/profile
+  repository tests. Content lint on the shipped content: no errors.
+- Full split suite: SUITE_TOTALS.
+
+## 7. Live checks after deploy
+
+1. `!citizens seed ereve 5` and `!citizens seed rien 5`: Noblesse/Knights on Ereve and Legends/Arans in Rien, in
+   their clothes, walking the towns; births over a day: about a quarter Knights/Arans.
+2. A Knight and an Aran test Agent: `@spawnbot ProbeDW confirm noblesse`, `@spawnbot ProbeAran confirm legend`, then
+   `!skillprobe ProbeDW job=dawnwarrior3 level=120` and `!skillprobe ProbeAran job=aran4 level=200` (and the other
+   four Knights, one fresh Noblesse each): every attack skill OK and visible to observers; the Aran's combo skills fire
+   after the combo precondition; Thunder Breaker's Spark is cast as a buff, its procs are not sent (open item).
+3. Job errands: a Lv29 Knight companion `!setlevel <name> 30` walks to its Chief Knight on Ereve and comes back; an
+   Aran companion at Lv30/70/120 to Maha in Rien.
+4. An Aran grinding: the combo counter climbs (Combo Ability's buff every 10), Combo Smash at 30 resets it; with
+   `policy=learn` the learner's table shows `|combo 30+` keys.
+5. Residents: Aldric and Linnea on Ereve, Torvin in Rien materialize while a player is there; their quests and the
+   two contracts; their dialogue portrait is the default one until Ereve/Rien entries are added (below).
+6. A citizen Knight at Lv70 starts its session on Ereve and advances at its Chief Knight.
+
+## 8. Open items and merge notes
+
+- A bot reaching its class's last level deploys a Hall of Fame Player NPC and sends a world notice
+  (`Character.levelUp`, `PLAYERNPC_AUTODEPLOY`), as Explorer bots at Lv200 already do; Knights reach it at Lv120
+  (casual Knight citizens plateau at Lv70-80). Unchanged here: whether bots should is the user's call.
+- Not done: Thunder Breaker Spark's proc attacks; quest-skill quests run off-screen (no dialogue); the client quest log
+  needs `tools\living-world-client.bat` for the 5 new quests (ids 30280-30284); Ereve/Rien Resident portraits.
+- Merging with `feat/regional-residents`: `ContentLint.KNOWN_TOWNS` (take theirs: towns from the TownLife index, Ereve
+  and Rien included); `loadouts.yaml` and `quest-log-ids.yaml` both append at the end (keep both blocks; this branch's
+  ids start at 30280, past theirs); after both merge, add Ereve/Rien entries to `ResidentDialogue.PORTRAITS` as
+  `Map.ofEntries` (their branch fills `Map.of`'s 10).

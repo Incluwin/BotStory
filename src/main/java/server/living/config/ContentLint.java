@@ -27,7 +27,7 @@ import java.util.Set;
 public final class ContentLint {
     /** TownLife profile ids shipped in resources/agents/town-life. */
     public static final Set<String> KNOWN_TOWNS = Set.of(
-            "lith-harbor", "henesys", "kerning-city", "perion", "ellinia", "nautilus", "sleepywood");
+            "lith-harbor", "henesys", "kerning-city", "perion", "ellinia", "nautilus", "sleepywood", "ereve", "rien");
 
     private ContentLint() {
     }

@@ -32,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Births citizens (plan 3.1): a cohort, career, voice and flags drawn by weight, a generated name
@@ -85,8 +86,10 @@ public final class CitizenGenerator {
         PopulationContent content = population.content();
         Region region = content.region(regionId);
         Cohort cohort = region == null ? null : pickCohort();
-        SeedPlan plan = cohort == null ? null : planSeed(region, content.careers().values(),
-                population.config().SEED_BACKDATE_DAYS, population.config().LIFE_PACE, random);
+        boolean lines = linesEnabled();
+        SeedPlan plan = cohort == null ? null : planSeed(region, CitizenLines.drawable(content.careers().values(), lines),
+                career -> CitizenLines.band(region, career, lines), population.config().SEED_BACKDATE_DAYS,
+                population.config().LIFE_PACE, random);
         if (plan == null) {
             log.warn("seed for {} skipped: {}", regionId, region == null ? "no such region" : cohort == null ? "no cohorts"
                     : "no career lands in lv" + region.levelMin() + "-" + region.levelMax() + " within "
@@ -102,7 +105,7 @@ public final class CitizenGenerator {
         if (name == null) {
             return null;
         }
-        int characterId = createCharacter(name);
+        int characterId = createCharacter(name, CitizenLines.beginner(career));
         if (characterId <= 0) {
             return null;
         }
@@ -118,7 +121,7 @@ public final class CitizenGenerator {
                 pickVoice(style), pace, random.nextInt(120) - 60, pickChannel(), flags(cohort), State.ACTIVE, joined,
                 joined + lifeDays * 86_400_000L, 0L, now, 0L, 0, "");
         int level = LifeCurve.levelTarget(citizen.ageDays(now), pace, career.levelCap(), population.config().LIFE_PACE);
-        citizen = citizen.withRegion(plan == null ? regionFor(level, citizen.characterId()) : plan.region());
+        citizen = citizen.withRegion(plan == null ? regionFor(level, citizen.characterId(), career) : plan.region());
         population.save(citizen);
         shape(citizen, career, level);
         births++;
@@ -136,16 +139,30 @@ public final class CitizenGenerator {
         return shortest + random.nextInt(longest - shortest + 1);
     }
 
+    /** LivingWorldConfig.CYGNUS_ARAN_CAREERS_ENABLED: Cygnus Knight and Aran citizens are born (CitizenLines). */
+    private boolean linesEnabled() {
+        return CitizenLines.enabled(population);
+    }
+
     public int births() {
         return births;
     }
 
-    /** Region whose level band fits, weighted; ties broken by the character id so it is stable. */
-    String regionFor(int level, int seed) {
+    /**
+     * Region whose level band fits, weighted; ties broken by the character id so it is stable. A Knight or an Aran below
+     * its first job lives in its line's home, and elsewhere only from its first job on (CitizenLines).
+     */
+    String regionFor(int level, int seed, Career career) {
+        boolean lines = linesEnabled();
+        Region start = CitizenLines.startingHome(population.content().regions().values(), career, level, lines);
+        if (start != null) {
+            return start.id();
+        }
         List<Region> fitting = new ArrayList<>();
         int total = 0;
         for (Region region : population.content().regions().values()) {
-            if (region.fits(level)) {
+            Region band = CitizenLines.band(region, career, lines);
+            if (band != null && band.fits(level)) {
                 fitting.add(region);
                 total += Math.max(1, region.weight());
             }
@@ -173,33 +190,48 @@ public final class CitizenGenerator {
      * lands in the band within {@code maxBackdate} days.
      */
     static SeedPlan planSeed(Region region, Collection<Career> careers, int maxBackdate, double lifePace, Random random) {
+        return planSeed(region, careers, career -> region, maxBackdate, lifePace, random);
+    }
+
+    /**
+     * As above, each career living in its own part of the region's band ({@code bandOf}, CitizenLines.band: a Knight
+     * outside Ereve from Lv10; null when the career does not live there at all).
+     */
+    static SeedPlan planSeed(Region region, Collection<Career> careers, Function<Career, Region> bandOf, int maxBackdate,
+                             double lifePace, Random random) {
         List<Career> able = new ArrayList<>();
+        List<Career> all = new ArrayList<>();
         for (Career career : careers) {
-            if (lands(career, region, maxBackdate, lifePace)) {
+            Region band = bandOf.apply(career);
+            if (band == null) {
+                continue;
+            }
+            all.add(career);
+            if (lands(career, band, maxBackdate, lifePace)) {
                 able.add(career);
             }
         }
         if (able.isEmpty()) {
             return null;
         }
-        List<Career> all = new ArrayList<>(careers);
         for (int i = 0; i < SEED_TRIES; i++) {
             Career career = byPopularity(all, random);
             double pace = PACE_MIN + random.nextDouble() * PACE_SPAN;
             double skew = random.nextDouble(); // squared like Churn's fast seeding
             int backdate = (int) Math.round(skew * skew * maxBackdate);
             int level = LifeCurve.levelTarget(backdate, pace, career.levelCap(), lifePace);
-            if (region.fits(level)) {
+            if (bandOf.apply(career).fits(level)) {
                 return new SeedPlan(region.id(), career, pace, backdate, level);
             }
         }
         Career career = byPopularity(able, random);
-        double floor = slowestPace(career, region.levelMin(), maxBackdate, lifePace);
+        Region band = bandOf.apply(career);
+        double floor = slowestPace(career, band.levelMin(), maxBackdate, lifePace);
         double pace = floor + random.nextDouble() * (PACE_MIN + PACE_SPAN - floor);
-        int[] window = window(career, region, pace, maxBackdate, lifePace);
+        int[] window = window(career, band, pace, maxBackdate, lifePace);
         if (window == null) { // a band narrower than a day's levels at this pace; lands() found it at the slowest
             pace = floor;
-            window = window(career, region, pace, maxBackdate, lifePace);
+            window = window(career, band, pace, maxBackdate, lifePace);
         }
         int backdate = window[0] + random.nextInt(window[1] - window[0] + 1);
         return new SeedPlan(region.id(), career, pace, backdate, LifeCurve.levelTarget(backdate, pace, career.levelCap(), lifePace));
@@ -207,8 +239,15 @@ public final class CitizenGenerator {
 
     /** True when some career lands in the region's band within {@code maxBackdate} days, so its seeds can be planned. */
     static boolean reachable(Region region, Collection<Career> careers, int maxBackdate, double lifePace) {
+        return reachable(region, careers, career -> region, maxBackdate, lifePace);
+    }
+
+    /** As above, each career in its own part of the band ({@code bandOf}, as {@link #planSeed}). */
+    static boolean reachable(Region region, Collection<Career> careers, Function<Career, Region> bandOf, int maxBackdate,
+                             double lifePace) {
         for (Career career : careers) {
-            if (lands(career, region, maxBackdate, lifePace)) {
+            Region band = bandOf.apply(career);
+            if (band != null && lands(career, band, maxBackdate, lifePace)) {
                 return true;
             }
         }
@@ -338,15 +377,16 @@ public final class CitizenGenerator {
     }
 
     private Career pickCareer() {
+        List<Career> careers = CitizenLines.drawable(population.content().careers().values(), linesEnabled());
         int total = 0;
-        for (Career career : population.content().careers().values()) {
+        for (Career career : careers) {
             total += Math.max(0, career.popularity());
         }
         if (total <= 0) {
-            return population.content().careers().values().stream().findFirst().orElse(null);
+            return careers.stream().findFirst().orElse(null);
         }
         int roll = random.nextInt(total);
-        for (Career career : population.content().careers().values()) {
+        for (Career career : careers) {
             roll -= Math.max(0, career.popularity());
             if (roll < 0) {
                 return career;
@@ -428,7 +468,8 @@ public final class CitizenGenerator {
         return null;
     }
 
-    private int createCharacter(String name) {
+    /** A character starting {@code beginner}'s line: a Legend in the Aran's starting clothes and Basic Polearm. */
+    private int createCharacter(String name, Job beginner) {
         try {
             AgentAccountResolution account = AgentPersistenceGatewayRuntime.persistence().resolveOrCreateAgentAccount(name);
             if (!account.isSuccess()) {
@@ -446,9 +487,15 @@ public final class CitizenGenerator {
             boolean female = random.nextBoolean();
             int face = (female ? FEMALE_FACES : MALE_FACES)[random.nextInt(6)] + 100 * random.nextInt(8);
             int hair = (female ? FEMALE_HAIR : MALE_HAIR)[random.nextInt(6)] + random.nextInt(8);
-            int characterId = BotCreator.createCharacter(creation, name, face, hair, random.nextInt(4), female ? 1 : 0,
-                    (female ? FEMALE_TOPS : MALE_TOPS)[random.nextInt(3)], (female ? FEMALE_BOTTOMS : MALE_BOTTOMS)[random.nextInt(2)],
-                    SHOES[random.nextInt(SHOES.length)], WEAPONS[random.nextInt(WEAPONS.length)]);
+            int skin = random.nextInt(4); // drawn in the order the arguments always were
+            int top = (female ? FEMALE_TOPS : MALE_TOPS)[random.nextInt(3)];
+            int bottom = (female ? FEMALE_BOTTOMS : MALE_BOTTOMS)[random.nextInt(2)];
+            int shoes = SHOES[random.nextInt(SHOES.length)];
+            int weapon = WEAPONS[random.nextInt(WEAPONS.length)];
+            boolean legend = beginner == Job.LEGEND;
+            int characterId = BotCreator.createCharacter(creation, name, face, hair, skin, female ? 1 : 0,
+                    legend ? BotCreator.ARAN_TOP : top, legend ? BotCreator.ARAN_BOTTOM : bottom,
+                    legend ? BotCreator.ARAN_SHOES : shoes, legend ? BotCreator.BASIC_POLEARM : weapon, beginner);
             if (characterId == -1) {
                 log.warn("citizen {}: character creation failed", name);
                 return 0;

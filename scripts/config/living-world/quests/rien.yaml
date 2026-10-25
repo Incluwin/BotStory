@@ -1,0 +1,23 @@
+# Rien quest lines. Mobs: Murupa 100131 (drops Murupa's Furball 4000494), Murukun 100134. Maps: Snow-covered
+# Field 1 140020000, Dangerous Forest 140010200.
+- id: torvin-furballs-for-puno
+  persona: torvin
+  title: "Blankets for Puno"
+  length: SHORT
+  requires: { level: { min: 3 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000494, count: 20 }
+    - { id: return, type: DELIVER, to: torvin, take: { itemId: 4000494, count: 20 } }
+  rewards: { meso: 2000, exp: 500, bondPoints: 25, items: [{ itemId: 2000001, count: 15 }], flags: [torvin.furballs.done] }
+
+- id: torvin-murukun-cull
+  persona: torvin
+  title: "Down from the Dangerous Forest"
+  length: SHORT
+  requires: { level: { min: 8 }, questsCompleted: [torvin-furballs-for-puno] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cull, type: KILL_MOBS, mobIds: [100134], count: 25, mapIds: [140010200] }
+    - { id: report, type: DELIVER, to: torvin, say: ["twenty-five. Lilin will sleep tonight."] }
+  rewards: { meso: 4500, exp: 1300, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }], flags: [torvin.cull.done] }

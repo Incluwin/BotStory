@@ -1,0 +1,35 @@
+# Ereve quest lines. Mobs: Tiv 100121 (drops Tiv's Feather 4000483), Tiru 100123, Tiguru 100124. Maps: Training
+# Forest I 130010000, Tiv's Forest 130010020, Training Forest II 130010100, Tiru's Forest 130010120, Training
+# Forest III 130010200, Tiguru's Forest 130010210.
+- id: aldric-tiru-patrol
+  persona: aldric
+  title: "The Tiru Patrol"
+  length: SHORT
+  requires: { level: { min: 7 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: patrol, type: KILL_MOBS, mobIds: [100123], count: 25, mapIds: [130010100, 130010120] }
+    - { id: report, type: DELIVER, to: aldric, say: ["twenty-five. the forest is quieter already."] }
+  rewards: { meso: 3000, exp: 900, bondPoints: 25, flags: [aldric.patrol.done] }
+
+- id: aldric-tiguru-drill
+  persona: aldric
+  title: "Mihile's Drill"
+  length: SHORT
+  requires: { level: { min: 9 }, questsCompleted: [aldric-tiru-patrol] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drill, type: KILL_MOBS, mobIds: [100124], count: 20, mapIds: [130010200, 130010210] }
+    - { id: report, type: DELIVER, to: aldric, say: ["drill done. Mihile would nod. that's high praise."] }
+  rewards: { meso: 5000, exp: 1500, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }], flags: [aldric.drill.done] }
+
+- id: linnea-tiv-feathers
+  persona: linnea
+  title: "Feathers for the Fletching"
+  length: SHORT
+  requires: { level: { min: 5 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000483, count: 20 }
+    - { id: return, type: DELIVER, to: linnea, take: { itemId: 4000483, count: 20 } }
+  rewards: { meso: 2000, exp: 600, bondPoints: 20, items: [{ itemId: 2000001, count: 15 }], flags: [linnea.feathers.done] }

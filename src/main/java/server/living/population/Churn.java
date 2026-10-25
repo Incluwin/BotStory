@@ -119,8 +119,10 @@ public final class Churn {
 
     /** True when some career lands in the region's band within SEED_BACKDATE_DAYS, so its seeds can be born. */
     public boolean reachable(Region region) {
-        return CitizenGenerator.reachable(region, population.content().careers().values(),
-                population.config().SEED_BACKDATE_DAYS, population.config().LIFE_PACE);
+        boolean lines = CitizenLines.enabled(population);
+        return CitizenGenerator.reachable(region, CitizenLines.drawable(population.content().careers().values(), lines),
+                career -> CitizenLines.band(region, career, lines), population.config().SEED_BACKDATE_DAYS,
+                population.config().LIFE_PACE);
     }
 
     /** "leafre lv70-120 (seeds reach lv86)": the band, and how much of it the loaded careers can fill. */
@@ -129,7 +131,8 @@ public final class Churn {
         if (!reachable(region)) {
             return band + " (out of reach)";
         }
-        int ceiling = CitizenGenerator.seedCeiling(population.content().careers().values(), population.config().SEED_BACKDATE_DAYS,
+        int ceiling = CitizenGenerator.seedCeiling(CitizenLines.drawable(population.content().careers().values(),
+                        CitizenLines.enabled(population)), population.config().SEED_BACKDATE_DAYS,
                 population.config().LIFE_PACE);
         return ceiling < region.levelMax() ? band + " (seeds reach lv" + ceiling + ")" : band;
     }

@@ -1,6 +1,8 @@
 package server.living.resident;
 
 import client.Character;
+import client.Job;
+import client.JobProgressionPolicy;
 import net.server.Server;
 import net.server.channel.Channel;
 import org.slf4j.Logger;
@@ -330,7 +332,7 @@ public final class ResidentRuntime {
         boolean awake = humans > 0 || now - lastSeen < world.config().RESIDENT_SLEEP_AFTER_MS
                 || forcedAwake.containsKey(persona.homeTown()) || alwaysAwake(persona.homeTown());
         RoutineSlot slot = currentSlot(persona, hour);
-        boolean want = awake && (slot == null || slot.materialize());
+        boolean want = awake && (slot == null || slot.materialize()) && present(persona);
         if (log.isDebugEnabled()) {
             log.debug("reconcile {} hour={} humans={} awake={} slot={} want={} session={}", persona.id(), hour, humans, awake,
                     slot, want, session == null ? "none" : session.materialized() ? "materialized" : "standby");
@@ -347,6 +349,15 @@ public final class ResidentRuntime {
         } else if (session != null && session.materialized()) {
             standby(session, humans == 0 ? "town asleep" : "routine says away");
         }
+    }
+
+    /**
+     * CYGNUS_ARAN_CAREERS_ENABLED off: a Cygnus Knight or Aran Resident (its job's line starts at Noblesse or Legend) stays
+     * away; one already recruited keeps playing with its owner.
+     */
+    boolean present(Persona persona) {
+        return world.config().CYGNUS_ARAN_CAREERS_ENABLED
+                || JobProgressionPolicy.beginnerOf(ResidentShaper.job(persona.job())) == Job.BEGINNER;
     }
 
     /** Package-private for the load-guard test. */

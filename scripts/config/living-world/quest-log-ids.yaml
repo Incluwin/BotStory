@@ -95,7 +95,7 @@ ids:
   yona-a-blade-for-a-deserter: 30063
   tamsin-hold-the-gate: 30064
   tamsin-the-copper-drakes: 30065
-  halvard-quarry-teeth: 30066
+  eskil-quarry-teeth: 30066
   ossa-clear-the-site: 30067
   kip-teeth-for-a-necklace: 30068
   moss-stone-that-walks: 30069
@@ -198,3 +198,9 @@ ids:
   brom-hide-that-took-the-fire: 30194
   brom-the-skull-shield: 30195
   brom-green-branches: 30196
+  # Ereve and Rien (Cygnus/Aran branch): from 30280, past the regional Residents branch's 30197-30279
+  aldric-tiru-patrol: 30280
+  aldric-tiguru-drill: 30281
+  linnea-tiv-feathers: 30282
+  torvin-furballs-for-puno: 30283
+  torvin-murukun-cull: 30284

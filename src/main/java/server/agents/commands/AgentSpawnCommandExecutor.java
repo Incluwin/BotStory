@@ -2,6 +2,7 @@ package server.agents.commands;
 
 import client.Character;
 import client.Client;
+import client.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.registry.AgentResolvedCharacter;
@@ -36,7 +37,7 @@ public final class AgentSpawnCommandExecutor {
             return;
         }
         if (params.length < 1) {
-            player.yellowMessage("Syntax: @spawnbot <name> [confirm] [noparty] [showcase]");
+            player.yellowMessage("Syntax: @spawnbot <name> [confirm] [noparty] [showcase] [noblesse|legend]");
             return;
         }
 
@@ -45,11 +46,16 @@ public final class AgentSpawnCommandExecutor {
         boolean createRequested = params.length >= 2 && params[1].equals("confirm");
         boolean joinParty = true;
         boolean showcase = false;
+        Job beginner = Job.BEGINNER; // a new bot's line: noblesse (Cygnus Knights, Ereve) or legend (Aran, Rien)
         for (int i = 1; i < params.length; i++) {
             if ("noparty".equalsIgnoreCase(params[i])) {
                 joinParty = false;  // filming and solo demos: no party, so no party HP window on screen
             } else if ("showcase".equalsIgnoreCase(params[i])) {
                 showcase = true;
+            } else if ("noblesse".equalsIgnoreCase(params[i])) {
+                beginner = Job.NOBLESSE;
+            } else if ("legend".equalsIgnoreCase(params[i])) {
+                beginner = Job.LEGEND;
             }
         }
         if (showcase && joinParty && AgentPartyGatewayRuntime.party().snapshot(player) != null) {
@@ -85,7 +91,9 @@ public final class AgentSpawnCommandExecutor {
             creationClient.setAccID(account.accountId());
             creationClient.setAccountName(botName);
 
-            int createdCharId = AgentClientGatewayRuntime.clients().createBackingCharacter(creationClient, botName);
+            int createdCharId = beginner == Job.BEGINNER
+                    ? AgentClientGatewayRuntime.clients().createBackingCharacter(creationClient, botName)
+                    : AgentClientGatewayRuntime.clients().createBackingCharacter(creationClient, botName, 0, beginner);
             if (createdCharId == -1) {
                 player.yellowMessage("Failed to create bot character '" + botName + "'. Name may be invalid or already taken.");
                 return;

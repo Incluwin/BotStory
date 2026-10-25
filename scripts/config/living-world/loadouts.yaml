@@ -344,3 +344,13 @@ loadouts:
       gloves: [0, 0, 0, 0, 0, 0, 0, 1082079, 1081001, 1082039, 1082031]
       cape: [0, 0, 0, 0, 0, 0, 0, 0, 1102082, 1102038]
       weapon: [1472008]
+  # ---- Cygnus Knight and Aran citizens (careers.yaml; the Knights wear the Explorer kits of their weapon) ----
+  - id: rien-legend
+    # no outfit: a Legend keeps the Aran's starting clothes and Basic Polearm until its first job
+    equips: []
+    consumables: [{ itemId: 2000000, count: 20 }]
+    stats: { str: 4, dex: 1 }
+  - id: rien-polearm-l10
+    equips: [1442000]
+    consumables: [{ itemId: 2000001, count: 30 }]
+    stats: { str: 4, dex: 1 }

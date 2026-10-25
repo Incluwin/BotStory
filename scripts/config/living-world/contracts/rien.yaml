@@ -1,0 +1,15 @@
+# Rien contracts: travel money off the island.
+- id: torvin-snow-oath
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [torvin.furballs.done]
+  price:
+    meso: 12000
+  terms:
+    durationHours: 4
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 2
+    rejoinPrice: { meso: 6000 }

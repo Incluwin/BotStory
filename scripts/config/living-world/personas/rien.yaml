@@ -1,0 +1,54 @@
+# Rien cast (2026-10-24, docs/CYGNUS_ARAN_BOTS_PLAN.md): Snow Island's penguin village and a polearm wielder it took
+# in. Here while living_world.CYGNUS_ARAN_CAREERS_ENABLED is on. 1 resident, recruitable (Torvin).
+- id: torvin
+  name: Torvin
+  look: { gender: male }
+  title: "Polearm Wanderer"
+  job: ARAN2
+  level: { min: 35, max: 38 }
+  strength: SEASONED
+  loadout: lith-polearm-l30
+  personality: relaxed-v1
+  home:
+    town: rien
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-giant-polearm", activity: LINGER }
+      - { from: 11, to: 17, spot: "venue:upper-central-street", activity: STROLL }
+      - { from: 17, to: 22, spot: "venue:by-puno", activity: SOCIALIZE }
+      - { from: 22, to: 24, spot: "venue:library-1st-floor-door", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: true
+  contract: torvin-snow-oath
+  questLines: [torvin-furballs-for-puno, torvin-murukun-cull]
+  dialogue:
+    greetFirst: ["another one out of the ice? Lilin will be thrilled. she keeps a list.", "hey. you look cold. everyone here looks cold."]
+    greet: ["hey.", "snow's the same as yesterday.", "good to see a face that isn't a penguin. no offense to the penguins."]
+    idle: ["(leans on his polearm)", "(swings, counts to ten, swings again)", "Maha says the combo is a rhythm. i say it's a headache."]
+    noWork: ["nothing today. the Murupas are behaving."]
+    nothingDue: ["we're even."]
+    who: ["Torvin. i woke up in the ice with a polearm and no memory of where i put my coat. Rien took me in."]
+    bye: ["stay warm."]
+    thanks: ["thanks. really."]
+    smallTalk: ["the penguins run this town. don't let anyone tell you otherwise.", "Puno makes a soup that could wake the dead. it woke me."]
+    speakPlainly: ["sorry, the wind ate that. again?"]
+    offer: ["i've been on this island long enough. take me with you? i ask for travel money, that's all.", "you're heading out? a polearm's good company."]
+    join: ["finally, somewhere warmer. probably.", "let's go. i'll keep the combo going."]
+    bench: ["i'll train on the fields till you need me.", "i'll be by the Giant Polearm. it talks less than Maha."]
+    leave: ["back to the snow. that was good.", "Lilin will want me back. see you."]
+    refuse.bond: ["i don't know you yet. help Puno out first."]
+    refuse.flags: ["Puno's furballs first. then i'm all yours."]
+    refuseOwnErrand: ["that's my own errand for Puno. i'm not charging you for my soup."]
+    restock.go: ["potions. back in a blink.", "out of potions, give me a moment."]
+    restock.back: ["got them. let's go.", "stocked up. lead on."]
+    restock.broke: ["i'm out of {need} and the penguins don't do credit. spare some, or mesos?", "{need} cost money i don't have. could you help?"]
+    restock.noShop: ["no shop out here. i should've known.", "low on potions and nowhere to buy. great."]
+    restock.stillShort: ["that helps, still short on {need} though.", "almost there. a bit more for {need}?"]
+    questOffer.torvin-furballs-for-puno: ["Puno wants furballs for the winter blankets. twenty off the Murupas in Snow-covered Field 1. i'd go but he'd make me carry the soup too."]
+    questAccept.torvin-furballs-for-puno: ["Snow-covered Field 1, just outside town. the round blue ones."]
+    questWaiting.torvin-furballs-for-puno: ["twenty Murupa furballs. Puno counts them, trust me."]
+    questComplete.torvin-furballs-for-puno: ["Puno's happy. which means i'm getting soup. which means you're getting this."]
+    questOffer.torvin-murukun-cull: ["the Murukuns in the Dangerous Forest have been coming down to the village. twenty-five of them, and Lilin stops worrying. come back when it's done."]
+    questAccept.torvin-murukun-cull: ["the Dangerous Forest. they hit hard for fluff."]
+    questWaiting.torvin-murukun-cull: ["twenty-five Murukuns. the forest past the fields."]
+    questComplete.torvin-murukun-cull: ["Lilin says thank you. she said it three times, actually. here, this is from both of us."]
+    aboutUnknown: ["never met them. i've mostly met penguins."]
