@@ -104,8 +104,9 @@ The citizen picks the next leg of its walk from where it stands, in this order:
    boarding player is, and lands at portal 0 of the leg's far dock. It pays no ticket or fare and uses no ride map.
    From the dock the rule applies again: it walks on if someone is there, else it goes the cheap way;
 5. **no route** (a map off the graphs such as Amoria, or out of the Free Market to anywhere but its entrance): it walks
-   out through the nearest visible portal (an open map portal or visible scripted portal; `ArrivalPlacement` ranks the
-   same ones). It is gone there, as if it had gone through, and lands on the destination as in 2.1.
+   out through the nearest visible portal: an open map portal, as `ArrivalPlacement` ranks them for companions, or
+   also a visible scripted one (type 7, such as the Free Market entrance's exit `out00`, which `ArrivalPlacement`
+   leaves out). It is gone there, as if it had gone through, and lands on the destination as in 2.1.
 
 If its walk finds no route on the way (an edge blocked mid-walk), or stands on one map for
 `PORTAL_TRAVEL_HOP_TIMEOUT_MS`, it walks out (step 5) once. If that fails too, or the whole walk passes
@@ -275,9 +276,14 @@ restored):
 
 Full split suite (`tools/suite/run-split-suite.ps1`) on `f48242897`: capabilities 6,227 / 0 / 1, agents 2,379 /
 0 / 21, rest 6,136 / 0 / 15, so **14,742 / 0 failures / 37 skipped, PASS**. That is the 70a29efa4 baseline of 14,706
-plus the 36 new tests, with no other change in the count. The follow-up review commit (the nearest market map by the
-walking BFS `routeHops`, and the hand-over log wording) was rerun the same way; its totals are in the session's
-report.
+plus the 36 new tests, with no other change in the count.
+
+The follow-up review commit `81588f425` has not had a full-suite run. It changes only `CitizenTravel`: the nearest
+market map comes from the walking BFS `routeHops` instead of `plannedRoute`, and the hand-over log line is reworded.
+It was verified with the whole population package plus `AgentMapWalkTest`, `AgentVictoriaRoutePlannedRouteTest` and
+`PopulationConfigPortalTravelTest`: 214 / 0 / 0. Its full-suite rerun was queued twice on 2026-10-25 and cancelled.
+The host had five other sessions' suites queued and free commit at 4.2-4.6 GB, under the runner's 4.5 GB start
+threshold. The merge's integration suite covers it.
 
 Not verified offline, and left for the live checks (section 5):
 
