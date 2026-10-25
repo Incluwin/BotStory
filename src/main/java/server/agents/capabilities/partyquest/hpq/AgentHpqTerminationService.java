@@ -96,7 +96,7 @@ final class AgentHpqTerminationService {
         if (disposeEvent && event != null) {
             tryCleanup(session, "dispose-event", () -> closeEvent(event));
         }
-        if (!keepPartyAfterRelease(session.mode(), completed, session.companionAdopted())) {
+        if (!keepPartyAfterRelease(session.mode(), completed, AgentHpqCoordinator.playersRun(session))) {
             tryCleanup(session, "cleanup-party", () -> session.members().stream()
                         .filter(member -> session.partyOwnership() == AgentHpqSession.PartyOwnership.HPQ_OWNED
                                 || member.memberType() == AgentHpqMemberState.MemberType.AGENT)

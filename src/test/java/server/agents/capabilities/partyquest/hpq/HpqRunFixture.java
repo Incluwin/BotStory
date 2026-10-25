@@ -296,6 +296,17 @@ final class HpqRunFixture implements AutoCloseable {
         return session;
     }
 
+    /**
+     * A registered citizen run in {@code phase}, as AgentHpqAdmissionService.admitCitizens leaves one: the first member,
+     * a citizen, leads; not a companion run; the leader picks the bonus as an Agent leader does.
+     */
+    AgentHpqSession citizenSession(AgentHpqSession.Phase phase, Character... members) {
+        AgentHpqSession session = session(false, phase, members);
+        session.setCitizenRun(true);
+        session.setBonusMode(AgentHpqBonusPolicy.defaultMode());
+        return session;
+    }
+
     private <T> MockedStatic<T> open(Class<T> type) {
         MockedStatic<T> mocked = mockStatic(type);
         statics.add(mocked);

@@ -73,7 +73,7 @@ class CitizenKpqRunReplayTest {
         pip = lobby.citizen(3, "Pip", 27);
         NPC lakelis = mock(NPC.class, withSettings().stubOnly());
         when(lakelis.getPosition()).thenReturn(new Point(-540, 421));
-        when(lobby.kerning.getNPCById(AgentKpqDefinition.ENTRY_NPC)).thenReturn(lakelis);
+        when(lobby.lobbyMap.getNPCById(AgentKpqDefinition.ENTRY_NPC)).thenReturn(lakelis);
         AgentClientGateway clients = mock(AgentClientGateway.class, withSettings().stubOnly());
         lobby.open(AgentClientGatewayRuntime.class).when(AgentClientGatewayRuntime::clients).thenReturn(clients);
         PartyQuestGateway instances = mock(PartyQuestGateway.class, withSettings().stubOnly()); // no lobby taken yet

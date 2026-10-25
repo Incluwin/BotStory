@@ -50,8 +50,8 @@ final class AgentHpqWatchdogRuntime {
                 })
                 .findFirst().orElse(null);
         if (candidateEntry == null) {
-            // A companion run waits for its downed companions' respawn (their host taps them out); a stock run ends.
-            if (session.companionAdopted() && AgentHpqCoordinator.awaitingRespawn(session, nowMs)) return;
+            // A companion or citizen run waits for its downed Agents' respawn (their host taps them out); a stock run ends.
+            if (AgentHpqCoordinator.playersRun(session) && AgentHpqCoordinator.awaitingRespawn(session, nowMs)) return;
             AgentHpqCoordinator.failWithoutLiveAgent(session, nowMs);
             return;
         }

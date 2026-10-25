@@ -155,7 +155,7 @@ intents:
     lines:
       - "anyone wanna {pq}? at the npc"
       - "need ppl for {pq} {levels}"
-      - "{pq} anyone? kerning"
+      - "{pq} anyone? {map}"
       - "come {pq} with us"
   - id: pq.call.answer.guild
     trigger: pq.call.answer

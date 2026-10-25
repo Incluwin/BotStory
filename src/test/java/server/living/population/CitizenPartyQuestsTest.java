@@ -7,6 +7,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.monitoring.AgentSchedulerMetrics;
 import server.agents.runtime.scheduler.AgentLoadSheddingLevel;
 import server.agents.runtime.scheduler.AgentLoadSheddingState;
+import server.living.population.CitizenSession.Activity;
 
 import java.util.List;
 import java.util.Set;
@@ -216,7 +217,7 @@ class CitizenPartyQuestsTest {
         assertTrue(door.admitted.isEmpty());
         assertTrue(lobby.parties.memberIds(lia).isEmpty());
         assertTrue(lobby.said.isEmpty());
-        assertNull(quests.waitingSpot(lobby.session(lia), lobby.kerning), "they stroll the town as before");
+        assertNull(quests.waitingSpot(lobby.session(lia), lobby.lobbyMap), "they stroll the town as before");
     }
 
     @Test
@@ -404,9 +405,105 @@ class CitizenPartyQuestsTest {
     void citizensWaitBesideLakelis() {
         Character lia = lobby.citizen(1, "Lia", 25);
 
-        assertEquals(new java.awt.Point(-470, 421), quests.waitingSpot(lobby.session(lia), lobby.kerning));
+        assertEquals(new java.awt.Point(-470, 421), quests.waitingSpot(lobby.session(lia), lobby.lobbyMap));
         assertTrue(quests.manages(lobby.session(lia)));
-        when(lobby.kerning.getId()).thenReturn(100_000_000);
-        assertNull(quests.waitingSpot(lobby.session(lia), lobby.kerning));
+        when(lobby.lobbyMap.getId()).thenReturn(100_000_000);
+        assertNull(quests.waitingSpot(lobby.session(lia), lobby.lobbyMap));
+    }
+
+    // ---- recruiting (round 2): live, a party that only ever called one mate gave up "nobody came" ----
+
+    private List<String> travels() {
+        return lobby.asked.stream().filter(line -> line.startsWith("travel ")).toList();
+    }
+
+    @Test
+    void aShortPartyCallsAsManyMatesAsItNeedsOneAMinute() {
+        Character lia = lobby.citizen(1, "Lia", 25);
+        lobby.citizen(2, "Mira", 22);
+        Character kai = lobby.elsewhere(3, "Kai", 27, Activity.TRAIN, 103_000_100);
+        Character ivy = lobby.elsewhere(4, "Ivy", 24, Activity.TOWN, 100_000_000);
+        Character rex = lobby.elsewhere(5, "Rex", 29, Activity.TRAIN, 103_000_100);
+        lobby.circle(77, lia, kai, ivy, rex);
+
+        quests.tick(0L);
+        quests.tick(CitizenPartyQuests.CALL_AFTER_MS);
+        quests.tick(CitizenPartyQuests.CALL_AFTER_MS + 10_000L);
+        assertEquals(1, travels().size(), "one a minute");
+        quests.tick(2 * MINUTE);
+        quests.tick(3 * MINUTE);
+
+        assertEquals(2, travels().size(), "two on their way are all its two open seats need: " + lobby.asked);
+        assertEquals(2, lobby.count("pq.call.answer"));
+        assertTrue(travels().stream().allMatch(line -> line.endsWith(" PQ 103000000")));
+    }
+
+    @Test
+    void oneThatArrivesJoinsAndTheNextCallFillsTheLastSeat() {
+        Character lia = lobby.citizen(1, "Lia", 25);
+        lobby.citizen(2, "Mira", 22);
+        Character kai = lobby.elsewhere(3, "Kai", 27, Activity.TRAIN, 103_000_100);
+        lobby.circle(77, lia, kai);
+
+        quests.tick(0L);
+        quests.tick(MINUTE);
+        assertEquals(List.of("travel Kai PQ 103000000"), travels());
+        lobby.arrives(kai);
+        quests.tick(MINUTE + 30_000L);
+        assertTrue(lobby.parties.memberIds(lia).contains(kai.getId()), "Kai joins on arrival");
+
+        lobby.elsewhere(4, "Ivy", 24, Activity.TOWN, 100_000_000);
+        quests.tick(2 * MINUTE + 30_000L);
+
+        assertEquals(List.of("travel Kai PQ 103000000", "travel Ivy PQ 103000000"), travels());
+    }
+
+    @Test
+    void withNoMateFreeItCallsATownsfolkWhosePqThisIsAndNobodyElse() {
+        lobby.citizen(1, "Lia", 25);
+        lobby.citizen(2, "Mira", 22);
+        Character ivy = lobby.elsewhere(4, "Ivy", 24, Activity.TOWN, 100_000_000);
+        lobby.elsewhere(5, "Bo", 40, Activity.TOWN, 100_000_000); // KPQ is not his band
+        lobby.elsewhere(6, "Cy", 24, Activity.TRAIN, 103_000_100); // a stranger training is left to it
+
+        for (long at = 0L; at <= 4 * MINUTE; at += MINUTE) {
+            quests.tick(at);
+        }
+
+        assertEquals(List.of("travel Ivy PQ 103000000"), travels());
+        assertEquals(0, lobby.count("pq.call"), "a stranger just walks over, as a player looking for a party does");
+        assertTrue(lobby.session(ivy).journal.summary(200).contains("went to KPQ to find a party"));
+    }
+
+    @Test
+    void callsStopAtPqCallsPerParty() {
+        lobby.config.PQ_CALLS_PER_PARTY = 1;
+        lobby.citizen(1, "Lia", 25);
+        lobby.citizen(2, "Mira", 22);
+        lobby.elsewhere(4, "Ivy", 24, Activity.TOWN, 100_000_000);
+        lobby.elsewhere(5, "Jo", 23, Activity.TOWN, 100_000_000);
+
+        for (long at = 0L; at <= 8 * MINUTE; at += MINUTE) {
+            quests.tick(at); // the one called never comes; after COMING_MS it is not counted on, but the cap holds
+        }
+
+        assertEquals(1, travels().size(), lobby.asked::toString);
+    }
+
+    @Test
+    void aPartyFillsToItsDoorsPreferredSeatsNotItsMost() {
+        door.min = 3;
+        door.max = 6;
+        door.preferred = 4;
+        Character lia = lobby.citizen(1, "Lia", 25);
+        Character mira = lobby.citizen(2, "Mira", 26);
+        Character pip = lobby.citizen(3, "Pip", 27);
+        Character tobi = lobby.citizen(4, "Tobi", 28);
+        Character kai = lobby.citizen(5, "Kai", 29);
+
+        quests.tick(0L);
+
+        assertEquals(List.of(ids(lia, mira, pip, tobi)), door.admitted, "four (HPQ's preferred of six), at once");
+        assertTrue(lobby.parties.memberIds(kai).isEmpty());
     }
 }

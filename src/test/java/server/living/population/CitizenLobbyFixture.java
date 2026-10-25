@@ -43,20 +43,24 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 /**
- * Kerning City's KPQ lobby with citizens and humans standing at Lakelis (CitizenPartyQuests): loaded citizens on a PQ
- * session, humans, the live parties (an in-memory party gateway), and what the population was asked to do: lines
- * said, citizens held for a run, re-planned, logged off or sent somewhere. The population and its parts are stub-only
- * mocks (recording mocks of the population run out of heap).
+ * A PQ lobby (Kerning City's KPQ by default, or {@link #HPQ}) with citizens and humans standing at its NPC
+ * (CitizenPartyQuests): loaded citizens on a PQ session, humans, the live parties (an in-memory party gateway), and
+ * what the population was asked to do: lines said, citizens held for a run, re-planned, logged off or sent somewhere.
+ * The population and its parts are stub-only mocks (recording mocks of the population run out of heap).
  */
 final class CitizenLobbyFixture implements AutoCloseable {
     static final int LOBBY = 103_000_000;
     static final Lobby KPQ = new Lobby("kpq", LOBBY, 21, 30, "KPQ");
+    static final Lobby HPQ = new Lobby("hpq", 100_000_200, 10, 20, "HPQ");
     static final int CHANNEL = 1;
 
     final PopulationConfig config = new PopulationConfig();
     final Population population = mock(Population.class, withSettings().stubOnly());
     final PresenceScheduler presence = mock(PresenceScheduler.class, withSettings().stubOnly());
-    final MapleMap kerning = mock(MapleMap.class, withSettings().stubOnly());
+    final Lobby here;
+    final FieldCatalog fields = mock(FieldCatalog.class, withSettings().stubOnly());
+    /** The lobby's map, where every citizen and human of the fixture starts. */
+    final MapleMap lobbyMap = mock(MapleMap.class, withSettings().stubOnly());
     final Parties parties = new Parties();
     /** Every line a citizen was asked to say, in order. */
     final List<ChatterEngine.Event> said = new ArrayList<>();
@@ -71,13 +75,22 @@ final class CitizenLobbyFixture implements AutoCloseable {
     private final MockedStatic<AgentRuntimeIdentityRuntime> identity;
 
     CitizenLobbyFixture() {
-        FieldCatalog fields = mock(FieldCatalog.class, withSettings().stubOnly());
+        this(KPQ);
+    }
+
+    /** Standing at {@code here}; {@code lobbyFor} answers it for a level in its band. */
+    CitizenLobbyFixture(Lobby here) {
+        this.here = here;
         ChatterEngine chatter = mock(ChatterEngine.class, withSettings().stubOnly());
         when(population.config()).thenReturn(config);
         when(population.fields()).thenReturn(fields);
         when(population.presence()).thenReturn(presence);
         when(population.chatter()).thenReturn(chatter);
-        when(fields.lobbyAt(anyInt())).thenAnswer(call -> (int) call.getArgument(0) == LOBBY ? KPQ : null);
+        when(fields.lobbyAt(anyInt())).thenAnswer(call -> (int) call.getArgument(0) == here.mapId() ? here : null);
+        when(fields.lobbyFor(any(), anyInt())).thenAnswer(call -> {
+            int level = call.getArgument(1);
+            return level >= here.levelMin() && level <= here.levelMax() ? here : null;
+        });
         doAnswer(call -> said.add(call.getArgument(0))).when(chatter).event(any());
         World world = mock(World.class, withSettings().stubOnly());
         PlayerStorage storage = mock(PlayerStorage.class, withSettings().stubOnly());
@@ -98,8 +111,8 @@ final class CitizenLobbyFixture implements AutoCloseable {
         doAnswer(call -> asked.add("travel " + this.<CitizenSession>arg(call.getArgument(0)).name() + " "
                 + call.getArgument(1) + " " + call.getArgument(2)))
                 .when(presence).travel(any(), any(), anyInt(), anyLong());
-        when(kerning.getId()).thenReturn(LOBBY);
-        when(kerning.getAllPlayers()).thenAnswer(call -> new ArrayList<>(onLobby));
+        when(lobbyMap.getId()).thenReturn(here.mapId());
+        when(lobbyMap.getAllPlayers()).thenAnswer(call -> new ArrayList<>(onLobby));
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(parties);
         open(AgentPresence.class).when(() -> AgentPresence.isAgent(any()))
                 .thenAnswer(call -> call.getArgument(0) != null && agents.contains(this.<Character>arg(call.getArgument(0)).getId()));
@@ -118,9 +131,9 @@ final class CitizenLobbyFixture implements AutoCloseable {
         return mocked;
     }
 
-    /** The population's party quests with this door for KPQ and fixed draws. */
+    /** The population's party quests with this door for the lobby's quest and fixed draws. */
     CitizenPartyQuests quests(CitizenPqDoor door) {
-        return new CitizenPartyQuests(population, Map.of("kpq", door), new Random(7L));
+        return new CitizenPartyQuests(population, Map.of(here.id(), door), new Random(7L));
     }
 
     /** A loaded citizen out for a PQ, standing at Lakelis. */
@@ -137,9 +150,39 @@ final class CitizenLobbyFixture implements AutoCloseable {
         CitizenSession session = new CitizenSession(citizen, 0L, 24 * 3_600_000L, false);
         session.entry = entry;
         session.activity = Activity.PQ;
-        session.mapId = LOBBY;
+        session.mapId = here.mapId();
         sessions.put(id, session);
         return chr;
+    }
+
+    /** A loaded citizen away from the lobby: on {@code activity} on {@code mapId}. */
+    Character elsewhere(int id, String name, int level, Activity activity, int mapId) {
+        Character chr = citizen(id, name, level);
+        away(chr, mapId);
+        CitizenSession session = session(chr);
+        session.activity = activity;
+        session.mapId = mapId;
+        return chr;
+    }
+
+    /** These citizens share circle {@code circleId}. */
+    void circle(int circleId, Character... members) {
+        for (Character member : members) {
+            CitizenSession session = session(member);
+            Citizen c = session.citizen;
+            session.citizen = new Citizen(c.characterId(), c.name(), c.cohort(), circleId, c.guildId(), c.homeRegion(),
+                    c.career(), c.personality(), c.voice(), c.pace(), 0, c.channel(), c.flags(), c.state(), 0L, 0L, 0L,
+                    0L, 0L, 0, "");
+        }
+    }
+
+    /** It walked over to the lobby, on a PQ plan. */
+    void arrives(Character chr) {
+        when(chr.getMapId()).thenReturn(here.mapId());
+        onLobby.add(chr);
+        CitizenSession session = session(chr);
+        session.activity = Activity.PQ;
+        session.mapId = here.mapId();
     }
 
     /** A human at Lakelis with no party. */
@@ -154,8 +197,8 @@ final class CitizenLobbyFixture implements AutoCloseable {
         when(chr.getLevel()).thenReturn(level);
         when(chr.getJob()).thenReturn(client.Job.BEGINNER);
         when(chr.getHp()).thenReturn(500);
-        when(chr.getMapId()).thenReturn(LOBBY);
-        when(chr.getMap()).thenReturn(kerning);
+        when(chr.getMapId()).thenReturn(here.mapId());
+        when(chr.getMap()).thenReturn(lobbyMap);
         when(chr.getPosition()).thenReturn(new Point(-500, 421));
         Inventory room = mock(Inventory.class, withSettings().stubOnly()); // a free slot in every tab
         when(chr.getInventory(any(InventoryType.class))).thenReturn(room);
@@ -320,8 +363,14 @@ final class CitizenLobbyFixture implements AutoCloseable {
         }
     }
 
-    /** KPQ's door as the tests set it: 3-4 seats, a free lobby unless a human party waits, admissions recorded. */
+    /**
+     * A door as the tests set it: KPQ's 3-4 seats unless changed, a free lobby unless a human party waits, admissions
+     * recorded.
+     */
     static final class Door implements CitizenPqDoor {
+        int min = 3;
+        int max = 4;
+        int preferred = 4;
         final List<List<Integer>> admitted = new ArrayList<>();
         final Map<Integer, String> problems = new HashMap<>();
         final Set<String> held = new HashSet<>();
@@ -336,12 +385,17 @@ final class CitizenLobbyFixture implements AutoCloseable {
 
         @Override
         public int minSeats() {
-            return 3;
+            return min;
         }
 
         @Override
         public int maxSeats() {
-            return 4;
+            return max;
+        }
+
+        @Override
+        public int preferredSeats() {
+            return preferred;
         }
 
         @Override

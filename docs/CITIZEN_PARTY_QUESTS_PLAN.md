@@ -207,3 +207,62 @@ Setting `PQ_RUNS_ENABLED` and the other keys needs a restart; `!citizens reload`
    jump beyond the run's 3-4 Agents, and nothing starts while the scheduler sheds load.
 7. **Kill switch.** `PQ_RUNS_ENABLED: false` and a restart: citizens at Lakelis gather and invite as before and never
    go in; `!citizens pq` shows `0 in`.
+
+## Round 2: HPQ, wider recruiting, then LPQ (plan, 2026-10-25)
+
+Branch `feat/citizen-pq-lpq-hpq` from `feat/companion-manager` 21eb70855 (KPQ citizen runs live since 05:11).
+
+### What live showed first
+
+In the first hour after the deploy two citizen parties formed beside Lakelis and gave up with "nobody came"
+(`citizen PinkOcean party at map 103000000 gives up`, 05:23 and 05:52). The run is not the limit; supply at the
+lobby is. A party only ever calls one circle or guild mate, and a citizen whose plan is not PQ never hears an "lf".
+
+### Order: HPQ before LPQ
+
+- **HPQ** takes 3-6 (prefers 4) from level 10, at Henesys Park beside Henesys, the town most Victoria citizens are in.
+  Its admission takes an Agent leader, and its stock Agent-led path is a whole run: the leader walks to Tory and
+  clicks her, Agents fetch and plant seeds, guard the Moon Bunny, the leader loots the cakes and hands them to
+  Growlie, everyone claims at Tory. Its background director is off (`AgentHpqPopulationRuntime.ENABLED: 'false'`).
+- **LPQ** takes 5-6 (an Agent-led stock run exactly 6) at lv35-50 in Ludibrium, and its admission wants a Teleport
+  mage, a Dark Sight thief, a weapon-ranged attacker and a physical attacker among them. Its stock Agent-led path has
+  never cleared live, its stage-9 Alishar fight wiped Lv48 crews, and it leans on about 40 rescue paths (item vacuum,
+  Agent teleports) the user turned off for companion runs because a human sees them. LPQ comes after HPQ, in this
+  branch if it holds up offline, and ships off by default until a live run clears it (decision below).
+
+### HPQ design (engine seam, like KPQ's)
+
+- `AgentHpqSession.citizenRun`; `AgentHpqAdmissionService.admitCitizens(leader, members, seed, now)`: the same
+  adoption as the companion desk's, but the party stays its own (EXTERNAL), the citizen leader picks the bonus as an
+  Agent leader does (`AgentHpqBonusPolicy.defaultMode()`), and the session is a citizen run, not a companion run.
+- The coordinator runs a citizen run on its stock (Agent-led) path, plus what a run with players in it needs:
+  full rate for its Agents in the instance (stock runs sat at the background cadence, KPQ's stage-1 lesson); no
+  status lines (`voice`: "Party ready. Everyone is here. Starting HPQ in 5 seconds." and the rest say nothing; the
+  citizens' own chatter covers the moments); the companion run's departures and deaths (`reconcileLiveParty`,
+  `membersAlive`: a downed citizen taps out and the run goes on while three stand, a human who drops is left
+  behind); its failure words and a failure after the clear that leaves the event and its humans alone; the watchdog
+  waits for a downed citizen's respawn as it does for a companion; the party is kept after release (the population
+  takes each citizen out of it). At Tory a human is told once, in the leader's words, to claim, and never waited for.
+- `AgentHpqLobbyPolicy` counts citizen runs with background ones, so the old director never takes the lobby kept
+  for humans beside a citizen run.
+
+### Population side
+
+- `CitizenPqDoor.Hpq` (Tory, 1012112, Henesys Park): seats 3-6, preferred 4; citizens wait on the floor below her
+  ledge (`PqEntrance` BELOW_TORY), a human counts as gathered within HPQ's own gather box (GATHER_RADIUS_PX 160).
+- Doors get `preferredSeats()`: a party fills to it (KPQ 4 = its most, HPQ 4 of 6) and waits 90 s for it after the
+  minimum, as now.
+- `regions.yaml` victoria gets `{ id: hpq, mapId: 100000200, levels: 10-20 }` beside KPQ's 21-30, so a lv10-20
+  Victoria citizen's PQ plan now has somewhere to go (it had none).
+- **Recruiting (all quests).** A party short of its preferred seats after a minute calls, at most once a minute and
+  at most as many as it needs: first loaded circle and guild mates whose level fits and who are training or in town
+  (as now, but more than one), then citizens of the lobby's region idling in town (TOWN, not on a supply trip, not
+  AFK, no party, not cooling down) whose level fits. Each answers in its own voice and travels to the lobby on a PQ
+  plan. Bounded by the seats it needs and by `PQ_CALLS_PER_PARTY` (default 4).
+- `PQ_RUN_QUESTS: "kpq,hpq"`.
+
+### Decisions for the user
+
+1. **LPQ citizen runs on by default?** Recommended: off (`PQ_RUN_QUESTS` without `lpq`) until one live LPQ citizen run
+   clears, then on like the rest; the door and seam ship either way. Reason: the stock Agent-led LPQ path has never
+   cleared live, and its rescues (vacuumed items, teleporting Agents) are visible to a human who joins.
