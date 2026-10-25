@@ -373,11 +373,14 @@ hurts players, so the Protector Rock matters for them too.
   a test's world). Proven end to end on a simulated Sharenian (`AgentGpqClearSimulationTest` over `GpqWorld`: the
   instance maps, portals, reactors, item gates, monsters and drops where Map.wz and the scripts put them, the air
   that kills without a rock 2.5-5 s in, the Gatekeeper and the fountain as 9040009.js and 9040006.js judge, a human
-  leader who talks only when his companions tell him). The simulation found four faults in the plays, all fixed:
-  after a miss and a later right pattern nobody told the leader to talk again; the Rusty Key laid on the metal gate
-  was picked straight back up by the debris job, every second; a spear broken out of its seal and not picked up at
-  once was forgotten (the plan counted only sealed spears); a Rubian laid at the leader's feet could be picked back
-  up.
+  leader who talks only when his companions tell him). All six seeds clear with one death (the rock given to the
+  gate). The simulation found five faults in the plays, all fixed: after a miss and a later right pattern nobody told
+  the leader to talk again; the Rusty Key laid on the metal gate was picked straight back up by the debris job, every
+  second; a spear broken out of its seal and not picked up at once was forgotten (the plan counted only sealed
+  spears); the vassals' solver read its first look as a redraw; a rock giver that fell in the air before the gate took
+  its rock was replaced by a second giver, who died on the throne. A Rubian laid at the leader's feet is also no
+  longer picked back up. The simulation's times are not the game's (straight-line walks, fixed damage): the pace
+  priors are guesses until live runs.
 - **G4. `!gpqtest`** (status, why, checkpoint per stage, stop), as `!cwkpqtest`. **Built:** `AgentGpqTestService`,
   `GpqTestCommand` (GM6). There is no `party prod` step: the run is the boss track's, opened when the guild is called
   in. `checkpoint <gatekeeper|spears|vassals|waterway|corridor|throne>` opens the gates and sets the flags the stock
