@@ -1060,6 +1060,11 @@ living_world:
     BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
+    # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
+    # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
+    # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
+    # the stock 200 ms whisper spam gate and Residents nobody owns stay silent, as before. 0 = answer every one.
+    COMPANION_WHISPER_REFUSAL_GAP_MS: 5000
 
 # Populated server: generated citizens with schedules, progression, chatter, guilds, conversation and
 # market participation (docs/POPULATED_SERVER_PLAN.md). Runs inside the living world. ASCII only.

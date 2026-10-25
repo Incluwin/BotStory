@@ -55,7 +55,7 @@ public final class AgentSupplyRuntime {
     }
 
     public static void handleNeedAnyPotionCommand(AgentRuntimeEntry entry) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null) {
             return;
         }
@@ -74,7 +74,7 @@ public final class AgentSupplyRuntime {
     }
 
     public static void handleNeedAmmoCommand(AgentRuntimeEntry entry) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null) {
             return;
         }

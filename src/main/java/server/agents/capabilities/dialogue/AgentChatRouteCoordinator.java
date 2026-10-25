@@ -20,6 +20,7 @@ import server.agents.capabilities.trade.AgentPendingOfferChatRouteService;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime;
 import server.agents.commands.AgentCommandTypoSuggester;
 import server.agents.commands.AgentReplyChannel;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.capabilities.follow.AgentActivityStateRuntime;
 import server.agents.commands.AgentCommandTargetResolver;
 import server.agents.integration.AgentDialogueTransportRuntime;
@@ -149,16 +150,56 @@ public final class AgentChatRouteCoordinator {
                         entries,
                         text,
                         replyChannel,
-                        targetedChatHooks()),
+                        targetedChatHooks(AgentChatRouteCoordinator::handleAgentChat, replyChannel,
+                                AgentRelationshipRuntime::interactionTarget)),
                 (commandLeader, entries, text, replyChannel) -> AgentUntargetedChatRouteService.handleUntargetedChat(
                         commandLeader,
                         entries,
                         text,
                         replyChannel,
-                        untargetedChatHooks()));
+                        untargetedChatHooks(replyChannel)));
     }
 
-    private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks() {
+    /**
+     * A whisper to one Agent the whisper bridge already resolved (after mayOperate and mayControl): the chain a party
+     * or map line naming that Agent takes, so a line no fixed pattern matches still reaches the phrase packs, the
+     * intent judge and the social reply, and every answer goes back on {@code channel} (the whisper). The line is its
+     * owner's last command only when the speaker is the leader it runs under ({@link #runsUnder}): an administrator's
+     * whisper to another player's Agent is not (deploy review 2026-10-10). Completes once the line is handled; the
+     * answers its flows send later keep its route (AgentReplyRoute), whoever the Agent answers by then.
+     */
+    public static CompletionStage<Boolean> handleWhisperChat(Character speaker,
+                                                             AgentRuntimeEntry entry,
+                                                             String message,
+                                                             AgentReplyChannel channel) {
+        return AgentTargetedChatRouteService.handleAgentLine(
+                speaker,
+                entry,
+                message,
+                channel,
+                targetedChatHooks((whispered, line, replyChannel) -> handleWhisperedAgentChat(
+                        whispered, line, replyChannel, speaker), channel,
+                        whispered -> runsUnder(whispered, speaker) ? speaker : null));
+    }
+
+    /**
+     * True when {@code speaker} is the leader {@code entry} runs under: a companion out with its owner runs under its
+     * owner, a plain Agent under whoever leads it (the seam CompanionDirectory.mayControl asks for a plain Agent). An
+     * administrator, who may command any Agent, is not, though the whisper bridge makes them its interaction target.
+     */
+    public static boolean runsUnder(AgentRuntimeEntry entry, Character speaker) {
+        return speaker != null
+                && AgentRuntimeRegistry.leaderIdForAgentCharacter(AgentRuntimeIdentityRuntime.botId(entry)) == speaker.getId();
+    }
+
+    /**
+     * {@code channel}: the line's own, which the social reply keeps however long it takes (deploy review 2026-10-10).
+     * {@code owner}: whose line is the Agent's last owner command.
+     */
+    private static <E extends AgentRuntimeEntry> AgentTargetedChatRouteService.Hooks<E> targetedChatHooks(
+            AgentTargetedChatRouteService.AgentChatHandler<E> agentChatHandler,
+            AgentReplyChannel channel,
+            AgentTargetedChatRouteService.LeaderResolver<E> owner) {
         return new AgentTargetedChatRouteService.Hooks<>(
                 (entries, message) -> {
                     var match = AgentCommandTargetResolver.resolveTargetedAgent(entries, message);
@@ -170,16 +211,18 @@ public final class AgentChatRouteCoordinator {
                 () -> false,
                 AgentCommandTypoSuggester::suggest,
                 AgentChatRouteCoordinator::queueReply,
-                AgentChatRouteCoordinator::handleAgentChat,
+                agentChatHandler,
                 System::currentTimeMillis,
-                AgentRelationshipRuntime::interactionTarget,
+                owner,
                 AgentActivityStateRuntime::recordLastOwnerCommand,
                 AgentSocialDialogueRuntime::enabled,
-                AgentSocialDialogueRuntime::maybeRespond,
+                (entry, sender, text) -> AgentSocialDialogueRuntime.maybeRespond(
+                        entry, sender, text, AgentReplyRoute.of(channel, sender)),
                 Character::yellowMessage);
     }
 
-    private static <E extends AgentRuntimeEntry> AgentUntargetedChatRouteService.Hooks<E> untargetedChatHooks() {
+    private static <E extends AgentRuntimeEntry> AgentUntargetedChatRouteService.Hooks<E> untargetedChatHooks(
+            AgentReplyChannel channel) {
         return new AgentUntargetedChatRouteService.Hooks<>(
                 AgentChatCommandClassifier::matchFollowTarget,
                 AgentChatRouteCoordinator::dispatchFollowTargetCommand,
@@ -196,7 +239,8 @@ public final class AgentChatRouteCoordinator {
                 (speaker, entries, message) -> AgentSocialResponderElection.elect(
                         speaker, entries, message, AgentRuntimeIdentityRuntime::botId),
                 AgentSocialDialogueRuntime::enabled,
-                AgentSocialDialogueRuntime::maybeRespond);
+                (entry, speaker, text) -> AgentSocialDialogueRuntime.maybeRespond(
+                        entry, speaker, text, AgentReplyRoute.of(channel, speaker)));
     }
 
     private static void queueReply(
@@ -204,6 +248,17 @@ public final class AgentChatRouteCoordinator {
             String reply) {
         AgentMailboxRuntime.dispatch(entry, ignored -> {
             AgentDialogueTransportRuntime.queueReply(entry, reply);
+            return null;
+        });
+    }
+
+    /** A reply that keeps {@code route}, the route of the line it answers, however late it is sent. */
+    private static void queueReply(
+            AgentRuntimeEntry entry,
+            String reply,
+            AgentReplyRoute route) {
+        AgentMailboxRuntime.dispatch(entry, ignored -> {
+            AgentDialogueTransportRuntime.queueReply(entry, reply, route);
             return null;
         });
     }
@@ -325,17 +380,53 @@ public final class AgentChatRouteCoordinator {
             AgentRuntimeEntry entry,
             String message,
             AgentReplyChannel channel) {
+        return handleAgentChat(entry, message, channel, null);
+    }
+
+    /**
+     * {@code speaker}: whom a whispered line's answers go back to. The judge's own answers ("did you mean ...?") come
+     * after its judgment, so they keep the line's route (deploy review 2026-10-10); so do the answers the line's flows
+     * say or schedule while the Agent handles it, and those of the canonical command the judge re-dispatches (second
+     * deploy review 2026-10-10: AgentChatMailboxAction puts the route in scope). The judge's "did you mean ...?" is
+     * the speaker's to answer: a party or map line comes from the leader the Agent runs under (third deploy review
+     * 2026-10-10: the owner's party "ok" confirmed an administrator's whispered ask).
+     */
+    private static CompletionStage<Boolean> handleAgentChat(
+            AgentRuntimeEntry entry,
+            String message,
+            AgentReplyChannel channel,
+            Character speaker) {
+        AgentReplyRoute route = AgentReplyRoute.of(channel, speaker);
+        int speakerId = speaker != null ? speaker.getId()
+                : AgentRuntimeRegistry.leaderIdForAgentCharacter(AgentRuntimeIdentityRuntime.botId(entry));
+        AgentChatIntentRuntime.Redispatch dispatch = (handled, line, lineChannel) ->
+                AgentChatMailboxDispatcher.handleChat(handled, line, lineChannel, speaker);
         // Deterministic classifiers first; only a miss is offered to the TypeSafe intent judge,
         // which re-dispatches a canonical phrase through this same dispatcher when confident.
-        return AgentChatMailboxDispatcher.handleChat(entry, message, channel)
+        return dispatch.handle(entry, message, channel)
                 .thenCompose(handled -> Boolean.TRUE.equals(handled)
                         ? CompletableFuture.completedFuture(true)
                         : AgentChatIntentRuntime.judgeUnmatched(
                                 entry,
+                                speakerId,
                                 message,
                                 channel,
-                                AgentChatMailboxDispatcher::handleChat,
-                                AgentChatRouteCoordinator::queueReply));
+                                dispatch,
+                                (judged, reply) -> queueReply(judged, reply, route)));
+    }
+
+    /**
+     * {@link #handleAgentChat} for a whisper, except that a command the Agent carried out but reports as unhandled
+     * (its legacy fall-through: "follow me", "grind", the crew window's orders) counts as answered: it gets no small
+     * talk on top of its own reply, as before whispers had a fallback.
+     */
+    private static CompletionStage<Boolean> handleWhisperedAgentChat(
+            AgentRuntimeEntry entry,
+            String message,
+            AgentReplyChannel channel,
+            Character speaker) {
+        return handleAgentChat(entry, message, channel, speaker)
+                .thenApply(handled -> AgentChatIntentRuntime.actHandled(message, handled));
     }
 
     private static void setInteractionTarget(AgentRuntimeEntry entry, Character sender) {

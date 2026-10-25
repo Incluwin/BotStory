@@ -215,8 +215,15 @@ public final class AgentShopService {
             return;
         }
 
+        boolean alreadySelling = AgentShopStateRuntime.shopSellTrashPending(entry);
         AgentShopStateRuntime.setShopSellTrashPending(entry, true);
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
+            // the visit on its way (a restock, an arrival at a shop) sells first: it joins that one, and says so. One
+            // already at the counter may be past its sell step: it sells once its purchases are done (runPurchaseStep)
+            AgentShopRuntime.replyNow(entry, AgentShopStateRuntime.shopSequenceActive(entry)
+                    ? AgentDialogueCatalog.shopSellTrashAfterReply()
+                    : alreadySelling
+                    ? AgentDialogueCatalog.shopSellTrashAgainReply() : AgentDialogueCatalog.shopSellTrashJoinReply());
             return;
         }
 
@@ -633,6 +640,11 @@ public final class AgentShopService {
             return;
         }
         if (index >= sequence.actions().size()) {
+            if (AgentShopStateRuntime.shopSellTrashPending(sequence.entry())) {
+                // "sell junk" came after the sell step at the transaction's start: it sells here before it goes
+                startSellTrashSequence(sequence, () -> finishPurchaseSequence(sequence, true));
+                return;
+            }
             finishPurchaseSequence(sequence, true);
             return;
         }
@@ -668,25 +680,17 @@ public final class AgentShopService {
         return null;
     }
 
-    private static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+    /**
+     * After the purchase steps: says what it bought and closes one shop step later ({@link #closeVisit}), else at
+     * once.
+     */
+    static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
         if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
             abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
             return;
         }
 
-        Runnable finish = () -> {
-            if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
-                abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
-                return;
-            }
-            String closing = closingLine(sequence, announceIfEmpty);
-            if (closing != null) {
-                AgentShopRuntime.sayMapNow(sequence.bot(), closing);
-            }
-            AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
-                    System.currentTimeMillis());
-            clearShopState(sequence.entry());
-        };
+        Runnable finish = () -> closeVisit(sequence, announceIfEmpty);
 
         if (sequence.boughtAnything()) {
             if (!sequence.bought().isEmpty()) {
@@ -702,6 +706,30 @@ public final class AgentShopService {
         finish.run();
     }
 
+    /**
+     * The visit's last step at the counter: its closing line, then the visit ends. A visit that bought something
+     * closes one shop step after its "bought ..." line, and "sell junk" in that step ("i'll sell the junk after
+     * this") comes after the purchase steps' own check (runPurchaseStep): it sells here first, at the same counter,
+     * then closes (second deploy review 2026-10-10: the close cleared the flag and nothing was sold).
+     */
+    private static void closeVisit(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+        if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
+            abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
+            return;
+        }
+        if (AgentShopStateRuntime.shopSellTrashPending(sequence.entry())) {
+            startSellTrashSequence(sequence, () -> closeVisit(sequence, announceIfEmpty));
+            return;
+        }
+        String closing = closingLine(sequence, announceIfEmpty);
+        if (closing != null) {
+            AgentShopRuntime.sayMapNow(sequence.bot(), closing);
+        }
+        AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
+                System.currentTimeMillis());
+        clearShopState(sequence.entry());
+    }
+
     private static void startSellTrashSequence(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             Runnable afterSale) {
@@ -711,8 +739,11 @@ public final class AgentShopService {
                 AgentQuestItemDispositionRuntime.collectShopSaleCandidates(
                         sequence.entry(), sequence.bot(), sequence.inventory(),
                         System.currentTimeMillis());
+        // the request this sale takes ends with its plan: one made during the sale ("i'll sell the junk after this")
+        // stays, and the visit's next step sells what came meanwhile at the same counter (third deploy review
+        // 2026-10-10: the sale cleared it as it finished, and that junk was never sold)
+        AgentShopStateRuntime.setShopSellTrashPending(sequence.entry(), false);
         if (items.isEmpty() && etcPlan.isEmpty()) {
-            AgentShopStateRuntime.setShopSellTrashPending(sequence.entry(), false);
             AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopNoTrashEquipsReply());
             afterSale.run();
             return;
@@ -887,7 +918,6 @@ public final class AgentShopService {
             List<String> bought,
             AgentShopBuyReport firstShortfall,
             Runnable afterSale) {
-        AgentShopStateRuntime.setShopSellTrashPending(entry, false);
         if (tally.anySold()) {
             AgentShopRuntime.sayMapNow(bot,
                     AgentDialogueCatalog.shopSoldTrashReply(tally.equipsSold(), tally.etcStacksSold()));

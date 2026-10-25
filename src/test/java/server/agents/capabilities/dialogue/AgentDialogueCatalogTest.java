@@ -57,6 +57,9 @@ class AgentDialogueCatalogTest {
         assertEquals("no trash equips worth selling", AgentDialogueCatalog.shopNoTrashEquipsReply());
         assertEquals("can't find a shop here", AgentDialogueCatalog.shopNotFoundReply());
         assertEquals("ok gonna sell the junk", AgentDialogueCatalog.shopSellTrashStartReply());
+        assertEquals("already heading to the shop, i'll sell the junk too.", AgentDialogueCatalog.shopSellTrashJoinReply());
+        assertEquals("already on it, heading to the shop now.", AgentDialogueCatalog.shopSellTrashAgainReply());
+        assertEquals("i'll sell the junk after this, one sec.", AgentDialogueCatalog.shopSellTrashAfterReply());
         assertEquals("lost track of the shop, never mind", AgentDialogueCatalog.shopLostReply());
         assertEquals("couldn't reach shop in time", AgentDialogueCatalog.shopReachTimeoutReply());
         assertEquals("took too long at the shop, giving up", AgentDialogueCatalog.shopSequenceTimeoutReply());

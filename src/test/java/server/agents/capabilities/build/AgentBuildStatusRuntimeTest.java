@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.dialogue.AgentChatStatusRuntime;
 import server.agents.capabilities.follow.AgentActivityStateRuntime;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentDialogueTransportRuntime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -85,7 +86,8 @@ class AgentBuildStatusRuntimeTest {
         try (MockedStatic<AgentDialogueTransportRuntime> replies = mockStatic(AgentDialogueTransportRuntime.class)) {
             actions.queueReply("build?");
 
-            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(entry, "build?"));
+            // the owner's decision: no line's route, the reply channel when it is sent (third deploy review 2026-10-10)
+            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(entry, "build?", (AgentReplyRoute) null));
         }
     }
 }

@@ -41,6 +41,7 @@ class ClaimGuardBoundaryTest {
         ROUTES.put("mailbox", Pattern.compile("\\bAgentChatMailboxDispatcher\\.handleChat\\b"));
         ROUTES.put("messenger", Pattern.compile("\\bjoinMessenger\\("));
         ROUTES.put("chat", Pattern.compile("\\bAgentChatRouteCoordinator\\.handleChat\\b"));
+        ROUTES.put("whisperchat", Pattern.compile("\\bAgentChatRouteCoordinator\\.handleWhisperChat\\b"));
     }
 
     private static final Set<String> REVIEWED = Set.of(
@@ -73,8 +74,9 @@ class ClaimGuardBoundaryTest {
             "server/agents/integration/cosmic/CosmicAgentOfflineLoader.java load 4",
             "server/agents/integration/cosmic/CosmicAgentOfflineLoadService.java load 1",
             // the per-agent chat sink: reached from the leader's own entries, and from the whisper bridge after mayControl
+            // (2026-10-10: through the coordinator's whisper entry, which runs a named line's chain for that one Agent)
             "server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java mailbox 1",
-            "server/agents/integration/cosmic/CosmicAgentWhisperCommandBridge.java mailbox 1",
+            "server/agents/integration/cosmic/CosmicAgentWhisperCommandBridge.java whisperchat 1",
             // the leader's chat line from the stock chat handlers (the public overload asks mayOperate; the
             // coordinator's own delegation to its generic overload is unqualified, so it is not counted)
             "server/agents/runtime/AgentInteractionRuntime.java chat 1",
@@ -100,6 +102,9 @@ class ClaimGuardBoundaryTest {
             // P3: a crew-wide order is the owner's chat line over exactly their own companions out with them, each one
             // past CompanionDirectory.mayControl first (the generic overload, which skips mayOperate: the owner's own)
             "server/living/roster/CompanionManager.java chat 1",
+            // deploy review 2026-10-10: "sell junk" naming one companion out with its owner (the name first or last) is
+            // the owner's map line over exactly that companion, past mayOperate and mayControl first
+            "server/living/roster/CompanionChatVerbs.java chat 1",
             // P5: every live bench slice (a field, town or stall form) loads here, behind its lease and the loaded check
             "server/living/roster/BenchDutyDispatcher.java load 1",
             // P7 Part B: a boss run's bench ally loads on its arrival, behind its EXPEDITION lease and the loaded check

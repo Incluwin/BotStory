@@ -113,13 +113,28 @@ public final class AgentChatIntentRuntime {
                                                            AgentReplyChannel channel,
                                                            Redispatch redispatch,
                                                            ReplyQueue replies) {
+        return judgeUnmatched(entry, AgentChatPendingAsks.ANY_ASKER_ID, message, channel, redispatch, replies);
+    }
+
+    /**
+     * {@link #judgeUnmatched(AgentRuntimeEntry, String, AgentReplyChannel, Redispatch, ReplyQueue)} for a line
+     * {@code speakerId} said: it answers only a "did you mean" the Agent asked that speaker, and one it asks now waits
+     * for that speaker's answer (third deploy review 2026-10-10). -1: anyone's.
+     */
+    public static CompletionStage<Boolean> judgeUnmatched(AgentRuntimeEntry entry,
+                                                           int speakerId,
+                                                           String message,
+                                                           AgentReplyChannel channel,
+                                                           Redispatch redispatch,
+                                                           ReplyQueue replies) {
         JevJudgmentMode mode = mode();
         if (entry == null || message == null || message.isBlank()
                 || AgentChatFallThroughCommands.handledDeterministically(message)
                 || GM_COMMAND.matcher(message).find()) {
             return CompletableFuture.completedFuture(false);
         }
-        AgentChatPendingAsks.Resolution answer = PENDING_ASKS.resolve(entry, message, System.currentTimeMillis());
+        AgentChatPendingAsks.Resolution answer =
+                PENDING_ASKS.resolve(entry, speakerId, message, System.currentTimeMillis());
         if (answer.reply() == AgentChatPendingAsks.Reply.CONFIRMED) {
             String canonical = answer.pending().canonicalCommand();
             log.info("[typesafe-chat] confirmed \"{}\" -> {}", answer.pending().message(), canonical);
@@ -183,7 +198,7 @@ public final class AgentChatIntentRuntime {
                         result.complete(false);
                         return;
                     }
-                    apply(completionEntry, channel, message, decision, dropped, redispatch, replies, result);
+                    apply(completionEntry, speakerId, channel, message, decision, dropped, redispatch, replies, result);
                 });
         if (!submission.accepted()) {
             return CompletableFuture.completedFuture(false);
@@ -204,12 +219,26 @@ public final class AgentChatIntentRuntime {
                       Redispatch redispatch,
                       ReplyQueue replies,
                       CompletableFuture<Boolean> result) {
+        apply(entry, AgentChatPendingAsks.ANY_ASKER_ID, channel, message, decision, dropped, redispatch, replies,
+                result);
+    }
+
+    /** {@code speakerId}: who said {@code message}, whose answer an ask waits for. */
+    static void apply(AgentRuntimeEntry entry,
+                      int speakerId,
+                      AgentReplyChannel channel,
+                      String message,
+                      Decision decision,
+                      AgentChatPendingAsks.Pending dropped,
+                      Redispatch redispatch,
+                      ReplyQueue replies,
+                      CompletableFuture<Boolean> result) {
         boolean restated = dropped != null && decision.outcome() == Outcome.ASK
                 && dropped.canonicalCommand().equals(decision.canonicalCommand());
         switch (decision.outcome()) {
             case ACT, ASK -> {
                 if (decision.outcome() == Outcome.ASK && !restated) {
-                    rememberAsk(entry, message, decision.canonicalCommand());
+                    rememberAsk(entry, speakerId, message, decision.canonicalCommand());
                     replies.queue(entry, askText(decision.canonicalCommand()));
                     result.complete(true);
                     return;
@@ -251,15 +280,20 @@ public final class AgentChatIntentRuntime {
     /**
      * A canonical command the orchestrator carries out but reports as unhandled (its legacy
      * fall-through) still counts as acted on, so the owner-command record is updated and the
-     * social small-talk fallback stays quiet.
+     * social small-talk fallback stays quiet. The whisper route asks the same of the whispered line.
      */
-    static boolean actHandled(String canonicalCommand, Boolean handled) {
+    public static boolean actHandled(String canonicalCommand, Boolean handled) {
         return Boolean.TRUE.equals(handled) || AgentChatFallThroughCommands.handledDeterministically(canonicalCommand);
     }
 
     /** The owner's next message can confirm or decline this suggestion; see {@link AgentChatPendingAsks}. */
     static void rememberAsk(AgentRuntimeEntry entry, String message, String canonicalCommand) {
-        PENDING_ASKS.remember(entry, message, canonicalCommand, System.currentTimeMillis());
+        rememberAsk(entry, AgentChatPendingAsks.ANY_ASKER_ID, message, canonicalCommand);
+    }
+
+    /** Only {@code askerId}'s next message can confirm or decline it. */
+    static void rememberAsk(AgentRuntimeEntry entry, int askerId, String message, String canonicalCommand) {
+        PENDING_ASKS.remember(entry, askerId, message, canonicalCommand, System.currentTimeMillis());
     }
 
     private static AgentChatIntentJudge judge() {

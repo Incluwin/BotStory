@@ -39,6 +39,13 @@ class PhraseMatcherTest {
         assertEquals("follow me", PhraseMatcher.match(packs, PhraseMatcher.normalize("come over here")));
     }
 
+    /** Live 2026-10-10: "sell my junk" with a "please" missed the Agent's own pattern and every pack alias. */
+    @Test
+    void sellMyJunkWithAPleaseIsSellTrash() {
+        assertEquals("sell trash", PhraseMatcher.match(packs, PhraseMatcher.normalize("sell my junk please")));
+        assertEquals("sell trash", PhraseMatcher.match(packs, PhraseMatcher.normalize("pls sell my trash")));
+    }
+
     @Test
     void longestExplanationWins() {
         assertEquals("support off", PhraseMatcher.match(packs, PhraseMatcher.normalize("stop buffing")));

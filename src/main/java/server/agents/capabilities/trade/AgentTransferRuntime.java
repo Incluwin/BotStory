@@ -10,6 +10,7 @@ import server.agents.capabilities.inventory.AgentInventoryTradePolicy;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.capabilities.dialogue.AgentPendingActionStateRuntime;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.async.AgentAsyncTaskGateway;
 import server.agents.runtime.async.AgentAsyncWorkKind;
@@ -17,7 +18,9 @@ import server.agents.runtime.async.AgentAsyncWorkKind;
 
 /**
  * Agent-owned transfer chat facade over temporary bot-side inventory/trade side
- * effects.
+ * effects. An item query's or a transfer command's answer comes back from the async gateway as a new mailbox action,
+ * out of its line's scope: it keeps that line's route (AgentReplyRoute), so a whispered "do you have pots" is answered
+ * to the one who whispered it, by whisper (third deploy review 2026-10-10).
  */
 public final class AgentTransferRuntime {
     private static final String TRANSFER_REQUEST_KEY = "transfer-query";
@@ -65,6 +68,7 @@ public final class AgentTransferRuntime {
 
         long replyDelay = AgentSchedulerRuntime.randomDelayMs(500, 700);
         long requestedAt = System.nanoTime();
+        AgentReplyRoute route = AgentReplyRoute.current(entry);
         AgentAsyncTaskGateway.runtime().submit(
                 entry,
                 AgentAsyncWorkKind.ECONOMY_ANALYSIS,
@@ -78,9 +82,12 @@ public final class AgentTransferRuntime {
                     long elapsedMs = (result.completedAtNs() - requestedAt) / 1_000_000L;
                     long remainingDelay = Math.max(0L, replyDelay - elapsedMs);
                     AgentSchedulerRuntime.afterDelay(completionEntry, remainingDelay, () ->
-                            applyTransferCommandResult(
-                                    completionEntry, transferCommand, category, bot,
-                                    completion.requestId(), result));
+                            AgentReplyRoute.within(completionEntry, route, () -> {
+                                applyTransferCommandResult(
+                                        completionEntry, transferCommand, category, bot,
+                                        completion.requestId(), result);
+                                return null;
+                            }));
                 });
     }
 
@@ -129,6 +136,7 @@ public final class AgentTransferRuntime {
 
         long replyDelay = AgentSchedulerRuntime.randomDelayMs(500, 700);
         long requestedAt = System.nanoTime();
+        AgentReplyRoute route = AgentReplyRoute.current(entry);
         AgentAsyncTaskGateway.runtime().submit(
                 entry,
                 AgentAsyncWorkKind.ECONOMY_ANALYSIS,
@@ -144,8 +152,11 @@ public final class AgentTransferRuntime {
                     long elapsedMs = (result.completedAtNs() - requestedAt) / 1_000_000L;
                     long remainingDelay = Math.max(0L, replyDelay - elapsedMs);
                     AgentSchedulerRuntime.afterDelay(completionEntry, remainingDelay, () ->
-                            applyItemQueryResult(
-                                    completionEntry, category, bot, completion.requestId(), result));
+                            AgentReplyRoute.within(completionEntry, route, () -> {
+                                applyItemQueryResult(
+                                        completionEntry, category, bot, completion.requestId(), result);
+                                return null;
+                            }));
                 });
     }
 
