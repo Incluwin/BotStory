@@ -119,6 +119,17 @@ public final class AgentBossRunRegistry {
     }
 
     /**
+     * GPQ plan B4: true while the Agent is a REGISTERED member of an open join-after-start run (Sharenian), not yet in
+     * its event: the run walks it to the entry NPC to join, so it follows nobody meanwhile. Memory only, any thread.
+     */
+    public static boolean joiningAfterStart(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember member = session == null ? null : session.member(agentId);
+        return member != null && member.phase() == AgentBossRunMember.Phase.REGISTERED
+                && session.definition().joinsAfterStart() && session.phase() != AgentBossRunSession.Phase.ENDED;
+    }
+
+    /**
      * True while the Agent is an INSIDE or LEAVING member of an open run: adopted into the fight and not yet out of
      * its event (a leaving member still walks the battle map or the reward room). Memory only, any thread.
      */

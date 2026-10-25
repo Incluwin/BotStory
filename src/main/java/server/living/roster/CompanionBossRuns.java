@@ -673,7 +673,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             if (owner == null || AgentPresence.isAgent(owner) || !world.roster().hasCompanions(owner)) {
                 continue;
             }
-            List<Integer> inside = companionsInside(owner, event, commitments);
+            // GPQ plan B4: a join-after-start run takes the companions standing at its entry NPC, who join one by one
+            List<Integer> inside = definition.joinsAfterStart() ? companionsAtEntry(owner, definition, commitments)
+                    : companionsInside(owner, event, commitments);
             if (inside.isEmpty()) {
                 continue;
             }
@@ -703,6 +705,35 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 }
             }
         }
+    }
+
+    /**
+     * GPQ plan B4: the owner's companions that follow them, stand on {@code definition}'s recruit map on the owner's
+     * channel (the camp by Shuang) and are tied to no run; five at most. The run walks each to her to join.
+     */
+    private List<Integer> companionsAtEntry(Character owner, AgentBossRunDefinition definition,
+                                            Commitments commitments) {
+        Party party = owner.getParty();
+        if (party == null) {
+            return List.of();
+        }
+        RosterService roster = world.roster();
+        List<Integer> ids = new ArrayList<>();
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            Character bot = persona == null ? null : bot(id);
+            if (bot == null || roster.cachedOwnerOf(persona.id()) != owner.getId()
+                    || AgentRuntimeRegistry.leaderIdForAgentCharacter(id) != owner.getId()
+                    || commitments.isCommitted(id) || open.inRun(id) || bot.getMapId() != definition.recruitMapId()
+                    || !RosterService.sameChannel(owner, bot)) {
+                continue;
+            }
+            if (ids.size() < MOST_PER_OWNER) {
+                ids.add(id);
+            }
+        }
+        return ids;
     }
 
     /** The owner's companions that follow them, stand in {@code event} and are tied to no run; five at most. */
@@ -1562,6 +1593,26 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         BossEntrance entrance = config == null || !config.companionBossAlliesEnabled(seat.bossKey()) ? null
                 : BossEntrance.of(seat.bossKey());
         return entrance == null ? null : entrance.spot(map, ordinal);
+    }
+
+    /**
+     * GPQ plan B4, on the run's tick, from memory: where a member of a join-after-start run (Sharenian) stands by the
+     * entry NPC until it is its turn to join, its own spot beside her by its ordinal (BossEntrance.spot); null for a
+     * boss with no entrance here.
+     */
+    @Override
+    public Point joinAt(Seat seat, MapleMap map, int ordinal) {
+        BossEntrance entrance = BossEntrance.of(seat.bossKey());
+        return entrance == null ? null : entrance.spot(map, ordinal);
+    }
+
+    /**
+     * GPQ plan B4, for the follow guard on the Agent's tick (memory): true while the companion is signed up for a run
+     * whose members join its event one by one (Sharenian) and is not in yet. Its owner went in alone when the guild was
+     * called, so it follows nobody meanwhile: the run walks it to Shuang to join.
+     */
+    public boolean joiningAfterStart(int companionId) {
+        return AgentBossRunRegistry.joiningAfterStart(companionId);
     }
 
     // ---- on companion-ops -----------------------------------------------------------------------

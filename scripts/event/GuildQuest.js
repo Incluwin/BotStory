@@ -193,6 +193,8 @@ function afterSetup(eim) {
     if (leader != null) {
         eim.setProperty("guild", "" + leader.getGuildId());
     }
+    // GPQ plan B4: the leader's companions at the camp join as a companion boss run (nothing while gpq is off)
+    Java.type('server.living.LivingWorldHooks').bossPartyEntered(eim, 'gpq');
 }
 
 function respawnStages(eim) {}

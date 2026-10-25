@@ -103,7 +103,7 @@ class AgentBossRunCatalogTest {
                 AgentBossRunCatalog.NEO_DUNAS, AgentBossRunCatalog.NEO_AUFHEBEN, AgentBossRunCatalog.NEO_OBERON,
                 AgentBossRunCatalog.NEO_NIBELUNG, AgentBossRunCatalog.PAPULATUS, AgentBossRunCatalog.SCARGA,
                 AgentBossRunCatalog.HORNTAIL, AgentBossRunCatalog.SHOWA, AgentBossRunCatalog.PINKBEAN,
-                AgentBossRunCatalog.CWKPQ), AgentBossRunCatalog.all());
+                AgentBossRunCatalog.CWKPQ, AgentBossRunCatalog.GPQ), AgentBossRunCatalog.all());
         assertSame(AgentBossRunCatalog.BALROG_NORMAL, AgentBossRunCatalog.of(" Balrog_Normal "));
         assertSame(AgentBossRunCatalog.ZAKUM, AgentBossRunCatalog.of(" Zakum "));
         assertSame(AgentBossRunCatalog.EASY_BALROG, AgentBossRunCatalog.of("easy_balrog"));

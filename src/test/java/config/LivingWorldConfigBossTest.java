@@ -76,10 +76,10 @@ class LivingWorldConfigBossTest {
     }
 
     /**
-     * Keys whose companion play is still being built, which ship off: none since Crimsonwood Keep went on on
-     * 2026-10-23 (user), after its live check (CWKPQ plan C9) cleared the keep.
+     * Keys whose companion play is still being built, which ship off: Sharenian (GPQ plan B4) until its live check, as
+     * Crimsonwood Keep did until it went on on 2026-10-23 (user), after its live check (CWKPQ plan C9) cleared the keep.
      */
-    static final List<String> STILL_BUILT = List.of();
+    static final List<String> STILL_BUILT = List.of("gpq");
     /** Every boss the catalog knows but those, in its order: what config.yaml ships on since 2026-10-19. */
     static final String EVERY_BOSS = String.join(",",
             CompanionBossKeys.KNOWN.stream().filter(key -> !STILL_BUILT.contains(key)).toList());

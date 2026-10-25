@@ -64,6 +64,8 @@ public final class AgentBossRunMember {
     private long reenteringSinceMs;
     /** P17: when it last talked to the recruit NPC to get back in (0: not since this re-entry began). */
     private long reenterTalkedAtMs;
+    /** GPQ plan B4: when it last talked to the entry NPC to join a join-after-start run's event (0: never). */
+    private long joinTalkedAtMs;
     /** Its anchor left while it was down outside, and the host heard it (see {@link #ownerLeftWhileDown}). */
     private boolean ownerLeftWhileDown;
     /** The run holds it at full simulation rate (AgentBossFullRateSimulation). */
@@ -287,6 +289,14 @@ public final class AgentBossRunMember {
 
     void reenterTalked(long nowMs) {
         reenterTalkedAtMs = nowMs;
+    }
+
+    long joinTalkedAtMs() {
+        return joinTalkedAtMs;
+    }
+
+    void joinTalked(long nowMs) {
+        joinTalkedAtMs = nowMs;
     }
 
     /** P12 G6: back in the fight after a re-entry; its last death is behind it. */
