@@ -130,7 +130,7 @@ public final class AgentApqTestService {
         for (Character[] couple : couples) {
             Character groom = couple[0];
             Character bride = couple[1];
-            groom.getClient().getWorldServer().createRelationship(groom.getId(), bride.getId());
+            groom.getWorldServer().createRelationship(groom.getId(), bride.getId());
             groom.setPartnerId(bride.getId());
             bride.setPartnerId(groom.getId());
             RingActionHandler.giveMarriageRings(groom, bride, TEST_WEDDING_RING);

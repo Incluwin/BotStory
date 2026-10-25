@@ -1,7 +1,6 @@
 package server.agents.capabilities.partyquest.apq;
 
 import client.Character;
-import client.inventory.InventoryType;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.looting.AgentLootEligibility;
@@ -18,7 +17,6 @@ import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
 import server.agents.perception.AgentMapPerception;
-import server.agents.plans.AgentScriptItemActionService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
@@ -315,11 +313,11 @@ final class ApqWorld implements AutoCloseable {
             return map == null ? List.of() : drops.stream().filter(drop -> !drop.picked && drop.mapId == map.getId())
                     .map(drop -> drop.item).toList();
         });
-        open(AgentScriptItemActionService.class).when(() -> AgentScriptItemActionService.dropItem(
-                any(), any(InventoryType.class), anyInt(), any(Short.class))).thenAnswer(call -> {
+        open(AgentApqDrops.class).when(() -> AgentApqDrops.dropEtc(
+                any(), anyInt(), any(Short.class))).thenAnswer(call -> {
                     AgentRuntimeEntry entry = call.getArgument(0);
-                    int itemId = call.getArgument(2);
-                    short quantity = call.getArgument(3);
+                    int itemId = call.getArgument(1);
+                    short quantity = call.getArgument(2);
                     return playerDrop(bodyOf(entry), itemId, quantity);
                 });
         open(AgentLootEligibility.class).when(() -> AgentLootEligibility.canBotTargetLoot(
