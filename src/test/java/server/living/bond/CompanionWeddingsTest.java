@@ -1,5 +1,6 @@
 package server.living.bond;
 
+import client.Character;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +31,26 @@ class CompanionWeddingsTest {
         }
         assertFalse(CompanionWeddings.garmentFor(1050135, 0));
         assertFalse(CompanionWeddings.garmentFor(1051149, 1));
+    }
+
+    /** A bride's groom proposes by the stock proposer's rules: a man of Lv50 or more, not married, engaged or engaging. */
+    @Test
+    void aGroomIsAManOfFiftyFreeToPropose() {
+        Character groom = LoreCouplesTest.bot(1, "Dorran", 0);
+        groom.setLevel(50);
+        assertTrue(CompanionWeddings.canGiveRing(groom));
+
+        groom.setLevel(49);
+        assertFalse(CompanionWeddings.canGiveRing(groom), "the stock proposer's level");
+        groom.setLevel(60);
+        groom.setGender(1);
+        assertFalse(CompanionWeddings.canGiveRing(groom), "the ring box is the groom's");
+        groom.setGender(0);
+        groom.setMarriageItemId(2240000);
+        assertFalse(CompanionWeddings.canGiveRing(groom), "already asking someone");
+        groom.setMarriageItemId(-1);
+        groom.setPartnerId(77);
+        assertFalse(CompanionWeddings.canGiveRing(groom), "engaged or married");
     }
 
     @Test

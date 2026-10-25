@@ -29,6 +29,9 @@ the APQ/GPQ session's branch).
    Lv50+, opposite genders, same map); the companion accepts at friendship Lv7+ (close friend) or declines in its own
    words; Cash Shop wedding ticket at Nicole (cathedral) or Bonnie (chapel); the ceremony, where the companion confirms
    its vows after its owner. The garment comes from the owner (the Golden Maple Leaf comes from the ceremony itself).
+5. **A woman marrying her companion (asked after the first build).** Stock Moony crafts ring boxes for men only, so
+   she brings her male companion: Moony crafts the box for him (she pays and brings the materials), and he proposes to
+   her; she answers in the stock Accept window.
 
 ## The couples (content)
 
@@ -119,14 +122,22 @@ example Jasper + Saskia and Ansel + Vesna, both Lv60). Everyone's partner is on 
   call `LivingWorldHooks.vowsConfirmed(player, officiant)` after the player's vows. A companion partner says "i do." and
   runs the officiant's script itself 3 s later (the headless NPC path companions already use), which completes the stock
   wedding: both get their rings from `giveMarriageRings`.
+- **A woman and her companion (decision 5).** At Moony (9201000.js) a female player of Lv50+ who asks for a ring is
+  shown her own male companions standing with her who may propose by the stock rules (Lv50+, not married, engaged or
+  engaging; `CompanionWeddings.grooms`). She picks one; he agrees by the same rule as above (friendship Lv7+) or says
+  he isn't ready, in a line, and nothing is charged. Agreed, she picks the ring, pays the stock materials and mesos, and
+  the box goes into his bag (never hers). About 5 s later he asks her in a line and makes the stock proposal
+  (`RingActionHandler.sendEngageProposal` from his side), so her client opens its Accept window; her answer goes through
+  the stock Accept/Deny, and he reacts in a line either way (`LivingWorldHooks.proposalAnswered`). Declined, he keeps
+  the box: at Moony again she is offered "Shall he ask you with it?". With her ETC bag full he says so instead of
+  asking (the stock refusal would be told only to him). The rest is the stock wedding, as above; the garment she hands
+  him is the groom's. The ring box is trade-blocked and not for sale, so he never sells or drops it.
 - Content never touches the result: it is a marriage to a player. Divorce stays stock (the player drops the ring).
 
 ## Known limits and follow-ups
 
-- **A female owner cannot propose.** Stock Moony crafts ring boxes only for male characters ("the ring box is currently
-  available only for males"), and no box is sold anywhere else (none in the Cash Shop commodity list). So under the
-  stock flow only a male owner can propose to a female companion. A female owner marrying a male companion needs a
-  decision (for example: Moony crafts the box for the male companion she brings, and he proposes to her).
+- A female player still cannot propose herself (stock Moony, no box sold elsewhere); she is proposed to by the
+  companion she brings (decision 5). Between two players the stock rule is unchanged.
 - Same-gender couples are not supported (decision 2).
 - Amoria is in no route group of the bots' world map (the APQ branch adds one). The wedding does not need it: a
   companion follows its owner's map changes (Thomas Swift's warp included) and the ceremony registers it.
@@ -141,8 +152,10 @@ example Jasper + Saskia and Ansel + Vesna, both Lv60). Everyone's partner is on 
   `LivingWorld.java` (install, uninstall, `weddings()`).
 - Citizens: `Citizen.java` (`FLAG_LORE_SPOUSE`), `CitizenGenerator.java` (`birthSpouse`), `Churn.java`.
 - Owner path: `server/living/bond/CompanionWeddings.java`, `Friendship.java` (garment), `LivingWorldHooks.java`
-  (`proposalSent`, `vowsConfirmed`, wedding maps on `mapEntered`), `RingActionHandler.java` (`answerProposal`, the
-  hook), `scripts/npc/9201002.js`, `scripts/npc/9201011.js` (one hook line each).
+  (`proposalSent`, `proposalAnswered`, `vowsConfirmed`, `ringBoxGrooms`, `groomAgrees`, `ringBoxMade`, `groomProposes`,
+  wedding maps on `mapEntered`), `RingActionHandler.java` (`answerProposal`, two hook lines), `scripts/npc/9201002.js`,
+  `scripts/npc/9201011.js` (one hook line each), `scripts/npc/9201000.js` (Moony: the bride's path; a man's is stock).
+- `scripts/config/knowledge/server-knowledge.json`: the `scripts/npc` fingerprint, re-exported after the script edits.
 
 ## Tests
 
@@ -152,7 +165,10 @@ example Jasper + Saskia and Ansel + Vesna, both Lv60). Everyone's partner is on 
 - `LoreCouplesAmoriaTest` (2): the shipped `AmoriaPQ.js` takes six members (an owner and companion wed the stock way, two
   lore couples married by `LoreCouples`) and opens the couples' vault; one unmarried companion keeps the party out.
 - `ContentLintSpouseTest` (5): the shipped couples load paired and lint clean; the lint errors; the yaml shapes.
-- `CompanionWeddingsTest` (3): the accept rule, the garments per gender, the wedding maps.
+- `CompanionWeddingsTest` (4): the accept rule, the garments per gender, the wedding maps, the groom's stock rules.
+- `MoonyBrideScriptTest` (6): Moony's script in Graal: a bride's box goes to her groom and she is charged as a man
+  would be; a groom not ready gets none and she pays nothing; one carrying a box is asked to propose with it; with no
+  groom, or under Lv50, she is told why; a man's talk is the stock one with no living-world call.
 - `CosmicAgentOfflineLoadServiceTest` (+2): the load rule runs after the load and before any registration; a failing
   rule never fails the load.
 - Targeted runs also passed: CitizenGeneratorSeedTest, ChurnSeedQueueTest, CitizenSeedPlanTest, ContentLint*,
@@ -195,6 +211,12 @@ merge rather than merging the line by hand.
 8. **Ceremony.** At the reserved time start it with the officiant: she wears the garment in the chapel. After the
    blessings, confirm your vows: about 3 s later she says "i do." and the officiant pronounces you married; both get the
    ring. Relog: still married; her next load leaves the marriage alone.
-9. **Content decides (staging only).** Remove `spouse:` from Ansel and Vesna, restart, load Ansel with Vesna unloaded:
+9. **A bride (decision 5).** A female owner Lv50+ (Mom and Dad quest 100400 done) with a male companion Lv50+ at
+   friendship 7+ beside her at Moony: "I want to make a ring" lists him; pick him (he agrees in a line), pick a ring, pay.
+   The box is in his bag, not hers; about 5 s later he asks her in a line and her Accept window opens. Accept: both get
+   the engagement boxes and he says a line. Decline: he says a line, keeps the box, and at Moony again she gets "Shall he
+   ask you with it?". At friendship below 7 he says he isn't ready and she is not charged. Then the ceremony as in 8,
+   with the groom's garment (1050131-1050134) handed to him.
+10. **Content decides (staging only).** Remove `spouse:` from Ansel and Vesna, restart, load Ansel with Vesna unloaded:
    the marriage is broken, Ansel says his `spouse.parted` line about 15 s after he appears, and Vesna's next load drops
    her loose ring.

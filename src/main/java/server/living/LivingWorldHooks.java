@@ -372,6 +372,73 @@ public final class LivingWorldHooks {
         }
     }
 
+    /** {@code target} answered {@code source}'s proposal (RingActionHandler.answerProposal); a companion who asked reacts. */
+    public static void proposalAnswered(Character source, Character target, boolean accepted) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || source == null || target == null) {
+            return;
+        }
+        try {
+            world.weddings().proposalAnswered(source, target, accepted);
+        } catch (RuntimeException failure) {
+            log.warn("living world proposalAnswered hook failed", failure);
+        }
+    }
+
+    /** Moony (9201000.js): a woman's own male companions with her who may give her a ring box; empty while off. */
+    public static java.util.List<Character> ringBoxGrooms(Character bride) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || bride == null) {
+            return java.util.List.of();
+        }
+        try {
+            return world.weddings().grooms(bride);
+        } catch (RuntimeException failure) {
+            log.warn("living world ringBoxGrooms hook failed", failure);
+            return java.util.List.of();
+        }
+    }
+
+    /** Moony: true when {@code groom} will give {@code bride} a ring (friendship); he says so either way. */
+    public static boolean groomAgrees(Character bride, Character groom) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || bride == null || groom == null) {
+            return false;
+        }
+        try {
+            return world.weddings().groomAgrees(bride, groom);
+        } catch (RuntimeException failure) {
+            log.warn("living world groomAgrees hook failed", failure);
+            return false;
+        }
+    }
+
+    /** Moony made {@code boxItemId} for {@code groom}, paid by {@code bride}: he gets it and proposes with it. */
+    public static void ringBoxMade(Character bride, Character groom, int boxItemId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || bride == null || groom == null) {
+            return;
+        }
+        try {
+            world.weddings().ringBoxMade(bride, groom, boxItemId);
+        } catch (RuntimeException failure) {
+            log.warn("living world ringBoxMade hook failed", failure);
+        }
+    }
+
+    /** Moony: {@code groom} asks {@code bride} again with the ring box he carries. */
+    public static void groomProposes(Character bride, Character groom) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || bride == null || groom == null) {
+            return;
+        }
+        try {
+            world.weddings().groomProposes(bride, groom);
+        } catch (RuntimeException failure) {
+            log.warn("living world groomProposes hook failed", failure);
+        }
+    }
+
     /**
      * {@code player} confirmed their vows to the officiant {@code officiantNpcId} (9201002.js at the cathedral,
      * 9201011.js at the chapel); a companion partner confirms its own.

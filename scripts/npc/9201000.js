@@ -32,6 +32,14 @@ var cost;
 
 var options;
 
+var grooms;     // a bride's companions who may give her the ring (docs/BOT_LORE_COUPLES_PLAN.md)
+var groom;      // the one she chose: the box is his to give, and he proposes with it
+
+// the living world, loaded only when a bride asks (never at the top level)
+function livingWorld() {
+    return Java.type('server.living.LivingWorldHooks');
+}
+
 function hasEngagementBox(player) {
     for (var i = 2240000; i <= 2240003; i++) {
         if (player.haveItem(i)) {
@@ -81,8 +89,24 @@ function action(mode, type, selection) {
                         return;
                     }
                     if (cm.getPlayer().getGender() != 0) {
-                        cm.sendOk("Sorry, but the ring box is currently available only for males.");
-                        cm.dispose();
+                        if (cm.getPlayer().getLevel() < 50) {
+                            cm.sendOk("Sorry, but the ring box is currently available only for males. And a proposal is only made to someone of level 50 or higher.");
+                            cm.dispose();
+                            return;
+                        }
+                        grooms = livingWorld().ringBoxGrooms(cm.getPlayer());
+                        if (grooms.isEmpty()) {
+                            cm.sendOk("Sorry, but the ring box is currently available only for males. Bring the man who will give it to you, and I'll craft it for him.");
+                            cm.dispose();
+                            return;
+                        }
+
+                        state = 3;
+                        var names = [];
+                        for (var g = 0; g < grooms.size(); g++) {
+                            names.push(grooms.get(g).getName());
+                        }
+                        cm.sendSimple("The ring box is the groom's to give. Who is it for?\r\n\r\n#b" + generateSelectionMenu(names));
                         return;
                     }
 
@@ -104,6 +128,27 @@ function action(mode, type, selection) {
 
                 cm.dispose();
             }
+        } else if (status == 2 && state == 3) {
+            groom = grooms.get(selection);
+            if (!livingWorld().groomAgrees(cm.getPlayer(), groom)) {
+                cm.sendOk("Hmm... it seems #b" + groom.getName() + "#k isn't ready for that yet. Love can't be hurried.");
+                cm.dispose();
+                return;
+            }
+            if (hasEngagementBox(groom)) {
+                state = 4;
+                cm.sendYesNo("#b" + groom.getName() + "#k already carries a ring box. Shall he ask you with it?");
+                return;
+            }
+
+            status = 1; // the ring menu, then the usual crafting, for him
+            state = 1;
+            options = ["Moonstone", "Star Gem", "Golden Heart", "Silver Swan"];
+            cm.sendSimple("So, what kind of engagement ring shall I craft for #b" + groom.getName() + "#k?\r\n\r\n#b" + generateSelectionMenu(options));
+        } else if (status == 3 && state == 4) {
+            livingWorld().groomProposes(cm.getPlayer(), groom);
+            cm.sendOk("Go on, then. He has something to ask you.");
+            cm.dispose();
         } else if (status == 2) {
             if (state == 0) {
                 cm.sendOk("Where do they live, you ask? My, it goes way back... you see, I'm a friend of theirs, and I was the one who crafted and personally delivered their engagement ring. They live beyond #rHenesys Hunting Grounds#k, I'm sure you know where it is.");
@@ -141,7 +186,11 @@ function action(mode, type, selection) {
             var complete = true;
             var recvItem = item, recvQty = 1, qty = 1;
 
-            if (!cm.canHold(recvItem, recvQty)) {
+            if (groom != null && !groom.canHold(recvItem, recvQty)) {
+                cm.sendOk("#b" + groom.getName() + "#k has no room for the ring box. He'll need a free USE slot.");
+                cm.dispose();
+                return;
+            } else if (groom == null && !cm.canHold(recvItem, recvQty)) {
                 cm.sendOk("Check your inventory for a free slot first.");
                 cm.dispose();
                 return;
@@ -176,8 +225,13 @@ function action(mode, type, selection) {
                     cm.gainMeso(-cost * qty);
                 }
 
-                cm.gainItem(recvItem, recvQty);
-                cm.sendOk("All done, the engagement ring came out just right. I wish you a happy engagement.");
+                if (groom != null) {
+                    livingWorld().ringBoxMade(cm.getPlayer(), groom, recvItem); // his to give: he proposes with it
+                    cm.sendOk("All done, the engagement ring came out just right. I've given it to #b" + groom.getName() + "#k... I believe he has a question for you.");
+                } else {
+                    cm.gainItem(recvItem, recvQty);
+                    cm.sendOk("All done, the engagement ring came out just right. I wish you a happy engagement.");
+                }
             }
             cm.dispose();
         }

@@ -194,6 +194,7 @@ public final class RingActionHandler extends AbstractPacketHandler {
 
             source.setMarriageItemId(-1);
         }
+        server.living.LivingWorldHooks.proposalAnswered(source, target, accepted); // a companion who asked reacts
     }
 
     private static void eraseEngagementOffline(int characterId) {
