@@ -1292,7 +1292,11 @@ public final class RosterService {
     /**
      * Lets go of whatever holds the persona's character before it is loaded as a companion: a walk-out in progress, a
      * live bench slice, its Resident life. A character loaded for something else is refused (the result), never pulled
-     * out from under it; null when the COMPANION lease is taken.
+     * out from under it; null when the COMPANION lease is taken. One not loaded leaves any town or field visit behind:
+     * a companion comes back following its owner, and its load would restore a visit checkpointed where it stands (a
+     * bench slice torn down without its hand-back, a restart mid-slice). Found live 2026-10-13: Garrick, called from a
+     * REST slice, came back in its bench TownLife visit, went abstract in the empty town on its way and stood frozen
+     * beside its owner once it arrived, its outcome ledger never reconciled and its mailbox never drained.
      */
     private RosterResult takeCharacter(Character owner, Persona persona, RosterEntry entry, int characterId) {
         if (leaving.containsKey(persona.id())) {
@@ -1303,10 +1307,13 @@ public final class RosterService {
         if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId())) {
             return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
         }
-        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)
-                && AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) != owner.getId()) {
-            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
-            return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
+        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)) {
+            if (AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) != owner.getId()) {
+                world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+                return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
+            }
+        } else {
+            world.benchDuty().forgetVisits(characterId);
         }
         return null;
     }
