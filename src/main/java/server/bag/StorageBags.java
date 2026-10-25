@@ -164,13 +164,13 @@ public final class StorageBags {
     }
 
     /**
-     * Cash items, one-of-a-kind items and items that expire never go in a bag: the cash shop, the one-of-a-kind rule
-     * and the expiry sweep only look at the inventory.
+     * Cash items and items that expire never go in a bag: the cash shop and the expiry sweep only look at the
+     * inventory. One-of-a-kind items do (every mount is one, or a cash item), as in storage: one comes out only while
+     * the inventory holds none, and an Auto pickup leaves them to the inventory's own rule.
      */
     static boolean bagSafe(Item item) {
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
-        return item.getPetId() < 0 && item.getExpiration() <= 0 && !ii.isCash(item.getItemId())
-                && !ii.isPickupRestricted(item.getItemId());
+        return item.getPetId() < 0 && item.getExpiration() <= 0
+                && !ItemInformationProvider.getInstance().isCash(item.getItemId());
     }
 
     static IntUnaryOperator slotMax(Client client) {
@@ -200,7 +200,7 @@ public final class StorageBags {
                 return "The " + kind.title() + " does not take that item.";
             }
             if (!bagSafe(item)) {
-                return "Cash items, one-of-a-kind items and items that expire cannot go in a bag.";
+                return "Cash items and items that expire cannot go in a bag.";
             }
             if (!bag(kind).deposit(item.copy(), target, slotMax(chr.getClient()))) {
                 return "The " + kind.title() + " is full.";
@@ -222,6 +222,10 @@ public final class StorageBags {
         Item peek = bag.peek(slot);
         if (peek == null) {
             return null;
+        }
+        if (ItemInformationProvider.getInstance().isPickupRestricted(peek.getItemId(), chr)
+                && chr.haveItemWithId(peek.getItemId(), true)) {
+            return "You can only carry one of those.";
         }
         Client client = chr.getClient();
         IntUnaryOperator slotMax = slotMax(client);
@@ -291,7 +295,8 @@ public final class StorageBags {
      */
     public boolean autoCollect(Character chr, Item item) {
         StorageBagKind kind = item == null ? null : StorageBagKind.forItem(item.getItemId());
-        if (kind == null || !isAuto(kind) || bags == null || !usable(chr.getClient()) || !bagSafe(item)) {
+        if (kind == null || !isAuto(kind) || bags == null || !usable(chr.getClient()) || !bagSafe(item)
+                || ItemInformationProvider.getInstance().isPickupRestricted(item.getItemId(), chr)) {
             return false;
         }
         Item copy = item.copy();

@@ -11,8 +11,10 @@ inventory). Ported from the community "Storage Bag" release (its per-character "
 | Chair | chairs (301xxxx) |
 | Mount | taming mobs (1902xxx) and saddles (1912xxx) |
 
-Cash items, one-of-a-kind items and items that expire never go in a bag: the cash shop, the one-of-a-kind rule and
-the expiry sweep only look at the inventory. Items in a bag do not count for quests or the Maker.
+Cash items and items that expire never go in a bag: the cash shop and the expiry sweep only look at the inventory.
+One-of-a-kind items do (every mount and saddle in our WZ is one, or a cash item), with storage's rule: one comes out
+only while the inventory holds none ("You can only carry one of those."), and Auto never collects them. Items in a bag
+do not count for quests or the Maker.
 
 ## In the window
 

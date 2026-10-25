@@ -2,6 +2,7 @@ package server.bag;
 
 import client.Character;
 import client.Client;
+import client.inventory.Equip;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
 class StorageBagsMySqlIntegrationTest {
     private static final int BRONZE_ORE = 4010000;
     private static final int POTION = 2000000;
+    private static final int HOG = 1902000; // a one-of-a-kind mount
     private static int characterId;
 
     private Character chr;
@@ -215,6 +217,24 @@ class StorageBagsMySqlIntegrationTest {
         assertFalse(StorageBags.bagSafe(expiring));
         assertFalse(StorageBags.bagSafe(stack(5150000, 1)), "a cash item");
         assertTrue(StorageBags.bagSafe(stack(BRONZE_ORE, 1)));
+    }
+
+    @Test
+    void aOneOfAKindMountGoesInAndComesOutOnlyWhileTheInventoryHasNone() {
+        Inventory equip = chr.getInventory(InventoryType.EQUIP);
+        short slot = equip.addItem(new Equip(HOG, (short) 0));
+        assertNull(bags.deposit(chr, StorageBagKind.MOUNT, InventoryType.EQUIP, slot, -1));
+        assertEquals(0, equip.countById(HOG));
+        assertEquals(HOG, bags.bag(StorageBagKind.MOUNT).peek(0).getItemId());
+
+        short second = equip.addItem(new Equip(HOG, (short) 0));
+        assertEquals("You can only carry one of those.", bags.withdraw(chr, StorageBagKind.MOUNT, 0));
+        assertNotNull(bags.bag(StorageBagKind.MOUNT).peek(0), "still in the bag");
+
+        equip.removeSlot(second);
+        assertNull(bags.withdraw(chr, StorageBagKind.MOUNT, 0));
+        assertEquals(1, equip.countById(HOG));
+        assertNull(bags.bag(StorageBagKind.MOUNT).peek(0));
     }
 
     @Test
