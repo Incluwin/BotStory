@@ -136,8 +136,10 @@ final class AgentHpqCoordinator {
             }
             holdFullRateSimulation(session);
             Character leader = character(session.eventLeaderId());
+            // The parting words are a citizen run's (a stock run fails as it always did, reading nothing more).
+            boolean words = playersRun(session);
             if (leader == null || leader.getHp() <= 0) {
-                fail(session, "The HPQ event leader is unavailable", leader == null
+                fail(session, "The HPQ event leader is unavailable", !words ? AgentHpqParting.GENERIC : leader == null
                         ? new AgentHpqParting(AgentHpqParting.Kind.GONE, session.eventLeaderId(),
                                 memberName(session, session.eventLeaderId()))
                         : AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, leader), nowMs);
@@ -149,7 +151,7 @@ final class AgentHpqCoordinator {
             if (insideEvent(session.phase()) && session.eventInstance() != null
                     && hpq().event(leader) != session.eventInstance()) {
                 fail(session, "The HPQ event ended or the leader left its instance",
-                        AgentHpqParting.of(endedCause(session, nowMs)), nowMs);
+                        words ? AgentHpqParting.of(endedCause(session, nowMs)) : AgentHpqParting.GENERIC, nowMs);
                 return;
             }
             // A citizen run has players in it: departures and deaths as a companion run has them, before the stage.

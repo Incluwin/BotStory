@@ -651,7 +651,7 @@ public final class CitizenPartyQuests {
         } else {
             called.journal.add("pq", "went to " + lobby.name() + " to find a party");
         }
-        log.debug("citizen {} party at {} calls {} ({})", leader.name(), lobby.name(), called.name(),
+        log.info("citizen {} party at {} calls {} ({})", leader.name(), lobby.name(), called.name(),
                 mate ? "mate" : "townsfolk");
         population.presence().travel(called, Activity.PQ, lobby.mapId(), nowMs);
     }

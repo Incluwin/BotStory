@@ -223,8 +223,9 @@ in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 
 ## Not done yet (from the plan)
 
-Citizen parties run KPQ and HPQ (LPQ and OPQ next, docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and
-OPQ lobbies they still only gather and invite you); no expeditions; no alliances; travel is a
+Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ has one lobby a channel; OPQ after the
+OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
+invite you); no expeditions; no alliances; travel is a
 map change with a delay rather than walking through portals; conversation memory of a human is the
 social relationship memory plus the journal, not a per-human summary; the client-side visible cap
 (`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.

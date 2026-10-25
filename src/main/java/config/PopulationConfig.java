@@ -104,7 +104,7 @@ public class PopulationConfig {
     // Party quests citizens run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md)
     /** Kill switch: false = citizens at a PQ lobby only gather and invite, as before. */
     public boolean PQ_RUNS_ENABLED = true;
-    /** Comma list of the quests citizen parties go into (kpq, hpq; lpq is built and stays out until a live clear). */
+    /** Comma list of the quests citizen parties go into (kpq, hpq). */
     public String PQ_RUN_QUESTS = "kpq,hpq";
     /** Citizen runs at once on one channel. */
     public int PQ_RUNS_PER_CHANNEL = 1;

@@ -138,6 +138,18 @@ class HpqCitizenRunCoordinatorTest {
     }
 
     @Test
+    void itsLeaderGoingDownEndsItInAPlayersWords() {
+        AgentHpqSession session = run.citizenSession(AgentHpqSession.Phase.DEFENDING_BUNNY, lia, mira, pip);
+        when(lia.getHp()).thenReturn(0);
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(AgentHpqSession.Phase.FAILED, session.phase());
+        run.said(session, "failed", mira, "Lia went down, so we can't finish this one. let's head out.");
+        verify(run.packets, never()).broadcastChatText(any(), any(), anyBoolean(), anyInt());
+    }
+
+    @Test
     void aStockRunNeverAsksItsHostToTapOut() {
         AgentHpqSession session = run.session(false, AgentHpqSession.Phase.DEFENDING_BUNNY, lia, mira, pip, tobi);
         when(tobi.getHp()).thenReturn(0);
