@@ -29,6 +29,11 @@ may veto or require them at login.
     Both need BotStory's WZ files. Off, the GM item commands, the dressing room and SoloMapling's bots also leave
     out the 307 equips only BotStory's WZ files have (`server.mods.BotStoryWzEquips`, list in
     `src/main/resources/mods/botstory-wz-equips.txt`).
+- `beginner_ap` (default off, shipped off): the server half of the client feature `beginner_ap` (kaentake
+  `mod/loganml-ap`, ported from LoganML/kaentake). On, a Beginner whose client reports `beginner_ap` active keeps
+  each level-up's AP to place (`Character.levelUp`); everyone else, bots included, still has it spent by
+  `USE_AUTOASSIGN_STARTERS_AP`. `FeatureHandshake.isActive(client, id)` is the check: the client's last report has
+  the feature active and the policy does not deny it.
 
 ## Feature policy (`mods.FEATURES`)
 
@@ -51,7 +56,9 @@ One line per kaentake feature id: `allow` (the player's own switch decides), `de
 
 Core modules (`FEATURE_CORE`) never change, whatever the line says. Shipped lines: `free_addy` and
 `ext_chain_lightning` (both server_gated: damage/speed caps, Chain Lightning range) `allow`, matching what the shipped
-client does today; any other server_gated feature `deny` until a line names it. `!mods feature <id>
+client does today, and `beginner_ap` (server_gated: the stat window's Beginner lock off) `allow`, which gives the
+player AP to place only while the `beginner_ap` switch is on; any other server_gated feature `deny` until a line
+names it. `stat_all_ap` (the all-AP buttons) is not server_gated: it sends the stock auto-assign packet. `!mods feature <id>
 allow|deny|require [version]|unset` changes a line until the next restart and every online client that reported
 hears its new answer at once. `!mods client <player>` shows what that client reported and the answer it gets now.
 

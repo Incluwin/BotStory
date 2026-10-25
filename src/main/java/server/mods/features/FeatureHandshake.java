@@ -64,6 +64,24 @@ public final class FeatureHandshake {
         return mods.isOn(ServerMods.CLIENT_FEATURE_POLICY) ? policy : FeaturePolicy.ALLOW_ALL;
     }
 
+    /**
+     * Whether the client's last report has the feature active and the policy leaves it so: a REPORT stands until the
+     * client's APPLIED arrives, and a denied feature goes inert there. False for a client that never reported (bots).
+     */
+    public boolean isActive(Client client, String id) {
+        Report report = client == null ? null : client.getClientFeatures();
+        if (report == null) {
+            return false;
+        }
+        for (Feature feature : report.features()) {
+            if (feature.id().equalsIgnoreCase(id)) {
+                return feature.active()
+                        && effectivePolicy().evaluate(List.of(feature)).answers().get(0).decision() != Decision.DENY;
+            }
+        }
+        return false;
+    }
+
     /** {@code !mods feature <id> ...}: the line until the next restart (null removes it). */
     public void setRule(String id, Rule rule) {
         policy = policy.with(id, rule);

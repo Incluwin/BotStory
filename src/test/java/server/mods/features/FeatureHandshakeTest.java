@@ -18,7 +18,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,7 +38,8 @@ import static server.mods.features.FeaturePackets.STATE_ATTACHED;
 /**
  * The handshake around the policy table: a REPORT is kept on the connection and answered with a POLICY, an APPLIED is
  * only kept, a lacking required feature pops up a message, the policy switch off answers allow for everything, and a
- * policy change reaches every connection that reported (on its own I/O thread) and no other.
+ * policy change reaches every connection that reported (on its own I/O thread) and no other, and isActive reads a
+ * connection's last report through the policy.
  */
 class FeatureHandshakeTest {
     private static final Feature HP_TAG = new Feature("mob_hp_tag", "Mob HP bar with numbers", 1, FLAG_LIVE,
@@ -44,6 +47,9 @@ class FeatureHandshakeTest {
     private static final Feature ADDY = new Feature("free_addy", "Gameplay patches", 1, FLAG_SERVER_GATED | FLAG_LIVE,
             STATE_ATTACHED | STATE_ACTIVE);
     private static final Feature CREW_OFF = new Feature("crew_window", "Crew window", 1, 0, 0);
+    private static final int GATED_LIVE = FLAG_SERVER_GATED | FLAG_LIVE;
+    private static final Feature BEGINNER_AP = new Feature("beginner_ap", "Beginners place AP at any level", 1,
+            GATED_LIVE, STATE_ATTACHED | STATE_ACTIVE);
 
     private final ServerMods mods = new ServerMods(ServerMods.ALL, Map.of());
     private final FeatureHandshake handshake = new FeatureHandshake(mods,
@@ -174,5 +180,27 @@ class FeatureHandshakeTest {
                 "fancy_ui missing -> require"), lines);
         verify(client, never()).sendPacket(any());
         verify(chr, never()).dropMessage(eq(1), anyString());
+    }
+
+    @Test
+    void isActiveReadsTheLastReportThroughThePolicy() {
+        assertFalse(handshake.isActive(client, "beginner_ap"), "no report: a bot or a client without the handshake");
+        assertFalse(handshake.isActive(null, "beginner_ap"));
+        kept = report(BEGINNER_AP);
+        assertFalse(handshake.isActive(client, "beginner_ap"), "server_gated with no line: the default deny");
+        handshake.setRule("beginner_ap", new Rule(Decision.ALLOW, 0));
+        assertTrue(handshake.isActive(client, "BEGINNER_AP"));
+        assertFalse(handshake.isActive(client, "stat_all_ap"), "not in the report");
+        kept = new Report(true, 1, 20261017, List.of(new Feature("beginner_ap", "", 1, GATED_LIVE, STATE_ATTACHED)));
+        assertFalse(handshake.isActive(client, "beginner_ap"), "applied inert");
+        kept = report(new Feature("beginner_ap", "", 1, GATED_LIVE, 0));
+        assertFalse(handshake.isActive(client, "beginner_ap"), "switched off on the client");
+        kept = report(BEGINNER_AP);
+        handshake.setRule("beginner_ap", new Rule(Decision.ALLOW, 2));
+        assertFalse(handshake.isActive(client, "beginner_ap"), "older than the line's version: denied");
+        handshake.setRule("beginner_ap", new Rule(Decision.DENY, 0));
+        assertFalse(handshake.isActive(client, "beginner_ap"));
+        mods.set(ServerMods.CLIENT_FEATURE_POLICY, false);
+        assertTrue(handshake.isActive(client, "beginner_ap"), "policy switch off: everything is allowed");
     }
 }

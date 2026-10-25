@@ -170,6 +170,8 @@ import server.maps.Portal;
 import server.maps.SavedLocation;
 import server.maps.SavedLocationType;
 import server.maps.Summon;
+import server.mods.ServerMods;
+import server.mods.features.FeatureHandshake;
 import server.monitoring.CharacterSaveDiagnostics;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import server.monitoring.SlowOperationLogger;
@@ -7526,6 +7528,12 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
+    /** Server mod beginner_ap is on and this player's client has the beginner_ap feature active. */
+    private boolean beginnerPlacesOwnAp() {
+        return ServerMods.get().isOn(ServerMods.BEGINNER_AP)
+                && FeatureHandshake.get().isActive(client, ServerMods.BEGINNER_AP.id());
+    }
+
     public synchronized void levelUp(boolean takeexp) {
         if (level >= getMaxLevel()) {
             exp.set(0);
@@ -7538,7 +7546,9 @@ public class Character extends AbstractCharacterObject {
         // drain *all* accumulated AP here — not just this level's 5 — so
         // Beginners that had AP stuck from earlier (either pre-fix characters
         // or GM !stat grants) don't keep seeing the popup forever.
-        if (YamlConfig.config.server.USE_AUTOASSIGN_STARTERS_AP && isBeginner) {
+        // Server mod beginner_ap leaves the AP to a player whose client lets
+        // Beginners place it (client feature beginner_ap).
+        if (YamlConfig.config.server.USE_AUTOASSIGN_STARTERS_AP && isBeginner && !beginnerPlacesOwnAp()) {
             effLock.lock();
             statWlock.lock();
             try {

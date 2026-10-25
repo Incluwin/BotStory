@@ -43,8 +43,15 @@ public final class ServerMods {
     public static final ServerMod BOTSTORY_WZ = new ServerMod("botstory_wz",
             "Clients have BotStory's WZ files (Evolving Ring, Hunter's Codex as a cash medal)", false);
 
+    /**
+     * A Beginner whose client has the {@code beginner_ap} feature active keeps the AP of each level-up to place
+     * (Character.levelUp); without it USE_AUTOASSIGN_STARTERS_AP spends a Beginner's AP for them, as before.
+     */
+    public static final ServerMod BEGINNER_AP = new ServerMod("beginner_ap",
+            "Beginners place their own AP (client feature beginner_ap)", false);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
-    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ);
+    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP);
 
     private static volatile ServerMods instance;
 
