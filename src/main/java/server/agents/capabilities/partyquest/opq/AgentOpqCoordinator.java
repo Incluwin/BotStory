@@ -917,22 +917,33 @@ final class AgentOpqCoordinator {
 
     private static void tickLoungePortalDiscovery(AgentOpqSession session, AgentRuntimeEntry entry,
                                                    Character agent, AgentOpqMemberState member, long nowMs) {
-        if (member.portalObservationPending(agent.getMapId())) {
-            boolean advanced = agent.getPosition().y < member.pendingPortalSourceY() - 70;
-            session.loungeRoute().observe(member.pendingPortalRow(), member.pendingPortalChoice(), advanced);
-            member.clearPortalObservation();
-        }
         int row = agent.getPosition().y > -1_560 ? 0 : 1;
         int choice = session.loungeRoute().choice(row);
         int portalId = (row == 0 ? 11 : 14) + choice;
+        tryTrialDoor(session.loungeRoute(), entry, agent, member, row, choice, portalId, nowMs);
+    }
+
+    /**
+     * Walks to a trial door (the lounge's and the way up's rows), goes through it standing on it, and learns from where
+     * it lands: a right door puts the runner on the row above, a wrong one drops it back below. The warp is done when
+     * enterPortal returns, so the landing is read at once, and the runner stops there: its move target was still the
+     * door it just used, now below it, so it dropped back to it, and the read 650 ms later took every right door for a
+     * wrong one (2026-10-25 live, run 5: Kettle and Jinx never got past their first row; offline the way up's runner
+     * never solved row 0 in 30 min). It waits to land first: taken mid-hop, the door cut the hop off, the hop counted
+     * as a failed edge, and three of them shut the hop between two doors for 30 s.
+     */
+    private static void tryTrialDoor(AgentOpqPortalRoute route, AgentRuntimeEntry entry, Character agent,
+                                     AgentOpqMemberState member, int row, int choice, int portalId, long nowMs) {
         Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal)) {
+        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal) || !ACTIONS.grounded(agent)) {
             if (portal != null) ACTIONS.navigate(entry, portal, true);
             return;
         }
-        member.beginPortalObservation(agent.getMapId(), row, choice, agent.getPosition().y);
-        if (OPQ.enterPortal(agent, portalId)) member.deferUntil(nowMs + ACTION_RETRY_MS);
-        else member.clearPortalObservation();
+        int sourceY = agent.getPosition().y;
+        if (!OPQ.enterPortal(agent, portalId)) return;
+        route.observe(row, choice, agent.getPosition().y < sourceY - 70);
+        ACTIONS.stop(entry);
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
     }
 
     private static void tickWayUp(AgentOpqSession session, AgentRuntimeEntry entry,
@@ -963,11 +974,6 @@ final class AgentOpqCoordinator {
 
     private static void tickWayUpPortalDiscovery(AgentOpqSession session, AgentRuntimeEntry entry,
                                                   Character agent, AgentOpqMemberState member, long nowMs) {
-        if (member.portalObservationPending(agent.getMapId())) {
-            boolean advanced = agent.getPosition().y < member.pendingPortalSourceY() - 70;
-            session.wayUpRoute().observe(member.pendingPortalRow(), member.pendingPortalChoice(), advanced);
-            member.clearPortalObservation();
-        }
         int row = wayUpRow(agent.getPosition().y);
         if (row < 0) {
             navigateWayUpInitialAscent(entry, agent, member);
@@ -981,14 +987,7 @@ final class AgentOpqCoordinator {
         }
         int choice = session.wayUpRoute().choice(row);
         int portalId = 24 + row * 4 + choice;
-        Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!AgentOpqInteractionPolicy.mayEnterPortal(agent.getPosition(), portal)) {
-            if (portal != null) ACTIONS.navigate(entry, portal, true);
-            return;
-        }
-        member.beginPortalObservation(agent.getMapId(), row, choice, agent.getPosition().y);
-        if (OPQ.enterPortal(agent, portalId)) member.deferUntil(nowMs + ACTION_RETRY_MS);
-        else member.clearPortalObservation();
+        tryTrialDoor(session.wayUpRoute(), entry, agent, member, row, choice, portalId, nowMs);
     }
 
     /** The server's day for the lobby's LP (Calendar.DAY_OF_WEEK; OrbisPQ.js sets the music player by Date.getDay()). */

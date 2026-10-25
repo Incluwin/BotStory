@@ -5,6 +5,7 @@ import server.agents.capabilities.combat.AgentGrindSearchStateRuntime;
 import server.agents.capabilities.movement.fidget.AgentFidgetService;
 import server.agents.capabilities.combat.AgentCombatCooldownStateRuntime;
 import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationEdgeReliabilityRuntime;
 import server.agents.capabilities.navigation.AgentNavigationStateResetService;
 import server.agents.capabilities.follow.AgentOwnerMotionStateRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -24,6 +25,7 @@ public final class AgentMovementStateResetService {
 
     public static void resetEntryStateAfterTeleport(AgentRuntimeEntry entry) {
         AgentHorizontalBoundaryStateRuntime.clear(entry);
+        AgentNavigationEdgeReliabilityRuntime.abandonAttempt(entry);
         clearTransientState(entry);
     }
 
