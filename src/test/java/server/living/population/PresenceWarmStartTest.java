@@ -28,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -80,7 +81,7 @@ class PresenceWarmStartTest {
         when(fields.homeTown(any(), any())).thenReturn(TOWN);
         when(population.fields()).thenReturn(fields);
         CitizenStore store = mock(CitizenStore.class);
-        when(store.characterProgress(anyInt())).thenReturn(new int[]{30, 0});
+        when(store.characterProgress(anyInt())).thenReturn(new int[]{30, 0, 0, 0, 0}); // level, exp, job, meso, fame
         when(population.store()).thenReturn(store);
         MapleMap town = mock(MapleMap.class);
         when(town.getId()).thenReturn(TOWN);
@@ -92,6 +93,9 @@ class PresenceWarmStartTest {
             registry.put(citizen.characterId(), citizen);
             return null;
         }).when(population).save(any());
+        when(population.update(anyInt(), any())).thenAnswer(inv -> // a login writes onto the current record
+                registry.computeIfPresent(inv.getArgument(0), (id, current) ->
+                        inv.<UnaryOperator<Citizen>>getArgument(1).apply(current)));
         loader = mockStatic(CosmicAgentOfflineLoader.class);
         loader.when(() -> CosmicAgentOfflineLoader.loadOfflineAgent(anyInt(), anyInt(), anyInt(), any(), any()))
                 .thenAnswer(inv -> {
