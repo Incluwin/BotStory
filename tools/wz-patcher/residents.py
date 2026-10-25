@@ -25,7 +25,10 @@ How the v83 client uses the files (checked in a v83 client):
     seconds after entering the game;
   * the quest list groups quests by `area` under the QuestCategory.img header, labels each with `parent` as
     plain text (colour codes print literally), and titles the detail pane with `name`; an expired end date
-    keeps a quest off the "available" list, since Residents offer it in person.
+    keeps a quest off the "available" list, since Residents offer it in person;
+  * the detail pane counts nothing by itself: the In Progress text ("1") carries the live counts as stock quests
+    do, #a<quest id><slot># for the kills of the slot-th Check.img/1 monster and #c<item id># for what the
+    inventory holds, so the text is written as exported and Check.img/1 keeps the export's order.
 """
 import struct
 import zlib
