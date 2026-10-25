@@ -52,6 +52,10 @@ Example: `showa` and `field_zipangu` on, the owner at Konpei (801040004) with 5 
 - `AgentBossScope.EXPEDITION_TYPES` changes to `ZAKUM,SCARGA,HORNTAIL,SHOWA`. It acts only when an Agent hits a part
   in a Showa event, and Agents get there only with the key on.
 - `showa=600/600` joins `AgentSupplyReadiness.BOSS_STANDARDS`, and `showa=4000` joins `AMMO_STANDARDS`.
+- 2026-10-16: `showa=1500/0` joins `AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS`, as Horntail and Pink Bean have.
+  Showa's 600 HP potions now count only potions that each restore 15% of the Agent's maximum HP. Showa Town's store
+  (9120002) meets it only with Melting Cheese (4,000 HP), and only up to 26,666 maximum HP; White Potions and Ice
+  Cream Pops (2,000 HP) no longer count.
 
 boss-rules.json: the `showa` row (`targetPriority` 9400112, 9400113, 9400300, 9400122; `neverTarget` 9400114;
 `markerItems` 4000138).

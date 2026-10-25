@@ -53,6 +53,8 @@ class AgentSupplyReadinessBossStandardTest {
     private static final int UNAGI = 2_022_003;
     private static final int REINDEER_MILK = 2_020_013;
     private static final int HONSTER = 2_002_021;
+    private static final int ICE_CREAM_POP = 2_001_001;
+    private static final int MELTING_CHEESE = 2_020_012;
     private static final String FLOOR_KEY =
             "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_POTION_FLOOR_BPS";
     private static final AgentSupplyReadiness.Activity HORNTAIL =
@@ -292,6 +294,35 @@ class AgentSupplyReadinessBossStandardTest {
             assertEquals(new AgentSupplyReadiness.PotionFloor(1_500, 0), AgentSupplyReadiness.potionFloor(pinkBean));
             assertEquals(44, AgentSupplyReadiness.countFor(ingrid, pinkBean)[0], "the White Potions do not count");
             assertEquals(1_456, AgentSupplyReadiness.shortfall(ingrid, pinkBean).hp(), "1,500 - 44");
+        }
+    }
+
+    @Test
+    void showaCountsOnlyPotionsThatRestoreFifteenPercentOfMaximumHpToo() {
+        // 2026-10-16: Showa gets Horntail's and Pink Bean's floor (Bodyguard A touches for about 16,800). Showa Town's
+        // store (9120002) sells White Potions, Ice Cream Pops (2,000 HP) and Melting Cheese (4,000 HP); only the cheese
+        // meets 15%, and only up to 26,666 maximum HP
+        AgentSupplyReadiness.Activity showa = AgentSupplyReadiness.Activity.partyQuest("showa");
+        Map<Integer, StatEffect> effects = Map.of(WHITE, effect(300, 0), ICE_CREAM_POP, effect(2_000, 0),
+                MELTING_CHEESE, effect(4_000, 0));
+        try (MockedStatic<AgentUseItemClassificationPolicy> classification = potionEffects(effects)) {
+            Character gunnar = mock(Character.class);
+            when(gunnar.getId()).thenReturn(1_005);
+            when(gunnar.getJob()).thenReturn(Job.HERO);
+            when(gunnar.getCurrentMaxHp()).thenReturn(19_776);
+            when(gunnar.getCurrentMaxMp()).thenReturn(3_000);
+            Inventory use = new Inventory(gunnar, InventoryType.USE, (byte) 24);
+            use.addItem(Items.itemWithQuantity(WHITE, 300));
+            use.addItem(Items.itemWithQuantity(ICE_CREAM_POP, 200));
+            use.addItem(Items.itemWithQuantity(MELTING_CHEESE, 100));
+            when(gunnar.getInventory(InventoryType.USE)).thenReturn(use);
+
+            assertEquals(new AgentSupplyReadiness.PotionFloor(1_500, 0), AgentSupplyReadiness.potionFloor(showa));
+            assertEquals(100, AgentSupplyReadiness.countFor(gunnar, showa)[0], "Melting Cheese only");
+            assertEquals(500, AgentSupplyReadiness.shortfall(gunnar, showa).hp(), "600 - 100");
+
+            when(gunnar.getCurrentMaxHp()).thenReturn(26_667);
+            assertEquals(0, AgentSupplyReadiness.countFor(gunnar, showa)[0], "past 26,666 HP no Showa potion counts");
         }
     }
 
