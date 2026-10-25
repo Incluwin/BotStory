@@ -41,7 +41,9 @@ class WorldKnowledgeDecisionsTest {
     void partyQuestsKnowTheirLobbyAndEveryMapOfTheirInstance() {
         NameIndex names = knowledge.names();
         assertEquals("opq", names.pqAtLobby(200080101).orElseThrow().say(), "OPQ's instanced lobby");
-        assertTrue(names.pqAtLobby(200000000).isEmpty());
+        assertEquals("cpq", names.pqAtLobby(200000000).orElseThrow().say(), "Orbis town is Spiegelmann's CPQ lobby, not OPQ's");
+        assertTrue(names.pqOf(200000000).isEmpty(), "a town lobby is no stage");
+        assertTrue(names.pqAtLobby(211000000).isEmpty(), "El Nath is no lobby");
         assertEquals("kpq", names.pqOf(103000804).orElseThrow().say(), "KPQ's last stage shares the first stage's exit");
         assertEquals("lpq", names.pqOf(922010900).orElseThrow().say());
         assertTrue(names.pqOf(103000000).isEmpty(), "the lobby is no stage");

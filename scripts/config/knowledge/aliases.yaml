@@ -164,6 +164,8 @@ aliases:
   - {alias: [papu, papulatus], kind: mob, ids: [8500002], say: "papu", wz: "Papulatus"}
   - {alias: [pianus], kind: mob, ids: [8510000], wz: "Pianus"}
   - {alias: ["happyville snowmen", "kid snowmen", "kid snowman"], kind: mob, ids: [9500317], say: "snowmen", wz: "Kid Snowman"}
+  - {alias: ["showa boss"], kind: mob, ids: [9400300], say: "the boss", wz: "The Boss"}
+  - {alias: ["wiseman solomon"], kind: mob, ids: [8820003, 8820015], say: "solomon", wz: "Solomon the Wise"}
   # ---- towns and maps ------------------------------------------------------------------------
   - {alias: [henesys, henny, hene, henesis], kind: map, ids: [100000000], wz: "Henesys"}
   - {alias: [ellinia, elli, elinia], kind: map, ids: [101000000], wz: "Ellinia"}
@@ -183,6 +185,12 @@ aliases:
   - {alias: [hhg, "henesys hunting ground", "henesys hunting grounds"], kind: region, ids: [104040000, 104040001, 104040002], say: "hhg", wz: "Henesys Hunting Ground I-III"}
   - {alias: ["excavation site", excav], kind: region, ids: [101030101, 101030102, 101030103], say: "excavation site", wz: "Excavation Site I-III"}
   - {alias: ["wolf territory", wolves], kind: region, ids: [211040500, 211040600, 211040800, 211040900, 211041000], say: "wolf territory", wz: "Wolf Territory I-V"}
+  # areas the guides name by their street (docs/GUIDE_KNOWLEDGE_PLAN.md): every map of that street, town first
+  - {alias: ["maple island"], kind: region, ids: [1000000, 0, 1, 2, 3, 10000, 20000, 20001, 30000, 30001, 40000, 40001, 40002, 50000, 50001, 60000, 60001, 1000001, 1000002, 1000003, 1000004, 1000005, 1000006, 1010000, 1010001, 1010002, 1010003, 1010004, 1010100, 1010200, 1010300, 1010400, 1020000, 1020001], say: "maple island", wz: "streets Maple Road + Rainbow Street"}
+  - {alias: ["phantom forest"], kind: region, ids: [610010000, 610010001, 610010002, 610010003, 610010004, 610010005, 610010010, 610010011, 610010012, 610010013, 610010100, 610010101, 610010102, 610010103, 610010104, 610010200, 610010201, 610010202, 682000000, 682000001], say: "phantom forest", wz: "street Phantom Forest"}
+  - {alias: ["crimsonwood mountain"], kind: region, ids: [610020000, 610020001, 610020002, 610020003, 610020004, 610020005, 610020006, 610020010, 610020011, 610020012, 610020013, 610020014, 610020015], say: "crimsonwood mountain", wz: "street Crimsonwood Mountain"}
+  - {alias: [singapore], kind: region, ids: [540000000, 540000100, 540000200, 540000300, 540020000, 540020100, 541000000, 541000100, 541000200, 541000300, 541010000, 541010010, 541010020, 541010030, 541010040, 541010050, 541010060, 541010100, 541010110], say: "singapore", wz: "street Singapore, without Changi Airport and the flight"}
+  - {alias: ["eos tower", eos], kind: region, ids: [220000400, 221020000, 221020100, 221020200, 221020300, 221020400, 221020500, 221020600, 221020700, 221020800, 221020900, 221021000, 221021100, 221021200, 221021300, 221021400, 221021500, 221021600, 221021700, 221021800, 221021900, 221022000, 221022100, 221022200, 221022300, 221022400, 221022500, 221022600, 221022700, 221022800, 221022900, 221023000, 221023100, 221023200, 221023300, 221023400, 221023500, 221023600, 221023700, 221023800, 221023900, 221024000, 221024100, 221024200, 221024300, 221024400, 221024500], say: "eos tower", wz: "Eos Tower Entrance + floors"}
   - {alias: [orbis], kind: map, ids: [200000000], wz: "Orbis"}
   - {alias: ["orbis station"], kind: map, ids: [200000100], wz: "Orbis Station Enterence"}
   - {alias: ["ellinia station"], kind: map, ids: [101000300], wz: "Ellinia Station"}
@@ -213,11 +221,32 @@ aliases:
   - {alias: ["chiefs residence", "chief residence"], kind: map, ids: [211000001], wz: "Chief's Residence"}
   - {alias: ["forest of the priest"], kind: map, ids: [240010501], wz: "Forest of the Priest"}
   # ---- party quests --------------------------------------------------------------------------
-  - {alias: [kpq, "kerning pq", "kerning party quest"], kind: pq, ids: [103000000, 103000800], npc: 9020000, levels: [21, 30], say: "kpq", wz: "Kerning City; 1st Accompaniment"}
-  - {alias: [lpq, "ludi pq", ludipq, "ludibrium pq"], kind: pq, ids: [221024500, 922010100], npc: 2040034, levels: [35, 50], say: "lpq", wz: "Eos Tower 101st Floor; Abandoned Tower"}
-  - {alias: [opq, "orbis pq", "orbis party quest"], kind: pq, ids: [200080101, 920010000], npc: 2013000, levels: [51, 70], say: "opq", wz: "The Unknown Tower"}
-  - {alias: [hpq, "henesys pq", "moon bunny pq", "rice cake pq"], kind: pq, ids: [100000200, 910010000], npc: 1012112, levels: [10, 200], say: "hpq", wz: "Henesys Park; Primrose Hill"}
-  - {alias: [cwkpq, "cwk pq", ckpq, "crimsonwood pq", "crimsonwood party quest", "crimsonwood keep pq", "crimsonwood keep party quest"], kind: pq, ids: [610030020, 610030100], npc: 9201113, levels: [90, 255], say: "cwkpq", wz: "Hall to Inner Sanctum; Inner Sanctum Hallway"}
+  - {alias: [kpq, "kerning pq", "kerning party quest", "kerning city pq", "kerning city party quest", "lakelis pq"], kind: pq, ids: [103000000, 103000800], npc: 9020000, levels: [21, 30], say: "kpq", wz: "Kerning City; 1st Accompaniment"}
+  - {alias: [lpq, "ludi pq", ludipq, "ludibrium pq", "ludibrium party quest", "ludi party quest", "eos tower pq"], kind: pq, ids: [221024500, 922010100], npc: 2040034, levels: [35, 50], say: "lpq", wz: "Eos Tower 101st Floor; Abandoned Tower"}
+  - {alias: [opq, "orbis pq", "orbis party quest", "orbis tower pq", "tower of goddess", "tower of goddess pq", "goddess tower pq", "wonky pq"], kind: pq, ids: [200080101, 920010000], npc: 2013000, levels: [51, 70], say: "opq", wz: "The Unknown Tower; Tower of Goddess"}
+  - {alias: [hpq, "henesys pq", "moon bunny pq", "rice cake pq", "henesys party quest", "moon bunny party quest", "rice cake party quest", "primrose hill pq", "tory pq"], kind: pq, ids: [100000200, 910010000], npc: 1012112, levels: [10, 200], say: "hpq", wz: "Henesys Park; Primrose Hill"}
+  - {alias: [cwkpq, "cwk pq", ckpq, "crimsonwood pq", "crimsonwood party quest", "crimsonwood keep pq", "crimsonwood keep party quest", "crimson wood pq", "crimson wood keep pq", "crimson wood party quest", "crimson wood keep party quest", "cwk party quest"], kind: pq, ids: [610030020, 610030100], npc: 9201113, levels: [90, 255], say: "cwkpq", wz: "Hall to Inner Sanctum; Inner Sanctum Hallway"}
+  - {alias: [lmpq, "ludi maze pq", "ludi maze", "ludi maze party quest", "ludibrium maze pq", "ludibrium maze party quest", "ludibrium maze", "maze pq", "rolly pq"], kind: pq, ids: [220000000, 809050000], npc: 9103001, levels: [51, 70], say: "lmpq", wz: "Ludibrium; Ludibrium Maze"}
+  - {alias: [rjpq, "romeo and juliet pq", "romeo and juliet party quest", "romeo juliet pq", "r and j pq", rnjpq, "magatia pq", "magatia party quest", "zenumist pq", "alcadno pq", "romeo pq", "juliet pq"], kind: pq, ids: [261000011, 926100000, 926110000], npc: 2112004, levels: [71, 85], say: "rjpq", wz: "Zenumist - Hidden Room; Mysterious Lab; Mysterious Lab"}
+  - {alias: [ppq, "pirate pq", "pirate party quest", "herb town pq", "herb town party quest", "lord pirate pq", "lord pirate party quest", "pirate ship pq", "guon pq"], kind: pq, ids: [251010404, 925100000], npc: 2094000, levels: [55, 100], say: "ppq", wz: "Over the Pirate Ship; On the Way to the Pirate Ship"}
+  - {alias: [epq, "ellin pq", "ellin party quest", "ellin forest pq", "ellin forest party quest", "poison golem pq", "poison haze pq"], kind: pq, ids: [300030100, 930000000], npc: 2133000, levels: [44, 55], say: "epq", wz: "Deep Fairy Forest; Pre-Entrance"}
+  - {alias: [apq, "amoria pq", "amoria party quest", "amorian challenge", "amorian challenge pq", "wedding pq", "amos pq"], kind: pq, ids: [670010100, 670010200], npc: 9201048, levels: [40, 255], say: "apq", wz: "Entrance of Amorian Challenge; Stage 1 - Magik Mirror"}
+  - {alias: [cpq, cpq1, "cpq 1", cpq2, "cpq 2", mcpq, mcpq2, "monster carnival", "monster carnival pq", "monster carnival party quest", "monster carnival 1", "monster carnival 2", "monster carnival 2 pq", "second monster carnival", "carnival pq", "spiegelmann pq"], kind: pq, ids: [200000000, 980000000, 980000100, 980000101, 980030000, 980031000, 980031100], npc: 2042000, levels: [30, 70], say: "cpq", wz: "Orbis; Spiegelmann's Office; Carnival Field 1; Carnival Field 1; Spiegelmann's Office; Carnival Field 1; Carnival Field 1"}
+  - {alias: [gpq, "guild pq", "guild party quest", "guild quest", sharenian, "sharenian pq", "sharenian party quest"], kind: pq, ids: [101030104, 990000000, 990000100], npc: 9040000, levels: [1, 255], say: "gpq", wz: "Excavation Site; Excavation Site; Valley of the Guard"}
+  - {alias: [zpq, "zakum pq", "zak pq", "zakum party quest", "zakum prequest", "zak prequest", "zakum campaign", "adobis mission", "dead mine pq"], kind: pq, ids: [211042300, 280010000], npc: 2030008, levels: [50, 255], say: "zakum pq", wz: "The Door to Zakum; Unknown Dead Mine"}
+  - {alias: ["zakum expedition", "zak expedition", "zakum exped", "zak exped", "zakum run", "zak run", "zakum raid", "zakum fight", "zakum boss", "zak boss"], kind: pq, ids: [211042400, 280030000], npc: 2030013, levels: [50, 255], say: "zakum", wz: "Entrance to Zakum Altar; Zakum's Altar"}
+  - {alias: [htpq, "ht pq", "horntail pq", "horntail party quest", "horntail prequest", "ht prequest", "horntail trial grounds", "trial grounds pq", "cave of life pq"], kind: pq, ids: [240050000, 240050100], npc: 2083001, levels: [120, 255], say: "ht pq", wz: "Cave Entrance; Room of Maze"}
+  - {alias: ["horntail expedition", "ht expedition", "horntail exped", "ht exped", "horntail run", "ht run", "horntail raid", "horntail fight", "horntail boss"], kind: pq, ids: [240050400, 240060000], npc: 2083004, levels: [100, 255], say: "horntail", wz: "Entrance to Horntail's Cave; The Cave of Trial I"}
+  - {alias: ["pink bean", pinkbean, pb, "pink bean expedition", "pb expedition", "pink bean exped", "pb exped", "pink bean run", "pb run", "pink bean raid", "pink bean boss"], kind: pq, ids: [270050000, 270050100], npc: 2141001, levels: [120, 255], say: "pink bean", wz: "Forgotten Twilight; Twilight of Gods"}
+  - {alias: ["papu run", "papulatus run", "papu expedition", "papulatus expedition", "papu exped", "papu boss", "papulatus boss", "papu fight", "clocktower boss"], kind: pq, ids: [220080000, 220080001], npc: 2041024, levels: [1, 255], say: "papu", wz: "Deep Inside the Clocktower; Origin of Clocktower"}
+  - {alias: [balrog, "balrog expedition", "balrog exped", "balrog run", "balrog boss", "easy balrog", "normal balrog", "balrog easy", "balrog normal", "sleepywood balrog", "balrog temple"], kind: pq, ids: [105100100, 105100300, 105100400], npc: 1061014, levels: [50, 255], say: "balrog", wz: "Bottom of the Temple; Balrog's Tomb; Balrog's Tomb"}
+  - {alias: ["showa boss", "showa expedition", "showa exped", "showa run", "showa boss run", "boss of showa", "showa hideout boss", "konpei expedition"], kind: pq, ids: [801040004, 801040100], npc: 9120201, levels: [100, 255], say: "showa boss", wz: "Armory; The Nightmarish Last Days"}
+  - {alias: [scarga, "scarga expedition", "scarga exped", "scarga run", "scarlion and targa", "targa and scarlion", scarlion, "spooky world boss"], kind: pq, ids: [551030100, 551030200], npc: 9270047, levels: [100, 255], say: "scarga", wz: "Entrance to the Spooky World; Spooky World"}
+  - {alias: [dojo, "mu lung dojo", "mulung dojo", "dojo pq", "dojo party quest", "party dojo", "dojo run"], kind: pq, ids: [250000100, 925020001, 925020100], npc: 2091006, levels: [25, 255], say: "dojo", wz: "Mu Lung Temple; Mu Lung Dojo Hall; Mu Lung Dojo 1st Floor"}
+  - {alias: ["ariant pq", "ariant party quest", "ariant coliseum", "ariant coliseum pq", "ariant coliseum challenge", "coliseum pq", "ariant battle arena", "battle arena pq"], kind: pq, ids: [260000000, 980010000, 980010100, 980010101], npc: 9010022, levels: [20, 30], say: "ariant pq", wz: "Ariant; Battle Arena Lobby; Battle Arena 1 Entrance; Battle Arena 1"}
+  - {alias: ["boss rush", "boss rush pq", "boss rush party quest", bossrush, bpq], kind: pq, ids: [100000000, 970030000, 970030100], npc: 9000021, levels: [1, 255], say: "boss rush", wz: "Henesys; Exclusive Training Center; Stage 1"}
+  - {alias: ["mv pq", mvpq, "mvs lair", "mvs lair pq", "treasure pq", "treasure party quest", "treasure dungeon pq"], kind: pq, ids: [600000000, 674030100, 674030000], npc: 9220018, levels: [140, 255], say: "mv pq", wz: "New Leaf City - Town Center; Entrance to MV's Lair; Initiation"}
+  - {alias: ["cafe pq", "internet cafe pq", "internet cafe party quest", "cafe party quest", "premium road", "premium road pq"], kind: pq, ids: [193000000, 190000000], npc: 1052013, levels: [21, 120], say: "cafe pq", wz: "Kerning City Internet Cafe; Another Sanctuary"}
   # ---- NPCs ----------------------------------------------------------------------------------
   - {alias: [lakelis], kind: npc, ids: [9020000], wz: "Lakelis"}
   - {alias: [lukan], kind: npc, ids: [9201098], wz: "Lukan"}
@@ -241,6 +270,11 @@ aliases:
   - {alias: [happy], kind: npc, ids: [9220004], wz: "Happy"}
   - {alias: ["hidden appraiser", appraiser], kind: npc, ids: [1092017], wz: "Hidden Appraiser"}
   - {alias: [inkwell], kind: npc, ids: [9000069], wz: "Inkwell"}
+  - {alias: ["carta the sea witch", "sea witch"], kind: npc, ids: [2060100], say: "carta", wz: "Carta"}
+  - {alias: [amos, "amos the strong"], kind: npc, ids: [9201043], say: "amos", wz: "Amos the Strong"}
+  - {alias: [hughes], kind: npc, ids: [2012017], wz: "Hughes the Fuse"}
+  - {alias: [nineheart, neinheart], kind: npc, ids: [1101002], say: "neinheart", wz: "Neinheart"}
+  - {alias: [muyoung, "mu young"], kind: npc, ids: [1061014], say: "mu young", wz: "Mu Young"}
   # ---- NPC roles (resolved to the nearest NPC doing the job) -----------------------------------
   - {alias: ["potion shop", "pot shop", "potion store", "potion guy", "potion seller", grocer, pots, potions, "hp pots", "mp pots"], kind: role, funcs: [Grocer, "Potion Seller"], sells: 2000000, say: "potion shop"}
   - {alias: ["weapon store", "weapon shop", "weapons store", "weapon seller", weapons, swords, bows, claws, wands, staffs, staves, daggers, spears, axes], kind: role, funcs: ["Weapon Seller"], say: "weapon store"}

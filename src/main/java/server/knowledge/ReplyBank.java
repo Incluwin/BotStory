@@ -186,6 +186,9 @@ final class ReplyBank {
         put("train.far/quiet", "{map}, {town}");
         put("train.far/proper", "I trained at {map} in {town}");
 
+        put("build.none", "idk tbh, never built one", "no clue, ask one of them");
+        put("build.none/proper", "I'm not sure, I've never built one");
+
         put("price.known", "like {p}", "{p}ish last i saw", "prob {p}, check fm");
         put("price.known/proper", "around {p} last i saw", "probably {p}, check the fm");
         put("price.set", "like {p} a set", "{p}ish a set");

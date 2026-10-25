@@ -1116,6 +1116,7 @@ knowledge:
     VETERAN_LEVEL: 70
     DECISIONS: true
     CITIZEN_GEAR: true
+    GUIDES: true
 
 # Server mods and the kaentake client's login feature handshake (docs/CLIENT_FEATURE_HANDSHAKE.md). ASCII only.
 mods:

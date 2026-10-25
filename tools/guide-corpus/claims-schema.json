@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["usable", "skip_reason", "claims"],
+  "properties": {
+    "usable": {"type": "boolean"},
+    "skip_reason": {"type": "string"},
+    "claims": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["topic", "jobs", "level_min", "level_max", "entities", "claim", "say", "depends_on_numbers", "strength"],
+        "properties": {
+          "topic": {"enum": ["training_spot", "party_quest", "boss", "quest", "job_advance", "build_ap", "build_sp",
+            "gear", "item_value", "meso_making", "mechanic", "travel", "skill_use", "general_tip"]},
+          "jobs": {"type": "array", "items": {"enum": ["beginner", "warrior", "fighter-line", "page-line", "spearman-line",
+            "magician", "fp-line", "il-line", "cleric-line", "bowman", "hunter-line", "crossbow-line", "thief",
+            "assassin-line", "bandit-line", "pirate", "brawler-line", "gunslinger-line", "dawn-warrior", "blaze-wizard",
+            "wind-archer", "night-walker", "thunder-breaker", "aran"]}},
+          "level_min": {"type": "integer", "minimum": 0, "maximum": 200},
+          "level_max": {"type": "integer", "minimum": 0, "maximum": 200},
+          "entities": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+            "required": ["kind", "name"], "properties": {
+              "kind": {"enum": ["map", "mob", "item", "npc", "quest", "pq", "boss", "skill", "region"]},
+              "name": {"type": "string"}}}},
+          "claim": {"type": "string", "maxLength": 240},
+          "say": {"type": "string", "maxLength": 100},
+          "depends_on_numbers": {"type": "boolean"},
+          "strength": {"enum": ["consensus", "author_opinion", "contested"]}
+        }
+      }
+    }
+  }
+}
