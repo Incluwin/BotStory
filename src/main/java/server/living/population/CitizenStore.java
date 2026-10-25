@@ -12,8 +12,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** JDBC access to the population tables ({@code living_citizen}, circles, guild meta, price index, acquaintances). */
@@ -127,6 +129,22 @@ public final class CitizenStore {
             log.warn("character progress lookup failed for {}", characterId, failure);
             return new int[]{0, 0, 0, 0, 0};
         }
+    }
+
+    /** Every active citizen's stored {level, job id}, by character id, in one query (ProgressionLedger.markJobBacklog). */
+    public Map<Integer, int[]> levelsAndJobs() {
+        Map<Integer, int[]> out = new HashMap<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT c.id, c.level, c.job FROM characters c"
+                     + " JOIN living_citizen l ON l.character_id = c.id WHERE l.state = 'ACTIVE'");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.put(rs.getInt(1), new int[]{rs.getInt(2), rs.getInt(3)});
+            }
+        } catch (SQLException failure) {
+            log.warn("citizen levels and jobs lookup failed", failure);
+        }
+        return out;
     }
 
     /** Sets guild id and rank straight in the characters table for an offline citizen. */

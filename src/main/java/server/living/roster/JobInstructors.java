@@ -7,10 +7,11 @@ import constants.game.GameConstants;
  * Who gives an Explorer each job advancement and where they stand, as in the stock NPC scripts: the first and second
  * job from the class's instructor in its town, the third from its chief in El Nath's Chief's Residence, the fourth
  * from its elder in Leafre's Forest of the Priest. A companion going for its next job walks up to this NPC
- * (JobErrands). {@code name} is what a player calls them.
+ * (JobErrands), as does a citizen whose life reaches its next job (population.CitizenJobErrands). {@code name} is
+ * what a player calls them.
  */
-final class JobInstructors {
-    record Instructor(int npcId, int mapId, String name, String town) { }
+public final class JobInstructors {
+    public record Instructor(int npcId, int mapId, String name, String town) { }
 
     private static final int CHIEFS_RESIDENCE_MAP_ID = 211000001;
     private static final int FOREST_OF_THE_PRIEST_MAP_ID = 240010501;
@@ -19,7 +20,7 @@ final class JobInstructors {
     }
 
     /** The instructor who gives {@code job}; null for a Beginner and outside the Explorer classes. */
-    static Instructor of(Job job) {
+    public static Instructor of(Job job) {
         if (job == null || job.getId() <= 0 || job.getId() >= 600) {
             return null;
         }
@@ -51,7 +52,7 @@ final class JobInstructors {
     }
 
     /** "1st" to "4th": which advancement {@code job} is, as players say it. */
-    static String tier(Job job) {
+    public static String tier(Job job) {
         return switch (GameConstants.getJobBranch(job)) {
             case 1 -> "1st";
             case 2 -> "2nd";

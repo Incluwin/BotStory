@@ -47,6 +47,16 @@ public class PopulationConfig {
     public int SHUTDOWN_LOGOUT_THREADS = 4;
     /** Server shutdown: the longest the citizens' unloads may take; any still waiting then unload with their channel. */
     public int SHUTDOWN_LOGOUT_BUDGET_MS = 45000;
+    /**
+     * A citizen whose life reaches its third or fourth job takes it at its instructor (El Nath's chiefs, Leafre's elders):
+     * its next session starts on their map, it walks up, advances and goes about its day (CitizenJobErrands). false = the
+     * kill switch: every job comes off-screen with the next catch-up instead.
+     */
+    public boolean JOB_ERRANDS_ENABLED = true;
+    /** How long a citizen stands with its instructor before it advances. */
+    public int JOB_ERRAND_TALK_MS = 6000;
+    /** How long a citizen walks up to its instructor at most; then it advances where it stands. */
+    public int JOB_ERRAND_WALK_MAX_MS = 45000;
 
     // Chatter (plan 5)
     public boolean CHATTER_ENABLED = true;
@@ -100,6 +110,9 @@ public class PopulationConfig {
         }
         if (LIFE_DAYS_MIN < 1 || LIFE_DAYS_MAX < LIFE_DAYS_MIN) {
             throw new IllegalArgumentException("population.LIFE_DAYS_MIN..MAX must be a positive range");
+        }
+        if (JOB_ERRAND_TALK_MS < 0 || JOB_ERRAND_WALK_MAX_MS < 0) {
+            throw new IllegalArgumentException("population.JOB_ERRAND_TALK_MS and JOB_ERRAND_WALK_MAX_MS must be >= 0");
         }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");

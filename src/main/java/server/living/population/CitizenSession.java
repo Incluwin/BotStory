@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** A citizen that is online right now: loaded as a character, or virtual (scheduled online but on the ledger). */
 public final class CitizenSession {
-    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK }
+    /** JOB: on its way to its instructor for its next job (CitizenJobErrands); never rolled by a cohort's weights. */
+    public enum Activity { TRAIN, TOWN, PQ, MARKET, AFK, JOB }
 
     public final int characterId;
     public volatile Citizen citizen;
@@ -24,6 +25,10 @@ public final class CitizenSession {
     public volatile long afkUntilMs;
     public volatile long ledgerAtMs;
     public volatile boolean stallOpen;
+    /** The job it is going to its instructor for (activity JOB); null otherwise. */
+    public volatile client.Job errandJob;
+    /** Its instructor refused it this session: no second try before its next session (CitizenJobErrands). */
+    public volatile boolean errandFailed;
     public volatile int partyId;
     public final Journal journal = new Journal();
     /** channel -> last time this citizen spoke on it (chatter cooldowns). */

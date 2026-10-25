@@ -1077,6 +1077,16 @@ population:
     SEED_BACKDATE_DAYS: 180
     SHUTDOWN_LOGOUT_THREADS: 4
     SHUTDOWN_LOGOUT_BUDGET_MS: 45000
+    # Citizens take their 3rd and 4th job like players (2026-10-06, replacing "citizens stop at the 2nd job their career
+    # names"): a citizen whose life reaches its next job starts its next session at its instructor (El Nath's chiefs,
+    # Leafre's elders), walks up, advances there and goes about its day. Citizens already past Lv70 at the first boot
+    # with this get theirs off-screen once (flag job-backlog). false = the kill switch, every job off-screen at the next
+    # load.
+    # TALK_MS: how long it stands with its instructor. WALK_MAX_MS: how long it walks up to them at most (then it
+    # advances where it stands).
+    JOB_ERRANDS_ENABLED: true
+    JOB_ERRAND_TALK_MS: 6000
+    JOB_ERRAND_WALK_MAX_MS: 45000
     CHATTER_ENABLED: true
     CHATTER_TOWN_LINES_PER_MINUTE: 18
     CHATTER_CITIZEN_COOLDOWN_MS: 45000

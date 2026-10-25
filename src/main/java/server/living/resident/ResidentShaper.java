@@ -86,6 +86,32 @@ public final class ResidentShaper {
         }
     }
 
+    /**
+     * Growth and skills only, for a character loaded with nothing to level or advance: the AP, HP/MP and SP of levels it
+     * was raised to while offline (the population ledger writes the level alone), AP spent by the loadout's stats, SP
+     * spent along its job chain's profiles (a first job left unspent too). Saves when anything changed.
+     */
+    public static void repair(Character agent, Loadout loadout) {
+        SHAPING.set(Boolean.TRUE);
+        try {
+            int ap = agent.getRemainingAp();
+            int sp = agent.getRemainingSp();
+            int hp = agent.getMaxHp();
+            int mp = agent.getMaxMp();
+            AgentCharacterShaper.repairGrowth(agent);
+            AgentCharacterShaper.assignAp(agent, agent.getJob(), loadout == null ? Map.of() : loadout.stats());
+            int learned = AgentSpBuildProfileService.assignOffline(agent);
+            if (learned > 0 || agent.getRemainingAp() != ap || agent.getRemainingSp() != sp
+                    || agent.getMaxHp() != hp || agent.getMaxMp() != mp) {
+                log.debug("repaired {}: learned {} skill levels, AP {} -> {}, SP {} -> {}", agent.getName(), learned, ap,
+                        agent.getRemainingAp(), sp, agent.getRemainingSp());
+                agent.saveCharToDB();
+            }
+        } finally {
+            SHAPING.remove();
+        }
+    }
+
     private static final ThreadLocal<Boolean> SHAPING = new ThreadLocal<>();
 
     /** True on the thread that is currently shaping a character (level-up/job hooks stay quiet). */

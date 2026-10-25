@@ -2,8 +2,10 @@ package server.living.population;
 
 import client.Character;
 import client.Job;
+import constants.game.GameConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.build.AgentJobPath;
 import server.living.config.Content.Loadout;
 import server.living.population.PopulationContent.Career;
 import server.living.resident.ResidentShaper;
@@ -14,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Real levels over weeks (plan 3.4). Loaded citizens level by fighting; everyone else follows the
@@ -39,18 +42,27 @@ public final class ProgressionLedger {
         return LifeCurve.levelTarget(citizen.ageDays(nowMs), citizen.pace(), cap, population.config().LIFE_PACE);
     }
 
-    /** On load: shape up to the life-curve target (job chain, growth repair, AP, loadout for the level). */
-    public void catchUp(Character agent, Citizen citizen) {
+    /**
+     * On load: shape up to the life-curve target (job chain, growth repair, AP, loadout for the level), else repair the
+     * growth and skills of levels this ledger wrote alone. The first and second job come here; a third or fourth job
+     * only for a backlog citizen or with job errands off (CitizenJobPath), and then that job is returned (else null).
+     */
+    public Job catchUp(Character agent, Citizen citizen) {
         Career career = citizen.hired() ? null : population.content().career(citizen.career());
         if (career == null) { // a hired hand's level, job and gear are its own doing now
-            return;
+            return null;
         }
         int target = Math.max(agent.getLevel(), levelTarget(citizen, System.currentTimeMillis()));
         Job job = ResidentShaper.job(career.job());
+        boolean backlog = citizen.has(Citizen.FLAG_JOB_BACKLOG);
+        Job before = agent.getJob();
+        Job shapeTarget = CitizenJobPath.shapeTarget(job, before, backlog || !population.config().JOB_ERRANDS_ENABLED);
         Loadout loadout = population.world().content().loadout(career.loadoutFor(target));
         try {
-            if (agent.getLevel() < target || agent.getJob() == Job.BEGINNER && target >= 10 || !agent.getJob().equals(job) && target >= 30) {
-                ResidentShaper.shapeTo(agent, job, target, loadout);
+            if (agent.getLevel() < target || AgentJobPath.next(before, shapeTarget, target) != null) {
+                ResidentShaper.shapeTo(agent, shapeTarget, target, loadout);
+            } else {
+                ResidentShaper.repair(agent, loadout); // a level bumped in SQL, a first job left unspent
             }
             ResidentShaper.wearMissingEquips(agent, loadout, false); // a band edited after shaping (citizens are never dressed)
             CitizenGear.upgrade(agent, job, loadout); // every load: a level bumped in SQL skipped the shaping above
@@ -61,6 +73,34 @@ public final class ProgressionLedger {
         } catch (RuntimeException failure) {
             log.warn("catch-up shaping for {} failed", citizen.name(), failure);
         }
+        if (backlog) { // one off-screen catch-up for the job it was overdue at rollout; every later one is an errand
+            population.update(citizen.characterId(), latest -> latest.withoutFlag(Citizen.FLAG_JOB_BACKLOG));
+        }
+        Job after = agent.getJob();
+        return after != before && GameConstants.getJobBranch(after) >= CitizenJobPath.FIRST_ERRAND_BRANCH ? after : null;
+    }
+
+    /**
+     * Once, when citizens started taking their third and fourth job (2026-10-06): every active citizen already old
+     * enough for one it does not hold is flagged {@link Citizen#FLAG_JOB_BACKLOG}, so that job comes off-screen with its
+     * next catch-up instead of a crowd of errands. Citizens who reach the level later take the errand. Returns how many.
+     */
+    public int markJobBacklog() {
+        int marked = 0;
+        Map<Integer, int[]> progress = population.store().levelsAndJobs();
+        for (Citizen citizen : population.citizens()) {
+            Career career = citizen.state() != Citizen.State.ACTIVE || citizen.hired() ? null : population.content().career(citizen.career());
+            int[] levelAndJob = progress.get(citizen.characterId());
+            if (career == null || levelAndJob == null || citizen.has(Citizen.FLAG_JOB_BACKLOG)) {
+                continue;
+            }
+            Job current = Job.getById(levelAndJob[1]);
+            if (CitizenJobPath.overdue(ResidentShaper.job(career.job()), current, levelAndJob[0])) {
+                population.update(citizen.characterId(), latest -> latest.hired() ? latest : latest.withFlag(Citizen.FLAG_JOB_BACKLOG));
+                marked++;
+            }
+        }
+        return marked;
     }
 
     /** Raises stored levels of a slice of offline citizens toward their target (the rank board keeps moving). */
@@ -99,6 +139,11 @@ public final class ProgressionLedger {
         if (touched > 0) {
             log.debug("ledger raised {} offline citizens toward their life-curve level", touched);
         }
+    }
+
+    /** Ops/test knob (!citizens level): raises an offline citizen's stored level as this ledger does; never lowers it. */
+    public void raiseStoredLevel(int characterId, int level) {
+        bumpLevel(characterId, Math.max(1, Math.min(level, 200)));
     }
 
     private void bumpLevel(int characterId, int level) {

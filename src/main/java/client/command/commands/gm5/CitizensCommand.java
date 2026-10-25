@@ -17,12 +17,14 @@ import java.util.Locale;
 
 /**
  * {@code !citizens} operates the populated server: census, who is online, births, region-targeted
- * seeding and retirements, content reload, forced online counts for load tests, one citizen's card.
+ * seeding and retirements, content reload, forced online counts for load tests, one citizen's card, and for testing
+ * job errands: one citizen's stored level raised while it is offline, one citizen loaded now.
  */
 public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
-                + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation");
+                + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation|"
+                + "level <name> <level>|login <name>");
     }
 
     @Override
@@ -86,7 +88,9 @@ public class CitizensCommand extends Command {
                         return;
                     }
                     int[] progress = population.store().characterProgress(citizen.characterId());
-                    gm.yellowMessage(citizen.name() + " #" + citizen.characterId() + " lv" + progress[0] + " " + citizen.career()
+                    client.Job job = client.Job.getById(progress[2]);
+                    gm.yellowMessage(citizen.name() + " #" + citizen.characterId() + " lv" + progress[0] + " "
+                            + (job == null ? "job " + progress[2] : job.name()) + " " + citizen.career()
                             + " cohort " + citizen.cohort() + " region " + citizen.homeRegion() + " voice " + citizen.voice()
                             + " personality " + citizen.personality() + " pace " + String.format(Locale.ROOT, "%.2f", citizen.pace())
                             + " age " + citizen.ageDays(System.currentTimeMillis()) + "d target lv"
@@ -138,6 +142,35 @@ public class CitizensCommand extends Command {
                     }
                     gm.yellowMessage(population.churn().retire(citizen, "retired by " + gm.getName())
                             ? citizen.name() + " retired." : citizen.name() + " works for someone; release them first.");
+                }
+                case "level" -> {
+                    Citizen citizen = params.length < 3 ? null : population.citizenByName(params[1]);
+                    if (citizen == null) {
+                        gm.yellowMessage("Usage: !citizens level <name> <level> (an offline citizen; never lowers a level)");
+                        return;
+                    }
+                    CitizenSession session = population.presence().session(citizen.characterId());
+                    if (session != null && session.loaded()) {
+                        gm.yellowMessage(citizen.name() + " is loaded; level it with GM commands or wait until it logs off.");
+                        return;
+                    }
+                    population.ledger().raiseStoredLevel(citizen.characterId(), Integer.parseInt(params[2]));
+                    gm.yellowMessage(citizen.name() + " is lv" + population.store().characterProgress(citizen.characterId())[0]
+                            + " in the DB now; it catches up (job, AP, SP) when it next loads.");
+                }
+                case "login" -> {
+                    Citizen citizen = params.length < 2 ? null : population.citizenByName(params[1]);
+                    if (citizen == null) {
+                        gm.yellowMessage("Usage: !citizens login <name>");
+                        return;
+                    }
+                    CitizenSession session = population.presence().bringOnline(citizen, System.currentTimeMillis());
+                    if (session == null || !session.loaded()) {
+                        gm.yellowMessage(citizen.name() + " could not be loaded (hired, retired, or owned by a runtime).");
+                        return;
+                    }
+                    gm.yellowMessage(citizen.name() + " online: " + session.activity + " at map " + session.mapId + " ch"
+                            + session.channel + (session.errandJob == null ? "" : ", going for " + session.errandJob));
                 }
                 case "force" -> {
                     int count = params.length > 1 ? Integer.parseInt(params[1]) : 0;

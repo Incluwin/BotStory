@@ -84,6 +84,12 @@ public final class ChatterEngine {
             return this;
         }
 
+        /** The {job} slot as players type it ("white knight"), over the subject's enum name. */
+        public Event job(String spokenJob) {
+            this.job = spokenJob;
+            return this;
+        }
+
         public Event item(String itemName) {
             this.item = itemName;
             return this;

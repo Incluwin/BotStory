@@ -38,6 +38,11 @@ public record Citizen(int characterId,
      * sessions, ledger, churn count, circles or guild moves) until it is let go.
      */
     public static final String FLAG_HIRED = "hired";
+    /**
+     * Already old enough for its third (or fourth) job when citizens started taking them (2026-10-06): that job comes
+     * off-screen with its next catch-up, then the flag is gone. Every later one is an errand (CitizenJobPath).
+     */
+    public static final String FLAG_JOB_BACKLOG = "job-backlog";
 
     public boolean has(String flag) {
         return flags.contains(flag);
