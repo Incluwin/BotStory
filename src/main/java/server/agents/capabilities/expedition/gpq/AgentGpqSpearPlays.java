@@ -4,6 +4,7 @@ import client.Character;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.gpq.AgentGpqRun.Stage;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.MapItem;
 import server.maps.Reactor;
 
 import java.awt.Point;
@@ -71,6 +72,10 @@ final class AgentGpqSpearPlays {
     /** The altars, the hard ones first, and where a carrier stands on each tower top to lay its spear (+-20 px). */
     static final Map<String, Point> ALTARS = altars();
     static final int SEEK_PX = 400;
+    /** Far enough to see a whole room's floor. */
+    static final int ROOM_PX = 3000;
+    /** The claim on a spear lying broken in the Room of Glory: one member goes for it. */
+    static final String GLORY_DROP = "glory-drop";
 
     /** A member's part in the stage this tick. */
     enum Job {
@@ -176,10 +181,17 @@ final class AgentGpqSpearPlays {
                 }
             }
         }
-        boolean rustyHeld = jobs.containsValue(Job.RUSTY_KEY);
-        boolean pledgeLeft = !ports.liveReactorsOn(event, PLEDGE, SEALED_SPEAR).isEmpty();
+        // a Rusty Key lying on the metal gate is delivered: the gate takes it five seconds after it lands
+        boolean rustyOnGate = ports.itemsOn(event, FAITH).stream().anyMatch(drop -> drop.getItemId() == RUSTY_KEY
+                && !drop.isPickedUp() && drop.getPosition() != null && METALGATE_BOX.contains(drop.getPosition()));
+        boolean rustyHeld = jobs.containsValue(Job.RUSTY_KEY) || rustyOnGate;
+        boolean pledgeLeft = !ports.liveReactorsOn(event, PLEDGE, SEALED_SPEAR).isEmpty()
+                || spearLying(ports, event, PLEDGE);
         if (shade != null && free.contains(shade)) {
-            if (stonegateOpen && !metalgateOpen && !rustyHeld) {
+            if (stonegateOpen && !metalgateOpen && rustyOnGate) {
+                jobs.put(shade.getId(), Job.RUSTY_KEY); // it waits by the gate, in Dark Sight, for the gate to take it
+                free.remove(shade);
+            } else if (stonegateOpen && !metalgateOpen && !rustyHeld) {
                 jobs.put(shade.getId(), Job.DEBRIS);
                 free.remove(shade);
                 int team = 1;
@@ -202,10 +214,13 @@ final class AgentGpqSpearPlays {
             claimAltar(ports, event, run, shade);
         }
         List<Reactor> glorySpears = ports.liveReactorsOn(event, GLORY, SEALED_SPEAR);
+        int gloryLying = run.holder(GLORY_DROP);
+        boolean lyingInGlory = spearLying(ports, event, GLORY);
         free.sort((a, b) -> Boolean.compare(AgentGpqRoles.skilledClimber(b), AgentGpqRoles.skilledClimber(a)));
         boolean shadeKept = shade != null && pledgeLeft;
         for (Character member : free) {
-            boolean spearLeft = glorySpears.stream().anyMatch(spear -> run.holder("glory:" + spear.getObjectId()) == 0
+            boolean spearLeft = lyingInGlory && (gloryLying == 0 || gloryLying == member.getId())
+                    || glorySpears.stream().anyMatch(spear -> run.holder("glory:" + spear.getObjectId()) == 0
                     || run.holder("glory:" + spear.getObjectId()) == member.getId());
             boolean kept = shadeKept && member == shade; // its altar waits for the pledge spear
             if (spearLeft && !kept && !AgentGpqRoles.junior(member) && claimAltar(ports, event, run, member) != null) {
@@ -343,8 +358,10 @@ final class AgentGpqSpearPlays {
 
     /** The Room of Faith: break the debris; the shade picks up the Rusty Key it drops. */
     static void debris(AgentGpqPorts ports, Character member, AgentGpqRun run, long nowMs) {
-        if (AgentGpqRoles.shade(member) && pickUpNearest(ports, run, member, RUSTY_KEY, SEEK_PX, nowMs)) {
-            return;
+        MapItem key = AgentGpqMoves.nearestDrop(ports, member, RUSTY_KEY, SEEK_PX);
+        if (AgentGpqRoles.shade(member) && key != null && !METALGATE_BOX.contains(key.getPosition())
+                && pickUpNearest(ports, run, member, RUSTY_KEY, SEEK_PX, nowMs)) {
+            return; // never the one already on the gate
         }
         List<Reactor> debris = AgentGpqMoves.live(ports, member, DEBRIS);
         if (debris.isEmpty()) {
@@ -382,10 +399,21 @@ final class AgentGpqSpearPlays {
         }
     }
 
-    /** The Room of Glory: climb to the spear this member holds (or the nearest no one holds), break it, pick it up. */
+    /**
+     * The Room of Glory: a spear already broken out and lying is picked up first, by one member; else climb to the
+     * spear this member holds (or the nearest no one holds), break it, pick it up.
+     */
     static void glory(AgentGpqPorts ports, Character member, AgentGpqRun run, long nowMs) {
         if (pickUpNearest(ports, run, member, SPEAR, 120, nowMs)) {
             return;
+        }
+        MapItem lying = AgentGpqMoves.nearestDrop(ports, member, SPEAR, ROOM_PX);
+        if (lying != null && run.claim(GLORY_DROP, member.getId())) {
+            pickUpNearest(ports, run, member, SPEAR, ROOM_PX, nowMs);
+            return;
+        }
+        if (lying == null) {
+            run.release(GLORY_DROP);
         }
         Reactor target = null;
         for (Reactor spear : AgentGpqMoves.live(ports, member, SEALED_SPEAR)) {
@@ -411,7 +439,7 @@ final class AgentGpqSpearPlays {
     /** A carrier takes its spear to its altar and lays it there; from the Room of Pledge it recrosses the stones. */
     static void carry(AgentGpqPorts ports, Stage stage, Character member, EventInstanceManager event,
                       AgentGpqRun run, long nowMs) {
-        run.releaseAll(member.getId(), "glory:");
+        run.releaseAll(member.getId(), "glory"); // its sealed spear's and a lying spear's
         String altar = claimAltar(ports, event, run, member);
         if (altar == null) {
             if (run.once("no-altar-" + member.getId())) {
@@ -441,6 +469,11 @@ final class AgentGpqSpearPlays {
         if (dropAt(ports, run, member, SPEAR, 1, stand, nowMs)) {
             ports.sayInParty(member, AgentGpqLines.SPEAR_PLACED);
         }
+    }
+
+    /** True while a spear lies on {@code mapId}'s floor, broken out of its seal and not picked up yet. */
+    static boolean spearLying(AgentGpqPorts ports, EventInstanceManager event, int mapId) {
+        return ports.itemsOn(event, mapId).stream().anyMatch(drop -> drop.getItemId() == SPEAR && !drop.isPickedUp());
     }
 
     /** The altar's item box: its position +-20 px along x and +-30 px up and down (Reactor.wz 9208007). */

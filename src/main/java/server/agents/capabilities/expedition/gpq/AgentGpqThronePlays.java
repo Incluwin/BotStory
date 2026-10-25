@@ -4,9 +4,11 @@ import client.Character;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.gpq.AgentGpqRun.Stage;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.MapItem;
 import server.maps.Reactor;
 
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -40,12 +42,16 @@ import static server.agents.capabilities.expedition.gpq.AgentGpqMoves.waitAt;
 final class AgentGpqThronePlays {
     static final String KINGGATE = "kinggate";
     static final Point KINGGATE_STAND = new Point(239, 103);
+    /** Where the kinggate takes its rock: Reactor.wz 9208009's item box around the reactor at (261,83). */
+    static final Rectangle KINGGATE_BOX = new Rectangle(175, 68, 128, 48);
     static final Point CORRIDOR_WAIT = new Point(-300, 155);
     static final String RUBIAN_REACTOR = "boss";
     static final int ERGOTH = 9_300_028;
     static final int RUBIAN = 4_001_024;
     static final Point THRONE_WAIT = new Point(-300, 155);
     static final int SEEK_PX = 1500;
+    /** A Rubian lying this near the leader was laid at his feet. */
+    static final int LAID_PX = 150;
     static final int BONUS_BOX = 9_202_012;
     static final int NURIS = 9_040_001;
     static final Point NURIS_STAND = new Point(165, 525);
@@ -60,7 +66,11 @@ final class AgentGpqThronePlays {
         List<Character> bySlot = bySlot(members, run);
         Reactor gate = bySlot.isEmpty() ? null : reactorNamed(ports, bySlot.getFirst(), KINGGATE);
         boolean open = gate != null && gate.getState() > 0;
-        Character giver = open ? null : giver(run, bySlot);
+        // a rock lying on the gate is given (the gate takes it five seconds after it lands, by then its giver may be
+        // down in the air): nobody else gives theirs
+        boolean given = !open && !bySlot.isEmpty()
+                && !AgentGpqMoves.dropsIn(ports, bySlot.getFirst(), AgentGpqPorts.PROTECTOR_ROCK, KINGGATE_BOX).isEmpty();
+        Character giver = open || given ? null : giver(run, bySlot);
         for (Character member : bySlot) {
             if (member.getHp() <= 0) {
                 continue;
@@ -173,7 +183,13 @@ final class AgentGpqThronePlays {
                 continue;
             }
             if (ports.carried(member, RUBIAN) <= 0) {
-                if (pickUpNearest(ports, run, member, RUBIAN, SEEK_PX, nowMs)) {
+                MapItem lying = AgentGpqMoves.nearestDrop(ports, member, RUBIAN, SEEK_PX);
+                boolean laid = lying != null && leaderHere && leader.getPosition() != null
+                        && lying.getPosition().distance(leader.getPosition()) <= LAID_PX;
+                if (laid) {
+                    noteRole(run, member, "throne", "wait for the leader to pick up the rubian");
+                    waitAt(ports, member, THRONE_WAIT); // it lies at his feet: his to take, never back up
+                } else if (pickUpNearest(ports, run, member, RUBIAN, SEEK_PX, nowMs)) {
                     noteRole(run, member, "throne", "pick up the rubian");
                 } else {
                     noteRole(run, member, "throne", "wait for the guard to take the rubian");

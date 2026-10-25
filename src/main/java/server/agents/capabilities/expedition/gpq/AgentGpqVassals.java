@@ -24,27 +24,32 @@ final class AgentGpqVassals {
 
     private final List<Integer> left = new ArrayList<>();
     private int trying = -1;
-    private int judgedSeen = -1;
+    /** The fountain's wrong effects seen so far (EventInstanceManager.wrongEffectCount starts at 0). */
+    private int judgedSeen;
     private int draws;
 
     AgentGpqVassals() {
         reset();
     }
 
-    /** Forgets everything: a new draw (the fountain's seventh miss, or a fresh run). */
+    /** Forgets everything, for a fresh run. */
     synchronized void reset() {
+        startOver();
+        judgedSeen = 0;
+    }
+
+    /** The fountain drew a new combination (its seventh miss): start over, counting the draw and the misses seen. */
+    synchronized void newDraw() {
+        startOver();
+        draws++;
+    }
+
+    private void startOver() {
         left.clear();
         for (int code = 0; code < CODES; code++) {
             left.add(code);
         }
         trying = -1;
-        judgedSeen = -1;
-    }
-
-    /** The fountain drew a new combination: start over, counting the draw. */
-    synchronized void newDraw() {
-        reset();
-        draws++;
     }
 
     synchronized int draws() {

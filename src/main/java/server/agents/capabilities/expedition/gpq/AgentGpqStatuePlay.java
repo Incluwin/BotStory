@@ -49,11 +49,12 @@ final class AgentGpqStatuePlay {
         String status = event.getProperty("stage1status");
         String phase = String.valueOf(event.getProperty("stage1phase"));
         int wrong = event.wrongEffectCount(GATEKEEPER_MAP_ID);
+        String round = phase + "-" + wrong;
         if (wrong > run.mark("statues-wrong")) {
             run.mark("statues-wrong", wrong);
             ports.sayInParty(hitter, AgentGpqLines.GATEKEEPER_WRONG);
+            run.once("statues-start-" + round); // the miss line already asks the leader to talk
         }
-        String round = phase + "-" + wrong;
         String combo = String.valueOf(event.getProperty("stage1combo"));
         String guess = event.getProperty("stage1guess") == null ? "" : event.getProperty("stage1guess");
         for (Character member : bySlot) {
@@ -63,7 +64,7 @@ final class AgentGpqStatuePlay {
             }
         }
         if (status == null || "waiting".equals(status)) {
-            if (wrong == 0 && run.once("statues-start-" + round)) {
+            if (run.once("statues-start-" + round)) {
                 ports.sayInParty(hitter, AgentGpqLines.GATEKEEPER_START);
             }
             noteRole(run, hitter, "statues", "wait for the gatekeeper's pattern");
