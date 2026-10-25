@@ -205,7 +205,7 @@ commands:
   - canonical: sell trash
     aliases: ["sell trash", "sell junk", "sell your junk", "sell your trash", "sell the junk", "dump your junk",
               "get rid of junk", "go sell your trash", "sell useless stuff", "sell what you dont need", "clear your junk",
-              "sell extras", "vendor your junk", "sell off the trash"]
+              "sell extras", "vendor your junk", "sell off the trash", "sell my junk", "sell my trash"]
     prefixes: [go, "you can", just, "time to"]
     tails: [now, please, "ok", "at the shop", "in town"]
   - canonical: autoequip

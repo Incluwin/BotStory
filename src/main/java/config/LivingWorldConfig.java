@@ -425,6 +425,13 @@ public class LivingWorldConfig {
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
 
+    // A companion says why its owner's whisper reached no Agent (2026-10-10)
+    /**
+     * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its
+     * Agent is not running yet), so a spammed whisper gets one answer. 0 = every refused whisper is answered.
+     */
+    public int COMPANION_WHISPER_REFUSAL_GAP_MS = 5000;
+
     /** True when CREW_WINDOW_NATIVE lets a character use the native Crew window: "all", or "gm" for a GM (any case). */
     public boolean crewWindowNative(boolean gm) {
         String mode = CREW_WINDOW_NATIVE == null ? "" : CREW_WINDOW_NATIVE.trim();
@@ -797,6 +804,9 @@ public class LivingWorldConfig {
                 throw new IllegalArgumentException("living_world.BOSS_EVENT_SCRIPTS must list event script names"
                         + " (scripts/event, without .js), not \"" + script.trim() + "\"");
             }
+        }
+        if (COMPANION_WHISPER_REFUSAL_GAP_MS < 0) {
+            throw new IllegalArgumentException("living_world.COMPANION_WHISPER_REFUSAL_GAP_MS must be >= 0");
         }
     }
 }

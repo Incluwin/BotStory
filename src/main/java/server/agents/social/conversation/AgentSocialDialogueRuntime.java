@@ -1,6 +1,8 @@
 package server.agents.social.conversation;
 
 import client.Character;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.ollama.OllamaDialogueProvider;
@@ -79,6 +81,14 @@ public final class AgentSocialDialogueRuntime {
     }
 
     public static void maybeRespond(AgentRuntimeEntry entry, Character speaker, String message) {
+        maybeRespond(entry, speaker, message, null);
+    }
+
+    /**
+     * {@code route}: where the reply goes, fixed when the line it answers was handled (a whisper back to its speaker),
+     * as it is said only after a model call or a typing delay; null reads the Agent's reply channel then.
+     */
+    public static void maybeRespond(AgentRuntimeEntry entry, Character speaker, String message, AgentReplyRoute route) {
         if (entry == null || speaker == null || message == null || message.isBlank()) {
             return;
         }
@@ -89,7 +99,7 @@ public final class AgentSocialDialogueRuntime {
                 : SocialCounterpartyType.PLAYER;
         String normalized = message.trim();
         AgentMailboxRuntime.dispatch(entry, ignored -> {
-            prepareAndSubmit(entry, speaker, speakerName, counterpartyType, normalized);
+            prepareAndSubmit(entry, speaker, speakerName, counterpartyType, normalized, route);
             return null;
         });
     }
@@ -99,7 +109,8 @@ public final class AgentSocialDialogueRuntime {
             Character speaker,
             String speakerName,
             SocialCounterpartyType counterpartyType,
-            String message) {
+            String message,
+            AgentReplyRoute route) {
         long nowMs = System.currentTimeMillis();
         int speakerId = speaker.getId();
         AgentSocialDialogueRequestFactory.PreparedDialogue prepared;
@@ -111,7 +122,7 @@ public final class AgentSocialDialogueRuntime {
         }
         List<Styled> answer = answer(entry, speaker, message, prepared);
         if (answer != null) {
-            deliverAnswer(entry, speaker, prepared, answer);
+            deliverAnswer(entry, speaker, prepared, answer, route);
             return;
         }
         APPLICATION.submit(entry, prepared.request(), result -> {
@@ -120,12 +131,12 @@ public final class AgentSocialDialogueRuntime {
             Styled styled = transform == null ? null : transform.style(prepared.request().context().agentId(), speakerId,
                     shown, result.source() == server.agents.social.contracts.DialogueResult.Source.MODEL);
             if (styled == null) {
-                AgentDialogueTransportRuntime.replyNow(entry, shown);
+                AgentDialogueTransportRuntime.replyNow(entry, shown, route);
             } else {
                 shown = styled.text();
                 String finalText = shown;
                 AgentSchedulerRuntime.scheduleLowPriority(
-                        () -> AgentDialogueTransportRuntime.replyNow(entry, finalText), Math.max(1L, styled.delayMs()));
+                        () -> AgentDialogueTransportRuntime.replyNow(entry, finalText, route), Math.max(1L, styled.delayMs()));
             }
             long repliedAtMs = System.currentTimeMillis();
             ConversationTurn agentTurn = new ConversationTurn(
@@ -158,20 +169,24 @@ public final class AgentSocialDialogueRuntime {
 
     /**
      * A host's answer goes out like a styled model reply (typing delay, same channel) and is remembered the same way;
-     * a line still waiting when the asker has changed maps is dropped (they left before it was typed).
+     * a line still waiting when the asker has changed maps is dropped (they left before it was typed). A whispered one
+     * is not: a whisper reaches its asker on any map, and the answer is remembered as said (fourth deploy review
+     * 2026-10-10: the next ask got "like i said, ..." about an answer never sent).
      */
     private static void deliverAnswer(AgentRuntimeEntry entry, Character speaker,
-                                      AgentSocialDialogueRequestFactory.PreparedDialogue prepared, List<Styled> lines) {
+                                      AgentSocialDialogueRequestFactory.PreparedDialogue prepared, List<Styled> lines,
+                                      AgentReplyRoute route) {
         if (lines.isEmpty()) {
             return;
         }
         int askedOn = speaker.getMapId();
+        boolean anyMap = route != null && route.channel() == AgentReplyChannel.WHISPER;
         StringBuilder said = new StringBuilder();
         for (Styled line : lines) {
             String text = line.text();
             AgentSchedulerRuntime.scheduleLowPriority(() -> {
-                if (speaker.getMapId() == askedOn) {
-                    AgentDialogueTransportRuntime.replyNow(entry, text);
+                if (anyMap || speaker.getMapId() == askedOn) {
+                    AgentDialogueTransportRuntime.replyNow(entry, text, route);
                 }
             }, Math.max(1L, line.delayMs()));
             said.append(said.isEmpty() ? "" : " ").append(text);

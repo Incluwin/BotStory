@@ -212,7 +212,7 @@ public final class AgentAmmoService {
         if (selfSustaining(entry)) {
             return OwnerAmmoShareResult.BLOCKED;
         }
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null || owner.getTrade() != null || !canRequestShare(weaponType)) {
             return OwnerAmmoShareResult.BLOCKED;
         }

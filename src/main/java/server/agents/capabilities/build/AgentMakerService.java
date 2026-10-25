@@ -9,6 +9,7 @@ import client.inventory.InventoryType;
 import client.inventory.Item;
 import server.agents.capabilities.inventory.AgentInventorySellTrashService;
 import server.agents.capabilities.build.AgentMakerRuntime;
+import server.agents.commands.AgentReplyRoute;
 import server.agents.integration.AgentMakerGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.InventoryGateway;
@@ -212,7 +213,10 @@ public final class AgentMakerService {
             return;
         }
 
-        AgentMakerRuntime.afterDelay(entry, STEP_INTERVAL_MS, () -> runStep(entry, step, noun, epoch, done + 1));
+        // each step keeps the route of the line that asked for the batch, so its last line ("done - ...") goes back
+        // where "ok making ..." went (third deploy review 2026-10-10); the batch's size bounds the chain
+        AgentMakerRuntime.afterDelay(entry, STEP_INTERVAL_MS,
+                AgentReplyRoute.carried(() -> runStep(entry, step, noun, epoch, done + 1)));
     }
 
     private static String abortReason(short status, String noun, int done) {

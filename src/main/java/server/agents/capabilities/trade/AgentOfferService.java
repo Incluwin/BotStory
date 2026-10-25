@@ -99,8 +99,13 @@ public final class AgentOfferService {
         createOwnerUpgradeRequest(entry, bot, owner, item);
     }
 
+    /**
+     * "do you need any gear from me": the best upgrade in the asker's bag, asked of the asker (the one who whispered
+     * the line, AgentRelationshipRuntime.requester; fourth deploy review 2026-10-10: an administrator's ask was looked
+     * up in the owner's bag once the whisper bridge gave the companion back).
+     */
     public static void requestBestUpgradeFromOwner(AgentRuntimeEntry entry, Character bot) {
-        Character owner = AgentRelationshipRuntime.interactionTarget(entry);
+        Character owner = AgentRelationshipRuntime.requester(entry);
         if (owner == null) {
             return;
         }

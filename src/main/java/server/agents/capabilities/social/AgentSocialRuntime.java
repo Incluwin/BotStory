@@ -28,7 +28,7 @@ public final class AgentSocialRuntime {
         Character bot = AgentRuntimeIdentityRuntime.bot(entry);
         Character target;
         if (AgentSocialDialogueClassifier.isSelfFameTarget(targetName)) {
-            target = AgentRelationshipRuntime.interactionTarget(entry);
+            target = AgentRelationshipRuntime.requester(entry);
         } else {
             target = bot.getMap().getCharacters().stream()
                     .filter(c -> c.getName().equalsIgnoreCase(targetName))
