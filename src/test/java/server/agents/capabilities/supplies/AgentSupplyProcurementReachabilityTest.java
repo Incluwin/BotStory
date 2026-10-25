@@ -2,7 +2,10 @@ package server.agents.capabilities.supplies;
 
 import client.Character;
 import client.Job;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
@@ -15,7 +18,9 @@ import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.capabilities.shop.AgentShopWorkflowPhase;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.integration.ShopGateway;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveKernel;
 import server.agents.objectives.AgentObjectiveSource;
@@ -44,7 +49,8 @@ import static org.mockito.Mockito.when;
  * Supplier trips only go where the map-level portal router can get to, and companions stay
  * with (or go back to) their owner. The mocked Agents have no live map, so the real gateway
  * reports every portal as unavailable, which is how a portal that keeps refusing entry gets
- * blocked by the router on the live server.
+ * blocked by the router on the live server. Their purses pay for potions and the shop gateway
+ * knows no shop: what a visit can afford is AgentOrdinaryTripAffordabilityTest's.
  */
 class AgentSupplyProcurementReachabilityTest {
     private static final int KERNING = 103000000;
@@ -60,6 +66,19 @@ class AgentSupplyProcurementReachabilityTest {
     private static final int SLEEPYWOOD_ROAD = 106010100;
     // KPQ's first stage: no portal leads out of it, so no shop is reachable on foot.
     private static final int KPQ_STAGE_ONE = 103000800;
+
+    private MockedStatic<AgentShopGatewayRuntime> shopData;
+
+    @BeforeEach
+    void knowNoShop() {
+        shopData = mockStatic(AgentShopGatewayRuntime.class);
+        shopData.when(AgentShopGatewayRuntime::shop).thenReturn(mock(ShopGateway.class));
+    }
+
+    @AfterEach
+    void forgetShopData() {
+        shopData.close();
+    }
 
     @Test
     void agentOffThePortalGraphDoesNotLeaveForAnUnreachableShop() {
@@ -350,6 +369,7 @@ class AgentSupplyProcurementReachabilityTest {
         when(agent.getName()).thenReturn(name);
         when(agent.getMapId()).thenReturn(mapId);
         when(agent.getChair()).thenReturn(-1);
+        when(agent.getMeso()).thenReturn(50_000);
         return agent;
     }
 

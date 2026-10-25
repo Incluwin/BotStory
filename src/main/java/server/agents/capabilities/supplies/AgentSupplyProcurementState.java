@@ -48,6 +48,16 @@ public final class AgentSupplyProcurementState {
     // short of, so it waits for a share once instead of leaving for the shop straight away.
     private final Map<AgentResourceCategory, Long> partyAskedAtMs =
             new EnumMap<>(AgentResourceCategory.class);
+    // Survives clear() too: whether its purse paid for one potion of the kind when an ordinary trip last looked.
+    private final Map<AgentResourceCategory, AffordCheck> affordChecks =
+            new EnumMap<>(AgentResourceCategory.class);
+
+    /**
+     * The last look at whether an ordinary potion trip of a category may set off (AgentSupplyProcurementRuntime): an
+     * allowance until {@code untilMs}; a refusal while the purse less its wallet reserve stays under {@code price} and
+     * the Agent carries no more than {@code countAt} of the kind.
+     */
+    public record AffordCheck(boolean allowed, long untilMs, int price, int countAt) { }
 
     public enum Phase {
         IDLE,
@@ -283,6 +293,17 @@ public final class AgentSupplyProcurementState {
     public synchronized boolean suppressed(AgentResourceCategory category, long nowMs) {
         Long until = category == null ? null : suppressedUntilMs.get(category);
         return until != null && nowMs < until;
+    }
+
+    /** The last affordability look at this category's ordinary trip, or null when none was made. */
+    public synchronized AffordCheck affordCheck(AgentResourceCategory category) {
+        return category == null ? null : affordChecks.get(category);
+    }
+
+    public synchronized void affordCheck(AgentResourceCategory category, AffordCheck check) {
+        if (category != null && check != null) {
+            affordChecks.put(category, check);
+        }
     }
 
     public synchronized void start(String requestId, String objectiveId, AgentResourceCategory category) {
