@@ -216,8 +216,8 @@ The client belongs to another session, so none of these ran on this branch. Each
 1. **Walk-out on a watched map.** Stand in Henesys (100000000) near some citizens and wait for one to re-plan
    (`!citizens` lists sessions; `!citizens login <name>` loads one). Expect a log line
    `citizen <name> sets off on foot from 100000000 to <map>`. The citizen walks to a portal (west00 / east00 /
-   east10), goes through it, and does not vanish in place. Then `citizen <name> walked onto <map> where nobody can see
-   it` and, after the delay, it arrives.
+   east10), goes through it, and does not vanish in place. Then `citizen <name> is on map <map> where nobody can see it
+   now` and, after the delay, it arrives.
 2. **Walk-in on a watched destination.** Stand on a Henesys hunting field (for example 100010000) and wait for, or
    force, a citizen trip there. It appears at the portal the route enters by (west00 from Henesys), not at a start
    point.
@@ -243,6 +243,46 @@ The client belongs to another session, so none of these ran on this branch. Each
    through the nearest portal.
 2. **On by default** (recommended, chosen): `PORTAL_TRAVEL_ENABLED: true`, and false restores the old behaviour.
 
-## 7. Results
+## 7. Results (2026-10-25, offline)
 
-(Filled in after the build.)
+Built as planned, with two additions found while building:
+
+- **The named arrival portal.** Map.wz data check (a scratch script over both route graphs): only 540 of the Victoria
+  graph's 626 edges, and 1,348 of the other continents' 1,520, have a portal on the far map that leads back. Using the
+  portal that the near map's own portal names (`GenericPortal.enterPortal`'s rule) covers all but 3 and 5. So
+  `entryPortal` uses the named portal when the last hop starts on the citizen's own map (that map is loaded), else the
+  return portal, else portal 0.
+- **Free Market from a town without a market portal.** Henesys town, Ellinia, Kerning, Lith Harbor and Sleepywood
+  have no market portal in this Map.wz (Henesys' is on Henesys Market, 100000100). A citizen there walks to the
+  nearest map that has one (`MARKET_MAPS`, pinned against Map.wz by `CitizenTravelMarketMapsTest`) and goes in there,
+  instead of walking out by the nearest road.
+
+Tests: 36 new (`AgentMapWalkTest` 12, `AgentVictoriaRoutePlannedRouteTest` 3, `CitizenPortalTravelTest` 17,
+`CitizenTravelMarketMapsTest` 1, `PopulationConfigPortalTravelTest` 3). The population package, config, architecture
+boundary and death walk classes (384 tests) passed unchanged with the feature on.
+
+Mutation check of `CitizenPortalTravelTest` (scratch script; each mutation applied, the class run, the file
+restored):
+
+| Mutation | Caught by |
+|---|---|
+| `arrive` never walks when a player came in | the player-arrives test |
+| no entry portal (always portal 0) | the matching-portal test, the walk-out test |
+| no hand-over to the cheap way on an unwatched map | hand-over, stuck, and dock tests |
+| `travel` never walks | 9 tests |
+| linger pops it to the destination instead | the stuck test |
+| boards at the NPC with no pause | the dock test |
+
+Full split suite (`tools/suite/run-split-suite.ps1`) on `f48242897`: capabilities 6,227 / 0 / 1, agents 2,379 /
+0 / 21, rest 6,136 / 0 / 15, so **14,742 / 0 failures / 37 skipped, PASS**. That is the 70a29efa4 baseline of 14,706
+plus the 36 new tests, with no other change in the count. The follow-up review commit (the nearest market map by the
+walking BFS `routeHops`, and the hand-over log wording) was rerun the same way; its totals are in the session's
+report.
+
+Not verified offline, and left for the live checks (section 5):
+
+- real movement on real maps (the walk drives `travelStatus`, which supply trips already run live, so its physics are
+  not new);
+- how a player sees the walk (no client here);
+- the scheduler cost under load;
+- the boarding pause read from the client.

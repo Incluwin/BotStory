@@ -163,7 +163,7 @@ final class CitizenTravel {
             }
             if (!watched(here)) {
                 end(session, trip);
-                log.info("citizen {} walked onto {} where nobody can see it; it goes on to {} the cheap way",
+                log.info("citizen {} is on map {} where nobody can see it now; it goes on to {} the cheap way",
                         session.name(), agent.getMapId(), trip.target.getId());
                 presence.cheapMove(session, trip.move, trip.target);
                 return;
@@ -246,7 +246,10 @@ final class CitizenTravel {
         walkOut(session, trip, agent, here, now);
     }
 
-    /** The map with a market portal fewest portals away on foot; 0 when none is (another continent's, or in the market). */
+    /**
+     * The map with a market portal fewest portals away on foot; 0 when none is (another continent's, or in the market).
+     * routeHops is a walking BFS that turns down another continent's map at once.
+     */
     private static int nearestMarketMap(CitizenSession session, int fromMapId, long now) {
         if (FieldCatalog.isFreeMarket(fromMapId)) {
             return 0;
@@ -254,10 +257,10 @@ final class CitizenTravel {
         int nearest = 0;
         int fewest = Integer.MAX_VALUE;
         for (int market : MARKET_MAPS) {
-            List<PlannedStep> route = AgentVictoriaRouteRuntime.plannedRoute(session.entry, fromMapId, market, now);
-            if (!route.isEmpty() && route.size() < fewest && route.stream().noneMatch(PlannedStep::ride)) {
+            int hops = AgentVictoriaRouteRuntime.routeHops(session.entry, fromMapId, market, now);
+            if (hops > 0 && hops < fewest) {
                 nearest = market;
-                fewest = route.size();
+                fewest = hops;
             }
         }
         return nearest;
