@@ -50,8 +50,17 @@ public final class ServerMods {
     public static final ServerMod BEGINNER_AP = new ServerMod("beginner_ap",
             "Beginners place their own AP (client feature beginner_ap)", false);
 
+    /**
+     * A client with the {@code set_items} feature active is sent its job's sets (scripts/config/set-items.yml) and
+     * what it wears of them, when its features apply and on every equip change ({@code server.set.SetItemSync}), so
+     * the equip tooltip can show them. Display only: the bonus itself is the server's either way.
+     */
+    public static final ServerMod SET_ITEMS = new ServerMod("set_items",
+            "Set item tooltips (client feature set_items)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
-    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP);
+    public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
+            SET_ITEMS);
 
     private static volatile ServerMods instance;
 

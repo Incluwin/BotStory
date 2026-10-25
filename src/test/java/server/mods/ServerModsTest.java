@@ -88,7 +88,7 @@ class ServerModsTest {
     @Test
     void theRegistryHoldsThePolicyOnAndTheOtherModsOff() {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
-                ServerMods.BEGINNER_AP), ServerMods.ALL);
+                ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS), ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
         assertFalse(ServerMods.FUSION_ANVIL.defaultOn());
@@ -99,12 +99,14 @@ class ServerModsTest {
         assertEquals("MOD_BOTSTORY_WZ", ServerMods.environmentName(ServerMods.BOTSTORY_WZ));
         assertFalse(ServerMods.BEGINNER_AP.defaultOn());
         assertEquals("beginner_ap", ServerMods.BEGINNER_AP.id());
+        assertTrue(ServerMods.SET_ITEMS.defaultOn(), "display only, and only a client with set_items active is sent it");
+        assertEquals("set_items", ServerMods.SET_ITEMS.id());
     }
 
     @Test
     void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowedAndBeginnerApOff() {
         assertEquals(Map.of("client_feature_policy", "on", "fusion_anvil", "off", "botstory_wz", "off",
-                "beginner_ap", "off"), YamlConfig.config.mods.SWITCHES);
+                "beginner_ap", "off", "set_items", "on"), YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");
         assertFalse(shippedMods.isOn(ServerMods.BOTSTORY_WZ));

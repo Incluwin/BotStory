@@ -1210,6 +1210,8 @@ mods:
     #                          Codex moves to the cash medal slot. A client on the Cosmic WZ files closes when it is on
     #   beginner_ap            a Beginner whose client has beginner_ap active keeps each level-up's AP to place;
     #                          off: USE_AUTOASSIGN_STARTERS_AP spends it for them
+    #   set_items              a client with set_items active is sent its job's sets and what it wears of them, for
+    #                          the equip tooltip; display only
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1217,6 +1219,7 @@ mods:
         fusion_anvil: off
         botstory_wz: off
         beginner_ap: off
+        set_items: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

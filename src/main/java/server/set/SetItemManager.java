@@ -217,6 +217,17 @@ public final class SetItemManager {
         return setsById;
     }
 
+    /** The sets a character of {@code jobNiche} can wear, in set-items.yml order ({@code null}: every set). */
+    static List<SetItemDef> setsFor(String jobNiche) {
+        List<SetItemDef> out = new ArrayList<>();
+        for (SetItemDef def : setsById.values()) {
+            if (setAppliesToJob(def, jobNiche)) {
+                out.add(def);
+            }
+        }
+        return out;
+    }
+
     private static boolean setAppliesToJob(SetItemDef def, String jobNiche) {
         if (def.jobs == null || def.jobs.isEmpty()) return true;
         if (jobNiche == null) return true;
