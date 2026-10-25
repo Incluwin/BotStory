@@ -185,6 +185,17 @@ public class LivingWorldConfig {
     public int COMMERCE_PER_OWNER = 1;
     /** Length of one stall slice before another benched companion gets a turn, unless a player is watching. */
     public int COMMERCE_SLICE_MS = 7200000;
+    /**
+     * A STALL's markdown (BenchStallForm, user 2026-10-25): each of its own last stall slices that listed an item for its
+     * whole length and sold none of it takes this share of the index off that item's price, down to SELL's 0.85 (where
+     * browsing citizens buy); a sale puts it back at the index. 0 = always the index (only players buy).
+     */
+    public double BENCH_STALL_MARKDOWN_STEP = 0.05;
+    /**
+     * A live GATHER slice (BenchGatherForm, user 2026-10-25) goes to the best field for what its owner's quests need
+     * when no monster at its camp drops it (the field where a round of kills brings the most); false = always its camp.
+     */
+    public boolean BENCH_GATHER_AT_DROPPERS = true;
     /** A live field companion out of supplies ends its hunt and restocks at a shop; after this long it unloads anyway. */
     public int BENCH_RESUPPLY_MAX_MS = 300000;
     /**
@@ -678,6 +689,9 @@ public class LivingWorldConfig {
         if (BENCH_TOWN_SLICE_MS < 0 || COMMERCE_SLICE_MS < 0 || BENCH_RESUPPLY_MAX_MS < 0 || BENCH_RESUPPLY_MAX_HOPS < 0) {
             throw new IllegalArgumentException("living_world.BENCH_TOWN_SLICE_MS, COMMERCE_SLICE_MS, BENCH_RESUPPLY_MAX_MS"
                     + " and BENCH_RESUPPLY_MAX_HOPS must be >= 0");
+        }
+        if (BENCH_STALL_MARKDOWN_STEP < 0 || BENCH_STALL_MARKDOWN_STEP > 1) {
+            throw new IllegalArgumentException("living_world.BENCH_STALL_MARKDOWN_STEP must be within 0..1 (0 = no markdown)");
         }
         if (BENCH_YIELD_PRIOR_SLICES < 0) {
             throw new IllegalArgumentException("living_world.BENCH_YIELD_PRIOR_SLICES must be >= 0");

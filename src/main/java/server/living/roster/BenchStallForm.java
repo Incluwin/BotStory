@@ -36,6 +36,7 @@ import server.maps.reservation.FreeMarketStorePlacementService;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -51,7 +52,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * free stall spot, registered director-idle; the goods move from its haul into its bag, and
  * AgentFreeMarketStallCapability walks it to a free stall spot and opens the shop (AgentFreeMarketStallService), titled
  * in its voice and priced from the population market's price index like the stalls around it (SELL a little under the
- * index, where browsing citizens buy; the market keeps bench stalls' sales out of its index). Each tick the meso of its
+ * index, where browsing citizens buy; a STALL at the index, marked down by what its own last slices did not sell, to
+ * SELL's price at most: {@link #asks}; the market keeps bench stalls' sales out of its index). Each tick the meso of its
  * sales goes into the haul. When the slice ends (its time, a call, a new duty, sold out) the shop closes, the last
  * sales go into the haul and the unsold stock goes back to it. Nothing is duplicated or lost: the haul gives up what
  * reached the bag, gets back what was not sold (never more than the bag holds) and the meso the sales paid. What a stall
@@ -69,6 +71,11 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     static final int MAX_LISTINGS = 8;
     /** SELL's price against the index: under the 0.9 below which browsing citizens buy (population Market). */
     static final double QUICK_SALE = 0.85d;
+    /** The end of a stall slice that ran its whole length (BenchDutyDispatcher.timeUp): only those teach it a price. */
+    static final String FULL_SLICE = "slice elapsed";
+    /** The events a stall's own record is read from (each slice's stocking and its close), and how many of them. */
+    static final List<String> STALL_HISTORY_KINDS = List.of("bench.stall", "bench.stall-close");
+    static final int STALL_HISTORY_EVENTS = 60;
     private static final long OPEN_TIMEOUT_MS = 90_000L;
     private static final int OPEN_RETRIES = 2;
     private static final String CLOSE_REASON = "BENCH_SLICE_ENDED";
@@ -237,7 +244,8 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         if (!stall.stocked.isEmpty()) {
             agent.saveCharToDB(true); // the bag as the haul gave it up, before anything else can happen to it
         }
-        List<AgentFreeMarketStallService.Listing> listings = listings(stall, agent, population, slice.duty());
+        Map<Integer, Double> asks = asks(slice, stall.stocked.keySet());
+        List<AgentFreeMarketStallService.Listing> listings = listings(stall, agent, population, asks);
         int permit = population.content().permitItemId();
         if (!listings.isEmpty() && agent.getInventory(InventoryType.CASH).countById(permit) == 0) {
             InventoryManipulator.addById(agent.getClient(), permit, (short) 1); // like a citizen's stall
@@ -250,7 +258,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         }
         stalls.put(slice.personaId(), stall);
         world.store().event(slice.ownerId(), slice.personaId(), "bench.stall", "stocked " + stall.stocked
-                + " in room " + slice.mapId());
+                + " in room " + slice.mapId() + " at " + percents(asks));
         return true;
     }
 
@@ -406,15 +414,18 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         return moved;
     }
 
-    /** One bundle size per item (so a sale's units are its bundles times it), over the bag slots that hold its stock. */
+    /**
+     * One bundle size per item (so a sale's units are its bundles times it), over the bag slots that hold its stock,
+     * each priced at its ask against the market index ({@link #asks}).
+     */
     private static List<AgentFreeMarketStallService.Listing> listings(Stall stall, Character agent, Population population,
-                                                                       Assignment duty) {
+                                                                       Map<Integer, Double> asks) {
         List<AgentFreeMarketStallService.Listing> out = new ArrayList<>();
         for (Map.Entry<Integer, Integer> stocked : stall.stocked.entrySet()) {
             int itemId = stocked.getKey();
             InventoryType type = ItemConstants.getInventoryType(itemId);
             int per = type == InventoryType.EQUIP ? 1 : Math.min(stocked.getValue(), type == InventoryType.ETC ? 100 : 10);
-            long unit = Math.max(1L, Math.round(population.market().price(itemId) * (duty == Assignment.SELL ? QUICK_SALE : 1.0d)));
+            long unit = Math.max(1L, Math.round(population.market().price(itemId) * asks.getOrDefault(itemId, 1.0d)));
             int price = (int) Math.min(Integer.MAX_VALUE, unit * per);
             int left = stocked.getValue();
             for (Item slot : agent.getInventory(type).listById(itemId)) {
@@ -428,6 +439,92 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             stall.perBundle.put(itemId, per);
         }
         return out;
+    }
+
+    /**
+     * Its price per item against the market index. SELL: QUICK_SALE, where browsing citizens buy. STALL (user,
+     * 2026-10-25: it learns its price, as a seller marks down what does not move): the index less BENCH_STALL_MARKDOWN_STEP
+     * for each of its own last stall slices in a row that listed the item for their whole length and sold none of it
+     * ({@link #unsoldSlices}), never under QUICK_SALE; back at the index once a slice sold some.
+     */
+    private Map<Integer, Double> asks(BenchDutyDispatcher.Slice slice, Set<Integer> items) {
+        double step = world.config().BENCH_STALL_MARKDOWN_STEP;
+        boolean sell = slice.duty() == Assignment.SELL;
+        Map<Integer, Integer> unsold = sell || step <= 0.0d || items.isEmpty() ? Map.of() : unsoldSlices(
+                world.store().personaEvents(slice.ownerId(), slice.personaId(), STALL_HISTORY_KINDS, STALL_HISTORY_EVENTS),
+                items);
+        Map<Integer, Double> asks = new LinkedHashMap<>();
+        for (int itemId : items) {
+            asks.put(itemId, sell ? QUICK_SALE : Math.max(QUICK_SALE, 1.0d - step * unsold.getOrDefault(itemId, 0)));
+        }
+        return asks;
+    }
+
+    /**
+     * Per item of {@code items}: how many of the companion's own last stall slices in a row, newest first, listed it,
+     * ran their whole length ({@link #FULL_SLICE}) and sold none of it. {@code events}: its bench events oldest first as
+     * {kind, detail}, a "bench.stall" ("stocked {id=units, ...} in room N ...") and the "bench.stall-close" after it
+     * ("reason; sold {id=units, ...}"). A slice that sold some of it ends the count; one cut short (a shutdown, a call,
+     * a new duty) or never closed neither counts nor ends it.
+     */
+    static Map<Integer, Integer> unsoldSlices(List<String[]> events, Set<Integer> items) {
+        List<Set<Integer>> stocked = new ArrayList<>();
+        List<Set<Integer>> sold = new ArrayList<>();
+        List<String> reasons = new ArrayList<>();
+        Set<Integer> listed = null;
+        for (String[] event : events == null ? List.<String[]>of() : events) {
+            String kind = event.length > 0 ? event[0] : null;
+            String detail = event.length > 1 && event[1] != null ? event[1] : "";
+            if ("bench.stall".equals(kind)) {
+                listed = ids(detail, 0);
+            } else if ("bench.stall-close".equals(kind) && listed != null) {
+                int at = detail.lastIndexOf("; sold ");
+                stocked.add(listed);
+                sold.add(at < 0 ? Set.of() : ids(detail, at));
+                reasons.add(at < 0 ? detail : detail.substring(0, at));
+                listed = null;
+            }
+        }
+        Map<Integer, Integer> out = new HashMap<>();
+        for (int itemId : items) {
+            int count = 0;
+            for (int i = stocked.size() - 1; i >= 0 && !sold.get(i).contains(itemId); i--) {
+                if (FULL_SLICE.equals(reasons.get(i)) && stocked.get(i).contains(itemId)) {
+                    count++;
+                }
+            }
+            out.put(itemId, count);
+        }
+        return out;
+    }
+
+    /** The item ids of the first "{id=units, ...}" at or after {@code from} in {@code text}; none when there is none. */
+    private static Set<Integer> ids(String text, int from) {
+        Set<Integer> ids = new HashSet<>();
+        int open = text.indexOf('{', from);
+        int close = open < 0 ? -1 : text.indexOf('}', open);
+        if (close < 0) {
+            return ids;
+        }
+        for (String pair : text.substring(open + 1, close).split(",")) {
+            int eq = pair.indexOf('=');
+            try {
+                if (eq > 0) {
+                    ids.add(Integer.parseInt(pair.substring(0, eq).trim()));
+                }
+            } catch (NumberFormatException ignored) {
+                // not an item id: skipped
+            }
+        }
+        return ids;
+    }
+
+    /** "{4000000=85%, 4000019=100%}": each ask as a share of the index, for the stocking event. */
+    private static String percents(Map<Integer, Double> asks) {
+        StringBuilder out = new StringBuilder("{");
+        asks.forEach((itemId, ask) -> out.append(out.length() > 1 ? ", " : "").append(itemId).append('=')
+                .append(Math.round(ask * 100.0d)).append('%'));
+        return out.append('}').toString();
     }
 
     /**

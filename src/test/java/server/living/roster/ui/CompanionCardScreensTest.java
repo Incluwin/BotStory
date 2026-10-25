@@ -923,6 +923,24 @@ class CompanionCardScreensTest {
     }
 
     @Test
+    void aGathererOffItsCampSaysWhereItGathersAndOneAtItsCampReadsLive() {
+        BenchDutyDispatcher duty = dispatcher();
+        rows.add(miraRow);
+        BenchDutyDispatcher.Slice away = slice(CompanionBudget.Kind.BENCH_LIVE, Assignment.GATHER, ANT_TUNNEL_2);
+        when(duty.slice("mira")).thenReturn(away); // gone to the best field for what its owner's quests need
+
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel I\r\ngathering at Ant Tunnel II\r\n"),
+                lastTalk().text());
+        LivingTalk.forget(owner);
+
+        BenchDutyDispatcher.Slice atCamp = slice(CompanionBudget.Kind.BENCH_LIVE, Assignment.GATHER, ANT_TUNNEL);
+        when(duty.slice("mira")).thenReturn(atCamp);
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel I (live)\r\n"), lastTalk().text());
+    }
+
+    @Test
     void aStallReadsOpenOnlyOnceItsFormHasTheShopOpen() {
         BenchDutyDispatcher duty = dispatcher();
         rows.add(miraRow);
