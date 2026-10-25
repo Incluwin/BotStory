@@ -167,6 +167,10 @@ class AgentBossRulesCatalogTest {
         assertEquals(new AgentBossRules.LastStand("fallenPlayers", 4), pinkBean.lastStand(),
                 "PinkBeanBattle.js calls its last stand at the fourth fallen player and ends at the fifth");
         assertNull(AgentBossRules.of("horntail").lastStand(), "Horntail's dead re-enter");
+        assertEquals(List.of(8_820_005, 8_820_006),
+                pinkBean.ledges().stream().flatMap(ledge -> ledge.mobIds().stream()).toList(),
+                "a ledge beside Hugin and one beside Munin, 99 px above the floor's reach");
+        assertTrue(AgentBossRules.of("horntail").ledges().isEmpty(), "Horntail's ledges are its focus anchors");
         assertTrue(pinkBean.targetPriority().indexOf(8_820_004) < pinkBean.targetPriority().indexOf(8_820_003),
                 "Rex, whose attack2 covers the whole floor, falls before Solomon: the two never hit one spot at once");
 

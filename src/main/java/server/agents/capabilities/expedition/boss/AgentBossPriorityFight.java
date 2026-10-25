@@ -8,6 +8,7 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentBerserkWindowPolicy;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
+import server.agents.capabilities.combat.AgentCombatReach;
 import server.agents.capabilities.combat.AgentMobTouchPolicy;
 import server.agents.capabilities.combat.data.AgentDefenseDataProvider;
 import server.agents.capabilities.combat.data.AgentMobHitboxProvider;
@@ -70,6 +71,9 @@ import java.util.function.Supplier;
  * (Showa's Bodyguards walk the floor) keeps members MOBILE_KEEP_OUT_MARGIN_PX past its span instead of
  * KEEP_OUT_MARGIN_PX, and while any monster on its map could hit a member for more than its autopot alert leaves it,
  * the member drinks earlier ({@link #guardHp}).</p>
+ *
+ * <p>2026-10-16: a melee member whose attacks cannot reach its preferred part from the floor grinds it from one of the
+ * boss's {@code ledges} that names it, when they reach from there ({@link #ledge}: Pink Bean's Hugin and Munin).</p>
  */
 public final class AgentBossPriorityFight implements AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentBossPriorityFight.class);
@@ -149,10 +153,63 @@ public final class AgentBossPriorityFight implements AgentBossFight {
                     : AgentBossRules.preferences(rules, live, melee);
             if (preferences == null || preferences.isEmpty()) {
                 gateway.stop(entry);
-            } else {
+            } else if (!melee || !ledge(gateway, entry, member, map, rules, preferences,
+                    ordinal(fighters, member, map))) {
                 gateway.grind(entry, preferences.preferred(), preferences.fallback());
             }
         }
+    }
+
+    /**
+     * 2026-10-16 (P20): a melee member whose attacks cannot reach its preferred part from the floor under the part's
+     * body ({@link Ports#reaches}) grinds it from one of the boss's {@code ledges} that names it and from which they
+     * do, spread by {@code ordinal} over those ledges, the rest of its preferences the fallback; true when it does. A
+     * member that reaches from the floor grinds as before. Pink Bean's Hugin and Munin hang 99 px above the floor: a
+     * Hero's Brandish reaches 110 px up, a Paladin's Blast 60, and Orrin swung 0-3 times a minute against Hugin on the
+     * floor and 25-55 on the y=-99 ledge beside him, where the fight sent no one and only luck took a member.
+     */
+    private boolean ledge(PrimitiveCapabilityGateway gateway, AgentRuntimeEntry entry, Character member, MapleMap map,
+                          AgentBossRules.Boss rules, AgentBossRules.Preferences preferences, int ordinal) {
+        if (rules.ledges().isEmpty()) {
+            return false;
+        }
+        for (Monster part : ports.monsters(map)) {
+            if (!part.isAlive() || !preferences.preferred().contains(part.getId())) {
+                continue;
+            }
+            Point floor = floorUnder(gateway, map, part);
+            if (floor == null || ports.reaches(member, part, floor)) {
+                continue;
+            }
+            List<Point> usable = new ArrayList<>();
+            for (AgentBossRules.Anchor ledge : rules.ledges()) {
+                Point ground = ledge.mobIds().contains(part.getId())
+                        ? gateway.groundPoint(map, new Point(ledge.x(), ledge.y())) : null;
+                if (ground != null && ports.reaches(member, part, ground)) {
+                    usable.add(ground);
+                }
+            }
+            if (usable.isEmpty()) {
+                continue;
+            }
+            Set<Integer> fallback = new LinkedHashSet<>(preferences.preferred());
+            fallback.remove(part.getId());
+            fallback.addAll(preferences.fallback());
+            gateway.grindFromAnchor(entry, usable.get(Math.floorMod(ordinal, usable.size())), Set.of(part.getId()),
+                    fallback);
+            return true;
+        }
+        return false;
+    }
+
+    /** The point on the floor under the middle of {@code part}'s body (its origin with no body); null when unknown. */
+    private Point floorUnder(PrimitiveCapabilityGateway gateway, MapleMap map, Monster part) {
+        Point origin = part.getPosition();
+        if (origin == null) {
+            return null;
+        }
+        Rectangle body = ports.body(part);
+        return gateway.groundPoint(map, new Point(body == null ? origin.x : (int) body.getCenterX(), origin.y));
     }
 
     @Override
@@ -845,6 +902,19 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         default void heldLastStand(Character member) {
         }
 
+        /**
+         * 2026-10-16: true when one of the member's attacks would hit {@code part}'s body from {@code stand}
+         * (AgentCombatReach); true by default, so a fight that cannot tell sends no member to a ledge.
+         */
+        default boolean reaches(Character member, Monster part, Point stand) {
+            return true;
+        }
+
+        /** 2026-10-16: the body box of {@code part} where it stands (Mob.wz lt/rb), or null with none. */
+        default Rectangle body(Monster part) {
+            return null;
+        }
+
         /** 2026-10-16: how near its target a member's walk ends (STOP_DIST). */
         default int walkArrivalPx() {
             return 30;
@@ -859,6 +929,17 @@ public final class AgentBossPriorityFight implements AgentBossFight {
         }
 
         Ports LIVE = new Ports() {
+            @Override
+            public boolean reaches(Character member, Monster part, Point stand) {
+                AgentRuntimeEntry entry = entry(member.getId());
+                return entry == null || AgentCombatReach.reachesFrom(entry, member, part, stand);
+            }
+
+            @Override
+            public Rectangle body(Monster part) {
+                return AgentMobHitboxProvider.getInstance().getMobBounds(part);
+            }
+
             @Override
             public int walkArrivalPx() {
                 return AgentMovementPhysicsConfig.configuredStopDist();
