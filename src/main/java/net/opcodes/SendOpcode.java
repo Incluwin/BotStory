@@ -354,6 +354,7 @@ public enum SendOpcode {
     MAPLELIFE_ERROR(0x15E),
     VICIOUS_HAMMER(0x162),
     VEGA_SCROLL(0x166),
+    // BotStory's own opcodes; take a new one from docs/CUSTOM_OPCODES.md first
     BOT_EQUIP(0x175),               // Android/bot equip window (Kaentake client LP_BotEquip)
     OBSERVER_CHARACTERS(0x176),
     OBSERVER_NAV_GRAPH(0x177),
