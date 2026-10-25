@@ -301,6 +301,11 @@ public final class CompanionMenus {
         if (keystone != null) {
             return keystone;
         }
+        server.living.roster.TicketErrands tickets = world.ticketErrands();
+        String ticket = tickets == null ? null : tickets.doing(view.personaId());
+        if (ticket != null) {
+            return ticket;
+        }
         if (!view.loaded() || view.state() != RosterState.ACTIVE || !world.config().COMPANION_RESTOCK_ENABLED) {
             return null;
         }

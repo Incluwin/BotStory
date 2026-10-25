@@ -111,6 +111,10 @@ public class EventInstanceManager {
     // registers all opened gates on the event. Will help late characters to encounter next stages gates already opened
     private final Map<Integer, Pair<String, Integer>> openedGates = new HashMap<>();
 
+    // counts the wrong effects shown per map (showWrongEffect), read by Agents as the miss a party sees
+    private final Map<Integer, java.util.concurrent.atomic.AtomicInteger> wrongEffects =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     // forces deletion of items not supposed to be held outside of the event, dealt on a player's leaving moment.
     private final Set<Integer> exclusiveItems = new HashSet<>();
 
@@ -1379,8 +1383,19 @@ public class EventInstanceManager {
 
     public final void showWrongEffect(int mapId) {
         MapleMap map = getMapInstance(mapId);
+        wrongEffects.computeIfAbsent(mapId, ignored -> new java.util.concurrent.atomic.AtomicInteger())
+                .incrementAndGet();
         map.broadcastMessage(PacketCreator.showEffect("quest/party/wrong_kor"));
         map.broadcastMessage(PacketCreator.playSound("Party1/Failed"));
+    }
+
+    /**
+     * How often the wrong effect has been shown on {@code mapId}: the cue a party reads a judged miss by, even one
+     * that changes no event property (an Amorian Challenge platform try with nobody right).
+     */
+    public final int wrongEffectCount(int mapId) {
+        java.util.concurrent.atomic.AtomicInteger count = wrongEffects.get(mapId);
+        return count == null ? 0 : count.get();
     }
 
     public final void showClearEffect() {

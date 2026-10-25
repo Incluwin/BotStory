@@ -67,6 +67,8 @@
     },
     { "id": "new-leaf-city-to-haunted-house", "fromMapId": 600000000, "npcId": 9201056, "selections": [], "toMapId": 682000000, "fare": 15000, "rideMapIds": [] },
     { "id": "haunted-house-to-new-leaf-city", "fromMapId": 682000000, "npcId": 9201056, "selections": [], "toMapId": 600000000, "fare": 15000, "rideMapIds": [] },
+    { "id": "henesys-to-amoria", "fromMapId": 100000000, "npcId": 9201022, "selections": [], "toMapId": 680000000, "fare": 0, "rideMapIds": [] },
+    { "id": "amoria-to-henesys", "fromMapId": 680000000, "npcId": 9201022, "selections": [], "toMapId": 100000000, "fare": 0, "rideMapIds": [] },
     {
       "id": "kerning-to-singapore", "fromMapId": 103000000, "npcId": 9270041, "selections": [1, 0], "toMapId": 540010000,
       "fare": 0, "rideMapIds": [540010100, 540010101],

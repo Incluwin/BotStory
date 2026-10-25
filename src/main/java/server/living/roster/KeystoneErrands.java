@@ -304,6 +304,10 @@ public final class KeystoneErrands {
         if (jobs != null && jobs.underway(persona.id())) {
             return persona.name() + " is off to see an instructor first.";
         }
+        TicketErrands tickets = world.ticketErrands();
+        if (tickets != null && tickets.underway(persona.id())) {
+            return persona.name() + " is out for an Amorian Challenge ticket first.";
+        }
         int characterId = world.residents().characterIdOf(persona.id());
         int level = characterId == 0 ? 0 : world.store().characterLevel(characterId);
         if (level < world.config().COMPANION_KEYSTONE_ERRAND_MIN_LEVEL) {
