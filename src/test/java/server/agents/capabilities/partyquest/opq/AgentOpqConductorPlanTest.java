@@ -185,6 +185,31 @@ class AgentOpqConductorPlanTest {
     }
 
     @Test
+    void onADayTheLobbyWantsAClimberALoneClimberTakesTheLobbyFirst() {
+        // 2026-10-24 live (run 4, a Sunday on the server): Sunday's LP box sits up a 100 px ledge; Marrow (jump 100) stood
+        // in Monday's cell for the whole run. With one climber the lobby goes first and the lounge keeps its low room.
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(List.of(grounded(12, null),
+                fresh(13), grounded(14, null), grounded(15, null), grounded(16, null)), Set.of(),
+                EnumSet.of(LOBBY, LOUNGE));
+
+        assertEquals(room(WALKWAY), plan.get(12));
+        assertEquals(room(LOBBY), plan.get(13));
+        assertEquals(room(STORAGE), plan.get(14));
+        assertEquals(room(WAY_UP), plan.get(15));
+        assertEquals(room(LOUNGE), plan.get(16));
+    }
+
+    @Test
+    void theLobbysClimberJoinsTheLoungeOnceTheLobbyIsDone() {
+        Map<Integer, AgentOpqConductorPlan.Assignment> plan = AgentOpqConductorPlan.plan(List.of(
+                grounded(12, WALKWAY), fresh(13), grounded(14, STORAGE), grounded(15, WAY_UP),
+                grounded(16, LOUNGE)), EnumSet.of(LOBBY), EnumSet.of(LOBBY, LOUNGE));
+
+        assertEquals(room(LOUNGE), plan.get(13));
+        assertEquals(room(LOUNGE), plan.get(16));
+    }
+
+    @Test
     void withNoClimberTheRoomsGoInIdOrderAsBefore() {
         Map<Integer, AgentOpqConductorPlan.Assignment> plan = plan(Set.of(), grounded(12, null), grounded(13, null),
                 grounded(14, null), grounded(15, null), grounded(16, null));

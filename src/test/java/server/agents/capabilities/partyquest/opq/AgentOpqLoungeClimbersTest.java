@@ -90,6 +90,57 @@ class AgentOpqLoungeClimbersTest {
     }
 
     @Test
+    void wonkysBlessingDoesNotHideTheJumpHasteWouldGive() {
+        // 2026-10-24 live (run 4): every companion carried Wonky's blessing (item 2022093, jump +10). Read as "Haste
+        // already on", Jinx (Haste 19) counted as jump 110, the lounge went to a Fighter and she never cast Haste.
+        when(pel.getSkillLevel(Assassin.HASTE)).thenReturn(19);
+        when(pel.getBuffedValue(BuffStat.JUMP)).thenReturn(10);
+        when(pel.getTotalJumpStat()).thenReturn(110);
+
+        assertEquals(119, AgentPartyQuestHaste.jumpWithHaste(pel));
+        assertTrue(AgentOpqCoordinator.climbsLounge(pel.getId()));
+        assertTrue(AgentPartyQuestHaste.needsHaste(pel, AgentOpqCoordinator.LOUNGE_JUMP));
+
+        when(pel.getBuffedValue(BuffStat.JUMP)).thenReturn(19); // its Haste on: the strongest jump buff is in force
+        when(pel.getTotalJumpStat()).thenReturn(119);
+        assertEquals(119, AgentPartyQuestHaste.jumpWithHaste(pel));
+        assertFalse(AgentPartyQuestHaste.needsHaste(pel, AgentOpqCoordinator.LOUNGE_JUMP));
+    }
+
+    @Test
+    void aBlessingAloneIsNoClimber() {
+        when(hal.getBuffedValue(BuffStat.JUMP)).thenReturn(10);
+        when(hal.getTotalJumpStat()).thenReturn(110);
+
+        assertEquals(110, AgentPartyQuestHaste.jumpWithHaste(hal));
+        assertFalse(AgentOpqCoordinator.climbsLounge(hal.getId()));
+        assertFalse(AgentPartyQuestHaste.needsHaste(hal, AgentOpqCoordinator.LOUNGE_JUMP));
+    }
+
+    @Test
+    void aBlessedClimberCastsItsHasteInTheLounge() {
+        when(pel.getTotalJumpStat()).thenReturn(110);
+        when(pel.getSkillLevel(Assassin.HASTE)).thenReturn(19);
+        when(pel.getBuffedValue(BuffStat.JUMP)).thenReturn(10);
+        when(pel.getMapId()).thenReturn(AgentOpqDefinition.LOUNGE_MAP);
+        when(pel.getPosition()).thenReturn(new Point(-45, -728));
+        when(run.map.getItems()).thenReturn(List.of());
+        AgentOpqSession session = loungeRun();
+        AgentOpqCoordinator.tickSession(session, 3_000L);
+        assertEquals(AgentOpqDefinition.LOUNGE_ROOM_MAPS.get(0), session.member(pel.getId()).assignedSubroomMapId());
+
+        try (MockedStatic<AgentCombatBuffRuntime> buffs = mockStatic(AgentCombatBuffRuntime.class)) {
+            buffs.when(() -> AgentCombatBuffRuntime.tryCastExplicitUtilityBuff(any(), any(), anyInt()))
+                    .thenReturn(true);
+
+            AgentOpqCoordinator.tickMember(session, run.entries.get(pel.getId()), pel, 3_500L);
+
+            buffs.verify(() -> AgentCombatBuffRuntime.tryCastExplicitUtilityBuff(
+                    run.entries.get(pel.getId()), pel, Assassin.HASTE));
+        }
+    }
+
+    @Test
     void aClimberCastsItsHasteInTheLoungeBeforeHeadingForAHighSubroom() {
         when(pel.getTotalJumpStat()).thenReturn(100);
         when(pel.getSkillLevel(Assassin.HASTE)).thenReturn(19);

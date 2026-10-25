@@ -184,7 +184,7 @@ class AgentOpqRoomEakLineTest {
         AgentOpqSession session = sixAgents(AgentOpqSession.Phase.RESTORING_STATUE);
         int piece = AgentOpqDefinition.STATUE_PIECES.get(0); // the walkway piece goes on scar4
         when(mira.getItemQuantity(piece, false)).thenReturn(1);
-        when(mira.getPosition()).thenReturn(new Point(AgentOpqDefinition.STATUE_SCAR_POSITION.get("scar4")));
+        when(mira.getPosition()).thenReturn(new Point(AgentOpqDefinition.STATUE_SCAR_DROP.get("scar4")));
         Item held = mock(Item.class);
         when(held.getQuantity()).thenReturn((short) 1);
         when(held.getPosition()).thenReturn((short) 3);
