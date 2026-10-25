@@ -1,5 +1,7 @@
 package server.living.config;
 
+import server.agents.capabilities.townlife.AgentTownLifeProfile;
+import server.agents.capabilities.townlife.AgentTownLifeProfileRepository;
 import server.knowledge.EntityKind;
 import server.knowledge.KnowledgeLint;
 import server.living.config.Content.Arc;
@@ -25,9 +27,9 @@ import java.util.Set;
  * available ({@link KnowledgeLint#current()}), item, mob, map and NPC ids are checked against it too.
  */
 public final class ContentLint {
-    /** TownLife profile ids shipped in resources/agents/town-life. */
-    public static final Set<String> KNOWN_TOWNS = Set.of(
-            "lith-harbor", "henesys", "kerning-city", "perion", "ellinia", "nautilus", "sleepywood");
+    private static final Map<String, AgentTownLifeProfile> PROFILES = profilesById();
+    /** TownLife profile ids shipped in resources/agents/town-life (its index.json): the towns a persona can live in. */
+    public static final Set<String> KNOWN_TOWNS = PROFILES.keySet();
 
     private ContentLint() {
     }
@@ -49,6 +51,12 @@ public final class ContentLint {
             }
             if (!KNOWN_TOWNS.contains(persona.homeTown())) {
                 out.add("ERROR " + where + ": unknown home town '" + persona.homeTown() + "'");
+            }
+            for (Content.RoutineSlot slot : persona.routine()) {
+                String problem = unresolvedSpot(persona.homeTown(), slot.spot());
+                if (problem != null) {
+                    out.add("ERROR " + where + ": routine " + problem);
+                }
             }
             if (persona.contract() != null && content.contract(persona.contract()) == null) {
                 out.add("ERROR " + where + ": contract '" + persona.contract() + "' not found");
@@ -240,6 +248,12 @@ public final class ContentLint {
                 if (chapter.loadout() != null && content.loadout(chapter.loadout()) == null) {
                     out.add("ERROR " + where + " chapter " + chapter.id() + ": loadout '" + chapter.loadout() + "' not found");
                 }
+                for (Content.RoutineSlot slot : chapter.routineOverride()) {
+                    String problem = owner == null ? null : unresolvedSpot(owner.homeTown(), slot.spot());
+                    if (problem != null) {
+                        out.add("ERROR " + where + " chapter " + chapter.id() + ": routine " + problem);
+                    }
+                }
             }
         }
 
@@ -247,6 +261,10 @@ public final class ContentLint {
             String where = rumor.file() + " rumor " + rumor.id();
             if (!KNOWN_TOWNS.contains(rumor.town())) {
                 out.add("ERROR " + where + ": unknown town '" + rumor.town() + "'");
+            }
+            String spotProblem = unresolvedSpot(rumor.town(), rumor.spot());
+            if (spotProblem != null) {
+                out.add("ERROR " + where + ": " + spotProblem);
             }
             if (rumor.participants().size() < 2) {
                 out.add("ERROR " + where + ": a rumor needs two participants");
@@ -466,6 +484,41 @@ public final class ContentLint {
      */
     private static Persona authored(LivingContent content, String id) {
         return id == null || LivingContent.isHire(id) ? null : content.personas().get(id);
+    }
+
+    private static Map<String, AgentTownLifeProfile> profilesById() {
+        Map<String, AgentTownLifeProfile> profiles = new LinkedHashMap<>();
+        for (AgentTownLifeProfile profile : AgentTownLifeProfileRepository.defaultRepository().profiles()) {
+            profiles.put(profile.profileId(), profile);
+        }
+        return java.util.Collections.unmodifiableMap(profiles);
+    }
+
+    /**
+     * Why {@code spot} (ResidentSpots' grammar: {@code venue:<id>}, {@code hotspot:<id>}, {@code rest:<n>},
+     * {@code npc:<npcId>}, {@code x,y}) names nothing in {@code town}'s TownLife profile, or null when it resolves, when
+     * there is no spot, or when the town itself is unknown (reported on its own). A spot that does not resolve puts the
+     * Resident at the profile's fallback spot without a word, so a renamed venue is caught here.
+     */
+    static String unresolvedSpot(String town, String spot) {
+        AgentTownLifeProfile profile = PROFILES.get(town);
+        if (spot == null || spot.isBlank() || profile == null) {
+            return null;
+        }
+        String[] parts = spot.split(":", 2);
+        if (parts.length == 1) {
+            return spot.matches("\\s*-?\\d+\\s*,\\s*-?\\d+\\s*") ? null : "spot '" + spot + "' is neither x,y nor kind:id";
+        }
+        String id = parts[1].trim();
+        boolean found = switch (parts[0].trim()) {
+            case "venue" -> profile.venues().stream().anyMatch(venue -> venue.id().equals(id) && !venue.spots().isEmpty());
+            case "hotspot" -> profile.hotspots().stream().anyMatch(hotspot -> hotspot.id().equals(id)
+                    && unresolvedSpot(town, "venue:" + hotspot.venueId()) == null);
+            case "rest" -> id.matches("-?\\d+") && !profile.restSpots().isEmpty();
+            case "npc" -> id.matches("\\d+");
+            default -> false;
+        };
+        return found ? null : "spot '" + spot + "' is not in the " + town + " TownLife profile";
     }
 
     /** The reqJob bit of a persona's job branch (FriendForge.jobMask), -1 for a job name the game does not have. */
