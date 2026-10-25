@@ -34,10 +34,16 @@ import java.util.Set;
  * {@code parent} (else {@code name}) as plain text, colour codes printed literally (Kaentake draws
  * the Resident rows blue); the detail pane and the Quest Helper title it with {@code name}, which stays
  * plain because the Helper prints codes literally too; the detail text renders {@code #b} blue.
+ *
+ * <p>The In Progress text is the giver's name, the line they said on accepting, and one line per step with the live
+ * counts stock quests show ({@code #a}/{@code #c} codes, see {@link QuestLogTargets}); monster, item and map names are
+ * {@code #o}/{@code #t}/{@code #m} codes the player's client fills from its own String.wz.
  */
 public final class QuestLogExportMain {
     /** The "Residents" group of the client's quest list: an unused QuestCategory.img slot MapleEdit names. */
     static final int AREA_RESIDENTS = 31;
+    /** A line break in Quest.wz text: stock quests write a backslash and an n, which the client turns into one. */
+    static final String BREAK = "\\n";
 
     private QuestLogExportMain() {
     }
@@ -116,11 +122,11 @@ public final class QuestLogExportMain {
         out.put("area", AREA_RESIDENTS);
         out.put("lvmin", Math.max(1, quest.requires().minLevel())); // shown as "Over Level N" in the detail pane
         out.put("npc", content.portraitNpcId(quest.persona())); // the giver's own portrait in the detail pane; 0 = none
-        out.put("mobs", targets(QuestLogTargets.mobs(quest))); // Check.img/1: what the Quest Helper and detail pane count
+        out.put("mobs", targets(QuestLogTargets.mobs(quest))); // Check.img/1: what the Quest Helper counts, the #a slots
         out.put("items", targets(QuestLogTargets.items(quest)));
         out.put("available", firstLine(giver, "questOffer." + quest.id(),
                 "Ask " + giverName + " in " + capitalize(town) + " about it."));
-        out.put("inProgress", "#b" + giverName + " (" + capitalize(town) + ")#k: " + steps(content, quest));
+        out.put("inProgress", inProgress(content, quest, logId, giver, giverName, town));
         out.put("completed", firstLine(giver, "questComplete." + quest.id(), "Done. " + giverName + " was grateful."));
         return out;
     }
@@ -146,37 +152,72 @@ public final class QuestLogExportMain {
         return fallback;
     }
 
-    private static String steps(LivingContent content, Quest quest) {
-        StringBuilder text = new StringBuilder();
-        for (Step step : quest.steps()) {
-            if (text.length() > 0) {
-                text.append(" -> ");
+    /** The giver, their accept line, a blank line, then the steps (the opening TALK is the talk that started it). */
+    static String inProgress(LivingContent content, Quest quest, int logId, Persona giver, String giverName, String town) {
+        StringBuilder text = new StringBuilder("#b" + giverName + " (" + capitalize(town) + ")#k");
+        String accepted = firstLine(giver, "questAccept." + quest.id(), null);
+        if (accepted != null) {
+            text.append(BREAK).append(accepted.replace("#", ""));
+        }
+        text.append(BREAK);
+        for (int i = 0; i < quest.steps().size(); i++) {
+            Step step = quest.step(i);
+            if (i == 0 && step.type() == Content.StepType.TALK) {
+                continue;
             }
-            text.append(describe(content, quest, step));
+            text.append(BREAK).append(stepLine(content, quest, logId, step));
         }
         return text.toString();
     }
 
-    private static String describe(LivingContent content, Quest quest, Step step) {
+    private static String stepLine(LivingContent content, Quest quest, int logId, Step step) {
         String giver = personaName(content, quest.persona());
         return switch (step.type()) {
-            case TALK -> "talk to " + giver;
-            case KILL_MOBS, KILL_BOSS -> "defeat " + step.count() + " " + mobName(step.mobIds())
-                    + (step.with() != null ? " with " + personaName(content, step.with()) : "");
-            case HUNT_WITH -> "hunt " + step.count() + " " + mobName(step.mobIds()) + " with " + personaName(content, step.persona());
-            case COLLECT_ITEM -> "collect " + step.count() + " " + (step.label() != null ? step.label() : itemName(step.itemId()));
-            case DELIVER -> "bring " + (step.take() == null ? "word" : itemName(step.take().itemId()) + " x" + step.take().count())
-                    + " to " + personaName(content, step.to());
-            case VISIT_MAP -> "visit map " + step.mapIds().get(0);
-            case TALK_TO -> "talk to " + personaName(content, step.persona());
-            case HEAR_RUMOR -> "learn what the townsfolk say";
-            case ESCORT -> "escort " + personaName(content, step.persona());
-            case PAY -> "pay " + step.meso() + " meso";
-            case GIVE_ITEM -> "hand over " + step.count() + " " + itemName(step.itemId());
-            case REACH_LEVEL -> "reach level " + step.level();
-            case WAIT -> "come back in " + step.hours() + " hour(s)";
-            case PARTY_QUEST_CLEAR -> "clear a party quest" + (step.to() == null ? "" : " (" + step.to() + ")");
+            case TALK -> "Talk to " + giver;
+            case KILL_MOBS, KILL_BOSS -> "Defeat " + mobs(step)
+                    + (step.with() != null ? " with " + personaName(content, step.with()) : "") + kills(quest, logId, step);
+            case HUNT_WITH -> "Hunt " + mobs(step) + " with " + personaName(content, step.persona()) + kills(quest, logId, step);
+            case COLLECT_ITEM -> "Collect " + item(quest, step.itemId()) + held(step.itemId(), step.count());
+            case DELIVER -> step.take() == null
+                    ? (quest.persona().equals(step.to()) ? "Report back to " : "Report to ") + personaName(content, step.to())
+                    : "Bring " + personaName(content, step.to()) + " " + step.take().count() + " " + item(quest, step.take().itemId());
+            case VISIT_MAP -> "Go to #m" + step.mapIds().get(0) + "#";
+            case TALK_TO -> "Talk to " + personaName(content, step.persona());
+            case HEAR_RUMOR -> "Learn what the townsfolk say";
+            case ESCORT -> "Escort " + personaName(content, step.persona());
+            case PAY -> "Pay " + step.meso() + " meso";
+            case GIVE_ITEM -> "Hand over " + item(quest, step.itemId()) + held(step.itemId(), step.count());
+            case REACH_LEVEL -> "Reach level " + step.level();
+            case WAIT -> "Come back in " + step.hours() + " hour(s)";
+            case PARTY_QUEST_CLEAR -> "Clear a party quest" + (step.to() == null ? "" : " (" + step.to() + ")");
         };
+    }
+
+    private static String mobs(Step step) {
+        return "#o" + step.mobIds().get(0) + "#" + (step.mobIds().size() > 1 ? " and the like" : "");
+    }
+
+    /** The step's kills, live from the quest record; past the last coded slot only the target. */
+    private static String kills(Quest quest, int logId, Step step) {
+        int slot = QuestLogTargets.mobSlot(quest, step);
+        int count = Math.max(1, step.count());
+        return slot >= 1 && slot <= QuestLogTargets.CODED_SLOTS
+                ? ": #r#a" + logId + slot + "##k / " + count : " x" + count;
+    }
+
+    /** How many of the item the inventory holds, live, out of the count. */
+    private static String held(int itemId, int count) {
+        return ": #b#c" + itemId + "##k / " + Math.max(1, count);
+    }
+
+    /** The item as the quest names it: a collect step's label, else the client's own item name. */
+    private static String item(Quest quest, int itemId) {
+        for (Step step : quest.steps()) {
+            if (step.type() == Content.StepType.COLLECT_ITEM && step.itemId() == itemId && step.label() != null) {
+                return step.label();
+            }
+        }
+        return "#t" + itemId + "#";
     }
 
     private static String personaName(LivingContent content, String id) {
@@ -188,54 +229,6 @@ public final class QuestLogExportMain {
         }
         Persona persona = content.persona(id);
         return persona == null ? id : persona.name();
-    }
-
-    /** String.wz without the item/mob providers, which need a database connection to initialise. */
-    private static final provider.DataProvider STRINGS = provider.DataProviderFactory.getDataProvider(provider.wz.WZFiles.STRING);
-
-    private static String itemName(int itemId) {
-        try {
-            String id = String.valueOf(itemId);
-            provider.Data node = null;
-            switch (itemId / 1_000_000) {
-                case 1 -> {
-                    provider.Data eqp = STRINGS.getData("Eqp.img").getChildByPath("Eqp");
-                    for (provider.Data category : eqp.getChildren()) {
-                        node = category.getChildByPath(id);
-                        if (node != null) {
-                            break;
-                        }
-                    }
-                }
-                case 2 -> node = STRINGS.getData("Consume.img").getChildByPath(id);
-                case 3 -> node = STRINGS.getData("Ins.img").getChildByPath(id);
-                case 4 -> node = STRINGS.getData("Etc.img").getChildByPath("Etc/" + id);
-                case 5 -> {
-                    node = STRINGS.getData("Cash.img").getChildByPath(id);
-                    if (node == null) {
-                        node = STRINGS.getData("Pet.img").getChildByPath(id);
-                    }
-                }
-                default -> { }
-            }
-            String name = node == null ? null : provider.DataTool.getString("name", node, null);
-            return name == null ? "item " + itemId : name;
-        } catch (Throwable unavailable) {
-            return "item " + itemId; // no WZ data on this classpath
-        }
-    }
-
-    private static String mobName(List<Integer> mobIds) {
-        if (mobIds == null || mobIds.isEmpty()) {
-            return "monsters";
-        }
-        try {
-            provider.Data node = STRINGS.getData("Mob.img").getChildByPath(String.valueOf(mobIds.get(0)));
-            String name = node == null ? null : provider.DataTool.getString("name", node, null);
-            return (name == null ? "monsters" : name) + (mobIds.size() > 1 ? " and the like" : "");
-        } catch (Throwable unavailable) {
-            return "monsters";
-        }
     }
 
     private static String capitalize(String words) {

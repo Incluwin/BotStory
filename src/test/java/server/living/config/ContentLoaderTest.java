@@ -95,7 +95,8 @@ class ContentLoaderTest {
         assertEquals(QuestLogExportMain.AREA_RESIDENTS, wren.get("area"));
         assertEquals("Ink from Spores", wren.get("name"), "the Quest Helper prints colour codes literally");
         assertEquals("Ink from Spores", wren.get("parent"), "the list label stays plain");
-        assertTrue(((String) wren.get("inProgress")).startsWith("#bWren (Ellinia)#k: "), "the giver in blue in the detail text");
+        assertTrue(((String) wren.get("inProgress")).startsWith("#bWren (Ellinia)#k" + QuestLogExportMain.BREAK),
+                "the giver in blue in the detail text");
         assertEquals(10, wren.get("lvmin"));
         assertEquals(content.portraitNpcId("wren"), wren.get("npc"));
     }

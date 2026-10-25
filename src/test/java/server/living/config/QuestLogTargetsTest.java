@@ -11,7 +11,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** What the client's quest log (Quest Helper, detail pane) tracks for a living quest. */
+/** What the client's quest log (Quest Helper, detail text counts) tracks for a living quest. */
 class QuestLogTargetsTest {
     private static final LivingContent CONTENT = ContentLoader.load(Path.of("scripts/config/living-world"));
 
@@ -42,6 +42,23 @@ class QuestLogTargetsTest {
         assertTrue(QuestLogTargets.mobs(walk).isEmpty());
         assertTrue(QuestLogTargets.items(walk).isEmpty());
         assertTrue(QuestLogTargets.kills(walk, 1, 0).isEmpty());
+    }
+
+    @Test
+    void eachKillStepReadsItsMonstersSlot() {
+        Quest pigs = CONTENT.quest("fenna-pig-problem"); // TALK, KILL_MOBS Pig 20, KILL_MOBS Ribbon Pig 10, DELIVER
+
+        assertEquals(0, QuestLogTargets.mobSlot(pigs, pigs.step(0)), "a talk step has no slot");
+        assertEquals(1, QuestLogTargets.mobSlot(pigs, pigs.step(1)));
+        assertEquals(2, QuestLogTargets.mobSlot(pigs, pigs.step(2)));
+        assertEquals(0, QuestLogTargets.mobSlot(pigs, pigs.step(3)));
+    }
+
+    @Test
+    void everyQuestFitsTheDetailTextsOneDigitSlots() {
+        for (Quest quest : CONTENT.quests().values()) {
+            assertTrue(QuestLogTargets.mobs(quest).size() <= QuestLogTargets.CODED_SLOTS, quest.id());
+        }
     }
 
     @Test

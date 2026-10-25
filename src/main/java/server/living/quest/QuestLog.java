@@ -15,6 +15,8 @@ import server.living.store.LivingStore.QuestState;
 import server.quest.QuestTime;
 import tools.StringUtil;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -23,7 +25,8 @@ import java.util.Map;
  * matching {@link QuestStatus} is set STARTED on accept and COMPLETED on completion, straight
  * through {@link Character#updateQuestStatus} so no Act data is needed. The ledger's kill counts
  * go along as the quest's progress string (three digits per monster, in {@link QuestLogTargets}
- * order), which the Quest Helper and the detail pane show. Off unless
+ * order), which the Quest Helper counts and the detail text's {@code #a} codes read; a kill sends
+ * only that record, as the stock kill counter does. Off unless
  * {@code living_world.QUEST_LOG_MIRROR} is on, because without the Quest.wz patch the client
  * would list nameless quests.
  */
@@ -72,10 +75,10 @@ public final class QuestLog {
         }
         Map<Integer, Integer> kills = QuestLogTargets.kills(quest, state.stepIndex(), state.progress());
         QuestStatus current = chr.getQuest(server.quest.Quest.getInstance(id));
-        if (kills.isEmpty() || current.getStatus() != Status.STARTED || shows(current, kills)) {
+        if (kills.isEmpty() || current.getStatus() != Status.STARTED) {
             return;
         }
-        set(chr, id, Status.STARTED, kills);
+        showKills(chr, id, current, kills);
     }
 
     /** Brings the client log in line with the ledger, for quests taken before the mirror was on. */
@@ -94,22 +97,44 @@ public final class QuestLog {
             if (want == null) {
                 continue;
             }
-            Map<Integer, Integer> kills = want == Status.STARTED
-                    ? QuestLogTargets.kills(quest, state.stepIndex(), state.progress()) : Map.of();
             QuestStatus current = chr.getQuest(server.quest.Quest.getInstance(id));
-            if (current.getStatus() != want || !shows(current, kills)) {
-                set(chr, id, want, kills);
+            if (current.getStatus() != want) {
+                set(chr, id, want, want == Status.STARTED
+                        ? QuestLogTargets.kills(quest, state.stepIndex(), state.progress()) : Map.of());
+            } else if (want == Status.STARTED) {
+                showKills(chr, id, current, QuestLogTargets.kills(quest, state.stepIndex(), state.progress()));
             }
         }
     }
 
-    private static boolean shows(QuestStatus current, Map<Integer, Integer> kills) {
-        for (Map.Entry<Integer, Integer> kill : kills.entrySet()) {
-            if (!digits(kill.getValue()).equals(current.getProgress(kill.getKey()))) {
-                return false;
-            }
+    /**
+     * Brings a started quest's record to these kills. The client reads it slot by slot in Check.img/1 order, so a record
+     * holding the same monsters in that order only takes the new counts and one record update (no start result, as for a
+     * stock kill); any other record (another order, a monster content no longer tracks) is replaced whole.
+     */
+    private void showKills(Character chr, int id, QuestStatus current, Map<Integer, Integer> kills) {
+        Map<Integer, String> record = record(kills);
+        Map<Integer, String> shown = current.getProgress();
+        if (new ArrayList<>(shown.entrySet()).equals(new ArrayList<>(record.entrySet()))) {
+            return;
         }
-        return true;
+        if (!new ArrayList<>(shown.keySet()).equals(new ArrayList<>(record.keySet()))) {
+            set(chr, id, Status.STARTED, kills);
+            return;
+        }
+        try {
+            record.forEach(current::setProgress);
+            chr.announceUpdateQuest(Character.DelayedQuestUpdate.UPDATE, current, false);
+        } catch (RuntimeException failure) {
+            log.warn("quest log mirror for {} quest {} failed", chr.getName(), id, failure);
+        }
+    }
+
+    /** The record the client reads: three digits per tracked monster, in Check.img/1 order. */
+    private static Map<Integer, String> record(Map<Integer, Integer> kills) {
+        Map<Integer, String> record = new LinkedHashMap<>();
+        kills.forEach((mob, count) -> record.put(mob, digits(count)));
+        return record;
     }
 
     private static String digits(int kills) {
@@ -120,9 +145,7 @@ public final class QuestLog {
         try {
             server.quest.Quest quest = server.quest.Quest.getInstance(id);
             QuestStatus updated = new QuestStatus(quest, status, 0);
-            for (Map.Entry<Integer, Integer> kill : kills.entrySet()) { // in Check.img/1 order
-                updated.setProgress(kill.getKey(), digits(kill.getValue()));
-            }
+            record(kills).forEach(updated::setProgress); // in Check.img/1 order
             QuestStatus previous = chr.getQuest(quest);
             updated.setForfeited(previous.getForfeited());
             updated.setCompleted(previous.getCompleted());
