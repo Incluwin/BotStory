@@ -86,7 +86,8 @@ public final class AgentVictoriaLevel15CatalogRepository {
             validateCatchUpPlan(career, packIndex);
         }
         for (AgentCareerBuildBundle bundle : bundles.all()) {
-            if (!bundleIndex.containsKey(bundle.bundleId())) {
+            // Victoria's first-job journey is the Explorers': a Cygnus Knight or Aran bundle has no career here
+            if (bundle.explorer() && !bundleIndex.containsKey(bundle.bundleId())) {
                 throw new IllegalArgumentException("career bundle is missing from Victoria catalog: "
                         + bundle.bundleId());
             }
@@ -105,6 +106,11 @@ public final class AgentVictoriaLevel15CatalogRepository {
 
     public AgentVictoriaLevel15Catalog catalog() {
         return catalog;
+    }
+
+    /** True when {@code bundle} has a Victoria career (every Explorer bundle; no Cygnus Knight or Aran one). */
+    public boolean hasCareer(AgentCareerBuildBundle bundle) {
+        return bundle != null && byBundleId.containsKey(bundle.bundleId());
     }
 
     public AgentVictoriaLevel15Catalog.Career careerFor(AgentCareerBuildBundle bundle) {

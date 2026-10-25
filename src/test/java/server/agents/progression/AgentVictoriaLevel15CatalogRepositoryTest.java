@@ -18,6 +18,10 @@ class AgentVictoriaLevel15CatalogRepositoryTest {
         assertEquals("victoria-level15-mvp-catalog-v2", repository.catalog().catalogId());
         assertEquals(5, repository.catalog().careers().size());
         for (AgentCareerBuildBundle bundle : AgentCareerBuildBundleRepository.defaultRepository().all()) {
+            assertEquals(bundle.explorer(), repository.hasCareer(bundle), bundle.bundleId());
+            if (!bundle.explorer()) {
+                continue; // a Cygnus Knight or Aran never takes Victoria's first-job journey
+            }
             AgentVictoriaLevel15Catalog.Career career = repository.careerFor(bundle);
             assertEquals(bundle.firstJobId(), career.firstJobId());
             assertEquals(bundle.instructorNpcId(), career.instructorNpcId());

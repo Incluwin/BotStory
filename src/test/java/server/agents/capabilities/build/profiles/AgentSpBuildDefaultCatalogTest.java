@@ -26,4 +26,21 @@ class AgentSpBuildDefaultCatalogTest {
                 AgentSpBuildDefaultCatalog.nextProfileId(
                         "mapleroyals-optimal-2026-dragon-knight-spear", 132));
     }
+
+    @Test
+    void everyAdvancedCygnusKnightAndAranJobUsesItsOwnDefault() {
+        int[] jobs = {1110, 1111, 1210, 1211, 1310, 1311, 1410, 1411, 1510, 1511, 2110, 2111, 2112};
+        AgentSpBuildProfileRepository profiles = AgentSpBuildProfileRepository.defaultRepository();
+        for (int job : jobs) {
+            String profileId = AgentSpBuildDefaultCatalog.profileIdFor(job);
+            assertEquals(true, profileId.startsWith("botstory-v83-2026-"), profileId);
+            assertEquals(job, profiles.find(profileId).orElseThrow().exactJobId());
+            assertEquals(true, profiles.find(profileId).orElseThrow().followsDefaultCatalog());
+        }
+        assertNull(AgentSpBuildDefaultCatalog.profileIdFor(1112), "no Cygnus 4th job in v83");
+        for (int firstJob : new int[]{1100, 1200, 1300, 1400, 1500, 2100}) {
+            assertEquals(firstJob, profiles.find(AgentSpBuildProfileService.firstJobProfileId(firstJob)).orElseThrow().exactJobId());
+        }
+        assertNull(AgentSpBuildProfileService.firstJobProfileId(1000), "a Noblesse has no SP yet");
+    }
 }

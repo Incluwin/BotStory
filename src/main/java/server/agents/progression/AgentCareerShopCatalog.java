@@ -1,5 +1,6 @@
 package server.agents.progression;
 
+import client.Job;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import java.util.function.IntBinaryOperator;
@@ -12,9 +13,15 @@ public final class AgentCareerShopCatalog {
     private AgentCareerShopCatalog() {
     }
 
+    /**
+     * The career's own shop. A Cygnus Knight or an Aran has no Victoria career: it shops where its Explorer archetype
+     * does (a Wind Archer's arrows in Henesys, a Night Walker's stars in Kerning City), as players of those lines did.
+     */
     public static ShopStop forBundle(AgentCareerBuildBundle bundle) {
-        AgentVictoriaLevel15Catalog.Career career =
-                AgentVictoriaLevel15CatalogRepository.defaultRepository().careerFor(bundle);
+        AgentVictoriaLevel15CatalogRepository repository = AgentVictoriaLevel15CatalogRepository.defaultRepository();
+        Job firstJob = bundle == null ? null : Job.getById(bundle.firstJobId());
+        AgentVictoriaLevel15Catalog.Career career = repository.hasCareer(bundle) || firstJob == null
+                ? repository.careerFor(bundle) : repository.careerForFirstJob(firstJob.getJobNiche() * 100);
         return new ShopStop(career.shopMapId(), career.shopNpcId());
     }
 

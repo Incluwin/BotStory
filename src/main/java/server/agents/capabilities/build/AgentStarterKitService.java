@@ -14,6 +14,7 @@ import server.agents.integration.InventoryGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.agents.capabilities.build.profiles.BuildStep;
+import server.agents.progression.AgentCareerBuildBundleService;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -29,6 +30,7 @@ public final class AgentStarterKitService {
             log.warn("Rejected Agent job advancement for '{}' from {} to {}", bot.getName(), oldJob, newJob);
             return;
         }
+        AgentCareerBuildBundleService.followJobChange(entry, System.currentTimeMillis());
         AgentBuildService.handleJobAdvance(entry, bot, oldJob, newJob);
         grantStarterKitIfEligible(bot, oldJob, newJob, AgentInventoryGatewayRuntime.inventory());
         AgentEquipmentService.autoEquip(bot, null, null);
@@ -46,6 +48,7 @@ public final class AgentStarterKitService {
             log.warn("Rejected Agent job advancement for '{}' from {} to {}", bot.getName(), oldJob, newJob);
             return;
         }
+        AgentCareerBuildBundleService.followJobChange(entry, System.currentTimeMillis());
         AgentBuildService.handleJobAdvance(entry, bot, oldJob, newJob, spBuild);
         grantStarterKitIfEligible(bot, oldJob, newJob, AgentInventoryGatewayRuntime.inventory());
         AgentEquipmentService.autoEquip(bot, null, null);

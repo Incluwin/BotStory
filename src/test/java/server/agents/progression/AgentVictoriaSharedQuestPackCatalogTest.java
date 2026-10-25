@@ -153,9 +153,10 @@ class AgentVictoriaSharedQuestPackCatalogTest {
     }
 
     @Test
-    void checkpoint2ExistsForEveryBundleAndRecordsValidatedCaptures() {
+    void checkpoint2ExistsForEveryExplorerBundleAndRecordsValidatedCaptures() {
         Set<String> bundleIds = AgentCareerBuildBundleRepository.defaultRepository()
                 .all().stream()
+                .filter(AgentCareerBuildBundle::explorer) // Victoria's first-job journey: no Knight or Aran
                 .map(AgentCareerBuildBundle::bundleId)
                 .collect(Collectors.toSet());
         Set<String> capturedBundleIds = Set.of(

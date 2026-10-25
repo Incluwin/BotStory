@@ -46,6 +46,6 @@ public class NightWalker {
     public static final int AVENGER = 14111002;
     public static final int ALCHEMIST = 14110003;
     public static final int VENOM = 14110004;
-    public static final int TRIPLE_THROW = 14110005;
+    public static final int TRIPLE_THROW = 14111005; // Skill.wz 1411.img (was 14110005, an id the WZ does not have)
     public static final int POISON_BOMB = 14111006;
 }

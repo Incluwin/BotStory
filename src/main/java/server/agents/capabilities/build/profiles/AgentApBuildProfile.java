@@ -38,6 +38,12 @@ public record AgentApBuildProfile(
             case THIEF -> job.isA(Job.THIEF);
             case MAGICIAN -> job.isA(Job.MAGICIAN);
             case PIRATE -> job.isA(Job.PIRATE);
+            case DAWN_WARRIOR -> job.isA(Job.DAWNWARRIOR1);
+            case BLAZE_WIZARD -> job.isA(Job.BLAZEWIZARD1);
+            case WIND_ARCHER -> job.isA(Job.WINDARCHER1);
+            case NIGHT_WALKER -> job.isA(Job.NIGHTWALKER1);
+            case THUNDER_BREAKER -> job.isA(Job.THUNDERBREAKER1);
+            case ARAN -> job.isA(Job.ARAN1);
         };
     }
 
@@ -46,7 +52,13 @@ public record AgentApBuildProfile(
         BOWMAN,
         THIEF,
         MAGICIAN,
-        PIRATE
+        PIRATE,
+        DAWN_WARRIOR,
+        BLAZE_WIZARD,
+        WIND_ARCHER,
+        NIGHT_WALKER,
+        THUNDER_BREAKER,
+        ARAN
     }
 
     public enum StatType {

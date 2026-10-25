@@ -61,11 +61,25 @@ public record AgentSpBuildProfile(
             case THIEF -> job.isA(Job.THIEF);
             case MAGICIAN -> job.isA(Job.MAGICIAN);
             case PIRATE -> job.isA(Job.PIRATE);
+            case DAWN_WARRIOR -> job.isA(Job.DAWNWARRIOR1);
+            case BLAZE_WIZARD -> job.isA(Job.BLAZEWIZARD1);
+            case WIND_ARCHER -> job.isA(Job.WINDARCHER1);
+            case NIGHT_WALKER -> job.isA(Job.NIGHTWALKER1);
+            case THUNDER_BREAKER -> job.isA(Job.THUNDERBREAKER1);
+            case ARAN -> job.isA(Job.ARAN1);
         };
     }
 
     public boolean isMapleRoyalsOptimal2026() {
         return profileId.startsWith("mapleroyals-optimal-2026-");
+    }
+
+    /**
+     * One of the exact-job default lines (AgentSpBuildDefaultCatalog): the MapleRoyals Explorer builds or the Cygnus
+     * Knight and Aran builds. An Agent holding one moves on to its next job's profile when it advances.
+     */
+    public boolean followsDefaultCatalog() {
+        return isMapleRoyalsOptimal2026() || profileId.startsWith(AgentSpBuildDefaultCatalog.CYGNUS_ARAN_SOURCE_ID + "-");
     }
 
     public record LevelPlan(int level, List<SkillPoints> allocations) {
@@ -98,6 +112,12 @@ public record AgentSpBuildProfile(
         BOWMAN,
         THIEF,
         MAGICIAN,
-        PIRATE
+        PIRATE,
+        DAWN_WARRIOR,
+        BLAZE_WIZARD,
+        WIND_ARCHER,
+        NIGHT_WALKER,
+        THUNDER_BREAKER,
+        ARAN
     }
 }

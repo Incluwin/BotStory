@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import server.agents.capabilities.build.profiles.AgentApBuildProfile;
 import server.agents.capabilities.build.profiles.AgentApBuildProfileService;
+import server.agents.capabilities.build.profiles.AgentQuestSkills;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.build.profiles.BowmanBuilds;
 import server.agents.capabilities.build.profiles.BuildStep;
@@ -247,11 +248,13 @@ public final class AgentBuildService {
             throw new IllegalArgumentException("an Agent, character, and SP build are required");
         }
         AgentFourthJobInstructor.teach(bot, AgentSkillGatewayRuntime.skills());
+        AgentQuestSkills.teach(bot, AgentSkillGatewayRuntime.skills());
         autoAssignSp(entry, bot, List.copyOf(steps), AgentSkillGatewayRuntime.skills());
     }
 
     static void autoAssignSp(AgentRuntimeEntry entry, Character bot, SkillGateway skills) {
         AgentFourthJobInstructor.teach(bot, skills);
+        AgentQuestSkills.teach(bot, skills); // a Cygnus Knight's or Aran's quest skills its level allows
         if (AgentSpBuildProfileService.autoAssign(entry, bot, skills)) {
             return;
         }

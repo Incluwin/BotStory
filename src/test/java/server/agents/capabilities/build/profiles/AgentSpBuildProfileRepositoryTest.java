@@ -13,7 +13,7 @@ class AgentSpBuildProfileRepositoryTest {
 
     @Test
     void catalogContainsFirstJobAndSecondJobHandoffProfiles() {
-        assertEquals(66, repository.all().size());
+        assertEquals(85, repository.all().size());
         assertTargets("fighter-second-job-lv30-v1", 1, Map.of(1100000, 1));
         assertTargets("cleric-second-job-lv30-v1", 1, Map.of(2300000, 1));
         assertTargets("gunslinger-second-job-lv30-v1", 1, Map.of(5200000, 1));
@@ -29,6 +29,27 @@ class AgentSpBuildProfileRepositoryTest {
         assertEquals(12, profiles.stream().filter(profile -> profile.startingLevel() == 30).count());
         assertEquals(13, profiles.stream().filter(profile -> profile.startingLevel() == 70).count());
         assertEquals(13, profiles.stream().filter(profile -> profile.startingLevel() == 120).count());
+    }
+
+    @Test
+    void cygnusKnightAndAranProfilesCoverEveryJobOfTheirLinesToItsCap() {
+        List<AgentSpBuildProfile> profiles = repository.all().stream()
+                .filter(profile -> profile.profileId().startsWith("botstory-v83-2026-"))
+                .toList();
+        assertEquals(19, profiles.size()); // five Knights x three jobs, Aran x four
+        for (AgentSpBuildProfile profile : profiles) {
+            int job = profile.exactJobId();
+            int cap = switch (job % 100) {
+                case 0 -> 30;
+                case 10 -> 70;
+                case 11 -> 120; // a 3rd job: an Aran's 4th job, a Knight's level cap
+                default -> 200;
+            };
+            assertEquals(cap, profile.supportedThroughLevel(), profile.profileId());
+            int budget = profile.entrySp() + (profile.supportedThroughLevel() - profile.startingLevel()) * 3;
+            assertEquals(budget, profile.segments().stream().mapToInt(AgentSpBuildProfile.AllocationSegment::points).sum(),
+                    profile.profileId() + " plans every SP its levels give");
+        }
     }
 
     @Test

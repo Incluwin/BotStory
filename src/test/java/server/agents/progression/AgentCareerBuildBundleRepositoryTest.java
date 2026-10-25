@@ -16,16 +16,19 @@ class AgentCareerBuildBundleRepositoryTest {
     @Test
     void defaultCatalogCoversEveryFirstJobBuildVariant() {
         AgentCareerBuildBundleRepository repository = AgentCareerBuildBundleRepository.defaultRepository();
-        assertEquals(7, repository.all().size());
-        assertEquals(Set.of(100, 200, 300, 400, 500), repository.all().stream()
+        List<AgentCareerBuildBundle> explorers = repository.all().stream().filter(AgentCareerBuildBundle::explorer).toList();
+        assertEquals(7, explorers.size());
+        assertEquals(Set.of(100, 200, 300, 400, 500), explorers.stream()
                 .map(AgentCareerBuildBundle::firstJobId).collect(Collectors.toSet()));
 
         for (AgentCareerBuildBundle bundle : repository.all()) {
             assertTrue(AgentApBuildProfileRepository.defaultRepository().find(bundle.apProfileId()).isPresent());
             assertTrue(AgentSpBuildProfileRepository.defaultRepository().find(bundle.spProfileId()).isPresent());
+            assertEquals(15, bundle.milestoneLevel());
+        }
+        for (AgentCareerBuildBundle bundle : explorers) {
             assertTrue(bundle.spProfileId().startsWith("mapleroyals-optimal-2026-"));
             assertEquals(4, bundle.instructorTrainingQuestIds().size());
-            assertEquals(15, bundle.milestoneLevel());
         }
 
         Map<String, String> expectedApProfiles = Map.of(
@@ -43,8 +46,23 @@ class AgentCareerBuildBundleRepositoryTest {
                 300, List.of(2136, 2137, 2138, 2139),
                 400, List.of(2140, 2141, 2142, 2143),
                 500, List.of(2193, 2194, 2195, 2196));
-        repository.all().forEach(bundle ->
+        explorers.forEach(bundle ->
                 assertEquals(expectedPowerBForeChains.get(bundle.firstJobId()),
                         bundle.instructorTrainingQuestIds()));
+    }
+
+    @Test
+    void eachCygnusKnightAndAranHasOneBundleAtItsOwnInstructorWithItsOwnBuilds() {
+        AgentCareerBuildBundleRepository repository = AgentCareerBuildBundleRepository.defaultRepository();
+        Map<Integer, Integer> instructorByFirstJob = Map.of(1100, 1101003, 1200, 1101004, 1300, 1101005, 1400, 1101006,
+                1500, 1101007, 2100, 1201001);
+        List<AgentCareerBuildBundle> lines = repository.all().stream().filter(bundle -> !bundle.explorer()).toList();
+        assertEquals(instructorByFirstJob.keySet(), lines.stream().map(AgentCareerBuildBundle::firstJobId).collect(Collectors.toSet()));
+        for (AgentCareerBuildBundle bundle : lines) {
+            assertEquals(instructorByFirstJob.get(bundle.firstJobId()), bundle.instructorNpcId(), bundle.bundleId());
+            assertEquals(bundle.firstJobId() == 2100 ? 140000000 : 130000000, bundle.instructorMapId());
+            assertTrue(bundle.spProfileId().startsWith("botstory-v83-2026-") && bundle.spProfileId().endsWith("-first-job"));
+            assertTrue(bundle.instructorTrainingQuestIds().isEmpty(), "Power B. Fore's training is Victoria's");
+        }
     }
 }
