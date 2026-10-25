@@ -459,6 +459,7 @@ public final class PacketProcessor {
         registerHandler(RecvOpcode.CREW_WINDOW, new net.server.channel.handlers.CrewWindowHandler());
         // Login feature handshake: only a kaentake client with it sends this, and only it is ever answered
         registerHandler(RecvOpcode.CLIENT_FEATURES, new net.server.channel.handlers.ClientFeaturesHandler());
+        registerHandler(RecvOpcode.BAG_WINDOW, new net.server.channel.handlers.StorageBagHandler());
         // Keep the protocol surface registered regardless of configuration.
         // Each observer handler performs its own feature and authorization
         // checks, so a disabled observer suite remains inert. Registering the

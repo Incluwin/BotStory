@@ -353,6 +353,7 @@ public class Character extends AbstractCharacterObject {
     private final AtomicInteger gachaexp = new AtomicInteger();
     private final AtomicInteger meso = new AtomicInteger();
     private final AtomicInteger chair = new AtomicInteger(-1);
+    private server.bag.StorageBags storageBags;
     private final DirtySectionTracker<PersistenceSection> persistenceDirty =
             new DirtySectionTracker<>(PersistenceSection.class, DIRTY_FULL_CHECKPOINT_AUTOSAVES);
     private long totalExpGained = 0;
@@ -2505,6 +2506,15 @@ public class Character extends AbstractCharacterObject {
                 final Packet pickupPacket = PacketCreator.removeItemFromMap(mapitem.getObjectId(), (isPet) ? 5 : 2, this.getId(), isPet, petIndex);
 
                 Item mItem = mapitem.getItem();
+                if (mapitem.getMeso() <= 0 && mItem != null && storageBags != null
+                        && !MapId.isSelfLootableOnly(this.getMapId())
+                        && this.needQuestItem(mapitem.getQuest(), mapitem.getItemId())
+                        && storageBags.autoCollect(this, mItem)) {
+                    this.getMap().pickItemDrop(pickupPacket, mapitem);
+                    server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0);
+                    sendPacket(PacketCreator.enableActions());
+                    return;
+                }
                 int previousItemQuantity = mItem == null ? 0 : countItem(mItem.getItemId());
                 boolean hasSpaceInventory = true;
                 ItemInformationProvider ii = ItemInformationProvider.getInstance();
@@ -2866,7 +2876,7 @@ public class Character extends AbstractCharacterObject {
         }
         deleteWhereCharacterId(con, "DELETE FROM mts_cart WHERE cid = ?", cid);
 
-        String[] characterIdTables = {"famelog", "inventoryitems", "keymap", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats"};
+        String[] characterIdTables = {"famelog", "inventoryitems", "keymap", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats", "character_storage_bag"};
         for (String table : characterIdTables) {
             deleteWhereCharacterId(con, "DELETE FROM `" + table + "` WHERE characterid = ?", cid);
         }
@@ -8584,6 +8594,9 @@ public class Character extends AbstractCharacterObject {
                     wserv.loadAccountStorage(ret.accountid);
                     ret.storage = wserv.getAccountStorage(ret.accountid);
                 }
+                if (!(client instanceof BotClient) && ServerMods.get().isOn(ServerMods.STORAGE_BAG)) {
+                    ret.storageBags = server.bag.StorageBags.load(con, charid);
+                }
                 ret.attachPersistenceChildren();
                 
                 int startHp = ret.hp, startMp = ret.mp;
@@ -9634,6 +9647,11 @@ public class Character extends AbstractCharacterObject {
         persistenceDirty.mark(section);
     }
 
+    /** The Storage Bags (server.bag), or null for a bot, with the storage_bag mod off at login, or after a failed load. */
+    public server.bag.StorageBags getStorageBags() {
+        return storageBags;
+    }
+
     private void attachQuestStatus(QuestStatus status) {
         status.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.QUESTS));
     }
@@ -9752,6 +9770,9 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         }
+        // the bags go with the inventory: an item moved between them is in exactly one of the two snapshots
+        server.bag.StorageBags.SaveSnapshot bagSnapshot = savePlan.includes(PersistenceSection.INVENTORY)
+                && storageBags != null ? storageBags.saveSnapshot() : null;
         Map<Skill, SkillEntry> skillsSnapshot = new LinkedHashMap<>();
         if (savePlan.includes(PersistenceSection.SKILLS)) {
             getSkills().forEach((skill, entry) -> skillsSnapshot.put(skill, entry.persistenceCopy()));
@@ -10006,6 +10027,9 @@ public class Character extends AbstractCharacterObject {
                 long sectionStartedNs = SlowOperationLogger.start();
                 // Items
                 ItemFactory.INVENTORY.saveItems(inventorySnapshot, id, con);
+                if (bagSnapshot != null) {
+                    bagSnapshot.save(con);
+                }
                 CharacterSaveDiagnostics.recordSection("inventory", sectionStartedNs);
                 }
 

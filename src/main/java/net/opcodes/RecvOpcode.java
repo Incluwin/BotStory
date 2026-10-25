@@ -210,7 +210,8 @@ public enum RecvOpcode {
     OBSERVER_INTEREST(0x115),
     OBSERVER_ACTION(0x116),
     CREW_WINDOW(0x117),             // P10 native Crew window (Kaentake client crewwnd, docs/BOT_MANAGEMENT_P10_PLAN.md)
-    CLIENT_FEATURES(0x118);         // login feature handshake (Kaentake client featurehandshake, docs/CLIENT_FEATURE_HANDSHAKE.md)
+    CLIENT_FEATURES(0x118),         // login feature handshake (Kaentake client featurehandshake, docs/CLIENT_FEATURE_HANDSHAKE.md)
+    BAG_WINDOW(0x119);              // Storage Bag window (Kaentake client storagebag, docs/STORAGE_BAG.md)
 
     private int code = -2;
 

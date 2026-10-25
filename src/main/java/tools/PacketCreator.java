@@ -3750,6 +3750,26 @@ public class PacketCreator {
     }
 
     /**
+     * The Storage Bag window's view of one bag (server.bag.StorageBags, docs/STORAGE_BAG.md): each item's slot and
+     * item, then each item's quantity, then the bag's Auto toggle.
+     */
+    public static Packet storageBagSnapshot(int bag, List<Item> items, boolean auto) {
+        OutPacket p = OutPacket.create(SendOpcode.BAG_WINDOW);
+        p.writeByte(1); // snapshot
+        p.writeByte(bag);
+        p.writeShort(items.size());
+        for (Item item : items) {
+            p.writeShort(item.getPosition());
+            addItemInfo(p, item, true);
+        }
+        for (Item item : items) {
+            p.writeShort(item.getQuantity());
+        }
+        p.writeBool(auto);
+        return p;
+    }
+
+    /**
      * @param oid
      * @param remhppercentage
      * @return

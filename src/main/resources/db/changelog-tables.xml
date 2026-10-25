@@ -616,4 +616,13 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="47-character-storage-bag" author="ganre">
+        <!-- Storage Bags: character_storage_bag, each character's Auto toggles. The bag items are inventoryitems rows
+             of types 10-13. Ships behind mods.SWITCHES.storage_bag. See docs/STORAGE_BAG.md. -->
+        <sqlFile path="db/tables/038-character-storage-bag.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/038-character-storage-bag-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

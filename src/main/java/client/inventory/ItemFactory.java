@@ -46,7 +46,11 @@ public enum ItemFactory {
     MERCHANT(6, false),
     CASH_OVERALL(7, true),
     MARRIAGE_GIFTS(8, false),
-    DUEY(9, false);
+    DUEY(9, false),
+    ORE_BAG(10, false),        // the Storage Bags (server.bag.StorageBagKind), per character
+    SCROLL_BAG(11, false),
+    CHAIR_BAG(12, false),
+    MOUNT_BAG(13, false);
     private final int value;
     private final boolean account;
 
@@ -188,7 +192,7 @@ public enum ItemFactory {
                                 petid = -1;
                             }
 
-                            Item item = new Item(rs.getInt("itemid"), (byte) rs.getInt("position"), (short) rs.getInt("quantity"), petid);
+                            Item item = new Item(rs.getInt("itemid"), (short) rs.getInt("position"), (short) rs.getInt("quantity"), petid);
                             item.setOwner(rs.getString("owner"));
                             item.setExpiration(rs.getLong("expiration"));
                             item.setGiftFrom(rs.getString("giftFrom"));

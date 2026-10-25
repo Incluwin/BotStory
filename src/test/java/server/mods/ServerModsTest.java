@@ -88,7 +88,7 @@ class ServerModsTest {
     @Test
     void theRegistryHoldsThePolicyOnAndTheOtherModsOff() {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
-                ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS), ServerMods.ALL);
+                ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG), ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
         assertFalse(ServerMods.FUSION_ANVIL.defaultOn());
@@ -101,18 +101,20 @@ class ServerModsTest {
         assertEquals("beginner_ap", ServerMods.BEGINNER_AP.id());
         assertTrue(ServerMods.SET_ITEMS.defaultOn(), "display only, and only a client with set_items active is sent it");
         assertEquals("set_items", ServerMods.SET_ITEMS.id());
+        assertTrue(ServerMods.STORAGE_BAG.defaultOn(), "inert until a client with storage_bag active opens the window");
+        assertEquals("storage_bag", ServerMods.STORAGE_BAG.id());
     }
 
     @Test
     void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowedAndBeginnerApOff() {
         assertEquals(Map.of("client_feature_policy", "on", "fusion_anvil", "off", "botstory_wz", "off",
-                "beginner_ap", "off", "set_items", "on"), YamlConfig.config.mods.SWITCHES);
+                "beginner_ap", "off", "set_items", "on", "storage_bag", "on"), YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");
         assertFalse(shippedMods.isOn(ServerMods.BOTSTORY_WZ));
         FeaturePolicy shipped = FeaturePolicy.parse(YamlConfig.config.mods.FEATURES, YamlConfig.config.mods.SERVER_GATED_DEFAULT);
         assertEquals(Map.of("free_addy", new Rule(Decision.ALLOW, 0), "ext_chain_lightning", new Rule(Decision.ALLOW, 0),
-                "beginner_ap", new Rule(Decision.ALLOW, 0)), shipped.rules());
+                "beginner_ap", new Rule(Decision.ALLOW, 0), "storage_bag", new Rule(Decision.ALLOW, 0)), shipped.rules());
         assertEquals(Decision.DENY, shipped.gatedDefault());
         ServerMods mods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertTrue(mods.isOn(ServerMods.CLIENT_FEATURE_POLICY));

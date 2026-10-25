@@ -58,9 +58,17 @@ public final class ServerMods {
     public static final ServerMod SET_ITEMS = new ServerMod("set_items",
             "Set item tooltips (client feature set_items)", true);
 
+    /**
+     * The Storage Bags (server.bag, docs/STORAGE_BAG.md): four 200-slot bags per character for ores, scrolls, chairs
+     * and mounts, used through the client's storage_bag window, which mods.FEATURES allows. Off, the window's requests
+     * are ignored and Auto stops filling the bags; bags already loaded keep saving.
+     */
+    public static final ServerMod STORAGE_BAG = new ServerMod("storage_bag",
+            "Storage Bags (client feature storage_bag)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS);
+            SET_ITEMS, STORAGE_BAG);
 
     private static volatile ServerMods instance;
 
