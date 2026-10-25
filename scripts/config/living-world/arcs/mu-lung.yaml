@@ -1,0 +1,33 @@
+# Mu Lung arc: the Book of Forms, which walked into the foggy forest with the rest of the library, and its seventh page,
+# which never walked anywhere: Oksun of Herb Town borrowed it thirty years ago to wrap a root marker (arcs/herb-town.yaml).
+# Its last chapter waits on her root being dug.
+- id: meiwen-the-book-of-forms
+  persona: meiwen
+  chapters:
+    - id: chapter-1
+      title: "Six Forms"
+    - id: chapter-2
+      title: "Pages in the Fog"
+      dialogueOverrides:
+        greet: ["six forms came back out of the fog. the same six i've always taught. i'd half hoped they'd come back different.", "feet. and then sit. i want to show you a page."]
+        smallTalk: ["the seventh form was the last page in the book. the last page is always the one that falls out first. that's not a lesson. it's just binding."]
+        chapterEnter: ["(lays fifteen brittle pages out in a row on the floor and moves them about, looking for a gap that isn't there)"]
+    - id: chapter-3
+      title: "Lent, Not Lost"
+      enterWhen: { flags: [mu-lung.page.traced] }
+      dialogueOverrides:
+        greet: ["lent. not lost. lent. i keep saying the word. it's a much smaller word.", "an herbalist in Herb Town has had my seventh form for thirty years. i'm not angry. i'm trying to find out if i'm angry."]
+        who: ["Meiwen. i've taught six forms these thirty years. the seventh wasn't lost after all. it's in Herb Town, wrapped round a root. i'm told the root takes a hundred years. i'm told it's nearly done."]
+        smallTalk: ["thirty years i grieved a page that was only borrowed. there's a form in that, somewhere. i'll find it later."]
+        chapterEnter: ["(reads a yellowed library card three times, then folds it carefully into her sleeve)"]
+      unlocks:
+        rumors: [mu-lung-the-borrowed-page]
+    - id: chapter-4
+      title: "The Seventh Form"
+      enterWhen: { flags: [mu-lung.forms.whole] }
+      dialogueOverrides:
+        greet: ["seven forms. i taught the seventh this morning. 'stand where you were.' the boy fell over. it's a beginning.", "feet. all seven of them, now. so to speak."]
+        who: ["Meiwen. i teach seven forms. it took me thirty years to be able to say that again."]
+        smallTalk: ["seven sentences make a story. i've always wanted to tell it. it turns out the ending is just standing still. i should have guessed."]
+        speakPlainly: ["plainly: seven forms, all of them home."]
+        chapterEnter: ["(stands in the middle of the street, very still, in a stance nobody in Mu Lung has seen for thirty years)"]

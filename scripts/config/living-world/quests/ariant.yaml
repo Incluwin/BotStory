@@ -1,0 +1,350 @@
+# Ariant quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# The Burning Sands cactus 2100103 (thorn 4000330; cactus desert 1/2 260010100/260010200), royal cactus 2100104
+# (cactus' flower 4000331; 260010200, royal catthus desert 260010201), ear plug plead 2100106 (earmuff 4000326;
+# scorching desert 260010400, dry desert 260010500), scarf plead 2100107 (ragged scarf 4000327; 260010500, frilled
+# field 260010501), desert rabbit (f) 2100100 (clover 4000324; tent of the entertainers 260010600, east entrance
+# 260010700). North road meerkat 2100108 (telescope 4000333; north entrance 260020000, north desert road 1 260020100),
+# sand dwarf 3100101 (empty sack 4000334) and kiyo 3100102 (kiyo's beek 4000335) on north desert road 2 260020200 and
+# the desert of red sand 260020300, desert giant 4230600 (sand 4000332; ruins of desert nomads 260020400, the giant of
+# the sunset 260020401). Sahel sand rat 2110300 (wooden hammer 4000350; sahel 3/2 260020500/260020600), scorpion
+# 2110301 (sting 4000351; 260020600, sahel 1 260020700), dark sand dwarf 3110301 (flaming desert 4000352; desert of
+# serenity 260020610, desert of dreams 260020620).
+# Off Ariant: Mu Lung panda 6130203 (red belt 4000285; 250010302-250010304); Magatia Zenumist homun 6110300 (beaker
+# 4000354; unit 201 261010101), homunculus 7110301 (may mist 4000361; units 202/203 261010102/261010103), saitie
+# 6110301 (entry pass 4000363; 261010101, 261010103, authorized personnel only 261020401); Alcadno reinforced iron mutae
+# 4110301 (hardened piece of steel 4000358; area A-3 261020700), roid 5110301 (wires 4000364; area C-1 261020300 and
+# the Critical Error mini-dungeon, the first free copy of 261020301-261020330).
+# Gear: Sefa's daggers Deadly Fin 1332015 L60 / Kandine 1332018 L70 / Dragon's Tail 1332023 L80; Harun's one-handed
+# blunts Knuckle Mace 1322017 L50 / Tamus 1322018 L60 / The Judgement 1322019 L70.
+
+# ---- Nadira, water-seller of the market: her arc --------------------------------------------------------------------
+
+- id: nadira-empty-sacks
+  persona: nadira
+  title: "Damp Sacks"
+  length: SHORT
+  requires: { level: { min: 32 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dwarves, type: KILL_MOBS, mobIds: [3100101], count: 30, mapIds: [260020200, 260020300] }
+    - { id: sacks, type: COLLECT_ITEM, itemId: 4000334, count: 15 }
+    - { id: look, type: DELIVER, to: nadira, take: { itemId: 4000334, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: nadira-the-dry-well, to: chapter-2 } }
+
+- id: nadira-the-tunnel-mouth
+  persona: nadira
+  title: "Under the Giant's Feet"
+  length: MEDIUM
+  requires: { level: { min: 36 }, questsCompleted: [nadira-empty-sacks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dwarves, type: KILL_MOBS, mobIds: [3110301], count: 25, mapIds: [260020610, 260020620] }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000352, count: 10 }
+    - { id: giant, type: VISIT_MAP, mapIds: [260020401] }
+    - { id: report, type: DELIVER, to: nadira, take: { itemId: 4000352, count: 10 } }
+  rewards: { meso: 14000, exp: 14000, bondPoints: 45, worldFlags: [ariant.well.traced] }
+
+- id: nadira-a-new-spring
+  persona: nadira
+  title: "A Pump and a Still"
+  length: MEDIUM
+  requires: { level: { min: 44 }, flags: [ariant.heard-well, magatia.bench.crossed], questsCompleted: [nadira-the-tunnel-mouth] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gilda, type: TALK_TO, persona: gilda, say: ["a pump for Ariant's old well? to bring the vein back up? ...an Alcadno pump with a Zenumist still on top. it's never been done. that's the best reason i've heard all year. tell her yes."] }
+    - { id: aurel, type: TALK_TO, persona: aurel, say: ["a still for the water, over Gilda's pump? the two together? ...tell her yes. tell her we'll carry it down the Sahel road ourselves. both of us. in daylight."] }
+    - { id: report, type: DELIVER, to: nadira }
+  rewards: { meso: 24000, exp: 26000, bondPoints: 60, items: [{ itemId: 2000002, count: 30 }], worldFlags: [ariant.well.flowing] }
+
+- id: nadira-sack-count
+  persona: nadira
+  title: "Still Digging"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 32 }, questsCompleted: [nadira-empty-sacks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sacks, type: COLLECT_ITEM, itemId: 4000334, count: 15 }
+    - { id: count, type: DELIVER, to: nadira, take: { itemId: 4000334, count: 15 } }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 10 }
+
+# ---- Farid, jar-runner ----------------------------------------------------------------------------------------------
+
+- id: farid-rabbit-clover
+  persona: farid
+  title: "Clover for Luck"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rabbits, type: KILL_MOBS, mobIds: [2100100], count: 20, mapIds: [260010600, 260010700] }
+    - { id: clover, type: COLLECT_ITEM, itemId: 4000324, count: 15 }
+    - { id: slings, type: DELIVER, to: farid, take: { itemId: 4000324, count: 15 } }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 30 }
+
+- id: farid-a-telescope
+  persona: farid
+  title: "To See Them Coming"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: meerkats, type: KILL_MOBS, mobIds: [2100108], count: 25, mapIds: [260020000, 260020100] }
+    - { id: telescopes, type: COLLECT_ITEM, itemId: 4000333, count: 10 }
+    - { id: road, type: DELIVER, to: farid, take: { itemId: 4000333, count: 10 } }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }
+
+- id: farid-ask-sefa
+  persona: farid
+  title: "Are They Coming Back?"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sefa, type: TALK_TO, persona: sefa, say: ["the bandits? not this year. and not while i'm here. tell him that. ...and tell him he's not to tell everyone. he will. that's all right."] }
+    - { id: report, type: DELIVER, to: farid }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 30 }
+
+# ---- Sefa, once a sand bandit (recruitable; her daggers) ------------------------------------------------------------
+
+- id: sefa-the-old-road
+  persona: sefa
+  title: "Any Ash?"
+  length: SHORT
+  requires: { level: { min: 32 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kiyos, type: KILL_MOBS, mobIds: [3100102], count: 30, mapIds: [260020200, 260020300] }
+    - { id: ruins, type: VISIT_MAP, mapIds: [260020400] }
+    - { id: report, type: DELIVER, to: sefa }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 30 }
+
+- id: sefa-deadly-fin
+  persona: sefa
+  title: "The Deadly Fin"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [sefa-the-old-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pandas, type: KILL_MOBS, mobIds: [6130203], count: 30, mapIds: [250010302, 250010303, 250010304] }
+    - { id: belts, type: COLLECT_ITEM, itemId: 4000285, count: 15 }
+    - { id: grip, type: DELIVER, to: sefa, take: { itemId: 4000285, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1332015, scrolls: [{ success: 100 }] }
+
+- id: sefa-kandine
+  persona: sefa
+  title: "The Kandine"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [sefa-deadly-fin] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: homuns, type: KILL_MOBS, mobIds: [6110300], count: 30, mapIds: [261010101] }
+    - { id: beakers, type: COLLECT_ITEM, itemId: 4000354, count: 15 }
+    - { id: edge, type: DELIVER, to: sefa, take: { itemId: 4000354, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1332018, scrolls: [{ success: 60 }] }
+
+- id: sefa-dragons-tail
+  persona: sefa
+  title: "The Dragon's Tail"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [sefa-kandine] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: homunculi, type: KILL_MOBS, mobIds: [7110301], count: 30, mapIds: [261010102, 261010103] }
+    - { id: mist, type: COLLECT_ITEM, itemId: 4000361, count: 15 }
+    - { id: quench, type: DELIVER, to: sefa, take: { itemId: 4000361, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1332023, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: sefa-beak-count
+  persona: sefa
+  title: "Counting Lookouts"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 32 }, questsCompleted: [sefa-the-old-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beaks, type: COLLECT_ITEM, itemId: 4000335, count: 15 }
+    - { id: count, type: DELIVER, to: sefa, take: { itemId: 4000335, count: 15 } }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 10 }
+
+# ---- Harun, guard of the palace gate (recruitable; his one-handed blunts) -------------------------------------------
+
+- id: harun-the-sunset-giants
+  persona: harun
+  title: "Sand for the Gate"
+  length: SHORT
+  requires: { level: { min: 38 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: giants, type: KILL_MOBS, mobIds: [4230600], count: 20, mapIds: [260020400, 260020401] }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000332, count: 10 }
+    - { id: jar, type: DELIVER, to: harun, take: { itemId: 4000332, count: 10 } }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30, flags: [harun.intro.done] }
+
+- id: harun-knuckle-mace
+  persona: harun
+  title: "The Knuckle Mace"
+  length: MEDIUM
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [harun-the-sunset-giants] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110301], count: 30, mapIds: [261020700] }
+    - { id: steel, type: COLLECT_ITEM, itemId: 4000358, count: 15 }
+    - { id: studs, type: DELIVER, to: harun, take: { itemId: 4000358, count: 15 } }
+  rewards:
+    meso: 40000
+    exp: 40000
+    bondPoints: 35
+    gear:
+      - { itemId: 1322017, scrolls: [{ success: 100 }] }
+
+- id: harun-tamus
+  persona: harun
+  title: "The Tamus"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 7, questsCompleted: [harun-knuckle-mace] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: roids, type: KILL_MOBS, mobIds: [5110301], count: 30, mapIds: [261020300, 261020301, 261020302, 261020303, 261020304, 261020305, 261020306, 261020307, 261020308, 261020309, 261020310, 261020311, 261020312, 261020313, 261020314, 261020315, 261020316, 261020317, 261020318, 261020319, 261020320, 261020321, 261020322, 261020323, 261020324, 261020325, 261020326, 261020327, 261020328, 261020329, 261020330] }
+    - { id: wires, type: COLLECT_ITEM, itemId: 4000364, count: 15 }
+    - { id: grip, type: DELIVER, to: harun, take: { itemId: 4000364, count: 15 } }
+  rewards:
+    meso: 70000
+    exp: 70000
+    bondPoints: 50
+    gear:
+      - { itemId: 1322018, scrolls: [{ success: 60 }] }
+
+- id: harun-the-judgement
+  persona: harun
+  title: "The Judgement"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 10, questsCompleted: [harun-tamus] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: saities, type: KILL_MOBS, mobIds: [6110301], count: 30, mapIds: [261010101, 261010103, 261020401] }
+    - { id: passes, type: COLLECT_ITEM, itemId: 4000363, count: 15 }
+    - { id: pommel, type: DELIVER, to: harun, take: { itemId: 4000363, count: 15 } }
+  rewards:
+    meso: 110000
+    exp: 110000
+    bondPoints: 60
+    gear:
+      - { itemId: 1322019, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: harun-sand-for-the-gate
+  persona: harun
+  title: "The Gate Jar"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 38 }, questsCompleted: [harun-the-sunset-giants] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000332, count: 10 }
+    - { id: jar, type: DELIVER, to: harun, take: { itemId: 4000332, count: 10 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Imran, cactus farmer -------------------------------------------------------------------------------------------
+
+- id: imran-thorns-for-the-fence
+  persona: imran
+  title: "Thorns for the Fence"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cacti, type: KILL_MOBS, mobIds: [2100103], count: 25, mapIds: [260010100, 260010200] }
+    - { id: thorns, type: COLLECT_ITEM, itemId: 4000330, count: 15 }
+    - { id: fence, type: DELIVER, to: imran, take: { itemId: 4000330, count: 15 } }
+  rewards: { meso: 6000, exp: 4000, bondPoints: 30 }
+
+- id: imran-cactus-flowers
+  persona: imran
+  title: "Crowns for the Vats"
+  length: SHORT
+  requires: { level: { min: 27 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: royals, type: KILL_MOBS, mobIds: [2100104], count: 25, mapIds: [260010200, 260010201] }
+    - { id: flowers, type: COLLECT_ITEM, itemId: 4000331, count: 15 }
+    - { id: vats, type: DELIVER, to: imran, take: { itemId: 4000331, count: 15 } }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 35 }
+
+# ---- Yasmin, dyer of sunset scarves ---------------------------------------------------------------------------------
+
+- id: yasmin-ragged-scarves
+  persona: yasmin
+  title: "Scarves Come Home"
+  length: SHORT
+  requires: { level: { min: 26 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pleads, type: KILL_MOBS, mobIds: [2100107], count: 25, mapIds: [260010500, 260010501] }
+    - { id: scarves, type: COLLECT_ITEM, itemId: 4000327, count: 15 }
+    - { id: dye, type: DELIVER, to: yasmin, take: { itemId: 4000327, count: 15 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 30 }
+
+- id: yasmin-felt-for-the-vats
+  persona: yasmin
+  title: "Felt for the Vats"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pleads, type: KILL_MOBS, mobIds: [2100106], count: 25, mapIds: [260010400, 260010500] }
+    - { id: earmuffs, type: COLLECT_ITEM, itemId: 4000326, count: 15 }
+    - { id: vats, type: DELIVER, to: yasmin, take: { itemId: 4000326, count: 15 } }
+  rewards: { meso: 6000, exp: 4000, bondPoints: 30 }
+
+# ---- Tariq, caravan master of the Sahel road ------------------------------------------------------------------------
+
+- id: tariq-tent-pegs
+  persona: tariq
+  title: "Tent Pegs"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rats, type: KILL_MOBS, mobIds: [2110300], count: 25, mapIds: [260020500, 260020600] }
+    - { id: hammers, type: COLLECT_ITEM, itemId: 4000350, count: 15 }
+    - { id: pegs, type: DELIVER, to: tariq, take: { itemId: 4000350, count: 15 } }
+  rewards: { meso: 6000, exp: 4000, bondPoints: 30 }
+
+- id: tariq-the-sahel-road
+  persona: tariq
+  title: "The Antivenom Kit"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scorpions, type: KILL_MOBS, mobIds: [2110301], count: 25, mapIds: [260020600, 260020700] }
+    - { id: stings, type: COLLECT_ITEM, itemId: 4000351, count: 15 }
+    - { id: kit, type: DELIVER, to: tariq, take: { itemId: 4000351, count: 15 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }
+
+- id: tariq-a-word-with-hedda
+  persona: tariq
+  title: "A Short Load"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hedda, type: TALK_TO, persona: hedda, say: ["short? ...i kept a little back. for a wing. tell him it's for a wing. tell him he can take it out of the next load. he won't. he never does."] }
+    - { id: report, type: DELIVER, to: tariq }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 30 }

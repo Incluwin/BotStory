@@ -1,0 +1,31 @@
+# Leafre contracts: a border knight who wants a kill proof first, a canyon axe with a day rate.
+- id: bastian-the-border-oath
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [bastian.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [7130501], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }
+
+- id: runa-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [runa.intro.done]
+  price:
+    meso: 120000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 40000 }

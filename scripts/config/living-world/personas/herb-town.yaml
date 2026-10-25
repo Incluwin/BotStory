@@ -1,0 +1,439 @@
+# Herb Town cast: the town that plants for people it will never meet. 7 residents, 2 recruitable (Taejin the woodcutter
+# for a share of bellflowers, Maren the pirate-hunter for a day rate), 1 arc (Oksun's hundred-year root, whose marker
+# is wrapped in Meiwen's lost page from Mu Lung). Ids in quests/herb-town.yaml.
+- id: oksun
+  name: Oksun
+  look: { gender: female }
+  title: "Keeper of the Hundred-Year Garden"
+  job: BEGINNER
+  level: { min: 45, max: 45 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 5, to: 11, spot: "venue:by-lan-ming", activity: LINGER }
+      - { from: 11, to: 13, spot: "venue:middle-central-street", activity: REST }
+      - { from: 13, to: 18, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:middle-east-street-2", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [herb town, bellflower root, sr. bellflower root]
+  questLines: [oksun-the-old-gardens, oksun-dig-the-root, oksun-bellflower-beds]
+  arc: oksun-the-hundred-year-root
+  rumors: [herb-town-dig-it-this-year]
+  relationships:
+    - { persona: dohyun, kind: GRANDMOTHER_OF }
+    - { persona: aeri, kind: TEACHES }
+    - { persona: meiwen, kind: OWES_A_PAGE_TO }
+  giftItemIds: [4000293, 4000292]
+  dialogue:
+    greetFirst: ["mind your feet. there's always something growing where you're about to step.", "a traveller. sit, sit. you look like you've been walking in the wrong boots. have some tea. Sookja makes it. i grow it."]
+    greet: ["you're back. good. the gardens like company.", "hello, child. everything's growing. slowly. that's the right speed."]
+    idle: ["(kneels to press the soil around a seedling with two fingers, very gently)", "(holds a dry root up to the light and turns it, counting the rings)"]
+    noWork: ["nothing today. sit and watch something grow. it takes a while. that's the point."]
+    nothingDue: ["you owe me nothing, child."]
+    who: ["Oksun. i keep the herb gardens. the ten-year garden, the fifty, the hundred. my mother planted a bellflower root in the hundred-year garden the spring i was born. it's nearly ready. so am i, they tell me. i tell them not yet."]
+    bye: ["walk gently. the ground remembers."]
+    thanks: ["oh, you're a good child."]
+    smallTalk: ["you plant a hundred-year root for someone you'll never meet. my mother planted mine for me. i've been planting for people i'll never meet all my life. that's what a garden is.", "the red-nose pirates think a hundred-year root is worth a fortune. it is. but not the kind they can spend."]
+    speakPlainly: ["plainly: roots, a lot of patience, and an old woman."]
+    questOffer.oksun-the-old-gardens: ["the bellflower roots have overrun the sixty- and eighty-year gardens. thirty of them back to the soil, and fifteen bellflowers for my tea? i'll tell you about my mother's root while we wait for the kettle."]
+    questAccept.oksun-the-old-gardens: ["the sixty-year garden and the eighty-year garden. the roots walk. don't be alarmed. they've always walked."]
+    questWaiting.oksun-the-old-gardens: ["fifteen bellflowers, child. the kettle's on."]
+    questComplete.oksun-the-old-gardens: ["lovely. ...my mother's root is in the hundred-year garden. it's been there since the spring i was born. the marker rotted thirty years ago, so i wrapped a new one in paper from the Mu Lung library. i meant to give the paper back. i'll give it back when the root's up. a promise is a root too."]
+    questOffer.oksun-dig-the-root: ["you heard Dohyun and me. it's time. the old bellflowers crowd my mother's root. thirty of them cleared, fifteen of their hundred-year flowers to plant back around the hole, and then Dohyun will dig. he's been waiting all his life to dig it."]
+    questAccept.oksun-dig-the-root: ["the hundred-year garden and the bellflower valley. the old ones. they're slow and they're stubborn. so am i. then find Dohyun."]
+    questWaiting.oksun-dig-the-root: ["is it up? don't tell me. bring the flowers first. then tell me."]
+    questComplete.oksun-dig-the-root: ["...it's up. a hundred springs. it's the size of my arm. my mother would laugh at me crying over a root. i'm crying over a root. the paper's here. it's a little muddy. it kept her company."]
+    questOffer.oksun-bellflower-beds: ["fifteen bellflowers for the beds, child? the roots keep walking off with them."]
+    questAccept.oksun-bellflower-beds: ["the sixty-year garden."]
+    questWaiting.oksun-bellflower-beds: ["fifteen."]
+    questComplete.oksun-bellflower-beds: ["fifteen. good child."]
+    about.dohyun: ["Dohyun's my grandson. he's going to dig my mother's root. he's been practising on potatoes for ten years."]
+    about.aeri: ["Aeri's my apprentice. she asks why about everything. i answer about half. the other half she'll find out."]
+    about.sookja: ["Sookja makes my herbs into tea and sells it to everyone who passes. i think she's the reason Herb Town has a name."]
+    about.meiwen: ["Meiwen of Mu Lung. i've never met her. i've had her paper thirty years. that's not a nice thing to say about yourself. it's true."]
+    aboutUnknown: ["i don't know them, child. are they growing anything?"]
+    friend.close: ["you'd make a good gardener. you've got patient hands. i don't say that to people who haven't."]
+    friend.best: ["i'm planting a root this spring. it'll be ready in a hundred years. it's for you. well. it's for whoever's like you then."]
+    famed: ["they speak well of you. a good name grows like anything else. tend it."]
+    defamed: ["they speak ill of you. weeds come up. pull them, child."]
+    gift: ["oh, thank you, child."]
+    gift.favorite: ["oh, you know what an old gardener likes. sit down. tea's coming."]
+    gift.again: ["one's plenty today, child."]
+
+- id: dohyun
+  name: Dohyun
+  look: { gender: male }
+  title: "Root-Digger"
+  job: BEGINNER
+  level: { min: 25, max: 25 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-west-street-2", activity: STROLL }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:middle-east-street-2", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [jar, ginseng jar, herb town]
+  questLines: [dohyun-pot-shards, dohyun-ask-gyuwon]
+  rumors: [herb-town-dig-it-this-year]
+  relationships:
+    - { persona: oksun, kind: GRANDSON_OF }
+    - { persona: gyuwon, kind: WARY_OF }
+  giftItemIds: [4000291, 2000002]
+  dialogue:
+    greetFirst: ["careful, that's my spade. well, it's grandma's spade. well, it's grandma's mother's spade. it's a very old spade.", "hi! are you here for the gardens? everyone's here for the gardens. or the pirates. mostly the gardens."]
+    greet: ["hi! still digging.", "you're back! i've been practising. on potatoes."]
+    idle: ["(digs a careful little trench beside the path with a very old spade, then fills it back in)", "(holds a spade upright and studies the edge, frowning)"]
+    noWork: ["nothing today. grandma's hidden the spade. i know where. i'm being good."]
+    nothingDue: ["we're even!"]
+    who: ["Dohyun. Oksun's grandson. i dig. potatoes, mostly, and holes. grandma made me practise my whole life for one root."]
+    bye: ["mind the holes! some of them are mine."]
+    thanks: ["thanks! i'll dig you something."]
+    smallTalk: ["you don't pull a hundred-year root. you dig round it. a hand's width at a time. grandma made me do it on a potato a thousand times.", "Gyuwon used to be a pirate. now he grows radishes. he says the radishes are harder."]
+    speakPlainly: ["plainly: a spade and a very old root."]
+    questOffer.dohyun-pot-shards: ["the water jars in the ten-year garden are cracked and grandma won't throw them out. the jar monsters out there are made of the same clay. twenty-five jars, fifteen shards, and i'll patch them."]
+    questAccept.dohyun-pot-shards: ["the ten-year garden and the fifty-year one. the jars hop. it's funnier than it is dangerous. mostly."]
+    questWaiting.dohyun-pot-shards: ["fifteen shards! the jars are leaking on my boots."]
+    questComplete.dohyun-pot-shards: ["fifteen! they'll hold water again. grandma will say they always did. they didn't."]
+    questOffer.dohyun-ask-gyuwon: ["the pirates want the hundred-year root. Gyuwon was a pirate. ask him if they'll come for it? he'll tell you. he won't tell me. he says i ask too loud."]
+    questAccept.dohyun-ask-gyuwon: ["Gyuwon's by the east street in the evenings. he grows radishes now. compliment the radishes."]
+    questWaiting.dohyun-ask-gyuwon: ["did he say? will they come?"]
+    questComplete.dohyun-ask-gyuwon: ["they won't dig till it's ready, because they don't know how? ...then we dig first. and properly. a hand's width at a time."]
+    about.oksun: ["grandma's the best gardener in the world. she says that's not true. she's wrong about one thing a year and that's it."]
+    about.gyuwon: ["Gyuwon was a red-nose pirate. now he's a radish farmer. i don't trust him. grandma does. grandma's usually right. usually."]
+    about.aeri: ["Aeri asks why about everything. i just dig. we're a good team."]
+    aboutUnknown: ["never dug with them."]
+    friend.close: ["you can hold the spade. not dig. hold."]
+    friend.best: ["you're the only big person i'd let hold grandma's spade. that's the biggest thing i've got."]
+    famed: ["everyone says you're great! i knew!"]
+    defamed: ["people are saying stuff about you. i dug a hole and said it back at them. into the hole."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh, that's brilliant! that's going next to the spade."]
+    gift.again: ["you already gave me something today!"]
+
+- id: taejin
+  name: Taejin
+  look: { gender: male }
+  title: "Woodcutter of the Old Swamp"
+  job: FIGHTER
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: herb-town-2h-axe-l60
+  personality: efficient-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:free-market-entrance", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [old swamp, mr. alli, panda]
+  contract: taejin-the-bellflower-share
+  questLines: [taejin-the-swamp-path, taejin-the-shining, taejin-chrono, taejin-helios, taejin-leather-run]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: maren, kind: DRINKS_WITH }
+    - { persona: oksun, kind: CUTS_THE_PATHS_FOR }
+  giftItemIds: [4000295, 2000004]
+  dialogue:
+    greetFirst: ["mind the axe. it's not sharp. it's very sharp. mind it anyway.", "a traveller. you came by the swamp path? i cut that. you're welcome."]
+    greet: ["hm. you.", "paths are cut. what do you need?"]
+    idle: ["(runs a whetstone along a huge axe blade in long patient strokes)", "(knocks mud off his boots against a post, one boot, then the other)"]
+    noWork: ["nothing to cut today. come back when something's in the way."]
+    nothingDue: ["we're square."]
+    who: ["Taejin. i keep the paths between the gardens and the swamp clear. the swamp grows back every night. i cut it back every day. we've an understanding."]
+    bye: ["stay on the paths. i cut them for a reason."]
+    thanks: ["hm."]
+    smallTalk: ["the alligators in the old swamp have the toughest hide i've ever put an edge to. i respect them. i still cut them.", "Maren drinks with me most nights. she talks about the sea. i talk about trees. neither of us listens. it works."]
+    speakPlainly: ["plainly: an axe, a swamp, and paths."]
+    offer: ["thirty bellflowers for Oksun's beds, and twenty thousand. that pays for the paths that go uncut while i'm off with you."]
+    join: ["fine. i'll clear. you follow."]
+    bench: ["three days on the bench and the swamp's back over the paths. i'll go back to it."]
+    leave: ["shift's done. the swamp's grown a foot."]
+    refuse.bond: ["i don't leave the paths with strangers. the swamp notices."]
+    refuse.flags: ["clear the swamp path with me once first. a man should see you swing before he's paid to swing beside you."]
+    refuseOwnErrand: ["my path. walk it with me."]
+    questOffer.taejin-the-swamp-path: ["the ginseng jars have rolled onto the path to the swamp again. thirty of them off it, then walk on to the old swamp so you know where my path ends."]
+    questAccept.taejin-the-swamp-path: ["the fifty-year garden and the sixty. then on through the valley to the old swamp. don't stop at the swamp. look at it and come back."]
+    questWaiting.taejin-the-swamp-path: ["thirty, and the swamp. a path's only a path if you've walked to the end."]
+    questComplete.taejin-the-swamp-path: ["good. now you know my path. it's shorter than it feels."]
+    questOffer.taejin-the-shining: ["The Shining. my first proper axe. the haft wants greasing, and nothing greases like bear. thirty pandas in the wild bear country on the Mu Lung road, fifteen bear feet."]
+    questAccept.taejin-the-shining: ["the second and third wild bear areas and the wandering bear's territory. the pandas look soft. they aren't."]
+    questWaiting.taejin-the-shining: ["fifteen feet. the haft's dry."]
+    questComplete.taejin-the-shining: ["fifteen. The Shining, greased. seven safe scrolls, every one took. it'll sing on the first swing. let it."]
+    questOffer.taejin-chrono: ["Chrono. heavier. the grip wants alligator leather. thirty of Mr. Alli's kind in the old swamp, fifteen hides."]
+    questAccept.taejin-chrono: ["the old swamp and the isolated swamp. they're patient. be less patient."]
+    questWaiting.taejin-chrono: ["fifteen hides. the grip's bare."]
+    questComplete.taejin-chrono: ["fifteen. Chrono. seven sixties, every one took. that's not luck. that's the leather."]
+    questOffer.taejin-helios: ["Helios. my best. it wants something i can't get here. the birks in the forests under Leafre chew a grass that turns to wire when it dries. thirty birks, fifteen mouthfuls. i'll bind the head with it."]
+    questAccept.taejin-helios: ["Leafre. the forest crossroad, the antelope valley, the sky nest's entrance. the birks. they chew. they charge. they chew again."]
+    questWaiting.taejin-helios: ["fifteen. the head's loose without it."]
+    questComplete.taejin-helios: ["fifteen. bound tight. Helios. two tens and five sixties, every one took. i'll cut with The Rising again. it's yours."]
+    questOffer.taejin-leather-run: ["fifteen alligator hides? the grips wear through."]
+    questAccept.taejin-leather-run: ["the old swamp."]
+    questWaiting.taejin-leather-run: ["fifteen."]
+    questComplete.taejin-leather-run: ["fifteen. good."]
+    about.maren: ["Maren hunts pirates. i cut trees. she says pirates are harder. she's never met a swamp."]
+    about.oksun: ["i cut the paths to Oksun's gardens. she gives me tea. i'd cut them for nothing. don't tell her."]
+    about.gyuwon: ["Gyuwon was a pirate. now he grows radishes. i've cut him a path to his radishes. he's grateful. he's always grateful. it's suspicious."]
+    aboutUnknown: ["never cut a path for them."]
+    friend.close: ["i'd cut you a path anywhere. you'd only have to point."]
+    friend.best: ["if the swamp ever takes me, walk my paths for me. once. that's all."]
+    famed: ["hm. good things. keep it up."]
+    defamed: ["hm. bad things. cut them back."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's useful. you noticed."]
+    gift.again: ["one's plenty."]
+
+- id: maren
+  name: Maren
+  look: { gender: female }
+  title: "Hunter of the Red-Nose Pirates"
+  job: WHITEKNIGHT
+  level: { min: 70, max: 72 }
+  strength: VETERAN
+  loadout: herb-town-2h-blunt-l70
+  personality: efficient-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 7, to: 13, spot: "venue:by-captain-hwang", activity: LINGER }
+      - { from: 13, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: true
+  knows: [red-nose pirate den 1, captain, squid]
+  contract: maren-day-rate
+  questLines: [maren-the-red-noses, maren-gigantic-sledge, maren-morningstar, maren-leomite, maren-hat-count]
+  rumors: [herb-town-the-old-crew]
+  benchToleranceDays: 2
+  paceGap: 4
+  relationships:
+    - { persona: gyuwon, kind: WATCHES }
+    - { persona: taejin, kind: DRINKS_WITH }
+    - { persona: jasper, kind: OLD_SHIPMATE_OF_A_FRIEND }
+  giftItemIds: [4000297, 2000004]
+  dialogue:
+    greetFirst: ["stop. ...you're not red-nosed. good. carry on.", "a traveller off the crane. welcome to Herb Town. lock your pack. the pirates don't, but you should."]
+    greet: ["hm. you again.", "dens are quiet. that means they're planning."]
+    idle: ["(rests the head of a heavy hammer on the ground and leans on the haft, eyes on the road to the swamp)", "(turns a battered red pirate hat over in her hands, then tosses it on a pile)"]
+    noWork: ["nothing today. the pirates are lying low. so am i."]
+    nothingDue: ["we're square."]
+    who: ["Maren. i served on the navy cutters out of the Aquarium before i came here. the red-nose pirates came here too. i followed them. i'm still following them."]
+    bye: ["watch the swamp. that's where they come from."]
+    thanks: ["mm."]
+    smallTalk: ["a red-nose captain wears his hat like a crown. take the hat and he's just a man in a swamp. i've a lot of hats.", "Gyuwon used to sail with them. now he grows radishes. i watch him. he knows i watch him. he waves."]
+    speakPlainly: ["plainly: a hammer and a lot of pirates."]
+    offer: ["seventy thousand for a day. i don't haggle. pirates haggle."]
+    join: ["fine. stay off my swing side."]
+    bench: ["two days. then i'm back at the dens. they don't stop for me."]
+    leave: ["day's done. the hats are piling up."]
+    refuse.bond: ["i don't hunt with strangers. strangers are how pirates get in."]
+    refuse.flags: ["clear the first two dens with me once. then we'll talk money."]
+    refuseOwnErrand: ["my hunt. join it or don't."]
+    questOffer.maren-the-red-noses: ["the kru are thick in the first and second dens. thirty of them down, then step into the third den and straight back out, so you know where the captains sleep. don't stay."]
+    questAccept.maren-the-red-noses: ["past the old swamp, the pirate dens. one and two. then through the door to three and straight back out."]
+    questWaiting.maren-the-red-noses: ["thirty, and the third den. both."]
+    questComplete.maren-the-red-noses: ["good. now you know the dens. they're smaller than they think they are."]
+    questOffer.maren-gigantic-sledge: ["the Gigantic Sledge. my first hammer. i'd give it to you, if you take me fifteen captain's hats. thirty captains in the second and third dens. a captain without a hat is just a man in a swamp."]
+    questAccept.maren-gigantic-sledge: ["the second den and the third. the captains. they shout before they swing. you'll have time."]
+    questWaiting.maren-gigantic-sledge: ["fifteen hats. the pile's short."]
+    questComplete.maren-gigantic-sledge: ["fifteen. the pile's grown. the Gigantic Sledge. seven safe scrolls, every one took. it's heavy. that's the idea."]
+    questOffer.maren-morningstar: ["the Morningstar. heavier. the ghost pirates on Ludibrium's warped path were a real crew once. thin out thirty of them, then ask Jasper the bounty hunter there what their ship was called. he knows. he was navy too, once. sort of."]
+    questAccept.maren-morningstar: ["Ludibrium, the third stretch of the warped path. the ghost pirates. then Jasper, by the weapon store in the evenings. tell him Maren asked. he'll pretend not to know me."]
+    questWaiting.maren-morningstar: ["thirty, and the ship's name. i want the name."]
+    questComplete.maren-morningstar: ["the Brine Widow. ...that's the ship that sank the cutter i trained on. so that's where they went. the Morningstar. seven sixties, every one took. it's yours. i'll keep the name."]
+    questOffer.maren-leomite: ["the Leomite. my best. it wants a seal for the head, and nothing seals like squid ink. the squid in the dangerous sea gorges. thirty of them, fifteen bottles. it's a long way down."]
+    questAccept.maren-leomite: ["the dolphin from the pier to the Aquarium, then down the aqua road to the dangerous sea gorges. it's dark. take light. take more light."]
+    questWaiting.maren-leomite: ["fifteen bottles. the head's unsealed."]
+    questComplete.maren-leomite: ["fifteen. sealed. the Leomite. two tens and five sixties, every one took. i've kept it nine years for the day i could swing it. you swing it now. carry it nine years for me."]
+    questOffer.maren-hat-count: ["fifteen captain's hats. i like a tall pile."]
+    questAccept.maren-hat-count: ["the dens."]
+    questWaiting.maren-hat-count: ["fifteen."]
+    questComplete.maren-hat-count: ["fifteen. the pile's taller than i am now."]
+    about.gyuwon: ["Gyuwon sailed with the red-noses for ten years. he says he's done. i believe him. i still watch him. both can be true."]
+    about.taejin: ["Taejin talks about trees. i talk about the sea. we've been drinking together three years and neither of us has learned a thing. it's perfect."]
+    about.jasper: ["Jasper in Ludibrium. ex-Nautilus. he says. we've never served together. we've drunk together. that's close enough for sailors."]
+    about.oksun: ["Oksun's root is worth more than every hat in my pile. the pirates know it. i know they know it."]
+    aboutUnknown: ["never sailed with them."]
+    friend.close: ["i'd let you hold the line in a den. i don't let anyone hold the line."]
+    friend.best: ["if i ever catch the Brine Widow's captain, i want you there. not to help. to see it."]
+    famed: ["heard you're good. good."]
+    defamed: ["heard you're trouble. pirates are trouble. don't be a pirate."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh. that's a sailor's kind of gift. practical. i'll keep it."]
+    gift.again: ["one's plenty."]
+
+- id: sookja
+  name: Sookja
+  look: { gender: female }
+  title: "Keeper of the Tea House"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 6, to: 12, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 12, to: 13, spot: "venue:lower-west-street", activity: REST }
+      - { from: 13, to: 21, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [ginseng jar, herb town, mu lung]
+  questLines: [sookja-ginseng-tea, sookja-a-jar-for-meiwen]
+  relationships:
+    - { persona: oksun, kind: BREWS_FOR }
+    - { persona: lai, kind: BUYS_FROM }
+  giftItemIds: [4000292, 4000282]
+  dialogue:
+    greetFirst: ["sit, sit. tea? you'll have tea. everyone has tea. it's that or leave, and nobody leaves.", "a new face! tea first. talking after. that's the rule of the house."]
+    greet: ["tea?", "back again! the pot's on. it's always on."]
+    idle: ["(pours a stream of pale tea from high above a tiny cup without spilling a drop)", "(sniffs a handful of dried leaves, frowns, and sniffs again)"]
+    noWork: ["nothing today. drink your tea."]
+    nothingDue: ["you owe me nothing. well. a cup's worth of chat. drink."]
+    who: ["Sookja. i keep the tea house. Oksun grows it, i brew it, the whole road drinks it. Lai sends me peaches from Mu Lung. people come for the peach tea and stay for the gossip. the gossip's free."]
+    bye: ["come back when you're thirsty. you will be."]
+    thanks: ["oh, it's only tea."]
+    smallTalk: ["ginseng tea for the tired, peach tea for the sad, bellflower tea for the old. i've made all three for Oksun this week. she drinks the peach and says it's the bellflower.", "Meiwen in Mu Lung buys my tea by the jar. i've never met her. i know exactly how she likes it. that's a kind of meeting."]
+    speakPlainly: ["plainly: tea, and listening."]
+    questOffer.sookja-ginseng-tea: ["the ginseng water's what makes the tired tea work, and the ginseng jars in the gardens hoard it. twenty-five jars, fifteen bottles of ginseng water?"]
+    questAccept.sookja-ginseng-tea: ["the fifty-year garden and the sixty. the ginseng jars. they're a bit better tempered than the plain ones."]
+    questWaiting.sookja-ginseng-tea: ["fifteen bottles. the tired are piling up."]
+    questComplete.sookja-ginseng-tea: ["fifteen! lovely. a cup for you, on the house. it's always on the house. that's the secret."]
+    questOffer.sookja-a-jar-for-meiwen: ["Meiwen in Mu Lung sent back an empty jar with no note. that's not like her. would you ask her if the last jar was wrong? she'll say no. watch her face when she says it."]
+    questAccept.sookja-a-jar-for-meiwen: ["Mu Lung, up the road past the peach farms. Meiwen's in the middle of town in the mornings, standing very still."]
+    questWaiting.sookja-a-jar-for-meiwen: ["did she say? was it wrong?"]
+    questComplete.sookja-a-jar-for-meiwen: ["'it was perfect, that's why there's nothing to say'? ...oh. well. that's the nicest note i've ever not been sent."]
+    about.oksun: ["Oksun grows the best herbs on the coast. i make them taste like they're good for you. they are good for you. that's not the point of tea."]
+    about.lai: ["Lai sends peaches over from Mu Lung. her cart's always missing a wheel. i've stopped asking which one."]
+    about.meiwen: ["Meiwen buys my tea and sends back empty jars. we've never met. i'd know her by the jars."]
+    about.maren: ["Maren drinks her tea standing up, facing the door. i've stopped offering her a chair."]
+    aboutUnknown: ["never had a cup with them."]
+    friend.close: ["you've got your own cup now. the blue one. nobody else drinks from it."]
+    friend.best: ["when i'm too old to pour, i'll leave you the pot. you'll know what to do with it."]
+    famed: ["the whole tea house is talking about you! good things!"]
+    defamed: ["the tea house is talking about you. drink your tea and let it pass."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's lovely. that's going straight in the pot."]
+    gift.again: ["one's plenty, dear. you'll spoil me."]
+
+- id: gyuwon
+  name: Gyuwon
+  look: { gender: male }
+  title: "Radish Farmer, Formerly Red-Nosed"
+  job: BEGINNER
+  level: { min: 40, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 6, to: 11, spot: "venue:middle-east-street-3", activity: LINGER }
+      - { from: 11, to: 16, materialize: false }
+      - { from: 16, to: 23, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [kru, mr. alli, old swamp]
+  questLines: [gyuwon-the-alligator-path, gyuwon-the-old-crew]
+  rumors: [herb-town-the-old-crew]
+  relationships:
+    - { persona: maren, kind: WATCHED_BY }
+    - { persona: dohyun, kind: DISTRUSTED_BY }
+  giftItemIds: [4000296, 2022001]
+  dialogue:
+    greetFirst: ["radish? no? they're good radishes. i grow them myself. that's new for me. i used to just take things.", "don't mind the hat. it's a gardening hat. it used to be red. i've let it fade."]
+    greet: ["radishes are coming up.", "hello again. the radishes say hello too. they don't. but they would."]
+    idle: ["(scrubs the dirt off a fat radish with his thumb and holds it up proudly to nobody)", "(glances toward the road to the swamp, then back down at his radishes)"]
+    noWork: ["nothing today. just radishes. it's always just radishes now. i like that."]
+    nothingDue: ["you owe me nothing. i owe a lot of people a lot. not you."]
+    who: ["Gyuwon. i sailed with the red-nose pirates ten years. then one day i saw Oksun planting a root she'd never see grow. i went home and planted a radish. i've been planting since."]
+    bye: ["stay out of the third den. trust me."]
+    thanks: ["oh. thank you. people don't thank me much. fair enough."]
+    smallTalk: ["the red-nose captains can't dig. they think you yank a root out like a tooth. Oksun's family digs a hand's width at a time. that's the whole difference between us.", "Maren watches me. i wave. she doesn't wave back. one day she'll wave. i'm patient now. radishes taught me."]
+    speakPlainly: ["plainly: a radish farmer who used to be something worse."]
+    questOffer.gyuwon-the-alligator-path: ["there's an old way into the first den, through the swamp. i used it for ten years. i want to know if it's still open, so i can tell Maren. twenty alligators cleared off it, then step through the den's door and straight back out."]
+    questAccept.gyuwon-the-alligator-path: ["the old swamp and the isolated swamp. then through the first den's door and straight back out. don't stop for tea."]
+    questWaiting.gyuwon-the-alligator-path: ["twenty, and the door. is it still there?"]
+    questComplete.gyuwon-the-alligator-path: ["still there. ...ten years i went through that door. i'll draw it for Maren. she won't thank me. that's fine."]
+    questOffer.gyuwon-the-old-crew: ["would you take this to Maren? it's a map of the dens. every way in. i drew it from memory. she won't take it from me. she might take it from you."]
+    questAccept.gyuwon-the-old-crew: ["Maren's on the east street in the evenings, near me. near enough to watch. she'll know where it's from. tell her anyway."]
+    questWaiting.gyuwon-the-old-crew: ["did she take it?"]
+    questComplete.gyuwon-the-old-crew: ["she took it? and said thank you? ...through her teeth? that counts. that's the first one. i'm going to sit down."]
+    about.maren: ["Maren hunts my old crew. she's right to. i'd help, but she'd never let me. i draw her maps instead."]
+    about.oksun: ["Oksun planted a root for someone she'd never meet. that's the most un-pirate thing i've ever seen. it changed my life. i've never told her."]
+    about.dohyun: ["Dohyun doesn't trust me. good boy. he shouldn't. not yet."]
+    aboutUnknown: ["never sailed with them. never robbed them either. probably."]
+    friend.close: ["you're the first friend i've made without lying first. i'm keeping track."]
+    friend.best: ["if you ever need a way in somewhere, ask me. i know a lot of ways in. i'm only using them for good now."]
+    famed: ["people are saying good things about you! i'd know. i listen to everything."]
+    defamed: ["people are saying bad things. i know how that goes. plant something."]
+    gift: ["oh. for me? thank you."]
+    gift.favorite: ["oh, that's thoughtful. nobody gives me things. i used to just take them."]
+    gift.again: ["one's plenty. i'm learning not to want more than one."]
+
+- id: aeri
+  name: Aeri
+  look: { gender: female }
+  title: "Apprentice Herbalist"
+  job: BEGINNER
+  level: { min: 20, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: herb-town
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-lan-ming", activity: STROLL }
+      - { from: 12, to: 17, spot: "venue:upper-central-street", activity: STROLL }
+      - { from: 17, to: 20, spot: "venue:lower-west-street-2", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [chipmunk, blue flower serpent, herb town]
+  questLines: [aeri-acorn-flour, aeri-seed-caps]
+  relationships:
+    - { persona: oksun, kind: APPRENTICED_TO }
+    - { persona: dohyun, kind: WORKS_WITH }
+  giftItemIds: [4000276, 2000002]
+  dialogue:
+    greetFirst: ["why are you here? sorry. i ask why about everything. Oksun says i'll stop. i won't.", "hello! what's that? what are you carrying? why?"]
+    greet: ["hello! why are you back? sorry. hello!", "hi! i learned a new herb today. ask me which. go on."]
+    idle: ["(holds two near-identical leaves side by side, squinting, then writes something in a little book)", "(pulls a plant gently out of a pot, examines the roots, and puts it back exactly as it was)"]
+    noWork: ["nothing today! i've run out of questions. no i haven't. why is moss green?"]
+    nothingDue: ["we're even! i think. why do people keep count?"]
+    who: ["Aeri. Oksun's apprentice. she's teaching me every herb in the gardens. there are three hundred and four. i know a hundred and nine. i want to know why all of them do what they do."]
+    bye: ["don't eat anything purple! unless it's a plum. then it's fine. probably."]
+    thanks: ["thank you! why do you help people? sorry. thank you!"]
+    smallTalk: ["acorn flour makes the herb cakes stick together. nobody knows why. i'm going to find out.", "Oksun says a hundred-year root has to be dug, not pulled. i asked why. she said 'because'. that's not a reason. it's a door."]
+    speakPlainly: ["plainly: herbs, questions, and more questions."]
+    questOffer.aeri-acorn-flour: ["i need acorn flour for the herb cakes. the chipmunks at the edge of the sky forest hoard the acorns. twenty-five chipmunks, fifteen acorns? why do they hoard them? that's my second question."]
+    questAccept.aeri-acorn-flour: ["the entrance to the sky forest, and the train past it. the chipmunks. they're quick. why are they quick? sorry."]
+    questWaiting.aeri-acorn-flour: ["fifteen acorns! the cakes are falling apart."]
+    questComplete.aeri-acorn-flour: ["fifteen! the cakes will hold. i still don't know why. i will."]
+    questOffer.aeri-seed-caps: ["the blue serpents wear little swimming caps. they're waterproof. perfect for keeping seeds dry! twenty-five serpents, fifteen caps? why do snakes wear caps? i have so many questions."]
+    questAccept.aeri-seed-caps: ["the snake area past the sky forest, and where it ends. the blue ones have caps. the red ones have flowers. why? i don't know. yet."]
+    questWaiting.aeri-seed-caps: ["fifteen caps! my seeds are getting damp."]
+    questComplete.aeri-seed-caps: ["fifteen! the seeds will stay dry all winter. thank you! ...do you know why snakes wear caps? no? me neither. we'll find out."]
+    about.oksun: ["Oksun knows everything about plants. she only tells me half. she says the other half grows on you. why? sorry."]
+    about.dohyun: ["Dohyun digs. i ask why. he says 'because it needs digging'. that's not an answer. he's very good at digging though."]
+    about.sookja: ["Sookja makes tea out of everything. i asked why. she said 'because it's tea'. everyone here answers questions with the question."]
+    aboutUnknown: ["i don't know them! why don't i know them?"]
+    friend.close: ["you're my favourite person to ask why. you don't sigh."]
+    friend.best: ["when i know all three hundred and four herbs, i'll name the next one after you. why? because."]
+    famed: ["everyone says you're wonderful! why? i know why."]
+    defamed: ["people are saying things. why? never mind. i don't believe them."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh, i love that! how did you know? why did you know?"]
+    gift.again: ["you already gave me something today! why so kind? sorry. thank you."]

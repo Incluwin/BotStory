@@ -1,0 +1,312 @@
+# Magatia quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# Zenumist institute: cube slime 3110300 (gelatin 4000353; unit 101 261010001, unit 102 261010002), rumo 3110302 and
+# triple rumo 3110303 (flask 4000356; units 102/103 261010002/261010003), homun 6110300 (beaker 4000354; unit 201
+# 261010101), homunculus 7110301 (may mist 4000361; units 202/203 261010102/261010103), homunscullo 8110300
+# (homunculus's sand 4000355; unit 202), deet and roi 8090000 (useless mechanical heart 4000418; unit 202), saitie
+# 6110301 (entry pass 4000363; units 201/203 and authorized personnel only 261020401).
+# Alcadno institute: mithril mutae 4110302 (piece of mithril 4000359; area A-1 261020100, B-1 261020200), reinforced
+# mithril mutae 5110300 (hardened piece of mithril 4000360; A-1), iron mutae 4110300 (piece of steel 4000357; B-3
+# 261020600, A-3 261020700), roid 5110301 (wires 4000364; C-1 261020300 and the Critical Error mini-dungeon, whose portal
+# (scripts/portal/MD_error.js) opens the first free copy of 261020301-261020330), neo huroid 5110302 (plug 4000365; C-2
+# 261020400, C-3 261020500), rurumo 6090004 (purple liquid 4000419; B-1, C-2, B-3), d. roy 7110300 (broken mechanical
+# heart 4000362; C-3), security camera 7090000 (blacklist 4000411; 261020401).
+# Off Magatia: Ariant jr. cactus 2100102 (cactus stem 4000329; outside the west entrance 260010000, young catthus desert
+# 260010001), kiyo 3100102 (stiff feather 4003004 at 20%; north desert road 2 260020200, desert of red sand 260020300).
+# Gear: Vael's staves Evil Wings 1382007 L65 / Dark Ritual 1382010 L75 / Kage 1382008 L85; Kipp's crossbows Golden Crow
+# 1462008 L60 / Gross Jaeger 1462009 L70 / Marine Raven 1462010 L80.
+
+# ---- Gilda, clockmaker of the Alcadno: her arc ----------------------------------------------------------------------
+
+- id: gilda-mithril-for-the-clock
+  persona: gilda
+  title: "Six Minutes Slow"
+  length: SHORT
+  requires: { level: { min: 44 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110302], count: 30, mapIds: [261020100, 261020200] }
+    - { id: mithril, type: COLLECT_ITEM, itemId: 4000359, count: 15 }
+    - { id: springs, type: DELIVER, to: gilda, take: { itemId: 4000359, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: gilda-the-bench-between, to: chapter-2 } }
+
+- id: gilda-the-other-door
+  persona: gilda
+  title: "Through the Other Door"
+  length: SHORT
+  requires: { level: { min: 44 }, flags: [magatia.heard-bench], questsCompleted: [gilda-mithril-for-the-clock] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: aurel, type: TALK_TO, persona: aurel, say: ["did i mean it? i've meant it for twenty years. i only needed to say it where someone could hear. noon tomorrow. i'll wear my good coat. tell her to wear hers."] }
+    - { id: report, type: DELIVER, to: gilda }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 60, items: [{ itemId: 2022001, count: 10 }], worldFlags: [magatia.bench.crossed] }
+
+- id: gilda-mithril-scraps
+  persona: gilda
+  title: "Clock Springs"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 44 }, questsCompleted: [gilda-mithril-for-the-clock] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mithril, type: COLLECT_ITEM, itemId: 4000359, count: 15 }
+    - { id: springs, type: DELIVER, to: gilda, take: { itemId: 4000359, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }
+
+# ---- Aurel, archivist of the Zenumist -------------------------------------------------------------------------------
+
+- id: aurel-gelatin-seals
+  persona: aurel
+  title: "Seals for the Archive"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [3110300], count: 25, mapIds: [261010001, 261010002] }
+    - { id: gelatin, type: COLLECT_ITEM, itemId: 4000353, count: 15 }
+    - { id: seals, type: DELIVER, to: aurel, take: { itemId: 4000353, count: 15 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 35 }
+
+- id: aurel-the-rumo-flasks
+  persona: aurel
+  title: "A Hundred Years, Rebottled"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rumos, type: KILL_MOBS, mobIds: [3110302], count: 25, mapIds: [261010002, 261010003] }
+    - { id: flasks, type: COLLECT_ITEM, itemId: 4000356, count: 15 }
+    - { id: archive, type: DELIVER, to: aurel, take: { itemId: 4000356, count: 15 } }
+  rewards: { meso: 11000, exp: 10000, bondPoints: 35 }
+
+# ---- Vael, alchemist of the Zenumist (recruitable; her staves) ------------------------------------------------------
+
+- id: vael-triple-trouble
+  persona: vael
+  title: "Three Times the Trouble"
+  length: SHORT
+  requires: { level: { min: 36 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: triples, type: KILL_MOBS, mobIds: [3110303], count: 30, mapIds: [261010002, 261010003] }
+    - { id: report, type: DELIVER, to: vael }
+  rewards: { meso: 12000, exp: 12000, bondPoints: 30, flags: [vael.intro.done] }
+
+- id: vael-evil-wings
+  persona: vael
+  title: "The Evil Wings"
+  length: MEDIUM
+  requires: { level: { min: 63 }, friendship: 5, questsCompleted: [vael-triple-trouble] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: homuns, type: KILL_MOBS, mobIds: [6110300], count: 30, mapIds: [261010101] }
+    - { id: rurumo, type: KILL_MOBS, mobIds: [6090004], count: 1, mapIds: [261020200, 261020400, 261020600] }
+    - { id: liquid, type: COLLECT_ITEM, itemId: 4000419, count: 1 }
+    - { id: staff, type: DELIVER, to: vael, take: { itemId: 4000419, count: 1 } }
+  rewards:
+    meso: 90000
+    exp: 90000
+    bondPoints: 35
+    gear:
+      - { itemId: 1382007, scrolls: [{ success: 100 }] }
+
+- id: vael-dark-ritual
+  persona: vael
+  title: "The Dark Ritual"
+  length: LONG
+  requires: { level: { min: 75 }, friendship: 7, questsCompleted: [vael-evil-wings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scullos, type: KILL_MOBS, mobIds: [8110300], count: 10, mapIds: [261010102] }
+    - { id: sand, type: COLLECT_ITEM, itemId: 4000355, count: 10 }
+    - { id: bind, type: DELIVER, to: vael, take: { itemId: 4000355, count: 10 } }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 50
+    gear:
+      - { itemId: 1382010, scrolls: [{ success: 60 }] }
+
+- id: vael-kage
+  persona: vael
+  title: "The Kage"
+  length: LONG
+  requires: { level: { min: 83 }, friendship: 10, questsCompleted: [vael-dark-ritual] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: homunculi, type: KILL_MOBS, mobIds: [7110301], count: 30, mapIds: [261010102, 261010103] }
+    - { id: deet, type: KILL_MOBS, mobIds: [8090000], count: 1, mapIds: [261010102] }
+    - { id: heart, type: COLLECT_ITEM, itemId: 4000418, count: 1 }
+    - { id: core, type: DELIVER, to: vael, take: { itemId: 4000418, count: 1 } }
+  rewards:
+    meso: 180000
+    exp: 180000
+    bondPoints: 60
+    gear:
+      - { itemId: 1382008, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: vael-alcadno-mithril
+  persona: vael
+  title: "This Never Happened"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 48 }, questsCompleted: [vael-triple-trouble] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mithril, type: COLLECT_ITEM, itemId: 4000360, count: 15 }
+    - { id: ferrules, type: DELIVER, to: vael, take: { itemId: 4000360, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Kipp, watchman of the Alcadno labs (recruitable; his crossbows) ------------------------------------------------
+
+- id: kipp-the-rounds
+  persona: kipp
+  title: "The Rounds"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [5110300], count: 30, mapIds: [261020100] }
+    - { id: turn, type: VISIT_MAP, mapIds: [261020300] }
+    - { id: report, type: DELIVER, to: kipp }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30, flags: [kipp.intro.done] }
+
+- id: kipp-golden-crow
+  persona: kipp
+  title: "The Golden Crow"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [kipp-the-rounds] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: huroids, type: KILL_MOBS, mobIds: [5110302], count: 30, mapIds: [261020400, 261020500] }
+    - { id: plugs, type: COLLECT_ITEM, itemId: 4000365, count: 15 }
+    - { id: trigger, type: DELIVER, to: kipp, take: { itemId: 4000365, count: 15 } }
+  rewards:
+    meso: 70000
+    exp: 70000
+    bondPoints: 35
+    gear:
+      - { itemId: 1462008, scrolls: [{ success: 100 }] }
+
+- id: kipp-gross-jaeger
+  persona: kipp
+  title: "The Gross Jaeger"
+  length: LONG
+  requires: { level: { min: 70 }, friendship: 7, questsCompleted: [kipp-golden-crow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: roys, type: KILL_MOBS, mobIds: [7110300], count: 10, mapIds: [261020500] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000362, count: 10 }
+    - { id: stock, type: DELIVER, to: kipp, take: { itemId: 4000362, count: 10 } }
+  rewards:
+    meso: 110000
+    exp: 110000
+    bondPoints: 50
+    gear:
+      - { itemId: 1462009, scrolls: [{ success: 60 }] }
+
+- id: kipp-marine-raven
+  persona: kipp
+  title: "The Marine Raven"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [kipp-gross-jaeger] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: saities, type: KILL_MOBS, mobIds: [6110301], count: 30, mapIds: [261020401] }
+    - { id: camera, type: KILL_MOBS, mobIds: [7090000], count: 1, mapIds: [261020401] }
+    - { id: list, type: COLLECT_ITEM, itemId: 4000411, count: 1 }
+    - { id: read, type: DELIVER, to: kipp, take: { itemId: 4000411, count: 1 } }
+  rewards:
+    meso: 160000
+    exp: 160000
+    bondPoints: 60
+    gear:
+      - { itemId: 1462010, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: kipp-plug-count
+  persona: kipp
+  title: "Feeding the Locks"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 55 }, questsCompleted: [kipp-the-rounds] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: plugs, type: COLLECT_ITEM, itemId: 4000365, count: 15 }
+    - { id: locks, type: DELIVER, to: kipp, take: { itemId: 4000365, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Pellam, apprentice of the archive ------------------------------------------------------------------------------
+
+- id: pellam-cactus-stems
+  persona: pellam
+  title: "Tonic for a Prickly Archivist"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cacti, type: KILL_MOBS, mobIds: [2100102], count: 25, mapIds: [260010000, 260010001] }
+    - { id: stems, type: COLLECT_ITEM, itemId: 4000329, count: 15 }
+    - { id: tonic, type: DELIVER, to: pellam, take: { itemId: 4000329, count: 15 } }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 30 }
+
+- id: pellam-ask-kipp
+  persona: pellam
+  title: "Do the Alcadno Eat Lunch?"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kipp, type: TALK_TO, persona: kipp, say: ["the real answer? ...at noon. in the square. the Alcadno on the east benches, the Zenumist on the west. same hour, same bread, different benches. a hundred years and nobody's said so. tell him that one's true. tell him sorry about the others."] }
+    - { id: report, type: DELIVER, to: pellam }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+# ---- Mott, sweeper of both houses -----------------------------------------------------------------------------------
+
+- id: mott-sweeping-the-labs
+  persona: mott
+  title: "Same Dust, Both Houses"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mutae, type: KILL_MOBS, mobIds: [4110300], count: 30, mapIds: [261020600, 261020700] }
+    - { id: floor, type: VISIT_MAP, mapIds: [261010003] }
+    - { id: report, type: DELIVER, to: mott }
+  rewards: { meso: 11000, exp: 11000, bondPoints: 35 }
+
+- id: mott-the-fish-tile
+  persona: mott
+  title: "The Fish at the Bottom of the Well"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nadira, type: TALK_TO, persona: nadira, say: ["the fish tile? Mott asked? ...it's still there, at the bottom. i've never once stopped looking for it. tell him my father would have liked to know he asked."] }
+    - { id: report, type: DELIVER, to: mott }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 35 }
+
+# ---- Hedda, builder of mechanical birds -----------------------------------------------------------------------------
+
+- id: hedda-a-mechanical-bird
+  persona: hedda
+  title: "Small Birds Arguing"
+  length: SHORT
+  requires: { level: { min: 51 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: roids, type: KILL_MOBS, mobIds: [5110301], count: 25, mapIds: [261020300] }
+    - { id: listen, type: VISIT_MAP, mapIds: [261020301, 261020302, 261020303, 261020304, 261020305, 261020306, 261020307, 261020308, 261020309, 261020310, 261020311, 261020312, 261020313, 261020314, 261020315, 261020316, 261020317, 261020318, 261020319, 261020320, 261020321, 261020322, 261020323, 261020324, 261020325, 261020326, 261020327, 261020328, 261020329, 261020330] }
+    - { id: report, type: DELIVER, to: hedda }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 35 }
+
+- id: hedda-feathers-for-the-bird
+  persona: hedda
+  title: "Real Feathers"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kiyos, type: KILL_MOBS, mobIds: [3100102], count: 25, mapIds: [260020200, 260020300] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 8 }
+    - { id: wings, type: DELIVER, to: hedda, take: { itemId: 4003004, count: 8 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 35 }

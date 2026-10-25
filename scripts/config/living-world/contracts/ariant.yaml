@@ -1,0 +1,31 @@
+# Ariant contracts: an ex-bandit who names her terms where the jar-runner can hear them, a gate guard's kill proof.
+- id: sefa-a-clean-cut
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ariant.heard-sefa]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 12
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: harun-the-gate-oath
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [harun.intro.done]
+  price:
+    meso: 15000
+    proof: { killMobs: { mobIds: [4230600], count: 40 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 8
+    rejoinPrice: { meso: 15000 }

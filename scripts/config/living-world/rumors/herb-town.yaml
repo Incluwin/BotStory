@@ -1,0 +1,30 @@
+# Herb Town rumors.
+- id: herb-town-dig-it-this-year
+  participants: [oksun, dohyun]
+  where: { town: herb-town, spot: "venue:middle-east-street-2" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+    requiresArc: { arc: oksun-the-hundred-year-root, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: herb-town.heard-root
+  lines:
+    - { by: dohyun, text: "grandma. it's a hundred springs this year. i counted." }
+    - { by: oksun, text: "i know, Dohyun. i counted too. i've been counting longer." }
+    - { by: dohyun, text: "the pirates are counting as well. Gyuwon says so." }
+    - { by: oksun, text: "pirates count gold, Dohyun. we count springs. a hundred-year root comes up a hand's width at a time, or not at all." }
+    - { by: dohyun, text: "i've been ready since i was six." }
+    - { by: oksun, text: "you've been eager since you were six. ready is different. you're ready now." }
+
+- id: herb-town-the-old-crew
+  participants: [maren, gyuwon]
+  where: { town: herb-town, spot: "venue:middle-east-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: gyuwon, text: "evening, Maren. the radishes are up." }
+    - { by: maren, text: "so are the red-noses. you'd know." }
+    - { by: gyuwon, text: "i would. they're in the third den. the captain's got a cold. he'll be slow tomorrow." }
+    - { by: maren, text: "...why tell me that?" }
+    - { by: gyuwon, text: "because you'll go anyway, and i'd rather you came back." }
+    - { by: maren, text: "...the radishes look good, Gyuwon." }

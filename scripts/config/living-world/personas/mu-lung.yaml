@@ -1,0 +1,468 @@
+# Mu Lung cast: the town of forms. 7 residents, 2 recruitable (Baojun the road guard for a kill proof, Suyin the
+# brawler once you have heard her answer the dojo boy), 1 arc (Meiwen's Book of Forms, whose last page went to Herb
+# Town thirty years ago and comes back with Oksun's root). Ids in quests/mu-lung.yaml.
+- id: meiwen
+  name: Meiwen
+  look: { gender: female }
+  title: "Teacher of the Forms"
+  job: BEGINNER
+  level: { min: 45, max: 45 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 5, to: 11, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 11, to: 13, spot: "venue:by-mr-do", activity: REST }
+      - { from: 13, to: 18, spot: "venue:middle-west-street", activity: SOCIALIZE }
+      - { from: 18, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [mu lung, foggy forest, sage cat]
+  questLines: [meiwen-the-first-pages, meiwen-the-library-card, meiwen-the-seventh-form, meiwen-paper-for-the-binding]
+  arc: meiwen-the-book-of-forms
+  rumors: [mu-lung-the-borrowed-page]
+  relationships:
+    - { persona: qing, kind: OLD_PUPIL }
+    - { persona: suyin, kind: TAUGHT }
+    - { persona: oksun, kind: NEVER_MET }
+  giftItemIds: [4000298, 2022001]
+  dialogue:
+    greetFirst: ["feet apart. no, further. there. now you're standing in Mu Lung. before, you were only visiting.", "you walk like someone who's never been taught to fall. sit. we'll fix that another day."]
+    greet: ["feet.", "morning or evening, the forms don't care which."]
+    idle: ["(moves slowly through a stance, one hand open, one closed, and holds it longer than seems possible)", "(turns the brittle pages of a thin book with great care, counting under her breath)"]
+    noWork: ["nothing today. practise standing still. it's harder than it sounds."]
+    nothingDue: ["you owe me nothing but posture."]
+    who: ["Meiwen. i've taught the forms for forty years. seven of them, once. six, these thirty years: the seventh walked off with the library and i've taught around the hole ever since."]
+    bye: ["walk from the hips. you'll get further."]
+    thanks: ["mm. good."]
+    smallTalk: ["the book ghosts in the foggy forest are the library's books. they walked out one winter and never came back. a book that walks is still a book. i still want mine.", "a form is a sentence your body says. six sentences make a paragraph. seven make a story. i've only ever had a paragraph."]
+    speakPlainly: ["plainly: six forms, one missing, one old woman counting pages."]
+    questOffer.meiwen-the-first-pages: ["the Book of Forms walked into the foggy forest with the others. the ghosts shed old paper when you strike them. thirty of them, fifteen pages, and i'll see which forms come back."]
+    questAccept.meiwen-the-first-pages: ["the foggy forest past the peach farm, and the virtuous forest past that. strike cleanly. they're books. they deserve a clean edge."]
+    questWaiting.meiwen-the-first-pages: ["fifteen pages. i've cleared the table for them."]
+    questComplete.meiwen-the-first-pages: ["...the first form. the second, the third. the fourth, twice. the fifth, the sixth. no seventh. there was always going to be no seventh. i hoped anyway. that's allowed."]
+    questOffer.meiwen-the-library-card: ["Qing keeps the library's old cards. if the seventh form was ever borrowed, his card would say who. thin out the sage cats in the goblin forest first, thirty of them. they sit on the pages and won't let him look. then ask him."]
+    questAccept.meiwen-the-library-card: ["the virtuous forest and the goblin forests. the cats think they're scholars. they're cats. then Qing, in town."]
+    questWaiting.meiwen-the-library-card: ["thirty cats, and Qing's card. he'll take his time. he enjoys taking his time."]
+    questComplete.meiwen-the-library-card: ["borrowed. thirty years ago. by an herbalist from Herb Town. ...it was lent. it wasn't lost. it was lent. that's a different word. i'll have to think about which one i've been grieving."]
+    questOffer.meiwen-the-seventh-form: ["you heard Qing and me. Oksun in Herb Town has my page, wrapped around a root. her root's dug now, i'm told. go to her. ask for the paper. say please. say it from the hips."]
+    questAccept.meiwen-the-seventh-form: ["Herb Town, down the road from the peach farms. Oksun. she's old. so am i. be patient with both of us."]
+    questWaiting.meiwen-the-seventh-form: ["the seventh form. i've cleared the floor. i've never cleared the floor."]
+    questComplete.meiwen-the-seventh-form: ["...the seventh form. 'stand where you were.' that's the whole of it. four words. forty years. i'm going to sit down. then i'm going to stand up. then i'm going to teach it."]
+    questOffer.meiwen-paper-for-the-binding: ["the old pages want backing. fifteen sheets of old paper from the book ghosts?"]
+    questAccept.meiwen-paper-for-the-binding: ["the foggy forest."]
+    questWaiting.meiwen-paper-for-the-binding: ["fifteen sheets."]
+    questComplete.meiwen-paper-for-the-binding: ["fifteen. the binding holds another year."]
+    about.qing: ["Qing was my worst pupil. he read about the forms instead of doing them. now he keeps the library. he's very good at it. i've never told him."]
+    about.suyin: ["Suyin was my best pupil. she does the forms faster than they're meant to be done. they still work. i've stopped arguing."]
+    about.xiaobo: ["Xiaobo wants to beat Suyin. he will, one day, if he learns to lose to her properly first."]
+    about.oksun: ["Oksun. an herbalist in Herb Town. we've never met. i'm told she grows things slowly. i'd like her."]
+    aboutUnknown: ["not one of mine."]
+    friend.close: ["your stance has improved. that's the warmest thing i know how to say."]
+    friend.best: ["if i taught one more student before i stop, i'd want it to be you. i won't, but i'd want it."]
+    famed: ["they speak well of you. stand like you know it."]
+    defamed: ["they speak ill of you. stand like it doesn't matter. it only matters a little."]
+    gift: ["thank you. that's kind."]
+    gift.favorite: ["oh. that's thoughtful. you've been paying attention. that's the first form, really."]
+    gift.again: ["one is a gift. two is a habit."]
+
+- id: qing
+  name: Qing
+  look: { gender: male }
+  title: "Keeper of the Walking Library"
+  job: BEGINNER
+  level: { min: 35, max: 35 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-naran", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:middle-east-street", activity: REST }
+      - { from: 14, to: 18, spot: "venue:by-naran", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [virtuous forest, blue flower serpent, straw target dummy]
+  questLines: [qing-snake-leather-bindings, qing-straw-for-the-shelves, qing-the-overdue-books]
+  rumors: [mu-lung-the-borrowed-page]
+  relationships:
+    - { persona: meiwen, kind: OLD_TEACHER }
+    - { persona: lai, kind: NEIGHBOUR }
+  giftItemIds: [4000281, 2000002]
+  dialogue:
+    greetFirst: ["a reader? you have the look. no? a fighter, then. we have fighters. what we lack is readers.", "welcome. the library's out. all of it. it walked into the forest. i keep the cards."]
+    greet: ["hello again. no returns today.", "ah. you. any books follow you home?"]
+    idle: ["(flips through a little box of yellowed cards, frowning at the handwriting)", "(reads a single card very slowly, then puts it back in exactly the same place)"]
+    noWork: ["nothing to shelve. there's never anything to shelve. that's rather the problem."]
+    nothingDue: ["no fines. you're square."]
+    who: ["Qing. i keep the Mu Lung library. what's left of it. the books became ghosts thirty years ago and walked into the foggy forest. i kept the cards. every book that ever left has a card. i'm still waiting for some to come back."]
+    bye: ["return what you borrow. that's all i ask of anyone."]
+    thanks: ["oh, you're very welcome."]
+    smallTalk: ["the book ghosts aren't angry. they're overdue. there's a difference. an angry book bites. an overdue book just won't come home.", "Meiwen says i was her worst pupil. she's right. i was too busy reading about falling to fall properly."]
+    speakPlainly: ["plainly: cards, ghosts, and a library with no books in it."]
+    questOffer.qing-snake-leather-bindings: ["the card boxes want new hinges. the flower serpents past the sky forest have good soft leather. twenty-five serpents, fifteen pieces of snake leather?"]
+    questAccept.qing-snake-leather-bindings: ["the snake area, and where the sky forest ends. the blue ones. they don't bite unless you're slow. i'm slow."]
+    questWaiting.qing-snake-leather-bindings: ["fifteen pieces. the hinges are held on with string."]
+    questComplete.qing-snake-leather-bindings: ["fifteen. lovely. the boxes will open and close like they mean it."]
+    questOffer.qing-straw-for-the-shelves: ["i keep the empty shelves packed with straw so they don't forget their shape. the straw dummies in the practice field are stuffed with the best of it. twenty-five dummies, fifteen straw dolls?"]
+    questAccept.qing-straw-for-the-shelves: ["the practice fields, the beginner's and the easy one. the dummies don't hit back. they just stand there. it's oddly sad."]
+    questWaiting.qing-straw-for-the-shelves: ["fifteen dolls. the shelves are sagging."]
+    questComplete.qing-straw-for-the-shelves: ["fifteen. the shelves remember they're shelves. thank you."]
+    questOffer.qing-the-overdue-books: ["the overdue ones go deepest. twenty-five book ghosts in the virtuous forest, then walk on to the second goblin forest and look for any that went further. just look. i want to know where they go."]
+    questAccept.qing-the-overdue-books: ["the virtuous forest, the first goblin forest, then the second. tell me if you see a book with a red spine. that's the one i miss."]
+    questWaiting.qing-the-overdue-books: ["twenty-five, and the second goblin forest. any red spines?"]
+    questComplete.qing-the-overdue-books: ["no red spine? ...well. it's somewhere. books always are."]
+    about.meiwen: ["Meiwen taught me the forms. i was terrible. she taught me anyway. i've never thanked her properly. i've written it on a card. i haven't given her the card."]
+    about.lai: ["Lai brings me peaches. i lend her nothing, because there's nothing to lend. she brings them anyway."]
+    about.oksun: ["Oksun of Herb Town. there's a card with her name on it. i've read it more than i've read anything else this year."]
+    aboutUnknown: ["no card for them."]
+    friend.close: ["i've made you a card. it says 'returns things'. it's the highest thing i can write on a card."]
+    friend.best: ["if the library ever comes home, you're the first one i'm lending to. anything you like."]
+    famed: ["you're being talked about. i've noted it. on a card."]
+    defamed: ["people are saying things. i've noted it. in pencil."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's useful. that's going straight into the card box."]
+    gift.again: ["one a day is plenty. i'd only have to make another card."]
+
+- id: baojun
+  name: Baojun
+  look: { gender: male }
+  title: "Guard of the Sky Road"
+  job: SPEARMAN
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: mu-lung-polearm-l60
+  personality: efficient-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 6, to: 12, spot: "venue:taxi-stand", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [red porky, black porky, reindeer]
+  contract: baojun-the-road-toll
+  questLines: [baojun-the-sky-road, baojun-skylar, baojun-gold-dragon, baojun-eclipse, baojun-needle-tally]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: suyin, kind: SPARRING_PARTNER }
+    - { persona: lai, kind: KEEPS_THE_ROAD_FOR }
+  giftItemIds: [4000278, 2000004]
+  dialogue:
+    greetFirst: ["came up the sky road? good. that's my road. nothing came at you? good. that's my work.", "stop. ...fine. you're not a porky. go on."]
+    greet: ["road's clear.", "you again. the road's still clear. i'd like you to notice."]
+    idle: ["(sets the butt of a long polearm down and leans on it, watching the road out of town)", "(sweeps a polearm through a slow wide arc, stops it a finger's width from a post, and nods)"]
+    noWork: ["nothing on the road today. go train. the practice field's free."]
+    nothingDue: ["we're square."]
+    who: ["Baojun. i keep the sky road between the forest and the town. the porkies come up it every spring. i send them back down it every spring."]
+    bye: ["keep to the middle of the road. the edges are where things wait."]
+    thanks: ["good."]
+    smallTalk: ["the black porkies carry needle pouches. i've never found out what they sew. i don't want to know.", "Suyin and i spar every week. she's faster. i'm longer. we've agreed it's a draw. it isn't."]
+    speakPlainly: ["plainly: a road, a pole, and porkies."]
+    offer: ["sixty black porkies off the road, counted, and twenty-five thousand for the toll i'm not collecting while i'm with you. then i walk with you a shift."]
+    join: ["fine. i'll keep your flank. stay out of my reach."]
+    bench: ["three days on the bench and i go back to the road. the road doesn't keep itself."]
+    leave: ["shift's done. the road's waiting."]
+    refuse.bond: ["i don't leave the road with someone i don't know."]
+    refuse.flags: ["clear the sky road with me once. then ask, and i'll likely say yes."]
+    refuseOwnErrand: ["my road. walk it with me. not for me."]
+    questOffer.baojun-the-sky-road: ["the black porkies are up the sky road again. thirty of them, then walk on to where the sky forest ends so you know how far my road runs."]
+    questAccept.baojun-the-sky-road: ["the sky forest train and the deep sky forest. then on to the end, past the snakes. don't stop for the snakes."]
+    questWaiting.baojun-the-sky-road: ["thirty, and the end of the road. both."]
+    questComplete.baojun-the-sky-road: ["good. now you know the road. it's longer than it looks."]
+    questOffer.baojun-skylar: ["Skylar. my first polearm. the reindeer on the peach farms drop their horns in the fields. thirty reindeer, fifteen broken horns. i ring the haft with horn. it's how my teacher did it."]
+    questAccept.baojun-skylar: ["the three peach farms. the reindeer kick. so do the monkeys. you won't be bored."]
+    questWaiting.baojun-skylar: ["fifteen horns. the haft's bare."]
+    questComplete.baojun-skylar: ["fifteen. Skylar, ringed in horn. seven safe scrolls, every one took. it's light at the end. use the end."]
+    questOffer.baojun-gold-dragon: ["the Gold Dragon. the red-nose pirates in the dens on the Herb Town road paint their mark on everything they take. thirty of the kru, fifteen marks. i want to burn them. then the polearm's yours."]
+    questAccept.baojun-gold-dragon: ["Herb Town, then the old swamp, then the pirate dens. the first and second. kru fight dirty. so should you."]
+    questWaiting.baojun-gold-dragon: ["fifteen marks. the fire's laid."]
+    questComplete.baojun-gold-dragon: ["fifteen. they'll burn nicely. the Gold Dragon. seven sixties, every one took. that doesn't happen. it happened."]
+    questOffer.baojun-eclipse: ["the Eclipse. i've never used it. it wants something dark. the dark rashes in the forests under Leafre shed a curse powder that turns light. thirty of them, fifteen powders. i'll black the blade."]
+    questAccept.baojun-eclipse: ["Leafre. the west border and the peach monkey forest there. the dark ones. they're slow until they aren't."]
+    questWaiting.baojun-eclipse: ["fifteen powders. the blade's waiting to go dark."]
+    questComplete.baojun-eclipse: ["fifteen. black as a moonless road. the Eclipse. two tens and five sixties, every one took. i'll go back to The Nine Dragons. the Eclipse is yours."]
+    questOffer.baojun-needle-tally: ["fifteen needle pouches off the black porkies? i count them so i know how many came up the road."]
+    questAccept.baojun-needle-tally: ["the sky forest."]
+    questWaiting.baojun-needle-tally: ["fifteen."]
+    questComplete.baojun-needle-tally: ["fifteen pouches. the sky road's swept for now."]
+    about.suyin: ["Suyin hits harder than anyone in Mu Lung. she says i hit from too far away. i say that's the point of a polearm."]
+    about.lai: ["Lai's carts come up my road every morning. i walk the first stretch with her. she gives me a peach. i'd walk it anyway."]
+    about.meiwen: ["Meiwen taught me to stand. i've stood ever since. i've never sat down on duty. she'd know."]
+    aboutUnknown: ["never came up my road."]
+    friend.close: ["you can walk my road any time. no toll. don't tell anyone."]
+    friend.best: ["if i ever leave the road, it'll be to walk somewhere with you."]
+    famed: ["heard good things. the road agrees."]
+    defamed: ["heard bad things. walk carefully on my road."]
+    gift: ["thanks."]
+    gift.favorite: ["oh. that's a road gift. useful. thank you."]
+    gift.again: ["one a day."]
+
+- id: suyin
+  name: Suyin
+  look: { gender: female }
+  title: "Brawler of the Practice Field"
+  job: MARAUDER
+  level: { min: 70, max: 72 }
+  strength: VETERAN
+  loadout: mu-lung-knuckle-l70
+  personality: efficient-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 6, to: 10, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [bone fish, sage cat, wooden target dummy]
+  contract: suyin-the-sparring-fee
+  questLines: [suyin-the-practice-field, suyin-beia-crash, suyin-steelno, suyin-white-fangz, suyin-cat-dolls]
+  rumors: [mu-lung-the-challenge]
+  benchToleranceDays: 2
+  paceGap: 4
+  relationships:
+    - { persona: xiaobo, kind: PUPIL_OF_SORTS }
+    - { persona: baojun, kind: SPARRING_PARTNER }
+    - { persona: meiwen, kind: OLD_TEACHER }
+  giftItemIds: [4000289, 2000004]
+  dialogue:
+    greetFirst: ["you've got a fighter's shoulders and a tourist's feet. we can fix the feet.", "hey. want to spar? no? smart. come back when you're stupid."]
+    greet: ["hey. hands up.", "you're back. hands up, i said."]
+    idle: ["(throws three quick punches at the air, then rolls her shoulders and does it again faster)", "(wraps her knuckles in a long strip of cloth, tighter and tighter)"]
+    noWork: ["nothing today. go hit something. not me."]
+    nothingDue: ["we're square."]
+    who: ["Suyin. Meiwen's pupil, once. now i fight on the practice field and anyone who wants to learn can try to hit me. nobody has. the Xiaobo boy gets closest."]
+    bye: ["keep your chin down."]
+    thanks: ["yeah, yeah."]
+    smallTalk: ["the sage cats in the goblin forest carry little dolls. i punch a doll for every fight i've lost. i'm out of dolls.", "Meiwen says i do the forms too fast. they still work. she still sighs."]
+    speakPlainly: ["plainly: fists, the field, and a boy who won't stop trying."]
+    offer: ["fifty thousand. that's the sparring fee. i don't hold back for Xiaobo and i won't hold back for you. that's what you're paying for."]
+    join: ["fine. stay behind me. you won't, but try."]
+    bench: ["two days. then i go back to the field. the kid needs someone to lose to."]
+    leave: ["good fight. well, good fights. i've got a kid to knock down."]
+    refuse.bond: ["i don't fight next to strangers. i fight strangers."]
+    refuse.flags: ["warm up on the practice field for me first, then come by the lower west street some evening and hear how i treat the kid. then we'll talk."]
+    refuseOwnErrand: ["my fight. get your own."]
+    questOffer.suyin-the-practice-field: ["warm up for me. thirty wooden dummies on the normal and advanced fields. not the straw ones. the wooden ones hit back. sort of."]
+    questAccept.suyin-the-practice-field: ["the practice fields, normal and advanced. there's a master dummy on the advanced one. leave it alone. i mean it."]
+    questWaiting.suyin-the-practice-field: ["thirty. i can hear you counting from here."]
+    questComplete.suyin-the-practice-field: ["thirty. you're warm. that's the first lesson. there's no second one. you just keep going."]
+    questOffer.suyin-beia-crash: ["Beia Crash. my first real knuckles. i need dolls. thirty sage cats in the goblin forests, fifteen cat dolls. i've a lot of losses to catch up on."]
+    questAccept.suyin-beia-crash: ["the virtuous forest and both goblin forests. the cats are smug. punch the smug."]
+    questWaiting.suyin-beia-crash: ["fifteen dolls. i'm keeping count."]
+    questComplete.suyin-beia-crash: ["fifteen. that's every loss since spring. Beia Crash. seven safe scrolls, every one took. hit something with it. something big."]
+    questOffer.suyin-steelno: ["Steelno. heavier. i need powder for the bruises before i hand those over. the rashes in Leafre's forests drop anesthetic powder. thirty of them, fifteen powders."]
+    questAccept.suyin-steelno: ["Leafre, the west forest and the peach monkey forest there. the sleepy ones. don't let them make you sleepy."]
+    questWaiting.suyin-steelno: ["fifteen powders. i'm bruised. it's fine."]
+    questComplete.suyin-steelno: ["fifteen. lovely. Steelno. seven sixties, every one took. lucky hands. keep them."]
+    questOffer.suyin-white-fangz: ["White Fangz. my best pair. they want chalk, real chalk, for grip. the bone fish in the deep sea gorge carry bottles of lime. thirty of them, fifteen bottles. it's a long way to go for chalk. it's the best chalk."]
+    questAccept.suyin-white-fangz: ["the aqua road, down past Herb Town's dolphins, to the deep sea gorges. the bone fish. you'll hate it. bring the chalk anyway."]
+    questWaiting.suyin-white-fangz: ["fifteen bottles. my hands are slipping."]
+    questComplete.suyin-white-fangz: ["fifteen. ...White Fangz. two tens, five sixties, every one took. i'll get another pair. there's only one best pair. that's yours now."]
+    questOffer.suyin-cat-dolls: ["fifteen cat dolls. i lost again. don't ask to who."]
+    questAccept.suyin-cat-dolls: ["the goblin forests."]
+    questWaiting.suyin-cat-dolls: ["fifteen."]
+    questComplete.suyin-cat-dolls: ["fifteen. it was Baojun. don't tell him i said."]
+    about.xiaobo: ["the kid comes at me every day. every day i put him on the ground. every day he gets up faster. i'm going to lose to him one day. i'm looking forward to it."]
+    about.baojun: ["Baojun fights from further away than anyone needs to. it's cowardly. it's also very effective. i hate it."]
+    about.meiwen: ["Meiwen taught me everything and then told me i was doing it wrong. i was. i still am. it still works."]
+    aboutUnknown: ["never fought them."]
+    friend.close: ["i'd let you spar with me. properly. i'd still win."]
+    friend.best: ["you're the only one i'd let watch my back. i'd still turn round to check. that's not you, that's me."]
+    famed: ["heard you're good. let's see."]
+    defamed: ["heard you're trouble. that's not always bad."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's useful. that's going in the corner with my wraps."]
+    gift.again: ["one's enough. i'll get soft."]
+
+- id: fengzi
+  name: Fengzi
+  look: { gender: male }
+  title: "Glover of the Forms"
+  job: BEGINNER
+  level: { min: 40, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 8, to: 13, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:lower-east-street", activity: REST }
+      - { from: 14, to: 19, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:by-laya", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [wooden target dummy, blue kentaurus, dark cornian]
+  questLines: [fengzi-practice-wood, fengzi-kentaurus-marrow, fengzi-wyvern-gill, fengzi-skull-plates, fengzi-wood-for-the-forms]
+  relationships:
+    - { persona: suyin, kind: WRAPS_THE_HANDS_OF }
+    - { persona: meiwen, kind: OLD_FRIEND }
+  giftItemIds: [4000287, 4000233]
+  dialogue:
+    greetFirst: ["show me your hands. no, the backs. ...you've been hitting things with those for years and nobody's ever made you a proper pair. sit.", "a traveller. let me see the knuckles. that's how i say hello."]
+    greet: ["hands.", "back again. how are the knuckles?"]
+    idle: ["(stretches a glove over a carved wooden hand, then pulls it off and stretches it again)", "(threads a long needle through dark leather without looking at it, talking quietly to himself)"]
+    noWork: ["nothing on the wooden hand today. go hit something and come back with sore knuckles."]
+    nothingDue: ["you owe me nothing."]
+    who: ["Fengzi. i make gloves. every fighter in Mu Lung's hands have been through mine. i cut them on wooden hands carved from the practice dummies. a glove should know what it's for."]
+    bye: ["keep your knuckles warm."]
+    thanks: ["mm. good."]
+    smallTalk: ["Suyin goes through a pair of wraps a week. i've started making them thicker without telling her. she's started hitting harder without telling me.", "the forms are in the hands as much as the feet. Meiwen says so. i make gloves, so i agree."]
+    speakPlainly: ["plainly: gloves that know the forms."]
+    questOffer.fengzi-practice-wood: ["i carve my wooden hands from the dummies on the practice field. the wooden ones, not the straw. twenty-five dummies, fifteen wooden dolls?"]
+    questAccept.fengzi-practice-wood: ["the practice fields, the easy and the normal. the wooden dummies. thank them. they've been hit a lot."]
+    questWaiting.fengzi-practice-wood: ["fifteen dolls. my wooden hands are cracking."]
+    questComplete.fengzi-practice-wood: ["fifteen. good grain. that's a year of hands."]
+    questOffer.fengzi-kentaurus-marrow: ["now a proper pair for you. the blue kentaurus near Leafre carry a marrow that keeps leather supple in any cold. thirty of them, fifteen marrows. i'll cure the leather in it."]
+    questAccept.fengzi-kentaurus-marrow: ["the blue kentaurus field and the battlefields beside it. they hit cold. so will your hands, after."]
+    questWaiting.fengzi-kentaurus-marrow: ["fifteen marrows. the leather's stiff without them."]
+    questComplete.fengzi-kentaurus-marrow: ["there. cut to your hands, every scroll took. flex. ...see? they move like they're yours."]
+    questOffer.fengzi-wyvern-gill: ["the next pair want to be thin, thin as skin. the blue wyverns' gills tan into the finest leather i know. thirty blue wyverns, fifteen gills."]
+    questAccept.fengzi-wyvern-gill: ["the canyon's crossroad and the blue wyverns' nest. they come at you from above. look up."]
+    questWaiting.fengzi-wyvern-gill: ["fifteen gills. i've the needles out."]
+    questComplete.fengzi-wyvern-gill: ["there. fitted to your fingers, every scroll took. you'll forget you're wearing them. don't."]
+    questOffer.fengzi-skull-plates: ["one more. the best i'll make. the dark cornians in the burning forest wear skull shoulder pads hard as iron. thirty of them, fifteen pads. i'll cut the knuckle plates from them."]
+    questAccept.fengzi-skull-plates: ["the burning forest, the forest that disappeared, the hidden tomb. the dark ones. they don't miss."]
+    questWaiting.fengzi-skull-plates: ["fifteen pads. the wooden hand's waiting."]
+    questComplete.fengzi-skull-plates: ["there. made for your hands and no one else's, two tens and the rest sixties, every one took. hit something you've been afraid of."]
+    questOffer.fengzi-wood-for-the-forms: ["fifteen wooden dolls from the practice field? the hands keep cracking."]
+    questAccept.fengzi-wood-for-the-forms: ["the practice fields."]
+    questWaiting.fengzi-wood-for-the-forms: ["fifteen."]
+    questComplete.fengzi-wood-for-the-forms: ["fifteen. good."]
+    about.suyin: ["i wrap Suyin's hands every week. she never says thank you. she always comes back. that's thank you."]
+    about.meiwen: ["Meiwen and i have argued about the second form for thirty years. she's right. i'll never say so."]
+    about.xiaobo: ["the Xiaobo boy asked for gloves like Suyin's. i made him a smaller pair. he hasn't taken them off."]
+    aboutUnknown: ["never seen their hands."]
+    friend.close: ["i've a wooden hand carved to your size on the shelf now. i don't do that for everyone."]
+    friend.best: ["when i stop making gloves, i'll give you the wooden hands. all of them. you'll know who to give them to."]
+    famed: ["heard you've been busy with those hands."]
+    defamed: ["heard you've been busy with those hands. the wrong way."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh, that's useful. straight onto the bench."]
+    gift.again: ["one a day. my bench is small."]
+
+- id: lai
+  name: Lai
+  look: { gender: female }
+  title: "Peach Farmer"
+  job: BEGINNER
+  level: { min: 28, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 5, to: 10, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 10, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:middle-east-street-2", activity: SOCIALIZE }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  knows: [peach monkey, red porky, peach farm]
+  questLines: [lai-thimbles-for-the-sacks, lai-the-peach-thieves, lai-peaches-for-sookja]
+  relationships:
+    - { persona: baojun, kind: WALKED_TO_WORK_BY }
+    - { persona: qing, kind: NEIGHBOUR }
+    - { persona: sookja, kind: SELLS_TO }
+  giftItemIds: [4000282, 2022001]
+  dialogue:
+    greetFirst: ["peach? no, they're not for you. well. one. don't tell the monkeys.", "you smell of the road. here. peach. it fixes that."]
+    greet: ["peach season. it's always peach season if you're a monkey.", "hello! the farm's still standing. mostly."]
+    idle: ["(polishes a peach on her sleeve and holds it up to the light, checking it for monkey teeth)", "(ties the neck of a fat sack of peaches with a quick double knot)"]
+    noWork: ["nothing today. the monkeys are resting. so am i."]
+    nothingDue: ["we're even. have a peach anyway."]
+    who: ["Lai. i farm peaches past the sky forest. the peach monkeys farm them too, from the other direction. we've been at war for twenty years. i'm winning by one peach."]
+    bye: ["watch your pockets on the farm. the monkeys check."]
+    thanks: ["oh, have a peach!"]
+    smallTalk: ["a peach monkey will eat a peach and plant the seed and then come back in five years to steal the fruit. that's patience. i've a grudging respect.", "Baojun walks me to the farm every morning. he says it's his road. it's my farm. we're both very territorial."]
+    speakPlainly: ["plainly: peaches, monkeys, me in between."]
+    questOffer.lai-thimbles-for-the-sacks: ["my sacks want sewing and i've worn through every thimble i own. the red porkies in the sky forest carry little thimbles. twenty-five of them, fifteen thimbles?"]
+    questAccept.lai-thimbles-for-the-sacks: ["the entrance to the sky forest and the train. the red ones. they're prickly. so's my sewing."]
+    questWaiting.lai-thimbles-for-the-sacks: ["fifteen thimbles. my thumbs are suffering."]
+    questComplete.lai-thimbles-for-the-sacks: ["fifteen! my thumbs thank you. here. peach."]
+    questOffer.lai-the-peach-thieves: ["the monkeys have taken the whole east row. thirty of them, and fifteen peach seeds back so i can plant the row again. that's how you win. you plant faster."]
+    questAccept.lai-the-peach-thieves: ["the three peach farms. they throw the stones. duck."]
+    questWaiting.lai-the-peach-thieves: ["fifteen seeds. the east row's bare."]
+    questComplete.lai-the-peach-thieves: ["fifteen! the row's back in by spring. i'm winning by sixteen peaches now."]
+    questOffer.lai-peaches-for-sookja: ["Sookja in Herb Town buys my peaches for her tea house. i owe her a crate and my cart's lost a wheel. would you tell her it's coming? she worries. tea people worry."]
+    questAccept.lai-peaches-for-sookja: ["Herb Town, down the road. Sookja keeps the tea house. she'll offer you tea. say yes. it's good tea."]
+    questWaiting.lai-peaches-for-sookja: ["did Sookja say it's all right? she always says it's all right. i like to hear it anyway."]
+    questComplete.lai-peaches-for-sookja: ["she said take my time? ...she always says that. i'll take a little. not all of it."]
+    about.baojun: ["Baojun walks me to the farm every morning. i give him a peach. he pretends he wasn't going that way anyway."]
+    about.qing: ["Qing's library has no books in it. i bring him peaches. he says thank you like i've returned something. maybe i have."]
+    about.sookja: ["Sookja makes peach tea from my peaches. it's better than my peaches. i've told her. she doesn't believe me."]
+    aboutUnknown: ["never bought a peach from me."]
+    friend.close: ["you can have peaches whenever you like. that's not nothing. the monkeys would kill for that."]
+    friend.best: ["if i ever plant a new row, i'll name it after you. it'll be the best row."]
+    famed: ["they're saying good things! have a peach!"]
+    defamed: ["they're saying bad things. have a peach anyway."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, you know just what i like! peach for you, peach for you!"]
+    gift.again: ["you've given me plenty today!"]
+
+- id: xiaobo
+  name: Xiaobo
+  look: { gender: male }
+  title: "Pupil of the Practice Field"
+  job: BEGINNER
+  level: { min: 16, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mu-lung
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-west-street-2", activity: STROLL }
+      - { from: 12, to: 16, spot: "venue:lower-west-street-3", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [grizzly, red flower serpent, chipmunk]
+  questLines: [xiaobo-necki-flowers, xiaobo-a-yellow-belt, xiaobo-ask-suyin]
+  rumors: [mu-lung-the-challenge]
+  relationships:
+    - { persona: suyin, kind: CHALLENGES }
+    - { persona: meiwen, kind: STUDIES_UNDER }
+  giftItemIds: [4000284, 2000002]
+  dialogue:
+    greetFirst: ["are you a fighter? can you beat Suyin? nobody can. i'm going to. not today. soon.", "hi! watch this. ...no, wait, i'll do it again. watch now."]
+    greet: ["i nearly got her today. nearly.", "hi! my stance is better. look. LOOK."]
+    idle: ["(throws a punch, trips over his own feet, picks himself up and throws it again)", "(practises a stance, wobbling, tongue between his teeth)"]
+    noWork: ["nothing today. i'm training. i'm always training."]
+    nothingDue: ["we're even! i think."]
+    who: ["Xiaobo! i train on the practice field. i'm going to beat Suyin. she's beaten me two hundred and eleven times. i keep count. she doesn't."]
+    bye: ["chin down! that's what she says. chin down!"]
+    thanks: ["thanks! i'll pay you back when i'm champion."]
+    smallTalk: ["Suyin says i get up faster every time. that means i'm getting better at falling. that's not the part i wanted to get better at.", "Meiwen says i need to learn to lose properly. i've lost two hundred and eleven times. how many more properly?"]
+    speakPlainly: ["plainly: i want to win. once."]
+    questOffer.xiaobo-necki-flowers: ["my mother likes the flowers the red serpents wear. i want to bring her some, but i'm not allowed past the sky forest yet. twenty-five red serpents, fifteen flowers? please?"]
+    questAccept.xiaobo-necki-flowers: ["the snake area and where the sky forest ends. the red ones. they have the flowers. the blue ones have hats. hats are no good for mothers."]
+    questWaiting.xiaobo-necki-flowers: ["fifteen flowers! she's waiting. she doesn't know she's waiting."]
+    questComplete.xiaobo-necki-flowers: ["fifteen! she'll cry. she cries at flowers. thank you!"]
+    questOffer.xiaobo-a-yellow-belt: ["Suyin says i can't wear a belt till i've earned one. the grizzlies in the wild bear area wear yellow belts. i don't know why. twenty-five grizzlies, fifteen belts? i'll only wear one. the rest i'll practise tying."]
+    questAccept.xiaobo-a-yellow-belt: ["the wild bear areas, the first and second. the grizzlies. they hug. don't let them."]
+    questWaiting.xiaobo-a-yellow-belt: ["fifteen belts! i've been practising the knot on a rope."]
+    questComplete.xiaobo-a-yellow-belt: ["fifteen! i'm wearing one! ...it's too big. it's perfect."]
+    questOffer.xiaobo-ask-suyin: ["would you ask Suyin what i'm doing wrong? she won't tell me. she just knocks me down. she might tell you."]
+    questAccept.xiaobo-ask-suyin: ["she's on the lower west street in the evenings. she'll ask you to spar. say no. trust me."]
+    questWaiting.xiaobo-ask-suyin: ["did she say? what did she say?"]
+    questComplete.xiaobo-ask-suyin: ["'nothing'? i'm doing nothing wrong? ...then why do i keep losing? 'because she's better'? ...oh. that's fair. that's annoying. that's fair."]
+    about.suyin: ["Suyin's the best fighter in Mu Lung. i'm going to beat her. she's going to let me, she says, over her dead body. so not soon."]
+    about.meiwen: ["Meiwen's very old and very strict. she said my stance was 'a beginning'. that's the nicest thing she's ever said to anyone."]
+    about.fengzi: ["Fengzi made me gloves like Suyin's! smaller. i sleep in them."]
+    aboutUnknown: ["are they a fighter?"]
+    friend.close: ["you're my second favourite fighter. after Suyin. don't tell her she's first."]
+    friend.best: ["when i beat Suyin, you're the first person i'm telling. after Suyin. she'll know first. she'll be on the ground."]
+    famed: ["everyone's talking about you! are you better than Suyin?"]
+    defamed: ["people are saying stuff about you. i don't care. are you better than Suyin?"]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh, that's the best! how did you know?"]
+    gift.again: ["you already gave me something! i'm keeping count."]
