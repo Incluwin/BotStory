@@ -58,6 +58,24 @@ public class PopulationConfig {
     /** How long a citizen walks up to its instructor at most; then it advances where it stands. */
     public int JOB_ERRAND_WALK_MAX_MS = 45000;
 
+    // Travel on foot while someone can see it (docs/CITIZEN_PORTAL_TRAVEL_PLAN.md)
+    /**
+     * A citizen on a map a player is on goes to another map on foot: to the right portal and through it, map to map, up
+     * to the boarding NPC at a dock; once nobody can see it, the cheap way. false = the kill switch: every move is the
+     * delayed map change, as before.
+     */
+    public boolean PORTAL_TRAVEL_ENABLED = true;
+    /** How often a move on foot is checked: walk or cheap, arrived, stuck. */
+    public int PORTAL_TRAVEL_CHECK_MS = 1000;
+    /** A walk that stands on one map this long without crossing gives up its way (out by the nearest portal, then waits). */
+    public int PORTAL_TRAVEL_HOP_TIMEOUT_MS = 120000;
+    /** A move still on foot after this long waits for nobody to watch, then goes the cheap way. */
+    public int PORTAL_TRAVEL_MAX_MS = 600000;
+    /** How long its TownLife may finish what it is doing before it sets off anyway. */
+    public int PORTAL_TRAVEL_TOWNLIFE_GRACE_MS = 30000;
+    /** How long it stands at a dock's boarding NPC, as if talking, before it is gone. */
+    public int PORTAL_TRAVEL_BOARD_MS = 2000;
+
     // Chatter (plan 5)
     public boolean CHATTER_ENABLED = true;
     /** Map chat lines per minute allowed on a crowded town map; fields get a third of this. */
@@ -129,6 +147,11 @@ public class PopulationConfig {
         }
         if (JOB_ERRAND_TALK_MS < 0 || JOB_ERRAND_WALK_MAX_MS < 0) {
             throw new IllegalArgumentException("population.JOB_ERRAND_TALK_MS and JOB_ERRAND_WALK_MAX_MS must be >= 0");
+        }
+        if (PORTAL_TRAVEL_CHECK_MS < 100 || PORTAL_TRAVEL_HOP_TIMEOUT_MS < 1000 || PORTAL_TRAVEL_MAX_MS < 1000
+                || PORTAL_TRAVEL_TOWNLIFE_GRACE_MS < 0 || PORTAL_TRAVEL_BOARD_MS < 0) {
+            throw new IllegalArgumentException("population.PORTAL_TRAVEL_CHECK_MS must be >= 100, PORTAL_TRAVEL_HOP_TIMEOUT_MS"
+                    + " and PORTAL_TRAVEL_MAX_MS >= 1000, PORTAL_TRAVEL_TOWNLIFE_GRACE_MS and PORTAL_TRAVEL_BOARD_MS >= 0");
         }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");
