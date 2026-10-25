@@ -12,7 +12,7 @@ Notation: a reactor's "rect" is the absolute drop or hit box, computed as positi
 101030104 Shuang (register / join)
   -> 990000000 Excavation Site (3-min strategy; portal join00 opens at T+3min)
   -> 990000100 Valley of the Guard (Protector Rocks)  -> 990000200 Entrance to the Remains (2 more rocks)
-  -> 990000300 Stage 1 Gatekeeper statues  -> 990000301 -> 
+  -> 990000300 Stage 1 Gatekeeper statues  -> 990000301 ->
   -> 990000400 Stage 2 Hall of the Knight (+410 spears, 420 key mob, 430/431 rusty key + 4th spear, 440 altars) -> 990000401 ->
   -> 990000500 Stage 3 Fountain of the Wiseman (+501 Banquet, 502 Wine Cellar)
   -> 990000600 Stage 4 Underground Waterway (+610/611, 620, 630/631, 640/641 [Lv<=30]) -> 990000700 Sharen III's Grave
