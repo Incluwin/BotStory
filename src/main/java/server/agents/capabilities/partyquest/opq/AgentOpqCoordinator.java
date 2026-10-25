@@ -798,7 +798,8 @@ final class AgentOpqCoordinator {
             int currentCount = agent.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false);
             if (member.loungeCollected(agent.getMapId(), currentCount) >= 10) {
                 session.completeLoungeSubroom(agent.getMapId(), nowMs);
-                enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+                enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                        nowMs, member);
                 return;
             }
             if (ACTIONS.liveMonsterCount(agent, AgentOpqDefinition.LOUNGE_MOBS) > 0) {
@@ -806,7 +807,8 @@ final class AgentOpqCoordinator {
             }
             List<Reactor> boxes = activeReactors(agent).stream().filter(r -> r.getId() == 2_002_002).toList();
             if (!boxes.isEmpty()) { hitNearestLegalReactor(entry, agent, member, boxes, nowMs); return; }
-            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                    nowMs, member);
             return;
         }
         int partyFragments = partyItemCount(session, AgentOpqDefinition.LOUNGE_FRAGMENT);
@@ -856,7 +858,8 @@ final class AgentOpqCoordinator {
             return false;
         }
         if (AgentOpqDefinition.LOUNGE_ROOM_MAPS.contains(agent.getMapId())) {
-            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTAL, nowMs, member);
+            enterAuthoredPortal(entry, agent, AgentOpqDefinition.LOUNGE_SUBROOM_EXIT_PORTALS.get(agent.getMapId()),
+                    nowMs, member);
         } else if (inLounge) {
             moveTo(entry, agent, LOUNGE_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
         }
