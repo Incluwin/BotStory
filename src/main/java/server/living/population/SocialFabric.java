@@ -301,6 +301,28 @@ public final class SocialFabric {
         return count;
     }
 
+    /**
+     * GPQ plan decision 8: the master of a citizen guild promotes a human member it knows well to Jr. Master, once, so
+     * they can register the guild for the Guild Quest (only a master or Jr. Master may): a human of its own guild below
+     * Jr. Master, after GUILD_PROMOTE_AFTER_MINUTES shared minutes, counted as the guild invite counts them.
+     */
+    void maybePromoteHuman(CitizenSession session, Character human, Acquaintance acquaintance) {
+        Character agent = session.agent();
+        int minutes = population.config().GUILD_PROMOTE_AFTER_MINUTES;
+        if (agent == null || human == null || minutes <= 0 || !population.config().GUILDS_ENABLED
+                || agent.getGuildId() <= 0 || agent.getGuildRank() != 1 || human.getGuildId() != agent.getGuildId()
+                || human.getGuildRank() <= 2
+                || acquaintance.mapMinutes() + acquaintance.partyMinutes() * 2 < minutes) {
+            return;
+        }
+        Server.getInstance().changeRank(agent.getGuildId(), human.getId(), 2);
+        population.chatter().whisper(session, human, "you've done a lot for the guild. made you a jr. master, so you "
+                + "can sign us up for the guild quest with shuang");
+        session.journal.add("social", "made " + human.getName() + " a jr. master");
+        log.info("citizen guild master {} promoted {} to Jr. Master in guild {}", session.characterId, human.getId(),
+                agent.getGuildId());
+    }
+
     /** A recruiter in a guild invites a human it has been around for a while (once). */
     public void maybeInviteHuman(CitizenSession session, Character human) {
         Character agent = session.agent();
@@ -518,6 +540,7 @@ public final class SocialFabric {
                 if (session.citizen.has(Citizen.FLAG_RECRUITER)) {
                     maybeInviteHuman(session, chr);
                 }
+                maybePromoteHuman(session, chr, updated);
             }
         }
     }

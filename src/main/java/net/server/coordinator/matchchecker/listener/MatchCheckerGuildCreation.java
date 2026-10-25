@@ -156,7 +156,8 @@ public class MatchCheckerGuildCreation implements MatchCheckerListenerRecipe {
             @Override
             public void onMatchDeclined(int leaderid, Set<Character> matchPlayers, String message) {
                 for (Character chr : matchPlayers) {
-                    if (chr.getId() == leaderid && chr.getClient() != null) {
+                    if (chr.getId() == leaderid && chr.getClient() != null
+                            && !server.living.LivingWorldHooks.guildFoundingKeepsParty(chr)) { // decision 9: theirs stays
                         Party.leaveParty(chr.getParty(), chr.getClient());
                     }
 
@@ -185,7 +186,8 @@ public class MatchCheckerGuildCreation implements MatchCheckerListenerRecipe {
                 }
 
                 for (Character chr : matchPlayers) {
-                    if (chr.getId() == leaderid && chr.getClient() != null) {
+                    if (chr.getId() == leaderid && chr.getClient() != null
+                            && !server.living.LivingWorldHooks.guildFoundingKeepsParty(chr)) { // decision 9: theirs stays
                         Party.leaveParty(chr.getParty(), chr.getClient());
                     }
 

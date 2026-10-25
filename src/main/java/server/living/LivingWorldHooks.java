@@ -574,6 +574,57 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * Guild founding (Guild.getEligiblePlayersForGuild; GPQ plan decision 9): true when {@code chr}, in a party, still
+     * cofounds {@code founder}'s guild: a guildless companion of theirs in the party they lead (CompanionGuildFounding).
+     */
+    public static boolean guildCofounder(Character founder, Character chr) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || founder == null || chr == null || AgentPresence.isAgent(founder)) {
+            return false;
+        }
+        try {
+            return new server.living.roster.CompanionGuildFounding(world).cofounder(founder, chr);
+        } catch (RuntimeException failure) {
+            log.warn("living world guildCofounder hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * Guild founding (GuildOperationHandler, MatchCheckerGuildCreation; decision 9): true when {@code founder} leads a
+     * party of their own companions only, which the founding keeps instead of making a new one, and a declined or
+     * dismissed founding leaves standing.
+     */
+    public static boolean guildFoundingKeepsParty(Character founder) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || founder == null || AgentPresence.isAgent(founder)) {
+            return false;
+        }
+        try {
+            return new server.living.roster.CompanionGuildFounding(world).keepsParty(founder);
+        } catch (RuntimeException failure) {
+            log.warn("living world guildFoundingKeepsParty hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * Guild founding (GuildOperationHandler, after the stock prompt went out to {@code askedIds}; decision 9): the
+     * founder's companions among them answer yes a moment later, as players reading it would.
+     */
+    public static void guildFoundingAsked(Character founder, java.util.Set<Integer> askedIds) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || founder == null || AgentPresence.isAgent(founder)) {
+            return;
+        }
+        try {
+            new server.living.roster.CompanionGuildFounding(world).asked(founder, askedIds);
+        } catch (RuntimeException failure) {
+            log.warn("living world guildFoundingAsked hook failed", failure);
+        }
+    }
+
+    /**
      * A USE item double-clicked in the inventory (SCRIPTED_ITEM), before its item script runs. True when it is the
      * Adventurer's Roster ({@code ROSTER_BOOK_ITEM_ID}): the Crew window opens and the item is not used up.
      */

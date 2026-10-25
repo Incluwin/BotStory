@@ -348,6 +348,13 @@ public class LivingWorldConfig {
     /** The level a companion must have to go: the hunts are Lv80-100 mobs (Lukan's own gate is 70). */
     public int COMPANION_KEYSTONE_ERRAND_MIN_LEVEL = 85;
     /**
+     * A player founds a guild with their companions (CompanionGuildFounding, GPQ plan decision 9): at the Guild
+     * Headquarters a guildless companion in the party its owner leads counts as a cofounder, answers the founding
+     * prompt yes as a player would, and joins as a Jr. Master; the founder's companion party is kept. false = the kill
+     * switch: the stock founding, where only characters in no party and no guild count.
+     */
+    public boolean COMPANION_GUILD_COFOUNDERS_ENABLED = true;
+    /**
      * A companion its owner asks ("casse get your ticket") goes for its own Entrance Ticket to the Amorian Challenge
      * (TicketErrands, docs/APQ_GPQ_COMPANION_PLAN.md A2): ten Lip Lock Keys hunted in Purplewood Forest 2, traded with
      * Amos the Strong; live when a seat is free, else on the ledger at its own measured key rate. false = the kill

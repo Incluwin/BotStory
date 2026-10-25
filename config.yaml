@@ -971,6 +971,12 @@ living_world:
     # MIN_LEVEL: the challenge's own (40). false = the kill switch.
     COMPANION_TICKET_ERRANDS_ENABLED: true
     COMPANION_TICKET_ERRAND_MIN_LEVEL: 40
+    # A player founds a guild with their companions (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md decision 9;
+    # CompanionGuildFounding): at the Guild Headquarters a guildless companion in the party its owner leads counts as a
+    # cofounder (the stock founding counts only characters in no party), answers the founding prompt yes a moment later
+    # as a player would, and joins as a Jr. Master; the founder keeps their companion party. A companion already in a
+    # guild says so and does not count. false = the kill switch (stock founding).
+    COMPANION_GUILD_COFOUNDERS_ENABLED: true
     # Party Search fills from the bench (2026-10-06, P9 flow 11; PartySearchBench): while an owner's stock Party
     # Search runs, a rested bench companion of theirs whose level and job it asks for answers each search round
     # (about every 10 s) that no human answered: it whispers that it saw the search and comes like a call
@@ -1112,6 +1118,10 @@ population:
     CONVERSATION_JEV_PER_PLAYER_PER_DAY: 60
     GUILDS_ENABLED: true
     GUILD_TARGET: 24
+    # A citizen guild master promotes a human member to Jr. Master after this many shared minutes (map minutes plus
+    # party minutes twice, as its guild invite counts them), so they can register the guild for the Guild Quest at
+    # Shuang (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md decision 8). 0 = never.
+    GUILD_PROMOTE_AFTER_MINUTES: 180
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true

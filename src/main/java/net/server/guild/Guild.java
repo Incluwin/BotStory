@@ -752,6 +752,9 @@ public class Guild {
         for (Character chr : guildLeader.getMap().getAllPlayers()) {
             if (chr.getParty() == null && chr.getGuild() == null && mmce.getMatchConfirmationLeaderid(chr.getId()) == -1) {
                 guildMembers.add(chr);
+            } else if (mmce.getMatchConfirmationLeaderid(chr.getId()) == -1
+                    && server.living.LivingWorldHooks.guildCofounder(guildLeader, chr)) {
+                guildMembers.add(chr); // a guildless companion of the founder's, in their party (GPQ plan decision 9)
             }
         }
 
