@@ -1,0 +1,48 @@
+# El Nath contracts: a warden's kill proof, a hunter's share in fang tails, a sentry who goes once his letter is sent.
+- id: sigrun-the-door-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [sigrun.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [4230108], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 8
+    rejoinPrice: { meso: 20000 }
+
+- id: bjarke-the-hunt-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [bjarke.intro.done]
+  price:
+    meso: 30000
+    items: [{ itemId: 4000052, count: 30 }]
+  terms:
+    durationHours: 12
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 15
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: edric-sentrys-oath
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [edric.letter.delivered, el-nath.heard-the-ship]
+    arcChapterAtLeast: { arc: edric-the-unwritten-letter, chapter: chapter-3 }
+  price:
+    meso: 45000
+  terms:
+    durationHours: 0
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }

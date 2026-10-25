@@ -1,0 +1,31 @@
+# Ludibrium contracts: a runner whose terms you overhear, a bounty hunter who wants his board cleared first.
+- id: saskia-the-runners-cut
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [saskia.intro.done, ludibrium.heard-runner]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 20
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 12000 }
+
+- id: jasper-bounty-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [jasper.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [4230115], count: 50 } }
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }

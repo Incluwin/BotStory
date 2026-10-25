@@ -1,0 +1,31 @@
+# Ludibrium rumors.
+- id: ludibrium-the-hour-argument
+  participants: [ignatz, prue]
+  where: { town: ludibrium, spot: "venue:lower-central-benches" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: ignatz-the-lost-hour, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: ignatz, text: "eleven, Prue. every clock on the path. somebody took midnight." }
+    - { by: prue, text: "nobody took midnight. the tower's tired. so are you." }
+    - { by: ignatz, text: "then help me. one hour. stop the line and i'll wind it back by hand." }
+    - { by: prue, text: "you know what an hour of the line costs? a thousand toys. a thousand children an hour late." }
+    - { by: ignatz, text: "they're already an hour late. they've been an hour late for nine years." }
+    - { by: prue, text: "...one hour. if someone asks me nicely. not you. someone nice." }
+  setsFlagOnListeners: ludibrium.heard-hour
+
+- id: ludibrium-the-runners-cut
+  participants: [saskia, jasper]
+  where: { town: ludibrium, spot: "venue:weapon-store-door" }
+  when:
+    serverHours: [18, 19, 20, 21]
+    everyDays: 1
+  lines:
+    - { by: jasper, text: "you ran past three of my bounties on the warped path today, Saskia." }
+    - { by: saskia, text: "i ran past them. i didn't touch them. that's the deal." }
+    - { by: jasper, text: "the deal's a fifth of what you find." }
+    - { by: saskia, text: "a fifth of what i find, forty up front, and i don't wait for slowpokes. that's the runner's cut. anyone who wants me on a path knows it now." }
+    - { by: jasper, text: "you said that loud on purpose." }
+    - { by: saskia, text: "i say everything on purpose. i just say it fast." }
+  setsFlagOnListeners: ludibrium.heard-runner

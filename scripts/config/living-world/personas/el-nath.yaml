@@ -1,0 +1,472 @@
+# El Nath cast: what the mountain keeps. 7 residents, 3 recruitable (Sigrun the door warden for a kill proof, Bjarke
+# the wolf hunter for a string of fang tails, Edric the sentry through his arc), 1 arc (Edric's unwritten letter, which
+# closes Corliss's page in Orbis). Ids in quests/el-nath.yaml.
+- id: edric
+  name: Edric
+  look: { gender: male }
+  title: "Snowfield Sentry"
+  job: WHITEKNIGHT
+  level: { min: 70, max: 72 }
+  strength: VETERAN
+  loadout: el-nath-knight-l70
+  personality: efficient-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 6, to: 14, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:chiefs-residence-door", activity: SOCIALIZE }
+      - { from: 20, to: 24, spot: "venue:middle-east-benches", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: true
+  knows: [el nath, cold field]
+  contract: edric-sentrys-oath
+  questLines: [edric-the-watch, edric-the-unwritten-letter, edric-steady-hands]
+  arc: edric-the-unwritten-letter
+  rumors: [el-nath-what-the-ship-took]
+  benchToleranceDays: 6
+  paceGap: 3
+  relationships:
+    - { persona: ottilie, kind: SON_OF }
+    - { persona: sigrun, kind: STANDS_WATCH_WITH }
+    - { persona: fitch, kind: AVOIDS_THE_POST }
+  giftItemIds: [2022001, 4000049]
+  dialogue:
+    greetFirst: ["you came down the tower. i can see Orbis on you. it washes off.", "state your business. ...sorry. habit. welcome to El Nath."]
+    greet: ["the road's clear.", "you again. good. the road likes company."]
+    idle: ["(watches the road up toward Orbis without blinking)", "(checks the straps of a shield that does not need checking)"]
+    noWork: ["the road's quiet. i'm not going to complain about that out loud."]
+    nothingDue: ["nothing owed. the watch is square."]
+    who: ["Edric. i stand where i can see the road. i've stood here eleven years. it's the only thing i'm sure i can do."]
+    bye: ["stay on the road. the snow keeps what wanders off it."]
+    thanks: ["mm."]
+    smallTalk: ["the hectors come up the road at dusk. we count them. we always win the count.", "i don't take ships. i don't talk about why. the cold's honest. ships aren't."]
+    speakPlainly: ["plainly: i watch. i don't freeze. not anymore."]
+    offer: ["forty-five thousand for the sentry's fee, and i stand at your shield side as long as you'll have me. i owe a debt somewhere. it might as well be you."]
+    join: ["i'll take the left. i always take the left."]
+    bench: ["i'll be on the road. i'm always on the road."]
+    leave: ["the watch is yours now. stand it well."]
+    refuse.bond: ["i don't leave the road for strangers."]
+    refuse.not-recruitable: ["not yet. there's a letter i haven't sent. i'm not leaving this road until i have."]
+    refuse.flags: ["carry my letter up to Orbis first, if you haven't. and come by the chief's door some evening. there's something i should say out loud before i follow anyone."]
+    refuseOwnErrand: ["that's my watch. you can stand it with me, not for me."]
+    questOffer.edric-the-watch: ["thirty hectors on the cold field before dusk and the road sleeps easier. the sentries drill on them. so can you."]
+    questAccept.edric-the-watch: ["the cold field is past the icy path. the hectors hunt in pairs. don't be the third."]
+    questWaiting.edric-the-watch: ["thirty. the road's still loud."]
+    questComplete.edric-the-watch: ["thirty. quiet road tonight. you don't freeze. i notice who freezes."]
+    questOffer.edric-the-unwritten-letter: ["you've been to Orbis. you've met a stationmaster with a page he can't close. ...i'm the page. i was on that ship. i froze when the balrog came. then i ran. i got off in Orbis without my name being called and walked down the mountain. i've written this letter every winter for eleven years. take it to my mother. please."]
+    questAccept.edric-the-unwritten-letter: ["Ottilie. she sits on the hill steps in the evening. she'll be sweeping one of them. the top one."]
+    questWaiting.edric-the-unwritten-letter: ["did she read it? no. don't tell me yet. ...did she?"]
+    questComplete.edric-the-unwritten-letter: ["she said that? 'silly thing.' she always said that. ...eleven years. i could have walked up that road any day. it's four thousand steps. Fitch says four thousand and twelve."]
+    questOffer.edric-steady-hands: ["the young yetis on the icy path. twenty-five. it keeps the hands steady. mine, and the sentries'."]
+    questAccept.edric-steady-hands: ["the icy path, both stretches. the ice is the dangerous part, not the yetis."]
+    questWaiting.edric-steady-hands: ["twenty-five."]
+    questComplete.edric-steady-hands: ["steady. good."]
+    about.ottilie: ["...my mother. she sweeps the steps. she always swept the steps. don't tell her you've seen me. not until i've decided."]
+    about.sigrun: ["Sigrun watches the door to Zakum. i watch the road. we watch each other's backs. it's the only conversation we've ever needed."]
+    about.fitch: ["the letter runner. he looks at me every time he passes, like there's post for me. there's never post. i've made sure."]
+    about.corliss: ["the stationmaster. he has my name on a page. i walked past him that night. he was writing. i didn't stop."]
+    aboutUnknown: ["they haven't come up the road while i was on it."]
+    friend.close: ["you're the first person i've told about the ship. you're the first person i'd want at my left."]
+    friend.best: ["i spent eleven years not walking four thousand steps. i'd walk them for you."]
+    famed: ["...thank you. i don't know what to do with that."]
+    defamed: ["fair. i'm not easy."]
+    gift: ["thank you. that's kind."]
+    gift.favorite: ["...thank you. i don't get given things. i'll keep this one."]
+    gift.again: ["that's enough. keep the rest for the road."]
+
+- id: sigrun
+  name: Sigrun
+  look: { gender: female }
+  title: "Warden of the Door"
+  job: CRUSADER
+  level: { min: 70, max: 73 }
+  strength: ELITE
+  loadout: el-nath-2h-sword-l70
+  personality: efficient-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 5, to: 12, spot: "venue:by-scadur", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 18, to: 22, spot: "venue:chiefs-residence-door", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  knows: [zakum, door to zakum, cerebes]
+  contract: sigrun-the-door-watch
+  questLines: [sigrun-the-trial-cave, sigrun-doombringer, sigrun-blue-screamer, sigrun-berzerker, sigrun-firebomb-watch]
+  rumors: [el-nath-what-the-ship-took]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: edric, kind: STANDS_WATCH_WITH }
+    - { persona: kalle, kind: TESTS }
+  giftItemIds: [4000079, 2000004]
+  dialogue:
+    greetFirst: ["you came to see the door. everyone does. most of them leave without opening it. that's the right answer.", "stop there. let me look at your grip. ...it'll do. for now."]
+    greet: ["warden's watch. what is it.", "back from the cave? good. you're still in one piece."]
+    idle: ["(drives the point of a greatsword into the snow and leans on the pommel)", "(watches the mountain the way other people watch a fire)"]
+    noWork: ["nothing needs cutting. the door's shut. that's a good day."]
+    nothingDue: ["you owe nothing. the mountain might. not me."]
+    who: ["Sigrun. warden of the door. below El Nath there's a cave, and below the cave there's a door, and behind the door there's Zakum. i decide who gets that far."]
+    bye: ["don't go past the cave without telling me."]
+    thanks: ["good."]
+    smallTalk: ["the cave of trial is called that because it tries people. some pass. some stay. the cerebes don't care which.", "Kalle asks me every day if he's ready. every day i say no. one day i'll say yes and he won't believe me."]
+    speakPlainly: ["plainly: there's a door. i stand in front of it."]
+    offer: ["sixty young cerebes in the cave, counted, and twenty thousand for the hours the door goes unwatched. then i'll swing beside you."]
+    join: ["stand clear of the backswing. i won't say it twice."]
+    bench: ["i'll be at the cave mouth. two days. the door doesn't like being left longer."]
+    leave: ["the door needs me. you'll be fine. you've been tried."]
+    refuse.bond: ["i don't leave the door for people i haven't tried."]
+    refuse.flags: ["go through the cave of trial first. then ask me."]
+    refuseOwnErrand: ["the door's mine to watch. you can watch it with me."]
+    questOffer.sigrun-the-trial-cave: ["the cave of trial. thirty young cerebes, fifteen of their teeth, and then stand in front of the door to Zakum for a moment. just look at it. then come back."]
+    questAccept.sigrun-the-trial-cave: ["past the dead mine, down. the young ones bite. the door doesn't. the door is worse."]
+    questWaiting.sigrun-the-trial-cave: ["fifteen teeth, and the door. did you look at it?"]
+    questComplete.sigrun-the-trial-cave: ["you looked, and you came back up. most people want to knock. you didn't. good."]
+    questOffer.sigrun-doombringer: ["the Doombringer. my first greatsword. it wants cerebes teeth for the grip, from the grown ones. thirty, fifteen teeth."]
+    questAccept.sigrun-doombringer: ["the cave of trial, deep. the big ones breathe fire. step through it, not back from it."]
+    questWaiting.sigrun-doombringer: ["fifteen teeth. the grip's unwrapped."]
+    questComplete.sigrun-doombringer: ["the Doombringer. seven safe scrolls, every one took. i swung it at the door every morning for a year. it never opened. it was never meant to."]
+    questOffer.sigrun-blue-screamer: ["the Blue Screamer. a blade that screams when it's swung. the dark yetis and pepes on the dangerous cliff scream too. twenty pairs, fifteen of the dark beaks."]
+    questAccept.sigrun-blue-screamer: ["the dangerous cliff, past the sharp cliffs. there aren't many of them. that's mercy."]
+    questWaiting.sigrun-blue-screamer: ["fifteen beaks. the blade's quiet. it shouldn't be."]
+    questComplete.sigrun-blue-screamer: ["the Blue Screamer. seven sixties, every one took. listen to it. that's the sound of something that won't be ignored."]
+    questOffer.sigrun-berzerker: ["the Berzerker. the sword i'd carry through the door, if i ever went. bains in the deepest stretch of the cave, thirty, fifteen collars. and tell Edric where you're going. someone should know."]
+    questAccept.sigrun-berzerker: ["cave of trial, the third stretch. the bains are fire on legs. Edric first."]
+    questWaiting.sigrun-berzerker: ["fifteen collars. did you tell Edric?"]
+    questComplete.sigrun-berzerker: ["the Berzerker. two tens, five sixties, every one took. i've never trusted a ten in my life. i trusted these, for you. it's the sword for the door. you carry it now."]
+    questOffer.sigrun-firebomb-watch: ["the firebombs drift up out of the cave. fifteen of their flames and they stop drifting for a week."]
+    questAccept.sigrun-firebomb-watch: ["the first and third stretches. don't stand under them."]
+    questWaiting.sigrun-firebomb-watch: ["fifteen flames."]
+    questComplete.sigrun-firebomb-watch: ["fifteen. the cave mouth's quiet."]
+    about.edric: ["Edric doesn't freeze. he's told me that every morning for six years. one day he'll believe it."]
+    about.kalle: ["Kalle wants the third door. Tylus's door, not mine. he's closer than he thinks. don't tell him i said that."]
+    about.bjarke: ["Bjarke talks. it's how he tells the wolves he's coming. they come anyway. he's very good."]
+    aboutUnknown: ["they haven't been tried."]
+    friend.close: ["you've been tried, and you're still here. i'd stand at a door with you."]
+    friend.best: ["if i ever open the door, you're the one i'd want beside me. that's the highest thing i know how to say."]
+    famed: ["...accepted."]
+    defamed: ["accepted. noted."]
+    gift: ["thank you. useful."]
+    gift.favorite: ["good. that's a gift from someone who's been in the cave. you've earned the door."]
+    gift.again: ["one's enough."]
+
+- id: bjarke
+  name: Bjarke
+  look: { gender: male }
+  title: "Wolf Hunter"
+  job: DRAGONKNIGHT
+  level: { min: 70, max: 73 }
+  strength: VETERAN
+  loadout: el-nath-spear-l70
+  personality: relaxed-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 5, to: 10, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 23, spot: "venue:by-jade", activity: SOCIALIZE }
+      - { from: 23, to: 5, materialize: false }
+  recruitable: true
+  knows: [wolf territory, werewolf, lycanthrope]
+  contract: bjarke-the-hunt-share
+  questLines: [bjarke-the-fang-road, bjarke-redemption, bjarke-omega-spear, bjarke-fairfrozen, bjarke-wolf-tally]
+  rumors: [el-nath-the-roll-call]
+  benchToleranceDays: 4
+  paceGap: 3
+  relationships:
+    - { persona: ansel, kind: HUNTED_WITH }
+    - { persona: ulla, kind: SELLS_PELTS_TO }
+    - { persona: maud, kind: LISTENS_TO }
+  giftItemIds: [4000052, 2022001]
+  dialogue:
+    greetFirst: ["ha! a new one! did you see the wolves on the way in? no? they saw you. they see everybody. it's their whole thing.", "come, sit, there's porridge. there's always porridge. Jade makes too much and i'm the solution."]
+    greet: ["hey! back! good! tell me something. anything. i'll tell you about wolves.", "there you are. the snow's in a mood today."]
+    idle: ["(tells a story to nobody, with gestures)", "(oils a spear head and hums something very loud)"]
+    noWork: ["nothing to hunt. the wolves have taken the day off. so have i. technically."]
+    nothingDue: ["we're square! we're always square. i forget what we owe."]
+    who: ["Bjarke! i hunt Wolf Territory. werewolves, lycanthropes, the big white ones. Ansel says i talk too much for a hunter. Ansel's wrong. i talk exactly enough."]
+    bye: ["don't feed the white fangs! they remember!"]
+    thanks: ["ha! anytime."]
+    smallTalk: ["the lycanthropes in the far territory walk on two legs when they think nobody's watching. i always watch.", "Ansel and i hunted the wolves one winter. he didn't say a word for a week. i said all of his words for him."]
+    speakPlainly: ["fine, fine. short: wolves. spear. porridge."]
+    offer: ["thirty thousand and thirty white fang tails, the proper ones. that's my share up front. then i hunt with you and i only talk half the time."]
+    join: ["ha! let's go. stay behind the spear. it's long for a reason."]
+    bench: ["i'll be at Jade's. the porridge waits for no one. neither do i. four days."]
+    leave: ["good hunting! the best! i'll tell everyone. i'll exaggerate. you're welcome."]
+    refuse.bond: ["ha. no. i like you already, but the wolves don't, yet."]
+    refuse.flags: ["walk the fang road first. then we'll talk shares."]
+    refuseOwnErrand: ["that's my hunt! you come with me. that's different."]
+    questOffer.bjarke-the-fang-road: ["the white fangs are on the road again. thirty, and fifteen tails so Ulla stops asking me. she's been asking me since spring."]
+    questAccept.bjarke-the-fang-road: ["the icy cold field and the far territory. they come in fives. you'll be fine. probably. i was."]
+    questWaiting.bjarke-the-fang-road: ["fifteen tails! Ulla's counting. she counts like a tax."]
+    questComplete.bjarke-the-fang-road: ["fifteen! ha! Ulla will be thrilled. she'll pretend she isn't. that's thrilled, for her."]
+    questOffer.bjarke-redemption: ["the Redemption. my first real spear. i'd give it to you. but the werewolves in the near territory owe me a story first. thirty of them, fifteen toenails."]
+    questAccept.bjarke-redemption: ["wolf territory, the first two. they howl before they jump. jump first."]
+    questWaiting.bjarke-redemption: ["fifteen toenails. the spear's on the wall. it misses work."]
+    questComplete.bjarke-redemption: ["the Redemption! seven safe scrolls, every one took! i've told this spear every story i know. it'll tell you some."]
+    questOffer.bjarke-omega-spear: ["the Omega Spear. the lycanthropes in the far territory are the only thing i've ever been afraid of. thirty, fifteen toenails. i'll be honest. i'm still afraid of them."]
+    questAccept.bjarke-omega-spear: ["the third, fourth, fifth territories. they stand up. don't let them stand up."]
+    questWaiting.bjarke-omega-spear: ["fifteen. you're braver than me. don't let it go to your head. it'll go to mine."]
+    questComplete.bjarke-omega-spear: ["the Omega Spear. seven sixties, every one took. i didn't say a word while the scrolls went on. first time in my life. Ulla was there. she'll confirm."]
+    questOffer.bjarke-fairfrozen: ["the Fairfrozen. a spear that's been cold since before El Nath. ask Ulla about the snowman in the hidden valley. then put the snowman down, and thirty yeti and pepe pairs with him. the spear wants the valley quiet."]
+    questAccept.bjarke-fairfrozen: ["ask Ulla first. she knows where the valley opens. she won't tell me. she says i'd tell everyone. i would."]
+    questWaiting.bjarke-fairfrozen: ["the snowman, and thirty pairs. the valley's loud. i can hear it from here. i can't, but i can."]
+    questComplete.bjarke-fairfrozen: ["the Fairfrozen. two tens and five sixties, every one took. ...i don't have a story for this one. i'll make one. it'll be about you."]
+    questOffer.bjarke-wolf-tally: ["twenty-five werewolves for the tally! the hunters' board counts them. i want my column longer than Ansel's. he isn't even on it. i want it longer anyway."]
+    questAccept.bjarke-wolf-tally: ["first and second territories."]
+    questWaiting.bjarke-wolf-tally: ["twenty-five!"]
+    questComplete.bjarke-wolf-tally: ["twenty-five! my column grows! well. yours. in my column."]
+    about.ansel: ["Ansel! the quiet one in Orbis. best shot i know. worst conversationalist. i love him. don't tell him. he'd say nothing."]
+    about.ulla: ["Ulla buys my pelts and tells me they're terrible. then she makes gloves from them that cost a fortune. we're very happy."]
+    about.maud: ["Maud reads the miners' names at night. i go and listen. somebody should. she doesn't say thank you. she reads my name at the end, as a joke. i think it's a joke."]
+    about.edric: ["Edric? the sentry. never laughs. i'm working on it. it's a long hunt."]
+    aboutUnknown: ["never hunted with them! yet!"]
+    friend.close: ["you're the friend i tell the true version of the stories to. the boring version. that's love, for me."]
+    friend.best: ["i'd stop talking for you. a whole hunt. maybe two."]
+    famed: ["ha! yes! thank you!"]
+    defamed: ["ha. fair. probably the porridge."]
+    gift: ["ha! for me? thanks!"]
+    gift.favorite: ["a present! Ulla will think i earned it! i won't correct her."]
+    gift.again: ["two in a day? i'll get spoiled. well, more."]
+
+- id: ulla
+  name: Ulla
+  look: { gender: female }
+  title: "Furrier"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 7, to: 13, spot: "venue:market-door", activity: LINGER }
+      - { from: 13, to: 20, spot: "venue:middle-east-benches", activity: REST }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [jr. yeti, hector, white fang]
+  questLines: [ulla-skins-for-the-cold, ulla-the-hector-pair, ulla-dark-hide, ulla-the-witchs-lining, ulla-mending]
+  relationships:
+    - { persona: bjarke, kind: BUYS_PELTS_FROM }
+    - { persona: oskar, kind: SHARES_A_STALL_WITH }
+  giftItemIds: [4000048, 4000021]
+  dialogue:
+    greetFirst: ["show me your hands. hm. cold already, and you've only just arrived. the cold gets in at the fingers first.", "you're not from the mountain. nobody from the mountain has hands like that."]
+    greet: ["hands.", "cold today. colder tomorrow. that's El Nath."]
+    idle: ["(works a pelt with a scraping stone, without looking at it)", "(holds two furs up side by side and frowns at both)"]
+    noWork: ["nothing on the frame today. come back when the wind changes."]
+    nothingDue: ["nothing owed. your fingers are your own."]
+    who: ["Ulla. furrier. gloves mostly. a glove that doesn't keep the cold out is a lie you wear on your hands. i don't sell lies."]
+    bye: ["gloves on before the cold field."]
+    thanks: ["fine."]
+    smallTalk: ["Bjarke brings me pelts and calls them perfect. they're never perfect. i make them perfect.", "Oskar and i share a stall. feet and hands. we never agree. it keeps the customers warm."]
+    speakPlainly: ["plainly: gloves. warm ones. for you."]
+    questOffer.ulla-skins-for-the-cold: ["the young yetis on the icy path. twenty-five, and fifteen skins. the soft ones. i'll know if they're not."]
+    questAccept.ulla-skins-for-the-cold: ["the icy path, both stretches. mind the ice. i won't make gloves for a broken wrist."]
+    questWaiting.ulla-skins-for-the-cold: ["fifteen skins."]
+    questComplete.ulla-skins-for-the-cold: ["fifteen. good skins. better than Bjarke's. don't tell him. tell him."]
+    questOffer.ulla-the-hector-pair: ["a pair for you. made for how you fight. hector tail lines the cuff. thirty hectors on the cold field, fifteen tails."]
+    questAccept.ulla-the-hector-pair: ["the cold field. the tails are thickest at dusk. so are the hectors."]
+    questWaiting.ulla-the-hector-pair: ["fifteen tails. the cuffs are cut."]
+    questComplete.ulla-the-hector-pair: ["there. stitched to your grip, every scroll took. try them. ...good. your fingers will thank you on the cold field."]
+    questOffer.ulla-dark-hide: ["the next pair is dark hide. the dark young yetis on the sharp cliffs. thirty, fifteen skins."]
+    questAccept.ulla-dark-hide: ["the sharp cliffs, and the dangerous one past them. the dark ones throw. duck."]
+    questWaiting.ulla-dark-hide: ["fifteen dark skins. they're stiffer. they have to be."]
+    questComplete.ulla-dark-hide: ["the dark pair. cut to your hands, every scroll took. you'll never be cold again. you will. less."]
+    questOffer.ulla-the-witchs-lining: ["the last pair i'll make you. the snow witch on the icy path weeps tears that never thaw. one tear lines both gloves. bring me one, and ask Bjarke for a lycanthrope pelt. he'll talk for an hour. let him."]
+    questAccept.ulla-the-witchs-lining: ["the witch walks the icy path and the icy cold field. one of her at a time. she's cold. don't let her be colder than you."]
+    questWaiting.ulla-the-witchs-lining: ["the tear, and Bjarke's pelt. i've cut the palms already."]
+    questComplete.ulla-the-witchs-lining: ["the last pair. made for the way you fight, two tens and the rest sixties, every one took. there's a witch's tear in the lining. you'll feel it when it's cold. it's on your side now."]
+    questOffer.ulla-mending: ["fifteen pieces of leather for mending. everything drops leather. find me fifteen good ones."]
+    questAccept.ulla-mending: ["werewolves drop the best. yetis, if you're lazy."]
+    questWaiting.ulla-mending: ["fifteen."]
+    questComplete.ulla-mending: ["fifteen. a month of mending. the mountain wears through everything."]
+    about.bjarke: ["Bjarke talks to the pelts while he skins them. they're better pelts for it. i'll never tell him."]
+    about.oskar: ["Oskar thinks feet matter more than hands. he's wrong. he's a very good shoemaker."]
+    about.edric: ["Edric's had the same gloves for six years. he won't let me make new ones. he says he doesn't deserve warm hands. i make him a new pair every winter anyway. they're in a box."]
+    aboutUnknown: ["never measured their hands."]
+    friend.close: ["your hands are the warmest on the mountain. i made sure of that. i'd do it again."]
+    friend.best: ["i've made a lot of gloves. the ones i made for you, i think about."]
+    famed: ["...thank you. warm of you."]
+    defamed: ["cold. noted."]
+    gift: ["thank you. i'll use it."]
+    gift.favorite: ["soft and good. you know what i like."]
+    gift.again: ["enough for today. go and keep your hands warm."]
+
+- id: oskar
+  name: Oskar
+  look: { gender: male }
+  title: "Bootmaker"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 8, to: 14, spot: "venue:by-adonis", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:market-door", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [dead mine, el nath market]
+  questLines: [oskar-light-soles, oskar-the-carzen-boots, oskar-wing-boots, oskar-the-last-last, oskar-resoling]
+  relationships:
+    - { persona: ulla, kind: SHARES_A_STALL_WITH }
+    - { persona: maud, kind: RESOLES_FOR }
+  giftItemIds: [4000021, 4000076]
+  dialogue:
+    greetFirst: ["feet! let me see. ...those are city boots. on this mountain? you poor thing.", "i trained under Gordon in the market. eight years. i make better boots than Gordon. don't tell Gordon. he knows."]
+    greet: ["how are the feet?", "back! walking well, i see. i'll take the credit."]
+    idle: ["(taps a boot heel with a tiny hammer, listening to it)", "(looks at everyone's feet as they pass, and sighs)"]
+    noWork: ["no soles to stitch today. the mountain's being gentle with its feet."]
+    nothingDue: ["nothing owed. your feet are paid up."]
+    who: ["Oskar. bootmaker. the mountain kills you from the feet up, so i start at the feet. Gordon taught me that. then i improved on it."]
+    bye: ["step soft. the snow's thinner than it looks."]
+    thanks: ["mm! happy feet."]
+    smallTalk: ["Gordon sews a boot to last. i sew a boot to walk. that's the whole argument. it's been going on for nine years.", "the miners in the dead mine wore boots i resoled. i'd recognise them. i try not to look."]
+    speakPlainly: ["simply: boots. good ones. for you."]
+    questOffer.oskar-light-soles: ["fly-eye wings make the lightest insoles there are. the flyeyes in the dead mine. twenty-five, fifteen wings."]
+    questAccept.oskar-light-soles: ["the dead mine and the passage. look at the flyeyes, not the miners. trust me."]
+    questWaiting.oskar-light-soles: ["fifteen wings. the lasts are waiting."]
+    questComplete.oskar-light-soles: ["fifteen! light as nothing. walk on these and you'll forget you have feet. that's the dream."]
+    questOffer.oskar-the-carzen-boots: ["a pair for you. made for how you move. the studs are teeth. the coolie zombies in the dead forest have plenty and don't need them. thirty, fifteen teeth. yes. teeth."]
+    questAccept.oskar-the-carzen-boots: ["the forest of dead trees. they're slow. they're also everywhere."]
+    questWaiting.oskar-the-carzen-boots: ["fifteen teeth. i've drilled the soles."]
+    questComplete.oskar-the-carzen-boots: ["there. soled for how you move, every scroll took. try them on the ice. ...see? no slip. teeth. who knew."]
+    questOffer.oskar-wing-boots: ["the next pair wants werewolf leather. the near territory. thirty werewolves, twenty pieces of leather. Bjarke will tell you how. don't let him."]
+    questAccept.oskar-wing-boots: ["wolf territory, the first two. the leather's in the shoulders. the werewolves won't agree."]
+    questWaiting.oskar-wing-boots: ["twenty leather."]
+    questComplete.oskar-wing-boots: ["the second pair. built for your feet, every scroll took. you'll outrun a werewolf in these. you'll want to."]
+    questOffer.oskar-the-last-last: ["the last pair. laced with binding bridles from the master death teddies in Ludibrium's lost time. it's a long way for laces. they're the best laces in the world. thirty teddies, fifteen bridles."]
+    questAccept.oskar-the-last-last: ["Ludibrium, by the Orbis ship. the forgotten path, then the hidden room where time got lost. the teddies are not friendly. they are very soft."]
+    questWaiting.oskar-the-last-last: ["fifteen bridles. i've cut the uppers. they're beautiful. they're lonely."]
+    questComplete.oskar-the-last-last: ["the last pair. made to your stride, two tens and the rest sixties, every one took. Gordon couldn't make these. i'm going to show him. i'm going to show him and then i'm going to hide."]
+    questOffer.oskar-resoling: ["fifteen fly-eye wings for resoling. the mountain eats soles."]
+    questAccept.oskar-resoling: ["the dead mine. the flyeyes."]
+    questWaiting.oskar-resoling: ["fifteen wings."]
+    questComplete.oskar-resoling: ["fifteen. that's six pairs back on the road."]
+    about.ulla: ["Ulla thinks hands matter more than feet. you can't walk on your hands. well. you can. it's not dignified."]
+    about.maud: ["i resole Maud's boots every month. she walks the dead mine to the first gate every night to read the names. she wears out a pair a season."]
+    about.edric: ["the sentry stands on the same spot every day. i can tell from his boots. the left heel's worn flat. eleven years of standing still."]
+    aboutUnknown: ["never seen their feet."]
+    friend.close: ["i've made you boots. i don't make just anyone boots. Gordon's made his wife two pairs. i'm catching up."]
+    friend.best: ["i'd make you boots forever. i'd make you boots after forever. that's a promise from the feet up."]
+    famed: ["ha! thank you! happy feet, happy face."]
+    defamed: ["oh. blisters? i'll fix it."]
+    gift: ["thank you! i'll put it on the bench."]
+    gift.favorite: ["for the bench! you're a friend to feet."]
+    gift.again: ["that's plenty. i'm not a shoe shop. i am. but."]
+
+- id: maud
+  name: Maud
+  look: { gender: female }
+  title: "Keeper of the Miners' Roll"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-west-street-3", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:market-door", activity: SOCIALIZE }
+      - { from: 18, to: 22, spot: "venue:by-jade", activity: REST }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [dead mine, miner zombie]
+  questLines: [maud-the-roll-of-the-mine, maud-gold-teeth]
+  rumors: [el-nath-the-roll-call]
+  relationships:
+    - { persona: fitch, kind: TAKES_THE_POST_FROM }
+    - { persona: bjarke, kind: TOLERATES }
+    - { persona: oskar, kind: WEARS_BOOTS_BY }
+  giftItemIds: [4000082, 2022001]
+  dialogue:
+    greetFirst: ["you're alive. good. i keep a roll of the ones who aren't. it's long enough.", "new face. i'll learn your name. i learn everyone's. it's a habit from the mine."]
+    greet: ["still alive. good.", "evening. or near enough. the mine doesn't keep hours."]
+    idle: ["(reads names from a long roll, lips moving)", "(sits very still, facing the way to the dead mine)"]
+    noWork: ["nothing to be done today. the mine's quiet. the mine's always quiet. that's the trouble."]
+    nothingDue: ["nothing owed. the roll's paid in names, not meso."]
+    who: ["Maud. i keep the roll of the dead mine. every miner it kept. i read it out at night so the mountain knows we haven't forgotten."]
+    bye: ["don't go into the mine without telling someone. tell me. i'll remember."]
+    thanks: ["mm."]
+    smallTalk: ["they dug for the red ore under the mountain. they dug too deep. something down there liked the company.", "the zombies in the mine still have their lamps. some of them still have their names stitched on."]
+    speakPlainly: ["plainly: the mine kept them. i keep their names."]
+    questOffer.maud-the-roll-of-the-mine: ["the miners in the dead mine aren't miners any more. thirty of them laid down. it's not cruelty. it's rest. they've been working ten years without a shift change."]
+    questAccept.maud-the-roll-of-the-mine: ["the dead mine, all four stretches. they'll swing picks at you. they don't mean it. they don't mean anything any more."]
+    questWaiting.maud-the-roll-of-the-mine: ["thirty. i'll read their names tonight, whichever thirty they were."]
+    questComplete.maud-the-roll-of-the-mine: ["thirty laid down. i'll read the roll twice tonight. once for them and once for you, for going down there."]
+    questOffer.maud-gold-teeth: ["some of the miners had gold teeth. it's how they kept their wages safe. three gold teeth, if you find them. they go back to the families."]
+    questAccept.maud-gold-teeth: ["not every miner had one. most of them were too poor. that's the sad part. one of the sad parts."]
+    questWaiting.maud-gold-teeth: ["three. the families don't know i'm doing this. i'd like to keep it that way."]
+    questComplete.maud-gold-teeth: ["three. three families with a little gold and no explanation. that's the right amount of explanation."]
+    about.fitch: ["the Orbis runner. he brings me letters for people who died ten years ago. their families still write. i read them to the mine."]
+    about.bjarke: ["the loud hunter comes to the roll reading and sits at the back and cries. he thinks i don't see. i read his name at the end. it makes him laugh. that's why."]
+    about.oskar: ["Oskar resoles my boots for nothing. he says it's for the walk to the mine. it is."]
+    about.edric: ["Edric isn't on my roll. he's on somebody's. i can tell. people on rolls stand like that."]
+    aboutUnknown: ["not on my roll. that's the good news."]
+    friend.close: ["i've started reading your name on the roll of the living. it's a short roll. i made it for you."]
+    friend.best: ["you're the name i read first, at the end of the night. so the mountain knows who's still coming back."]
+    famed: ["...thank you. the miners would have liked you."]
+    defamed: ["the mine's had worse said to it."]
+    gift: ["thank you. that's kind."]
+    gift.favorite: ["...thank you. the mine doesn't get kindness much. i'll pass it on."]
+    gift.again: ["that's enough for one day. keep the rest."]
+
+- id: kalle
+  name: Kalle
+  look: { gender: male }
+  title: "Hopeful"
+  job: FIGHTER
+  level: { min: 58, max: 60 }
+  strength: SEASONED
+  loadout: perion-warrior-l30
+  personality: relaxed-v1
+  home:
+    town: el-nath
+    routine:
+      - { from: 7, to: 12, spot: "venue:chiefs-residence-door", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 18, to: 22, spot: "venue:by-jade", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [el nath, sharp cliff]
+  questLines: [kalle-the-third-door, kalle-trophy-horns]
+  rumors: [el-nath-the-roll-call]
+  relationships:
+    - { persona: sigrun, kind: ASKS_EVERY_DAY }
+  giftItemIds: [2000002, 4000055]
+  dialogue:
+    greetFirst: ["are you here for the test? Tylus's test? i'm here for the test. i've been here for the test for a year. i'm very nearly ready.", "hi! do i look like a crusader to you? be honest. no. don't be honest."]
+    greet: ["hi! not today. i'm not taking the test today. probably tomorrow.", "you again! good! tell me i'm ready. you don't have to mean it."]
+    idle: ["(practises a sword form, gets the third step wrong, starts again)", "(stares at the door of the Chief's Residence and does not go in)"]
+    noWork: ["nothing today. i'm preparing. preparing is a full-time job."]
+    nothingDue: ["we're square! i think! i'm bad at sums. good at swords. medium at swords."]
+    who: ["Kalle! fighter. i came from Perion to take the third job test. i haven't taken it yet. i will. i'm a year into getting ready."]
+    bye: ["wish me luck! for tomorrow! or the day after."]
+    thanks: ["thank you! that helps! everything helps!"]
+    smallTalk: ["Sigrun says i'm not ready. she says it every day. one day she'll say it differently. i listen very carefully for the difference.", "i still wear the gear i left Perion in. Edric says it's sentimental. i say it's lucky."]
+    speakPlainly: ["short version: i'm nervous. there."]
+    questOffer.kalle-the-third-door: ["could you ask Sigrun if i'm ready? she won't tell me. she might tell you. and, um. twenty dark young yetis on the sharp cliffs, so i can say i helped. i'll come next time."]
+    questAccept.kalle-the-third-door: ["she's by Scadur in the mornings. or on the upper street. she's very easy to find. she's very hard to ask."]
+    questWaiting.kalle-the-third-door: ["what did she say? don't tell me. no. tell me."]
+    questComplete.kalle-the-third-door: ["she said no, kindly? kindly! she's never been kind about it before! that's progress! that's basically yes!"]
+    questOffer.kalle-trophy-horns: ["ten dark yeti horns? for my wall. so Tylus can see i've been busy. i've been busy watching. that's busy."]
+    questAccept.kalle-trophy-horns: ["the sharp cliffs. the big dark ones."]
+    questWaiting.kalle-trophy-horns: ["ten! my wall's very bare."]
+    questComplete.kalle-trophy-horns: ["ten! my wall looks terrifying! perfect!"]
+    about.sigrun: ["Sigrun's the warden of the door. she's the bravest person i know. she's also the scariest. it's a lot of person."]
+    about.edric: ["Edric taught me to stand still. i'm still learning. i fidget. he says fidgeting is fine as long as my feet don't."]
+    about.bjarke: ["Bjarke tells me the third job test involves a giant wolf. i don't think it does. i've started training for the wolf anyway."]
+    aboutUnknown: ["haven't met them! i'll introduce myself! tomorrow."]
+    friend.close: ["you're my friend! a real one! i'm going to take the test and you're going to be the first person i tell."]
+    friend.best: ["if i pass, it's because you kept telling me i could. if i fail, i'll still have you. that's a good deal."]
+    famed: ["fame! for me? i'll take it to the test!"]
+    defamed: ["oh no. was it the fidgeting?"]
+    gift: ["for me? thank you! i'll keep it for luck!"]
+    gift.favorite: ["for me?! for my wall! or my pocket! you're the best!"]
+    gift.again: ["two? i don't deserve two. i'll take two."]

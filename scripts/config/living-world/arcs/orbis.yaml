@@ -1,0 +1,28 @@
+# Orbis arc: the stationmaster's page for the Ellinia ship the crimson balrog boarded eleven years ago. One name never
+# arrived; it closes in El Nath (Edric's letter, arcs/el-nath.yaml), never gated by any Victoria arc.
+- id: corliss-the-unclosed-page
+  persona: corliss
+  chapters:
+    - id: chapter-1
+      title: "Every Name Written"
+    - id: chapter-2
+      title: "The Unclosed Page"
+      dialogueOverrides:
+        greet: ["the page is out on the desk now. i used to keep it under the others.", "Oda remembered the hat. of course she did."]
+        smallTalk: ["eleven boarded. ten landed. i've done that sum every evening for eleven years. it never comes out different."]
+        chapterEnter: ["(turns the ledger to a page with one line not ruled off, and leaves it open)"]
+      unlocks:
+        rumors: [orbis-the-page-read-aloud]
+    - id: chapter-3
+      title: "Read Aloud"
+      enterWhen: { rumorPerformed: orbis-the-page-read-aloud, times: 1 }
+      dialogueOverrides:
+        greet: ["i read the page to Ottilie on the steps. she knew every name on it. she'd learned them from the post office lists. eleven years ago."]
+    - id: chapter-4
+      title: "Arrived"
+      enterWhen: { flags: [orbis.page.closed] }
+      dialogueOverrides:
+        greet: ["arrived, eleven years late. in red. i look at it more than i should.", "the page is closed. the ledger's lighter. i didn't know paper could do that."]
+        smallTalk: ["Ottilie still meets the evening ship. now she waves at the post bag instead."]
+        about.edric: ["Edric. arrived, eleven years late. it's in red now. ask Ottilie. she'll tell you herself."]
+        chapterEnter: ["(writes one word in red ink, blots it, and closes the ledger gently)"]

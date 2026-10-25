@@ -87,7 +87,10 @@ public final class ResidentDialogue {
             "perion", new int[] {1022002, 1022003, 1022004, 1022005},
             "ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102},
             "nautilus", new int[] {1092000, 1092001, 1092002, 1092003},
-            "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004});
+            "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004},
+            "orbis", new int[] {2010000, 2012012, 2012019, 2012011},
+            "el-nath", new int[] {2020003, 2020006, 2020007, 2020002},
+            "ludibrium", new int[] {2041004, 2040046, 9103001, 2041014});
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

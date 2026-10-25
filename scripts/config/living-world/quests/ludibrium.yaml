@@ -1,0 +1,433 @@
+# Ludibrium quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# terraces brown teddy 3000005 (cotton 4000106), pink teddy 3110101 (yellow ribbon 4000107), toy trojan 3230305 (toy
+# trojan sword 4000110, cloud terrace 5-3 220010000/220010100/220010200), roloduck 3210204 (toy duckling 4000109),
+# panda teddy 3210203 (panda doll 4000108, sky terrace 5 220011000, toy factory 220020200/220020300). Toy factory robo
+# 4230111 (cheap battery 4000111, 220020400/220020500/220030400), master robo 4230112 (mechanical heart 4000112,
+# 220020000/220030000). Path of time platoon chronos 4230114 (220040000, lost time 1 220050000), chronos 3230306
+# (cog 4000115, 220040100/220040300), tick 3210207 (clock spring 4000113) and tick-tock 4230113 (table clock 4000114) at
+# the crossroad of time 220040200 and whirlpool of time 220050100, master chronos 4230115 (220040400, lost time 2
+# 220050200). Warped path of time buffy 6130200 (buffy hat 4000128) and lazy buffy 6230300 (marble 4000129) 220060000,
+# buffoon 6300100 (grandpa clock 4000130, 220060100/220060200), ghost pirate 7140000 (key 4000132, 220060200), dual
+# ghost pirate 7160000 (propeller 4000133, unbalanced time 220060201), spirit viking 8141000 (viking sail 4000134,
+# 220060300), gigantic spirit viking 8141100 (gigantic viking hat 4000135, twisted time 220060301). Forgotten path of
+# time soul teddy 6230400 (zombie teddy bear 4000143) and master soul teddy 6230500 (free spirit 4000144) 220070000,
+# death teddy 7130010 (sealed teddy bear 4000147, 220070200), phantom watch 8142000 (sealed bottle 4000149, 220070300),
+# grim phantom watch 8143000 (ice piece 4000150, forbidden time 220070301).
+# Gear: Saskia's claws Sapphire Gigantic 1472024 L60 / Blue Scarab 1472028 L70 / Black Mamba 1472031 L80; Jasper's guns
+# Burning Hell 1492008 L60 / Abyss Shooter 1492009 L70 / Infinity's Wrath 1492010 L80. Della's coats for the player's
+# class (an overall where the class wears robes, else a top; male and female pieces) L70/L80/L90. Marlow's capes Blue
+# Giles 1102034 L85, Turquoise Musketeer 1102047 L95, Ludibrium Cape 1102057 L100.
+
+# ---- Ignatz, clockwinder: the lost hour -------------------------------------------------------------------------
+
+- id: ignatz-oil-for-the-gears
+  persona: ignatz
+  title: "Oil for the Gears"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ticks, type: KILL_MOBS, mobIds: [3210207], count: 25, mapIds: [220040200] }
+    - { id: springs, type: COLLECT_ITEM, itemId: 4000113, count: 15 }
+    - { id: gears, type: DELIVER, to: ignatz, take: { itemId: 4000113, count: 15 } }
+  rewards: { meso: 12000, exp: 11000, bondPoints: 30 }
+
+- id: ignatz-eleven-strikes
+  persona: ignatz
+  title: "Eleven Strikes"
+  length: MEDIUM
+  requires: { level: { min: 40 }, questsCompleted: [ignatz-oil-for-the-gears] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ticktocks, type: KILL_MOBS, mobIds: [4230113], count: 30, mapIds: [220040200, 220050100] }
+    - { id: clocks, type: COLLECT_ITEM, itemId: 4000114, count: 15 }
+    - { id: listen, type: DELIVER, to: ignatz, take: { itemId: 4000114, count: 15 } }
+  rewards: { meso: 18000, exp: 16000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: ignatz-the-lost-hour, to: chapter-2 } }
+
+- id: ignatz-the-twelfth-strike
+  persona: ignatz
+  title: "The Twelfth Strike"
+  length: MEDIUM
+  requires: { level: { min: 45 }, flags: [ludibrium.heard-hour], questsCompleted: [ignatz-eleven-strikes] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: prue, type: TALK_TO, persona: prue, say: ["stop the line? for an hour? ...fine. one hour. tell him one. tell him i'm doing it because he's right, and tell him i'll deny i said that."] }
+    - { id: chronos, type: KILL_MOBS, mobIds: [4230115], count: 30, mapIds: [220040400, 220050200] }
+    - { id: midnight, type: DELIVER, to: ignatz }
+  rewards: { meso: 30000, exp: 26000, bondPoints: 50, items: [{ itemId: 2000006, count: 20 }], worldFlags: [ludibrium.hour.found] }
+
+- id: ignatz-cogs
+  persona: ignatz
+  title: "Cogs for the Tower"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 35 }, questsCompleted: [ignatz-oil-for-the-gears] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cogs, type: COLLECT_ITEM, itemId: 4000115, count: 20 }
+    - { id: tower, type: DELIVER, to: ignatz, take: { itemId: 4000115, count: 20 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 10 }
+
+# ---- Prue, factory forewoman -------------------------------------------------------------------------------------
+
+- id: prue-the-runaway-robots
+  persona: prue
+  title: "The Runaway Robots"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: robos, type: KILL_MOBS, mobIds: [4230111], count: 25, mapIds: [220020400, 220020500, 220030400, 220020600] }
+    - { id: batteries, type: COLLECT_ITEM, itemId: 4000111, count: 15 }
+    - { id: read, type: DELIVER, to: prue, take: { itemId: 4000111, count: 15 } }
+  rewards: { meso: 15000, exp: 14000, bondPoints: 30 }
+
+- id: prue-mechanical-hearts
+  persona: prue
+  title: "Hearts for the Soldiers"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 44 }, questsCompleted: [prue-the-runaway-robots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: robos, type: KILL_MOBS, mobIds: [4230112], count: 20, mapIds: [220020000, 220030000, 220020100, 220030100] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4000112, count: 10 }
+    - { id: soldiers, type: DELIVER, to: prue, take: { itemId: 4000112, count: 10 } }
+  rewards: { meso: 12000, exp: 11000, bondPoints: 10 }
+
+# ---- Benno, retired terrace guard -------------------------------------------------------------------------------
+
+- id: benno-the-trojan-swords
+  persona: benno
+  title: "The Guard's Swords"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trojans, type: KILL_MOBS, mobIds: [3230305], count: 25, mapIds: [220010000, 220010100, 220010200] }
+    - { id: swords, type: COLLECT_ITEM, itemId: 4000110, count: 15 }
+    - { id: rack, type: DELIVER, to: benno, take: { itemId: 4000110, count: 15 } }
+  rewards: { meso: 12000, exp: 11000, bondPoints: 30 }
+
+- id: benno-terrace-patrol
+  persona: benno
+  title: "Terrace Patrol"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [3000005, 3110101], count: 30, mapIds: [220010400, 220010500, 220010600, 220010700] }
+    - { id: report, type: DELIVER, to: benno }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Saskia, path runner (recruitable; her claws) ----------------------------------------------------------------
+
+- id: saskia-the-quick-path
+  persona: saskia
+  title: "The Quick Path"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: chronos, type: KILL_MOBS, mobIds: [3230306], count: 30, mapIds: [220040100, 220040300] }
+    - { id: whirlpool, type: VISIT_MAP, mapIds: [220050100] }
+    - { id: back, type: DELIVER, to: saskia }
+  rewards: { meso: 16000, exp: 15000, bondPoints: 30, flags: [saskia.intro.done] }
+
+- id: saskia-sapphire-gigantic
+  persona: saskia
+  title: "The Sapphire Gigantic"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [saskia-the-quick-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: buffies, type: KILL_MOBS, mobIds: [6130200], count: 30, mapIds: [220060000] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000128, count: 15 }
+    - { id: claw, type: DELIVER, to: saskia, take: { itemId: 4000128, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1472024, scrolls: [{ success: 100 }] }
+
+- id: saskia-blue-scarab
+  persona: saskia
+  title: "The Blue Scarab"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [saskia-sapphire-gigantic] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [6230500], count: 30, mapIds: [220070000] }
+    - { id: spirits, type: COLLECT_ITEM, itemId: 4000144, count: 15 }
+    - { id: claw, type: DELIVER, to: saskia, take: { itemId: 4000144, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1472028, scrolls: [{ success: 60 }] }
+
+- id: saskia-black-mamba
+  persona: saskia
+  title: "The Black Mamba"
+  length: LONG
+  requires: { level: { min: 82 }, friendship: 10, questsCompleted: [saskia-blue-scarab] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ignatz, type: TALK_TO, persona: ignatz, say: ["unbalanced time? the room where the pirates spin? ...then i'll stop my watch till you're back. not to worry. to keep count. it's the same thing, at my age."] }
+    - { id: pirates, type: KILL_MOBS, mobIds: [7160000], count: 30, mapIds: [220060201] }
+    - { id: propellers, type: COLLECT_ITEM, itemId: 4000133, count: 15 }
+    - { id: claw, type: DELIVER, to: saskia, take: { itemId: 4000133, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1472031, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: saskia-errand-run
+  persona: saskia
+  title: "Errand Run"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 45 }, questsCompleted: [saskia-the-quick-path] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ticktocks, type: KILL_MOBS, mobIds: [4230113], count: 25, mapIds: [220040200, 220050100] }
+    - { id: back, type: DELIVER, to: saskia }
+  rewards: { meso: 11000, exp: 10000, bondPoints: 10 }
+
+# ---- Jasper, bounty hunter (recruitable; his guns) ---------------------------------------------------------------
+
+- id: jasper-the-platoon
+  persona: jasper
+  title: "Clear the Platoon"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: platoon, type: KILL_MOBS, mobIds: [4230114], count: 30, mapIds: [220040000, 220050000] }
+    - { id: report, type: DELIVER, to: jasper }
+  rewards: { meso: 16000, exp: 15000, bondPoints: 30, flags: [jasper.intro.done] }
+
+- id: jasper-burning-hell
+  persona: jasper
+  title: "The Burning Hell"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [jasper-the-platoon] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: buffies, type: KILL_MOBS, mobIds: [6230300], count: 30, mapIds: [220060000] }
+    - { id: marbles, type: COLLECT_ITEM, itemId: 4000129, count: 15 }
+    - { id: shot, type: DELIVER, to: jasper, take: { itemId: 4000129, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1492008, scrolls: [{ success: 100 }] }
+
+- id: jasper-abyss-shooter
+  persona: jasper
+  title: "The Abyss Shooter"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [jasper-burning-hell] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: buffoons, type: KILL_MOBS, mobIds: [6300100], count: 30, mapIds: [220060100, 220060200] }
+    - { id: clocks, type: COLLECT_ITEM, itemId: 4000130, count: 15 }
+    - { id: sight, type: DELIVER, to: jasper, take: { itemId: 4000130, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1492009, scrolls: [{ success: 60 }] }
+
+- id: jasper-infinitys-wrath
+  persona: jasper
+  title: "The Captain's Bounty"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [jasper-abyss-shooter] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pirates, type: KILL_MOBS, mobIds: [7140000], count: 30, mapIds: [220060200] }
+    - { id: keys, type: COLLECT_ITEM, itemId: 4000132, count: 15 }
+    - { id: bounty, type: DELIVER, to: jasper, take: { itemId: 4000132, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1492010, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: jasper-bounty
+  persona: jasper
+  title: "Standing Bounty"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 80 }, questsCompleted: [jasper-the-platoon] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: keys, type: COLLECT_ITEM, itemId: 4000132, count: 10 }
+    - { id: paid, type: DELIVER, to: jasper, take: { itemId: 4000132, count: 10 } }
+  rewards: { meso: 25000, exp: 20000, bondPoints: 10 }
+
+# ---- Della, toy tailor (coats for the player's class) ------------------------------------------------------------
+
+- id: della-teddy-stuffing
+  persona: della
+  title: "Teddy Stuffing"
+  length: SHORT
+  requires: { level: { min: 32 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [3000005], count: 25, mapIds: [220010400, 220010500, 220010600] }
+    - { id: cotton, type: COLLECT_ITEM, itemId: 4000106, count: 20 }
+    - { id: bears, type: DELIVER, to: della, take: { itemId: 4000106, count: 20 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 30 }
+
+- id: della-the-good-cloth
+  persona: della
+  title: "The Good Cloth"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 5, questsCompleted: [della-teddy-stuffing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [6230400], count: 30, mapIds: [220070000] }
+    - { id: bears, type: COLLECT_ITEM, itemId: 4000143, count: 15 }
+    - { id: coat, type: DELIVER, to: della, take: { itemId: 4000143, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 80000
+    bondPoints: 35
+    gear:
+      - { pool: [1040102, 1041097, 1050067, 1051052, 1050061, 1051062, 1040105, 1041100, 1052122], scrolls: [{ success: 100 }] }
+
+- id: della-sealed-seams
+  persona: della
+  title: "Sealed Seams"
+  length: LONG
+  requires: { level: { min: 80 }, friendship: 7, questsCompleted: [della-the-good-cloth] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [7130010], count: 30, mapIds: [220070200] }
+    - { id: bears, type: COLLECT_ITEM, itemId: 4000147, count: 15 }
+    - { id: coat, type: DELIVER, to: della, take: { itemId: 4000147, count: 15 } }
+  rewards:
+    meso: 130000
+    exp: 130000
+    bondPoints: 50
+    gear:
+      - { pool: [1050080, 1051077, 1050072, 1051056, 1050075, 1051066, 1040108, 1041105, 1052125], scrolls: [{ success: 60 }] }
+
+- id: della-the-finest-stitch
+  persona: della
+  title: "The Finest Stitch"
+  length: LONG
+  requires: { level: { min: 90 }, friendship: 10, questsCompleted: [della-sealed-seams] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: silk, type: TALK_TO, persona: marlow, say: ["banner silk, for Della's lining? the guard's own? ...take this length. it was the banner's first border. it has marched further than anyone alive. see that it keeps marching."] }
+    - { id: watches, type: KILL_MOBS, mobIds: [8142000], count: 30, mapIds: [220070300] }
+    - { id: bottles, type: COLLECT_ITEM, itemId: 4000149, count: 15 }
+    - { id: coat, type: DELIVER, to: della, take: { itemId: 4000149, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 60
+    gear:
+      - { pool: [1040111, 1041119, 1050092, 1051094, 1050088, 1051082, 1040115, 1041115, 1052128], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: della-ribbons
+  persona: della
+  title: "Ribbons for the Bears"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 32 }, questsCompleted: [della-teddy-stuffing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ribbons, type: COLLECT_ITEM, itemId: 4000107, count: 20 }
+    - { id: necks, type: DELIVER, to: della, take: { itemId: 4000107, count: 20 } }
+  rewards: { meso: 9000, exp: 7000, bondPoints: 10 }
+
+# ---- Marlow, banner keeper (capes, any class) ---------------------------------------------------------------------
+
+- id: marlow-the-old-banner
+  persona: marlow
+  title: "The Old Banner"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pandas, type: KILL_MOBS, mobIds: [3210203], count: 30, mapIds: [220011000, 220020200, 220020300, 220030200] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000108, count: 15 }
+    - { id: banner, type: DELIVER, to: marlow, take: { itemId: 4000108, count: 15 } }
+  rewards: { meso: 15000, exp: 14000, bondPoints: 30 }
+
+- id: marlow-giles-cape
+  persona: marlow
+  title: "Sailcloth"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [marlow-the-old-banner] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikings, type: KILL_MOBS, mobIds: [8141000], count: 30, mapIds: [220060300] }
+    - { id: sails, type: COLLECT_ITEM, itemId: 4000134, count: 15 }
+    - { id: cape, type: DELIVER, to: marlow, take: { itemId: 4000134, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 35
+    gear:
+      - { pool: [1102034], scrolls: [{ success: 100 }] }
+
+- id: marlow-musketeer-cape
+  persona: marlow
+  title: "A Very Full Cape"
+  length: LONG
+  requires: { level: { min: 93 }, friendship: 7, questsCompleted: [marlow-giles-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikings, type: KILL_MOBS, mobIds: [8141100], count: 30, mapIds: [220060301] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000135, count: 15 }
+    - { id: cape, type: DELIVER, to: marlow, take: { itemId: 4000135, count: 15 } }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 50
+    gear:
+      - { pool: [1102047], scrolls: [{ success: 60 }] }
+
+- id: marlow-the-ludibrium-cape
+  persona: marlow
+  title: "The Last Cape of the Guard"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 10, questsCompleted: [marlow-musketeer-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ignatz, type: TALK_TO, persona: ignatz, say: ["the clasp of the guard's cape? it has a clock in it the size of a seed. i wound it last when the guard still marched. ...there. it's ticking. tell Marlow it's ticking."] }
+    - { id: watches, type: KILL_MOBS, mobIds: [8143000], count: 30, mapIds: [220070301] }
+    - { id: ice, type: COLLECT_ITEM, itemId: 4000150, count: 15 }
+    - { id: cape, type: DELIVER, to: marlow, take: { itemId: 4000150, count: 15 } }
+  rewards:
+    meso: 300000
+    exp: 300000
+    bondPoints: 60
+    gear:
+      - { pool: [1102057], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: marlow-banner-thread
+  persona: marlow
+  title: "Banner Fringe"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 36 }, questsCompleted: [marlow-the-old-banner] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ducklings, type: COLLECT_ITEM, itemId: 4000109, count: 15 }
+    - { id: fringe, type: DELIVER, to: marlow, take: { itemId: 4000109, count: 15 } }
+  rewards: { meso: 10000, exp: 8000, bondPoints: 10 }

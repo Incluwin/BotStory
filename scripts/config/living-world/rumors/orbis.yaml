@@ -1,0 +1,28 @@
+# Orbis rumors.
+- id: orbis-the-page-read-aloud
+  participants: [corliss, ottilie]
+  where: { town: orbis, spot: "venue:top-of-the-hill-door" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: corliss-the-unclosed-page, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: corliss, text: "Ottilie. i've never read you the page. i'd like to, if you'll let me." }
+    - { by: ottilie, text: "i know the names, Corliss. i've known them eleven years." }
+    - { by: corliss, text: "then you know there's one i never wrote anything after. not landed. not lost. nothing." }
+    - { by: ottilie, text: "i know. i always thought that was the kindest thing anyone did for me." }
+    - { by: corliss, text: "it wasn't kindness. i couldn't make the pen do it." }
+    - { by: ottilie, text: "that's what kindness is, mostly." }
+
+- id: orbis-cloud-park-at-dusk
+  participants: [vesna, ansel]
+  where: { town: orbis, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: vesna, text: "forty-one lunar pixies short today. forty-one, Ansel." }
+    - { by: ansel, text: "they were in the red garden. biting gardeners." }
+    - { by: vesna, text: "they were on my count." }
+    - { by: ansel, text: "then count the gardeners. there's still seven. that's the number i keep." }
+    - { by: vesna, text: "...fine. seven. i'll write it next to mine." }

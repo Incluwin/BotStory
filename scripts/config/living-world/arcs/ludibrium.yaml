@@ -1,0 +1,26 @@
+# Ludibrium arc: the clockwinder and the hour the tower lost nine years ago, which the factory forewoman says nobody
+# misses.
+- id: ignatz-the-lost-hour
+  persona: ignatz
+  chapters:
+    - id: chapter-1
+      title: "Wound Nightly"
+    - id: chapter-2
+      title: "Eleven Strikes"
+      dialogueOverrides:
+        greet: ["eleven. eleven. eleven. every table clock on the path says eleven. somebody took midnight.", "listen to the tower tonight. count. you'll get to eleven and then it'll start over."]
+        chapterEnter: ["(lays fifteen little table clocks in a row, every hand pointing at eleven, and stares at them)"]
+      unlocks:
+        rumors: [ludibrium-the-hour-argument]
+    - id: chapter-3
+      title: "The Hour Argued"
+      enterWhen: { rumorPerformed: ludibrium-the-hour-argument, times: 1 }
+      dialogueOverrides:
+        greet: ["i said it out loud at last. one hour, stop the line, wind the tower back by hand. Prue said yes like it was a no. that counts."]
+    - id: chapter-4
+      title: "Twelve"
+      enterWhen: { flags: [ludibrium.hour.found] }
+      dialogueOverrides:
+        greet: ["it strikes twelve. every night. i stand under it and count. i've never once got bored.", "good evening. it is evening. the tower agrees."]
+        smallTalk: ["Marlow wants a parade. he's polishing the banner. Benno's polishing his boots. i think there's going to be a parade."]
+        chapterEnter: ["(stands very still under the clock tower while it strikes, counting on his fingers, all the way to twelve)"]

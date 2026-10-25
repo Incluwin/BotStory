@@ -1,0 +1,429 @@
+# Orbis quest lines (docs/REGIONAL_RESIDENTS_PLAN.md). Every id is from the server's own data:
+# Orbis Tower jr. sentinel 5200000 (shellpiece 4000083, floors 20-18 200080200-200080400), ice sentinel 5200001
+# (4000084, floors 13/12/10/8), fire sentinel 5200002 (4000085, floors 12/11 200081000/200081100), leatty 5300000
+# (furball 4000086, floors 7-5 200081500-200081700), dark leatty 5300001 (4000087, floors 5-3).
+# Cloud Park star pixie 3230200 (starpiece 4000059), lunar pixie 4230106 (moonpiece 4000060, parks III/IV 200040000/
+# 200050000), luster pixie 5120000 (sunpiece 4000061, parks V/VI 200070000/200080000), stiff/soft feather 4003004/4003005.
+# Strolling Path nependeath 4230105/4230122 (seed 4000058, 200030000, 200040001), dark nependeath 4130102/4130104
+# (seed 4000062, 200060000, 200040001). Gardens: jr. cellion/lioner/grupin 3210200/3210201/3210202 (solid horn 4000073,
+# 200010110/120/130), cellion 5120001 (tail 4000070, 200010111), lioner 5120002 (tail 4000071, 200010121), lucida
+# 7130000 (tail 4000074, garden of darkness 200010301/200010302). Old Man's House 200050001.
+# Off Orbis: El Nath yeti 6300000 (horn 4000049, ice valley 211040100/211040200), yeti and pepe 7130102 (pepe beak
+# 4000050, 211040200, valley of snowman 211040101), dark yeti 6400000 (horn 4000056, sharp cliff 211040300/211040400),
+# lycanthrope 8140000, coolie zombie 5130107 (forest of dead trees 211041100-211041400), Riche 6090000 (bible of the
+# corrupt 4000336). Ludibrium klock 8140200 (sealed-up grandpa clock 4000145) and dark klock 8140300 (evil spirit
+# 4000146, forgotten path of time 2 220070100), deep buffoon 6400100 (warped path of time 2 220060100).
+# Gear: Vesna's wands Evil Tale 1372014 L58 / Angel Wings 1372015 L68 / Phoenix Wand 1372016 L78; Ansel's bows Asianic
+# Bow 1452004 L60 / Golden Hinkel 1452011 L70 / Marine Arund 1452012 L80. Aster's hats for the player's class (warrior,
+# magician, bowman, thief, pirate): L60, L70, L80. Perrin's earrings: Pink-Flowered 1032014 L60, Metal Silver 1032015
+# L70, Metal Heart 1032016 L80.
+
+# ---- Corliss, stationmaster: the unclosed page --------------------------------------------------------------------
+
+- id: corliss-lamps-for-the-platform
+  persona: corliss
+  title: "Lamps for the Platform"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sentinels, type: KILL_MOBS, mobIds: [5200000], count: 25, mapIds: [200080200, 200080300, 200080400] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000083, count: 15 }
+    - { id: lamps, type: DELIVER, to: corliss, take: { itemId: 4000083, count: 15 } }
+  rewards: { meso: 12000, exp: 9000, bondPoints: 30 }
+
+- id: corliss-the-unclosed-page
+  persona: corliss
+  title: "The Unclosed Page"
+  length: MEDIUM
+  requires: { level: { min: 35 }, questsCompleted: [corliss-lamps-for-the-platform] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: oda, type: TALK_TO, persona: oda, say: ["the evening ship, eleven years ago. i put eleven on it. i still have the manifest. one boy kept a green hat on the whole way through the gate. Edric. tell Corliss i remember the hat."] }
+    - { id: report, type: DELIVER, to: corliss }
+  rewards: { meso: 20000, exp: 16000, bondPoints: 40, worldFlags: [orbis.page.opened] }
+  onComplete: { arcAdvance: { arc: corliss-the-unclosed-page, to: chapter-2 } }
+
+- id: corliss-the-last-name
+  persona: corliss
+  title: "The Last Name"
+  length: SHORT
+  requires: { level: { min: 50 }, flags: [edric.letter.delivered], questsCompleted: [corliss-the-unclosed-page] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ottilie, type: TALK_TO, persona: ottilie, say: ["tell Corliss he can close it. tell him the boy got off his ship and walked all the way down the mountain and stayed there, the silly thing. tell him to use red."] }
+    - { id: ledger, type: DELIVER, to: corliss }
+  rewards: { meso: 30000, exp: 24000, bondPoints: 50, items: [{ itemId: 2022039, count: 10 }], worldFlags: [orbis.page.closed] }
+
+- id: corliss-brass-rails
+  persona: corliss
+  title: "Brass Rails"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [corliss-lamps-for-the-platform] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000084, count: 15 }
+    - { id: rails, type: DELIVER, to: corliss, take: { itemId: 4000084, count: 15 } }
+  rewards: { meso: 9000, exp: 7000, bondPoints: 10 }
+
+# ---- Ottilie, keeper of the hill steps ----------------------------------------------------------------------------
+
+- id: ottilie-flowers-for-the-steps
+  persona: ottilie
+  title: "Flowers for the Steps"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nependeaths, type: KILL_MOBS, mobIds: [4230105, 4230122], count: 25, mapIds: [200030000, 200040001] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4000058, count: 15 }
+    - { id: planted, type: DELIVER, to: ottilie, take: { itemId: 4000058, count: 15 } }
+  rewards: { meso: 15000, exp: 14000, bondPoints: 30 }
+
+- id: ottilie-a-lamp-in-the-window
+  persona: ottilie
+  title: "A Lamp in the Window"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: starpieces, type: COLLECT_ITEM, itemId: 4000059, count: 12 }
+    - { id: lamp, type: DELIVER, to: ottilie, take: { itemId: 4000059, count: 12 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Fitch, letter runner -----------------------------------------------------------------------------------------
+
+- id: fitch-the-road-down
+  persona: fitch
+  title: "The Road Down"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: maud, type: TALK_TO, persona: maud, say: ["Fitch's satchel. thank you. ...Halvar, Brekka, Old Tam. three for the mine. i'll read them out tonight. the mine likes to hear its post."] }
+    - { id: back, type: DELIVER, to: fitch }
+  rewards: { meso: 15000, exp: 15000, bondPoints: 30 }
+
+- id: fitch-pixie-post
+  persona: fitch
+  title: "Pixie Post"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [fitch-the-road-down] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pixies, type: KILL_MOBS, mobIds: [4230106], count: 25, mapIds: [200040000, 200050000] }
+    - { id: safe, type: DELIVER, to: fitch }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 10 }
+
+# ---- Vesna, cloud park warden (recruitable; her wands) ------------------------------------------------------------
+
+- id: vesna-the-pixie-count
+  persona: vesna
+  title: "The Pixie Count"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pixies, type: KILL_MOBS, mobIds: [4230106], count: 30, mapIds: [200040000, 200050000] }
+    - { id: oldman, type: VISIT_MAP, mapIds: [200050001] }
+    - { id: report, type: DELIVER, to: vesna }
+  rewards: { meso: 18000, exp: 16000, bondPoints: 30, flags: [vesna.intro.done] }
+
+- id: vesna-evil-tale
+  persona: vesna
+  title: "Evil Tale"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [vesna-the-pixie-count] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: luster, type: KILL_MOBS, mobIds: [5120000], count: 30, mapIds: [200070000, 200080000] }
+    - { id: sunpieces, type: COLLECT_ITEM, itemId: 4000061, count: 15 }
+    - { id: setting, type: DELIVER, to: vesna, take: { itemId: 4000061, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1372014, scrolls: [{ success: 100 }] }
+
+- id: vesna-angel-wings
+  persona: vesna
+  title: "Angel Wings"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [vesna-evil-tale] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lucidas, type: KILL_MOBS, mobIds: [7130000], count: 30, mapIds: [200010301, 200010302] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000074, count: 15 }
+    - { id: wings, type: DELIVER, to: vesna, take: { itemId: 4000074, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1372015, scrolls: [{ success: 60 }] }
+
+- id: vesna-phoenix-wand
+  persona: vesna
+  title: "The Phoenix"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [vesna-angel-wings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [5130107], count: 30, mapIds: [211041100, 211041200, 211041300, 211041400] }
+    - { id: riche, type: KILL_MOBS, mobIds: [6090000], count: 1, mapIds: [211041100, 211041200, 211041300, 211041400] }
+    - { id: bible, type: COLLECT_ITEM, itemId: 4000336, count: 1 }
+    - { id: fire, type: DELIVER, to: vesna, take: { itemId: 4000336, count: 1 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1372016, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: vesna-moon-tally
+  persona: vesna
+  title: "The Moon Tally"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [vesna-the-pixie-count] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: moonpieces, type: COLLECT_ITEM, itemId: 4000060, count: 15 }
+    - { id: weigh, type: DELIVER, to: vesna, take: { itemId: 4000060, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Ansel, garden hunter (recruitable; his bows) -----------------------------------------------------------------
+
+- id: ansel-the-colour-gardens
+  persona: ansel
+  title: "The Colour Gardens"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: young, type: KILL_MOBS, mobIds: [3210200, 3210201, 3210202], count: 30, mapIds: [200010110, 200010120, 200010130, 200010100] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000073, count: 15 }
+    - { id: report, type: DELIVER, to: ansel, take: { itemId: 4000073, count: 15 } }
+  rewards: { meso: 15000, exp: 13000, bondPoints: 30, flags: [ansel.intro.done] }
+
+- id: ansel-asianic-bow
+  persona: ansel
+  title: "The Asianic Bow"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [ansel-the-colour-gardens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cellions, type: KILL_MOBS, mobIds: [5120001], count: 30, mapIds: [200010111, 200010200] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000070, count: 15 }
+    - { id: grip, type: DELIVER, to: ansel, take: { itemId: 4000070, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { itemId: 1452004, scrolls: [{ success: 100 }] }
+
+- id: ansel-golden-hinkel
+  persona: ansel
+  title: "The Golden Hinkel"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [ansel-asianic-bow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [6400000], count: 30, mapIds: [211040300, 211040400, 211040700] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000056, count: 15 }
+    - { id: nocks, type: DELIVER, to: ansel, take: { itemId: 4000056, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { itemId: 1452011, scrolls: [{ success: 60 }] }
+
+- id: ansel-marine-arund
+  persona: ansel
+  title: "My Father's Bow"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [ansel-golden-hinkel] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jasper, type: TALK_TO, persona: jasper, say: ["the deep ones? warped path, second stretch, where the floor hums. Ansel sent you? tell him the sea's a long way from a clock. tell him i said the string will take anyway."] }
+    - { id: buffoons, type: KILL_MOBS, mobIds: [6400100], count: 40, mapIds: [220060100] }
+    - { id: string, type: DELIVER, to: ansel }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { itemId: 1452012, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ansel-fletching
+  persona: ansel
+  title: "Quiet Fletching"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [ansel-the-colour-gardens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003005, count: 20 }
+    - { id: quiver, type: DELIVER, to: ansel, take: { itemId: 4003005, count: 20 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 10 }
+
+# ---- Aster, milliner (hats for the player's class) ----------------------------------------------------------------
+
+- id: aster-felt-from-the-tower
+  persona: aster
+  title: "Felt from the Tower"
+  length: SHORT
+  requires: { level: { min: 32 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leatties, type: KILL_MOBS, mobIds: [5300000], count: 25, mapIds: [200081500, 200081600, 200081700] }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000086, count: 15 }
+    - { id: felt, type: DELIVER, to: aster, take: { itemId: 4000086, count: 15 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 30 }
+
+- id: aster-yellow-plumes
+  persona: aster
+  title: "A Yellow Plume"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [aster-felt-from-the-tower] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lioners, type: KILL_MOBS, mobIds: [5120002], count: 30, mapIds: [200010121, 200010200] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000071, count: 15 }
+    - { id: fitting, type: DELIVER, to: aster, take: { itemId: 4000071, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { pool: [1002029, 1002242, 1002267, 1002247, 1002634], scrolls: [{ success: 100 }] }
+
+- id: aster-the-snow-brim
+  persona: aster
+  title: "The Snow Brim"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [aster-yellow-plumes] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [6300000], count: 30, mapIds: [211040100, 211040200] }
+    - { id: down, type: COLLECT_ITEM, itemId: 4003005, count: 20 }
+    - { id: brim, type: DELIVER, to: aster, take: { itemId: 4003005, count: 20 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { pool: [1002030, 1002252, 1002286, 1002281, 1002637], scrolls: [{ success: 60 }] }
+
+- id: aster-the-crowning-hat
+  persona: aster
+  title: "The Crowning Hat"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [aster-the-snow-brim] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pattern, type: TALK_TO, persona: ottilie, say: ["the pattern from Edric's hat? here. i kept it in my recipe book. it's only paper. ...tell Aster to make it fit this time."] }
+    - { id: pairs, type: KILL_MOBS, mobIds: [7130102], count: 30, mapIds: [211040200, 211040101] }
+    - { id: beaks, type: COLLECT_ITEM, itemId: 4000050, count: 15 }
+    - { id: crest, type: DELIVER, to: aster, take: { itemId: 4000050, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { pool: [1002338, 1002271, 1002275, 1002327, 1002640], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: aster-ribbons
+  persona: aster
+  title: "Black Bands"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 32 }, questsCompleted: [aster-felt-from-the-tower] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: furballs, type: COLLECT_ITEM, itemId: 4000087, count: 15 }
+    - { id: bands, type: DELIVER, to: aster, take: { itemId: 4000087, count: 15 } }
+  rewards: { meso: 9000, exp: 7000, bondPoints: 10 }
+
+# ---- Perrin, jeweller (earrings, any class) -----------------------------------------------------------------------
+
+- id: perrin-sentinel-sparks
+  persona: perrin
+  title: "Sentinel Sparks"
+  length: SHORT
+  requires: { level: { min: 32 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sentinels, type: KILL_MOBS, mobIds: [5200002], count: 25, mapIds: [200081000, 200081100, 200081200, 200081300] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000085, count: 12 }
+    - { id: setting, type: DELIVER, to: perrin, take: { itemId: 4000085, count: 12 } }
+  rewards: { meso: 12000, exp: 10000, bondPoints: 30 }
+
+- id: perrin-pink-petals
+  persona: perrin
+  title: "Pink Petals"
+  length: MEDIUM
+  requires: { level: { min: 58 }, friendship: 5, questsCompleted: [perrin-sentinel-sparks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nependeaths, type: KILL_MOBS, mobIds: [4130102, 4130104], count: 30, mapIds: [200060000, 200040001] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4000062, count: 15 }
+    - { id: petals, type: DELIVER, to: perrin, take: { itemId: 4000062, count: 15 } }
+  rewards:
+    meso: 60000
+    exp: 60000
+    bondPoints: 35
+    gear:
+      - { pool: [1032014], scrolls: [{ success: 100 }] }
+
+- id: perrin-clock-silver
+  persona: perrin
+  title: "Silver That Rings"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [perrin-pink-petals] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: klocks, type: KILL_MOBS, mobIds: [8140200], count: 30, mapIds: [220070100] }
+    - { id: clocks, type: COLLECT_ITEM, itemId: 4000145, count: 15 }
+    - { id: silver, type: DELIVER, to: perrin, take: { itemId: 4000145, count: 15 } }
+  rewards:
+    meso: 100000
+    exp: 100000
+    bondPoints: 50
+    gear:
+      - { pool: [1032015], scrolls: [{ success: 60 }] }
+
+- id: perrin-a-metal-heart
+  persona: perrin
+  title: "A Metal Heart"
+  length: LONG
+  requires: { level: { min: 78 }, friendship: 10, questsCompleted: [perrin-clock-silver] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dark, type: KILL_MOBS, mobIds: [8140300], count: 30, mapIds: [220070100] }
+    - { id: spirits, type: COLLECT_ITEM, itemId: 4000146, count: 15 }
+    - { id: hearts, type: DELIVER, to: perrin, take: { itemId: 4000146, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 60
+    gear:
+      - { pool: [1032016], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: perrin-polishing-grit
+  persona: perrin
+  title: "Polishing Grit"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [perrin-sentinel-sparks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sunpieces, type: COLLECT_ITEM, itemId: 4000061, count: 10 }
+    - { id: polish, type: DELIVER, to: perrin, take: { itemId: 4000061, count: 10 } }
+  rewards: { meso: 11000, exp: 9000, bondPoints: 10 }

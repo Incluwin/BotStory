@@ -1,0 +1,469 @@
+# Orbis cast: the city that waits. 7 residents, 2 recruitable (Vesna the warden for a kill proof, Ansel the hunter for
+# meso), 1 arc (Corliss's unclosed page, which runs on into El Nath through Ottilie's son Edric). Ids in quests/orbis.yaml.
+- id: corliss
+  name: Corliss
+  look: { gender: male }
+  title: "Stationmaster"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 5, to: 12, spot: "venue:station-entrance-door", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:middle-central-benches", activity: REST }
+      - { from: 14, to: 19, spot: "venue:station-entrance-door", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:top-of-the-hill-door", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [orbis, ellinia]
+  questLines: [corliss-lamps-for-the-platform, corliss-the-unclosed-page, corliss-the-last-name, corliss-brass-rails]
+  arc: corliss-the-unclosed-page
+  rumors: [orbis-the-page-read-aloud]
+  relationships:
+    - { persona: ottilie, kind: OWES_AN_ANSWER }
+    - { persona: fitch, kind: EMPLOYS }
+    - { persona: oda, kind: OTHER_END_OF_THE_LINE }
+  giftItemIds: [2022039, 4000059]
+  dialogue:
+    greetFirst: ["name? i write down everyone who comes through. it's not suspicion. it's the ledger.", "you came up from the station. i'd have seen you if you came any other way. i see everything that comes by air."]
+    greet: ["you're in the ledger. you're always in the ledger.", "on time. one of us is."]
+    idle: ["(runs a finger down a column of names, lips moving)", "(checks the sky, then a pocket watch, then the sky again)"]
+    noWork: ["nothing to log but weather. weather doesn't sign."]
+    nothingDue: ["your line's ruled off. square."]
+    who: ["Corliss. stationmaster. every passenger that leaves or lands in Orbis has a line in my book. every line has an end. nearly every."]
+    bye: ["mind the gap. there's quite a lot of it up here."]
+    thanks: ["noted. in pencil. i'll ink it later."]
+    smallTalk: ["the Ellinia ship is the oldest line. Oda keeps the other end. we've never met. we write.", "eleven years on this platform and the sky's never once been late. the ships are always late."]
+    speakPlainly: ["plainly: people leave, people land. i write it down."]
+    questOffer.corliss-lamps-for-the-platform: ["the platform lamps burn sentinel oil, and the sentinels in the tower keep it in their shells. twenty-five jr. sentinels on the top floors, and fifteen shellpieces?"]
+    questAccept.corliss-lamps-for-the-platform: ["the tower entrance is past the park. the top floors are the twentieth down to the eighteenth. they count backwards. so does everything in that tower."]
+    questWaiting.corliss-lamps-for-the-platform: ["fifteen shellpieces. the evening ship lands in the dark otherwise."]
+    questComplete.corliss-lamps-for-the-platform: ["fifteen. the platform's lit for a month. i'll write your name next to the lamps. it's not official. it should be."]
+    questOffer.corliss-the-unclosed-page: ["there's a page in my ledger i never ruled off. the evening ship from Ellinia, eleven years ago. the night the crimson balrog came aboard. ride to Ellinia and ask Oda who she put on it."]
+    questAccept.corliss-the-unclosed-page: ["Oda keeps the Ellinia end. she'll have a manifest. she always has a manifest. we're alike that way."]
+    questWaiting.corliss-the-unclosed-page: ["did Oda remember? she remembers everything. it's a burden for both of us."]
+    questComplete.corliss-the-unclosed-page: ["eleven boarded in Ellinia. ten landed here, alive or carried. one name never arrived and was never found. Edric. Ottilie's boy. i've never been able to write 'lost' next to it."]
+    questOffer.corliss-the-last-name: ["Ottilie came to the platform this morning with a letter in both hands. from El Nath. i need to hear it from her before i write anything. would you ask her for me? i can't."]
+    questAccept.corliss-the-last-name: ["she'll be on the hill steps. she's always on the hill steps."]
+    questWaiting.corliss-the-last-name: ["the pen's been out all day. i keep putting it down."]
+    questComplete.corliss-the-last-name: ["'arrived, eleven years late.' in red. i've never used red. the page is closed. ...i thought it would feel like losing something."]
+    questOffer.corliss-brass-rails: ["the brass rails on the platform want polishing, and nothing polishes like ice sentinel shell, ground fine. fifteen pieces?"]
+    questAccept.corliss-brass-rails: ["ice sentinels keep to the thirteenth floor, mostly. cold creatures. good polish."]
+    questWaiting.corliss-brass-rails: ["fifteen. the rails are dull. passengers notice dull."]
+    questComplete.corliss-brass-rails: ["fifteen. the rails will shine by the evening ship."]
+    about.ottilie: ["Ottilie meets the evening ship every night. she doesn't get on it. she doesn't expect anyone off it. she just meets it."]
+    about.fitch: ["Fitch runs the post down to El Nath on foot. four thousand steps. i pay him by the letter. he'd do it for free. don't tell him."]
+    about.oda: ["Oda keeps the Ellinia end of my line. her letters are shorter than mine. i've been trying to learn from that for nine years."]
+    about.vesna: ["Vesna keeps the pixies off the platform. the pixies keep off Vesna. i've seen her count them out loud."]
+    about.edric: ["Edric. it's a name in my ledger. it's on a page i couldn't close. ask Ottilie. no, don't. not unless she brings him up."]
+    aboutUnknown: ["not in my ledger. they came by some other way."]
+    friend.close: ["you have your own page in my ledger now. it has no end ruled under it. i like it that way."]
+    friend.best: ["every name in the book is a name. yours is the one i look for when the ship comes in."]
+    famed: ["...i'll log that. in ink."]
+    defamed: ["logged. in pencil. pencil rubs out."]
+    gift: ["thank you. it's going in the desk drawer, which means i like it."]
+    gift.favorite: ["oh. for me. i'll keep it by the ledger for the evening ship. you noticed. people don't."]
+    gift.again: ["one a day. i keep a ledger of those too."]
+
+- id: ottilie
+  name: Ottilie
+  look: { gender: female }
+  title: "Keeper of the Hill Steps"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 7, to: 11, spot: "venue:by-moppie", activity: LINGER }
+      - { from: 11, to: 17, spot: "venue:middle-central-benches", activity: REST }
+      - { from: 17, to: 22, spot: "venue:top-of-the-hill-door", activity: LINGER }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [orbis]
+  questLines: [ottilie-flowers-for-the-steps, ottilie-a-lamp-in-the-window]
+  rumors: [orbis-the-page-read-aloud]
+  relationships:
+    - { persona: corliss, kind: WAITS_WITH }
+    - { persona: edric, kind: MOTHER_OF }
+    - { persona: aster, kind: FRIEND }
+  giftItemIds: [4000058, 2022039]
+  dialogue:
+    greetFirst: ["oh, a new face on the steps. sit, if you like. the view's the only thing up here that's free.", "you've come a long way up. everyone has, here."]
+    greet: ["there you are. i was hoping it'd be you.", "hello, dear. the evening ship's not in yet."]
+    idle: ["(sweeps a step that is already clean)", "(watches the sky toward Ellinia, then smiles at no one)"]
+    noWork: ["nothing needs doing that can't wait for tomorrow. most things can, up here."]
+    nothingDue: ["you owe me nothing. a visit now and then, if you're passing."]
+    who: ["Ottilie. i keep the hill steps tidy and i meet the evening ship. somebody ought to meet it."]
+    bye: ["safe road, dear. write to someone."]
+    thanks: ["oh, don't. it was nothing. it was lovely."]
+    smallTalk: ["i plant flowers along the steps so the people coming up have something to look at besides the drop.", "the goddess on the tower sleeps, they say. i don't mind. i'm good at waiting for people to wake up."]
+    speakPlainly: ["simply put: i wait. i'm good at it."]
+    questOffer.ottilie-flowers-for-the-steps: ["the nependeaths on the strolling path carry the best seeds. they bite, mind. twenty-five of them and fifteen seeds, and the steps bloom by spring."]
+    questAccept.ottilie-flowers-for-the-steps: ["the strolling path is below the cloud parks. you'll smell it before you see it."]
+    questWaiting.ottilie-flowers-for-the-steps: ["fifteen seeds, dear. i've dug the holes already."]
+    questComplete.ottilie-flowers-for-the-steps: ["fifteen. i'll put the first one at the top step. that's where he used to sit."]
+    questOffer.ottilie-a-lamp-in-the-window: ["i keep a lamp in my window. star pixie pieces burn the longest. twelve of them, if you're in the cloud park anyway?"]
+    questAccept.ottilie-a-lamp-in-the-window: ["the little ones in the first park. they don't mean any harm. they just like shiny things."]
+    questWaiting.ottilie-a-lamp-in-the-window: ["twelve. the lamp's on its last one."]
+    questComplete.ottilie-a-lamp-in-the-window: ["twelve. that's a month of evenings with a light on. thank you, dear."]
+    about.corliss: ["Corliss writes everything down so he doesn't have to say it. we understand each other."]
+    about.edric: ["my boy. he took the evening ship from Ellinia when he was seventeen. he'd like you.", "Edric sat on the top step and threw pebbles at the clouds. i keep his step swept."]
+    about.aster: ["Aster made my boy a hat once. green, with a feather. far too big. he wore it anyway."]
+    about.fitch: ["Fitch brings the post up from El Nath. he always stops on my step, post or no post. he's a kind boy."]
+    aboutUnknown: ["i don't think they've come up the hill."]
+    friend.close: ["you're on my steps more than anyone. i've started sweeping a second one."]
+    friend.best: ["i've waited for a lot of people. you're one of the ones who comes."]
+    famed: ["oh! well. thank you, dear."]
+    defamed: ["oh. well. i expect you had a reason."]
+    gift: ["for me? you shouldn't have. i'm glad you did."]
+    gift.favorite: ["oh, you remembered. that goes on the top step with me tonight, dear."]
+    gift.again: ["you've already brought me something today. keep the rest for yourself, dear."]
+
+- id: fitch
+  name: Fitch
+  look: { gender: male }
+  title: "Letter Runner"
+  job: ASSASSIN
+  level: { min: 44, max: 46 }
+  strength: SEASONED
+  loadout: kerning-thief-l35
+  personality: relaxed-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 10, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:by-trina", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [el nath, orbis]
+  questLines: [fitch-the-road-down, fitch-pixie-post]
+  relationships:
+    - { persona: corliss, kind: WORKS_FOR }
+    - { persona: maud, kind: DELIVERS_TO }
+    - { persona: ottilie, kind: STOPS_FOR }
+  giftItemIds: [2000002, 4003004]
+  dialogue:
+    greetFirst: ["four thousand and twelve steps from here to El Nath. i've counted. twice. got different numbers. took the higher one.", "you look like someone who's never run a letter. it's great. it's terrible. it's great."]
+    greet: ["hey! nothing for you. there's never anything for anybody. i run anyway.", "back up the hill? me too. always."]
+    idle: ["(re-ties a bootlace for the third time)", "(sorts a satchel of letters by a system only he understands)"]
+    noWork: ["post's run. legs are run. both of us are done."]
+    nothingDue: ["nothing owed. postage is on Corliss."]
+    who: ["Fitch. i run the post between Orbis and El Nath, down Orbis Tower, past the snowfields and back. on foot. the ships don't go there."]
+    bye: ["don't run the stairs. i mean it. i've seen it."]
+    thanks: ["anytime! well. between ten and four i'm on the road. any other time!"]
+    smallTalk: ["the pixies in the cloud park steal letters. they can't read. they just like the paper.", "every letter for El Nath goes to Maud first. she knows where everyone in the mountain lives. and who doesn't anymore."]
+    speakPlainly: ["short version: letters, legs, stairs."]
+    questOffer.fitch-the-road-down: ["i've got a satchel for Maud in El Nath and a knee that says no today. run it down for me? down the tower, out past the snow. she's at the market end."]
+    questAccept.fitch-the-road-down: ["the tower, twenty floors, down and down, then it gets cold. when your eyelashes freeze you're nearly there."]
+    questWaiting.fitch-the-road-down: ["did Maud get it? she'll have said something grim. she always does."]
+    questComplete.fitch-the-road-down: ["delivered! you're a runner now. unofficially. very unofficially. don't tell Corliss, he'll pay you."]
+    questOffer.fitch-pixie-post: ["the lunar pixies in the middle parks keep ambushing me for the paper. twenty-five fewer of them and my satchel stays shut."]
+    questAccept.fitch-pixie-post: ["third and fourth parks. they're the purple ones. they giggle. it's upsetting."]
+    questWaiting.fitch-pixie-post: ["twenty-five. they'll be back. they're always back. but later."]
+    questComplete.fitch-pixie-post: ["twenty-five! i'll run the tower with my satchel open, just to feel brave."]
+    about.corliss: ["Corliss pays me by the letter and pretends he doesn't care if they arrive. he cares. he checks."]
+    about.maud: ["Maud reads every letter's name out loud before she takes it. half the names she says twice. the miners. you'll see."]
+    about.ottilie: ["i stop on Ottilie's step every evening, post or no post. she thanks me every time, either way."]
+    about.edric: ["there's an Edric in El Nath. a sentry. big, quiet, never gets post. never sends any either. odd thing to notice. i notice post."]
+    aboutUnknown: ["never had a letter for them. that's how i know people."]
+    friend.close: ["i'd run a letter for you through a blizzard. i have run letters through blizzards. this would be on purpose."]
+    friend.best: ["if you ever need something carried, anywhere, i'll carry it. that's the whole of me, and it's yours."]
+    famed: ["whoa. thanks! that's going in my satchel. metaphorically."]
+    defamed: ["ouch. fair. probably fair."]
+    gift: ["for me? the post doesn't usually go this direction."]
+    gift.favorite: ["for the run! you get me. the knee says thank you too."]
+    gift.again: ["you already gave me something today. my satchel's full of nice."]
+
+- id: vesna
+  name: Vesna
+  look: { gender: female }
+  title: "Cloud Park Warden"
+  job: IL_WIZARD
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: orbis-wand-l58
+  personality: efficient-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:by-staff-sergeant-charlie", activity: SOCIALIZE }
+      - { from: 18, to: 23, spot: "venue:lower-central-street", activity: SHOW_OFF }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [cloud park, lunar pixie, garden of darkness]
+  contract: vesna-wardens-terms
+  questLines: [vesna-the-pixie-count, vesna-evil-tale, vesna-angel-wings, vesna-phoenix-wand, vesna-moon-tally]
+  rumors: [orbis-cloud-park-at-dusk]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: ansel, kind: RIVAL }
+    - { persona: corliss, kind: KEEPS_THE_PLATFORM_CLEAR_FOR }
+  giftItemIds: [4000060, 2000006]
+  dialogue:
+    greetFirst: ["you came through the cloud park. how many pixies did you see? that's not small talk. i keep a count.", "stand still a moment. no, you're not a pixie. go on."]
+    greet: ["two hundred and six this morning. lunar. you?", "warden's hours. what do you need?"]
+    idle: ["(counts something in the sky under her breath)", "(turns a wand over and over without looking at it)"]
+    noWork: ["the parks are quiet. the count's steady. nothing for you today."]
+    nothingDue: ["nothing owed. you're square with the parks."]
+    who: ["Vesna. i'm the warden of the cloud parks. i keep the pixies in the parks and out of the city. they'd say i'm the problem."]
+    bye: ["count your steps on the clouds. they're softer than they look and the drop is longer."]
+    thanks: ["fine. logged. carry on."]
+    smallTalk: ["star pixies steal. lunar pixies steal and giggle. luster pixies steal and don't bother giggling. it's a ladder.", "the lucidas in the dark garden are pixies too. pixies that stopped being sorry."]
+    speakPlainly: ["plainly: the pixies, the parks, me in the middle."]
+    offer: ["show me you can hold a park. sixty luster pixies counted down, and thirty thousand for the hours i'm not on the clouds. then i'm yours for a shift."]
+    join: ["fine. i'll count, you swing. try not to step on anything that glows."]
+    bench: ["i'll be on the clouds. three days, then the count goes stale and so do i."]
+    leave: ["shift's done. the parks will want me back. they always want me back."]
+    refuse.bond: ["i don't leave the parks with strangers. the pixies notice when i'm gone."]
+    refuse.flags: ["count with me once first. lunar pixies, the middle parks. then we'll talk about the clouds."]
+    refuseOwnErrand: ["that's my count. you don't count for me. you count with me."]
+    questOffer.vesna-the-pixie-count: ["the lunar count is wrong. thirty of them in the third and fourth parks, then go knock on the old man's door in park four and tell him the warden says hello. he taught me. he won't remember."]
+    questAccept.vesna-the-pixie-count: ["the old man's house is the little door in park four. he likes visitors. he forgets them, but he likes them."]
+    questWaiting.vesna-the-pixie-count: ["thirty, and the old man. he likes it when someone knocks."]
+    questComplete.vesna-the-pixie-count: ["thirty. the count's right again. and he answered the door? good. that's the part i actually wanted."]
+    questOffer.vesna-evil-tale: ["the luster pixies in parks five and six hoard sunpieces. thirty of them, fifteen pieces. i'll set them in the wand i carried my first year. Evil Tale. it's been sitting in a drawer."]
+    questAccept.vesna-evil-tale: ["the luster ones hit harder than they look. so do i."]
+    questWaiting.vesna-evil-tale: ["fifteen sunpieces. the wand's on the desk, waiting."]
+    questComplete.vesna-evil-tale: ["Evil Tale. seven safe scrolls, every one took. i warded the parks with it for a year. ward something with it."]
+    questOffer.vesna-angel-wings: ["the lucidas in the garden of darkness were pixies once. thirty of them, fifteen tails. Angel Wings wants something that was bright and isn't. i don't make the rules. i follow them."]
+    questAccept.vesna-angel-wings: ["the stairway to the sky, then down into the dark garden. they hit hard. don't let them sing at you."]
+    questWaiting.vesna-angel-wings: ["fifteen tails. i've counted the lucidas. i don't like the number."]
+    questComplete.vesna-angel-wings: ["Angel Wings. seven sixties, every one took. i've never had that kind of luck. i had it for you."]
+    questOffer.vesna-phoenix-wand: ["the Phoenix. my teacher's wand. it wants a fire that won't stay out. the coolie zombies in the dead forest below El Nath, thirty, and the lich Riche keeps a book that burns forever. bring me the book."]
+    questAccept.vesna-phoenix-wand: ["the forest of dead trees, past El Nath. Riche walks one of the four. you'll know the one."]
+    questWaiting.vesna-phoenix-wand: ["the book. one book. the fire's waiting for it."]
+    questComplete.vesna-phoenix-wand: ["the Phoenix. two tens, five sixties, every one took. i held my breath through the tens. my teacher would have laughed at me. take it. it was always going to be someone's."]
+    questOffer.vesna-moon-tally: ["fifteen moonpieces for the tally. i weigh them. the weight tells me how the parks are doing."]
+    questAccept.vesna-moon-tally: ["lunar pixies, the middle parks."]
+    questWaiting.vesna-moon-tally: ["fifteen. the scale's empty."]
+    questComplete.vesna-moon-tally: ["fifteen. heavy month. the parks are healthy."]
+    about.ansel: ["Ansel shoots the pixies i'm counting. we have words. the words are numbers."]
+    about.corliss: ["Corliss asks me for the pixie count before the evening ship. i don't know what he does with it. i think it goes in the ledger."]
+    about.ottilie: ["Ottilie sweeps her steps every evening. the pixies leave her alone. they know."]
+    aboutUnknown: ["not on the clouds. not in my count."]
+    friend.close: ["i've started counting you. on purpose. that's a lot from me."]
+    friend.best: ["two hundred pixies a morning and i only ever look for one person on the clouds. you."]
+    famed: ["...noted. favourably."]
+    defamed: ["noted. less favourably."]
+    gift: ["thank you. it goes in the drawer with the warden's things."]
+    gift.favorite: ["oh. the good kind. you've been counting with me."]
+    gift.again: ["one's the count for today."]
+
+- id: ansel
+  name: Ansel
+  look: { gender: male }
+  title: "Garden Hunter"
+  job: HUNTER
+  level: { min: 60, max: 62 }
+  strength: VETERAN
+  loadout: orbis-bow-l58
+  personality: relaxed-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 5, to: 11, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 11, to: 18, spot: "venue:lower-central-street", activity: SHOW_OFF }
+      - { from: 18, to: 22, spot: "venue:by-trina", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  knows: [garden of red, garden of yellow, garden of green, stairway to the sky]
+  contract: ansel-day-rate
+  questLines: [ansel-the-colour-gardens, ansel-asianic-bow, ansel-golden-hinkel, ansel-marine-arund, ansel-fletching]
+  rumors: [orbis-cloud-park-at-dusk]
+  benchToleranceDays: 5
+  paceGap: 3
+  relationships:
+    - { persona: vesna, kind: RIVAL }
+    - { persona: bjarke, kind: HUNTED_WITH }
+  giftItemIds: [4003005, 2060001]
+  dialogue:
+    greetFirst: ["wind's from the west. you came in with it.", "you walk like you've never had to be quiet. that's fine. the gardens will teach you."]
+    greet: ["good light today.", "hey. wind's steady."]
+    idle: ["(sights down an arrow shaft, then puts it back in the quiver)", "(tests a bowstring with two fingers, listening)"]
+    noWork: ["nothing to hunt that isn't hunting me back. tomorrow."]
+    nothingDue: ["we're even."]
+    who: ["Ansel. i hunt the colour gardens. cellions, lioners, grupins. somebody has to, or the gardens are all teeth."]
+    bye: ["keep the wind at your back."]
+    thanks: ["sure."]
+    smallTalk: ["red, yellow, green. the gardens are colours. the things in them are just teeth with colours on.", "my father's bow was a marine arund. he strung it for the sea. we live in the sky. he never explained."]
+    speakPlainly: ["plainly: i shoot things that bite the gardeners."]
+    offer: ["ninety thousand, and i hunt with you a day. that's the rate. i don't haggle. the wind doesn't haggle."]
+    join: ["fine. you go loud, i'll go quiet. it works."]
+    bench: ["i'll be in the gardens. a few days. then i get restless."]
+    leave: ["good hunting. the gardens need me back."]
+    refuse.bond: ["i don't hunt with people i don't know. you shoot wrong when you're nervous."]
+    refuse.flags: ["walk the colour gardens first. then we'll talk rates."]
+    refuseOwnErrand: ["that's my hunt. you hunt beside me, not for me."]
+    questOffer.ansel-the-colour-gardens: ["the young ones in the first gardens are getting bold. thirty of them, red, yellow, green, any, and fifteen of their horns."]
+    questAccept.ansel-the-colour-gardens: ["the road to the gardens of three colours is out past the first park. the young ones hunt in threes. so should you."]
+    questWaiting.ansel-the-colour-gardens: ["fifteen horns. they're solid. you'll know them."]
+    questComplete.ansel-the-colour-gardens: ["fifteen. the gardeners can work tomorrow. you've got an eye."]
+    questOffer.ansel-asianic-bow: ["the grown cellions in the red garden. thirty, and fifteen tails for the bow grip. it's an Asianic. it was my first. i'd like it to be somebody's."]
+    questAccept.ansel-asianic-bow: ["garden of red, the deep half. they're fast. be faster or be somewhere else."]
+    questWaiting.ansel-asianic-bow: ["fifteen tails. the grip's half wrapped."]
+    questComplete.ansel-asianic-bow: ["the Asianic. seven safe scrolls, every one took. i learned to breathe with it. you will too."]
+    questOffer.ansel-golden-hinkel: ["the Golden Hinkel wants dark yeti horn for its nocks. Sharp Cliff, down past El Nath. thirty dark yetis, fifteen horns. Bjarke says they're slower than they look. Bjarke lies."]
+    questAccept.ansel-golden-hinkel: ["the cliffs are below the ice valleys. watch the edges. the yetis like edges."]
+    questWaiting.ansel-golden-hinkel: ["fifteen horns. the nocks are carved and waiting."]
+    questComplete.ansel-golden-hinkel: ["the Golden Hinkel. seven sixties, every one took. i've never strung a better bow. now i've given one away."]
+    questOffer.ansel-marine-arund: ["my father's Marine Arund. it wants a string strung where the floor hums. the deep buffoons on Ludibrium's warped path stand right on the hum. forty of them. and ask Jasper where they stand. he shoots there."]
+    questAccept.ansel-marine-arund: ["Ludibrium, the ship from the station. the warped path is past the clock. Jasper will be grumpy. that's normal."]
+    questWaiting.ansel-marine-arund: ["forty, and Jasper. the string's soaking."]
+    questComplete.ansel-marine-arund: ["the Marine Arund. two tens and five sixties, every one took. my father strung it for the sea. you string it for wherever you're going."]
+    questOffer.ansel-fletching: ["twenty soft feathers for fletching. the grown garden beasts shed them. so do yetis."]
+    questAccept.ansel-fletching: ["soft ones, not stiff. the stiff ones whistle."]
+    questWaiting.ansel-fletching: ["twenty feathers."]
+    questComplete.ansel-fletching: ["twenty. a quiver's worth. quiet ones."]
+    about.vesna: ["Vesna counts the pixies. i shoot some of them. she counts that too. we're working on it."]
+    about.bjarke: ["Bjarke and i hunted Wolf Territory one winter. he talked the whole time. the wolves heard us coming for a week."]
+    about.jasper: ["Jasper shoots ghosts in Ludibrium. says it's the same as hunting. it isn't. ghosts don't run."]
+    about.corliss: ["Corliss logs me out every morning and in every night. i've never once told him where i'm going. he writes 'gardens'. he's right."]
+    aboutUnknown: ["never hunted with them."]
+    friend.close: ["i'd hunt with you without the rate. don't tell Vesna i said that."]
+    friend.best: ["my father taught me to hunt alone. i've unlearned it for you."]
+    famed: ["huh. thanks."]
+    defamed: ["fair. i'll aim better."]
+    gift: ["thanks. it'll get used."]
+    gift.favorite: ["you notice what a hunter runs short of. that's most of hunting."]
+    gift.again: ["that's enough for today."]
+
+- id: aster
+  name: Aster
+  look: { gender: female }
+  title: "Milliner"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 8, to: 13, spot: "venue:weapon-store-door", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:middle-central-benches", activity: REST }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [orbis tower, leatty]
+  questLines: [aster-felt-from-the-tower, aster-yellow-plumes, aster-the-snow-brim, aster-the-crowning-hat, aster-ribbons]
+  relationships:
+    - { persona: ottilie, kind: FRIEND }
+    - { persona: perrin, kind: SHARES_A_WINDOW_WITH }
+  giftItemIds: [4000086, 4000107]
+  dialogue:
+    greetFirst: ["oh, stop. hold still. your head. it's a perfectly good head and you're wasting it.", "a hat is a promise you wear where everyone can see it. what are you promising? nothing? we can fix that."]
+    greet: ["darling, your brim. no. never mind. yes. come here.", "hello! you're bareheaded again. i can tell from across the street."]
+    idle: ["(turns a felt brim on her knee, pinching it into shape)", "(holds a feather up to the sky to judge the colour)"]
+    noWork: ["no commissions today. i'm designing. designing looks like sitting."]
+    nothingDue: ["we're square. your head, however, owes me nothing yet."]
+    who: ["Aster. milliner. i make hats for heads that have somewhere to be, which in Orbis is every head."]
+    bye: ["hat on when you leave. the wind up here takes them, so hold on."]
+    thanks: ["oh, you. wear it well."]
+    smallTalk: ["the wind takes a hat a day off this city. i make two a day. that's business.", "the best felt in the world grows on leatties in the tower. they don't know. they'd be insufferable."]
+    speakPlainly: ["plainly: hats. good ones. for you."]
+    questOffer.aster-felt-from-the-tower: ["i'm out of felt. the leatties in the tower grow it. twenty-five leatties, seventh floor down to fifth, and fifteen furballs, the fluffy ones."]
+    questAccept.aster-felt-from-the-tower: ["the tower counts down from the top. seventh, sixth, fifth. they roll at you. it's adorable and it hurts."]
+    questWaiting.aster-felt-from-the-tower: ["fifteen furballs, darling. the steamer's on."]
+    questComplete.aster-felt-from-the-tower: ["fifteen! oh, these are lovely. three hats' worth. one of them is yours eventually. that's a threat."]
+    questOffer.aster-yellow-plumes: ["a hat for you. a real one. it wants a plume, and the only yellow worth wearing is a grown lioner's tail. thirty lioners in the yellow garden, fifteen tails."]
+    questAccept.aster-yellow-plumes: ["garden of yellow, the deep half. they're very proud of the tails. take them anyway."]
+    questWaiting.aster-yellow-plumes: ["fifteen tails. the crown's blocked and waiting."]
+    questComplete.aster-yellow-plumes: ["there. cut for how you fight, every scroll took, and the plume's the best i've ever set. hold still. perfect."]
+    questOffer.aster-the-snow-brim: ["the next one wants a brim that holds in any wind. yeti down. thirty yetis in El Nath's ice valleys and twenty soft feathers, the downy ones."]
+    questAccept.aster-the-snow-brim: ["the ice valleys, past the town. bring a scarf. bring two. one's for me."]
+    questWaiting.aster-the-snow-brim: ["twenty feathers, darling. the brim's pinned."]
+    questComplete.aster-the-snow-brim: ["there. the snow brim. shaped for your work. it won't move in a gale. i tested it off the station roof. don't ask."]
+    questOffer.aster-the-crowning-hat: ["the last hat i'll make you is the one i've been sketching since we met. Ottilie has a pattern i need, from a hat i made long ago. ask her for it. then thirty yeti and pepe pairs in the ice valley, and fifteen pepe beaks for the crest."]
+    questAccept.aster-the-crowning-hat: ["be gentle with Ottilie. the pattern is from her boy's hat. green, with a feather. far too big."]
+    questWaiting.aster-the-crowning-hat: ["the pattern, and fifteen beaks. polished, they shine like nothing else."]
+    questComplete.aster-the-crowning-hat: ["the crowning hat. cut for you, two tens and the rest sixties, every one took. cut from a pattern i made for a boy who went away. it fits you. i knew it would."]
+    questOffer.aster-ribbons: ["dark leattie furballs dye the best black band. fifteen?"]
+    questAccept.aster-ribbons: ["the dark ones, fifth floor down to third."]
+    questWaiting.aster-ribbons: ["fifteen. the bands are waiting."]
+    questComplete.aster-ribbons: ["fifteen. six black bands. very serious hats. very serious people buy them."]
+    about.ottilie: ["Ottilie's my oldest customer. she hasn't bought a hat in eleven years. she comes to watch me make them."]
+    about.perrin: ["Perrin and i share a window. he sets stones, i set feathers. we argue about the light. he's usually right. don't tell him."]
+    about.vesna: ["Vesna wears a hat i'd never make and wears it perfectly. i hate it. i love it."]
+    about.edric: ["i made a boy called Edric a green hat once, far too big. if you ever meet him, look at his head. i'd know my brim anywhere."]
+    aboutUnknown: ["never measured their head."]
+    friend.close: ["i've stopped looking at your hat and started looking at you. that's a milliner's highest compliment."]
+    friend.best: ["every head in Orbis has worn one of my hats. yours is the one i'd make again and again."]
+    famed: ["oh! darling. thank you."]
+    defamed: ["well. it can't be the hat."]
+    gift: ["for me? thank you! it's going on a hat. everything does."]
+    gift.favorite: ["trimming! the good soft kind! you've been listening."]
+    gift.again: ["you've spoiled me enough for today, darling."]
+
+- id: perrin
+  name: Perrin
+  look: { gender: male }
+  title: "Jeweller"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: orbis
+    routine:
+      - { from: 9, to: 15, spot: "venue:by-spiegelmann", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:free-market-entrance", activity: BROWSE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [orbis tower, klock]
+  questLines: [perrin-sentinel-sparks, perrin-pink-petals, perrin-clock-silver, perrin-a-metal-heart, perrin-polishing-grit]
+  relationships:
+    - { persona: aster, kind: SHARES_A_WINDOW_WITH }
+    - { persona: ignatz, kind: BUYS_SCRAP_FROM }
+  giftItemIds: [4000061, 4020003]
+  dialogue:
+    greetFirst: ["hold your hand to the light. no, the other way. there. you've got a scar that catches it. most people don't.", "you came up into the light. everyone does, here. it's why i stay."]
+    greet: ["good light today. come and see.", "hello. mind the tray, it's all small."]
+    idle: ["(holds a loupe to one eye and a sunpiece to the sky)", "(sorts tiny stones into tinier piles)"]
+    noWork: ["nothing needs setting. i'm watching the light change. it's work. it's slow work."]
+    nothingDue: ["nothing owed. light's free up here."]
+    who: ["Perrin. jeweller. i set light into things people can carry. stones mostly. sometimes pixie pieces. once, a shard of a clock."]
+    bye: ["catch the light on the way down."]
+    thanks: ["mm. you're welcome."]
+    smallTalk: ["a stone's only as good as the light you give it. Orbis gives the best light in the world. so i'm here.", "Ludibrium's clocks are made of the finest metal anyone's ever forgotten. i buy the scrap from Ignatz. he thinks i'm mad."]
+    speakPlainly: ["simply: shiny things, set well."]
+    questOffer.perrin-sentinel-sparks: ["fire sentinels keep a spark in their shells. i set them like garnets. twenty-five fire sentinels, tower floors twelve and eleven, and twelve shellpieces?"]
+    questAccept.perrin-sentinel-sparks: ["the eleventh and twelfth floors. warm floors. the spark's still in the shell for an hour after."]
+    questWaiting.perrin-sentinel-sparks: ["twelve shellpieces. the setting's ready."]
+    questComplete.perrin-sentinel-sparks: ["twelve. still warm. lovely. i'll have rings by the evening ship."]
+    questOffer.perrin-pink-petals: ["earrings for you. pink-flowered. the petals are dark nependeath seeds, split and lacquered. thirty dark nependeaths on the second strolling path, fifteen seeds."]
+    questAccept.perrin-pink-petals: ["the second strolling path, or the disposed flower garden. they bite harder than the light ones."]
+    questWaiting.perrin-pink-petals: ["fifteen seeds. the lacquer's mixed."]
+    questComplete.perrin-pink-petals: ["there. the pink-flowered pair, every scroll took. hold still. ...there. the light likes you."]
+    questOffer.perrin-clock-silver: ["the next pair wants silver that rings when it's struck. the klocks in Ludibrium's forgotten path are made of it. thirty klocks, fifteen of their sealed grandpa clocks."]
+    questAccept.perrin-clock-silver: ["the forgotten path of time, past the clock tower. they keep time badly. don't keep time with them."]
+    questWaiting.perrin-clock-silver: ["fifteen clocks. i'll melt the cases. Ignatz will hate me."]
+    questComplete.perrin-clock-silver: ["metal silver earrings. every scroll took. listen. tap one. ...that's the sound of time somebody forgot. now it's yours."]
+    questOffer.perrin-a-metal-heart: ["the last pair. a heart, beating, in metal. the dark klocks hold evil spirits like a heart holds blood. thirty dark klocks and fifteen spirits. yes, it's grim. jewellery usually is."]
+    questAccept.perrin-a-metal-heart: ["the forgotten path again, where the klocks go dark. the spirits come out of them easily. getting them into a jar is harder."]
+    questWaiting.perrin-a-metal-heart: ["fifteen spirits. the hearts are cast and empty."]
+    questComplete.perrin-a-metal-heart: ["the metal heart pair. two tens and the rest sixties, every one took. if you hold them to your ear you can hear them. that's not a figure of speech."]
+    questOffer.perrin-polishing-grit: ["ten luster pixie sunpieces, ground, make the only polish worth using. ten?"]
+    questAccept.perrin-polishing-grit: ["parks five and six."]
+    questWaiting.perrin-polishing-grit: ["ten sunpieces."]
+    questComplete.perrin-polishing-grit: ["ten. a jar of polish. the light thanks you."]
+    about.aster: ["Aster thinks a hat can save a person. i think a stone can. we're both wrong and we both keep at it."]
+    about.ignatz: ["Ignatz sells me the cases of clocks that stopped. he says each one's an hour somebody lost. he wraps them like they're breakable. they are."]
+    about.corliss: ["Corliss bought a ring from me once. never wore it. keeps it in the ledger, between two pages. i've never asked which."]
+    aboutUnknown: ["never set a stone for them."]
+    friend.close: ["you catch the light the way a good stone does. i don't say that to people."]
+    friend.best: ["i've set a lot of things that shine. you're the one i'd keep."]
+    famed: ["oh. thank you. that caught the light."]
+    defamed: ["hm. a flaw. everything has one."]
+    gift: ["thank you. it'll go in the tray."]
+    gift.favorite: ["a clear one. you have an eye. so do i. that's two of us."]
+    gift.again: ["one's enough. the tray's small."]
