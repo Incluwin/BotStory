@@ -334,6 +334,11 @@ public final class ContentLint {
                 if (content.questLogId(quest.id()) == 0) {
                     out.add("WARN " + quest.file() + " quest " + quest.id() + ": no quest-log id; run tools/living-world-questlog.bat");
                 }
+                int tracked = QuestLogTargets.mobs(quest).size();
+                if (tracked > QuestLogTargets.CODED_SLOTS) {
+                    out.add("WARN " + quest.file() + " quest " + quest.id() + ": " + tracked + " monsters to count; the quest"
+                            + " window shows live counts for the first " + QuestLogTargets.CODED_SLOTS);
+                }
             }
         }
         for (Content.Loadout loadout : content.loadouts().values()) {

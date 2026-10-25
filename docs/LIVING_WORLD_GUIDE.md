@@ -233,14 +233,25 @@ lost and collected items stay, a first take can be offered again, a repeat goes 
 and an escort it started heads home.
 
 The Quest Helper tracks them too: `Check.img/<id>/1` lists each kill step's first monster and each
-collect step's item (`QuestLogTargets`; the WZ entry is static, so every step's targets show at
-once and a later step's read 0 until it is reached). The client counts items from the inventory;
-kills are the ledger's, sent as the quest's progress string (three digits per monster in that
-order) on every kill and step (`QuestLog.progressed`) and at login. The stock kill counter skips
+collect (or hand-over) step's item (`QuestLogTargets`; the WZ entry is static, so every step's
+targets show at once and a later step's read 0 until it is reached). The client counts items from
+the inventory; kills are the ledger's, sent as the quest's progress string (three digits per
+monster in that order) on every kill and step (`QuestLog.progressed`) and at login. A kill sends
+only that record, as the stock kill counter does; a record in another order, or with a monster the
+quest no longer counts, is replaced whole. The stock kill counter skips
 quest ids 30000-32767, and a Resident quest earns the quest point and the Growing Quest Ring's
 growth only on its first completion (a repeat, or a forfeited repeat put back to completed, does
 not). Names stay plain because the Helper prints colour codes literally; the giver's name in the
 detail text is blue, and Kaentake draws the list rows blue.
+
+The quest window counts them as well: it shows the In Progress text ("1") and builds no list of its
+own, so that text carries the live codes stock quests use. It reads the giver, the line they said
+on accepting, then one line per step, for example `Defeat #o5130104#: #r#a301971##k / 30` and
+`Collect #t4000078#: #b#c4000078##k / 15`: `#a<log id><slot>#` prints the kills of the slot-th
+Check.img/1 monster (one digit, from 1; `QuestLogTargets.mobSlot`), `#c<item>#` how many the
+inventory holds, and `#o`/`#t`/`#m` are names the client fills from its own String.wz. Line breaks
+are a backslash and an `n`, as in stock quest text. See `docs/QUEST_STEP_PROGRESS_PLAN.md`; the
+text changes only with a client re-export.
 
 ### Quest markers
 

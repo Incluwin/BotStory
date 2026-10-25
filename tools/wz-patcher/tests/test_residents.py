@@ -3,6 +3,7 @@
     python -m unittest discover -s tools/wz-patcher/tests
 """
 import random
+import re
 import struct
 import sys
 import tempfile
@@ -140,6 +141,31 @@ class PatchTest(unittest.TestCase):
                 self.assertEqual(info.find("30001").find("order").value, 2)
                 check = wz.parse_img(wz.index()["Check.img"])
                 self.assertEqual(check.find("30001").find("0").find("npc").value, 9970002)
+
+    def test_live_counts_in_the_text_read_the_check_slots_they_name(self):
+        """The In Progress text's #a<quest><slot># reads the slot-th Check.img/1 monster; both survive the write."""
+        in_progress = (r"#bFenna (Henesys)#k\nthe pigs are in the field.\n\n"
+                       r"Defeat #o1210100#: #r#a300141##k / 20\nDefeat #o1210101#: #r#a300142##k / 10\n"
+                       r"Collect #t4000021#: #b#c4000021##k / 5\nReport back to Fenna")
+        entry = quest(30014, inProgress=in_progress, items=[{"id": 4000021, "count": 5}],
+                      mobs=[{"id": 1210100, "count": 20}, {"id": 1210101, "count": 10}])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = wz_file(tmp, "Quest.wz", [img_entry(n, prop("", [])) for n in residents.QUEST_IMGS])
+            with WzFile(path) as wz:
+                residents.patch_quests(wz, [entry])
+                save_wz_file(wz, Path(tmp) / "out.wz")
+            with WzFile(Path(tmp) / "out.wz") as wz:
+                text_1 = wz.parse_img(wz.index()["QuestInfo.img"]).find("30014").find("1").value
+                end = wz.parse_img(wz.index()["Check.img"]).find("30014").find("1")
+        self.assertEqual(text_1, in_progress, "codes and the two-character line breaks kept as written")
+        coded = [(int(m.group(2)), int(m.group(1))) for line in text_1.split(r"\n")
+                 for m in [re.search(r"#o(\d+)#.*#a(\d+)#", line)] if m]
+        self.assertEqual(coded, [(300141, 1210100), (300142, 1210101)])
+        for code, mob in coded:
+            self.assertEqual(code // 10, 30014)
+            self.assertEqual(end.find("mob").find(str(code % 10 - 1)).find("id").value, mob)
+        held = [int(i) for i in re.findall(r"#c(\d+)#", text_1)]
+        self.assertEqual([end.find("item").find(str(i)).find("id").value for i in range(len(held))], held)
 
     def test_category_names_the_area(self):
         with tempfile.TemporaryDirectory() as tmp:
