@@ -156,7 +156,13 @@ public final class SocialFabric {
         long now = System.currentTimeMillis();
         try {
             if (population.config().GUILDS_ENABLED) {
-                emblemOldGuilds(guildId -> Server.getInstance().getGuild(guildId, population.world().config().WORLD));
+                try {
+                    emblemOldGuilds(guildId -> Server.getInstance().getGuild(guildId,
+                            population.world().config().WORLD));
+                } catch (RuntimeException failure) {
+                    // the emblems wait for the next boot; the guilds, circles and the rest of the tick go on
+                    log.warn("bot guild emblems could not be checked this boot", failure);
+                }
                 ensureGuilds();
                 recruitCitizens();
             }
