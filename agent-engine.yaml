@@ -6518,6 +6518,10 @@ tuning:
     # Purpose: Lets a CWKPQ magician teleport between the magician room's platforms, and a CWKPQ thief Flash Jump to the thief room's high eyes, without turning either movement skill on globally.
     # Technical: Only 610030521 receives Teleport graph edges and only 610030530 Flash Jump edges (AgentNavigationGraphService); routing over them still requires a member of a CWKPQ boss run in the room's event (AgentCwkpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
     server.agents.capabilities.expedition.cwkpq.AgentCwkpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
+    # Values: true or false. Recommended: true for the Guild Quest's Room of Justice (stage 2's altar towers).
+    # Purpose: Lets a Guild Quest magician Teleport, or a hermit Flash Jump, up the two altar towers walking and jumping never reach (spear1's rope jump, spear4's 140 px floors), without turning either movement skill on globally.
+    # Technical: Only 990000440 receives Teleport and Flash Jump graph edges (AgentNavigationGraphService); routing over them still requires a member of a GPQ boss run in the room's event (AgentGpqMovementSkillPolicy), the learned skill, field permission, MP reserve and cooldown eligibility.
+    server.agents.capabilities.expedition.gpq.AgentGpqMovementSkillPolicy.ENABLE_ROOM_SKILL_NAVIGATION: 'true'
     # Values: 105-123. Recommended: 120, the offline graph's threshold on Map.wz 926100201.
     # Purpose: The jump stat a companion needs, with its Haste on, to be chosen as the runner of RJPQ Dark Lab 1, whose boxes stand on high conveyor ledges.
     # Technical: AgentRjpqDarkLabs.chooseRunners compares Character.getTotalJumpStat plus its best Haste's jump (Skill.wz effect) with this; the navigation graph of 926100201 reaches all six box ledges and the exit at 120 and none at 110 (AgentRjpqDarkLabNavigationTest). Inside the lab the runner recasts Haste while its jump is below this.
