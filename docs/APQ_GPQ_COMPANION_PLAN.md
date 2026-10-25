@@ -62,6 +62,17 @@ not from GMS guides. File references are to that tree. Part A (APQ) is built on 
    jumper, both damage kinds) and asks for at least 8, so one loss before the boss door is survivable.
 7. **GPQ stage 3: the fountain says it aloud.** One `cm.mapMessage` per verdict line in 9040006.js, the way Amos
    already speaks in APQ; companions read it like any player there.
+8. **GPQ guild for a solo player: citizens promote** (asked later the same day). Founding a guild takes six
+   guildless people who all accept the match prompt (`CREATE_GUILD_MIN_PARTNERS: 6`), which companions never answer,
+   so a solo player could never register. Instead a citizen guild master promotes a human member it knows well to
+   Jr. Master (rank 2), so the player registers for that citizen guild at Shuang. A social-fabric feature, built after
+   the GPQ run itself; until then live tests set the test leader's rank by hand.
+9. **GPQ guild: founded with companions too** (user, the same afternoon: "a player should also be able to found
+   their own guild with his bot party members"). Beside decision 8: a player founding a guild at the Guild HQ with
+   companions in their party gets each guildless companion's yes to the founding prompt, as a player's click gives
+   it; those cofounders join the new guild as stock cofounders do (Jr. Masters for party members). A companion
+   already in a guild (a hired citizen's) says so and is not counted. Decision 5 still lets a companion that is not in
+   its owner's guild join that guild's quest.
 
 ## Questions for you (all answered; kept for the record)
 
@@ -298,6 +309,81 @@ The full stage-by-stage read (maps, reactors, item counts, timers, death rules, 
 GPQ is about twice APQ: eleven sub-rooms, each a small job, plus a boss above anything APQ has. It is built only after
 APQ clears offline, in the same steps (probe, engine, play, deaths, pace, desk at Shuang, switch), on this branch or a
 follow-up branch if APQ is ready to merge first.
+
+### B4. Which track (decided 2026-10-25, after APQ)
+
+GPQ rides the **boss track**, as CWKPQ does, not the party desk APQ uses. Decision 6 takes 8-12 members and a party
+holds six, so the rest join at Shuang outside the party, as CWKPQ's bench allies join its expedition
+(`CompanionBossAllies`, `COMPANION_BOSS_OWNERS_MAX`). What the boss track lacks:
+
+- **A guild-event sign-up.** Today a boss run signs up through an Expedition or opens on a party's event
+  (`AgentBossRunService.enlist` / `openForEvent`). GPQ's own: the human registers the guild at Shuang (option 0,
+  the stock queue); when the guild is called he alone is warped in, and for the next three minutes (`canJoin` 1)
+  each member standing at the camp (101030104) joins by talking to Shuang (option 1, `registerPlayer`). The run's
+  sign-up phase waits at the camp while the guild is queued, then each member takes its turn with Shuang, one
+  conversation per tick, as for an expedition; a member counts as signed up once it is a player of that event.
+- **A death that waits for the gate.** Before the King's Corridor gate opens (`canRevive` 0) a revive unregisters
+  the member and can end the run (1.3), so a downed member stays down where it fell; once `canRevive` is 1 it
+  revives inside (990000200, `revivePlayer` + `respawnInto`, as Pink Bean's REVIVE_INSIDE), picks up a rock there
+  and walks back. A new `DeathMode.HOLD_UNTIL_REVIVABLE`.
+- **The whole quest as the run's fight.** `AgentGpqRun` implements `AgentBossFight` over every map from 990000000
+  to 990001000, as `AgentCwkpqRun` does over the keep.
+
+Navigation is ready for it (read 2026-10-25): the three hidden mazes (990000440 h-chain, 990000631 pt-chain,
+990000600 shortcuts) are same-map PORTAL edges already (`AgentNavigationGraphService.addPortalEdges`); Dark Sight
+already negates a bot's touch damage (`PhysicalContactDamagePolicy`), so a thief crosses the invincible Dark Muscle
+Stones as a player does; reactor hits have no range limit beyond the caller's; and the air (decHP) hurts Agents as it
+hurts players, so the Protector Rock matters for them too.
+
+### B5. The build, in steps
+
+- **G0. Probes** (graph and movement replays, as A0): the rocks in 990000100; reach to each statue in 990000300; the
+  three spears in 990000410 without movement skills; 990000420's Master Muscle Stone; 990000430's stair, corridor and
+  metalgate; each altar tower in 990000440 (spear3 through the h-chain); the plates and boxes in 990000501/502; the
+  boxes in 611, 620, 631 (pt-chain) and 641; the remains in 700; the kinggate platform in 800; the Rubian reactor in
+  900; and the road to the Excavation Site camp.
+- **G1. The guild hook** (decision 5): `LivingWorldHooks.guildQuestGuild(characterId, ownGuildId)` answers an owned
+  companion's owner's guild (else its own); `GuildQuest.js getEligibleParty` and Shuang's `findLobby` and guard ask
+  it. Scripts otherwise byte-identical to stock (pinned, as Amos's hook is).
+- **G2. Boss track:** the guild-event sign-up and `HOLD_UNTIL_REVIVABLE` (B4); `gpq` in `AgentBossRunCatalog`
+  (Shuang 9040000 on 101030104, join selection 1, battle map 990000900, fight maps 990000000-990001000).
+- **G3. Stage play** (`expedition/gpq`):
+  - Rocks: every member hits a rock 5 times, loots its Protector Rock and wears it before 990000300; the Lv<=30
+    member and a rockless revived member refill at 990000200.
+  - Statues: one hitter, single-target, one hit per statue in the order the display played (read from the
+    statues' own display hits); nobody touches a statue while it displays; companions call the leader to Gatekeeper
+    between phases.
+  - Spears: the Key from the Master Muscle Stone onto the stonegate; the debris (30 hits), then the Rusty Key carried
+    across the Dark Muscle Stones under Dark Sight by a thief; the four spears, one carrier each (slotMax 1), into the
+    four altars (spear3's tower through the h-chain).
+  - Vassals: Black and Myst Knights fought by the damage kind each one's immunity leaves open; the plates and boxes
+    tried until the four real ones drop; offerings placed one per area; a Mastermind solver fed by the fountain's
+    words (decision 7: one `cm.mapMessage` per verdict line in 9040006.js), each dropper re-placing its own offering.
+  - Waterway: 610 (nine golems, nine Marks in one stack onto secretgate1), 611 and 620 climbs, 630 (the Gargoyle on
+    its ledge, eight Jr. Gargoyles, eight Marks), 631 (pt-chain), 640/641 for the Lv<=30 member (twenty slimes, twenty
+    Marks, the Crown); the clothes into the remains bottom to top (shoes, pants, top, crown); the leader called to
+    Sharen III's ghost.
+  - King's Corridor: the sacrifice (the Lv<=30 member if alive, never the leader) drops its rock on the kinggate and
+    stays down until `canRevive`; then Ergoth: the Rubian reactor, Ergoth fought by the damage kind his immunity
+    leaves open (`AgentBossTargetGate`), Heal on him, statues left alone; the Rubian at the leader's feet.
+  - Bonus boxes, then out with Nuris.
+- **G4. `!gpqtest`** (party prod, checkpoint per stage, status, stop), as `!cwkpqtest`.
+- **G5. Pace** (`AgentGpqPaceProfile`): per stage, priors marked as guesses until live runs.
+- **G6. Desk at Shuang** (decision 6): a `BossEntrance` at 101030104 and a hook in 9040000.js before option 0; the
+  lineup of 8-12 from the party and the bench, the roles (a Lv10-30 member, a Dark Sight thief, a magician, a ranged
+  attacker, both damage kinds), the registrant a guild master or Jr. Master.
+- **G7. Switch:** `gpq` in `CompanionBossKeys` and the yaml list (grep src/test before the flip).
+- **G8. Citizens promote** (decision 8): a citizen guild master promotes a human member it knows well to Jr. Master.
+
+### B6. Live checks (after deploy)
+
+- M0: Shuang's stock click unchanged with `gpq` off.
+- M1: a human Jr. Master registers; companions at the camp join one by one within the three minutes.
+- M2: rocks worn by every member before 990000300; nobody dies to the air.
+- M3: each stage by `!gpqtest checkpoint`, then one full run; zero `GPQ session failure:` lines.
+- M4: the kinggate sacrifice: the member stays down, revives in 990000200 after the gate, walks back.
+- M5: Ergoth with immunities respected; the Rubian at the leader's feet; guild points credited.
+- M6: a citizen guild master promotes the test leader after enough time together (G8).
 
 ## Stock facts worth knowing
 

@@ -89,8 +89,10 @@ function action(mode, type, selection) {
                     }
                 }
             } else if (selection == 1) {
-                if (cm.getPlayer().getGuildId() > 0) {
-                    var eim = findLobby(cm.getPlayer().getGuildId());
+                // companions count in their owner's guild (living_world.COMPANION_BOSS_ENABLED_TYPES gpq)
+                var guild = Java.type('server.living.LivingWorldHooks').guildQuestGuild(cm.getPlayer().getId(), cm.getPlayer().getGuildId());
+                if (guild > 0) {
+                    var eim = findLobby(guild);
                     if (eim == null) {
                         cm.sendOk("Your guild is not currently on strategy time on this channel. Check again if your guild is currently planning a Guild Quest or, if so, the channel they are allotted on.");
                     } else {
