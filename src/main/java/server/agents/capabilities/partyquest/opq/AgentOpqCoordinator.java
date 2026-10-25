@@ -694,8 +694,29 @@ final class AgentOpqCoordinator {
             if (runEak(session, entry, agent, EakKind.LOBBY, 0)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
+        tickLobbyBoxes(session, entry, agent, member, day, nowMs);
+    }
+
+    /**
+     * The lobby runner's boxes: the day's LP box, and the reward box Eak raises for the statue piece. 2026-10-25 (user):
+     * Wednesday's box stays out of reach, so on Wednesday the runner says once that it cannot get up to it and waits by
+     * the music player for the LP a player brings (it picks it up and plays it like its own); the reward box it opens.
+     */
+    static void tickLobbyBoxes(AgentOpqSession session, AgentRuntimeEntry entry, Character agent,
+                               AgentOpqMemberState member, int day, long nowMs) {
+        boolean dayBoxInReach = !lobbyBoxOutOfReach(day);
         List<Reactor> target = activeReactors(agent).stream()
-                .filter(r -> r.getId() == 2_002_004 + day - 1 || r.getId() == 2_002_011).toList();
+                .filter(r -> dayBoxInReach && r.getId() == 2_002_004 + day - 1
+                        || r.getId() == AgentOpqDefinition.LOBBY_REWARD_BOX).toList();
+        if (target.isEmpty() && !dayBoxInReach) {
+            Character leader = character(session.eventLeaderId());
+            if (leader != null) {
+                AgentOpqDialogue.narrate(session, "lobby-box-out-of-reach", agent, leader,
+                        AgentOpqCompanionPlay.lobbyBoxOutOfReach(leader.getName()));
+            }
+            moveTo(entry, agent, MUSIC_PLAYER_DROP, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX);
+            return;
+        }
         hitNearestLegalReactor(entry, agent, member, target, nowMs);
     }
 
@@ -927,10 +948,19 @@ final class AgentOpqCoordinator {
      * Whether the day's LP box wants a climber (a companion with Haste, cast before it goes for the box): Sunday's
      * (2002004, x -838) sits in a cell whose last ledge is 100 px up, and Tuesday's (2002006, x -3055) behind a rope a
      * base run-up does not reach (Haste's speed does). Monday's, Thursday's, Friday's and Saturday's take a base jump;
-     * Wednesday's (2002007) is out of reach at any speed and jump (AgentOpqNavigationGraphTest), an open design question.
+     * Wednesday's is out of reach ({@link #lobbyBoxOutOfReach}).
      */
     static boolean lobbyWantsClimber(int dayOfWeek) {
         return dayOfWeek == GregorianCalendar.SUNDAY || dayOfWeek == GregorianCalendar.TUESDAY;
+    }
+
+    /**
+     * Whether the day's LP box is out of reach at any speed and jump: Wednesday's (2002007) cell is the only one with
+     * no ladder in Map.wz and its steps are 123 px apart (AgentOpqNavigationGraphTest). The user kept the original
+     * puzzle (2026-10-25), so a Wednesday run's LP comes from a player or not at all.
+     */
+    static boolean lobbyBoxOutOfReach(int dayOfWeek) {
+        return dayOfWeek == GregorianCalendar.WEDNESDAY;
     }
 
     private static void navigateWayUpInitialAscent(AgentRuntimeEntry entry, Character agent,

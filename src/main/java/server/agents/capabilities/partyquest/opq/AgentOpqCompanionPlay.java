@@ -30,6 +30,11 @@ final class AgentOpqCompanionPlay {
         return leader + ", the statue's done. talk to eak in the middle.";
     }
 
+    /** The lobby runner cannot get into the cell of the day's LP box (Wednesday's), said once. */
+    static String lobbyBoxOutOfReach(String leader) {
+        return leader + ", i can't get up to today's box. if you get the lp, drop it in the music player.";
+    }
+
     /** The leader came back to the centre with statue pieces in his bag. */
     static String dropYourPieces(String leader) {
         return leader + ", drop your statue pieces here. i'll put them up.";

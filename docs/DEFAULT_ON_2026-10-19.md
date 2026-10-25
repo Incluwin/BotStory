@@ -70,7 +70,8 @@ three below 55 were raised with `!setlevel <name> 55` and released with `keep`; 
   long rope. Storage and the walkway completed again. Still blocking:
   - Lobby: the music player's stand point is in the air, so the LP dropped from the floor below missed the reactor.
     Fixed on fix/opq-run3 (089ac8a56). Also, on Tuesdays and Wednesdays (server day, GMT) the LP box is out of reach
-    at any jump up to 123. That is a design question and is not fixed.
+    at any jump up to 123. That is a design question and is not fixed. (Run 4 below: Tuesday's box takes a Haste
+    climber; Wednesday's stays out of reach, by the user's choice.)
   - Way up: every wrong door from row 6 up threw in party3_r6pt.js (no warp(int, double)), 556 times, and left the
     runner standing. Fixed on fix/opq-run3 (6baed68e7).
   - Lounge top and way-up top: the runners loop on short platform jumps the graph calls reachable. Open; the
@@ -126,6 +127,12 @@ Pqfriend (Cleric 55) with Jinx, Vex, Sadie, Marrow and Kettle. The server day wa
     `!heal` and `!stepto`, never with the death OK, which leaves the event. After that the leader waited GM-hidden.
 - Fixes on fix/opq-run4 (not merged): see the branch log. Offline, the way-up landings reached the next row's door
   0/96 on the old code and 96/96 with the fix.
+- LP box by day (offline, graph and movement replay from the lobby floor): Monday, Thursday, Friday and Saturday
+  take a base runner; Sunday's needs jump 115 or more, Tuesday's a Haste climber (speed 138, jump 119). The plan seats
+  a climber in the lobby on those days. Wednesday's box is out of reach at any speed and jump tried (up to 160/123):
+  its cell is the only one with no ladder in Map.wz, and its steps are 123 px apart. The user kept the original puzzle
+  (2026-10-25), so on a Wednesday the lobby runner says once that it can't get up to the box and waits by the music
+  player for an LP a player brings. Without one, a Wednesday run fails in the lobby.
 
 ## Findings
 

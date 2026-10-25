@@ -35,7 +35,8 @@ class AgentOpqLinesLintTest {
                 AgentOpqCompanionPlay.rootAtYourFeet(LEADER, true), AgentOpqCompanionPlay.rootAtYourFeet(LEADER, false),
                 AgentOpqCompanionPlay.rootByTheExit(LEADER), AgentOpqCompanionPlay.rootStillOnTheFloor(LEADER),
                 AgentOpqCompanionPlay.rootPickedBackUp(), AgentOpqCompanionPlay.dropTheRoot(LEADER),
-                AgentOpqCompanionPlay.minervaFree(), AgentOpqCompanionPlay.grabOurRewards()));
+                AgentOpqCompanionPlay.minervaFree(), AgentOpqCompanionPlay.grabOurRewards(),
+                AgentOpqCompanionPlay.lobbyBoxOutOfReach(LEADER)));
         for (AgentOpqHandOver.Place place : AgentOpqHandOver.Place.values()) {
             for (int item : List.of(AgentOpqDefinition.WALKWAY_FRAGMENT, AgentOpqDefinition.ROOT_OF_LIFE)) {
                 lines.add(AgentOpqHandOver.line(item, LEADER, place, false));

@@ -91,8 +91,10 @@ class AgentOpqNavigationGraphTest {
         Point floor = new Point(-1_633, -127);
         for (int dayOfWeek = Calendar.SUNDAY; dayOfWeek <= Calendar.SATURDAY; dayOfWeek++) {
             Point box = new Point(boxX[dayOfWeek - 1], -907);
-            if (dayOfWeek == Calendar.WEDNESDAY) {
-                // Out of reach at any speed and jump: the open design question (docs/DEFAULT_ON_2026-10-19.md, OPQ).
+            assertEquals(dayOfWeek == Calendar.WEDNESDAY, AgentOpqCoordinator.lobbyBoxOutOfReach(dayOfWeek));
+            if (AgentOpqCoordinator.lobbyBoxOutOfReach(dayOfWeek)) {
+                // Out of reach at any speed and jump; the user kept the original puzzle (2026-10-25), so the runner
+                // waits by the music player for a player's LP (AgentOpqLobbyBoxesTest).
                 AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map, new AgentMovementProfile(160, 123));
                 assertFalse(reaches(graph, map, floor, box), "Wednesday at speed 160 jump 123");
                 continue;
