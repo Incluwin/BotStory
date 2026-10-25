@@ -72,7 +72,9 @@ function generateCombo1() {
     var positions = Array(0, 0, 0, 0, 0, 0, 0, 0, 0);
     var rndPicked = Math.floor(Math.random() * Math.pow(3, 5));
 
-    while (rndPicked > 0) {
+    // BotStory: each of the five takes a rope (five base-3 digits); stopping at the last non-zero digit placed fewer
+    // than five a third of the time, and Amos counts only exactly five on the ropes
+    for (var placed = 0; placed < 5; placed++) {
         (positions[rndPicked % 3])++;
 
         rndPicked = Math.floor(rndPicked / 3);

@@ -31,6 +31,7 @@ import server.agents.capabilities.partyquest.opq.AgentOpqLobbyAdmissionRuntime;
 import server.agents.capabilities.partyquest.opq.AgentOpqLobbyProfile;
 import server.agents.capabilities.partyquest.opq.AgentOpqSession;
 import server.agents.capabilities.partyquest.opq.AgentOpqSessionRegistry;
+import server.agents.capabilities.partyquest.apq.AgentApqSystem;
 import server.agents.capabilities.partyquest.ppq.AgentPpqRuntime;
 import server.agents.capabilities.partyquest.ppq.AgentPpqLobbyAdmissionRuntime;
 import server.agents.capabilities.partyquest.ppq.AgentPpqLobbyProfile;
@@ -49,7 +50,8 @@ public final class AgentPartyQuestRuntime {
     private static final List<AgentPartyQuestSystem> SYSTEMS = List.of(
             new HpqSystem(), new KpqSystem(), new LpqSystem(), new LmpqSystem(),
             new OpqSystem(), new EpqSystem(), new PpqSystem(),
-            new AgentRjpqSystem(AgentRjpqSide.ZENUMIST), new AgentRjpqSystem(AgentRjpqSide.ALCADNO));
+            new AgentRjpqSystem(AgentRjpqSide.ZENUMIST), new AgentRjpqSystem(AgentRjpqSide.ALCADNO),
+            new AgentApqSystem());
 
     private AgentPartyQuestRuntime() {
     }

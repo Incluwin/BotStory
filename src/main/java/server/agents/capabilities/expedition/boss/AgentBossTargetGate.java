@@ -3,6 +3,7 @@ package server.agents.capabilities.expedition.boss;
 import client.Character;
 import client.status.MonsterStatus;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.apq.AgentApqSessionRegistry;
 import server.life.Monster;
 import server.maps.MapleMap;
 
@@ -16,7 +17,8 @@ import server.maps.MapleMap;
  *
  * <p>Companion boss scope here: an INSIDE or LEAVING member of an open run hitting a monster in its own event, or any
  * Agent hitting a field boss whose field key is on (AgentBossField). Everything else keeps today's path: the EPQ stone
- * bug while it is immune, every party quest, every field monster no field group lists. Memory only, any thread; the
+ * bug while it is immune, every party quest but APQ (whose run applies the same immunity stop in its own event:
+ * AgentApqSessionRegistry.refusesTarget), every field monster no field group lists. Memory only, any thread; the
  * scope is checked first, so an Agent outside it reads no monster status.</p>
  */
 public final class AgentBossTargetGate {
@@ -30,6 +32,9 @@ public final class AgentBossTargetGate {
      * citizen never hits it).
      */
     public static boolean refuses(Character agent, Monster monster) {
+        if (AgentApqSessionRegistry.refusesTarget(agent, monster)) {
+            return true; // APQ's Geist Balrog: the same immunity and reflect stop, in an APQ run's own event
+        }
         if (agent == null || monster == null || !inScope(agent, monster)) {
             return false;
         }

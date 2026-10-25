@@ -57,6 +57,12 @@ public final class AgentPartyQuestCatalog {
         // slot: rjpq
         add(definitions, AgentRjpqSide.ZENUMIST.definition());
         add(definitions, AgentRjpqSide.ALCADNO.definition());
+
+        // slot: apq (AmoriaPQ.js: six, Lv40+, 75 minutes; a stray member recovers at Amos' Training Ground, outside
+        // the ticket gate)
+        add(definitions, new AgentPartyQuestDefinition(
+                "apq", "AmoriaPQ", 670_010_100, 670_010_200, 670_010_800,
+                670_011_000, 670_010_000, 40, 255, 6, 6, 4_500_000L));
         return Collections.unmodifiableMap(definitions);
     }
 

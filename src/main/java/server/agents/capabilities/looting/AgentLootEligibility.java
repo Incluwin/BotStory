@@ -18,6 +18,8 @@ import server.agents.capabilities.partyquest.lmpq.AgentLmpqDefinition;
 import server.agents.capabilities.partyquest.lmpq.AgentLmpqSessionRegistry;
 import server.agents.capabilities.partyquest.opq.AgentOpqDefinition;
 import server.agents.capabilities.partyquest.opq.AgentOpqSessionRegistry;
+import server.agents.capabilities.partyquest.apq.AgentApqDefinition;
+import server.agents.capabilities.partyquest.apq.AgentApqSessionRegistry;
 import server.agents.capabilities.partyquest.ppq.AgentPpqDefinition;
 import server.agents.capabilities.partyquest.ppq.AgentPpqSessionRegistry;
 import server.agents.capabilities.partyquest.rjpq.AgentRjpqDefinition;
@@ -127,6 +129,10 @@ public final class AgentLootEligibility {
         if ((AgentRjpqDefinition.EXCLUSIVE_ITEM_IDS.contains(itemId)
                 || AgentRjpqSessionRegistry.forMember(bot.getId()) != null)
                 && !AgentRjpqSessionRegistry.canLoot(bot, drop)) return false;
+
+        // slot: apq
+        if (AgentApqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
+                && !AgentApqSessionRegistry.canLootExclusive(bot, drop)) return false;
         int kpqCouponTarget = AgentPqRuntime.kpqCouponTarget(entry);
         if (itemId == KPQ_COUPON && (AgentPartyQuestHooks.shouldSkipCouponLoot(entry)
                 || (kpqCouponTarget > 0 && bot.getItemQuantity(KPQ_COUPON, false) >= kpqCouponTarget))) {
