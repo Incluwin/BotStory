@@ -1,7 +1,6 @@
 package server.agents.capabilities.partyquest.apq;
 
 import client.Character;
-import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
@@ -13,7 +12,6 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.perception.AgentMapPerception;
-import server.agents.plans.AgentScriptItemActionService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
@@ -324,7 +322,7 @@ public final class AgentApqCoordinator {
 
     /** Drops {@code quantity} of an Etc item where the Agent stands, as a player does. */
     static boolean dropEtc(AgentRuntimeEntry entry, int itemId, short quantity) {
-        return AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, itemId, quantity);
+        return AgentApqDrops.dropEtc(entry, itemId, quantity);
     }
 
     static boolean near(Point first, Point second) {
