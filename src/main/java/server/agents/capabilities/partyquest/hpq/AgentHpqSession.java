@@ -49,6 +49,7 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private BonusMode bonusMode = BonusMode.SKIP;
     private boolean rewardEligibilityFrozen;
     private boolean companionAdopted;
+    private boolean citizenRun;
     private boolean memberCoordinationChatEnabled;
     private final Set<Integer> recollectDue = new HashSet<>();
     // A companion run's play (AgentHpqCoordinator); read and written under the session's lock.
@@ -225,6 +226,17 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
 
     /** Set only by the public admit, before the session is published. */
     synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    /**
+     * A party of the server's ambient citizens, led by a citizen, that went in on its own: with a human member who took
+     * a citizen's invite, or none (AgentHpqAdmissionService.admitCitizens, before the session is published). It runs the
+     * stock Agent-led path, with what a run with players in it needs: its Agents hold full rate in the instance, it says
+     * no status lines, a downed citizen taps out through its host while three stand, and a human is never waited for at
+     * Tory. None of a companion run's human-leader play applies.
+     */
+    public synchronized boolean citizenRun() { return citizenRun; }
+
+    synchronized void setCitizenRun(boolean citizen) { citizenRun = citizen; }
 
     public synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
 

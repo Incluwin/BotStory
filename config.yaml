@@ -1120,20 +1120,24 @@ population:
     # 0 = they go back as before.
     FIELD_BOSS_AVOID_MS: 3600000
     # Citizens run party quests themselves (2026-10-24, docs/CITIZEN_PARTY_QUESTS_PLAN.md): citizens on a PQ session
-    # wait beside the quest's NPC at their region's lobby, form a party there (inviting a human who fits first), go
-    # in, run it, and go back to their day. Player first: never the last lobby a human could enter, never while a human
+    # wait beside the quest's NPC at their region's lobby, form a party there (inviting a human who fits first), go in,
+    # run it, and go back to their day. Player first: never the last lobby a human could enter, never while a human
     # party waits for one or an invite to a human is out, never a party a human leads. false = the kill switch: they
-    # only gather and invite, as before. PQ_RUN_QUESTS: the quests they go into (kpq). PQ_RUNS_PER_CHANNEL /
-    # PQ_RUNS_MAX: citizen runs at once on a channel / in all. PQ_FORM_PATIENCE_MS: a party short of the quest's
-    # minimum gives up after this. PQ_HUMAN_SEAT_HOLD_MS: how long a seat waits for an invited human's answer.
-    # PQ_RUN_COOLDOWN_MS: no PQ plan for a citizen this long after its run.
+    # only gather and invite, as before. PQ_RUN_QUESTS: the quests they go into (kpq, hpq; LPQ waits, see the plan
+    # doc's round 2: LudiPQ has one lobby a channel). PQ_RUNS_PER_CHANNEL / PQ_RUNS_MAX: citizen runs at once on a
+    # channel / in all. PQ_FORM_PATIENCE_MS: a party short of the quest's minimum gives up after this.
+    # PQ_HUMAN_SEAT_HOLD_MS: how long a seat waits for an invited human's answer. PQ_RUN_COOLDOWN_MS: no PQ plan for a
+    # citizen this long after its run. PQ_CALLS_PER_PARTY (2026-10-25): a party short of its seats calls at most this
+    # many citizens over (circle and guild mates first, then townsfolk of its region idling in town), one a minute,
+    # never more than it needs.
     PQ_RUNS_ENABLED: true
-    PQ_RUN_QUESTS: "kpq"
+    PQ_RUN_QUESTS: "kpq,hpq"
     PQ_RUNS_PER_CHANNEL: 1
     PQ_RUNS_MAX: 2
     PQ_FORM_PATIENCE_MS: 600000
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
+    PQ_CALLS_PER_PARTY: 4
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

@@ -56,8 +56,11 @@ public final class CitizenPartyQuests {
     static final long FILL_WAIT_MS = 90_000L;
     /** The forming party asks for people at most this often. */
     static final long LF_EVERY_MS = 90_000L;
-    /** A party still short this long calls one guild or circle mate, once. */
+    /** A party still short this long starts calling citizens over, one each {@link #CALL_EVERY_MS}. */
     static final long CALL_AFTER_MS = 60_000L;
+    static final long CALL_EVERY_MS = 60_000L;
+    /** A citizen called over that has not reached the lobby this long is not counted on any more. */
+    static final long COMING_MS = 5 * 60_000L;
     /** Citizens at a lobby invite one human at most this often. */
     static final long HUMAN_INVITE_EVERY_MS = 10 * 60_000L;
     /** A party the quest's admission refused this many times in a row gives up. */
@@ -78,7 +81,10 @@ public final class CitizenPartyQuests {
         final int leaderId;
         final long formedAtMs;
         long lastLfAtMs;
-        boolean called;
+        int calls;
+        long lastCallAtMs;
+        /** Citizen id -> when it was called over; dropped once it stands here or {@link #COMING_MS} passed. */
+        final Map<Integer, Long> coming = new HashMap<>();
         /** When it first had its quest's minimum in; -1 while it has not. */
         long minReachedAtMs = -1L;
         int heldFor;
@@ -289,10 +295,10 @@ public final class CitizenPartyQuests {
         List<Character> humansHere = humansWithoutParty(map, lobby);
         boolean held = holdingSeat(party, nowMs);
         int size = members(leaderChr).size();
-        if (!held && size < door.maxSeats()) {
+        if (!held && size < door.preferredSeats()) {
             held = inviteHuman(party, leader, lobby, humansHere, nowMs);
         }
-        int open = door.maxSeats() - size - (held ? 1 : 0);
+        int open = door.preferredSeats() - size - (held ? 1 : 0);
         for (CitizenSession loner : waiting) {
             if (open <= 0) {
                 break;
@@ -319,10 +325,7 @@ public final class CitizenPartyQuests {
                 party.lastLfAtMs = nowMs;
                 say("pq.lf", leader, null, door.minSeats() - size);
             }
-            if (!party.called && nowMs - party.formedAtMs >= CALL_AFTER_MS) {
-                party.called = true;
-                callFriend(leader, lobby, nowMs);
-            }
+            callOver(party, leader, lobby, here, door.preferredSeats() - size, nowMs);
             return;
         }
         if (party.minReachedAtMs < 0L) {
@@ -331,11 +334,12 @@ public final class CitizenPartyQuests {
         if (held) {
             return; // never in while an invite to a human is out: the seat is theirs until they answer
         }
-        if (size < door.maxSeats() && nowMs - party.minReachedAtMs < FILL_WAIT_MS) {
+        if (size < door.preferredSeats() && nowMs - party.minReachedAtMs < FILL_WAIT_MS) {
             if (nowMs - party.lastLfAtMs >= LF_EVERY_MS) {
                 party.lastLfAtMs = nowMs;
-                say("pq.lf", leader, null, door.maxSeats() - size);
+                say("pq.lf", leader, null, door.preferredSeats() - size);
             }
+            callOver(party, leader, lobby, here, door.preferredSeats() - size, nowMs);
             return;
         }
         String blocked = blocker(party, door, lobby, leader, members, here, map);
@@ -598,25 +602,64 @@ public final class CitizenPartyQuests {
         }
     }
 
-    /** One loaded guild or circle mate whose level fits, not busy, comes to the lobby; the leader asks in guild chat. */
-    private void callFriend(CitizenSession leader, Lobby lobby, long nowMs) {
-        Character leaderChr = leader.agent();
-        for (CitizenSession session : population.presence().sessions()) {
-            Character agent = session.virtual ? null : session.agent();
-            boolean mate = agent != null && (leader.citizen.circleId() != 0 && session.citizen.circleId() == leader.citizen.circleId()
-                    || leaderChr.getGuildId() > 0 && agent.getGuildId() == leaderChr.getGuildId());
-            if (!mate || session == leader || session.channel != leader.channel || holds(session.characterId)
-                    || coolingDown(session.characterId, nowMs) || session.afkUntilMs > nowMs || party(agent) != null
-                    || (session.activity != Activity.TRAIN && session.activity != Activity.TOWN) || !fits(agent, lobby)
-                    || PresenceScheduler.onSupplyTrip(session)) {
-                continue;
-            }
-            say("pq.call", leader, null, 0);
-            say("pq.call.answer", session, leaderChr, 0);
-            session.journal.add("social", leader.name() + " called it to " + lobby.name());
-            population.presence().travel(session, Activity.PQ, lobby.mapId(), nowMs);
+    /**
+     * A party short of its seats calls one citizen over, from {@link #CALL_AFTER_MS} after it formed, at most one each
+     * {@link #CALL_EVERY_MS} and {@code PQ_CALLS_PER_PARTY} in all, and never while as many are on their way as it
+     * needs: first a loaded circle or guild mate whose level fits, training or in town (the leader asks in guild chat
+     * and it answers), else a citizen of the lobby's region idling in town whose PQ band this lobby is, who just walks
+     * over as a player looking for a party does. Live, a party that only ever called one mate gave up "nobody came".
+     */
+    private void callOver(Forming party, CitizenSession leader, Lobby lobby, Map<Integer, CitizenSession> here, int need,
+                          long nowMs) {
+        party.coming.entrySet().removeIf(called -> here.containsKey(called.getKey())
+                || nowMs - called.getValue() >= COMING_MS);
+        if (nowMs - party.formedAtMs < CALL_AFTER_MS || nowMs - party.lastCallAtMs < CALL_EVERY_MS
+                || party.calls >= population.config().PQ_CALLS_PER_PARTY || party.coming.size() >= need) {
             return;
         }
+        Character leaderChr = leader.agent();
+        List<CitizenSession> mates = new ArrayList<>();
+        List<CitizenSession> townsfolk = new ArrayList<>();
+        for (CitizenSession session : population.presence().sessions()) {
+            Character agent = session.virtual ? null : session.agent();
+            if (agent == null || session == leader || here.containsKey(session.characterId)
+                    || party.coming.containsKey(session.characterId) || !free(session, agent, leader, nowMs)) {
+                continue;
+            }
+            boolean mate = leader.citizen.circleId() != 0 && session.citizen.circleId() == leader.citizen.circleId()
+                    || leaderChr.getGuildId() > 0 && agent.getGuildId() == leaderChr.getGuildId();
+            if (mate && (session.activity == Activity.TRAIN || session.activity == Activity.TOWN) && fits(agent, lobby)) {
+                mates.add(session);
+            } else if (session.activity == Activity.TOWN && lobby.equals(population.fields().lobbyFor(session.citizen,
+                    agent.getLevel()))) {
+                townsfolk.add(session);
+            }
+        }
+        boolean mate = !mates.isEmpty();
+        List<CitizenSession> pool = mate ? mates : townsfolk;
+        if (pool.isEmpty()) {
+            return;
+        }
+        CitizenSession called = pool.get(random.nextInt(pool.size()));
+        party.calls++;
+        party.lastCallAtMs = nowMs;
+        party.coming.put(called.characterId, nowMs);
+        if (mate) {
+            say("pq.call", leader, null, need);
+            say("pq.call.answer", called, leaderChr, 0);
+            called.journal.add("social", leader.name() + " called it to " + lobby.name());
+        } else {
+            called.journal.add("pq", "went to " + lobby.name() + " to find a party");
+        }
+        log.info("citizen {} party at {} calls {} ({})", leader.name(), lobby.name(), called.name(),
+                mate ? "mate" : "townsfolk");
+        population.presence().travel(called, Activity.PQ, lobby.mapId(), nowMs);
+    }
+
+    /** A loaded citizen on the leader's channel with nothing else on: no run, cooldown, AFK, party or supply trip. */
+    private boolean free(CitizenSession session, Character agent, CitizenSession leader, long nowMs) {
+        return session.channel == leader.channel && !holds(session.characterId) && !coolingDown(session.characterId, nowMs)
+                && session.afkUntilMs <= nowMs && party(agent) == null && !PresenceScheduler.onSupplyTrip(session);
     }
 
     /** A human of the party who cannot go in hears why from the leader, once. */

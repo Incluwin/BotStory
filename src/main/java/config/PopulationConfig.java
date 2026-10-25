@@ -104,8 +104,8 @@ public class PopulationConfig {
     // Party quests citizens run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md)
     /** Kill switch: false = citizens at a PQ lobby only gather and invite, as before. */
     public boolean PQ_RUNS_ENABLED = true;
-    /** Comma list of the quests citizen parties go into (kpq). */
-    public String PQ_RUN_QUESTS = "kpq";
+    /** Comma list of the quests citizen parties go into (kpq, hpq). */
+    public String PQ_RUN_QUESTS = "kpq,hpq";
     /** Citizen runs at once on one channel. */
     public int PQ_RUNS_PER_CHANNEL = 1;
     /** Citizen runs at once in all. */
@@ -116,6 +116,8 @@ public class PopulationConfig {
     public int PQ_HUMAN_SEAT_HOLD_MS = 60000;
     /** No PQ plan for a citizen this long after its run ended. */
     public int PQ_RUN_COOLDOWN_MS = 1800000;
+    /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
+    public int PQ_CALLS_PER_PARTY = 4;
 
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
@@ -140,8 +142,9 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.FIELD_BOSS_AVOID_MS must be within 0..10800000");
         }
         if (PQ_RUNS_PER_CHANNEL < 0 || PQ_RUNS_MAX < 0 || PQ_FORM_PATIENCE_MS < 0 || PQ_HUMAN_SEAT_HOLD_MS < 0
-                || PQ_RUN_COOLDOWN_MS < 0) {
-            throw new IllegalArgumentException("population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX and the PQ_*_MS must be >= 0");
+                || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
+            throw new IllegalArgumentException(
+                    "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
         }
     }
 }
