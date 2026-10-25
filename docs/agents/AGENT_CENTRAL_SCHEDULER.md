@@ -158,6 +158,14 @@ this, such Agents stayed abstract forever and never drained their mailbox.
 `!agentscheduler agent <name>` shows `failingMs`, `abandoned` and the last
 abandon.
 
+Citizen travel no longer needs the abandon (2026-10-15). Before it moves an
+abstract citizen, `PresenceScheduler.travel` force-stops its TownLife (nobody on
+the map sees the abrupt stop) and wakes its schedule handle. The next mode
+decision then reconciles the window while the citizen still stands where it
+began. The delayed move waits, re-checking every 500 ms for up to 6 s, until
+the Agent has left abstract. A citizen with a player on its map still exits
+TownLife gracefully.
+
 Background work is also bounded per map and cycle so one invisible crowded map
 cannot monopolize a shard. The default limit is 32 authoritative callbacks per
 map per cycle; `0` disables this guard. Presentation work is never subject to
