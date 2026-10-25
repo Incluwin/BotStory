@@ -155,6 +155,25 @@ Each step ends with targeted tests; the full suite runs before the branch is rep
   5. 670010700: area 0 -> st01, the arena's in00-in15 teleports, reach to the boss.
   6. A bot-dropped Wing Hammer triggers 6702000 (5 s delay, `MapleMap.activateItemReactors`).
   7. A fight simulation against the three Geist Balrog phases for a Lv55 and a Lv70 crew.
+
+  **A0 results (2026-10-25, graph + movement replays on Map.wz, base 100/100 and Haste 140/120):**
+  - Stage 1: from sp the Glimmer Man, both gender portals, the mirror, the fierry spawn, Amos and the go00-02 portals
+    are all reachable; ma01/fe01 (the plain portals into the rooms) are not reachable from the floor, so only the
+    gender portals lead in. The rooms are one-way joined: from the boys' side every girls' spawn is reachable by
+    drops, from the girls' side no boys' spawn is. Both sides still need clearing; a boy can finish the girls' side.
+  - Stage 2: every gate and Amos are reachable from the floor; no rope is reachable from the floor (the ropes hang
+    high). A member reaches a rope only through its gate portal, landing at SSMxx above the rope; falling with the up
+    key held, the replayed Agent caught every rope by tick 3 and hung inside its area for 117 of 120 ticks, on
+    670010300 and 670010301. Moving to another rope = let go, land, walk to the other gate.
+  - Stage 3: all nine platforms are reachable from the floor and from one another (jumps and drops, 1-4 edges). Amos
+    stands on no foothold (unreachable as a walk target): the leader talks to him from where he stands.
+  - Stage 4: Amos and next00 are a straight walk.
+  - Stage 5: the gate portals are scripted, so the graph sees eight floor regions; each stretch walks at about
+    123 px/s (a background tick is 250 ms of five 50 ms steps): 136 s from sp to area 2 at base speed, excluding gate
+    hits and waiting, of the stage's 240 s. A walk aimed past a floor's end at a gate falls off it: companions stop at
+    the gate's portal (gtXXWP) and press up.
+  - Stage 6: area 0 by Amos is reachable from sp; in the arena the boss spawn, in00 and in15 are reachable from st01.
+  - Left to the engine's tests: a bot-dropped Wing Hammer on the mirror; the Geist Balrog fight (pace profile).
 - **A1. Route.** An `amoria` group in the route-graph exporter (680000000-680010100 and 670000100-670010000; the PQ
   maps 670010100+ stay out, entered only by the gate NPC) and a regenerated `world-portal-route-graph.json`; travel
   legs henesys-to-amoria / amoria-to-henesys (Thomas Swift); the gate leg (Amos the Strong, one ticket). No Amoria
