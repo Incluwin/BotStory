@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRules;
 import server.agents.capabilities.expedition.cwkpq.AgentCwkpqSigils;
+import server.agents.capabilities.expedition.gpq.AgentGpqPaceProfile;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
@@ -28,6 +29,7 @@ import server.agents.capabilities.expedition.boss.AgentBossRunService;
 import server.agents.capabilities.expedition.boss.AgentBossRunService.Enlisted;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -1449,6 +1451,23 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         if (world.config().COMPANION_PQ_CLEAR_TIME
                 && world.config().companionBossEnabled(AgentBossRunCatalog.CWKPQ.key())) {
             CwkpqClearTime.warm();
+        }
+    }
+
+    /**
+     * GPQ plan G5, on companion-ops at boot: registers and warms the Guild Quest's pace profile, so a Sharenian run's
+     * record (AgentGpqRun.pace) is written to the clear-time ledger as it ends. It parses Mob.wz.
+     */
+    public void warmGpqPace() {
+        if (!world.config().COMPANION_PQ_CLEAR_TIME
+                || !world.config().companionBossEnabled(AgentBossRunCatalog.GPQ.key())) {
+            return;
+        }
+        try {
+            AgentPqPaceProfiles.register(AgentGpqPaceProfile.QUEST_KEY, AgentGpqPaceProfile::load);
+            AgentPqPaceProfiles.warm(AgentGpqPaceProfile.QUEST_KEY);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("GPQ's pace profile could not be warmed; Sharenian runs are not recorded", failure);
         }
     }
 

@@ -6,7 +6,11 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.expedition.boss.AgentBossPriorityFight;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 
 /**
@@ -143,18 +148,25 @@ public final class AgentGpqRun implements AgentBossFight {
     /** As a member enters a stage, the live run stops the walk its last stage's play gave it (CWKPQ C9). */
     private Consumer<Character> enteredStage = member -> {
     };
+    /** G5: when the run reached each step, for the clear-time records. */
+    private final AgentGpqPaceMarks paceMarks;
+    private Supplier<AgentPqPaceProfile> paceProfile = () -> AgentPqPaceProfiles.cached(AgentGpqPaceProfile.QUEST_KEY);
+    private IntPredicate isAgent = id -> AgentRuntimeRegistry.findByAgentCharacterId(id) != null;
 
-    AgentGpqRun(Map<Stage, StagePlay> plays, Supplier<AgentBossFight> throneFight, StagePlay afterClear) {
+    AgentGpqRun(Map<Stage, StagePlay> plays, Supplier<AgentBossFight> throneFight, StagePlay afterClear,
+                AgentGpqPorts ports) {
         this.plays = plays.isEmpty() ? Map.of() : new EnumMap<>(plays);
         this.throneFight = throneFight;
         this.afterClear = afterClear;
+        this.paceMarks = new AgentGpqPaceMarks(ports);
     }
 
     /** A fresh run for one boss run session, with every stage play and the walk out. */
     public static AgentGpqRun forCompanions() {
         AgentGpqPorts ports = AgentGpqPorts.LIVE;
         AgentGpqRun created = new AgentGpqRun(AgentGpqStagePlays.all(ports), AgentBossPriorityFight.forKey(KEY),
-                (members, event, run, nowMs) -> AgentGpqThronePlays.afterClear(ports, members, event, run, nowMs));
+                (members, event, run, nowMs) -> AgentGpqThronePlays.afterClear(ports, members, event, run, nowMs),
+                ports);
         created.enteredStage = member -> {
             AgentRuntimeEntry entry = ports.entry(member.getId());
             if (entry != null) {
@@ -171,16 +183,44 @@ public final class AgentGpqRun implements AgentBossFight {
 
     @Override
     public void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
-        observe(event);
+        observe(event, nowMs);
         if (afterClear != null && !members.isEmpty()) {
             afterClear.tick(members, event, this, nowMs);
         }
     }
 
-    private void observe(EventInstanceManager event) {
-        if (event != null) {
-            leaderId = event.getLeaderId();
+    /**
+     * G5: how the run went, one span per segment of the GPQ pace profile, for the clear-time ledger; null while the
+     * profile is cold or the members' power could not be read. Its session id carries the start, since a boss run's
+     * id restarts with the server.
+     */
+    @Override
+    public AgentPqPace pace(long sessionId, long startedAtMs, long endedAtMs) {
+        return paceMarks.pace(paceProfile.get(), AgentGpqPaceProfile.QUEST_KEY + "-" + startedAtMs + "-" + sessionId,
+                leaderId, startedAtMs, endedAtMs);
+    }
+
+    /** Notes the leader and the steps the event shows now (every tick, before and after the clear). */
+    private void observe(EventInstanceManager event, long nowMs) {
+        if (event == null) {
+            return;
         }
+        leaderId = event.getLeaderId();
+        try {
+            paceMarks.observe(event, paceProfile.get(), isAgent, nowMs);
+        } catch (RuntimeException failure) {
+            log.debug("GPQ pace marks unreadable this tick", failure); // the records only; the run goes on
+        }
+    }
+
+    /** Tests: the pace profile and which characters are Agents. */
+    void measuredWith(Supplier<AgentPqPaceProfile> profile, IntPredicate agents) {
+        this.paceProfile = profile;
+        this.isAgent = agents;
+    }
+
+    AgentGpqPaceMarks paceMarks() {
+        return paceMarks;
     }
 
     /** The instance leader (the human who registered the guild), as last seen. */
@@ -212,7 +252,7 @@ public final class AgentGpqRun implements AgentBossFight {
 
     @Override
     public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
-        observe(event);
+        observe(event, nowMs);
         Map<Stage, List<Character>> byStage = new EnumMap<>(Stage.class);
         for (Character fighter : fighters) {
             Stage stage = Stage.of(fighter.getMapId());
@@ -241,6 +281,7 @@ public final class AgentGpqRun implements AgentBossFight {
         busyUntil.clear();
         claims.clear();
         marks.clear();
+        paceMarks.clear();
         vassals.reset();
         AgentBossFight fight;
         synchronized (this) {

@@ -250,6 +250,8 @@ public final class LivingWorld {
         world.executor.submit("pq.pace", world.partyQuests::warmPace);
         // and CWKPQ's (CWKPQ plan C8), which Jack's window reads for the leader's list
         world.executor.submit("cwkpq.pace", world.bossRuns::warmCwkpqPace);
+        // and the Guild Quest's (GPQ plan G5), whose runs are recorded with the bosses'
+        world.executor.submit("gpq.pace", world.bossRuns::warmGpqPace);
         // then its clear-time records (pq_run_pace), fitted against that warm data, which the estimate learns from
         world.executor.submit("pq.pace.records", world.partyQuests.paceLedger()::load);
         TimerManager timers = TimerManager.getInstance();
