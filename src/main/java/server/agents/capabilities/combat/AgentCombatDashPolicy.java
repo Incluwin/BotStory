@@ -1,5 +1,6 @@
 package server.agents.capabilities.combat;
 
+import constants.skills.Aran;
 import constants.skills.Brawler;
 import constants.skills.ChiefBandit;
 import constants.skills.DarkKnight;
@@ -13,8 +14,8 @@ import java.awt.Rectangle;
 import java.util.Set;
 
 /**
- * Skills whose client animation carries the caster along the ground: Rush and Assaulter charge
- * through their hit box, Corkscrew Blow runs forward through it, Backspin Blow slides back into the
+ * Skills whose client animation carries the caster along the ground: Rush, Assaulter and Final Charge
+ * charge through their hit box, Corkscrew Blow runs forward through it, Backspin Blow slides back into the
  * box behind the caster. A player's own client moves the character and reports it; a headless
  * Agent has no client, so without this it swings the skill in place while the mobs it hit are
  * knocked away from it.
@@ -22,7 +23,7 @@ import java.util.Set;
 public final class AgentCombatDashPolicy {
     private static final Set<Integer> FORWARD_DASH_SKILL_IDS = Set.of(
             Hero.RUSH, Paladin.RUSH, DarkKnight.RUSH, ChiefBandit.ASSAULTER,
-            Brawler.CORKSCREW_BLOW, ThunderBreaker.CORKSCREW_BLOW);
+            Brawler.CORKSCREW_BLOW, ThunderBreaker.CORKSCREW_BLOW, Aran.FINAL_CHARGE);
     private static final Set<Integer> BACKWARD_DASH_SKILL_IDS = Set.of(Brawler.BACK_SPIN_BLOW);
 
     private AgentCombatDashPolicy() {

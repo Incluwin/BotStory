@@ -42,6 +42,11 @@ public final class AgentHarnessProvisioning {
             case 3 -> branch == 2 ? 1462000 : 1452002;
             case 4 -> branch == 2 ? 1332007 : 1472000;
             case 5 -> branch == 2 ? 1492000 : 1482000;
+            case 12 -> 1372005;                          // Blaze Wizard: wand
+            case 13 -> 1452002;                          // Wind Archer: bow
+            case 14 -> 1472000;                          // Night Walker: claw
+            case 15 -> 1482000;                          // Thunder Breaker: knuckle
+            case 20, 21 -> 1442000;                      // Legend and Aran: polearm (a Dawn Warrior keeps the sword)
             default -> 1302000;
         };
     }
@@ -65,6 +70,11 @@ public final class AgentHarnessProvisioning {
             case 3 -> branch == 2 ? 1462050 : 1452057;   // crossbow for Marksman, else bow
             case 4 -> branch == 2 ? 1332073 : 1472068;   // dagger for the Bandit line, else claw
             case 5 -> branch == 2 ? 1492023 : 1482024;   // gun for the Gunslinger line, else knuckle
+            case 12 -> 1382057;                           // Blaze Wizard: staff
+            case 13 -> 1452057;                           // Wind Archer: bow
+            case 14 -> 1472068;                           // Night Walker: claw
+            case 15 -> 1482024;                           // Thunder Breaker: knuckle
+            case 20, 21 -> 1442045;                       // Legend and Aran: Dragon Chelbird (Lv110 polearm)
             default -> 1402046;
         };
     }

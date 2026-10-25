@@ -22,6 +22,7 @@ import server.ItemInformationProvider;
 import server.StatEffect;
 import server.agents.auth.AgentAuthorityService;
 import server.agents.auth.AgentControlService;
+import server.agents.capabilities.combat.AgentAranCombo;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackRoute;
@@ -477,6 +478,11 @@ public final class AgentSkillProbeService {
             case 3 -> branch == 2 ? 1462000 : 1452002;  // crossbow / bow
             case 4 -> branch == 2 ? 1332007 : 1472000;  // dagger for the Bandit line, else claw
             case 5 -> branch == 2 ? 1492000 : 1482000;  // gun for the Gunslinger line, else knuckle
+            case 12 -> 1372005;                          // Blaze Wizard: wand
+            case 13 -> 1452002;                          // Wind Archer: bow
+            case 14 -> 1472000;                          // Night Walker: claw
+            case 15 -> 1482000;                          // Thunder Breaker: knuckle
+            case 20, 21 -> 1442000;                      // Legend and Aran: polearm (a Dawn Warrior keeps the sword)
             default -> 1302000;
         };
     }
@@ -883,6 +889,9 @@ public final class AgentSkillProbeService {
                     }
                 }
             }
+            if (AgentAranCombo.spendsCombo(skill.getId()) && precondition.isEmpty()) {
+                precondition = buildAranCombo(bot, AgentAranCombo.required(skill.getId())) + "; ";
+            }
             if (skill.getId() == ChiefBandit.MESO_EXPLOSION) {
                 precondition = dropMesosAround(bot, map, mob) + "; ";
             }
@@ -1171,6 +1180,20 @@ public final class AgentSkillProbeService {
                 SkillProbeOutcome.Kind.UTILITY, stage, detail, 0, 0, 0L, signals, System.currentTimeMillis() - started);
     }
 
+    /**
+     * Aran combo skill precondition: the combo it spends, counted through the handler a player's client packet takes
+     * (AgentAranCombo; one count per monster hit in play, sent back to back here so 200 need no 200 swings).
+     */
+    private static String buildAranCombo(Character bot, int required) {
+        int sent = 0;
+        long now = AgentCombatGatewayRuntime.combat().serverTimeMs();
+        while (AgentAranCombo.current(bot, now) < required && sent++ < required + 10) {
+            AgentCombatGatewayRuntime.combat().dispatchAranComboCount(bot);
+            now = AgentCombatGatewayRuntime.combat().serverTimeMs();
+        }
+        return "aran combo " + AgentAranCombo.current(bot, now) + " after " + sent + " counts";
+    }
+
     /** Energy attack precondition: a full Energy Charge bar (each hit adds 102; full parks at 15000). */
     private static String fillEnergyCharge(Character bot) {
         int gains = 0;
@@ -1265,6 +1288,9 @@ public final class AgentSkillProbeService {
         int skillId = skill.getId();
         if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_COMBO_ORBS_REQUIRED, "combo finisher without combo orbs");
+        }
+        if (!AgentAranCombo.canPlan(bot, skillId)) {
+            return new Pair<>(SkillProbeOutcome.Stage.PLAN_COMBO_ORBS_REQUIRED, "Aran combo skill without its combo");
         }
         if (!AgentClientSkillRules.chargeReady(bot, skillId)) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_CHARGE_REQUIRED, "Charged Blow without a charge on the weapon");

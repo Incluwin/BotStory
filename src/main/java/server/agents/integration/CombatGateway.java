@@ -12,6 +12,15 @@ public interface CombatGateway {
 
     boolean dispatchSyntheticPacket(Character agent, byte[] packetBytes);
 
+    /**
+     * One count on an Aran's combo counter: the ARAN_COMBO_COUNTER packet (0xA3) a player's client sends for each
+     * monster its attack hits, through the same handler (AranComboHandler: 3 s decay, Combo Ability's buff every 10).
+     */
+    boolean dispatchAranComboCount(Character agent);
+
+    /** The server clock AranComboHandler stamps a combo count with (Server.getCurrentTime). */
+    long serverTimeMs();
+
     boolean dispatchSupportSpecialMove(Character agent, int skillId, int skillLevel, int packetTimestamp);
 
     /** Casts a summon skill at the Agent's position (special move with a position payload). */

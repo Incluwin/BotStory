@@ -2,6 +2,8 @@ package server.agents.capabilities.combat.learning;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AgentCombatLearningContextTest {
@@ -24,5 +26,16 @@ class AgentCombatLearningContextTest {
         assertEquals("4+ targets|boss|orbs full|energy full|transformed|no summon|target buffed|target debuffed",
                 AgentCombatLearningContext.key(5, true, "full", true, true, false, true, true));
         assertEquals("2-3 targets|summon up", AgentCombatLearningContext.key(3, false, null, false, false, true, false, false));
+    }
+
+    @Test
+    void anAransComboIsSplitOnlyAtTheNeedsOfTheComboSkillsItKnows() {
+        assertEquals(null, AgentCombatLearningContext.aranComboBucket(80, List.of()), "no combo skill yet");
+        assertEquals("under 30", AgentCombatLearningContext.aranComboBucket(29, List.of(30)));
+        assertEquals("30+", AgentCombatLearningContext.aranComboBucket(99, List.of(30, 100)));
+        assertEquals("100+", AgentCombatLearningContext.aranComboBucket(150, List.of(30, 100, 200)));
+        assertEquals("200+", AgentCombatLearningContext.aranComboBucket(200, List.of(30, 100, 200)));
+        assertEquals("1 target|boss|combo 30+",
+                AgentCombatLearningContext.key(1, true, null, false, false, null, false, false, "30+"));
     }
 }

@@ -1,15 +1,18 @@
 package server.agents.capabilities.combat;
 
 import client.inventory.WeaponType;
+import constants.skills.Aran;
 import constants.skills.Assassin;
 import constants.skills.Bandit;
 import constants.skills.ChiefBandit;
 import constants.skills.Corsair;
+import constants.skills.DawnWarrior;
 import constants.skills.DragonKnight;
 import constants.skills.Gunslinger;
 import constants.skills.Outlaw;
 import constants.skills.Hermit;
 import constants.skills.NightLord;
+import constants.skills.NightWalker;
 import constants.skills.Fighter;
 import constants.skills.Crusader;
 import constants.skills.Page;
@@ -19,6 +22,8 @@ import constants.skills.Pirate;
 import constants.skills.Rogue;
 import constants.skills.Shadower;
 import constants.skills.Spearman;
+import constants.skills.ThunderBreaker;
+import constants.skills.WindArcher;
 
 public final class AgentCombatWeaponPolicy {
     private AgentCombatWeaponPolicy() {
@@ -96,6 +101,25 @@ public final class AgentCombatWeaponPolicy {
                     WhiteKnight.BW_FIRE_CHARGE, WhiteKnight.BW_ICE_CHARGE,
                     WhiteKnight.BW_LIT_CHARGE, Paladin.BW_HOLY_CHARGE ->
                     isGeneralWeapon(weaponType);
+            // The Cygnus Knights' and Aran's weapon-bound attacks and boosters, as their Explorer counterparts'
+            // (Skill.wz weapon 44, 45, 47, 48 where it says so): the client refuses them with another weapon in hand.
+            case DawnWarrior.SWORD_BOOSTER, DawnWarrior.SOUL_BLADE, DawnWarrior.PANIC, DawnWarrior.COMA,
+                    DawnWarrior.BRANDISH, DawnWarrior.SOUL_DRIVER, DawnWarrior.SOUL_CHARGE ->
+                    isSword(weaponType);
+            case WindArcher.DOUBLE_SHOT, WindArcher.BOW_BOOSTER, WindArcher.SOUL_ARROW, WindArcher.STORM_BREAK,
+                    WindArcher.WIND_WALK, WindArcher.ARROW_RAIN, WindArcher.STRAFE, WindArcher.HURRICANE,
+                    WindArcher.EAGLE_EYE, WindArcher.WIND_PIERCING, WindArcher.WIND_SHOT ->
+                    weaponType == WeaponType.BOW;
+            case NightWalker.LUCKY_SEVEN, NightWalker.CLAW_BOOSTER, NightWalker.VAMPIRE, NightWalker.AVENGER,
+                    NightWalker.TRIPLE_THROW, NightWalker.POISON_BOMB ->
+                    weaponType == WeaponType.CLAW;
+            case ThunderBreaker.FIRST_STRIKE, ThunderBreaker.KNUCKLER_BOOSTER, ThunderBreaker.LIGHTNING_CHARGE,
+                    ThunderBreaker.SHARK_WAVE ->
+                    weaponType == WeaponType.KNUCKLE;
+            case Aran.DOUBLE_SWING, Aran.POLEARM_BOOSTER, Aran.TRIPLE_SWING, Aran.FINAL_CHARGE, Aran.COMBO_SMASH,
+                    Aran.COMBO_DRAIN, Aran.FINAL_TOSS, Aran.COMBO_FENRIR, Aran.SNOW_CHARGE, Aran.ROLLING_SPIN,
+                    Aran.FINAL_BLOW, Aran.COMBO_TEMPEST, Aran.COMBO_BARRIER ->
+                    isPolearmWeapon(weaponType);
             default -> true;
         };
     }

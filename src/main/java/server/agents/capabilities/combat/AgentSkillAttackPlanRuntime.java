@@ -81,6 +81,9 @@ public final class AgentSkillAttackPlanRuntime {
         if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
             return reject("combo-orbs");
         }
+        if (!AgentAranCombo.canPlan(bot, skillId)) {
+            return reject("aran-combo");
+        }
         if (!AgentClientSkillRules.usableInCurrentForm(bot, skillId)) {
             return reject("needs-super-transformation");
         }
@@ -146,6 +149,9 @@ public final class AgentSkillAttackPlanRuntime {
         StatEffect effect = skill == null || skillLevel <= 0 ? null : skill.getEffect(skillLevel);
         if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
             return reject("combo-orbs");
+        }
+        if (!AgentAranCombo.canPlan(bot, skillId)) {
+            return reject("aran-combo");
         }
         if (!AgentClientSkillRules.usableInCurrentForm(bot, skillId)) {
             return reject("needs-super-transformation");

@@ -28,7 +28,7 @@ public class NightWalker {
     // 1st job
     public static final int NIMBLE_BODY = 14000000;
     public static final int KEEN_EYES = 14000001;
-    public static final int DISORDER = 14000002;
+    public static final int DISORDER = 14001002; // Skill.wz 1400.img (was 14000002, an id the WZ does not have)
     public static final int DARK_SIGHT = 14001003;
     public static final int LUCKY_SEVEN = 14001004;
     public static final int DARKNESS = 14001005;
