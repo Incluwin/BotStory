@@ -118,7 +118,7 @@ class AgentTownLifeProfileRepositoryTest {
         AgentTownLifeProfileRepository repository =
                 AgentTownLifeProfileRepository.defaultRepository();
 
-        assertEquals(30, repository.profiles().size());
+        assertEquals(32, repository.profiles().size());
         for (int mapId : new int[]{104000000, 100000000, 103000000, 102000000,
                 101000000, 120000000, 105040300}) {
             AgentTownLifeProfile profile = repository.require(mapId);
