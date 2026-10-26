@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 2,
+  "profileId": "moonbridge",
+  "mapId": 450009050,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -19,
+    "middleMaxY": 56,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "sp", "weight": 100 }
+  ],
+  "restSpots": [
+    { "x": 682, "y": -14, "seatId": -1 },
+    { "x": 1362, "y": 30, "seatId": -1 },
+    { "x": 1787, "y": 29, "seatId": -1 },
+    { "x": 2542, "y": 166, "seatId": -1 },
+    { "x": 3107, "y": 67, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 1820, "y": 188 },
+    { "x": 1905, "y": 188 },
+    { "x": 1990, "y": 188 },
+    { "x": 2075, "y": 177 },
+    { "x": 2142, "y": 63 },
+    { "x": 2482, "y": 72 },
+    { "x": 2682, "y": 68 },
+    { "x": 2852, "y": 67 }
+  ],
+  "npcSpots": [],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": 3147, "minY": 6, "maxX": 3257, "maxY": 116, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -578, "minY": -235, "maxX": -488, "maxY": 94, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -300, "minY": -261, "maxX": -210, "maxY": -7, "excludesOccupancy": true },
+    { "id": "npc-9201609", "type": "NPC_LANE", "minX": -704, "minY": -114, "maxX": -464, "maxY": 16, "excludesOccupancy": true },
+    { "id": "npc-3003981", "type": "NPC_LANE", "minX": -376, "minY": -108, "maxX": -246, "maxY": 22, "excludesOccupancy": true },
+    { "id": "npc-3003569", "type": "NPC_LANE", "minX": -201, "minY": -220, "maxX": 421, "maxY": 23, "excludesOccupancy": true },
+    { "id": "npc-3003568", "type": "NPC_LANE", "minX": 469, "minY": -110, "maxX": 599, "maxY": 20, "excludesOccupancy": true },
+    { "id": "npc-3003570", "type": "NPC_LANE", "minX": 690, "minY": -102, "maxX": 913, "maxY": 32, "excludesOccupancy": true },
+    { "id": "npc-9201609-2", "type": "NPC_LANE", "minX": 1901, "minY": -43, "maxX": 2141, "maxY": 87, "excludesOccupancy": true },
+    { "id": "npc-3003575", "type": "NPC_LANE", "minX": 2171, "minY": -16, "maxX": 2437, "maxY": 235, "excludesOccupancy": true },
+    { "id": "npc-3003568-2", "type": "NPC_LANE", "minX": 2540, "minY": -21, "maxX": 2670, "maxY": 109, "excludesOccupancy": true },
+    { "id": "npc-3003567", "type": "NPC_LANE", "minX": 2700, "minY": -23, "maxX": 2830, "maxY": 107, "excludesOccupancy": true },
+    { "id": "npc-3003570-2", "type": "NPC_LANE", "minX": 2869, "minY": -23, "maxX": 2999, "maxY": 107, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-temple-keeper", "label": "By Temple Keeper", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 612, "y": -17, "seatId": -1 }, { "x": 682, "y": -14, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 1192, "y": 29, "seatId": -1 }, { "x": 1277, "y": 29, "seatId": -1 }, { "x": 1362, "y": 30, "seatId": -1 }, { "x": 1447, "y": 30, "seatId": -1 }] },
+    { "id": "by-sengoku-warrior", "label": "By Sengoku Warrior", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1617, "y": 31, "seatId": -1 }, { "x": 1702, "y": 30, "seatId": -1 }, { "x": 1787, "y": 29, "seatId": -1 }, { "x": 1872, "y": 29, "seatId": -1 }] },
+    { "id": "by-resistance-soldier", "label": "By Resistance Soldier", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2457, "y": 186, "seatId": -1 }, { "x": 2542, "y": 166, "seatId": -1 }] },
+    { "id": "by-cygnus-soldier", "label": "By Cygnus Soldier", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 3022, "y": 67, "seatId": -1 }, { "x": 3107, "y": 67, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "middle-central-street-crowd", "venueId": "middle-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

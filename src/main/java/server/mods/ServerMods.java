@@ -107,9 +107,18 @@ public final class ServerMods {
     public static final ServerMod CASH_SHOP_WINDOW = new ServerMod("cash_shop_window",
             "Cash Shop window over the field (client feature cash_shop_window)", true);
 
+    /**
+     * The maps only the Community Repack client has ({@link RepackMaps}, docs/REPACK_IMPORT_PLAN.md): a client known to
+     * have the Repack files may enter them, through the entry NPCs or any warp; any other is refused. Off, nobody
+     * enters, the entry NPCs are not spawned on maps loaded after the flip, and a character inside starts outside at
+     * its next login.
+     */
+    public static final ServerMod REPACK_MAPS = new ServerMod("repack_maps",
+            "Repack-only maps for clients on the Community Repack files", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW, REPACK_MAPS);
 
     private static volatile ServerMods instance;
 

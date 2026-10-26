@@ -32,6 +32,7 @@ import client.command.commands.gm0.DropLimitCommand;
 import client.command.commands.gm0.EnableAuthCommand;
 import client.command.commands.gm0.EquipLvCommand;
 import client.command.commands.gm0.GachaCommand;
+import client.command.commands.gm0.GameFilesCommand;
 import client.command.commands.gm0.GmCommand;
 import client.command.commands.gm0.HelpCommand;
 import client.command.commands.gm0.JoinEventCommand;
@@ -113,6 +114,7 @@ import client.command.commands.gm3.EndEventCommand;
 import client.command.commands.gm3.ExpedsCommand;
 import client.command.commands.gm3.FaceCommand;
 import client.command.commands.gm3.FameCommand;
+import client.command.commands.gm3.SetGameFilesCommand;
 import client.command.commands.gm3.FlyCommand;
 import client.command.commands.gm3.MesoCommand;
 import client.command.commands.gm3.GiveNxCommand;
@@ -448,6 +450,7 @@ public class CommandsExecutor {
         addCommand("search", SearchCommand.class);
         addCommand("id", IdCommand.class);
         addCommand("unbug", UnBugCommand.class);
+        addCommand("gamefiles", GameFilesCommand.class);
 
         commandsNameDesc.add(levelCommandsCursor);
     }
@@ -518,6 +521,7 @@ public class CommandsExecutor {
         levelCommandsCursor = new Pair<>(new ArrayList<String>(), new ArrayList<String>());
 
         addCommand("dc", 3, DcCommand.class);
+        addCommand("setgamefiles", 3, SetGameFilesCommand.class);
         addCommand(new String[]{"warphere", "summon"}, 3, SummonCommand.class);
         addCommand(new String[]{"warpto", "follow"}, 3, ReachCommand.class);
         addCommand("gmshop", 3, GmShopCommand.class);

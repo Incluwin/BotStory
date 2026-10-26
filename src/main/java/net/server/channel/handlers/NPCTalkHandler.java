@@ -75,6 +75,10 @@ public final class NPCTalkHandler extends AbstractPacketHandler {
                     NPCScriptManager.getInstance().start(c, npc.getId(), "mapleTV", null);
                 } else {
                     boolean hasNpcScript = NPCScriptManager.getInstance().start(c, npc.getId(), oid, null);
+                    if (!hasNpcScript && server.mods.RepackMaps.listed(c.getPlayer().getMapId()) && !npc.hasShop()) {
+                        // an NPC from the Community Repack's maps: it talks with its own String.wz lines
+                        hasNpcScript = NPCScriptManager.getInstance().start(c, npc.getId(), oid, "repack_talk", null);
+                    }
                     if (!hasNpcScript) {
                         if (!npc.hasShop()) {
                             log.warn("NPC {} ({}) is not coded", npc.getName(), npc.getId());

@@ -35,7 +35,7 @@ class SeedDataTest {
         long ms = (System.nanoTime() - started) / 1_000_000;
 
         assertEquals(List.of(), replay.warnings());
-        assertEquals(22_157, replay.tables().get("drop_data").size());
+        assertEquals(22_157 + 1_384, replay.tables().get("drop_data").size(), "the seed and the Repack mobs' rows");
         assertEquals(6, replay.tables().get("drop_data_global").size());
         assertEquals(110, replay.tables().get("shops").size());
         assertEquals(3_881, replay.tables().get("shopitems").size());
@@ -55,7 +55,8 @@ class SeedDataTest {
     @Test
     void appliesChangesetsInDocumentThenExtensionOrder() throws IOException {
         assertEquals(List.of("101", "102", "151", "152", "162", "163", "200", "2026-07-15-kpq-coupon-chance",
-                "2026-08-20-kpq-coupon-chance-80", "2026-09-05-epq-poison-bottle-chance-60"), SeedData.replay(ROOT).applied());
+                "2026-08-20-kpq-coupon-chance-80", "2026-09-05-epq-poison-bottle-chance-60", "2026-10-26-repack-import-drops"),
+                SeedData.replay(ROOT).applied());
     }
 
     @Test
@@ -72,7 +73,7 @@ class SeedDataTest {
             oracle.add(row);
         }
         List<Map<String, String>> replayed = SeedData.replay(ROOT).tables().get("drop_data");
-        assertEquals(oracle.size(), replayed.size());
+        assertEquals(oracle.size() + 1_384, replayed.size(), "the seed, then the Repack mobs' rows (extensions)");
         int edited = 0;
         for (int i = 0; i < oracle.size(); i++) {
             int[] expected = oracle.get(i);

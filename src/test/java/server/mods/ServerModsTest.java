@@ -89,7 +89,8 @@ class ServerModsTest {
     void theRegistryHoldsThePolicyOnAndTheOtherModsOff() {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
                 ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG, ServerMods.CASH_ITEM_TRADE,
-                ServerMods.DEATH_COUNT, ServerMods.SHOP_BUYBACK, ServerMods.WEATHER, ServerMods.CASH_SHOP_WINDOW),
+                ServerMods.DEATH_COUNT, ServerMods.SHOP_BUYBACK, ServerMods.WEATHER, ServerMods.CASH_SHOP_WINDOW,
+                ServerMods.REPACK_MAPS),
                 ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
@@ -111,6 +112,9 @@ class ServerModsTest {
         assertEquals("weather", ServerMods.WEATHER.id());
         assertTrue(ServerMods.CASH_SHOP_WINDOW.defaultOn(), "only a client with cash_shop_window active gets the window");
         assertEquals("cash_shop_window", ServerMods.CASH_SHOP_WINDOW.id());
+        assertTrue(ServerMods.REPACK_MAPS.defaultOn(), "only accounts known to be on the Repack files go in");
+        assertFalse(ServerMods.REPACK_MAPS.bootOnly());
+        assertEquals("repack_maps", ServerMods.REPACK_MAPS.id());
     }
 
     @Test
@@ -118,7 +122,8 @@ class ServerModsTest {
         assertEquals(Map.ofEntries(Map.entry("client_feature_policy", "on"), Map.entry("fusion_anvil", "off"),
                 Map.entry("botstory_wz", "off"), Map.entry("beginner_ap", "off"), Map.entry("set_items", "on"),
                 Map.entry("storage_bag", "on"), Map.entry("cash_item_trade", "on"), Map.entry("death_count", "on"),
-                Map.entry("shop_buyback", "on"), Map.entry("weather", "on"), Map.entry("cash_shop_window", "on")),
+                Map.entry("shop_buyback", "on"), Map.entry("weather", "on"), Map.entry("cash_shop_window", "on"),
+                Map.entry("repack_maps", "on")),
                 YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");

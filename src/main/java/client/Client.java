@@ -1204,6 +1204,7 @@ public class Client extends ChannelInboundHandlerAdapter {
         if (!(this instanceof BotClient) && player != null) {
             CompanionProbeService.forget(player.getId());
             server.living.LivingWorldHooks.playerLoggedOut(player);
+            server.mods.RepackMaps.get().clientClosed(this, serverTransition || cashshop);
         }
 
         if (player != null && player.isLoggedin() && player.getClient() != null) {

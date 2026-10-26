@@ -66,6 +66,9 @@ public final class PlayerMapTransitionHandler extends AbstractPacketHandler {
         MobPhysicsService.releaseMapInstances(
                 map, MobPhysicsService.ReleaseReason.CLIENT_MAP_TRANSITION);
         chr.setMapTransitionComplete();
+        if (server.mods.RepackMaps.listed(map.getId())) {
+            server.mods.RepackMaps.get().mapLoaded(c);
+        }
         MapTransitionPacketTraceRuntime.mark(c, "server physics released; normal field broadcasts enabled");
 
         boolean canControlMobs = !chr.isHidden() || map.shouldAllowHiddenMobSimulation(chr);

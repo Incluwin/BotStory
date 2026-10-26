@@ -1226,6 +1226,9 @@ mods:
     #   cash_shop_window       a client with cash_shop_window active gets the Cash Shop window over the field from the
     #                          Cash Shop button (docs/CASH_SHOP_WINDOW.md): the stock shop's offers, prices and
     #                          durations, for NX Credit or Maple Points; its own button enters the stock Cash Shop
+    #   repack_maps            the 579 maps only the Community Repack client has (Coke Town, Ninja Castle, Ulu City,
+    #                          Lion King's Castle, the Future, Arcane River): an account that answered "Repack files"
+    #                          goes in, any other is refused (docs/REPACK_IMPORT_PLAN.md); off: nobody goes in
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1240,6 +1243,7 @@ mods:
         shop_buyback: on
         weather: on
         cash_shop_window: on
+        repack_maps: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

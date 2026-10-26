@@ -75,6 +75,201 @@
   <imgdir name="2100102">
     <string name="name" value="Jr. Cactus"/>
   </imgdir>
+  <imgdir name="8210000">
+    <string name="name" value="Crocky the Gatekeeper"/>
+  </imgdir>
+  <imgdir name="8210001">
+    <string name="name" value="Reindeer"/>
+  </imgdir>
+  <imgdir name="8210002">
+    <string name="name" value="Blood Reindeer"/>
+  </imgdir>
+  <imgdir name="8210003">
+    <string name="name" value="Bearwolf"/>
+  </imgdir>
+  <imgdir name="8210004">
+    <string name="name" value="Grey Vulture"/>
+  </imgdir>
+  <imgdir name="8210005">
+    <string name="name" value="Castle Golem"/>
+  </imgdir>
+  <imgdir name="8210006">
+    <string name="name" value="Prison Guard Boar"/>
+  </imgdir>
+  <imgdir name="8210007">
+    <string name="name" value="Prison Guard Rhino"/>
+  </imgdir>
+  <imgdir name="8210013">
+    <string name="name" value="Prison Guard Ani"/>
+  </imgdir>
+  <imgdir name="8220016">
+    <string name="name" value="Corrupted Wyvern"/>
+  </imgdir>
+  <imgdir name="8220017">
+    <string name="name" value="Corrupted Cornian"/>
+  </imgdir>
+  <imgdir name="8220018">
+    <string name="name" value="Corrupted Skelegon"/>
+  </imgdir>
+  <imgdir name="8220019">
+    <string name="name" value="Corrupted Kentaurus"/>
+  </imgdir>
+  <imgdir name="8220020">
+    <string name="name" value="Corrupted Chief Memory Guardian"/>
+  </imgdir>
+  <imgdir name="8220021">
+    <string name="name" value="Corrupted Time Monk Trainee"/>
+  </imgdir>
+  <imgdir name="8600000">
+    <string name="name" value="Mutant Snail"/>
+  </imgdir>
+  <imgdir name="8600001">
+    <string name="name" value="Mutant Orange Mushroom"/>
+  </imgdir>
+  <imgdir name="8600002">
+    <string name="name" value="Mutant Slime"/>
+  </imgdir>
+  <imgdir name="8600003">
+    <string name="name" value="Mutant Ribbon Pig"/>
+  </imgdir>
+  <imgdir name="8600004">
+    <string name="name" value="Mutant Tino"/>
+  </imgdir>
+  <imgdir name="8600005">
+    <string name="name" value="Mutant Tiru"/>
+  </imgdir>
+  <imgdir name="8600006">
+    <string name="name" value="Mutant Tiguru"/>
+  </imgdir>
+  <imgdir name="8610000">
+    <string name="name" value="Dawn"/>
+  </imgdir>
+  <imgdir name="8610001">
+    <string name="name" value="Blaze"/>
+  </imgdir>
+  <imgdir name="8610002">
+    <string name="name" value="Wind"/>
+  </imgdir>
+  <imgdir name="8610003">
+    <string name="name" value="Night"/>
+  </imgdir>
+  <imgdir name="8610004">
+    <string name="name" value="Thunder"/>
+  </imgdir>
+  <imgdir name="8610005">
+    <string name="name" value="Official Knight A"/>
+  </imgdir>
+  <imgdir name="8610006">
+    <string name="name" value="Official Knight B"/>
+  </imgdir>
+  <imgdir name="8610007">
+    <string name="name" value="Official Knight C"/>
+  </imgdir>
+  <imgdir name="8610008">
+    <string name="name" value="Official Knight D"/>
+  </imgdir>
+  <imgdir name="8610009">
+    <string name="name" value="Official Knight E"/>
+  </imgdir>
+  <imgdir name="8610010">
+    <string name="name" value="Advanced Knight A"/>
+  </imgdir>
+  <imgdir name="8610011">
+    <string name="name" value="Advanced Knight B"/>
+  </imgdir>
+  <imgdir name="8610012">
+    <string name="name" value="Advanced Knight C"/>
+  </imgdir>
+  <imgdir name="8610013">
+    <string name="name" value="Advanced Knight D"/>
+  </imgdir>
+  <imgdir name="8610014">
+    <string name="name" value="Advanced Knight E"/>
+  </imgdir>
+  <imgdir name="8610015">
+    <string name="name" value="Ifrit"/>
+  </imgdir>
+  <imgdir name="8620000">
+    <string name="name" value="Swollen Stump"/>
+  </imgdir>
+  <imgdir name="8620001">
+    <string name="name" value="Swollen Dark Stump"/>
+  </imgdir>
+  <imgdir name="8620002">
+    <string name="name" value="Swollen Axe Stump"/>
+  </imgdir>
+  <imgdir name="8620003">
+    <string name="name" value="Pillaging Wild Boar"/>
+  </imgdir>
+  <imgdir name="8620004">
+    <string name="name" value="Pillaging Iron Boar"/>
+  </imgdir>
+  <imgdir name="8620005">
+    <string name="name" value="Pillaging Fire Boars"/>
+  </imgdir>
+  <imgdir name="8620006">
+    <string name="name" value="Sinister Wooden Mask"/>
+  </imgdir>
+  <imgdir name="8620007">
+    <string name="name" value="Sinister Rocky Mask"/>
+  </imgdir>
+  <imgdir name="8620008">
+    <string name="name" value="Sinister Steel Mask"/>
+  </imgdir>
+  <imgdir name="8620009">
+    <string name="name" value="Ancient Golem"/>
+  </imgdir>
+  <imgdir name="8620010">
+    <string name="name" value="Ancient Dark Golem"/>
+  </imgdir>
+  <imgdir name="8620011">
+    <string name="name" value="Ancient Mixed Golem"/>
+  </imgdir>
+  <imgdir name="9400400">
+    <string name="name" value="Genin"/>
+  </imgdir>
+  <imgdir name="9400401">
+    <string name="name" value="Chunin"/>
+  </imgdir>
+  <imgdir name="9400402">
+    <string name="name" value="Jonin"/>
+  </imgdir>
+  <imgdir name="9400403">
+    <string name="name" value="Ninto"/>
+  </imgdir>
+  <imgdir name="9400404">
+    <string name="name" value="Ashigaru"/>
+  </imgdir>
+  <imgdir name="9400405">
+    <string name="name" value="Kacchuu Musha"/>
+  </imgdir>
+  <imgdir name="9400406">
+    <string name="name" value="Kunoichi"/>
+  </imgdir>
+  <imgdir name="9420514">
+    <string name="name" value="Berserkie"/>
+  </imgdir>
+  <imgdir name="9420515">
+    <string name="name" value="Veetron"/>
+  </imgdir>
+  <imgdir name="9420516">
+    <string name="name" value="Slygie"/>
+  </imgdir>
+  <imgdir name="9420517">
+    <string name="name" value="Petrifighter"/>
+  </imgdir>
+  <imgdir name="9420518">
+    <string name="name" value="Montrecer"/>
+  </imgdir>
+  <imgdir name="9420519">
+    <string name="name" value="Duku"/>
+  </imgdir>
+  <imgdir name="9420525">
+    <string name="name" value="Gas Tank"/>
+  </imgdir>
+  <imgdir name="9420526">
+    <string name="name" value="Broken Wires"/>
+  </imgdir>
   <imgdir name="9501018">
     <string name="name" value="Stat Change Test"/>
   </imgdir>

@@ -273,6 +273,9 @@ public class MapFactory {
 
         loadLifeFromWz(map, mapData);
         loadLifeFromDb(map);
+        if (event == null && server.mods.RepackMaps.hasEntry(mapid)) {
+            server.mods.RepackMaps.get().spawnEntries(map);
+        }
 
         if (map.isCPQMap()) {
             Data mcData = mapData.getChildByPath("monsterCarnival");

@@ -208,6 +208,8 @@ public class MapId {
     public static final int CRITICAL_ERROR_BASE = 261020301;
     public static final int FANTASY_THEME_PARK_3 = 551030000;
     public static final int LONGEST_RIDE_ON_BYEBYE_STATION = 551030001;
+    public static final int DESTROYED_PARK_2 = 541020610; // Ulu City, a Community Repack map (server.mods.RepackMaps)
+    public static final int LONG_KISS_DUKU_GOOD_NIGHT_BASE = 541020620;
 
     // Boss rush
     private static final int BOSS_RUSH_MIN = 970030100;
