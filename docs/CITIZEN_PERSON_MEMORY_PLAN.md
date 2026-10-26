@@ -69,10 +69,10 @@ Recall wording follows age, the way people misremember: earlier (under 6 h), yes
 
 1. **Reunion greeting.** In the minute loop (`SocialFabric.acquaintances`), the first sight of someone it remembers
    after `MEMORY_RETURN_AFTER_MINUTES` (180) apart: if it is free (loaded, not AFK, no stall, not in an event instance)
-   and within earshot (700 px), it greets them on map chat by name, bringing up the strongest episode it still
-   remembers in detail: "Ann! that kpq yesterday was fun", "oh hey Ann, thx again for the maple shield", "Ann... u
-   gonna stay this time?". One citizen greeting per player per `MEMORY_GREET_GAP_MS` (5 min), so a crowd of friends
-   doesn't all wave at once. Out of earshot it waits for a later minute of the same visit.
+   and within earshot (700 px), and they are not hidden (a GM), it greets them on map chat by name, bringing up the
+   strongest episode it still remembers in detail: "Ann! that kpq yesterday was fun", "oh hey Ann, thx again for the
+   maple shield", "Ann... u gonna stay this time?". One citizen greeting per player per `MEMORY_GREET_GAP_MS` (5 min),
+   so a crowd of friends doesn't all wave at once. Out of earshot it waits for a later minute of the same visit.
 2. **"hi" from someone it remembers** gets a remembered hello ("hey Ann! back again?") instead of the coin flip.
 3. **Model grounding.** `Conversation.facts` adds "what i remember about Ann" (at most 256 chars): when they met, the
    episodes in recall wording with places, and a feeling word (fond / friendly / don't know them well / wary /
@@ -97,7 +97,7 @@ Recall wording follows age, the way people misremember: earlier (under 6 h), yes
 
 ### 2.4 Storage and bounds
 
-Changeset `48-citizen-person-memory`, `db/tables/039-citizen-person-memory.sql` (rollback `-down.sql`) adds to
+Changeset `49-citizen-person-memory`, `db/tables/040-citizen-person-memory.sql` (rollback `-down.sql`) adds to
 `living_acquaintance`: `warmth SMALLINT NOT NULL DEFAULT 0`, `memory_at TIMESTAMP NULL`, `first_met_at TIMESTAMP NULL`,
 `episodes VARCHAR(600) NOT NULL DEFAULT ''`, and `INDEX idx_living_acq_memory_at (memory_at)` for the prune.
 Timestamps go through `SqlTime` (UTC sessions). Episodes are a compact text codec (`kind|epochMinute|mapId|count|detail`

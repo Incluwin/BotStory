@@ -250,7 +250,8 @@ public final class PersonMemories {
 
     /**
      * The reunion greeting, if this one is worth it (salience {@link PersonMemory#GREET_SALIENCE}), the citizen is free
-     * and within earshot, and no citizen greeted them in the last MEMORY_GREET_GAP_MS. True when it was said (or will
+     * and within earshot, the player is not hidden (a GM's hide: nobody sees them), and no citizen greeted them in the
+     * last MEMORY_GREET_GAP_MS. True when it was said (or will
      * never be: the memory is not worth a greeting), false to try again within the visit.
      */
     boolean greet(CitizenSession session, Character human, PersonMemory memory, long nowMs) {
@@ -260,7 +261,8 @@ public final class PersonMemories {
         }
         Character agent = session.agent();
         Long last = greetedAt.get(human.getId());
-        if (agent == null || agent.getMap() == null || agent.getEventInstance() != null || !Conversation.free(session, nowMs)
+        if (agent == null || agent.getMap() == null || agent.getEventInstance() != null || human.isHidden()
+                || !Conversation.free(session, nowMs)
                 || last != null && nowMs - last < config.MEMORY_GREET_GAP_MS
                 || agent.getPosition().distance(human.getPosition()) > GREET_PX) {
             return false;

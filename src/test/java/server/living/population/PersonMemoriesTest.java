@@ -139,6 +139,23 @@ class PersonMemoriesTest {
     }
 
     @Test
+    void aHiddenGmIsNotGreetedUntilTheyShowThemselves() {
+        long now = System.currentTimeMillis();
+        rows.put(key(963, ANN), new MemoryRow(ANN, PersonMemory.none().with(Kind.PQ_CLEAR, 0, "kpq", 1, now - 20 * HOUR, config),
+                now - 4 * HOUR));
+        CitizenSession pip = session(963, "Pip", new Point(0, 0));
+        Character ann = human(ANN, "Ann", new Point(100, 0));
+        when(ann.isHidden()).thenReturn(true);
+
+        memories.seen(pip, ann, now);
+        verify(chatter, never()).speakTo(any());
+
+        when(ann.isHidden()).thenReturn(false);
+        memories.seen(pip, ann, now + 60_000L);
+        verify(chatter).speakTo(any());
+    }
+
+    @Test
     void togetherAnHourAgoIsNoReunion() {
         long now = System.currentTimeMillis();
         rows.put(key(963, ANN), new MemoryRow(ANN, PersonMemory.none().with(Kind.PQ_CLEAR, 0, "kpq", 1, now - 2 * HOUR, config),

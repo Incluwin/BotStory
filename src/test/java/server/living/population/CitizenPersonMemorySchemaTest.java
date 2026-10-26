@@ -16,25 +16,25 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Changeset 48 (citizens remember the people they meet): registered after 47 with its rollback; living_acquaintance
+ * Changeset 49 (citizens remember the people they meet): registered after 47 with its rollback; living_acquaintance
  * gains the memory columns and the prune's index beside the shared minutes, in one ALTER each way, ASCII only; and only
  * CitizenStore writes them.
  */
 class CitizenPersonMemorySchemaTest {
     private static final Path CHANGELOG = Path.of("src/main/resources/db/changelog-tables.xml");
-    private static final Path UP = Path.of("src/main/resources/db/tables/039-citizen-person-memory.sql");
-    private static final Path DOWN = Path.of("src/main/resources/db/tables/039-citizen-person-memory-down.sql");
+    private static final Path UP = Path.of("src/main/resources/db/tables/040-citizen-person-memory.sql");
+    private static final Path DOWN = Path.of("src/main/resources/db/tables/040-citizen-person-memory-down.sql");
 
     @Test
-    void changeset48IsRegisteredAfter47WithItsRollback() throws IOException {
+    void changeset49IsRegisteredAfter47WithItsRollback() throws IOException {
         String changelog = Files.readString(CHANGELOG);
-        int start = changelog.indexOf("<changeSet id=\"48-citizen-person-memory\" author=\"ganre\">");
+        int start = changelog.indexOf("<changeSet id=\"49-citizen-person-memory\" author=\"ganre\">");
         assertTrue(start > changelog.indexOf("<changeSet id=\"47-character-storage-bag\""), "after 47");
         String changeSet = changelog.substring(start, changelog.indexOf("</changeSet>", start));
-        assertTrue(changeSet.contains("<sqlFile path=\"db/tables/039-citizen-person-memory.sql\" splitStatements=\"true\"/>"));
+        assertTrue(changeSet.contains("<sqlFile path=\"db/tables/040-citizen-person-memory.sql\" splitStatements=\"true\"/>"));
         assertTrue(changeSet.indexOf("<rollback>") < changeSet.indexOf(
-                "<sqlFile path=\"db/tables/039-citizen-person-memory-down.sql\" splitStatements=\"true\"/>"));
-        assertEquals(changelog.indexOf("<changeSet id=\"48-"), changelog.lastIndexOf("<changeSet id=\"48-"), "once");
+                "<sqlFile path=\"db/tables/040-citizen-person-memory-down.sql\" splitStatements=\"true\"/>"));
+        assertEquals(changelog.indexOf("<changeSet id=\"49-"), changelog.lastIndexOf("<changeSet id=\"49-"), "once");
     }
 
     @Test

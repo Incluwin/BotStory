@@ -1,4 +1,4 @@
--- Rollback for 039-citizen-person-memory.sql: citizens forget the people they met; the shared minutes stay.
+-- Rollback for 040-citizen-person-memory.sql: citizens forget the people they met; the shared minutes stay.
 ALTER TABLE living_acquaintance
     DROP INDEX idx_living_acq_memory_at,
     DROP COLUMN episodes,
