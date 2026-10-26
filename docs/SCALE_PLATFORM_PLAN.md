@@ -176,6 +176,127 @@ live server and other sessions.
 Live measurement for the coordinator to arrange after a deploy: the new `Agent scheduler health` line over one
 hour in central-sequential, then one hour with `-Dagents.scheduler.mode=central-sharded` at players=0, same build.
 
-## 6. Results
+## 6. Results (2026-10-25, offline, this host: 16 logical CPUs, live server and other sessions running)
 
-(filled in as measured)
+### 6.1 Scheduler tick lag and CPU (`AgentSchedulerLagBench`)
+
+`-DrunBenchmarks=true -Dtest=AgentSchedulerLagBench`, 60 s per run, two interleaved rounds (A B C A B C), heap 768 MB.
+"Overrun" = how late each Agent's next tick started after it was due (the freeze a player sees). "Probe" = a 50 ms
+timer on the shared core pool (how late Cosmic's own core timers run). "Mailbox" = an action posted from an outside
+thread until it ran on the Agent's tick. CPU = process cores; overhead = cores minus the synthetic work burned.
+Ranges are the two rounds. An earlier run (Mockito inline mocks for the Agents) was discarded: the mocks added
+multi-second stalls (3.7-8.4 cores of "overhead").
+
+| Scenario | Mode | Overrun p95 / p99 / max ms | Late > 250 ms | Mailbox p50 / p99 ms | CPU cores (overhead) |
+|---|---|---|---|---|---|
+| live: 248 Agents, background cadence | sequential (shipped) | 11-12 / 208-393 / 552-606 | 0.77-1.96 % | 8.9-9.3 / 255-407 | 0.40-0.43 (0.08-0.09) |
+| | sharded, shared pool | 28 / 42-44 / 517-600 | 0.16-0.43 % | 1.6-1.7 / 47-140 | 0.37-0.40 (0.05) |
+| | sharded, dedicated lane | 28 / 43-45 / 539-599 | 0.17-0.48 % | 1.6 / 48-126 | 0.35-0.39 (0.00-0.06) |
+| players: 600 Agents, a fifth at 50 ms | sequential | 570-650 / 969-1,143 / 1,357-2,356 | 21.9-22.5 % | 282-294 / 1,065-1,681 | 0.99-1.00 (0.12-0.14) |
+| | sharded, shared pool | 27-28 / 46-55 / 538-1,575 | 0.34-0.75 % | 6.4-6.7 / 161-396 | 1.44-1.47 (0.17-0.18) |
+| | sharded, dedicated lane | 27-28 / 48-59 / 547-849 | 0.34-0.78 % | 7.0-7.3 / 159-390 | 1.49 (0.19-0.23) |
+| stress: 1,000 Agents | sequential | 2,012-2,026 / 2,579-2,639 / 3,448-3,565 | 15.1-15.9 % | 892-896 / 2,620-2,626 | 0.99-1.00 (0.11-0.13) |
+| | sharded, shared pool | 31-34 / 233-296 / 1,028-1,386 | 0.91-1.16 % | 13-15 / 471-494 | 2.39-2.44 (0.29-0.34) |
+| | sharded, dedicated lane | 31-32 / 229-306 / 1,434-1,505 | 0.90-1.22 % | 13-14 / 477-485 | 2.37-2.42 (0.27-0.31) |
+
+Reading it:
+- At today's load (248 Agents) sharded cuts the p99 freeze from 208-393 ms to 42-45 ms and the share of ticks more than
+  250 ms late by 3-5x, for the same CPU (0.35-0.43 cores in every mode; the live server averaged 0.44). The cost: typical
+  lateness (p95) rises from 11 ms to 28 ms in both sharded variants (cause not isolated; every shard loop runs at the
+  same base tick), well under one 50 ms presentation tick.
+- Sequential is one thread. At 600 Agents it is saturated (1.0 core): it ran 164-175k ticks where sharded ran
+  257-260k, 22 % of ticks ran more than 250 ms late, and a mailbox action waited 0.3 s at the median. Sharded stayed at
+  p99 46-59 ms. Sharded spends more CPU there only because it gets the work done.
+- Slow ticks (navigation inside one Agent's tick, up to 13.4 s live) are not made faster by any mode; sharded confines
+  each to one shard, so the other three quarters of the Agents keep ticking.
+- The dedicated lane made no difference in these runs: the core-pool probe stayed under 17 ms at p99 in every mode,
+  because four slow ticks never coincided. It is insurance for the live worst case (four shards each in a 13 s tick
+  would take all four CORE timer threads); it costs nothing measurable.
+- Scheduler overhead (CPU minus burned work) is 0.00-0.09 cores at live load in all modes.
+
+Live (read-only, `logs/cosmic-log.log`): 840 `Slow central Agent tick` WARNs from 20:06:17 to 22:31:42 at 248 Agents,
+players 0 (5.8 a minute), the same rate the bench models.
+
+### 6.2 Cross-Agent races that central-sharded exposes (audit of this branch's base)
+
+| Id | What | Fix on this branch |
+|---|---|---|
+| H1 | Party-quest lease holders write other members' movement/combat state (navigate, stop, grind, territory) from their own tick while each member's tick reads and clears it | `AgentForeignWriteRuntime`: in central-sharded mode such a write goes into the member's mailbox (coalesced per command, no wake), so each Agent's state keeps one writer. `CosmicPrimitiveCapabilityGateway` and `AgentMovementCommandRuntime` route through it. Kill switch `AgentForeignWriteRuntime.ENABLED` |
+| H2 | `AgentOpqMemberState` written by the coordinator (under the session lock) and by each member's tick (no lock); possible NPE on `lastPosition` | every accessor and mutator synchronized (pure state, no callouts) |
+| M1 | APQ box, LMPQ box and PPQ door claims are scan-then-commit in each member's tick: two members take one box or door (PPQ wastes a key) | scan and commit in one step under the session monitor |
+| M2 | OPQ room lease read twice; the holder's `releaseExpired` in between gives an NPE | one read |
+| M3 | Party gather on rebuff: `gathered()` then `markGathered()`; two buffers both move the party and the second overwrites the restore | `tryMarkGathered` compare-and-set |
+| M5 | Peers read `AgentModeState` and `AgentGrindTargetState.target` from their own ticks | fields volatile |
+| M6 | Potion and ammo share windows are get-then-put: two cohort members ask the same donor | `claimShareWindow` (one `compute`) |
+| L1 | `ChatterEngine` smega and line counters (`++` on volatiles) | `AtomicLong` / synchronized hour count |
+| M4 | Post-run hold races a test redeploy (TEST_OBSERVATION mode only) | not changed (test deployments only) |
+| L2-L5 | Coordination receipt cap overshoot, journey report written twice, spurious KPQ lease warning, followers at two town anchors | not changed (cosmetic or self-healing) |
+
+Checked safe: party-quest sessions (synchronized mutators, copied member lists), coordinators under the session
+lock, lobby admission (static synchronized), boss/expedition monitors (scheduled, not Agent ticks), the static maps
+behind locks. Contention: the static-synchronized lobby ticks and `AgentPerformanceMonitor.record`'s lock serialize
+the shards for a few additions each; not measured to matter.
+
+### 6.3 Mailbox
+
+The mailbox is already on in both central modes (live today). Delivery latency is in 6.1. New on this branch:
+`AgentForeignWriteRuntime.ROUTE_EXTERNAL_WRITES` (shipped false) routes the three known bypasses through the target's
+mailbox: the trade request's interaction target (packet thread), a citizen's map change on the population timer
+(`PresenceScheduler.placeAndLand`, `CitizenTravel` boarding), and a Director mode change from the bridge thread.
+With it on, a citizen's cheap move lands on its own next tick; an abstract citizen is woken first (`leaveAbstract`),
+and a dropped move gives its MAP_VISIBLE_MAX slot back when the reservation lapses. The entry-less timer tasks (about
+62 `AgentSchedulerRuntime.schedule/afterDelay` calls) and `RosterService`'s companion-ops executor are wider than this
+branch and not moved.
+
+### 6.4 World Director (`AgentWorldDirectorCostBench`, 248 Agents)
+
+Built: `AgentWorldDirectorPolicyRuntime` (the Director's own choices become POLICY proposals in ASSISTED and POLICY
+directives in AUTONOMOUS; approving a POLICY proposal in ASSISTED issues a POLICY directive, which the assisted gate
+judges), Observe sampling in ASSISTED/AUTONOMOUS, the sample count persisted (its own file per Agent, every 60
+samples) and restored at login, `MAX_RECENT_FAILURES` fed by Director rejections in a one-hour window, a TTL on
+POLICY directives, INFO lines for every policy proposal and start, counters on the health line. Rollout defaults stay
+closed (ASSISTED/AUTONOMOUS disabled, empty cohorts, every Agent's Director mode DISABLED).
+
+| Step (per Agent) | p50 / p99 us | Cores at 248 Agents |
+|---|---|---|
+| Observe evaluation (every 5 s) | 5.3-6.6 / 29-33 | 0.0003 |
+| Directive poll, full file read (every 1 s, MANUAL/ASSISTED/AUTONOMOUS) | 1,717-1,755 / 5,033-6,732 (max 374 ms) | 0.43 |
+| Directive poll with the new change stamp (idle; full read every 30 s) | 71 / 124 | 0.032 |
+| Observe evidence checkpoint (every 60 samples) | 475 / 794 | 0.0004 |
+
+The poll was the cost: 248 Agents in a live Director mode would have spent 0.43 cores (as much as the whole engine
+today) reading JSON on their ticks. `AgentWorldDirectivePollState` now compares two file timestamps and reads in full
+only when a file changed, a directive is in flight, or 30 s passed: 0.032 cores. Not measured offline: the Cosmic
+context capture (needs a live Character).
+
+### 6.5 MAP_VISIBLE_MAX
+
+Enforced, on by default behind `population.MAP_VISIBLE_CAP_ENABLED` (commit c02e3ca36). Evidence:
+`MapVisibleCapTest` (8 cases: count standing plus on their way, never twice, slots back on land/drop/lapse, walks
+refresh, racing moves never both take the last slot, kill switch) and `PresenceSchedulerVisibleCapTest` (7 cases:
+an everyday move to a full town goes elsewhere, a party-quest move waits while one citizen there moves on, nowhere
+free stays put and gives up after its tries, a newer move replaces a waiting one, a login to a full map lands
+elsewhere or virtual, an over-cap map sends a few on per sweep, kill switch). No path removes a citizen in front of a
+player: the cap only redirects, delays or walks citizens out through portals. At 60 per map the cap binds rarely today
+(240 loaded citizens; the busiest login target, the Free Market entrance, took 51 of 350 logins in an hour);
+`!citizens` and the admin port show the busiest maps and the cap's redirects and waits.
+
+### 6.6 Live measurement for the coordinator (after a deploy of this branch, players 0)
+
+1. One hour as shipped (central-sequential): the new `Agent scheduler health` line every 5 minutes (queue-lag
+   p50/p95/p99/max, slow, failed), the `Slow central Agent tick` count, process CPU.
+2. One hour with `-Dagents.scheduler.mode=central-sharded` (or the yaml DEFAULT_MODE), same build: the same lines plus
+   `shard=` on the slow-tick WARNs, `foreign=` on the health line, and a grep for new WARN/ERROR lines during citizen
+   KPQ/HPQ parties.
+3. Optional: the same with ROUTE_EXTERNAL_WRITES true (watch citizen walks and `foreignDropped`).
+
+## 7. Decisions (the user, 2026-10-25)
+
+- Scheduler: central-sharded becomes the default only after one live hour at players 0 on this build (6.6 step 2)
+  shows no new WARN/ERROR and the health line confirms the offline numbers. Until then agent-engine.yaml DEFAULT_MODE
+  ships `central-sequential`.
+- Mailbox: ROUTE_EXTERNAL_WRITES is turned on for that same live hour and ships on together with central-sharded if
+  the hour is clean; until then it ships false.
+- World Director: ships built and closed (ASSISTED/AUTONOMOUS rollouts disabled, empty cohorts). Next: an ASSISTED
+  canary of 1-3 Agents the user picks, then a small AUTONOMOUS basis-points cohort.
+- MAP_VISIBLE_MAX: enforcement ships on; `population.MAP_VISIBLE_CAP_ENABLED: false` is the kill switch.

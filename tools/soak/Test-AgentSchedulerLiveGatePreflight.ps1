@@ -1,5 +1,6 @@
 param(
-    [string] $ExpectedBranch = "feature/agent-central-scheduler-runtime",
+    # empty = any branch (the scheduler lives on the main line since the cosmic_agents merge); name one to insist on it
+    [string] $ExpectedBranch = "",
     [ValidateSet("legacy", "central-sequential", "central-sharded")]
     [string] $SchedulerMode = "central-sharded",
     [string] $ExpectedDatabaseName,
@@ -68,7 +69,7 @@ $checks = [System.Collections.Generic.List[object]]::new()
 $branch = (& git branch --show-current 2>&1).Trim()
 if ($LASTEXITCODE -ne 0) {
     Add-Check $checks "git:branch" "FAIL" "Unable to read the current branch."
-} elseif ($branch -eq $ExpectedBranch) {
+} elseif ([string]::IsNullOrWhiteSpace($ExpectedBranch) -or $branch -eq $ExpectedBranch) {
     Add-Check $checks "git:branch" "PASS" "Current branch is $branch."
 } else {
     Add-Check $checks "git:branch" "FAIL" "Current branch is $branch; expected $ExpectedBranch."

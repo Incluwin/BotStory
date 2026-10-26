@@ -59,8 +59,9 @@ Implementation progress on `feature/agent-central-scheduler-runtime`:
 - Phase 1 moves scheduler types under `server.agents.runtime.scheduler`, adds
   the stable `AgentScheduler` facade, immutable validated mode configuration,
   typed generation-bound handles, and an O(1) active-session index.
-- `LEGACY_PER_AGENT` remains the default. `CENTRAL_SHARDED` is implemented as
-  an explicit opt-in and remains blocked from production default rollout.
+- `LEGACY_PER_AGENT` was the default at the time (2026-10-25: the shipped mode is
+  `central-sequential`, agent-engine.yaml DEFAULT_MODE; central-sharded waits on
+  the user, docs/SCALE_PLATFORM_PLAN.md section 6).
 - Phase 2 makes mailbox ownership mandatory whenever either central mode is
   selected. Chat, whisper, equip, potion, follow, formation, pending-offer,
   Amherst mutation, airshow, and entry-scoped delayed callbacks now enter the

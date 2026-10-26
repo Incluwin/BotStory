@@ -219,7 +219,12 @@ triggers, channels and jobs, loadouts that do not exist, and non-ASCII.
 The first cut ran 120 citizens and 30 loaded. A presence sweep with 6 logins took ~300 ms; a
 birth (account, character, shaping) ~250 ms. Raise `TARGET_CITIZENS` and `ONLINE_MAX` in steps
 while watching `sweepMs` in `!citizens status`, GC in `logs/gc/`, and the client on a crowded
-town; `MAP_VISIBLE_MAX` and the field capacities are the per-map brakes. `!citizens force <n>`
+town; `MAP_VISIBLE_MAX` and the field capacities are the per-map brakes. `MAP_VISIBLE_MAX` (60) is
+enforced per map instance since 2026-10-25 (`MapVisibleCap`, kill switch `MAP_VISIBLE_CAP_ENABLED`): a login to a full map
+logs in on another map of the same kind, else virtual; an everyday move to a full map goes elsewhere of the same kind; a
+party-quest or job-errand move waits and retries while one everyday citizen there moves on; a map over the cap walks its
+newest everyday citizens out through a portal while someone watches. Nobody vanishes in place for the cap. Residents and
+companions do not count. docs/SCALE_PLATFORM_PLAN.md section 1. `!citizens force <n>`
 is the load-test knob: it keeps n citizens loaded regardless of the hour.
 
 Measured 2026-09-21 (16-core laptop, `-Xmx3072m`): 600 citizens / 240 loaded costs about one
@@ -235,5 +240,4 @@ Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ h
 OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
 invite you); no expeditions; no alliances; travel on foot ends on the first map nobody watches (no citizen walks a
 whole multi-map trip unseen) and rides no real ship; conversation memory of a human is the
-social relationship memory plus the journal, not a per-human summary; the client-side visible cap
-(`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.
+social relationship memory plus the journal, not a per-human summary.
