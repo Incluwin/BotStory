@@ -12,6 +12,7 @@ import server.ItemInformationProvider;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService.ObservedStall;
+import server.integration.AgentPresence;
 import server.knowledge.ContentAnswers;
 import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorldHooks;
@@ -232,6 +233,7 @@ public final class Market {
             AgentFreeMarketStallService.Result result = stalls.open(agent, description, permit, shopListings, reservation);
             if (result.success()) {
                 session.stallOpen = true;
+                session.stallSalesSeen = 0;
                 stallsOpen++;
                 session.journal.add("market", "opened a shop selling " + listings.get(0).name());
                 log.info("citizen {} opened a stall in room {} with {} listings", session.name(), agent.getMapId(), shopListings.size());
@@ -257,6 +259,7 @@ public final class Market {
         try {
             PlayerShop shop = agent.getPlayerShop();
             if (shop != null && shop.isOwner(agent)) {
+                rememberSales(session, shop);
                 for (PlayerShop.ListingView view : shop.listingSnapshot()) {
                     if (view.bundles() <= 0) {
                         observe(view.itemId(), Math.round(view.bundlePrice() / (double) Math.max(1, view.perBundle()) * 1.05d));
@@ -287,6 +290,9 @@ public final class Market {
         long now = System.currentTimeMillis();
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
+            if (session.stallOpen && agent != null && agent.getPlayerShop() != null && agent.getPlayerShop().isOwner(agent)) {
+                rememberSales(session, agent.getPlayerShop());
+            }
             if (session.virtual || agent == null || session.activity != Activity.MARKET || session.stallOpen
                     || !FieldCatalog.isFreeMarket(agent.getMapId())) {
                 continue;
@@ -343,12 +349,42 @@ public final class Market {
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
                     bought(stall.ownerCharacterId(), view.itemId(), unit);
+                    if (!population.isCitizen(stall.ownerCharacterId())) { // a player's shop, not a companion's bench stall
+                        remember(session, stall.ownerCharacterId(), PersonMemory.Kind.BOUGHT, agent.getMapId(), view.itemId());
+                    }
                     PersonalKnowledge.shared().gained(session.characterId, view.itemId());
                     session.journal.add("market", "bought " + itemName(view.itemId()) + " from " + stall.ownerName() + " for " + formatPrice(view.bundlePrice()));
                     log.info("citizen {} bought {} x{} from {} for {}", session.name(), itemName(view.itemId()), view.perBundle(), stall.ownerName(), view.bundlePrice());
                     return; // one purchase per tick per citizen
                 }
             }
+        }
+    }
+
+    /**
+     * The players who bought at the citizen's open stall since it last looked: it remembers each one (a SOLD episode).
+     * The stall's sold list names the buyer; one no longer online is looked up by name.
+     */
+    void rememberSales(CitizenSession session, PlayerShop shop) {
+        List<PlayerShop.SoldItem> sold = shop.getSold();
+        int seen = session.stallSalesSeen;
+        session.stallSalesSeen = sold.size();
+        Character agent = session.agent();
+        net.server.world.World world = population.gameWorld();
+        for (int i = Math.max(0, seen); i < sold.size(); i++) {
+            PlayerShop.SoldItem sale = sold.get(i);
+            Character online = world == null ? null : world.getPlayerStorage().getCharacterByName(sale.getBuyer());
+            int buyerId = online != null ? online.getId() : Character.getIdByName(sale.getBuyer());
+            if (buyerId > 0 && !population.isCitizen(buyerId) && (online == null || !AgentPresence.isAgent(online))) {
+                remember(session, buyerId, PersonMemory.Kind.SOLD, agent == null ? 0 : agent.getMapId(), sale.getItemId());
+            }
+        }
+    }
+
+    private void remember(CitizenSession session, int playerId, PersonMemory.Kind kind, int mapId, int itemId) {
+        PersonMemories memories = population.memories();
+        if (memories != null) {
+            memories.record(session.characterId, playerId, kind, mapId, itemName(itemId), 1);
         }
     }
 

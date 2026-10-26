@@ -1179,6 +1179,25 @@ population:
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
     PQ_CALLS_PER_PARTY: 4
+    # Citizens remember the people they meet (2026-10-25, docs/CITIZEN_PERSON_MEMORY_PLAN.md): what happened between a
+    # citizen and a player (talked, answered a question, partied, ran a party quest, traded at a shop, famed), when and
+    # where, and how it feels about them, in the pair's living_acquaintance row. Met again after RETURN_AFTER_MINUTES it
+    # greets them by name and brings up the run or the trade; the model's grounding gets the memory; warmth makes them
+    # someone it knows, and a grudge (left its run, a defame) makes a reserved or easygoing citizen turn down their invite.
+    # It fades: an episode's weight halves every HALF_LIFE_DAYS (a chat lasts about 10 days, a cleared run a month),
+    # warmth every WARMTH_HALF_LIFE_DAYS. false = the kill switch, nothing read or written, everything as before.
+    # PEOPLE_MAX: people one citizen remembers (the least memorable goes for someone new). EPISODES_MAX: things per
+    # person (1-8). TOTAL_MAX: remembered pairs server-wide; the hourly prune forgets the oldest past it and every memory
+    # unchanged for FORGET_DAYS. GREET_GAP_MS: one reunion greeting per player from all citizens this often.
+    MEMORY_ENABLED: true
+    MEMORY_PEOPLE_MAX: 30
+    MEMORY_EPISODES_MAX: 6
+    MEMORY_TOTAL_MAX: 20000
+    MEMORY_FORGET_DAYS: 60
+    MEMORY_HALF_LIFE_DAYS: 10.0
+    MEMORY_WARMTH_HALF_LIFE_DAYS: 14.0
+    MEMORY_RETURN_AFTER_MINUTES: 180
+    MEMORY_GREET_GAP_MS: 300000
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

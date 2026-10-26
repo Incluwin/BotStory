@@ -108,7 +108,8 @@ public final class Conversation {
     }
 
     void installSeams() {
-        GroundingRegistry.register("population", request -> facts(request.agentCharacterId(), request.speakerCharacterId()));
+        GroundingRegistry.register("population", request -> facts(request.agentCharacterId(), request.speakerCharacterId(),
+                request.speakerName()));
         AgentSocialDialogueRuntime.installStyler(this::style);
     }
 
@@ -167,14 +168,20 @@ public final class Conversation {
     private void respond(CitizenSession session, Character speaker, String text, String normalized, boolean explicit) {
         long now = System.currentTimeMillis();
         session.journal.add("talk", speaker.getName() + " said \"" + trim(text, 60) + "\"");
-        // tier 0: silence, unless called by name
-        if (!explicit && population.voices().ignores(session.citizen, now ^ speaker.getId())) {
+        PersonMemories memories = population.memories();
+        if (memories != null) {
+            memories.record(session.characterId, speaker.getId(), PersonMemory.Kind.TALK, session.mapId, "", 1);
+        }
+        // tier 0: silence, unless called by name or someone it likes
+        if (!explicit && !likes(memories, session, speaker, now) && population.voices().ignores(session.citizen, now ^ speaker.getId())) {
             ignored.incrementAndGet();
             return;
         }
-        // tier 1: templates for the formulaic
+        // tier 1: templates for the formulaic; someone it remembers gets a remembered hello
         if (GREETING.matcher(normalized).matches()) {
-            population.chatter().say(session, random.nextBoolean() ? "hey " + speaker.getName() : "hi");
+            if (memories == null || !memories.hello(session, speaker, now)) {
+                population.chatter().say(session, random.nextBoolean() ? "hey " + speaker.getName() : "hi");
+            }
             templatedTurns.incrementAndGet();
             return;
         }
@@ -208,6 +215,12 @@ public final class Conversation {
             // which the dialogue application already caps; release after a short hold
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, inFlight::release, 4_000L);
         }
+    }
+
+    /** A player it remembers warmly ({@link PersonMemory#WARM}): their lines are never ignored on purpose. */
+    private boolean likes(PersonMemories memories, CitizenSession session, Character speaker, long now) {
+        PersonMemory memory = memories == null ? null : memories.peek(session.characterId, speaker.getId());
+        return memory != null && memory.warmthAt(now, population.config()) >= PersonMemory.WARM;
     }
 
     // ---- content questions ------------------------------------------------------------
@@ -287,6 +300,14 @@ public final class Conversation {
         int mapId = session.mapId;
         int channel = session.channel;
         boolean thanks = answer.kind() == Kind.THANKS;
+        PersonMemories memories = population.memories();
+        if (memories != null) { // they thanked it, it told them something (who drops what, the way to a town), or they talked
+            PersonMemory.Kind kind = thanks ? PersonMemory.Kind.THANKED
+                    : answer.outcome() == server.knowledge.ContentAnswers.Outcome.ANSWERED ? PersonMemory.Kind.HELPED
+                    : PersonMemory.Kind.TALK;
+            memories.record(session.characterId, askerId, kind, mapId,
+                    kind == PersonMemory.Kind.HELPED && answer.subject() != null ? answer.subject().say() : "", 1);
+        }
         for (ContentChat.Line line : ContentChat.timed(answer, population.voices().answerMsPerChar(session.citizen),
                 now ^ session.characterId, false)) {
             String rendered = population.voices().renderAnswer(session.citizen, line.text(), now ^ line.delayMs(), thanks);
@@ -674,8 +695,11 @@ public final class Conversation {
 
     // ---- grounding -----------------------------------------------------------------------
 
-    /** Facts handed to the model for a citizen (persona card, journal, life summary, scene, rules). */
-    Map<String, String> facts(int agentCharacterId, int speakerCharacterId) {
+    /**
+     * Facts handed to the model for a citizen (persona card, journal, life summary, what it remembers of the speaker,
+     * scene, rules).
+     */
+    Map<String, String> facts(int agentCharacterId, int speakerCharacterId, String speakerName) {
         Map<String, String> facts = new LinkedHashMap<>();
         Citizen citizen = population.citizen(agentCharacterId);
         CitizenSession session = population.presence().session(agentCharacterId);
@@ -702,6 +726,12 @@ public final class Conversation {
         }
         if (session != null && !session.journal.isEmpty()) {
             facts.put("what happened this session", session.journal.summary(220));
+        }
+        PersonMemories memories = population.memories();
+        String remembered = memories == null || speakerCharacterId <= 0 ? null
+                : memories.recall(agentCharacterId, speakerCharacterId, System.currentTimeMillis());
+        if (remembered != null) {
+            facts.put("what i remember about " + (speakerName == null || speakerName.isBlank() ? "them" : speakerName), remembered);
         }
         if (session != null && agent != null && agent.getMap() != null) {
             int humans = Population.humansIn(agent.getMap());

@@ -50,13 +50,28 @@ public final class CitizenInviteDecision {
     /** The citizen's side of it: who it is and how it meets people. */
     public record Profile(int characterId, Temperament temperament, int sociability) { }
 
-    /** What the citizen knows of the player: minutes together (in a party, on a map), a buddy, a guildmate. */
-    public record Familiarity(int partyMinutes, int mapMinutes, boolean buddy, boolean guildmate) {
+    /**
+     * What the citizen knows of the player: minutes together (in a party, on a map), a buddy, a guildmate, and how warm
+     * it feels toward them now (its memory of them, PersonMemory; 0 when it remembers nothing).
+     */
+    public record Familiarity(int partyMinutes, int mapMinutes, boolean buddy, boolean guildmate, int warmth) {
         public static final Familiarity NONE = new Familiarity(0, 0, false, false);
 
-        /** Partied with, a buddy or a guildmate: someone it knows. */
+        public Familiarity(int partyMinutes, int mapMinutes, boolean buddy, boolean guildmate) {
+            this(partyMinutes, mapMinutes, buddy, guildmate, 0);
+        }
+
+        /** Partied with, a buddy, a guildmate, or someone it remembers warmly: someone it knows. */
         public boolean known() {
-            return partyMinutes > 0 || buddy || guildmate;
+            return partyMinutes > 0 || buddy || guildmate || warmth >= PersonMemory.WARM;
+        }
+
+        /**
+         * A grudge (decision D1, docs/CITIZEN_PERSON_MEMORY_PLAN.md): it remembers them coldly (they left its run, a
+         * defame) and they are no buddy or guildmate. Fades with the warmth, in about two weeks.
+         */
+        public boolean grudge() {
+            return warmth <= PersonMemory.COLD && !buddy && !guildmate;
         }
 
         /** Seen around (on the same map) long enough to be a familiar face. */
@@ -103,15 +118,19 @@ public final class CitizenInviteDecision {
     }
 
     /**
-     * Its temperament's answer to a player within its level range: someone it knows is welcome; a reserved citizen
-     * declines anyone else; an outgoing one takes anyone; an easygoing one takes a familiar face, and a stranger on its
-     * fixed roll for them. {@code familiarity} is read only when the answer needs it (a database row).
+     * Its temperament's answer to a player within its level range: an outgoing one takes anyone; a reserved or
+     * easygoing one with a grudge against them declines; someone it knows is welcome; a reserved citizen declines anyone
+     * else; an easygoing one takes a familiar face, and a stranger on its fixed roll for them. {@code familiarity} is
+     * read only when the answer needs it (a database row).
      */
     static Answer welcome(Profile profile, int inviterId, Supplier<Familiarity> familiarity) {
         if (profile.temperament() == Temperament.OUTGOING) {
             return Answer.ACCEPT;
         }
         Familiarity known = familiarity.get();
+        if (known.grudge()) {
+            return Answer.DECLINED;
+        }
         if (known.known()) {
             return Answer.ACCEPT;
         }
@@ -133,7 +152,10 @@ public final class CitizenInviteDecision {
             return false;
         }
         boolean guildmate = citizen.guildId() > 0 && citizen.guildId() == owner.getGuildId();
-        Familiarity known = new Familiarity(partyMinutes, mapMinutes, buddy, guildmate);
+        // the warmth from the memories in use only: the list asks for every citizen the owner ever met
+        PersonMemory memory = population.memories() == null ? null : population.memories().peek(citizen.characterId(), owner.getId());
+        int warmth = memory == null ? 0 : memory.feltWarmth(System.currentTimeMillis(), population.config());
+        Familiarity known = new Familiarity(partyMinutes, mapMinutes, buddy, guildmate, warmth);
         return welcome(profile(population, citizen), owner.getId(), () -> known) == Answer.ACCEPT;
     }
 
@@ -181,14 +203,19 @@ public final class CitizenInviteDecision {
                 : Temperament.EASYGOING;
     }
 
-    /** Its living_acquaintance row with the player (one read), its buddy list and their guilds. */
+    /**
+     * Its living_acquaintance row with the player (one read), its buddy list, their guilds, and how warm it feels toward
+     * them (its memory: the cache, else one more read of the row).
+     */
     static Familiarity familiarity(Population population, Citizen citizen, Character loaded, Character player) {
         Acquaintance together = population.store().acquaintance(citizen.characterId(), player.getId());
         BuddyList buddies = loaded == null ? null : loaded.getBuddylist();
         boolean buddy = buddies != null && buddies.containsVisible(player.getId());
         boolean guildmate = citizen.guildId() > 0 && citizen.guildId() == player.getGuildId();
-        return together == null ? new Familiarity(0, 0, buddy, guildmate)
-                : new Familiarity(together.partyMinutes(), together.mapMinutes(), buddy, guildmate);
+        PersonMemories memories = population.memories();
+        int warmth = memories == null ? 0 : memories.warmth(citizen.characterId(), player.getId());
+        return together == null ? new Familiarity(0, 0, buddy, guildmate, warmth)
+                : new Familiarity(together.partyMinutes(), together.mapMinutes(), buddy, guildmate, warmth);
     }
 
     /** A fixed 0..99 roll for this citizen and this player: the same every time they meet. */

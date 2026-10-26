@@ -1,0 +1,192 @@
+# The people citizens remember (docs/CITIZEN_PERSON_MEMORY_PLAN.md, PersonMemories). memory.greet.* is said once when a
+# citizen meets a player again after a few hours apart, bringing up the strongest thing it still remembers in detail;
+# memory.hello answers a remembered player's "hi". Slots: {name} = the player; {when} = how long ago, in recall words
+# ("yesterday", "last week"); {place} = where it happened (a party stint always has one); {pq} = the quest ("KPQ");
+# {item} = the item traded; {what} = what it told them about. A line whose slot the memory lacks is skipped for another.
+# Self = the citizen speaking. These repeat per person (no recent-intent memory), so cooldownMs stays short.
+intents:
+  - id: memory.greet.pq.map
+    trigger: memory.greet.pq
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! that {pq} {when} was fun"
+      - "oh hey {name}, {pq} again sometime?"
+      - "{name}!! {pq} buddy"
+      - "hey {name}, good {pq} run {when}"
+      - "{name} hey! up for another {pq}?"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}. good {pq} {when}"
+        - "{name}. {pq} again later?"
+      playful-social-v1:
+        - "{name}!!! my {pq} hero"
+        - "omg {name} hi! {pq} {when} was so fun"
+  - id: memory.greet.pqfail.map
+    trigger: memory.greet.pqfail
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! we'll get that {pq} next time"
+      - "hey {name}, that {pq} {when} was rough lol"
+      - "oh hi {name}, rematch on {pq}?"
+    styles:
+      quiet-practical-v1:
+        - "{name}. {pq} next time"
+  - id: memory.greet.party.map
+    trigger: memory.greet.party
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh hey {name}, we partied at {place} {when} right?"
+      - "{name}! good to see u again"
+      - "hey {name}, still training at {place}?"
+      - "{name}! party again sometime?"
+      - "yo {name}"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}"
+        - "{name}. back at {place}?"
+      playful-social-v1:
+        - "{name}!! my party buddy"
+        - "heyy {name} we should party again"
+  - id: memory.greet.bought.map
+    trigger: memory.greet.bought
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh hey {name}, thx again for the {item}"
+      - "{name}! got that {item} from ur shop {when}, still using it"
+      - "hey {name}, good prices at ur shop btw"
+    styles:
+      quiet-practical-v1:
+        - "{name}. thx for the {item}"
+  - id: memory.greet.sold.map
+    trigger: memory.greet.sold
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hey {name}, hows the {item} working out?"
+      - "{name}! u bought my {item} {when} right"
+      - "oh hi {name}, thx for buying from me"
+    styles:
+      quiet-practical-v1:
+        - "{name}. {item} ok?"
+  - id: memory.greet.famed.map
+    trigger: memory.greet.famed
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! thx for the fame {when}"
+      - "oh hey {name}, ty for the fame"
+      - "hi {name}! still owe u a fame lol"
+  - id: memory.greet.helped.map
+    trigger: memory.greet.helped
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hey {name}! did u find {what}?"
+      - "{name}! how did {what} go?"
+      - "oh hi {name}, u found it ok?"
+      - "hey {name} again"
+    styles:
+      quiet-practical-v1:
+        - "{name}. find {what}?"
+  - id: memory.greet.talk.map
+    trigger: memory.greet.talk
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh hey {name}"
+      - "{name}! hey again"
+      - "hi {name}, whats up"
+      - "hey {name}, we talked {when} right?"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}"
+      playful-social-v1:
+        - "{name}!! hii again"
+  - id: memory.greet.warm.map
+    trigger: memory.greet.warm
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "heyy {name}"
+      - "{name}! long time"
+      - "oh hey {name} whats up"
+      - "{name}!! how u been"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}"
+        - "{name}. been a while"
+      playful-social-v1:
+        - "{name}!!!! missed u"
+        - "omg {name} hiii"
+  - id: memory.greet.vague.map
+    trigger: memory.greet.vague
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hey... {name} right?"
+      - "{name}? i think we met before"
+      - "oh hi {name}, long time no see"
+  - id: memory.greet.cool.map
+    trigger: memory.greet.cool
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh. {name}."
+      - "hey {name}... u gonna stay this time?"
+      - "{name}. hi i guess"
+      - "...hi {name}"
+  - id: memory.hello.map
+    trigger: memory.hello
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hey {name}!"
+      - "oh hi {name}, back again?"
+      - "{name}! whats up"
+      - "heyy {name}"
+      - "hi {name} :)"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}"
+        - "hi {name}"
+      playful-social-v1:
+        - "{name}!! hii"
+        - "heyyy {name} whats up"
+  - id: memory.hello.cool.map
+    trigger: memory.hello.cool
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "oh. hi"
+      - "hi {name}"
+      - "...hey"

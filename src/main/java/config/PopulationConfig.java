@@ -143,6 +143,26 @@ public class PopulationConfig {
     /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
     public int PQ_CALLS_PER_PARTY = 4;
 
+    // Citizens remember the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md)
+    /** Kill switch: false = no memory read or written; greetings, invites and grounding as before. */
+    public boolean MEMORY_ENABLED = true;
+    /** People one citizen remembers; for someone new past it, it forgets the least memorable. */
+    public int MEMORY_PEOPLE_MAX = 30;
+    /** Things it remembers about one person (the heaviest stay). */
+    public int MEMORY_EPISODES_MAX = 6;
+    /** Remembered (citizen, player) pairs server-wide; the hourly prune forgets the oldest past it. */
+    public int MEMORY_TOTAL_MAX = 20000;
+    /** A memory that has not changed this long is forgotten by the hourly prune. */
+    public int MEMORY_FORGET_DAYS = 60;
+    /** An episode's weight halves every this many days; it is forgotten under weight 1. */
+    public double MEMORY_HALF_LIFE_DAYS = 10.0d;
+    /** Warmth halves every this many days. */
+    public double MEMORY_WARMTH_HALF_LIFE_DAYS = 14.0d;
+    /** Apart at least this long, meeting again is a reunion worth a greeting. */
+    public int MEMORY_RETURN_AFTER_MINUTES = 180;
+    /** One reunion greeting per player from all citizens this often. */
+    public int MEMORY_GREET_GAP_MS = 300000;
+
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
             throw new IllegalArgumentException("population.TARGET_CITIZENS/ONLINE_MAX must be >= 0 and MAP_VISIBLE_MAX >= 1");
@@ -174,6 +194,13 @@ public class PopulationConfig {
                 || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
             throw new IllegalArgumentException(
                     "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
+        }
+        if (MEMORY_PEOPLE_MAX < 1 || MEMORY_EPISODES_MAX < 1 || MEMORY_EPISODES_MAX > 8 || MEMORY_TOTAL_MAX < 1
+                || MEMORY_FORGET_DAYS < 1 || MEMORY_HALF_LIFE_DAYS <= 0 || MEMORY_WARMTH_HALF_LIFE_DAYS <= 0
+                || MEMORY_RETURN_AFTER_MINUTES < 0 || MEMORY_GREET_GAP_MS < 0) {
+            throw new IllegalArgumentException("population.MEMORY_PEOPLE_MAX, MEMORY_TOTAL_MAX and MEMORY_FORGET_DAYS must be"
+                    + " >= 1, MEMORY_EPISODES_MAX 1..8 (the episodes column holds 8), the MEMORY_*_HALF_LIFE_DAYS > 0,"
+                    + " MEMORY_RETURN_AFTER_MINUTES and MEMORY_GREET_GAP_MS >= 0");
         }
     }
 }

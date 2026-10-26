@@ -736,6 +736,9 @@ public final class CitizenPartyQuests {
                 + (cleared ? "" : " (" + reason + ")"));
         log.info("citizen pq run: quest={} session={} outcome={} minutes={} members={} reason={}", run.questKey,
                 run.sessionId, outcome, minutes, names(run.citizens, run.humans), cleared ? "-" : reason);
+        if (!rerolled) {
+            rememberHumans(run, cleared);
+        }
         List<CitizenSession> stayed = new ArrayList<>();
         for (int id : run.citizens.keySet()) {
             if (inRun.remove(id, run)) {
@@ -765,6 +768,45 @@ public final class CitizenPartyQuests {
                 if (leader != null && human != null) {
                     say("pq.thanks", leader, human, 0);
                 }
+            }
+        }
+    }
+
+    /**
+     * Each citizen of the run remembers each human who came along (docs/CITIZEN_PERSON_MEMORY_PLAN.md): one still in the
+     * run's party at its end cleared or failed it with them; one online and out of the party left it, a let-down when
+     * the run then failed. A human offline at the end is neither (a crash is no let-down), nor is anyone when no citizen
+     * of the run is in its party any more.
+     */
+    void rememberHumans(Run run, boolean cleared) {
+        PersonMemories memories = population.memories();
+        if (memories == null || run.humans.isEmpty()) {
+            return;
+        }
+        int partyId = 0;
+        for (int id : run.citizens.keySet()) {
+            AgentPartySnapshot party = party(memberCharacter(id, null));
+            if (party != null && (partyId == 0 || id == run.leaderId)) {
+                partyId = party.id();
+            }
+        }
+        if (partyId == 0) {
+            return;
+        }
+        for (int humanId : run.humans.keySet()) {
+            Character human = memberCharacter(humanId, null);
+            if (human == null) {
+                continue;
+            }
+            AgentPartySnapshot theirs = party(human);
+            boolean stayed = theirs != null && theirs.id() == partyId;
+            PersonMemory.Kind kind = stayed ? (cleared ? PersonMemory.Kind.PQ_CLEAR : PersonMemory.Kind.PQ_FAIL)
+                    : cleared ? null : PersonMemory.Kind.PQ_LEFT;
+            if (kind == null) {
+                continue;
+            }
+            for (int citizenId : run.citizens.keySet()) {
+                memories.record(citizenId, humanId, kind, 0, run.questKey, 1);
             }
         }
     }

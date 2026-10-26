@@ -142,12 +142,20 @@ public final class SocialFabric {
     }
 
     public void onLogout(CitizenSession session) {
-        // party membership is dropped with the character; nothing else to do
+        // party membership is dropped with the character; its memories of people are written and leave the cache
+        PersonMemories memories = population.memories();
+        if (memories != null) {
+            memories.release(session.characterId);
+        }
     }
 
     public void onRetire(Citizen citizen) {
         if (citizen.guildId() > 0) {
             population.store().setGuild(citizen.characterId(), 0, 5);
+        }
+        PersonMemories memories = population.memories();
+        if (memories != null) {
+            memories.forgetCitizen(citizen.characterId());
         }
     }
 
@@ -171,6 +179,10 @@ public final class SocialFabric {
             acquaintances(now);
             fame(now);
             gossip();
+            PersonMemories memories = population.memories();
+            if (memories != null) {
+                memories.flush(now); // what happened between citizens and players this minute, in one batch
+            }
         } catch (RuntimeException failure) {
             log.warn("social tick failed", failure);
         }
@@ -554,8 +566,13 @@ public final class SocialFabric {
 
     // ---- acquaintances -------------------------------------------------------------------
 
-    /** Shared minutes with humans on the same map / in the same party drive buddy requests and guild invites. */
-    private void acquaintances(long now) {
+    /**
+     * Shared minutes with humans on the same map / in the same party drive buddy requests and guild invites. Each
+     * minute together is also a sighting for the citizen's memory of them (before the minutes move {@code last_at}: a
+     * player back after hours apart is greeted), and a minute in one party a minute of their party stint.
+     */
+    void acquaintances(long now) {
+        PersonMemories memories = population.memories();
         for (CitizenSession session : population.presence().sessions()) {
             Character agent = session.agent();
             if (session.virtual || agent == null || agent.getMap() == null) {
@@ -571,8 +588,14 @@ public final class SocialFabric {
                     continue;
                 }
                 acquaintanceTouchedAtMs.put(key, now);
+                if (memories != null) {
+                    memories.seen(session, chr, now);
+                }
                 Acquaintance current = population.store().acquaintance(session.characterId, chr.getId());
                 boolean sameParty = agent.getParty() != null && chr.getParty() != null && agent.getParty().getId() == chr.getParty().getId();
+                if (sameParty && memories != null) {
+                    memories.record(session.characterId, chr.getId(), PersonMemory.Kind.PARTY, agent.getMapId(), "", 1);
+                }
                 Acquaintance updated = new Acquaintance(current.characterId(), current.playerId(),
                         current.partyMinutes() + (sameParty ? 1 : 0), current.mapMinutes() + 1, current.buddyAsked(), current.guildAsked());
                 population.store().saveAcquaintance(updated);

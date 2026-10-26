@@ -51,6 +51,7 @@ public final class Population {
     private final Conversation conversation;
     private final Market market;
     private final CitizenPartyQuests partyQuests;
+    private final PersonMemories memories;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
     private final List<Integer> channels = new ArrayList<>();
 
@@ -80,6 +81,7 @@ public final class Population {
         this.conversation = new Conversation(this);
         this.market = new Market(this);
         this.partyQuests = new CitizenPartyQuests(this);
+        this.memories = new PersonMemories(this);
         this.presence = new PresenceScheduler(this);
         this.churn = new Churn(this);
     }
@@ -161,6 +163,7 @@ public final class Population {
         }
         population.timers.clear();
         population.market.closeAll("server shutdown");
+        population.memories.flushAll(); // before the citizens unload: what happened up to the last event is kept
         population.presence.logoutAll("server shutdown");
         log.info("Population stopped.");
     }
@@ -255,6 +258,11 @@ public final class Population {
     /** Party quests citizen parties run themselves (docs/CITIZEN_PARTY_QUESTS_PLAN.md). */
     public CitizenPartyQuests partyQuests() {
         return partyQuests;
+    }
+
+    /** What citizens remember of the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md). */
+    public PersonMemories memories() {
+        return memories;
     }
 
     public List<Integer> channels() {

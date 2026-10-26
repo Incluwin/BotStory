@@ -23,9 +23,12 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `PQ_RUNS_ENABLED`, `PQ_RUN_QUESTS`, `PQ_RUNS_PER_CHANNEL`, `PQ_RUNS_MAX` | citizen parties run party quests themselves (kill switch, which quests, runs at once per channel / in all) |
 | `PQ_FORM_PATIENCE_MS`, `PQ_HUMAN_SEAT_HOLD_MS`, `PQ_RUN_COOLDOWN_MS`, `PQ_CALLS_PER_PARTY` | a lobby party gives up after; a seat waits for an invited human; no PQ plan after a run; citizens a short party calls over |
 | `SHUTDOWN_LOGOUT_THREADS`, `SHUTDOWN_LOGOUT_BUDGET_MS` | server shutdown: loaded citizens unload (a full save each) on this many threads for at most this long; the rest unload with their channel |
+| `MEMORY_ENABLED`, `MEMORY_PEOPLE_MAX`, `MEMORY_EPISODES_MAX`, `MEMORY_TOTAL_MAX`, `MEMORY_FORGET_DAYS` | citizens remember the people they meet (kill switch; people per citizen, things per person, remembered pairs server-wide, forgotten when unchanged this long) |
+| `MEMORY_HALF_LIFE_DAYS`, `MEMORY_WARMTH_HALF_LIFE_DAYS`, `MEMORY_RETURN_AFTER_MINUTES`, `MEMORY_GREET_GAP_MS` | how fast episodes and warmth fade; apart this long is a reunion; one reunion greeting per player this often |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
-`living_guild`, `living_price_index`, `living_acquaintance`). Generated replies use the existing
+`living_guild`, `living_price_index`, `living_acquaintance`). Changeset `48-citizen-person-memory` adds the memory columns to
+`living_acquaintance`. Generated replies use the existing
 social dialogue runtime: Ollama at `SOCIAL_OLLAMA_ENDPOINT` / `SOCIAL_OLLAMA_MODEL` (env), mode
 `SOCIAL_DIALOGUE_MODE` (`DIALOGUE_ONLY` = model with deterministic fallback, `DETERMINISTIC_ONLY`
 = templates only, free).
@@ -139,6 +142,20 @@ bought and walked through, and true answers to open questions it overheard; part
 together pass first-hand facts to each other silently. Only veterans (`knowledge.VETERAN_LEVEL`, or old hands within 20
 levels of it) quote drop percentages and rate numbers. Known worlds are written to `living_known_world` every 5 minutes.
 
+**Memory of people** (docs/CITIZEN_PERSON_MEMORY_PLAN.md). A citizen remembers each player it has met: what happened
+between them (they talked, it answered their question, they thanked it, a party stint, a party quest cleared or failed
+together or left early, a trade at a shop or a stall, a fame or a defame), when and where, and how it feels about them
+(warmth -100..100), on the pair's `living_acquaintance` row. Meeting again after `MEMORY_RETURN_AFTER_MINUTES` apart it
+greets them by name on map chat from within earshot, bringing up the strongest thing it still remembers in detail (`Ann!
+that KPQ yesterday was fun`; `chatter/memory.yaml`), at most one citizen per player per `MEMORY_GREET_GAP_MS`; a "hi"
+gets a remembered hello; the model's grounding gets "what i remember about Ann". Warmth 15 and up makes them someone it
+knows for its invite decision and it never ignores their lines on purpose; a let-down (left its run before it failed, a
+defame) is a grudge (warmth -30 or under) for about two weeks, when a reserved or easygoing citizen turns down their
+party invite (outgoing ones, buddies and guildmates still accept). Episodes fade (a chat in about 10 days, a cleared run
+in about a month), and so does warmth; at most `MEMORY_PEOPLE_MAX` people a citizen and `MEMORY_TOTAL_MAX` pairs in all
+(an hourly prune). Events change a cache only; the social tick reads a pair's row once a citizen session and writes the
+changes in one batch a minute; a logout and the shutdown write what is left.
+
 **Market.** `market.yaml` seeds a price index (`living_price_index`) that drifts toward observed
 sales. Merchant citizens on a `MARKET` session walk into a Free Market room and open a real stall
 with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy goods priced under
@@ -153,6 +170,7 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 `market`, `conversation`, `level <name> <level>` (raise an offline citizen's stored level as the ledger does; never
 lowers), `login <name>` (load that citizen now, replacing a ledger-only session), `pq` (citizen runs now and since boot,
 the last ten), `pq send <name>` (a loaded citizen goes to the lobby its level fits, out for a party quest).
+`memory` (the memory cache and table counts), `memory <name>` (who that citizen remembers, warmth, what happened).
 
 **Testing job errands live.**
 1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
@@ -234,6 +252,6 @@ in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ has one lobby a channel; OPQ after the
 OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
 invite you); no expeditions; no alliances; travel on foot ends on the first map nobody watches (no citizen walks a
-whole multi-map trip unseen) and rides no real ship; conversation memory of a human is the
-social relationship memory plus the journal, not a per-human summary; the client-side visible cap
-(`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.
+whole multi-map trip unseen) and rides no real ship; citizens remember players (each other only through circles,
+guilds and gossip) but answer no whispers, and the weekly life summary of plan 6.4 is never written; the client-side
+visible cap (`MAP_VISIBLE_MAX`) is not yet enforced beyond field capacities and town admission.

@@ -25,6 +25,8 @@ public final class CitizenSession {
     public volatile long afkUntilMs;
     public volatile long ledgerAtMs;
     public volatile boolean stallOpen;
+    /** Sales of its open stall it has remembered the buyers of (Market.rememberSales); 0 when the stall opens. */
+    volatile int stallSalesSeen;
     /** The job it is going to its instructor for (activity JOB); null otherwise. */
     public volatile client.Job errandJob;
     /** Its instructor refused it this session: no second try before its next session (CitizenJobErrands). */

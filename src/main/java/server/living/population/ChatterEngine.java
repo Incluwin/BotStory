@@ -53,6 +53,8 @@ public final class ChatterEngine {
         String job;
         String text;
         int need;
+        /** Slots an event fills itself ({when}, {place}, {what}), over the ones a line otherwise gets. */
+        final Map<String, String> slots = new LinkedHashMap<>();
 
         private Event(String trigger, int mapId, int channel) {
             this.trigger = trigger;
@@ -104,6 +106,14 @@ public final class ChatterEngine {
         /** The {need} slot: how many more a party quest's party wants ("lf{need}m kpq"). */
         public Event need(int more) {
             this.need = more;
+            return this;
+        }
+
+        /** Fills {@code {key}} with {@code value} (a person memory's {when}, {place}, {pq}, {what}); null leaves it. */
+        public Event slot(String key, String value) {
+            if (value != null) {
+                this.slots.put(key, value);
+            }
             return this;
         }
     }
@@ -235,6 +245,22 @@ public final class ChatterEngine {
         }
     }
 
+    /**
+     * A citizen says its own line to someone in front of it (a person memory's greeting or hello), typed like any line:
+     * true when it goes out, false when its cooldowns or the map's line budget keep it quiet for now.
+     */
+    public boolean speakTo(Event event) {
+        if (!population.config().CHATTER_ENABLED || event == null || event.self == null || event.self.virtual) {
+            return false;
+        }
+        try {
+            return speak(event.self, event, event.trigger, false);
+        } catch (RuntimeException failure) {
+            log.debug("chatter line {} failed", event.trigger, failure);
+            return false;
+        }
+    }
+
     private void speakSelf(Event event, boolean respectIntentCooldown) {
         CitizenSession session = event.self;
         if (session == null || session.virtual) {
@@ -250,8 +276,9 @@ public final class ChatterEngine {
         int total = 0;
         int level = session.agent() == null ? 0 : session.agent().getLevel();
         // A party quest's own talk ("lf2m kpq" again, "gg") repeats as players repeat it: no memory of recent intents,
-        // the self cooldown on its channel, and each intent's own cooldown.
-        boolean partyQuest = trigger.startsWith("pq.");
+        // the self cooldown on its channel, and each intent's own cooldown. So do the words for someone it remembers
+        // ("Ann! that kpq yesterday was fun"): said to a person who just walked up, each person gets them.
+        boolean partyQuest = trigger.startsWith("pq.") || trigger.startsWith("memory.");
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;
@@ -297,6 +324,14 @@ public final class ChatterEngine {
         List<String> lines = elsewhere(chosen.linesFor(population.voices().styleOf(session.citizen)), session.mapId);
         String template = event.text != null ? event.text : lines.get(random.nextInt(lines.size()));
         String filled = fill(template, session, event);
+        if (filled == null && event.text == null && !event.slots.isEmpty()) {
+            // a remembered episode has no place or no detail: another of the lines may not need it
+            List<String> others = new ArrayList<>(lines);
+            java.util.Collections.shuffle(others, random);
+            for (int i = 0; i < others.size() && filled == null; i++) {
+                filled = fill(others.get(i), session, event);
+            }
+        }
         if (filled == null || filled.isBlank()) {
             return false;
         }
@@ -387,6 +422,7 @@ public final class ChatterEngine {
         if (event.need > 0) {
             slots.put("need", String.valueOf(event.need));
         }
+        slots.putAll(event.slots);
         Market.Listing listing = event.item != null ? null : population.market().talkAbout(session, random);
         slots.put("item", event.item != null ? event.item : listing == null ? "stuff" : listing.name());
         slots.put("price", listing == null ? "cheap" : Market.formatPrice(listing.price()));
