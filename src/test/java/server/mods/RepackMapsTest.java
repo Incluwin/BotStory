@@ -143,7 +143,7 @@ class RepackMapsTest {
         assertFalse(maps.open());
         assertFalse(maps.beforeWarp(chr, COKE_TOWN));
         verify(chr).dropMessage(eq(5), contains("closed"));
-        assertEquals(HENESYS, maps.loginMap(client, COKE_TOWN));
+        assertEquals(HENESYS, maps.loginMap(client, ACCOUNT, COKE_TOWN));
     }
 
     @Test
@@ -153,8 +153,19 @@ class RepackMapsTest {
         now.addAndGet(3_000);
         maps.clientClosed(client, false);
         assertEquals(Optional.of(new Answer(Files.COSMIC, Source.CRASH)), store.load(ACCOUNT));
-        assertEquals(HENESYS, maps.loginMap(client, COKE_TOWN), "its next login starts outside");
-        assertEquals(219010000, maps.loginMap(mockRepackClient(), 219010000));
+        assertEquals(HENESYS, maps.loginMap(client, ACCOUNT, COKE_TOWN), "its next login starts outside");
+        assertEquals(219010000, maps.loginMap(mockRepackClient(), ACCOUNT + 1, 219010000));
+    }
+
+    @Test
+    void atLoginTheCharactersAccountDecidesBecauseTheClientHasNoAccountIdYet() {
+        Client loggingIn = mock(Client.class); // PlayerLoggedinHandler sets the account id only after the load
+        maps.record(ACCOUNT, Files.REPACK, Source.PLAYER);
+        assertEquals(COKE_TOWN, maps.loginMap(loggingIn, ACCOUNT, COKE_TOWN));
+        assertEquals(HENESYS, maps.loginMap(loggingIn, ACCOUNT + 7, COKE_TOWN), "an unknown account starts outside");
+        assertEquals(270000000, maps.loginMap(loggingIn, ACCOUNT + 7, 450003000));
+        assertEquals(HENESYS, maps.loginMap(loggingIn, ACCOUNT, HENESYS), "a stock map is kept");
+        assertEquals(COKE_TOWN, maps.loginMap(mock(BotClient.class), 0, COKE_TOWN), "bots stay");
     }
 
     @Test

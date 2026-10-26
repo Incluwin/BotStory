@@ -334,12 +334,17 @@ public final class RepackMaps {
         }
     }
 
-    /** Character.loadCharFromDB: the map a character of this client saved in {@code mapId} starts in. */
-    public int loginMap(Client client, int mapId) {
-        if (!listed(mapId) || admits(client)) {
+    /**
+     * Character.loadCharFromDB: the map a character saved in {@code mapId} starts in. The account is the character's:
+     * the channel's Client learns its account id only after the load (PlayerLoggedinHandler).
+     */
+    public int loginMap(Client client, int accountId, int mapId) {
+        if (!listed(mapId)) {
             return mapId;
         }
-        return wayOut(mapId).map();
+        boolean admitted = open() && (isBot(client)
+                || answer(accountId).map(Answer::files).orElse(Files.UNKNOWN) == Files.REPACK);
+        return admitted ? mapId : wayOut(mapId).map();
     }
 
     /** MapFactory.loadMapFromWz: the entry NPCs that stand on this (shared) map, while the switch is on. */

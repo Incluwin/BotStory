@@ -43,9 +43,10 @@ node tools/repack-import/export.js --check    # exit 1 when the tree differs fro
   - Lachelein's five Dream Defender boards (9010101-9010105) have no name in the Repack's String.wz either.
 - `src/main/resources/mods/repack-maps.txt`: the 579 map ids and their area, which the gate reads.
 - `/wz/` is in `.gitignore` as a guard (every base file is tracked), so the new files are added with `git add -f`.
-- Size: 984 new files, 53 MiB of XML (about 3 MiB compressed); String.wz grows by about 4,500 lines. The scrub push
-  script drops only `tools/client-kit/data`, `video-assets` and media files, so all of it would be pushed; no single
-  file is over 0.4 MiB.
+- Size: 985 new WZ files, 53 MiB of XML; String.wz grows by about 4,500 lines. The whole branch adds 1,056 blobs,
+  60 MiB raw, 4.7 MiB as a git pack (measured with `git pack-objects` over ff6fbe48a..HEAD). The scrub push script
+  drops only `tools/client-kit/data`, `video-assets` and media files, so all of it would be pushed; no single file
+  is over 0.4 MiB.
 
 | Area (areas.json key) | Maps | Mobs | Towns |
 |---|---|---|---|

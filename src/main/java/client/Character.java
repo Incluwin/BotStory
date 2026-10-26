@@ -8290,7 +8290,7 @@ public class Character extends AbstractCharacterObject {
                     if (channelserver) {
                         MapManager mapManager = client.getChannelServer().getMapFactory();
                         if (server.mods.RepackMaps.listed(ret.mapid)) {
-                            int start = server.mods.RepackMaps.get().loginMap(client, ret.mapid);
+                            int start = server.mods.RepackMaps.get().loginMap(client, ret.accountid, ret.mapid);
                             if (start != ret.mapid) { // saved in a Repack-only map this client may not be in now
                                 ret.mapid = start;
                                 ret.initialSpawnPoint = 0;
