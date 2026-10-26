@@ -644,7 +644,9 @@ public final class QuestLedger {
         }
         for (ItemStack stack : reward.items()) {
             if (InventoryManipulator.checkSpace(chr.getClient(), stack.itemId(), stack.count(), "")) {
-                InventoryManipulator.addById(chr.getClient(), stack.itemId(), (short) stack.count());
+                if (!RewardItems.give(chr, stack.itemId(), stack.count())) {
+                    chr.dropMessage(5, itemName(stack.itemId()) + " x" + stack.count() + " could not be given.");
+                }
             } else {
                 chr.dropMessage(5, "Your inventory is full; " + itemName(stack.itemId()) + " x" + stack.count()
                         + " could not be given.");
