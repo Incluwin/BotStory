@@ -78,7 +78,8 @@ A citizen guild takes part only while its master is an active citizen nobody hir
   `disbandAlliance`.
 - Fees: a loaded master pays from its meso in memory, an offline one in SQL (`meso >= fee`). Under the citizen meso
   floor (`Market.expectedMeso`, 2,000 x level^1.5) a master holds Lenario's 2,000,000 from about level 100, so lower
-  guilds wait until a master has it.
+  guilds wait until a master has it. The user kept this (2026-10-26): stock fees from one master's purse, with
+  alliances staying rare among low-level guilds, rather than splitting the fee between the two founding masters.
 - Names and lines: `guild-names.yaml` `alliances` (patterns over the guild name lists; lines per moment with
   `{guild}`, `{other}`, `{alliance}`).
 - `living_alliance_mark` (changeset 48, file 039): the low spells and asked dates, epoch ms, one row per guild and kind.
