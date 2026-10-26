@@ -43,7 +43,22 @@ public final class PopulationContent {
                         List<String> petPhrases, double petPhraseRate, int delayMsPerChar, double ignoreRate) { }
 
     public record GuildNames(List<NamePattern> patterns, Map<String, List<String>> lists, List<String> mottos,
-                             Emblems emblems) { }
+                             Emblems emblems, Alliances alliances) { }
+
+    /**
+     * Bot guild alliances (guild-names.yaml {@code alliances}, read by CitizenAlliances): name patterns over the guild
+     * name lists (no spaces and at most 12 letters, as Lenario asks), and the citizens' lines per moment ({@code
+     * founded}, {@code welcome}, {@code leave}, {@code accept}, {@code decline}, {@code invite}).
+     */
+    public record Alliances(List<NamePattern> patterns, Map<String, List<String>> lines) {
+        public static Alliances none() {
+            return new Alliances(List.of(), Map.of());
+        }
+
+        public List<String> lines(String moment) {
+            return lines.getOrDefault(moment, List.of());
+        }
+    }
 
     /**
      * Bot guild emblems (guild-names.yaml {@code emblems}, read by GuildEmblems): the 16 colours with their sampled
@@ -172,7 +187,7 @@ public final class PopulationContent {
 
     public static PopulationContent empty() {
         return new PopulationContent(Map.of(), Map.of(), new Names(List.of(), Map.of(), List.of(), List.of(), List.of()),
-                Map.of(), new GuildNames(List.of(), Map.of(), List.of(), Emblems.none()),
+                Map.of(), new GuildNames(List.of(), Map.of(), List.of(), Emblems.none(), Alliances.none()),
                 Map.of(), Map.of(), List.of(), List.of(), 5140000, List.of());
     }
 

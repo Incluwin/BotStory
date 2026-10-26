@@ -133,6 +133,8 @@ public final class AllianceOperationHandler extends AbstractPacketHandler {
                 Server.getInstance().allianceMessage(alliance.getId(), GuildPackets.updateAllianceInfo(alliance, c.getWorld()), -1, -1);
                 Server.getInstance().allianceMessage(alliance.getId(), GuildPackets.allianceNotice(alliance.getId(), alliance.getNotice()), -1, -1);
                 guild.dropMessage("Your guild has joined the [" + alliance.getName() + "] union.");
+                // a citizen of a bot guild in it welcomes them in alliance chat (docs/BOT_GUILD_ALLIANCES_PLAN.md)
+                server.living.LivingWorldHooks.allianceJoined(alliance.getId(), guildid);
 
                 break;
             }

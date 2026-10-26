@@ -133,7 +133,9 @@ public class GuildCharacter {
 
     public void setAllianceRank(int rank) {
         allianceRank = rank;
-        character.setAllianceRank(rank);
+        if (character != null) { // an offline member (a bot guild's master in an alliance it founded server-side)
+            character.setAllianceRank(rank);
+        }
     }
 
     public boolean isOnline() {

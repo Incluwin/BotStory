@@ -34,6 +34,8 @@ import java.util.function.UnaryOperator;
 public final class ChatterEngine {
     private static final Logger log = LoggerFactory.getLogger(ChatterEngine.class);
     private static final long SELF_COOLDOWN_MS = 15_000L;
+    /** A delivery channel naming one alliance's chat: this prefix and the alliance id (allianceSay). */
+    private static final String ALLIANCE_CHANNEL = "alliance:";
     private static final long INTENT_COOLDOWN_DEFAULT_MS = 300_000L;
     private static final int MAX_REACTORS = 2;
     private static final double DWELL_BASE_CHANCE = 0.05d;
@@ -420,7 +422,11 @@ public final class ChatterEngine {
                     return;
                 }
                 String clean = AgentChatTextSanitizer.sanitize(sent);
-                switch (channel) {
+                if (channel.startsWith(ALLIANCE_CHANNEL)) {
+                    int allianceId = Integer.parseInt(channel.substring(ALLIANCE_CHANNEL.length()));
+                    Server.getInstance().allianceMessage(allianceId, PacketCreator.multiChat(agent.getName(), clean, 3),
+                            agent.getId(), -1);
+                } else switch (channel) {
                     case "party" -> AgentDialogueTransportRuntime.sayPartyNow(agent, clean);
                     case "guild" -> {
                         Guild guild = Server.getInstance().getGuild(agent.getGuildId());
@@ -451,6 +457,18 @@ public final class ChatterEngine {
             }
         };
         TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, send, Math.max(1L, delayMs));
+    }
+
+    /**
+     * A citizen speaks in an alliance's chat (multi-chat 3) in its voice with its typing delay: a union founded, a guild
+     * welcomed, its guild leaving (CitizenAlliances). The alliance is fixed now, so a leaving guild's last line still
+     * reaches the alliance it is leaving. Returns its typing delay, after which the line is out.
+     */
+    public long allianceSay(CitizenSession session, int allianceId, String text) {
+        String rendered = population.voices().render(session.citizen, text, System.currentTimeMillis());
+        long delayMs = population.voices().delayMs(session.citizen, rendered);
+        deliver(session, ALLIANCE_CHANNEL + allianceId, rendered, delayMs);
+        return delayMs;
     }
 
     /**

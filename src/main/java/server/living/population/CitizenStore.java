@@ -18,7 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** JDBC access to the population tables ({@code living_citizen}, circles, guild meta, price index, acquaintances). */
+/**
+ * JDBC access to the population tables ({@code living_citizen}, circles, guild meta, price index, acquaintances,
+ * alliance marks).
+ */
 public final class CitizenStore {
     private static final Logger log = LoggerFactory.getLogger(CitizenStore.class);
     private static final String COLUMNS = "character_id, name, cohort, circle_id, guild_id, home_region, career, personality,"
@@ -341,6 +344,97 @@ public final class CitizenStore {
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_acquaintance write failed", failure);
+        }
+    }
+
+    // ---- alliances -----------------------------------------------------------------------
+
+    /**
+     * Shared minutes (map minutes plus party minutes twice, as the guild invite counts them) between the citizens of
+     * {@code citizenGuildIds} and the players of every other guild, by that guild's id, in one read
+     * (docs/BOT_GUILD_ALLIANCES_PLAN.md). Acquaintances are only kept with players, so every row is a player's.
+     */
+    public Map<Integer, Integer> playerGuildMinutes(java.util.Collection<Integer> citizenGuildIds) {
+        Map<Integer, Integer> out = new HashMap<>();
+        if (citizenGuildIds.isEmpty()) {
+            return out;
+        }
+        String in = String.join(", ", java.util.Collections.nCopies(citizenGuildIds.size(), "?"));
+        String sql = "SELECT p.guildid, SUM(a.map_minutes + 2 * a.party_minutes) FROM living_acquaintance a"
+                + " JOIN characters c ON c.id = a.character_id JOIN characters p ON p.id = a.player_id"
+                + " WHERE c.guildid IN (" + in + ") AND p.guildid > 0 AND p.guildid NOT IN (" + in + ") GROUP BY p.guildid";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int index = 1;
+            for (int round = 0; round < 2; round++) {
+                for (int guildId : citizenGuildIds) {
+                    ps.setInt(index++, guildId);
+                }
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getInt(1), rs.getInt(2));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("alliance player-guild minutes scan failed", failure);
+        }
+        return out;
+    }
+
+    /** Takes {@code amount} meso from an offline character that has it; false (nothing taken) when it has less. */
+    public boolean chargeMeso(int characterId, long amount) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("UPDATE characters SET meso = meso - ? WHERE id = ? AND meso >= ?")) {
+            ps.setLong(1, amount);
+            ps.setInt(2, characterId);
+            ps.setLong(3, amount);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException failure) {
+            log.warn("alliance fee charge failed for {}", characterId, failure);
+            return false;
+        }
+    }
+
+    /** Sets an offline character's alliance rank in the characters table (a loaded one saves its own). */
+    public void setAllianceRank(int characterId, int rank) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("UPDATE characters SET allianceRank = ? WHERE id = ?")) {
+            ps.setInt(1, rank);
+            ps.setInt(2, characterId);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("alliance rank write failed for {}", characterId, failure);
+        }
+    }
+
+    /** When the alliance mark {@code kind} was set for this guild (epoch ms), or 0 when it is not set. */
+    public long allianceMark(int guildId, String kind) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT at_ms FROM living_alliance_mark WHERE guild_id = ? AND kind = ?")) {
+            ps.setInt(1, guildId);
+            ps.setString(2, kind);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_alliance_mark read failed for {}", guildId, failure);
+            return 0L;
+        }
+    }
+
+    /** Sets the alliance mark {@code kind} for this guild at {@code atMs}; {@code atMs} 0 clears it. */
+    public void setAllianceMark(int guildId, String kind, long atMs) {
+        String sql = atMs <= 0 ? "DELETE FROM living_alliance_mark WHERE guild_id = ? AND kind = ?"
+                : "INSERT INTO living_alliance_mark (guild_id, kind, at_ms) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE at_ms = VALUES(at_ms)";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, guildId);
+            ps.setString(2, kind);
+            if (atMs > 0) {
+                ps.setLong(3, atMs);
+            }
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_alliance_mark write failed for {}", guildId, failure);
         }
     }
 

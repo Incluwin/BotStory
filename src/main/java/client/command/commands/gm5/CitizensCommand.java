@@ -23,7 +23,7 @@ import java.util.Locale;
 public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
-                + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation|"
+                + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|alliances|market|conversation|"
                 + "level <name> <level>|login <name>|pq [send <name>]");
     }
 
@@ -211,7 +211,13 @@ public class CitizensCommand extends Command {
                     for (var meta : population.store().guilds()) {
                         var guild = net.server.Server.getInstance().getGuild(meta.guildId(), population.world().config().WORLD);
                         gm.yellowMessage((guild == null ? "guild " + meta.guildId() : guild.getName() + " (" + guild.getMembers().size() + " members)")
-                                + " lv" + meta.levelMin() + "-" + meta.levelMax() + " " + meta.stance() + " - " + meta.motto());
+                                + " lv" + meta.levelMin() + "-" + meta.levelMax() + " " + meta.stance() + " - " + meta.motto()
+                                + (guild == null || guild.getAllianceId() <= 0 ? "" : " [alliance " + guild.getAllianceId() + "]"));
+                    }
+                }
+                case "alliances" -> {
+                    for (String line : population.social().alliances().report()) {
+                        gm.yellowMessage(line);
                     }
                 }
                 case "purge" -> {
