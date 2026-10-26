@@ -47,10 +47,16 @@ public final class AgentWorldDirectorControlService {
         sessions.save(updated);
         AgentRuntimeEntry live = AgentRuntimeRegistry.findByAgentCharacterId(agentId);
         if (live != null) {
-            new AgentWorldDirectorModeRestoreRuntime(sessions,
+            AgentWorldDirectorModeRestoreRuntime restore = new AgentWorldDirectorModeRestoreRuntime(sessions,
                     config.AgentTuning.longValue(
-                            "server.agents.runtime.AgentRegistrationCoordinator.WORLD_DIRECTOR_OBSERVE_INTERVAL_MS"))
-                    .apply(live, updated, nowMs);
+                            "server.agents.runtime.AgentRegistrationCoordinator.WORLD_DIRECTOR_OBSERVE_INTERVAL_MS"));
+            if (server.agents.runtime.AgentForeignWriteRuntime.foreign(live)) {
+                // the Director bridge thread: the Agent's own tick takes its new mode (mailbox bypass 3)
+                server.agents.runtime.AgentForeignWriteRuntime.defer(live, "director-mode",
+                        owner -> restore.apply(owner, updated, nowMs));
+            } else {
+                restore.apply(live, updated, nowMs);
+            }
         }
         return updated;
     }

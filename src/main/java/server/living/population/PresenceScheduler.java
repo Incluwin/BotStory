@@ -21,6 +21,7 @@ import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeSessionResult;
 import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
+import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -1097,7 +1098,8 @@ public final class PresenceScheduler {
                 if (onFoot.enabled()) {
                     stopTownLife(session.entry, current); // nobody on its map: a stroll it lingered on stops at once
                 }
-                place(current, target, arrivalPortal(session, current.getMapId(), target, now));
+                placeAndLand(session, current, asked, target, arrivalPortal(session, current.getMapId(), target, now), now);
+                return;
             }
             landed(session, asked, target, now);
         } catch (RuntimeException failure) {
@@ -1117,6 +1119,43 @@ public final class PresenceScheduler {
     /** Changes the citizen's map, at {@code portal} (portal 0 when null). */
     void place(Character agent, MapleMap target, server.maps.Portal portal) {
         agent.changeMap(target, portal != null ? portal : target.getPortal(0));
+    }
+
+    /**
+     * Changes the citizen's map and starts what it does there ({@link #place}, {@link #landed}). This runs on the
+     * population timer; with agent-engine.yaml ROUTE_EXTERNAL_WRITES on, both go through the citizen's mailbox and run
+     * on its own tick (docs/SCALE_PLATFORM_PLAN.md section 3, mailbox bypass 2), unless a newer move replaced this
+     * one or the session ended by then. Its slot on the destination (population.MAP_VISIBLE_MAX) stays reserved until
+     * it lands.
+     */
+    void placeAndLand(CitizenSession session, Character agent, CitizenSession.Move move, MapleMap target,
+                      server.maps.Portal portal, long now) {
+        AgentRuntimeEntry entry = session.entry;
+        if (entry != null && AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "citizen-move", owner -> {
+                if (holds(session) && move == session.latestMove) {
+                    place(agent, target, portal);
+                    landed(session, move, target, System.currentTimeMillis());
+                }
+            });
+            return;
+        }
+        place(agent, target, portal);
+        landed(session, move, target, now);
+    }
+
+    /** A map change with no landing (boarding at a dock): on the citizen's own tick as {@link #placeAndLand} does. */
+    void placeOnTick(CitizenSession session, Character agent, MapleMap target, server.maps.Portal portal) {
+        AgentRuntimeEntry entry = session.entry;
+        if (entry != null && AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "citizen-move", owner -> {
+                if (holds(session)) {
+                    place(agent, target, portal);
+                }
+            });
+            return;
+        }
+        place(agent, target, portal);
     }
 
     /**

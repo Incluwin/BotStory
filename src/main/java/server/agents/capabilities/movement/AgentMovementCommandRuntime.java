@@ -7,6 +7,7 @@ import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.commands.AgentCommandModeService;
+import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.plans.AgentScriptTaskQueueService;
@@ -52,6 +53,10 @@ public final class AgentMovementCommandRuntime {
     }
 
     public static void stop(AgentRuntimeEntry entry) {
+        if (AgentForeignWriteRuntime.foreign(entry)) { // off its own tick: its mailbox (race H1, mailbox bypasses)
+            AgentForeignWriteRuntime.defer(entry, "command-stop", AgentMovementCommandRuntime::stop);
+            return;
+        }
         AgentCommandModeService.runPreparedModeCommand(
                 entry,
                 () -> AgentScriptTaskQueueService.clearTasks(entry),
@@ -60,6 +65,11 @@ public final class AgentMovementCommandRuntime {
     }
 
     public static void moveTo(AgentRuntimeEntry entry, Point dest, boolean precise) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Point at = dest == null ? null : new Point(dest);
+            AgentForeignWriteRuntime.defer(entry, "command-move", owner -> moveTo(owner, at, precise));
+            return;
+        }
         AgentCommandModeService.runPreparedModeCommand(
                 entry,
                 () -> dest != null,
@@ -96,6 +106,10 @@ public final class AgentMovementCommandRuntime {
     }
 
     public static void grind(AgentRuntimeEntry entry) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "command-grind", AgentMovementCommandRuntime::grind);
+            return;
+        }
         AgentCommandModeService.runPreparedModeCommand(
                 entry,
                 () -> AgentScriptTaskQueueService.clearTasks(entry),

@@ -146,10 +146,9 @@ public final class AgentPartyGatherService {
         AgentPartyGatherRegistry.Gathering gathering = open(owner);
         gathering.addBuffer(bot.getId());
         watch(buffer, gathering);
-        if (gathering.gathered() || !partySpread(buffer, bot)) {
+        if (gathering.gathered() || !partySpread(buffer, bot) || !gathering.tryMarkGathered()) {
             return false;
         }
-        gathering.markGathered();
         moveToSpots(owner, onOwnersMap(owner, AgentRuntimeRegistry.entriesForLeader(owner.getId())), gathering, true);
         return true;
     }

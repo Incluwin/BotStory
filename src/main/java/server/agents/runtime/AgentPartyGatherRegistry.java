@@ -32,7 +32,7 @@ public final class AgentPartyGatherRegistry {
         private final Map<Integer, Point> spots = new ConcurrentHashMap<>();
         private volatile int arrivalPx;
         private final AtomicBoolean watched = new AtomicBoolean();
-        private volatile boolean gathered;
+        private final AtomicBoolean gathered = new AtomicBoolean();
 
         Gathering(int ownerId, int mapId, long waitUntilMs, long closeByMs) {
             this.ownerId = ownerId;
@@ -73,11 +73,19 @@ public final class AgentPartyGatherRegistry {
 
         /** Whether the party has been called over (as opposed to already standing together). */
         public boolean gathered() {
-            return gathered;
+            return gathered.get();
         }
 
         public void markGathered() {
-            gathered = true;
+            gathered.set(true);
+        }
+
+        /**
+         * Marks the party called over; true only for the one caller that did it. Several buffers ask on their own
+         * ticks, at once in central-sharded mode, and only one may move the party (race M3).
+         */
+        public boolean tryMarkGathered() {
+            return gathered.compareAndSet(false, true);
         }
 
         /** How to put an Agent back to what it was doing; kept only for Agents the gathering moved. */

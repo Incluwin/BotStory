@@ -535,14 +535,17 @@ final class AgentApqStagePlay {
     private static void breakBoxes(AgentApqSession session, AgentRuntimeEntry entry, Character agent,
                                    AgentApqMemberState member, Set<Integer> boxIds, long nowMs) {
         var actions = AgentApqCoordinator.actions();
-        Reactor box = committedBox(agent, member.committedReactorObjectId(), boxIds);
-        if (box == null) box = nearestUnclaimedBox(session, agent, boxIds);
+        Reactor box;
+        synchronized (session) { // scan and claim in one step: two members never take one box (race M1)
+            box = committedBox(agent, member.committedReactorObjectId(), boxIds);
+            if (box == null) box = nearestUnclaimedBox(session, agent, boxIds);
+            if (box != null) member.commitReactor(box.getObjectId());
+        }
         if (box == null) {
             member.clearReactor();
             actions.stop(entry);
             return;
         }
-        member.commitReactor(box.getObjectId());
         if (!AgentApqCoordinator.within(agent.getPosition(), box.getPosition(), REACTOR_REACH_PX)) {
             Point ground = actions.groundPoint(agent.getMap(), box.getPosition());
             actions.navigate(entry, ground == null ? box.getPosition() : ground, true);

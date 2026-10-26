@@ -296,8 +296,7 @@ final class CitizenTravel {
                         log.warn("citizen {} comes out on full map {}: nowhere else has room", session.name(), target.getId());
                     }
                 }
-                presence.place(agent, target, entryPortal(session, agent.getMapId(), target, now));
-                presence.landed(session, move, target, now);
+                presence.placeAndLand(session, agent, move, target, entryPortal(session, agent.getMapId(), target, now), now);
             }
             default -> {
                 // MAP: it stands on its destination, which the next step lands; ENTER_PORTAL: the portal took it on,
@@ -319,7 +318,7 @@ final class CitizenTravel {
         log.info("citizen {} boards at {} on {} for {} on its way to {}", session.name(), leg.boardingNpcId(),
                 agent.getMapId(), dock.getId(), trip.target.getId());
         AgentMovementCommandRuntime.stop(session.entry);
-        presence.place(agent, dock, dock.getPortal(0));
+        presence.placeOnTick(session, agent, dock, dock.getPortal(0));
         session.mapId = dock.getId();
     }
 

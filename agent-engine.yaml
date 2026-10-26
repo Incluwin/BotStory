@@ -5569,6 +5569,14 @@ tuning:
     # Purpose: Controls the distance or margin used for platform edge inset. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "leader safety coordinator" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
     server.agents.runtime.AgentLeaderSafetyCoordinator.PLATFORM_EDGE_INSET_PX: '12'
+    # Values: true or false. Recommended: true; it acts only in central-sharded mode, where false leaves cross-Agent movement and combat writes racing the target's own tick.
+    # Purpose: In central-sharded mode, a party-quest coordinator's navigate, grind and stop commands to another member go through that member's mailbox, so its movement state keeps one writer.
+    # Technical: AgentForeignWriteRuntime.foreign is true when another Agent's tick runs on this thread (AgentTickScheduler marks it) and the mode is central-sharded; CosmicPrimitiveCapabilityGateway then defers the write, coalesced per command and without a wake, to the target's own mailbox drain. Central-sequential writes in place as before.
+    server.agents.runtime.AgentForeignWriteRuntime.ENABLED: 'true'
+    # Values: true or false. Recommended: false (shipped); the user turns it on with central-sharded after one clean live hour (docs/SCALE_PLATFORM_PLAN.md section 7); true routes the known mailbox bypasses.
+    # Purpose: Writes to an Agent from off the scheduler (a trade request's interaction target, a citizen's map change on the population timer, a Director mode change, movement commands from timers) go through that Agent's mailbox and run on its own tick.
+    # Technical: AgentForeignWriteRuntime.foreign is true for a target when no Agent tick runs on this thread and this is true in a central mode; callers then defer the write to the target's mailbox (coalesced per command) and wake it. Abstract Agents run no mailbox drain, so citizen moves still leave BACKGROUND_ABSTRACT first.
+    server.agents.runtime.AgentForeignWriteRuntime.ROUTE_EXTERNAL_WRITES: 'false'
     # Values: a finite non-negative integer. Recommended: 16-64 around the tested baseline 32; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how frequently maximum actions per tick updates. Lower values make Agents react more quickly and smoothly but use more server work; higher values react more slowly and reduce load.
     # Technical: the "mailbox runtime" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel. It governs recurring work, so lowering it increases invocation frequency and operational load.
@@ -5805,7 +5813,7 @@ tuning:
     # Purpose: Limits how many maximum work items per cycle can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel. Paired minimum/maximum values define an inclusive random or validation range and must not be inverted.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MAX_WORK_ITEMS_PER_CYCLE: '256'
-    # Values: central-sequential, central-sharded, or legacy-per-agent. Recommended: central-sequential (the shipped live mode) until the user approves central-sharded (docs/SCALE_PLATFORM_PLAN.md section 6).
+    # Values: central-sequential, central-sharded, or legacy-per-agent. Recommended: central-sequential (shipped); the user flips it to central-sharded after one clean live hour on this build (docs/SCALE_PLATFORM_PLAN.md section 7).
     # Purpose: The one switch for the Agent tick scheduler: one central loop, several independent shard loops, or the old per-Agent timers; launchers no longer pin it.
     # Technical: AgentSchedulerConfig.configuredMode reads -Dagents.scheduler.mode first, then the old agents.scheduler.central.enabled flag, then this value. central-sharded splits Agents over clamp(cpus/2, 1, 4) shard loops by a hash of character id and session generation; the mailbox is mandatory in both central modes.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MODE: 'central-sequential'

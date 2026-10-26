@@ -316,7 +316,13 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                         return;
                     }
                     AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(other.getId());
-                    AgentRelationshipRuntime.setInteractionTarget(entry, chr);
+                    if (server.agents.runtime.AgentForeignWriteRuntime.foreign(entry)) {
+                        // the packet thread: the Agent's own tick takes the trade partner (mailbox bypass 1)
+                        server.agents.runtime.AgentForeignWriteRuntime.defer(entry, "interaction-target",
+                                owner -> AgentRelationshipRuntime.setInteractionTarget(owner, chr));
+                    } else {
+                        AgentRelationshipRuntime.setInteractionTarget(entry, chr);
+                    }
                 }
 
                 Trade.inviteTrade(chr, other);

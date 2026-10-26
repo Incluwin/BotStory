@@ -371,7 +371,12 @@ public final class AgentLmpqCoordinator {
             member.clearReactor();
             reactor = null;
         }
-        if (reactor == null) reactor = nearestUnclaimedBox(session, agent);
+        if (reactor == null) {
+            synchronized (session) { // scan and claim in one step: two members never take one box (race M1)
+                reactor = nearestUnclaimedBox(session, agent);
+                if (reactor != null) member.commitReactor(reactor.getObjectId());
+            }
+        }
         if (reactor != null) {
             member.commitReactor(reactor.getObjectId());
             if (!near(agent.getPosition(), reactor.getPosition(), REACTOR_RADIUS) || !actions().grounded(agent)) {

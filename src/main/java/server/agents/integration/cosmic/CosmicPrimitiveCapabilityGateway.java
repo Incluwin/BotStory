@@ -40,6 +40,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.integration.AgentCharacterStateSnapshot;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -460,17 +461,30 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
 
     @Override
     public void navigate(AgentRuntimeEntry entry, Point destination, boolean precise) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Point at = destination == null ? null : new Point(destination);
+            AgentForeignWriteRuntime.defer(entry, "navigate", owner -> navigate(owner, at, precise));
+            return;
+        }
         AgentModeService.startMoveTo(entry, destination, precise);
     }
 
     @Override
     public void setHorizontalBoundary(
             AgentRuntimeEntry entry, int mapId, int minX, int maxX) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "boundary", owner -> setHorizontalBoundary(owner, mapId, minX, maxX));
+            return;
+        }
         AgentHorizontalBoundaryStateRuntime.set(entry, mapId, minX, maxX);
     }
 
     @Override
     public void clearHorizontalBoundary(AgentRuntimeEntry entry) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "boundary", this::clearHorizontalBoundary);
+            return;
+        }
         AgentHorizontalBoundaryStateRuntime.clear(entry);
     }
 
@@ -492,6 +506,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
 
     @Override
     public void grind(AgentRuntimeEntry entry, Set<Integer> allowedMobIds) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Set<Integer> mobs = copy(allowedMobIds);
+            AgentForeignWriteRuntime.defer(entry, "grind", owner -> grind(owner, mobs));
+            return;
+        }
         grindInTerritory(entry, allowedMobIds, null);
     }
 
@@ -499,6 +518,12 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     public void grind(AgentRuntimeEntry entry,
                       Set<Integer> preferredMobIds,
                       Set<Integer> fallbackMobIds) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Set<Integer> preferred = copy(preferredMobIds);
+            Set<Integer> fallback = copy(fallbackMobIds);
+            AgentForeignWriteRuntime.defer(entry, "grind", owner -> grind(owner, preferred, fallback));
+            return;
+        }
         boolean authoredAnchorActive = AgentFarmAnchorStateRuntime.hasFarmAnchor(entry);
         // An automatic platform anchor belongs to the active preference tier. Keeping an
         // anchor merely because its mob remains in the fallback set can strand the Agent on an
@@ -518,6 +543,13 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
                                 Point anchor,
                                 Set<Integer> preferredMobIds,
                                 Set<Integer> fallbackMobIds) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Point at = anchor == null ? null : new Point(anchor);
+            Set<Integer> preferred = copy(preferredMobIds);
+            Set<Integer> fallback = copy(fallbackMobIds);
+            AgentForeignWriteRuntime.defer(entry, "grind", owner -> grindFromAnchor(owner, at, preferred, fallback));
+            return;
+        }
         if (entry == null || anchor == null) {
             return;
         }
@@ -540,6 +572,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     public void grindInTerritory(AgentRuntimeEntry entry,
                                  Set<Integer> mobIds,
                                  AgentMapRegionAssignment territory) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            Set<Integer> mobs = copy(mobIds);
+            AgentForeignWriteRuntime.defer(entry, "grind", owner -> grindInTerritory(owner, mobs, territory));
+            return;
+        }
         boolean authoredAnchorActive = AgentFarmAnchorStateRuntime.hasFarmAnchor(entry);
         AgentCombatVariationRuntime.retainAutomaticAnchorFor(entry, mobIds);
         AgentCombatObjectiveTargetStateRuntime.setAllowedMobIdsInRegion(entry, mobIds, territory);
@@ -551,11 +588,19 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
 
     @Override
     public void leaveTerritory(AgentRuntimeEntry entry) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "territory", this::leaveTerritory);
+            return;
+        }
         AgentCombatDirectiveRuntime.clearRegion(entry);
     }
 
     @Override
     public void stop(AgentRuntimeEntry entry) {
+        if (AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "stop", this::stop);
+            return;
+        }
         AgentCombatVariationRuntime.clearAutomaticAnchor(entry);
         AgentCombatObjectiveTargetStateRuntime.clear(entry);
         AgentModeService.startStop(entry);
@@ -931,5 +976,10 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     @Override
     public int chairItemId(Character agent) {
         return agent == null ? -1 : agent.getChair();
+    }
+
+    /** A copy a deferred write keeps: the caller may reuse or change its set after the call. */
+    private static Set<Integer> copy(Set<Integer> mobIds) {
+        return mobIds == null ? null : Set.copyOf(mobIds);
     }
 }

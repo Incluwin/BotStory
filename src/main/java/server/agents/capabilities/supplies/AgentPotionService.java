@@ -62,6 +62,23 @@ public final class AgentPotionService {
     private AgentPotionService() {
     }
 
+    /**
+     * Takes the cohort's share window when it is open, in one step: true for the one member that took it. Members of a
+     * cohort ask on their own ticks, at once in central-sharded mode, and a get-then-put let two ask the same donor
+     * (docs/SCALE_PLATFORM_PLAN.md section 6, race M6).
+     */
+    static boolean claimShareWindow(Map<Long, Long> windows, long cohortId, long now, long windowMs) {
+        boolean[] claimed = {false};
+        windows.compute(cohortId, (id, until) -> {
+            if (until != null && now < until) {
+                return until;
+            }
+            claimed[0] = true;
+            return now + windowMs;
+        });
+        return claimed[0];
+    }
+
     public static void clearLeaderRuntimeState(int leaderId) {
         potShareCooldownUntil.remove((long) leaderId);
         potShareHpBackoffUntil.remove((long) leaderId);
@@ -472,11 +489,10 @@ public final class AgentPotionService {
                 AgentPerformanceMonitor.recordSince("potion-request", startedAt);
                 return false;
             }
-            if (now < potShareCooldownUntil.getOrDefault(cohortId, 0L)) {
+            if (!claimShareWindow(potShareCooldownUntil, cohortId, now, 30_000L)) {
                 AgentPerformanceMonitor.recordSince("potion-request", startedAt);
                 return false;
             }
-            potShareCooldownUntil.put(cohortId, now + 30_000L);
         }
 
         int[] currentPots = bot.getInventory(InventoryType.USE) == null

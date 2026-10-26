@@ -7,6 +7,7 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.monitoring.AgentSchedulerMetrics;
 import server.agents.monitoring.AgentSchedulerRegistrationSnapshot;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.runtime.simulation.AgentBackgroundExecutionPolicy;
@@ -530,6 +531,8 @@ public final class AgentTickScheduler {
         if (executionMode == AgentQuiescenceController.ExecutionMode.SKIP) {
             return 0L;
         }
+        // whose tick runs on this thread: another Agent's write to it goes through its mailbox (AgentForeignWriteRuntime)
+        AgentRuntimeEntry interrupted = AgentForeignWriteRuntime.enterTick(registration.entry);
         try {
             if (executionMode == AgentQuiescenceController.ExecutionMode.QUIESCENCE_MAINTENANCE) {
                 registration.quiescence.runMaintenance();
@@ -540,6 +543,7 @@ public final class AgentTickScheduler {
             AgentSchedulerMetrics.recordFailure();
             log.warn("Central Agent scheduler tick failed for session {}", registration.sessionId, failure);
         } finally {
+            AgentForeignWriteRuntime.exitTick(interrupted);
             registration.quiescence.afterExecution();
             elapsedNs = Math.max(0L, nanoTime.getAsLong() - started);
             registration.recordCost(elapsedNs);

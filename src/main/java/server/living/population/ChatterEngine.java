@@ -115,7 +115,7 @@ public final class ChatterEngine {
     private volatile long lastSmegaMs;
     private volatile int smegasThisHour;
     private volatile long hourStartMs;
-    private volatile long linesSpoken;
+    private final java.util.concurrent.atomic.AtomicLong linesSpoken = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.Deque<String> recent = new java.util.ArrayDeque<>();
 
     ChatterEngine(Population population) {
@@ -128,7 +128,7 @@ public final class ChatterEngine {
     }
 
     public long linesSpoken() {
-        return linesSpoken;
+        return linesSpoken.get();
     }
 
     /** The last few lines citizens said anywhere (newest last), for ops and the dashboard. */
@@ -442,7 +442,7 @@ public final class ChatterEngine {
                     }
                     default -> AgentDialogueTransportRuntime.sayMapNow(agent, clean);
                 }
-                linesSpoken++;
+                linesSpoken.incrementAndGet();
                 session.journal.add("said", "said \"" + clean + "\"");
                 remember(session.name() + " [" + channel + " " + population.fields().name(session.mapId) + "]: " + clean);
                 log.debug("[chatter] {} ({}) @{}: {}", session.name(), channel, session.mapId, clean);
@@ -496,14 +496,15 @@ public final class ChatterEngine {
             if (population.presence().session(session.characterId) != null && human.getClient() != null) {
                 AgentPacketGatewayRuntime.packets().sendWhisperReceive(human, agent.getName(), session.channel - 1, false,
                         AgentChatTextSanitizer.sanitize(rendered));
-                linesSpoken++;
+                linesSpoken.incrementAndGet();
             }
         }, population.voices().delayMs(session.citizen, rendered));
     }
 
     // ---- megaphones ----------------------------------------------------------------------
 
-    private boolean smegaAllowed(long now) {
+    /** One lock for the hour's count, so the cap holds when several threads ask at once (race L1). */
+    private synchronized boolean smegaAllowed(long now) {
         if (now - hourStartMs > 3_600_000L) {
             hourStartMs = now;
             smegasThisHour = 0;
@@ -534,7 +535,9 @@ public final class ChatterEngine {
         }
         CitizenSession speaker = speakers.get(random.nextInt(speakers.size()));
         if (speak(speaker, Event.of("smega", speaker.mapId, speaker.channel).self(speaker), "smega", true)) {
-            smegasThisHour++;
+            synchronized (this) {
+                smegasThisHour++;
+            }
         }
     }
 
