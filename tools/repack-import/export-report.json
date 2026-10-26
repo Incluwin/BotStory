@@ -1,0 +1,2482 @@
+{
+ "sources": {
+  "Map.wz": {
+   "bytes": 1442051954,
+   "sha256": "f5c6308fc0b826f05aa9c99ffcca811150a1befacf0fe48ce073bb5a7e2523b9",
+   "version": 83
+  },
+  "Mob.wz": {
+   "bytes": 1432923627,
+   "sha256": "498271db2858fb682ad75295bdde2890ebd74f05b2a9521786f1cbecc349e25b",
+   "version": 83
+  },
+  "Npc.wz": {
+   "bytes": 580489730,
+   "sha256": "6953980272398a14b5d72ef9c8dc78a53e1124eed4788fe13f2e1b732df571fa",
+   "version": 83
+  },
+  "Reactor.wz": {
+   "bytes": 58356511,
+   "sha256": "e844b05f2a6b4a3236af8510b623a8c998eb4e67a8ae588b22d29e995e56b977",
+   "version": 83
+  },
+  "String.wz": {
+   "bytes": 8155512,
+   "sha256": "70bb963cb406a91c3f556fcd92d0323822918fdecf283ef4071bbdb14dbac4fd",
+   "version": 83
+  }
+ },
+ "areas": {
+  "maple-misc": {
+   "name": "Maple Island ship",
+   "mobs": "none",
+   "maps": 1,
+   "towns": []
+  },
+  "lion-king-castle": {
+   "name": "Lion King's Castle",
+   "mobs": "hunt",
+   "maps": 28,
+   "towns": []
+  },
+  "coke-town": {
+   "name": "Coke Town",
+   "mobs": "hunt",
+   "maps": 19,
+   "towns": [
+    219000000,
+    219000001,
+    219000002,
+    219000003,
+    219000004,
+    219000005
+   ]
+  },
+  "chaos-horntail": {
+   "name": "Chaos Horntail",
+   "mobs": "boss",
+   "maps": 1,
+   "towns": []
+  },
+  "future-gate": {
+   "name": "Gate to the Future",
+   "mobs": "hunt",
+   "maps": 42,
+   "towns": [
+    271000000,
+    271010000
+   ]
+  },
+  "future-crack": {
+   "name": "Crack in Time",
+   "mobs": "hunt",
+   "maps": 25,
+   "towns": [
+    272000000,
+    272000310
+   ]
+  },
+  "future-perion": {
+   "name": "Twilight Perion",
+   "mobs": "hunt",
+   "maps": 20,
+   "towns": [
+    273000000,
+    273050000
+   ]
+  },
+  "chaos-zakum": {
+   "name": "Chaos Zakum",
+   "mobs": "boss",
+   "maps": 1,
+   "towns": []
+  },
+  "arcane-horizons": {
+   "name": "Arcane River: 5th job Horizons",
+   "mobs": "none",
+   "maps": 7,
+   "towns": []
+  },
+  "arcane-vanishing-journey": {
+   "name": "Arcane River: Vanishing Journey",
+   "mobs": "none",
+   "maps": 50,
+   "towns": [
+    450001000,
+    450001380
+   ]
+  },
+  "arcane-chu-chu": {
+   "name": "Arcane River: Chu Chu Island",
+   "mobs": "none",
+   "maps": 34,
+   "towns": [
+    450002000
+   ]
+  },
+  "arcane-lachelein": {
+   "name": "Arcane River: Lachelein",
+   "mobs": "none",
+   "maps": 52,
+   "towns": [
+    450003000,
+    450003010,
+    450003700,
+    450003710
+   ]
+  },
+  "arcane-arcana": {
+   "name": "Arcane River: Arcana",
+   "mobs": "none",
+   "maps": 33,
+   "towns": [
+    450005000,
+    450005015
+   ]
+  },
+  "arcane-morass": {
+   "name": "Arcane River: Morass",
+   "mobs": "none",
+   "maps": 27,
+   "towns": [
+    450006000,
+    450006130,
+    450006330
+   ]
+  },
+  "arcane-esfera": {
+   "name": "Arcane River: Esfera",
+   "mobs": "none",
+   "maps": 51,
+   "towns": [
+    450007000,
+    450007040
+   ]
+  },
+  "arcane-moonbridge": {
+   "name": "Arcane River: Moonbridge",
+   "mobs": "none",
+   "maps": 28,
+   "towns": [
+    450009050,
+    450009100,
+    450009101,
+    450009200,
+    450009300,
+    450009301
+   ]
+  },
+  "arcane-labyrinth": {
+   "name": "Arcane River: Labyrinth of Suffering",
+   "mobs": "none",
+   "maps": 57,
+   "towns": [
+    450011120,
+    450011220,
+    450011320,
+    450011500
+   ]
+  },
+  "arcane-limina": {
+   "name": "Arcane River: Limina",
+   "mobs": "none",
+   "maps": 40,
+   "towns": [
+    450012000,
+    450012200,
+    450012300
+   ]
+  },
+  "ulu-city": {
+   "name": "Ulu City",
+   "mobs": "hunt",
+   "maps": 30,
+   "towns": []
+  },
+  "ninja-castle": {
+   "name": "Ninja Castle",
+   "mobs": "hunt",
+   "maps": 33,
+   "towns": [
+    800040000
+   ]
+  }
+ },
+ "maps": 579,
+ "strippedMobSpawns": 5802,
+ "longsAsInt": 0,
+ "mapScripts": {
+  "onFirstUserEnter/Akayrum_Before": {
+   "maps": [
+    272020200
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/Fenter_450004150": {
+   "maps": [
+    450004150,
+    450004450,
+    450004750
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/Fenter_450004250": {
+   "maps": [
+    450004250,
+    450004550,
+    450004850
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/Fenter_450004300": {
+   "maps": [
+    450004300,
+    450004600,
+    450004900
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/JinHillah_onFirstUserEnter": {
+   "maps": [
+    450010100,
+    450010300,
+    450010500
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/JinHillah_story_onFirstUserEnter": {
+   "maps": [
+    450010700,
+    450010800
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/VanLeon_Before": {
+   "maps": [
+    211070100
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/cygnus_AK_mapEnterEff": {
+   "maps": [
+    272030400
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/cygnus_Summon": {
+   "maps": [
+    271040100
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/dusk_onFirstUserEnter": {
+   "maps": [
+    450009400,
+    450009500
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/enter_secretGarden": {
+   "maps": [
+    271030410
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/firstenter_bossBlackMage": {
+   "maps": [
+    450013100,
+    450013300,
+    450013500,
+    450013700,
+    450013750
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/firstenter_bossBlackMageSc": {
+   "maps": [
+    450013810,
+    450013830,
+    450013850,
+    450013870
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/summon_ani": {
+   "maps": [
+    211061100
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/will_phase1": {
+   "maps": [
+    450008150,
+    450008450,
+    450008750
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/will_phase2": {
+   "maps": [
+    450008250,
+    450008550,
+    450008850
+   ],
+   "server": false
+  },
+  "onFirstUserEnter/will_phase3": {
+   "maps": [
+    450008350,
+    450008650,
+    450008950
+   ],
+   "server": false
+  },
+  "onUserEnter/Akayrum_ExpeditionEnter": {
+   "maps": [
+    272020200
+   ],
+   "server": false
+  },
+  "onUserEnter/Enter_450009000": {
+   "maps": [
+    450009000
+   ],
+   "server": false
+  },
+  "onUserEnter/ExitCheck": {
+   "maps": [
+    272020110
+   ],
+   "server": false
+  },
+  "onUserEnter/ExitCheck2": {
+   "maps": [
+    272020400
+   ],
+   "server": false
+  },
+  "onUserEnter/JinHillah_direction1": {
+   "maps": [
+    450010000,
+    450010200,
+    450010400,
+    450010600
+   ],
+   "server": false
+  },
+  "onUserEnter/JinHillah_onUserEnter": {
+   "maps": [
+    450010100,
+    450010300,
+    450010500
+   ],
+   "server": false
+  },
+  "onUserEnter/JinHillah_story_onUserEnter": {
+   "maps": [
+    450010700,
+    450010800
+   ],
+   "server": false
+  },
+  "onUserEnter/TD_LC_title": {
+   "maps": [
+    211060000
+   ],
+   "server": false
+  },
+  "onUserEnter/VanLeon_ExpeditionEnter": {
+   "maps": [
+    211070100
+   ],
+   "server": false
+  },
+  "onUserEnter/arcane1MO_1": {
+   "maps": [
+    450001400
+   ],
+   "server": false
+  },
+  "onUserEnter/arcane1MO_2_1": {
+   "maps": [
+    450001450
+   ],
+   "server": false
+  },
+  "onUserEnter/arcane1MO_2_2": {
+   "maps": [
+    450001500
+   ],
+   "server": false
+  },
+  "onUserEnter/bossBlackMage_direction": {
+   "maps": [
+    450013000,
+    450013200,
+    450013400,
+    450013600
+   ],
+   "server": false
+  },
+  "onUserEnter/bossBlackMage_directionFail": {
+   "maps": [
+    450013780
+   ],
+   "server": false
+  },
+  "onUserEnter/bossBlackMage_directionSc": {
+   "maps": [
+    450013800
+   ],
+   "server": false
+  },
+  "onUserEnter/cygnus_ExpeditionEnter": {
+   "maps": [
+    271040100
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_273000000": {
+   "maps": [
+    273000000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450000100": {
+   "maps": [
+    450000100
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450000110": {
+   "maps": [
+    450000110
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450000120": {
+   "maps": [
+    450000120
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450000200": {
+   "maps": [
+    450000200
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001000": {
+   "maps": [
+    450001000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001007": {
+   "maps": [
+    450001007
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001107": {
+   "maps": [
+    450001107
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001218": {
+   "maps": [
+    450001218
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001219": {
+   "maps": [
+    450001219
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001240": {
+   "maps": [
+    450001240
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001250": {
+   "maps": [
+    450001250
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001300": {
+   "maps": [
+    450001300
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001310": {
+   "maps": [
+    450001310
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001320": {
+   "maps": [
+    450001320
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001330": {
+   "maps": [
+    450001330
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001340": {
+   "maps": [
+    450001340
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001350": {
+   "maps": [
+    450001350
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001360": {
+   "maps": [
+    450001360
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001370": {
+   "maps": [
+    450001370
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001380": {
+   "maps": [
+    450001380
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001390": {
+   "maps": [
+    450001390
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450001550": {
+   "maps": [
+    450001550
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002023": {
+   "maps": [
+    450002023
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002024": {
+   "maps": [
+    450002024
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002200": {
+   "maps": [
+    450002200
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002201": {
+   "maps": [
+    450002201
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002202": {
+   "maps": [
+    450002202
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002203": {
+   "maps": [
+    450002203
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002204": {
+   "maps": [
+    450002204
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002205": {
+   "maps": [
+    450002205
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450002250": {
+   "maps": [
+    450002250
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003000": {
+   "maps": [
+    450003000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003010": {
+   "maps": [
+    450003010
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003100": {
+   "maps": [
+    450003100
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003330": {
+   "maps": [
+    450003330
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003430": {
+   "maps": [
+    450003430
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003600": {
+   "maps": [
+    450003600
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003700": {
+   "maps": [
+    450003700
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003710": {
+   "maps": [
+    450003710
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003711": {
+   "maps": [
+    450003711
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003720": {
+   "maps": [
+    450003720
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003730": {
+   "maps": [
+    450003730
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003740": {
+   "maps": [
+    450003740
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003750": {
+   "maps": [
+    450003750
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003760": {
+   "maps": [
+    450003760
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450003770": {
+   "maps": [
+    450003770
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450004000": {
+   "maps": [
+    450004000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450004100": {
+   "maps": [
+    450004100,
+    450004400,
+    450004700
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450004150": {
+   "maps": [
+    450004150,
+    450004450,
+    450004750
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450004200": {
+   "maps": [
+    450004200,
+    450004500,
+    450004800
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450004300": {
+   "maps": [
+    450004300,
+    450004600,
+    450004900
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450005000": {
+   "maps": [
+    450005000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450005015": {
+   "maps": [
+    450005015
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450005400": {
+   "maps": [
+    450005400
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006000": {
+   "maps": [
+    450006000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006040": {
+   "maps": [
+    450006040
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006130": {
+   "maps": [
+    450006130
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006200": {
+   "maps": [
+    450006200
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006240": {
+   "maps": [
+    450006240
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006330": {
+   "maps": [
+    450006330
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006400": {
+   "maps": [
+    450006400
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450006440": {
+   "maps": [
+    450006440
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007000": {
+   "maps": [
+    450007000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007040": {
+   "maps": [
+    450007040
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007100": {
+   "maps": [
+    450007100
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007170": {
+   "maps": [
+    450007170
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007310": {
+   "maps": [
+    450007310
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007320": {
+   "maps": [
+    450007320
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007350": {
+   "maps": [
+    450007350
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007400": {
+   "maps": [
+    450007400
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007410": {
+   "maps": [
+    450007410
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007420": {
+   "maps": [
+    450007420
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007430": {
+   "maps": [
+    450007430
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007440": {
+   "maps": [
+    450007440
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007450": {
+   "maps": [
+    450007450
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007500": {
+   "maps": [
+    450007500
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007510": {
+   "maps": [
+    450007510
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450007520": {
+   "maps": [
+    450007520
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009050": {
+   "maps": [
+    450009050
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009100": {
+   "maps": [
+    450009100
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009101": {
+   "maps": [
+    450009101
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009200": {
+   "maps": [
+    450009200
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009201": {
+   "maps": [
+    450009201
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009300": {
+   "maps": [
+    450009300
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450009301": {
+   "maps": [
+    450009301
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450011500": {
+   "maps": [
+    450011500
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450011580": {
+   "maps": [
+    450011580
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450011660": {
+   "maps": [
+    450011660
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450011990": {
+   "maps": [
+    450011990
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012000": {
+   "maps": [
+    450012000
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012010": {
+   "maps": [
+    450012010
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012200": {
+   "maps": [
+    450012200
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012210": {
+   "maps": [
+    450012210
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012300": {
+   "maps": [
+    450012300
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012310": {
+   "maps": [
+    450012310
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012320": {
+   "maps": [
+    450012320
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012400": {
+   "maps": [
+    450012400
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012410": {
+   "maps": [
+    450012410
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450012500": {
+   "maps": [
+    450012500
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450013820": {
+   "maps": [
+    450013820
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450013840": {
+   "maps": [
+    450013840
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_450013860": {
+   "maps": [
+    450013860
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_BM2_Base": {
+   "maps": [
+    450011120,
+    450011220,
+    450011320
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_BM2_Field": {
+   "maps": [
+    450011100,
+    450011101,
+    450011102,
+    450011103,
+    450011104,
+    450011105,
+    450011106,
+    450011107,
+    450011108,
+    450011109,
+    450011110,
+    450011111,
+    450011112,
+    450011113,
+    450011114,
+    450011115,
+    450011116,
+    450011117,
+    450011118,
+    450011119
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_bossBlackMage": {
+   "maps": [
+    450013100,
+    450013300,
+    450013500,
+    450013700,
+    450013750
+   ],
+   "server": false
+  },
+  "onUserEnter/enter_bossBlackMageSc": {
+   "maps": [
+    450013810,
+    450013830,
+    450013850,
+    450013870
+   ],
+   "server": false
+  },
+  "onUserEnter/goLith": {
+   "maps": [
+    2010002
+   ],
+   "server": true
+  },
+  "onUserEnter/inAkayrumPrison": {
+   "maps": [
+    272020300
+   ],
+   "server": false
+  },
+  "onUserEnter/inPrison": {
+   "maps": [
+    272030410
+   ],
+   "server": false
+  },
+  "onUserEnter/knights_Summon": {
+   "maps": [
+    271040300
+   ],
+   "server": false
+  },
+  "onUserEnter/q31102e": {
+   "maps": [
+    271000000
+   ],
+   "server": false
+  },
+  "onUserEnter/q31103s": {
+   "maps": [
+    271010000
+   ],
+   "server": false
+  },
+  "onUserEnter/q31165e": {
+   "maps": [
+    272000000
+   ],
+   "server": false
+  },
+  "onUserEnter/q31176continue": {
+   "maps": [
+    272000410
+   ],
+   "server": false
+  },
+  "onUserEnter/q3143_clear": {
+   "maps": [
+    211060800
+   ],
+   "server": false
+  },
+  "onUserEnter/reundoblackdraco": {
+   "maps": [
+    272020000
+   ],
+   "server": false
+  },
+  "onUserEnter/summonAkayrum_1": {
+   "maps": [
+    272010200
+   ],
+   "server": false
+  },
+  "onUserEnter/summon_ARCflyingmob": {
+   "maps": [
+    450001010,
+    450001011,
+    450001012,
+    450001013,
+    450001014,
+    450001015,
+    450001016,
+    450001110,
+    450001111,
+    450001112,
+    450001113,
+    450001114,
+    450001210,
+    450001211,
+    450001212,
+    450001213,
+    450001214,
+    450001215,
+    450001216,
+    450001217,
+    450001230,
+    450001260,
+    450001261,
+    450001262,
+    450002001,
+    450002002,
+    450002003,
+    450002004,
+    450002005,
+    450002006,
+    450002007,
+    450002008,
+    450002009,
+    450002010,
+    450002011,
+    450002012,
+    450002013,
+    450002014,
+    450002015,
+    450002016,
+    450002017,
+    450002018,
+    450002019,
+    450002020,
+    450002300,
+    450002301,
+    450002302,
+    450003200,
+    450003210,
+    450003220,
+    450003300,
+    450003310,
+    450003320,
+    450003340,
+    450003350,
+    450003360,
+    450003400,
+    450003410,
+    450003420,
+    450003440,
+    450003450,
+    450003460,
+    450003500,
+    450003510,
+    450003520,
+    450003530,
+    450003540,
+    450003560,
+    450005110,
+    450005120,
+    450005121,
+    450005130,
+    450005131,
+    450005210,
+    450005220,
+    450005221,
+    450005222,
+    450005230,
+    450005240,
+    450005241,
+    450005242,
+    450005410,
+    450005411,
+    450005412,
+    450005420,
+    450005430,
+    450005431,
+    450005432,
+    450005440,
+    450005500,
+    450005510,
+    450005520,
+    450005530,
+    450005550,
+    450006010,
+    450006020,
+    450006030,
+    450006110,
+    450006120,
+    450006140,
+    450006150,
+    450006160,
+    450006210,
+    450006220,
+    450006230,
+    450006300,
+    450006310,
+    450006320,
+    450006410,
+    450006420,
+    450006430,
+    450007010,
+    450007020,
+    450007030,
+    450007050,
+    450007060,
+    450007070,
+    450007110,
+    450007120,
+    450007130,
+    450007140,
+    450007150,
+    450007160,
+    450007210,
+    450007220,
+    450007230,
+    450009110,
+    450009120,
+    450009130,
+    450009140,
+    450009150,
+    450009160,
+    450009210,
+    450009220,
+    450009230,
+    450009240,
+    450009250,
+    450009260,
+    450009310,
+    450009320,
+    450009330,
+    450009340,
+    450009350,
+    450009360,
+    450011400,
+    450011410,
+    450011420,
+    450011430,
+    450011440,
+    450011450,
+    450011510,
+    450011520,
+    450011530,
+    450011540,
+    450011550,
+    450011560,
+    450011570,
+    450011600,
+    450011610,
+    450011620,
+    450011630,
+    450011640,
+    450011650,
+    450012020,
+    450012030,
+    450012040,
+    450012100,
+    450012110,
+    450012120,
+    450012330,
+    450012340,
+    450012350,
+    450012420,
+    450012430,
+    450012440
+   ],
+   "server": false
+  },
+  "onUserEnter/undomorphblackdraco": {
+   "maps": [
+    272000600
+   ],
+   "server": false
+  },
+  "onUserEnter/will_direction1": {
+   "maps": [
+    450008100,
+    450008400,
+    450008700
+   ],
+   "server": false
+  },
+  "onUserEnter/will_direction2": {
+   "maps": [
+    450008200,
+    450008500,
+    450008800
+   ],
+   "server": false
+  },
+  "onUserEnter/will_direction3": {
+   "maps": [
+    450008300,
+    450008600,
+    450008900
+   ],
+   "server": false
+  },
+  "onUserEnter/will_phase1_everyone": {
+   "maps": [
+    450008150,
+    450008750
+   ],
+   "server": false
+  },
+  "onUserEnter/will_phase2_everyone": {
+   "maps": [
+    450008250,
+    450008850
+   ],
+   "server": false
+  },
+  "onUserEnter/will_phase3_everyone": {
+   "maps": [
+    450008350,
+    450008950
+   ],
+   "server": false
+  },
+  "onUserEnter/wz2_enter_450002000": {
+   "maps": [
+    450002000
+   ],
+   "server": false
+  }
+ },
+ "portalScripts": {
+  "450001007_PCS00": {
+   "maps": [
+    450001007,
+    450001310
+   ],
+   "server": false
+  },
+  "450001007_PCS01": {
+   "maps": [
+    450001007,
+    450001310
+   ],
+   "server": false
+  },
+  "450001105_PS00": {
+   "maps": [
+    450001105
+   ],
+   "server": false
+  },
+  "450001105_PS01": {
+   "maps": [
+    450001105
+   ],
+   "server": false
+  },
+  "450001107_PCS00": {
+   "maps": [
+    450001107
+   ],
+   "server": false
+  },
+  "450001107_PCS01": {
+   "maps": [
+    450001107
+   ],
+   "server": false
+  },
+  "450001107_PCS02": {
+   "maps": [
+    450001107
+   ],
+   "server": false
+  },
+  "450001107_PCS03": {
+   "maps": [
+    450001107
+   ],
+   "server": false
+  },
+  "450001250_PCS00": {
+   "maps": [
+    450001250
+   ],
+   "server": false
+  },
+  "450001320_PCS00": {
+   "maps": [
+    450001320
+   ],
+   "server": false
+  },
+  "450001320_PCS01": {
+   "maps": [
+    450001320
+   ],
+   "server": false
+  },
+  "450001350_PCS00": {
+   "maps": [
+    450001350
+   ],
+   "server": false
+  },
+  "450009050_out00": {
+   "maps": [
+    450009050
+   ],
+   "server": false
+  },
+  "450009200_down00": {
+   "maps": [
+    450009200
+   ],
+   "server": false
+  },
+  "BM1_bossOut": {
+   "maps": [
+    450009400,
+    450009500
+   ],
+   "server": false
+  },
+  "BM2_goMBase": {
+   "maps": [
+    450011100,
+    450011101,
+    450011102,
+    450011103,
+    450011104,
+    450011105,
+    450011106,
+    450011107,
+    450011108,
+    450011109,
+    450011110,
+    450011111,
+    450011112,
+    450011113,
+    450011114,
+    450011115,
+    450011116,
+    450011117,
+    450011118,
+    450011119
+   ],
+   "server": false
+  },
+  "BPReturn_BM": {
+   "maps": [
+    450012500
+   ],
+   "server": false
+  },
+  "BPReturn_JinHill": {
+   "maps": [
+    450011990
+   ],
+   "server": false
+  },
+  "BPReturn_Lucid": {
+   "maps": [
+    450004000
+   ],
+   "server": false
+  },
+  "BPReturn_dusk": {
+   "maps": [
+    450009301
+   ],
+   "server": false
+  },
+  "GC_out": {
+   "maps": [
+    450012210
+   ],
+   "server": false
+  },
+  "MD_longkiss": {
+   "maps": [
+    541020610,
+    541020620
+   ],
+   "server": false
+  },
+  "Maze3_dungeon": {
+   "maps": [
+    450011990
+   ],
+   "server": false
+  },
+  "arcane_water": {
+   "maps": [
+    450001007,
+    450001310
+   ],
+   "server": false
+  },
+  "back_cygnus": {
+   "maps": [
+    271040300
+   ],
+   "server": false
+  },
+  "bmbossfield_out": {
+   "maps": [
+    450013100,
+    450013300,
+    450013500,
+    450013700,
+    450013750,
+    450013810,
+    450013830,
+    450013850,
+    450013870
+   ],
+   "server": false
+  },
+  "bossBlackMage_pt": {
+   "maps": [
+    450012500
+   ],
+   "server": false
+  },
+  "check_Portal3": {
+   "maps": [
+    272000310
+   ],
+   "server": false
+  },
+  "check_Portal4a": {
+   "maps": [
+    272000410
+   ],
+   "server": false
+  },
+  "check_Portal4b": {
+   "maps": [
+    272000410
+   ],
+   "server": false
+  },
+  "col_450006420_1": {
+   "maps": [
+    450006420
+   ],
+   "server": false
+  },
+  "col_450006420_2": {
+   "maps": [
+    450006420
+   ],
+   "server": false
+  },
+  "col_450006430_1": {
+   "maps": [
+    450006430
+   ],
+   "server": false
+  },
+  "col_450006430_2": {
+   "maps": [
+    450006430
+   ],
+   "server": false
+  },
+  "col_450006440": {
+   "maps": [
+    450006440
+   ],
+   "server": false
+  },
+  "dusk_enter": {
+   "maps": [
+    450009301
+   ],
+   "server": false
+  },
+  "east_450007160": {
+   "maps": [
+    450007160
+   ],
+   "server": false
+  },
+  "east_450011220": {
+   "maps": [
+    450011220
+   ],
+   "server": false
+  },
+  "east_450011320": {
+   "maps": [
+    450011320
+   ],
+   "server": false
+  },
+  "east_450012410": {
+   "maps": [
+    450012410
+   ],
+   "server": false
+  },
+  "go_deepForest": {
+   "maps": [
+    450002010
+   ],
+   "server": false
+  },
+  "in_cygnusAK": {
+   "maps": [
+    272030300
+   ],
+   "server": false
+  },
+  "jinHillah_out": {
+   "maps": [
+    450010100,
+    450010300,
+    450010500,
+    450010700,
+    450010800
+   ],
+   "server": false
+  },
+  "morassDQ_34285": {
+   "maps": [
+    450006410,
+    450006420,
+    450006430
+   ],
+   "server": false
+  },
+  "morassDQ_MP": {
+   "maps": [
+    450006300,
+    450006310,
+    450006320,
+    450006410,
+    450006420,
+    450006430
+   ],
+   "server": false
+  },
+  "mp_q35330": {
+   "maps": [
+    450013860
+   ],
+   "server": false
+  },
+  "outAkayrumPrison": {
+   "maps": [
+    272020300
+   ],
+   "server": false
+  },
+  "outPrison": {
+   "maps": [
+    272030410
+   ],
+   "server": false
+  },
+  "out_450004250": {
+   "maps": [
+    450004250,
+    450004550,
+    450004850
+   ],
+   "server": false
+  },
+  "out_450004300": {
+   "maps": [
+    450004300,
+    450004600,
+    450004900
+   ],
+   "server": false
+  },
+  "out_cygnusAK": {
+   "maps": [
+    272030400
+   ],
+   "server": false
+  },
+  "out_cygnusBackGarden": {
+   "maps": [
+    271040200,
+    271040210
+   ],
+   "server": false
+  },
+  "portalNPC1": {
+   "maps": [
+    272020110,
+    272020200
+   ],
+   "server": false
+  },
+  "pt00_450004250": {
+   "maps": [
+    450004250,
+    450004550,
+    450004850
+   ],
+   "server": false
+  },
+  "pt02_450003720": {
+   "maps": [
+    450003720
+   ],
+   "server": false
+  },
+  "pt_450003720": {
+   "maps": [
+    450003720
+   ],
+   "server": false
+  },
+  "pt_450007420": {
+   "maps": [
+    450007420
+   ],
+   "server": false
+  },
+  "pt_BMbase_go1": {
+   "maps": [
+    450009000,
+    450009050
+   ],
+   "server": false
+  },
+  "pt_BMbase_go2": {
+   "maps": [
+    450009000,
+    450009050
+   ],
+   "server": false
+  },
+  "pt_BMbase_go3": {
+   "maps": [
+    450009000,
+    450009050
+   ],
+   "server": false
+  },
+  "pt_FlyingBaseOut": {
+   "maps": [
+    450009000
+   ],
+   "server": false
+  },
+  "pt_MazerootOut": {
+   "maps": [
+    450011660
+   ],
+   "server": false
+  },
+  "pt_StreamUp0": {
+   "maps": [
+    450002011,
+    450002012,
+    450002013,
+    450002014,
+    450002015
+   ],
+   "server": false
+  },
+  "pt_StreamUp1": {
+   "maps": [
+    450002011,
+    450002012,
+    450002013,
+    450002014,
+    450002015
+   ],
+   "server": false
+  },
+  "pt_StreamUp2": {
+   "maps": [
+    450002011,
+    450002012,
+    450002013,
+    450002014,
+    450002015
+   ],
+   "server": false
+  },
+  "pt_altarIn": {
+   "maps": [
+    450011550,
+    450011560,
+    450011570
+   ],
+   "server": false
+  },
+  "pt_altarOut": {
+   "maps": [
+    450011580
+   ],
+   "server": false
+  },
+  "pt_flyingdown1": {
+   "maps": [
+    450009000,
+    450009050
+   ],
+   "server": false
+  },
+  "pt_flyingdown2": {
+   "maps": [
+    450009000,
+    450009050
+   ],
+   "server": false
+  },
+  "pt_harp": {
+   "maps": [
+    450005220
+   ],
+   "server": false
+  },
+  "pt_muto": {
+   "maps": [
+    450002021
+   ],
+   "server": false
+  },
+  "pt_nextMaze3": {
+   "maps": [
+    450011590
+   ],
+   "server": false
+  },
+  "south_450011220": {
+   "maps": [
+    450011220
+   ],
+   "server": false
+  },
+  "west_450004150": {
+   "maps": [
+    450004150,
+    450004450,
+    450004750
+   ],
+   "server": false
+  },
+  "west_450011220": {
+   "maps": [
+    450011220
+   ],
+   "server": false
+  },
+  "west_450011320": {
+   "maps": [
+    450011320
+   ],
+   "server": false
+  }
+ },
+ "missingMapNames": [
+  2010002,
+  450006900,
+  450007350,
+  450007400,
+  450007410,
+  450007430,
+  450007450,
+  450007520,
+  450011100,
+  450011101,
+  450011102,
+  450011103,
+  450011104,
+  450011105,
+  450011106,
+  450011107,
+  450011108,
+  450011109,
+  450011110,
+  450011111,
+  450011112,
+  450011113,
+  450011114,
+  450011115,
+  450011116,
+  450011117,
+  450011118,
+  450011119
+ ],
+ "imported": {
+  "npcs": [
+   1104209,
+   2142000,
+   2142001,
+   2142002,
+   2142003,
+   2142004,
+   2142005,
+   2142006,
+   2142007,
+   2142008,
+   2142009,
+   2142010,
+   2142100,
+   2142101,
+   2142102,
+   2142103,
+   2142104,
+   2142105,
+   2142106,
+   2142107,
+   2142108,
+   2142109,
+   2142110,
+   2142111,
+   2142112,
+   2143000,
+   2143001,
+   2143003,
+   2143004,
+   2144000,
+   2144002,
+   2144003,
+   2144004,
+   2144005,
+   2144006,
+   2144007,
+   2144008,
+   2144009,
+   2144014,
+   2144016,
+   2144017,
+   2144018,
+   2144020,
+   2161001,
+   2161002,
+   2161003,
+   2161004,
+   2161005,
+   2161010,
+   3003100,
+   3003101,
+   3003102,
+   3003103,
+   3003104,
+   3003105,
+   3003106,
+   3003107,
+   3003108,
+   3003109,
+   3003110,
+   3003111,
+   3003114,
+   3003115,
+   3003116,
+   3003117,
+   3003118,
+   3003119,
+   3003120,
+   3003121,
+   3003122,
+   3003123,
+   3003125,
+   3003126,
+   3003127,
+   3003128,
+   3003129,
+   3003130,
+   3003131,
+   3003132,
+   3003133,
+   3003134,
+   3003135,
+   3003136,
+   3003140,
+   3003143,
+   3003145,
+   3003150,
+   3003151,
+   3003152,
+   3003153,
+   3003154,
+   3003155,
+   3003156,
+   3003157,
+   3003158,
+   3003165,
+   3003166,
+   3003201,
+   3003202,
+   3003203,
+   3003205,
+   3003206,
+   3003209,
+   3003210,
+   3003211,
+   3003213,
+   3003214,
+   3003215,
+   3003216,
+   3003217,
+   3003218,
+   3003219,
+   3003220,
+   3003221,
+   3003222,
+   3003223,
+   3003224,
+   3003225,
+   3003226,
+   3003227,
+   3003228,
+   3003229,
+   3003234,
+   3003235,
+   3003236,
+   3003238,
+   3003239,
+   3003240,
+   3003241,
+   3003242,
+   3003243,
+   3003244,
+   3003246,
+   3003248,
+   3003250,
+   3003251,
+   3003261,
+   3003262,
+   3003263,
+   3003264,
+   3003285,
+   3003286,
+   3003287,
+   3003288,
+   3003289,
+   3003290,
+   3003300,
+   3003301,
+   3003302,
+   3003303,
+   3003304,
+   3003305,
+   3003306,
+   3003307,
+   3003308,
+   3003309,
+   3003311,
+   3003312,
+   3003313,
+   3003314,
+   3003315,
+   3003316,
+   3003317,
+   3003318,
+   3003319,
+   3003320,
+   3003322,
+   3003323,
+   3003324,
+   3003326,
+   3003329,
+   3003331,
+   3003332,
+   3003333,
+   3003334,
+   3003335,
+   3003336,
+   3003337,
+   3003338,
+   3003381,
+   3003410,
+   3003418,
+   3003420,
+   3003421,
+   3003423,
+   3003424,
+   3003425,
+   3003426,
+   3003427,
+   3003428,
+   3003429,
+   3003430,
+   3003431,
+   3003432,
+   3003433,
+   3003434,
+   3003435,
+   3003436,
+   3003451,
+   3003452,
+   3003453,
+   3003454,
+   3003460,
+   3003461,
+   3003462,
+   3003465,
+   3003466,
+   3003467,
+   3003468,
+   3003469,
+   3003471,
+   3003473,
+   3003475,
+   3003504,
+   3003506,
+   3003507,
+   3003515,
+   3003530,
+   3003531,
+   3003532,
+   3003533,
+   3003534,
+   3003535,
+   3003540,
+   3003541,
+   3003542,
+   3003543,
+   3003544,
+   3003545,
+   3003546,
+   3003547,
+   3003548,
+   3003549,
+   3003550,
+   3003551,
+   3003552,
+   3003553,
+   3003554,
+   3003555,
+   3003556,
+   3003557,
+   3003558,
+   3003559,
+   3003560,
+   3003561,
+   3003562,
+   3003563,
+   3003567,
+   3003568,
+   3003569,
+   3003570,
+   3003575,
+   3003576,
+   3003609,
+   3003611,
+   3003620,
+   3003638,
+   3003639,
+   3003640,
+   3003641,
+   3003642,
+   3003643,
+   3003644,
+   3003645,
+   3003646,
+   3003651,
+   3003656,
+   3003659,
+   3003660,
+   3003704,
+   3003706,
+   3003707,
+   3003708,
+   3003711,
+   3003714,
+   3003715,
+   3003716,
+   3003744,
+   3003745,
+   3003746,
+   3003747,
+   3003748,
+   3003749,
+   3003787,
+   3003788,
+   3003789,
+   3003790,
+   3003791,
+   3003792,
+   3003793,
+   3003794,
+   3003795,
+   3003796,
+   3003797,
+   3003798,
+   3003799,
+   3003800,
+   3003810,
+   3003811,
+   3003952,
+   3003955,
+   3003956,
+   3003958,
+   3003959,
+   3003960,
+   3003961,
+   3003962,
+   3003965,
+   3003971,
+   3003972,
+   3003973,
+   3003974,
+   3003975,
+   3003981,
+   3003983,
+   9000123,
+   9000124,
+   9010100,
+   9010101,
+   9010102,
+   9010103,
+   9010104,
+   9010105,
+   9010106,
+   9010109,
+   9110101,
+   9110103,
+   9110104,
+   9110106,
+   9110108,
+   9110109,
+   9110110,
+   9110111,
+   9110112,
+   9110113,
+   9110114,
+   9201252,
+   9201608,
+   9201609
+  ],
+  "mobs": [
+   8210000,
+   8210001,
+   8210002,
+   8210003,
+   8210004,
+   8210005,
+   8210006,
+   8210007,
+   8210013,
+   8220016,
+   8220017,
+   8220018,
+   8220019,
+   8220020,
+   8220021,
+   8600000,
+   8600001,
+   8600002,
+   8600003,
+   8600004,
+   8600005,
+   8600006,
+   8610000,
+   8610001,
+   8610002,
+   8610003,
+   8610004,
+   8610005,
+   8610006,
+   8610007,
+   8610008,
+   8610009,
+   8610010,
+   8610011,
+   8610012,
+   8610013,
+   8610014,
+   8620000,
+   8620001,
+   8620002,
+   8620003,
+   8620004,
+   8620005,
+   8620006,
+   8620007,
+   8620008,
+   8620009,
+   8620010,
+   8620011,
+   9400400,
+   9400401,
+   9400402,
+   9400403,
+   9400404,
+   9400405,
+   9400406,
+   9420514,
+   9420515,
+   9420516,
+   9420517,
+   9420518,
+   9420519,
+   9420525,
+   9420526
+  ],
+  "reactors": [
+   2401100,
+   5411001
+  ]
+ },
+ "existing": {
+  "npcs": [
+   2030010,
+   2083002,
+   2091006,
+   9001000,
+   9001001,
+   9001002,
+   9001003,
+   9001005,
+   9010010,
+   9010022,
+   9110000,
+   9110100
+  ],
+  "mobs": [
+   8200005,
+   8200006,
+   9300301,
+   9300302,
+   9300304,
+   9500143,
+   9500144,
+   9500145,
+   9500146,
+   9500147,
+   9500148,
+   9500149,
+   9500150,
+   9500151,
+   9500152,
+   9500153,
+   9500154
+  ],
+  "reactors": [
+   2111001
+  ]
+ },
+ "missingFromRepack": {
+  "npcs": [
+   1540941,
+   1540942,
+   1540943,
+   1540944
+  ],
+  "mobs": [],
+  "reactors": [
+   2112018,
+   2708001,
+   2708002,
+   2708003,
+   2708004,
+   2709001,
+   2709002
+  ]
+ },
+ "missingStrings": {
+  "mobs": [],
+  "npcs": []
+ },
+ "droppedSpawns": [
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "211070101 reactor 2112018",
+  "272020200 reactor 2708001",
+  "272020200 reactor 2708002",
+  "272020200 reactor 2708003",
+  "272020200 reactor 2708004",
+  "272020200 reactor 2709001",
+  "272030400 reactor 2708001",
+  "272030400 reactor 2708002",
+  "272030400 reactor 2708003",
+  "272030400 reactor 2708004",
+  "272030400 reactor 2709002",
+  "450000000 npc 1540942",
+  "450000000 npc 1540941",
+  "450000010 npc 1540943",
+  "450000010 npc 1540941",
+  "450000020 npc 1540944",
+  "450000020 npc 1540941"
+ ]
+}

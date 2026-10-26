@@ -1,0 +1,25 @@
+{
+  "_comment": "The Community Repack's map groups the Cosmic set lacks (town audit 2026-10-25, TOWN_AUDIT.md 2.1). Every Repack-only map must fall in exactly one range. mobs: hunt = keep the spawns, import the mobs, give them drop rows; none = scenery, the server spawns no mobs there (Arcane River: lv 200-264 is above v83's cap of 200); boss = keep the map as it is, the fight is not built.",
+  "areas": [
+    { "key": "lion-king-castle", "name": "Lion King's Castle", "from": 211060000, "to": 211070999, "mobs": "hunt" },
+    { "key": "coke-town", "name": "Coke Town", "from": 219000000, "to": 219999999, "mobs": "hunt" },
+    { "key": "chaos-horntail", "name": "Chaos Horntail", "from": 240060201, "to": 240060201, "mobs": "boss" },
+    { "key": "chaos-zakum", "name": "Chaos Zakum", "from": 280030001, "to": 280030001, "mobs": "boss" },
+    { "key": "future-gate", "name": "Gate to the Future", "from": 271000000, "to": 271999999, "mobs": "hunt" },
+    { "key": "future-crack", "name": "Crack in Time", "from": 272000000, "to": 272999999, "mobs": "hunt" },
+    { "key": "future-perion", "name": "Twilight Perion", "from": 273000000, "to": 273999999, "mobs": "hunt" },
+    { "key": "arcane-horizons", "name": "Arcane River: 5th job Horizons", "from": 450000000, "to": 450000999, "mobs": "none" },
+    { "key": "arcane-vanishing-journey", "name": "Arcane River: Vanishing Journey", "from": 450001000, "to": 450001999, "mobs": "none" },
+    { "key": "arcane-chu-chu", "name": "Arcane River: Chu Chu Island", "from": 450002000, "to": 450002999, "mobs": "none" },
+    { "key": "arcane-lachelein", "name": "Arcane River: Lachelein", "from": 450003000, "to": 450004999, "mobs": "none" },
+    { "key": "arcane-arcana", "name": "Arcane River: Arcana", "from": 450005000, "to": 450005999, "mobs": "none" },
+    { "key": "arcane-morass", "name": "Arcane River: Morass", "from": 450006000, "to": 450006999, "mobs": "none" },
+    { "key": "arcane-esfera", "name": "Arcane River: Esfera", "from": 450007000, "to": 450008999, "mobs": "none" },
+    { "key": "arcane-moonbridge", "name": "Arcane River: Moonbridge", "from": 450009000, "to": 450009999, "mobs": "none" },
+    { "key": "arcane-labyrinth", "name": "Arcane River: Labyrinth of Suffering", "from": 450010000, "to": 450011999, "mobs": "none" },
+    { "key": "arcane-limina", "name": "Arcane River: Limina", "from": 450012000, "to": 450013999, "mobs": "none" },
+    { "key": "ulu-city", "name": "Ulu City", "from": 541020000, "to": 541020999, "mobs": "hunt" },
+    { "key": "ninja-castle", "name": "Ninja Castle", "from": 800040000, "to": 800040999, "mobs": "hunt" },
+    { "key": "maple-misc", "name": "Maple Island ship", "from": 2010002, "to": 2010002, "mobs": "none" }
+  ]
+}
