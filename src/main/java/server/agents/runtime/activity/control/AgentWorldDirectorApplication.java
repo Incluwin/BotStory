@@ -94,6 +94,25 @@ public final class AgentWorldDirectorApplication {
                 idempotencyKey, reason, confirmDestructive, nowMs);
     }
 
+    /**
+     * As above, with the directive's source and expiry (POLICY: the Director's own choice, judged by the rollout
+     * gates; 0 = never expires).
+     */
+    public AgentWorldDirectiveEnvelope execute(
+            int characterId,
+            String actionId,
+            String expectedContextRevision,
+            String idempotencyKey,
+            String reason,
+            boolean confirmDestructive,
+            server.agents.runtime.activity.world.AgentWorldDirectiveSource source,
+            long expiresAtMs,
+            long nowMs) {
+        LiveAgent live = requireLive(characterId);
+        return executive.submit(live.entry(), live.agent(), actionId, expectedContextRevision,
+                idempotencyKey, reason, confirmDestructive, source, expiresAtMs, nowMs);
+    }
+
     public AgentWorldDirectiveEnvelope cancel(
             int agentId, String directiveId, String reason, long nowMs) {
         return executive.cancel(agentId, directiveId, reason, nowMs);

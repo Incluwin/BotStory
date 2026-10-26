@@ -11,6 +11,9 @@ import server.agents.runtime.activity.control.AgentWorldDirectorApplication;
 import server.agents.runtime.activity.world.AgentWorldContext;
 import server.agents.runtime.activity.world.AgentWorldDirectiveEnvelope;
 import server.agents.runtime.activity.world.AgentWorldDirectiveType;
+import server.agents.runtime.activity.world.AgentWorldDirectiveSource;
+import server.agents.runtime.activity.world.AgentWorldDirectorMode;
+import server.agents.runtime.activity.world.AgentWorldDirectorSession;
 import server.agents.runtime.activity.world.AgentWorldInterruptionPolicy;
 import server.agents.runtime.activity.world.AgentWorldCompletionPolicy;
 
@@ -21,6 +24,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,6 +83,36 @@ class AgentDirectorProposalServiceTest {
                 () -> service.approve(application, 27, proposal.proposalId(), false, 1_002L));
         assertEquals(AgentDirectorProposalStatus.STALE,
                 service.list(27, 1_003L).getFirst().status());
+    }
+
+    @Test
+    void approvesTheDirectorsOwnChoiceAsPolicyOnlyInAnAutomaticMode() {
+        AgentDirectorProposalService service = new AgentDirectorProposalService(
+                new AgentFileDirectorProposalStore(directory));
+        AgentWorldDirectorApplication application = mock(AgentWorldDirectorApplication.class);
+
+        // ASSISTED: the Director's own (POLICY) proposal stays POLICY, so the assisted gate judges it, and expires
+        AgentDirectorExecutiveView assisted = view("revision-1");
+        when(assisted.directorSession()).thenReturn(
+                AgentWorldDirectorSession.create(27, AgentWorldDirectorMode.ASSISTED, 900L));
+        AgentDirectorProposal policy = service.proposeRecommended(
+                assisted, AgentDirectorProposalSource.POLICY, 1_000L);
+        when(application.view(27, 12, 1_002L)).thenReturn(assisted);
+        service.approve(application, 27, policy.proposalId(), false, 1_002L);
+        verify(application).execute(eq(27), eq("town-life:101000000"), eq("revision-1"),
+                eq("proposal:" + policy.proposalId()), anyString(), eq(false),
+                eq(AgentWorldDirectiveSource.POLICY), eq(1_002L + 5 * 60_000L), eq(1_002L));
+
+        // MANUAL: the operator's approval makes it the operator's directive, as before
+        AgentDirectorExecutiveView manual = view("revision-2");
+        when(manual.directorSession()).thenReturn(
+                AgentWorldDirectorSession.create(27, AgentWorldDirectorMode.MANUAL, 900L));
+        AgentDirectorProposal operator = service.proposeRecommended(
+                manual, AgentDirectorProposalSource.POLICY, 1_003L);
+        when(application.view(27, 12, 1_004L)).thenReturn(manual);
+        service.approve(application, 27, operator.proposalId(), false, 1_004L);
+        verify(application).execute(eq(27), eq("town-life:101000000"), eq("revision-2"),
+                eq("proposal:" + operator.proposalId()), anyString(), eq(false), eq(1_004L));
     }
 
     private static AgentDirectorExecutiveView view(String revision) {

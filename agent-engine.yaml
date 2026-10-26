@@ -333,7 +333,7 @@ agent:
     AGENT_WORLD_DIRECTOR_AUTONOMOUS_MAX_CONCURRENT_HANDOFFS: 0
     # Values: a finite non-negative integer. Recommended: at least 100 read-only samples before initial Autonomous eligibility.
     # Purpose: Requires enough prior Observe evidence to expose unstable proposals before automatic activity ownership is permitted.
-    # Technical: This threshold consumes session-local restored sample evidence and never grants authority by itself when other gates are closed.
+    # Technical: The session-local Observe sample count, seeded at login from the Agent's Observe evidence file (AgentWorldDirectorObserveRuntime.CHECKPOINT_SAMPLES), is compared with this; it never grants authority by itself when other gates are closed.
     AGENT_WORLD_DIRECTOR_AUTONOMOUS_MIN_OBSERVE_SAMPLES: 100
     # Values: a finite non-negative integer. Recommended: 0 during the first rollout and raise only after failure handling is validated.
     # Purpose: Blocks Autonomous execution when recent Director failures exceed the explicitly accepted deployment error budget.
@@ -5569,6 +5569,14 @@ tuning:
     # Purpose: Controls the distance or margin used for platform edge inset. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "leader safety coordinator" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
     server.agents.runtime.AgentLeaderSafetyCoordinator.PLATFORM_EDGE_INSET_PX: '12'
+    # Values: true or false. Recommended: true; it acts only in central-sharded mode, where false leaves cross-Agent movement and combat writes racing the target's own tick.
+    # Purpose: In central-sharded mode, a party-quest coordinator's navigate, grind and stop commands to another member go through that member's mailbox, so its movement state keeps one writer.
+    # Technical: AgentForeignWriteRuntime.foreign is true when another Agent's tick runs on this thread (AgentTickScheduler marks it) and the mode is central-sharded; CosmicPrimitiveCapabilityGateway then defers the write, coalesced per command and without a wake, to the target's own mailbox drain. Central-sequential writes in place as before.
+    server.agents.runtime.AgentForeignWriteRuntime.ENABLED: 'true'
+    # Values: true or false. Recommended: false (shipped); the user turns it on with central-sharded after one clean live hour (docs/SCALE_PLATFORM_PLAN.md section 7); true routes the known mailbox bypasses.
+    # Purpose: Writes to an Agent from off the scheduler (a trade request's interaction target, a citizen's map change on the population timer, a Director mode change, movement commands from timers) go through that Agent's mailbox and run on its own tick.
+    # Technical: AgentForeignWriteRuntime.foreign is true for a target when no Agent tick runs on this thread and this is true in a central mode; callers then defer the write to the target's mailbox (coalesced per command) and wake it. Abstract Agents run no mailbox drain, so citizen moves still leave BACKGROUND_ABSTRACT first.
+    server.agents.runtime.AgentForeignWriteRuntime.ROUTE_EXTERNAL_WRITES: 'false'
     # Values: a finite non-negative integer. Recommended: 16-64 around the tested baseline 32; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how frequently maximum actions per tick updates. Lower values make Agents react more quickly and smoothly but use more server work; higher values react more slowly and reduce load.
     # Technical: the "mailbox runtime" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel. It governs recurring work, so lowering it increases invocation frequency and operational load.
@@ -5681,6 +5689,30 @@ tuning:
     # Purpose: Sets the durable deadline for releasing, transferring, admitting, or rolling back one World Director activity handoff.
     # Technical: The deadline is persisted with the handoff and survives restart; expiry enters rollback rather than hard-teleporting or discarding the source session.
     server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.HANDOFF_TIMEOUT_MS: '60000'
+    # Values: 5000-300000 milliseconds. Recommended: 30000; lower re-reads unchanged files more often, higher trusts the change stamp longer.
+    # Purpose: While an Agent's directive poll keeps finding nothing to do and its session and directive files are unchanged, the full file read happens only this often.
+    # Technical: AgentWorldDirectivePollState records the folder and session-file modification stamp of an idle poll; later polls compare two file timestamps instead of loading the session JSON and every directive (measured 1.8 ms a poll), and read in full again when the stamp moves or this time passes.
+    server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.IDLE_FULL_POLL_MS: '30000'
+    # Values: 1-120 samples. Recommended: 6 (30 s at the 5 s Observe interval); lower acts on choices that flicker, higher waits longer before a switch.
+    # Purpose: How many Observe samples running the World Director must choose the same activity switch before its policy proposes it (ASSISTED) or starts it (AUTONOMOUS).
+    # Technical: AgentWorldDirectorObserveState counts consecutive samples whose decision requires a switch to the same proposal id; AgentWorldDirectorPolicyRuntime acts only at this count, and only for an Agent inside the mode's rollout cohort with no directive in flight.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_STABLE_SAMPLES: '6'
+    # Values: 60000-3600000 milliseconds. Recommended: 300000 so an operator sees at most one policy proposal per Agent every five minutes.
+    # Purpose: After the Director's policy proposed, started or gave up on a choice, it stays quiet this long before acting for that Agent again.
+    # Technical: AgentWorldDirectorObserveState.policyActed resets the stable-sample run and sets a quiet deadline; the policy reads no directive, proposal or view file for the Agent until it passes and a fresh run of stable samples builds up.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_QUIET_MS: '300000'
+    # Values: 10000-600000 milliseconds. Recommended: 120000; a policy directive the gates keep blocking expires instead of waiting in the inbox.
+    # Purpose: How long a POLICY directive the Director issued on its own (AUTONOMOUS) may wait for its rollout gate before it expires unexecuted.
+    # Technical: AgentWorldDirectorExecutive.submit stores createdAtMs plus this as the directive expiry; AgentFileWorldDirectiveInbox.nextPending resolves an expired pending directive as EXPIRED, so a blocked policy choice never holds the inbox for that Agent.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_DIRECTIVE_TTL_MS: '120000'
+    # Values: 60000-86400000 milliseconds. Recommended: 3600000 (one hour of Director history).
+    # Purpose: The window in which rejected or failed World Director directives count toward the autonomous rollout's AGENT_WORLD_DIRECTOR_AUTONOMOUS_MAX_RECENT_FAILURES.
+    # Technical: AgentWorldDirectorExecutionRuntime records a failure when the directive processor rejects a directive or its step throws; the autonomous gate counts those within this window (older ones are dropped) instead of the Agent's tick failures.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.FAILURE_WINDOW_MS: '3600000'
+    # Values: 1-1000 samples. Recommended: 60 (five minutes at the 5 s Observe interval); lower writes the evidence file more often.
+    # Purpose: How often an Agent's Observe sample count is written to disk, so the autonomous MIN_OBSERVE_SAMPLES evidence survives a relogin or a server restart.
+    # Technical: AgentWorldDirectorObserveRuntime writes .runtime/agents/world-director/observe-samples/<agent id>.samples from the Agent's own tick (one writer per file); restore seeds the session-local count from it, so at most this many samples are lost at logout.
+    server.agents.runtime.activity.control.AgentWorldDirectorObserveRuntime.CHECKPOINT_SAMPLES: '60'
     # Values: 15000-120000 milliseconds. Recommended: 60000 so graph warmup can finish before a suspended Agent retreats to the map return town.
     # Purpose: Bounds local spawn-free parking before suspension escalates to ordinary portal travel toward the map's safe return destination.
     # Technical: Expiry never hard-teleports the Agent; normal route travel remains authoritative and failure is reported explicitly.
@@ -5781,6 +5813,10 @@ tuning:
     # Purpose: Controls how long Agents remain in or wait for cycle budget. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "scheduler config" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_CYCLE_BUDGET_MS: '10'
+    # Values: true or false. Recommended: true; false only to compare against shard loops sharing the server's core timer threads.
+    # Purpose: In central-sharded mode, runs every shard loop on dedicated Agent timer threads, so one slow Agent tick stalls only its own shard and never a server core timer.
+    # Technical: AgentShardedTickScheduler registers shard loops through SchedulerGateway.registerAgentLoop, which Cosmic maps to TimerManager lane AGENT (cosmic.timer.agentThreads, default 4 threads); false keeps them on the CORE lane. Sequential and legacy modes never use it; -Dagents.scheduler.dedicatedLane.enabled overrides.
+    server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_DEDICATED_LANE_ENABLED: 'true'
     # Values: a finite non-negative integer. Recommended: 2048-8192 around the tested baseline 4096; benchmark or observe behavior before moving outside this band.
     # Purpose: Limits how many incoming work capacity per shard can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.
@@ -5801,6 +5837,10 @@ tuning:
     # Purpose: Limits how many maximum work items per cycle can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel. Paired minimum/maximum values define an inclusive random or validation range and must not be inverted.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MAX_WORK_ITEMS_PER_CYCLE: '256'
+    # Values: central-sequential, central-sharded, or legacy-per-agent. Recommended: central-sequential (shipped); the user flips it to central-sharded after one clean live hour on this build (docs/SCALE_PLATFORM_PLAN.md section 7).
+    # Purpose: The one switch for the Agent tick scheduler: one central loop, several independent shard loops, or the old per-Agent timers; launchers no longer pin it.
+    # Technical: AgentSchedulerConfig.configuredMode reads -Dagents.scheduler.mode first, then the old agents.scheduler.central.enabled flag, then this value. central-sharded splits Agents over clamp(cpus/2, 1, 4) shard loops by a hash of character id and session generation; the mailbox is mandatory in both central modes.
+    server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MODE: 'central-sequential'
     # Values: a finite non-negative integer. Recommended: 2-8 around the tested baseline 4; benchmark or observe behavior before moving outside this band.
     # Purpose: Limits how many shard count maximum can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.

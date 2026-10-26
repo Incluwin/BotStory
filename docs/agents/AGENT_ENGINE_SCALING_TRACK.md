@@ -47,7 +47,8 @@ Current scheduler implementation checkpoint on
   guards, cost EWMA, critical/visible reserved passes, repeated starvation
   aging, immediate bounded continuations, and 2048-sample rolling delay/cost
   percentiles.
-- Legacy per-Agent scheduling remains the production default and rollback.
+- Legacy per-Agent scheduling was the production default then (2026-10-25:
+  central-sequential ships, agent-engine.yaml DEFAULT_MODE; legacy stays the rollback).
 - Phase 5 is complete: navigation graph work, Amherst persistence, LLM/network,
   and trade/item analysis run on isolated bounded executors with generation/
   request-stamped mailbox completion. Static tests prohibit direct Agent future

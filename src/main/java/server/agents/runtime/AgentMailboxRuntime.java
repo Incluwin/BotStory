@@ -16,7 +16,7 @@ public final class AgentMailboxRuntime {
 
     public static boolean enabled() {
         return Boolean.getBoolean("agents.mailbox.enabled")
-                || AgentSchedulerConfig.fromSystemProperties().mode() != AgentSchedulerMode.LEGACY_PER_AGENT;
+                || AgentSchedulerConfig.configuredMode() != AgentSchedulerMode.LEGACY_PER_AGENT;
     }
 
     public static int configuredCapacity() {

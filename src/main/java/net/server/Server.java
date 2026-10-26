@@ -1266,6 +1266,8 @@ public class Server {
                 CharacterSaveDiagnostics.diagnostics(),
                 MapBroadcastDiagnostics.diagnostics());
 
+        log.info("Agent scheduler health {}", server.agents.monitoring.AgentSchedulerHealthLine.next());
+
         if (snapshot.idleMapCandidates() > 0 || snapshot.loadedMaps() >= previousHighWatermark + 100) {
             log.warn("Scale health map growth watch loaded={} active={} idleCandidates={} previousHighWatermark={} highWatermark={}",
                     snapshot.loadedMaps(), snapshot.activeMaps(), snapshot.idleMapCandidates(), previousHighWatermark, loadedMapHighWatermark);

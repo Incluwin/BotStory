@@ -1101,7 +1101,19 @@ population:
     LEDGER_MS: 600000
     PRESENCE_MULTIPLIER: 1.5
     PERCEPTION_HOPS: 1
+    # No map shows more than MAP_VISIBLE_MAX citizens (2026-10-25, docs/SCALE_PLATFORM_PLAN.md section 1). A citizen
+    # counts on the map it stands on and on the map an admitted move is taking it to. A login to a full map logs in on
+    # another map of the same kind (another field, town or Free Market room), else virtual (online on the ledger, never
+    # seen). A move to a full map goes elsewhere of the same kind; one with a purpose (its party quest lobby, its
+    # instructor) waits where it stands, asking again every RETRY_MS up to RETRY_LIMIT times, while one everyday citizen
+    # on the full map moves on. A map over the cap (a lowered cap, a supply trip) sends at most TRIM_PER_SWEEP citizens a
+    # sweep elsewhere, walking out through a portal when someone watches: nobody vanishes in place for the cap.
+    # Residents and companions are not citizens and do not count. false = the kill switch, no per-map cap.
     MAP_VISIBLE_MAX: 60
+    MAP_VISIBLE_CAP_ENABLED: true
+    MAP_VISIBLE_RETRY_MS: 5000
+    MAP_VISIBLE_RETRY_LIMIT: 36
+    MAP_VISIBLE_TRIM_PER_SWEEP: 8
     LIFE_PACE: 0.8
     BIRTHS_PER_DAY: 20
     LIFE_DAYS_MIN: 60

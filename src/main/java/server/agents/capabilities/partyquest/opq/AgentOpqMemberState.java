@@ -2,7 +2,12 @@ package server.agents.capabilities.partyquest.opq;
 
 import java.awt.Point;
 
-/** Per-member OPQ state; no room worker may mutate another member's action state. */
+/**
+ * Per-member OPQ state; no room worker may mutate another member's action state. Every access is synchronized: the
+ * coordinator pass (under the session lock, on the lease holder's tick) assigns rooms and clears local work while the
+ * member's own tick observes movement and commits reactors, and in central-sharded mode those are two threads
+ * (docs/SCALE_PLATFORM_PLAN.md section 6, race H2).
+ */
 public final class AgentOpqMemberState {
     public enum MemberType { AGENT, HUMAN }
     public enum Role {
@@ -39,19 +44,19 @@ public final class AgentOpqMemberState {
         this.memberType = memberType;
     }
 
-    public int characterId() { return characterId; }
-    public MemberType memberType() { return memberType; }
-    public Role role() { return role; }
-    public AgentOpqDefinition.Room assignedRoom() { return assignedRoom; }
-    public int assignedSubroomMapId() { return assignedSubroomMapId; }
-    public int assignedPlatform() { return assignedPlatform; }
-    public long nextActionAtMs() { return nextActionAtMs; }
-    public int committedReactorMapId() { return committedReactorMapId; }
-    public int committedReactorObjectId() { return committedReactorObjectId; }
-    public int portalRow() { return portalRow; }
-    public int portalChoice() { return portalChoice; }
+    public synchronized int characterId() { return characterId; }
+    public synchronized MemberType memberType() { return memberType; }
+    public synchronized Role role() { return role; }
+    public synchronized AgentOpqDefinition.Room assignedRoom() { return assignedRoom; }
+    public synchronized int assignedSubroomMapId() { return assignedSubroomMapId; }
+    public synchronized int assignedPlatform() { return assignedPlatform; }
+    public synchronized long nextActionAtMs() { return nextActionAtMs; }
+    public synchronized int committedReactorMapId() { return committedReactorMapId; }
+    public synchronized int committedReactorObjectId() { return committedReactorObjectId; }
+    public synchronized int portalRow() { return portalRow; }
+    public synchronized int portalChoice() { return portalChoice; }
 
-    public void assign(Role role, AgentOpqDefinition.Room room, int subroomMapId) {
+    public synchronized void assign(Role role, AgentOpqDefinition.Room room, int subroomMapId) {
         if (role == null || subroomMapId < 0) throw new IllegalArgumentException("valid OPQ assignment required");
         if (assignedRoom != room || assignedSubroomMapId != subroomMapId) {
             clearLocalWork();
@@ -65,31 +70,31 @@ public final class AgentOpqMemberState {
         this.assignedSubroomMapId = subroomMapId;
     }
 
-    public void assignPlatform(int platform) {
+    public synchronized void assignPlatform(int platform) {
         if (platform < 0 || platform > 2) throw new IllegalArgumentException("OPQ sealed platform must be 0-2");
         assignedPlatform = platform;
     }
 
-    public void deferUntil(long timeMs) { nextActionAtMs = Math.max(0L, timeMs); }
-    public void commitReactor(int mapId, int objectId) {
+    public synchronized void deferUntil(long timeMs) { nextActionAtMs = Math.max(0L, timeMs); }
+    public synchronized void commitReactor(int mapId, int objectId) {
         if (mapId <= 0 || objectId <= 0) throw new IllegalArgumentException("valid OPQ reactor commitment required");
         committedReactorMapId = mapId;
         committedReactorObjectId = objectId;
     }
-    public void clearReactor() { committedReactorMapId = 0; committedReactorObjectId = 0; }
-    public void advancePortalChoice() { portalChoice++; }
-    public void solvePortalRow() { portalRow++; portalChoice = 0; }
-    public void beginLoungeCollection(int mapId, int currentCount) {
+    public synchronized void clearReactor() { committedReactorMapId = 0; committedReactorObjectId = 0; }
+    public synchronized void advancePortalChoice() { portalChoice++; }
+    public synchronized void solvePortalRow() { portalRow++; portalChoice = 0; }
+    public synchronized void beginLoungeCollection(int mapId, int currentCount) {
         if (loungeBaselineMapId != mapId) {
             loungeBaselineMapId = mapId;
             loungeBaselineCount = Math.max(0, currentCount);
         }
     }
-    public int loungeCollected(int mapId, int currentCount) {
+    public synchronized int loungeCollected(int mapId, int currentCount) {
         return loungeBaselineMapId == mapId ? Math.max(0, currentCount - loungeBaselineCount) : 0;
     }
 
-    public boolean observeBossCombat(int objectId, int hp) {
+    public synchronized boolean observeBossCombat(int objectId, int hp) {
         if (objectId <= 0 || hp < 0) throw new IllegalArgumentException("valid OPQ boss observation required");
         boolean progress = bossObjectId != objectId || bossHp < 0 || hp < bossHp;
         bossObjectId = objectId;
@@ -97,9 +102,9 @@ public final class AgentOpqMemberState {
         return progress;
     }
 
-    public void clearBossCombat() { bossObjectId = 0; bossHp = -1; }
+    public synchronized void clearBossCombat() { bossObjectId = 0; bossHp = -1; }
 
-    public boolean observeMovement(Point position, long nowMs) {
+    public synchronized boolean observeMovement(Point position, long nowMs) {
         if (position == null || nowMs < 0L) return false;
         if (lastPosition == null || lastPosition.distanceSq(position) >= 16L * 16L) {
             lastPosition = new Point(position);
@@ -108,7 +113,7 @@ public final class AgentOpqMemberState {
         }
         return false;
     }
-    public long movementStalledFor(long nowMs) {
+    public synchronized long movementStalledFor(long nowMs) {
         return lastMovementProgressAtMs == 0L ? 0L : Math.max(0L, nowMs - lastMovementProgressAtMs);
     }
 
@@ -117,7 +122,7 @@ public final class AgentOpqMemberState {
      * tick's worth, in the background and in the foreground), and from then on until clearWayUpStaging (it left the
      * staging window).
      */
-    public boolean settledAtWayUpStaging(Point position) {
+    public synchronized boolean settledAtWayUpStaging(Point position) {
         if (!wayUpStagingSettled) {
             wayUpStagingStillTicks = position.equals(wayUpStagingPosition) ? wayUpStagingStillTicks + 1 : 0;
             wayUpStagingPosition = new Point(position);
@@ -125,13 +130,13 @@ public final class AgentOpqMemberState {
         }
         return wayUpStagingSettled;
     }
-    public void clearWayUpStaging() {
+    public synchronized void clearWayUpStaging() {
         wayUpStagingPosition = null;
         wayUpStagingStillTicks = 0;
         wayUpStagingSettled = false;
     }
 
-    public void clearLocalWork() {
+    public synchronized void clearLocalWork() {
         nextActionAtMs = 0L;
         clearReactor();
         lastPosition = null;
@@ -151,40 +156,40 @@ public final class AgentOpqMemberState {
     private int heldBefore;
 
     /** A hand-over of {@code itemId} to the leader opens: {@code recollectCount} is its lineage's re-collects so far. */
-    void startHandOver(int itemId, long nowMs, int recollectCount) {
+    synchronized void startHandOver(int itemId, long nowMs, int recollectCount) {
         handOverItemId = itemId;
         handOverStartedAtMs = Math.max(1L, nowMs);
         handOverByEak = false;
         handOverRecollectCount = Math.max(0, recollectCount);
     }
-    void endHandOver() {
+    synchronized void endHandOver() {
         handOverItemId = 0;
         handOverStartedAtMs = 0L;
         handOverByEak = false;
         handOverRecollectCount = 0;
     }
     /** The walk to the leader timed out, or he cannot be reached: the stack goes by Eak instead. */
-    void sendHandOverByEak() { handOverByEak = true; }
-    int handOverItemId() { return handOverItemId; }
-    long handOverStartedAtMs() { return handOverStartedAtMs; }
-    boolean handOverByEak() { return handOverByEak; }
-    int handOverRecollectCount() { return handOverRecollectCount; }
+    synchronized void sendHandOverByEak() { handOverByEak = true; }
+    synchronized int handOverItemId() { return handOverItemId; }
+    synchronized long handOverStartedAtMs() { return handOverStartedAtMs; }
+    synchronized boolean handOverByEak() { return handOverByEak; }
+    synchronized int handOverRecollectCount() { return handOverRecollectCount; }
 
     /** This Agent set out to pick a stack up (back for the leader, or for the statue) while it held {@code held}. */
-    void claimStack(int objectId, int held) {
+    synchronized void claimStack(int objectId, int held) {
         claimObjectId = objectId;
         heldBefore = Math.max(0, held);
     }
-    void clearClaim() { claimObjectId = 0; }
-    int claimObjectId() { return claimObjectId; }
-    int heldBefore() { return heldBefore; }
+    synchronized void clearClaim() { claimObjectId = 0; }
+    synchronized int claimObjectId() { return claimObjectId; }
+    synchronized int heldBefore() { return heldBefore; }
 
     /** Counts one more refusal of this member's reward (still on the reward map after Minerva ran); the new count. */
-    int recordRewardRefusal() { return ++rewardRefusals; }
-    int rewardRefusals() { return rewardRefusals; }
+    synchronized int recordRewardRefusal() { return ++rewardRefusals; }
+    synchronized int rewardRefusals() { return rewardRefusals; }
 
     /** Minerva ran for this member and it was still on the reward map: the next check after its retry window judges it. */
-    void markRewardAsked() { rewardAskPending = true; }
-    void clearRewardAsk() { rewardAskPending = false; }
-    boolean rewardAskPending() { return rewardAskPending; }
+    synchronized void markRewardAsked() { rewardAskPending = true; }
+    synchronized void clearRewardAsk() { rewardAskPending = false; }
+    synchronized boolean rewardAskPending() { return rewardAskPending; }
 }

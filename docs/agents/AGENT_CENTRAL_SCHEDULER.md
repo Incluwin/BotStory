@@ -7,8 +7,11 @@ and remaining validation gates are specified in
 
 ## Current mode
 
-The central-sharded scheduler is the default when no scheduler property is
-provided. Mode can still be selected explicitly through the JVM property:
+The shipped mode is `central-sequential`, set once in agent-engine.yaml
+(`server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MODE`, 2026-10-25,
+docs/SCALE_PLATFORM_PLAN.md); launchers no longer pin it. Central-sharded is
+built, measured offline (SCALE_PLATFORM_PLAN.md section 6) and waits on the
+user's go. The JVM property still overrides the yaml value:
 
 ```text
 -Dagents.scheduler.mode=legacy
@@ -339,7 +342,9 @@ Phase 8 bounded guarded-tick slicing: locally complete, disabled by default
 Phase 9 load shedding and admission control: locally complete, disabled by default
 Phase 10 scheduler quiescence contract: locally complete
 Phase 11 deterministic 2000-session scale/cleanup gate: locally complete
-production default switch: blocked on parity and staged soak evidence
+production default: central-sequential (agent-engine.yaml DEFAULT_MODE); central-sharded
+  measured offline 2026-10-25, cross-Agent races fixed, waiting on a live hour and the user's go
+  (docs/SCALE_PLATFORM_PLAN.md section 6)
 ```
 
 ## Process Shutdown

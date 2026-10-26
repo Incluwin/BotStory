@@ -148,6 +148,7 @@ final class CitizenTravel {
                 return;
             }
             long now = System.currentTimeMillis();
+            presence.visibleCap().refresh(session, now); // on its way: it keeps its slot on the destination
             MapleMap here = agent.getMap();
             session.mapId = agent.getMapId(); // chatter and the party quests read the map it stands on
             if (agent.getMapId() == trip.target.getId()) {
@@ -279,8 +280,23 @@ final class CitizenTravel {
                 end(session, trip);
                 log.info("citizen {} walked out of {} by portal {} for {}", session.name(), agent.getMapId(),
                         walk.target().id(), trip.target.getId());
-                presence.place(agent, trip.target, entryPortal(session, agent.getMapId(), trip.target, now));
-                presence.landed(session, trip.move, trip.target, now);
+                MapleMap target = trip.target;
+                CitizenSession.Move move = trip.move;
+                MapVisibleCap cap = presence.visibleCap();
+                if (!cap.holds(session, target, now) && !cap.admit(session, target, now)) {
+                    // gone through the portal in front of a player, so it must come out somewhere: its slot lapsed
+                    // and the destination filled, so another place of the same kind, else the destination after all
+                    cap.countRefusedArrival();
+                    PresenceScheduler.Placement other = presence.elsewhere(session, move.activity(), target.getId(), now);
+                    if (other != null && cap.admit(session, other.map(), now)) {
+                        target = other.map();
+                        move = new CitizenSession.Move(other.activity(), target.getId());
+                        session.latestMove = move;
+                    } else {
+                        log.warn("citizen {} comes out on full map {}: nowhere else has room", session.name(), target.getId());
+                    }
+                }
+                presence.placeAndLand(session, agent, move, target, entryPortal(session, agent.getMapId(), target, now), now);
             }
             default -> {
                 // MAP: it stands on its destination, which the next step lands; ENTER_PORTAL: the portal took it on,
@@ -302,7 +318,7 @@ final class CitizenTravel {
         log.info("citizen {} boards at {} on {} for {} on its way to {}", session.name(), leg.boardingNpcId(),
                 agent.getMapId(), dock.getId(), trip.target.getId());
         AgentMovementCommandRuntime.stop(session.entry);
-        presence.place(agent, dock, dock.getPortal(0));
+        presence.placeOnTick(session, agent, dock, dock.getPortal(0));
         session.mapId = dock.getId();
     }
 

@@ -107,15 +107,24 @@ public final class AgentShardedTickScheduler {
 
     private static AgentShardedTickScheduler createRuntime() {
         AgentSchedulerConfig config = AgentSchedulerConfig.fromSystemProperties();
+        boolean dedicatedLane = AgentSchedulerConfig.configuredDedicatedLane();
         List<AgentTickScheduler> shards = new ArrayList<>(config.shardCount());
         for (int shardId = 0; shardId < config.shardCount(); shardId++) {
-            shards.add(new AgentTickScheduler(
-                    System::currentTimeMillis,
-                    System::nanoTime,
-                    (task, periodMs) -> AgentSchedulerRuntime.register(task, periodMs),
-                    (task, delayMs) -> AgentSchedulerRuntime.schedule(task, delayMs),
-                    config,
-                    shardId));
+            shards.add(dedicatedLane
+                    ? new AgentTickScheduler(
+                            System::currentTimeMillis,
+                            System::nanoTime,
+                            (task, periodMs) -> AgentSchedulerRuntime.registerAgentLoop(task, periodMs),
+                            (task, delayMs) -> AgentSchedulerRuntime.scheduleAgentLoop(task, delayMs),
+                            config,
+                            shardId)
+                    : new AgentTickScheduler(
+                            System::currentTimeMillis,
+                            System::nanoTime,
+                            (task, periodMs) -> AgentSchedulerRuntime.register(task, periodMs),
+                            (task, delayMs) -> AgentSchedulerRuntime.schedule(task, delayMs),
+                            config,
+                            shardId));
         }
         return new AgentShardedTickScheduler(shards);
     }

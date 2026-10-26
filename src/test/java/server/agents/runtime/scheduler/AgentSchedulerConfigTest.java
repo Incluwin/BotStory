@@ -33,8 +33,10 @@ class AgentSchedulerConfigTest {
     }
 
     @Test
-    void defaultsToCentralShardedAndSupportsOldCentralFlag() {
-        assertEquals(AgentSchedulerMode.CENTRAL_SHARDED, AgentSchedulerConfig.fromSystemProperties().mode());
+    void defaultsToTheShippedCentralSequentialModeAndSupportsOldCentralFlag() {
+        // agent-engine.yaml AgentSchedulerConfig.DEFAULT_MODE, the one switch (docs/SCALE_PLATFORM_PLAN.md section 2)
+        assertEquals(AgentSchedulerMode.CENTRAL_SEQUENTIAL, AgentSchedulerConfig.fromSystemProperties().mode());
+        assertEquals(AgentSchedulerMode.CENTRAL_SEQUENTIAL, AgentSchedulerConfig.configuredMode());
 
         System.setProperty("agents.scheduler.central.enabled", "true");
 

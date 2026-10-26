@@ -8,7 +8,8 @@ public final class AgentGrindTargetState {
             new AgentCapabilityStateKey<>("combat.grind-target",
                     AgentGrindTargetState.class, AgentGrindTargetState::new);
 
-    private Monster target = null;
+    // volatile: peers read it for soft target claims from their own ticks (central-sharded, race M5)
+    private volatile Monster target = null;
     private long targetCommittedUntilMs = 0L;
     private int targetSwitchCount = 0;
     private long nextSearchAtMs = 0L;

@@ -169,10 +169,9 @@ public final class AgentAmmoService {
             if (now < ammoShareBackoffUntil.getOrDefault(backoffKey, 0L)) {
                 return false;
             }
-            if (now < ammoShareCooldownUntil.getOrDefault(cohortId, 0L)) {
-                return false;
+            if (!AgentPotionService.claimShareWindow(ammoShareCooldownUntil, cohortId, now, 30_000L)) {
+                return false; // one cohort member takes the window (race M6)
             }
-            ammoShareCooldownUntil.put(cohortId, now + 30_000L);
         }
 
         if (bypassShareLimits && !thresholdEventPublished) {

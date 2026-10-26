@@ -178,7 +178,12 @@ public record AgentSchedulerConfig(
                 : Math.min(maxAgentsPerTick, maxWorkItemsPerCycle);
     }
 
-    private static AgentSchedulerMode configuredMode() {
+    /**
+     * The scheduler mode: {@code -Dagents.scheduler.mode}, else the old {@code agents.scheduler.central.enabled} flag,
+     * else the shipped DEFAULT_MODE in agent-engine.yaml (docs/SCALE_PLATFORM_PLAN.md section 2: one switch). Cheap,
+     * so per-call checks (AgentMailboxRuntime.enabled) use it instead of building a whole config.
+     */
+    public static AgentSchedulerMode configuredMode() {
         String explicitMode = System.getProperty("agents.scheduler.mode");
         if (explicitMode != null && !explicitMode.isBlank()) {
             return parseMode(explicitMode);
@@ -189,7 +194,18 @@ public record AgentSchedulerConfig(
                     ? AgentSchedulerMode.CENTRAL_SEQUENTIAL
                     : AgentSchedulerMode.LEGACY_PER_AGENT;
         }
-        return AgentSchedulerMode.CENTRAL_SHARDED;
+        return parseMode(config.AgentTuning.stringValue(
+                "server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MODE"));
+    }
+
+    /**
+     * Central-sharded shard loops run on the server timer's dedicated AGENT lane instead of its core timers:
+     * {@code -Dagents.scheduler.dedicatedLane.enabled}, else DEFAULT_DEDICATED_LANE_ENABLED.
+     */
+    public static boolean configuredDedicatedLane() {
+        return Boolean.parseBoolean(System.getProperty(
+                "agents.scheduler.dedicatedLane.enabled",
+                Boolean.toString(tuningBoolean("DEFAULT_DEDICATED_LANE_ENABLED"))));
     }
 
     static AgentSchedulerMode parseMode(String value) {

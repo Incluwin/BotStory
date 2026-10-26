@@ -42,6 +42,8 @@ public final class CitizenSession {
     final AtomicReference<Move> waitingMove = new AtomicReference<>();
     /** The move it is making on foot because someone can see it (CitizenTravel); null when none. */
     volatile CitizenTravel.Trip trip;
+    /** Its pending retry of a move to a full map (population.MAP_VISIBLE_MAX); a newer move clears it; null: none. */
+    volatile Object capRetry;
     /** The field it died on beside a field boss (PopulationHooks.died), avoided until {@link #avoidUntilMs}; 0: none. */
     volatile int avoidMapId;
     volatile long avoidUntilMs;

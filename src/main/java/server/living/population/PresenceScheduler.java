@@ -3,6 +3,7 @@ package server.living.population;
 import client.Character;
 import client.Client;
 import client.Job;
+import config.PopulationConfig;
 import config.YamlConfig;
 import net.server.Server;
 import net.server.world.World;
@@ -20,6 +21,7 @@ import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeSessionResult;
 import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
+import server.agents.runtime.AgentForeignWriteRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -101,6 +103,7 @@ public final class PresenceScheduler {
     private final Random random;
     private final CitizenJobErrands jobs;
     private final CitizenTravel onFoot;
+    private final MapVisibleCap cap;
     private volatile long lastSweepMs;
     private volatile long lastSweepDurationMs;
     private volatile int forcedOnline;
@@ -117,6 +120,12 @@ public final class PresenceScheduler {
         this.random = random;
         this.jobs = new CitizenJobErrands(population, this);
         this.onFoot = new CitizenTravel(population, this);
+        this.cap = new MapVisibleCap(population::config, sessions::values, MapVisibleCap::standingMap);
+    }
+
+    /** population.MAP_VISIBLE_MAX: the per-map cap on visible citizens (docs/SCALE_PLATFORM_PLAN.md section 1). */
+    MapVisibleCap visibleCap() {
+        return cap;
     }
 
     /** Third and fourth jobs taken at the instructor (activity JOB). */
@@ -226,10 +235,11 @@ public final class PresenceScheduler {
                 }
                 boolean virtual = loaded >= population.config().ONLINE_MAX;
                 CitizenSession session = login(citizen, now, virtual);
-                if (session != null && !virtual) {
+                if (session != null && !session.virtual) { // a login every map of its was too full for is virtual
                     loaded++;
                 }
             }
+            trimCrowdedMaps(now);
         } catch (RuntimeException failure) {
             log.warn("presence sweep failed", failure);
         } finally {
@@ -332,7 +342,7 @@ public final class PresenceScheduler {
             CitizenSession session = login(citizen, now, next.getValue(), virtual);
             if (!virtual) {
                 loads++;
-                if (session != null) {
+                if (session != null && !session.virtual) {
                     loaded++;
                 }
             }
@@ -401,7 +411,7 @@ public final class PresenceScheduler {
         sessions.put(citizen.characterId(), session);
         population.update(citizen.characterId(), latest -> latest.withOnline(now)); // the catch-up may have cleared a flag
         session.citizen = population.citizen(citizen.characterId());
-        if (!virtual) {
+        if (!session.virtual) { // materialize turns a login every map of its was too full for into a virtual one
             population.social().onLogin(session);
             population.chatter().onLogin(session);
         }
@@ -424,10 +434,24 @@ public final class PresenceScheduler {
         if (AgentRuntimeRegistry.hasActiveAgentCharacterId(existing) || rostered(existing) || leased(existing)) {
             return false; // a Resident, companion or bench session already owns this character, or a roster employs it
         }
+        Placement placed = loginPlacement(session, activity, map, now);
+        if (placed == null) { // every map it could go to is full: it is online on the ledger, never seen
+            log.info("citizen {} logs in virtual: map {} and every other it could go to hold {} citizens",
+                    citizen.name(), map.getId(), cap.cap());
+            session.virtual = true;
+            return true;
+        }
+        if (placed.map() != map) {
+            log.debug("citizen {} logs in at {} instead of full map {}", citizen.name(), placed.map().getId(), map.getId());
+            activity = placed.activity();
+            map = placed.map();
+            session.errandJob = null; // its instructor's map was full: an ordinary visit, its errand another session
+        }
         try {
             Point arrival = ResidentSpots.fallback(map, citizen.characterId());
             Character agent = CosmicAgentOfflineLoader.loadOfflineAgent(existing, population.world().config().WORLD,
                     citizen.channel(), map, arrival);
+            cap.release(session); // loaded, it counts where it stands; not loaded, it holds no slot
             if (agent == null) {
                 return false;
             }
@@ -461,6 +485,7 @@ public final class PresenceScheduler {
                     population.fields().name(map.getId()), agent.getLevel(), citizen.channel());
             return true;
         } catch (Exception failure) {
+            cap.release(session);
             log.warn("citizen {} could not be loaded", citizen.name(), failure);
             return false;
         }
@@ -477,6 +502,8 @@ public final class PresenceScheduler {
     /** Ends the session and runs the logout hooks; the loaded agent that is still to unload, else null. */
     private Character unhook(CitizenSession session) {
         sessions.remove(session.characterId);
+        session.capRetry = null;
+        cap.release(session);
         onFoot.cancel(session);
         AgentMapWalk.stopAll(session.characterId);
         Character agent = session.agent();
@@ -970,12 +997,23 @@ public final class PresenceScheduler {
      * population.PORTAL_TRAVEL_ENABLED), else instantly when nobody can see either side, else after a short pause. Its
      * activity changes as it arrives, never before: a move that waits (a supply trip) or is still on its pause leaves
      * the map it stands on with that map's activity, so an AFK resume there never grinds a town with no mobs. A citizen
-     * whose Agent runs abstract leaves BACKGROUND_ABSTRACT before it is moved.
+     * whose Agent runs abstract leaves BACKGROUND_ABSTRACT before it is moved. A destination already holding
+     * population.MAP_VISIBLE_MAX citizens is never entered: the citizen goes somewhere else of the same kind, or (a party
+     * quest lobby, an instructor, no other place free) stays where it is and asks again ({@link #refused}).
      */
     public void travel(CitizenSession session, Activity next, int mapId, long now) {
+        session.capRetry = null; // a newer move replaces one that waits for room
+        travel(session, next, mapId, now, 0);
+    }
+
+    private void travel(CitizenSession session, Activity next, int mapId, long now, int waited) {
         Character agent = session.agent();
         MapleMap target = population.map(session.channel, mapId);
         if (agent == null || target == null) {
+            return;
+        }
+        if (!onSupplyTrip(session) && !cap.admit(session, target, now)) {
+            refused(session, next, target, now, waited); // it has not moved, so nobody sees anything happen
             return;
         }
         CitizenSession.Move asked = new CitizenSession.Move(next, mapId);
@@ -1046,6 +1084,11 @@ public final class PresenceScheduler {
             }
             long now = System.currentTimeMillis();
             if (current.getMapId() != target.getId()) {
+                if (!cap.holds(session, target, now) && !cap.admit(session, target, now)) {
+                    cap.countRefusedArrival(); // its slot lapsed and the map filled meanwhile: it has not moved yet
+                    refused(session, asked.activity(), target, now, 0);
+                    return;
+                }
                 if (onFoot.walks(current, target)) {
                     log.info("citizen {}: someone came onto map {} during its move to {}; it walks", session.name(),
                             current.getMapId(), target.getId());
@@ -1055,7 +1098,8 @@ public final class PresenceScheduler {
                 if (onFoot.enabled()) {
                     stopTownLife(session.entry, current); // nobody on its map: a stroll it lingered on stops at once
                 }
-                place(current, target, arrivalPortal(session, current.getMapId(), target, now));
+                placeAndLand(session, current, asked, target, arrivalPortal(session, current.getMapId(), target, now), now);
+                return;
             }
             landed(session, asked, target, now);
         } catch (RuntimeException failure) {
@@ -1065,6 +1109,7 @@ public final class PresenceScheduler {
 
     /** The move is made: its activity starts on the map it came to. */
     void landed(CitizenSession session, CitizenSession.Move move, MapleMap target, long now) {
+        cap.release(session); // it counts where it stands now
         session.mapId = target.getId();
         session.activity = move.activity();
         startActivity(session, target, now);
@@ -1074,6 +1119,43 @@ public final class PresenceScheduler {
     /** Changes the citizen's map, at {@code portal} (portal 0 when null). */
     void place(Character agent, MapleMap target, server.maps.Portal portal) {
         agent.changeMap(target, portal != null ? portal : target.getPortal(0));
+    }
+
+    /**
+     * Changes the citizen's map and starts what it does there ({@link #place}, {@link #landed}). This runs on the
+     * population timer; with agent-engine.yaml ROUTE_EXTERNAL_WRITES on, both go through the citizen's mailbox and run
+     * on its own tick (docs/SCALE_PLATFORM_PLAN.md section 3, mailbox bypass 2), unless a newer move replaced this
+     * one or the session ended by then. Its slot on the destination (population.MAP_VISIBLE_MAX) stays reserved until
+     * it lands.
+     */
+    void placeAndLand(CitizenSession session, Character agent, CitizenSession.Move move, MapleMap target,
+                      server.maps.Portal portal, long now) {
+        AgentRuntimeEntry entry = session.entry;
+        if (entry != null && AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "citizen-move", owner -> {
+                if (holds(session) && move == session.latestMove) {
+                    place(agent, target, portal);
+                    landed(session, move, target, System.currentTimeMillis());
+                }
+            });
+            return;
+        }
+        place(agent, target, portal);
+        landed(session, move, target, now);
+    }
+
+    /** A map change with no landing (boarding at a dock): on the citizen's own tick as {@link #placeAndLand} does. */
+    void placeOnTick(CitizenSession session, Character agent, MapleMap target, server.maps.Portal portal) {
+        AgentRuntimeEntry entry = session.entry;
+        if (entry != null && AgentForeignWriteRuntime.foreign(entry)) {
+            AgentForeignWriteRuntime.defer(entry, "citizen-move", owner -> {
+                if (holds(session)) {
+                    place(agent, target, portal);
+                }
+            });
+            return;
+        }
+        place(agent, target, portal);
     }
 
     /**
@@ -1180,5 +1262,193 @@ public final class PresenceScheduler {
         session.lastPlanAtMs = now;
         travel(session, waiting.activity(), waiting.mapId(), now);
         return true;
+    }
+
+    // ---- population.MAP_VISIBLE_MAX ------------------------------------------------------------
+
+    /** Where a citizen goes instead of a full map, and what it does there. */
+    record Placement(Activity activity, MapleMap map) {
+    }
+
+    /**
+     * Where a login lands: {@code map} when it has room, else another place for {@code activity} (a party quest lobby
+     * or an instructor that is full gives a town visit), its slot reserved; null when every one is full, and the login
+     * is virtual.
+     */
+    Placement loginPlacement(CitizenSession session, Activity activity, MapleMap map, long now) {
+        if (cap.admit(session, map, now)) {
+            return new Placement(activity, map);
+        }
+        Placement other = elsewhere(session, activity, map.getId(), now);
+        if (other == null || !cap.admit(session, other.map(), now)) {
+            cap.countVirtualLogin();
+            return null;
+        }
+        cap.countRedirect();
+        return other;
+    }
+
+    /**
+     * A move to a full map. An everyday move goes somewhere else of the same kind (another field, town or Free Market
+     * room). A move with a purpose (its party quest's lobby, its instructor), or one with nowhere else free, stays
+     * where it is doing what it was doing, asks one everyday citizen on the full map to move on so a slot opens, and
+     * asks again every MAP_VISIBLE_RETRY_MS, MAP_VISIBLE_RETRY_LIMIT times at most; then the move is dropped and it goes
+     * on with its day where it stands. {@code waited} 0 is the first refusal; a redirected move that also finds its
+     * destination full waits instead of redirecting again.
+     */
+    private void refused(CitizenSession session, Activity next, MapleMap target, long now, int waited) {
+        PopulationConfig config = population.config();
+        if (waited == 0) {
+            Placement other = next == Activity.PQ || next == Activity.JOB
+                    ? null : elsewhere(session, next, target.getId(), now);
+            if (other != null) {
+                cap.countRedirect();
+                log.debug("citizen {} goes to {} instead of full map {}", session.name(), other.map().getId(), target.getId());
+                travel(session, other.activity(), other.map().getId(), now, 1);
+                return;
+            }
+            boolean opened = makeRoom(target, session, now);
+            log.info("citizen {} waits on map {} for room on map {} ({} citizens, the cap){}", session.name(),
+                    session.mapId, target.getId(), cap.cap(), opened ? "; one there moves on" : "");
+        }
+        if (waited >= config.MAP_VISIBLE_RETRY_LIMIT) {
+            log.info("citizen {} drops its move to full map {} after {} tries", session.name(), target.getId(), waited);
+            return;
+        }
+        cap.countDeferral();
+        Object token = new Object();
+        session.capRetry = token;
+        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (session.capRetry != token || !holds(session)) {
+                return; // a newer move, or the session ended
+            }
+            session.capRetry = null;
+            try {
+                travel(session, next, target.getId(), System.currentTimeMillis(), waited + 1);
+            } catch (RuntimeException failure) {
+                log.debug("citizen {}: its wait for room on map {} failed", session.name(), target.getId(), failure);
+            }
+        }, config.MAP_VISIBLE_RETRY_MS);
+    }
+
+    /**
+     * Another place for {@code activity} than {@code excludedMapId} with room for one more citizen: another training
+     * field for TRAIN, another Free Market room for MARKET, else a town of its region (AFK stays AFK there, anything else
+     * is a town visit). Null when every one is full.
+     */
+    Placement elsewhere(CitizenSession session, Activity activity, int excludedMapId, long now) {
+        Citizen citizen = session.citizen;
+        int channel = session.channel;
+        IntPredicate unusable = mapId -> mapId == excludedMapId
+                || population.map(channel, mapId) == null
+                || cap.full(population.map(channel, mapId), channel, session.characterId, now);
+        if (activity == Activity.TRAIN) {
+            int level = Math.max(1, population.store().characterProgress(citizen.characterId())[0]);
+            Field field = population.fields().trainingField(citizen, level, random, true,
+                    mapId -> avoiding(session, mapId, now) || unusable.test(mapId));
+            if (field != null) {
+                return new Placement(Activity.TRAIN, population.map(channel, field.mapId()));
+            }
+        }
+        if (activity == Activity.MARKET) {
+            List<Integer> rooms = new ArrayList<>();
+            for (int room = FieldCatalog.FM_ENTRANCE + 1; FieldCatalog.isFreeMarket(room); room++) {
+                rooms.add(room);
+            }
+            Collections.shuffle(rooms, random);
+            for (int room : rooms) {
+                if (!unusable.test(room)) {
+                    return new Placement(Activity.MARKET, population.map(channel, room));
+                }
+            }
+        }
+        Region region = population.fields().regionOf(citizen);
+        List<Integer> towns = region == null ? new ArrayList<>() : new ArrayList<>(region.towns());
+        Collections.shuffle(towns, random);
+        for (int town : towns) {
+            if (!unusable.test(town)) {
+                return new Placement(activity == Activity.AFK ? Activity.AFK : Activity.TOWN, population.map(channel, town));
+            }
+        }
+        return null;
+    }
+
+    /** Sends one everyday citizen standing on the full map {@code map} somewhere else, so a slot opens there. */
+    private boolean makeRoom(MapleMap map, CitizenSession requester, long now) {
+        CitizenSession leaving = null;
+        for (CitizenSession candidate : sessions.values()) {
+            if (candidate != requester && MapVisibleCap.standingMap(candidate) == map && movable(candidate)
+                    && (leaving == null || candidate.lastPlanAtMs < leaving.lastPlanAtMs)) {
+                leaving = candidate;
+            }
+        }
+        return leaving != null && moveOn(leaving, map, now);
+    }
+
+    /**
+     * A citizen nothing else is moving or holding: no party quest, party, job errand, stall, supply trip, walk, move
+     * on its way or wait for room.
+     */
+    private boolean movable(CitizenSession session) {
+        Activity activity = session.activity;
+        return session.loaded() && activity != Activity.PQ && activity != Activity.JOB && !session.stallOpen
+                && session.partyId == 0 && session.trip == null && session.capRetry == null
+                && session.waitingMove.get() == null && !cap.reserved(session) && !inPartyQuest(session)
+                && !onSupplyTrip(session);
+    }
+
+    /** It goes on to another place of the kind it is at (another field, town or market room), the way any move goes. */
+    private boolean moveOn(CitizenSession session, MapleMap crowded, long now) {
+        Activity next = session.activity == Activity.AFK ? Activity.TOWN : session.activity;
+        Placement other = elsewhere(session, next, crowded.getId(), now);
+        if (other == null) {
+            return false;
+        }
+        cap.countNudge();
+        session.afkUntilMs = 0L;
+        session.lastPlanAtMs = now;
+        log.info("citizen {} moves on from crowded map {} to {}", session.name(), crowded.getId(), other.map().getId());
+        travel(session, other.activity(), other.map().getId(), now);
+        return true;
+    }
+
+    /**
+     * A map over the cap (a cap lowered by a reload, or citizens the engine moved on its own, as a supply trip does)
+     * sends its excess everyday citizens elsewhere through {@link #travel}, so they walk out while someone watches and
+     * go the cheap way while nobody does; at most MAP_VISIBLE_TRIM_PER_SWEEP a sweep, longest-planned first.
+     */
+    void trimCrowdedMaps(long now) {
+        if (!cap.enabled()) {
+            return;
+        }
+        int budget = population.config().MAP_VISIBLE_TRIM_PER_SWEEP;
+        for (Map.Entry<MapleMap, List<CitizenSession>> crowd : cap.standingByMap().entrySet()) {
+            int excess = crowd.getValue().size() - cap.cap();
+            if (excess <= 0) {
+                continue;
+            }
+            List<CitizenSession> standing = new ArrayList<>(crowd.getValue());
+            standing.sort(java.util.Comparator.comparingLong(session -> session.lastPlanAtMs));
+            for (CitizenSession session : standing) {
+                if (excess <= 0 || budget <= 0) {
+                    break;
+                }
+                if (movable(session) && moveOn(session, crowd.getKey(), now)) {
+                    excess--;
+                    budget--;
+                }
+            }
+            if (budget <= 0) {
+                return;
+            }
+        }
+    }
+
+    /** One line for !citizens and the admin port: the cap, the busiest maps, and what it has done since boot. */
+    public String visibleCapReport() {
+        MapVisibleCap.Stats stats = cap.stats();
+        return "Visible cap " + (cap.enabled() ? cap.cap() + " a map" : "off") + "; busiest " + cap.busiest(3)
+                + "; redirects " + stats.redirects() + ", virtual logins " + stats.virtualLogins() + ", waits "
+                + stats.deferrals() + ", moved on " + stats.nudges() + ", lapsed arrivals " + stats.refusedArrivals();
     }
 }

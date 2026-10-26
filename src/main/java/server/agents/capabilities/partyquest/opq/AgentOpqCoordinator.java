@@ -681,8 +681,9 @@ final class AgentOpqCoordinator {
             return;
         }
         if (AgentOpqDefinition.roomForMap(agent.getMapId()) != room) return;
-        session.rooms().heartbeat(room, session.rooms().lease(room) == null
-                ? member.characterId() : session.rooms().lease(room).ownerId(), nowMs);
+        // one read: the lease holder's releaseExpired may drop the lease between two (race M2)
+        AgentOpqRoomLedger.Lease lease = session.rooms().lease(room);
+        session.rooms().heartbeat(room, lease == null ? member.characterId() : lease.ownerId(), nowMs);
         switch (room) {
             case WALKWAY -> tickWalkway(session, entry, agent, member, nowMs);
             case STORAGE -> tickStorage(session, entry, agent, member, nowMs);

@@ -48,7 +48,9 @@ public class TimerManager implements TimerManagerMBean {
         SAVE,
         MAP,
         EVENT,
-        LOW_PRIORITY
+        LOW_PRIORITY,
+        /** Central-sharded Agent scheduler shard loops (SchedulerGateway.registerAgentLoop): never shared with CORE. */
+        AGENT
     }
 
     public static TimerManager getInstance() {
@@ -60,6 +62,7 @@ public class TimerManager implements TimerManagerMBean {
     private ScheduledThreadPoolExecutor mapExecutor;
     private ScheduledThreadPoolExecutor eventExecutor;
     private ScheduledThreadPoolExecutor lowPriorityExecutor;
+    private ScheduledThreadPoolExecutor agentExecutor;
 
     private TimerManager() {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -80,6 +83,7 @@ public class TimerManager implements TimerManagerMBean {
         mapExecutor = newExecutor("TimerManager-Map", threadCount("cosmic.timer.mapThreads", "COSMIC_TIMER_MAP_THREADS", 2));
         eventExecutor = newExecutor("TimerManager-Event", threadCount("cosmic.timer.eventThreads", "COSMIC_TIMER_EVENT_THREADS", 2));
         lowPriorityExecutor = newExecutor("TimerManager-Low", threadCount("cosmic.timer.lowPriorityThreads", "COSMIC_TIMER_LOW_PRIORITY_THREADS", 1));
+        agentExecutor = newExecutor("TimerManager-Agent", threadCount("cosmic.timer.agentThreads", "COSMIC_TIMER_AGENT_THREADS", 4));
     }
 
     private int threadCount(String propertyName, String environmentName, int defaultValue) {
@@ -125,6 +129,7 @@ public class TimerManager implements TimerManagerMBean {
         addIfPresent(executors, mapExecutor);
         addIfPresent(executors, eventExecutor);
         addIfPresent(executors, lowPriorityExecutor);
+        addIfPresent(executors, agentExecutor);
         executors.forEach(this::shutdownNow);
 
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
@@ -171,6 +176,7 @@ public class TimerManager implements TimerManagerMBean {
             purge(mapExecutor);
             purge(eventExecutor);
             purge(lowPriorityExecutor);
+            purge(agentExecutor);
         };
     }
 
@@ -207,37 +213,37 @@ public class TimerManager implements TimerManagerMBean {
     @Override
     public long getActiveCount() {
         return activeCount(coreExecutor) + activeCount(saveExecutor) + activeCount(mapExecutor)
-                + activeCount(eventExecutor) + activeCount(lowPriorityExecutor);
+                + activeCount(eventExecutor) + activeCount(lowPriorityExecutor) + activeCount(agentExecutor);
     }
 
     @Override
     public long getCompletedTaskCount() {
         return completedTaskCount(coreExecutor) + completedTaskCount(saveExecutor) + completedTaskCount(mapExecutor)
-                + completedTaskCount(eventExecutor) + completedTaskCount(lowPriorityExecutor);
+                + completedTaskCount(eventExecutor) + completedTaskCount(lowPriorityExecutor) + completedTaskCount(agentExecutor);
     }
 
     @Override
     public int getQueuedTasks() {
         return queuedTasks(coreExecutor) + queuedTasks(saveExecutor) + queuedTasks(mapExecutor)
-                + queuedTasks(eventExecutor) + queuedTasks(lowPriorityExecutor);
+                + queuedTasks(eventExecutor) + queuedTasks(lowPriorityExecutor) + queuedTasks(agentExecutor);
     }
 
     @Override
     public long getTaskCount() {
         return taskCount(coreExecutor) + taskCount(saveExecutor) + taskCount(mapExecutor)
-                + taskCount(eventExecutor) + taskCount(lowPriorityExecutor);
+                + taskCount(eventExecutor) + taskCount(lowPriorityExecutor) + taskCount(agentExecutor);
     }
 
     @Override
     public boolean isShutdown() {
         return isShutdown(coreExecutor) && isShutdown(saveExecutor) && isShutdown(mapExecutor)
-                && isShutdown(eventExecutor) && isShutdown(lowPriorityExecutor);
+                && isShutdown(eventExecutor) && isShutdown(lowPriorityExecutor) && isShutdown(agentExecutor);
     }
 
     @Override
     public boolean isTerminated() {
         return isTerminated(coreExecutor) && isTerminated(saveExecutor) && isTerminated(mapExecutor)
-                && isTerminated(eventExecutor) && isTerminated(lowPriorityExecutor);
+                && isTerminated(eventExecutor) && isTerminated(lowPriorityExecutor) && isTerminated(agentExecutor);
     }
 
     public String diagnostics() {
@@ -245,7 +251,8 @@ public class TimerManager implements TimerManagerMBean {
                 + " save=" + executorStats(saveExecutor)
                 + " map=" + executorStats(mapExecutor)
                 + " event=" + executorStats(eventExecutor)
-                + " low=" + executorStats(lowPriorityExecutor);
+                + " low=" + executorStats(lowPriorityExecutor)
+                + " agent=" + executorStats(agentExecutor);
     }
 
     private ScheduledThreadPoolExecutor executor(SchedulerLane lane) {
@@ -255,6 +262,7 @@ public class TimerManager implements TimerManagerMBean {
             case MAP -> mapExecutor;
             case EVENT -> eventExecutor;
             case LOW_PRIORITY -> lowPriorityExecutor;
+            case AGENT -> agentExecutor;
         };
     }
 

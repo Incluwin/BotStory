@@ -50,6 +50,7 @@ public class CitizensCommand extends Command {
                             + " (in memory, lost on restart)"));
                     gm.yellowMessage(population.conversation().report());
                     gm.yellowMessage(population.market().report());
+                    gm.yellowMessage(population.presence().visibleCapReport());
                     gm.yellowMessage(population.partyQuests().status());
                 }
                 case "pq" -> {

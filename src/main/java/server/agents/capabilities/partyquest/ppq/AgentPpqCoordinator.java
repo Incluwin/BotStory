@@ -523,8 +523,7 @@ public final class AgentPpqCoordinator {
             boolean holdsKey = agent.getItemQuantity(AgentPpqDefinition.OLD_METAL_KEY, false) > 0;
             if (holdsKey && AgentPpqCompanionPlay.mayDropKeys(AgentPpqCompanionRun.companionKeys(session),
                     AgentPpqCompanionRun.floorKeys(agent), closed)) {
-                Reactor door = committedDoor(agent, member.committedReactorObjectId());
-                if (door == null) door = nearestUnclaimedDoor(session, agent);
+                Reactor door = claimDoor(session, agent, member);
                 if (door != null) {
                     dropKeyInDoor(session, entry, agent, member, door, nowMs);
                     return;
@@ -696,10 +695,9 @@ public final class AgentPpqCoordinator {
             else actions().stop(entry);
             return;
         }
-        Reactor door = committedDoor(agent, member.committedReactorObjectId());
-        if (door == null) door = nearestUnclaimedDoor(session, agent);
-        if (door != null && agent.getItemQuantity(AgentPpqDefinition.OLD_METAL_KEY, false) > 0) {
-            member.commitReactor(door.getObjectId());
+        Reactor door = agent.getItemQuantity(AgentPpqDefinition.OLD_METAL_KEY, false) > 0
+                ? claimDoor(session, agent, member) : null;
+        if (door != null) {
             Point trigger = reactorDropPoint(door);
             if (!door.getArea().contains(agent.getPosition())) {
                 Point ground = actions().groundPoint(agent.getMap(), trigger);
@@ -777,6 +775,19 @@ public final class AgentPpqCoordinator {
         if (objectId == 0) return null;
         return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(reactor -> reactor.getObjectId() == objectId && reactor.getState() < 1).findFirst().orElse(null);
+    }
+    /**
+     * The door this member works on: its committed one, else the nearest no other member has claimed, claimed in the
+     * same step under the session lock, so two members never take one door and waste a key (central-sharded: their
+     * ticks run at once; docs/SCALE_PLATFORM_PLAN.md section 6, race M1).
+     */
+    private static Reactor claimDoor(AgentPpqSession session, Character agent, AgentPpqMemberState member) {
+        synchronized (session) {
+            Reactor door = committedDoor(agent, member.committedReactorObjectId());
+            if (door == null) door = nearestUnclaimedDoor(session, agent);
+            if (door != null) member.commitReactor(door.getObjectId());
+            return door;
+        }
     }
     private static Reactor nearestUnclaimedDoor(AgentPpqSession session, Character agent) {
         Set<Integer> claimed = session.members().stream().map(AgentPpqMemberState::committedReactorObjectId)

@@ -4,9 +4,11 @@ package server.agents.runtime;
  * Mutable high-level movement mode state for one live Agent runtime.
  */
 public final class AgentModeState {
-    private boolean following;
-    private boolean grinding;
-    private int followTargetId;
+    // volatile: peers read these for crowd-rest picks and perception snapshots from their own ticks, which run at
+    // once on different shards in central-sharded mode (docs/SCALE_PLATFORM_PLAN.md section 6, race M5)
+    private volatile boolean following;
+    private volatile boolean grinding;
+    private volatile int followTargetId;
 
     public boolean following() {
         return following;

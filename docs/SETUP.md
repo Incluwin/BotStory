@@ -100,7 +100,7 @@ Run these from the repository folder:
 4. Start the server:
 
    ```bash
-   java -Xmx2048m -Dagents.scheduler.mode=central-sequential -Dwz-path=wz -jar target/Cosmic.jar
+   java -Xmx2048m -Dwz-path=wz -jar target/Cosmic.jar
    ```
 
 The server creates the `cosmic` database on its first start (`createDatabaseIfNotExist` in

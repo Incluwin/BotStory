@@ -152,8 +152,10 @@ class AgentTickSchedulerTest {
     }
 
     @Test
-    void centralShardedSchedulerIsEnabledByDefault() {
-        assertEquals(AgentSchedulerMode.CENTRAL_SHARDED, AgentSchedulerConfig.fromSystemProperties().mode());
+    void centralSequentialSchedulerIsTheShippedDefault() {
+        assertEquals(AgentSchedulerMode.CENTRAL_SEQUENTIAL, AgentSchedulerConfig.fromSystemProperties().mode());
+        System.setProperty("agents.scheduler.central.enabled", "false");
+        assertEquals(AgentSchedulerMode.LEGACY_PER_AGENT, AgentSchedulerConfig.fromSystemProperties().mode());
         System.setProperty("agents.scheduler.central.enabled", "true");
         assertEquals(AgentSchedulerMode.CENTRAL_SEQUENTIAL, AgentSchedulerConfig.fromSystemProperties().mode());
         System.setProperty("agents.scheduler.mode", "central-sharded");
