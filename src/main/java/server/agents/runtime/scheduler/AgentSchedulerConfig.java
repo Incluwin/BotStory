@@ -199,8 +199,8 @@ public record AgentSchedulerConfig(
     }
 
     /**
-     * Central-sharded shard loops run on the dedicated Agent timer lane (TimerManager AGENT) instead of the server's
-     * core timers: {@code -Dagents.scheduler.dedicatedLane.enabled}, else DEFAULT_DEDICATED_LANE_ENABLED.
+     * Central-sharded shard loops run on the server timer's dedicated AGENT lane instead of its core timers:
+     * {@code -Dagents.scheduler.dedicatedLane.enabled}, else DEFAULT_DEDICATED_LANE_ENABLED.
      */
     public static boolean configuredDedicatedLane() {
         return Boolean.parseBoolean(System.getProperty(
