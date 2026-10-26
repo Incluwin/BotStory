@@ -1,9 +1,10 @@
 # Companion Lending and Contract Loot Terms
 
-> Status: plan, 2026-10-25, branch `feat/companion-lending` cut from `ff6fbe48a`. Two gaps from
-> BOT_MANAGEMENT_PLAN.md "Out of scope / later" (lines 1061 and 1068): lending a companion to a friend, and enforcing
-> the contract terms `lootShare` / `ownDropsPercent`. Paths are relative to `FriendServer/BotStory Server`. "Decisions"
-> lists what the user chose; until then the recommendations are what gets built.
+> Status: built 2026-10-25 on `feat/companion-lending` (cut from `ff6fbe48a`); not merged, not deployed, live checks
+> (section 8) not run. Section 10 says what was built, where it differs from this plan, and what stays unverified.
+> Two gaps from BOT_MANAGEMENT_PLAN.md "Out of scope / later" (lines 1061 and 1068): lending a companion to a friend,
+> and enforcing the contract terms `lootShare` / `ownDropsPercent`. Paths are relative to `FriendServer/BotStory
+> Server`. "Decisions" lists what the user chose.
 
 ## 1. Summary
 
@@ -21,7 +22,8 @@
     owner-only. What the friend gets is a narrower, host-only "may direct" that only the card's field orders and the
     party window use. A new claim-guard seam keeps the friend's typed chat away from an Agent they lead only on loan.
 - **Loot terms.** A contracted companion's loot follows its contract:
-  - `OWN_DROPS p`: it keeps p% of what its own kills drop. Everything else it picks up is the owner's share.
+  - `OWN_DROPS p`: it keeps p% of the meso its own kills drop. Everything else it picks up is the owner's share,
+    except its supplies, quest items and equips (4.2).
   - `NONE` and `LEADER`: it keeps no cut.
   - In every case it first keeps its supply purse topped up (upkeep first, LIVING_RPG_PLAN.md:680).
   - The owner's share moves out of its bag and purse into its haul, the ledger the owner already collects from: hand
@@ -436,7 +438,7 @@ with ohboy partyless.
 | # | Check | Pass when |
 | --- | --- | --- |
 | L1 | Crewfriend: card → "Lend to a friend..." → ohboy → 30 min | ohboy gets the Yes/No with the portrait. Crewfriend's client is unaffected. |
-| L2 | ohboy: Yes | The companion walks over with no blink, joins ohboy's party (new party), greets in party chat, and leaves Crewfriend's party. Crewfriend's Crew window shows "on loan to ohboy". |
+| L2 | ohboy: Yes | The companion walks over with no blink, joins ohboy's party (new party), greets in party chat, and leaves Crewfriend's party. Crewfriend's Crew window lists it on the bench as "out with ohboy (30 min left)". |
 | L3 | ohboy walks two maps, fights | It follows through portals and fights, and it picks up only its own kills' drops. |
 | L4 | ohboy whispers it "give me mesos", types "respec" in party chat | Nothing happens. One in-character whisper back. |
 | L5 | ohboy double-clicks it | The borrowed card shows "on loan from Crewfriend (n min left)" with the four options. Wait here and Stick with me work. |
@@ -470,7 +472,43 @@ into the haul, D4 (a) NONE and LEADER the same for now.
   LEADER keeps not even the purse, and its owner supplies it (it asks when short). **Recommended: (a)**. (b) risks the
   supply-trip loops fixed on 10-24 for a companion with an empty purse.
 
-## 10. Out of scope
+## 10. Build notes (2026-10-25)
+
+**Where the tests ended up** (section 7 was the plan):
+
+| Test | Covers |
+| --- | --- |
+| `CompanionLoansTest` (24) | Offers and every refusal, the friend's Yes and its recheck, a lapsed or foreign answer, the hand-over's rollback at each step (party join, leader change, row, foreign lease), the friend-only card orders, send-back and re-seat, the trade block, and every end: recall in place, away from the owner, either logout, channel change, expel, time-up after two warnings, kill switch, a re-pointed leader, an unloaded companion, ending once. Leases are real. |
+| `CompanionDirectoryTest` (lending section, 6) | The ownership matrix with a loan out: the owner, the friend, a stranger and an admin for `mayControl`, `mayLoad`, `mayCommandByChat`, `restrictsChat`; who sees `BorrowedCompanion`; `isCompanionParty`; a refused whisper answered by the loan. This replaces the planned LoanOwnershipTest; the lend, accept, card-order, send-back, re-seat and recall refusals are in CompanionLoansTest. |
+| `AgentClaimGuardTest` (2 new) | The seam's defaults with no rule; a lent Agent is left out of every list-driven chat route, and named transfer/dismiss still find it and refuse. |
+| `ClaimGuardBoundaryTest` | A new `handover` route pins `handOverAgent` to its one caller; `LiveLoanHands` join and the extra register are reviewed; tokens pin `chatReach`, the lease transfer and the `mayControl` loan check. |
+| `CompanionLeasesTest` (1 new) | `transfer` moves only from its holder, in one step, and back. |
+| `LootTermsTest` (14) | The split math (upkeep floor, own vs not own, 0 and 100 percent, exact carry over 1,000 pickups), kept items, the card line, hired hands, field tallies (own kill, upkeep, on loan, no terms, switch off, bench slice), settling (purse cap, spent meso forgiven, not loaded), bench share. |
+| `ContentLintLootTermsTest` (5) | Absent stays absent, the default 10, the three lint errors, all 44 shipped contracts. |
+| `MesoLootHookBoundaryTest` (1 new) | Every hook call passes whose kill it was. |
+| `BenchUpkeepTest` (2 new) | An offline farm hour's cut goes to its purse, not the haul; a lent companion farms nothing at camp. |
+| `LivingWorldConfigLendingTest` (3) | Defaults, validation, and the same values in config.yaml. |
+
+**Changes from the plan, found while building:**
+- **Chat filter hole, fixed.** Leaving a lent Agent out of every chat list also hid it from the named `transfer` and
+  `dismiss` refusals, so the friend's typed "dismiss <name>" fell through to the stock dismiss, which finds the Agent
+  by its leader and unregisters it. The named verbs now look in the full lists, find it and refuse
+  (AgentChatRouteCoordinator `everyEntry`); AgentClaimGuardTest pins it.
+- **The carry is exact.** It is kept in hundredths of a meso (integer), not a double, so no meso drifts over time.
+- **Owner logging off.** A loan that ends because its owner logs off never rejoins the owner in place: it walks out,
+  so the owner's own logout does not bench it a second time.
+- **Supplies by item family.** Potions, food and elixirs (200-202), ammo, then the WZ recovery check for other USE
+  items: the common cases need no item data.
+- **Crew window row.** The owner's Crew window lists a lent companion in the bench block as "out with <friend> (n min
+  left)" (CompanionCrewScreens.benchText, also the native window's bench rows).
+
+**Unverified (needs the live checks in section 8):** everything in the real client: the friend's Yes/No window with
+the portrait, the in-place hand-over with no blink, following through portals, the borrowed card, party-window expel
+and invite, the walk-out, the Crew window row, the warnings, and the loot share in "Your haul...". Also unverified:
+a release while lent (the loan ends, then the release unloads it; the walk-out's own unload then finds nothing), and
+the PQ desk's "waits outside" path, which has no live run behind it.
+
+## 11. Out of scope
 - Lending across channels or maps (D1 b).
 - Borrowed companions inside runs (D2 c).
 - Lending a seat rather than a companion (BOT_MANAGEMENT_PLAN decision 14, P9).

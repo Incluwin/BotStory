@@ -215,6 +215,23 @@ class CrewScreensTest {
     }
 
     @Test
+    void aCompanionOutOnLoanSaysWhoItIsOutWith() {
+        add(row("tobi", RosterState.BENCHED), "Tobi", 902, 30, Job.CLERIC);
+        server.living.roster.CompanionLoans loans = mock(server.living.roster.CompanionLoans.class);
+        when(loans.any()).thenReturn(true);
+        when(loans.lentOut("tobi")).thenReturn(new server.living.roster.CompanionLoans.Loan(1L, ANN, 77, "tobi", 902, 30,
+                0L, System.currentTimeMillis() + 25 * 60_000L - 1_000L, server.living.roster.CompanionLoans.Stage.OUT, 0L, 0));
+        when(world.loans()).thenReturn(loans);
+        Character bob = mock(Character.class);
+        when(bob.getName()).thenReturn("Bob");
+        when(roster.onlineCharacter(77)).thenReturn(bob);
+
+        menus.crew(owner);
+
+        assertTrue(lastTalk().labels().contains("Tobi, Lv30 Cleric - out with Bob (25 min left)"), lastTalk().labels().toString());
+    }
+
+    @Test
     void theBenchSeatsAreTheRosterCapLessThoseOut() {
         for (int index = 0; index < 5; index++) {
             add(row("out" + index, RosterState.ACTIVE), "Out" + index, 910 + index, 20, Job.FIGHTER);

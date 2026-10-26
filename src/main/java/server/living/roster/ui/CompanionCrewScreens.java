@@ -18,6 +18,7 @@ import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.CompanionLoans;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionManager.NamedLineup;
 import server.living.roster.CompanionSlots;
@@ -646,8 +647,28 @@ final class CompanionCrewScreens {
 
     /** A bench block row as the Crew window lists it: {@link #benchLine} with the live bench's note, or its errand. */
     String benchText(CompanionView view) {
+        String lent = lentLine(view);
+        if (lent != null) {
+            return lent;
+        }
         String errand = menus.errand(view);
         return errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand);
+    }
+
+    /**
+     * "Olwen, Lv27 Hunter - out with Bob (25 min left)": a companion out on loan to a friend (CompanionLoans), whose row
+     * stays BENCHED while it is gone; null for any other.
+     */
+    private String lentLine(CompanionView view) {
+        CompanionLoans loans = world.loans();
+        CompanionLoans.Loan loan = loans == null || !loans.any() ? null : loans.lentOut(view.personaId());
+        if (loan == null) {
+            return null;
+        }
+        Character friend = world.roster().onlineCharacter(loan.borrowerId());
+        long minutes = Math.max(1L, (loan.msLeft(System.currentTimeMillis()) + 59_999L) / 60_000L);
+        return view.name() + levelJob(view) + " - out with " + (friend == null ? "a friend" : friend.getName())
+                + " (" + minutes + " min left)";
     }
 
     /** "(1 seat kept)", "(2 seats kept)": the seats those away on an errand keep; empty when nobody is away. */
