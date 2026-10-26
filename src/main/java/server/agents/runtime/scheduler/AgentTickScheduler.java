@@ -551,8 +551,9 @@ public final class AgentTickScheduler {
                     registration.simulationMode,
                     slow);
             if (slow && config.logSlowTicks()) {
-                log.warn("Slow central Agent tick session={} elapsedMs={}",
-                        registration.sessionId, elapsedNs / 1_000_000L);
+                log.warn("Slow central Agent tick session={} elapsedMs={} shard={} map={} mode={}",
+                        registration.sessionId, elapsedNs / 1_000_000L, shardId, registration.mapId(),
+                        registration.simulationMode);
             }
         }
         return elapsedNs;

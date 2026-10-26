@@ -328,6 +328,9 @@ final class AgentEngineConfigValidator {
                     || "SHADOW".equalsIgnoreCase(value)
                     || "ACTIVE".equalsIgnoreCase(value);
         }
+        if (key.endsWith("AgentSchedulerConfig.DEFAULT_MODE")) {
+            return value.matches("(?i)legacy(-per-agent)?|central(-sequential)?|central-sharded|sharded");
+        }
         if (key.endsWith("AgentCombatConfig.AOE_REPOSITION_MODE")) {
             return "OFF".equalsIgnoreCase(value) || "ACTIVE".equalsIgnoreCase(value);
         }

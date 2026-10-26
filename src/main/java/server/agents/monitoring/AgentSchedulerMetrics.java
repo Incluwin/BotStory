@@ -12,6 +12,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.LongAdder;
 
 public final class AgentSchedulerMetrics {
@@ -135,6 +136,9 @@ public final class AgentSchedulerMetrics {
             new EnumMap<>(AgentPriorityClass.class);
     private static final AgentSchedulerRollingWindow QUEUE_LAG_WINDOW =
             new AgentSchedulerRollingWindow(ROLLING_WINDOW_CAPACITY);
+    /** Queue lag since the last health line, in power-of-two millisecond buckets (bucket i holds lags below 2^i). */
+    private static final AtomicLongArray INTERVAL_QUEUE_LAG = new AtomicLongArray(Long.SIZE + 1);
+    private static final AtomicLong INTERVAL_MAX_QUEUE_LAG_MS = new AtomicLong();
     private static final AgentSchedulerRollingWindow WORK_DURATION_WINDOW =
             new AgentSchedulerRollingWindow(ROLLING_WINDOW_CAPACITY);
     private static final AgentSchedulerRollingWindow QUIESCENCE_DURATION_MS_WINDOW =
@@ -202,6 +206,8 @@ public final class AgentSchedulerMetrics {
         TOTAL_QUEUE_LAG_MS.add(lag);
         MAX_QUEUE_LAG_MS.accumulateAndGet(lag, Math::max);
         QUEUE_LAG_WINDOW.add(lag);
+        INTERVAL_QUEUE_LAG.incrementAndGet(Long.SIZE - Long.numberOfLeadingZeros(lag));
+        INTERVAL_MAX_QUEUE_LAG_MS.accumulateAndGet(lag, Math::max);
         long duration = Math.max(0L, elapsedNs);
         WORK_DURATION_WINDOW.add(duration);
         WORK_CLASS_WINDOWS.get(workClass).add(duration);
@@ -441,6 +447,40 @@ public final class AgentSchedulerMetrics {
                 DUE_HEAP_DEPTH.get(), READY_DEPTH.get());
     }
 
+    /**
+     * Queue lag over every update since the previous call (the health line's interval), then starts a new interval.
+     * The percentiles are bucket upper bounds (power-of-two milliseconds, so "under 512 ms"); the max is exact.
+     */
+    public record IntervalQueueLag(long updates, long p50UnderMs, long p95UnderMs, long p99UnderMs, long maxMs) {
+    }
+
+    public static IntervalQueueLag drainIntervalQueueLag() {
+        long[] counts = new long[INTERVAL_QUEUE_LAG.length()];
+        long total = 0L;
+        for (int bucket = 0; bucket < counts.length; bucket++) {
+            counts[bucket] = INTERVAL_QUEUE_LAG.getAndSet(bucket, 0L);
+            total += counts[bucket];
+        }
+        long max = INTERVAL_MAX_QUEUE_LAG_MS.getAndSet(0L);
+        return new IntervalQueueLag(total, underMs(counts, total, 50), underMs(counts, total, 95),
+                underMs(counts, total, 99), max);
+    }
+
+    private static long underMs(long[] counts, long total, int percent) {
+        if (total == 0L) {
+            return 0L;
+        }
+        long wanted = (total * percent + 99L) / 100L;
+        long seen = 0L;
+        for (int bucket = 0; bucket < counts.length; bucket++) {
+            seen += counts[bucket];
+            if (seen >= wanted) {
+                return bucket >= Long.SIZE - 1 ? Long.MAX_VALUE : 1L << bucket;
+            }
+        }
+        return Long.MAX_VALUE;
+    }
+
     public static WorkClassSnapshot workClassSnapshot(AgentWorkClass workClass) {
         AgentSchedulerRollingWindow.Percentiles duration = WORK_CLASS_WINDOWS.get(workClass).percentiles();
         return new WorkClassSnapshot(duration.p50(), duration.p95(), duration.p99(), duration.sampleCount());
@@ -522,6 +562,10 @@ public final class AgentSchedulerMetrics {
         READY_PRIORITY_DEPTHS.values().forEach(depth -> depth.set(0L));
         READY_PRIORITY_HIGH_WATER_MARKS.values().forEach(depth -> depth.set(0L));
         QUEUE_LAG_WINDOW.reset();
+        for (int bucket = 0; bucket < INTERVAL_QUEUE_LAG.length(); bucket++) {
+            INTERVAL_QUEUE_LAG.set(bucket, 0L);
+        }
+        INTERVAL_MAX_QUEUE_LAG_MS.set(0L);
         WORK_DURATION_WINDOW.reset();
         QUIESCENCE_DURATION_MS_WINDOW.reset();
         WORK_CLASS_WINDOWS.values().forEach(AgentSchedulerRollingWindow::reset);

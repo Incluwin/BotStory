@@ -93,6 +93,16 @@ public final class AgentSchedulerRuntime {
         return AgentSchedulerGatewayRuntime.scheduler().register(action, periodMs);
     }
 
+    /** A central-sharded shard loop on the dedicated Agent lane (SchedulerGateway.registerAgentLoop). */
+    public static ScheduledFuture<?> registerAgentLoop(Runnable action, long periodMs) {
+        return AgentSchedulerGatewayRuntime.scheduler().registerAgentLoop(action, periodMs);
+    }
+
+    /** A shard loop's continuation on the dedicated Agent lane. */
+    public static ScheduledFuture<?> scheduleAgentLoop(Runnable action, long delayMs) {
+        return AgentSchedulerGatewayRuntime.scheduler().scheduleAgentLoop(action, delayMs);
+    }
+
     public static long randomDelayMs(int minMs, int maxMs) {
         return minMs + ThreadLocalRandom.current().nextInt(maxMs - minMs);
     }

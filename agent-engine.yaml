@@ -5781,6 +5781,10 @@ tuning:
     # Purpose: Controls how long Agents remain in or wait for cycle budget. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "scheduler config" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_CYCLE_BUDGET_MS: '10'
+    # Values: true or false. Recommended: true; false only to compare against shard loops sharing the server's core timer threads.
+    # Purpose: In central-sharded mode, runs every shard loop on dedicated Agent timer threads, so one slow Agent tick stalls only its own shard and never a server core timer.
+    # Technical: AgentShardedTickScheduler registers shard loops through SchedulerGateway.registerAgentLoop, which Cosmic maps to TimerManager lane AGENT (cosmic.timer.agentThreads, default 4 threads); false keeps them on the CORE lane. Sequential and legacy modes never use it; -Dagents.scheduler.dedicatedLane.enabled overrides.
+    server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_DEDICATED_LANE_ENABLED: 'true'
     # Values: a finite non-negative integer. Recommended: 2048-8192 around the tested baseline 4096; benchmark or observe behavior before moving outside this band.
     # Purpose: Limits how many incoming work capacity per shard can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.
@@ -5801,6 +5805,10 @@ tuning:
     # Purpose: Limits how many maximum work items per cycle can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel. Paired minimum/maximum values define an inclusive random or validation range and must not be inverted.
     server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MAX_WORK_ITEMS_PER_CYCLE: '256'
+    # Values: central-sequential, central-sharded, or legacy-per-agent. Recommended: central-sequential (the shipped live mode) until the user approves central-sharded (docs/SCALE_PLATFORM_PLAN.md section 6).
+    # Purpose: The one switch for the Agent tick scheduler: one central loop, several independent shard loops, or the old per-Agent timers; launchers no longer pin it.
+    # Technical: AgentSchedulerConfig.configuredMode reads -Dagents.scheduler.mode first, then the old agents.scheduler.central.enabled flag, then this value. central-sharded splits Agents over clamp(cpus/2, 1, 4) shard loops by a hash of character id and session generation; the mailbox is mandatory in both central modes.
+    server.agents.runtime.scheduler.AgentSchedulerConfig.DEFAULT_MODE: 'central-sequential'
     # Values: a finite non-negative integer. Recommended: 2-8 around the tested baseline 4; benchmark or observe behavior before moving outside this band.
     # Purpose: Limits how many shard count maximum can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
     # Technical: the "scheduler config" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.

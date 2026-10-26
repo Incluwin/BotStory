@@ -853,7 +853,7 @@ public final class AmherstPlanRuntimeRunner {
     }
 
     private boolean asyncPersistenceEnabled() {
-        return AgentSchedulerConfig.fromSystemProperties().mode() != AgentSchedulerMode.LEGACY_PER_AGENT;
+        return AgentSchedulerConfig.configuredMode() != AgentSchedulerMode.LEGACY_PER_AGENT;
     }
 
     private String persistenceRequestKey(String operation) {
