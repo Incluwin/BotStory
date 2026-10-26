@@ -82,4 +82,14 @@ class CitizenAlliancesContentTest {
         assertDoesNotThrow(() -> offline.setAllianceRank(1));
         assertEquals(1, offline.getAllianceRank());
     }
+
+    @Test
+    void aMottoTooLongForTheStockNoticeColumnLeavesTheAllianceNoticeBlank() {
+        assertEquals("active and friendly", CitizenAlliances.noticeFor("active and friendly"));
+        assertEquals("", CitizenAlliances.noticeFor("we grind together and laugh about it after"));
+        assertEquals("", CitizenAlliances.noticeFor(null));
+        for (String motto : content.guildNames().mottos()) {
+            assertTrue(CitizenAlliances.noticeFor(motto).length() <= CitizenAlliances.NOTICE_MAX, motto);
+        }
+    }
 }

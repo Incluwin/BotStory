@@ -47,6 +47,8 @@ public final class CitizenAlliances {
     static final long DAY_MS = 86_400_000L;
     /** A player's invite is answered after this moment, as a player reads it. */
     static final long ANSWER_DELAY_MS = 4_000L;
+    /** The stock alliance.notice column is VARCHAR(20): a longer notice fails Alliance.saveToDB as a whole. */
+    static final int NOTICE_MAX = 20;
     /** A leaving guild leaves this long after its citizen's goodbye reached alliance chat. */
     static final long LEAVE_AFTER_LINE_MS = 1_500L;
 
@@ -492,6 +494,11 @@ public final class CitizenAlliances {
                 guild.getId(), alliance.getName(), allianceId, inviter.getName(), minutes, String.format("%.2f", tie));
     }
 
+    /** The lead guild's motto as the alliance notice when it fits the stock column, else the stock blank notice. */
+    static String noticeFor(String motto) {
+        return motto != null && motto.length() <= NOTICE_MAX ? motto : "";
+    }
+
     // ---- stock writes --------------------------------------------------------------------
 
     /** Lenario's union for two guilds, server-side: the stock createAlliance without a party (lead master rank 1). */
@@ -508,7 +515,7 @@ public final class CitizenAlliances {
         alliance.setCapacity(2);
         alliance.addGuild(lead.getId());
         alliance.addGuild(other.getId());
-        alliance.setNotice(population.social().motto(lead.getId()));
+        alliance.setNotice(noticeFor(population.social().motto(lead.getId())));
         server.addAlliance(alliance.getId(), alliance);
         for (Guild guild : List.of(lead, other)) {
             server.setGuildAllianceId(guild.getId(), alliance.getId());
