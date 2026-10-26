@@ -1214,6 +1214,9 @@ mods:
     #                          the equip tooltip; display only
     #   storage_bag            the Storage Bags (ores, scrolls, chairs, mounts) behind the client's storage_bag
     #                          window, allowed under FEATURES below; off: the window's requests are ignored
+    #   cryssea                Cryssea (iTCG card swap) stands in New Leaf City's Town Center. Every client needs her
+    #                          Custom.wz look from the Masteria client patch first (docs/ITCG_MASTERIA_PLAN.md); a
+    #                          client without it closes on entering New Leaf City. Boot only
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1223,6 +1226,7 @@ mods:
         beginner_ap: off
         set_items: on
         storage_bag: on
+        cryssea: off
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

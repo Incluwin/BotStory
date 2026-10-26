@@ -272,6 +272,7 @@ public class MapFactory {
 
         loadLifeFromWz(map, mapData);
         loadLifeFromDb(map);
+        server.mods.GatedNpcs.place(map);
 
         if (map.isCPQMap()) {
             Data mcData = mapData.getChildByPath("monsterCarnival");

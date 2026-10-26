@@ -104,7 +104,8 @@ attempt moves the item up, down, to a random rung or destroys it, without odds; 
 T-1337: 1 Diferium Fuel Cell 4032022 (or 1 Triferium Fuel Cell 4032021 for half as many again), 50 Boomer Core
 4000391, 1 Jumper Cable 4032024, 1 Sparkplug 4032023, 1 T-1 Socket Adapter 4032025 -> a random T-1337 juice
 (VitroJuice 2022338, NitroJuice 2022339, ElectroJuice 2022341, MegaJuice 2022342, GigaJuice 2022343, JigaJuice 2022344)
-and 2,500 EXP.
+and 2,500 EXP. A batch is 10 juices of one kind (15 on a Triferium cell); the guide gives the 50% but not the base
+count.
 
 Ridley 9201103 (outside the keep, 610020006): 1 Ridley's Stone 4032026 + one boss trophy (Balrog Claw, Bigfoot's Toe
 4032013, Ergoth's Jawbone, Jack O'Lantern, Papulatus Curl, Pianus Scale, Tengu Nose) -> one of the guide's 25 random
@@ -138,7 +139,7 @@ The recipe tables and the take-and-give step live in Java, `server.itcg.ItcgReci
 | John Barricade 9201051 | Bigger Ben Lobby | draws the ten Set 2 manuals (quest 4927 like Foxwit's 4926), forges the six Bosshunter pieces; his stock quests are untouched |
 | Corine 9201094 | NLC Town Center | the -suma and -magna upgrades |
 | Stirgeman 9201102 | NLC Town Center | the Set 4 upgrade attempts |
-| Lita Lawless 9201054 | NLC Town Center | the sheriff's bounty board: Masteria trophies for confiscated iTCG goods (section 4), once per day per tier |
+| Lita Lawless 9201054 | NLC Town Center | the sheriff's bounty board: Masteria trophies for impounded iTCG goods (section 4) |
 | T-1337 9201101 | NLC Town Center | juice synthesis |
 | Ridley 9201103 | Crimsonwood Keep exterior | Ridley's Stone exchange; his CWKPQ directions stay as the first menu line |
 | Adonis 9201106 | El Nath | Set 5 upgrades and the Stone Denari; his expedition line stays as the first menu line |
@@ -150,13 +151,15 @@ The recipe tables and the take-and-give step live in Java, `server.itcg.ItcgReci
   branch's Masteria cast adds the trophies nothing drops (Ergoth's Jawbone), Ridley's Book of Rituals and Stone, Taru
   Spirit Feathers and Totems, Ancient pieces and the five pets (section 6).
 - **Lita Lawless's bounty board** (repeatable, so the loop never runs dry): she has impounded a smuggler's crate of
-  card-code goods and pays them out for trophies off the streets she is cleaning. Three tiers, each once per server
-  day per character (a quest record, like the daily quests): 30 Street Slime / Urban Fungus drops (Urban Underground,
-  L19-21) for a random Set 1 artifact; 30 Boomer Cores or Killa Bee stingers (jungle, MesoGears, L25-40) for a random
-  Set 2 piece (Ancient pieces, Stone Tiger Head, Typhon Crest, Crystal Shard, LeFay Jewel, Pharoah's Wrappings); 30
-  Windraider or Stormbreaker badges (Phantom Forest, Crimsonwood Mountain, L70-80) for a Taru Spirit Feather, a White
-  Versal Materia or a Set 4 part (Ridley's Stone, Triferium Fuel Cell). Drop ids and counts are checked in the drop data
-  before the script is written.
+  card-code goods and pays them out for trophies off the roads she is cleaning, one random piece per bounty. The
+  trophies are the Masteria drops that come in steady numbers (drop data: each at 20%): 40 Boomer Cores 4000391
+  (Boomer, Masteria jungle, L27) for a Set 1 artifact; 30 Windraider Badges 4032007 (L70) or 30 Stormbreaker Badges
+  4032006 (L80, Phantom Forest and Crimsonwood Mountain) for a Set 2 piece (the six Ancient pieces, Ridley's Book of
+  Rituals, Stone Tiger Head, Typhon Crest, LeFay Jewel, Pharoah's Wrappings, Crystal Shard); 30 Nightshadow Badges
+  4032009 (L100) for a rare one (Taru Spirit Feather, White Versal Materia, Ridley's Stone, Triferium Fuel Cell, LeFay
+  Jewel, Pharoah's Wrappings). The trophy cost is the limit; there is no daily cap. Street Slime and Urban Fungus drop
+  only ores and monster cards, so the low tier starts at the Boomers. Her stock quests (Cleaning Up The Streets 4919 /
+  4922, Fool's Gold 8231-8239) stay in the quest window.
 - **Drops already on the server**: the Haunted House parts (Glutton Ghoul, Psycho Jack, Sophilia Doll), T-1337 parts
   (Boomer, Electrophant, I.AM.ROBOT, Wolf Spider), the boss trophies (Tengu, Papulatus, Pianus, Balrog, Headless
   Horseman, Bigfoot), Jungle Lily (Mighty Maple Eater, Gryphon), ores and crystals.
