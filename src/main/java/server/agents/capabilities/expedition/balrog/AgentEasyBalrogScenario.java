@@ -62,6 +62,11 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
 
     private final List<AgentBalrogTestFixtureService.Build> roster;
     private final AgentBalrogFight fight;
+    /**
+     * Citizens fight it (docs/CITIZEN_EXPEDITIONS_PLAN.md): after the clear they play the reward room as players do
+     * ({@link #playsAfterClear}): to the exit NPC, into the room, the box, a human's first pick, their share, out.
+     */
+    private final boolean citizens;
     private final AgentExpeditionSpec spec;
     private final Map<Integer, Integer> memberOrdinals = new ConcurrentHashMap<>();
     private CombatPhase combatPhase;
@@ -92,13 +97,32 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
         return new AgentEasyBalrogScenario(List.of(), AgentBalrogFight.NORMAL);
     }
 
+    /**
+     * Easy Balrog's fight for a citizen expedition: the companions' fight, then the reward room played as players do
+     * (no owner to follow out).
+     */
+    public static AgentEasyBalrogScenario forCitizens() {
+        return new AgentEasyBalrogScenario(List.of(), AgentBalrogFight.EASY, true);
+    }
+
+    /** Normal Balrog's fight for a citizen expedition, as {@link #forCitizens} is Easy's. */
+    public static AgentEasyBalrogScenario forNormalCitizens() {
+        return new AgentEasyBalrogScenario(List.of(), AgentBalrogFight.NORMAL, true);
+    }
+
     private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster) {
         this(roster, AgentBalrogFight.EASY);
     }
 
     private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster, AgentBalrogFight fight) {
+        this(roster, fight, false);
+    }
+
+    private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster, AgentBalrogFight fight,
+                                    boolean citizens) {
         this.roster = roster;
         this.fight = fight;
+        this.citizens = citizens;
         spec = new AgentExpeditionSpec(
                 fight == AgentBalrogFight.EASY ? "easy-balrog-level-60" : "normal-balrog",
                 fight.label(),
@@ -409,7 +433,10 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
             }
         }
-        if (rewardRoomWarpRequested) return;
+        // Easy's exit NPC warps the whole team into the reward room once; Normal's warps only the talker (1061018.js),
+        // so there each member in reach talks to it, one a tick.
+        boolean teamWarp = fight.battleMapId() == AgentBalrogDefinition.BATTLE_MAP;
+        if (teamWarp && rewardRoomWarpRequested) return;
         Character transitioner = battleMembers.stream()
                 .filter(member -> near(member.getPosition(), npc, INTERACTION_RANGE_PX))
                 .min(Comparator.comparingDouble(member -> member.getPosition().distanceSq(npc)))
@@ -452,6 +479,27 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
     @Override
     public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
         tickCombat(fighters, event, nowMs);
+    }
+
+    /** A citizen fight plays on after the clear on the battle map and in the reward room; a companion one never. */
+    @Override
+    public boolean playsAfterClear(int mapId) {
+        return citizens && (mapId == fight.battleMapId() || mapId == fight.clearMapId());
+    }
+
+    /**
+     * A citizen fight after the clear: the reward room as the GM lobby plays it ({@link #tickPostClear}), begun on
+     * the first call. {@code members} are the citizens still inside on its maps.
+     */
+    @Override
+    public void tickAfterClear(List<Character> members, EventInstanceManager event, long nowMs) {
+        if (!citizens || members.isEmpty()) {
+            return;
+        }
+        if (postClearPhase == null) {
+            beginPostClear(members, event, nowMs);
+        }
+        tickPostClear(members, event, nowMs);
     }
 
     @Override
@@ -517,8 +565,9 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, A
                 .filter(member -> member.getMapId() == fight.clearMapId())
                 .map(member -> {
                     int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
-                    return new AgentEasyBalrogRewardPolicy.Member(
-                            member.getId(), ordinal, roster.get(ordinal).weaponClass());
+                    // citizens bring no fixture roster: the weapon each one wears picks its share
+                    return new AgentEasyBalrogRewardPolicy.Member(member.getId(), ordinal, roster.isEmpty()
+                            ? AgentEasyBalrogRewardPolicy.weaponClassOf(member) : roster.get(ordinal).weaponClass());
                 }).toList();
         List<AgentEasyBalrogRewardPolicy.Drop> drops = server.agents.perception.AgentMapPerception
                 .items(source.getMap()).stream()

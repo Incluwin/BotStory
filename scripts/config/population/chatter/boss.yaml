@@ -1,0 +1,202 @@
+# Boss expeditions citizens run themselves (docs/CITIZEN_EXPEDITIONS_PLAN.md): Balrog, from Mu Young's room. Self =
+# the citizen speaking; {need} = how many more the party wants, {pq} = the boss ("Balrog"), {levels} = its band,
+# {name} = the human or mate it talks to. These repeat as players repeat them: each intent's cooldownMs, no
+# recent-intent memory. Per-style lines (`styles`) override `lines` for that voice style; the voice pack still types them.
+intents:
+  - id: boss.lf.map
+    trigger: boss.lf
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 45000
+    lines:
+      - "lf{need}m {pq} exped"
+      - "{pq} exped need {need} more, 50+"
+      - "lf {need} more for {pq}"
+      - "anyone 50+ wanna do {pq}? need {need}"
+      - "{pq} lf{need}m"
+      - "need {need} for {pq} then we go"
+    styles:
+      quiet-practical-v1:
+        - "lf{need}m {pq}"
+        - "{pq} {need} more"
+      playful-social-v1:
+        - "{pq} hunt!! need {need} more"
+        - "who wants to fight {pq}? need {need}"
+  - id: boss.join.party
+    trigger: boss.join
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "hi"
+      - "hey, ty"
+      - "ty for inv"
+      - "yo"
+      - "here"
+  - id: boss.signup.party
+    trigger: boss.signup
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name} sign up w mu young, we go in a couple min"
+      - "{name} talk to mu young to get on the list"
+      - "{name} register w mu young pls"
+  - id: boss.go.party
+    trigger: boss.go
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ok everyone listed? going in"
+      - "starting"
+      - "lets go kill it"
+      - "pots up, going in"
+      - "ok lets do this"
+    styles:
+      quiet-practical-v1:
+        - "starting"
+        - "going in"
+      playful-social-v1:
+        - "lets gooo"
+        - "time to kill a balrog :D"
+  - id: boss.clear.party
+    trigger: boss.clear
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "gg"
+      - "ggs"
+      - "gg ty all"
+      - "nice, it's down"
+      - "gg balrog"
+      - "ty guys, good run"
+      - "ez"
+    styles:
+      quiet-practical-v1:
+        - "gg"
+        - "gg ty"
+      playful-social-v1:
+        - "GG!! we killed it"
+        - "balrog down :D"
+  - id: boss.clear.map
+    trigger: boss.clear
+    where: any
+    channel: map
+    weight: 4
+    cooldownMs: 1000
+    lines:
+      - "gg"
+      - "{pq} done"
+      - "finally killed it"
+  - id: boss.fail.party
+    trigger: boss.fail
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "rip"
+      - "wiped"
+      - "it hits way too hard"
+      - "rip that run"
+      - "ran out of pots"
+      - "next time"
+      - "ugh"
+    styles:
+      quiet-practical-v1:
+        - "rip"
+        - "wiped"
+      playful-social-v1:
+        - "noooo"
+        - "rip us lol"
+  - id: boss.fail.map
+    trigger: boss.fail
+    where: any
+    channel: map
+    weight: 4
+    cooldownMs: 1000
+    lines:
+      - "rip {pq}"
+      - "{pq} wiped us"
+      - "rip"
+  - id: boss.down.map
+    trigger: boss.down
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "died lol, gl guys"
+      - "rip me"
+      - "one hit me"
+      - "ugh, died"
+      - "sorry, i'm out"
+  - id: boss.giveup.map
+    trigger: boss.giveup
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "nvm not enough ppl"
+      - "nvm gonna go train"
+      - "nobody wants {pq} huh"
+      - "ok forget it"
+      - "dead hours i guess"
+  - id: boss.broke.map
+    trigger: boss.broke
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "cant afford pots for {pq}, next time"
+      - "too broke for {pq} lol"
+      - "need more mesos for pots first"
+  - id: boss.call.guild
+    trigger: boss.call
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{pq} anyone? at mu young"
+      - "need ppl for {pq}, 50+"
+      - "come {pq} with us, sleepywood"
+  - id: boss.call.answer.guild
+    trigger: boss.call.answer
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "omw"
+      - "sure, coming"
+      - "me, grabbing pots"
+      - "coming"
+  - id: boss.thanks.party
+    trigger: boss.thanks
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "ty {name}"
+      - "ty {name} good run"
+      - "thx for coming {name}"
+      - "{name} gg"
+  - id: boss.wait.party
+    trigger: boss.wait
+    where: any
+    channel: party
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}"

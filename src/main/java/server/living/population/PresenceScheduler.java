@@ -752,7 +752,7 @@ public final class PresenceScheduler {
                 return field == null ? population.fields().homeTown(citizen, random) : field.mapId();
             }
             case PQ -> {
-                Lobby lobby = population.fields().lobbyFor(citizen, level);
+                Lobby lobby = population.fields().lobbyFor(citizen, level, random);
                 return lobby == null ? population.fields().homeTown(citizen, random) : lobby.mapId();
             }
             case MARKET -> {

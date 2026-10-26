@@ -63,9 +63,34 @@ public final class AgentBossRunSession {
     /** Since when no human stands in the event; -1 while one does. */
     private long noHumanSinceMs = -1L;
     private boolean exitNpcPrepared;
+    /**
+     * A citizen run (docs/CITIZEN_EXPEDITIONS_PLAN.md): the expedition citizen {@link #citizenLeaderId} leads, whose
+     * members are citizens that lead themselves, anchored to it; the population hosts it (AgentBossRunHost.citizens).
+     */
+    private final boolean citizenRun;
+    private final int citizenLeaderId;
+    /** The entry NPC's choices that start the expedition, which the citizen leader talks once the population asks. */
+    private final int[] citizenStartSelections;
+    /** A boss the server moves itself (Balrog): a citizen run fights on with no human in it (no rule A). */
+    private final boolean humanOptional;
+    /** The population asked for the Start (AgentBossRunService.startCitizens); set from any thread. */
+    private volatile boolean startRequested;
+    private long startTalkedAtMs;
+    private long clearedAtMs;
 
     AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, Expedition expedition,
                         AgentBossFight fight, long nowMs) {
+        this(sessionId, definition, expedition, fight, nowMs, 0, null, false);
+    }
+
+    /**
+     * A citizen run of {@code expedition}, which citizen {@code citizenLeaderId} leads: its leader talks the entry NPC's
+     * {@code startSelections} once the population asks for the Start; {@code humanOptional} for a boss the server
+     * moves itself. A {@code citizenLeaderId} of 0 is a companion run.
+     */
+    AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, Expedition expedition,
+                        AgentBossFight fight, long nowMs, int citizenLeaderId, int[] startSelections,
+                        boolean humanOptional) {
         if (definition == null || expedition == null || fight == null) {
             throw new IllegalArgumentException("a boss run needs a definition, an expedition and a fight");
         }
@@ -74,6 +99,10 @@ public final class AgentBossRunSession {
         this.expedition = expedition;
         this.fight = fight;
         this.createdAtMs = nowMs;
+        this.citizenRun = citizenLeaderId > 0;
+        this.citizenLeaderId = Math.max(0, citizenLeaderId);
+        this.citizenStartSelections = startSelections == null ? new int[0] : startSelections.clone();
+        this.humanOptional = citizenRun && humanOptional;
     }
 
     /** A party-instance run (P12 G7): keyed by the party's {@code event}, STARTING at once, with no expedition. */
@@ -90,6 +119,10 @@ public final class AgentBossRunSession {
         this.createdAtMs = nowMs;
         this.startedAtMs = nowMs;
         this.phase = Phase.STARTING;
+        this.citizenRun = false;
+        this.citizenLeaderId = 0;
+        this.citizenStartSelections = new int[0];
+        this.humanOptional = false;
     }
 
     public long sessionId() {
@@ -112,6 +145,33 @@ public final class AgentBossRunSession {
 
     public long createdAtMs() {
         return createdAtMs;
+    }
+
+    /** A citizen run (docs/CITIZEN_EXPEDITIONS_PLAN.md): the population hosts it, not the living world. */
+    public boolean citizenRun() {
+        return citizenRun;
+    }
+
+    /** The citizen who leads a citizen run's expedition; 0 for a companion run. */
+    public int citizenLeaderId() {
+        return citizenLeaderId;
+    }
+
+    /** True while a citizen run fights on with no human in it (a boss the server moves itself). */
+    public boolean humanOptional() {
+        return humanOptional;
+    }
+
+    /**
+     * The population asks for a citizen run's Start: its leader talks to the entry NPC on the next registering ticks
+     * (CITIZEN_START_TALK_EVERY_MS apart, while the list stays open). False for a companion run or once it started.
+     */
+    boolean requestStart() {
+        if (!citizenRun || phase != Phase.REGISTERING) {
+            return false;
+        }
+        startRequested = true;
+        return true;
     }
 
     public Phase phase() {
@@ -259,6 +319,11 @@ public final class AgentBossRunSession {
             if (member.onMapSinceMs() == 0L) {
                 member.onMapSince(nowMs);
             }
+            if (citizenRun && expedition.contains(agent)) {
+                // the citizen leader made the list, so it is on it from the start: no talk to sign it up
+                listedAlready(host, member);
+                continue;
+            }
             // A self-led member has no owner to walk up with: it walks to the spot the host names, on every tick
             // while it is away from it, the way the GM expedition lobby moves its members.
             Point spot = host.standAt(member.seat(definition.key(), sessionId), agent.getMap(), member.ordinal());
@@ -274,6 +339,47 @@ public final class AgentBossRunSession {
             turnTaken = true;
             signUp(ports, host, member, agent);
         }
+        if (citizenRun && startRequested) {
+            talkStart(ports, nowMs);
+        }
+    }
+
+    /** A citizen run's member already on the list (its leader, who made it): tied to the run and REGISTERED. */
+    private void listedAlready(AgentBossRunHost.Rule host, AgentBossRunMember member) {
+        AgentBossRunHost.Seat seat = member.seat(definition.key(), sessionId);
+        if (!host.seat(seat)) {
+            refuse(host, member, AgentBossRunHost.Refusal.BUSY);
+            return;
+        }
+        member.registered();
+        log.info("Boss run sign-up: session={} boss={} member={} registered (on the list already)", sessionId,
+                definition.key(), member.agentId());
+        host.registered(seat);
+    }
+
+    /**
+     * A citizen run the population asked to start: its leader, alive on the recruit map, talks the entry NPC's Start
+     * choices, at most every CITIZEN_START_TALK_EVERY_MS while the list stays open (her Start warps everyone listed
+     * who stands in her room, and the next tick sees the list closed).
+     */
+    private void talkStart(AgentBossRunPorts ports, long nowMs) {
+        if (startTalkedAtMs > 0L && nowMs - startTalkedAtMs < citizenStartTalkEveryMs()) {
+            return;
+        }
+        Character leader = ports.agent(citizenLeaderId);
+        if (leader == null || !leader.isAlive() || leader.getMapId() != definition.recruitMapId()) {
+            return;
+        }
+        startTalkedAtMs = nowMs;
+        ports.stop(citizenLeaderId);
+        boolean talked = false;
+        try {
+            talked = ports.runNpc(leader, definition.entryNpcId(), citizenStartSelections);
+        } catch (RuntimeException failure) {
+            log.warn("Boss run start conversation failed: session={} leader={}", sessionId, citizenLeaderId, failure);
+        }
+        log.info("Boss run start asked: session={} boss={} leader={} talked={}", sessionId, definition.key(),
+                citizenLeaderId, talked);
     }
 
     private boolean inReach(AgentBossRunPorts ports, Character agent) {
@@ -403,10 +509,12 @@ public final class AgentBossRunSession {
             return;
         }
         if (phase == Phase.FIGHTING && event.isEventCleared()) {
-            clear(ports);
+            clear(ports, nowMs);
             return;
         }
-        if (phase == Phase.POST_CLEAR || definition.ownerLeavingTakesParty()) {
+        if (citizenRun) {
+            leaveAfterClear(ports, nowMs);
+        } else if (phase == Phase.POST_CLEAR || definition.ownerLeavingTakesParty()) {
             followAnchorsOut(ports, host, nowMs);
         }
         watchHumans(ports, nowMs);
@@ -627,6 +735,9 @@ public final class AgentBossRunSession {
      * an Agent does not) for HUMAN_GONE_GRACE_MS, every alive member still fighting heads out to wait outside.
      */
     private void watchHumans(AgentBossRunPorts ports, long nowMs) {
+        if (humanOptional) {
+            return; // a citizen run on a boss the server moves itself fights on without one
+        }
         if (standingHumans(ports) > 0) {
             noHumanSinceMs = -1L;
             return;
@@ -698,6 +809,23 @@ public final class AgentBossRunSession {
                 log.info("Boss run member down outside, its anchor left: session={} boss={} member={} anchor={}",
                         sessionId, definition.key(), member.agentId(), anchor);
                 host.ownerLeftWhileDown(member.seat(definition.key(), sessionId));
+            }
+        }
+    }
+
+    /**
+     * A citizen run after the clear: its members go on with the fight's after-clear play (Balrog's reward room: the
+     * box, a human's first pick, their share of the drops, the way out), which walks them out of the event. Any one
+     * still inside CITIZEN_AFTER_CLEAR_MS after the clear heads out by the stock ways (EXITED). Before the clear nothing
+     * walks a citizen out: it fights until it goes down or the event ends.
+     */
+    private void leaveAfterClear(AgentBossRunPorts ports, long nowMs) {
+        if (phase != Phase.POST_CLEAR || nowMs - clearedAtMs < citizenAfterClearMs()) {
+            return;
+        }
+        for (AgentBossRunMember member : members) {
+            if (member.phase() == AgentBossRunMember.Phase.INSIDE && alive(ports, member)) {
+                leave(ports, member, AgentBossRunHost.Out.EXITED, nowMs);
             }
         }
     }
@@ -907,8 +1035,9 @@ public final class AgentBossRunSession {
      * stays stopped); the fight is not ticked after, unless it plays on after the clear where a member stands
      * ({@link AgentBossFight#playsAfterClear}: the member is left to it, a follower too).
      */
-    private void clear(AgentBossRunPorts ports) {
+    private void clear(AgentBossRunPorts ports, long nowMs) {
         cleared = true;
+        clearedAtMs = nowMs;
         for (AgentBossRunMember member : members) {
             if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
                 continue;
@@ -1133,5 +1262,15 @@ public final class AgentBossRunSession {
     static int spotReachPx() {
         return config.AgentTuning.intValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.SPOT_REACH_PX");
+    }
+
+    static long citizenStartTalkEveryMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.CITIZEN_START_TALK_EVERY_MS");
+    }
+
+    static long citizenAfterClearMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.CITIZEN_AFTER_CLEAR_MS");
     }
 }

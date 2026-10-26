@@ -49,6 +49,9 @@ public final class PopulationLoader {
             // party quests citizens run (CitizenPartyQuests)
             "pq.lf", "pq.join", "pq.go", "pq.clear", "pq.fail", "pq.down", "pq.giveup", "pq.call", "pq.call.answer",
             "pq.thanks", "pq.wait",
+            // boss expeditions citizens run (CitizenPartyQuests with CitizenBossDoor)
+            "boss.lf", "boss.join", "boss.signup", "boss.go", "boss.clear", "boss.fail", "boss.down", "boss.giveup",
+            "boss.broke", "boss.call", "boss.call.answer", "boss.thanks", "boss.wait",
             // the people citizens remember (PersonMemories): meeting again, and a "hi" from them
             "memory.greet.pq", "memory.greet.pqfail", "memory.greet.party", "memory.greet.bought", "memory.greet.sold",
             "memory.greet.famed", "memory.greet.helped", "memory.greet.talk", "memory.greet.warm", "memory.greet.vague",

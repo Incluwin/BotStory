@@ -22,6 +22,8 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `MARKET_ENABLED`, `MARKET_STALLS_MAX`, `MARKET_BUY_BUDGET_PER_DAY` | Free Market participation |
 | `PQ_RUNS_ENABLED`, `PQ_RUN_QUESTS`, `PQ_RUNS_PER_CHANNEL`, `PQ_RUNS_MAX` | citizen parties run party quests themselves (kill switch, which quests, runs at once per channel / in all) |
 | `PQ_FORM_PATIENCE_MS`, `PQ_HUMAN_SEAT_HOLD_MS`, `PQ_RUN_COOLDOWN_MS`, `PQ_CALLS_PER_PARTY` | a lobby party gives up after; a seat waits for an invited human; no PQ plan after a run; citizens a short party calls over |
+| `BOSS_RUNS_ENABLED`, `BOSS_RUN_BOSSES`, `BOSS_RUNS_MAX`, `BOSS_RUN_SEATS` | citizen parties run Balrog expeditions themselves (kill switch, `easy_balrog`/`balrog_normal` only, expeditions at once in all, the party they fill to) |
+| `BOSS_NORMAL_MIN_LEVEL`, `BOSS_RUN_COOLDOWN_MS`, `BOSS_SIGNUP_WAIT_MS` | six citizens at this level go Normal; no PQ or expedition plan after one; how long the leader waits for a human to sign up |
 | `SHUTDOWN_LOGOUT_THREADS`, `SHUTDOWN_LOGOUT_BUDGET_MS` | server shutdown: loaded citizens unload (a full save each) on this many threads for at most this long; the rest unload with their channel |
 | `MEMORY_ENABLED`, `MEMORY_PEOPLE_MAX`, `MEMORY_EPISODES_MAX`, `MEMORY_TOTAL_MAX`, `MEMORY_FORGET_DAYS` | citizens remember the people they meet (kill switch; people per citizen, things per person, remembered pairs server-wide, forgotten when unchanged this long) |
 | `MEMORY_HALF_LIFE_DAYS`, `MEMORY_WARMTH_HALF_LIFE_DAYS`, `MEMORY_RETURN_AFTER_MINUTES`, `MEMORY_GREET_GAP_MS` | how fast episodes and warmth fade; apart this long is a reunion; one reunion greeting per player this often |
@@ -129,6 +131,28 @@ leaves the quest's party once it stands outside the instance and plans its next 
 citizens for a quest citizens run themselves (HPQ's lobby policy also counts citizen runs against its background caps);
 `PQ_RUNS_ENABLED: false` gives them back to it and leaves citizens gathering and inviting as before.
 
+**Boss expeditions (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md).** Mu Young's room in Sleepywood (105100100) is a
+lobby `balrog` (lv50-120) of every region whose citizens reach Lv50 (Orbis, El Nath, Aquarium, Ariant, Mu Lung, Leafre,
+Crimsonwood, Malaysia); a citizen on a `PQ` session whose level fits more than one lobby of its region picks one at
+random. There a party forms as at a PQ lobby, with the same human invite, calls and patience, up to `BOSS_RUN_SEATS`;
+each citizen first buys what it lacks of the boss's potions at the Ant Tunnel Park store (as a bench ally does), and one
+that cannot afford them says so and goes. The party's leader makes the expedition with Mu Young's own window
+(`CitizenBossDoor`, `AgentBossRunService.openCitizenExpedition`): Normal for six citizens all `BOSS_NORMAL_MIN_LEVEL`
+or more who carry Normal's potions, else Easy (3 or more). The boss run signs the other citizens up through her window,
+one talk a tick; a human of the party hears once to sign up by talking to her. Once every citizen is listed and every
+human too (or `BOSS_SIGNUP_WAIT_MS` passed) and the scheduler sheds no load, the leader talks her Start. Only bosses the
+server moves itself for a fight a bot signed up for (`living_world.COMPANION_BOSS_SERVER_AUTHORITY` with the boss in
+`COMPANION_BOSS_ENABLED_TYPES`), so citizens fight Balrog with or without a human (no "no human left" walk-out);
+Zakum and up need a human's client to fight back. After the clear they play the reward room as players do
+(the box, a human's first 7 s, their share by weapon), then walk out by the stock ways (`CITIZEN_AFTER_CLEAR_MS` at
+most). A citizen that goes down says so and leaves the party; the run goes on. The end books it ("cleared Easy Balrog
+with ..."), says gg/rip, thanks a human, and each citizen goes back to its day with no PQ or expedition for
+`BOSS_RUN_COOLDOWN_MS`. Player first: no list while a Balrog list or fight of either difficulty is open on the channel
+or a human of Lv50+ outside their party stands in her room; at most `BOSS_RUNS_MAX` citizen expeditions (1); the last
+`COMPANION_BOSS_HUMAN_SEATS` seats of their list stay free for players, who may sign up on it; a player's companions never join it. Log lines
+`citizen boss run in: boss= session= ...`, `citizen boss run start: ...` and `citizen boss run: boss= outcome= ...`,
+beside the run's own "Boss run ..." lines.
+
 **Conversation.** A human line in map chat near citizens goes through: silence (the voice pack's
 ignore rate, unless called by name), templates (greetings, "where is X"), one Jev `citizen-address`
 Choice when several citizens are near and it is unclear who was meant, then generation through the
@@ -169,8 +193,9 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 `force <n>` (keep n loaded regardless of the hour - load tests), `sweep`, `reload`, `guilds`,
 `market`, `conversation`, `level <name> <level>` (raise an offline citizen's stored level as the ledger does; never
 lowers), `login <name>` (load that citizen now, replacing a ledger-only session), `pq` (citizen runs now and since boot,
-the last ten), `pq send <name>` (a loaded citizen goes to the lobby its level fits, out for a party quest).
 `memory` (the memory cache and table counts), `memory <name>` (who that citizen remembers, warmth, what happened).
+the last ten), `pq send <name> [lobby]` (a loaded citizen goes to the lobby its level fits, out for a party quest; a
+lobby id such as `balrog` picks one of several that fit).
 
 **Testing job errands live.**
 1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
@@ -256,6 +281,7 @@ in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 
 Citizen parties run KPQ and HPQ (LPQ waits, the user's call 2026-10-25: LudiPQ has one lobby a channel; OPQ after the
 OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ lobbies they still only gather and
-invite you); no expeditions; no alliances; travel on foot ends on the first map nobody watches (no citizen walks a
-whole multi-map trip unseen) and rides no real ship; citizens remember players (each other only through circles,
-guilds and gossip) but answer no whispers, and the weekly life summary of plan 6.4 is never written.
+invite you); expeditions are Easy and Normal Balrog only (docs/CITIZEN_EXPEDITIONS_PLAN.md); travel on foot ends on
+the first map nobody watches (no citizen walks a whole multi-map trip unseen) and rides no real ship; citizens remember
+players (each other only through circles, guilds and gossip) but answer no whispers, and the weekly life summary of
+plan 6.4 is never written.

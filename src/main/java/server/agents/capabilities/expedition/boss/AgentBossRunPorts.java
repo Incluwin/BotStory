@@ -8,6 +8,7 @@ import server.agents.capabilities.supplies.AgentSupplyLogFields;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentExpeditionGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -17,6 +18,7 @@ import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.runtime.activity.AgentActivityBootstrap;
 import server.agents.runtime.simulation.AgentSimulationState;
 import server.expeditions.Expedition;
+import server.expeditions.ExpeditionType;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -91,11 +93,25 @@ public interface AgentBossRunPorts {
      */
     String supplies(Character agent);
 
+    /**
+     * The expedition of {@code type} on {@code character}'s channel, registering or under way; null when there is none.
+     * A citizen expedition's leader makes it with the entry NPC and the run adopts it from here.
+     */
+    default Expedition expedition(Character character, ExpeditionType type) {
+        return null;
+    }
+
     /** The live server. */
     final class Live implements AgentBossRunPorts {
         private static final Logger log = LoggerFactory.getLogger(AgentBossRunPorts.class);
 
         private Live() {
+        }
+
+        @Override
+        public Expedition expedition(Character character, ExpeditionType type) {
+            return character == null || type == null ? null
+                    : AgentExpeditionGatewayRuntime.expedition().current(character, type);
         }
 
         private static AgentRuntimeEntry entry(int agentId) {
