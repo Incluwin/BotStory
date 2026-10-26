@@ -1,0 +1,40 @@
+# Zipangu arc: the Mushroom Shrine bell that lost its voice, the clapper taken to the Showa gang Boss's desk by a
+# frightened boy on his first job, and the boy who takes it back. Its last two beats happen once per server
+# (quests/zipangu.yaml).
+- id: chiyo-the-shrine-bell
+  persona: chiyo
+  chapters:
+    - id: chapter-1
+      title: "A Bell Without a Voice"
+    - id: chapter-2
+      title: "Round the Boss's Neck"
+      enterWhen: { flags: [zip.clapper.traced] }
+      dialogueOverrides:
+        greet: ["round the Boss's neck. i keep thinking of it on a cord. it's a bell's heart. it doesn't belong round anybody's neck.", "hello. i swept the steps twice today. thinking."]
+        who: ["Chiyo. i keep the shrine and its bell. its clapper hangs round the Showa gang Boss's neck; he wears it walking the third street. a boy named Daichi took it on his first job and has been sorry every day since. i'd like him to stop being sorry."]
+        smallTalk: ["i'm not angry with Daichi. he was a frightened boy who'd been told to be brave. that's not the same as bad.", "the shrine's quiet without the bell. it's supposed to be quiet. not this quiet."]
+        speakPlainly: ["plainly: a bell's heart round a gangster's neck."]
+        about.daichi: ["Daichi, from the Showa bathhouse. he took the clapper. he's sorry. i've never met him. i'd like to."]
+        chapterEnter: ["(stands at the foot of the bell tower and lays one hand flat against the cold bronze)"]
+    - id: chapter-3
+      title: "Taken Back"
+      enterWhen: { flags: [zip.clapper.recovered] }
+      dialogueOverrides:
+        greet: ["they say Daichi has it. back off the Boss's neck. he took it back himself. well. with help.", "hello. i've polished the bell. it's waiting."]
+        who: ["Chiyo. i keep the shrine and its bell. the clapper's off the Boss's neck now. Daichi has it in Showa. he can't bring himself up the steps. i'll wait."]
+        smallTalk: ["Daichi took it back from the Boss on his own street. that's braver than taking it in the first place. much braver.", "i've swept the steps for him. so they're clean when he comes. if he comes."]
+        speakPlainly: ["plainly: it's coming home. slowly."]
+        about.daichi: ["Daichi took the clapper back off the Boss's neck. he can't face the shrine yet. he will."]
+        chapterEnter: ["(polishes the inside of the bell's empty mouth with a soft cloth, very gently)"]
+    - id: chapter-4
+      title: "The Bell Rings"
+      enterWhen: { flags: [zip.bell.rings] }
+      dialogueOverrides:
+        greet: ["did you hear it? from the road? i heard it from the road. i went down to listen.", "hello. it rings at dawn and dusk. you're welcome at both."]
+        who: ["Chiyo. i keep the shrine at Mushroom Shrine, and its bell, which rings again at dawn and dusk. my mother kept it before me. she'd have liked the sound of it now. it's a little different. it's better."]
+        idle: ["(rings the shrine bell once, gently, and listens until the very last of it is gone)", "(sweeps the shrine steps and stops halfway, smiling at nothing)"]
+        smallTalk: ["Daichi came up the steps. last week. he rang it himself. he cried. so did i. Genzo pretended not to see. he saw.", "the bell sounds a little different. there's a scratch on the clapper from the Boss's cord. i'm not polishing it out. it's part of the story now."]
+        speakPlainly: ["plainly: the bell rings."]
+        about.daichi: ["Daichi, from the Showa bathhouse. he rang the bell himself. he comes up the steps on Sundays now. he sweeps. badly. he's getting better."]
+        friend.best: ["i rang the bell for you last night. once, after dusk. for safe travels. you travel a lot."]
+        chapterEnter: ["(rings the shrine bell three times, slow and clear, and then sits down on the swept steps to listen)"]

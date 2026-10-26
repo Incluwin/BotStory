@@ -1,0 +1,432 @@
+# Omega Sector cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 7 Residents, 2 recruitable.
+# The base at the foot of Eos Tower holds the line against the grays of Kulan Field and the machines of Boswell Field.
+# Its radio operator hears a child talking on a dead channel every night at nine (arcs/omega-sector.yaml), and the
+# child is in Korean Folk Town (arcs/korean-folk-town.yaml). Two recruits carry the third tier of the gun and the
+# two-handed axe lines, earned in Ludibrium's clock tower above the base.
+- id: lyra
+  name: Lyra
+  look: { gender: female }
+  title: "Radio Operator of the Signal Hut"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 9, to: 14, spot: "venue:hq-entrance", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:by-agent-m", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:tunnel-door", activity: LINGER }
+      - { from: 23, to: 9, materialize: false }
+  recruitable: false
+  knows: [ultra gray, planey, receiving apparatus]
+  questLines: [lyra-the-antenna, lyra-the-dead-channel, lyra-the-trace]
+  arc: lyra-the-quiet-channel
+  relationships:
+    - { persona: petra, kind: BORROWS_TOOLS_FROM }
+    - { persona: rowan, kind: KEEPS_AN_EYE_ON }
+    - { persona: bomi, kind: LISTENS_TO }
+  giftItemIds: [2020005, 2000002]
+  dialogue:
+    greetFirst: ["hello. sorry, one ear's always on the set. what can i do for you?", "you're not on the duty roster. that's fine. nobody reads the duty roster."]
+    greet: ["hello again.", "you. good. nothing's come in today.", "hi. keep your voice down, i'm listening."]
+    idle: ["(turns a dial a hair to the left, listens, turns it back)", "(writes a single word on a pad, frowns at it, writes it again more neatly)"]
+    noWork: ["nothing today. the channels are quiet. that's what you want on a base."]
+    nothingDue: ["nothing owed. channel's clear."]
+    who: ["Lyra. i run the signal hut. every message in and out of Omega Sector goes past my ear. mostly it's the General asking for tea."]
+    bye: ["over and out."]
+    thanks: ["copy that. thank you."]
+    smallTalk: ["the ultra grays carry receivers. better than ours. i've asked the General for one. he says take one off a gray. so i will.", "the planeys up Eos Tower fly on little controllers. take the controller and they just sit there, buzzing. i feel bad. i take it anyway."]
+    speakPlainly: ["plainly: the radio."]
+    questOffer.lyra-the-antenna: ["my antenna won't hold a bearing. the planeys on Eos Tower's twenty-first and twenty-fourth floors fly on little controllers. twenty planeys, ten controllers, and i can point it where i like."]
+    questAccept.lyra-the-antenna: ["Eos Tower, right above us. take the stairs up. they buzz."]
+    questWaiting.lyra-the-antenna: ["ten controllers. the antenna's pointing at the floor."]
+    questComplete.lyra-the-antenna: ["ten. look, it holds. i can hear the clock tower from here. here. for the climb."]
+    questOffer.lyra-the-dead-channel: ["there's a channel nobody uses. it's dead. it hisses. but at nine, the hiss sounds like somebody talking. i need a gray receiver to hear it properly. the ultra grays out in Kulan Field carry them. twenty-five grays, ten receivers."]
+    questAccept.lyra-the-dead-channel: ["Kulan Field, out past the base. the fourth and fifth fields. they're small. they're not friendly."]
+    questWaiting.lyra-the-dead-channel: ["ten receivers. it's nearly nine."]
+    questComplete.lyra-the-dead-channel: ["ten. i wired them in and i waited till nine. it's a voice. a child. talking to someone who isn't there. i've written down everything she said. here. thank you. i'll be on the set."]
+    questOffer.lyra-the-trace: ["the girl's radio listens now. i've traced the signal to Black Mountain, over Korean Folk Town. go and stand on the mountain where it's strongest, the corner above the village, and then find her. ask her if i can talk to her. i don't want to frighten her."]
+    questAccept.lyra-the-trace: ["Ludibrium, then the Helios Tower lift down to Korean Folk Town, then up to Black Mountain's corner. she'll be in the village. everybody knows her, i expect."]
+    questWaiting.lyra-the-trace: ["did you find her? what did she say?"]
+    questComplete.lyra-the-trace: ["she said yes? nine o'clock, every night. persimmons. all right. all right. i'm going to talk to her tonight. thank you. here. thank you."]
+    about.petra: ["Petra can fix anything with a motor in it. she fixed my chair once. it didn't have a motor. it does now."]
+    about.rowan: ["Rowan's the youngest cadet on the base. he fails every drill. he passes every kindness. i've told the General which one counts."]
+    about.bomi: ["Bomi? i don't know anyone called Bomi."]
+    about.hettie: ["Hettie keeps the stores. ask her for a pencil and she'll give you a form for a pencil."]
+    aboutUnknown: ["never heard them on the radio."]
+    friend.close: ["if you're ever out past the base and in trouble, call the signal hut. i'll hear. i always hear."]
+    friend.best: ["i keep a channel open for you. nobody else uses it. it's just yours."]
+    famed: ["your name's been on the radio. good things. i've logged them."]
+    defamed: ["people say things about you on the radio. i log them. i don't believe the log."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh! that's a night shift with something nice in it. thank you."]
+    gift.again: ["one a day. i'm on duty."]
+
+- id: vesper
+  name: Vesper
+  look: { gender: female }
+  title: "Marksman of the Kulan Watch"
+  job: OUTLAW
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: omega-gun-l88
+  personality: efficient-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [buffoon, master death teddy, thanatos]
+  contract: vesper-the-watch
+  questLines: [vesper-the-range, vesper-the-peacemaker, vesper-concerto, vesper-dragonfire-revolver, vesper-targets]
+  rumors: [omega-the-range]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: rourke, kind: OUTSHOOTS }
+    - { persona: rowan, kind: TRAINS }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["stand still. ...good. you'd make a terrible target. that's a compliment.", "new face. hands where i can see them. joking. mostly."]
+    greet: ["you.", "back. good eyes today?", "hm. hello."]
+    idle: ["(sights down an empty street, breathes out slowly, lowers the gun)", "(cleans a gun barrel with a rag, holds it to the light, cleans it again)"]
+    noWork: ["nothing today. the watch is quiet."]
+    nothingDue: ["even. nothing outstanding."]
+    who: ["Vesper. i hold the Kulan watch. if a gray crosses the line, i see it. if it crosses twice, it doesn't. i train up in the clock tower. the base doesn't give me anything worth aiming at."]
+    bye: ["watch your line."]
+    thanks: ["noted."]
+    smallTalk: ["the clock tower over Ludibrium is the best range in the world. the buffoons never stand still. neither do the teddies. it keeps you honest.", "Rourke says an axe is faster than a gun. we argue about it every evening. i've never once let him win."]
+    speakPlainly: ["plainly: one gun, one line."]
+    offer: ["sixty buffoons off the warped path, counted, and thirty thousand. they're my targets anyway. then i'll watch your back a shift."]
+    join: ["let's go. i'll take the ones you don't see."]
+    bench: ["three days. then i'm back on the watch."]
+    leave: ["back to the line."]
+    refuse.bond: ["i don't watch strangers' backs. i watch strangers."]
+    refuse.flags: ["come up the clock tower with me once. sight in. then ask."]
+    refuseOwnErrand: ["my range first. come and sight in."]
+    questOffer.vesper-the-range: ["sight in with me. the buffoons on the warped path of time in the clock tower. thirty of them. don't stop moving. they won't."]
+    questAccept.vesper-the-range: ["up Eos Tower, across Ludibrium, into the clock tower. the warped path. you'll hear them giggle."]
+    questWaiting.vesper-the-range: ["thirty. keep your line."]
+    questComplete.vesper-the-range: ["thirty, and you never stopped moving. good. you can stand behind me any day. not in front. behind."]
+    questOffer.vesper-the-peacemaker: ["the Peacemaker. a gun that ends arguments. it wants a strap from the master death teddies in the lost time. thirty of them, fifteen bridles for the strap."]
+    questAccept.vesper-the-peacemaker: ["the forgotten path of time, then the lost time behind it. they bite."]
+    questWaiting.vesper-the-peacemaker: ["fifteen bridles. the strap's the hard part."]
+    questComplete.vesper-the-peacemaker: ["fifteen. the Peacemaker. seven safe scrolls, every one took. it shoots true. so do you."]
+    questOffer.vesper-concerto: ["the Concerto. i want it tuned on something that won't be still. thirty grim phantom watches in the forbidden time."]
+    questAccept.vesper-concerto: ["past the phantom watches, into the forbidden time. they stop your clock. keep yours running."]
+    questWaiting.vesper-concerto: ["thirty. keep your clock running."]
+    questComplete.vesper-concerto: ["thirty. the Concerto. seven sixties, every one took. listen to it. that's the sound of a good line."]
+    questOffer.vesper-dragonfire-revolver: ["the Dragonfire Revolver. the best gun i've ever seen. it wants the strap off Thanatos. three of them, in the forgotten passage. three straps."]
+    questAccept.vesper-dragonfire-revolver: ["the forgotten passage, at the end of the forgotten path. Thanatos takes its time coming back. so can you."]
+    questWaiting.vesper-dragonfire-revolver: ["three straps. be patient. it's a sniper's job."]
+    questComplete.vesper-dragonfire-revolver: ["three. the Dragonfire Revolver. two tens and five sixties, every one took. it's yours. watch your line."]
+    questOffer.vesper-targets: ["ten grandpa clocks? the buffoons' clocks make the best targets. they tick when you hit them."]
+    questAccept.vesper-targets: ["the warped path. they giggle."]
+    questWaiting.vesper-targets: ["ten."]
+    questComplete.vesper-targets: ["ten. the range is full again."]
+    about.rourke: ["Rourke carries an axe the size of a door. he's the best man on the base. don't tell him i said so. he'll get louder."]
+    about.rowan: ["Rowan can't hit the broad side of a silo. he's getting better. i'm teaching him to breathe."]
+    aboutUnknown: ["never had them in my sights."]
+    friend.close: ["i'll watch your back on the Kulan line. anybody's who asks nicely. yours without asking."]
+    friend.best: ["if you ever need a shot taken, i'll take it. from anywhere. i'll be there."]
+    famed: ["people talk about you on the watch. i listen. i agree."]
+    defamed: ["noted. i'll keep an eye on whoever said it."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["that's a good one. i'll eat it on watch. slowly."]
+    gift.again: ["one a day. i'm on the line."]
+
+- id: rourke
+  name: Rourke
+  look: { gender: male }
+  title: "Heavy Trooper of the Silo"
+  job: CRUSADER
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: omega-2h-axe-l88
+  personality: relaxed-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 8, to: 14, spot: "venue:tunnel-entrance", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: true
+  knows: [deep buffoon, dual ghost pirate, gatekeeper]
+  contract: rourke-the-heavy-share
+  questLines: [rourke-the-heavy-drill, rourke-colonian-axe, rourke-tavar, rourke-dragon-battle-axe, rourke-rock-pieces]
+  rumors: [omega-the-range]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: vesper, kind: LOSES_TO_AT_CARDS }
+    - { persona: dmitri, kind: EATS_THIRDS_FROM }
+  giftItemIds: [2000005, 2020004]
+  dialogue:
+    greetFirst: ["ha! a new face! welcome to the base. mind the axe. everyone minds the axe.", "you look like you can carry things. good. so can i. we'll get on."]
+    greet: ["hey!", "there you are!", "good to see you, friend."]
+    idle: ["(sets an enormous axe down very gently, as if it might wake)", "(does twenty push-ups, stands, and looks around to see if anyone noticed)"]
+    noWork: ["nothing today. the silo's guarded. by me. it's very guarded."]
+    nothingDue: ["we're square, friend."]
+    who: ["Rourke. heavy trooper. i guard the silo and the tunnel and anything else that needs a big man standing in front of it. i train up in the clock tower. nothing on the base will stand still long enough to hit."]
+    bye: ["mind the axe!"]
+    thanks: ["ha! good."]
+    smallTalk: ["the deep buffoons in the clock tower are made of rock. you hit them and a bit comes off. i've got a jar of bits. i don't know why i keep them.", "Vesper says a gun's faster than an axe. she's right. don't tell her. she'll get quiet. she's already quiet."]
+    speakPlainly: ["plainly: a big axe and a bigger appetite."]
+    offer: ["thirty thousand, and twenty rock pieces off the deep buffoons. i'm building a wall with them. i'll stand in front of you."]
+    join: ["let's go! i'll go first. i always go first."]
+    bench: ["four days. then i get bored and lift the silo."]
+    leave: ["back to the silo, friend."]
+    refuse.bond: ["ha! i don't swing next to strangers. it's dangerous. for them."]
+    refuse.flags: ["come drill with me in the clock tower. then come by the lower west street one evening and hear what Vesper says about me."]
+    refuseOwnErrand: ["my drill first. come and swing."]
+    questOffer.rourke-the-heavy-drill: ["heavy drill. the deep buffoons on the warped path of time. thirty of them, and fifteen rock pieces for my jar. i like the jar."]
+    questAccept.rourke-the-heavy-drill: ["the clock tower over Ludibrium. the warped path. they're rock. hit hard."]
+    questWaiting.rourke-the-heavy-drill: ["fifteen pieces. the jar's hungry."]
+    questComplete.rourke-the-heavy-drill: ["fifteen! the jar's happy. you swing like a trooper. ha!"]
+    questOffer.rourke-colonian-axe: ["the Colonian Axe. a real axe. it wants breaking in on the dual ghost pirates in the unbalanced time. thirty of them. they've got two of everything. hit them twice."]
+    questAccept.rourke-colonian-axe: ["the warped path, then the unbalanced time off it. it tilts. stand wide."]
+    questWaiting.rourke-colonian-axe: ["thirty. twice each."]
+    questComplete.rourke-colonian-axe: ["thirty! the Colonian Axe. seven safe scrolls, every one took. look at that edge."]
+    questOffer.rourke-tavar: ["the Tavar. it wants a hat. a big one. thirty gigantic spirit vikings in the twisted time. they've got the biggest hats in the world."]
+    questAccept.rourke-tavar: ["the warped path, the twisted time off the end. they're gigantic. so are you, today."]
+    questWaiting.rourke-tavar: ["thirty. big hats, big friend."]
+    questComplete.rourke-tavar: ["thirty! the Tavar. seven sixties, every one took. that's an axe for a heavy trooper."]
+    questOffer.rourke-dragon-battle-axe: ["the Dragon Battle Axe. it wants the armband off the gatekeeper in the warped passage. three of them. three armbands. they hit back."]
+    questAccept.rourke-dragon-battle-axe: ["the warped passage, at the end of the warped path. the gatekeeper's slow to come back. wait. then swing."]
+    questWaiting.rourke-dragon-battle-axe: ["three armbands. stand wide."]
+    questComplete.rourke-dragon-battle-axe: ["three! the Dragon Battle Axe. two tens and five sixties, every one took. you're the heavy trooper now. i'll carry the bags."]
+    questOffer.rourke-rock-pieces: ["ten rock pieces? the jar's looking empty."]
+    questAccept.rourke-rock-pieces: ["the warped path."]
+    questWaiting.rourke-rock-pieces: ["ten."]
+    questComplete.rourke-rock-pieces: ["ten. the jar's full. ha!"]
+    about.vesper: ["Vesper holds the Kulan watch. she's the best shot on the base. she beats me at cards. she beats everyone at cards."]
+    about.dmitri: ["Dmitri feeds me thirds. nobody else gets thirds. i don't ask why. i'm frightened he'll stop."]
+    aboutUnknown: ["never stood in front of them."]
+    friend.close: ["you can lean on the silo with me any time. it's the best wall on the base."]
+    friend.best: ["i'll stand in front of you. anything, anywhere. ha! i mean it."]
+    famed: ["the whole base knows your name. i told them. loudly."]
+    defamed: ["somebody said that? point them out. i'll have a word. a loud one."]
+    gift: ["ha! thanks!"]
+    gift.favorite: ["ha! a trooper's lunch! i'd fight for that!"]
+    gift.again: ["one a day, friend. Dmitri's watching my belt."]
+
+- id: hettie
+  name: Hettie
+  look: { gender: female }
+  title: "Quartermaster of the Supply Silo"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 7, to: 15, spot: "venue:free-market-entrance", activity: LINGER }
+      - { from: 15, to: 20, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [barnard gray, king block golem, space food]
+  questLines: [hettie-the-rations, hettie-the-strategy-table]
+  rumors: [omega-the-mess]
+  relationships:
+    - { persona: dmitri, kind: SUPPLIES }
+    - { persona: lyra, kind: ISSUES_PENCILS_TO }
+  giftItemIds: [2000002, 2020005]
+  dialogue:
+    greetFirst: ["name, rank, and what you need. in that order. no, you're not on the list. what do you need?", "welcome to Omega Sector. supplies are by requisition. requisitions are by form. forms are by me."]
+    greet: ["hello. form?", "you again. i've kept a form for you.", "hello again."]
+    idle: ["(counts a crate, writes the number down, counts it again and changes the number by one)", "(stamps a form, reads it, stamps it again harder)"]
+    noWork: ["nothing today. the silo's full. i hate a full silo. there's nothing to count."]
+    nothingDue: ["your account is balanced."]
+    who: ["Hettie. quartermaster. every boot, bullet and biscuit on this base comes past my desk. the General signs for it. i make sure he means it."]
+    bye: ["sign here. joking. go."]
+    thanks: ["received, with thanks."]
+    smallTalk: ["the barnard grays carry space food. it's better than ours. it's better than Dmitri's. don't tell either of them.", "the General wants a strategy table with toy blocks on it. real toy blocks. the block golems on Eos Tower are made of them. i've got the form."]
+    speakPlainly: ["plainly: supplies, and forms for supplies."]
+    questOffer.hettie-the-rations: ["the rations are short. the barnard grays in Kulan Field carry space food. twenty-five grays, ten packets. it's for the base. i'll file it as captured stores."]
+    questAccept.hettie-the-rations: ["Kulan Field, past the base. the first field, and the barnard field off the third. they're grey."]
+    questWaiting.hettie-the-rations: ["ten packets. the form's waiting."]
+    questComplete.hettie-the-rations: ["ten. filed as captured stores. here, your requisition. it's been approved. by me."]
+    questOffer.hettie-the-strategy-table: ["the General's strategy table. he wants toy blocks for it, yellow and blue, the real kind. the king block golems on Eos Tower are made of blue ones, and the yellow block golems round them get in the way. twenty yellow golems, ten blue blocks."]
+    questAccept.hettie-the-strategy-table: ["Eos Tower, the fifth and eighth floors, and the hidden tower off the eighth. they're made of toys. they don't play."]
+    questWaiting.hettie-the-strategy-table: ["ten blue blocks. the General's waiting. he's always waiting."]
+    questComplete.hettie-the-strategy-table: ["ten blocks. the General built a castle with them instead of a battle plan. it's a very good castle. here, from stores."]
+    about.dmitri: ["Dmitri cooks for the whole base. he asks for twice what he uses. i give him twice. it's the only form i don't check."]
+    about.lyra: ["Lyra asks for pencils. she writes everything down. i give her two. she always comes back for a third."]
+    about.rowan: ["Rowan lost his boots twice this month. i've started a form just for Rowan's boots."]
+    aboutUnknown: ["not on the base roster."]
+    friend.close: ["you can have anything from stores. fill in the form. i'll fill it in for you."]
+    friend.best: ["i've given you a line on the roster. it says 'friend of the stores'. it's the only one."]
+    famed: ["you're on every form this week. good forms."]
+    defamed: ["there's been a complaint about you. i've filed it under 'unfounded'. i made that file."]
+    gift: ["oh. thank you. i'll log it."]
+    gift.favorite: ["oh. that's not going in the stores. that's mine."]
+    gift.again: ["one a day. the stores have rules."]
+
+- id: rowan
+  name: Rowan
+  look: { gender: male }
+  title: "Cadet of the Morning Drill"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-jr-officer-medin", activity: LINGER }
+      - { from: 11, to: 17, spot: "venue:lower-west-street-2", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [trixter, ratz, black ratz]
+  questLines: [rowan-the-first-drill, rowan-the-watch-post]
+  relationships:
+    - { persona: vesper, kind: IS_TAUGHT_BY }
+    - { persona: hettie, kind: LOSES_BOOTS_TO }
+    - { persona: lyra, kind: ADMIRES }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["cadet Rowan, sir! ...or ma'am. or... hello. sorry. i salute everyone. it's safer.", "are you an officer? you look like an officer. i'm going to salute you just in case."]
+    greet: ["hello! i mean, sir! hello.", "you're back! i passed a drill today. nearly.", "hi!"]
+    idle: ["(salutes a lamp post, notices, lowers his arm quickly)", "(practises a drill turn, turns the wrong way, and starts again)"]
+    noWork: ["nothing today. i'm supposed to be drilling. i'm drilling. this is it."]
+    nothingDue: ["all squared away, sir!"]
+    who: ["Rowan. cadet. i fail the morning drill every morning. Officer Medin says i'll pass one day. he says it the same way every day. i think he means it."]
+    bye: ["dismissed! i mean, bye!"]
+    thanks: ["thank you, sir!"]
+    smallTalk: ["the trixters on Eos Tower's forty-third floor tie my bootlaces together. i don't know how. they're very small.", "Vesper's teaching me to shoot. she says breathe out before you pull. i keep breathing in. i'm going to get it."]
+    speakPlainly: ["plainly: a cadet. still."]
+    questOffer.rowan-the-first-drill: ["Officer Medin says my drill would pass if i'd ever fought anything. the trixters on Eos Tower's forty-third to forty-fifth floors. twenty-five of them. could you show me how? i'll watch. i'll take notes."]
+    questAccept.rowan-the-first-drill: ["Eos Tower, up the stairs. forty-third floor. they tie your laces. watch your laces."]
+    questWaiting.rowan-the-first-drill: ["twenty-five. i'm watching. i'm taking notes."]
+    questComplete.rowan-the-first-drill: ["twenty-five! i wrote it all down. 'don't stand still. hit them.' that's it? that's it! i'm going to pass tomorrow. here, my ration. you earned it more."]
+    questOffer.rowan-the-watch-post: ["i've got the night watch post, top of Eos Tower. the ratz and black ratz on the ninety-seventh and ninety-eighth floors chew through the watch-post wires. twenty of each, and ten rat traps so i can set them myself."]
+    questAccept.rowan-the-watch-post: ["Eos Tower, nearly the top. it's a long way up. take the stairs. i always do. the lift scares me."]
+    questWaiting.rowan-the-watch-post: ["twenty and twenty, and ten traps. the wires are very chewed."]
+    questComplete.rowan-the-watch-post: ["ten traps! i set one already. i caught my own sleeve. it works! thank you, sir. ma'am. thank you."]
+    about.vesper: ["Vesper's the best shot on the base. she's teaching me. she's very patient. she breathes out a lot. i think it's at me."]
+    about.hettie: ["Hettie has a form for my boots. just my boots. i'm the only one with a form."]
+    about.lyra: ["Lyra brings me tea on the night watch. she listens to the radio the whole time. she says it's company."]
+    aboutUnknown: ["are they an officer? should i salute?"]
+    friend.close: ["you can drill with me any morning. you'll pass. you always pass."]
+    friend.best: ["when i pass the morning drill, i'm going to salute you first. not Medin. you."]
+    famed: ["everyone on the base knows your name! i salute when they say it!"]
+    defamed: ["sir! i don't believe a word of it, sir!"]
+    gift: ["for me? thank you, sir!"]
+    gift.favorite: ["WOW. that's better than rations. that's better than everything."]
+    gift.again: ["one a day! Hettie's got a form for treats too."]
+
+- id: dmitri
+  name: Dmitri
+  look: { gender: male }
+  title: "Cook of the Base Mess"
+  job: BEGINNER
+  level: { min: 28, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 6, to: 13, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 13, to: 20, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [plateon, mt-09, plateon's helmet]
+  questLines: [dmitri-the-mess-pots, dmitri-the-stove-fuel]
+  rumors: [omega-the-mess]
+  relationships:
+    - { persona: rourke, kind: FEEDS_THIRDS }
+    - { persona: hettie, kind: ORDERS_TWICE_FROM }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["sit, sit! you look hungry. everyone looks hungry. eat first, talk after.", "a new face at the mess! welcome. there's soup. there's always soup."]
+    greet: ["hungry?", "you again! good. sit.", "soup's on."]
+    idle: ["(stirs an enormous pot, tastes it, adds a pinch of something, tastes it again)", "(wipes his hands on his apron and counts heads in the mess line)"]
+    noWork: ["nothing today. the soup's made. the soup's always made."]
+    nothingDue: ["nothing owed. eat something."]
+    who: ["Dmitri. i cook for the base. two hundred soldiers, three meals a day, one stove. the stove's older than me. we have an understanding."]
+    bye: ["take a roll. take two."]
+    thanks: ["eat well!"]
+    smallTalk: ["the plateons in Boswell Field wear pots on their heads. good pots. the mess is short of pots. you see where i'm going.", "the MT-09s run on fuel that burns hotter than coal. my stove would love it. my eyebrows wouldn't."]
+    speakPlainly: ["plainly: soup."]
+    questOffer.dmitri-the-mess-pots: ["the mess is short of pots. the plateons in Boswell Field wear them on their heads, and they're good pots. twenty-five plateons, ten helmets. i'll scrub them."]
+    questAccept.dmitri-the-mess-pots: ["Boswell Field, out past the base. the second field and the fourth. they march. they march badly."]
+    questWaiting.dmitri-the-mess-pots: ["ten pots. the stew's waiting."]
+    questComplete.dmitri-the-mess-pots: ["ten! scrubbed, they're the best pots i've ever had. here. and come for supper. you're on the list now."]
+    questOffer.dmitri-the-stove-fuel: ["the stove's cold in the mornings. the MT-09s out on the far side of Boswell Field run on a fuel that burns hot. ten of them, five tins of fuel. i'll keep my eyebrows back."]
+    questAccept.dmitri-the-stove-fuel: ["the far end of Boswell Field. the MT-09s are big. they're the reason the field's quiet."]
+    questWaiting.dmitri-the-stove-fuel: ["five tins. the porridge is lumpy."]
+    questComplete.dmitri-the-stove-fuel: ["five! listen to that stove. it's singing. i've still got my eyebrows. nearly. here. you're on the list for thirds."]
+    about.rourke: ["Rourke gets thirds. he's the only one. he guards the silo. somebody has to feed the man who guards the silo."]
+    about.hettie: ["Hettie sends what i order. i order twice what i need. it works out. we've never discussed it."]
+    about.lyra: ["Lyra eats at her radio. i bring it to her. she says thank you without looking up. that's fine. she's listening."]
+    aboutUnknown: ["never fed them."]
+    friend.close: ["you're on the list for thirds. that's a very short list."]
+    friend.best: ["i named a soup after you. it's the best one. don't tell Rourke. he's got one too. yours is better."]
+    famed: ["the mess line talks about you. with their mouths full. it's a compliment."]
+    defamed: ["hm. whoever said that gets the burnt bit of the pot."]
+    gift: ["oh, for the cook? thank you."]
+    gift.favorite: ["oh, now that's proper food. i'm putting it in the soup. no, i'm eating it."]
+    gift.again: ["one a day. leave room for soup."]
+
+- id: petra
+  name: Petra
+  look: { gender: female }
+  title: "Mechanic of the Command Workshop"
+  job: BEGINNER
+  level: { min: 38, max: 40 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: omega-sector
+    routine:
+      - { from: 8, to: 16, spot: "venue:by-spindle", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:lower-east-street-3", activity: LINGER }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [mecateon, rombot, zeta gray]
+  questLines: [petra-the-laser-coils, petra-the-memory-cards]
+  relationships:
+    - { persona: lyra, kind: LENDS_TOOLS_TO }
+    - { persona: rourke, kind: SHARPENS_THE_AXE_OF }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["hand me that. no, that. thanks. who are you?", "you're standing on my spanner. no, the other foot. thank you. hello."]
+    greet: ["you.", "hand me that.", "hm? oh. hello."]
+    idle: ["(takes a small machine apart, lays every piece out in a row, puts it back together)", "(listens to a gear with her eyes shut, then taps it once with a screwdriver)"]
+    noWork: ["nothing today. everything on the base works. i hate that."]
+    nothingDue: ["nothing owed. nothing broken. a good day."]
+    who: ["Petra. i fix the base. the lifts, the guns, the General's kettle. i used to fix the MT-09s for the Alliance, before they walked off into Boswell Field and stopped listening."]
+    bye: ["don't break anything. if you do, bring it to me."]
+    thanks: ["right. thanks."]
+    smallTalk: ["the mecateons carry laser guns with better coils than anything on this base. i'd like to know who built them. i'd like to shake their hand. then i'd like to take it apart.", "Spindle by the gate forges odd things from odd parts. he says it's for a card game. i've stopped asking."]
+    speakPlainly: ["plainly: a spanner, and a long list."]
+    questOffer.petra-the-laser-coils: ["the base guns want better coils. the mecateons in the far fields of Boswell carry laser guns with the best coils i've ever seen. twenty-five of them, ten guns. i'll take them apart."]
+    questAccept.petra-the-laser-coils: ["Boswell Field, the fifth and sixth. they shoot. duck."]
+    questWaiting.petra-the-laser-coils: ["ten guns. i've cleared the bench."]
+    questComplete.petra-the-laser-coils: ["ten. look at that coil. look at it. here, you've earned that. i'm going to be busy for a week."]
+    questOffer.petra-the-memory-cards: ["the rombots in Eos Tower's hidden tower carry memory cards. there's a map of the old Alliance tunnels on one of them, i know it. fifteen rombots, five cards."]
+    questAccept.petra-the-memory-cards: ["Eos Tower. the hidden tower, off the eighth floor. there aren't many. wait for them."]
+    questWaiting.petra-the-memory-cards: ["five cards. one of them has the map."]
+    questComplete.petra-the-memory-cards: ["five. the third one. the tunnels. i was right. don't tell the General yet. here. for keeping a secret."]
+    about.lyra: ["Lyra borrows my tools to mend her radio. she brings them back cleaner. i don't understand it."]
+    about.rourke: ["i sharpen Rourke's axe every week. it doesn't need it. he likes to watch."]
+    about.bomi: ["the little girl in Korean Folk Town with her father's old radio? i hear she talks to it every night. i'd like to know where he found it."]
+    aboutUnknown: ["never fixed anything of theirs."]
+    friend.close: ["bring me anything broken. anything. i'll fix it first."]
+    friend.best: ["i've built you something. i don't know what it does yet. it's yours."]
+    famed: ["people say your name like you're a well-made machine. it's a compliment. i'd know."]
+    defamed: ["noise. i filter noise for a living."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh, now that's good. that's a long night at the bench, that is."]
+    gift.again: ["one a day. i'm working."]

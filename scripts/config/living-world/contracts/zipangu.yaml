@@ -1,0 +1,33 @@
+# Zipangu contracts (wave 3): a ronin's kill proof on his intro quest's bains, a rooftop watcher's item price once the
+# player has heard Okiku on her.
+- id: genzo-the-ronin-oath
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [genzo.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [8140500], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: rin-the-rooftop-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rin.intro.done, zip.heard-rin]
+  price:
+    meso: 30000
+    items: [{ itemId: 4000092, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }

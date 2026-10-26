@@ -1,0 +1,50 @@
+# New Leaf City arc: the Leaf Street card club and its first tournament. The first two steps' quests each hand out two of
+# John Barricade's artifacts (the iTCG Taru Totem, Mystic Astrolabe, Antellion Relic, Naricain Jewel); the last, Cup
+# Night, hands out Taru Face Paint and happens once per server (quests/new-leaf-city.yaml).
+- id: monty-the-leaf-cup
+  persona: monty
+  chapters:
+    - id: chapter-1
+      title: "A Table With Nothing On It"
+    - id: chapter-2
+      title: "The Prize Table"
+      enterWhen: { flags: [nlc.prizes.promised] }
+      dialogueOverrides:
+        greet: ["hey, partner. the prize table's got a banner now. and Fergus said yes. twice.", "shuffle up. the club's buzzing. a table with a banner does that."]
+        who: ["Monty. i run the Leaf Street Card Club. Fergus will forge Barricade's and Foxwit's old pieces for prizes, if we can find the drawings. a real prize table. on Leaf Street."]
+        smallTalk: ["Foxwit's drawings are in his archive. Barricade's got pawned years ago, to someone on the lower east street. i've got a guess who.", "Ramona's started asking when the tournament is. i've started saying 'soon'. it's the first time 'soon' has been true."]
+        speakPlainly: ["plainly: a card club with a banner and no drawings."]
+        questOffer.monty-the-empty-prize-table: ["the prize table wants a new banner. the old one's held up with coat hangers. the glutton ghouls in the Haunted House foyer carry them, don't ask me why. twenty of them, ten hangers. and tell Fergus i said hello."]
+        questComplete.monty-the-empty-prize-table: ["ten hangers. the banner's up again. Fergus sent these over with his hello. here."]
+        chapterEnter: ["(hangs a banner made of coat hangers and painted cloth over his crate, and steps back to admire it)"]
+      unlocks:
+        rumors: [nlc-the-prize-table]
+    - id: chapter-3
+      title: "The Drawings Come Home"
+      enterWhen: { flags: [nlc.blueprints.found] }
+      dialogueOverrides:
+        greet: ["the drawings are at the forge. all of them. Fergus hasn't slept.", "hey, partner. we're nearly there. one more thing and it's cup night."]
+        who: ["Monty. i run the Leaf Street Card Club. Barricade's and Foxwit's drawings are at Fergus's forge. the table's set. all it needs is the night."]
+        smallTalk: ["Benji's been practising for a week. he's beaten everyone. he's beaten me twice. i let him once.", "Ezra gave Barricade's notes back for nothing. Ezra. for nothing. i've known him eleven years and i've never seen him do that."]
+        speakPlainly: ["plainly: a card club with a prize table, waiting for its night."]
+        questOffer.monty-the-empty-prize-table: ["the prize table wants a new banner. the old one's held up with coat hangers. the glutton ghouls in the Haunted House foyer carry them, don't ask me why. twenty of them, ten hangers. and tell Fergus i said hello."]
+        questComplete.monty-the-empty-prize-table: ["ten hangers. the banner's up again. Fergus sent these over with his hello. here."]
+        questOffer.monty-the-blueprints: ["Fergus wants fresh copies of the drawings for the next cup. ask Theodora and Ezra for another look. and the killa bees in the MesoGears soul corridor chew paper. thirty of them, so nothing chews the copies on the way back."]
+        questComplete.monty-the-blueprints: ["fresh copies. Fergus will be pleased. he'll say he isn't. here. the club owes you."]
+        chapterEnter: ["(lays out a row of cards, each painted with one of Barricade's pieces, and squares the row with a fingertip)"]
+    - id: chapter-4
+      title: "The Leaf Cup"
+      enterWhen: { flags: [nlc.cup.held] }
+      dialogueOverrides:
+        greet: ["partner! the Leaf Cup's been held. on Leaf Street. say it with me.", "hey. the club's never been this full. pull up a crate. there aren't any crates left. pull up the street."]
+        who: ["Monty. i run the Leaf Street Card Club, home of the Leaf Cup. there's a prize table now. there always will be."]
+        idle: ["(polishes a small painted trophy and sets it back on the crate exactly where it was)", "(deals a hand to three children and a very confused cab driver)"]
+        smallTalk: ["Benji played the first hand of the first Leaf Cup. he's going to remember that when he's an explorer. i'm going to remember it when i'm old.", "Ramona's headline was 'Club Has Prizes'. she cut it out and pinned it to my crate herself."]
+        speakPlainly: ["plainly: a card club with a prize table."]
+        friend.best: ["i painted a card of you in the front row of the Leaf Cup crowd. it's the best card in the deck. i'm not playing it. ever."]
+        about.ramona: ["Ramona writes for the Leaf Ledger. eleven years of 'Club Has No Prizes', then one 'Club Has Prizes'. i've pinned them all."]
+        questOffer.monty-the-empty-prize-table: ["the prize table wants a new banner. the old one's held up with coat hangers. the glutton ghouls in the Haunted House foyer carry them, don't ask me why. twenty of them, ten hangers. and tell Fergus i said hello."]
+        questComplete.monty-the-empty-prize-table: ["ten hangers. the banner's up again. Fergus sent these over with his hello. here."]
+        questOffer.monty-the-blueprints: ["Fergus wants fresh copies of the drawings for the next cup. ask Theodora and Ezra for another look. and the killa bees in the MesoGears soul corridor chew paper. thirty of them, so nothing chews the copies on the way back."]
+        questComplete.monty-the-blueprints: ["fresh copies. Fergus will be pleased. he'll say he isn't. here. the club owes you."]
+        chapterEnter: ["(sets a painted trophy on top of his crate, then a second card beside it with a name on it he won't show anyone)"]

@@ -103,7 +103,16 @@ public final class ResidentDialogue {
             Map.entry("crimsonwood-keep", new int[] {9201107, 9201108, 9201109, 9201110, 9201111}),
             Map.entry("haunted-house", new int[] {9201136, 9201137, 9201138, 9201143}),
             Map.entry("bigger-ben", new int[] {9201058, 9201059, 9201081, 9201087}),
-            Map.entry("valley-of-heroes", new int[] {9201104, 9201105}));
+            Map.entry("valley-of-heroes", new int[] {9201104, 9201105}),
+            Map.entry("omega-sector", new int[] {2050009, 2050010, 2050011, 2050012}),
+            Map.entry("korean-folk-town", new int[] {2071000, 2071001, 2071002, 2071004, 2071007}),
+            Map.entry("new-leaf-city", new int[] {9201053, 9201055, 9201058, 9201059, 9201060}),
+            Map.entry("aquarium-hall", new int[] {2060001, 2060002, 2060003, 2060004}),
+            Map.entry("aquarium-store", new int[] {2060001, 2060002, 2060003, 2060004}),
+            Map.entry("singapore-cbd", new int[] {9270019, 9270020, 9270021, 9270023}),
+            Map.entry("boat-quay-town", new int[] {9270022, 9270030}),
+            Map.entry("mushroom-shrine", new int[] {9110002, 9110003, 9110004, 9110005, 9110006}),
+            Map.entry("showa-town", new int[] {9120001, 9120003, 9120011, 9120017, 9120018}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

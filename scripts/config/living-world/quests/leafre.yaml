@@ -52,7 +52,7 @@
   requires: { level: { min: 105 }, flags: [leafre.heard-home], notFlags: [leafre.egg.home], questsCompleted: [hessa-the-shell-that-matches] }
   steps:
     - { id: talk, type: TALK }
-    - { id: golems, type: KILL_MOBS, mobIds: [8190005], count: 20, mapIds: [240040521, 240040600] }
+    - { id: golems, type: KILL_MOBS, mobIds: [8190005], count: 20, mapIds: [240040521] }
     - { id: peak, type: VISIT_MAP, mapIds: [240040600] }
     - { id: home, type: DELIVER, to: hessa }
   rewards: { meso: 120000, exp: 400000, bondPoints: 60, items: [{ itemId: 2022001, count: 20 }], worldFlags: [leafre.egg.home] }

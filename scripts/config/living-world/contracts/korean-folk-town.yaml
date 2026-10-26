@@ -1,0 +1,30 @@
+# Korean Folk Town contracts (wave 3): a tiger hunter's day rate, an archer's fee once the player has heard Gwang on her.
+- id: gwang-the-hunt-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [gwang.intro.done]
+  price:
+    meso: 110000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 35000 }
+
+- id: seori-the-moon-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [seori.intro.done, kft.heard-seori]
+  price:
+    meso: 50000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }

@@ -2,8 +2,8 @@
 
 Phase F ("regional Residents") of `docs/LIVING_RPG_PLAN.md` and `docs/POPULATED_SERVER_PLAN.md` section 8.
 How Residents are authored is in `docs/LIVING_WORLD_GUIDE.md`; this plan says what changes off Victoria, what wave 1
-(Orbis, El Nath, Ludibrium) and wave 2 (Leafre, Mu Lung, Herb Town, Ariant, Magatia) contain, and what to check after
-each is deployed.
+(Orbis, El Nath, Ludibrium), wave 2 (Leafre, Mu Lung, Herb Town, Ariant, Magatia) and wave 3 (New Leaf City, Omega
+Sector, Korean Folk Town, Aquarium, Singapore, Zipangu; section 9) contain, and what to check after each is deployed.
 
 ## 1. Where things stood
 
@@ -20,7 +20,7 @@ travel (server-knowledge routes: Orbis to El Nath on foot, a ship is 3 min) and 
 |---|---|---|
 | `ContentLint.KNOWN_TOWNS` | the 7 Victoria profile ids: any other home town was a lint ERROR | every profile id in `agents/town-life/index.json` |
 | routine and rumor spots | never checked: a misspelt or renamed venue put the Resident at the profile's fallback spot without a word | `ContentLint.unresolvedSpot`: every routine, chapter-routine and rumor spot must resolve in its town's profile (ERROR) |
-| `ResidentDialogue.PORTRAITS` | borrowed townsperson portraits for the 7 towns, else the Maple Administrator | every Resident town: wave 1 added Orbis, El Nath and Ludibrium; wave 2 adds Leafre, Mu Lung, Herb Town, Ariant, Magatia and the Cygnus/Aran branch's Ereve and Rien. `Map.of` stops at 10 entries, so the map is `Map.ofEntries` now |
+| `ResidentDialogue.PORTRAITS` | borrowed townsperson portraits for the 7 towns, else the Maple Administrator | every Resident town: wave 1 added Orbis, El Nath and Ludibrium; wave 2 adds Leafre, Mu Lung, Herb Town, Ariant, Magatia and the Cygnus/Aran branch's Ereve and Rien; wave 3 adds New Leaf City, Omega Sector, Korean Folk Town, the two Aquarium interiors, Singapore's CBD and Boat Quay Town, Mushroom Shrine and Showa Town (stock townspeople of each town, all with their own standing image). `Map.of` stops at 10 entries, so the map is `Map.ofEntries` now |
 | `TownLifeProfileMain.HAND_AUTHORED` | the 7 Victoria profiles, so `generate` never rewrites venue ids persona YAML uses | unchanged: the spot check catches a regenerated profile that drops a venue a Resident uses, and keeping the regional towns out of `HAND_AUTHORED` keeps them in `TownLifeGeneratedProfilesTest`'s geometry and reachability audit |
 
 ## 2. Decisions (the user, 2026-10-24)
@@ -34,6 +34,15 @@ travel (server-knowledge routes: Orbis to El Nath on foot, a ship is 3 min) and 
 
 Wave 2 (asked for 2026-10-25) keeps all four: the next five towns from section 3, 7 Residents each, 2 recruits per
 town, arcs tied to each other in pairs and to wave 1 only by gossip.
+
+Wave 3 (asked for 2026-10-25) keeps them too, with three additions from the user:
+
+| Decision | Chosen |
+|---|---|
+| Recruit gear past wave 2 | option A: a third regional tier (L88-120) for twelve weapon lines, two recruits per region; Singapore's fields stop at L68, so its two recruits give earrings and capes instead |
+| New Leaf City | "a lot more residents with unique rewards for NLC, so we can get some iTCG items in circulation": 25 Residents, and every iTCG code item the server had no source for is a reward (section 9) |
+| Olwen | Gunslinger (her lore left the branch open; the user picked it) |
+| Arc finales | once per server, as wave 2 (`requires.notFlags`) |
 
 ## 3. Regions and waves
 
@@ -49,7 +58,17 @@ Level bands are the fields around each town in the server's own data (`scripts/c
 | 2 (this branch) | Herb Town (`herb-town`) | flower serpents 45, jars 47-48, bellflower fields 53-54, the red-nose pirate den 64-70 | the hundred-year root, and the borrowed page round its marker |
 | 2 (this branch) | Ariant (`ariant`) | the Burning Sands 20-29, the north desert road 29-32, the sunset giants 40, the Sahel road 24-32 | the town that carries its water: a well gone to sand in a week |
 | 2 (this branch) | Magatia (`magatia`) | Zenumist institute 32-80, Alcadno institute 42-75 | the city of two doors, and a bench between them |
-| 3 | Omega Sector, Korean Folk Town, Singapore, New Leaf City, Aquarium | 25-80 | Aquarium has no TownLife profile (the generator refuses swim maps): it needs a hand-authored profile first |
+| 3 | New Leaf City (`new-leaf-city`) | Masteria's jungle 19-50, MesoGears 25-80, the Haunted House 20-100, Phantom Forest 35-110, Crimsonwood Mountain 70-120 | the Leaf Cup: a card club with nothing on its prize table, and the old Masteria forging drawings that fill it |
+| 3 | Omega Sector (`omega-sector`) | Kulan and Boswell fields 40-46, the hidden fields to 99, Ludibrium's clock tower 74-108 for the recruits | a radio operator and a dead channel that talks at nine |
+| 3 | Korean Folk Town (`korean-folk-town`) | Black Mountain, the ridges and the goblin house 22-62, the clock tower 36-108 for the recruits | a girl, her father's radio, and the voice that answers it from the base under the tower |
+| 3 | Aquarium (`aquarium-hall`, `aquarium-store`) | Aqua Road 23-110 (the shallows to the Grave of the Wrecked Ship) | an old diver and the light in the wreck |
+| 3 | Singapore (`singapore-cbd`, `boat-quay-town`) | the suburbs, the Mysterious Path and the ghost ship 18-68 | lanterns for a lost crew, and the one that never came home |
+| 3 | Zipangu (`mushroom-shrine`, `showa-town`) | the shrine's fox mountain and cemetery roads, the spas and Showa's streets 25-130 | a shrine bell with no voice, and the boy who took its clapper |
+
+Aquarium's town map is a swim map, which the TownLife generator refuses (bots do not path by swimming), so its
+Residents live in the two walkable interiors, the Center Hall (230000001) and the Department Store (230000002); wave 3
+generated both profiles. Neither gets ambient citizens, so citizen traffic is unchanged. Recruits still follow their
+owner into the swim fields (the follow and grind ticks swim).
 
 ## 4. Wave 1 cast
 
@@ -229,12 +248,13 @@ Ariant to Magatia up the Sahel road.
 
 ## 6. Portraits and the client (after deploy)
 
-Nothing in either branch ships an image or a WZ file. Two client steps follow each deploy. **For wave 2 the user is
+Nothing in any wave's branch ships an image or a WZ file. Two client steps follow each deploy. **For waves 2 and 3 the user is
 holding the client patch (2026-10-25): the steps below wait until it is released; the export data in this branch is
 complete for when it is.**
 
 1. **Quest log, with the deploy.** `living_world.QUEST_LOG_MIRROR` is already on, and the new quests have quest-log
-   ids (wave 1: 83, 30197-30279; wave 2: 124, 30285-30408), so a player who takes one before their client has the
+   ids (wave 1: 83, 30197-30279; wave 2: 124, 30285-30408; wave 3: 180, 30409-30588 of the block 30409-30799
+   reserved for it), so a player who takes one before their client has the
    matching Quest.wz entries sees it nameless in the quest log (the server itself needs no Quest.wz entry). Run
    `tools\living-world-client.bat "<client folder>"` (or MapleEdit `living_world_quests.py` and deploy Quest.wz + Etc.wz)
    right after the restart and ship the patch. Since the quest-step-progress merge the exporter also writes each step's
@@ -249,6 +269,10 @@ complete for when it is.**
    - Wave 1: `!world wake orbis`, `el-nath`, `ludibrium`; Fitch and Bjarke are away 10-16, Prue 12-16.
    - Wave 2: `!world wake leafre`, `mu-lung`, `herb-town`, `ariant`, `magatia` at 18-19 server time, when every one of
      the 35 is in town (Mott is away 9-17, Suyin 10-16, the recruits mostly 12-18).
+   - Wave 3: `!world wake omega-sector`, `korean-folk-town`, `singapore-cbd`, `boat-quay-town`, `mushroom-shrine`,
+     `showa-town` at 18 server time; `aquarium-hall` and `aquarium-store` at 10-11; `new-leaf-city` twice, at 12 and
+     at 18 (its 25 are never all in town at one hour: Ramona and Hollis are out at noon, Moxie, Brody, Delphine, Duke and
+     Cosmo at 18).
 
 `portrait-npc-ids.yaml` held 54 ids before wave 1, so the 18 friendship-only Victoria Residents added 2026-10-02
 (Isolde, Mirabel, ...) still borrow portraits too; the same re-export fixes them. The new ids file and the
@@ -319,9 +343,230 @@ GM commands (`!world`, `!warp`, `!level`, `!item`) are fine for setup; the behav
 8. **Rumors.** `leafre-the-canyon-watch`, `mu-lung-the-challenge`, `herb-town-the-old-crew`,
    `magatia-the-sweepers-news` at their hours (or `!world rumor play <id>`); listeners get the flags in section 5.
 
+### Wave 3
+
+1. **Boot.** `!world census`: 60 personas more than the main line had before the merge; towns include
+   new-leaf-city=25, omega-sector=7, korean-folk-town=7, aquarium-hall=3, aquarium-store=4, singapore-cbd=3,
+   boat-quay-town=4, mushroom-shrine=4, showa-town=3; the boot log has no living-world lint errors.
+2. **They live there.** Wake each town at the hours in section 6.2, `!world residents`: each Resident materializes at
+   its venue. The Aquarium cast stands inside the Center Hall and the Department Store, never on the swim map.
+   The recruits wear the weapon one tier below their first friendship gift (Vesper Infinity's Wrath, Gwang Eclipse,
+   Genzo Fraute with a Steel Ancient Shield, Thalia Kage, Delphine a Phoenix Wand).
+3. **Talk.** `hi Monty`, `who are you`, `tell me about Ramona`, double-click Chiyo: the NPC window shows the name, a
+   borrowed townsperson portrait (own portrait after section 6.2) and the menu.
+4. **Quest log and markers.** A level 22 character in New Leaf City: the lightbulb over Monty, accept
+   `monty-the-empty-prize-table` (glutton ghouls in the Haunted House foyer, their coat hangers, a word with Fergus):
+   it shows in the quest log with its counters (after the Quest.wz patch), the book over Monty when it is ready.
+5. **iTCG rewards.** `!world bond <player> cosmo 110`, levels 20-28: Cosmo's quests give the Stirgeman cape, pants
+   and Stirge-on-a-String. `!world bond <player> gideon 110`, levels 46-66: the Ancient forging pieces land in the
+   Etc tab. The forging NPCs (Foxwit, Glimmer Man, Corine, Stirgeman, Lita Lawless, John Barricade, Spindle) are still
+   stubs, so the materials only become useful when that session's forging work lands; the stock client must take every
+   reward without a disconnect (all are in the stock Cosmic client's WZ).
+6. **A thread across towns.** Level 42 in Omega Sector: `lyra-the-dead-channel` (Lyra's chapter 2), then in Korean
+   Folk Town `bomi-the-hissing-radio` (both chapters move on `kft.radio.mended`), `lyra-the-trace` at 45, then
+   `bomi-the-first-answer`: Lyra's chapter 5 and Bomi's chapter 4 open together. A second character is no longer
+   offered `lyra-the-trace` or `bomi-the-first-answer` (once per server). The lantern thread is the same shape
+   (`delmar-the-glass`, `rosnah-the-ghost-ship`, `delmar-the-wreck-lantern` at 98, `rosnah-the-lantern-home`), and so
+   is the bell (`chiyo-the-silent-bell`, `daichi-the-hideout` at 92 against the Boss on Showa Street 3,
+   `chiyo-the-bell-rings`).
+7. **A recruit of each kind.** Kill proof: Lou (`lou-the-guitar-springs`, `Lou join me`, then 50 psycho jacks in the
+   Haunted House: "Lou's proof: 10/50 kills" every ten). Day rate: Moxie, 50,000 for 24 hours. Rumor only: stand on
+   the CBD's middle central street 16-18 until `sg-the-hawker-stall` plays, then `Priscilla join me`, 40,000. Items:
+   Hollis (20 diferium fuel cells). Rumor and items: Vance (hear `nlc-the-beat-and-the-hustle`, lower east street
+   20-21). Take Kael or Thalia into Aqua Road: they follow by swimming. Genzo and Rin only inside Zipangu until the
+   route graph reaches it (section 9).
+8. **Olwen.** `!grantcompanion olwen` on a test account (she is a Lv29 Beginner): at her first map change she leaves
+   for Kyrin in Nautilus in her own words, comes back a Pirate, and at 30 goes again for Gunslinger. The Olwen in
+   Lith Harbor before the grant is unchanged: still a Beginner with her ledger, not reshaped by the deploy.
+9. **Rumors.** `nlc-the-lunch-counter` (13:00 by Miki), `omega-the-mess`, `kft-the-mill`, `aqua-the-benches`,
+   `sg-the-quay-lanterns`, `zip-the-ronin-at-the-gate` at their hours (or `!world rumor play <id>`); listeners get the
+   flags in section 9.
+
 ## 8. Later waves
 
-The same shape per town: 7 Residents, 2 recruits continuing a weapon line where the earlier waves stop (every Victoria
-line has a regional tier now; wave 3 takes the next one up), armourers for top/bottom/shield and the next
-hat/glove/shoe tiers, one arc per town, rumors at venues where the cast is awake. Wave 3: Omega Sector, Korean Folk
-Town, Singapore, New Leaf City; Aquarium after its hand-authored TownLife profile exists.
+The same shape per town: 7 Residents, 2 recruits continuing a weapon line where the earlier waves stop, one arc per
+town, rumors at venues where the cast is awake, each recruit earned a different way. After wave 3 the remaining towns
+and sub-areas (Temple of Time, Minar Forest, the Aqua Road areas, Orbis Tower, the Sleepywood dungeon, Malaysia and
+the Community Repack towns) come from the coordinator's town audit, split across several sessions, each with its own
+quest-log id block (wave 3 holds 30409-30799). Four weapon lines keep the top tier waves 1 and 2 gave them: two-handed
+swords, spears, one-handed axes and two-handed blunts.
+
+## 9. Wave 3 cast
+
+60 Residents in six regions and nine town profiles (New Leaf City 25; Omega Sector, Korean Folk Town, Aquarium,
+Singapore and Zipangu 7 each), 17 recruitable, 180 quests (quest-log ids 30409-30588), 17 contracts, 6 arcs, 15
+rumors, 15 loadouts. The kit and the gear rules are wave 1's. Twelve recruits give a third regional tier of a weapon
+line (each carries the tier below in its loadout); Singapore's two give earrings and capes; New Leaf City's other
+gear givers hand out iTCG items.
+
+| Town | Resident | Role (job, level) | Recruit (how earned) | Friendship gear |
+|---|---|---|---|---|
+| New Leaf City | Monty | proprietor of the Leaf Street Card Club, arc owner | - | - |
+| New Leaf City | Ramona | reporter for the Leaf Ledger | - | - |
+| New Leaf City | Benji | newsboy of the subway steps | - | - |
+| New Leaf City | Dolores | cook of the Leaf Street Diner | - | - |
+| New Leaf City | Rocco | dispatcher at the taxi stand | - | - |
+| New Leaf City | Mabel | retired explorer of the west benches (Bowman 45) | - | - |
+| New Leaf City | Gwen | florist of the upper west street | - | - |
+| New Leaf City | Priya | secretary to Mayor Icebyrd Slimm | - | - |
+| New Leaf City | Otis | porter of the subway station | - | - |
+| New Leaf City | Fergus | smith apprenticed to the Glimmer Man (Warrior 32) | - | Glimmer Man weapons L70 by class (Nebula Dagger 2, Astral Blade, ...) |
+| New Leaf City | Clementine | milliner (Cleric 33) | - | iTCG hats: Antellion Miter L35, Infinity Circlet L50 |
+| New Leaf City | Bijou | jeweller of the Free Market door | - | Crystal Leaf Earrings L40, Dark Shards L50 |
+| New Leaf City | Ezra | antiquities dealer (Thief 36) | - | Black Phoenix Shield L20 |
+| New Leaf City | Theodora | archivist to Professor Foxwit (Magician 30) | - | Zeta Cape L60 |
+| New Leaf City | Hollis | surveyor of the Masteria jungle (Hunter 52) | items: 20 diferium fuel cells + 15k | Sirius Cloak L50; Tiger's Fang, Winkel or Neva L50 by class; Stormcaster or Glitter Gloves |
+| New Leaf City | Moxie | tinkerer of the MesoGears (Assassin 50) | day rate: 50k | Stormcaster Gloves L50 |
+| New Leaf City | Lou | busker of the subway steps (Fighter 48) | kill proof: 50 psycho jacks + 10k | Facestompers L50 |
+| New Leaf City | Brody | officer of the city patrol (White Knight 78) | items: 30 jumper cables + 25k | one-handed blunts Heaven's Justice L80 / Ruin Hammer L90 / Battle Hammer L100 |
+| New Leaf City | Vance | hustler of the lower east street (Chief Bandit 88) | rumor and items: hear Brody on him, 20 windraider badges + 30k | daggers Varkit L90 / Blood Dagger L100 / Dragon Kreda L110 |
+| New Leaf City | Delphine | assistant to Professor Foxwit (Fire/Poison Mage 86) | kill proof: 60 firebombs + 25k | wands Magicodar L88 / Dimon Wand L98 / Dragon Wand L108 |
+| New Leaf City | Duke | boxer of the east street gym (Marauder 98) | day rate: 150k | knuckles King Cent L100 / Dragon Slash Claw L110 / Timeless Equinox L120 |
+| New Leaf City | Odette | keeper of the spirit pens | - | the Set 3 spirit weapons L10 (Akha, Xaru, Kuma, Maku, Umaru), Taru Spirit Cape L80 |
+| New Leaf City | Cosmo | Stirgeman's sidekick, unofficial | - | the Stirgeman set L20: cape, Stirge-on-a-String, utility pants |
+| New Leaf City | Gideon | bosshunter of the west benches (Fighter 58) | - | the Ancient forging pieces and the Set 2 boss materials (etc) |
+| New Leaf City | Sabine | healer of Adonis's expedition (Priest 72) | - | Crystal Blade L50, Cloak of Corruption L60 |
+| Omega Sector | Lyra | radio operator of the signal hut, arc owner | - | - |
+| Omega Sector | Vesper | marksman of the Kulan watch (Outlaw 88) | kill proof: 60 buffoons + 30k | guns The Peacemaker L90 / Concerto L100 / Dragonfire Revolver L110 |
+| Omega Sector | Rourke | heavy trooper of the silo (Crusader 88) | rumor and items: hear Vesper on him, 20 deep buffoon rock pieces + 30k | two-handed axes Colonian Axe L90 / Tavar L100 / Dragon Battle Axe L110 |
+| Omega Sector | Hettie | quartermaster of the supply silo | - | - |
+| Omega Sector | Rowan | cadet of the morning drill | - | - |
+| Omega Sector | Dmitri | cook of the base mess | - | - |
+| Omega Sector | Petra | mechanic of the command workshop | - | - |
+| Korean Folk Town | Bomi | keeper of her father's radio, arc owner | - | - |
+| Korean Folk Town | Gwang | tiger hunter of Black Mountain (Dragon Knight 88) | day rate: 110k | polearms Hellslayer L90 / Zedbug L100 / Dragon Chelbird L110 |
+| Korean Folk Town | Seori | archer of the Moon Ridge (Ranger 88) | intro and rumor: hear Gwang on her, 50k | bows Metus L90 / White Nisrock L100 / Dragon Shiner Bow L110 |
+| Korean Folk Town | Dalja | rice-cake maker of the mill | - | - |
+| Korean Folk Town | Byungho | drummer of the folk square (Fighter 45) | - | - |
+| Korean Folk Town | Okja | fortune teller of the old gate | - | - |
+| Korean Folk Town | Jiho | scholar studying for the exam (Magician 36) | - | - |
+| Aquarium | Delmar | old diver of the Center Hall, arc owner | - | - |
+| Aquarium | Thalia | tide mage (Ice/Lightning Mage 93) | kill proof: 60 squids + 30k | staves Blue Marine L95 / Dragon Staff L110 / Timeless Aeas Hand L120 |
+| Aquarium | Kael | harpooner of the deep sea gorge (Sniper 88) | rumor and items: hear Thalia on him, 20 lime powder bottles + 30k | crossbows Casa Crow L90 / White Neschere L100 / Dragon Shiner Cross L110 |
+| Aquarium | Oriel | dolphin trainer of the Department Store | - | - |
+| Aquarium | Sunniva | pearl diver of the Penguin's Playground | - | - |
+| Aquarium | Finn | a boy who wants to see a shark | - | - |
+| Aquarium | Ambrose | scholar of sea life (Magician 50) | - | - |
+| Singapore | Rosnah | lantern keeper of Boat Quay, arc owner | - | - |
+| Singapore | Siti | lantern maker's apprentice | - | - |
+| Singapore | Benedict | harbour clerk of the quay | - | - |
+| Singapore | Arjun | jeweller-adventurer of the quay (Hunter 64) | day rate: 70k | earrings Crystal Flower L55 / Gold Drop L65 / Half Earrings L75 |
+| Singapore | Wei | hawker of the food centre | - | - |
+| Singapore | Mei | mechanic of the taxi fleet | - | - |
+| Singapore | Priscilla | seamstress of the CBD corner (Cleric 64) | rumor only: hear Wei on her, 40k | capes Blue Gaia Cape L65 / Maple Cape L70 / Eclipse Cloak L75 |
+| Zipangu | Chiyo | keeper of the shrine bell, arc owner | - | - |
+| Zipangu | Genzo | ronin at the shrine gate (Crusader 98) | kill proof: 60 bains + 30k | one-handed swords Sparta L100 / Dragon Carabella L110 / Timeless Executioners L120 |
+| Zipangu | Kaede | dango cook's apprentice | - | - |
+| Zipangu | Isamu | fox-mask carver | - | - |
+| Zipangu | Daichi | bathhouse hand of Showa, once the Boss's errand boy | - | - |
+| Zipangu | Okiku | keeper of the Showa bathhouse | - | - |
+| Zipangu | Rin | watcher on the Showa rooftops (Hermit 88) | rumor and items: hear Okiku on her, 20 pairs of leader A's shades + 30k | claws Casters L90 / Red Craven L100 / Dragon Green Sleve L110 |
+
+Aquarium's cast is split between its two interiors: Delmar, Finn and Ambrose in the Center Hall, the rest in the
+Department Store. Singapore's is split between Boat Quay Town (Rosnah, Siti, Benedict, Arjun) and the CBD; Zipangu's
+between Mushroom Shrine (Chiyo, Genzo, Kaede, Isamu) and Showa Town.
+
+**Recruits.** Each is earned one of five ways, as in Victoria: an item price (Hollis, Brody), a kill proof counted
+after the offer against the monster of the Resident's own intro quest (Lou, Delphine, Vesper, Thalia, Genzo), a day
+rate (Moxie, Duke, Gwang, Arjun), a rumor alone (Priscilla), or a rumor on top of the intro quest, with an item price
+(Vance, Rourke, Kael, Rin) or meso only (Seori). Every `refuse.flags` line names what its contract still needs. The twelve weapon lines continued
+here are guns, two-handed axes, polearms, bows, staves, crossbows, one-handed swords, claws, one-handed blunts,
+daggers, wands and knuckles; no weapon or hat in this wave is on the Repack-only list
+(`scripts/config/knowledge/botstory-wz-equips.txt`).
+
+**iTCG items in New Leaf City.** The coordinator's audit lists 68 iTCG code ids (the server's own commodities SN
+80000004-80000065) and the forge results made from them. New Leaf City hands out, as quest rewards:
+
+- every code item the server had no other source for (45 ids): the 27 forging materials (the Set 1 materia and
+  Dark Matter, the six Ancient pieces, LeFay Jewel, Pharoah's Wrappings, Ridley's Book of Rituals and Stone, Typhon
+  Crest, Stone Tiger Head, Crystal Shard, Taru Spirit Feather, Triferium Fuel Cell, Stone Denari), Jungle Juice, Taru
+  Face Paint, Ridley's Scroll of Defense, Stirge Signal, the six Set 3 lv-10 spirit weapons, the Taru Spirit Cape, the
+  Stirgeman cape, pants and Stirge-on-a-String, the Cloak of Corruption, the Crystal Blade and the Red Relaxer;
+- 26 forge results as friendship gear (the Versal weapons and the other forged pieces in the gear column above). The
+  iTCG session's branch (`feat/itcg-masteria`, `docs/ITCG_MASTERIA_PLAN.md`) scripts the forging NPCs to the GMS
+  recipes, so once both are merged these pieces have two roads: Spindle's forge, and the friendship quests;
+- none of the five iTCG pets: on this branch `QuestLedger` grants rewards through `InventoryManipulator.addById`,
+  which does not create a pet. All five go to the iTCG session's Masteria casts, which carry the pet-aware reward
+  path. The Maple Champion cash effects are left out too.
+
+Of the three untradeable items on the list, Red Relaxer and Stone Denari are rewards and never hand-ins
+(`Friendship.giftable` skips untradeables); Gelt Chocolate is not used. The seven forging NPC scripts (Foxwit 9201052, Glimmer Man 9201083,
+Corine 9201094, Stirgeman 9201102, Lita Lawless 9201054, John Barricade 9201051, Spindle 9201082) are untouched:
+Residents talk about them, and the materials do nothing until the forging session's work lands. All 68 ids exist in
+the server's WZ and in the stock Cosmic client.
+
+**The regional threads.** Two pairs of regions share a story, and New Leaf City and Zipangu have their own.
+
+- *Omega Sector and Korean Folk Town.* Lyra hears a voice in a dead channel at nine (`lyra-the-dead-channel`, world
+  flag `omega.channel.heard`). It is Bomi in Korean Folk Town, talking into her father's radio, which only
+  hisses until the player takes it down to the base's mechanic (`bomi-the-hissing-radio`, `kft.radio.mended`). Lyra
+  traces the signal to Black Mountain (`lyra-the-trace`, `omega.channel.answered`) and Bomi sends the player to find
+  the lady on the radio (`bomi-the-first-answer`, `kft.answer.heard`): the two last chapters open together, and
+  persimmons go up to Omega by lift.
+- *Aquarium and Singapore.* Delmar, an old diver, has never told anyone about the light in the Grave of the Wrecked
+  Ship (`delmar-the-glass`, `aqua.light.seen`). Rosnah lights a lantern every night for a crew that never came home,
+  and asks the player to look aboard the ghost ship (`rosnah-the-ghost-ship`, `sg.ship.seen`). The light is a ship's
+  lantern, raised from the wreck past its sharks (`delmar-the-wreck-lantern`, L98, `aqua.lantern.raised`), and the
+  player carries Halim's lantern home to Boat Quay (`rosnah-the-lantern-home`, `sg.lantern.home`).
+- *New Leaf City.* Monty's card club has a tournament and nothing on its prize table (`monty-the-empty-prize-table`,
+  `nlc.prizes.promised`). Fergus will forge the old Masteria pieces if he has the drawings, which are split between
+  Theodora's archive and Ezra's pawn shelf (`monty-the-blueprints`, `nlc.blueprints.found`); the Leaf Cup itself is
+  `monty-cup-night` (`nlc.cup.held`).
+- *Zipangu.* The shrine bell has had no voice for three years. Chiyo traces the clapper to Daichi, the bathhouse hand
+  who took it as his first job for the Boss (`chiyo-the-silent-bell`, `zip.clapper.traced`); Daichi asks the player
+  to take it back off the Boss's own neck on Showa Street 3 (`daichi-the-hideout`, L92, `zip.clapper.recovered`), and
+  Chiyo's last quest carries it up the steps for him (`chiyo-the-bell-rings`, `zip.bell.rings`).
+
+| Arc | Chapters (gate) |
+|---|---|
+| `monty-the-leaf-cup` | A Table With Nothing On It / The Prize Table (world flag `nlc.prizes.promised`; unlocks the rumor) / The Drawings Come Home (`nlc.blueprints.found`) / The Leaf Cup (`nlc.cup.held`) |
+| `lyra-the-quiet-channel` | The Dead Channel / A Voice at Nine (`omega.channel.heard`) / Somebody's Listening (`kft.radio.mended`) / Over and Out (`omega.channel.answered`) / Persimmons by Lift (`kft.answer.heard`) |
+| `bomi-the-fathers-radio` | The Radio That Hisses / It Hums (`kft.radio.mended`) / Somebody Answered (`omega.channel.answered`) / Two Radios (`kft.answer.heard`) |
+| `delmar-the-lantern-in-the-grave` | The Diver's Glass / A Light in the Grave (`aqua.light.seen`) / The Lantern Comes Up (`aqua.lantern.raised`) / Home to Boat Quay (`sg.lantern.home`) |
+| `rosnah-the-lanterns` | Lanterns for the Crew / The Ship That Waits (`sg.ship.seen`) / Halim's Lantern (`aqua.lantern.raised`) / Two Lanterns on the River (`sg.lantern.home`) |
+| `chiyo-the-shrine-bell` | A Bell Without a Voice / Round the Boss's Neck (`zip.clapper.traced`) / Taken Back (`zip.clapper.recovered`) / The Bell Rings (`zip.bell.rings`) |
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `nlc-the-prize-table` | Monty, Ramona on the middle central street, 18-20, from Monty's chapter 2 | - |
+| `nlc-the-lunch-counter` | Dolores, Rocco by Miki, 13 | - |
+| `nlc-the-beat-and-the-hustle` | Brody, Vance on the lower east street, 20-21 | `nlc.heard-vance` (Vance's contract) |
+| `nlc-the-blueprints` | Fergus, Theodora on the middle west street, 18-19, every 2 days | - |
+| `nlc-the-old-crews` | Gideon, Sabine on the lower east street, 18-19, every 2 days | - |
+| `omega-the-range` | Vesper, Rourke on the lower west street, 17-19 | `omega.heard-rourke` (Rourke's contract) |
+| `omega-the-mess` | Dmitri, Hettie on the lower central street, 16-17, every 2 days | - |
+| `kft-the-hunt` | Gwang, Seori by Mr. Noh, 19-20 | `kft.heard-seori` (Seori's contract) |
+| `kft-the-mill` | Dalja, Okja on the lower west street, 18 | - |
+| `aqua-the-deep` | Thalia, Kael on the Department Store's middle central street, 19-21 | `aqua.heard-kael` (Kael's contract) |
+| `aqua-the-benches` | Delmar, Ambrose in the Center Hall, 19-20, every 2 days | - |
+| `sg-the-quay-lanterns` | Rosnah, Siti on Boat Quay's lower east street, 18-20 | - |
+| `sg-the-hawker-stall` | Wei, Priscilla on the CBD's middle central street, 16-18 | `sg.heard-priscilla` (Priscilla's contract) |
+| `zip-the-ronin-at-the-gate` | Chiyo, Genzo on the shrine's upper central benches, 18-20 | - |
+| `zip-the-bathhouse-roof` | Okiku, Rin on Showa's lower central street, 19-21 | `zip.heard-rin` (Rin's contract) |
+
+**Once per server.** `ArcFinalBeatOncePerServerTest` pins eight wave-3 beats with `requires.notFlags`: the finales
+`monty-cup-night`, `rosnah-the-lantern-home`, `chiyo-the-bell-rings` and `bomi-the-first-answer`, and the middle
+beats whose lines would be wrong on a second run (`lyra-the-trace`, `delmar-the-wreck-lantern`,
+`chiyo-the-silent-bell`, `daichi-the-hideout`). The earlier beats that later quests list in `questsCompleted`
+(`lyra-the-dead-channel`, `bomi-the-hissing-radio`, `monty-the-empty-prize-table`, `monty-the-blueprints`,
+`delmar-the-glass`, `rosnah-the-ghost-ship`) stay open to every player; the radio and Leaf Cup quests have chapter
+overrides so their offer lines read true after the world has moved on.
+
+**Olwen.** Lith Harbor's ledger-keeper was the one Beginner persona with no branch. Her persona now names
+GUNSLINGER, so as a companion the job errands take her to Kyrin in Nautilus for Pirate and again at 30 for
+Gunslinger, with errand lines in her own voice; her kit gun stays in her hands (no work-tool outfit weapon suits a
+Pirate). Her loadout is unchanged, so the Olwen already shaped live is not reshaped by the deploy.
+`OlwenClassPathTest` pins her path, including the `JobErrands.pathFor` calls the errands make.
+
+**Data changes outside the content files.** The two Aquarium interior profiles (section 3); Spinel's way back from
+Mushroom Shrine in `scripts/config/knowledge/travel.yaml` (to where the world tour began, Lith Harbor by default), so
+content answers can route out of Zipangu; borrowed portraits for the nine town profiles (section 1).
+
+**Dependencies.** The route graph does not reach Zipangu yet (a routes session is fixing it), so `call Genzo` or
+`call Rin` from another region will not find a way until then; inside Zipangu they work. Mushroom Shrine sells no
+potions (the town audit), and a Zipangu recruit's restock trip waits on the same route work. Kuala Lumpur and Kampung
+Village (Malaysia) belong to another session.
+
+Wave 1 and wave 2 are untouched apart from one Leafre quest: `hessa-carry-it-home` counts its Nest Golems only in
+the Dangerous Dragon Nest below the peak. A `VISIT_MAP` step advances only when its map is entered while it is the
+current step, so golems killed on the peak itself left the player standing there with the visit still open.

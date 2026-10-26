@@ -1,0 +1,28 @@
+# Singapore rumors (wave 3). Each pair is awake together at its spot in those hours (personas/singapore.yaml).
+- id: sg-the-quay-lanterns
+  participants: [rosnah, siti]
+  where: { town: boat-quay-town, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  lines:
+    - { by: siti, text: "aunty, this one's straight. look. it's straight." }
+    - { by: rosnah, text: "it's the straightest one you've ever made, dear." }
+    - { by: siti, text: "is it for the crew?" }
+    - { by: rosnah, text: "it's for whoever needs to find their way home. that's always somebody." }
+    - { by: siti, text: "...can i light it?" }
+    - { by: rosnah, text: "you light it every night, dear. you just never ask." }
+
+- id: sg-the-hawker-stall
+  participants: [wei, priscilla]
+  where: { town: singapore-cbd, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [16, 17, 18]
+    everyDays: 1
+  setsFlagOnListeners: sg.heard-priscilla
+  lines:
+    - { by: wei, text: "your table, Priscilla. same as always." }
+    - { by: priscilla, text: "i didn't ask you to keep it." }
+    - { by: wei, text: "you didn't. eat already?" }
+    - { by: priscilla, text: "...noodles. the usual. and if anyone asks you whether i'd take them down to the ghost ship, Wei, tell them i'd heal them all the way to the sixth deck and back." }
+    - { by: wei, text: "i'll tell them over lunch." }

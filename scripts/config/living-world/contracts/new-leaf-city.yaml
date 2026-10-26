@@ -1,0 +1,112 @@
+# New Leaf City contracts (wave 3). Seven ways in: item prices (Hollis, Brody; Vance once he's been overheard), kill
+# proofs counted after the offer (Lou, Delphine), day rates (Moxie, Duke). Every item or kill is from a field near the
+# Resident's intro quest's level.
+- id: hollis-the-trail-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [hollis.intro.done]
+  price:
+    meso: 15000
+    items: [{ itemId: 4032022, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 9000 }
+
+- id: moxie-the-gear-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [moxie.intro.done]
+  price:
+    meso: 50000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: lou-the-busk-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [lou.intro.done]
+  price:
+    meso: 10000
+    proof: { killMobs: { mobIds: [9400558], count: 50 } }
+  terms:
+    durationHours: 12
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 6000 }
+
+- id: brody-the-beat-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [brody.intro.done]
+  price:
+    meso: 25000
+    items: [{ itemId: 4032024, count: 30 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: vance-the-cut
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [vance.intro.done, nlc.heard-vance]
+  price:
+    meso: 30000
+    items: [{ itemId: 4032007, count: 20 }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 15
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 18000 }
+
+- id: delphine-the-lab-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [delphine.intro.done]
+  price:
+    meso: 25000
+    proof: { killMobs: { mobIds: [5100002], count: 60 } }
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: duke-the-corner
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [duke.intro.done]
+  price:
+    meso: 150000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 45000 }

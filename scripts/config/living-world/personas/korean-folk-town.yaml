@@ -1,0 +1,430 @@
+# Korean Folk Town cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 7 Residents, 2
+# recruitable. The village at the foot of Black Mountain: tigers, foxes, goblins, a scholar's ghost, and a little girl
+# who talks into her father's old radio every night (arcs/korean-folk-town.yaml). The radio is a gray receiver, and
+# Omega Sector hears her (arcs/omega-sector.yaml). Two recruits carry the third tier of the polearm and bow lines,
+# earned in Ludibrium's clock tower up the Helios Tower lift.
+- id: bomi
+  name: Bomi
+  look: { gender: female }
+  title: "Keeper of Her Father's Radio"
+  job: BEGINNER
+  level: { min: 11, max: 12 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-swallow", activity: LINGER }
+      - { from: 12, to: 17, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 17, to: 21, spot: "venue:beside-dori", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [dark axe stump, zeta gray, small spaceship]
+  questLines: [bomi-the-persimmon-tree, bomi-the-hissing-radio, bomi-the-first-answer]
+  arc: bomi-the-fathers-radio
+  relationships:
+    - { persona: dalja, kind: GETS_RICE_CAKES_FROM }
+    - { persona: okja, kind: HAS_HER_FORTUNE_TOLD_BY }
+    - { persona: lyra, kind: TALKS_TO }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["hello! do you want to see my radio? it's my dad's. it doesn't work. i talk to it anyway.", "you're new! i'm Bomi. i know everybody. now i know you."]
+    greet: ["hi!", "you came back! i told the radio you would.", "hello hello."]
+    idle: ["(holds an old radio up to her ear and listens very hard to nothing)", "(tells the radio something in a whisper, then nods as if it answered)"]
+    noWork: ["nothing today. the persimmons aren't ripe. the radio isn't working. it's a waiting day."]
+    nothingDue: ["you don't owe me anything! the radio says so."]
+    who: ["Bomi. my dad went up Black Mountain for wood eight winters ago and he didn't come down. he left me his radio. he found it on the mountain. i tell it about my day every night. just in case."]
+    bye: ["bye! i'll tell the radio you said hello."]
+    thanks: ["thank you! i'll tell the radio."]
+    smallTalk: ["the dark axe stumps at the bottom of Black Mountain scare the magpies off our persimmon tree. no magpies, no luck. Grandma Okja says so.", "my dad's radio has a picture on the back. a little ship with lights on it. it's not a ship from here. Grandma Okja says it came from the base under the tower. i don't know what's under the tower."]
+    speakPlainly: ["plainly: my dad's radio."]
+    questOffer.bomi-the-persimmon-tree: ["the dark axe stumps at the bottom of Black Mountain keep chasing the magpies off our persimmon tree. twenty of them. then the magpies can come back. then there's luck."]
+    questAccept.bomi-the-persimmon-tree: ["the entrance to Black Mountain, and the corner. they've got axes. they're stumps. it's silly. be careful."]
+    questWaiting.bomi-the-persimmon-tree: ["twenty. the magpies are waiting on the roof."]
+    questComplete.bomi-the-persimmon-tree: ["the magpies came back! look! that's luck. here. Dalja says the persimmons aren't for giving till they're ripe. so, hot dogs."]
+    questOffer.bomi-the-hissing-radio: ["Grandma Okja says my dad's radio isn't from here. it's from the base under the tower. could you take it to someone there who fixes things? and if they want something for it, i'll find it. i promise."]
+    questAccept.bomi-the-hissing-radio: ["the base is under Ludibrium's tower, the one with the long stairs. Omega Sector. somebody there fixes things. be careful with it. it's my dad's."]
+    questWaiting.bomi-the-hissing-radio: ["did they fix it? does it still hiss?"]
+    questComplete.bomi-the-hissing-radio: ["it doesn't hiss! it hums! it's a nice hum. it's like when my dad used to hum. i'm going to tell it about today. thank you. thank you."]
+    questOffer.bomi-the-first-answer: ["the lady on the radio lives at the base under the tower. could you go and find her? ask her her name. and ask her if she's real. she sounds real."]
+    questAccept.bomi-the-first-answer: ["the base under Ludibrium's tower. she's by the big door in the day and the tunnel door at night. she's always near a radio."]
+    questWaiting.bomi-the-first-answer: ["did you find her? is she real?"]
+    questComplete.bomi-the-first-answer: ["Lyra! her name's Lyra! and she's real, and she's listening, and she always will be. she's not my dad. that's all right. i'll tell him about her. thank you!"]
+    about.dalja: ["Dalja makes rice cakes. she gives me the broken ones. i think she breaks them on purpose."]
+    about.okja: ["Grandma Okja tells fortunes. she says mine's good. she says it every day. i think it's getting better."]
+    about.lyra: ["i don't know anyone called Lyra."]
+    about.gwang: ["Gwang hunts tigers on Black Mountain. he says he looked for my dad. every winter. he still does."]
+    aboutUnknown: ["i don't know them. do they like persimmons?"]
+    friend.close: ["you can hold the radio. carefully. there. it likes you."]
+    friend.best: ["i tell the radio about you every night. you're my favourite part."]
+    famed: ["everyone in the village says your name! i told the radio!"]
+    defamed: ["the radio says it's not true. i asked it."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh WOW. that's the best present. i'm going to share it with the radio. not really. it can't eat."]
+    gift.again: ["one a day! Grandma Okja says so."]
+
+- id: gwang
+  name: Gwang
+  look: { gender: male }
+  title: "Tiger Hunter of Black Mountain"
+  job: DRAGON_KNIGHT
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: kft-polearm-l88
+  personality: efficient-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 5, to: 11, spot: "venue:by-chil-nam", activity: LINGER }
+      - { from: 11, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:by-mr-noh", activity: LINGER }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  knows: [dark klock, spirit viking, phantom watch]
+  contract: gwang-the-hunt-share
+  questLines: [gwang-the-tiger-trail, gwang-hellslayer, gwang-zedbug, gwang-dragon-chelbird, gwang-evil-spirits]
+  rumors: [kft-the-hunt]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: seori, kind: HUNTS_WITH }
+    - { persona: bomi, kind: SEARCHED_FOR_THE_FATHER_OF }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["you walk like a hunter. quiet. good. sit.", "a stranger. welcome to the village. mind the mountain. it minds you."]
+    greet: ["hm.", "you.", "good hunting?"]
+    idle: ["(leans on a long polearm and watches Black Mountain without blinking)", "(winds a cord round a spear haft, tight and even)"]
+    noWork: ["nothing today. the mountain's quiet. i don't trust it."]
+    nothingDue: ["nothing owed. the trail's even."]
+    who: ["Gwang. i hunted tigers on Black Mountain when there were tigers worth hunting. now the tigers are small and i train in Ludibrium's clock tower, up the Helios lift. a hunter keeps his arm or he loses it."]
+    bye: ["walk quietly."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["the dark klocks in the clock tower carry an evil spirit in them. you can hear it when you hit them. i don't like the sound. i hit them anyway.", "Bomi's father went up the mountain for wood eight winters ago. i've looked for him every winter since. i'll look this winter."]
+    speakPlainly: ["plainly: a hunter with no tigers left."]
+    offer: ["a hundred and ten thousand for a day. a hunter's day starts before light and ends after it. you pay for all of it, and you get all of it."]
+    join: ["walk with me. quietly."]
+    bench: ["four days. then the mountain calls."]
+    leave: ["back to the mountain."]
+    refuse.bond: ["i don't hunt beside strangers. strangers make noise."]
+    refuse.flags: ["walk the clock tower trail with me first. then ask."]
+    refuseOwnErrand: ["walk my trail first."]
+    questOffer.gwang-the-tiger-trail: ["walk my trail. the dark klocks on the forgotten path of time, in the clock tower. thirty of them. and on the way back, stand on Tiger Ridge and tell me if you can hear anything. i can't, any more."]
+    questAccept.gwang-the-tiger-trail: ["the Helios Tower lift to Ludibrium, then the clock tower. come home by Tiger Ridge."]
+    questWaiting.gwang-the-tiger-trail: ["thirty, and the ridge."]
+    questComplete.gwang-the-tiger-trail: ["thirty, and you heard the wind. that's all there is now. you walk quietly. good."]
+    questOffer.gwang-hellslayer: ["the Hellslayer. a polearm for a hunter. i want it broken in on the spirit vikings on the warped path. thirty of them. they sail on nothing. sink them."]
+    questAccept.gwang-hellslayer: ["the warped path of time, the fourth stretch. they come in waves."]
+    questWaiting.gwang-hellslayer: ["thirty. let them come."]
+    questComplete.gwang-hellslayer: ["thirty. the Hellslayer. seven safe scrolls, every one took. it's longer than your arm. so is your reach now."]
+    questOffer.gwang-zedbug: ["the Zedbug. it wants the phantom watches on the forgotten path. forty of them. they stop time. don't let them stop you."]
+    questAccept.gwang-zedbug: ["the forgotten path of time, the fourth stretch. keep moving."]
+    questWaiting.gwang-zedbug: ["forty. keep moving."]
+    questComplete.gwang-zedbug: ["forty. the Zedbug. seven sixties, every one took. that's a hunter's weapon. you're a hunter."]
+    questOffer.gwang-dragon-chelbird: ["the Dragon Chelbird. the best polearm i've ever seen. it wants the two keepers of the clock tower. two gatekeepers in the warped passage, two of Thanatos in the forgotten passage."]
+    questAccept.gwang-dragon-chelbird: ["both passages, at the ends of both paths. sit still till they come. that's hunting."]
+    questWaiting.gwang-dragon-chelbird: ["two and two. patience."]
+    questComplete.gwang-dragon-chelbird: ["two and two. the Dragon Chelbird. two tens and five sixties, every one took. take it up the mountain one day. for me."]
+    questOffer.gwang-evil-spirits: ["ten evil spirits? the dark klocks again. i burn them. it's quieter after."]
+    questAccept.gwang-evil-spirits: ["the forgotten path."]
+    questWaiting.gwang-evil-spirits: ["ten."]
+    questComplete.gwang-evil-spirits: ["ten. quieter."]
+    about.seori: ["Seori shoots the moon off Moon Ridge. i've seen her do it. well. nearly."]
+    about.bomi: ["Bomi talks to her father's radio every night. i walked the mountain for him. every winter. i'll walk it this winter."]
+    aboutUnknown: ["never hunted with them."]
+    friend.close: ["you can walk the mountain with me any time. quietly."]
+    friend.best: ["if i ever find a tiger worth the hunt again, you'll be the one i take."]
+    famed: ["the village says your name. quietly. that's respect here."]
+    defamed: ["hm. talk is loud. the mountain's louder."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["now that's a hunter's meal. good. thank you."]
+    gift.again: ["one a day. i'm a hunter, not a bear."]
+
+- id: seori
+  name: Seori
+  look: { gender: female }
+  title: "Archer of the Moon Ridge"
+  job: RANGER
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: kft-bow-l88
+  personality: relaxed-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 12, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:by-mr-noh", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [ghost pirate, death teddy, grim phantom watch]
+  contract: seori-the-moon-share
+  questLines: [seori-the-moon-ridge, seori-metus, seori-white-nisrock, seori-dragon-shiner-bow, seori-ghost-keys]
+  rumors: [kft-the-hunt]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: gwang, kind: HUNTS_WITH }
+    - { persona: jiho, kind: TEASES }
+  giftItemIds: [2020005, 2000004]
+  dialogue:
+    greetFirst: ["oh, hello! you've come all the way out here? sit. the moon comes up over the ridge at night. it's worth staying for.", "a traveller! welcome. have you eaten? Dalja's rice cakes are the best in the world. i've checked."]
+    greet: ["hello!", "you're back! good.", "hi! clear sky today."]
+    idle: ["(draws a bowstring back slowly, holds it, and lets it down without loosing)", "(tilts her head back to look at the sky, counting something)"]
+    noWork: ["nothing today. i'm waiting for the moon."]
+    nothingDue: ["nothing owed. look up tonight anyway."]
+    who: ["Seori. archer. i shoot off Moon Ridge, above the village. my grandmother said the moon bunnies came down from it. i've been trying to shoot one back up. i train in Ludibrium's clock tower. the ridge is too quiet."]
+    bye: ["look up tonight."]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["the ghost pirates in the clock tower carry keys to nothing. i've got a box of them. one day i'll find the lock.", "Gwang pretends he doesn't miss the tigers. he walks the mountain every winter. he says it's for Bomi's father. it's for both of them."]
+    speakPlainly: ["plainly: a bow, and the moon."]
+    offer: ["fifty thousand. you've heard Gwang say how i hunt; that's what you're paying for. come with me and i'll cover you."]
+    join: ["let's go! i'll be just behind you. look up now and then."]
+    bench: ["three days. then the moon's full and i'm on the ridge."]
+    leave: ["back to the ridge."]
+    refuse.bond: ["i don't shoot over strangers' shoulders. it's rude. and dangerous."]
+    refuse.flags: ["come up to Moon Ridge with me once. and come by Mr. Noh's one evening to hear what Gwang says about me."]
+    refuseOwnErrand: ["the ridge first. come and look."]
+    questOffer.seori-the-moon-ridge: ["shoot with me. the ghost pirates on the warped path of time. thirty of them. then come and stand on Moon Ridge, and look up. that's the hard part."]
+    questAccept.seori-the-moon-ridge: ["the Helios Tower lift to Ludibrium, the clock tower, the warped path. then home to the ridge."]
+    questWaiting.seori-the-moon-ridge: ["thirty, and the ridge. look up."]
+    questComplete.seori-the-moon-ridge: ["thirty, and you looked up! you'd be surprised who doesn't. you can shoot with me any time."]
+    questOffer.seori-metus: ["the Metus. a bow for a moon archer. the death teddies on the forgotten path of time. forty of them. they're sad. shoot them kindly."]
+    questAccept.seori-metus: ["the forgotten path of time, the third stretch. they sit in rows."]
+    questWaiting.seori-metus: ["forty. kindly."]
+    questComplete.seori-metus: ["forty. the Metus. seven safe scrolls, every one took. look how it bends. like the ridge."]
+    questOffer.seori-white-nisrock: ["the White Nisrock. it wants a steady hand. forty grim phantom watches in the forbidden time. they stop your clock. let them try."]
+    questAccept.seori-white-nisrock: ["the forbidden time, behind the phantom watches. breathe slow. aim slower."]
+    questWaiting.seori-white-nisrock: ["forty. steady."]
+    questComplete.seori-white-nisrock: ["forty. the White Nisrock. seven sixties, every one took. it's the colour of the moon. of course it is."]
+    questOffer.seori-dragon-shiner-bow: ["the Dragon Shiner Bow. the best bow there is. two of Thanatos in the forgotten passage, and thirty phantom watches on the way in, so nothing's behind you."]
+    questAccept.seori-dragon-shiner-bow: ["the forgotten path to its end. the passage. look up while you wait."]
+    questWaiting.seori-dragon-shiner-bow: ["two, and thirty. nothing behind you."]
+    questComplete.seori-dragon-shiner-bow: ["two and thirty. the Dragon Shiner Bow. two tens and five sixties, every one took. shoot the moon with it. tell me if it comes down."]
+    questOffer.seori-ghost-keys: ["ten ghost pirate keys? i'm still looking for the lock."]
+    questAccept.seori-ghost-keys: ["the warped path."]
+    questWaiting.seori-ghost-keys: ["ten."]
+    questComplete.seori-ghost-keys: ["ten. none of them fit anything. yet."]
+    about.gwang: ["Gwang hunts with me on the clock tower. he doesn't talk. i talk enough for both of us. it works."]
+    about.jiho: ["Jiho's studying for the exam. he's been studying for four years. i ask him a question every day. he gets it right every day. he's ready. he doesn't believe me."]
+    aboutUnknown: ["never shot with them."]
+    friend.close: ["you can come up to Moon Ridge any night. bring rice cakes. i'll bring the moon."]
+    friend.best: ["if i ever shoot the moon, the first bunny that comes down is yours."]
+    famed: ["the whole village says your name. it sounds nice. it sounds like a song."]
+    defamed: ["oh. well. i'll aim higher."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["a moon-watching snack! i'll save it for the ridge."]
+    gift.again: ["one a day. i'll get round."]
+
+- id: dalja
+  name: Dalja
+  look: { gender: female }
+  title: "Rice Cake Maker of the Mill"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 6, to: 14, spot: "venue:by-hongbu", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 19, to: 6, materialize: false }
+  recruitable: false
+  knows: [moon bunny, pounder, dark axe stump]
+  questLines: [dalja-the-moon-pounders, dalja-the-rice-cake-round]
+  rumors: [kft-the-mill]
+  relationships:
+    - { persona: bomi, kind: SAVES_THE_BROKEN_ONES_FOR }
+    - { persona: okja, kind: GOSSIPS_WITH }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["eat! you're too thin. everyone's too thin. here, a rice cake. no, take two.", "a new face! welcome to the village. have a rice cake. you'll be back for another. everybody is."]
+    greet: ["eat something!", "you again! good. hungry?", "fresh ones today."]
+    idle: ["(pounds rice in a wooden mortar, steady as a heartbeat)", "(wraps rice cakes in leaves and stacks them in perfect towers)"]
+    noWork: ["nothing today. the cakes are made. eat one."]
+    nothingDue: ["you owe me nothing but an empty plate. eat."]
+    who: ["Dalja. i make the rice cakes. every festival, every wedding, every sad day. this village runs on rice cakes and gossip. i make one and i know the other."]
+    bye: ["take one for the road."]
+    thanks: ["oh, eat well!"]
+    smallTalk: ["the moon bunnies on Black Mountain pound rice cakes on the moon. everybody knows. they've been pounding mine. they come down at night with their pounders. i've seen them.", "Bomi talks to her father's radio every night. i make her a rice cake for it. she gives it to the radio. then she eats it."]
+    speakPlainly: ["plainly: rice cakes."]
+    questOffer.dalja-the-moon-pounders: ["the moon bunnies at the foot of Black Mountain have been coming down and pounding my rice. with their pounders. twenty-five bunnies, and ten pounders so they can't do it again."]
+    questAccept.dalja-the-moon-pounders: ["the entrance to Black Mountain, the corner, the little well. they hop. they hop away with the pounders."]
+    questWaiting.dalja-the-moon-pounders: ["ten pounders. my rice is bruised."]
+    questComplete.dalja-the-moon-pounders: ["ten pounders! look, they're good ones. i'm going to use them myself. here. rice cakes. the good ones, not the broken ones."]
+    questOffer.dalja-the-rice-cake-round: ["the festival round. rice cakes for Grandma Okja and for young Jiho, who forgets to eat when he studies. then come back and have your own."]
+    questAccept.dalja-the-rice-cake-round: ["Okja's by Chumji's most of the day. Jiho studies by Mr. Shim's. tell Jiho to eat it, not to read it."]
+    questWaiting.dalja-the-rice-cake-round: ["Okja and Jiho. then you."]
+    questComplete.dalja-the-rice-cake-round: ["he ate it? good. and Okja told you a fortune? she always does. it's always good. here. your rice cake. two. eat."]
+    about.bomi: ["Bomi gets the broken rice cakes. i break them myself. don't tell her."]
+    about.okja: ["Okja and i have gossiped every evening for thirty years. we've never run out. the village is very good to us."]
+    about.jiho: ["Jiho forgets to eat. i don't let him. the exam can wait for a rice cake."]
+    aboutUnknown: ["never had my rice cakes? come and fix that."]
+    friend.close: ["you get the first rice cakes every morning. hot ones."]
+    friend.best: ["i made a rice cake with your name pressed into it. i'm not selling it. it's on my shelf."]
+    famed: ["the whole village talks about you. over my rice cakes. so i hear everything."]
+    defamed: ["whoever said that gets the broken rice cakes. all of them."]
+    gift: ["oh, for me? thank you."]
+    gift.favorite: ["that'll go nicely with a rice cake. most things do."]
+    gift.again: ["one a day! i'll feed you twice to make up for it."]
+
+- id: byungho
+  name: Byungho
+  look: { gender: male }
+  title: "Drummer of the Folk Square"
+  job: FIGHTER
+  level: { min: 45, max: 47 }
+  strength: SEASONED
+  loadout: perion-2h-sword-l38
+  personality: relaxed-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 9, to: 15, spot: "venue:by-haenim", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [hogul, hodori, tiger skin]
+  questLines: [byungho-the-drum-skin, byungho-the-big-drum]
+  relationships:
+    - { persona: okja, kind: DRUMS_FOR }
+    - { persona: gwang, kind: OWES_A_DRUM_TO }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["hey! you're just in time! the festival's in a month. it's always in a month. i practise.", "a new face! do you dance? everyone dances when i drum. even the ones who say they don't."]
+    greet: ["hey!", "boom! hello!", "you're back! good. listen to this."]
+    idle: ["(beats out a quick rhythm on his own knees, grinning)", "(tightens the skin on a small drum, taps it, tightens it again)"]
+    noWork: ["nothing today. the drums are tuned. i'm tuned."]
+    nothingDue: ["all even! drum roll!"]
+    who: ["Byungho. i drum for the village. festivals, weddings, the harvest, Okja's fortunes when she wants them to sound important. a drum's only as good as its skin, and the best skins are on Black Mountain."]
+    bye: ["keep the beat!"]
+    thanks: ["boom! thanks!"]
+    smallTalk: ["the hoguls on Black Mountain have the best skins for a drum. tight, and loud. i've asked Gwang for one for years. he says hunt your own.", "the tigers on the mountain stamp their paws on everything. i want a stamp on every drum. a tiger's mark. it's lucky."]
+    speakPlainly: ["plainly: drums. loud ones."]
+    questOffer.byungho-the-drum-skin: ["the festival drum's split. the hoguls in Tiger Forest and the valley have the best skins. twenty-five of them, ten skins. Gwang says hunt my own. i'm asking you. that's nearly the same."]
+    questAccept.byungho-the-drum-skin: ["Tiger Forest, both of them, and the valley of Black Mountain. they're big cats. they're not friendly cats."]
+    questWaiting.byungho-the-drum-skin: ["ten skins. the drum's very quiet."]
+    questComplete.byungho-the-drum-skin: ["ten! listen! boom! that's a festival drum! here, from the festival purse. it's a small purse. it's a loud drum."]
+    questOffer.byungho-the-big-drum: ["every drum wants a tiger's stamp on it. it's lucky. the hodoris round the pond and in Tiger Forest carry their stamps. twenty-five of them, ten stamps, one for every drum in the village."]
+    questAccept.byungho-the-big-drum: ["around the pond, then into Tiger Forest. they're little tigers. they bite like big ones."]
+    questWaiting.byungho-the-big-drum: ["ten stamps. ten drums."]
+    questComplete.byungho-the-big-drum: ["ten! every drum in the village is lucky now. boom! here. and come to the festival. you're dancing."]
+    about.okja: ["Okja wants a drum roll for every fortune. every one. i've got very strong wrists."]
+    about.gwang: ["Gwang won't give me a skin. hunt your own, he says. i'm going to give him a drum anyway. he'll pretend he doesn't like it."]
+    about.dalja: ["Dalja pays me in rice cakes for the festival. i drum faster with rice cakes."]
+    aboutUnknown: ["never drummed for them."]
+    friend.close: ["you can play the big drum at the festival. one beat. it's the loudest beat."]
+    friend.best: ["i've made a rhythm for you. it's the best one. i play it when you come into the village. listen."]
+    famed: ["the village says your name in time with the drum. i taught them."]
+    defamed: ["boo! i'll drum over it."]
+    gift: ["boom! thanks!"]
+    gift.favorite: ["festival food! i'll drum you a thank-you!"]
+    gift.again: ["one a day! the drum gets jealous."]
+
+- id: okja
+  name: Okja
+  look: { gender: female }
+  title: "Fortune Teller of the Old Gate"
+  job: BEGINNER
+  level: { min: 50, max: 52 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 10, to: 18, spot: "venue:by-chumji", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:lower-west-street", activity: REST }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  knows: [samiho, blin, three-tailed foxtail]
+  questLines: [okja-the-nine-tails, okja-the-goblin-house]
+  rumors: [kft-the-mill]
+  relationships:
+    - { persona: dalja, kind: GOSSIPS_WITH }
+    - { persona: bomi, kind: TELLS_GOOD_FORTUNES_TO }
+  giftItemIds: [2000002, 2001001]
+  dialogue:
+    greetFirst: ["sit down, sit down. give me your hand. no, the other one. ah. interesting. you'll meet a stranger today. that's me.", "a traveller. i saw you coming. i see everyone coming. i sit by the gate."]
+    greet: ["ah, you.", "sit. your fortune's changed since last time.", "hello, dear."]
+    idle: ["(turns a handful of old coins over in her palm and reads them)", "(squints at the sky over Black Mountain and nods to herself)"]
+    noWork: ["nothing today. the fortunes are all good today. it's boring."]
+    nothingDue: ["you owe me nothing, dear. a visit now and then."]
+    who: ["Okja. i tell fortunes by the old gate. forty years. i've only ever told one bad one, and i was wrong. i don't tell bad ones any more."]
+    bye: ["your fortune's good. go and find it."]
+    thanks: ["bless you, dear."]
+    smallTalk: ["the samihos on Fox Ridge have three tails. their grandmothers had nine. a fox with nine tails can be anything it likes. i've met one. i didn't like what it liked.", "the goblins on top of Black Mountain have a house. a whole house. they hold parties. you can hear them on clear nights. they're very bad at singing."]
+    speakPlainly: ["plainly: fortunes. good ones."]
+    questOffer.okja-the-nine-tails: ["i read fortunes in foxtails. the samihos on Fox Ridge and in the valley have three-tailed ones, and they're the best for it. ten foxtails. i'll read yours first."]
+    questAccept.okja-the-nine-tails: ["Fox Ridge, past Tiger Ridge on Black Mountain. they're clever. be cleverer."]
+    questWaiting.okja-the-nine-tails: ["ten tails. your fortune's waiting."]
+    questComplete.okja-the-nine-tails: ["ten. let me see. ...a long road, good friends, and a hot meal at the end of it. that's the best fortune there is. here. for the road."]
+    questOffer.okja-the-goblin-house: ["the goblins on top of Black Mountain are singing again. every night. it's terrible. twenty-five of them, and knock on their house on the way past. tell them Okja says practise."]
+    questAccept.okja-the-goblin-house: ["the top of Black Mountain, then the haunted house off it. the goblins' house is past that. knock. they'll be very surprised."]
+    questWaiting.okja-the-goblin-house: ["twenty-five, and the knock."]
+    questComplete.okja-the-goblin-house: ["they've stopped singing. they've started humming. it's an improvement. here, dear. and your fortune: a quiet night. you've earned one."]
+    about.dalja: ["Dalja and i gossip every evening. thirty years. we've never told the same story twice. the village keeps us busy."]
+    about.bomi: ["Bomi's fortune is good. it's always good. i'd tell her so if it wasn't. it is."]
+    about.byungho: ["Byungho drums for my fortunes. a drum roll makes a fortune sound true. it is true. the drum helps."]
+    aboutUnknown: ["i haven't read their hand."]
+    friend.close: ["i'll read your fortune any day. free. it's always good. you make it good."]
+    friend.best: ["i read your fortune once with my eyes shut. it was the best one i've ever read. i'm keeping it."]
+    famed: ["your fortune's on everyone's lips. it's a good one."]
+    defamed: ["a bad fortune, dear. i don't tell those. they're always wrong."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["bless you. that's a long evening by the gate sorted."]
+    gift.again: ["one a day, dear. i can see the next one coming."]
+
+- id: jiho
+  name: Jiho
+  look: { gender: male }
+  title: "Scholar Studying for the Exam"
+  job: MAGICIAN
+  level: { min: 36, max: 38 }
+  strength: SEASONED
+  loadout: ellinia-mage-l30
+  personality: efficient-v1
+  home:
+    town: korean-folk-town
+    routine:
+      - { from: 8, to: 16, spot: "venue:by-mr-shim", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [retz, scholar ghost, sunflower seed]
+  questLines: [jiho-the-lamp-oil, jiho-the-scholar-ghost]
+  relationships:
+    - { persona: seori, kind: IS_QUIZZED_BY }
+    - { persona: dalja, kind: FORGETS_TO_EAT_FOR }
+  giftItemIds: [2000006, 2020005]
+  dialogue:
+    greetFirst: ["oh! sorry. i was reading. i'm always reading. hello.", "a traveller? do you know anything about the exam? no? that's fine. nobody does. that's the problem."]
+    greet: ["hello.", "oh, you. hello. i'm on chapter nine.", "hi. ask me a question. any question."]
+    idle: ["(reads a book while walking, very slowly, and steps neatly round a bucket without looking up)", "(mouths a long list of words to himself, counting on his fingers)"]
+    noWork: ["nothing today. i'm studying. i'm always studying."]
+    nothingDue: ["nothing owed. it's all in the margins."]
+    who: ["Jiho. i'm studying for the exam. four years. the exam is in the spring. it's always in the spring. one day i'll go."]
+    bye: ["study hard. i will."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the retz in the Helios Tower eat sunflower seeds. the seeds make the best lamp oil. i study by it at night. the retz don't like that.", "there's a scholar's ghost on Fox Ridge. he never passed the exam. he walks there still. i think about him a lot. i don't want to walk there."]
+    speakPlainly: ["plainly: the exam."]
+    questOffer.jiho-the-lamp-oil: ["my lamp's out. the retz in the Helios Tower carry sunflower seeds, and they make the best lamp oil. twenty-five retz, ten seeds. i'll be able to study again tonight."]
+    questAccept.jiho-the-lamp-oil: ["the Helios Tower, past the library. the second floor and the ninety-ninth. they nibble."]
+    questWaiting.jiho-the-lamp-oil: ["ten seeds. it's very dark in chapter nine."]
+    questComplete.jiho-the-lamp-oil: ["ten! the lamp's bright. i can read the small print. there's so much small print. here. thank you."]
+    questOffer.jiho-the-scholar-ghost: ["the scholar's ghost on Fox Ridge. he never passed. i want to take his hat to the old exam stone and tell him somebody's still trying. he won't give it up. you'll have to ask him hard."]
+    questAccept.jiho-the-scholar-ghost: ["Fox Ridge, past Tiger Ridge. he's there at night mostly. he's there always."]
+    questWaiting.jiho-the-scholar-ghost: ["his hat. gently, if you can."]
+    questComplete.jiho-the-scholar-ghost: ["his hat. i'll take it to the stone tonight and tell him. i think i'm going to sit the exam this spring. really this spring. here. for helping a scholar."]
+    about.seori: ["Seori asks me a question every day. i get it right every day. she says i'm ready. she doesn't know the exam."]
+    about.dalja: ["Dalja brings me rice cakes and stands there until i eat them. i'm grateful. i'm also a bit frightened."]
+    aboutUnknown: ["not in any of my books."]
+    friend.close: ["you can borrow any of my books. bring them back. please. i need them."]
+    friend.best: ["when i pass the exam, i'm going to write your name in the front of my first book. before mine."]
+    famed: ["they're going to write books about you. i'll read them."]
+    defamed: ["that's not in any book i've read. so it isn't true."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's a whole chapter's worth of reading fuel. thank you."]
+    gift.again: ["one a day. i have to keep my head clear for the exam."]

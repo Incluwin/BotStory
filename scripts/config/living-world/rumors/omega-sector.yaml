@@ -1,0 +1,28 @@
+# Omega Sector rumors (wave 3). Each pair is awake together at its spot in those hours (personas/omega-sector.yaml).
+- id: omega-the-range
+  participants: [vesper, rourke]
+  where: { town: omega-sector, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 1
+  setsFlagOnListeners: omega.heard-rourke
+  lines:
+    - { by: rourke, text: "an axe is faster than a gun, Vesper. i've timed it." }
+    - { by: vesper, text: "you timed it with the axe in your hand. you can't hold a watch." }
+    - { by: rourke, text: "...i held it in my teeth." }
+    - { by: vesper, text: "whoever goes up the clock tower with you, Rourke, you'd stand in front of them all day. you'd never let a thing past." }
+    - { by: rourke, text: "ha! all day. that's what i'm for." }
+
+- id: omega-the-mess
+  participants: [dmitri, hettie]
+  where: { town: omega-sector, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [16, 17]
+    everyDays: 2
+  lines:
+    - { by: hettie, text: "you ordered forty pounds of onions, Dmitri." }
+    - { by: dmitri, text: "i need twenty." }
+    - { by: hettie, text: "i know. i sent forty." }
+    - { by: dmitri, text: "you always send twice." }
+    - { by: hettie, text: "you always order twice. it's the only form i don't check." }
+    - { by: dmitri, text: "...soup at six. there's a bowl with your name on it." }

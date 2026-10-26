@@ -1,0 +1,1053 @@
+# New Leaf City quests (wave 3). Fields: Urban Underground 600010000 (street slime 9400538, urban fungus 9400539);
+# Masteria jungle 600010100-600010600 (boomer 9400547 core 4000391; electrophant 9400543 t-1 socket adapter 4032025,
+# sparkplug 4032023, diferium fuel cell 4032022; i.am.robot 9400546 jumper cable 4032024, mountain slopes 600010400;
+# mighty maple eater 9400548; gryphon 9400544, cliffs 600010500 / highlands 600010600). MesoGears: lobby 600020000,
+# deity room 600020100 (killa bee 9400540, fire tusk 9400542), soul corridor 600020200, wolf spider cavern 600020300
+# (wolf spider 9400545, adapter 60%), fire chamber 600020400 (firebomb 5100002 flame 4000081), ice chamber 600020500
+# (jr. yeti 5100000 skin 4000048, soft feather 4003005). Haunted House 682000000 by the NLC Taxi: foyer 682000100
+# (glutton ghoul 9400556 coat hanger 4032027 / wad of gum 4032028 / duct tape 4032029, psycho jack box 9400557,
+# sophilia doll ground 9400559), hallway 682000300, rooms 682000301-682000305 (psycho jack 9400558 loaded spring
+# 4000399, mirror ghost 9400564), bedrooms 682000501/682000502 (voodoo 9400561, hoodoo 9400562), pumpkin vault
+# 682000700, library 682000800 (twisted jester 9400640, rotting skeleton 9400638), clown's chimney 682010203.
+# Phantom Forest 610010000-610010202 (jr. wraith 3230101 tablecloth 4000035, leprechaun 9400584, phantom tree 9400588
+# seed 4032003 / firewood 4000018, windraider 9400576 badge 4032007, elderwraith 9400580 ashes 4032010 / rags 4032011,
+# headless horseman 9400549 jack o'lantern 4031903, bigfoot 9400575 toe 4032013). Crimsonwood Mountain 610020002-
+# 610020012 (stormbreaker 9400581 badge 4032006, crimson tree 9400586 wood 4032004, firebrand 9400577, nightshadow
+# 9400579 badge 4032009, typhon 9400574 feather 4032005, crimson guardian 9400582 heart 4032012 at the Keep 610020006).
+
+# ---- Monty: the Leaf Cup (arcs/new-leaf-city.yaml) ----
+- id: monty-the-empty-prize-table
+  persona: monty
+  title: "The Empty Prize Table"
+  length: MEDIUM
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ask, type: TALK_TO, persona: fergus, say: ["forge prizes for Monty's club? ...no. ...fine. if he brings me the drawings. Barricade's and Foxwit's. tell him i said no first."] }
+    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 20, mapIds: [682000100, 682000300] }
+    - { id: hangers, type: COLLECT_ITEM, itemId: 4032027, count: 10 }
+    - { id: banner, type: DELIVER, to: monty, take: { itemId: 4032027, count: 10 } }
+  rewards: { meso: 9000, exp: 8000, bondPoints: 40, items: [{ itemId: 4031755, count: 1 }, { itemId: 4031756, count: 1 }], worldFlags: [nlc.prizes.promised] }
+
+- id: monty-the-blueprints
+  persona: monty
+  title: "Barricade's Drawings"
+  length: LONG
+  requires: { level: { min: 30 }, questsCompleted: [monty-the-empty-prize-table], flags: [nlc.prizes.promised] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: foxwit, type: TALK_TO, persona: theodora, say: ["the Professor's drawings for the club? he says it's good for drawings to be loved. here, the shield. the cape's still out in that house, i'll have it back one day. the cloak's pattern i gave to Hollis years ago. take these to Monty. he'll get them to Fergus, not to Delphine."] }
+    - { id: barricade, type: TALK_TO, persona: ezra, say: ["Barricade's notes. i've kept them twenty years. ...for Monty's club. for a table with something on it. take them. don't tell him i went soft."] }
+    - { id: bees, type: KILL_MOBS, mobIds: [9400540], count: 30, mapIds: [600020100, 600020200] }
+    - { id: home, type: DELIVER, to: monty }
+  rewards: { meso: 16000, exp: 15000, bondPoints: 50, items: [{ itemId: 4031757, count: 1 }, { itemId: 4031758, count: 1 }], worldFlags: [nlc.blueprints.found] }
+
+- id: monty-cup-night
+  persona: monty
+  title: "Cup Night"
+  length: SHORT
+  requires: { level: { min: 30 }, questsCompleted: [monty-the-blueprints], flags: [nlc.blueprints.found], notFlags: [nlc.cup.held] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: benji, type: TALK_TO, persona: benji, say: ["i'm in? I'M IN? i've had my deck in my pocket for a week! tell Monty i'm coming! i'm coming now!"] }
+    - { id: ramona, type: TALK_TO, persona: ramona, say: ["the Leaf Cup? tonight? i'll bring the camera. 'Club Has Prizes'. finally a headline i like."] }
+    - { id: deal, type: DELIVER, to: monty }
+  rewards: { meso: 20000, exp: 20000, bondPoints: 60, items: [{ itemId: 2022305, count: 5 }], worldFlags: [nlc.cup.held] }
+
+# ---- Ramona ----
+- id: ramona-the-front-page
+  persona: ramona
+  title: "The Front Page"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: priya, type: TALK_TO, persona: priya, say: ["i couldn't possibly say. ...the Mayor wants a subway line out to the jungle. you didn't hear it from me. you didn't."] }
+    - { id: mabel, type: TALK_TO, persona: mabel, say: ["news? forty years ago Barricade's cook boiled a boot because we'd run out of everything else. it wasn't bad. put that in her paper."] }
+    - { id: story, type: DELIVER, to: ramona }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 30 }
+
+- id: ramona-the-ghost-ship-story
+  persona: ramona
+  title: "The Ship That Waits"
+  length: LONG
+  requires: { level: { min: 55 }, friendship: 4, questsCompleted: [ramona-the-front-page] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rosnah, type: TALK_TO, persona: rosnah, say: ["a reporter from New Leaf City. ...my Halim sailed on that ship before it was a ghost. tell her he was kind. tell her the lanterns are still lit for them. that's all i'll say. it's enough."] }
+    - { id: ship, type: VISIT_MAP, mapIds: [541010000] }
+    - { id: copy, type: DELIVER, to: ramona }
+  rewards: { meso: 40000, exp: 45000, bondPoints: 45 }
+
+# ---- Benji ----
+- id: benji-the-card-box
+  persona: benji
+  title: "Revenge for the Box"
+  length: SHORT
+  requires: { level: { min: 16 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [9400538], count: 20, mapIds: [600010100] }
+    - { id: fungus, type: KILL_MOBS, mobIds: [9400539], count: 20, mapIds: [600010100] }
+    - { id: revenge, type: DELIVER, to: benji }
+  rewards: { meso: 2500, exp: 2000, bondPoints: 30, items: [{ itemId: 2020005, count: 5 }] }
+
+- id: benji-barricades-lobby
+  persona: benji
+  title: "What Barricade's Lobby Looks Like"
+  length: SHORT
+  requires: { level: { min: 16 }, questsCompleted: [benji-the-card-box] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lobby, type: VISIT_MAP, mapIds: [600020000] }
+    - { id: tell, type: DELIVER, to: benji }
+  rewards: { meso: 3000, exp: 3000, bondPoints: 30, items: [{ itemId: 3010015, count: 1 }] }
+
+# ---- Dolores ----
+- id: dolores-the-syrup-thieves
+  persona: dolores
+  title: "The Syrup Thieves"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eaters, type: KILL_MOBS, mobIds: [9400548], count: 30, mapIds: [600010200, 600010300] }
+    - { id: safe, type: DELIVER, to: dolores }
+  rewards: { meso: 6000, exp: 7000, bondPoints: 30, items: [{ itemId: 2020004, count: 10 }] }
+
+- id: dolores-the-cold-store
+  persona: dolores
+  title: "The Cold Store"
+  length: MEDIUM
+  requires: { level: { min: 47 }, questsCompleted: [dolores-the-syrup-thieves] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 20, mapIds: [600020500] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003005, count: 5 }
+    - { id: draught, type: DELIVER, to: dolores, take: { itemId: 4003005, count: 5 } }
+  rewards: { meso: 22000, exp: 24000, bondPoints: 35, items: [{ itemId: 2020004, count: 20 }] }
+
+# ---- Rocco ----
+- id: rocco-the-haunted-fare
+  persona: rocco
+  title: "The Haunted Fare"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hallway, type: VISIT_MAP, mapIds: [682000300] }
+    - { id: skeletons, type: KILL_MOBS, mobIds: [9400638], count: 20, mapIds: [682000300, 682000600, 682000800] }
+    - { id: back, type: DELIVER, to: rocco }
+  rewards: { meso: 15000, exp: 6000, bondPoints: 30 }
+
+- id: rocco-the-cab-radio
+  persona: rocco
+  title: "Static on the Radio"
+  length: MEDIUM
+  requires: { level: { min: 40 }, questsCompleted: [rocco-the-haunted-fare] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: electrophants, type: KILL_MOBS, mobIds: [9400543], count: 20, mapIds: [600010200] }
+    - { id: cells, type: COLLECT_ITEM, itemId: 4032022, count: 10 }
+    - { id: radio, type: DELIVER, to: rocco, take: { itemId: 4032022, count: 10 } }
+  rewards: { meso: 16000, exp: 16000, bondPoints: 35 }
+
+# ---- Mabel ----
+- id: mabel-the-camp-stove
+  persona: mabel
+  title: "Blue Fire"
+  length: MEDIUM
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 20, mapIds: [610010000, 610010002, 610010003] }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000018, count: 10 }
+    - { id: stove, type: DELIVER, to: mabel, take: { itemId: 4000018, count: 10 } }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 35 }
+
+- id: mabel-the-mountain
+  persona: mabel
+  title: "Where We Turned Back"
+  length: MEDIUM
+  requires: { level: { min: 70 }, questsCompleted: [mabel-the-camp-stove] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ascent, type: VISIT_MAP, mapIds: [610020002] }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 20, mapIds: [610020002, 610020003] }
+    - { id: tell, type: DELIVER, to: mabel }
+  rewards: { meso: 50000, exp: 60000, bondPoints: 45, items: [{ itemId: 2000004, count: 20 }] }
+
+# ---- Gwen ----
+- id: gwen-the-trampled-beds
+  persona: gwen
+  title: "The Trampled Beds"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boomers, type: KILL_MOBS, mobIds: [9400547], count: 25, mapIds: [600010100, 600010300] }
+    - { id: beds, type: DELIVER, to: gwen }
+  rewards: { meso: 5000, exp: 6000, bondPoints: 30 }
+
+- id: gwen-the-black-orchids
+  persona: gwen
+  title: "The Black Orchids"
+  length: MEDIUM
+  requires: { level: { min: 38 }, questsCompleted: [gwen-the-trampled-beds] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bog, type: VISIT_MAP, mapIds: [610010002] }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 30, mapIds: [610010000, 610010001, 610010002] }
+    - { id: tell, type: DELIVER, to: gwen }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 40 }
+
+# ---- Priya ----
+- id: priya-the-patrol-report
+  persona: priya
+  title: "The Patrol Report"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: brody, type: TALK_TO, persona: brody, say: ["the report? all quiet. ghosts at the Haunted House as usual. a jester in the cab on Tuesday. write that down for her. no, you write it."] }
+    - { id: filed, type: DELIVER, to: priya }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+- id: priya-the-mesogears-survey
+  persona: priya
+  title: "The MesoGears Survey"
+  length: SHORT
+  requires: { level: { min: 45 }, questsCompleted: [priya-the-patrol-report] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lobby, type: VISIT_MAP, mapIds: [600020000] }
+    - { id: ice, type: VISIT_MAP, mapIds: [600020500] }
+    - { id: form, type: DELIVER, to: priya }
+  rewards: { meso: 18000, exp: 15000, bondPoints: 35 }
+
+# ---- Otis ----
+- id: otis-the-underground
+  persona: otis
+  title: "Under the Station Floor"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fungus, type: KILL_MOBS, mobIds: [9400539], count: 30, mapIds: [600010100, 600010300] }
+    - { id: swept, type: DELIVER, to: otis }
+  rewards: { meso: 3000, exp: 2500, bondPoints: 30 }
+
+- id: otis-the-lost-property
+  persona: otis
+  title: "Lost Property"
+  length: SHORT
+  requires: { level: { min: 28 }, questsCompleted: [otis-the-underground] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boxes, type: KILL_MOBS, mobIds: [9400557], count: 15, mapIds: [682000100, 682000300] }
+    - { id: shelf, type: DELIVER, to: otis }
+  rewards: { meso: 16000, exp: 7000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Fergus ----
+- id: fergus-the-bellows
+  persona: fergus
+  title: "The Bellows Nozzle"
+  length: SHORT
+  requires: { level: { min: 34 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tusks, type: KILL_MOBS, mobIds: [9400542], count: 30, mapIds: [600020100, 600020400] }
+    - { id: nozzle, type: DELIVER, to: fergus }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 30 }
+
+- id: fergus-the-forge-coal
+  persona: fergus
+  title: "A Hotter Fire"
+  length: MEDIUM
+  requires: { level: { min: 72 }, questsCompleted: [fergus-the-bellows] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 20, mapIds: [610020002, 610020003] }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 10 }
+    - { id: forge, type: DELIVER, to: fergus, take: { itemId: 4032004, count: 10 } }
+  rewards: { meso: 60000, exp: 65000, bondPoints: 40, items: [{ itemId: 2000005, count: 10 }, { itemId: 4031754, count: 1 }, { itemId: 4031751, count: 1 }] }
+
+- id: fergus-the-versal-forge
+  persona: fergus
+  title: "The Versal Forge"
+  length: LONG
+  requires: { level: { min: 72 }, friendship: 6, questsCompleted: [fergus-the-forge-coal] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: windraiders, type: KILL_MOBS, mobIds: [9400576], count: 40, mapIds: [610010200, 610010201, 610010202] }
+    - { id: forge, type: DELIVER, to: fergus }
+  rewards:
+    meso: 80000
+    exp: 85000
+    bondPoints: 50
+    items: [{ itemId: 4031760, count: 1 }, { itemId: 1332065, count: 1 }]
+    gear:
+      - { pool: [1302079, 1322059, 1412032, 1432045, 1442060, 1452052, 1462046, 1382053, 1332064, 1472062], scrolls: [{ success: 60, count: 2 }] }
+
+# ---- Clementine (iTCG: Antellion Miter, Infinity Circlet) ----
+- id: clementine-the-antellion-miter
+  persona: clementine
+  title: "The Antellion Miter"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 30, mapIds: [610010000, 610010001, 610010002] }
+    - { id: cloths, type: COLLECT_ITEM, itemId: 4000035, count: 20 }
+    - { id: lining, type: DELIVER, to: clementine, take: { itemId: 4000035, count: 20 } }
+  rewards:
+    meso: 14000
+    exp: 14000
+    bondPoints: 40
+    gear:
+      - { pool: [1002675], scrolls: [{ success: 60 }] }
+
+- id: clementine-the-infinity-circlet
+  persona: clementine
+  title: "The Infinity Circlet"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 6, questsCompleted: [clementine-the-antellion-miter] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 30, mapIds: [610010000, 610010002, 610010003] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4032003, count: 10 }
+    - { id: band, type: DELIVER, to: clementine, take: { itemId: 4032003, count: 10 } }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 50
+    gear:
+      - { pool: [1002676], scrolls: [{ success: 60, count: 2 }] }
+
+- id: clementine-hatbands
+  persona: clementine
+  title: "Hatbands"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cloths, type: COLLECT_ITEM, itemId: 4000035, count: 10 }
+    - { id: bands, type: DELIVER, to: clementine, take: { itemId: 4000035, count: 10 } }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 10 }
+
+# ---- Bijou (iTCG: Crystal Leaf Earrings, Dark Shards) ----
+- id: bijou-window-cards
+  persona: bijou
+  title: "Cards for the Window"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cards, type: COLLECT_ITEM, itemId: 4030012, count: 10 }
+    - { id: window, type: DELIVER, to: bijou, take: { itemId: 4030012, count: 10 } }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 10 }
+
+- id: bijou-the-crystal-leaf
+  persona: bijou
+  title: "Crystal Leaves"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: electrophants, type: KILL_MOBS, mobIds: [9400543], count: 25, mapIds: [600010200, 600010400] }
+    - { id: adapters, type: COLLECT_ITEM, itemId: 4032025, count: 10 }
+    - { id: leaves, type: DELIVER, to: bijou, take: { itemId: 4032025, count: 10 } }
+  rewards:
+    meso: 16000
+    exp: 16000
+    bondPoints: 40
+    gear:
+      - { pool: [1032048], scrolls: [{ success: 60 }] }
+
+- id: bijou-the-dark-shards
+  persona: bijou
+  title: "The Stolen Shard"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 6, questsCompleted: [bijou-the-crystal-leaf] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hill, type: VISIT_MAP, mapIds: [610010001] }
+    - { id: leprechauns, type: KILL_MOBS, mobIds: [9400584], count: 30, mapIds: [610010000, 610010001, 610010002] }
+    - { id: shard, type: DELIVER, to: bijou }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 50
+    gear:
+      - { pool: [1032049], scrolls: [{ success: 60, count: 2 }] }
+
+# ---- Ezra (iTCG: Black Phoenix Shield) ----
+- id: ezra-the-glued-vase
+  persona: ezra
+  title: "The Glued Vase"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 20, mapIds: [682000100, 682000300] }
+    - { id: gum, type: COLLECT_ITEM, itemId: 4032028, count: 10 }
+    - { id: match, type: DELIVER, to: ezra, take: { itemId: 4032028, count: 10 } }
+  rewards: { meso: 16000, exp: 5000, bondPoints: 30 }
+
+- id: ezra-the-black-phoenix
+  persona: ezra
+  title: "The Black Phoenix Plate"
+  length: MEDIUM
+  requires: { level: { min: 20 }, friendship: 4, questsCompleted: [ezra-the-glued-vase] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [9400538], count: 30, mapIds: [600010100, 600010200] }
+    - { id: fungus, type: KILL_MOBS, mobIds: [9400539], count: 30, mapIds: [600010100, 600010300] }
+    - { id: plate, type: DELIVER, to: ezra }
+  rewards:
+    meso: 8000
+    exp: 6000
+    bondPoints: 40
+    gear:
+      - { pool: [1092052], scrolls: [{ success: 60 }] }
+
+# ---- Theodora (iTCG: Zeta Cape) ----
+- id: theodora-the-catalogue
+  persona: theodora
+  title: "Notes in the Boomers"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boomers, type: KILL_MOBS, mobIds: [9400547], count: 30, mapIds: [600010100, 600010300] }
+    - { id: cores, type: COLLECT_ITEM, itemId: 4000391, count: 10 }
+    - { id: archive, type: DELIVER, to: theodora, take: { itemId: 4000391, count: 10 } }
+  rewards: { meso: 7000, exp: 8000, bondPoints: 30, items: [{ itemId: 4031750, count: 1 }, { itemId: 4031753, count: 1 }] }
+
+- id: theodora-the-zeta-cape
+  persona: theodora
+  title: "The Zeta Cape Drawing"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 6, questsCompleted: [theodora-the-catalogue] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: voodoos, type: KILL_MOBS, mobIds: [9400561], count: 20, mapIds: [682000501, 682000800] }
+    - { id: hoodoos, type: KILL_MOBS, mobIds: [9400562], count: 10, mapIds: [682000501, 682000502] }
+    - { id: drawing, type: DELIVER, to: theodora }
+  rewards:
+    meso: 45000
+    exp: 45000
+    bondPoints: 50
+    items: [{ itemId: 4031752, count: 1 }]
+    gear:
+      - { pool: [1102146], scrolls: [{ success: 60, count: 2 }] }
+
+# ---- Hollis (recruit; iTCG: Sirius Cloak, Barricade's expedition kit) ----
+- id: hollis-the-survey
+  persona: hollis
+  title: "Walking the Survey"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: electrophants, type: KILL_MOBS, mobIds: [9400543], count: 30, mapIds: [600010200, 600010400] }
+    - { id: cliffs, type: VISIT_MAP, mapIds: [600010500] }
+    - { id: report, type: DELIVER, to: hollis }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 30, flags: [hollis.intro.done] }
+
+- id: hollis-the-sirius-cloak
+  persona: hollis
+  title: "The Sirius Cloak"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 5, questsCompleted: [hollis-the-survey] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gryphons, type: KILL_MOBS, mobIds: [9400544], count: 30, mapIds: [600010500, 600010600] }
+    - { id: down, type: DELIVER, to: hollis }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 40
+    gear:
+      - { pool: [1102145], scrolls: [{ success: 60 }] }
+
+- id: hollis-barricades-kit
+  persona: hollis
+  title: "Barricade's Expedition Kit"
+  length: LONG
+  requires: { level: { min: 55 }, friendship: 8, questsCompleted: [hollis-the-sirius-cloak] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 30, mapIds: [600020500] }
+    - { id: pelts, type: COLLECT_ITEM, itemId: 4000048, count: 20 }
+    - { id: kit, type: DELIVER, to: hollis, take: { itemId: 4000048, count: 20 } }
+  rewards:
+    meso: 45000
+    exp: 45000
+    bondPoints: 55
+    gear:
+      - { pool: [1402045, 1452053, 1472064, 1082230, 1082223], scrolls: [{ success: 60, count: 2 }] }
+
+- id: hollis-the-markers
+  persona: hollis
+  title: "Knocked Markers"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 40 }, questsCompleted: [hollis-the-survey] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: electrophants, type: KILL_MOBS, mobIds: [9400543], count: 20, mapIds: [600010200, 600010400] }
+    - { id: up, type: DELIVER, to: hollis }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 10 }
+
+# ---- Moxie (recruit; iTCG: Crystal Ilbi, Stormcaster Gloves) ----
+- id: moxie-the-sparkplugs
+  persona: moxie
+  title: "T-1337's Sparkplugs"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bees, type: KILL_MOBS, mobIds: [9400540], count: 30, mapIds: [600020100, 600020200] }
+    - { id: plugs, type: COLLECT_ITEM, itemId: 4032023, count: 10 }
+    - { id: whirr, type: DELIVER, to: moxie, take: { itemId: 4032023, count: 10 } }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 30, flags: [moxie.intro.done] }
+
+- id: moxie-the-crystal-ilbi
+  persona: moxie
+  title: "Crystal Stars"
+  length: MEDIUM
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [moxie-the-sparkplugs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: robots, type: KILL_MOBS, mobIds: [9400546], count: 30, mapIds: [600010400] }
+    - { id: cables, type: COLLECT_ITEM, itemId: 4032024, count: 10 }
+    - { id: cutter, type: DELIVER, to: moxie, take: { itemId: 4032024, count: 10 } }
+  rewards: { meso: 25000, exp: 26000, bondPoints: 40, items: [{ itemId: 2070016, count: 800 }] }
+
+- id: moxie-the-stormcaster-gloves
+  persona: moxie
+  title: "The Stormcaster Gloves"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 7, questsCompleted: [moxie-the-crystal-ilbi] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tusks, type: KILL_MOBS, mobIds: [9400542], count: 40, mapIds: [600020100, 600020400] }
+    - { id: grip, type: DELIVER, to: moxie }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 50
+    gear:
+      - { pool: [1082223], scrolls: [{ success: 60, count: 2 }] }
+
+- id: moxie-spare-parts
+  persona: moxie
+  title: "Spare Parts"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [moxie-the-sparkplugs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: plugs, type: COLLECT_ITEM, itemId: 4032023, count: 10 }
+    - { id: feed, type: DELIVER, to: moxie, take: { itemId: 4032023, count: 10 } }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 10 }
+
+# ---- Lou (recruit; iTCG: Facestompers) ----
+- id: lou-the-guitar-springs
+  persona: lou
+  title: "Haunted Strings"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jacks, type: KILL_MOBS, mobIds: [9400558], count: 20, mapIds: [682000300, 682000302, 682000303, 682000305] }
+    - { id: springs, type: COLLECT_ITEM, itemId: 4000399, count: 10 }
+    - { id: string, type: DELIVER, to: lou, take: { itemId: 4000399, count: 10 } }
+  rewards: { meso: 15000, exp: 8000, bondPoints: 30, flags: [lou.intro.done] }
+
+- id: lou-the-facestompers
+  persona: lou
+  title: "Facestompers"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 6, questsCompleted: [lou-the-guitar-springs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: KILL_MOBS, mobIds: [9400559, 9400560], count: 30, mapIds: [682000100, 682000301, 682000303] }
+    - { id: tape, type: COLLECT_ITEM, itemId: 4032029, count: 5 }
+    - { id: boots, type: DELIVER, to: lou, take: { itemId: 4032029, count: 5 } }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 50
+    gear:
+      - { pool: [1072344], scrolls: [{ success: 60, count: 2 }] }
+
+- id: lou-the-encore
+  persona: lou
+  title: "Encore"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [lou-the-guitar-springs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: springs, type: COLLECT_ITEM, itemId: 4000399, count: 10 }
+    - { id: guitar, type: DELIVER, to: lou, take: { itemId: 4000399, count: 10 } }
+  rewards: { meso: 7000, exp: 5000, bondPoints: 10 }
+
+# ---- Brody (recruit; mace third tier: Heaven's Justice, Ruin Hammer, Battle Hammer) ----
+- id: brody-the-night-beat
+  persona: brody
+  title: "The Night Beat"
+  length: SHORT
+  requires: { level: { min: 66 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jesters, type: KILL_MOBS, mobIds: [9400640], count: 20, mapIds: [682000800, 682010203] }
+    - { id: house, type: VISIT_MAP, mapIds: [682000000] }
+    - { id: report, type: DELIVER, to: brody }
+  rewards: { meso: 40000, exp: 40000, bondPoints: 30, flags: [brody.intro.done] }
+
+- id: brody-heavens-justice
+  persona: brody
+  title: "Heaven's Justice"
+  length: MEDIUM
+  requires: { level: { min: 78 }, friendship: 5, questsCompleted: [brody-the-night-beat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stormbreakers, type: KILL_MOBS, mobIds: [9400581], count: 30, mapIds: [610020002, 610020010, 610020011] }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4032006, count: 15 }
+    - { id: haft, type: DELIVER, to: brody, take: { itemId: 4032006, count: 15 } }
+  rewards:
+    meso: 150000
+    exp: 150000
+    bondPoints: 35
+    gear:
+      - { itemId: 1322028, scrolls: [{ success: 100 }] }
+
+- id: brody-ruin-hammer
+  persona: brody
+  title: "The Ruin Hammer"
+  length: LONG
+  requires: { level: { min: 88 }, friendship: 7, questsCompleted: [brody-heavens-justice] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cavern, type: VISIT_MAP, mapIds: [610020010] }
+    - { id: firebrands, type: KILL_MOBS, mobIds: [9400577], count: 40, mapIds: [610020003, 610020010, 610020012] }
+    - { id: temper, type: DELIVER, to: brody }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 50
+    gear:
+      - { itemId: 1322029, scrolls: [{ success: 60 }] }
+
+- id: brody-battle-hammer
+  persona: brody
+  title: "The Battle Hammer"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 10, questsCompleted: [brody-ruin-hammer] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nightshadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020003, 610020005] }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4032009, count: 15 }
+    - { id: horseman, type: KILL_MOBS, mobIds: [9400549], count: 1, mapIds: [610010005, 610010010, 610010011, 610010013, 682000001] }
+    - { id: hammer, type: DELIVER, to: brody, take: { itemId: 4032009, count: 15 } }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 60
+    gear:
+      - { itemId: 1322045, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: brody-jumper-cables
+  persona: brody
+  title: "Patrol Lamps"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 66 }, questsCompleted: [brody-the-night-beat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cables, type: COLLECT_ITEM, itemId: 4032024, count: 15 }
+    - { id: lamps, type: DELIVER, to: brody, take: { itemId: 4032024, count: 15 } }
+  rewards: { meso: 15000, exp: 12000, bondPoints: 10 }
+
+# ---- Vance (recruit; dagger third tier: Varkit, Blood Dagger, Dragon Kreda) ----
+- id: vance-the-short-con
+  persona: vance
+  title: "An Honest Job"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: windraiders, type: KILL_MOBS, mobIds: [9400576], count: 30, mapIds: [610010003, 610020002, 610020005] }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4032007, count: 10 }
+    - { id: tourists, type: DELIVER, to: vance, take: { itemId: 4032007, count: 10 } }
+  rewards: { meso: 45000, exp: 45000, bondPoints: 30, flags: [vance.intro.done] }
+
+- id: vance-varkit
+  persona: vance
+  title: "The Varkit"
+  length: MEDIUM
+  requires: { level: { min: 90 }, friendship: 5, questsCompleted: [vance-the-short-con] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [9400580], count: 30, mapIds: [610020003, 610010012, 610010013] }
+    - { id: rags, type: COLLECT_ITEM, itemId: 4032011, count: 5 }
+    - { id: edge, type: DELIVER, to: vance, take: { itemId: 4032011, count: 5 } }
+  rewards:
+    meso: 210000
+    exp: 210000
+    bondPoints: 35
+    gear:
+      - { itemId: 1332027, scrolls: [{ success: 100 }] }
+
+- id: vance-blood-dagger
+  persona: vance
+  title: "The Blood Dagger"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [vance-varkit] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: typhons, type: KILL_MOBS, mobIds: [9400574], count: 30, mapIds: [610020004] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4032005, count: 10 }
+    - { id: grip, type: DELIVER, to: vance, take: { itemId: 4032005, count: 10 } }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 50
+    gear:
+      - { itemId: 1332052, scrolls: [{ success: 60 }] }
+
+- id: vance-dragon-kreda
+  persona: vance
+  title: "The Dragon Kreda"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [vance-blood-dagger] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bigfoots, type: KILL_MOBS, mobIds: [9400575], count: 5, mapIds: [610010012, 610010013, 610010100, 610010101, 610010102] }
+    - { id: toes, type: COLLECT_ITEM, itemId: 4032013, count: 3, dropFrom: { mobIds: [9400575], chance: 0.6 } }
+    - { id: kreda, type: DELIVER, to: vance, take: { itemId: 4032013, count: 3 } }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1332050, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: vance-badges
+  persona: vance
+  title: "Back to the Tourists"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 70 }, questsCompleted: [vance-the-short-con] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4032007, count: 10 }
+    - { id: return, type: DELIVER, to: vance, take: { itemId: 4032007, count: 10 } }
+  rewards: { meso: 15000, exp: 12000, bondPoints: 10 }
+
+# ---- Delphine (recruit; wand third tier: Magicodar, Dimon Wand, Dragon Wand) ----
+- id: delphine-the-sample-run
+  persona: delphine
+  title: "The Sample Run"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firebombs, type: KILL_MOBS, mobIds: [5100002], count: 30, mapIds: [600020400] }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 15 }
+    - { id: jar, type: DELIVER, to: delphine, take: { itemId: 4000081, count: 15 } }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 30, flags: [delphine.intro.done] }
+
+- id: delphine-magicodar
+  persona: delphine
+  title: "The Magicodar"
+  length: MEDIUM
+  requires: { level: { min: 86 }, friendship: 5, questsCompleted: [delphine-the-sample-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spiders, type: KILL_MOBS, mobIds: [9400545], count: 40, mapIds: [600020300] }
+    - { id: adapters, type: COLLECT_ITEM, itemId: 4032025, count: 20 }
+    - { id: core, type: DELIVER, to: delphine, take: { itemId: 4032025, count: 20 } }
+  rewards:
+    meso: 190000
+    exp: 190000
+    bondPoints: 35
+    gear:
+      - { itemId: 1372009, scrolls: [{ success: 100 }] }
+
+- id: delphine-dimon-wand
+  persona: delphine
+  title: "The Dimon Wand"
+  length: LONG
+  requires: { level: { min: 96 }, friendship: 7, questsCompleted: [delphine-magicodar] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [9400564], count: 15, mapIds: [682000302, 682000304, 682000402] }
+    - { id: quench, type: DELIVER, to: delphine }
+  rewards:
+    meso: 250000
+    exp: 250000
+    bondPoints: 50
+    gear:
+      - { itemId: 1372010, scrolls: [{ success: 60 }] }
+
+- id: delphine-dragon-wand
+  persona: delphine
+  title: "The Dragon Wand"
+  length: LONG
+  requires: { level: { min: 106 }, friendship: 10, questsCompleted: [delphine-dimon-wand] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horsemen, type: KILL_MOBS, mobIds: [9400549], count: 3, mapIds: [610010005, 610010010, 610010011, 610010013, 682000001] }
+    - { id: lanterns, type: COLLECT_ITEM, itemId: 4031903, count: 3, dropFrom: { mobIds: [9400549], chance: 1.0 } }
+    - { id: light, type: DELIVER, to: delphine, take: { itemId: 4031903, count: 3 } }
+  rewards:
+    meso: 310000
+    exp: 310000
+    bondPoints: 60
+    gear:
+      - { itemId: 1372032, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: delphine-flames
+  persona: delphine
+  title: "Warm Again"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [delphine-the-sample-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 15 }
+    - { id: lab, type: DELIVER, to: delphine, take: { itemId: 4000081, count: 15 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 10 }
+
+# ---- Duke (recruit; knuckle third tier: King Cent, Dragon Slash Claw, Timeless Equinox) ----
+- id: duke-roadwork
+  persona: duke
+  title: "Roadwork"
+  length: SHORT
+  requires: { level: { min: 75 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 30, mapIds: [610020002, 610020003] }
+    - { id: top, type: VISIT_MAP, mapIds: [610020005] }
+    - { id: done, type: DELIVER, to: duke }
+  rewards: { meso: 55000, exp: 55000, bondPoints: 30, flags: [duke.intro.done] }
+
+- id: duke-king-cent
+  persona: duke
+  title: "King Cent"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [duke-roadwork] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [9400580], count: 30, mapIds: [610020003, 610010012, 610010013] }
+    - { id: ashes, type: COLLECT_ITEM, itemId: 4032010, count: 15 }
+    - { id: padding, type: DELIVER, to: duke, take: { itemId: 4032010, count: 15 } }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 35
+    gear:
+      - { itemId: 1482012, scrolls: [{ success: 100 }] }
+
+- id: duke-dragon-slash-claw
+  persona: duke
+  title: "The Dragon Slash Claw"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [duke-king-cent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bigfoots, type: KILL_MOBS, mobIds: [9400575], count: 8, mapIds: [610010100, 610010101, 610010102, 610010103, 610010104] }
+    - { id: broken-in, type: DELIVER, to: duke }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1482013, scrolls: [{ success: 60 }] }
+
+- id: duke-timeless-equinox
+  persona: duke
+  title: "The Timeless Equinox"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [duke-dragon-slash-claw] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [9400582], count: 30, mapIds: [610020006] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4032012, count: 10 }
+    - { id: champ, type: DELIVER, to: duke, take: { itemId: 4032012, count: 10 } }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1482023, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: duke-sparring
+  persona: duke
+  title: "The Gym Door"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 75 }, questsCompleted: [duke-roadwork] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4032006, count: 10 }
+    - { id: door, type: DELIVER, to: duke, take: { itemId: 4032006, count: 10 } }
+  rewards: { meso: 18000, exp: 15000, bondPoints: 10 }
+
+# ---- Odette (iTCG Set 3: Jungle Juice, the spirit weapons, the Taru Spirit Cape and Feather) ----
+- id: odette-the-spirit-pens
+  persona: odette
+  title: "The Spirits' Honey"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bees, type: KILL_MOBS, mobIds: [9400540], count: 25, mapIds: [600020200] }
+    - { id: honey, type: DELIVER, to: odette }
+  rewards: { meso: 6000, exp: 7000, bondPoints: 30, items: [{ itemId: 2022308, count: 5 }] }
+
+- id: odette-a-spirit-for-you
+  persona: odette
+  title: "A Spirit Chooses"
+  length: SHORT
+  requires: { level: { min: 27 }, friendship: 4, questsCompleted: [odette-the-spirit-pens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: valley, type: VISIT_MAP, mapIds: [600010300] }
+    - { id: basin, type: VISIT_MAP, mapIds: [600010200] }
+    - { id: home, type: DELIVER, to: odette }
+  rewards:
+    meso: 9000
+    exp: 10000
+    bondPoints: 40
+    gear:
+      - { pool: [1452054, 1462047, 1472065, 1332067, 1382054], scrolls: [{ success: 60, count: 2 }] }
+
+- id: odette-the-taru-feather
+  persona: odette
+  title: "The Taru Roosts"
+  length: LONG
+  requires: { level: { min: 80 }, friendship: 6, questsCompleted: [odette-the-spirit-pens] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stormbreakers, type: KILL_MOBS, mobIds: [9400581], count: 30, mapIds: [610020005] }
+    - { id: roosts, type: DELIVER, to: odette }
+  rewards: { meso: 70000, exp: 80000, bondPoints: 45, items: [{ itemId: 1102165, count: 1 }, { itemId: 1332070, count: 1 }, { itemId: 4031936, count: 1 }] }
+
+# ---- Cosmo (iTCG Set 4: Stirge Signal, Ridley's Scroll of Defense and Stone, Stirgeman's cape, string and pants) ----
+- id: cosmo-the-stirge-signal
+  persona: cosmo
+  title: "Quiet for the Signal"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skeletons, type: KILL_MOBS, mobIds: [9400638], count: 25, mapIds: [682000300, 682000600] }
+    - { id: quiet, type: DELIVER, to: cosmo }
+  rewards: { meso: 30000, exp: 3500, bondPoints: 30, items: [{ itemId: 2002027, count: 3 }, { itemId: 2002029, count: 3 }] }
+
+- id: cosmo-the-stirgeman-kit
+  persona: cosmo
+  title: "The First Stirgeman Kit"
+  length: SHORT
+  requires: { level: { min: 22 }, friendship: 4, questsCompleted: [cosmo-the-stirge-signal] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stretch, type: COLLECT_ITEM, itemId: 4032030, count: 10 }
+    - { id: kit, type: DELIVER, to: cosmo, take: { itemId: 4032030, count: 10 } }
+  rewards:
+    meso: 6000
+    exp: 6000
+    bondPoints: 40
+    items: [{ itemId: 4032026, count: 1 }, { itemId: 4032021, count: 1 }]
+    gear:
+      - { pool: [1102176], scrolls: [{ success: 60 }] }
+      - { pool: [1302088], scrolls: [{ success: 60 }] }
+
+- id: cosmo-the-utility-pants
+  persona: cosmo
+  title: "Pockets in Danger"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 6, questsCompleted: [cosmo-the-stirgeman-kit] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boxes, type: KILL_MOBS, mobIds: [9400557], count: 20, mapIds: [682000305, 682000505] }
+    - { id: pockets, type: DELIVER, to: cosmo }
+  rewards:
+    meso: 8000
+    exp: 8000
+    bondPoints: 40
+    gear:
+      - { pool: [1060127, 1061149], scrolls: [{ success: 60 }] }
+
+# ---- Gideon (iTCG Set 2: Typhon Crest, Stone Tiger Head, Ginger Ale, the six Ancient pieces, Crystal Shard, LeFay Jewel) ----
+- id: gideon-the-trophy-wall
+  persona: gideon
+  title: "The Trophy Crate"
+  length: MEDIUM
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gryphons, type: KILL_MOBS, mobIds: [9400544], count: 25, mapIds: [600010600] }
+    - { id: mabel, type: TALK_TO, persona: mabel, say: ["the trophy wall? the one that burned down and took Gideon's eyebrows with it? i remember it. tell him i remember the eyebrows too."] }
+    - { id: crate, type: DELIVER, to: gideon }
+  rewards: { meso: 16000, exp: 19000, bondPoints: 30, items: [{ itemId: 4031914, count: 1 }, { itemId: 4031913, count: 1 }, { itemId: 2002026, count: 5 }] }
+
+- id: gideon-the-ancient-helm
+  persona: gideon
+  title: "The Ancient Helm"
+  length: MEDIUM
+  requires: { level: { min: 51 }, friendship: 4, questsCompleted: [gideon-the-trophy-wall] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firebombs, type: KILL_MOBS, mobIds: [5100002], count: 40, mapIds: [600020400] }
+    - { id: chamber, type: DELIVER, to: gideon }
+  rewards: { meso: 25000, exp: 26000, bondPoints: 40, items: [{ itemId: 4031897, count: 1 }, { itemId: 4031898, count: 1 }, { itemId: 4031899, count: 1 }] }
+
+- id: gideon-the-ancient-gi
+  persona: gideon
+  title: "The Last of the Crate"
+  length: LONG
+  requires: { level: { min: 66 }, friendship: 7, questsCompleted: [gideon-the-ancient-helm] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jesters, type: KILL_MOBS, mobIds: [9400640], count: 30, mapIds: [682000405, 682000504] }
+    - { id: map, type: DELIVER, to: gideon }
+  rewards: { meso: 50000, exp: 55000, bondPoints: 45, items: [{ itemId: 4031918, count: 1 }, { itemId: 4031919, count: 1 }, { itemId: 4031920, count: 1 }, { itemId: 4031917, count: 1 }, { itemId: 4031915, count: 1 }] }
+
+# ---- Sabine (iTCG Set 5: Crystal Blade, Subani Ankh, Stone Denari, Cloak of Corruption, Pharoah's Wrappings, Ridley's Book of Rituals) ----
+- id: sabine-the-dead-mine-stories
+  persona: sabine
+  title: "Who Was Colder"
+  length: MEDIUM
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gideon, type: TALK_TO, persona: gideon, say: ["the biggest thing i ever hunted? a typhon. on the Path of Peril. with one arm, by the end. tell her that. she'll say Zakum. she always says Zakum."] }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 30, mapIds: [600020500] }
+    - { id: cold, type: DELIVER, to: sabine }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 30, items: [{ itemId: 1302106, count: 1 }, { itemId: 4031759, count: 1 }, { itemId: 4032134, count: 1 }] }
+
+- id: sabine-the-cloak-of-corruption
+  persona: sabine
+  title: "The Names in the Mine"
+  length: LONG
+  requires: { level: { min: 62 }, friendship: 5, questsCompleted: [sabine-the-dead-mine-stories] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: miners, type: KILL_MOBS, mobIds: [5130108], count: 40, mapIds: [211041700, 211041800] }
+    - { id: maud, type: TALK_TO, persona: maud, say: ["Sabine. the healer who read the names out loud in the dark. i heard. tell her they're on the roll, every one. tell her i read them too, the ones she walked past."] }
+    - { id: peace, type: DELIVER, to: sabine }
+  rewards:
+    meso: 45000
+    exp: 50000
+    bondPoints: 45
+    items: [{ itemId: 4031916, count: 1 }, { itemId: 4031900, count: 1 }]
+    gear:
+      - { pool: [1102193], scrolls: [{ success: 60, count: 2 }] }

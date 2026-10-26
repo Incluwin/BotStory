@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 2,
+  "profileId": "aquarium-store",
+  "mapId": 230000002,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -466,
+    "middleMaxY": 218,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 11,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 110,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out01", "weight": 30 },
+    { "name": "out00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -30, "y": -307, "seatId": -1 },
+    { "x": 127, "y": 309, "seatId": -1 },
+    { "x": 295, "y": 82, "seatId": 5 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -200, "y": 426 },
+    { "x": -115, "y": 426 },
+    { "x": -30, "y": 426 },
+    { "x": 55, "y": 426 },
+    { "x": 140, "y": 426 },
+    { "x": 225, "y": 426 }
+  ],
+  "npcSpots": [
+    { "npcId": 2060004, "offsetX": 125 },
+    { "npcId": 2060007, "offsetX": 143 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": 284, "minY": 235, "maxX": 424, "maxY": 360, "excludesOccupancy": true },
+    { "id": "portal-out01", "type": "PORTAL", "minX": -419, "minY": -496, "maxX": -279, "maxY": -371, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 112, "minY": -512, "maxX": 202, "maxY": -297, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 95, "minY": -1089, "maxX": 185, "maxY": -914, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": 313, "minY": -922, "maxX": 403, "maxY": -441, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": 45, "minY": -365, "maxX": 135, "maxY": 107, "excludesOccupancy": true },
+    { "id": "ladder-4", "type": "LADDER", "minX": -340, "minY": -1233, "maxX": -250, "maxY": -680, "excludesOccupancy": true },
+    { "id": "ladder-5", "type": "LADDER", "minX": 193, "minY": -166, "maxX": 283, "maxY": 107, "excludesOccupancy": true },
+    { "id": "npc-2060004", "type": "NPC_LANE", "minX": -229, "minY": 6, "maxX": -99, "maxY": 136, "excludesOccupancy": true },
+    { "id": "npc-2060007", "type": "NPC_LANE", "minX": -220, "minY": -796, "maxX": -54, "maxY": -666, "excludesOccupancy": true },
+    { "id": "npc-2060008", "type": "NPC_LANE", "minX": -63, "minY": -1133, "maxX": 67, "maxY": -1003, "excludesOccupancy": true },
+    { "id": "npc-2060003", "type": "NPC_LANE", "minX": 5, "minY": -562, "maxX": 135, "maxY": -432, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -200, "y": -307, "seatId": -1 }, { "x": -115, "y": -307, "seatId": -1 }, { "x": -30, "y": -307, "seatId": -1 }, { "x": 40, "y": -307, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -43, "y": 309, "seatId": -1 }, { "x": 42, "y": 309, "seatId": -1 }, { "x": 127, "y": 309, "seatId": -1 }, { "x": 212, "y": 309, "seatId": -1 }] },
+    { "id": "middle-east-benches", "label": "Middle east benches", "district": "MIDDLE", "platformKind": "MINI", "capacity": 1,
+      "affordances": ["REST", "LINGER"],
+      "spots": [{ "x": 295, "y": 82, "seatId": 5 }] },
+    { "id": "beside-gerrard", "label": "Beside Gerrard", "district": "UPPER", "platformKind": "MINI", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -163, "y": -1014, "seatId": -1 }] },
+    { "id": "beside-oannes", "label": "Beside Oannes", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -79, "y": 100, "seatId": -1 }] },
+    { "id": "beside-calypso", "label": "Beside Calypso", "district": "UPPER", "platformKind": "MINI", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -34, "y": -708, "seatId": -1 }] },
+    { "id": "beside-melias", "label": "Beside Melias", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -15, "y": -464, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "aquarium-store-gerrard", "type": "STORAGE", "npcId": 2060008, "destinationMapId": 0,
+      "approachPoints": [{ "x": -163, "y": -1014 }],
+      "services": ["storage"] },
+    { "id": "aquarium-store-oannes", "type": "POTION_SHOP", "npcId": 2060004, "destinationMapId": 0,
+      "approachPoints": [{ "x": -79, "y": 100 }],
+      "services": ["browse", "buy", "sell"] },
+    { "id": "aquarium-store-calypso", "type": "WEAPON_SHOP", "npcId": 2060007, "destinationMapId": 0,
+      "approachPoints": [{ "x": -34, "y": -708 }],
+      "services": ["browse", "buy", "sell"] },
+    { "id": "aquarium-store-melias", "type": "ARMOR_SHOP", "npcId": 2060003, "destinationMapId": 0,
+      "approachPoints": [{ "x": -15, "y": -464 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

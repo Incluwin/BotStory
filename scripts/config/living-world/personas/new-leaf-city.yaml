@@ -1,0 +1,1520 @@
+# New Leaf City cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 25 Residents, 7 recruitable.
+# Leaf Street's card club wants its first city tournament, and the only prizes worth playing for are the pieces John
+# Barricade and Professor Foxwit drew up for Masteria (the MapleStory iTCG gear). The makers in town forge them as
+# friendship gear; the club's arc hands out Barricade's four artifacts. Four recruits carry the third weapon tier of
+# the mace, dagger, wand and knuckle lines (Phantom Forest and Crimsonwood, by the NLC Taxi); three carry iTCG pieces.
+# Four more keep one iTCG set each: Odette (Set 3, the spirit weapons), Cosmo (Set 4, Stirgeman's kit), Gideon (Set 2,
+# the Ancient armour and the bosshunters' trophies) and Sabine (Set 5, the Zakum expedition). Fergus forges the Glimmer
+# Man's Versal weapons, Theodora and Fergus hand out Set 1's materials, and Benji the Starter Set's Red Relaxer.
+# Light tie: Ramona's paper runs Singapore's ghost-ship story (personas/singapore.yaml).
+- id: monty
+  name: Monty
+  look: { gender: male }
+  title: "Proprietor of the Leaf Street Card Club"
+  job: BEGINNER
+  level: { min: 22, max: 24 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 10, to: 14, spot: "venue:middle-central-street-3", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:middle-west-benches", activity: SOCIALIZE }
+      - { from: 18, to: 23, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [glutton ghoul, killa bee, coat hanger]
+  questLines: [monty-the-empty-prize-table, monty-the-blueprints, monty-cup-night]
+  arc: monty-the-leaf-cup
+  rumors: [nlc-the-prize-table]
+  relationships:
+    - { persona: ramona, kind: GETS_WRITTEN_UP_BY }
+    - { persona: benji, kind: TEACHES }
+    - { persona: fergus, kind: OWES }
+  giftItemIds: [2020004, 2001001]
+  dialogue:
+    greetFirst: ["a new face! do you play? doesn't matter. everybody on Leaf Street plays, they just don't know it yet.", "hey, welcome to New Leaf City. pull up a crate. the club meets wherever i'm standing."]
+    greet: ["hey, partner.", "you came back. the cards remember you. i do too.", "shuffle up."]
+    idle: ["(fans a deck of hand-painted cards, then squares them with one tap on his palm)", "(writes a name on a scrap of paper and pins it under a stone so it won't blow away)"]
+    noWork: ["nothing today. the club's quiet. it's always quiet till the evening. then it's loud."]
+    nothingDue: ["nothing owed, partner. the deck's square."]
+    who: ["Monty. i run the Leaf Street Card Club. it's a deck of cards, a crate and whoever's standing near the crate. we've never held a tournament. you can't hold one with nothing on the prize table."]
+    bye: ["keep your best card face down."]
+    thanks: ["you're a good sport."]
+    smallTalk: ["the cards are painted after real things. the Taru Totem, the Mystic Astrolabe. John Barricade found the real ones out in Masteria. everybody wants the real ones.", "Foxwit drew a cape once, a Zeta Cape. drew it so well people paint it on cards. i've never seen one worn."]
+    speakPlainly: ["plainly: a card club with no prizes."]
+    questOffer.monty-the-empty-prize-table: ["a tournament needs a prize table. a table needs a banner. the glutton ghouls in the Haunted House foyer carry coat hangers around, don't ask me why. twenty of them, ten hangers, and ask Fergus if he'd ever forge the old Masteria pieces for prizes."]
+    questAccept.monty-the-empty-prize-table: ["Fergus is the smith by Kyle's. the NLC Taxi goes out to the Haunted House. it isn't cheap. nothing good is."]
+    questWaiting.monty-the-empty-prize-table: ["ten hangers, and what Fergus said."]
+    questComplete.monty-the-empty-prize-table: ["ten hangers and a yes. a yes! from Fergus, who says no to the weather. and he sent these with it, off the Glimmer Man's old shelf. the club's first prizes. now the table's got something to point at."]
+    questOffer.monty-the-blueprints: ["Fergus can forge the pieces if he has the drawings. Foxwit's are in his archive, Theodora keeps them. Barricade's notes for the artifacts got pawned. Ezra on the lower east street has them, i'd bet the deck. ask both. and the killa bees in the MesoGears soul corridor chew through paper. thirty of them, so nothing chews the drawings on the way back."]
+    questAccept.monty-the-blueprints: ["Theodora's by Foxwit most days. Ezra's on the lower east street. the soul corridor's down in MesoGears, past John Barricade."]
+    questWaiting.monty-the-blueprints: ["Theodora, Ezra, thirty bees. then we've got a tournament."]
+    questComplete.monty-the-blueprints: ["the drawings. real ones. i'm not crying. it's the dust off Ezra's shop. these were Barricade's too. take them. the club owes you."]
+    questOffer.monty-cup-night: ["the Leaf Cup. tonight. the table's set, the drawings are at the forge, Benji wants to play. go tell Benji he's in, and tell Ramona to bring her camera. then come back and deal the first hand."]
+    questAccept.monty-cup-night: ["Benji sells papers by the subway. Ramona's wherever a story is. go."]
+    questWaiting.monty-cup-night: ["Benji, Ramona, then you. the cards are waiting."]
+    questComplete.monty-cup-night: ["first hand dealt. the Leaf Cup. on Leaf Street. i ran a card club for eleven years with nothing on the table. tonight there's a table, and a crowd, and you dealt. thank you."]
+    about.ramona: ["Ramona writes for the Leaf Ledger. she's written about the club twice. both times the headline was 'Club Has No Prizes'. accurate."]
+    about.benji: ["Benji's the best player on Leaf Street and he's eleven. he's going to be the first person to win something at my club. i've decided."]
+    about.fergus: ["Fergus forges at the stall by Kyle's. he says no to everything first. you have to ask twice."]
+    aboutUnknown: ["never played me. yet."]
+    friend.close: ["you can sit in on club night any time. bring a deck. bring two. someone always forgets."]
+    friend.best: ["i painted a card of you. don't look at it yet. it's not dry."]
+    famed: ["they're painting cards of you now. i've seen three."]
+    defamed: ["your card's in the discard pile around here. play better."]
+    gift: ["for the club? thanks."]
+    gift.favorite: ["oh, the good stuff. that's going on the prize table. no, i'm eating it. no, the table."]
+    gift.again: ["no more today. i'm a card shark, not a vending machine."]
+
+- id: ramona
+  name: Ramona
+  look: { gender: female }
+  title: "Reporter for the Leaf Ledger"
+  job: BEGINNER
+  level: { min: 26, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-professor-foxwit", activity: LINGER }
+      - { from: 12, to: 17, activity: STROLL }
+      - { from: 17, to: 21, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [ghost ship, boat quay town, street slime]
+  questLines: [ramona-the-front-page, ramona-the-ghost-ship-story]
+  rumors: [nlc-the-prize-table]
+  relationships:
+    - { persona: monty, kind: WRITES_UP }
+    - { persona: priya, kind: GETS_TIPS_FROM }
+    - { persona: benji, kind: EMPLOYS }
+  giftItemIds: [2020005, 2000004]
+  dialogue:
+    greetFirst: ["Ramona, Leaf Ledger. you're new. new's a story. hold still while i decide if you're a good one.", "hi. don't mind the notebook. i write down everything. it's a condition."]
+    greet: ["you again. good, i need a quote.", "anything happen to you today? anything at all?", "hey. off the record, i'm tired."]
+    idle: ["(scribbles in a notebook, crosses it out, writes it again exactly the same)", "(holds a pencil in her teeth while she squints up at the Mayor's window)"]
+    noWork: ["no story today. the city's being boring on purpose."]
+    nothingDue: ["we're even. that's not a story."]
+    who: ["Ramona. i write the Leaf Ledger. all of it. the front page, the weather, the letters to the editor. some of the letters i write to myself."]
+    bye: ["if anything happens, tell me first."]
+    thanks: ["noted. i mean that literally."]
+    smallTalk: ["Icebyrd Slimm says the city's open to everyone. i asked him for a quote on that. he gave me four. he likes quotes.", "the best story going is the ghost ship in Singapore. a ship full of lanterns that waits without a crew. one day i'll have written all of it."]
+    speakPlainly: ["plainly: the news."]
+    questOffer.ramona-the-front-page: ["i need a front page. Priya, the Mayor's secretary, knows what the city's doing before the city does. and Mabel on the benches knew John Barricade's crew back when. ask them both what's new. i'll do the rest."]
+    questAccept.ramona-the-front-page: ["Priya's by the Mayor most of the day. Mabel's the one on the west benches with the map case."]
+    questWaiting.ramona-the-front-page: ["Priya and Mabel. two quotes. one front page."]
+    questComplete.ramona-the-front-page: ["'Mayor plans subway to nowhere' and 'explorer's crew once ate a boot'. that's a front page. here. you're a stringer now. it pays badly."]
+    questOffer.ramona-the-ghost-ship-story: ["the ghost ship. Singapore, by the plane from Kerning. there's a widow on Boat Quay, Rosnah, whose husband sailed on it before it was a ghost. ask her if she'll talk to the Ledger. then go out to the ghost ship and tell me it's real."]
+    questAccept.ramona-the-ghost-ship-story: ["Kerning's airport, then Boat Quay Town. be kind to Rosnah. she's been asked before, badly."]
+    questWaiting.ramona-the-ghost-ship-story: ["Rosnah, then the ship. i've already written the headline."]
+    questComplete.ramona-the-ghost-ship-story: ["she talked. and the ship's real. 'the ship that waits for its crew'. that's the best headline i've ever written. i'm not changing it. thank you."]
+    about.monty: ["Monty runs the card club. i've written it up for years. he cuts every one out and pins it to his crate. that's the nicest thing anyone's done with my paper."]
+    about.priya: ["Priya's my best source. she's never told me anything. she just looks at a door, and then i go and look behind the door."]
+    about.benji: ["Benji sells the Ledger at the subway. he sells more than i print. i don't know how. i don't ask."]
+    aboutUnknown: ["not in the paper. yet."]
+    friend.close: ["you're on my list of people i'd quote without checking. it's a short list."]
+    friend.best: ["if i ever write a book, the first chapter's about you. the second's about me finding out you were right."]
+    famed: ["your name's in the Ledger again. good news, for once."]
+    defamed: ["your name's in the Ledger. you won't like the column."]
+    gift: ["for me? i'll mention it in the paper. small print."]
+    gift.favorite: ["oh, that's exactly what a reporter runs on. don't tell anyone. it's a professional secret."]
+    gift.again: ["one a day. i have a word count and a stomach."]
+
+- id: benji
+  name: Benji
+  look: { gender: male }
+  title: "Newsboy of the Subway Steps"
+  job: BEGINNER
+  level: { min: 11, max: 12 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 7, to: 12, spot: "venue:nlc-subway-station-entrance", activity: LINGER }
+      - { from: 12, to: 16, spot: "venue:middle-central-street-3", activity: SOCIALIZE }
+      - { from: 16, to: 20, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [street slime, urban fungus, killa bee]
+  questLines: [benji-the-card-box, benji-barricades-lobby]
+  relationships:
+    - { persona: monty, kind: STUDIES_UNDER }
+    - { persona: ramona, kind: RUNS_FOR }
+    - { persona: otis, kind: PESTERS }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["paper! Leaf Ledger! ...you're not buying a paper. that's fine. do you play cards?", "hey! you're an adventurer! a real one! do you know John Barricade? everyone says that. do you, though?"]
+    greet: ["hey! paper?", "you're back! i've got a new card!", "hiya."]
+    idle: ["(counts a stack of newspapers, loses count, starts again)", "(shuffles a deck too fast and has to chase three cards across the street)"]
+    noWork: ["i've got nothing for you. i've got papers. want a paper?"]
+    nothingDue: ["we're good!"]
+    who: ["Benji. i sell the Leaf Ledger on the subway steps and i play at Monty's club. i'm the best one. Monty says. i'm going to be an explorer like Barricade when i'm taller."]
+    bye: ["see you! buy a paper next time!"]
+    thanks: ["you're the best!"]
+    smallTalk: ["my best card is the Taru Totem. it's a picture of a real thing. Barricade found the real one. imagine holding the real one.", "Otis at the subway lets me sit on his trolley when it's quiet. don't tell him i told you. he pretends he doesn't let me."]
+    speakPlainly: ["plainly: papers. cards. Barricade."]
+    questOffer.benji-the-card-box: ["the street slimes in the Urban Underground ate my card box. ATE it. it was cardboard. twenty slimes, and twenty of the urban fungus that cheered them on. please."]
+    questAccept.benji-the-card-box: ["the jungle clearing, past Town Center. it smells like a sock."]
+    questWaiting.benji-the-card-box: ["twenty and twenty. revenge for the box."]
+    questComplete.benji-the-card-box: ["revenge! here, hot dogs from the stand. i was saving them. you're a hero."]
+    questOffer.benji-barricades-lobby: ["John Barricade's lobby is in MesoGears. i'm not allowed down there. could you go and stand in it for me? and tell me what it looks like? everything. the floor. the smell."]
+    questAccept.benji-barricades-lobby: ["MesoGears. the big door in the Town Center. stand in the lobby. look at everything."]
+    questWaiting.benji-barricades-lobby: ["did you go? what's the floor like?"]
+    questComplete.benji-barricades-lobby: ["stone? and it echoes? and he's got a hat? i KNEW he had a hat. i'm going to draw it on a card. here, Monty's old red chair from the club's starter set. he gave it me. you should sit in it. you've earned it more."]
+    about.monty: ["Monty taught me everything. not cards. everything. he says cards are just practice for paying attention."]
+    about.ramona: ["Ramona writes the paper i sell. she gives me a coin for every one and a coin for every one she thinks i sold extra. that's two coins."]
+    about.otis: ["Otis runs the subway trolley. he's grumpy. he's not grumpy."]
+    aboutUnknown: ["don't know them. are they an explorer?"]
+    friend.close: ["you can have the first paper every morning. free. well, Ramona's free. same thing."]
+    friend.best: ["when i'm an explorer you're coming. you're the first one i'm asking. everyone else is second."]
+    famed: ["everyone at the subway knows your name! i told them!"]
+    defamed: ["i heard stuff about you. i don't believe it. mostly."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh WOW. that's the best thing anyone's ever given me. this week."]
+    gift.again: ["Ramona says i can only have one treat a day. she's watching."]
+
+- id: dolores
+  name: Dolores
+  look: { gender: female }
+  title: "Cook of the Leaf Street Diner"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 6, to: 15, spot: "venue:by-miki", activity: LINGER }
+      - { from: 15, to: 20, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [mighty maple eater, jr. yeti, soft feather]
+  questLines: [dolores-the-syrup-thieves, dolores-the-cold-store]
+  rumors: [nlc-the-lunch-counter]
+  relationships:
+    - { persona: rocco, kind: FEEDS }
+    - { persona: duke, kind: FEEDS }
+    - { persona: mabel, kind: SAVES_A_STOOL_FOR }
+  giftItemIds: [2020004, 2020005]
+  dialogue:
+    greetFirst: ["sit. eat. you look like you've been in the jungle. everybody does, the first day.", "new? you're eating first. talking second. that's the diner rule."]
+    greet: ["back. sit.", "you're thin. sit.", "the usual? you don't have a usual. you do now."]
+    idle: ["(wipes the same patch of counter with a cloth that's seen better years)", "(tastes something from a ladle, frowns, adds salt, tastes it again, nods)"]
+    noWork: ["nothing needs doing. the grill's hot and the syrup's safe. for now."]
+    nothingDue: ["you owe me nothing. eat something anyway."]
+    who: ["Dolores. i cook at the Leaf Street diner, next to Miki's. everyone in this city's eaten my pancakes at least once. the Mayor eats them twice."]
+    bye: ["take something for the road."]
+    thanks: ["eat, then thank me."]
+    smallTalk: ["the mighty maple eaters in the jungle go after the syrup trees. every pancake in this city depends on somebody chasing them off.", "Duke from the gym eats six eggs every morning. i stopped counting at six. he didn't."]
+    speakPlainly: ["plainly: pancakes."]
+    questOffer.dolores-the-syrup-thieves: ["the mighty maple eaters are at the syrup trees again. thirty of them, in the Krakian jungle basin or the jungle valley. no syrup, no pancakes, no city."]
+    questAccept.dolores-the-syrup-thieves: ["the jungle's past the Town Center. they look like maple leaves with teeth. they are."]
+    questWaiting.dolores-the-syrup-thieves: ["thirty. the syrup's waiting."]
+    questComplete.dolores-the-syrup-thieves: ["thirty. the trees are safe. sit down, there's a burger with your name on it."]
+    questOffer.dolores-the-cold-store: ["my cold store's broken. Fergus says he'll fix it with a few soft feathers to stop the draught. the jr. yetis are in the MesoGears ice chamber. twenty of them, five feathers."]
+    questAccept.dolores-the-cold-store: ["MesoGears, the ice chamber. it's cold. that's the point."]
+    questWaiting.dolores-the-cold-store: ["five feathers. the butter's sweating."]
+    questComplete.dolores-the-cold-store: ["five. Fergus will grumble and fix it. here, for your trouble. and a burger. two burgers."]
+    about.rocco: ["Rocco eats lunch at my counter every day at one. he tells me where every cab in the city is. i don't ask. he tells me anyway."]
+    about.duke: ["Duke's a boxer. sweet as a pie. eats like a horse. tips like a king."]
+    about.mabel: ["Mabel's got a stool at my counter nobody else sits on. she's been to places on maps nobody's drawn yet. she tips in stories."]
+    aboutUnknown: ["haven't fed them. yet."]
+    friend.close: ["there's a stool with your name on it now. well, a scratch. it means you."]
+    friend.best: ["i named a pancake after you. it's got extra syrup. people order it."]
+    famed: ["people order your pancake now. you know what that means? you're somebody."]
+    defamed: ["whoever said that can eat somewhere else."]
+    gift: ["for me? thank you, love."]
+    gift.favorite: ["oh, now that's proper food. that's going straight on the specials board."]
+    gift.again: ["that's plenty for today. i'm the one who feeds people around here."]
+
+- id: rocco
+  name: Rocco
+  look: { gender: male }
+  title: "Dispatcher at the Taxi Stand"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 5, to: 13, spot: "venue:beside-nlc-taxi", activity: LINGER }
+      - { from: 13, to: 14, spot: "venue:by-miki", activity: SOCIALIZE }
+      - { from: 14, to: 22, spot: "venue:beside-nlc-taxi", activity: LINGER }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [glutton ghoul, psycho jack box, electrophant]
+  questLines: [rocco-the-haunted-fare, rocco-the-cab-radio]
+  rumors: [nlc-the-lunch-counter]
+  relationships:
+    - { persona: dolores, kind: EATS_LUNCH_WITH }
+    - { persona: brody, kind: GOSSIPS_WITH }
+  giftItemIds: [2020005, 2000002]
+  dialogue:
+    greetFirst: ["need a cab? the cab goes one place. the Haunted House. fifteen thousand. it's a lot. it's a haunted house.", "hey, pal. new in town? everybody's new in town. this town's new."]
+    greet: ["hey, pal.", "where to? kidding. there's one place.", "how's it going?"]
+    idle: ["(talks into a crackling radio, listens, talks into it again)", "(leans on the cab and watches the street like it owes him money)"]
+    noWork: ["nothing today. the cab's on its run."]
+    nothingDue: ["we're square, pal."]
+    who: ["Rocco. i dispatch the NLC Taxi. one cab, one road, one haunted house at the end of it. i know every rider and every reason. most of them want to see a ghost."]
+    bye: ["mind the ghosts."]
+    thanks: ["sure thing, pal."]
+    smallTalk: ["the cab only goes to the Haunted House. past that it's Phantom Forest and then Crimsonwood. the cab doesn't go there. nobody's fare is that good.", "Brody walks the beat out by the Haunted House some afternoons. i drive him. he never pays. he's a cop. i let him."]
+    speakPlainly: ["plainly: one cab, one road."]
+    questOffer.rocco-the-haunted-fare: ["a fare left her purse in the Haunted House. i'm not going in. you take the cab out, step inside the hallway, and while you're in there, twenty of those rotting skeletons have been rattling at the windows. sort them out."]
+    questAccept.rocco-the-haunted-fare: ["take the cab. the hallway's past the foyer. the skeletons rattle. they're not friendly."]
+    questWaiting.rocco-the-haunted-fare: ["twenty skeletons. the purse can wait. it's a purse."]
+    questComplete.rocco-the-haunted-fare: ["twenty! and you found the purse? no? it's fine, she found it in her other coat. here, a fare back on the house."]
+    questOffer.rocco-the-cab-radio: ["the cab radio's dead. Fergus says diferium fuel cells. the electrophants in the Krakian jungle basin carry them. twenty electrophants, ten cells."]
+    questAccept.rocco-the-cab-radio: ["the jungle basin. the electrophants spark. don't stand in a puddle."]
+    questWaiting.rocco-the-cab-radio: ["ten cells. i'm shouting out of the window till then."]
+    questComplete.rocco-the-cab-radio: ["ten. listen to that. static. beautiful static. thanks, pal."]
+    about.dolores: ["Dolores feeds me lunch every day at one. i tell her where every cab is. there's one cab. she listens anyway."]
+    about.brody: ["Brody's a good cop. bad tipper. good cop."]
+    aboutUnknown: ["never drove them."]
+    friend.close: ["you ride free. don't tell the meter."]
+    friend.best: ["if you ever need a getaway, i've got a cab and i don't ask where."]
+    famed: ["everyone in my cab talks about you. everyone. it's a long road."]
+    defamed: ["riders are saying things about you. i turned the radio up."]
+    gift: ["hey, thanks, pal."]
+    gift.favorite: ["oh, now you're talking. dispatch runs on that."]
+    gift.again: ["one a day, pal. i've got a cab to watch."]
+
+- id: mabel
+  name: Mabel
+  look: { gender: female }
+  title: "Retired Explorer of the West Benches"
+  job: BOWMAN
+  level: { min: 45, max: 47 }
+  strength: SEASONED
+  loadout: hunter-bowman-l35
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 17, spot: "venue:middle-west-benches", activity: REST }
+      - { from: 17, to: 21, spot: "venue:middle-west-street-2", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [phantom tree, crimson tree, typhon]
+  questLines: [mabel-the-camp-stove, mabel-the-mountain]
+  relationships:
+    - { persona: hollis, kind: SENT_OUT }
+    - { persona: dolores, kind: TIPS_IN_STORIES }
+    - { persona: ramona, kind: TELLS_STORIES_TO }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["sit down, sit down. you've got jungle on your boots. tell me where you've been and i'll tell you where you're going next.", "an adventurer! a young one. we were all young. some of us were young twice."]
+    greet: ["there you are.", "sit. tell me something.", "you've been somewhere. i can tell."]
+    idle: ["(unrolls a hand-drawn map across her knees and taps a blank corner of it)", "(watches the jungle road with her chin resting on her bow)"]
+    noWork: ["nothing today. sit with me, though. sitting's work at my age."]
+    nothingDue: ["we're even, dear."]
+    who: ["Mabel. i walked Masteria with John Barricade's first crew, when the city was three tents and a sign. i've got the maps to prove it. some of the maps are even right."]
+    bye: ["go and see something."]
+    thanks: ["that's kind, dear."]
+    smallTalk: ["the phantom trees in the forest past the Haunted House walk at night. we used to burn their firewood. it burns blue. lovely, and frightening.", "Crimsonwood Mountain. we turned back at the lower ascent. i've been sorry for forty years."]
+    speakPlainly: ["plainly: an old explorer and her maps."]
+    questOffer.mabel-the-camp-stove: ["my old camp stove wants phantom firewood. it burns blue. the phantom trees in Phantom Forest drop it, out past the Haunted House. twenty trees, ten pieces."]
+    questAccept.mabel-the-camp-stove: ["the NLC Taxi to the Haunted House, then out into the forest. the trees walk. you'll see."]
+    questWaiting.mabel-the-camp-stove: ["ten pieces. blue fire. it's the only kind i miss."]
+    questComplete.mabel-the-camp-stove: ["ten. listen to it crackle. blue. just like the old camp. thank you, dear."]
+    questOffer.mabel-the-mountain: ["we turned back at the lower ascent of Crimsonwood Mountain. forty years ago. go and stand where we turned back. and the crimson trees up there, twenty of them, so it's a little less frightening than it was for us."]
+    questAccept.mabel-the-mountain: ["through Phantom Forest, up onto the mountain. the lower ascent. tell me what you see."]
+    questWaiting.mabel-the-mountain: ["did you stand there? what does it look like now?"]
+    questComplete.mabel-the-mountain: ["it's still there. and you walked past where we stopped. good. that's what it was for. here, take these for the road. it's a long one."]
+    about.hollis: ["Hollis surveys the jungle. i told him the jungle can't be surveyed. he's been trying for six years. i'm proud of him."]
+    about.dolores: ["Dolores saves me a stool. i pay her in stories. she says it's a fair rate. it isn't, in her favour."]
+    about.ramona: ["Ramona writes down everything i say. i've started saying better things."]
+    aboutUnknown: ["never met them on the road."]
+    friend.close: ["you can borrow my maps. bring them back. they're the only ones."]
+    friend.best: ["if i'd had you on that crew, we'd have climbed the mountain."]
+    famed: ["they're telling stories about you. good ones. i should know, i tell most of them."]
+    defamed: ["i've been talked about. you live."]
+    gift: ["oh, you shouldn't. thank you."]
+    gift.favorite: ["oh, that's camp food. that's the taste of a good day on the trail."]
+    gift.again: ["one a day, dear. i'm old, not greedy."]
+
+- id: gwen
+  name: Gwen
+  look: { gender: female }
+  title: "Florist of the Upper West Street"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 7, to: 15, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 15, to: 19, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  knows: [boomer, jr. wraith, swamp bog]
+  questLines: [gwen-the-trampled-beds, gwen-the-black-orchids]
+  relationships:
+    - { persona: clementine, kind: SUPPLIES }
+    - { persona: hollis, kind: ADMIRES }
+  giftItemIds: [2000002, 2001001]
+  dialogue:
+    greetFirst: ["oh! hello. mind the pots. mind that pot. that one's fine.", "welcome to New Leaf City. would you like a flower? they're from the jungle. most of them don't bite."]
+    greet: ["hello again!", "oh, it's you. lovely.", "hi. smell this. no, this one."]
+    idle: ["(turns a pot so the flower in it faces the sun, then turns it back)", "(snips a dead leaf off and apologizes to the plant)"]
+    noWork: ["nothing today. the flowers are behaving."]
+    nothingDue: ["nothing owed. the beds are square."]
+    who: ["Gwen. i sell flowers on the upper west street. jungle flowers. the city's all brick and the jungle's all green. i try to put a bit of one in the other."]
+    bye: ["take a flower. no, really."]
+    thanks: ["oh, thank you."]
+    smallTalk: ["the boomers in the jungle clearing trample the wild beds when they go off. they don't mean to. they're boomers.", "there are black orchids in the Phantom Forest swamp bog. you can't pick them. they die if you do. you can only go and look."]
+    speakPlainly: ["plainly: flowers."]
+    questOffer.gwen-the-trampled-beds: ["the boomers in the jungle clearing and the jungle valley have been going off in my wild beds. twenty-five of them. gently, if you can. you can't, can you."]
+    questAccept.gwen-the-trampled-beds: ["the jungle's just past the Town Center. watch out, they go off."]
+    questWaiting.gwen-the-trampled-beds: ["twenty-five. the beds are holding their breath."]
+    questComplete.gwen-the-trampled-beds: ["twenty-five. the beds will grow back. they always do. here, a pot for your windowsill."]
+    questOffer.gwen-the-black-orchids: ["i've never seen the black orchids. they grow in the swamp bog in Phantom Forest. thirty jr. wraiths haunt the bent tree on the way in. clear them, and go and stand in the bog, and look. then tell me."]
+    questAccept.gwen-the-black-orchids: ["the cab to the Haunted House, then the bent tree, then the swamp bog. don't pick them. please."]
+    questWaiting.gwen-the-black-orchids: ["did you see them? don't tell me yet. yes, tell me."]
+    questComplete.gwen-the-black-orchids: ["black, with a white edge, and they turn to follow you? oh. oh, i have to see that. one day. thank you for looking for me."]
+    about.clementine: ["Clementine buys my flowers for her hats. she puts them on hats that cost more than my whole stall. the flowers are the best part. she agrees."]
+    about.hollis: ["Hollis brings me seeds from the far jungle. he never says where from. he goes a bit red when i thank him."]
+    aboutUnknown: ["i don't know them. do they like flowers?"]
+    friend.close: ["you get the first flowers of the morning. the ones with the dew still on."]
+    friend.best: ["i planted a bed for you. it's on the upper west street. don't tell anyone it's yours. i'll know."]
+    famed: ["people buy flowers to give you. i've sold so many."]
+    defamed: ["flowers don't gossip. come and sit with them."]
+    gift: ["oh! thank you."]
+    gift.favorite: ["oh, that's lovely. i'm going to keep it by the window with the orchid pot."]
+    gift.again: ["you're spoiling me. tomorrow, maybe."]
+
+- id: priya
+  name: Priya
+  look: { gender: female }
+  title: "Secretary to Mayor Icebyrd Slimm"
+  job: BEGINNER
+  level: { min: 28, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 17, spot: "venue:middle-central-street-2", activity: LINGER }
+      - { from: 17, to: 20, spot: "venue:free-market-entrance", activity: BROWSE }
+      - { from: 20, to: 9, materialize: false }
+  recruitable: false
+  knows: [jr. yeti, killa bee, wolf spider]
+  questLines: [priya-the-patrol-report, priya-the-mesogears-survey]
+  relationships:
+    - { persona: brody, kind: TAKES_REPORTS_FROM }
+    - { persona: ramona, kind: NEVER_TELLS }
+  giftItemIds: [2000004, 2001001]
+  dialogue:
+    greetFirst: ["good day. the Mayor's office is open to every citizen. the Mayor is not. i am. how can i help?", "welcome to New Leaf City. if you'd like to register a complaint, the form is the one you're holding. you're not holding one. here."]
+    greet: ["hello again.", "the Mayor is in a meeting. he's always in a meeting. what do you need?", "good to see you."]
+    idle: ["(stamps three papers, reads the third, un-stamps it)", "(glances up at the Mayor's window, then back down at her clipboard, writing quickly)"]
+    noWork: ["nothing needs filing today. that's a first."]
+    nothingDue: ["our accounts are balanced."]
+    who: ["Priya. i keep Mayor Icebyrd Slimm's diary, his door and his promises. the diary's full. the door's shut. the promises are my job."]
+    bye: ["have a productive day."]
+    thanks: ["filed, with thanks."]
+    smallTalk: ["the Mayor wants the city to reach all the way to Masteria's ruins. the MesoGears are the first step. i've got the survey forms. nobody's filled them in.", "Ramona asks me what the Mayor's doing every day. i never tell her. she always finds out. i've stopped asking how."]
+    speakPlainly: ["plainly: the Mayor's paperwork."]
+    questOffer.priya-the-patrol-report: ["the Mayor wants the patrol report and Officer Brody hasn't filed it. he never files it. would you ask him for it? he'll talk to you. he hides from me."]
+    questAccept.priya-the-patrol-report: ["Brody's on the street most mornings, by the Mayor's office. he'll pretend he's busy."]
+    questWaiting.priya-the-patrol-report: ["the report. any report. he can tell it to you."]
+    questComplete.priya-the-patrol-report: ["'all quiet, ghosts at the Haunted House as usual'. that's the report. it's the same every week. it's still a report. thank you."]
+    questOffer.priya-the-mesogears-survey: ["the MesoGears survey. somebody has to stand in John Barricade's lobby and in the ice chamber and tell the Mayor they're still there. i can't leave the desk. would you?"]
+    questAccept.priya-the-mesogears-survey: ["the lobby first, then down to the ice chamber. it's cold down there. i'm told."]
+    questWaiting.priya-the-mesogears-survey: ["the lobby and the ice chamber. two lines on a form."]
+    questComplete.priya-the-mesogears-survey: ["both still there. the Mayor will be relieved. he'll want to cut a ribbon. here, your fee, from the city."]
+    about.brody: ["Officer Brody is the best officer in the city and the worst at paperwork. both things are true every day."]
+    about.ramona: ["Ramona is a very good reporter. i've never told her anything. i'm told i have a very expressive face."]
+    aboutUnknown: ["not in the city records."]
+    friend.close: ["you can see the Mayor without an appointment. well, you can see his door."]
+    friend.best: ["i've put your name in the Mayor's diary. under 'people we can rely on'. it's a short page."]
+    famed: ["the Mayor's heard of you. he'd like a photograph. he always would."]
+    defamed: ["there's been a complaint about you. i've filed it. filing is not the same as believing."]
+    gift: ["oh, thank you. that's very kind."]
+    gift.favorite: ["oh, that's lovely. that's going in my desk drawer for a long afternoon."]
+    gift.again: ["one a day. it's in the city ethics rules. i wrote them."]
+
+- id: otis
+  name: Otis
+  look: { gender: male }
+  title: "Porter of the Subway Station"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 5, to: 13, spot: "venue:nlc-subway-station-door", activity: LINGER }
+      - { from: 13, to: 21, spot: "venue:nlc-subway-station-entrance", activity: LINGER }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [urban fungus, psycho jack box, street slime]
+  questLines: [otis-the-underground, otis-the-lost-property]
+  relationships:
+    - { persona: benji, kind: LETS_RIDE_THE_TROLLEY }
+    - { persona: lou, kind: TOLERATES }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["off the train from Kerning? bags. give me the bags. no, the other bag.", "mind the gap. there's no gap. i say it anyway."]
+    greet: ["you.", "train's on time. i'm not.", "the trains don't care what time it is."]
+    idle: ["(pushes an empty trolley in a slow circle, for the exercise)", "(checks a pocket watch against the station clock and sighs at both)"]
+    noWork: ["nothing today. the bags are carrying themselves."]
+    nothingDue: ["nothing owed. your bags are clear."]
+    who: ["Otis. porter at the NLC subway station. i carry everybody's bags from Kerning and nobody's back. Bell sells the tickets. i do the lifting."]
+    bye: ["mind the gap."]
+    thanks: ["right."]
+    smallTalk: ["the urban fungus comes in on people's boots from the jungle and takes root in my station. i sweep it every morning. it's back by lunch.", "Lou plays guitar on my steps every evening. he's not bad. don't tell him i said so."]
+    speakPlainly: ["plainly: bags."]
+    questOffer.otis-the-underground: ["the urban fungus in the jungle clearing and the valley keeps coming into my station on people's boots. thirty of them, at the root. i'll sweep the rest."]
+    questAccept.otis-the-underground: ["the jungle clearing and the valley, past Town Center. it smells like my socks out there. i've checked."]
+    questWaiting.otis-the-underground: ["thirty. the floor's growing."]
+    questComplete.otis-the-underground: ["thirty. the floor's clean till lunch at least. here."]
+    questOffer.otis-the-lost-property: ["lost property. somebody's jack-in-the-box got off the train, rode the cab to the Haunted House and turned into fifteen psycho jack boxes. don't ask me. fifteen of them in the foyer, and the lost property shelf's clear."]
+    questAccept.otis-the-lost-property: ["the NLC Taxi to the Haunted House. the foyer. they pop."]
+    questWaiting.otis-the-lost-property: ["fifteen. the shelf is judging me."]
+    questComplete.otis-the-lost-property: ["fifteen. the shelf's clear. that's never happened. here, from the lost property tin. nobody ever claims the tin."]
+    about.benji: ["Benji rides my trolley when it's empty. it's against the rules. i wrote the rules. i've decided there's an exception."]
+    about.lou: ["Lou busks on my steps. he plays the same four songs. they're good songs."]
+    aboutUnknown: ["never carried their bags."]
+    friend.close: ["i'll carry your bags. no charge. don't spread it around."]
+    friend.best: ["if you ever come home on the late train, i'll wait. i'm not supposed to. i will."]
+    famed: ["people get off the train asking where you are. i point."]
+    defamed: ["people get off the train saying things about you. i don't carry those."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that'll keep me pushing the trolley till close."]
+    gift.again: ["tomorrow. i've got a trolley to push."]
+
+- id: fergus
+  name: Fergus
+  look: { gender: male }
+  title: "Smith Apprenticed to the Glimmer Man"
+  job: WARRIOR
+  level: { min: 32, max: 34 }
+  strength: SEASONED
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 8, to: 18, spot: "venue:beside-kyle", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [fire tusk, crimson tree, crimson wood]
+  questLines: [fergus-the-bellows, fergus-the-forge-coal, fergus-the-versal-forge]
+  rumors: [nlc-the-blueprints]
+  relationships:
+    - { persona: monty, kind: SAYS_NO_TO_FIRST }
+    - { persona: theodora, kind: BORROWS_DRAWINGS_FROM }
+    - { persona: dolores, kind: FIXES_THINGS_FOR }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["no. ...sorry. habit. what do you want?", "you're new. if you want a sword, Kyle sells them. if you want one made, that's me, and the answer's probably no."]
+    greet: ["you.", "no. ...what?", "forge is hot. stand back."]
+    idle: ["(hammers a strip of metal flat, holds it to the light, hammers it again)", "(blows on a coal until it glows, and stares into it like it's a book)"]
+    noWork: ["no. nothing today. the forge is thinking."]
+    nothingDue: ["nothing owed."]
+    who: ["Fergus. i'm apprenticed to the Glimmer Man. he patrols. i forge. he taught me to make anything somebody's drawn properly. the problem is nobody draws properly."]
+    bye: ["don't touch the anvil."]
+    thanks: ["fine."]
+    smallTalk: ["Barricade and Foxwit drew up gear for Masteria years ago. good drawings. somebody else's drawings, i can forge. my own, i'd only ruin.", "the fire tusks in MesoGears grow a tusk that's the right shape for a bellows nozzle. nature's a smith sometimes."]
+    speakPlainly: ["plainly: no. then yes, usually."]
+    questOffer.fergus-the-bellows: ["the bellows nozzle's cracked. the fire tusks in the MesoGears deity room and fire chamber grow the right shape. thirty of them. i'll cut the tusk myself."]
+    questAccept.fergus-the-bellows: ["MesoGears, through the big door in town. the deity room and the fire chamber. they charge. let them."]
+    questWaiting.fergus-the-bellows: ["thirty. the forge is wheezing."]
+    questComplete.fergus-the-bellows: ["thirty. listen to that forge breathe. fine. thank you. don't make it a thing."]
+    questOffer.fergus-the-forge-coal: ["the Masteria drawings want a hotter fire than coal. crimson wood burns hotter than anything. the crimson trees on Crimsonwood Mountain, past Phantom Forest. twenty trees, ten pieces of wood."]
+    questAccept.fergus-the-forge-coal: ["the cab to the Haunted House, through the forest, up the mountain's lower ascent. it's a long way for wood. it's good wood."]
+    questWaiting.fergus-the-forge-coal: ["ten pieces. i'm not starting Barricade's drawings on coal."]
+    questComplete.fergus-the-forge-coal: ["ten. that'll burn hot enough for anything Barricade ever drew. here. the Glimmer Man's leftovers, the black materia and the gyro, and something for the road. you've earned it. don't argue, i hate arguing."]
+    questOffer.fergus-the-versal-forge: ["the Glimmer Man let me copy his Versal drawings. stars and black holes, a weapon for nearly every arm. he never drew a gun or a knuckle. he won't let me light the Versal forge while the windraiders howl over the Phantom Forest crossroads. forty of them. then i'll make you one. i'm not saying no. i've decided."]
+    questAccept.fergus-the-versal-forge: ["the cab to the Haunted House, out through the forest to the crossroads. they fly. aim up."]
+    questWaiting.fergus-the-versal-forge: ["forty. the Glimmer Man's waiting. he doesn't wait well. keep a space in your bag."]
+    questComplete.fergus-the-versal-forge: ["the forge lit first try. here. a Versal piece for your arm, and the white materia that was left over. the Glimmer Man says it's the first one he's let me make start to finish. don't make it a thing."]
+    about.monty: ["Monty asked me to forge prizes for his card club. i said no. he asked again. that's how you ask me."]
+    about.theodora: ["Theodora keeps Foxwit's drawings. she lets me borrow them if i bring them back clean. i bring them back clean."]
+    about.dolores: ["Dolores feeds me. i fix her cold store. we've never once discussed it."]
+    aboutUnknown: ["never forged for them."]
+    friend.close: ["you can sharpen anything at my stall. free. don't tell Kyle."]
+    friend.best: ["i've never said yes the first time. for you, yes. first time."]
+    famed: ["people want things forged the way i forged yours. i say no. then yes."]
+    defamed: ["i don't listen. i'm hammering."]
+    gift: ["...thanks."]
+    gift.favorite: ["oh. that's good. thank you. really. the forge can wait a minute."]
+    gift.again: ["enough for today. i'm working."]
+
+- id: clementine
+  name: Clementine
+  look: { gender: female }
+  title: "Milliner of the Upper West Street"
+  job: CLERIC
+  level: { min: 33, max: 35 }
+  strength: SEASONED
+  loadout: cleric-l32
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 18, spot: "venue:upper-west-street-2", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:middle-west-benches", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [jr. wraith, phantom tree, leprechaun]
+  questLines: [clementine-the-antellion-miter, clementine-the-infinity-circlet, clementine-hatbands]
+  relationships:
+    - { persona: gwen, kind: BUYS_FLOWERS_FROM }
+    - { persona: bijou, kind: SHARES_A_WINDOW_WITH }
+  giftItemIds: [2001001, 2000006]
+  dialogue:
+    greetFirst: ["oh, your poor head. what is that on it? no, don't tell me. sit down, i'll measure you.", "hello! you have a hat face. not everyone does. it's a gift."]
+    greet: ["darling.", "the hat person! hello.", "come in, come in. there's no door. come in anyway."]
+    idle: ["(pins a jungle flower to a hat brim, steps back, unpins it, pins it two inches left)", "(measures the air with a tape as if there's a head in it)"]
+    noWork: ["nothing today. the hats are resting."]
+    nothingDue: ["we're square, darling."]
+    who: ["Clementine. i make hats on the upper west street. John Barricade's notes have two hats in them, the Antellion Miter and the Infinity Circlet. he couldn't draw a hat to save his life. i can make one."]
+    bye: ["keep your head covered. it's a good head."]
+    thanks: ["you're a darling."]
+    smallTalk: ["Barricade wrote 'miter, kind of pointy, glows a bit' and drew a triangle. that's all i had to go on. it's the best hat i've ever made.", "Bijou and i share a window. her earrings, my hats. people come in for one and leave with both. we planned it that way."]
+    speakPlainly: ["plainly: hats."]
+    questOffer.clementine-the-antellion-miter: ["the Antellion Miter wants an old lining. the jr. wraiths at the bent tree in Phantom Forest are wrapped in tablecloths. thirty of them, twenty cloths. old linen takes the shape of a head."]
+    questAccept.clementine-the-antellion-miter: ["the cab to the Haunted House, then out to the bent tree. they're shy. they're wrapped in tablecloths. you'll see."]
+    questWaiting.clementine-the-antellion-miter: ["twenty cloths. i've got the miter on a stand, waiting for its lining."]
+    questComplete.clementine-the-antellion-miter: ["twenty. look at it. kind of pointy, glows a bit. exactly what Barricade asked for. it's yours. it suits you."]
+    questOffer.clementine-the-infinity-circlet: ["the Infinity Circlet. Barricade drew a circle and wrote 'forever'. the phantom trees in Phantom Forest carry seeds that never stop growing. thirty trees, ten seeds, and i'll set them in the band."]
+    questAccept.clementine-the-infinity-circlet: ["the phantom trees, past the bent tree and in the swamp bog. they walk. be patient."]
+    questWaiting.clementine-the-infinity-circlet: ["ten seeds. forever takes a while."]
+    questComplete.clementine-the-infinity-circlet: ["ten. there. a circlet that's never quite finished growing. the only infinite thing i've ever made. wear it."]
+    questOffer.clementine-hatbands: ["ten more tablecloths from the jr. wraiths? the hatbands eat them."]
+    questAccept.clementine-hatbands: ["the bent tree."]
+    questWaiting.clementine-hatbands: ["ten."]
+    questComplete.clementine-hatbands: ["ten. hatbands for a month."]
+    about.gwen: ["Gwen's flowers make my hats. i tell her it's the other way round. we both know."]
+    about.bijou: ["Bijou makes earrings like she's hiding stars in them. she won't tell me how. i won't tell her how i do brims."]
+    aboutUnknown: ["never measured them."]
+    friend.close: ["you get a fitting whenever you like. no appointment. well, an appointment, but i'll pretend."]
+    friend.best: ["i made a hat just for you. it's on the stand in the window. nobody else is allowed to try it on."]
+    famed: ["people want 'the hat you made for that adventurer'. i say they're one of a kind. they are."]
+    defamed: ["a good hat helps, darling. so does ignoring them."]
+    gift: ["for me? you're a darling."]
+    gift.favorite: ["oh, that's divine. that's a long afternoon at the brim, that is."]
+    gift.again: ["one a day, darling. i'm a milliner, not a magpie."]
+
+- id: bijou
+  name: Bijou
+  look: { gender: female }
+  title: "Jeweller of the Free Market Door"
+  job: BEGINNER
+  level: { min: 25, max: 27 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 10, to: 19, spot: "venue:free-market-entrance", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:middle-central-street-3", activity: LINGER }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [electrophant, leprechaun, wolf spider]
+  questLines: [bijou-window-cards, bijou-the-crystal-leaf, bijou-the-dark-shards]
+  relationships:
+    - { persona: clementine, kind: SHARES_A_WINDOW_WITH }
+    - { persona: theodora, kind: BUYS_SKETCHES_FROM }
+  giftItemIds: [2000006, 2001001]
+  dialogue:
+    greetFirst: ["don't touch. ...you can look. looking's free. touching's a fitting.", "hello. those are bare ears. we can fix that."]
+    greet: ["ears.", "hello, ears. and you.", "come and look at the light in this."]
+    idle: ["(holds a tiny stone to her eye and turns it until it flashes)", "(threads a wire through a bead with fingers too quick to follow)"]
+    noWork: ["nothing today. the stones are being difficult."]
+    nothingDue: ["we're even."]
+    who: ["Bijou. earrings, by the free market door. Barricade drew the Crystal Leaf Earrings and Foxwit drew the Dark Shards. they both drew them in pencil. i make them in stone."]
+    bye: ["mind your ears."]
+    thanks: ["mm. thank you."]
+    smallTalk: ["the electrophants in the jungle carry socket adapters. there's crystal in the contacts. you'd never think it. i didn't, the first time.", "leprechauns in Phantom Forest steal anything shiny. one stole my best shard. i've been waiting for someone to get it back."]
+    speakPlainly: ["plainly: earrings."]
+    questOffer.bijou-window-cards: ["the slimes and the fungus in the jungle carry little painted monster cards. i set them in the window behind the earrings. ten, and the window looks finished."]
+    questAccept.bijou-window-cards: ["the jungle clearing, past Town Center. they don't drop many. they're careless with everything else."]
+    questWaiting.bijou-window-cards: ["ten cards. the window's bare."]
+    questComplete.bijou-window-cards: ["ten. look at the window now. precious. here."]
+    questOffer.bijou-the-crystal-leaf: ["the Crystal Leaf Earrings. the crystal's in the electrophants' socket adapters, in the contacts. the Krakian jungle basin and the mountain slopes. twenty-five electrophants, ten adapters."]
+    questAccept.bijou-the-crystal-leaf: ["the jungle basin and the slopes. they spark. stand back."]
+    questWaiting.bijou-the-crystal-leaf: ["ten adapters. i've got the leaves cut."]
+    questComplete.bijou-the-crystal-leaf: ["ten. there. the leaves catch the light like they're still on the tree. Barricade's leaves. yours."]
+    questOffer.bijou-the-dark-shards: ["a leprechaun stole my best shard. the Dark Shards need it. thirty leprechauns at the bent tree, the haunted hill and the swamp bog, and look on the haunted hill. that's where they hide the shiny things."]
+    questAccept.bijou-the-dark-shards: ["the cab to the Haunted House, out into Phantom Forest. the haunted hill. they giggle. it's horrible."]
+    questWaiting.bijou-the-dark-shards: ["thirty, and the hill. my shard."]
+    questComplete.bijou-the-dark-shards: ["my shard. they had it the whole time. thirty leprechauns for one stone. worth it. the Dark Shards. Foxwit's pair. wear them."]
+    about.clementine: ["Clementine and i share a window. hats above, earrings below. people look up, then down. it works."]
+    about.theodora: ["Theodora sells me Foxwit's old sketches. she pretends she shouldn't. she shouldn't."]
+    aboutUnknown: ["never pierced them."]
+    friend.close: ["you can try anything on. even the window pieces."]
+    friend.best: ["i set a stone for you. it's not for sale. it's not for anyone else."]
+    famed: ["people ask for 'the earrings that adventurer wears'. i tell them there's a waiting list."]
+    defamed: ["the stones don't gossip. i learned from them."]
+    gift: ["mm. thanks."]
+    gift.favorite: ["oh, that's a working afternoon, that is. thank you."]
+    gift.again: ["save it for tomorrow. i'm busy being precious."]
+
+- id: ezra
+  name: Ezra
+  look: { gender: male }
+  title: "Antiquities Dealer of the Lower East Street"
+  job: THIEF
+  level: { min: 36, max: 38 }
+  strength: SEASONED
+  loadout: kerning-thief-l35
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 11, to: 20, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 20, to: 24, spot: "venue:middle-east-street-2", activity: LINGER }
+      - { from: 0, to: 11, materialize: false }
+  recruitable: false
+  knows: [glutton ghoul, urban underground, street slime]
+  questLines: [ezra-the-glued-vase, ezra-the-black-phoenix]
+  relationships:
+    - { persona: monty, kind: SELLS_TO }
+    - { persona: vance, kind: KNOWS_TOO_WELL }
+  giftItemIds: [2000004, 2020005]
+  dialogue:
+    greetFirst: ["welcome to my shop. it's this patch of street. everything you see is genuine. most of what you can't see is too.", "an adventurer. do you have anything old? i buy old. i sell older."]
+    greet: ["my favourite customer.", "ah. you.", "anything old today? anything strange?"]
+    idle: ["(rubs a tarnished coin on his sleeve and holds it up to the light)", "(wraps something small in cloth and puts it in a box that's too big for it)"]
+    noWork: ["nothing today. the antiques are aging, which is their job."]
+    nothingDue: ["our accounts are settled. a rare thing in my trade."]
+    who: ["Ezra. antiquities, lower east street. Barricade sold me his old notes years ago when he was short a meal. i'm sentimental. that's a dangerous thing in my trade."]
+    bye: ["come back with something old."]
+    thanks: ["a pleasure doing business."]
+    smallTalk: ["the glutton ghouls in the Haunted House chew gum. i don't know where they get it. i don't want to know.", "Vance on the street says he's an honest man now. i've sold him back his own watch twice."]
+    speakPlainly: ["plainly: old things."]
+    questOffer.ezra-the-glued-vase: ["somebody glued my best vase shut with gum. the glutton ghouls in the Haunted House foyer are the only things in this city that chew it. twenty of them, ten wads. i need to know whose gum it is."]
+    questAccept.ezra-the-glued-vase: ["the NLC Taxi to the Haunted House. the foyer. they're always eating."]
+    questWaiting.ezra-the-glued-vase: ["ten wads. i'll match the flavour."]
+    questComplete.ezra-the-glued-vase: ["ten. it's... all of them. every ghoul. they glued it together. my vase is a ghoul vase now. it's worth more. thank you."]
+    questOffer.ezra-the-black-phoenix: ["Foxwit drew a shield once, the Black Phoenix. i've got the boss and the rivets. the street slimes and the urban fungus in the Urban Underground are sitting on the old phoenix plate. thirty of each and the plate's mine."]
+    questAccept.ezra-the-black-phoenix: ["the jungle clearing and the basin, past Town Center. the plate's under them somewhere. they like it warm."]
+    questWaiting.ezra-the-black-phoenix: ["thirty and thirty. then the phoenix."]
+    questComplete.ezra-the-black-phoenix: ["the plate! black as soot. the Black Phoenix Shield, from Foxwit's own drawing. it's not for sale. it's for you."]
+    about.monty: ["Monty buys cards from me. old ones. he thinks i don't know they're worth more than i charge. i know."]
+    about.vance: ["Vance and i go back. too far back. he's honest now, he says. i keep my watch in my shoe."]
+    aboutUnknown: ["never bought anything from them."]
+    friend.close: ["you get the trade price. it's the same as the other price. but you know it's the trade price."]
+    friend.best: ["i've got one thing i'll never sell. i'm leaving it to you. don't ask what. it's old."]
+    famed: ["your name's going up in value. i'd buy shares."]
+    defamed: ["your name's going down in value. i'd hold. it'll come back."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["ah, now that's a genuine article. i'll have that with my tea."]
+    gift.again: ["tomorrow. i'm a dealer, not a collector."]
+
+- id: theodora
+  name: Theodora
+  look: { gender: female }
+  title: "Archivist to Professor Foxwit"
+  job: MAGICIAN
+  level: { min: 30, max: 32 }
+  strength: SEASONED
+  loadout: ellinia-mage-l30
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 8, to: 16, spot: "venue:by-professor-foxwit", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [boomer, voodoo, hoodoo]
+  questLines: [theodora-the-catalogue, theodora-the-zeta-cape]
+  rumors: [nlc-the-blueprints]
+  relationships:
+    - { persona: fergus, kind: LENDS_DRAWINGS_TO }
+    - { persona: bijou, kind: SELLS_SKETCHES_TO }
+    - { persona: delphine, kind: WORKS_WITH }
+  giftItemIds: [2000006, 2000004]
+  dialogue:
+    greetFirst: ["shh. no, you can talk. the Professor's thinking. he's always thinking. talk quietly.", "hello. are you here about the archive? nobody's ever here about the archive. you're very welcome."]
+    greet: ["hello.", "you again. good. i've catalogued something.", "the Professor says hello. he doesn't. i do."]
+    idle: ["(files a drawing between two others, then moves it one place to the left)", "(squints at a faded blueprint through a magnifying glass)"]
+    noWork: ["nothing today. the archive's in order. that's suspicious."]
+    nothingDue: ["nothing outstanding. filed."]
+    who: ["Theodora. i keep Professor Foxwit's archive. every drawing he's ever made but one. he made the Zeta Cape and the Sirius Cloak and a shield, and then forgot where he put the drawings. i didn't. not most of them."]
+    bye: ["don't fold anything."]
+    thanks: ["catalogued, with thanks."]
+    smallTalk: ["the boomers in the jungle clearing swallowed half a box of Foxwit's notes. they explode. the notes are confetti now, mostly.", "Delphine works for the Professor too. she sets things on fire. i file things. it balances."]
+    speakPlainly: ["plainly: the Professor's drawings."]
+    questOffer.theodora-the-catalogue: ["the boomers in the jungle clearing and the jungle valley swallowed a box of the Professor's notes. their cores are the only part that doesn't explode. thirty boomers, ten cores. some of the notes might be in there."]
+    questAccept.theodora-the-catalogue: ["the jungle, past the Town Center. they go off when they're cross. they're usually cross."]
+    questWaiting.theodora-the-catalogue: ["ten cores. i'm prepared to be disappointed."]
+    questComplete.theodora-the-catalogue: ["ten cores, and three notes inside. three! one's a recipe for soup. it's still a note. and these were in the box with them, the Professor's samples. dark matter and zeta residue. he'd want them used. thank you."]
+    questOffer.theodora-the-zeta-cape: ["the Zeta Cape drawing is in the Haunted House library. the Professor lent it to someone in that house years ago. the voodoos and hoodoos guard the library and the bedrooms. twenty voodoos, ten hoodoos, and the drawing comes home."]
+    questAccept.theodora-the-zeta-cape: ["the cab to the Haunted House, then up to the bedrooms and the library. they're dolls. they're not dolls."]
+    questWaiting.theodora-the-zeta-cape: ["twenty and ten. the drawing's been gone eleven years."]
+    questComplete.theodora-the-zeta-cape: ["the drawing. the Zeta Cape. Fergus made it up for me the moment i asked, and i asked the moment i had it. here. the first one ever made. it's yours. and the Professor's blinking dingbat, from the same drawer. it blinks. nobody knows why."]
+    about.fergus: ["Fergus borrows the Professor's drawings. he brings them back cleaner than he took them. he denies it."]
+    about.bijou: ["i sell Bijou a sketch now and then. the Professor knows. he says it's good for the sketches to be loved."]
+    about.delphine: ["Delphine is the Professor's other assistant. she's brilliant and she's on fire about half the time. literally."]
+    aboutUnknown: ["not in the archive."]
+    friend.close: ["you can read the archive any time. touch nothing. read everything."]
+    friend.best: ["i've started a file for you. it's very thick. it's all good."]
+    famed: ["the Professor asked who you were. i had a file ready."]
+    defamed: ["there's a file on you. it's mixed. files usually are."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's lovely. that's a long night with the archive, that is."]
+    gift.again: ["one a day. the archive has rules. i wrote them."]
+
+- id: hollis
+  name: Hollis
+  look: { gender: male }
+  title: "Surveyor of the Masteria Jungle"
+  job: HUNTER
+  level: { min: 52, max: 54 }
+  strength: SEASONED
+  loadout: nlc-bow-l52
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 6, to: 10, spot: "venue:middle-west-street-2", activity: LINGER }
+      - { from: 10, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-west-benches", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [electrophant, gryphon, jr. yeti]
+  contract: hollis-the-trail-share
+  questLines: [hollis-the-survey, hollis-the-sirius-cloak, hollis-barricades-kit, hollis-the-markers]
+  benchToleranceDays: 4
+  paceGap: 3
+  relationships:
+    - { persona: mabel, kind: SENT_OUT_BY }
+    - { persona: gwen, kind: BRINGS_SEEDS_TO }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["you've got the look. the jungle look. half lost, half glad of it. welcome to New Leaf City.", "hello. if you're going into the jungle, take water. if you're coming out of it, sit down."]
+    greet: ["morning. or evening. i've been out there.", "you. good.", "back from the jungle? me too."]
+    idle: ["(unrolls a survey map and pencils a new line across a blank stretch of it)", "(squints at the jungle road and counts something only he can see)"]
+    noWork: ["nothing today. the jungle's moved again. i'll find it."]
+    nothingDue: ["nothing owed. the survey's square."]
+    who: ["Hollis. i survey the Masteria jungle for the city. Mabel says it can't be surveyed. she's right. i've been doing it for six years."]
+    bye: ["take water."]
+    thanks: ["appreciated."]
+    smallTalk: ["the gryphons on the mountain cliffs drop feathers that never quite land. i've a cloak lined with them. you can't feel the wind in it.", "Barricade packed an expedition kit once. a sword, a bow, a claw, gloves for a mage and gloves for anyone. he never used it. i know where the drawings are."]
+    speakPlainly: ["plainly: a map that's never finished."]
+    offer: ["fifteen thousand, and twenty diferium fuel cells from the electrophants. the city's survey lamps run on them. i'll walk wherever you're going."]
+    join: ["right. i'll keep us on the map."]
+    bench: ["four days. then the jungle's grown back over my lines."]
+    leave: ["back to the survey."]
+    refuse.bond: ["i don't take strangers into the jungle. the jungle takes strangers."]
+    refuse.flags: ["walk my survey with me once first. the jungle basin, the cliffs. then ask."]
+    refuseOwnErrand: ["my survey. walk it with me if you like."]
+    questOffer.hollis-the-survey: ["walk my survey with me. thirty electrophants in the Krakian jungle basin and on the mountain slopes knock my markers over. then go up to the mountain cliffs, so you've seen where the map ends."]
+    questAccept.hollis-the-survey: ["the jungle basin and the slopes, then the cliffs. stay on the path. there isn't one. stay on it anyway."]
+    questWaiting.hollis-the-survey: ["thirty, and the cliffs."]
+    questComplete.hollis-the-survey: ["good. that's the survey. every week. it's never the same twice. that's the job."]
+    questOffer.hollis-the-sirius-cloak: ["the Sirius Cloak. Foxwit drew it, Barricade wore one. it wants gryphon down. thirty gryphons on the mountain cliffs and the highlands. the down's in the air after them. i'll catch it."]
+    questAccept.hollis-the-sirius-cloak: ["the cliffs, then the highlands. look up. they dive."]
+    questWaiting.hollis-the-sirius-cloak: ["thirty. i'm holding the cloak open."]
+    questComplete.hollis-the-sirius-cloak: ["thirty. listen. you can't hear the wind in it. that's the Sirius Cloak. Theodora gave me Foxwit's pattern for it years ago. it was always meant for whoever walked the survey with me."]
+    questOffer.hollis-barricades-kit: ["Barricade's expedition kit. Fergus can forge it from the drawings if i bring the leather. jr. yeti pelts, from the MesoGears ice chamber. thirty yetis, twenty pelts. whatever you fight with, the kit has one for you."]
+    questAccept.hollis-barricades-kit: ["MesoGears, the ice chamber. the pelts are thick. it's cold. that's how."]
+    questWaiting.hollis-barricades-kit: ["twenty pelts. Fergus is waiting with his arms folded."]
+    questComplete.hollis-barricades-kit: ["twenty. Fergus forged the kit in a night. Tiger's Fang for a swordsman, Winkel for a bow, Neva for a claw, Glitter Gloves for a mage, Stormcaster for a pirate. this is yours. it fits your hand. Barricade drew it that way."]
+    questOffer.hollis-the-markers: ["twenty electrophants knocked my markers over again. it's every week."]
+    questAccept.hollis-the-markers: ["the jungle basin and the slopes."]
+    questWaiting.hollis-the-markers: ["twenty."]
+    questComplete.hollis-the-markers: ["twenty. the markers are up."]
+    about.mabel: ["Mabel sent me out on my first survey. she gave me her old compass. it points at the mountain, always. she says that's where it wants to go."]
+    about.gwen: ["Gwen sells flowers. i bring her seeds from the far jungle. i never say where from. ...it's a long way to go for seeds."]
+    aboutUnknown: ["not on my map."]
+    friend.close: ["you can have a copy of the survey. it'll be wrong by the time you read it. that's what makes it good."]
+    friend.best: ["there's a stretch of jungle on my map with your name on it. i didn't ask. i don't ask."]
+    famed: ["people want to walk the survey because you did. the jungle's never been so busy."]
+    defamed: ["the jungle doesn't care. neither do i."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's trail food. that's exactly right for the cliffs."]
+    gift.again: ["tomorrow. i've got a pack to carry."]
+
+- id: moxie
+  name: Moxie
+  look: { gender: female }
+  title: "Tinkerer of the MesoGears"
+  job: ASSASSIN
+  level: { min: 50, max: 52 }
+  strength: SEASONED
+  loadout: nlc-claw-l50
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 14, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 14, to: 19, materialize: false }
+      - { from: 19, to: 24, spot: "venue:middle-central-street-3", activity: LINGER }
+      - { from: 0, to: 9, materialize: false }
+  recruitable: true
+  knows: [killa bee, fire tusk, electrophant]
+  contract: moxie-the-gear-share
+  questLines: [moxie-the-sparkplugs, moxie-the-crystal-ilbi, moxie-the-stormcaster-gloves, moxie-spare-parts]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: fergus, kind: BORROWS_TOOLS_FROM }
+    - { persona: benji, kind: SHOWS_TRICKS_TO }
+  giftItemIds: [2001001, 2000006]
+  dialogue:
+    greetFirst: ["hi! careful, that's a live wire. no, the other one. that one's fine. probably.", "you're an adventurer? great. hold this. don't let go of it. thanks."]
+    greet: ["hey hey!", "oh good, hands. i need hands.", "you're back! i built a thing."]
+    idle: ["(twists two wires together with her teeth, then spits out a spark)", "(flips a throwing star across her knuckles, end over end, without looking)"]
+    noWork: ["nothing today. everything's working. i hate it."]
+    nothingDue: ["we're good!"]
+    who: ["Moxie. i fix things. T-1337 the robot in Town Center, mostly. it breaks. i fix it. it breaks better. we have a system."]
+    bye: ["don't touch anything that hums."]
+    thanks: ["you're a gem."]
+    smallTalk: ["the killa bees in the soul corridor carry sparkplugs. i don't know why. bees shouldn't. these do.", "Barricade drew throwing stars cut from crystal once. Crystal Ilbi. i've got the drawing on my wall. i can make them if i've got the right parts."]
+    speakPlainly: ["plainly: wires and stars."]
+    offer: ["fifty thousand for a day. T-1337 needs parts and parts cost money. i'll come wherever you're going, morning to night."]
+    join: ["yes! adventure. hang on, i'll grab my stars."]
+    bench: ["three days. after that T-1337 starts crying oil."]
+    leave: ["back to the gears. T-1337 misses me."]
+    refuse.bond: ["i don't go out with strangers. well, i do. but not today."]
+    refuse.flags: ["help me fix T-1337 first. the sparkplugs. then ask."]
+    refuseOwnErrand: ["my sparkplugs. come with me if you want."]
+    questOffer.moxie-the-sparkplugs: ["T-1337's out of sparkplugs. the killa bees in the MesoGears deity room and soul corridor have them. thirty bees, ten plugs. it's the only thing it'll run on."]
+    questAccept.moxie-the-sparkplugs: ["MesoGears. the deity room, then the soul corridor. they buzz. they sting. they're bees."]
+    questWaiting.moxie-the-sparkplugs: ["ten plugs. T-1337 is sulking."]
+    questComplete.moxie-the-sparkplugs: ["ten! listen to it whirr. it's happy. it doesn't have feelings. it's happy."]
+    questOffer.moxie-the-crystal-ilbi: ["the Crystal Ilbi stars. i need jumper cables to power the cutter. the i.am.robots on the mountain slopes carry them. thirty robots, ten cables."]
+    questAccept.moxie-the-crystal-ilbi: ["the mountain slopes. they talk in capitals. ignore them."]
+    questWaiting.moxie-the-crystal-ilbi: ["ten cables. the cutter's cold."]
+    questComplete.moxie-the-crystal-ilbi: ["ten! look. look at them. Barricade's crystal stars, a whole set. they ring when they hit. they're yours. throw them at something that deserves it."]
+    questOffer.moxie-the-stormcaster-gloves: ["Stormcaster Gloves. Barricade's drawing. they want a grip that doesn't burn. fire tusk hide doesn't. forty fire tusks in the deity room and the fire chamber."]
+    questAccept.moxie-the-stormcaster-gloves: ["the deity room and the fire chamber. they charge in straight lines. step left."]
+    questWaiting.moxie-the-stormcaster-gloves: ["forty. the gloves are on the bench."]
+    questComplete.moxie-the-stormcaster-gloves: ["forty. there. Stormcaster Gloves. touch a wire. go on. see? nothing. that's the point. they're yours."]
+    questOffer.moxie-spare-parts: ["ten more sparkplugs from the killa bees? T-1337's got a habit."]
+    questAccept.moxie-spare-parts: ["the deity room or the soul corridor."]
+    questWaiting.moxie-spare-parts: ["ten."]
+    questComplete.moxie-spare-parts: ["ten. T-1337 says thank you. it doesn't. it does."]
+    about.fergus: ["Fergus lends me his tools. he says no first. then he says 'don't break it'. then he gives it to me."]
+    about.benji: ["Benji watches me do star tricks. i taught him one. he practises with bottle caps."]
+    aboutUnknown: ["never fixed anything of theirs."]
+    friend.close: ["you can borrow my stars. bring them back. or don't. i'll make more."]
+    friend.best: ["i named a gear after you. it's the one that never slips."]
+    famed: ["T-1337 knows your name now. it says it all the time. i didn't teach it that."]
+    defamed: ["T-1337 doesn't believe it. it's loyal."]
+    gift: ["ooh, thanks!"]
+    gift.favorite: ["oh, that's a working snack. that's going straight into the toolbox."]
+    gift.again: ["one a day! i'll get crumbs in the wiring."]
+
+- id: lou
+  name: Lou
+  look: { gender: male }
+  title: "Busker of the Subway Steps"
+  job: FIGHTER
+  level: { min: 48, max: 50 }
+  strength: SEASONED
+  loadout: nlc-2h-sword-l48
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 13, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 13, to: 16, materialize: false }
+      - { from: 16, to: 22, spot: "venue:nlc-subway-station-door", activity: LINGER }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: true
+  knows: [psycho jack, sophilia doll, glutton ghoul]
+  contract: lou-the-busk-share
+  questLines: [lou-the-guitar-springs, lou-the-facestompers, lou-the-encore]
+  benchToleranceDays: 5
+  paceGap: 2
+  relationships:
+    - { persona: otis, kind: PLAYS_FOR }
+    - { persona: mabel, kind: LEARNED_A_SONG_FROM }
+  giftItemIds: [2020005, 2000002]
+  dialogue:
+    greetFirst: ["hey. want a song? you don't have to pay. you should, but you don't have to.", "new in town? here, this one's called 'new in town'. it's the same as the others."]
+    greet: ["hey, friend.", "request?", "you again. this one's for you."]
+    idle: ["(picks out four notes on a battered guitar and hums the rest)", "(taps a heavy boot on the station step in time with nothing)"]
+    noWork: ["nothing today. just the songs."]
+    nothingDue: ["we're square, friend."]
+    who: ["Lou. i play the subway steps every evening. i used to swing a sword for coin. now i swing a guitar. i still carry the sword. old habit."]
+    bye: ["catch you on the steps."]
+    thanks: ["cheers."]
+    smallTalk: ["the psycho jacks in the Haunted House have the best springs in the city. my guitar's strung with them. sounds haunted. people like it.", "Mabel taught me a camp song from Barricade's first crew. it's my best song. it's got eleven verses about a boot."]
+    speakPlainly: ["plainly: four songs and a sword."]
+    offer: ["fifty psycho jacks in the Haunted House, counted, and ten thousand. they keep popping out at my audience. then i'll pack the guitar and the sword."]
+    join: ["right. the sword's coming. the guitar's coming too."]
+    bench: ["five days. then i'm back on the steps."]
+    leave: ["back to the steps."]
+    refuse.bond: ["i don't leave my steps for just anybody."]
+    refuse.flags: ["help me string the guitar first. the springs. then ask."]
+    refuseOwnErrand: ["my strings. come with me."]
+    questOffer.lou-the-guitar-springs: ["the guitar's lost a string. the psycho jacks in the Haunted House have springs that'll do. twenty of them in the hallway and the rooms, ten springs."]
+    questAccept.lou-the-guitar-springs: ["the cab to the Haunted House. the hallway, and the rooms off it. they jump out. you'll jump too. everyone does."]
+    questWaiting.lou-the-guitar-springs: ["ten springs. i'm playing with three strings."]
+    questComplete.lou-the-guitar-springs: ["ten. listen to that. haunted. perfect. here's one for you. it's called 'ten springs'."]
+    questOffer.lou-the-facestompers: ["Facestompers. Barricade's boots. Fergus says he'll forge them if they're broken in proper. the sophilia dolls in the Haunted House stomp all night. thirty of them, in the foyer and the bedrooms. and five rolls of duct tape off the glutton ghouls in the foyer. trust me."]
+    questAccept.lou-the-facestompers: ["the foyer and the bedrooms upstairs. the dolls dance. don't dance with them."]
+    questWaiting.lou-the-facestompers: ["thirty dolls, five rolls of tape."]
+    questComplete.lou-the-facestompers: ["there. Facestompers. broken in by thirty dolls and held together with ghoul tape. Barricade wore a pair just like them. they're yours. stomp something."]
+    questOffer.lou-the-encore: ["ten more springs from the psycho jacks? the guitar eats them."]
+    questAccept.lou-the-encore: ["the Haunted House."]
+    questWaiting.lou-the-encore: ["ten."]
+    questComplete.lou-the-encore: ["ten. encore."]
+    about.otis: ["Otis lets me play on his steps. he pretends he doesn't like it. he hums."]
+    about.mabel: ["Mabel taught me the boot song. she sings the high bits. she shouldn't. she does."]
+    aboutUnknown: ["never played for them."]
+    friend.close: ["you get a song any time. no hat needed."]
+    friend.best: ["i wrote a song about you. it's got more verses than the boot one. that's saying something."]
+    famed: ["people request your song. i've had to learn it properly."]
+    defamed: ["people are singing a different song about you. i don't play that one."]
+    gift: ["cheers, friend."]
+    gift.favorite: ["a busker's supper! i'll play you something for it."]
+    gift.again: ["one a day. i'll get fat and the sword won't fit."]
+
+- id: brody
+  name: Brody
+  look: { gender: male }
+  title: "Officer of the City Patrol"
+  job: WHITE_KNIGHT
+  level: { min: 78, max: 80 }
+  strength: VETERAN
+  loadout: nlc-mace-l78
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 6, to: 14, spot: "venue:middle-central-street-2", activity: LINGER }
+      - { from: 14, to: 20, materialize: false }
+      - { from: 20, to: 22, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [twisted jester, stormbreaker, windraider]
+  contract: brody-the-beat-share
+  questLines: [brody-the-night-beat, brody-heavens-justice, brody-ruin-hammer, brody-battle-hammer, brody-jumper-cables]
+  rumors: [nlc-the-beat-and-the-hustle]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: vance, kind: KEEPS_AN_EYE_ON }
+    - { persona: priya, kind: OWES_A_REPORT }
+    - { persona: rocco, kind: RIDES_WITH }
+  giftItemIds: [2020004, 2000005]
+  dialogue:
+    greetFirst: ["evening, citizen. or morning. the city doesn't sleep and neither does the patrol.", "new in town? welcome. stay out of trouble. if trouble finds you, find me."]
+    greet: ["citizen.", "all quiet. for now.", "you again. good. i like a face i know."]
+    idle: ["(rests a hand on the mace at his belt and watches the street)", "(nods to a passer-by and writes something in a small notebook he never shows anyone)"]
+    noWork: ["nothing today. the city's behaving."]
+    nothingDue: ["we're square, citizen."]
+    who: ["Officer Brody. city patrol, under Sheriff Lita Lawless. i walk the town by day and the road past the Haunted House by night. the paperwork walks itself."]
+    bye: ["stay safe."]
+    thanks: ["appreciated, citizen."]
+    smallTalk: ["the twisted jesters in the Haunted House get out sometimes. into the cab. into town. i walk them back.", "Vance on the lower east street says he's honest now. i believe him most days. i check his pockets on the others."]
+    speakPlainly: ["plainly: a mace and a beat."]
+    offer: ["twenty-five thousand, and thirty jumper cables from the i.am.robots. the patrol lamps run on them. i'll walk your beat with you."]
+    join: ["right. i'll take the left flank. i always take the left flank."]
+    bench: ["three days. then the Sheriff asks where i am."]
+    leave: ["back on the beat."]
+    refuse.bond: ["the patrol doesn't walk with strangers. walk with me first."]
+    refuse.flags: ["walk the night beat with me once first. the Haunted House. then ask."]
+    refuseOwnErrand: ["my beat. walk it with me."]
+    questOffer.brody-the-night-beat: ["walk the night beat with me. the twisted jesters in the Haunted House library and the clown's chimney have been getting out. twenty of them. then step into the Haunted House, so you know the road."]
+    questAccept.brody-the-night-beat: ["the NLC Taxi to the Haunted House. the library's upstairs. the jesters juggle knives. they're bad at it. that's worse."]
+    questWaiting.brody-the-night-beat: ["twenty jesters, and the house."]
+    questComplete.brody-the-night-beat: ["good. that's the night beat. every night. some nights the jesters win the first round."]
+    questOffer.brody-heavens-justice: ["Heaven's Justice. a patrol mace. it wants a badge in the haft. the stormbreakers on Crimsonwood Mountain wear them, the lower ascent and the caverns. thirty of them, fifteen badges."]
+    questAccept.brody-heavens-justice: ["through Phantom Forest onto the mountain. the lower ascent, the cavern of fear, the cavern of pain. they hit hard. hit first."]
+    questWaiting.brody-heavens-justice: ["fifteen badges. the haft's empty."]
+    questComplete.brody-heavens-justice: ["fifteen. Heaven's Justice. seven safe scrolls, every one took. it's heavier than it looks. so is the law."]
+    questOffer.brody-ruin-hammer: ["Ruin Hammer. it wants to be tempered in the firebrands' heat. forty firebrands on the path of strength, the cavern of fear and the cavern of shame. then stand in the cavern of fear so the hammer remembers where it came from."]
+    questAccept.brody-ruin-hammer: ["the mountain caverns. the firebrands burn. stand back and swing long."]
+    questWaiting.brody-ruin-hammer: ["forty, and the cavern."]
+    questComplete.brody-ruin-hammer: ["forty. listen, it rings. Ruin Hammer. seven sixties, every one took. that's a hammer that's walked a beat."]
+    questOffer.brody-battle-hammer: ["the Battle Hammer. my best. thirty nightshadows on the path of strength and the upper ascent, fifteen of their badges, and the Headless Horseman. he rides the forgotten path and the hollowed ground. one ride, one horseman. bring me his lantern if he drops it. he won't. bring me the badges."]
+    questAccept.brody-battle-hammer: ["the mountain first. then the forest at night. the Horseman. you'll hear him before you see him."]
+    questWaiting.brody-battle-hammer: ["thirty, fifteen badges, and the Horseman."]
+    questComplete.brody-battle-hammer: ["the Horseman. you rode him down. Battle Hammer. two tens and five sixties, every one took. the Sheriff will want to shake your hand. i'll just say thank you."]
+    questOffer.brody-jumper-cables: ["fifteen jumper cables from the i.am.robots? the patrol lamps eat them."]
+    questAccept.brody-jumper-cables: ["the mountain slopes."]
+    questWaiting.brody-jumper-cables: ["fifteen."]
+    questComplete.brody-jumper-cables: ["fifteen. the lamps are lit."]
+    about.vance: ["Vance used to work the crowds at the subway. now he sells 'genuine' maps. they're not genuine. they're not stolen either. that's progress."]
+    about.priya: ["Priya wants my patrol report. i give it to anyone she sends. she sends everyone."]
+    about.rocco: ["Rocco drives me out to the Haunted House. i never pay. he never asks. we both know."]
+    aboutUnknown: ["not on the patrol sheet."]
+    friend.close: ["you can walk the beat with me any night. i'll put you on the sheet."]
+    friend.best: ["if the city ever needs a second officer, i've written your name down. in pen."]
+    famed: ["the Sheriff knows your name. she doesn't know mine and i work for her."]
+    defamed: ["there's been talk about you on the patrol sheet. i'm watching. i'm not worried."]
+    gift: ["thank you, citizen."]
+    gift.favorite: ["that'll see me through the night patrol. thank you."]
+    gift.again: ["not on duty. tomorrow."]
+
+- id: vance
+  name: Vance
+  look: { gender: male }
+  title: "Hustler of the Lower East Street"
+  job: CHIEF_BANDIT
+  level: { min: 88, max: 90 }
+  strength: VETERAN
+  loadout: nlc-dagger-l88
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 12, to: 18, spot: "venue:middle-east-street-2", activity: LINGER }
+      - { from: 18, to: 23, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 23, to: 12, materialize: false }
+  recruitable: true
+  knows: [windraider, typhon, bigfoot]
+  contract: vance-the-cut
+  questLines: [vance-the-short-con, vance-varkit, vance-blood-dagger, vance-dragon-kreda, vance-badges]
+  rumors: [nlc-the-beat-and-the-hustle]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: brody, kind: WATCHED_BY }
+    - { persona: ezra, kind: KNOWS_TOO_WELL }
+  giftItemIds: [2000005, 2020005]
+  dialogue:
+    greetFirst: ["friend! a map? genuine Masteria. hand drawn. by a hand. i've got the hand too, if you want it.", "new in town? you look like someone who'd appreciate a bargain. i'm a bargain."]
+    greet: ["my friend.", "you're back. i knew you'd be back. everybody comes back to Vance.", "psst. no, nothing. hello."]
+    idle: ["(walks a coin across his knuckles, then makes it vanish, then looks genuinely surprised it's gone)", "(fans out a set of maps that are clearly the same map)"]
+    noWork: ["nothing today. honest work's slow. i'm told."]
+    nothingDue: ["we're even. i checked twice. once honestly."]
+    who: ["Vance. i sell maps on the lower east street. honest maps, now. mostly honest. i used to work the subway crowd. the Sheriff and i had a talk. Brody was there. it was a long talk."]
+    bye: ["watch your pockets. not from me. from them."]
+    thanks: ["you're a prince."]
+    smallTalk: ["the windraiders in Phantom Forest wear badges. tourists buy them. i don't sell them. anymore.", "Ezra on the street sold me my own watch twice. i've learned more from Ezra than from anyone. mostly to keep my watch in my shoe."]
+    speakPlainly: ["plainly: a dagger and a reputation."]
+    offer: ["thirty thousand, and twenty windraider badges. for old times. i'll watch your back. i'm very good at backs."]
+    join: ["my friend. lead on. i'll be the shadow."]
+    bench: ["two days. after that i get restless. you don't want me restless."]
+    leave: ["back to the street. it misses me."]
+    refuse.bond: ["i don't partner with strangers. ask Brody why."]
+    refuse.flags: ["do me a turn first. the windraiders. and ask around about me. Brody's got a story. let him tell it."]
+    refuseOwnErrand: ["my business. come along."]
+    questOffer.vance-the-short-con: ["a job, honest. the windraiders on the phantom road and the mountain have been robbing my map customers. thirty windraiders, ten of their badges. i'll give the badges back to the tourists. probably."]
+    questAccept.vance-the-short-con: ["the cab, Phantom Forest, the phantom road, then up onto the lower and upper ascents. they're quick. be quicker."]
+    questWaiting.vance-the-short-con: ["ten badges. the tourists are waiting. some of them."]
+    questComplete.vance-the-short-con: ["ten. i gave them back. all ten. i'm as surprised as you."]
+    questOffer.vance-varkit: ["Varkit. a dagger i've wanted since before i was honest. the elderwraiths on the mountain carry rags soaked in something that keeps an edge forever. thirty elderwraiths on the path of strength and the evil rising, five rags."]
+    questAccept.vance-varkit: ["the path of strength, and the forest's evil rising. they don't drop much. they don't drop rags often. patience."]
+    questWaiting.vance-varkit: ["five rags. i'm being patient. look at me."]
+    questComplete.vance-varkit: ["five. the edge'll hold forever now. Varkit. seven safe scrolls, every one took. i didn't steal a single one of them."]
+    questOffer.vance-blood-dagger: ["the Blood Dagger. it wants typhon feathers in the grip. thirty typhons on the Path of Peril, ten feathers."]
+    questAccept.vance-blood-dagger: ["the Path of Peril, up the mountain. they're big. they're birds. it's both."]
+    questWaiting.vance-blood-dagger: ["ten feathers."]
+    questComplete.vance-blood-dagger: ["ten. the Blood Dagger. seven sixties, every one took. it's the most honest thing i own."]
+    questOffer.vance-dragon-kreda: ["the Dragon Kreda. my best. it wants a bigfoot's toe. don't ask. five bigfoots in the evil rising, the evil dead and the twisted paths, three toes."]
+    questAccept.vance-dragon-kreda: ["the deep forest. bigfoot walks alone. there's only ever one about. you'll have to wait for him."]
+    questWaiting.vance-dragon-kreda: ["five, three toes. i've stopped asking myself why."]
+    questComplete.vance-dragon-kreda: ["three toes. the Dragon Kreda. two tens and five sixties, every one took. it's yours. i'd never have said that before."]
+    questOffer.vance-badges: ["ten more windraider badges? the tourists keep losing them."]
+    questAccept.vance-badges: ["the phantom road and the ascents."]
+    questWaiting.vance-badges: ["ten."]
+    questComplete.vance-badges: ["ten. back to the tourists. honestly."]
+    about.brody: ["Brody watches me. i watch him watching me. it's a friendship, in its way."]
+    about.ezra: ["Ezra's the only man on this street who's ever out-talked me. i respect him. i keep my watch in my shoe."]
+    aboutUnknown: ["never sold them a map."]
+    friend.close: ["you get the honest price. it's the one i actually charge."]
+    friend.best: ["if anyone ever lifts your purse in this city, i'll have it back before you notice it's gone. i'm good at noticing."]
+    famed: ["your name's worth something on this street. i'd know."]
+    defamed: ["your name's taking a beating. i've seen worse. i've had worse."]
+    gift: ["ah, you're a prince."]
+    gift.favorite: ["well. a gift with no angle. i'll keep that close."]
+    gift.again: ["one a day. i'm reformed, not greedy."]
+
+- id: delphine
+  name: Delphine
+  look: { gender: female }
+  title: "Assistant to Professor Foxwit"
+  job: FP_MAGE
+  level: { min: 86, max: 88 }
+  strength: VETERAN
+  loadout: nlc-wand-l86
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 7, to: 15, spot: "venue:by-professor-foxwit", activity: LINGER }
+      - { from: 15, to: 19, materialize: false }
+      - { from: 19, to: 23, spot: "venue:upper-west-street-2", activity: LINGER }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: true
+  knows: [firebomb, wolf spider, fire tusk]
+  contract: delphine-the-lab-share
+  questLines: [delphine-the-sample-run, delphine-magicodar, delphine-dimon-wand, delphine-dragon-wand, delphine-flames]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: theodora, kind: WORKS_WITH }
+    - { persona: fergus, kind: SINGES_THE_EYEBROWS_OF }
+  giftItemIds: [2000006, 2001001]
+  dialogue:
+    greetFirst: ["hello! stand back a step. thank you. i'm mid-experiment. i'm always mid-experiment.", "you're not from the lab. good. somebody has to be normal."]
+    greet: ["hello! nothing's on fire.", "you're back. something's on fire. not me.", "hi. smell that? that's science."]
+    idle: ["(snaps her fingers and a small flame sits on her thumb like a pet)", "(scribbles a formula on her sleeve, crosses it out, writes it on her other sleeve)"]
+    noWork: ["nothing today. the Professor said 'no fires'. i'm thinking about it."]
+    nothingDue: ["nothing owed. the Professor would be pleased. he'd forget."]
+    who: ["Delphine. i assist Professor Foxwit. he has the ideas. i set them on fire to see if they're any good. most of them are. some of them burn very well."]
+    bye: ["mind your eyebrows."]
+    thanks: ["oh, lovely."]
+    smallTalk: ["the firebombs in the MesoGears fire chamber burn at a temperature the Professor can't explain. i've been trying to explain it for three years. i've lost two coats.", "Theodora files the Professor's drawings. i burn the ones he doesn't like. we're a team."]
+    speakPlainly: ["plainly: fire, and the Professor's notes."]
+    offer: ["sixty firebombs in the fire chamber, counted, and twenty-five thousand. the Professor wants to know you can handle heat. then i'll come and set things on fire for you."]
+    join: ["oh good. i'll bring the matches. i don't need matches. i'll bring them anyway."]
+    bench: ["three days. then the Professor forgets to eat."]
+    leave: ["back to the lab. something's probably smouldering."]
+    refuse.bond: ["i don't burn things with strangers. it's a rule. the Professor made it."]
+    refuse.flags: ["fetch a sample with me first. the fire chamber. then ask."]
+    refuseOwnErrand: ["my samples. come and watch."]
+    questOffer.delphine-the-sample-run: ["a sample run. thirty firebombs in the MesoGears fire chamber, fifteen of their flames. the Professor wants to know why they're blue at the middle. i want to know why they're anything."]
+    questAccept.delphine-the-sample-run: ["MesoGears, the fire chamber. it's hot. obviously."]
+    questWaiting.delphine-the-sample-run: ["fifteen flames. the jar's ready."]
+    questComplete.delphine-the-sample-run: ["fifteen. look at the blue. the Professor's going to be up all night. so am i. thank you."]
+    questOffer.delphine-magicodar: ["Magicodar. a wand the Professor designed and never made. it wants socket adapters off the wolf spiders in the MesoGears cavern. forty spiders, twenty adapters. they're the size of a cab. sorry."]
+    questAccept.delphine-magicodar: ["the wolf spider cavern, deep in MesoGears. they're fast. burn the webs first."]
+    questWaiting.delphine-magicodar: ["twenty adapters. the core's waiting."]
+    questComplete.delphine-magicodar: ["twenty. Magicodar. seven safe scrolls, every one took. the Professor cried a little. don't tell him i said."]
+    questOffer.delphine-dimon-wand: ["the Dimon Wand. it wants to be quenched in a mirror ghost's reflection. the mirror ghosts are in the Haunted House, in the vanity rooms and the piano room. fifteen of them. don't look at your own face in them."]
+    questAccept.delphine-dimon-wand: ["the cab to the Haunted House. the vanity rooms, the piano room. don't look."]
+    questWaiting.delphine-dimon-wand: ["fifteen. did you look? you looked."]
+    questComplete.delphine-dimon-wand: ["fifteen. the Dimon Wand. seven sixties, every one took. it shows you your face if you hold it right. a nice face."]
+    questOffer.delphine-dragon-wand: ["the Dragon Wand. my best work. it wants a light that never goes out. the Headless Horseman carries a jack o'lantern. three horsemen, on the forgotten path and the hollowed ground, three lanterns."]
+    questAccept.delphine-dragon-wand: ["the forest at night. he rides alone. three rides. three lanterns. bring them lit."]
+    questWaiting.delphine-dragon-wand: ["three lanterns. still lit, please."]
+    questComplete.delphine-dragon-wand: ["three, still lit. the Dragon Wand. two tens and five sixties, every one took. it'll burn for as long as you do. probably longer."]
+    questOffer.delphine-flames: ["fifteen more firebomb flames? the lab's cold."]
+    questAccept.delphine-flames: ["the fire chamber."]
+    questWaiting.delphine-flames: ["fifteen."]
+    questComplete.delphine-flames: ["fifteen. warm again."]
+    about.theodora: ["Theodora keeps the archive. she won't let me near it with a match. fair."]
+    about.fergus: ["Fergus forges what the Professor draws. i've singed his eyebrows twice. he's forgiven me once."]
+    aboutUnknown: ["never burnt anything of theirs. that i know of."]
+    friend.close: ["you can come to the lab any time. stand behind the line."]
+    friend.best: ["i've named a formula after you. it's the one that didn't explode."]
+    famed: ["the Professor's heard of you. he wants to name a theory after you. it's a good theory."]
+    defamed: ["people are talking about you. i set a rumour on fire once. it helped."]
+    gift: ["oh, lovely. thank you."]
+    gift.favorite: ["oh, that's lab fuel. that's a whole night of experiments, that is."]
+    gift.again: ["the Professor says i'm spoiled. tomorrow."]
+
+- id: duke
+  name: Duke
+  look: { gender: male }
+  title: "Boxer of the East Street Gym"
+  job: MARAUDER
+  level: { min: 98, max: 100 }
+  strength: ELITE
+  loadout: nlc-knuckle-l98
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 6, to: 10, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 10, to: 16, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 16, to: 20, materialize: false }
+      - { from: 20, to: 24, spot: "venue:middle-central-street-2", activity: LINGER }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: true
+  knows: [crimson guardian, bigfoot, elderwraith]
+  contract: duke-the-corner
+  questLines: [duke-roadwork, duke-king-cent, duke-dragon-slash-claw, duke-timeless-equinox, duke-sparring]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: dolores, kind: EATS_SIX_EGGS_AT }
+    - { persona: brody, kind: SPARS_WITH }
+  giftItemIds: [2020004, 2000005]
+  dialogue:
+    greetFirst: ["hey there, champ. you look like you could take a punch. that's a compliment.", "new in the city? welcome. keep your guard up. not for me. for the city."]
+    greet: ["champ!", "hey, kid. you're looking sharp.", "back in the ring?"]
+    idle: ["(shadow-boxes the air, slow, then fast, then slow again)", "(wraps his knuckles in tape with the care of someone writing a letter)"]
+    noWork: ["nothing today, champ. rest day. i hate rest days."]
+    nothingDue: ["we're square, champ."]
+    who: ["Duke. i run the gym on the east street. no ring, just a door and a heavy bag. i've fought everything on Crimsonwood Mountain. i'm still standing. mostly by the door."]
+    bye: ["keep your guard up."]
+    thanks: ["you're a champ."]
+    smallTalk: ["the crimson guardians at Crimsonwood Keep are the best sparring partners in the world. they never get tired. neither do i. we have that in common.", "Dolores makes me six eggs every morning. i asked for four once. she made six. i ate six."]
+    speakPlainly: ["plainly: two fists and a door."]
+    offer: ["a hundred and fifty thousand for the day. that's a fighter's purse. i'll be in your corner every round of it."]
+    join: ["let's go, champ. i'll take the hits. you take the credit."]
+    bench: ["four days. then the bag starts missing me."]
+    leave: ["back to the gym, champ."]
+    refuse.bond: ["i don't spar with strangers. you've got to earn the ring."]
+    refuse.flags: ["do my roadwork with me first. up the mountain. then ask."]
+    refuseOwnErrand: ["my roadwork. run it with me."]
+    questOffer.duke-roadwork: ["roadwork. the crimson trees on the mountain's lower ascent and the path of strength get in the way of my run. thirty of them. then run all the way up to the upper ascent. that's the roadwork."]
+    questAccept.duke-roadwork: ["through Phantom Forest, up the mountain. don't walk. jog."]
+    questWaiting.duke-roadwork: ["thirty, and the top. keep moving."]
+    questComplete.duke-roadwork: ["thirty, and you made the top. you're not even breathing hard. i like you, champ."]
+    questOffer.duke-king-cent: ["King Cent. a knuckle for a champion. it wants elder ashes in the padding. thirty elderwraiths on the path of strength and the evil rising, fifteen handfuls of ash."]
+    questAccept.duke-king-cent: ["the mountain and the deep forest. they're old. they hit like they're young."]
+    questWaiting.duke-king-cent: ["fifteen handfuls. the padding's flat."]
+    questComplete.duke-king-cent: ["fifteen. King Cent. seven safe scrolls, every one took. it fits like it was poured on."]
+    questOffer.duke-dragon-slash-claw: ["the Dragon Slash Claw. i want it broken in on the toughest thing in the forest. eight bigfoots on the twisted paths. one at a time. he walks alone."]
+    questAccept.duke-dragon-slash-claw: ["the twisted paths, deep in the forest. you'll hear him first. then the ground."]
+    questWaiting.duke-dragon-slash-claw: ["eight. he's a big one. keep your guard up."]
+    questComplete.duke-dragon-slash-claw: ["eight bigfoots. eight! the Dragon Slash Claw. seven sixties, every one took. that's a knuckle that's been somewhere."]
+    questOffer.duke-timeless-equinox: ["the Timeless Equinox. the best knuckle ever made. it wants a crimson heart. thirty crimson guardians at Crimsonwood Keep, ten hearts. they're my old sparring partners. tell them Duke says hello."]
+    questAccept.duke-timeless-equinox: ["Crimsonwood Keep, at the top of the mountain. they never get tired. don't you either."]
+    questWaiting.duke-timeless-equinox: ["ten hearts, champ."]
+    questComplete.duke-timeless-equinox: ["ten. the Timeless Equinox. two tens and five sixties, every one took. you're the champ now. i mean it."]
+    questOffer.duke-sparring: ["ten stormbreaker badges? the gym door's coming loose."]
+    questAccept.duke-sparring: ["the lower ascent and the caverns."]
+    questWaiting.duke-sparring: ["ten."]
+    questComplete.duke-sparring: ["ten. the door holds."]
+    about.dolores: ["Dolores feeds me six eggs every morning. i've never paid for the sixth. she's never charged."]
+    about.brody: ["Brody spars with me on his days off. he takes the left. he always takes the left. i let him."]
+    aboutUnknown: ["never been in the ring with them."]
+    friend.close: ["you can use the gym any time. the bag's yours. hit it like it owes you."]
+    friend.best: ["i'll be in your corner. any fight, any day. that's a promise, champ."]
+    famed: ["people come to the gym asking about you. i tell them you train here. you do now."]
+    defamed: ["people are throwing punches at your name. let them. you've got a chin."]
+    gift: ["thanks, champ."]
+    gift.favorite: ["breakfast of champions. that's me. thanks, champ."]
+    gift.again: ["one a day, champ. i'm watching my weight. i'm not."]
+
+- id: odette
+  name: Odette
+  look: { gender: female }
+  title: "Keeper of the Spirit Pens"
+  job: BEGINNER
+  level: { min: 16, max: 18 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 8, to: 15, spot: "venue:beside-rob", activity: LINGER }
+      - { from: 15, to: 19, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 19, to: 8, materialize: false }
+  recruitable: false
+  knows: [killa bee, stormbreaker, jungle juice]
+  questLines: [odette-the-spirit-pens, odette-a-spirit-for-you, odette-the-taru-feather]
+  relationships:
+    - { persona: gwen, kind: GETS_SEED_FROM }
+    - { persona: benji, kind: SHOWS_THE_SPIRITS_TO }
+    - { persona: cosmo, kind: HUMOURS }
+  giftItemIds: [2020005, 2001001]
+  dialogue:
+    greetFirst: ["shh, you'll wake them. ...too late. that one's awake. say hello.", "hello! mind your feet. the spirits don't come out till they like you."]
+    greet: ["hello again.", "they remember you. i think. one of them sneezed.", "you're back. good. Kuma's been sulking."]
+    idle: ["(holds out an open hand very still, as if something small is about to land on it)", "(scatters a pinch of seed along the street and counts something nobody else can see)"]
+    noWork: ["nothing today. the spirits are asleep. i'm going to sit very quietly."]
+    nothingDue: ["nothing owed. the spirits keep count. they say so."]
+    who: ["Odette. i keep the spirit pens for Corine. little Masteria spirits: Akha, Xaru, Kuma, Maku, Umaru. Corine wakes them into weapons. i keep them fed till they're ready to go."]
+    bye: ["walk softly."]
+    thanks: ["they say thank you too. you can't hear it."]
+    smallTalk: ["the killa bees in the MesoGears soul corridor steal the spirits' honey. every jar. i don't know what bees want with honey. more honey, i suppose.", "the Taru painted their faces before a hunt and sewed feathers into their capes. Corine says the spirits remember the Taru. i think they miss them."]
+    speakPlainly: ["plainly: little spirits, and a lot of seed."]
+    questOffer.odette-the-spirit-pens: ["the killa bees in the MesoGears soul corridor came up the stairs and took the spirits' honey. all of it. twenty-five bees, and they might stay down there where they belong."]
+    questAccept.odette-the-spirit-pens: ["MesoGears, through the big door in the Town Center. the soul corridor's long. the bees are in all of it."]
+    questWaiting.odette-the-spirit-pens: ["twenty-five. the spirits are hungry. they're being very brave about it."]
+    questComplete.odette-the-spirit-pens: ["the bees have gone back down. the spirits are eating. listen. well, you can't. i can. here, Jungle Juice. the Taru drank it before a long walk. it's mostly fruit."]
+    questOffer.odette-a-spirit-for-you: ["one of the spirits keeps following you up the street. it's chosen. that doesn't happen. Corine says it wants to see the jungle before it picks a shape. carry it out to the jungle valley and the Krakian basin, and let it look. then bring it back to me."]
+    questAccept.odette-a-spirit-for-you: ["you won't feel it. it's on your shoulder. the jungle's past the Town Center. go slowly. it's looking."]
+    questWaiting.odette-a-spirit-for-you: ["the valley and the basin. it wants to see both."]
+    questComplete.odette-a-spirit-for-you: ["it's picked. Corine woke it for you the moment you came back. it's small. it'll grow if you're kind to it, and if Corine's in a good mood. look after it."]
+    questOffer.odette-the-taru-feather: ["Corine's got a Taru cape on her frame, the old kind, with a spirit feather sewn in the collar. it wants a warrior. the stormbreakers on Crimsonwood's upper ascent keep scattering the old Taru roosts. thirty of them, and the cape's yours to give."]
+    questAccept.odette-the-taru-feather: ["the cab to the Haunted House, through the forest, up Crimsonwood Mountain. the upper ascent. it's windy. hold on to your hat."]
+    questWaiting.odette-the-taru-feather: ["thirty. the roosts are empty till they're gone. keep a space in your bag for what i'm giving you."]
+    questComplete.odette-the-taru-feather: ["the roosts are full again. here. the cape, and the feather that was left over. it's a warrior's cape. if you don't stand at the front, give it to someone who does. the Taru would."]
+    about.gwen: ["Gwen gives me the seed her flowers don't want. the spirits want it. everybody's happy."]
+    about.benji: ["Benji tries to see the spirits. he squints. they like him for trying. one of them sat on his head."]
+    about.cosmo: ["Cosmo says Stirgeman's got a spirit too. he hasn't. i didn't tell him."]
+    aboutUnknown: ["the spirits don't know them either."]
+    friend.close: ["you can feed them, if you like. slowly. there. they like you."]
+    friend.best: ["the spirit that chose you comes back to the pens every night and sleeps in your spot. i've stopped calling it a coincidence."]
+    famed: ["the spirits perk up when people say your name. people say it a lot."]
+    defamed: ["the spirits don't listen to talk. neither do i."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's lovely. i'll share it. they'll get the crumbs. they always get the crumbs."]
+    gift.again: ["tomorrow. they're watching. they get jealous."]
+
+- id: cosmo
+  name: Cosmo
+  look: { gender: male }
+  title: "Stirgeman's Sidekick, Unofficial"
+  job: BEGINNER
+  level: { min: 13, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 9, to: 13, spot: "venue:middle-west-street-2", activity: SOCIALIZE }
+      - { from: 13, to: 18, spot: "venue:middle-west-street-2", activity: LINGER }
+      - { from: 18, to: 9, materialize: false }
+  recruitable: false
+  knows: [rotting skeleton, glutton ghoul, stirge signal]
+  questLines: [cosmo-the-stirge-signal, cosmo-the-stirgeman-kit, cosmo-the-utility-pants]
+  relationships:
+    - { persona: brody, kind: SIGNALS }
+    - { persona: benji, kind: RIVALS }
+    - { persona: odette, kind: BELIEVES }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["halt, citizen! ...sorry. that's how Stirgeman says hello. hello!", "are you a hero? you look like a hero. Stirgeman's a hero. i'm his sidekick. he doesn't know yet."]
+    greet: ["citizen!", "you're back! any villains?", "hi! i've been on patrol. it's very quiet. suspicious."]
+    idle: ["(adjusts a cape made out of a tablecloth, then strikes a pose at nobody)", "(peers round a lamp post toward the Town Center as if he's keeping watch on someone)"]
+    noWork: ["no missions today. the city's safe. for now."]
+    nothingDue: ["all square, sidekick to sidekick!"]
+    who: ["Cosmo. i'm Stirgeman's sidekick. he stands in the Town Center being a hero and i stand near him being a sidekick. he hasn't said yes. he hasn't said no."]
+    bye: ["stay vigilant!"]
+    thanks: ["all in a day's work, citizen."]
+    smallTalk: ["Stirgeman has a signal. you light it and he comes. i lit mine and Officer Brody came. that's nearly the same.", "Ridley wrote the scroll Stirgeman uses for defence. he's up in Crimsonwood Keep. i've read the scroll nine times. it's mostly about standing up straight."]
+    speakPlainly: ["plainly: a sidekick. unofficial."]
+    questOffer.cosmo-the-stirge-signal: ["mission! the rotting skeletons in the Haunted House hallways rattle so loud nobody in the city could hear a signal if i lit one. twenty-five of them, citizen. for justice. and quiet."]
+    questAccept.cosmo-the-stirge-signal: ["the NLC Taxi to the Haunted House. the hallways go on and on. so do the skeletons."]
+    questWaiting.cosmo-the-stirge-signal: ["twenty-five. i can still hear them from here. i think."]
+    questComplete.cosmo-the-stirge-signal: ["it's quiet! here, your cab fare back, and signals and Ridley's defence scrolls from my emergency box. every sidekick has one. you're a sidekick now. sorry. it's catching."]
+    questOffer.cosmo-the-stirgeman-kit: ["i'm making a Stirgeman kit. a real one. a cape and a Stirge-on-a-String, just like his. the cape needs stretch. the glutton ghouls in the Haunted House carry stretchy stuff around. ten pieces. you get the first kit. you've earned it."]
+    questAccept.cosmo-the-stirgeman-kit: ["the NLC Taxi to the Haunted House. the ghouls are in the foyer. they're hungry. don't be food."]
+    questWaiting.cosmo-the-stirgeman-kit: ["ten stretchy bits. the cape's very floppy."]
+    questComplete.cosmo-the-stirgeman-kit: ["it stretches! here. the first Stirgeman kit, the cape and the string. and a Ridley's stone and a fuel cell from the box, because heroes need spares. wear it. stand up straight."]
+    questOffer.cosmo-the-utility-pants: ["Stirgeman's utility pants. lots of pockets. i made a pair for a grown-up. the psycho jack boxes in the Haunted House toy rooms keep popping up and pinching the pockets. twenty of them, and the pants are yours."]
+    questAccept.cosmo-the-utility-pants: ["the Haunted House again. the toy rooms. they pop. you jump. everybody jumps."]
+    questWaiting.cosmo-the-utility-pants: ["twenty. the pockets are in danger."]
+    questComplete.cosmo-the-utility-pants: ["the pockets are safe! here. they're yours. there's a biscuit in the left one. i'm sorry. it's old."]
+    about.brody: ["Officer Brody came when i lit my signal. he said not to light it again. i've lit it twice since. he came both times."]
+    about.odette: ["Odette has invisible spirits. i can't see them. i believe her. heroes believe people."]
+    about.benji: ["Benji's my rival. he wants to be an explorer. i want to be a hero. we're going to be the best two people in the city."]
+    aboutUnknown: ["are they a villain? they might be a villain."]
+    friend.close: ["you can be my sidekick's sidekick. that's a very high rank. it's the highest."]
+    friend.best: ["i've told Stirgeman about you. he didn't say anything. heroes don't. i could tell he was impressed."]
+    famed: ["the whole city's talking about you. like a hero. like a real one."]
+    defamed: ["people say you're a villain. i don't believe them. villains don't come back to talk to sidekicks."]
+    gift: ["for me? thanks, citizen!"]
+    gift.favorite: ["WOW. that's going in the emergency box. no, i'm having it now. emergencies can wait."]
+    gift.again: ["one a day! sidekick rules."]
+
+- id: gideon
+  name: Gideon
+  look: { gender: male }
+  title: "Bosshunter of the West Benches"
+  job: FIGHTER
+  level: { min: 58, max: 60 }
+  strength: VETERAN
+  loadout: perion-2h-sword-l38
+  personality: efficient-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 10, to: 17, spot: "venue:middle-west-benches", activity: REST }
+      - { from: 17, to: 23, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [gryphon, firebomb, twisted jester]
+  questLines: [gideon-the-trophy-wall, gideon-the-ancient-helm, gideon-the-ancient-gi]
+  rumors: [nlc-the-old-crews]
+  relationships:
+    - { persona: mabel, kind: RODE_AFTER }
+    - { persona: sabine, kind: ARGUES_WITH }
+    - { persona: hollis, kind: TELLS_THE_OLD_TRAILS_TO }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["sit if you're sitting. stand if you're standing. don't hover.", "a young one with a sword arm. Barricade's crews took them younger. sit down."]
+    greet: ["back from somewhere. good.", "sit.", "the bench is free."]
+    idle: ["(turns an old crest over in his hands and rubs the dust off it with his thumb)", "(sharpens a notched sword he plainly hasn't used in years, slowly, for something to do)"]
+    noWork: ["nothing today. the trophies aren't going anywhere. neither am i."]
+    nothingDue: ["nothing owed."]
+    who: ["Gideon. bosshunter. i rode with John Barricade's second crew. we went after the big things in Masteria and brought back pieces. the pieces are in a crate under these benches. the stories are in Mabel."]
+    bye: ["watch the high ground."]
+    thanks: ["good. thank you."]
+    smallTalk: ["the typhons nest on the Path of Peril, up Crimsonwood Mountain. i took a crest off one once. i've still got it. i've still got the scar.", "the old Masterian armies left their armour all over the mountain. a helm, greaves, a gi so fine you'd swear it was new. we hung it on a wall. the wall burned down. the armour didn't."]
+    speakPlainly: ["plainly: an old bosshunter and a crate of trophies."]
+    questOffer.gideon-the-trophy-wall: ["i'm opening the trophy crate. it wants a proper hunt first, the way we did it. twenty-five gryphons on the highlands. then ask Mabel if she still remembers our old wall. she will."]
+    questAccept.gideon-the-trophy-wall: ["the jungle road, all the way up to the highlands. gryphons come at you from above. look up."]
+    questWaiting.gideon-the-trophy-wall: ["twenty-five, and what Mabel said."]
+    questComplete.gideon-the-trophy-wall: ["she remembers. of course she does. here. the first two out of the crate, the Typhon's crest and the stone tiger's head, and Barricade's ginger ale. we drank it after every hunt. it's flat. it was always flat."]
+    questOffer.gideon-the-ancient-helm: ["the old armour's coming out of the crate. the helm, the armour, the greaves. clear the MesoGears fire chamber for me first, forty firebombs. that's where i keep the crate. i want it the way it was."]
+    questAccept.gideon-the-ancient-helm: ["MesoGears, down to the fire chamber. the firebombs go off. step through it."]
+    questWaiting.gideon-the-ancient-helm: ["forty. then the armour comes out."]
+    questComplete.gideon-the-ancient-helm: ["forty. the chamber's the way i left it. here. i'm not hanging them. i'm giving them to you. a wall's for people who've stopped. you haven't."]
+    questOffer.gideon-the-ancient-gi: ["the rest of the set. the faceguard, the gi, the boots, and the crystal shard and the jewel we found with them. the twisted jesters in the Haunted House toy room and piano room took my last crew's map. thirty of them. i want to know the map's gone for good."]
+    questAccept.gideon-the-ancient-gi: ["the cab to the Haunted House. the toy room and the piano room. they laugh. don't laugh back."]
+    questWaiting.gideon-the-ancient-gi: ["thirty. the map's in there somewhere."]
+    questComplete.gideon-the-ancient-gi: ["no map? then it's gone. good. that's the last of the crate. take it. Barricade said the pieces were for whoever went out next. that's you. it was always going to be somebody."]
+    about.mabel: ["Mabel was on Barricade's first crew. i was on his second. she says the second was easier. it wasn't. she knows."]
+    about.sabine: ["Sabine walked to Zakum's door with Adonis. i went after the big things in Masteria. we argue about whose was bigger. it's mine. it was hers."]
+    about.hollis: ["Hollis surveys the jungle we used to hunt. he asks me where the old trails went. i tell him. he writes it down. somebody should."]
+    aboutUnknown: ["never hunted with them."]
+    friend.close: ["you can sit on the benches with the old crew. there's two of us. it's a crew."]
+    friend.best: ["if Barricade were still riding out, i'd tell him to take you. i'd tell him to put you in front."]
+    famed: ["they're telling stories about you on the benches. Mabel's telling them. they're getting bigger."]
+    defamed: ["hunters get talked about. let them."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["good. thank you. hunters eat when they can."]
+    gift.again: ["enough. i'm old, not hungry."]
+
+- id: sabine
+  name: Sabine
+  look: { gender: female }
+  title: "Healer of Adonis's Expedition"
+  job: PRIEST
+  level: { min: 72, max: 74 }
+  strength: VETERAN
+  loadout: orbis-wand-l58
+  personality: relaxed-v1
+  home:
+    town: new-leaf-city
+    routine:
+      - { from: 11, to: 17, spot: "venue:upper-west-street-2", activity: LINGER }
+      - { from: 17, to: 22, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 11, materialize: false }
+  recruitable: false
+  knows: [miner zombie, jr. yeti, dead mine i]
+  questLines: [sabine-the-dead-mine-stories, sabine-the-cloak-of-corruption]
+  rumors: [nlc-the-old-crews]
+  relationships:
+    - { persona: gideon, kind: ARGUES_WITH }
+    - { persona: mabel, kind: ARGUES_WITH }
+    - { persona: brody, kind: PATCHES_UP }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["hello. you look tired. everyone looks tired to me. it's a healer's habit.", "a new face. sit down. New Leaf City has the best benches in the world. i've checked."]
+    greet: ["hello, dear.", "you're back. any cuts? let me see.", "come and sit a minute."]
+    idle: ["(sits with her eyes shut and her hands folded, perfectly still)", "(polishes a plain old miner's lamp until it shines, then sets it down unlit)"]
+    noWork: ["nothing today. i'm sitting down. i earned it in a mine."]
+    nothingDue: ["we're square, dear."]
+    who: ["Sabine. i was a healer on Adonis's expedition, down through El Nath's dead mine to Zakum's door. it's cold down there and dark all the time. now i live where it's warm and i sit in the sun. i don't apologize for it."]
+    bye: ["mind your health."]
+    thanks: ["bless you."]
+    smallTalk: ["Adonis still recruits in El Nath. he asked me back. i said i'd think about it. i've been thinking about it for six years, in the sun.", "the miner zombies in the dead mine still swing their picks at the dark. they don't know they've stopped being miners. i read their names out when we passed. somebody in El Nath keeps the roll."]
+    speakPlainly: ["plainly: a healer, retired, in the sun."]
+    questOffer.sabine-the-dead-mine-stories: ["Gideon thinks his hunts were bigger than our expedition. go and ask him what the biggest thing he ever hunted was. then go down to the MesoGears ice chamber and fight thirty jr. yetis, so you know what cold is. then come and tell me who's right."]
+    questAccept.sabine-the-dead-mine-stories: ["Gideon's on the west benches most of the day. the ice chamber's at the bottom of MesoGears. wrap up."]
+    questWaiting.sabine-the-dead-mine-stories: ["Gideon, then the cold. then me. and keep a space in your bag, dear."]
+    questComplete.sabine-the-dead-mine-stories: ["a typhon. he always says a typhon. and you've been cold now, a little. i was right. here, from the expedition. the blade was a warrior's, Adonis's spare. if you're not a warrior, give it to one. the ankh and the denari were for luck. they worked. i'm here."]
+    questOffer.sabine-the-cloak-of-corruption: ["i want to send the miners in El Nath's dead mine some peace. the miner zombies in the deep galleries still swing their picks at the dark. forty of them. and find whoever keeps the roll of the mine in El Nath, and tell them Sabine read the names. they'll know."]
+    questAccept.sabine-the-cloak-of-corruption: ["El Nath, then down to the dead mine, the third and fourth galleries. the roll's kept somewhere in town. ask."]
+    questWaiting.sabine-the-cloak-of-corruption: ["forty, and the roll. take a lamp."]
+    questComplete.sabine-the-cloak-of-corruption: ["thank you. here. the cloak i wore at Zakum's door. corrupted, they call it. it's only dark. so was the mine. and these, the wrappings and Ridley's book, from Adonis's packs. he never asked for them back. he won't."]
+    about.gideon: ["Gideon hunted the big things in Masteria. i walked to Zakum's door. we sit on the lower east street and argue. it's the best part of my week."]
+    about.mabel: ["Mabel was on the first crew into Masteria. she's the only person i know who's been colder than me. she says the jungle was worse. she's wrong. it's lovely, arguing."]
+    about.brody: ["Officer Brody comes to me with his bruises. he gets a lot of bruises. he says it's paperwork."]
+    aboutUnknown: ["i never healed them."]
+    friend.close: ["you can come to me with any cut. any time. i'll tut. you'll be fine."]
+    friend.best: ["if Adonis ever asks me back, i'll say yes if you're going. that's the only way i'd go."]
+    famed: ["people say your name in the sun now. that's the best place for it."]
+    defamed: ["let them talk, dear. it doesn't heal anything."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["oh, that's lovely. that's a sunny-afternoon thing, that is. thank you."]
+    gift.again: ["one a day, dear. healers have rules."]

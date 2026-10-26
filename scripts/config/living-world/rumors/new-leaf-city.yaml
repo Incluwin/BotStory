@@ -1,0 +1,68 @@
+# New Leaf City rumors (wave 3). Each pair is awake together at its spot in those hours (personas/new-leaf-city.yaml).
+- id: nlc-the-prize-table
+  participants: [monty, ramona]
+  where: { town: new-leaf-city, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+    requiresArc: { arc: monty-the-leaf-cup, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: ramona, text: "your prize table's got a banner on it, Monty. i walked past it twice." }
+    - { by: monty, text: "and Barricade's pieces to go under it. Fergus forges them." }
+    - { by: ramona, text: "eleven years i wrote 'Club Has No Prizes', Monty." }
+    - { by: monty, text: "and i cut out every one. they're all pinned to the crate." }
+    - { by: ramona, text: "...you pinned them all?" }
+
+- id: nlc-the-lunch-counter
+  participants: [dolores, rocco]
+  where: { town: new-leaf-city, spot: "venue:by-miki" }
+  when:
+    serverHours: [13]
+    everyDays: 1
+  lines:
+    - { by: rocco, text: "cab goes out to the Haunted House at two, Dolores. Brody's riding. he still hasn't paid." }
+    - { by: dolores, text: "he's a cop, Rocco. eat your soup." }
+    - { by: rocco, text: "Duke's six eggs this morning?" }
+    - { by: dolores, text: "six. don't tell him i counted." }
+    - { by: rocco, text: "...you know where every cab is now, you know that? i've ruined you." }
+
+- id: nlc-the-beat-and-the-hustle
+  participants: [brody, vance]
+  where: { town: new-leaf-city, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [20, 21]
+    everyDays: 1
+  setsFlagOnListeners: nlc.heard-vance
+  lines:
+    - { by: brody, text: "evening, Vance. empty your pockets." }
+    - { by: vance, text: "evening, officer. a map, a coin, and your watch. ...kidding. it's my watch." }
+    - { by: brody, text: "the Sheriff says you've been honest for a year." }
+    - { by: vance, text: "a year and a month. i count. it's the only thing i've ever kept honestly." }
+    - { by: brody, text: "if anyone ever wants you to watch their back, i'll tell them that. the month too." }
+
+- id: nlc-the-blueprints
+  participants: [fergus, theodora]
+  where: { town: new-leaf-city, spot: "venue:middle-west-street" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 2
+  lines:
+    - { by: fergus, text: "your drawing. back. clean." }
+    - { by: theodora, text: "cleaner than you took it. you dusted it, Fergus." }
+    - { by: fergus, text: "...no." }
+    - { by: theodora, text: "you ironed the corner flat. the Professor's going to think it's a new one." }
+    - { by: fergus, text: "next week, another one. i'll bring it back the same. don't tell anyone." }
+
+- id: nlc-the-old-crews
+  participants: [gideon, sabine]
+  where: { town: new-leaf-city, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 2
+  lines:
+    - { by: gideon, text: "a typhon, Sabine. on the Path of Peril. with one arm, by the end." }
+    - { by: sabine, text: "Zakum's door, Gideon. down a mine. in the dark. for a week." }
+    - { by: gideon, text: "a typhon's got wings." }
+    - { by: sabine, text: "Zakum's got eight arms." }
+    - { by: gideon, text: "...same time next week?" }
+    - { by: sabine, text: "bring the ginger ale. the flat kind." }

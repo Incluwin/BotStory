@@ -1,0 +1,427 @@
+# Aquarium cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 7 Residents, 2 recruitable.
+# Aquarium's town map is a swim map the nav graph cannot walk, so its Residents live in the Center Hall
+# (aquarium-hall) and the Department Store (aquarium-store). An old diver has watched a light burning in the Grave of a
+# Wrecked Ship for twenty years (arcs/aquarium.yaml); the lantern belongs to a sailor from Singapore's Boat Quay
+# (arcs/singapore.yaml). Two recruits carry the third tier of the staff and crossbow lines, earned in the deep sea.
+- id: delmar
+  name: Delmar
+  look: { gender: male }
+  title: "Old Diver of the Center Hall"
+  job: BEGINNER
+  level: { min: 58, max: 60 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: aquarium-hall
+    routine:
+      - { from: 9, to: 17, spot: "venue:upper-west-benches", activity: REST }
+      - { from: 17, to: 22, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [seal skin, sparker, shark]
+  questLines: [delmar-the-diving-suit, delmar-the-glass, delmar-the-wreck-lantern]
+  arc: delmar-the-lantern-in-the-grave
+  rumors: [aqua-the-benches]
+  relationships:
+    - { persona: ambrose, kind: ARGUES_FISH_WITH }
+    - { persona: finn, kind: TELLS_STORIES_TO }
+    - { persona: rosnah, kind: NEVER_MET }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["sit, sit. you've got the sea in your hair. everybody in Aquarium does. some of us have it in our knees.", "a new face. welcome down. it's wetter than it looks. it looks very wet."]
+    greet: ["you.", "sit a minute.", "tide's in. so's my back."]
+    idle: ["(polishes the brass faceplate of an old diving helmet resting on his knee)", "(stares at the floor as if he can see straight through it to the deep)"]
+    noWork: ["nothing today. the sea's quiet. my knees aren't."]
+    nothingDue: ["nothing owed. the sea keeps the accounts."]
+    who: ["Delmar. i dove the Aqua Road for forty years. salvage, mostly. wrecks. now my knees won't take the deep, so i sit in the hall and tell the young ones where the good wrecks are. they don't listen. i didn't."]
+    bye: ["mind the deep."]
+    thanks: ["right. thank you."]
+    smallTalk: ["the freezers in the red coral forest have the warmest seal skin on the road. my old suit's patched with it. it still leaks. less.", "there's a wreck at the bottom of the road. the Grave, they call it. the sharks keep it. i went down once. i came up quick."]
+    speakPlainly: ["plainly: an old diver with bad knees."]
+    questOffer.delmar-the-diving-suit: ["my old diving suit's split at the seams. the freezers in the red coral forest carry seal skin. twenty-five of them, ten skins. i'm not going down in it. i'd just like it whole."]
+    questAccept.delmar-the-diving-suit: ["out the hall, down the Aqua Road to the red coral forest. they're cold. that's their name."]
+    questWaiting.delmar-the-diving-suit: ["ten skins. the suit's in a heap."]
+    questComplete.delmar-the-diving-suit: ["ten. whole again. i'll hang it by the door. here. for the swim."]
+    questOffer.delmar-the-glass: ["there's something i've never told anyone. the sparkers on the turban shell hill get in the way of it. twenty of them. then come back to the west sea fork and look down into the deep. tell me what you see."]
+    questAccept.delmar-the-glass: ["out to the west sea fork, right outside the hall, and the turban shell hill past it. the hill first. then the fork. look down. right down."]
+    questWaiting.delmar-the-glass: ["did you look? what did you see?"]
+    questComplete.delmar-the-glass: ["a light. you saw it too. it's been burning in the Grave for twenty years. i thought i'd dreamed it. thank you. i'm not mad. that's a relief, at my age."]
+    questOffer.delmar-the-wreck-lantern: ["the light in the Grave is a ship's lantern. i'm sure of it now. the sharks and the cold sharks keep the wreck. twenty sharks, ten cold sharks, and bring the lantern up. i want to know whose it is."]
+    questAccept.delmar-the-wreck-lantern: ["the Grave of a Wrecked Ship, at the bottom of the road. the sharks will come. the cold ones come slower. don't stop to look at them."]
+    questWaiting.delmar-the-wreck-lantern: ["twenty and ten, and the lantern. it's still lit. i can see it from here. no, i can't. i can."]
+    questComplete.delmar-the-wreck-lantern: ["it's still lit. after twenty years. there's a name scratched on the handle. Halim. and a place. Boat Quay. somebody's waiting for this. here. you've earned that and more."]
+    about.ambrose: ["Ambrose knows the name of every fish in the sea. i know where they live. we argue about which is more use."]
+    about.finn: ["Finn wants to see a shark. i tell him about the Grave. he wants to see a shark more."]
+    about.rosnah: ["never heard the name."]
+    aboutUnknown: ["never dove with them."]
+    friend.close: ["you can borrow my old helmet. don't take it deep. it leaks."]
+    friend.best: ["if my knees ever let me down the road again, you're the one i'd dive with."]
+    famed: ["the hall talks about you. the fish too, probably."]
+    defamed: ["talk. the sea's louder."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["oh, now. that's a diver's supper."]
+    gift.again: ["one a day. i'm old, not a seal."]
+
+- id: thalia
+  name: Thalia
+  look: { gender: female }
+  title: "Tide Mage of the Aquarium"
+  job: IL_MAGE
+  level: { min: 93, max: 95 }
+  strength: ELITE
+  loadout: aqua-staff-l93
+  personality: efficient-v1
+  home:
+    town: aquarium-store
+    routine:
+      - { from: 6, to: 12, spot: "venue:beside-melias", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [squid, risell squid, cold shark]
+  contract: thalia-the-tide-share
+  questLines: [thalia-the-ink, thalia-blue-marine, thalia-dragon-staff, thalia-timeless-aeas-hand, thalia-ink-bottles]
+  rumors: [aqua-the-deep]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: kael, kind: DIVES_WITH }
+    - { persona: ambrose, kind: CORRECTS }
+  giftItemIds: [2000006, 2020005]
+  dialogue:
+    greetFirst: ["you're dripping on the floor. everyone does. hello.", "a visitor. the shops are that way. the sea's that way. i'm this way."]
+    greet: ["hello.", "you again. good.", "the tide's turning."]
+    idle: ["(lets a drop of water hover over her palm, turns it to ice, then lets it melt)", "(reads a chart of the deep sea with one finger on a single point)"]
+    noWork: ["nothing today. the deep's quiet. it's never quiet. it's pretending."]
+    nothingDue: ["even. as the tide."]
+    who: ["Thalia. i'm a mage of ice and lightning, and the sea is the only place both make sense at once. i hunt the deep sea gorges below the Aqua Road. the shallows are for children."]
+    bye: ["mind the cold."]
+    thanks: ["noted."]
+    smallTalk: ["the squids in the dangerous sea gorge carry ink in little bottles. i've no idea where they get the bottles. i've stopped asking the sea questions.", "Kael hunts with a crossbow underwater. he says the bolts go further. they don't. he goes further."]
+    speakPlainly: ["plainly: ice, lightning, and the deep."]
+    offer: ["sixty squids down the dangerous gorge, counted, and thirty thousand. the deep wants to see you've been there. then i'll come down with you."]
+    join: ["let's go down. stay close. it's dark."]
+    bench: ["three days. then the tide turns and i'm gone."]
+    leave: ["back to the deep."]
+    refuse.bond: ["i don't take strangers into the deep. the deep takes strangers."]
+    refuse.flags: ["come down to the dangerous gorge with me once. then ask."]
+    refuseOwnErrand: ["the gorge first. come down."]
+    questOffer.thalia-the-ink: ["come down to the dangerous sea gorge with me. the squids. thirty of them. they ink when they're frightened. don't be frightened back."]
+    questAccept.thalia-the-ink: ["the Aqua Road, all the way down. the dangerous sea gorge. it's dark. that's the ink."]
+    questWaiting.thalia-the-ink: ["thirty. keep your head clear."]
+    questComplete.thalia-the-ink: ["thirty, and you kept your head. most people don't. you can come down with me any time."]
+    questOffer.thalia-blue-marine: ["the Blue Marine. a staff made for the sea. it wants a polish only the risell squids carry, butter-toasted, don't ask. thirty of them, fifteen pieces."]
+    questAccept.thalia-blue-marine: ["the dangerous sea gorge, the far side. the risells come in fast."]
+    questWaiting.thalia-blue-marine: ["fifteen. it smells of butter. it's very strange."]
+    questComplete.thalia-blue-marine: ["fifteen. the Blue Marine. seven safe scrolls, every one took. it hums like the tide."]
+    questOffer.thalia-dragon-staff: ["the Dragon Staff. it wants the cold. thirty cold sharks in the Grave of a Wrecked Ship, ten frozen fins."]
+    questAccept.thalia-dragon-staff: ["the Grave, at the bottom of the road. the cold sharks come slowly. that's the danger."]
+    questWaiting.thalia-dragon-staff: ["ten fins. keep your hands warm."]
+    questComplete.thalia-dragon-staff: ["ten. the Dragon Staff. seven sixties, every one took. it's cold to hold. it should be."]
+    questOffer.thalia-timeless-aeas-hand: ["the Timeless Aeas Hand. the best staff in the world. it wants the deep's own voice. both of Pianus, in the cave at the bottom of the sea. the left one first, then the right."]
+    questAccept.thalia-timeless-aeas-hand: ["the cave of Pianus, past the Grave. the left one first, then the right. it's bigger than you think. think bigger."]
+    questWaiting.thalia-timeless-aeas-hand: ["both of them. take a party. i would."]
+    questComplete.thalia-timeless-aeas-hand: ["both. the Timeless Aeas Hand. two tens and five sixties, every one took. the sea's yours now. be kind to it."]
+    questOffer.thalia-ink-bottles: ["ten ink bottles? my notes are running dry."]
+    questAccept.thalia-ink-bottles: ["the dangerous gorge."]
+    questWaiting.thalia-ink-bottles: ["ten."]
+    questComplete.thalia-ink-bottles: ["ten. i can write again."]
+    about.kael: ["Kael dives with a crossbow. it's ridiculous. he's very good. both are true."]
+    about.ambrose: ["Ambrose names fish. i correct him. he's usually right. i correct him anyway."]
+    aboutUnknown: ["never been down with them."]
+    friend.close: ["you can come down to the deep with me any time. i'll keep the cold off you."]
+    friend.best: ["if the sea ever takes me, i've told it to give me back to you."]
+    famed: ["people say your name in the store like they're asking for directions. it's a compliment."]
+    defamed: ["noted. the deep doesn't care. neither do i."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's lovely. a long night with the charts just got better."]
+    gift.again: ["one a day. i'll get cold-handed."]
+
+- id: kael
+  name: Kael
+  look: { gender: male }
+  title: "Harpooner of the Deep Sea Gorge"
+  job: SNIPER
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: aqua-crossbow-l88
+  personality: relaxed-v1
+  home:
+    town: aquarium-store
+    routine:
+      - { from: 7, to: 13, spot: "venue:beside-gerrard", activity: LINGER }
+      - { from: 13, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: true
+  knows: [bone fish, bombing fish house, pianus]
+  contract: kael-the-deep-share
+  questLines: [kael-the-deep-line, kael-casa-crow, kael-white-neschere, kael-dragon-shiner-cross, kael-lime-bottles]
+  rumors: [aqua-the-deep]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: thalia, kind: DIVES_WITH }
+    - { persona: finn, kind: PROMISED_A_SHARK_TO }
+  giftItemIds: [2020004, 2000004]
+  dialogue:
+    greetFirst: ["hey! you swam all the way here? good on you. the dolphins are faster. the dolphins are cheating.", "a new one! welcome to Aquarium. mind the fish. they don't mind you."]
+    greet: ["hey!", "you're back. good.", "tide's good for hunting."]
+    idle: ["(winds a crossbow, checks the bolt, and lets the string down gently)", "(rubs salt off a bolt head with his thumb and squints along it)"]
+    noWork: ["nothing today. the deep's resting. so am i. badly."]
+    nothingDue: ["all even! good tides."]
+    who: ["Kael. harpooner. i hunt the deep sea gorges with a crossbow. people say you can't shoot underwater. i say you can, you just have to mean it."]
+    bye: ["good tides!"]
+    thanks: ["cheers!"]
+    smallTalk: ["the bombing fish houses in the deep sea gorge are fish that live in a house that explodes. i don't make the sea. i just hunt in it.", "Finn wants to see a shark. i've promised him one. i'm going to have to describe it very well."]
+    speakPlainly: ["plainly: a crossbow and a lot of water."]
+    offer: ["thirty thousand, and twenty lime powder bottles off the bone fish. don't ask what they're for. i'll cover you in the deep."]
+    join: ["let's go! i'll take the long shots."]
+    bench: ["four days. then the gorge calls."]
+    leave: ["back to the deep, friend."]
+    refuse.bond: ["i don't hunt with strangers. strangers get eaten. not by me."]
+    refuse.flags: ["come down the deep sea gorge with me once. and come by the store's middle street one evening to hear what Thalia says about me."]
+    refuseOwnErrand: ["my line first. come down."]
+    questOffer.kael-the-deep-line: ["hunt my line with me. the bombing fish houses in the deep sea gorge. twenty of them. they go off. so will you, if you're not quick."]
+    questAccept.kael-the-deep-line: ["the Aqua Road down to the deep sea gorge, the first and second. they sit very still. then they don't."]
+    questWaiting.kael-the-deep-line: ["twenty. quick hands."]
+    questComplete.kael-the-deep-line: ["twenty, and you've still got both eyebrows. good. you can hunt my line any time."]
+    questOffer.kael-casa-crow: ["the Casa Crow. a crossbow that bites. i want it broken in on the bone fish in the deep sea gorge. thirty of them. they're all bones. aim between."]
+    questAccept.kael-casa-crow: ["the deep sea gorge. the bone fish swim in loops. wait for the loop."]
+    questWaiting.kael-casa-crow: ["thirty. between the bones."]
+    questComplete.kael-casa-crow: ["thirty. the Casa Crow. seven safe scrolls, every one took. that's a bolt that goes where you look."]
+    questOffer.kael-white-neschere: ["the White Neschere. it wants a shark's tooth set in the stock. thirty sharks in the Grave of a Wrecked Ship, ten dentures. don't put your hand in to check."]
+    questAccept.kael-white-neschere: ["the Grave, at the bottom of the road. sharks. you knew that."]
+    questWaiting.kael-white-neschere: ["ten dentures. keep your fingers."]
+    questComplete.kael-white-neschere: ["ten. the White Neschere. seven sixties, every one took. look at that tooth. Finn's going to be furious."]
+    questOffer.kael-dragon-shiner-cross: ["the Dragon Shiner Cross. the best crossbow there is. it wants a piece of Pianus. one Pianus, in the cave at the bottom, and a miniature of it to set in the grip."]
+    questAccept.kael-dragon-shiner-cross: ["the cave of Pianus, past the Grave. take friends. take lots of friends."]
+    questWaiting.kael-dragon-shiner-cross: ["one Pianus. it's enough. it's plenty."]
+    questComplete.kael-dragon-shiner-cross: ["you did it. the Dragon Shiner Cross. two tens and five sixties, every one took. that's the sea's own crossbow. it's yours."]
+    questOffer.kael-lime-bottles: ["ten lime powder bottles? the bone fish carry them. i've got uses."]
+    questAccept.kael-lime-bottles: ["the deep sea gorge."]
+    questWaiting.kael-lime-bottles: ["ten."]
+    questComplete.kael-lime-bottles: ["ten. cheers."]
+    about.thalia: ["Thalia freezes the sea and then hits it with lightning. it's terrifying. she's my best friend."]
+    about.finn: ["Finn wants a shark. i've promised. i'm going to have to draw one. i can't draw."]
+    aboutUnknown: ["never hunted with them."]
+    friend.close: ["you can hunt my line any time. i'll take the long shots. you take the credit."]
+    friend.best: ["if you ever go down to Pianus, i'm coming. i don't care what you say. i'm coming."]
+    famed: ["the whole store knows your name. the fish do too. i asked."]
+    defamed: ["let the sea wash it off. it washes everything."]
+    gift: ["cheers!"]
+    gift.favorite: ["a hunter's lunch! the good stuff!"]
+    gift.again: ["one a day! i'm a harpooner, not a whale."]
+
+- id: oriel
+  name: Oriel
+  look: { gender: female }
+  title: "Dolphin Trainer of the Department Store"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: aquarium-store
+    routine:
+      - { from: 7, to: 14, spot: "venue:beside-oannes", activity: LINGER }
+      - { from: 14, to: 19, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  knows: [krip, seacle, shrimp meat]
+  questLines: [oriel-the-dolphin-treats, oriel-the-sea-horses]
+  relationships:
+    - { persona: sunniva, kind: SWIMS_WITH }
+    - { persona: finn, kind: LETS_FEED_THE_DOLPHINS }
+  giftItemIds: [2020005, 2001001]
+  dialogue:
+    greetFirst: ["hello! did you come down on the dolphin? that's my dolphin. well. she's everybody's. she likes me best.", "oh, hi! welcome to Aquarium! have you said hello to the dolphins? you should. they'll be offended."]
+    greet: ["hi!", "you're back! the dolphins asked about you.", "hello hello."]
+    idle: ["(whistles two notes, listens, and whistles them again a little higher)", "(counts out a handful of shrimp into a bucket, one, two, three, all of them)"]
+    noWork: ["nothing today. the dolphins are fed. they're asleep. they sleep with one eye open. so do i."]
+    nothingDue: ["you don't owe me a thing! the dolphins might say otherwise."]
+    who: ["Oriel. i train the dolphins that carry people up and down the Aqua Road. well, i don't train them. they train me. i'm getting quite good."]
+    bye: ["say bye to the dolphins!"]
+    thanks: ["thank you!"]
+    smallTalk: ["the dolphins love shrimp. the krips by the seaweed tower are made of shrimp. it's a whole economy.", "the sea horses on the blue seaweed road nip the dolphins' fins. the dolphins sulk. a sulking dolphin won't carry anyone."]
+    speakPlainly: ["plainly: dolphins."]
+    questOffer.oriel-the-dolphin-treats: ["the dolphins are on strike. they want shrimp. the krips by the seaweed tower and the hidden town carry shrimp meat. twenty krips, ten pieces. strike over."]
+    questAccept.oriel-the-dolphin-treats: ["the Aqua Road, the east sea fork, the seaweed tower. they're small. they're shrimp."]
+    questWaiting.oriel-the-dolphin-treats: ["ten pieces. the dolphins are holding up signs."]
+    questComplete.oriel-the-dolphin-treats: ["ten! strike over! look, she's carrying someone already. here, from the dolphin fund. there is a dolphin fund."]
+    questOffer.oriel-the-sea-horses: ["the seacles on the blue seaweed road keep nipping the dolphins' fins. twenty-five of them. gently. the dolphins only want them to stop. so do i."]
+    questAccept.oriel-the-sea-horses: ["the blue seaweed road, the fish resting spot and the coral hill. they're quick. be quicker."]
+    questWaiting.oriel-the-sea-horses: ["twenty-five. the dolphins are sulking."]
+    questComplete.oriel-the-sea-horses: ["no more nipping! they're doing loops! that's a happy dolphin. here. thank you."]
+    about.sunniva: ["Sunniva dives for pearls. the dolphins carry her down. she pays them in shrimp. she pays me in stories."]
+    about.finn: ["Finn feeds the dolphins on Sundays. he throws the shrimp too hard. they catch it anyway. they like him."]
+    aboutUnknown: ["the dolphins don't know them."]
+    friend.close: ["you can ride the dolphins any time. ask for the grey one. she's the nicest."]
+    friend.best: ["the dolphins have a whistle for you now. i didn't teach them. they made it up."]
+    famed: ["the dolphins know your name. i'm not joking. i've heard them."]
+    defamed: ["the dolphins don't believe it. they're very loyal."]
+    gift: ["oh! thank you!"]
+    gift.favorite: ["oh, that's lovely. i'm not sharing it with the dolphins. i might."]
+    gift.again: ["one a day! the dolphins get jealous."]
+
+- id: sunniva
+  name: Sunniva
+  look: { gender: female }
+  title: "Pearl Diver of the Penguin's Playground"
+  job: BEGINNER
+  level: { min: 35, max: 37 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: aquarium-store
+    routine:
+      - { from: 8, to: 15, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 15, to: 20, spot: "venue:beside-calypso", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [scuba pepe, poopa, snorkle]
+  questLines: [sunniva-the-snorkels, sunniva-the-poopa-eggs]
+  relationships:
+    - { persona: oriel, kind: RIDES_THE_DOLPHINS_OF }
+    - { persona: delmar, kind: LEARNED_TO_DIVE_FROM }
+  giftItemIds: [2000002, 2020004]
+  dialogue:
+    greetFirst: ["hello. don't mind the bag. it's pearls. it's mostly sand. sometimes it's pearls.", "a visitor. you swim like a stone. that's all right. so did i, once."]
+    greet: ["hello.", "you. any pearls?", "hi. the water's good today."]
+    idle: ["(sorts a bag of sand and shells with quick fingers, picking out one small white bead)", "(holds her breath for a very long time, just to see if she still can)"]
+    noWork: ["nothing today. the beds are picked over. tomorrow."]
+    nothingDue: ["nothing owed. hold your breath anyway."]
+    who: ["Sunniva. i dive for pearls on the Aqua Road. Delmar taught me to dive. he said, hold your breath, don't panic, and never go to the Grave. i've done two of those."]
+    bye: ["hold your breath."]
+    thanks: ["thank you."]
+    smallTalk: ["the scuba pepes in the penguin's playground steal divers' snorkels. they don't need them. they're penguins. they just like them.", "the poopas round Ocean I.C lay eggs that look exactly like pearls. i've been fooled eleven times. it's twelve now."]
+    speakPlainly: ["plainly: pearls, mostly sand."]
+    questOffer.sunniva-the-snorkels: ["the scuba pepes stole my snorkels. all of them. the penguin's playground and Ocean I.C. twenty-five pepes, ten snorkels. they'll have better ones than mine. that's fine."]
+    questAccept.sunniva-the-snorkels: ["the Aqua Road, Ocean I.C and the playground off it. they waddle. they swim like arrows."]
+    questWaiting.sunniva-the-snorkels: ["ten snorkels. i've been holding my breath all week."]
+    questComplete.sunniva-the-snorkels: ["ten. these are better than mine. much better. here. from the pearl tin."]
+    questOffer.sunniva-the-poopa-eggs: ["i want to stop being fooled. the poopas at Ocean I.C lay eggs like pearls. bring me ten, and i'll learn the difference properly. twenty-five poopas."]
+    questAccept.sunniva-the-poopa-eggs: ["Ocean I.C. they're grumpy. they're always grumpy."]
+    questWaiting.sunniva-the-poopa-eggs: ["ten eggs. i'm studying."]
+    questComplete.sunniva-the-poopa-eggs: ["ten. eggs are warmer. that's it. that's the difference. i'll never be fooled again. probably. here."]
+    about.oriel: ["Oriel's dolphins carry me down to the pearl beds. i pay them in shrimp. she won't take money. she takes stories."]
+    about.delmar: ["Delmar taught me to dive. he's been watching something in the deep for years. he thinks nobody's noticed. everybody's noticed."]
+    aboutUnknown: ["not anyone i've met at the pearl beds."]
+    friend.close: ["you can come to the pearl beds with me. bring your own breath."]
+    friend.best: ["i found a real pearl last week. a perfect one. i'm keeping it for you."]
+    famed: ["people in the store say your name. it sounds like a good find."]
+    defamed: ["most of it's sand. you sift it out."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's a diver's lunch. thank you."]
+    gift.again: ["one a day. i need to stay light for the dive."]
+
+- id: finn
+  name: Finn
+  look: { gender: male }
+  title: "Boy Who Wants to See a Shark"
+  job: BEGINNER
+  level: { min: 13, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: aquarium-hall
+    routine:
+      - { from: 8, to: 12, spot: "venue:department-store-entrance", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:upper-central-street", activity: SOCIALIZE }
+      - { from: 18, to: 8, materialize: false }
+  recruitable: false
+  knows: [bubble fish, jr. seal, toy baby seal]
+  questLines: [finn-the-bubble-thoughts, finn-the-seal-pup]
+  relationships:
+    - { persona: kael, kind: WAITS_FOR_A_SHARK_FROM }
+    - { persona: delmar, kind: LISTENS_TO }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["have you seen a shark? a real one? what was it like? did it have teeth? all of them?", "hi! i'm Finn! i'm going to see a shark one day. a big one."]
+    greet: ["hi! seen a shark?", "you're back! tell me about the deep!", "hiya."]
+    idle: ["(presses his face to the hall's glass and fogs it up, waiting)", "(draws a shark with very many teeth on the back of his hand)"]
+    noWork: ["nothing today. i'm waiting for a shark."]
+    nothingDue: ["we're even! like shark teeth. top and bottom."]
+    who: ["Finn. i live in the Center Hall. i've seen every fish in Aquarium except a shark. Kael's promised me one. Delmar says the Grave's full of them. i'm not allowed to go."]
+    bye: ["bye! look out for sharks!"]
+    thanks: ["thank you!"]
+    smallTalk: ["the bubble fish in big fish valley have thoughts. you can see them. they come out in bubbles. i want to know what they think about.", "Kael says a shark has three rows of teeth. Delmar says five. Ambrose says it depends on the shark. i want to count."]
+    speakPlainly: ["plainly: sharks."]
+    questOffer.finn-the-bubble-thoughts: ["the bubble fish in big fish valley and the sand castle playground have thoughts. you can catch them! twenty bubble fish, ten thoughts. i want to know what fish think about. i bet it's sharks."]
+    questAccept.finn-the-bubble-thoughts: ["big fish valley! and the sand castle playground! they're slow! catch the thoughts before they pop!"]
+    questWaiting.finn-the-bubble-thoughts: ["ten thoughts! are they about sharks?"]
+    questComplete.finn-the-bubble-thoughts: ["ten! this one's about food. this one's about food. this one's... about a shark! i knew it! here, my best shell."]
+    questOffer.finn-the-seal-pup: ["the jr. seals at Ocean I.C and in the crystal gorge carry little toy seals. i want one for my shelf. twenty seals, five toys. one for me and four to look at."]
+    questAccept.finn-the-seal-pup: ["Ocean I.C, and the crystal gorge! they're cute! they bite!"]
+    questWaiting.finn-the-seal-pup: ["five toys! my shelf's ready!"]
+    questComplete.finn-the-seal-pup: ["five! they're all on my shelf. in a row. facing the window, in case a shark goes past. thank you!"]
+    about.kael: ["Kael's promised me a shark. he says it's very hard to bring one home. i said try."]
+    about.delmar: ["Delmar dove to the Grave once. he saw a shark. he says he came up very quickly. i'd have stayed."]
+    about.ambrose: ["Ambrose knows the name of every fish. i asked him the name of a shark. he said 'shark'. i was disappointed."]
+    aboutUnknown: ["have they seen a shark?"]
+    friend.close: ["you can look at my shelf. that's very special. nobody looks at my shelf."]
+    friend.best: ["when i see a shark, you can come. you're the only one i'm inviting."]
+    famed: ["everyone in the hall says your name! like a shark!"]
+    defamed: ["i'm not listening. i'm watching for sharks."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["WOW. that's better than a shark. no it isn't. nearly."]
+    gift.again: ["one a day! my mum says."]
+
+- id: ambrose
+  name: Ambrose
+  look: { gender: male }
+  title: "Scholar of Sea Life"
+  job: MAGICIAN
+  level: { min: 50, max: 52 }
+  strength: SEASONED
+  loadout: ellinia-mage-l30
+  personality: efficient-v1
+  home:
+    town: aquarium-hall
+    routine:
+      - { from: 10, to: 18, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 18, to: 22, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  knows: [flower fish, mask fish, hard needle]
+  questLines: [ambrose-the-coral-petals, ambrose-the-hard-needles]
+  rumors: [aqua-the-benches]
+  relationships:
+    - { persona: delmar, kind: ARGUES_FISH_WITH }
+    - { persona: thalia, kind: IS_CORRECTED_BY }
+  giftItemIds: [2000006, 2020005]
+  dialogue:
+    greetFirst: ["ah, a visitor! do you know the flower fish? few people do. it's a fish that pretends to be a flower. or the other way round. i'm writing a paper.", "welcome to the Center Hall. i study the sea. the sea doesn't study me. it's rude."]
+    greet: ["ah, hello.", "you again. i've named a new fish.", "good day."]
+    idle: ["(makes a careful sketch of something only he can see through the glass)", "(peers at a tiny shell through a lens and writes three pages about it)"]
+    noWork: ["nothing today. i'm writing. i'm always writing."]
+    nothingDue: ["your account is closed, with thanks. footnoted."]
+    who: ["Ambrose. i study the life of the Aqua Road. every fish, every shell, every argument Delmar has with me about where they live. he's usually right. i write down that he isn't."]
+    bye: ["observe carefully."]
+    thanks: ["noted, with thanks."]
+    smallTalk: ["the flower fish by the hidden town and the sand castle drop petals. real petals. under the sea. i've written three papers about it. nobody's read them.", "the mask fish by the seaweed tower grow needles hard enough to sew sailcloth. i've tested it. i've sewn a sail. i have nowhere to sail."]
+    speakPlainly: ["plainly: fish, and papers about fish."]
+    questOffer.ambrose-the-coral-petals: ["for my paper. the flower fish by the hidden town and the sand castle playground drop petals. twenty-five of them, ten petals. under the sea. petals."]
+    questAccept.ambrose-the-coral-petals: ["the hidden town, off the seaweed tower, and the sand castle playground. they look like flowers. that's the point."]
+    questWaiting.ambrose-the-coral-petals: ["ten petals. the paper's waiting."]
+    questComplete.ambrose-the-coral-petals: ["ten. look at the veins. they're real petals. i'm going to write a fourth paper. here. for science."]
+    questOffer.ambrose-the-hard-needles: ["the mask fish by the east sea fork and the seaweed tower grow the hardest needles in the sea. twenty-five of them, ten needles. i want to know what they're made of."]
+    questAccept.ambrose-the-hard-needles: ["the east sea fork and the seaweed tower. they wear masks. i don't know why. that's another paper."]
+    questWaiting.ambrose-the-hard-needles: ["ten needles. carefully. they're sharp. that's the paper."]
+    questComplete.ambrose-the-hard-needles: ["ten. they're bone. sharpened bone. extraordinary. here. you're in the acknowledgements."]
+    about.delmar: ["Delmar knows where every fish lives. i know what they're called. we argue about which matters. it's the best part of the day."]
+    about.thalia: ["Thalia corrects me. she's usually wrong. i let her think she's right. it's simpler."]
+    about.finn: ["Finn asked me what a shark is called. i said shark. he looked very let down. i'll find him a better answer."]
+    aboutUnknown: ["not in any of my papers."]
+    friend.close: ["you can read my papers. all of them. nobody else has."]
+    friend.best: ["i've named a fish after you. it's a very good fish. it lives in the hidden town."]
+    famed: ["people say your name in the hall. i've written it down. for the record."]
+    defamed: ["i don't publish gossip."]
+    gift: ["ah, thank you."]
+    gift.favorite: ["how kind. a long night with the papers, sorted."]
+    gift.again: ["one a day. moderation, as the flower fish teaches."]
