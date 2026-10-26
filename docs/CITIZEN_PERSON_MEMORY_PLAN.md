@@ -162,3 +162,17 @@ L9. Set `MEMORY_ENABLED: false`, restart: greetings are the coin flip again and 
 - Citizens do not answer whispers at all (`LivingWorldHooks.whisper` routes only to Residents).
 - The weekly life summary (plan 6.4) has no writer, so "my recent weeks" is always blank.
 - Memories of other citizens (bot-to-bot) stay the circle/guild ties and gossip they are.
+
+## 7. Results (2026-10-25)
+
+- Commits on `ff6fbe48a`: `73503caee` (the feature), `4c4efefc3` (changeset 49 / file 040, since
+  feat/bot-guild-alliances took 48 / 039; no greeting for a player in a GM's hide).
+- New tests: PersonMemoryTest 15, PersonMemoriesTest 13, CitizenPartyQuestsMemoryTest 5, PersonMemoryHooksTest 4,
+  CitizenPersonMemorySchemaTest 4, SocialFabricMemoryTest 3, ConversationMemoryTest 2, CitizenInviteDecisionTest +3.
+  Population package with the roster and boundary tests: 305 / 0 / 0. Content lint OK (its 4 warnings are the older
+  Ereve fields).
+- Full split suite on `4c4efefc3` at -Heap 1500m: capabilities 6,318, agents 2,390, rest 6,416 = 15,124 / 0 / 37 PASS.
+  A first run was stopped by the memory guard (free commit 1.44 GB), not a failure.
+- Not verified until a live check (section 5): the reunion greeting and hello in a real client, a restart keeping the
+  memories (the migration on the live MySQL), the PQ, stall and fame episodes from live play, the invite decline per
+  D1, the hourly prune and the social tick's time under a full town.
