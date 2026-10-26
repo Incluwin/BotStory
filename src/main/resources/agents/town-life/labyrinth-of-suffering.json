@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 2,
+  "profileId": "labyrinth-of-suffering",
+  "mapId": 450011120,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 26,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 135,
+    "middleMaxY": 195,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "downtown00", "weight": 30 },
+    { "name": "uptown01", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 585, "y": 206, "seatId": -1 },
+    { "x": 825, "y": 206, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -820, "y": 206 },
+    { "x": -480, "y": 206 },
+    { "x": -40, "y": 206 },
+    { "x": 215, "y": 206 },
+    { "x": 995, "y": 206 },
+    { "x": 1165, "y": 206 }
+  ],
+  "npcSpots": [
+    { "npcId": 3003799, "offsetX": -85 },
+    { "npcId": 3003794, "offsetX": 85 },
+    { "npcId": 3003704, "offsetX": 125 },
+    { "npcId": 3003797, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-uptown01", "type": "PORTAL", "minX": 836, "minY": 138, "maxX": 976, "maxY": 263, "excludesOccupancy": true },
+    { "id": "portal-west00", "type": "PORTAL", "minX": -807, "minY": 138, "maxX": -667, "maxY": 263, "excludesOccupancy": true },
+    { "id": "portal-downtown00", "type": "PORTAL", "minX": -1536, "minY": 135, "maxX": -1396, "maxY": 260, "excludesOccupancy": true },
+    { "id": "npc-3003792", "type": "NPC_LANE", "minX": -1400, "minY": 116, "maxX": -987, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003787", "type": "NPC_LANE", "minX": -972, "minY": 116, "maxX": -842, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003797", "type": "NPC_LANE", "minX": -616, "minY": 116, "maxX": -486, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003799", "type": "NPC_LANE", "minX": -418, "minY": 116, "maxX": -51, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003745", "type": "NPC_LANE", "minX": -39, "minY": 116, "maxX": 210, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003789", "type": "NPC_LANE", "minX": 225, "minY": 116, "maxX": 355, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003800", "type": "NPC_LANE", "minX": 360, "minY": 116, "maxX": 490, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003790", "type": "NPC_LANE", "minX": 613, "minY": 116, "maxX": 743, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003796", "type": "NPC_LANE", "minX": 1019, "minY": 116, "maxX": 1149, "maxY": 246, "excludesOccupancy": true },
+    { "id": "npc-3003788", "type": "NPC_LANE", "minX": 1207, "minY": 116, "maxX": 1454, "maxY": 246, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-temple-keeper", "label": "By Temple Keeper", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 500, "y": 206, "seatId": -1 }, { "x": 585, "y": 206, "seatId": -1 }] },
+    { "id": "by-cygnus-soldier", "label": "By Cygnus Soldier", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 755, "y": 206, "seatId": -1 }, { "x": 825, "y": 206, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": []
+}

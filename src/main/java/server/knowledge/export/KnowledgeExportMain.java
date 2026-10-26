@@ -227,7 +227,8 @@ public final class KnowledgeExportMain {
             case 140 -> "rien";
             case 200 -> "orbis";
             case 209 -> "happyville";
-            case 211, 280 -> "el-nath";
+            case 211, 280 -> "el-nath"; // 21106-21107: Lion King's Castle, a Community Repack map (server.mods.RepackMaps)
+            case 219 -> "coke-town"; // Repack
             case 220 -> "ludibrium";
             case 221 -> "omega-sector";
             case 222 -> "korean-folk-town";
@@ -238,7 +239,9 @@ public final class KnowledgeExportMain {
             case 260 -> "ariant";
             case 261 -> "magatia";
             case 270 -> "temple-of-time";
+            case 271, 272, 273 -> "future"; // Repack: Gate to the Future, Crack in Time, Twilight Perion
             case 300 -> "ellin-forest";
+            case 450 -> "arcane-river"; // Repack, scenery only
             case 540, 541 -> "singapore";
             case 550, 551 -> "malaysia";
             case 600, 682 -> "new-leaf-city";

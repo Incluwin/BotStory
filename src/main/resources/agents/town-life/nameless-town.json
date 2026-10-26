@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "profileId": "nameless-town",
+  "mapId": 450001000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -11,
+    "middleMaxY": 49,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "PV00", "weight": 20 },
+    { "name": "PV02", "weight": 19 },
+    { "name": "PV01", "weight": 19 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -2067, "y": 60, "seatId": -1 },
+    { "x": -1402, "y": 60, "seatId": -1 },
+    { "x": -537, "y": 60, "seatId": -1 },
+    { "x": 413, "y": 60, "seatId": -1 },
+    { "x": 1093, "y": 60, "seatId": -1 },
+    { "x": 1518, "y": 60, "seatId": -1 },
+    { "x": 2028, "y": 60, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1742, "y": 60 },
+    { "x": -1657, "y": 60 },
+    { "x": -792, "y": 60 },
+    { "x": 583, "y": 60 },
+    { "x": 668, "y": 60 },
+    { "x": 838, "y": 60 },
+    { "x": 1688, "y": 60 },
+    { "x": 2198, "y": 60 }
+  ],
+  "npcSpots": [
+    { "npcId": 3003101, "offsetX": -148 },
+    { "npcId": 3003100, "offsetX": 153 },
+    { "npcId": 3003131, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-pv02", "type": "PORTAL", "minX": 2205, "minY": -221, "maxX": 2345, "maxY": -96, "excludesOccupancy": true },
+    { "id": "portal-pv01", "type": "PORTAL", "minX": 2205, "minY": -12, "maxX": 2345, "maxY": 113, "excludesOccupancy": true },
+    { "id": "portal-ph00", "type": "PORTAL", "minX": -1415, "minY": -188, "maxX": -1345, "maxY": -88, "excludesOccupancy": true },
+    { "id": "portal-pv00", "type": "PORTAL", "minX": -2304, "minY": -12, "maxX": -2164, "maxY": 113, "excludesOccupancy": true },
+    { "id": "portal-ph01", "type": "PORTAL", "minX": 906, "minY": 4, "maxX": 976, "maxY": 104, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 2100, "minY": -210, "maxX": 2190, "maxY": 70, "excludesOccupancy": true },
+    { "id": "npc-3003145", "type": "NPC_LANE", "minX": -1991, "minY": -30, "maxX": -1751, "maxY": 100, "excludesOccupancy": true },
+    { "id": "npc-3003101", "type": "NPC_LANE", "minX": -1176, "minY": -30, "maxX": -898, "maxY": 100, "excludesOccupancy": true },
+    { "id": "npc-3003111", "type": "NPC_LANE", "minX": -457, "minY": -92, "maxX": 181, "maxY": 100, "excludesOccupancy": true },
+    { "id": "npc-9010022", "type": "NPC_LANE", "minX": 1159, "minY": -30, "maxX": 1299, "maxY": 100, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-nina", "label": "By Nina", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -2152, "y": 60, "seatId": -1 }, { "x": -2067, "y": 60, "seatId": -1 }, { "x": -1997, "y": 60, "seatId": -1 }] },
+    { "id": "by-largo", "label": "By Largo", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -1572, "y": 60, "seatId": -1 }, { "x": -1487, "y": 60, "seatId": -1 }, { "x": -1402, "y": 60, "seatId": -1 }, { "x": -1317, "y": 60, "seatId": -1 }] },
+    { "id": "by-legato", "label": "By Legato", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -707, "y": 60, "seatId": -1 }, { "x": -622, "y": 60, "seatId": -1 }, { "x": -537, "y": 60, "seatId": -1 }, { "x": -467, "y": 60, "seatId": -1 }] },
+    { "id": "by-kao", "label": "By Kao", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 243, "y": 60, "seatId": -1 }, { "x": 328, "y": 60, "seatId": -1 }, { "x": 413, "y": 60, "seatId": -1 }, { "x": 498, "y": 60, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1008, "y": 60, "seatId": -1 }, { "x": 1093, "y": 60, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1348, "y": 60, "seatId": -1 }, { "x": 1433, "y": 60, "seatId": -1 }, { "x": 1518, "y": 60, "seatId": -1 }, { "x": 1603, "y": 60, "seatId": -1 }] },
+    { "id": "lower-east-street-3", "label": "Lower east street 3", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1858, "y": 60, "seatId": -1 }, { "x": 1943, "y": 60, "seatId": -1 }, { "x": 2028, "y": 60, "seatId": -1 }, { "x": 2098, "y": 60, "seatId": -1 }] },
+    { "id": "beside-largo", "label": "Beside Largo", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -1196, "y": 60, "seatId": -1 }] },
+    { "id": "beside-rento", "label": "Beside Rento", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -878, "y": 60, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "nameless-town-largo", "type": "STORAGE", "npcId": 3003101, "destinationMapId": 0,
+      "approachPoints": [{ "x": -1196, "y": 60 }],
+      "services": ["storage"] },
+    { "id": "nameless-town-rento", "type": "GENERAL_SHOP", "npcId": 3003100, "destinationMapId": 0,
+      "approachPoints": [{ "x": -878, "y": 60 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-largo-crowd", "venueId": "by-largo", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-east-street-3-crowd", "venueId": "lower-east-street-3", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

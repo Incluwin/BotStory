@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "profileId": "henesys-ruins",
+  "mapId": 271010000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -56,
+    "middleMaxY": 263,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 13 },
+    { "name": "west00", "weight": 9 },
+    { "name": "market00", "weight": 9 },
+    { "name": "in00", "weight": 9 },
+    { "name": "park00", "weight": 9 },
+    { "name": "east00", "weight": 9 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -1273, "y": 154, "seatId": -1 },
+    { "x": -988, "y": 154, "seatId": -1 },
+    { "x": -703, "y": 154, "seatId": -1 },
+    { "x": -278, "y": 208, "seatId": -1 },
+    { "x": 247, "y": 274, "seatId": -1 },
+    { "x": 757, "y": 274, "seatId": -1 },
+    { "x": 1522, "y": 274, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -563, "y": 154 },
+    { "x": 927, "y": 274 },
+    { "x": 1012, "y": 274 },
+    { "x": 1097, "y": 274 },
+    { "x": 1182, "y": 274 },
+    { "x": 1267, "y": 274 }
+  ],
+  "npcSpots": [
+    { "npcId": 2142000, "offsetX": 85 },
+    { "npcId": 2142005, "offsetX": -85 },
+    { "npcId": 2142001, "offsetX": 85 },
+    { "npcId": 2142006, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-east00", "type": "PORTAL", "minX": 1660, "minY": 201, "maxX": 1800, "maxY": 326, "excludesOccupancy": true },
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1217, "minY": 79, "maxX": -1077, "maxY": 204, "excludesOccupancy": true },
+    { "id": "portal-park00", "type": "PORTAL", "minX": 93, "minY": -130, "maxX": 233, "maxY": -5, "excludesOccupancy": true },
+    { "id": "portal-market00", "type": "PORTAL", "minX": -942, "minY": 79, "maxX": -802, "maxY": 204, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": -1509, "minY": 81, "maxX": -1369, "maxY": 206, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": 14, "minY": 201, "maxX": 154, "maxY": 326, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -668, "minY": -54, "maxX": -578, "maxY": 164, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -257, "minY": -114, "maxX": -167, "maxY": 232, "excludesOccupancy": true },
+    { "id": "npc-2142003", "type": "NPC_LANE", "minX": -701, "minY": -86, "maxX": -571, "maxY": 44, "excludesOccupancy": true },
+    { "id": "npc-2142005", "type": "NPC_LANE", "minX": -502, "minY": 64, "maxX": -372, "maxY": 194, "excludesOccupancy": true },
+    { "id": "npc-2142007", "type": "NPC_LANE", "minX": -362, "minY": -146, "maxX": -232, "maxY": -16, "excludesOccupancy": true },
+    { "id": "npc-2142004", "type": "NPC_LANE", "minX": -93, "minY": 184, "maxX": 37, "maxY": 314, "excludesOccupancy": true },
+    { "id": "npc-2142006", "type": "NPC_LANE", "minX": 343, "minY": -146, "maxX": 473, "maxY": -16, "excludesOccupancy": true },
+    { "id": "npc-2142000", "type": "NPC_LANE", "minX": 348, "minY": 184, "maxX": 478, "maxY": 314, "excludesOccupancy": true },
+    { "id": "npc-2142001", "type": "NPC_LANE", "minX": 837, "minY": -326, "maxX": 967, "maxY": -196, "excludesOccupancy": true },
+    { "id": "npc-2142002", "type": "NPC_LANE", "minX": 1025, "minY": -326, "maxX": 1155, "maxY": -196, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1358, "y": 154, "seatId": -1 }, { "x": -1273, "y": 154, "seatId": -1 }] },
+    { "id": "middle-west-street-2", "label": "Middle west street 2", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1073, "y": 154, "seatId": -1 }, { "x": -988, "y": 154, "seatId": -1 }] },
+    { "id": "middle-west-street-3", "label": "Middle west street 3", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -788, "y": 154, "seatId": -1 }, { "x": -703, "y": 154, "seatId": -1 }] },
+    { "id": "by-ex-chief-stan", "label": "By Ex-chief Stan", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -503, "y": -56, "seatId": -1 }, { "x": -418, "y": -56, "seatId": -1 }] },
+    { "id": "by-utah", "label": "By Utah", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -363, "y": 154, "seatId": -1 }, { "x": -278, "y": 208, "seatId": -1 }] },
+    { "id": "by-jay", "label": "By Jay", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -163, "y": -56, "seatId": -1 }, { "x": -78, "y": -56, "seatId": -1 }, { "x": 7, "y": -56, "seatId": -1 }, { "x": 92, "y": -56, "seatId": -1 }] },
+    { "id": "by-maya", "label": "By Maya", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 162, "y": 274, "seatId": -1 }, { "x": 247, "y": 274, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 262, "y": -56, "seatId": -1 }, { "x": 332, "y": -56, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 587, "y": 274, "seatId": -1 }, { "x": 672, "y": 274, "seatId": -1 }, { "x": 757, "y": 274, "seatId": -1 }, { "x": 842, "y": 274, "seatId": -1 }] },
+    { "id": "by-athena-pierce", "label": "By Athena Pierce", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 1187, "y": -236, "seatId": -1 }, { "x": 1272, "y": -236, "seatId": -1 }, { "x": 1357, "y": -236, "seatId": -1 }, { "x": 1442, "y": -236, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1352, "y": 274, "seatId": -1 }, { "x": 1437, "y": 274, "seatId": -1 }, { "x": 1522, "y": 274, "seatId": -1 }, { "x": 1607, "y": 274, "seatId": -1 }] },
+    { "id": "beside-maya", "label": "Beside Maya", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 328, "y": 274, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "henesys-ruins-maya", "type": "GENERAL_SHOP", "npcId": 2142000, "destinationMapId": 0,
+      "approachPoints": [{ "x": 328, "y": 274 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "by-jay-crowd", "venueId": "by-jay", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "profileId": "chu-chu-village",
+  "mapId": 450002000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -203,
+    "middleMaxY": 127,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out03", "weight": 30 },
+    { "name": "out01", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -434, "y": 138, "seatId": -1 },
+    { "x": -9, "y": 138, "seatId": -1 },
+    { "x": 501, "y": 138, "seatId": -1 },
+    { "x": 1411, "y": 138, "seatId": -1 },
+    { "x": 2091, "y": 138, "seatId": -1 },
+    { "x": 2516, "y": 138, "seatId": -1 },
+    { "x": 2941, "y": 138, "seatId": -1 },
+    { "x": 3366, "y": 138, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -264, "y": 138 },
+    { "x": 161, "y": 138 },
+    { "x": 246, "y": 138 },
+    { "x": 871, "y": 138 },
+    { "x": 1071, "y": 138 },
+    { "x": 1581, "y": 138 },
+    { "x": 1751, "y": 138 },
+    { "x": 3111, "y": 138 }
+  ],
+  "npcSpots": [
+    { "npcId": 3003150, "offsetX": 121 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out03", "type": "PORTAL", "minX": -745, "minY": 65, "maxX": -605, "maxY": 190, "excludesOccupancy": true },
+    { "id": "portal-out04", "type": "PORTAL", "minX": 2412, "minY": -1020, "maxX": 2552, "maxY": -895, "excludesOccupancy": true },
+    { "id": "portal-out01", "type": "PORTAL", "minX": 3446, "minY": 65, "maxX": 3586, "maxY": 190, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 2666, "minY": -261, "maxX": 2756, "maxY": 148, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": 3161, "minY": -494, "maxX": 3251, "maxY": -123, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": 874, "minY": -383, "maxX": 964, "maxY": 148, "excludesOccupancy": true },
+    { "id": "npc-3003152", "type": "NPC_LANE", "minX": 632, "minY": 48, "maxX": 808, "maxY": 178, "excludesOccupancy": true },
+    { "id": "npc-9010106", "type": "NPC_LANE", "minX": 897, "minY": 48, "maxX": 1057, "maxY": 178, "excludesOccupancy": true },
+    { "id": "npc-9010109", "type": "NPC_LANE", "minX": 1077, "minY": 48, "maxX": 1207, "maxY": 178, "excludesOccupancy": true },
+    { "id": "npc-3003150", "type": "NPC_LANE", "minX": 1411, "minY": -11, "maxX": 1613, "maxY": 119, "excludesOccupancy": true },
+    { "id": "npc-9010022", "type": "NPC_LANE", "minX": 1771, "minY": 48, "maxX": 1911, "maxY": 178, "excludesOccupancy": true },
+    { "id": "npc-3003158", "type": "NPC_LANE", "minX": 2199, "minY": 48, "maxX": 2339, "maxY": 178, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -604, "y": 138, "seatId": -1 }, { "x": -519, "y": 138, "seatId": -1 }, { "x": -434, "y": 138, "seatId": -1 }, { "x": -349, "y": 138, "seatId": -1 }] },
+    { "id": "lower-west-street-2", "label": "Lower west street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -179, "y": 138, "seatId": -1 }, { "x": -94, "y": 138, "seatId": -1 }, { "x": -9, "y": 138, "seatId": -1 }, { "x": 76, "y": 138, "seatId": -1 }] },
+    { "id": "by-master-lyck", "label": "By Master Lyck", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 331, "y": 138, "seatId": -1 }, { "x": 416, "y": 138, "seatId": -1 }, { "x": 501, "y": 138, "seatId": -1 }, { "x": 586, "y": 138, "seatId": -1 }] },
+    { "id": "upper-west-street", "label": "Upper west street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 478, "y": -325, "seatId": -1 }, { "x": 563, "y": -325, "seatId": -1 }, { "x": 648, "y": -325, "seatId": -1 }, { "x": 733, "y": -325, "seatId": -1 }] },
+    { "id": "by-lyon", "label": "By Lyon", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1241, "y": 138, "seatId": -1 }, { "x": 1326, "y": 138, "seatId": -1 }, { "x": 1411, "y": 138, "seatId": -1 }, { "x": 1496, "y": 138, "seatId": -1 }] },
+    { "id": "by-madam-popo", "label": "By Madam Popo", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1921, "y": 138, "seatId": -1 }, { "x": 2006, "y": 138, "seatId": -1 }, { "x": 2091, "y": 138, "seatId": -1 }, { "x": 2176, "y": 138, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2346, "y": 138, "seatId": -1 }, { "x": 2431, "y": 138, "seatId": -1 }, { "x": 2516, "y": 138, "seatId": -1 }, { "x": 2601, "y": 138, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 2766, "y": -203, "seatId": -1 }, { "x": 2851, "y": -203, "seatId": -1 }, { "x": 2936, "y": -203, "seatId": -1 }, { "x": 3021, "y": -203, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2771, "y": 138, "seatId": -1 }, { "x": 2856, "y": 138, "seatId": -1 }, { "x": 2941, "y": 138, "seatId": -1 }, { "x": 3026, "y": 138, "seatId": -1 }] },
+    { "id": "upper-east-street-2", "label": "Upper east street 2", "district": "UPPER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 3265, "y": -436, "seatId": -1 }, { "x": 3350, "y": -436, "seatId": -1 }, { "x": 3435, "y": -436, "seatId": -1 }] },
+    { "id": "lower-east-street-3", "label": "Lower east street 3", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 3196, "y": 138, "seatId": -1 }, { "x": 3281, "y": 138, "seatId": -1 }, { "x": 3366, "y": 138, "seatId": -1 }, { "x": 3436, "y": 138, "seatId": -1 }] },
+    { "id": "beside-master-lyck", "label": "Beside Master Lyck", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 828, "y": 138, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "chu-chu-village-master-lyck", "type": "POTION_SHOP", "npcId": 3003152, "destinationMapId": 0,
+      "approachPoints": [{ "x": 828, "y": 138 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-lyon-crowd", "venueId": "by-lyon", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-west-street-2-crowd", "venueId": "lower-west-street-2", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

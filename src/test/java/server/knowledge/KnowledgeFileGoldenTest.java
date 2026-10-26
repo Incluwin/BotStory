@@ -99,8 +99,8 @@ class KnowledgeFileGoldenTest {
 
     @Test
     void countsMatchTheWzTree() throws IOException {
-        assertEquals(5262, knowledge.maps().size());
-        assertEquals(1564, knowledge.mobs().size());
+        assertEquals(5841, knowledge.maps().size(), "5,262 Cosmic maps and the Community Repack's 579");
+        assertEquals(1629, knowledge.mobs().size(), "1,564 and the 65 the Repack maps brought");
         assertEquals(2807, knowledge.quests().size());
         try (Stream<Path> maps = Files.walk(Path.of("wz/Map.wz/Map"))) {
             assertEquals(maps.filter(p -> p.getParent().getFileName().toString().matches("Map\\d")).count(),

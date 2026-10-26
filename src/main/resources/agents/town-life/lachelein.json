@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "profileId": "lachelein",
+  "mapId": 450003000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 7,
+    "middleMaxY": 67,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "in01", "weight": 16 },
+    { "name": "in00", "weight": 14 },
+    { "name": "in02", "weight": 14 },
+    { "name": "in03", "weight": 14 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -549, "y": 78, "seatId": -1 },
+    { "x": 911, "y": 56, "seatId": -1 },
+    { "x": 2356, "y": 67, "seatId": -1 },
+    { "x": 3036, "y": 78, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -804, "y": 78 },
+    { "x": 316, "y": 78 },
+    { "x": 1491, "y": 78 },
+    { "x": 1631, "y": 78 },
+    { "x": 2526, "y": 78 },
+    { "x": 2611, "y": 78 },
+    { "x": 2696, "y": 78 },
+    { "x": 3276, "y": 78 }
+  ],
+  "npcSpots": [],
+  "trafficZones": [
+    { "id": "portal-in00", "type": "PORTAL", "minX": 322, "minY": 8, "maxX": 462, "maxY": 133, "excludesOccupancy": true },
+    { "id": "portal-in01", "type": "PORTAL", "minX": -456, "minY": 12, "maxX": -316, "maxY": 137, "excludesOccupancy": true },
+    { "id": "portal-in02", "type": "PORTAL", "minX": 1942, "minY": 7, "maxX": 2082, "maxY": 132, "excludesOccupancy": true },
+    { "id": "portal-in03", "type": "PORTAL", "minX": 2709, "minY": 8, "maxX": 2849, "maxY": 133, "excludesOccupancy": true },
+    { "id": "door-in04", "type": "DOOR", "minX": 1137, "minY": 14, "maxX": 1257, "maxY": 129, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 2061, "minY": -266, "maxX": 2151, "maxY": 88, "excludesOccupancy": true },
+    { "id": "npc-3003106", "type": "NPC_LANE", "minX": -337, "minY": -39, "maxX": 305, "maxY": 118, "excludesOccupancy": true },
+    { "id": "npc-3003202", "type": "NPC_LANE", "minX": 430, "minY": -12, "maxX": 818, "maxY": 118, "excludesOccupancy": true },
+    { "id": "npc-3003226", "type": "NPC_LANE", "minX": 1258, "minY": -12, "maxX": 1489, "maxY": 118, "excludesOccupancy": true },
+    { "id": "npc-3003229", "type": "NPC_LANE", "minX": 1499, "minY": -12, "maxX": 1629, "maxY": 118, "excludesOccupancy": true },
+    { "id": "npc-3003228", "type": "NPC_LANE", "minX": 1633, "minY": -12, "maxX": 1951, "maxY": 118, "excludesOccupancy": true },
+    { "id": "npc-9010104", "type": "NPC_LANE", "minX": 2286, "minY": -64, "maxX": 2416, "maxY": 66, "excludesOccupancy": true },
+    { "id": "npc-9010105", "type": "NPC_LANE", "minX": 2518, "minY": -61, "maxX": 2648, "maxY": 69, "excludesOccupancy": true },
+    { "id": "npc-9010022", "type": "NPC_LANE", "minX": 3287, "minY": -12, "maxX": 3427, "maxY": 118, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-dimo", "label": "By Dimo", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -719, "y": 78, "seatId": -1 }, { "x": -634, "y": 78, "seatId": -1 }, { "x": -549, "y": 78, "seatId": -1 }, { "x": -464, "y": 78, "seatId": -1 }] },
+    { "id": "by-subconscious-crack", "label": "By Subconscious Crack", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 826, "y": 78, "seatId": -1 }, { "x": 911, "y": 56, "seatId": -1 }, { "x": 996, "y": 53, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 1602, "y": -208, "seatId": -1 }, { "x": 1687, "y": -208, "seatId": -1 }, { "x": 1772, "y": -208, "seatId": -1 }, { "x": 1857, "y": -208, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2156, "y": 78, "seatId": -1 }, { "x": 2241, "y": 54, "seatId": -1 }, { "x": 2356, "y": 67, "seatId": -1 }, { "x": 2441, "y": 78, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2866, "y": 78, "seatId": -1 }, { "x": 2951, "y": 78, "seatId": -1 }, { "x": 3036, "y": 78, "seatId": -1 }, { "x": 3121, "y": 78, "seatId": -1 }] },
+    { "id": "canal-entrance", "label": "Lachelein Canal entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 1097, "y": 78, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "lachelein-canal", "type": "OTHER", "npcId": 0, "destinationMapId": 450003010,
+      "approachPoints": [{ "x": 1097, "y": 78 }],
+      "services": ["enter"] }
+  ],
+  "hotspots": [
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "by-subconscious-crack-crowd", "venueId": "by-subconscious-crack", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

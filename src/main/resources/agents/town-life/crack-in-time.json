@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "profileId": "crack-in-time",
+  "mapId": 272000000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 17,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 106,
+    "middleMaxY": 166,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 22, "y": 177, "seatId": -1 },
+    { "x": 447, "y": 177, "seatId": -1 },
+    { "x": 957, "y": 177, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [],
+  "npcSpots": [
+    { "npcId": 2144002, "offsetX": 86 },
+    { "npcId": 2144000, "offsetX": -107 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -221, "minY": 106, "maxX": -81, "maxY": 231, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": 1057, "minY": 53, "maxX": 1197, "maxY": 178, "excludesOccupancy": true },
+    { "id": "npc-2144002", "type": "NPC_LANE", "minX": 147, "minY": 87, "maxX": 279, "maxY": 217, "excludesOccupancy": true },
+    { "id": "npc-2144000", "type": "NPC_LANE", "minX": 568, "minY": 87, "maxX": 742, "maxY": 217, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-bastille", "label": "By Bastille", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -63, "y": 177, "seatId": -1 }, { "x": 22, "y": 177, "seatId": -1 }, { "x": 107, "y": 177, "seatId": -1 }] },
+    { "id": "by-rhinne", "label": "By Rhinne", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 362, "y": 177, "seatId": -1 }, { "x": 447, "y": 177, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 787, "y": 177, "seatId": -1 }, { "x": 872, "y": 177, "seatId": -1 }, { "x": 957, "y": 177, "seatId": -1 }, { "x": 1042, "y": 177, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "by-bastille-crowd", "venueId": "by-bastille", "attractionWeight": 150, "softCapacity": 2, "hardCapacity": 3 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

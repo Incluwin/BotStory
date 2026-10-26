@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "profileId": "limina",
+  "mapId": 450012000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 15,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 53,
+    "middleMaxY": 113,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "east00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": 11, "y": 124, "seatId": -1 },
+    { "x": 436, "y": 124, "seatId": -1 },
+    { "x": 1201, "y": 124, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": 181, "y": 124 },
+    { "x": 691, "y": 124 },
+    { "x": 776, "y": 124 },
+    { "x": 861, "y": 124 },
+    { "x": 946, "y": 124 }
+  ],
+  "npcSpots": [],
+  "trafficZones": [
+    { "id": "portal-east00", "type": "PORTAL", "minX": 1335, "minY": 56, "maxX": 1475, "maxY": 181, "excludesOccupancy": true },
+    { "id": "npc-3003952", "type": "NPC_LANE", "minX": 534, "minY": 34, "maxX": 664, "maxY": 164, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -159, "y": 124, "seatId": -1 }, { "x": -74, "y": 124, "seatId": -1 }, { "x": 11, "y": 124, "seatId": -1 }, { "x": 96, "y": 124, "seatId": -1 }] },
+    { "id": "by-mask", "label": "By Mask", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 266, "y": 124, "seatId": -1 }, { "x": 351, "y": 124, "seatId": -1 }, { "x": 436, "y": 124, "seatId": -1 }, { "x": 521, "y": 124, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1031, "y": 124, "seatId": -1 }, { "x": 1116, "y": 124, "seatId": -1 }, { "x": 1201, "y": 124, "seatId": -1 }, { "x": 1286, "y": 124, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "by-mask-crowd", "venueId": "by-mask", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

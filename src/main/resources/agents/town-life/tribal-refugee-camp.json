@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "profileId": "tribal-refugee-camp",
+  "mapId": 273050000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -101,
+    "middleMaxY": 363,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 30 },
+    { "name": "east00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -1245, "y": 3, "seatId": -1 },
+    { "x": -1143, "y": 375, "seatId": -1 },
+    { "x": -612, "y": -103, "seatId": -1 },
+    { "x": -348, "y": 375, "seatId": -1 },
+    { "x": -87, "y": -97, "seatId": -1 },
+    { "x": 195, "y": 156, "seatId": -1 },
+    { "x": 587, "y": 375, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -773, "y": 375 },
+    { "x": -688, "y": 375 },
+    { "x": -603, "y": 375 },
+    { "x": -533, "y": 375 },
+    { "x": -8, "y": 375 },
+    { "x": 247, "y": 375 },
+    { "x": 332, "y": 375 }
+  ],
+  "npcSpots": [
+    { "npcId": 2142112, "offsetX": -85 },
+    { "npcId": 2142108, "offsetX": 85 },
+    { "npcId": 2142110, "offsetX": 86 },
+    { "npcId": 2142109, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1537, "minY": 304, "maxX": -1397, "maxY": 429, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": 740, "minY": 305, "maxX": 880, "maxY": 430, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -1429, "minY": -58, "maxX": -1339, "maxY": 385, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -531, "minY": -165, "maxX": -441, "maxY": 385, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": 526, "minY": -301, "maxX": 616, "maxY": 133, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": -9, "minY": -144, "maxX": 81, "maxY": 163, "excludesOccupancy": true },
+    { "id": "ladder-4", "type": "LADDER", "minX": 78, "minY": -389, "maxX": 168, "maxY": 16, "excludesOccupancy": true },
+    { "id": "npc-2142112", "type": "NPC_LANE", "minX": -970, "minY": 285, "maxX": -840, "maxY": 415, "excludesOccupancy": true },
+    { "id": "npc-2142108", "type": "NPC_LANE", "minX": -388, "minY": -188, "maxX": -258, "maxY": -58, "excludesOccupancy": true },
+    { "id": "npc-2142109", "type": "NPC_LANE", "minX": -145, "minY": 285, "maxX": -15, "maxY": 415, "excludesOccupancy": true },
+    { "id": "npc-2142110", "type": "NPC_LANE", "minX": 55, "minY": 285, "maxX": 187, "maxY": 415, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1330, "y": 1, "seatId": -1 }, { "x": -1245, "y": 3, "seatId": -1 }, { "x": -1160, "y": 5, "seatId": -1 }] },
+    { "id": "by-cobie", "label": "By Cobie", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1313, "y": 375, "seatId": -1 }, { "x": -1228, "y": 375, "seatId": -1 }, { "x": -1143, "y": 375, "seatId": -1 }, { "x": -1058, "y": 375, "seatId": -1 }] },
+    { "id": "by-blackbull", "label": "By Blackbull", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -782, "y": -95, "seatId": -1 }, { "x": -697, "y": -96, "seatId": -1 }, { "x": -612, "y": -103, "seatId": -1 }, { "x": -542, "y": -103, "seatId": -1 }] },
+    { "id": "by-ayan", "label": "By Ayan", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -433, "y": 375, "seatId": -1 }, { "x": -348, "y": 375, "seatId": -1 }, { "x": -263, "y": 375, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -172, "y": -97, "seatId": -1 }, { "x": -87, "y": -97, "seatId": -1 }, { "x": -17, "y": -97, "seatId": -1 }] },
+    { "id": "middle-east-street", "label": "Middle east street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 110, "y": 154, "seatId": -1 }, { "x": 195, "y": 156, "seatId": -1 }, { "x": 280, "y": 158, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 199, "y": -333, "seatId": -1 }, { "x": 284, "y": -344, "seatId": -1 }] },
+    { "id": "upper-east-street-2", "label": "Upper east street 2", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 402, "y": -423, "seatId": -1 }, { "x": 487, "y": -434, "seatId": -1 }, { "x": 572, "y": -426, "seatId": -1 }, { "x": 657, "y": -426, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 417, "y": 375, "seatId": -1 }, { "x": 502, "y": 375, "seatId": -1 }, { "x": 587, "y": 375, "seatId": -1 }, { "x": 672, "y": 375, "seatId": -1 }] },
+    { "id": "beside-cobie", "label": "Beside Cobie", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -820, "y": 375, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "tribal-refugee-camp-cobie", "type": "GENERAL_SHOP", "npcId": 2142112, "destinationMapId": 0,
+      "approachPoints": [{ "x": -820, "y": 375 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-ayan-crowd", "venueId": "by-ayan", "attractionWeight": 150, "softCapacity": 2, "hardCapacity": 3 },
+    { "id": "by-cobie-crowd", "venueId": "by-cobie", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

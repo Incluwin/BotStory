@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "profileId": "arcana",
+  "mapId": 450005000,
+  "admission": {
+    "mode": "MANUAL_ONLY",
+    "maxAmbientAgents": 35,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 68,
+    "middleMaxY": 128,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 30 },
+    { "name": "out10", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -700, "y": 139, "seatId": -1 },
+    { "x": 1225, "y": 139, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -970, "y": 139 },
+    { "x": 150, "y": 139 },
+    { "x": 460, "y": 139 },
+    { "x": 800, "y": 139 },
+    { "x": 885, "y": 139 },
+    { "x": 970, "y": 139 },
+    { "x": 1395, "y": 139 },
+    { "x": 1480, "y": 139 }
+  ],
+  "npcSpots": [
+    { "npcId": 3003322, "offsetX": 140 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1183, "minY": 66, "maxX": -1043, "maxY": 191, "excludesOccupancy": true },
+    { "id": "portal-out10", "type": "PORTAL", "minX": 1484, "minY": 65, "maxX": 1624, "maxY": 190, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 1304, "minY": -339, "maxX": 1394, "maxY": 149, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -964, "minY": -219, "maxX": -874, "maxY": 149, "excludesOccupancy": true },
+    { "id": "npc-9010106", "type": "NPC_LANE", "minX": -1208, "minY": -251, "maxX": -942, "maxY": -121, "excludesOccupancy": true },
+    { "id": "npc-3003331", "type": "NPC_LANE", "minX": -531, "minY": 49, "maxX": 116, "maxY": 179, "excludesOccupancy": true },
+    { "id": "npc-3003306", "type": "NPC_LANE", "minX": 207, "minY": 49, "maxX": 453, "maxY": 179, "excludesOccupancy": true },
+    { "id": "npc-3003320", "type": "NPC_LANE", "minX": 380, "minY": -88, "maxX": 510, "maxY": 42, "excludesOccupancy": true },
+    { "id": "npc-3003322", "type": "NPC_LANE", "minX": 475, "minY": 49, "maxX": 715, "maxY": 179, "excludesOccupancy": true },
+    { "id": "npc-9010022", "type": "NPC_LANE", "minX": 1673, "minY": 49, "maxX": 1813, "maxY": 179, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-industrious-spirit", "label": "By Industrious Spirit", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -870, "y": 139, "seatId": -1 }, { "x": -785, "y": 139, "seatId": -1 }, { "x": -700, "y": 139, "seatId": -1 }, { "x": -615, "y": 139, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 896, "y": -281, "seatId": -1 }, { "x": 981, "y": -281, "seatId": -1 }, { "x": 1066, "y": -281, "seatId": -1 }, { "x": 1151, "y": -281, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1055, "y": 139, "seatId": -1 }, { "x": 1140, "y": 139, "seatId": -1 }, { "x": 1225, "y": 139, "seatId": -1 }, { "x": 1295, "y": 139, "seatId": -1 }] },
+    { "id": "beside-industrious-spirit", "label": "Beside Industrious Spirit", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -551, "y": 139, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "arcana-industrious-spirit", "type": "GENERAL_SHOP", "npcId": 3003331, "destinationMapId": 0,
+      "approachPoints": [{ "x": -551, "y": 139 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-industrious-spirit-crowd", "venueId": "by-industrious-spirit", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}
