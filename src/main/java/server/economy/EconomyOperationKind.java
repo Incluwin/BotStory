@@ -13,5 +13,7 @@ public enum EconomyOperationKind {
     QUEST_TURN_IN,
     VENUE_SUBSIDY,
     /** A companion's owner gives it coin for its supplies (docs/BOT_MANAGEMENT_PLAN.md P3b). */
-    COMPANION_GIFT
+    COMPANION_GIFT,
+    /** A player buys back what they sold to an NPC shop, for what the sale paid (server.ShopBuyback). */
+    SHOP_BUYBACK
 }

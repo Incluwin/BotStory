@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.life.MobSkill;
 import server.living.LivingWorldHooks;
+import server.ShopBuyback;
 import server.mods.ServerMods;
 import service.NoteService;
 import tools.DatabaseConnection;
@@ -156,6 +157,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                 try {
                     player = Character.loadCharFromDB(cid, c, true);
                     newcomer = true;
+                    ShopBuyback.clear(cid); // a session starts with nothing to buy back
                 } catch (SQLException e) {
                     monitoring.RuntimeFailureLogger.log(e);
                 }

@@ -12463,6 +12463,7 @@ public class Character extends AbstractCharacterObject {
 
     public void logOff() {
         this.loggedIn = false;
+        server.ShopBuyback.clear(getId());
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE characters SET lastLogoutTime=? WHERE id=?")) {

@@ -1219,6 +1219,8 @@ mods:
     #                          refusal; stores, merchants, Duey and drops still refuse cash items; off: trades too
     #   death_count            boss runs get the shared death budget DEATH_COUNTS below; each player death spends one,
     #                          dying with none left ends the run like its clock; companions never spend it
+    #   shop_buyback           a client with shop_buyback active buys back its last 30 NPC shop sales of the session,
+    #                          each for what its sale paid; off: the Buy Back button's requests are refused
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1230,6 +1232,7 @@ mods:
         storage_bag: on
         cash_item_trade: on
         death_count: on
+        shop_buyback: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

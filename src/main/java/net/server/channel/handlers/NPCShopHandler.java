@@ -32,6 +32,7 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.Shop;
+import server.ShopBuyback;
 import server.security.SecurityEventRuntime;
 import server.security.SecurityEventType;
 import server.security.SecuritySeverity;
@@ -65,7 +66,11 @@ public final class NPCShopHandler extends AbstractPacketHandler {
                 c.disconnect(true, false);
                 return;
             }
-            shop.buy(c, slot, itemId, quantity);
+            if (ShopBuyback.isShowing(c.getPlayer())) {
+                ShopBuyback.buy(c, slot, itemId); // the row index of the Buy Back list; the server prices it
+            } else {
+                shop.buy(c, slot, itemId, quantity);
+            }
             break;
         }
         case 1: { // sell ;)
@@ -80,6 +85,7 @@ public final class NPCShopHandler extends AbstractPacketHandler {
                 return;
             }
             shop.sell(c, type, slot, quantity);
+            ShopBuyback.afterSale(c);
             break;
         }
         case 2: { // recharge ;)
@@ -93,6 +99,20 @@ public final class NPCShopHandler extends AbstractPacketHandler {
         }
         case 3: // leaving :(
             c.getPlayer().setShop(null);
+            break;
+        case 4: // the Buy Back list (shop_buyback)
+            if (!ShopBuyback.usable(c)) {
+                reject(c, bmode, "buyback-not-offered");
+                return;
+            }
+            ShopBuyback.showList(c);
+            break;
+        case 5: // the NPC's stock again (shop_buyback)
+            if (!ShopBuyback.usable(c)) {
+                reject(c, bmode, "buyback-not-offered");
+                return;
+            }
+            ShopBuyback.showStock(c);
             break;
         default:
             reject(c, bmode, "unknown-shop-action");

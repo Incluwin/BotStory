@@ -364,7 +364,8 @@ public enum SendOpcode {
     CLIENT_FEATURES(0x17B),         // login feature handshake (Kaentake client featurehandshake, docs/CLIENT_FEATURE_HANDSHAKE.md)
     BAG_WINDOW(0x17E),              // Storage Bag window (Kaentake client storagebag, docs/STORAGE_BAG.md)
     SET_ITEM_SYNC(0x186),           // set item tooltips (Kaentake client setitems, server.set.SetItemSync)
-    DEATH_COUNT(0x187);             // boss run death count panel (Kaentake client deathcount, server.expeditions.ExpeditionDeathCount)
+    DEATH_COUNT(0x187),             // boss run death count panel (Kaentake client deathcount, server.expeditions.ExpeditionDeathCount)
+    SHOP_BUYBACK(0x17F);            // NPC shop Buy Back: which list shows (Kaentake client shopbuyback, server.ShopBuyback)
     private int code = -2;
 
     SendOpcode(int code) {

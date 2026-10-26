@@ -45,6 +45,12 @@ may veto or require them at login.
   none left ends the run 1.5 s later through the script's own `scheduledTimeout`, as if the clock ran out. Companions
   and other bots never spend it. The client's `death_count` panel (S->C 0x187 DEATH_COUNT) shows what is left;
   `!deathcount [n]` shows or changes it for the run a GM is in.
+- `shop_buyback` (default on, shipped on): Buy Back in the NPC shop window (`server.ShopBuyback`). A client with the
+  `shop_buyback` feature active can buy back the last 30 things it sold to NPC shops this session, each whole and for
+  exactly what its sale paid (the release's flat 5,000,000 let a stack worth more be sold and bought back for profit).
+  Requests are NPC shop modes 4 (the list) and 5 (the NPC's stock); a buy while the list shows is a row index the
+  server prices; S->C 0x17F SHOP_BUYBACK says which list shows. The buy runs in one economy transaction
+  (`SHOP_BUYBACK`). The list is memory only, cleared at login and logout; bots never fill it.
 
 ## Feature policy (`mods.FEATURES`)
 

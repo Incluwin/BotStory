@@ -85,6 +85,7 @@ public class Shop {
 
     public void sendShop(Client c) {
         c.getPlayer().setShop(this);
+        ShopBuyback.beforeShopSent(c);
         c.sendPacket(PacketCreator.getNPCShop(c, getNpcId(), items));
     }
 
@@ -330,6 +331,8 @@ public class Shop {
             }
 
             short sold = quantity;
+            Item soldCopy = item.copy(); // Buy Back keeps only what really left the slot
+            short heldBefore = item.getQuantity();
             EconomyTransactionCoordinator.execute(c.getPlayer(), null, EconomyOperationKind.SHOP_SELL,
                     shopSummary("sell", item.getItemId(), sold, recvMesos), () -> {
                         InventoryManipulator.removeFromSlot(c, type, (byte) slot, sold, false);
@@ -337,6 +340,10 @@ public class Shop {
                             c.getPlayer().gainMeso(recvMesos, false);
                         }
                     });
+            Item left = c.getPlayer().getInventory(type).getItem(slot);
+            short heldAfter = left != null && left.getItemId() == soldCopy.getItemId() ? left.getQuantity() : 0;
+            soldCopy.setQuantity((short) Math.max(0, heldBefore - heldAfter));
+            ShopBuyback.recordSale(c, soldCopy, recvMesos);
             c.sendPacket(PacketCreator.shopTransaction((byte) 0x8));
         } else {
             c.sendPacket(PacketCreator.shopTransaction((byte) 0x5));

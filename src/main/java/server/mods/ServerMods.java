@@ -82,9 +82,17 @@ public final class ServerMods {
     public static final ServerMod DEATH_COUNT = new ServerMod("death_count",
             "Boss run death count (client feature death_count shows it)", true);
 
+    /**
+     * Buy Back in the NPC shop window (server.ShopBuyback): a client with shop_buyback active can buy back the last 30
+     * things it sold this session, each for exactly what its sale paid. Off, the button's requests are refused and no
+     * sale is remembered.
+     */
+    public static final ServerMod SHOP_BUYBACK = new ServerMod("shop_buyback",
+            "NPC shop Buy Back (client feature shop_buyback)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK);
 
     private static volatile ServerMods instance;
 

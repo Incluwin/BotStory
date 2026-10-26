@@ -89,7 +89,7 @@ class ServerModsTest {
     void theRegistryHoldsThePolicyOnAndTheOtherModsOff() {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
                 ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG, ServerMods.CASH_ITEM_TRADE,
-                ServerMods.DEATH_COUNT),
+                ServerMods.DEATH_COUNT, ServerMods.SHOP_BUYBACK),
                 ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
@@ -113,7 +113,7 @@ class ServerModsTest {
     void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowedAndBeginnerApOff() {
         assertEquals(Map.of("client_feature_policy", "on", "fusion_anvil", "off", "botstory_wz", "off",
                 "beginner_ap", "off", "set_items", "on", "storage_bag", "on", "cash_item_trade", "on",
-                "death_count", "on"),
+                "death_count", "on", "shop_buyback", "on"),
                 YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");
