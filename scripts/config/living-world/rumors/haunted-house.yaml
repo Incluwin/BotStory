@@ -1,0 +1,33 @@
+# Haunted House rumors.
+- id: hh-the-birthday-list
+  participants: [cornelius, winnie]
+  where: { town: haunted-house, spot: "venue:by-olivia" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: cornelius-where-are-you, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: hh.heard-birthday
+  lines:
+    - { by: winnie, text: "the dress is pinned, Cornelius. blue, to match the hat. i need to know who's coming." }
+    - { by: cornelius, text: "everyone. that was her list. i found it in the desk. 'everyone'. in crayon." }
+    - { by: winnie, text: "then Barty can take the invitations round the taxis. and Dex wants to do the candles." }
+    - { by: cornelius, text: "nine candles. she was going to be nine." }
+    - { by: winnie, text: "and then somebody has to carry it all up to her room. you can't. i know you can't." }
+    - { by: cornelius, text: "...no. i can't. somebody kind will. somebody who's heard us say it out here." }
+
+- id: hh-the-exorcists-fee
+  participants: [marigold, lucius]
+  where: { town: haunted-house, spot: "venue:by-witch-malady" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  setsFlagOnListeners: hh.heard-exorcist
+  lines:
+    - { by: lucius, text: "you're out of biscuits again." }
+    - { by: marigold, text: "i gave the last of them to a lad off the taxi. he'd been in the library. he needed a biscuit." }
+    - { by: lucius, text: "he needed a priest." }
+    - { by: marigold, text: "i'm the priest, dear. i'm also the biscuits. the Magic Library sends me out for twenty-five thousand, you know." }
+    - { by: lucius, text: "nobody knows that. you never tell anyone." }
+    - { by: marigold, text: "i'm telling you now. out loud, by the witch's spot. if anybody's listening and they've walked the halls with me, they can have me for that." }
+    - { by: lucius, text: "...and the biscuits?" }
+    - { by: marigold, text: "the biscuits are free. they always were." }

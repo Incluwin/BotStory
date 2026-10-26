@@ -1,0 +1,18 @@
+# Bigger Ben Lobby rumors.
+- id: bb-the-crews-song
+  participants: [agatha, gus]
+  where: { town: bigger-ben, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: agatha-the-last-verse, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: bb.heard-song
+  lines:
+    - { by: agatha, text: "that tune, Gus. the one you hum stacking bags. where did you learn it?" }
+    - { by: gus, text: "my grandad. Elmo. he hummed it every day. there's no words. i asked once." }
+    - { by: agatha, text: "there were words. a verse for every chamber. the first crew sang it going down." }
+    - { by: gus, text: "...grandad was on the first crew? he never said." }
+    - { by: agatha, text: "he carried the rope. he sang the bass. and the last verse, the one we never had..." }
+    - { by: agatha, text: "it's us. it was always us. the eight names. Mabry, Teale, Corrigan, Ostrow, Wynne, Faber, Elmo. and me." }
+    - { by: gus, text: "somebody should go down and sing it to that door, then." }
+    - { by: agatha, text: "somebody who's heard it. somebody who'll say the names right." }

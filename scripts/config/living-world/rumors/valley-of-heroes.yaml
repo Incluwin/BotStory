@@ -1,0 +1,14 @@
+# Valley of Heroes rumors. Rumors have no end gate, so this one holds before and after the sixth name is carved.
+- id: valley-at-the-stones
+  participants: [bertil, kiri]
+  where: { town: valley-of-heroes, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: kiri, text: "the stones rang this morning, Bertil. all of them, one after another, down the valley." }
+    - { by: bertil, text: "they do that when somebody's read every name. Elspeth rode through at dawn." }
+    - { by: kiri, text: "the Taru say a spirit rests easier when someone says its name out loud." }
+    - { by: bertil, text: "then the valley sleeps well. she says them all. twice a day. some of them she sings." }
+    - { by: kiri, text: "do you ever say them?" }
+    - { by: bertil, text: "i carve them. that's saying them slower." }

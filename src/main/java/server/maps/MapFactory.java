@@ -276,6 +276,7 @@ public class MapFactory {
         if (event == null && server.mods.RepackMaps.hasEntry(mapid)) {
             server.mods.RepackMaps.get().spawnEntries(map);
         }
+        server.mods.GatedNpcs.place(map);
 
         if (map.isCPQMap()) {
             Data mcData = mapData.getChildByPath("monsterCarnival");

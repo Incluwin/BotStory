@@ -99,7 +99,11 @@ public final class ResidentDialogue {
             Map.entry("mu-lung", new int[] {2090006, 2090102, 2090103, 2090104}),
             Map.entry("herb-town", new int[] {2092000, 2093000, 2093001, 2093002}),
             Map.entry("ariant", new int[] {2100003, 2100005, 2100006, 2100007, 2100008}),
-            Map.entry("magatia", new int[] {2110000, 2110001, 2111004, 2111005}));
+            Map.entry("magatia", new int[] {2110000, 2110001, 2111004, 2111005}),
+            Map.entry("crimsonwood-keep", new int[] {9201107, 9201108, 9201109, 9201110, 9201111}),
+            Map.entry("haunted-house", new int[] {9201136, 9201137, 9201138, 9201143}),
+            Map.entry("bigger-ben", new int[] {9201058, 9201059, 9201081, 9201087}),
+            Map.entry("valley-of-heroes", new int[] {9201104, 9201105}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

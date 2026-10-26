@@ -491,12 +491,17 @@ public final class QuestLedger {
         }
     }
 
-    public void onPartyQuestCleared(Character chr, String partyQuest) {
+    /**
+     * Party quest instance {@code partyQuest} of event script {@code script} (null when unknown) was cleared. A
+     * PARTY_QUEST_CLEAR step with no {@code to} takes any clear; {@code to} names the instance or the script, so "CWKPQ"
+     * takes every channel's instance (CWKPQ1, CWKPQ2, ...).
+     */
+    public void onPartyQuestCleared(Character chr, String partyQuest, String script) {
         for (QuestState state : active(chr)) {
             Quest quest = world.content().quest(state.questId());
             Step step = quest == null ? null : quest.step(state.stepIndex());
             if (step != null && step.type() == StepType.PARTY_QUEST_CLEAR
-                    && (step.to() == null || step.to().equalsIgnoreCase(partyQuest))) {
+                    && (step.to() == null || step.to().equalsIgnoreCase(partyQuest) || step.to().equalsIgnoreCase(script))) {
                 advance(chr, world.content().persona(quest.persona()), quest, state);
             }
         }
@@ -644,7 +649,9 @@ public final class QuestLedger {
         }
         for (ItemStack stack : reward.items()) {
             if (InventoryManipulator.checkSpace(chr.getClient(), stack.itemId(), stack.count(), "")) {
-                InventoryManipulator.addById(chr.getClient(), stack.itemId(), (short) stack.count());
+                if (!RewardItems.give(chr, stack.itemId(), stack.count())) {
+                    chr.dropMessage(5, itemName(stack.itemId()) + " x" + stack.count() + " could not be given.");
+                }
             } else {
                 chr.dropMessage(5, "Your inventory is full; " + itemName(stack.itemId()) + " x" + stack.count()
                         + " could not be given.");

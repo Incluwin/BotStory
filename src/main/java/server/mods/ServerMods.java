@@ -116,9 +116,19 @@ public final class ServerMods {
     public static final ServerMod REPACK_MAPS = new ServerMod("repack_maps",
             "Repack-only maps for clients on the Community Repack files", true);
 
+    /**
+     * Cryssea 9010018, the iTCG card-shop girl, stands in New Leaf City's Town Center and runs the card swap
+     * (scripts/npc/9010018.js). No WZ set has her Npc.wz image and a client sent an NPC without one closes, so she
+     * needs the client patch that gives her a Custom.wz look (docs/ITCG_MASTERIA_PLAN.md section 5): off until every
+     * client has it. Boot only: {@link GatedNpcs} places her when the map loads.
+     */
+    public static final ServerMod CRYSSEA = new ServerMod("cryssea",
+            "Cryssea in New Leaf City (needs her Custom.wz look from the Masteria client patch)", false, true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW, REPACK_MAPS);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW, REPACK_MAPS,
+            CRYSSEA);
 
     private static volatile ServerMods instance;
 

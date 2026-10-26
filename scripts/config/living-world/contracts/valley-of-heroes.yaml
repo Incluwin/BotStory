@@ -1,0 +1,30 @@
+# Valley of Heroes contracts: a road warden with a day rate, a rider who comes only once she trusts you.
+- id: osgar-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [osgar.intro.done]
+  price:
+    meso: 100000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 35000 }
+
+- id: elspeth-the-riders-word
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [elspeth.intro.done]
+  price:
+    meso: 35000
+  terms:
+    durationHours: 0
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }

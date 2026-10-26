@@ -1,0 +1,460 @@
+# Crimsonwood Keep cast (docs/ITCG_MASTERIA_PLAN.md section 6): the keep of the five Masters, and the plinth of the
+# sixth. 7 residents, 3 recruitable (Ivor the gate warden for a kill proof, Ragna the drill mistress for a cord of
+# crimson wood, Fennick the scout once you have heard his price), 1 arc (Aldwin's sixth banner, whose last beat is
+# carved in the Valley of Heroes). Ids in quests/crimsonwood-keep.yaml.
+- id: aldwin
+  name: Aldwin
+  look: { gender: male }
+  title: "Keeper of the Sixth Plinth"
+  job: BEGINNER
+  level: { min: 95, max: 95 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 6, to: 12, spot: "venue:by-master-warrior", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-east-street", activity: REST }
+      - { from: 14, to: 19, spot: "venue:by-master-pirate", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:by-master-warrior", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [crimsonwood keep, crimson tree, crimson guardian]
+  questLines: [aldwin-the-empty-plinth, aldwin-into-the-sanctum]
+  arc: aldwin-the-sixth-banner
+  rumors: [cwk-the-last-entry]
+  relationships:
+    - { persona: quentin, kind: OLD_FRIEND }
+    - { persona: bertil, kind: WRITES_TO }
+    - { persona: ragna, kind: TRAINED_THE_MOTHER_OF }
+  giftItemIds: [4032004, 2022001]
+  dialogue:
+    greetFirst: ["five Masters in this courtyard, and six plinths. count them. everyone counts them. then they ask me about the sixth, and i'm glad, because i've a long answer.", "a visitor up the mountain. you'll have passed the guardians at the gate. they let you by. they don't let everyone by. sit. the sixth plinth's empty. it doesn't mind company."]
+    greet: ["good day. i've swept the plinths. all six. one of them's easier.", "hello again. the Masters are in a mood. they're always in a mood. it's a keep."]
+    idle: ["(runs a hand along the edge of an empty stone plinth, the way you'd straighten a friend's collar)", "(looks up at the keep's flagpole, where no flag flies, and nods at it anyway)"]
+    noWork: ["nothing today. i'm keeping the plinth. it takes all day. it takes all my life, actually."]
+    nothingDue: ["you owe me nothing. the keep keeps its own accounts."]
+    who: ["Aldwin. i keep the sixth plinth. the keep had six Masters once. the five you see, and the Banner Master, who carried the Crimsonwood standard. he carried it into the Inner Sanctum and never carried it out. that was forty years ago. i was his squire. i've kept his plinth swept since."]
+    bye: ["mind the guardians on the way down. they're very literal."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["every keep has a flag. ours went into the Inner Sanctum on the Banner Master's back and never came out. the Masters won't fly another. they say the standard's not lost until someone stops waiting for it. i haven't stopped.", "the Banner Master's stone in the Valley of Heroes is blank. they carve a name when a hero's death is witnessed. nobody witnessed his. so it's blank. forty years blank."]
+    speakPlainly: ["plainly: an old squire, an empty plinth, and a flag nobody's seen in forty years."]
+    questOffer.aldwin-the-empty-plinth: ["the sixth plinth's split clean through. forty winters. i'd like it mended before i go. the crimson trees on the lower ascent grow the wood the keep was built from. ten pieces of crimson wood, and i'll tell you whose plinth you're mending."]
+    questAccept.aldwin-the-empty-plinth: ["down the mountain from the keep gate, then the lower ascent. the crimson trees. they walk. don't let that put you off."]
+    questWaiting.aldwin-the-empty-plinth: ["ten pieces. the crack's wider every winter. so am i."]
+    questComplete.aldwin-the-empty-plinth: ["ten. ...there. mended. it's his. the Banner Master's. Leofric. i've not said his name aloud in years. there's an old helm i found under the plinth when i lifted it. it's no use to me. i'd like it to be some use to someone."]
+    questOffer.aldwin-into-the-sanctum: ["Quentin found it. Ridley's ledger. the last line Leofric ever wrote: 'standard to the Council Hall. the statue will want it.' the Council Hall's at the heart of the Inner Sanctum. go in with a party. clear it. look for a strip of crimson cloth. and bring me whatever the statue was guarding."]
+    questAccept.aldwin-into-the-sanctum: ["the Hall to the Inner Sanctum, through the Hall of Mastery. Jack will take a party in. clear it to the Council Hall. it took Leofric. don't let it take you."]
+    questWaiting.aldwin-into-the-sanctum: ["the Council Hall. a strip of crimson. that's all i ask. it's everything i ask."]
+    questComplete.aldwin-into-the-sanctum: ["a strip of crimson cloth, and the tassel off the standard's pole. ...that's his knot. i tied that knot myself, the morning he went in. and a jawbone. Ragna says the statue in the Council Hall keeps one in its fist for whoever beats it. Leofric beat it first. i'd stake the plinth on it. take the jawbone. i'll keep the knot. Bertil should hear of this. in the Valley. he carves the stones."]
+    about.quentin: ["Quentin copies Ridley's books. he can read anything. forty years he's been reading for me, a line at a time, looking for Leofric. he found him. i owe him more than a plinth."]
+    about.bertil: ["Bertil carves the stones in the Valley of Heroes. he's left Leofric's blank for forty years because i asked him to. 'not till someone sees,' i said. he's waited with me."]
+    about.ragna: ["Ragna drills the courtyard. her mother was Leofric's shield-bearer. i taught her mother the first stance. Ragna teaches it better. don't tell her i said so."]
+    about.ivor: ["Ivor guards the gate. he's never once let a guardian past. he's never once let a friend wait outside, either."]
+    aboutUnknown: ["not a name the keep remembers."]
+    friend.close: ["i've swept a corner of the sixth plinth for you. you've earned a corner."]
+    friend.best: ["if i go before the standard comes home, keep the plinth. you'll know how. you'll know why."]
+    famed: ["the Masters speak well of you. all five. they never agree."]
+    defamed: ["the Masters speak ill of you. all five. they never agree on anything else."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's thoughtful. that's going on the plinth. it's his, but he wouldn't mind."]
+    gift.again: ["one a day. the plinth's only so wide."]
+
+- id: quentin
+  name: Quentin
+  look: { gender: male }
+  title: "Ridley's Copyist"
+  job: BEGINNER
+  level: { min: 80, max: 80 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 8, to: 13, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 13, to: 17, materialize: false }
+      - { from: 17, to: 19, spot: "venue:by-master-pirate", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:by-master-warrior", activity: REST }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [elderwraith, crimsonwood keep, crimsonwood mountain]
+  questLines: [quentin-ash-for-the-ink, quentin-copy-work]
+  rumors: [cwk-the-last-entry]
+  relationships:
+    - { persona: aldwin, kind: OLD_FRIEND }
+    - { persona: hulda, kind: EATS_THE_COOKING_OF }
+    - { persona: wat, kind: TEACHES }
+  giftItemIds: [4032010, 2000006]
+  dialogue:
+    greetFirst: ["careful, the ink's wet. it's always wet. Ridley writes faster than it dries.", "a visitor. good. i've been copying the same rite for three hours and i need to see a face that isn't a page."]
+    greet: ["hello. page four hundred and twelve. it's a long book.", "you again. mind my elbow. it's holding a line in place."]
+    idle: ["(copies a line of tiny, cramped writing into a clean book, his lips moving with every word)", "(holds a page up to the light, squints, and corrects one letter with great satisfaction)"]
+    noWork: ["nothing today. Ridley's resting his hand. so i'm resting mine."]
+    nothingDue: ["we're square. i keep very good books."]
+    who: ["Quentin. i copy Ridley's books. he sits by the keep gate and writes rites and rituals faster than anyone can read them. i make them readable. the Books of Rituals you see in the keep? my hand. Ridley's words."]
+    bye: ["don't smudge anything on the way out."]
+    thanks: ["noted. in ink."]
+    smallTalk: ["Ridley writes on anything. scraps, stones, once a guardian's shield. i've copied rites off the inside of my own sleeve. he'd borrowed it.", "i've been reading Ridley's old ledgers for Aldwin. forty years of them. every line, looking for one name. i'm a slow reader. i'm a thorough one."]
+    speakPlainly: ["plainly: ink, pages, and somebody else's handwriting."]
+    questOffer.quentin-ash-for-the-ink: ["Ridley's ink is ash and water and something he won't tell me. the ash is the hard part. the elderwraiths on the path of strength leave it behind. ten handfuls of elder ashes? i'll bind you a book for it. a real one."]
+    questAccept.quentin-ash-for-the-ink: ["the path of strength, up past the lower ascent, or the haunted hill in the forest below. the elderwraiths. they're old and they're slow and they hit like a closing door."]
+    questWaiting.quentin-ash-for-the-ink: ["ten handfuls. the inkpot's nearly dry. so am i."]
+    questComplete.quentin-ash-for-the-ink: ["ten. grey and fine. lovely. and here: a Book of Rituals, bound and copied, every rite in it readable. take it to Barricade in Bigger Ben, or to Adonis in El Nath. they'll know what it's for. i only know what it says."]
+    questOffer.quentin-copy-work: ["another fifteen handfuls of elder ashes? i'll copy you another Book of Rituals. i've always one on the go."]
+    questAccept.quentin-copy-work: ["the elderwraiths. path of strength, or the haunted hill."]
+    questWaiting.quentin-copy-work: ["fifteen."]
+    questComplete.quentin-copy-work: ["fifteen. here's your copy. still warm."]
+    about.aldwin: ["Aldwin was the Banner Master's squire. forty years he's swept a plinth for a man who isn't coming back. i read for him. a line a night. it's the least a copyist can do. it's also the most."]
+    about.hulda: ["Hulda cooks for the keep. she feeds me when i forget to eat, which is always. she says ink isn't a meal. she's wrong. it's not a good meal."]
+    about.wat: ["Wat's the page. i'm teaching him his letters. he's on 'h'. he's been on 'h' for a while. he likes 'h'. it's got a husky in it."]
+    about.ridley: ["Ridley? he sits outside the keep gate and won't come in. he says the keep's too loud. it's a stone keep. it's silent. he means the Masters."]
+    aboutUnknown: ["not in any book i've copied."]
+    friend.close: ["i've copied your name into the front of a book. very neatly. it's the best page in it."]
+    friend.best: ["if i ever write a book of my own, you'll be in it. kindly. mostly."]
+    famed: ["you're in the keep's talk. favourably. i'd write it down, but it's not mine to copy."]
+    defamed: ["you're in the keep's talk. unfavourably. i've left it uncopied."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's useful. that's going on the desk, where i'll see it."]
+    gift.again: ["one a day. i've only so much desk."]
+
+- id: hulda
+  name: Hulda
+  look: { gender: female }
+  title: "Cook of the Keep"
+  job: BEGINNER
+  level: { min: 70, max: 70 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 5, to: 10, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 10, to: 14, materialize: false }
+      - { from: 14, to: 20, spot: "venue:by-master-pirate", activity: SOCIALIZE }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  knows: [phantom tree, phantom forest, crimsonwood keep]
+  questLines: [hulda-phantom-seeds, hulda-supper-for-the-gate]
+  relationships:
+    - { persona: quentin, kind: FEEDS }
+    - { persona: ivor, kind: FEEDS }
+    - { persona: wat, kind: SCOLDS }
+  giftItemIds: [4032003, 2022001]
+  dialogue:
+    greetFirst: ["you've climbed the whole mountain. you'll be hungry. don't argue. everyone who climbs the mountain is hungry.", "a new face. sit down. eat. no, eat first, then talk. that's the rule of the keep kitchen."]
+    greet: ["back again? there's stew.", "hello, love. there's always stew."]
+    idle: ["(stirs an enormous pot with a wooden spoon the size of an oar, and tastes it, and frowns, and adds salt)", "(wipes her hands on her apron and counts heads in the courtyard, as if checking who's missed supper)"]
+    noWork: ["nothing today. the stew's on. it's always on."]
+    nothingDue: ["you owe me nothing. you owe the pot a clean bowl."]
+    who: ["Hulda. i cook for the keep. the five Masters, the guards at the gate, the pilgrims who climb up from the Valley, Ridley outside the gate who won't come in. forty mouths a day and five of them think they're too grand to eat. they eat."]
+    bye: ["take a roll for the road. take two. the road's long."]
+    thanks: ["oh, go on with you."]
+    smallTalk: ["the phantom trees in the forest below drop seeds the size of a fist. they look like trouble. they taste like hazelnut. the Masters won't eat anything from the forest. i don't tell them what's in the stew.", "the Master Warrior eats three bowls and says it's too salty. every night. three bowls."]
+    speakPlainly: ["plainly: a kitchen, a big pot, and forty mouths."]
+    questOffer.hulda-phantom-seeds: ["the stew wants seeds, love, and i can't leave the pot. the phantom trees in the forest below the mountain drop them. eight phantom seeds? i'll feed you till you can't climb."]
+    questAccept.hulda-phantom-seeds: ["the Phantom Forest, by the Haunted House. bent tree, haunted hill, the crossroads. the trees that walk. knock them over. pick up the seeds."]
+    questWaiting.hulda-phantom-seeds: ["eight seeds, love. the stew's waiting. so am i."]
+    questComplete.hulda-phantom-seeds: ["eight. lovely and fat. there. and here, this was in the bottom of the flour sack. a smooth grey stone with writing on it. Ridley's, by the writing. he'll want it back. or he won't. he never wants anything back."]
+    questOffer.hulda-supper-for-the-gate: ["Ivor's on the gate and he won't come in for supper. he never comes in for supper. would you take him a bowl? and then tell me he ate it. tell me the truth."]
+    questAccept.hulda-supper-for-the-gate: ["Ivor. by the upper street, watching the gate. big fellow with a spear and a face like a closed door. the door opens for stew."]
+    questWaiting.hulda-supper-for-the-gate: ["did he eat it? the truth."]
+    questComplete.hulda-supper-for-the-gate: ["every spoonful? ...and he said it was good? he's never said it was good. he said it to you so it'd get back to me. that's Ivor. that's the most he's ever said. here, love. this was a breastplate. i've been using it as a stewpot. it's very old. i've a new pot now."]
+    about.quentin: ["Quentin forgets to eat. i put bread on his desk. he eats round the ink. he's thin as a page."]
+    about.ivor: ["Ivor won't leave the gate. i send stew. it comes back empty. he never says. that's Ivor. a closed door with a good appetite."]
+    about.wat: ["Wat's the page. he's always under my feet. he's always under everyone's feet. he's eleven. it's where eleven lives."]
+    about.ragna: ["Ragna drills the courtyard at dawn and comes in starving. she eats like a guardian. i like her."]
+    aboutUnknown: ["never fed them. yet."]
+    friend.close: ["you've got your own bowl now. it's the blue one. nobody else is allowed the blue one."]
+    friend.best: ["if i ever stop cooking, the recipe's yours. the real one. with what's really in it."]
+    famed: ["the whole keep says good things about you. even over supper."]
+    defamed: ["the keep's saying hard things. eat anyway. you'll feel better."]
+    gift: ["oh, you shouldn't have."]
+    gift.favorite: ["oh, that's just the thing. that's going in the pantry, the good shelf."]
+    gift.again: ["one a day, love. the pantry's full."]
+
+- id: wat
+  name: Wat
+  look: { gender: male }
+  title: "Page of the Keep"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-master-pirate", activity: STROLL }
+      - { from: 12, to: 15, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 15, to: 19, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  knows: [jr. yeti, ice chamber, crimsonwood keep]
+  questLines: [wat-blankets-for-the-hounds, wat-ask-ragna]
+  relationships:
+    - { persona: ragna, kind: ADMIRES }
+    - { persona: hulda, kind: SCOLDED_BY }
+    - { persona: quentin, kind: STUDIES_UNDER }
+  giftItemIds: [4000048, 2022001]
+  dialogue:
+    greetFirst: ["are you a hero? you look like a hero. you've got boots. heroes have boots. i'm Wat. i'm the page. i'm going to be a hero. i've got boots too, look.", "hello! did you come up past the guardians? did they look at you? they looked at me once. i went back down."]
+    greet: ["hello! the hounds are fine! i checked!", "you're back! have you killed anything big? tell me about it. leave out the boring bits."]
+    idle: ["(practises a sword stance with a broom handle, wobbles, and checks nobody saw)", "(whistles a short two-note call toward the kennel, and listens for an answer)"]
+    noWork: ["nothing today! Hulda says i'm to stay out from under her feet. i'm under Quentin's now."]
+    nothingDue: ["we're square! i think! i'm not good at sums. i'm on 'h'."]
+    who: ["Wat. page of the keep. i carry things, i fetch things, i feed the hounds. the keep's had huskies since before the Masters. they pull the supply sleds up the mountain. one day i'm going to be in the Masters' training. Ragna says when i can hold the stance. i can nearly hold the stance."]
+    bye: ["bye! watch out for the guardians! wave if you like! they don't wave back!"]
+    thanks: ["thanks! really! thanks!"]
+    smallTalk: ["the huskies sleep in the kennel by the east wall. there's a little blue one who doesn't pull. he just follows people. he follows me. i think he thinks i'm a hero too.", "Ragna drills the courtyard every dawn. i watch from behind the barrels. she knows. she drills louder."]
+    speakPlainly: ["plainly: a page, a lot of hounds, and a broom that's nearly a sword."]
+    questOffer.wat-blankets-for-the-hounds: ["the hounds sleep cold up here. the jr. yetis down in MesoGears have the warmest skins anywhere. if you brought me fifteen, i could make them proper blankets. please? i'd go myself but i'm not allowed past the gate. or the courtyard. or the barrels."]
+    questAccept.wat-blankets-for-the-hounds: ["Bigger Ben, in New Leaf City. down through MesoGears to the ice chamber. the jr. yetis. they're fluffy. they're not friendly."]
+    questWaiting.wat-blankets-for-the-hounds: ["fifteen skins! the little blue one shivers the most."]
+    questComplete.wat-blankets-for-the-hounds: ["fifteen! the hounds'll be so warm! ...and, um. the little blue husky. the one who doesn't pull. he's been following you since you came back. he's never followed anyone but me. i think he's picked. you should have him. heroes have a hound. take him. go on. he wants to."]
+    questOffer.wat-ask-ragna: ["could you ask Ragna if i'm ready for the stance? the real stance. not the broom one. she'll tell you true. she tells me 'not yet'. she might tell you something else."]
+    questAccept.wat-ask-ragna: ["Ragna. by the Master Warrior's plinth in the mornings and late afternoon, drilling. she's the one who shouts the loudest."]
+    questWaiting.wat-ask-ragna: ["did she say? am i ready?"]
+    questComplete.wat-ask-ragna: ["'tomorrow, at dawn, with a real practice blade, and if you drop it you're on hound duty for a month'? ...that's yes! that's a yes! i'm already on hound duty! i can't lose!"]
+    about.ragna: ["Ragna's the best fighter in the keep. better than some of the Masters. she says that's not true. she says it like it's true."]
+    about.hulda: ["Hulda's the cook. she says i'm under her feet. i'm small. there's not many other places to be."]
+    about.quentin: ["Quentin's teaching me letters. i'm on 'h'. 'h' is for husky and hero and Hulda. it's a good letter."]
+    about.ivor: ["Ivor guards the gate. he let me stand next to him once for a whole hour. he didn't say anything. it was the best hour ever."]
+    aboutUnknown: ["i don't know them! are they a hero?"]
+    friend.close: ["you're my favourite hero. don't tell Ragna. she's also my favourite hero."]
+    friend.best: ["when i'm a Master, you can stand on my plinth whenever you like."]
+    famed: ["everyone's saying you're a hero! i knew it! i said!"]
+    defamed: ["people are saying things. i don't believe them. heroes get talked about."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["oh wow! that's the best thing! how did you know?"]
+    gift.again: ["you already gave me something! it's in my secret box!"]
+
+- id: ivor
+  name: Ivor
+  look: { gender: male }
+  title: "Warden of the Keep Gate"
+  job: DRAGONKNIGHT
+  level: { min: 100, max: 103 }
+  strength: ELITE
+  loadout: masteria-spear-l100
+  personality: efficient-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: true
+  knows: [stormbreaker, crimson guardian, nightshadow]
+  contract: ivor-the-gate-proof
+  questLines: [ivor-the-gate-watch, ivor-pinaka, ivor-dragon-faltizan, ivor-reverse-alchupiz, ivor-crimson-hearts]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: fennick, kind: STANDS_WATCH_WITH }
+    - { persona: hulda, kind: FED_BY }
+    - { persona: wat, kind: WATCHED_BY }
+  giftItemIds: [4032012, 2000004]
+  dialogue:
+    greetFirst: ["halt. ...you walked past the guardians. they're mine to worry about, not you. go on in.", "a climber. you've the look of someone who fought the whole way up. good. the keep likes that look."]
+    greet: ["hm. you again.", "evening. the gate's held."]
+    idle: ["(stands with a spear grounded, looking down the mountain road, not moving for a long while)", "(turns a dark red stone over in a gauntleted hand, then tucks it away)"]
+    noWork: ["nothing today. the gate."]
+    nothingDue: ["square."]
+    who: ["Ivor. i hold the keep gate. the crimson guardians walk the road outside it. they're the keep's, and they'll still kill you. i stand between the guardians and the people they'd kill. it's a short job to explain."]
+    bye: ["the road's steep. don't run it."]
+    thanks: ["hm. good."]
+    smallTalk: ["the stormbreakers come down off the upper ascent in the storms and try the gate. they never get through. they keep trying. i respect that.", "Hulda sends supper out to the gate. i eat it. i don't go in. if i go in, i'll sit down. if i sit down, i'll stay sat."]
+    speakPlainly: ["plainly: a gate, a spear, and a long road."]
+    offer: ["thirty thousand. and show me you can fight up here. sixty stormbreakers. then i'll walk with you."]
+    join: ["fine. i'll take the front. stay off my spear side."]
+    bench: ["three days. then the gate wants me back."]
+    leave: ["that'll do. back to the gate."]
+    refuse.bond: ["i don't leave the gate for strangers."]
+    refuse.flags: ["stand a watch with me first. then ask."]
+    refuseOwnErrand: ["my gate. you can stand next to it."]
+    questOffer.ivor-the-gate-watch: ["stand a watch with me. the stormbreakers have been at the stormhall again, and they come out on the lower ascent in twos. forty of them, then walk the road to the keep gate so you know what i see every morning."]
+    questAccept.ivor-the-gate-watch: ["the stormhall, off the Hall of Mastery, or the lower ascent below the gate. the stormbreakers. then the road outside the gate. don't stop to chat with the guardians."]
+    questWaiting.ivor-the-gate-watch: ["forty, and the road. the watch isn't stood till you've looked at it."]
+    questComplete.ivor-the-gate-watch: ["good. that's the watch. every day. twice. now you know why i don't come in for supper."]
+    questOffer.ivor-pinaka: ["Pinaka. a spear i've wanted since i was a boy on the lower ascent. it wants a balance weight. the nightshadows in the wrath of night carry darkness like iron. thirty of them. then i'll fit it and it's yours."]
+    questAccept.ivor-pinaka: ["the wrath of night, off the Hall of Mastery. the nightshadows. they hit hard and they hit in the dark. light helps. so does hitting first."]
+    questWaiting.ivor-pinaka: ["thirty. the weight's waiting."]
+    questComplete.ivor-pinaka: ["thirty. ...it balances. Pinaka. seven safe scrolls, every one took. you'll feel it in the wrist. that's the balance."]
+    questOffer.ivor-dragon-faltizan: ["Faltizan. a dragon spear. the head wants crimson hearts, six of them, from the guardians at my own gate. kill thirty guardians. i won't watch. i'll know."]
+    questAccept.ivor-dragon-faltizan: ["the road outside the keep gate, or eternal vigilance inside. the crimson guardians. they're the keep's own. they'll understand. or they won't. they'll be dead."]
+    questWaiting.ivor-dragon-faltizan: ["six hearts. it's not easy. it isn't meant to be."]
+    questComplete.ivor-dragon-faltizan: ["six. ...they're still warm. Dragon Faltizan. seven sixties, every one took. that's my gate in that spear. carry it like it's my gate."]
+    questOffer.ivor-reverse-alchupiz: ["Alchupiz. the reverse one. my best. there's a thing called Bigfoot in the forest below that's trodden three of Hulda's supply sleds flat, and the headless horseman rides the same paths. one of each. then the Alchupiz."]
+    questAccept.ivor-reverse-alchupiz: ["the Phantom Forest. Bigfoot walks the twisted paths and the evil rising. the horseman rides the crossroads and the hidden evil. they keep their own hours. wait for them."]
+    questWaiting.ivor-reverse-alchupiz: ["Bigfoot, and the horseman. both. take your time. they take theirs."]
+    questComplete.ivor-reverse-alchupiz: ["both. ...Hulda'll have her sleds back. Reverse Alchupiz. two tens and five sixties, every one took. i've never given anyone my best. i've never had a reason."]
+    questOffer.ivor-crimson-hearts: ["eight crimson hearts from the guardians? the gate wants a new seal each season."]
+    questAccept.ivor-crimson-hearts: ["the road outside the gate, or eternal vigilance."]
+    questWaiting.ivor-crimson-hearts: ["eight."]
+    questComplete.ivor-crimson-hearts: ["eight. the gate's sealed. good."]
+    about.fennick: ["Fennick scouts the upper ascent. he talks more than he should. he sees more than anyone. it's a fair trade."]
+    about.hulda: ["Hulda sends supper to the gate. every night. i eat every bite. she knows."]
+    about.wat: ["the page. he stood next to me a whole hour once. didn't fidget. that's harder than it looks."]
+    about.ragna: ["Ragna drills the courtyard. she hits harder than i do. i block better. we've never settled it."]
+    aboutUnknown: ["never come past my gate."]
+    friend.close: ["you can come through my gate any hour. i'll know your step."]
+    friend.best: ["if i ever leave the gate, it'll be to walk with you. nobody else."]
+    famed: ["they speak well of you. even at the gate. that's a long way out."]
+    defamed: ["they speak ill of you. at the gate. i've heard worse said of better."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's useful. that goes in my kit."]
+    gift.again: ["one. that'll do."]
+
+- id: ragna
+  name: Ragna
+  look: { gender: female }
+  title: "Drill Mistress of the Courtyard"
+  job: CRUSADER
+  level: { min: 100, max: 103 }
+  strength: ELITE
+  loadout: masteria-2h-sword-l100
+  personality: efficient-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-master-warrior", activity: SHOW_OFF }
+      - { from: 11, to: 16, materialize: false }
+      - { from: 16, to: 20, spot: "venue:by-master-warrior", activity: SHOW_OFF }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: true
+  knows: [windraider, firebrand, crimsonwood keep]
+  contract: ragna-the-drill-fee
+  questLines: [ragna-the-drill, ragna-stonetooth, ragna-dragon-claymore, ragna-reverse-nibleheim, ragna-the-sanctum-again]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: ivor, kind: SPARRING_PARTNER }
+    - { persona: wat, kind: TRAINS }
+    - { persona: aldwin, kind: DAUGHTER_OF_A_FRIEND_OF }
+  giftItemIds: [4032004, 2000004]
+  dialogue:
+    greetFirst: ["feet. look at your feet. no, you're fine. you stand like someone who's been hit and got up. that's the first stance. most people never learn it.", "a climber. good. the courtyard's for people who climb. you're early or late for drill. either way, stand there and watch."]
+    greet: ["shoulders down. hello.", "you again. good. you're still standing."]
+    idle: ["(runs through a long sword form, slow as a tide, then once more at full speed)", "(calls a count across the empty courtyard, as if a line of recruits were in front of her)"]
+    noWork: ["nothing today. drill's done. i'm cooling down. i'm always cooling down."]
+    nothingDue: ["we're square. stand straighter."]
+    who: ["Ragna. drill mistress of the keep. the Masters teach the masters. i teach the people who want to be taught by the Masters. my mother was shield-bearer to the Banner Master. she lost him in the dark past the Sanctum's first door and came out alone, never knowing how far he got. she taught me the first stance. i teach it to everyone."]
+    bye: ["shoulders down on the way out."]
+    thanks: ["good. noted."]
+    smallTalk: ["the windraiders in the tornado corridor are the best drill partners in the keep. they never stop moving. you learn to never stop moving, or you learn to lie down.", "the page watches me drill from behind the barrels. he's got a good stance. he doesn't know it yet. don't tell him yet."]
+    speakPlainly: ["plainly: a sword, a courtyard, and a count."]
+    offer: ["forty thousand, and twenty pieces of crimson wood. the drill posts are worn to splinters. you pay the posts, i'll come."]
+    join: ["fine. i lead the line. keep up or keep out of the way."]
+    bench: ["two days. then i've a courtyard to drill."]
+    leave: ["drill's called. i'm going back to the posts."]
+    refuse.bond: ["i don't march with people whose stance i haven't seen."]
+    refuse.flags: ["come to drill first. then ask."]
+    refuseOwnErrand: ["my drill. you can stand in the line."]
+    questOffer.ragna-the-drill: ["drill. the real kind. the windraiders in the tornado corridor never stand still. forty of them. if you're still standing after, you've learned more than a month in my courtyard."]
+    questAccept.ragna-the-drill: ["the tornado corridor, off the Hall of Mastery. the windraiders. they'll come at you from the side. turn with them."]
+    questWaiting.ragna-the-drill: ["forty. keep moving."]
+    questComplete.ragna-the-drill: ["forty. and still standing. good. that's the drill. now you know how the courtyard feels."]
+    questOffer.ragna-stonetooth: ["Stonetooth. the first great sword my mother gave me. it wants a new grip, ten pieces of crimson wood off the crimson trees, the heart of the tree. and clear thirty firebrands out of the inferno chamber. they've been burning the posts."]
+    questAccept.ragna-stonetooth: ["the inferno chamber, off the Hall of Mastery. the firebrands. they're hot. don't stand where they've been. then the crimson trees on the lower ascent or the path of strength for the wood."]
+    questWaiting.ragna-stonetooth: ["thirty firebrands, and ten pieces of wood. the posts are smouldering."]
+    questComplete.ragna-stonetooth: ["thirty. the posts'll mend. Stonetooth. seven safe scrolls, every one took. it bites. let it."]
+    questOffer.ragna-dragon-claymore: ["the Claymore. a dragon blade. the nightshadows in the caverns of honour and valour carry a darkness that tempers steel. thirty of them, and walk the cavern of fortitude end to end. my mother did it before every hard fight."]
+    questAccept.ragna-dragon-claymore: ["the nightshadows in the cavern of honour, off the path of strength, or valour, off the upper ascent. then fortitude, end to end. don't hurry fortitude."]
+    questWaiting.ragna-dragon-claymore: ["thirty, and fortitude. walk it all."]
+    questComplete.ragna-dragon-claymore: ["you walked it. ...good. Dragon Claymore. seven sixties, every one took. my mother would have liked you. she didn't like anyone."]
+    questOffer.ragna-reverse-nibleheim: ["the Nibleheim. reverse. my best. go into the Inner Sanctum with a party, the way she did, and come out. that's all. come out. then it's yours."]
+    questAccept.ragna-reverse-nibleheim: ["the Hall to the Inner Sanctum. Jack takes parties in. clear it to the Council Hall. and come back. that's the part that matters."]
+    questWaiting.ragna-reverse-nibleheim: ["the Sanctum. and back. i'll be at the posts."]
+    questComplete.ragna-reverse-nibleheim: ["you came out. ...good. that's what she did. Reverse Nibleheim. two tens and five sixties, every one took. carry it out of every place you walk into."]
+    questOffer.ragna-the-sanctum-again: ["into the Sanctum again? the statue in the Council Hall keeps a jawbone in its fist. the Bosshunter smiths want them. clear it and bring one back."]
+    questAccept.ragna-the-sanctum-again: ["the Hall to the Inner Sanctum. with a party."]
+    questWaiting.ragna-the-sanctum-again: ["the Council Hall."]
+    questComplete.ragna-the-sanctum-again: ["back again. here's your jawbone. Barricade'll know what to do with it."]
+    about.ivor: ["Ivor holds the gate. i hit harder. he blocks better. we've sparred four hundred times. it's two hundred each. he says it's two hundred and one."]
+    about.wat: ["Wat. the page. he watches me drill from behind the barrels. he's got my mother's stance. he doesn't know it. i'm going to tell him at dawn tomorrow."]
+    about.aldwin: ["Aldwin was the Banner Master's squire. my mother carried the shield. Aldwin carried the flagpole when it was too heavy for Leofric's other hand. they're the only two who knew him. now it's only Aldwin."]
+    aboutUnknown: ["never seen them drill."]
+    friend.close: ["you've a place in the line now. front row. don't make me regret it."]
+    friend.best: ["if i ever go into the Sanctum again, you're the one at my back."]
+    famed: ["the keep speaks well of you. stand up straighter. you've earned it."]
+    defamed: ["the keep speaks ill of you. shoulders down. let it pass."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's useful. that's going in my kit. by the whetstone."]
+    gift.again: ["one a day. i've a kit, not a cart."]
+
+- id: fennick
+  name: Fennick
+  look: { gender: male }
+  title: "Scout of the Upper Ascent"
+  job: HERMIT
+  level: { min: 100, max: 103 }
+  strength: ELITE
+  loadout: masteria-claw-l100
+  personality: relaxed-v1
+  home:
+    town: crimsonwood-keep
+    routine:
+      - { from: 9, to: 13, materialize: false }
+      - { from: 13, to: 17, spot: "venue:lower-east-street", activity: REST }
+      - { from: 17, to: 20, spot: "venue:upper-east-street", activity: SOCIALIZE }
+      - { from: 20, to: 9, materialize: false }
+  recruitable: true
+  knows: [nightshadow, elderwraith, crimsonwood mountain]
+  contract: fennick-the-scouts-price
+  questLines: [fennick-the-caverns, fennick-red-craven, fennick-dragon-green-sleve, fennick-reverse-lampion]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: ivor, kind: STANDS_WATCH_WITH }
+    - { persona: quentin, kind: BRINGS_ASH_TO }
+    - { persona: ragna, kind: TEASES }
+  giftItemIds: [4032011, 2000006]
+  dialogue:
+    greetFirst: ["don't look round. no, don't. there's a nightshadow on the third rock up. it's asleep. i'd like it to stay asleep. hello.", "a new face on the mountain. i saw you from the upper ascent an hour ago. you climb well. you stop too often to look at the view. so do i."]
+    greet: ["hey. i've been up the ascent. it's still there.", "you again. good. i was getting tired of talking to rocks."]
+    idle: ["(flips a throwing star end over end across his knuckles without looking at it)", "(sketches a quick map in the dirt with the point of a claw, then scuffs it out)"]
+    noWork: ["nothing today. i scouted. the mountain's being quiet. that's worse than loud."]
+    nothingDue: ["we're square. i keep count. i keep count of everything."]
+    who: ["Fennick. i scout the upper ascent and the caverns for the keep. where the nightshadows are thick, where the firebrands have moved to, which cavern's caved in this week. Ivor holds the gate. i tell him what's coming at it. he says thank you by not saying anything."]
+    bye: ["watch the ledges on the way down. they watch you."]
+    thanks: ["oh, cheers."]
+    smallTalk: ["six caverns off the ascent and the paths. fear, pain, shame, honour, fortitude, valour. and a seventh nobody's named, because nobody's come back out to name it. i'm going to name it. i've got a list.", "Quentin wants elder ashes for Ridley's ink. i bring him a pocketful when i'm passing. he pays in sandwiches. Hulda's sandwiches. it's the best trade on the mountain."]
+    speakPlainly: ["plainly: a claw, a map in my head, and seven holes in a mountain."]
+    offer: ["fifty thousand. i'm good. i'm worth it. ask Ivor. he'll say nothing. that means yes."]
+    join: ["right. i'll take the flank. you won't see me. that's the point."]
+    bench: ["two days. then the mountain's moved something and i need to know what."]
+    leave: ["that's me. the ascent's calling."]
+    refuse.bond: ["i don't scout for people i haven't scouted."]
+    refuse.flags: ["hear my price first. i say it at the gate at sundown. Ivor knows it. ask him."]
+    refuseOwnErrand: ["my map. you can carry it."]
+    questOffer.fennick-the-caverns: ["walk the caverns with me. the windraiders have got into the cavern of shame. thirty of them. then look into the cavern of honour and the cavern of valour so you know the way i know it. i found something old in valour. i'll show you."]
+    questAccept.fennick-the-caverns: ["the cavern of shame, off the path of peril. the windraiders. then honour, off the path of strength, and valour, off the upper ascent. look round. properly."]
+    questWaiting.fennick-the-caverns: ["thirty, honour and valour. look round them. properly."]
+    questComplete.fennick-the-caverns: ["thirty, and you looked. good. here. this was in valour, under a rockfall. an old gi, rolled tight. Barricade's smiths call them Ancient pieces. i call it a heavy thing i've carried for a week. it's yours."]
+    questOffer.fennick-red-craven: ["Red Craven. a claw i've had my eye on. it wants a nightshadow's darkness for the edge. thirty of them out of the cavern of valour. they're thick in there."]
+    questAccept.fennick-red-craven: ["the cavern of valour, off the upper ascent. the nightshadows. hit first."]
+    questWaiting.fennick-red-craven: ["thirty."]
+    questComplete.fennick-red-craven: ["thirty. sharp. Red Craven. seven safe scrolls, every one took. it throws true. so do you."]
+    questOffer.fennick-dragon-green-sleve: ["the Green Sleve. a dragon claw. it wants a windraider's speed in the wrist. forty windraiders off the lower ascent, and twenty firebrands out of the cavern of fear. fast ones first, hot ones second."]
+    questAccept.fennick-dragon-green-sleve: ["the lower ascent for the windraiders. the cavern of fear for the firebrands. fear's not as bad as its name. pain is."]
+    questWaiting.fennick-dragon-green-sleve: ["forty and twenty. fast, then hot."]
+    questComplete.fennick-dragon-green-sleve: ["fast and hot. ...lovely. Dragon Green Sleve. seven sixties, every one took. it'll want to move. let it."]
+    questOffer.fennick-reverse-lampion: ["the Lampion. reverse. my best. there's a cavern nobody's named. i think it's behind the elderwraiths on the path of strength. clear ten of them. walk the path to the top. tell me what you see."]
+    questAccept.fennick-reverse-lampion: ["the path of strength, above the lower ascent. the elderwraiths. there aren't many. there's never many. that's why it's slow."]
+    questWaiting.fennick-reverse-lampion: ["ten. and what you saw at the top."]
+    questComplete.fennick-reverse-lampion: ["a crack in the rock with cold air coming out of it? ...that's it. that's the seventh cavern. i'm naming it after you. don't argue. Reverse Lampion. two tens and five sixties, every one took. it's the best thing i own. it was."]
+    about.ivor: ["Ivor. the gate. he says six words a day. i say six hundred. between us it's an average conversation."]
+    about.quentin: ["Quentin copies Ridley's books. i bring him ash. he pays in sandwiches. he's the only man on the mountain who reads slower than i scout."]
+    about.ragna: ["Ragna. the drill. she says i stand like a coat on a peg. i say she stands like the peg. it's been going on for years."]
+    aboutUnknown: ["never scouted them."]
+    friend.close: ["there's a ledge on the upper ascent nobody knows about. i've shown it to you. that's the most secret thing i own."]
+    friend.best: ["the seventh cavern's got your name on it. i'll carve it myself."]
+    famed: ["you've a good name on the mountain. i hear it on the ledges."]
+    defamed: ["you've a bad name on the mountain. the ledges talk. they're rocks. what do they know."]
+    gift: ["oh, cheers."]
+    gift.favorite: ["oh, nice. that's going in a pocket. the inside one."]
+    gift.again: ["one's plenty. i've only got so many pockets."]

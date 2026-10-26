@@ -33,7 +33,9 @@ import static org.mockito.Mockito.when;
  */
 class ArcFinalBeatOncePerServerTest {
     private static final List<String> FINAL_BEATS = List.of("hessa-carry-it-home", "oksun-dig-the-root",
-            "meiwen-the-seventh-form", "nadira-a-new-spring", "gilda-the-other-door");
+            "meiwen-the-seventh-form", "nadira-a-new-spring", "gilda-the-other-door",
+            // Masteria (docs/ITCG_MASTERIA_PLAN.md section 6)
+            "bertil-the-sixth-name", "cornelius-a-party-at-last", "agatha-the-enigma-chamber");
 
     @Test
     void eachFinalBeatIsBarredByTheWorldFlagItSets() {

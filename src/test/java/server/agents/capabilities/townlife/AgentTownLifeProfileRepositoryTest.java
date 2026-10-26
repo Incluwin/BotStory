@@ -118,7 +118,9 @@ class AgentTownLifeProfileRepositoryTest {
         AgentTownLifeProfileRepository repository =
                 AgentTownLifeProfileRepository.defaultRepository();
 
-        assertEquals(45, repository.profiles().size(), "30, and 15 Community Repack towns (docs/REPACK_IMPORT_PLAN.md)");
+        // 30, 15 Community Repack towns (docs/REPACK_IMPORT_PLAN.md), and haunted-house, bigger-ben, valley-of-heroes
+        // (docs/ITCG_MASTERIA_PLAN.md section 6)
+        assertEquals(48, repository.profiles().size());
         for (int mapId : new int[]{104000000, 100000000, 103000000, 102000000,
                 101000000, 120000000, 105040300}) {
             AgentTownLifeProfile profile = repository.require(mapId);

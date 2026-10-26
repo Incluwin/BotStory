@@ -1,0 +1,234 @@
+# Haunted House quest lines (docs/ITCG_MASTERIA_PLAN.md section 6). The gate (682000000) has no mobs; the house does.
+# Ids from the server's own data: glutton ghoul 9400556 (coat hanger 4032027, wad of gum 4032028, duct tape 4032029,
+# stretchy material 4032030, each at 20%; foyer 682000100, first hallway 682000300, hallway where are you 682000500,
+# hallway this again 682000600), psycho jack 9400558 (loaded spring 4000399 at 20%; first hallway, vanity room 682000302,
+# study 682000303), sophilia doll ground 9400559 and sophilia doll 9400560 (Sophilia's bedroom 682000301, study 682000403,
+# hallway where am I 682000400), nightmare 9400563 (hallway this again, hallway where am I), rotting skeleton 9400638
+# (first hallway, hallway this again), dead scarecrow 9400639 (hallway where am I, piano rooms 682000404/682000604, the
+# scarecrow chimney 682010202), twisted jester 9400640 (the clown chimney 682010203), voodoo 9400561 (bedroom 682000501,
+# library 682000800), hoodoo 9400562 (bedroom 682000501, vanity room 682000502), mirror ghost 9400564 (vanity rooms
+# 682000302/682000402, piano room 682000304, pumpkin vault 682000700); Hollowed Ground 682000001: jr. wraith 3230101 and
+# the headless horseman 9400549; the toy workshop 682000900.
+# iTCG goods: the Black Bunny 5000034 and the Skunk 5000045 (real pets, RewardItems), Stirgeman Cape 1102176,
+# Stirgeman's Utility Pants 1060127, Stirge-on-a-String 1302088, Crystal Shard 4031917, Naricain Jewel 4031758, Ridley's
+# Stone 4032026, Ridley's Book of Rituals 4031900, Ridley's Scroll of Defense 2002029, Umaru 1382054, Taru Spirit Feather
+# 4031936, LeFay Jewel 4031915, Pharoah's Wrappings 4031916, Cloak of Corruption 1102193, Ancient Boots 4031920.
+
+# ---- Cornelius, the last Prendergast: his arc -------------------------------------------------------------------------
+
+- id: cornelius-sophilias-room
+  persona: cornelius
+  title: "Sophilia's Room"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: KILL_MOBS, mobIds: [9400559, 9400560], count: 25, mapIds: [682000301, 682000303, 682000403, 682000400] }
+    - { id: report, type: DELIVER, to: cornelius }
+  rewards: { meso: 15000, exp: 20000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: cornelius-where-are-you, to: chapter-2 } }
+
+- id: cornelius-a-party-at-last
+  persona: cornelius
+  title: "A Party at Last"
+  length: MEDIUM
+  requires: { level: { min: 45 }, flags: [hh.heard-birthday], notFlags: [haunted-house.party.held], questsCompleted: [cornelius-sophilias-room, winnie-the-party-dress] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: barty, type: TALK_TO, persona: barty, say: ["invitations? done. i've given one to everyone off every taxi for a week. 'a birthday party at the Prendergast house, all welcome, no tickets'. no tickets! i've never said those words. they tasted strange. they tasted nice."] }
+    - { id: dex, type: TALK_TO, persona: dex, say: ["the candles! i've got them! all of them! nine! she was going to be nine! i counted! tell Cornelius i didn't drop a single one. i dropped two. i picked them up."] }
+    - { id: room, type: VISIT_MAP, mapIds: [682000301] }
+    - { id: report, type: DELIVER, to: cornelius }
+  rewards: { meso: 60000, exp: 80000, bondPoints: 60, items: [{ itemId: 2022195, count: 10 }], worldFlags: [haunted-house.party.held] }
+
+# ---- Winnie, costume seamstress ---------------------------------------------------------------------------------------
+
+- id: winnie-stretchy-material
+  persona: winnie
+  title: "Laundry That Walks"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 30, mapIds: [682000100, 682000300] }
+    - { id: fabric, type: COLLECT_ITEM, itemId: 4032030, count: 8 }
+    - { id: costume, type: DELIVER, to: winnie, take: { itemId: 4032030, count: 8 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 40, items: [{ itemId: 5000034, count: 1 }] }
+
+- id: winnie-the-party-dress
+  persona: winnie
+  title: "The Party Dress"
+  length: SHORT
+  requires: { level: { min: 45 }, questsCompleted: [cornelius-sophilias-room] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 20, mapIds: [682000300, 682000600] }
+    - { id: tape, type: COLLECT_ITEM, itemId: 4032029, count: 6 }
+    - { id: hem, type: DELIVER, to: winnie, take: { itemId: 4032029, count: 6 } }
+  rewards: { meso: 15000, exp: 20000, bondPoints: 35, items: [{ itemId: 1102176, count: 1 }] }
+
+# ---- Barty, ghost-tour hawker -----------------------------------------------------------------------------------------
+
+- id: barty-a-proper-scare
+  persona: barty
+  title: "A Proper Scare"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jacks, type: KILL_MOBS, mobIds: [9400558], count: 25, mapIds: [682000300, 682000302, 682000303] }
+    - { id: springs, type: COLLECT_ITEM, itemId: 4000399, count: 8 }
+    - { id: booth, type: DELIVER, to: barty, take: { itemId: 4000399, count: 8 } }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 35, items: [{ itemId: 1060127, count: 1 }] }
+
+- id: barty-the-tour-route
+  persona: barty
+  title: "The Deluxe Deluxe"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: library, type: VISIT_MAP, mapIds: [682000800] }
+    - { id: workshop, type: VISIT_MAP, mapIds: [682000900] }
+    - { id: report, type: DELIVER, to: barty }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 35 }
+
+# ---- Mordecai, gravekeeper of Hollowed Ground -------------------------------------------------------------------------
+
+- id: mordecai-the-restless
+  persona: mordecai
+  title: "Back into the Earth"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 30, mapIds: [682000001] }
+    - { id: report, type: DELIVER, to: mordecai }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 35 }
+
+- id: mordecai-the-horseman
+  persona: mordecai
+  title: "The Last Raking"
+  length: MEDIUM
+  requires: { level: { min: 95 }, questsCompleted: [mordecai-the-restless] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horseman, type: KILL_BOSS, mobIds: [9400549], count: 1 }
+    - { id: report, type: DELIVER, to: mordecai }
+  rewards: { meso: 80000, exp: 150000, bondPoints: 50, items: [{ itemId: 4031920, count: 1 }] }
+
+# ---- Dex, boy on a dare -----------------------------------------------------------------------------------------------
+
+- id: dex-the-dare
+  persona: dex
+  title: "Dare You"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skeletons, type: KILL_MOBS, mobIds: [9400638], count: 20, mapIds: [682000300, 682010201] }
+    - { id: report, type: DELIVER, to: dex }
+  rewards: { meso: 5000, exp: 4000, bondPoints: 40, items: [{ itemId: 5000045, count: 1 }] }
+
+- id: dex-ask-lucius
+  persona: dex
+  title: "The Top Pocket"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lucius, type: TALK_TO, persona: lucius, say: ["his apprentice? (he looks over at the gate, where a boy is very obviously not listening.) tell him: when he's tall enough to reach the top pocket. tell him it's a yes. a later-yes. don't tell him i said it's a yes."] }
+    - { id: report, type: DELIVER, to: dex }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+# ---- Lucius, ghost-breaker (recruitable; Stirgeman's things and a smuggler's goods) -----------------------------------
+
+- id: lucius-the-sweep
+  persona: lucius
+  title: "The Sweep"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nightmares, type: KILL_MOBS, mobIds: [9400563], count: 30, mapIds: [682000600, 682000400] }
+    - { id: report, type: DELIVER, to: lucius }
+  rewards: { meso: 15000, exp: 18000, bondPoints: 30, flags: [lucius.intro.done] }
+
+- id: lucius-the-scarecrow-chimney
+  persona: lucius
+  title: "The Scarecrow Chimney"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 5, questsCompleted: [lucius-the-sweep] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scarecrows, type: KILL_MOBS, mobIds: [9400639], count: 40, mapIds: [682010202] }
+    - { id: report, type: DELIVER, to: lucius }
+  rewards: { meso: 40000, exp: 45000, bondPoints: 35, items: [{ itemId: 1302088, count: 1 }, { itemId: 4032028, count: 10 }] }
+
+- id: lucius-the-clown-chimney
+  persona: lucius
+  title: "The Clown Chimney"
+  length: MEDIUM
+  requires: { level: { min: 60 }, friendship: 7, questsCompleted: [lucius-the-scarecrow-chimney] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: jesters, type: KILL_MOBS, mobIds: [9400640], count: 30, mapIds: [682010203] }
+    - { id: report, type: DELIVER, to: lucius }
+  rewards: { meso: 60000, exp: 70000, bondPoints: 50, items: [{ itemId: 4031917, count: 1 }, { itemId: 4031758, count: 1 }] }
+
+- id: lucius-the-mirror
+  persona: lucius
+  title: "Look Past It"
+  length: LONG
+  requires: { level: { min: 90 }, friendship: 10, questsCompleted: [lucius-the-clown-chimney] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mirrors, type: KILL_MOBS, mobIds: [9400564], count: 3, mapIds: [682000302, 682000402, 682000700] }
+    - { id: report, type: DELIVER, to: lucius }
+  rewards: { meso: 90000, exp: 120000, bondPoints: 60, items: [{ itemId: 4032026, count: 1 }, { itemId: 4031900, count: 1 }, { itemId: 2002029, count: 5 }] }
+
+# ---- Marigold, exorcist of the steps (recruitable; Taru and Set 2 goods, a cloak for Adonis) --------------------------
+
+- id: marigold-blessing-the-halls
+  persona: marigold
+  title: "Blessing the Halls"
+  length: SHORT
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: scarecrows, type: KILL_MOBS, mobIds: [9400639], count: 30, mapIds: [682000400, 682000404, 682000604] }
+    - { id: report, type: DELIVER, to: marigold }
+  rewards: { meso: 15000, exp: 20000, bondPoints: 30, flags: [marigold.intro.done] }
+
+- id: marigold-a-taru-staff
+  persona: marigold
+  title: "A Taru Staff"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 5, questsCompleted: [marigold-blessing-the-halls] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: voodoos, type: KILL_MOBS, mobIds: [9400561], count: 20, mapIds: [682000501, 682000800] }
+    - { id: report, type: DELIVER, to: marigold }
+  rewards: { meso: 40000, exp: 45000, bondPoints: 35, items: [{ itemId: 1382054, count: 1 }, { itemId: 4031936, count: 1 }, { itemId: 4031937, count: 10 }] }
+
+- id: marigold-the-witchs-gloves
+  persona: marigold
+  title: "Glittery Gloves"
+  length: MEDIUM
+  requires: { level: { min: 55 }, friendship: 7, questsCompleted: [marigold-a-taru-staff] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hoodoos, type: KILL_MOBS, mobIds: [9400562], count: 20, mapIds: [682000501, 682000502] }
+    - { id: report, type: DELIVER, to: marigold }
+  rewards: { meso: 55000, exp: 60000, bondPoints: 50, items: [{ itemId: 4031915, count: 1 }, { itemId: 4031916, count: 1 }] }
+
+- id: marigold-the-mirror-ghost
+  persona: marigold
+  title: "Blessed Up Close"
+  length: LONG
+  requires: { level: { min: 90 }, friendship: 10, questsCompleted: [marigold-the-witchs-gloves] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mirror, type: KILL_MOBS, mobIds: [9400564], count: 1, mapIds: [682000302, 682000304, 682000402] }
+    - { id: report, type: DELIVER, to: marigold }
+  rewards: { meso: 80000, exp: 100000, bondPoints: 60, items: [{ itemId: 1102193, count: 1 }] }

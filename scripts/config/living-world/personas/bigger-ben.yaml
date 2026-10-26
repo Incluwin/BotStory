@@ -1,0 +1,245 @@
+# Bigger Ben Lobby cast (docs/ITCG_MASTERIA_PLAN.md section 6): the lobby of New Leaf City's clock tower, above
+# MesoGears, where John Barricade hires crews for the deep chambers. 4 residents, 1 recruitable (Darcy the crew's
+# gunner, once she has seen you fight), 1 arc (Agatha's Enigma Chamber: the first crew's door song, sung once per
+# server). Ids in quests/bigger-ben.yaml.
+- id: agatha
+  name: Agatha
+  look: { gender: female }
+  title: "Cartographer of the First Crew"
+  job: BEGINNER
+  level: { min: 58, max: 58 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: bigger-ben
+    routine:
+      - { from: 8, to: 12, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 12, to: 15, spot: "venue:middle-central-street", activity: REST }
+      - { from: 15, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [killa bee, fire tusk, jr. yeti]
+  questLines: [agatha-the-map-of-mesogears, agatha-the-enigma-chamber]
+  arc: agatha-the-last-verse
+  rumors: [bb-the-crews-song]
+  relationships:
+    - { persona: gus, kind: KNEW_THE_GRANDFATHER_OF }
+    - { persona: lenny, kind: CORRECTS_THE_MAPS_OF }
+    - { persona: darcy, kind: WARNS }
+  giftItemIds: [4032023, 2022001]
+  dialogue:
+    greetFirst: ["you're standing on the third tile from the door. the first crew always started from the third tile. it's lucky. it's not. it's where the floor's level.", "a visitor in the lobby. you'll be going down into MesoGears, then. take a map. take my map. everyone else's is wrong."]
+    greet: ["hello. the gears are turning. they always are.", "you again. i've corrected another map. Lenny's. again."]
+    idle: ["(unrolls a yellowed map across her knees, smooths it flat, and traces a route with one finger)", "(cocks her head at the slow tick of the great clock overhead, counting under her breath)"]
+    noWork: ["nothing today. the maps are drawn. all but one chamber."]
+    nothingDue: ["we're square. i keep exact accounts. cartographers do."]
+    who: ["Agatha. i was cartographer to the first crew that ever went down into MesoGears, thirty-one years ago, long before Barricade. eight of us. i mapped every chamber. the deity room, the soul corridor, the fire and ice chambers, the wolf spider cavern. every one but the last. the enigma chamber's door wouldn't open for us. it wanted a song."]
+    bye: ["take the left stair down. the right one's shorter. it's also on fire."]
+    thanks: ["noted. exactly."]
+    smallTalk: ["the first crew sang going down. a working song, one verse a chamber. the tombstone in the enigma chamber listened to every verse and stayed shut. it wanted the last one. we'd never written a last one. we didn't know there'd be a last chamber.", "the killa bees in the soul corridor have built nests in my old survey marks. thirty-one years of my best work, full of bees. i've made my peace with it. i haven't."]
+    speakPlainly: ["plainly: a map, eight names, and a door that wants a song."]
+    questOffer.agatha-the-map-of-mesogears: ["walk my map. i want to know it's still true. thirty killa bees out of the soul corridor, then stand in the fire chamber and the ice chamber and look for the graves, sunstone and moonstone. if they're where i drew them, the map's good."]
+    questAccept.agatha-the-map-of-mesogears: ["down from the lobby. the deity room, then the soul corridor for the bees. then on to the fire chamber, then the ice chamber. the graves are by the far wall. they always were."]
+    questWaiting.agatha-the-map-of-mesogears: ["thirty, and both chambers. is my map still true?"]
+    questComplete.agatha-the-map-of-mesogears: ["both graves where i drew them? ...thirty-one years and not a line wrong. good. then the enigma chamber's still where i drew it too. the last chamber. the door with no verse. i used to think we'd come back with one. we never came back together."]
+    questOffer.agatha-the-enigma-chamber: ["Gus hummed it. you heard. the tune his grandfather sang going down. and the words came back to me, the last verse, the one we never had. it's the eight names. it was always the eight names. go down. clear the jr. yetis out of the ice chamber, they crowd the door. then stand in the enigma chamber and say them. come and tell me if it opens."]
+    questAccept.agatha-the-enigma-chamber: ["MesoGears, down to the ice chamber. the jr. yetis. then the enigma chamber past it. say the names: Mabry, Teale, Corrigan, Ostrow, Wynne, Faber, Gus's grandfather Elmo, and Agatha. say mine last. i was always last."]
+    questWaiting.agatha-the-enigma-chamber: ["the eight names. did it open?"]
+    questComplete.agatha-the-enigma-chamber: ["it ticked? the tombstone ticked, like a clock, and turned to face you, and the eight names were carved on its back? ...we're on it. all of us. thirty-one years. we finished the map. somebody finished it for us. thank you. i'm going to draw the last chamber now. i'm going to draw it very carefully. ...and take this. the crew's astrolabe. Mabry's. Barricade will know what it's for. i only ever used it to find north."]
+    about.gus: ["Gus carries bags in the lobby. his grandfather Elmo carried the first crew's rope. Elmo hummed going down, always the same tune. Gus hums it now and doesn't know it. i've never told him. i'd like to."]
+    about.lenny: ["Lenny studied under Foxwit. he draws maps of the gears. they're beautiful and wrong. i correct them. he thanks me. he draws the next one wrong too. i've grown fond of him."]
+    about.darcy: ["Darcy shoots for Barricade's crew. she goes down further than we ever did. i tell her where the floor gives. she tells me she knows. she knows because i told her."]
+    aboutUnknown: ["not on any map of mine."]
+    friend.close: ["i've put you on the map. a little star, in the lobby. it means 'friend of the cartographer'. there are three stars. you're one."]
+    friend.best: ["when i'm gone, the maps are yours. the true ones. don't let Lenny correct them."]
+    famed: ["they speak well of you down the stairs. that's a long way down for good news."]
+    defamed: ["they speak ill of you down the stairs. bad news travels up. i've charted it."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's useful. that's going on the map table."]
+    gift.again: ["one a day. the table's only so wide."]
+
+- id: lenny
+  name: Lenny
+  look: { gender: male }
+  title: "Foxwit's Old Student"
+  job: BEGINNER
+  level: { min: 42, max: 42 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: bigger-ben
+    routine:
+      - { from: 9, to: 13, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 13, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:middle-east-street-2", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [electrophant, i.am.robot, killa bee]
+  questLines: [lenny-fuel-cells, lenny-jumper-cables]
+  relationships:
+    - { persona: agatha, kind: HAS_HIS_MAPS_CORRECTED_BY }
+    - { persona: gus, kind: BORROWS_LUGGAGE_TROLLEYS_FROM }
+  giftItemIds: [4032022, 2000002]
+  dialogue:
+    greetFirst: ["careful! no, it's fine, it's not live. probably. hello. are you here about the gears? everyone's here about the gears. i'm here about the gears.", "oh, hello! you've the look of somebody who's been to Omega Sector. there's a smell. it's ozone. it's a good smell."]
+    greet: ["hello! the gears made a new noise today. i've written it down.", "you're back! i've drawn a new map. Agatha's going to correct it. i can feel it."]
+    idle: ["(holds a small humming fuel cell up to his ear and nods, as if it had said something sensible)", "(sketches a gear diagram on the back of his hand, runs out of hand, and moves on to his sleeve)"]
+    noWork: ["nothing today. Professor Foxwit says i'm to rest my brain. i'm resting it on gears."]
+    nothingDue: ["we're even! i think. Foxwit says i'm bad at sums. he says it kindly."]
+    who: ["Lenny. i studied under Professor Foxwit in New Leaf City. interstellar relics, mostly, and things that hum. now i study MesoGears. the whole tower's a machine. nobody built it. or somebody built it and forgot to tell anyone. i'd like to know which."]
+    bye: ["don't touch anything that hums! unless it hums nicely."]
+    thanks: ["oh, brilliant, thanks!"]
+    smallTalk: ["the electrophants in the ice chamber carry fuel cells. diferium. it hums at a frequency that makes T-1337 in the city very excited. T-1337 says it doesn't get excited. it gets excited.", "Professor Foxwit once lost a vorticular gyro for a whole year. it was in his hat. he was wearing the hat. it spun the whole time. he says it was a test of observation. it was a test of hats."]
+    speakPlainly: ["plainly: a student, a notebook, and a tower that hums."]
+    questOffer.lenny-fuel-cells: ["the electrophants in the ice chamber carry diferium fuel cells. i need five for an experiment. a safe experiment. a mostly safe experiment. clear thirty of them, they don't like sharing."]
+    questAccept.lenny-fuel-cells: ["MesoGears, down to the ice chamber. the electrophants. big, grey, hum a bit. the jr. yetis will be in the way. they're always in the way."]
+    questWaiting.lenny-fuel-cells: ["five cells! the experiment's waiting. so's the fire extinguisher."]
+    questComplete.lenny-fuel-cells: ["five! lovely, they're humming in tune. and here, this is a triferium cell. Foxwit gave me two. i only ever needed one. T-1337 in the city makes juice from them. more juice than diferium. it's very proud of its juice."]
+    questOffer.lenny-jumper-cables: ["the I.AM.ROBOTs on the mountain slopes carry jumper cables. six of them? i'm trying to wake up a gear. a big one. it's been asleep a long time. clear thirty robots. they're very polite. they say sorry when they hit you."]
+    questAccept.lenny-jumper-cables: ["out of the city to the Masteria jungle, then up to the mountain slopes. the I.AM.ROBOTs. they march. they apologise. they don't stop."]
+    questWaiting.lenny-jumper-cables: ["six cables! the gear's snoring."]
+    questComplete.lenny-jumper-cables: ["six! ...it moved! one notch! thirty-one years asleep and it moved one notch! here, take this. it's Professor Foxwit's blinking dingbat. i borrowed it in my second year and never gave it back. take it to him. tell him i said sorry. tell him to check his hat."]
+    about.agatha: ["Agatha corrects my maps. every one. she's always right. she was on the first crew! she's a legend. she shushes me when i say that."]
+    about.gus: ["Gus lends me luggage trolleys for my equipment. he doesn't ask what the equipment is. he asked once. i told him. he hasn't asked since."]
+    about.darcy: ["Darcy shoots things for Barricade. she asked me to make her bullets that hum. i said that's not how bullets work. she said make it how bullets work. i'm trying."]
+    aboutUnknown: ["haven't studied them yet!"]
+    friend.close: ["i've named a gear after you. a little one. it turns very faithfully."]
+    friend.best: ["when i write my thesis, you're in the acknowledgements. right at the top. above Foxwit. don't tell Foxwit."]
+    famed: ["everyone's talking about you! i've written it down. with diagrams."]
+    defamed: ["people are saying things. i've stopped writing them down. bad data."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, brilliant! that's going in the experiment. carefully."]
+    gift.again: ["one a day! the lab's tiny."]
+
+- id: gus
+  name: Gus
+  look: { gender: male }
+  title: "Lobby Porter"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: bigger-ben
+    routine:
+      - { from: 6, to: 11, spot: "venue:lower-west-street", activity: STROLL }
+      - { from: 11, to: 14, spot: "venue:middle-central-street-2", activity: LINGER }
+      - { from: 14, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [killa bee, mighty maple eater]
+  questLines: [gus-the-lobby-bees, gus-grandads-knots]
+  rumors: [bb-the-crews-song]
+  relationships:
+    - { persona: agatha, kind: CARRIES_THE_MAPS_OF }
+    - { persona: darcy, kind: SWEET_ON }
+    - { persona: lenny, kind: LENDS_TROLLEYS_TO }
+  giftItemIds: [4000391, 2022001]
+  dialogue:
+    greetFirst: ["bags? no bags? travelling light. good for you. good for my back. welcome to Bigger Ben.", "evening! mind the planter. there's a porcupine in it. he's harmless. he's mostly harmless."]
+    greet: ["evening! bags?", "you again! still no bags. i admire it."]
+    idle: ["(hums a slow, rolling tune under his breath while stacking luggage, and doesn't seem to notice he's doing it)", "(crouches by the lobby planter and offers something small and green to whoever lives inside)"]
+    noWork: ["nothing today. no crews going down. no bags going down. i'm going down to the canteen."]
+    nothingDue: ["we're square! tips are optional. they're very optional."]
+    who: ["Gus. i carry bags for the crews going down into MesoGears. ropes, lamps, picks, once a whole piano. don't ask. my grandad carried rope for some crew, long before Barricade. Elmo. he never talked about it. he just hummed."]
+    bye: ["mind the stairs! they're steeper going up!"]
+    thanks: ["cheers, friend!"]
+    smallTalk: ["there's a porcupine living in the lobby planter. came up from MesoGears in a crew's bag a year ago and never left. the killa bees from the deity room keep coming up after it. it's a very stung porcupine.", "my grandad hummed one tune his whole life. rolling, slow, like going down stairs. i hum it too. i don't know the words. grandad never sang them."]
+    speakPlainly: ["plainly: bags, stairs, and a porcupine in a planter."]
+    questOffer.gus-the-lobby-bees: ["the killa bees from the deity room keep coming up the stairs after my porcupine. twenty-five of them, please? he's had a very hard year. he's very prickly about it."]
+    questAccept.gus-the-lobby-bees: ["straight down from the lobby. the deity room. the killa bees. they're loud. they're angrier than they are big."]
+    questWaiting.gus-the-lobby-bees: ["twenty-five! he's hiding under the leaves."]
+    questComplete.gus-the-lobby-bees: ["twenty-five! thanks, friend. ...can i ask a favour? Barricade says no animals in the lobby. i've hidden him in that planter a year. would you take him? he'll be safer with you than with a planter and a stair full of bees. he likes you. he's only pricked you a little."]
+    questOffer.gus-grandads-knots: ["my grandad left me a coil of old rope. it's all knots, funny ones, every few feet. would you show it to Agatha? she knows old crew things. i'd ask her myself. she goes quiet when i ask her things."]
+    questAccept.gus-grandads-knots: ["Agatha. by the upper central street in the mornings, on the bench in the evenings. the lady with the maps. show her the knots. tell me what she says."]
+    questWaiting.gus-grandads-knots: ["did she say anything? about the knots?"]
+    questComplete.gus-grandads-knots: ["'a proper crew knot, and that's all i can say for now'? ...she knew him. she knew grandad. she went quiet, didn't she? she always goes quiet. i'm going to hum a bit. it helps."]
+    about.agatha: ["Agatha mapped MesoGears before anybody. she never says much about it. she looks at me funny when i hum. kind funny."]
+    about.darcy: ["Darcy's on Barricade's crew. she shoots things. she's brilliant. i carry her bags. i carry them very carefully."]
+    about.lenny: ["Lenny borrows my trolleys. they come back humming. i don't ask."]
+    aboutUnknown: ["never carried their bags."]
+    friend.close: ["you get the good trolley now. the one with four wheels that all go the same way."]
+    friend.best: ["if i ever go down with a crew, i want you on it. i'll carry your bags for free. forever."]
+    famed: ["everyone's saying good things about you! even the bags!"]
+    defamed: ["people are saying stuff. pick it up and carry on, that's what i do."]
+    gift: ["oh, cheers!"]
+    gift.favorite: ["oh, that's great! that's going behind the desk!"]
+    gift.again: ["one a day! the desk's full!"]
+
+- id: darcy
+  name: Darcy
+  look: { gender: female }
+  title: "Gunner of Barricade's Crew"
+  job: GUNSLINGER
+  level: { min: 48, max: 50 }
+  strength: SEASONED
+  loadout: masteria-gun-l50
+  personality: efficient-v1
+  home:
+    town: bigger-ben
+    routine:
+      - { from: 7, to: 12, spot: "venue:upper-west-street", activity: SHOW_OFF }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:upper-west-street-2", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: true
+  knows: [firebomb, fire tusk, wolf spider]
+  contract: darcy-the-crews-proof
+  questLines: [darcy-the-fire-chamber, darcy-a-miners-hat, darcy-the-el-nath-cape, darcy-the-crystal-blade]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: gus, kind: TEASES }
+    - { persona: agatha, kind: TAKES_DIRECTIONS_FROM }
+    - { persona: lenny, kind: ORDERS_BULLETS_FROM }
+  giftItemIds: [4000081, 2000004]
+  dialogue:
+    greetFirst: ["you're on Barricade's list? no? you're not on mine either. yet. what can you do?", "a fresh face going down. you'll want somebody who shoots straight. that's me. you'll want to prove you can keep up. that's you."]
+    greet: ["hey. still in one piece? good.", "you again. the fire chamber's been busy. so have i."]
+    idle: ["(spins a pistol round one finger, catches it, checks the chamber, and holsters it in one motion)", "(leans on the stair rail and watches the lobby door, sizing up everyone who comes through)"]
+    noWork: ["nothing today. Barricade's got no dig on. i'm cleaning the gun. it's clean. i'm cleaning it again."]
+    nothingDue: ["square."]
+    who: ["Darcy. i shoot for John Barricade's crew. he goes after the old relics under MesoGears and the crimson mountain. somebody has to keep the things down there off him. i'm good at it. i'm better than good. ask Gus. no, don't. he gets flustered."]
+    bye: ["keep your head down below the fire chamber. and up above it."]
+    thanks: ["sure. noted."]
+    smallTalk: ["the firebombs in the fire chamber go off when they're hit wrong. hit them right and they just fall over. took me a year to learn right. took me a week to learn wrong.", "Barricade brings things back from the digs he doesn't want. old hats, capes, a crystal sword. Adonis up in El Nath can make something of them, he says. i keep a crate. you might get a crate."]
+    speakPlainly: ["plainly: a gun, a crew, and a crate of old things."]
+    offer: ["twenty thousand. and show me you can work the fire chamber. fifty firebombs. then i'll shoot for you."]
+    join: ["right. stay where i can see you. i'll see everything else."]
+    bench: ["two days. then Barricade wants me down a hole."]
+    leave: ["that's me. Barricade's whistling."]
+    refuse.bond: ["i don't shoot for strangers. i shoot at them, sometimes."]
+    refuse.flags: ["work the fire chamber with me first. then ask."]
+    refuseOwnErrand: ["my job. you can carry the ammo."]
+    questOffer.darcy-the-fire-chamber: ["work the fire chamber with me. thirty firebombs. hit them right. if you come back with your eyebrows, you can work with the crew."]
+    questAccept.darcy-the-fire-chamber: ["MesoGears, down through the deity room and the soul corridor to the fire chamber. the firebombs. hit them right. you'll know right when you don't explode."]
+    questWaiting.darcy-the-fire-chamber: ["thirty. eyebrows intact?"]
+    questComplete.darcy-the-fire-chamber: ["thirty. eyebrows. good. you're crew-grade. don't tell Barricade i said so. he'll try to hire you."]
+    questOffer.darcy-a-miners-hat: ["the fire tusks in the fire chamber and the deity room are chewing through our supply ropes. forty of them. i'll open the crate. there's a miner's hat in it Barricade dug up. it's ugly. Adonis in El Nath can make it less ugly."]
+    questAccept.darcy-a-miners-hat: ["the fire chamber, or the deity room. the fire tusks. they charge. sidestep. they're bad at corners."]
+    questWaiting.darcy-a-miners-hat: ["forty. the ropes are fraying."]
+    questComplete.darcy-a-miners-hat: ["forty. ropes are safe. here. the miner's hat. it's got a lamp. the lamp works. that's all i'll say for it. Adonis'll make you a hard hat out of it, if you bring him the bits."]
+    questOffer.darcy-the-el-nath-cape: ["the crew's lamps run on socket adapters, and the electrophants in the ice chamber carry them. eight adapters, thirty electrophants. there's a cape in the crate from El Nath. old wool. warm. Adonis knows that cape."]
+    questAccept.darcy-the-el-nath-cape: ["the ice chamber. the electrophants. big, grey, they hum. hit them before they charge."]
+    questWaiting.darcy-the-el-nath-cape: ["eight adapters. the lamps are flickering."]
+    questComplete.darcy-the-el-nath-cape: ["eight. the lamps'll hold. here. the El Nath cape. it smells of snow. Adonis turns these into something called the Wrath of El Nath. i don't know what that means. it sounds expensive."]
+    questOffer.darcy-the-crystal-blade: ["the wolf spider cavern. forty of them. it's where the crew lost Barricade's lamp-boy last spring. he's fine. he's very fine. he won't go back. i want the cavern cleared so the dig can go on. the best thing in the crate's yours."]
+    questAccept.darcy-the-crystal-blade: ["MesoGears, the soul corridor, then the wolf spider cavern off it. the spiders. they're big and there are a lot of them. bring potions. bring more potions."]
+    questWaiting.darcy-the-crystal-blade: ["forty. the dig's waiting."]
+    questComplete.darcy-the-crystal-blade: ["forty. the cavern's open. here. the crystal blade. Barricade found it under a wolf spider nest. and this, an old stone coin. denari. Adonis takes them. he gives you something random back. that's the fun of it, he says. i say it's gambling. take both."]
+    about.gus: ["Gus carries the crew's bags. he hums. he's sweet on me. everyone knows. he thinks nobody knows. i'm letting him think it a while longer."]
+    about.agatha: ["Agatha drew the first maps of MesoGears. i still use them. they've never once been wrong. i've never once told her, because she knows."]
+    about.lenny: ["Lenny's making me bullets that hum. i don't need them to hum. i've stopped saying that. he's very happy."]
+    aboutUnknown: ["never shot near them."]
+    friend.close: ["you're on my list. the good list. it's short."]
+    friend.best: ["if i ever leave the crew, i'll leave you my gun. clean. i'll have cleaned it."]
+    famed: ["they talk about you on the crew. good talk."]
+    defamed: ["they talk about you on the crew. not good. i've told them to shut it."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's useful. that goes in the crate."]
+    gift.again: ["one. that'll do."]

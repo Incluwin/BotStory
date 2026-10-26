@@ -116,7 +116,7 @@ class CompanionTapOutTest {
     void theClearCountsEvenWhenAQuestFailsToCountIt() {
         QuestLedger quests = mock(QuestLedger.class);
         doThrow(new IllegalStateException("quest step could not be saved")).when(quests)
-                .onPartyQuestCleared(any(), anyString());
+                .onPartyQuestCleared(any(), anyString(), any());
         when(game.world.quests()).thenReturn(quests);
         try (MockedStatic<LivingWorld> living = mockStatic(LivingWorld.class)) {
             living.when(LivingWorld::get).thenReturn(game.world);

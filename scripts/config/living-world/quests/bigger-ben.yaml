@@ -1,0 +1,134 @@
+# Bigger Ben Lobby quest lines (docs/ITCG_MASTERIA_PLAN.md section 6). The lobby (600020000) has no mobs; MesoGears is
+# below it. Ids from the server's own data: killa bee 9400540 (deity room 600020100, soul corridor 600020200), fire tusk
+# 9400542 (deity room, fire chamber 600020400), firebomb 5100002 (fire chamber), jr. yeti 5100000 (jr. yeti skin 4000048
+# at 60%; ice chamber 600020500), electrophant 9400543 (diferium fuel cell 4032022 and t-1 socket adapter 4032025 at 20%; ice chamber), wolf spider
+# 9400545 (wolf spider cavern 600020300), the enigma chamber 600020600 (the Tombstone 9201073); I.AM.ROBOT 9400546
+# (jumper cable 4032024 at 20%; the mountain slopes 600010400).
+# iTCG goods: the Porcupine 5000039 (a real pet, RewardItems), Triferium Fuel Cell 4032021, Blinking Dingbat 4031752,
+# Mystic Astrolabe 4031756, and Darcy's crate for Adonis (Set 5): Miner's Hat 1002856, El Nathian Cape 1102191, Crystal
+# Blade 1302106, Stone Denari 4032134.
+
+# ---- Agatha, cartographer of the first crew: her arc ------------------------------------------------------------------
+
+- id: agatha-the-map-of-mesogears
+  persona: agatha
+  title: "Is the Map Still True?"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bees, type: KILL_MOBS, mobIds: [9400540], count: 30, mapIds: [600020200] }
+    - { id: fire, type: VISIT_MAP, mapIds: [600020400] }
+    - { id: ice, type: VISIT_MAP, mapIds: [600020500] }
+    - { id: report, type: DELIVER, to: agatha }
+  rewards: { meso: 15000, exp: 18000, bondPoints: 40 }
+  onComplete: { arcAdvance: { arc: agatha-the-last-verse, to: chapter-2 } }
+
+- id: agatha-the-enigma-chamber
+  persona: agatha
+  title: "The Last Verse"
+  length: MEDIUM
+  requires: { level: { min: 45 }, flags: [bb.heard-song], notFlags: [bigger-ben.enigma.answered], questsCompleted: [agatha-the-map-of-mesogears] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 20, mapIds: [600020500] }
+    - { id: door, type: VISIT_MAP, mapIds: [600020600] }
+    - { id: report, type: DELIVER, to: agatha }
+  rewards: { meso: 60000, exp: 70000, bondPoints: 60, items: [{ itemId: 4031756, count: 1 }], worldFlags: [bigger-ben.enigma.answered] }
+
+# ---- Lenny, Foxwit's old student --------------------------------------------------------------------------------------
+
+- id: lenny-fuel-cells
+  persona: lenny
+  title: "A Mostly Safe Experiment"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: phants, type: KILL_MOBS, mobIds: [9400543], count: 30, mapIds: [600020500] }
+    - { id: cells, type: COLLECT_ITEM, itemId: 4032022, count: 5 }
+    - { id: lab, type: DELIVER, to: lenny, take: { itemId: 4032022, count: 5 } }
+  rewards: { meso: 12000, exp: 14000, bondPoints: 35, items: [{ itemId: 4032021, count: 1 }] }
+
+- id: lenny-jumper-cables
+  persona: lenny
+  title: "One Notch"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: robots, type: KILL_MOBS, mobIds: [9400546], count: 30, mapIds: [600010400] }
+    - { id: cables, type: COLLECT_ITEM, itemId: 4032024, count: 6 }
+    - { id: gear, type: DELIVER, to: lenny, take: { itemId: 4032024, count: 6 } }
+  rewards: { meso: 14000, exp: 16000, bondPoints: 35, items: [{ itemId: 4031752, count: 1 }] }
+
+# ---- Gus, lobby porter ------------------------------------------------------------------------------------------------
+
+- id: gus-the-lobby-bees
+  persona: gus
+  title: "A Very Stung Porcupine"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bees, type: KILL_MOBS, mobIds: [9400540], count: 25, mapIds: [600020100] }
+    - { id: report, type: DELIVER, to: gus }
+  rewards: { meso: 6000, exp: 5000, bondPoints: 40, items: [{ itemId: 5000039, count: 1 }] }
+
+- id: gus-grandads-knots
+  persona: gus
+  title: "Grandad's Knots"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: agatha, type: TALK_TO, persona: agatha, say: ["(she turns the coil over in her hands for a long time, running a thumb along each knot.) a crew knot. a proper one. one every eight feet, for counting the rope out in the dark. tell him his grandad tied a proper knot. tell him that's all i can say for now."] }
+    - { id: report, type: DELIVER, to: gus }
+  rewards: { meso: 4000, exp: 3000, bondPoints: 30 }
+
+# ---- Darcy, gunner of Barricade's crew (recruitable; her crate for Adonis) --------------------------------------------
+
+- id: darcy-the-fire-chamber
+  persona: darcy
+  title: "Eyebrows Intact"
+  length: SHORT
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bombs, type: KILL_MOBS, mobIds: [5100002], count: 30, mapIds: [600020400] }
+    - { id: report, type: DELIVER, to: darcy }
+  rewards: { meso: 15000, exp: 18000, bondPoints: 30, flags: [darcy.intro.done] }
+
+- id: darcy-a-miners-hat
+  persona: darcy
+  title: "The Supply Ropes"
+  length: MEDIUM
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [darcy-the-fire-chamber] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tusks, type: KILL_MOBS, mobIds: [9400542], count: 40, mapIds: [600020400, 600020100] }
+    - { id: report, type: DELIVER, to: darcy }
+  rewards: { meso: 35000, exp: 40000, bondPoints: 35, items: [{ itemId: 1002856, count: 1 }] }
+
+- id: darcy-the-el-nath-cape
+  persona: darcy
+  title: "Lamps for the Crew"
+  length: MEDIUM
+  requires: { level: { min: 52 }, friendship: 7, questsCompleted: [darcy-a-miners-hat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: phants, type: KILL_MOBS, mobIds: [9400543], count: 30, mapIds: [600020500] }
+    - { id: adapters, type: COLLECT_ITEM, itemId: 4032025, count: 8 }
+    - { id: lamps, type: DELIVER, to: darcy, take: { itemId: 4032025, count: 8 } }
+  rewards: { meso: 50000, exp: 55000, bondPoints: 50, items: [{ itemId: 1102191, count: 1 }] }
+
+- id: darcy-the-crystal-blade
+  persona: darcy
+  title: "The Best Thing in the Crate"
+  length: LONG
+  requires: { level: { min: 75 }, friendship: 10, questsCompleted: [darcy-the-el-nath-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spiders, type: KILL_MOBS, mobIds: [9400545], count: 40, mapIds: [600020300] }
+    - { id: report, type: DELIVER, to: darcy }
+  rewards: { meso: 80000, exp: 100000, bondPoints: 60, items: [{ itemId: 1302106, count: 1 }, { itemId: 4032134, count: 1 }] }

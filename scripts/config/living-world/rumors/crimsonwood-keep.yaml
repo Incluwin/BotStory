@@ -1,0 +1,33 @@
+# Crimsonwood Keep rumors.
+- id: cwk-the-last-entry
+  participants: [aldwin, quentin]
+  where: { town: crimsonwood-keep, spot: "venue:by-master-warrior" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: aldwin-the-sixth-banner, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: cwk.heard-entry
+  lines:
+    - { by: quentin, text: "ledger forty-one, Aldwin. the spring he went in. i think i've found it." }
+    - { by: aldwin, text: "read it. don't soften it." }
+    - { by: quentin, text: "Ridley writes: 'Banner Master by the gate at dawn. asked for a rite of passage. gave him one.'" }
+    - { by: quentin, text: "and under it, in a different hand. a hurried hand. 'standard to the Council Hall. the statue will want it.'" }
+    - { by: aldwin, text: "...that's his hand. Leofric wrote that. in Ridley's book. he never could find his own." }
+    - { by: aldwin, text: "the Council Hall. at the heart of the Sanctum. he got that far." }
+    - { by: quentin, text: "somebody would have to go and look." }
+
+- id: cwk-the-scouts-price
+  participants: [fennick, ivor]
+  where: { town: crimsonwood-keep, spot: "venue:upper-east-street" }
+  when:
+    serverHours: [17, 18, 19]
+    everyDays: 1
+  setsFlagOnListeners: cwk.heard-scout
+  lines:
+    - { by: fennick, text: "someone asked me to scout for them today, Ivor. a whole party." }
+    - { by: ivor, text: "hm." }
+    - { by: fennick, text: "i told them fifty thousand. and only if they'd walked the caverns with me first." }
+    - { by: ivor, text: "you're worth sixty." }
+    - { by: fennick, text: "...was that a compliment? from the gate? write that down, somebody." }
+    - { by: ivor, text: "fifty, then. and you'll go?" }
+    - { by: fennick, text: "for anyone who's heard me say it, at the gate, at sundown. that's the rule." }

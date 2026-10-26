@@ -376,7 +376,7 @@ public final class LivingWorldHooks {
             world.partyQuests().cleared(players);
             for (Character chr : players) {
                 if (chr != null) {
-                    world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
+                    world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName, scriptName);
                 }
             }
             server.living.population.PopulationHooks.partyQuestCleared(players, scriptName); // memory only

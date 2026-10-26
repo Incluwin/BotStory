@@ -1,0 +1,16 @@
+# Bigger Ben Lobby contracts: the crew's gunner, who wants to see you work the fire chamber first.
+- id: darcy-the-crews-proof
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [darcy.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [5100002], count: 50 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 10000 }

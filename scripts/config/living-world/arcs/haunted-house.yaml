@@ -1,0 +1,29 @@
+# Haunted House arc: the Prendergast house's three hallways ask "where am I?", "where are you?" and "this again?"
+# because Sophilia's ninth birthday party never happened, sixty years ago. Her room cleared, the guest list read out at
+# the gate, and the party held at last (cornelius-a-party-at-last, once per server).
+- id: cornelius-where-are-you
+  persona: cornelius
+  chapters:
+    - id: chapter-1
+      title: "Where Am I?"
+    - id: chapter-2
+      title: "Where Are You?"
+      dialogueOverrides:
+        greet: ["i went into her room. i've been going in every day since. i sit on the end of the bed. the hat's still on the pillow.", "hello. Winnie's found the dress pattern. come by the gate at dusk. we're making a list."]
+        who: ["Cornelius Prendergast. the last of us. i went into my sister's room last week for the first time in sixty years. there's a party hat on the pillow. blue, with a star. i'm going to hold her party. late. very late."]
+        about.winnie: ["Winnie's sewing the party dress now, from Sophilia's own pattern. sixty years old, that pattern. she says the stitches are still asking for someone."]
+        smallTalk: ["Winnie's sewing the dress from Sophilia's own pattern. Barty says he'll do invitations. Dex has volunteered for candles. i've never had so much help. i've never asked for any."]
+        chapterEnter: ["(sets a small blue party hat with a paper star on the gatepost, and straightens it)"]
+      unlocks:
+        rumors: [hh-the-birthday-list]
+    - id: chapter-3
+      title: "Not This Again"
+      enterWhen: { flags: [haunted-house.party.held] }
+      dialogueOverrides:
+        greet: ["the third hallway's stopped saying 'this again'. i stood in it for an hour this morning. it said nothing at all. it was the nicest nothing i've ever heard.", "hello. the dolls are sitting in a circle in her room. they've been sitting there since the party. i think they're waiting for cake. we're out of cake."]
+        who: ["Cornelius Prendergast. the last of us. we held my sister's ninth birthday last week. sixty years late. the candles lit on their own. the house has been quieter since. not quiet. it's still a haunted house. quieter."]
+        idle: ["(waves up at one of the mansion's upper windows, and this time seems to wait for something to wave back)", "(takes down one of the faded paper garlands from the gate and hangs up a bright new one)"]
+        speakPlainly: ["plainly: a gatehouse, a quieter house, and a party every year now."]
+        smallTalk: ["Barty's changed the tour. it ends at her room now. he tells them about the party. people cry. he says it's very good for business. he cries too. every time."]
+        about.winnie: ["Winnie's kept the dress on the form in the gatehouse. she says Sophilia might want to wear it again next year. i've told her yes. we're having a party next year. every year."]
+        chapterEnter: ["(hangs a new paper garland across the gate, bright blue, with a small star at the centre)"]

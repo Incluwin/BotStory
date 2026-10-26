@@ -1,0 +1,435 @@
+# Haunted House cast (docs/ITCG_MASTERIA_PLAN.md section 6): the Prendergast mansion in the Phantom Forest, where the
+# NLC Taxi drops sightseers at the gate. 7 residents, 2 recruitable (Lucius the ghost-breaker for a sack of loaded
+# springs, Marigold the exorcist once you have heard her fee), 1 arc (Cornelius's "Where Are You?": the halls loop
+# because a little girl never had her birthday, and the party, held once per server). Ids in quests/haunted-house.yaml.
+- id: cornelius
+  name: Cornelius
+  look: { gender: male }
+  title: "The Last Prendergast"
+  job: BEGINNER
+  level: { min: 58, max: 58 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-olivia", activity: LINGER }
+      - { from: 12, to: 15, spot: "venue:lower-east-street", activity: REST }
+      - { from: 15, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:by-olivia", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [haunted house, sophilia doll, nightmare]
+  questLines: [cornelius-sophilias-room, cornelius-a-party-at-last]
+  arc: cornelius-where-are-you
+  rumors: [hh-the-birthday-list]
+  relationships:
+    - { persona: winnie, kind: EMPLOYS }
+    - { persona: barty, kind: PUTS_UP_WITH }
+    - { persona: mordecai, kind: OLD_FRIEND }
+  giftItemIds: [4000018, 2022001]
+  dialogue:
+    greetFirst: ["welcome to the Prendergast house. mind the step. mind the second step too. the second step minds you back.", "a visitor from the taxi. you'll want the tour. Barty does the tour. i do the apologies. sorry. about all of it."]
+    greet: ["hello again. the house is in a mood. it's been in a mood for sixty years.", "good evening. i've counted the hallways that talk. there are three. there are always three. they always say the same thing."]
+    idle: ["(looks up at the mansion's dark upper windows, and waves to one of them, very slightly)", "(straightens a faded paper garland strung along the gate, which has hung there a very long time)"]
+    noWork: ["nothing today. the house is quiet. it's never quiet. it's quieter."]
+    nothingDue: ["you owe me nothing. the house owes everyone an apology."]
+    who: ["Cornelius Prendergast. the last of us. i live in the gatehouse. nobody lives in the house. well. nobody living. my little sister Sophilia's birthday was the night everything went strange. the party never happened. the halls have been asking 'where am I?' and 'where are you?' ever since."]
+    bye: ["don't let the third hallway talk you into anything."]
+    thanks: ["oh, thank you. truly."]
+    smallTalk: ["three hallways in the house. one says 'where am I?', one says 'where are you?', and one says 'this again?'. i think it's the house. i think it's Sophilia. i think it's the same thing, now.", "the dolls in her bedroom were her birthday presents. they were never unwrapped. now they walk about. i'm not sure they're angry. i think they're looking for the party."]
+    speakPlainly: ["plainly: a gatehouse, a house that loops, and a party sixty years late."]
+    questOffer.cornelius-sophilias-room: ["her bedroom. the dolls have taken it over, the ones that were meant to be presents. clear twenty-five of them out of the bedrooms and the hallway where am I. i'd like the room to look like a room again. i'd like to go in."]
+    questAccept.cornelius-sophilias-room: ["the house. Sophilia's bedroom off the first hallway, and the study and the hallway where am I. the dolls. they're not cruel. they're confused. so am i."]
+    questWaiting.cornelius-sophilias-room: ["twenty-five. i've the key to her room. i've had it sixty years."]
+    questComplete.cornelius-sophilias-room: ["twenty-five. ...i went in. it's just a room. a little bed, a little desk, a party hat on the pillow. sixty years. i'd forgotten she chose the hat herself. blue, with a star. i'm going to hold that party. i don't know how. Winnie will. she knows how to make things."]
+    questOffer.cornelius-a-party-at-last: ["it's time. Winnie's finished the dress, the one Sophilia was meant to wear. Barty's to take the invitations round, Dex has the candles. would you see they're done and then take it all up to her room? the house might let her come. it might stop asking where she is."]
+    questAccept.cornelius-a-party-at-last: ["Barty by the taxi for the invitations. Dex for the candles, wherever he's hiding. then Sophilia's bedroom, off the first hallway. set it all out. then come and tell me. i can't watch. i can wait."]
+    questWaiting.cornelius-a-party-at-last: ["invitations, candles, her room. then tell me."]
+    questComplete.cornelius-a-party-at-last: ["the candles lit on their own? and the dolls sat down? all of them? ...and the third hallway. Winnie says it's stopped saying 'this again'. she says it said 'thank you'. i don't believe her. i'm going to go and listen. happy birthday, Sophilia. sixty years. you didn't miss it after all. ...take some of the party drink with you. we made far too much."]
+    about.winnie: ["Winnie sews costumes for Barty's tours. she found my sister's dress pattern in the gatehouse, pinned and never cut. she keeps asking me what it was for. i haven't told her yet."]
+    about.barty: ["Barty sells tickets to my family's tragedy. i'd mind more if he didn't give me a cut. i'd mind more if he didn't tell the story kindly. he does. both."]
+    about.mordecai: ["Mordecai keeps the graves on Hollowed Ground. my parents are there. he weeds them every week. he's the only person who's never once asked me about the house."]
+    about.dex: ["Dex came on the taxi on a dare. he was meant to stay one night. that was a month ago. i think the house likes him. i think he likes it back."]
+    aboutUnknown: ["not a name the house knows. lucky them."]
+    friend.close: ["i've set a place for you at the party table. there's a place for everyone. there's always been a place for everyone."]
+    friend.best: ["if i'm ever gone, the gatehouse key is under the third garland. the house knows you. it won't mind."]
+    famed: ["the house speaks well of you. it creaks kindly when you pass."]
+    defamed: ["the house speaks ill of you. it's spoken ill of everyone. don't take it hard."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's thoughtful. that's going on the garland."]
+    gift.again: ["one a day. the garland's getting heavy."]
+
+- id: winnie
+  name: Winnie
+  look: { gender: female }
+  title: "Costume Seamstress"
+  job: BEGINNER
+  level: { min: 40, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-witch-malady", activity: LINGER }
+      - { from: 13, to: 16, materialize: false }
+      - { from: 16, to: 19, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:by-olivia", activity: SOCIALIZE }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [glutton ghoul, haunted house]
+  questLines: [winnie-stretchy-material, winnie-the-party-dress]
+  rumors: [hh-the-birthday-list]
+  relationships:
+    - { persona: cornelius, kind: WORKS_FOR }
+    - { persona: barty, kind: SEWS_FOR }
+    - { persona: dex, kind: MENDS_THE_TROUSERS_OF }
+  giftItemIds: [4032030, 2000002]
+  dialogue:
+    greetFirst: ["hold still. no, keep holding. you've a thread loose at the cuff. there. fixed. hello.", "oh, a customer! no? a visitor. same thing. everyone who comes here ends up needing a costume. you'll see."]
+    greet: ["hello! careful of the pins.", "back again? i've a thread that's your colour. i didn't mean to. it just happened."]
+    idle: ["(bites off a thread and holds a half-finished sleeve up against the light)", "(pins a scrap of fabric to a dressmaker's form and steps back to frown at it)"]
+    noWork: ["nothing today. the sewing's caught up. it never stays caught up."]
+    nothingDue: ["we're square. i don't charge friends for hems."]
+    who: ["Winnie. i sew costumes for Barty's ghost tours. ghosts, witches, a very good headless horseman. the ghouls in the house are made of old laundry, did you know? they shed stretchy stuff. it's the best fabric i've ever had. it's free. it's haunted. it's free."]
+    bye: ["mind your hems on the way out. the forest snags."]
+    thanks: ["oh, you're sweet."]
+    smallTalk: ["the glutton ghouls in the foyer are wrapped in coat hangers and tape and something that stretches forever. i make capes out of it. Stirgeman in the city buys them by the yard. he says it's for crime-fighting. it's for crime-fighting.", "i found Sophilia's dress pattern in the gatehouse. sixty years old. pinned and never cut. the pins are still sharp. i don't know how."]
+    speakPlainly: ["plainly: needles, thread, and laundry that walks."]
+    questOffer.winnie-stretchy-material: ["the ghouls in the foyer shed the stretchy stuff, the best fabric there is. eight lengths? clear thirty of them out of the foyer and the first hallway. i've a costume half-finished and a lot of hopes."]
+    questAccept.winnie-stretchy-material: ["the house. the foyer, and the first hallway. the glutton ghouls. they're laundry. they're very hungry laundry."]
+    questWaiting.winnie-stretchy-material: ["eight lengths! my bunny's waiting."]
+    questComplete.winnie-stretchy-material: ["eight! lovely and stretchy. ...oh. i should say. i sewed a bunny costume for Barty's tour. black, with long ears. i put it on the form last night. this morning there was a real bunny sitting on the form. black. long ears. it won't let me near it. it hops after anyone who smells of the stretchy stuff, and that's you now. i think it's yours."]
+    questOffer.winnie-the-party-dress: ["i'm sewing Sophilia's party dress, from her own pattern. the hem wants tape, the ghoul tape, six rolls. the ghouls in the hallways this again and the first hallway have plenty. clear twenty and bring me six?"]
+    questAccept.winnie-the-party-dress: ["the house. the first hallway, and the hallway this again. the glutton ghouls. the tape's on the inside. don't ask how i know."]
+    questWaiting.winnie-the-party-dress: ["six rolls. the hem's nearly there. so's the birthday."]
+    questComplete.winnie-the-party-dress: ["six! ...there. it's done. blue, to match her hat. it's very small. i didn't expect it to be so small. here, this is for you. a cape i made for Stirgeman out of the stretchy stuff. he never collected. he never collects anything. it's yours. take it to him if you want it improved. he'll pretend he's surprised."]
+    about.cornelius: ["Cornelius is the last Prendergast. he's the kindest man i've ever sewn for. he's never once had a party since his sister. i'd sew the whole house a party if he asked."]
+    about.barty: ["Barty sells the tours. i sew the costumes. he takes the credit and gives me the coins. it's a fair trade. it's a Barty trade."]
+    about.dex: ["Dex came on a dare. i've mended his trousers six times. the house keeps tearing them. i think it's being friendly."]
+    about.marigold: ["Marigold blesses the halls. she asked me for a robe with deeper pockets. for holy water. and biscuits. mostly biscuits."]
+    aboutUnknown: ["never sewn for them."]
+    friend.close: ["i've sewn your initials into the hem of your collar. you'll never find them. i'll always know they're there."]
+    friend.best: ["if i ever make a costume of you, it'll be the best one i've ever made. Barty can't have it."]
+    famed: ["everyone's saying lovely things about you! i'd sew them on a banner."]
+    defamed: ["people are saying things. i'd unpick them if i could."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's perfect! that's going in my workbasket, right on top."]
+    gift.again: ["one a day! the basket's full of you."]
+
+- id: barty
+  name: Barty
+  look: { gender: male }
+  title: "Ghost-Tour Hawker"
+  job: BEGINNER
+  level: { min: 35, max: 35 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 7, to: 12, spot: "venue:beside-nlc-taxi", activity: SOCIALIZE }
+      - { from: 12, to: 15, materialize: false }
+      - { from: 15, to: 19, spot: "venue:beside-nlc-taxi", activity: SHOW_OFF }
+      - { from: 19, to: 22, spot: "venue:lower-east-street", activity: REST }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [psycho jack, haunted house, new leaf city]
+  questLines: [barty-a-proper-scare, barty-the-tour-route]
+  relationships:
+    - { persona: winnie, kind: BUYS_COSTUMES_FROM }
+    - { persona: cornelius, kind: PAYS_A_CUT_TO }
+    - { persona: dex, kind: LOST_A_BET_TO }
+  giftItemIds: [4000399, 2022001]
+  dialogue:
+    greetFirst: ["roll up, roll up! the Prendergast house! sixty years haunted! the dolls walk, the halls talk, and the third hallway has opinions! one ticket, one tour, one lifetime of nightmares! ...oh, you're not from the taxi. hello.", "a fresh face off the taxi! you look brave. brave people get the deluxe tour. it's the same tour. it's louder."]
+    greet: ["back for the deluxe tour?", "hello again! the house was very haunted today. business is good."]
+    idle: ["(rehearses a dramatic gasp, checks it in the reflection of the taxi's window, and does it again bigger)", "(counts a fistful of tickets, loses count, and starts over)"]
+    noWork: ["nothing today. the taxi's late. the ghosts aren't. they're very punctual, ghosts."]
+    nothingDue: ["we're square! no refunds. that's not about you. that's the sign."]
+    who: ["Barty! ghost tours of the Prendergast house, every hour the taxi comes! i tell the story, Winnie makes the costumes, the house does the rest. Cornelius gets a cut. it's his family. i tell it kindly. i'm a showman, not a monster. the monsters are inside."]
+    bye: ["tell your friends! tell your enemies! enemies pay double!"]
+    thanks: ["oh, you're a star."]
+    smallTalk: ["the psycho jacks in the study are the best part of the tour. jack-in-the-boxes that come out swinging. the springs inside are amazing. i want one for the ticket booth. pop! 'ticket, sir?' they'd faint.", "Dex bet me he could stay a night in the house. he's stayed a month. i owe him a fortune. i've been paying him in hot chocolate."]
+    speakPlainly: ["plainly: tickets, a good story, and a lot of shouting."]
+    questOffer.barty-a-proper-scare: ["i want a proper scare for the ticket booth. a spring-loaded jack, like the ones in the house. the psycho jacks in the study and the vanity room are full of loaded springs. twenty-five of them, eight springs? i'll cut you in."]
+    questAccept.barty-a-proper-scare: ["the house. the first hallway, the study, the vanity room. the psycho jacks. they jump out. that's the whole act. jump first."]
+    questWaiting.barty-a-proper-scare: ["eight springs! boing!"]
+    questComplete.barty-a-proper-scare: ["eight! oh, these are lovely. boing. BOING. ...ahem. here. a tourist left these at the booth last week. utility trousers, very heroic. pockets everywhere. Stirgeman in the city does improvements, apparently. i don't ask what that means."]
+    questOffer.barty-the-tour-route: ["i'm thinking of a new tour. the deluxe deluxe. but i've never been past the foyer. nobody tell anyone. would you walk the route for me? the library, then the toy workshop. tell me if it's scary. tell me if it's scary in a good way."]
+    questAccept.barty-the-tour-route: ["the house. the library off the hallways, then the toy workshop. look round. remember the creaks. creaks sell."]
+    questWaiting.barty-the-tour-route: ["the library and the workshop. scary? good scary?"]
+    questComplete.barty-the-tour-route: ["the books flew and the toys laughed? ...that's PERFECT. that's the deluxe deluxe. i'm going to need a bigger sign. i'm going to need a braver tour guide. i'm going to need a lie-down."]
+    about.winnie: ["Winnie makes the costumes. the headless horseman costume? hers. better than the real one. don't tell the real one."]
+    about.cornelius: ["Cornelius is a Prendergast. the last one. i give him a cut of every ticket. it's his story. i just tell it loud."]
+    about.dex: ["Dex. the dare boy. he's been here a month. he owes me nothing. i owe him everything. it's a terrible business arrangement."]
+    about.mordecai: ["Mordecai keeps the graves. he hates the tours. he comes to every one. stands at the back. never pays. i've stopped asking."]
+    aboutUnknown: ["never bought a ticket. shame."]
+    friend.close: ["you're on the free list. you can come on any tour. you'll be bored. you'll be bored for free."]
+    friend.best: ["if i ever retire, the booth's yours. the sign's yours. the voice, you'll have to grow."]
+    famed: ["everyone's talking about you! i might put you on a poster!"]
+    defamed: ["people are talking about you! any publicity's good publicity!"]
+    gift: ["for me? you shouldn't have. you should have. thanks!"]
+    gift.favorite: ["oh, that's GREAT! that's going in the booth! on display!"]
+    gift.again: ["one a day! the booth's only so big!"]
+
+- id: mordecai
+  name: Mordecai
+  look: { gender: male }
+  title: "Gravekeeper of Hollowed Ground"
+  job: BEGINNER
+  level: { min: 60, max: 60 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 10, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [jr. wraith, headless horseman, hollowed ground]
+  questLines: [mordecai-the-restless, mordecai-the-horseman]
+  relationships:
+    - { persona: cornelius, kind: OLD_FRIEND }
+    - { persona: barty, kind: DISAPPROVES_OF }
+    - { persona: marigold, kind: WORKS_ALONGSIDE }
+  giftItemIds: [4000035, 2022001]
+  dialogue:
+    greetFirst: ["you'll be wanting the graves. no? good. nobody wants the graves. that's why they're quiet.", "hm. a visitor that isn't on the tour. you've some sense, then."]
+    greet: ["evening.", "you again. the dead are well. better than the living, some days."]
+    idle: ["(leans on a spade and looks out over Hollowed Ground, counting something under his breath)", "(scrapes mud off his boots with the edge of the spade, slowly and thoroughly)"]
+    noWork: ["nothing today. the graves are weeded. the wraiths are sulking."]
+    nothingDue: ["we're square. the dead keep no accounts. i keep fewer."]
+    who: ["Mordecai. i keep Hollowed Ground, past the house. the graves of everyone who ever lived here and some who didn't. the wraiths drift up out of the ground most nights. i put them back. the horseman rides over the graves when he pleases. i can't put him back. i'd like to."]
+    bye: ["walk round the graves, not over them."]
+    thanks: ["hm. good."]
+    smallTalk: ["the jr. wraiths aren't wicked. they're restless. they've forgotten where they're meant to lie. a spade helps them remember. so does a sword.", "Barty runs tours of the house. i stand at the back of every one. somebody should be there who knows it isn't a show. i don't pay. he's stopped asking."]
+    speakPlainly: ["plainly: a spade, a lot of graves, and a horseman i'd like a word with."]
+    questOffer.mordecai-the-restless: ["the wraiths are up again on Hollowed Ground. thirty of them out of the air and back into the earth. they'll thank you. eventually. in a hundred years or so."]
+    questAccept.mordecai-the-restless: ["Hollowed Ground, past the house. the jr. wraiths. they drift. so should you. out of the way of the big one, if he rides."]
+    questWaiting.mordecai-the-restless: ["thirty. they're very restless."]
+    questComplete.mordecai-the-restless: ["thirty. quiet. good. they'll lie easy a while. so will i."]
+    questOffer.mordecai-the-horseman: ["the headless horseman rides over my graves. every night he likes. i've raked his hoofprints out of the same grave forty times. put him down. once. i'll rake it a last time."]
+    questAccept.mordecai-the-horseman: ["Hollowed Ground, when he rides. or the forest, the crossroads and the hidden evil. he's not on a timetable. he rides when the moon's wrong. it's often wrong."]
+    questWaiting.mordecai-the-horseman: ["the horseman. once. take your time. he takes his."]
+    questComplete.mordecai-the-horseman: ["he's down? ...i'll rake the grave tomorrow. last time. here. this came up out of the ground where he rode the hardest. old boots. older than the house. Barricade's smiths want Ancient things. i want them out of my graves."]
+    about.cornelius: ["Cornelius. the last Prendergast. i weed his parents' graves every week. he's never asked me to. i've never asked him about the house. it's the best friendship in the forest."]
+    about.barty: ["Barty sells tickets to a family's grief. he does it kindly. i still don't like it. i go to every tour. somebody should."]
+    about.marigold: ["Marigold blesses the house. i bless nothing. i dig. between the two of us, the dead are seen to."]
+    aboutUnknown: ["not in my ground. good."]
+    friend.close: ["there's a plot under the old yew i keep for nobody. it's not for you. it's just the best view. come and sit there."]
+    friend.best: ["if you're ever on Hollowed Ground for good, i'll dig it myself. properly. you'll lie easy."]
+    famed: ["they speak well of you. even out on the graves."]
+    defamed: ["they speak ill of you. the dead don't. they're quieter."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's useful. that goes in the shed."]
+    gift.again: ["one. that'll do."]
+
+- id: dex
+  name: Dex
+  look: { gender: male }
+  title: "Boy on a Dare"
+  job: BEGINNER
+  level: { min: 20, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 10, to: 14, spot: "venue:beside-nlc-taxi", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 18, to: 21, spot: "venue:by-witch-malady", activity: SOCIALIZE }
+      - { from: 21, to: 10, materialize: false }
+  recruitable: false
+  knows: [rotting skeleton, haunted house]
+  questLines: [dex-the-dare, dex-ask-lucius]
+  relationships:
+    - { persona: barty, kind: WON_A_BET_OFF }
+    - { persona: lucius, kind: ADMIRES }
+    - { persona: winnie, kind: GETS_HIS_TROUSERS_MENDED_BY }
+  giftItemIds: [4000018, 2022001]
+  dialogue:
+    greetFirst: ["are you scared? i'm not scared. i've been here a month. on a dare. the dare was one night. i stayed. i'm not scared. are you?", "hey! you came on the taxi too? did Barty try to sell you a ticket? don't buy one. i know the way. i'll show you. for free. for a sandwich."]
+    greet: ["hey! still not scared!", "you're back! did you go in the house? did the third hallway say anything to you?"]
+    idle: ["(throws a pebble at the house's front door, flinches when it bounces back, and pretends he didn't)", "(scratches another tally mark on the gatepost, counting the nights he's stayed)"]
+    noWork: ["nothing today! i'm being brave. it's tiring."]
+    nothingDue: ["we're square! you can't owe a kid. that's a rule."]
+    who: ["Dex. i'm from New Leaf City. my friends dared me to spend a night in the Prendergast house. i did. then i stayed. the house is cool. Cornelius lets me sleep in the gatehouse. Barty owes me a fortune. i'm going to be a ghost-breaker like Lucius."]
+    bye: ["bye! don't look at the windows! okay, look a little!"]
+    thanks: ["thanks! you're all right."]
+    smallTalk: ["the rotting skeletons in the hallways just fall apart if you hit them. then they put themselves back together. backwards, sometimes. i saw one with its feet on its head. it didn't seem to mind.", "my friends back in the city think i'm dead. i sent them a postcard. it said 'not dead'. they think the house wrote it."]
+    speakPlainly: ["plainly: a kid, a dare, and a month of not being scared."]
+    questOffer.dex-the-dare: ["dare you. twenty rotting skeletons in the first hallway or the skeleton chimney. bet you can't. ...bet you can. go on. i'll wait here. bravely."]
+    questAccept.dex-the-dare: ["the house! the first hallway, or the skeleton chimney through the foyer! the skeletons! they fall apart! it's great! it's a bit horrible! it's great!"]
+    questWaiting.dex-the-dare: ["twenty! you're not scared, are you?"]
+    questComplete.dex-the-dare: ["twenty! you did it! ...okay, so. i bet Barty my skunk you couldn't. the one that followed me out of the swamp bog. Barty doesn't even want a skunk. you won it. fair's fair. he's very nice. he's a bit smelly. he's very nice."]
+    questOffer.dex-ask-lucius: ["can you ask Lucius if i can be his apprentice? the ghost-breaker? he says 'no' to me. he says it before i finish asking. he might let you finish."]
+    questAccept.dex-ask-lucius: ["Lucius! by the witch's spot in the afternoon and evening. he's got daggers and a coat with a million pockets. he's the coolest person in the forest."]
+    questWaiting.dex-ask-lucius: ["did he say yes? did he say maybe? maybe's nearly yes."]
+    questComplete.dex-ask-lucius: ["'when you're tall enough to reach the top pocket'? ...that's a yes! that's a later-yes! i'm going to grow! i'm going to grow SO much!"]
+    about.lucius: ["Lucius is a ghost-breaker. he goes in the house every day. on purpose. he's not scared of anything. he says he's scared of everything. that's a joke. i think it's a joke."]
+    about.barty: ["Barty bet me i couldn't stay a night. i stayed thirty. he pays me in hot chocolate. it's going to take him forever."]
+    about.winnie: ["Winnie mends my trousers. the house keeps ripping them. she says it's being friendly. it's a weird way to be friendly."]
+    about.cornelius: ["Cornelius lets me sleep in the gatehouse. he's sad a lot. not about me. about his sister. she never got her birthday. if he ever has a party for her, i'm on candles."]
+    aboutUnknown: ["never heard of them! are they brave?"]
+    friend.close: ["you're the bravest person i know. after me. okay, before me."]
+    friend.best: ["when i'm a ghost-breaker, you can be my partner. you can have the top pocket."]
+    famed: ["everyone says you're brave! i said it first!"]
+    defamed: ["people are saying stuff. i'm not listening. la la la."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["whoa! that's the best! i'm keeping it in the gatehouse!"]
+    gift.again: ["you already gave me something! i've still got it!"]
+
+- id: lucius
+  name: Lucius
+  look: { gender: male }
+  title: "Ghost-Breaker"
+  job: BANDIT
+  level: { min: 52, max: 55 }
+  strength: SEASONED
+  loadout: masteria-dagger-l55
+  personality: efficient-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 9, to: 13, materialize: false }
+      - { from: 13, to: 18, spot: "venue:by-witch-malady", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:by-witch-malady", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: true
+  knows: [nightmare, dead scarecrow, twisted jester]
+  contract: lucius-the-trap-springs
+  questLines: [lucius-the-sweep, lucius-the-scarecrow-chimney, lucius-the-clown-chimney, lucius-the-mirror]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: marigold, kind: WORKS_WITH }
+    - { persona: dex, kind: PUTS_UP_WITH }
+    - { persona: barty, kind: SCARES_THE_CUSTOMERS_OF }
+  giftItemIds: [4000399, 2000004]
+  dialogue:
+    greetFirst: ["don't move. ...there. a nightmare was on your shoulder. it's gone. you're welcome.", "a visitor. you've got the look of somebody who's going into the house. don't. if you do, go in fast and come out faster."]
+    greet: ["hey. still breathing? good.", "you again. the house hasn't eaten you. it's trying."]
+    idle: ["(checks a dozen coat pockets in turn, counting charms, salt, string and a pair of daggers)", "(stares up at a dark window of the mansion until something behind it seems to look away)"]
+    noWork: ["nothing today. the house is resting. that's when it's most dangerous. i'm resting too. that's when i'm most dangerous."]
+    nothingDue: ["square."]
+    who: ["Lucius. ghost-breaker. the house fills up with things that shouldn't be, and i go in and break them. nightmares, scarecrows, jesters, things in mirrors. Marigold blesses the halls afterwards. i do the before. somebody has to do the before."]
+    bye: ["don't walk backwards out of the house. it notices."]
+    thanks: ["hm. cheers."]
+    smallTalk: ["the nightmares in the third hallway feed on people being scared. stop being scared and they starve. easier said. i've been not-scared for ten years. it's exhausting.", "the chimneys are the worst. three of them. one full of skeletons, one full of scarecrows, one full of clowns. i don't do clowns unless i'm paid. i'm usually paid."]
+    speakPlainly: ["plainly: a coat full of pockets, two daggers, and a house that wants me gone."]
+    offer: ["twenty thousand, and twenty loaded springs from the jacks. i set traps with them. traps don't care who i'm out with."]
+    join: ["fine. stay behind me. no, closer. there."]
+    bench: ["two days. then the house fills up again."]
+    leave: ["that's me. back to the house. it's missed me. it hasn't."]
+    refuse.bond: ["i don't go in with people i don't know. the house finds out what you're scared of. i don't know what you're scared of yet."]
+    refuse.flags: ["sweep the third hallway with me first. then ask."]
+    refuseOwnErrand: ["my break. you can watch."]
+    questOffer.lucius-the-sweep: ["sweep the third hallway with me. the nightmares are thick in this again and where am I. thirty of them. go in not scared. come out not scared. that's the job."]
+    questAccept.lucius-the-sweep: ["the house. the hallway this again, and the hallway where am I. the nightmares. they're worse if you flinch. don't flinch."]
+    questWaiting.lucius-the-sweep: ["thirty. still not scared?"]
+    questComplete.lucius-the-sweep: ["thirty. and you came out walking forwards. good. that's the sweep. every day."]
+    questOffer.lucius-the-scarecrow-chimney: ["the scarecrow chimney's packed again. forty dead scarecrows. go up, break them, come down. i'll owe you. i've got a sword on a string from a hero in the city who never came back for it. it's very silly. it's very good."]
+    questAccept.lucius-the-scarecrow-chimney: ["the house. the main chimney, through the foyer. the scarecrow one. they're full of straw and spite."]
+    questWaiting.lucius-the-scarecrow-chimney: ["forty. it's dusty up there."]
+    questComplete.lucius-the-scarecrow-chimney: ["forty. clean. here. Stirge-on-a-String. Stirgeman's. he left it in the foyer chasing a ghoul. i've kept it two years. he's never asked. take it to him to improve. he'll pretend it's new. and some gum. he uses gum for everything."]
+    questOffer.lucius-the-clown-chimney: ["the clown chimney. thirty twisted jesters. i'm paid for this one. i'll pay you. not in coin. in two things i took off a smuggler in the forest. Barricade's men want them."]
+    questAccept.lucius-the-clown-chimney: ["the main chimney, the clown one. the twisted jesters. they laugh. don't laugh back. it's a trap."]
+    questWaiting.lucius-the-clown-chimney: ["thirty. are they laughing?"]
+    questComplete.lucius-the-clown-chimney: ["thirty. quiet. good. here. a crystal shard and a naricain jewel. Barricade in Bigger Ben draws a manual from them for crystal throwing-stars. i'd go myself. i don't go to Bigger Ben. too many gears. gears are worse than clowns."]
+    questOffer.lucius-the-mirror: ["the thing in the mirrors. the mirror ghosts in the vanity rooms. three of them. they're strong. they show you yourself and then they hit you with it. i've never broken one. you'll be the first. i'll give you everything a ghost-breaker carries."]
+    questAccept.lucius-the-mirror: ["the vanity rooms, off the first hallway and the hallway where am I. or the pumpkin vault, if you're mad. the mirror ghosts. don't look into them. look past them."]
+    questWaiting.lucius-the-mirror: ["three. don't look into them."]
+    questComplete.lucius-the-mirror: ["three? ...you broke three. i've been trying for ten years. here. Ridley's stone, a Book of Rituals, and five of his defence scrolls. that's everything i carry. i'll get more. take it. you've earned the whole coat. i'm keeping the coat."]
+    about.marigold: ["Marigold blesses what i've broken. she says my method's 'very loud'. her method's very quiet. the ghosts hate us both. it's a good partnership."]
+    about.dex: ["Dex wants to be my apprentice. he's a kid, scared of everything, and he stays anyway. that's the whole job. i'm not telling him that."]
+    about.barty: ["Barty runs tours. i break the things he points at. he says i'm bad for business. i'm the reason there's business left."]
+    aboutUnknown: ["never broke anything near them."]
+    friend.close: ["i've put a charm in your pocket. no, the other one. it's not magic. it's salt. salt helps."]
+    friend.best: ["if the house ever gets me, the coat's yours. all the pockets. learn what's in them."]
+    famed: ["they speak well of you in the forest. the ghosts don't. that's a good sign."]
+    defamed: ["they speak ill of you. so do the ghosts. one of those is a compliment."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's useful. that goes in a pocket. a good pocket."]
+    gift.again: ["one's plenty. i'm out of pockets."]
+
+- id: marigold
+  name: Marigold
+  look: { gender: female }
+  title: "Exorcist of the Steps"
+  job: CLERIC
+  level: { min: 46, max: 48 }
+  strength: SEASONED
+  loadout: masteria-cleric-l48
+  personality: relaxed-v1
+  home:
+    town: haunted-house
+    routine:
+      - { from: 8, to: 12, spot: "venue:by-olivia", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 21, spot: "venue:by-witch-malady", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: true
+  knows: [voodoo, hoodoo, dead scarecrow]
+  contract: marigold-the-exorcists-fee
+  questLines: [marigold-blessing-the-halls, marigold-a-taru-staff, marigold-the-witchs-gloves, marigold-the-mirror-ghost]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: lucius, kind: WORKS_WITH }
+    - { persona: mordecai, kind: WORKS_ALONGSIDE }
+    - { persona: winnie, kind: GETS_ROBES_FROM }
+  giftItemIds: [4000035, 2000006]
+  dialogue:
+    greetFirst: ["bless you. no, you didn't sneeze. i bless everyone who walks up to the house. it's cheaper than the alternative.", "oh, hello! would you like a biscuit? they're blessed. they're also chocolate. the blessing doesn't affect the chocolate."]
+    greet: ["hello, dear! blessed and well?", "back again! have a biscuit."]
+    idle: ["(sprinkles a few drops from a small flask along the house's front step, humming a hymn slightly off-key)", "(breaks a biscuit in half and leaves one half on the step, as if for someone)"]
+    noWork: ["nothing today. the halls are blessed. for now. blessings wear off. like biscuits."]
+    nothingDue: ["you owe me nothing, dear. blessings are free. biscuits are a donation."]
+    who: ["Marigold. i'm a cleric out of Ellinia, sent by the Magic Library to bless the Prendergast house. that was six years ago. it keeps needing blessing. Lucius breaks the things in it. i bless what's left. we're a very good team. he's very loud."]
+    bye: ["bless you. go carefully."]
+    thanks: ["oh, bless you, dear."]
+    smallTalk: ["the voodoos in the library were dolls that someone wished on. wishes go strange in a house like this. i bless them back to dolls. they look relieved.", "i leave half a biscuit on the step every morning. for Sophilia. Cornelius doesn't know. or he does, and he's never said. that's the same thing, in this house."]
+    speakPlainly: ["plainly: holy water, biscuits, and a house that keeps needing both."]
+    offer: ["twenty-five thousand for the Magic Library. i'll come wherever you need blessing. which is everywhere, dear."]
+    join: ["oh, lovely! i'll keep you on your feet. you keep the nasty things off me."]
+    bench: ["three days. then the house needs blessing again."]
+    leave: ["that's me, dear. the house is calling. it's always calling."]
+    refuse.bond: ["i'd love to, dear, but i don't know you yet. let's have a biscuit first. several."]
+    refuse.flags: ["have you heard my fee? i tell Lucius every evening by the witch's spot. listen in. it's not a secret. it's barely a fee."]
+    refuseOwnErrand: ["my blessing, dear. you can hold the flask."]
+    questOffer.marigold-blessing-the-halls: ["the scarecrows in the hallway where am I and the piano rooms are scaring the dolls, which scares the house, which scares Cornelius. thirty of them, dear? then i can bless the halls in peace."]
+    questAccept.marigold-blessing-the-halls: ["the house. the hallway where am I, and the piano rooms off it and off this again. the dead scarecrows. they're straw. they burn. not that i'd suggest it."]
+    questWaiting.marigold-blessing-the-halls: ["thirty, dear. take a biscuit for strength."]
+    questComplete.marigold-blessing-the-halls: ["thirty! lovely. now i can bless in peace. bless you. have two biscuits."]
+    questOffer.marigold-a-taru-staff: ["the voodoos in the library and the bedroom off where are you. twenty of them, dear? a Taru pilgrim left me a staff and a spirit feather when she passed through. i've no use for a Taru staff. you might."]
+    questAccept.marigold-a-taru-staff: ["the house. the library, and Sophilia's bedroom off the hallway where are you. the voodoos. they're wishes gone wrong. be kind. firmly."]
+    questWaiting.marigold-a-taru-staff: ["twenty, dear."]
+    questComplete.marigold-a-taru-staff: ["twenty! blessed. here: an Umaru, a Taru spirit feather and some jungle lilies. Corine in New Leaf City wakes the spirit in the staff, if you bring her the rest. tell her Marigold sent you. she'll give you a biscuit. she won't. but tell her."]
+    questOffer.marigold-the-witchs-gloves: ["the hoodoos in Sophilia's bedroom and the vanity room. twenty of them, dear. i'll give you two things a merchant left as a donation. Barricade draws mage's gloves from them, i'm told. glittery ones."]
+    questAccept.marigold-the-witchs-gloves: ["the house. Sophilia's bedroom and the vanity room off the hallway where are you. the hoodoos. they're the voodoos' cross cousins."]
+    questWaiting.marigold-the-witchs-gloves: ["twenty, dear. nearly there."]
+    questComplete.marigold-the-witchs-gloves: ["twenty! bless you. here: a LeFay jewel and some pharaoh's wrappings. Barricade in Bigger Ben draws the manual, Spindle in Omega Sector makes the gloves. glittery. very becoming."]
+    questOffer.marigold-the-mirror-ghost: ["the mirror ghost, dear. there's one in two of the vanity rooms and one in the piano room. one of them, just one, broken and blessed. i've never been brave enough to bless one up close. i've a cloak for whoever does."]
+    questAccept.marigold-the-mirror-ghost: ["the vanity room off the first hallway, or the piano room, or the vanity room off where am I. the mirror ghost. don't look into it, dear. look past it. Lucius says so. he's right, for once."]
+    questWaiting.marigold-the-mirror-ghost: ["just one, dear. look past it."]
+    questComplete.marigold-the-mirror-ghost: ["you broke it! oh, i'll bless it now. there. here, dear. a cloak of corruption. that's a terrible name for a cloak. Adonis in El Nath can make something better of it, i'm told. something about Zakum. i don't ask. i bless."]
+    about.lucius: ["Lucius breaks the things in the house. he's very loud about it. i bless what's left. i've been trying to get him to eat a biscuit for six years. he says they're suspicious. they're chocolate."]
+    about.mordecai: ["Mordecai keeps the graves. i bless them on Sundays. he digs on Mondays. we've never once been on the ground at the same time. it works."]
+    about.winnie: ["Winnie made me a robe with deep pockets. for the holy water and the biscuits. mostly the biscuits."]
+    about.cornelius: ["Cornelius never talks about his sister. if he ever throws her a party, i'll bless the cake. i'm going to bless it so hard."]
+    aboutUnknown: ["i've never blessed them. i'd be happy to."]
+    friend.close: ["i've a biscuit set aside for you every day. the good ones. with the extra chocolate."]
+    friend.best: ["if i ever go back to Ellinia, i'll tell the library about you. i'll tell them you're blessed. you are."]
+    famed: ["everyone's saying lovely things about you, dear. bless them."]
+    defamed: ["people are saying hard things, dear. bless them too. they need it more."]
+    gift: ["oh, bless you!"]
+    gift.favorite: ["oh, that's lovely, dear! that's going in my good pocket."]
+    gift.again: ["one a day, dear! bless you anyway."]

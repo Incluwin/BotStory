@@ -90,7 +90,7 @@ class ServerModsTest {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
                 ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG, ServerMods.CASH_ITEM_TRADE,
                 ServerMods.DEATH_COUNT, ServerMods.SHOP_BUYBACK, ServerMods.WEATHER, ServerMods.CASH_SHOP_WINDOW,
-                ServerMods.REPACK_MAPS),
+                ServerMods.REPACK_MAPS, ServerMods.CRYSSEA),
                 ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
@@ -115,6 +115,8 @@ class ServerModsTest {
         assertTrue(ServerMods.REPACK_MAPS.defaultOn(), "only accounts known to be on the Repack files go in");
         assertFalse(ServerMods.REPACK_MAPS.bootOnly());
         assertEquals("repack_maps", ServerMods.REPACK_MAPS.id());
+        assertFalse(ServerMods.CRYSSEA.defaultOn(), "a client without her Custom.wz look closes on entering New Leaf City");
+        assertTrue(ServerMods.CRYSSEA.bootOnly(), "she is placed when the map loads");
     }
 
     @Test
@@ -123,7 +125,7 @@ class ServerModsTest {
                 Map.entry("botstory_wz", "off"), Map.entry("beginner_ap", "off"), Map.entry("set_items", "on"),
                 Map.entry("storage_bag", "on"), Map.entry("cash_item_trade", "on"), Map.entry("death_count", "on"),
                 Map.entry("shop_buyback", "on"), Map.entry("weather", "on"), Map.entry("cash_shop_window", "on"),
-                Map.entry("repack_maps", "on")),
+                Map.entry("repack_maps", "on"), Map.entry("cryssea", "off")),
                 YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");
