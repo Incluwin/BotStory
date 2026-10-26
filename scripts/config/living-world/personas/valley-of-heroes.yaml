@@ -1,0 +1,267 @@
+# Valley of Heroes 1 cast (docs/ITCG_MASTERIA_PLAN.md section 6): the safe valley at the foot of Crimsonwood Mountain,
+# where every hero of the keep has a stone. 4 residents, 2 recruitable (Osgar the road warden for a day rate, Elspeth
+# the rider once she trusts you), 1 small arc (Bertil's blank stone, carved in the last beat of Aldwin's sixth banner,
+# arcs/crimsonwood-keep.yaml). Ids in quests/valley-of-heroes.yaml.
+- id: bertil
+  name: Bertil
+  look: { gender: male }
+  title: "Carver of the Valley Stones"
+  job: BEGINNER
+  level: { min: 85, max: 85 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: valley-of-heroes
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-sage", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-central-street", activity: REST }
+      - { from: 14, to: 19, spot: "venue:middle-west-street", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [valley of heroes, windraider, crimsonwood mountain]
+  questLines: [bertil-clear-the-ascent, bertil-the-sixth-name]
+  arc: bertil-the-blank-stone
+  rumors: [valley-at-the-stones]
+  relationships:
+    - { persona: aldwin, kind: GETS_LETTERS_FROM }
+    - { persona: kiri, kind: SHARES_A_BENCH_WITH }
+    - { persona: osgar, kind: CARVED_THE_FATHER_OF }
+  giftItemIds: [4032004, 2022001]
+  dialogue:
+    greetFirst: ["mind the stones. every one's a hero. some of them were very short heroes. you'd trip.", "a visitor in the valley. you came up through the forest, then. the stones like visitors. they don't get many who aren't dead."]
+    greet: ["hello. i carved a little today. a little is plenty.", "you again. sit on that one. he won't mind. he was a sitting sort."]
+    idle: ["(taps a chisel along the edge of a weathered stone, listening to the ring of it)", "(brushes stone dust off a carved name with the flat of his hand, gently, like a cheek)"]
+    noWork: ["nothing today. the stones are all carved. all but one."]
+    nothingDue: ["you owe me nothing. the stones owe nobody."]
+    who: ["Bertil. i carve the stones in the Valley of Heroes. when a hero of the keep falls and somebody sees it, i carve the name. if nobody sees it, the stone stays blank till somebody does. there's one that's been blank forty years. i dust it every morning."]
+    bye: ["walk soft. they're sleeping."]
+    thanks: ["oh, that's kind."]
+    smallTalk: ["the sages in the valley say the stones listen. i don't know about listen. they ring different when someone's been talking to them. i've rung that blank one a thousand times. it rings lonely.", "Aldwin up at the keep writes me every season. 'not yet,' he writes. 'not yet, Bertil.' i've a chisel kept sharp for the day he writes something else."]
+    speakPlainly: ["plainly: a chisel, a valley of names, and one blank stone."]
+    questOffer.bertil-clear-the-ascent: ["the windraiders come down off the lower ascent and knock the top stones crooked. forty of them, please. i'll straighten the stones. there's something under the third one i lifted last week you might want."]
+    questAccept.bertil-clear-the-ascent: ["the lower ascent, up the valley road past Valley of Heroes 2. the windraiders. they spin. don't spin back."]
+    questWaiting.bertil-clear-the-ascent: ["forty. the stones lean when they're about."]
+    questComplete.bertil-clear-the-ascent: ["forty. they'll stand straight now. here. under the third stone, wrapped in oilcloth. old greaves, older than the keep. Barricade's smiths call them Ancient. i call them heavy. take them. the stone won't miss them. it's got a name."]
+    questOffer.bertil-the-sixth-name: ["Aldwin wrote. 'the tassel's come home.' somebody went into the Council Hall and came out with Leofric's knot. that's seeing. that's enough for me. go up to the keep and ask him for the words. exactly the words. i'll carve them before the light goes."]
+    questAccept.bertil-the-sixth-name: ["the keep, up the mountain. Aldwin, by the empty plinth, morning or dusk. ask him what goes on the stone. he's had forty years to choose."]
+    questWaiting.bertil-the-sixth-name: ["the words. he'll have them. he's always had them."]
+    questComplete.bertil-the-sixth-name: ["'Leofric, Banner Master. he carried it in.' ...that's right. that's exactly right. stand back. (the chisel rings, and rings, for a long while.) there. forty years blank. that's the last blank stone in the valley. i'll have nothing to dust. here, take this. i've been saving it for whoever brought me the words."]
+    about.aldwin: ["Aldwin was Leofric's squire. he writes every season. 'not yet.' forty years of 'not yet.' i've kept every letter. i'll give them back to him one day. in a box. tied with a crimson cord."]
+    about.kiri: ["Kiri's a Taru, come all the way from the jungle by the city to walk the valley. she says the stones have spirits. she talks to them. i've started to listen for the answers."]
+    about.osgar: ["Osgar watches the valley road. i carved his father's stone. Osgar saw him fall, at the cavern of fear, so i could carve it. he comes and stands by it most mornings. i don't ask."]
+    about.elspeth: ["Elspeth rides the valley road and back, all day. she's the only one who stops to read the stones. every one. she knows more of the names than i do."]
+    aboutUnknown: ["no stone for them. good. long may it stay that way."]
+    friend.close: ["i've carved a little mark on the back of the bench for you. not a name. you're not done yet."]
+    friend.best: ["if i'm ever carving yours, i'll take my time. i'll get every letter right."]
+    famed: ["the valley speaks well of you. the living part of it."]
+    defamed: ["the valley speaks ill of you. the stones don't. they're kinder."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's thoughtful. that's going by the bench, where the stones can see it."]
+    gift.again: ["one a day. the stones get jealous."]
+
+- id: kiri
+  name: Kiri
+  look: { gender: female }
+  title: "Taru Pilgrim"
+  job: BEGINNER
+  level: { min: 55, max: 55 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: valley-of-heroes
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-sage", activity: SOCIALIZE }
+      - { from: 11, to: 15, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 15, to: 19, materialize: false }
+      - { from: 19, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  knows: [phantom tree, crimson tree, valley of heroes]
+  questLines: [kiri-a-spirit-garden, kiri-carve-a-totem, kiri-spirit-feathers]
+  rumors: [valley-at-the-stones]
+  relationships:
+    - { persona: bertil, kind: SHARES_A_BENCH_WITH }
+    - { persona: elspeth, kind: RIDES_BEHIND }
+  giftItemIds: [4032003, 2022001]
+  dialogue:
+    greetFirst: ["oh! you walked in so loud the spirits ran off. no, it's fine. they'll come back. they're curious. so am i. hello.", "a traveller. you've come up through the forest of trees that walk. did they talk to you? they talk to me. they're very rude."]
+    greet: ["hello! the spirits are in today.", "you're back! i've been talking to a stone about you. good things."]
+    idle: ["(sits cross-legged before a weathered stone and hums to it, a low wavering tune)", "(ties a small feather to a stem of crimson wood and holds it up to the wind)"]
+    noWork: ["nothing today. i'm listening. it takes all day to listen properly."]
+    nothingDue: ["you owe me nothing. the spirits keep their own count."]
+    who: ["Kiri. i'm a Taru, from the Krakian jungle below New Leaf City. my cousin Corine lives in the city now and makes weapons out of spirit feathers. i came the other way. i walk the Valley of Heroes and listen to the stones. every hero leaves a spirit. most of them are very polite."]
+    bye: ["walk with the wind behind you. it helps."]
+    thanks: ["oh, that's lovely."]
+    smallTalk: ["the Taru make totems from wood that remembers. crimson wood remembers everything. you can hear it if you hold it to your ear. it remembers being a tree. it's very proud about it.", "Corine sends letters. she says the city's loud and the people are kind. i think it's the other way round here. the valley's quiet and the stones are kind."]
+    speakPlainly: ["plainly: a Taru far from home, a lot of feathers, and a valley full of spirits."]
+    questOffer.kiri-a-spirit-garden: ["i'm planting a spirit garden by the stones, and the phantom trees in the forest below drop the only seeds that'll grow up here. eight seeds? the trees won't mind. well. they'll mind. they'll get over it."]
+    questAccept.kiri-a-spirit-garden: ["the Phantom Forest, by the Haunted House. the bent tree, the haunted hill, the swamp bog. the trees that walk. they drop seeds when they fall over."]
+    questWaiting.kiri-a-spirit-garden: ["eight seeds! the garden's a hole at the moment. it's a very hopeful hole."]
+    questComplete.kiri-a-spirit-garden: ["eight! they'll grow. ...oh. there's something following you. the orange one. it came down the valley road this morning and it's been sitting by the stones waiting. it's a little tiger. a spirit tiger, maybe. it's picked you. the Taru say you don't argue with a tiger that's picked you."]
+    questOffer.kiri-carve-a-totem: ["i'd like to carve a totem for the valley. a proper Taru one. it needs crimson wood, ten pieces, from the trees on the lower ascent. clear a few of the trees first, they get grabby. i'll carve two. one's for you."]
+    questAccept.kiri-carve-a-totem: ["the lower ascent, up the road past Valley of Heroes 2. the crimson trees. they remember being hit. hit them anyway."]
+    questWaiting.kiri-carve-a-totem: ["ten pieces. i've got my knife ready."]
+    questComplete.kiri-carve-a-totem: ["ten. ...listen. you can hear it remembering. there. a Taru totem. the second one's for the valley. this one's for you. Barricade in Bigger Ben knows what a totem's for. he says it's for drawing a manual. i say it's for remembering. both, maybe."]
+    questOffer.kiri-spirit-feathers: ["fifteen more pieces of crimson wood? i'll bind you a spirit feather. Corine uses them. she always wants more."]
+    questAccept.kiri-spirit-feathers: ["the lower ascent. the crimson trees."]
+    questWaiting.kiri-spirit-feathers: ["fifteen."]
+    questComplete.kiri-spirit-feathers: ["fifteen. here's a feather. take it to Corine. tell her i said hello. tell her the stones said hello too."]
+    about.bertil: ["Bertil carves the names. he dusts a blank stone every morning. the spirit in that stone isn't there. it's somewhere else. it's waiting to be let come home."]
+    about.elspeth: ["Elspeth gives me rides on her horse up and down the valley. she sings badly. the stones like it. i like it."]
+    about.osgar: ["Osgar stands by his father's stone every morning. i've never heard the spirit say anything. i think it doesn't need to. they're saying it all just standing there."]
+    aboutUnknown: ["the spirits don't know them yet."]
+    friend.close: ["i've tied a feather to a stone for you. it's not a name. it's a hello."]
+    friend.best: ["if i go back to the jungle one day, i'll carve you a totem and leave it here. it'll remember you."]
+    famed: ["the spirits are saying lovely things about you. even the rude ones."]
+    defamed: ["the spirits are saying hard things. spirits gossip. don't listen."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's perfect! that's going on the totem."]
+    gift.again: ["one a day! the totem's only so big."]
+
+- id: osgar
+  name: Osgar
+  look: { gender: male }
+  title: "Warden of the Valley Road"
+  job: WHITEKNIGHT
+  level: { min: 100, max: 103 }
+  strength: ELITE
+  loadout: masteria-2h-blunt-l100
+  personality: efficient-v1
+  home:
+    town: valley-of-heroes
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-east-street", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [firebrand, typhon, crimsonwood mountain]
+  contract: osgar-day-rate
+  questLines: [osgar-the-valley-road, osgar-golden-smith-hammer, osgar-dragon-flame, osgar-reverse-bellocce]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: elspeth, kind: SHARES_THE_ROAD_WITH }
+    - { persona: bertil, kind: VISITS_THE_STONE_OF_HIS_FATHER_WITH }
+  giftItemIds: [4032012, 2000004]
+  dialogue:
+    greetFirst: ["the valley road's safe. i make it safe. you're welcome to it.", "a traveller. you'll be going up the mountain. the road's steep after the second valley. lean into it."]
+    greet: ["morning. or evening. the road doesn't care.", "you again. road's clear."]
+    idle: ["(leans on the haft of a great hammer and watches the road up the mountain, still as a stone)", "(stands for a while by one particular stone, then nods to it and goes back to the road)"]
+    noWork: ["nothing today. the road's quiet."]
+    nothingDue: ["we're square."]
+    who: ["Osgar. i keep the valley road. firebrands come down out of the caverns, typhons off the path of peril. they stop at me. my father kept it before me. his stone's the fourth on the left. i saw him fall, so Bertil could carve it. that's a thing a son can do."]
+    bye: ["safe road."]
+    thanks: ["good. thanks."]
+    smallTalk: ["the firebrands in the cavern of fear burn hot enough to soften a hammer head. my father taught me to swing before they get close. i've never let one get close.", "Elspeth rides the road. i walk it. we meet at the second valley every noon and say 'clear'. it's the most either of us says all day."]
+    speakPlainly: ["plainly: a hammer, a road, and a stone i visit."]
+    offer: ["a hundred thousand for a day. the road can spare me a day. not two."]
+    join: ["fine. i'll take the hits. you take the rest."]
+    bench: ["three days. then the road wants me."]
+    leave: ["day's done. back to the road."]
+    refuse.bond: ["i don't leave the road for people i don't know."]
+    refuse.flags: ["walk my road with me once. then ask."]
+    refuseOwnErrand: ["my road. you can walk it."]
+    questOffer.osgar-the-valley-road: ["walk my road. the firebrands are out of the cavern of fear and the cavern of shame again, burning the verges. thirty of them. it's what i do every morning. you'll see why i'm quiet."]
+    questAccept.osgar-the-valley-road: ["up the mountain. the cavern of fear off the lower ascent, the cavern of shame off the path of peril. the firebrands. swing early."]
+    questWaiting.osgar-the-valley-road: ["thirty. the verges are smoking."]
+    questComplete.osgar-the-valley-road: ["thirty. the road's clear. that's my morning. every morning."]
+    questOffer.osgar-golden-smith-hammer: ["the Golden Smith Hammer. my father's. it wants a new haft. typhon bone, the big ones on the path of peril. thirty typhons. i'll fit it."]
+    questAccept.osgar-golden-smith-hammer: ["the path of peril, up past the second valley. the typhons. the big ones. the little ones are just loud."]
+    questWaiting.osgar-golden-smith-hammer: ["thirty. the haft's cracked."]
+    questComplete.osgar-golden-smith-hammer: ["thirty. ...fitted. Golden Smith Hammer. seven safe scrolls, every one took. it was my father's. he'd want it swung."]
+    questOffer.osgar-dragon-flame: ["the Dragon Flame. it wants tempering in a firebrand's heat and cooling in a nightshadow's dark. thirty firebrands on the path of strength, twenty nightshadows on the upper ascent."]
+    questAccept.osgar-dragon-flame: ["the path of strength for the firebrands, the upper ascent for the nightshadows. hot, then cold. don't mix them up."]
+    questWaiting.osgar-dragon-flame: ["thirty and twenty. hot, then cold."]
+    questComplete.osgar-dragon-flame: ["hot and cold. good. Dragon Flame. seven sixties, every one took. it'll ring when it hits. listen for it."]
+    questOffer.osgar-reverse-bellocce: ["the Bellocce. reverse. my best. it wants crimson hearts for the weight, five of them, from the guardians in eternal vigilance. thirty guardians. my father fought them once. he lost. you won't."]
+    questAccept.osgar-reverse-bellocce: ["the keep. eternal vigilance, off the Hall of Mastery. the crimson guardians. they don't stop. neither do you."]
+    questWaiting.osgar-reverse-bellocce: ["five hearts. take your time. they take theirs."]
+    questComplete.osgar-reverse-bellocce: ["five. ...my father would have liked to see that. Reverse Bellocce. two tens and five sixties, every one took. i'm going to go and tell his stone. it won't say anything. it doesn't need to."]
+    about.elspeth: ["Elspeth rides the road. we meet at noon. 'clear.' 'clear.' it's a good word. it means everyone's alive."]
+    about.bertil: ["Bertil carved my father's stone. i told him what i saw. he got every letter right. i've never thanked him properly. i bring him crimson hearts. he uses them for grit. it's thanks."]
+    about.kiri: ["the Taru girl talks to the stones. she says my father's spirit is 'very calm'. he was. it's good to know he still is."]
+    aboutUnknown: ["never walked my road."]
+    friend.close: ["you can walk my road any hour. i'll have cleared it."]
+    friend.best: ["if they ever carve my stone, i'd want you to be the one who saw. not because i'd want you to see. because you'd tell Bertil right."]
+    famed: ["they speak well of you on the road."]
+    defamed: ["they speak ill of you on the road. roads hear everything. they don't judge."]
+    gift: ["thanks."]
+    gift.favorite: ["oh. that's useful. that goes in my pack."]
+    gift.again: ["one. that's plenty."]
+
+- id: elspeth
+  name: Elspeth
+  look: { gender: female }
+  title: "Rider of the Valley Road"
+  job: CRUSADER
+  level: { min: 100, max: 103 }
+  strength: ELITE
+  loadout: masteria-sword-l100
+  personality: relaxed-v1
+  home:
+    town: valley-of-heroes
+    routine:
+      - { from: 8, to: 13, spot: "venue:middle-west-street-2", activity: SHOW_OFF }
+      - { from: 13, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: true
+  knows: [crimson tree, stormbreaker, valley of heroes]
+  contract: elspeth-the-riders-word
+  questLines: [elspeth-the-lower-ascent, elspeth-sparta, elspeth-dragon-carabella, elspeth-reverse-executioners]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: osgar, kind: SHARES_THE_ROAD_WITH }
+    - { persona: kiri, kind: GIVES_RIDES_TO }
+    - { persona: bertil, kind: READS_THE_STONES_OF }
+  giftItemIds: [4032004, 2000004]
+  dialogue:
+    greetFirst: ["whoa. sorry. i come round the bend fast. you're new. you've got the forest still in your boots. welcome to the valley.", "a traveller! up from the Haunted House? the taxi drops people there and they look so lost. you look lost-ish. that's better than most."]
+    greet: ["hello! road's clear. i checked twice.", "you again! did you read any of the stones? read the stones."]
+    idle: ["(reads the name on a stone aloud, softly, then the next one, then the next)", "(polishes the boss of a round shield on her sleeve, and checks her reflection, and laughs at it)"]
+    noWork: ["nothing today. i rode the road. it's still a road."]
+    nothingDue: ["we're square! i think. i don't count. Osgar counts."]
+    who: ["Elspeth. i ride the valley road, keep to Haunted House forest and back, twice a day. i carry letters, i carry Taru pilgrims, i carry news. and i read every stone in the valley, every time i pass. somebody should. they were all somebody."]
+    bye: ["read a stone on your way. any one. they like it."]
+    thanks: ["oh, thanks! really!"]
+    smallTalk: ["there are four hundred and twelve stones in the valley. i know three hundred and ninety of the names by heart. Bertil knows all of them. Osgar knows one. that's the one that matters to him.", "the crimson trees on the lower ascent grab at my horse's tail. i've started plaiting it. they can't get a grip on a plait. ha."]
+    speakPlainly: ["plainly: a horse, a road, a shield, and a lot of names."]
+    offer: ["thirty-five thousand and your word. i only ride with people i trust. you've got that far. i'll come."]
+    join: ["right! i'll take the left. sing if you like. i'm going to."]
+    bench: ["two days. then the road'll miss me. the stones too."]
+    leave: ["that's me. the road's waiting. say hello to the stones."]
+    refuse.bond: ["i ride with people i trust. i don't trust you yet. that's not a no. it's a not-yet."]
+    refuse.flags: ["ride the lower ascent with me first. then ask."]
+    refuseOwnErrand: ["my ride. you can come along."]
+    questOffer.elspeth-the-lower-ascent: ["ride the lower ascent with me? the crimson trees have crept onto the road. thirty of them. then go and stand at the second valley and read one stone. any stone. i found something on the verge you can have."]
+    questAccept.elspeth-the-lower-ascent: ["the lower ascent, past Valley of Heroes 2. the crimson trees. then back to the second valley. read one. out loud."]
+    questWaiting.elspeth-the-lower-ascent: ["thirty, and a stone. read it out loud."]
+    questComplete.elspeth-the-lower-ascent: ["you read one! which? ...oh, Gerolt the Lesser. he was very tall. it's a joke. here. this was on the verge, half in the mud. an old faceguard. older than the keep. Barricade's smiths want these. i want the mud off my saddlebag."]
+    questOffer.elspeth-sparta: ["the Sparta. a good plain sword. it wants a stormbreaker's edge. forty stormbreakers, from the upper ascent or the cavern of valour. it's a long ride. i'll come."]
+    questAccept.elspeth-sparta: ["the upper ascent, or the cavern of valour off it. the stormbreakers. they come in twos. so do we."]
+    questWaiting.elspeth-sparta: ["forty! nearly there. probably."]
+    questComplete.elspeth-sparta: ["forty! sharp. Sparta. seven safe scrolls, every one took. it's plain. it's honest. it'll never let you down."]
+    questOffer.elspeth-dragon-carabella: ["the Carabella. a dragon sword. it wants a nightshadow's dark for the blade, thirty from the path of strength. then ride on to the cavern of pain and say hello to Jack. he's always in there. nobody knows why."]
+    questAccept.elspeth-dragon-carabella: ["the path of strength for the nightshadows. then the cavern of pain off the lower ascent. Jack. say hello. he won't say it back."]
+    questWaiting.elspeth-dragon-carabella: ["thirty, and Jack. did he say hello?"]
+    questComplete.elspeth-dragon-carabella: ["he didn't say hello? he never does. Dragon Carabella. seven sixties, every one took. it shines. polish it. i polish everything."]
+    questOffer.elspeth-reverse-executioners: ["the Executioners. reverse. my best. forty typhons off the path of peril and twenty crimson guardians at the keep gate. it's the whole road, end to end. we ride it together."]
+    questAccept.elspeth-reverse-executioners: ["the path of peril for the typhons. the keep gate road for the guardians. the whole road. bottom to top."]
+    questWaiting.elspeth-reverse-executioners: ["forty and twenty. the whole road."]
+    questComplete.elspeth-reverse-executioners: ["the whole road! end to end! ...Reverse Executioners. two tens and five sixties, every one took. i'm going to read every stone in the valley tonight. out loud. for luck. yours."]
+    about.osgar: ["Osgar walks the road. i ride it. we meet at noon and say 'clear'. he means a whole speech by it. i've learned to hear the speech."]
+    about.kiri: ["Kiri rides behind me on the road. she talks to the stones. sometimes i think they answer. i've stopped singing so loud in case they're trying."]
+    about.bertil: ["Bertil carves the stones. i read them. between us, everybody's remembered. that's the job. that's the whole valley's job."]
+    aboutUnknown: ["not on any stone i've read."]
+    friend.close: ["i've read your name to the stones. not on a stone. just to them. so they'd know you."]
+    friend.best: ["if i ever stop riding, the horse is yours. she's called Valour. she bites. she likes you."]
+    famed: ["the valley's full of your name! the living half."]
+    defamed: ["people are saying things. ride past them. that's what i do."]
+    gift: ["oh, thank you!"]
+    gift.favorite: ["oh, that's lovely! that's going in the saddlebag. the good one."]
+    gift.again: ["one a day! the saddlebag's full!"]

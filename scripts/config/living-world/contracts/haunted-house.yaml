@@ -1,0 +1,32 @@
+# Haunted House contracts: a ghost-breaker paid partly in loaded springs for his traps, an exorcist whose fee you
+# overhear by the witch's spot.
+- id: lucius-the-trap-springs
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [lucius.intro.done]
+  price:
+    meso: 20000
+    items: [{ itemId: 4000399, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 10000 }
+
+- id: marigold-the-exorcists-fee
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [marigold.intro.done, hh.heard-exorcist]
+  price:
+    meso: 25000
+  terms:
+    durationHours: 12
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 10000 }

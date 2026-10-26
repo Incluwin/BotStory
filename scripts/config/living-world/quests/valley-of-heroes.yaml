@@ -1,0 +1,201 @@
+# Valley of Heroes quest lines (docs/ITCG_MASTERIA_PLAN.md section 6). The valley (610020000) has no mobs; every hunt is
+# up the mountain or down in the forest. Ids from the server's own data: windraider 9400576 and crimson tree 9400586
+# (crimson wood 4032004 at 20%) on the lower ascent 610020002; firebrand 9400577 (cavern of fear 610020010, cavern of
+# shame 610020012, path of strength 610020003); typhon 9400574 (path of peril 610020004); nightshadow 9400579 (upper
+# ascent 610020005, path of strength); stormbreaker 9400581 (upper ascent, cavern of valour 610020015); crimson
+# guardian 9400582 (crimson heart 4032012 at 20%; eternal vigilance 610030015, the keep gate road 610020006); phantom
+# tree 9400588 (phantom seed 4032003 at 15%; bent tree 610010000, haunted hill 610010001, swamp bog 610010002); Valley
+# of Heroes 2 610020001; the cavern of pain 610020011 (Jack).
+# Gear: Osgar's two-handed blunts Golden Smith Hammer 1422027 L100 / Dragon Flame 1422028 L110 / Reverse Bellocce
+# 1422038 L120; Elspeth's swords Sparta 1302056 L100 / Dragon Carabella 1302059 L110 / Reverse Executioners 1302086 L120.
+# iTCG goods: Ancient Greaves 4031899, Ancient Faceguard 4031918, Taru Totem 4031755, Taru Spirit Feather 4031936, Taru
+# Spirit Cape 1102165, the Orange Tiger 5000044 (a real pet, RewardItems).
+
+# ---- Bertil, carver of the valley stones: the last beat of the sixth banner -------------------------------------------
+
+- id: bertil-clear-the-ascent
+  persona: bertil
+  title: "The Stones Lean"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: raiders, type: KILL_MOBS, mobIds: [9400576], count: 40, mapIds: [610020002] }
+    - { id: report, type: DELIVER, to: bertil }
+  rewards: { meso: 30000, exp: 50000, bondPoints: 35, items: [{ itemId: 4031899, count: 1 }] }
+
+- id: bertil-the-sixth-name
+  persona: bertil
+  title: "The Sixth Name"
+  length: SHORT
+  requires: { level: { min: 90 }, notFlags: [masteria.banner.carved], questsCompleted: [aldwin-into-the-sanctum] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: aldwin, type: TALK_TO, persona: aldwin, say: ["the words? i've had them forty years. 'Leofric, Banner Master. he carried it in.' that's all. not 'he fell'. nobody saw him fall. somebody saw where he carried it. tell Bertil. tell him exactly."] }
+    - { id: carve, type: DELIVER, to: bertil }
+  rewards: { meso: 120000, exp: 200000, bondPoints: 60, items: [{ itemId: 1102165, count: 1 }], worldFlags: [masteria.banner.carved] }
+
+# ---- Kiri, Taru pilgrim -----------------------------------------------------------------------------------------------
+
+- id: kiri-a-spirit-garden
+  persona: kiri
+  title: "A Spirit Garden"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 40, mapIds: [610010000, 610010001, 610010002] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4032003, count: 8 }
+    - { id: garden, type: DELIVER, to: kiri, take: { itemId: 4032003, count: 8 } }
+  rewards: { meso: 20000, exp: 25000, bondPoints: 40, items: [{ itemId: 5000044, count: 1 }] }
+
+- id: kiri-carve-a-totem
+  persona: kiri
+  title: "Wood That Remembers"
+  length: MEDIUM
+  requires: { level: { min: 74 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 30, mapIds: [610020002] }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 10 }
+    - { id: totem, type: DELIVER, to: kiri, take: { itemId: 4032004, count: 10 } }
+  rewards: { meso: 40000, exp: 60000, bondPoints: 35, items: [{ itemId: 4031755, count: 1 }] }
+
+- id: kiri-spirit-feathers
+  persona: kiri
+  title: "A Feather for Corine"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 74 }, questsCompleted: [kiri-carve-a-totem] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 15 }
+    - { id: feather, type: DELIVER, to: kiri, take: { itemId: 4032004, count: 15 } }
+  rewards: { meso: 15000, exp: 25000, bondPoints: 10, items: [{ itemId: 4031936, count: 1 }] }
+
+# ---- Osgar, warden of the valley road (recruitable; his two-handed blunts) --------------------------------------------
+
+- id: osgar-the-valley-road
+  persona: osgar
+  title: "The Valley Road"
+  length: SHORT
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: brands, type: KILL_MOBS, mobIds: [9400577], count: 30, mapIds: [610020010, 610020012] }
+    - { id: report, type: DELIVER, to: osgar }
+  rewards: { meso: 35000, exp: 70000, bondPoints: 30, flags: [osgar.intro.done] }
+
+- id: osgar-golden-smith-hammer
+  persona: osgar
+  title: "The Golden Smith Hammer"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [osgar-the-valley-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: typhons, type: KILL_MOBS, mobIds: [9400574], count: 30, mapIds: [610020004] }
+    - { id: hammer, type: DELIVER, to: osgar }
+  rewards:
+    meso: 220000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { itemId: 1422027, scrolls: [{ success: 100 }] }
+
+- id: osgar-dragon-flame
+  persona: osgar
+  title: "The Dragon Flame"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [osgar-golden-smith-hammer] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: brands, type: KILL_MOBS, mobIds: [9400577], count: 30, mapIds: [610020003] }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 20, mapIds: [610020005] }
+    - { id: hammer, type: DELIVER, to: osgar }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1422028, scrolls: [{ success: 60 }] }
+
+- id: osgar-reverse-bellocce
+  persona: osgar
+  title: "The Reverse Bellocce"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [osgar-dragon-flame] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [9400582], count: 30, mapIds: [610030015] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4032012, count: 5 }
+    - { id: hammer, type: DELIVER, to: osgar, take: { itemId: 4032012, count: 5 } }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1422038, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+# ---- Elspeth, rider of the valley road (recruitable; her swords) ------------------------------------------------------
+
+- id: elspeth-the-lower-ascent
+  persona: elspeth
+  title: "Read One Out Loud"
+  length: SHORT
+  requires: { level: { min: 74 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 30, mapIds: [610020002] }
+    - { id: stone, type: VISIT_MAP, mapIds: [610020001] }
+    - { id: report, type: DELIVER, to: elspeth }
+  rewards: { meso: 30000, exp: 50000, bondPoints: 30, items: [{ itemId: 4031918, count: 1 }], flags: [elspeth.intro.done] }
+
+- id: elspeth-sparta
+  persona: elspeth
+  title: "The Sparta"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [elspeth-the-lower-ascent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: storms, type: KILL_MOBS, mobIds: [9400581], count: 40, mapIds: [610020005, 610020015] }
+    - { id: sword, type: DELIVER, to: elspeth }
+  rewards:
+    meso: 220000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { itemId: 1302056, scrolls: [{ success: 100 }] }
+
+- id: elspeth-dragon-carabella
+  persona: elspeth
+  title: "The Dragon Carabella"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [elspeth-sparta] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020003] }
+    - { id: jack, type: VISIT_MAP, mapIds: [610020011] }
+    - { id: sword, type: DELIVER, to: elspeth }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1302059, scrolls: [{ success: 60 }] }
+
+- id: elspeth-reverse-executioners
+  persona: elspeth
+  title: "The Whole Road"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [elspeth-dragon-carabella] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: typhons, type: KILL_MOBS, mobIds: [9400574], count: 40, mapIds: [610020004] }
+    - { id: guardians, type: KILL_MOBS, mobIds: [9400582], count: 20, mapIds: [610020006] }
+    - { id: sword, type: DELIVER, to: elspeth }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1302086, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }

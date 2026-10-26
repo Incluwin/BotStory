@@ -1,0 +1,335 @@
+# Crimsonwood Keep quest lines (docs/ITCG_MASTERIA_PLAN.md section 6). Every id is from the server's own data:
+# Crimsonwood Mountain: crimson tree 9400586 (crimson wood 4032004 at 20%; lower ascent 610020002, path of strength
+# 610020003), windraider 9400576 (lower ascent, tornado corridor 610030011), stormbreaker 9400581 (lower ascent,
+# stormhall 610030014), firebrand 9400577 (inferno chamber 610030012, cavern of fear 610020010), nightshadow 9400579
+# (wrath of night 610030013, cavern of honour 610020013, cavern of valour 610020015), elderwraith 9400580 (elder ashes
+# 4032010 at 20%; path of strength, haunted hill 610010001, evil rising 610010012, the evil dead 610010013), crimson
+# guardian 9400582 (crimson heart 4032012 at 20%; the keep gate road 610020006, eternal vigilance 610030015); the
+# cavern of fortitude 610020014, the upper ascent 610020005.
+# Phantom Forest: phantom tree 9400588 (phantom seed 4032003 at 15%; bent tree 610010000, haunted hill, swamp bog
+# 610010002, crossroads 610010200), Bigfoot 9400575 and the headless horseman 9400549 (field bosses).
+# MesoGears: jr. yeti 5100000 (jr. yeti skin 4000048 at 60%; ice chamber 600020500).
+# The Inner Sanctum is CWKPQ (scripts/event/CWKPQ.js; the Battle Statue's clearPQ names the script).
+# Gear: Ivor's spears Pinaka 1432030 L100 / Dragon Faltizan 1432038 L110 / Reverse Alchupiz 1432049 L120; Ragna's
+# two-handed swords Stonetooth Sword 1402037 L100 / Dragon Claymore 1402036 L110 / Reverse Nibleheim 1402047 L120;
+# Fennick's claws Red Craven 1472053 L100 / Dragon Green Sleve 1472051 L110 / Reverse Lampion 1472071 L120.
+# iTCG goods: Ancient Helm 4031897, Ancient Armor 4031898, Ancient Gi 4031919, Ergoth's Jawbone 4031904 (nothing drops
+# it), Ridley's Book of Rituals 4031900, Ridley's Stone 4032026, the Blue Husky 5000037 (a real pet, RewardItems).
+
+# ---- Aldwin, keeper of the sixth plinth: his arc ----------------------------------------------------------------------
+
+- id: aldwin-the-empty-plinth
+  persona: aldwin
+  title: "The Sixth Plinth"
+  length: MEDIUM
+  requires: { level: { min: 74 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 40, mapIds: [610020002, 610020003] }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 10 }
+    - { id: plinth, type: DELIVER, to: aldwin, take: { itemId: 4032004, count: 10 } }
+  rewards: { meso: 60000, exp: 90000, bondPoints: 40, items: [{ itemId: 4031897, count: 1 }] }
+  onComplete: { arcAdvance: { arc: aldwin-the-sixth-banner, to: chapter-2 } }
+
+- id: aldwin-into-the-sanctum
+  persona: aldwin
+  title: "Into the Sanctum"
+  length: LONG
+  requires: { level: { min: 90 }, flags: [cwk.heard-entry], questsCompleted: [aldwin-the-empty-plinth] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sanctum, type: PARTY_QUEST_CLEAR, to: CWKPQ }
+    - { id: report, type: DELIVER, to: aldwin }
+  rewards: { meso: 150000, exp: 250000, bondPoints: 60, items: [{ itemId: 4031904, count: 1 }] }
+  onComplete: { arcAdvance: { arc: aldwin-the-sixth-banner, to: chapter-3 } }
+
+# ---- Quentin, Ridley's copyist ----------------------------------------------------------------------------------------
+
+- id: quentin-ash-for-the-ink
+  persona: quentin
+  title: "Ash for the Ink"
+  length: MEDIUM
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [9400580], count: 20, mapIds: [610020003, 610010001, 610010012, 610010013] }
+    - { id: ashes, type: COLLECT_ITEM, itemId: 4032010, count: 10 }
+    - { id: ink, type: DELIVER, to: quentin, take: { itemId: 4032010, count: 10 } }
+  rewards: { meso: 50000, exp: 80000, bondPoints: 35, items: [{ itemId: 4031900, count: 1 }] }
+
+- id: quentin-copy-work
+  persona: quentin
+  title: "Copy Work"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 88 }, questsCompleted: [quentin-ash-for-the-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ashes, type: COLLECT_ITEM, itemId: 4032010, count: 15 }
+    - { id: ink, type: DELIVER, to: quentin, take: { itemId: 4032010, count: 15 } }
+  rewards: { meso: 20000, exp: 30000, bondPoints: 10, items: [{ itemId: 4031900, count: 1 }] }
+
+# ---- Hulda, cook of the keep ------------------------------------------------------------------------------------------
+
+- id: hulda-phantom-seeds
+  persona: hulda
+  title: "Seeds for the Stew"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 40, mapIds: [610010000, 610010001, 610010002, 610010200] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4032003, count: 8 }
+    - { id: stew, type: DELIVER, to: hulda, take: { itemId: 4032003, count: 8 } }
+  rewards: { meso: 20000, exp: 25000, bondPoints: 35, items: [{ itemId: 4032026, count: 1 }] }
+
+- id: hulda-supper-for-the-gate
+  persona: hulda
+  title: "Supper for the Gate"
+  length: SHORT
+  requires: { level: { min: 60 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ivor, type: TALK_TO, persona: ivor, say: ["...Hulda's stew. (he eats it, all of it, standing, without taking his eyes off the road.) tell her it was good. no. tell her it was very good. she'll know i mean it if it comes from you."] }
+    - { id: report, type: DELIVER, to: hulda }
+  rewards: { meso: 15000, exp: 20000, bondPoints: 35, items: [{ itemId: 4031898, count: 1 }] }
+
+# ---- Wat, page of the keep --------------------------------------------------------------------------------------------
+
+- id: wat-blankets-for-the-hounds
+  persona: wat
+  title: "Blankets for the Hounds"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 25, mapIds: [600020500] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000048, count: 15 }
+    - { id: blankets, type: DELIVER, to: wat, take: { itemId: 4000048, count: 15 } }
+  rewards: { meso: 15000, exp: 18000, bondPoints: 40, items: [{ itemId: 5000037, count: 1 }] }
+
+- id: wat-ask-ragna
+  persona: wat
+  title: "The Real Stance"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ragna, type: TALK_TO, persona: ragna, say: ["is he ready? (she looks over at the barrels.) he's been ready for a month. tell him: tomorrow, at dawn, with a real practice blade, and if he drops it he's on hound duty for a month. don't tell him he's ready. let him find out."] }
+    - { id: report, type: DELIVER, to: wat }
+  rewards: { meso: 5000, exp: 6000, bondPoints: 30 }
+
+# ---- Ivor, warden of the keep gate (recruitable; his spears) ----------------------------------------------------------
+
+- id: ivor-the-gate-watch
+  persona: ivor
+  title: "The Gate Watch"
+  length: SHORT
+  requires: { level: { min: 78 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: storms, type: KILL_MOBS, mobIds: [9400581], count: 40, mapIds: [610030014, 610020002] }
+    - { id: road, type: VISIT_MAP, mapIds: [610020006] }
+    - { id: report, type: DELIVER, to: ivor }
+  rewards: { meso: 30000, exp: 60000, bondPoints: 30, flags: [ivor.intro.done] }
+
+- id: ivor-pinaka
+  persona: ivor
+  title: "The Pinaka"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [ivor-the-gate-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610030013] }
+    - { id: spear, type: DELIVER, to: ivor }
+  rewards:
+    meso: 220000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { itemId: 1432030, scrolls: [{ success: 100 }] }
+
+- id: ivor-dragon-faltizan
+  persona: ivor
+  title: "The Dragon Faltizan"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [ivor-pinaka] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guardians, type: KILL_MOBS, mobIds: [9400582], count: 30, mapIds: [610020006, 610030015] }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4032012, count: 6 }
+    - { id: spear, type: DELIVER, to: ivor, take: { itemId: 4032012, count: 6 } }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1432038, scrolls: [{ success: 60 }] }
+
+- id: ivor-reverse-alchupiz
+  persona: ivor
+  title: "The Reverse Alchupiz"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [ivor-dragon-faltizan] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bigfoot, type: KILL_BOSS, mobIds: [9400575], count: 1 }
+    - { id: horseman, type: KILL_BOSS, mobIds: [9400549], count: 1 }
+    - { id: spear, type: DELIVER, to: ivor }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1432049, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ivor-crimson-hearts
+  persona: ivor
+  title: "A Seal for the Gate"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 100 }, questsCompleted: [ivor-the-gate-watch] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hearts, type: COLLECT_ITEM, itemId: 4032012, count: 8 }
+    - { id: seal, type: DELIVER, to: ivor, take: { itemId: 4032012, count: 8 } }
+  rewards: { meso: 30000, exp: 45000, bondPoints: 10 }
+
+# ---- Ragna, drill mistress of the courtyard (recruitable; her two-handed swords) --------------------------------------
+
+- id: ragna-the-drill
+  persona: ragna
+  title: "Drill"
+  length: SHORT
+  requires: { level: { min: 70 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: raiders, type: KILL_MOBS, mobIds: [9400576], count: 40, mapIds: [610030011] }
+    - { id: report, type: DELIVER, to: ragna }
+  rewards: { meso: 25000, exp: 45000, bondPoints: 30, flags: [ragna.intro.done] }
+
+- id: ragna-stonetooth
+  persona: ragna
+  title: "The Stonetooth"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [ragna-the-drill] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: brands, type: KILL_MOBS, mobIds: [9400577], count: 30, mapIds: [610030012] }
+    - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 10 }
+    - { id: grip, type: DELIVER, to: ragna, take: { itemId: 4032004, count: 10 } }
+  rewards:
+    meso: 220000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { itemId: 1402037, scrolls: [{ success: 100 }] }
+
+- id: ragna-dragon-claymore
+  persona: ragna
+  title: "The Dragon Claymore"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [ragna-stonetooth] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020013, 610020015] }
+    - { id: fortitude, type: VISIT_MAP, mapIds: [610020014] }
+    - { id: blade, type: DELIVER, to: ragna }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1402036, scrolls: [{ success: 60 }] }
+
+- id: ragna-reverse-nibleheim
+  persona: ragna
+  title: "The Reverse Nibleheim"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [ragna-dragon-claymore] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sanctum, type: PARTY_QUEST_CLEAR, to: CWKPQ }
+    - { id: blade, type: DELIVER, to: ragna }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1402047, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ragna-the-sanctum-again
+  persona: ragna
+  title: "The Statue's Fist"
+  length: MEDIUM
+  repeatable: true
+  requires: { level: { min: 90 }, questsCompleted: [ragna-the-drill] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sanctum, type: PARTY_QUEST_CLEAR, to: CWKPQ }
+    - { id: report, type: DELIVER, to: ragna }
+  rewards: { meso: 60000, exp: 90000, bondPoints: 10, items: [{ itemId: 4031904, count: 1 }] }
+
+# ---- Fennick, scout of the upper ascent (recruitable; his claws) ------------------------------------------------------
+
+- id: fennick-the-caverns
+  persona: fennick
+  title: "Seven Holes in a Mountain"
+  length: SHORT
+  requires: { level: { min: 95 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020013] }
+    - { id: valour, type: VISIT_MAP, mapIds: [610020015] }
+    - { id: report, type: DELIVER, to: fennick }
+  rewards: { meso: 40000, exp: 80000, bondPoints: 30, items: [{ itemId: 4031919, count: 1 }], flags: [fennick.intro.done] }
+
+- id: fennick-red-craven
+  persona: fennick
+  title: "The Red Craven"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [fennick-the-caverns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020015] }
+    - { id: claw, type: DELIVER, to: fennick }
+  rewards:
+    meso: 220000
+    exp: 250000
+    bondPoints: 35
+    gear:
+      - { itemId: 1472053, scrolls: [{ success: 100 }] }
+
+- id: fennick-dragon-green-sleve
+  persona: fennick
+  title: "The Dragon Green Sleve"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [fennick-red-craven] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: raiders, type: KILL_MOBS, mobIds: [9400576], count: 40, mapIds: [610020002] }
+    - { id: brands, type: KILL_MOBS, mobIds: [9400577], count: 20, mapIds: [610020010] }
+    - { id: claw, type: DELIVER, to: fennick }
+  rewards:
+    meso: 280000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1472051, scrolls: [{ success: 60 }] }
+
+- id: fennick-reverse-lampion
+  persona: fennick
+  title: "The Eighth Cavern"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [fennick-dragon-green-sleve] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [9400580], count: 10, mapIds: [610020003] }
+    - { id: top, type: VISIT_MAP, mapIds: [610020005] }
+    - { id: claw, type: DELIVER, to: fennick }
+  rewards:
+    meso: 350000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1472071, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }

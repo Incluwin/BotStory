@@ -1,0 +1,14 @@
+# Valley of Heroes rumors.
+- id: valley-at-the-stones
+  participants: [bertil, kiri]
+  where: { town: valley-of-heroes, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 2
+  lines:
+    - { by: kiri, text: "the blank one rang again this morning, Bertil. did you hear?" }
+    - { by: bertil, text: "i heard. it rings every morning. it's lonely. stones get lonely." }
+    - { by: kiri, text: "the Taru say a spirit with no name can't find the way home. it walks the roads looking for it." }
+    - { by: bertil, text: "then he's been walking forty years. Aldwin's waiting for somebody to see where he went." }
+    - { by: kiri, text: "somebody will. people come up this valley every day with swords. one of them will go in after him." }
+    - { by: bertil, text: "i keep the chisel sharp. just in case." }

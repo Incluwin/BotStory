@@ -1,0 +1,27 @@
+# Bigger Ben Lobby arc: the first crew into MesoGears, forty years ago, mapped every chamber but the last; the
+# enigma chamber's tombstone wanted a last verse of their working song, and they never had one. The map walked and
+# found true, the tune hummed in the lobby, and the verse sung at the door (agatha-the-enigma-chamber, once per server).
+- id: agatha-the-last-verse
+  persona: agatha
+  chapters:
+    - id: chapter-1
+      title: "Every Chamber but One"
+    - id: chapter-2
+      title: "The Map Holds True"
+      dialogueOverrides:
+        greet: ["forty years and not a line wrong. i've been sitting with the old map all week. i keep looking at the last chamber. the blank one.", "hello. come by the lobby at dusk. Gus hums when he's tired. i've been listening."]
+        who: ["Agatha. cartographer to the first crew into MesoGears. my map's still true, every line of it, forty years on. all but the last chamber. i never drew the inside. the door wanted a verse we didn't have."]
+        smallTalk: ["Gus hums when he stacks the bags. the same tune his grandfather hummed going down the stairs. i hadn't heard it in forty years. i'd forgotten there were words. i'm starting to remember there were words."]
+        chapterEnter: ["(spreads the old map of MesoGears across the bench and lays a pencil, unsharpened for forty years, across the last chamber)"]
+      unlocks:
+        rumors: [bb-the-crews-song]
+    - id: chapter-3
+      title: "The Door Answered"
+      enterWhen: { flags: [bigger-ben.enigma.answered] }
+      dialogueOverrides:
+        greet: ["the tombstone ticked. it turned. our names are on the back of it. all eight. i went down to see. i'm too old for those stairs. i went down anyway.", "hello. i've drawn the last chamber. it's a small room with a stone in it. forty years for a small room with a stone in it. it's the best room i've ever drawn."]
+        who: ["Agatha. cartographer to the first crew into MesoGears. the map's finished now. somebody sang the last verse at the enigma chamber, the eight names, and the door answered. we're carved in the tower. Mabry would have laughed. he laughed at everything."]
+        idle: ["(inks the last line of a small square room on an old map, and blows on it gently to dry)", "(listens to the clock overhead with her eyes closed, as if it were saying the names)"]
+        smallTalk: ["Gus knows now. i told him. Elmo, his grandad, eighth name on the stone. he cried in the lobby in front of everyone. then he carried my bags down the stairs and back up. he wouldn't let me tip him."]
+        about.gus: ["Gus went down to see the stone. he hummed the whole way. the tombstone ticked in time. i'm not imagining it. i'm a cartographer. i don't imagine. i measure."]
+        chapterEnter: ["(rolls up a finished map of MesoGears, ties it with a crew's length of old rope, and sets it on the bench beside her)"]

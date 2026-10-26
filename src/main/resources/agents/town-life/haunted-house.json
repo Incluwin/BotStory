@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "profileId": "haunted-house",
+  "mapId": 682000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 22,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 167,
+    "middleMaxY": 227,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "left01", "weight": 20 },
+    { "name": "st02", "weight": 19 },
+    { "name": "right01", "weight": 19 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -278, "y": 238, "seatId": -1 },
+    { "x": 47, "y": 238, "seatId": -1 },
+    { "x": 487, "y": 238, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -533, "y": 238 },
+    { "x": 727, "y": 238 }
+  ],
+  "npcSpots": [
+    { "npcId": 9201056, "offsetX": -140 }
+  ],
+  "trafficZones": [
+    { "id": "portal-st02", "type": "PORTAL", "minX": 568, "minY": 141, "maxX": 708, "maxY": 266, "excludesOccupancy": true },
+    { "id": "portal-left01", "type": "PORTAL", "minX": -1036, "minY": 160, "maxX": -896, "maxY": 285, "excludesOccupancy": true },
+    { "id": "portal-right01", "type": "PORTAL", "minX": 765, "minY": 161, "maxX": 905, "maxY": 286, "excludesOccupancy": true },
+    { "id": "npc-9201056", "type": "NPC_LANE", "minX": -849, "minY": 148, "maxX": -609, "maxY": 278, "excludesOccupancy": true },
+    { "id": "npc-9201136", "type": "NPC_LANE", "minX": -198, "minY": 148, "maxX": -68, "maxY": 278, "excludesOccupancy": true },
+    { "id": "npc-9201142", "type": "NPC_LANE", "minX": 175, "minY": 148, "maxX": 305, "maxY": 278, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-olivia", "label": "By Olivia", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -448, "y": 238, "seatId": -1 }, { "x": -363, "y": 238, "seatId": -1 }, { "x": -278, "y": 238, "seatId": -1 }, { "x": -208, "y": 238, "seatId": -1 }] },
+    { "id": "by-witch-malady", "label": "By Witch Malady", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -38, "y": 238, "seatId": -1 }, { "x": 47, "y": 238, "seatId": -1 }, { "x": 132, "y": 238, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 317, "y": 238, "seatId": -1 }, { "x": 402, "y": 238, "seatId": -1 }, { "x": 487, "y": 238, "seatId": -1 }, { "x": 557, "y": 238, "seatId": -1 }] },
+    { "id": "beside-nlc-taxi", "label": "Beside NLC Taxi", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -589, "y": 238, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "haunted-house-nlc-taxi", "type": "TAXI", "npcId": 9201056, "destinationMapId": 0,
+      "approachPoints": [{ "x": -589, "y": 238 }],
+      "services": ["travel"] }
+  ],
+  "hotspots": [
+    { "id": "by-olivia-crowd", "venueId": "by-olivia", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

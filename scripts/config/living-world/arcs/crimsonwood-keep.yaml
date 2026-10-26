@@ -1,0 +1,36 @@
+# Crimsonwood Keep arc: the keep had six Masters. The Banner Master carried the Crimsonwood standard into the Inner
+# Sanctum forty years ago and never carried it out; his squire Aldwin has swept his empty plinth since. The plinth
+# mended, Ridley's ledger read aloud, the standard's tassel brought out of the Council Hall (CWKPQ), and his name
+# carved on the blank stone in the Valley of Heroes (bertil-the-sixth-name, once per server: arcs/valley-of-heroes.yaml).
+- id: aldwin-the-sixth-banner
+  persona: aldwin
+  chapters:
+    - id: chapter-1
+      title: "Five Masters and a Sixth Plinth"
+    - id: chapter-2
+      title: "The Plinth Mended"
+      dialogueOverrides:
+        greet: ["the plinth's whole again. i keep putting my hand on it to check. it's still whole.", "hello. Quentin's reading for me tonight. come by at dusk. you might hear something."]
+        who: ["Aldwin. i keep the sixth plinth. it's mended now, Banner Master Leofric's plinth. forty years cracked. mended in an afternoon. i've asked Quentin to read Ridley's ledgers for the night he went in. every line."]
+        smallTalk: ["Quentin reads me a page of Ridley's ledgers every evening. forty years of them. somewhere in there's the last thing Leofric said before he went into the Sanctum. i'd like to hear it. i'd like to hear his voice in it."]
+        chapterEnter: ["(sets a single crimson leaf on the mended plinth, exactly in the middle)"]
+      unlocks:
+        rumors: [cwk-the-last-entry]
+    - id: chapter-3
+      title: "The Tassel Brought Out"
+      dialogueOverrides:
+        greet: ["i've tied the tassel to the top of the plinth. the knot's mine. i tied it the morning he went in. it's come home.", "hello. i've written to Bertil in the Valley. a stone that's been blank forty years shouldn't stay blank a day longer than it has to."]
+        who: ["Aldwin. i keep the sixth plinth. there's a crimson tassel on it now, off the standard's pole. somebody went into the Council Hall and brought it out. Leofric's stone in the Valley is still blank. someone's seen now. someone ought to tell Bertil."]
+        idle: ["(retightens a small crimson knot at the top of the plinth, then leaves it exactly as it was)", "(looks down the mountain toward the Valley of Heroes for a long while)"]
+        smallTalk: ["they only carve a name in the Valley when somebody's seen the end. nobody saw his. but somebody's seen where it was. the Council Hall. the statue with the jawbone. that's an end. Bertil will know if it's enough."]
+        chapterEnter: ["(ties a faded crimson tassel to the top of the sixth plinth with a squire's knot)"]
+    - id: chapter-4
+      title: "Carved in the Valley"
+      enterWhen: { flags: [masteria.banner.carved] }
+      dialogueOverrides:
+        greet: ["his name's on the stone. Leofric, Banner Master. i walked down to see it. i walked back up. i'm too old for the mountain twice in a day. i'd do it again.", "hello. the Masters raised a flag this morning. the first in forty years. not his standard. a new one. he'd have hated it. he'd have saluted it."]
+        who: ["Aldwin. i keep the sixth plinth. there's a name on a stone in the Valley of Heroes now. there's a tassel on the plinth and a new flag on the keep. i'll keep sweeping. the plinth doesn't know the difference. i do."]
+        idle: ["(sweeps the sixth plinth with slow, careful strokes, humming something old)", "(looks up at the new flag on the keep's pole, and stands a little straighter)"]
+        smallTalk: ["forty years i waited for someone to see the end. it turns out you don't need to see it. you need to go in after it. somebody did. that's enough. it's more than enough."]
+        about.bertil: ["Bertil carved it in an afternoon. 'Leofric, Banner Master. he carried it in.' he wouldn't take a coin. he said he'd been carving it in his head for forty years. he only had to let the chisel catch up."]
+        chapterEnter: ["(lays a crimson tassel, a chisel's worth of stone dust and a folded letter from the Valley on the sixth plinth)"]

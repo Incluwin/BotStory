@@ -1,0 +1,48 @@
+# Crimsonwood Keep contracts: a gate warden who wants a kill proof, a drill mistress paid partly in crimson wood for the
+# drill posts, a scout whose price you overhear at the gate.
+- id: ivor-the-gate-proof
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ivor.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [9400581], count: 60 } }
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }
+
+- id: ragna-the-drill-fee
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ragna.intro.done]
+  price:
+    meso: 40000
+    items: [{ itemId: 4032004, count: 20 }]
+  terms:
+    durationHours: 12
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }
+
+- id: fennick-the-scouts-price
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [fennick.intro.done, cwk.heard-scout]
+  price:
+    meso: 50000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 20
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 15000 }

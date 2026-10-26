@@ -1,0 +1,32 @@
+# Haunted House rumors.
+- id: hh-the-birthday-list
+  participants: [cornelius, winnie]
+  where: { town: haunted-house, spot: "venue:by-olivia" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: cornelius-where-are-you, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: hh.heard-birthday
+  lines:
+    - { by: winnie, text: "the dress is pinned, Cornelius. blue, to match the hat. i need to know who's coming." }
+    - { by: cornelius, text: "everyone. that was her list. i found it in the desk. 'everyone'. in crayon." }
+    - { by: winnie, text: "then Barty can take the invitations round the taxis. and Dex wants to do the candles." }
+    - { by: cornelius, text: "nine candles. she was going to be nine." }
+    - { by: winnie, text: "and then somebody has to carry it all up to her room. you can't. i know you can't." }
+    - { by: cornelius, text: "...no. i can't. somebody kind will. somebody who's heard us say it out here." }
+
+- id: hh-the-exorcists-fee
+  participants: [marigold, lucius]
+  where: { town: haunted-house, spot: "venue:by-witch-malady" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  setsFlagOnListeners: hh.heard-exorcist
+  lines:
+    - { by: marigold, text: "somebody asked me to come out with them today, Lucius. into the forest. a whole party." }
+    - { by: lucius, text: "you said no." }
+    - { by: marigold, text: "i said twenty-five thousand for the temple, and only if they'd blessed the halls with me first." }
+    - { by: lucius, text: "you should charge more. you keep people alive." }
+    - { by: marigold, text: "i keep people blessed. alive is up to them. and twenty-five's plenty. biscuits are cheap." }
+    - { by: lucius, text: "...so anyone who's heard you say it can ask." }
+    - { by: marigold, text: "anyone who's listened, dear. that's the whole of the fee. listening." }

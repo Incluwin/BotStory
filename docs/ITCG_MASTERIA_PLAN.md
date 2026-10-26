@@ -198,16 +198,60 @@ spear, two-handed sword and claw at the keep, two-handed blunt and one-handed sw
 Haunted House and Bigger Ben recruits fight at L40-60, where every line already has a regional tier: their friendship
 rewards are iTCG pets and materials instead.
 
-| Place | Residents (recruits) | Arc |
-|---|---|---|
-| Crimsonwood Keep | 7 (3): the keeper of the empty sixth plinth (arc owner), the keep's cook, Ridley's copyist, a page; a Dragon Knight gate warden, a Hero drill mistress, a Hermit scout | **The Sixth Banner**: the keep had six Masters; the Banner Master carried the Crimsonwood standard into the Inner Sanctum and never came out, and his stone in the Valley of Heroes is blank. Shared with the Valley. |
-| Valley of Heroes 1 | 4 (2): the stone-carver, a Taru pilgrim (Corine's cousin); a Paladin warden, a Crusader of the valley road | the Sixth Banner's last beat: the name carved (world flag, once per server) |
-| Haunted House | 7 (2): the last Prendergast (arc owner), a ghost-tour hawker, the gravekeeper of Hollowed Ground, a costume seamstress, a boy on a dare; a Chief Bandit ghost-breaker, a Cleric exorcist | **Where Are You?**: the house's halls loop ("Where am I?", "Where are you?", "This again?") because Sophilia never had her birthday; finale, once per server, the party is held |
-| Bigger Ben Lobby | 4 (1): Barricade's first crew's cartographer (arc owner), Foxwit's old student, a lobby porter; a Gunslinger of the crew | **The Enigma Chamber**: the tombstone in MesoGears answers the old crew's door song; finale once per server |
+22 Residents, 8 recruitable, 63 quests (quest-log ids 31450-31512), 8 contracts, 4 arcs, 6 rumors, 8 loadouts, in
+`{personas,quests,contracts,arcs,rumors}/{crimsonwood-keep,valley-of-heroes,haunted-house,bigger-ben}.yaml`. The kit is
+the earlier waves': a voice for every intent, an hourly routine on the town's venues (each rumor's cast awake at its
+spot), relationships and `about.<persona>` gossip, gifts, fame and friendship lines. Collect steps are sized for
+Masteria's 20% drops (about one item per five kills), not the 60% drops elsewhere.
 
-Light ties only: gossip about wave 3's NLC cast (no persona references, which would not resolve before the merge),
-Corine and Foxwit by name, the NLC Taxi. Arc finales name their world flag in `requires.notFlags`
-(`ArcFinalBeatOncePerServerTest` covers them).
+| Town | Resident | Role (job, level) | Recruit (how earned) | Rewards worth naming |
+|---|---|---|---|---|
+| Crimsonwood Keep | Aldwin | keeper of the sixth plinth (townsfolk 95), arc owner | - | Ancient Helm; Ergoth's Jawbone from the Sanctum |
+| Crimsonwood Keep | Quentin | Ridley's copyist | - | Ridley's Book of Rituals (first + repeatable, elder ashes) |
+| Crimsonwood Keep | Hulda | cook of the keep | - | Ridley's Stone, Ancient Armor |
+| Crimsonwood Keep | Wat | page, keeps the keep's huskies | - | **Blue Husky** 5000037 |
+| Crimsonwood Keep | Ivor | gate warden (Dragon Knight 100-103) | kill proof: 60 stormbreakers + 30k | spears Pinaka L100 / Dragon Faltizan L110 / Reverse Alchupiz L120 |
+| Crimsonwood Keep | Ragna | drill mistress (Crusader 100-103) | items: 20 crimson wood + 40k | two-handed swords Stonetooth L100 / Dragon Claymore L110 / Reverse Nibleheim L120; Ergoth's Jawbone (repeatable CWKPQ clear) |
+| Crimsonwood Keep | Fennick | scout of the upper ascent (Hermit 100-103) | rumor: his price at the gate at sundown + 50k | claws Red Craven L100 / Dragon Green Sleve L110 / Reverse Lampion L120; Ancient Gi |
+| Valley of Heroes | Bertil | carver of the stones, the last beat | - | Ancient Greaves; Taru Spirit Cape on the finale |
+| Valley of Heroes | Kiri | Taru pilgrim, Corine's cousin | - | **Orange Tiger** 5000044, Taru Totem, Taru Spirit Feather (repeatable, crimson wood) |
+| Valley of Heroes | Osgar | warden of the valley road (White Knight 100-103) | meso: 100k day rate | two-handed blunts Golden Smith Hammer L100 / Dragon Flame L110 / Reverse Bellocce L120 |
+| Valley of Heroes | Elspeth | rider of the valley road (Crusader 100-103) | bond: TRUSTED + 35k | swords Sparta L100 / Dragon Carabella L110 / Reverse Executioners L120; Ancient Faceguard |
+| Haunted House | Cornelius | the last Prendergast, arc owner | - | - |
+| Haunted House | Winnie | costume seamstress | - | **Black Bunny** 5000034, Stirgeman Cape |
+| Haunted House | Barty | ghost-tour hawker | - | Stirgeman's Utility Pants |
+| Haunted House | Mordecai | gravekeeper of Hollowed Ground | - | Ancient Boots (headless horseman) |
+| Haunted House | Dex | boy on a dare | - | **Skunk** 5000045 |
+| Haunted House | Lucius | ghost-breaker (Bandit 52-55) | items: 20 loaded springs + 20k | friendship 5/7/10: Stirge-on-a-String; Crystal Shard + Naricain Jewel; Ridley's Stone, Book and Scrolls of Defense |
+| Haunted House | Marigold | exorcist of the steps (Cleric 46-48) | rumor: her fee by the witch's spot + 25k | friendship 5/7/10: Umaru + Taru Spirit Feather + Jungle Lilies; LeFay Jewel + Pharoah's Wrappings; Cloak of Corruption |
+| Bigger Ben Lobby | Agatha | cartographer of the first crew, arc owner | - | Mystic Astrolabe on the finale |
+| Bigger Ben Lobby | Lenny | Foxwit's old student | - | Triferium Fuel Cell, Blinking Dingbat |
+| Bigger Ben Lobby | Gus | lobby porter | - | **Porcupine** 5000039 |
+| Bigger Ben Lobby | Darcy | gunner of Barricade's crew (Gunslinger 48-50) | kill proof: 50 firebombs + 20k | friendship 5/7/10: Miner's Hat; El Nathian Cape; Crystal Blade + Stone Denari (Adonis's Set 5 inputs) |
+
+| Arc | Chapters (gate) |
+|---|---|
+| `aldwin-the-sixth-banner` | Five Masters and a Sixth Plinth / The Plinth Mended (his crimson wood) / The Tassel Brought Out (`aldwin-into-the-sanctum`: a CWKPQ clear, after the rumor) / Carved in the Valley (world flag `masteria.banner.carved`) |
+| `bertil-the-blank-stone` | Forty Years Blank / He Carried It In (world flag `masteria.banner.carved`, set by `bertil-the-sixth-name`) |
+| `cornelius-where-are-you` | Where Am I? / Where Are You? (Sophilia's room cleared) / Not This Again (world flag `haunted-house.party.held`, set by `cornelius-a-party-at-last`) |
+| `agatha-the-last-verse` | Every Chamber but One / The Map Holds True (MesoGears walked) / The Door Answered (world flag `bigger-ben.enigma.answered`, set by `agatha-the-enigma-chamber`) |
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `cwk-the-last-entry` | Aldwin, Quentin by the Master Warrior, 19-21, from chapter 2 | `cwk.heard-entry` (Aldwin's Sanctum quest) |
+| `cwk-the-scouts-price` | Fennick, Ivor on the upper east street, 17-19 | `cwk.heard-scout` (Fennick's contract) |
+| `valley-at-the-stones` | Bertil, Kiri on the lower central street, 19-21, every 2 days | - |
+| `hh-the-birthday-list` | Cornelius, Winnie by Olivia, 19-21, from chapter 2 | `hh.heard-birthday` (the party) |
+| `hh-the-exorcists-fee` | Marigold, Lucius by Witch Malady, 18-20 | `hh.heard-exorcist` (Marigold's contract) |
+| `bb-the-crews-song` | Agatha, Gus on the middle central street, 19-21, from chapter 2 | `bb.heard-song` (the last verse) |
+
+The three finales (`bertil-the-sixth-name`, `cornelius-a-party-at-last`, `agatha-the-enigma-chamber`) set a world flag
+and name it in `requires.notFlags`, so each happens once per server (`ArcFinalBeatOncePerServerTest`). The Sanctum
+steps are `PARTY_QUEST_CLEAR` with `to: CWKPQ`: CWKPQ instances are named per channel (`CWKPQ1`, ...), so
+`QuestLedger.onPartyQuestCleared` now takes the event script's name too and a step's `to` may name either.
+
+Light ties only: gossip about Corine, Foxwit, Stirgeman, Barricade, Adonis and Ridley by name (NPCs, not personas),
+the NLC Taxi; no reference to wave 3's NLC personas, which would not resolve before the merge.
 
 ## 7. Shared files and merge notes
 
@@ -215,9 +259,11 @@ Corine and Foxwit by name, the NLC Taxi. Arc finales name their world flag in `r
 |---|---|
 | `src/main/resources/agents/town-life/index.json` | 3 profiles appended (wave 3 appends `aquarium-hall`, `aquarium-store`: keep both) |
 | `scripts/config/living-world/loadouts.yaml` | one block appended at the end after `# Masteria Residents (docs/ITCG_MASTERIA_PLAN.md)` |
-| `scripts/config/living-world/quest-log-ids.yaml` | 31450+ appended at the end |
+| `scripts/config/living-world/quest-log-ids.yaml` | 31450-31512 appended at the end (wave 3 uses 30409-30588) |
 | `ResidentDialogue.PORTRAITS` | 4 entries appended (crimsonwood-keep, haunted-house, bigger-ben, valley-of-heroes) |
-| `ContentLintFriendshipTest` | weapon pin +5 (the coordinator resolves the pin conflict with wave 3) |
+| `ContentLintFriendshipTest` | weapon pin 32 -> 37 (wave 3 makes it 44; after both merges it is 49) |
+| `ArcFinalBeatOncePerServerTest` | 3 finales appended to `FINAL_BEATS` (wave 3 appends 8: keep both) |
+| `QuestLedger.onPartyQuestCleared` | takes the event script's name as well (one caller, `LivingWorldHooks`; the mocks in `BossClearsNotPartyQuestsTest` and `CompanionTapOutTest` follow; a branch that adds another mock of it needs the third argument) |
 | `server/mods/ServerMods.java` | one new mod line, `cryssea` |
 | `server/maps/MapFactory.java` | one call after the map's life loads (gated NPCs) |
 | `scripts/config/knowledge/server-knowledge.json` | regenerated for the new scripts (sources fingerprint) |
@@ -227,13 +273,16 @@ knowledge graph and reached by the NLC Taxi. The audit marks 682000000 as reacha
 
 ## 8. Tests
 
-- `QuestLedgerPetRewardTest`: a pet reward creates a pet (pet id on the item, expiry from section 9), a non-pet keeps
+- `RewardItemsTest`: a pet reward creates a pet (pet id on the item, expiry from section 9), a non-pet keeps
   `addById`, a full cash tab gives nothing and says so.
+- `ItcgNpcScriptsTest`: every iTCG NPC script runs its main flows under Graal.
 - `ItcgRecipesTest`: every recipe id exists in the server data (item names), every manual a manual NPC draws is one
   Spindle forges, every Stirgeman ladder is unbroken, every recipe in section 2 is in the table; `ItcgForgeTest`: a
   make takes the inputs and gives the result, refuses without room or inputs, never takes an equipped item, and the
   Corine pet-level gate.
-- `CrysseaGateTest`: with the mod off, map 600000000 has no 9010018; on, it does.
+- `GatedNpcsTest`: with the mod off, map 600000000 has no 9010018; on, it does.
+- `MasteriaResidentsTest`: the cast per town, the five pets as one-off Masteria rewards, a repeatable Ergoth's Jawbone,
+  the Sanctum steps naming `CWKPQ`; `BossClearsNotPartyQuestsTest` passes the script name through.
 - wz-patcher: `tests/test_masteria.py` builds the Custom.wz image into a temporary folder and reads it back.
 - Content: lint 0 errors, `QuestLogIdsShippedTest`, `ArcFinalBeatOncePerServerTest`, `PersonaKnowsResolveTest`,
   KnowledgeLint with the refreshed fingerprint, then the full split suite.
@@ -252,4 +301,36 @@ is left out); his Stone Denari stays a random item, which is a draw, not a risk 
 
 ## 10. Live checks after deploy
 
-To be written with the content.
+With GM commands where a check needs levels, items or a warp (`!level`, `!item`, `!warp`); none were run offline.
+
+1. **Foxwit** (NLC Town Center): first talk starts quest 4926; with Blinking Dingbat + Dark Matter + Black Versal Materia
+   he hands over the Sirius Cloak manual 4031827 and 4926 completes in the quest window.
+2. **Spindle** (Omega Sector): with that manual, 5 Gold Plate, 5 Sapphire and 2 Diamond he forges a Sirius Cloak; with
+   one item short he refuses and takes nothing.
+3. **The Glimmer Man**: White Versal Materia + 7 Black Crystals gives a Materia Orb and 20,000 EXP (quest 4924 the first
+   time); Spindle turns the orb into the chosen Versal weapon.
+4. **John Barricade** (Bigger Ben Lobby): draws a Set 2 manual (quest 4927 on first talk), and forges a Bosshunter Helm
+   from Ridley's Book of Rituals, Ancient Helm, Ergoth's Jawbone and Tengu Nose; his stock quests still show.
+5. **Corine**: an Akha in the inventory, a summoned pet of level 15+, a Taru Spirit Feather, 5 Wisdom Crystals and 10
+   Jungle Lilies give an Akha-suma; with no pet summoned she refuses.
+6. **Stirgeman**: a Stirgeman Cape plus 12 Stretchy Material, 5 Duct Tape and 8 Coat Hangers gives the Raggedy cape;
+   at Mk IV he offers both branches.
+7. **Lita Lawless**: 40 Boomer Cores buy one random Set 1 artifact; 30 Nightshadow Badges one rare piece.
+8. **T-1337**, **Ridley** (keep gate), **Adonis** (El Nath): one juice batch, one Ridley's Stone draw, one Set 5 upgrade;
+   Ridley's and Adonis's stock lines are still the first menu entry.
+9. **A pet reward**: finish `gus-the-lobby-bees` (25 killa bees in the Deity Room): a Porcupine arrives in the cash tab,
+   can be summoned, and shows 30 days of magic time. Then the same with a full cash tab: the "could not be given" line,
+   no item, the quest still completes.
+10. **Residents in place**: visit 610030000, 610020000, 682000000 and 600020000 at 10:00 and 19:30 server time; each
+    Resident stands on its routine spot, greets, and its quests show in the client quest window with names (after the
+    held client re-export; ids 31450-31512).
+11. **A Sanctum step**: with `ragna-the-sanctum-again` active, clear CWKPQ on any channel; the step advances and Ragna
+    hands over an Ergoth's Jawbone.
+12. **A finale**: hear `hh-the-birthday-list` (19:00-21:00 by Olivia, after `cornelius-sophilias-room`), finish
+    `winnie-the-party-dress`, then `cornelius-a-party-at-last`; Cornelius enters chapter 3 for every player, and a
+    second character is not offered the party.
+13. **A recruit**: `darcy-the-fire-chamber`, then her contract after 50 firebombs; she joins, follows into MesoGears and
+    fights (gun loadout, bullets).
+14. **Cryssea** (only when the user releases the client patch): run the wz-patcher `masteria` step on Game Files, ship
+    the pack, set `MOD_CRYSSEA=on`, restart; a patched client sees her at the NLC Town Center with Tina's look and can
+    swap three iTCG materials of one set for one of its choice. Not before: an unpatched client closes in NLC.
