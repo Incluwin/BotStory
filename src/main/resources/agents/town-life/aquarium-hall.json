@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 2,
+  "profileId": "aquarium-hall",
+  "mapId": 230000001,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 35,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -55,
+    "middleMaxY": 329,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 33,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 110,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -316, "y": -69, "seatId": 1 },
+    { "x": -286, "y": -69, "seatId": 0 },
+    { "x": -256, "y": -69, "seatId": 2 },
+    { "x": 210, "y": 426, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -200, "y": 426 },
+    { "x": -199, "y": 218 },
+    { "x": -45, "y": 426 },
+    { "x": -43, "y": 309 },
+    { "x": 42, "y": 309 },
+    { "x": 127, "y": 309 },
+    { "x": 212, "y": 309 }
+  ],
+  "npcSpots": [],
+  "trafficZones": [
+    { "id": "door-in00", "type": "DOOR", "minX": -417, "minY": 148, "maxX": -297, "maxY": 263, "excludesOccupancy": true },
+    { "id": "door-in01", "type": "DOOR", "minX": 263, "minY": -236, "maxX": 383, "maxY": -121, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": -384, "minY": 356, "maxX": -244, "maxY": 481, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -192, "minY": -113, "maxX": -102, "maxY": 300, "excludesOccupancy": true },
+    { "id": "npc-9010010", "type": "NPC_LANE", "minX": -189, "minY": 336, "maxX": -59, "maxY": 466, "excludesOccupancy": true },
+    { "id": "npc-9010000", "type": "NPC_LANE", "minX": -34, "minY": 336, "maxX": 96, "maxY": 466, "excludesOccupancy": true },
+    { "id": "npc-9000021", "type": "NPC_LANE", "minX": 232, "minY": 336, "maxX": 362, "maxY": 466, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "upper-west-benches", "label": "Upper west benches", "district": "UPPER", "platformKind": "MINI", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER"],
+      "spots": [{ "x": -316, "y": -69, "seatId": 1 }, { "x": -286, "y": -69, "seatId": 0 }, { "x": -256, "y": -69, "seatId": 2 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -100, "y": -55, "seatId": -1 }, { "x": -15, "y": -55, "seatId": -1 }, { "x": 70, "y": -55, "seatId": -1 }, { "x": 155, "y": -55, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": 125, "y": 426, "seatId": -1 }, { "x": 210, "y": 426, "seatId": -1 }] },
+    { "id": "department-store-entrance", "label": "Department Store entrance", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -257, "y": 218, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "aquarium-hall-department-store", "type": "GENERAL_SHOP", "npcId": 0, "destinationMapId": 230000002,
+      "approachPoints": [{ "x": -257, "y": 218 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "upper-central-street-crowd", "venueId": "upper-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

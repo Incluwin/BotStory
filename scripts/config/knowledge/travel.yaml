@@ -61,6 +61,8 @@ legs:
   # World tour to Zipangu (Spinel; the way back returns to wherever the tour started)
   - { from: 100000000, to: 800000000, npc: 9000020, kind: world-tour, cost: 3000, note: "Henesys -> Mushroom Shrine" }
   - { from: 104000000, to: 800000000, npc: 9000020, kind: world-tour, cost: 3000, note: "Lith Harbor -> Mushroom Shrine" }
+  # Spinel at the Shrine sends you back where the tour began; with no saved start it is Lith Harbor (9000020.js).
+  - { from: 800000000, to: 104000000, npc: 9000020, kind: world-tour, cost: 0, note: "Mushroom Shrine -> back where the tour began (Lith Harbor by default)" }
   # Victoria Island regular cabs (beginners pay a tenth)
   - { from: 104000000, to: 100000000, npc: 1002007, kind: taxi, cost: 1000 }
   - { from: 104000000, to: 101000000, npc: 1002007, kind: taxi, cost: 800 }

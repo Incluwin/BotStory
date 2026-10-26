@@ -2,7 +2,10 @@
 - id: olwen
   name: Olwen
   title: "Harbormaster's Ledger-Keeper"
-  job: BEGINNER
+  # Her branch (the companion job errands): a Pirate at Kyrin in Nautilus, then a Gunslinger. Counting is aiming.
+  # An Olwen already shaped as a Beginner stays one in town until she is next reshaped (a new recipe or loadout); a new
+  # one is shaped a Pirate. Only a companion goes on the errands (JobErrands.path).
+  job: GUNSLINGER
   level: { min: 12, max: 14 }
   strength: ROOKIE
   loadout: beginner-townsfolk
@@ -38,6 +41,9 @@
     about.hadrik: ["drinks his pension on the upper deck. used to be worth something."]
     about.pim: ["the kid steals bread. i leave some out. don't tell anyone."]
     aboutUnknown: ["not in my ledger."]
+    jobErrand: ["{tier} job. {instructor}, {town}. it's been in my book for years under 'someday'. back before the tide turns.", "{instructor} in {town} wants me for my {tier} job. i've written it down so i can't pretend i didn't. back soon."]
+    jobBack: ["back. {job} now. write that down. no, i will.", "{job}. there's my own name in somebody else's ledger for once. back."]
+    jobThanks: ["thank you. i'll keep good count.", "noted. thank you."]
 
 - id: brannock
   name: Brannock
