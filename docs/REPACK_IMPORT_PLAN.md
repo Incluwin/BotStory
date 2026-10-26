@@ -162,6 +162,8 @@ Tests:
 - `node tools/repack-import/export.js --check` and `drops.js --check` (need the Repack files, so not a JUnit test).
 - Moved pins: `ServerModsTest` (repack_maps), `AgentTownLifeProfileRepositoryTest` (45 profiles),
   `KnowledgeFileGoldenTest` (5,841 maps, 1,629 mobs), `SeedDataTest` (the drops changeset, +1,384 rows).
+- `AgentWorldPortalRouteGraphFreshnessTest`: the 356 portal edges of the new maps may be missing from
+  `world-portal-route-graph.json` until the routes work exports it with them (then the test wants all of them).
 
 GM live checks (they need the game client, so they run after the deploy, by the session that drives the client; this
 branch's session did not run them):
