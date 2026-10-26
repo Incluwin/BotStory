@@ -47,7 +47,15 @@ public final class PopulationLoader {
             "smega", "party.forming", "party.invite", "price", "afk", "back", "lag",
             // party quests citizens run (CitizenPartyQuests)
             "pq.lf", "pq.join", "pq.go", "pq.clear", "pq.fail", "pq.down", "pq.giveup", "pq.call", "pq.call.answer",
-            "pq.thanks", "pq.wait");
+            "pq.thanks", "pq.wait",
+            // the people citizens remember (PersonMemories): meeting again, and a "hi" from them
+            "memory.greet.pq", "memory.greet.pqfail", "memory.greet.party", "memory.greet.bought", "memory.greet.sold",
+            "memory.greet.famed", "memory.greet.helped", "memory.greet.talk", "memory.greet.warm", "memory.greet.vague",
+            "memory.greet.cool", "memory.hello", "memory.hello.cool");
+    /** The triggers PersonMemories speaks with: each needs at least one map line, or that greeting is never said. */
+    static final Set<String> MEMORY_TRIGGERS = Set.of("memory.greet.pq", "memory.greet.pqfail", "memory.greet.party",
+            "memory.greet.bought", "memory.greet.sold", "memory.greet.famed", "memory.greet.helped", "memory.greet.talk",
+            "memory.greet.warm", "memory.greet.vague", "memory.greet.cool", "memory.hello", "memory.hello.cool");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
     private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega");
 
@@ -234,6 +242,11 @@ public final class PopulationLoader {
                         break;
                     }
                 }
+            }
+        }
+        for (String trigger : MEMORY_TRIGGERS) {
+            if (content.intents(trigger).stream().noneMatch(intent -> intent.channel().equals("map") && intent.where().equals("any"))) {
+                out.add("WARN chatter: no map line for '" + trigger + "' that fits anywhere: citizens never say it");
             }
         }
         out.addAll(GuildEmblems.lint(content.guildNames().emblems()));

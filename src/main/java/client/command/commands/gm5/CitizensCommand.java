@@ -18,13 +18,14 @@ import java.util.Locale;
 /**
  * {@code !citizens} operates the populated server: census, who is online, births, region-targeted
  * seeding and retirements, content reload, forced online counts for load tests, one citizen's card, and for testing
- * job errands: one citizen's stored level raised while it is offline, one citizen loaded now.
+ * job errands: one citizen's stored level raised while it is offline, one citizen loaded now; and who a citizen
+ * remembers of the players it met (docs/CITIZEN_PERSON_MEMORY_PLAN.md).
  */
 public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
                 + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation|"
-                + "level <name> <level>|login <name>|pq [send <name>]");
+                + "level <name> <level>|login <name>|pq [send <name>]|memory [name]");
     }
 
     @Override
@@ -231,6 +232,22 @@ public class CitizensCommand extends Command {
                 }
                 case "market" -> gm.yellowMessage(population.market().report());
                 case "conversation" -> gm.yellowMessage(population.conversation().report());
+                case "memory" -> {
+                    gm.yellowMessage(population.memories().report());
+                    if (params.length < 2) {
+                        return;
+                    }
+                    Citizen citizen = population.citizenByName(params[1]);
+                    if (citizen == null) {
+                        gm.yellowMessage("No citizen named " + params[1]);
+                        return;
+                    }
+                    List<String> people = population.memories().describe(citizen.characterId());
+                    gm.yellowMessage(citizen.name() + " remembers " + people.size() + (people.size() == 1 ? " person" : " people"));
+                    for (String person : people.subList(0, Math.min(10, people.size()))) {
+                        gm.yellowMessage("  " + person);
+                    }
+                }
                 default -> gm.yellowMessage(getDescription());
             }
         } catch (RuntimeException failure) {

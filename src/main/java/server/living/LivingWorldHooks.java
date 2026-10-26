@@ -329,6 +329,7 @@ public final class LivingWorldHooks {
                     world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
                 }
             }
+            server.living.population.PopulationHooks.partyQuestCleared(players, scriptName); // memory only
             java.util.List<Character> cleared = new java.util.ArrayList<>(players);
             world.executor().submit("friendship.pq " + eventName, () -> world.friendship().onPartyQuestCleared(cleared));
         } catch (RuntimeException failure) {
@@ -354,6 +355,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.friendship().onFame(giver, target, delta);
+            server.living.population.PopulationHooks.famed(giver, target, delta); // a citizen remembers who famed it
         } catch (RuntimeException failure) {
             log.warn("living world famed hook failed", failure);
         }

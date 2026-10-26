@@ -264,6 +264,50 @@ class CitizenInviteDecisionTest {
 
     // ---- helpers ---------------------------------------------------------------------------------
 
+    // ---- what it remembers of them (docs/CITIZEN_PERSON_MEMORY_PLAN.md, decision D1) -------------------
+
+    @Test
+    void aGrudgeTurnsTheInviteDownUnlessItIsOutgoingOrTheyAreABuddyOrAGuildmate() {
+        Profile reserved = new Profile(MIRA, Temperament.RESERVED, 35);
+        Profile easygoing = new Profile(MIRA, Temperament.EASYGOING, 55);
+        Profile outgoing = new Profile(MIRA, Temperament.OUTGOING, 55);
+        Familiarity grudge = new Familiarity(40, 120, false, false, PersonMemory.COLD);
+
+        assertEquals(Answer.DECLINED, CitizenInviteDecision.welcome(reserved, ANN, () -> grudge),
+                "they partied, then the player let it down");
+        assertEquals(Answer.DECLINED, CitizenInviteDecision.welcome(easygoing, ANN, () -> grudge));
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.welcome(outgoing, ANN, () -> grudge));
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.welcome(reserved, ANN, () -> new Familiarity(0, 0, true, false, -80)),
+                "a buddy");
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.welcome(easygoing, ANN, () -> new Familiarity(0, 0, false, true, -80)),
+                "a guildmate");
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.welcome(reserved, ANN,
+                () -> new Familiarity(40, 120, false, false, PersonMemory.COLD + 1)), "cool is no grudge");
+    }
+
+    @Test
+    void someoneItRemembersWarmlyIsNoStrangerToAReservedCitizen() {
+        Profile reserved = new Profile(MIRA, Temperament.RESERVED, 35);
+
+        assertEquals(Answer.DECLINED, CitizenInviteDecision.welcome(reserved, ANN,
+                () -> new Familiarity(0, 0, false, false, PersonMemory.WARM - 1)));
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.welcome(reserved, ANN,
+                () -> new Familiarity(0, 0, false, false, PersonMemory.WARM)), "they talked and traded, never partied");
+    }
+
+    @Test
+    void theInviteReadsHowWarmItFeelsFromItsMemory() {
+        reserved();
+        PersonMemories memories = mock(PersonMemories.class);
+        when(population.memories()).thenReturn(memories);
+        when(memories.warmth(MIRA, ANN)).thenReturn(PersonMemory.WARM);
+        assertEquals(Answer.ACCEPT, CitizenInviteDecision.decide(ann, mira));
+
+        when(memories.warmth(MIRA, ANN)).thenReturn(-58);
+        when(store.acquaintance(MIRA, ANN)).thenReturn(new Acquaintance(MIRA, ANN, 12, 30, false, false));
+        assertEquals(Answer.DECLINED, CitizenInviteDecision.decide(ann, mira), "a grudge outweighs the party minutes");
+    }
+
     private void reserved() {
         when(population.citizen(MIRA)).thenReturn(citizen(Set.of()));
         when(voices.voiceOf(any())).thenReturn(voice(0.3d));

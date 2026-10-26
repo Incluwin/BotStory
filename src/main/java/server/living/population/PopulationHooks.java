@@ -9,6 +9,7 @@ import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.life.Monster;
 import server.maps.MapleMap;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -132,6 +133,74 @@ public final class PopulationHooks {
         } catch (RuntimeException failure) {
             log.debug("population itemGained hook failed", failure);
         }
+    }
+
+    /** A player famed ({@code delta} 1) or defamed (-1) someone: a citizen remembers it of them. */
+    public static void famed(Character giver, Character target, int delta) {
+        Population population = Population.get();
+        if (population == null || population.memories() == null || giver == null || target == null
+                || AgentPresence.isAgent(giver) || delta == 0) {
+            return;
+        }
+        try {
+            CitizenSession self = population.presence().sessionOf(target);
+            if (self != null) {
+                population.memories().record(self.characterId, giver.getId(),
+                        delta > 0 ? PersonMemory.Kind.FAMED : PersonMemory.Kind.DEFAMED, target.getMapId(), "", 1);
+            }
+        } catch (RuntimeException failure) {
+            log.debug("population famed hook failed", failure);
+        }
+    }
+
+    /**
+     * A party quest cleared ({@code scriptName}, e.g. KerningPQ): a citizen in a player's party (a guest) remembers
+     * clearing it with each player of that party. A run citizens lead themselves is CitizenPartyQuests' to remember,
+     * with how each player left it.
+     */
+    public static void partyQuestCleared(List<Character> players, String scriptName) {
+        Population population = Population.get();
+        if (population == null || population.memories() == null || players == null || players.isEmpty()) {
+            return;
+        }
+        try {
+            CitizenPartyQuests runs = population.partyQuests();
+            String quest = questName(scriptName);
+            for (Character member : players) {
+                CitizenSession self = member == null ? null : population.presence().sessionOf(member);
+                if (self == null || member.getParty() == null || runs != null && runs.holds(self.characterId)) {
+                    continue;
+                }
+                for (Character player : players) {
+                    if (player != null && !AgentPresence.isAgent(player) && player.getParty() != null
+                            && player.getParty().getId() == member.getParty().getId()) {
+                        population.memories().record(self.characterId, player.getId(), PersonMemory.Kind.PQ_CLEAR, 0, quest, 1);
+                    }
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.debug("population partyQuestCleared hook failed", failure);
+        }
+    }
+
+    /** What players call a party quest's event script: KerningPQ is "kpq"; one not listed by its name. */
+    static String questName(String scriptName) {
+        if (scriptName == null || scriptName.isBlank()) {
+            return "";
+        }
+        return switch (scriptName) {
+            case "KerningPQ" -> "kpq";
+            case "HenesysPQ" -> "hpq";
+            case "LudiPQ" -> "lpq";
+            case "OrbisPQ" -> "opq";
+            case "PiratePQ" -> "ppq";
+            case "EllinPQ" -> "epq";
+            case "AmoriaPQ" -> "apq";
+            case "LudiMazePQ" -> "lmpq";
+            case "MagatiaPQ_A", "MagatiaPQ_Z" -> "mpq";
+            case "CWKPQ" -> "cwkpq";
+            default -> scriptName.toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
+        };
     }
 
     /** Human map chat near citizens; true when a citizen took it. */

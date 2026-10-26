@@ -344,6 +344,169 @@ public final class CitizenStore {
         }
     }
 
+    // ---- person memory (docs/CITIZEN_PERSON_MEMORY_PLAN.md) ------------------------------------
+
+    /**
+     * A citizen's memory of one player as their living_acquaintance row holds it, and when they were last together
+     * ({@code last_at}, which the shared minutes move each minute on one map; 0 when they never were).
+     */
+    public record MemoryRow(int playerId, PersonMemory memory, long lastTogetherAtMs) { }
+
+    /** One pair to write: {@code memory} empty clears it (memory_at NULL: nothing remembered). */
+    public record MemoryWrite(int characterId, int playerId, PersonMemory memory) { }
+
+    private static final String MEMORY_COLUMNS = "player_id, warmth, memory_at, first_met_at, episodes, last_at";
+    /** Clears a memory; {@code last_at = last_at} keeps the forgetting from looking like a meeting. */
+    private static final String FORGET_SET = "warmth = 0, memory_at = NULL, first_met_at = NULL, episodes = '', last_at = last_at";
+
+    /** The pair's memory and last time together; a pair with no row reads as no memory, null when the read fails. */
+    public MemoryRow memory(int characterId, int playerId) {
+        String sql = SqlTime.utc("SELECT " + MEMORY_COLUMNS + " FROM living_acquaintance WHERE character_id = ? AND player_id = ?");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setInt(2, playerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? memoryRow(rs) : new MemoryRow(playerId, PersonMemory.none(), 0L);
+            }
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance memory read failed for {}/{}", characterId, playerId, failure);
+            return null;
+        }
+    }
+
+    /** Everyone this citizen remembers (memory_at set), by its primary key prefix; null when the read fails. */
+    public List<MemoryRow> memories(int characterId) {
+        String sql = SqlTime.utc("SELECT " + MEMORY_COLUMNS + " FROM living_acquaintance WHERE character_id = ?"
+                + " AND memory_at IS NOT NULL");
+        List<MemoryRow> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(memoryRow(rs));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance memories read failed for {}", characterId, failure);
+            return null;
+        }
+        return out;
+    }
+
+    /**
+     * Writes these memories in one batch, a pair with no row yet getting one (no shared minutes); the shared minutes and
+     * {@code last_at} stay as they are. False when the batch failed.
+     */
+    public boolean saveMemories(List<MemoryWrite> writes) {
+        if (writes.isEmpty()) {
+            return true;
+        }
+        String sql = SqlTime.utc("INSERT INTO living_acquaintance (character_id, player_id, warmth, memory_at, first_met_at, episodes)"
+                + " VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE warmth = VALUES(warmth), memory_at = VALUES(memory_at),"
+                + " first_met_at = VALUES(first_met_at), episodes = VALUES(episodes), last_at = last_at");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            for (MemoryWrite write : writes) {
+                PersonMemory memory = write.memory();
+                boolean empty = memory.isEmpty();
+                ps.setInt(1, write.characterId());
+                ps.setInt(2, write.playerId());
+                ps.setInt(3, empty ? 0 : memory.warmth());
+                SqlTime.setNullable(ps, 4, empty ? 0L : Math.max(1L, memory.memoryAtMs()));
+                SqlTime.setNullable(ps, 5, empty ? 0L : memory.firstMetAtMs());
+                ps.setString(6, empty ? "" : PersonMemory.encode(memory.episodes()));
+                ps.addBatch();
+            }
+            ps.executeBatch();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance memory batch of {} failed", writes.size(), failure);
+            return false;
+        }
+    }
+
+    /** This citizen forgets these players (or everyone, for {@code playerIds} null: it retired). */
+    public void forgetMemories(int characterId, java.util.Collection<Integer> playerIds) {
+        if (playerIds != null && playerIds.isEmpty()) {
+            return;
+        }
+        String sql = "UPDATE living_acquaintance SET " + FORGET_SET + " WHERE character_id = ? AND memory_at IS NOT NULL"
+                + (playerIds == null ? "" : " AND player_id IN (" + String.join(",", java.util.Collections.nCopies(playerIds.size(), "?")) + ")");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            if (playerIds != null) {
+                for (int playerId : playerIds) {
+                    ps.setInt(at++, playerId);
+                }
+            }
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance forgetting failed for {}", characterId, failure);
+        }
+    }
+
+    /** Remembered pairs server-wide (memory_at set, from its index); -1 when the count fails. */
+    public int rememberedPairs() {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM living_acquaintance WHERE memory_at IS NOT NULL");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance memory count failed", failure);
+            return -1;
+        }
+    }
+
+    /**
+     * The hourly prune: every memory unchanged since {@code cutoffMs} is forgotten, then, past {@code totalMax}
+     * remembered pairs, the oldest down to nine tenths of it. How many it forgot; -1 when it failed.
+     */
+    public int pruneMemories(long cutoffMs, int totalMax) {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            int forgotten;
+            try (PreparedStatement ps = con.prepareStatement(SqlTime.utc("UPDATE living_acquaintance SET " + FORGET_SET
+                    + " WHERE memory_at IS NOT NULL AND memory_at < ?"))) {
+                SqlTime.set(ps, 1, cutoffMs);
+                forgotten = ps.executeUpdate();
+            }
+            int remembered;
+            try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM living_acquaintance WHERE memory_at IS NOT NULL");
+                 ResultSet rs = ps.executeQuery()) {
+                remembered = rs.next() ? rs.getInt(1) : 0;
+            }
+            if (remembered <= totalMax) {
+                return forgotten;
+            }
+            long newestForgotten;
+            try (PreparedStatement ps = con.prepareStatement(SqlTime.utc("SELECT memory_at FROM living_acquaintance"
+                    + " WHERE memory_at IS NOT NULL ORDER BY memory_at LIMIT 1 OFFSET ?"))) {
+                ps.setInt(1, Math.max(0, remembered - totalMax * 9 / 10 - 1));
+                try (ResultSet rs = ps.executeQuery()) {
+                    newestForgotten = rs.next() ? SqlTime.get(rs, 1) : 0L;
+                }
+            }
+            if (newestForgotten > 0L) {
+                try (PreparedStatement ps = con.prepareStatement(SqlTime.utc("UPDATE living_acquaintance SET " + FORGET_SET
+                        + " WHERE memory_at IS NOT NULL AND memory_at <= ?"))) {
+                    SqlTime.set(ps, 1, newestForgotten);
+                    forgotten += ps.executeUpdate();
+                }
+            }
+            return forgotten;
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance memory prune failed", failure);
+            return -1;
+        }
+    }
+
+    private static MemoryRow memoryRow(ResultSet rs) throws SQLException {
+        long memoryAt = SqlTime.get(rs, "memory_at");
+        PersonMemory memory = memoryAt <= 0L ? PersonMemory.none()
+                : new PersonMemory(rs.getInt("warmth"), memoryAt, SqlTime.get(rs, "first_met_at"),
+                PersonMemory.decode(rs.getString("episodes")));
+        return new MemoryRow(rs.getInt("player_id"), memory, SqlTime.get(rs, "last_at"));
+    }
+
     // ---- helpers -------------------------------------------------------------------------
 
     private static Citizen read(ResultSet rs) throws SQLException {
