@@ -23,7 +23,7 @@
   requires: { level: { min: 45 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: dolls, type: KILL_MOBS, mobIds: [9400559, 9400560], count: 25, mapIds: [682000301, 682000403, 682000400] }
+    - { id: dolls, type: KILL_MOBS, mobIds: [9400559, 9400560], count: 25, mapIds: [682000301, 682000303, 682000403, 682000400] }
     - { id: report, type: DELIVER, to: cornelius }
   rewards: { meso: 15000, exp: 20000, bondPoints: 40 }
   onComplete: { arcAdvance: { arc: cornelius-where-are-you, to: chapter-2 } }
@@ -50,7 +50,7 @@
   requires: { level: { min: 22 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 30, mapIds: [682000100, 682000500] }
+    - { id: ghouls, type: KILL_MOBS, mobIds: [9400556], count: 30, mapIds: [682000100, 682000300] }
     - { id: fabric, type: COLLECT_ITEM, itemId: 4032030, count: 8 }
     - { id: costume, type: DELIVER, to: winnie, take: { itemId: 4032030, count: 8 } }
   rewards: { meso: 8000, exp: 7000, bondPoints: 40, items: [{ itemId: 5000034, count: 1 }] }
@@ -85,7 +85,7 @@
   persona: barty
   title: "The Deluxe Deluxe"
   length: SHORT
-  requires: { level: { min: 35 } }
+  requires: { level: { min: 50 } }
   steps:
     - { id: talk, type: TALK }
     - { id: library, type: VISIT_MAP, mapIds: [682000800] }
@@ -126,7 +126,7 @@
   requires: { level: { min: 20 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: skeletons, type: KILL_MOBS, mobIds: [9400638], count: 20, mapIds: [682000300, 682000600] }
+    - { id: skeletons, type: KILL_MOBS, mobIds: [9400638], count: 20, mapIds: [682000300, 682010201] }
     - { id: report, type: DELIVER, to: dex }
   rewards: { meso: 5000, exp: 4000, bondPoints: 40, items: [{ itemId: 5000045, count: 1 }] }
 
@@ -180,7 +180,7 @@
   persona: lucius
   title: "Look Past It"
   length: LONG
-  requires: { level: { min: 75 }, friendship: 10, questsCompleted: [lucius-the-clown-chimney] }
+  requires: { level: { min: 90 }, friendship: 10, questsCompleted: [lucius-the-clown-chimney] }
   steps:
     - { id: talk, type: TALK }
     - { id: mirrors, type: KILL_MOBS, mobIds: [9400564], count: 3, mapIds: [682000302, 682000402, 682000700] }
@@ -226,7 +226,7 @@
   persona: marigold
   title: "Blessed Up Close"
   length: LONG
-  requires: { level: { min: 75 }, friendship: 10, questsCompleted: [marigold-the-witchs-gloves] }
+  requires: { level: { min: 90 }, friendship: 10, questsCompleted: [marigold-the-witchs-gloves] }
   steps:
     - { id: talk, type: TALK }
     - { id: mirror, type: KILL_MOBS, mobIds: [9400564], count: 1, mapIds: [682000302, 682000304, 682000402] }

@@ -13,6 +13,8 @@
         greet: ["hello. no blank stones in the valley now. i dusted his anyway this morning. habit.", "you again. go and read the sixth stone on the right. it's new. it's forty years old. both."]
         who: ["Bertil. i carve the stones in the Valley of Heroes. every one's carved now. the last was the Banner Master's. 'Leofric, Banner Master. he carried it in.' i'd been carving it in my head for forty years. the chisel only had to catch up."]
         idle: ["(dusts a freshly carved name with the flat of his hand, then the blank space beneath it where nothing will ever go)", "(taps the newest stone with his chisel and listens; it rings clear)"]
+        noWork: ["nothing today. every stone's carved. i dust them anyway."]
+        speakPlainly: ["plainly: a chisel, a valley of names, and not one blank stone."]
         smallTalk: ["it rings different now, that stone. not lonely. Kiri says his spirit came home. i don't know about spirits. i know about stone. it rings like a stone that's finished."]
         about.aldwin: ["Aldwin walked down the mountain to see it. he stood a long while. then he said 'that's right' and walked back up. at his age. i've put a bench by the stone. for next time."]
         chapterEnter: ["(sets down a worn chisel beside a newly carved stone and, for once, does not pick it up again)"]

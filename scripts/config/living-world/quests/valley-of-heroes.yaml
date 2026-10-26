@@ -4,7 +4,7 @@
 # shame 610020012, path of strength 610020003); typhon 9400574 (path of peril 610020004); nightshadow 9400579 (upper
 # ascent 610020005, path of strength); stormbreaker 9400581 (upper ascent, cavern of valour 610020015); crimson
 # guardian 9400582 (crimson heart 4032012 at 20%; eternal vigilance 610030015, the keep gate road 610020006); phantom
-# tree 9400588 (phantom seed 4032003 at 15%; bent tree 610010000, haunted hill 610010001, swamp bog 610010002); Valley
+# leprechaun 9400584 (bent tree 610010000, haunted hill 610010001, swamp bog 610010002); Valley
 # of Heroes 2 610020001; the cavern of pain 610020011 (Jack).
 # Gear: Osgar's two-handed blunts Golden Smith Hammer 1422027 L100 / Dragon Flame 1422028 L110 / Reverse Bellocce
 # 1422038 L120; Elspeth's swords Sparta 1302056 L100 / Dragon Carabella 1302059 L110 / Reverse Executioners 1302086 L120.
@@ -41,12 +41,11 @@
   persona: kiri
   title: "A Spirit Garden"
   length: SHORT
-  requires: { level: { min: 48 } }
+  requires: { level: { min: 70 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 40, mapIds: [610010000, 610010001, 610010002] }
-    - { id: seeds, type: COLLECT_ITEM, itemId: 4032003, count: 8 }
-    - { id: garden, type: DELIVER, to: kiri, take: { itemId: 4032003, count: 8 } }
+    - { id: leprechauns, type: KILL_MOBS, mobIds: [9400584], count: 30, mapIds: [610010000, 610010001, 610010002] }
+    - { id: garden, type: DELIVER, to: kiri }
   rewards: { meso: 20000, exp: 25000, bondPoints: 40, items: [{ itemId: 5000044, count: 1 }] }
 
 - id: kiri-carve-a-totem

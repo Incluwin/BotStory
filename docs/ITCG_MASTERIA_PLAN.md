@@ -258,6 +258,7 @@ the NLC Taxi; no reference to wave 3's NLC personas, which would not resolve bef
 | File | Change |
 |---|---|
 | `src/main/resources/agents/town-life/index.json` | 3 profiles appended (wave 3 appends `aquarium-hall`, `aquarium-store`: keep both) |
+| `AgentTownLifeProfileRepositoryTest` | profile count pin 30 -> 33 (with wave 3's two profiles it is 35) |
 | `scripts/config/living-world/loadouts.yaml` | one block appended at the end after `# Masteria Residents (docs/ITCG_MASTERIA_PLAN.md)` |
 | `scripts/config/living-world/quest-log-ids.yaml` | 31450-31512 appended at the end (wave 3 uses 30409-30588) |
 | `ResidentDialogue.PORTRAITS` | 4 entries appended (crimsonwood-keep, haunted-house, bigger-ben, valley-of-heroes) |

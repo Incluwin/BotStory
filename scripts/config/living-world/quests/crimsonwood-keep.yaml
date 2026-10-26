@@ -75,7 +75,7 @@
   persona: hulda
   title: "Seeds for the Stew"
   length: SHORT
-  requires: { level: { min: 48 } }
+  requires: { level: { min: 70 } }
   steps:
     - { id: talk, type: TALK }
     - { id: trees, type: KILL_MOBS, mobIds: [9400588], count: 40, mapIds: [610010000, 610010001, 610010002, 610010200] }
@@ -87,7 +87,7 @@
   persona: hulda
   title: "Supper for the Gate"
   length: SHORT
-  requires: { level: { min: 60 } }
+  requires: { level: { min: 70 } }
   steps:
     - { id: talk, type: TALK }
     - { id: ivor, type: TALK_TO, persona: ivor, say: ["...Hulda's stew. (he eats it, all of it, standing, without taking his eyes off the road.) tell her it was good. no. tell her it was very good. she'll know i mean it if it comes from you."] }
@@ -100,7 +100,7 @@
   persona: wat
   title: "Blankets for the Hounds"
   length: SHORT
-  requires: { level: { min: 45 } }
+  requires: { level: { min: 70 } }
   steps:
     - { id: talk, type: TALK }
     - { id: yetis, type: KILL_MOBS, mobIds: [5100000], count: 25, mapIds: [600020500] }
@@ -112,7 +112,7 @@
   persona: wat
   title: "The Real Stance"
   length: SHORT
-  requires: { level: { min: 30 } }
+  requires: { level: { min: 70 } }
   steps:
     - { id: talk, type: TALK }
     - { id: ragna, type: TALK_TO, persona: ragna, say: ["is he ready? (she looks over at the barrels.) he's been ready for a month. tell him: tomorrow, at dawn, with a real practice blade, and if he drops it he's on hound duty for a month. don't tell him he's ready. let him find out."] }
@@ -188,7 +188,7 @@
   title: "A Seal for the Gate"
   length: SHORT
   repeatable: true
-  requires: { level: { min: 100 }, questsCompleted: [ivor-the-gate-watch] }
+  requires: { level: { min: 108 }, questsCompleted: [ivor-the-gate-watch] }
   steps:
     - { id: talk, type: TALK }
     - { id: hearts, type: COLLECT_ITEM, itemId: 4032012, count: 8 }
@@ -216,6 +216,7 @@
   steps:
     - { id: talk, type: TALK }
     - { id: brands, type: KILL_MOBS, mobIds: [9400577], count: 30, mapIds: [610030012] }
+    - { id: trees, type: KILL_MOBS, mobIds: [9400586], count: 40, mapIds: [610020002, 610020003] }
     - { id: wood, type: COLLECT_ITEM, itemId: 4032004, count: 10 }
     - { id: grip, type: DELIVER, to: ragna, take: { itemId: 4032004, count: 10 } }
   rewards:
@@ -276,10 +277,11 @@
   persona: fennick
   title: "Seven Holes in a Mountain"
   length: SHORT
-  requires: { level: { min: 95 } }
+  requires: { level: { min: 80 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: shadows, type: KILL_MOBS, mobIds: [9400579], count: 30, mapIds: [610020013] }
+    - { id: raiders, type: KILL_MOBS, mobIds: [9400576], count: 30, mapIds: [610020012] }
+    - { id: honour, type: VISIT_MAP, mapIds: [610020013] }
     - { id: valour, type: VISIT_MAP, mapIds: [610020015] }
     - { id: report, type: DELIVER, to: fennick }
   rewards: { meso: 40000, exp: 80000, bondPoints: 30, items: [{ itemId: 4031919, count: 1 }], flags: [fennick.intro.done] }
@@ -319,7 +321,7 @@
 
 - id: fennick-reverse-lampion
   persona: fennick
-  title: "The Eighth Cavern"
+  title: "The Seventh Cavern"
   length: LONG
   requires: { level: { min: 118 }, friendship: 10, questsCompleted: [fennick-dragon-green-sleve] }
   steps:

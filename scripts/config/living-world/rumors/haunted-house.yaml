@@ -23,10 +23,11 @@
     everyDays: 1
   setsFlagOnListeners: hh.heard-exorcist
   lines:
-    - { by: marigold, text: "somebody asked me to come out with them today, Lucius. into the forest. a whole party." }
-    - { by: lucius, text: "you said no." }
-    - { by: marigold, text: "i said twenty-five thousand for the temple, and only if they'd blessed the halls with me first." }
-    - { by: lucius, text: "you should charge more. you keep people alive." }
-    - { by: marigold, text: "i keep people blessed. alive is up to them. and twenty-five's plenty. biscuits are cheap." }
-    - { by: lucius, text: "...so anyone who's heard you say it can ask." }
-    - { by: marigold, text: "anyone who's listened, dear. that's the whole of the fee. listening." }
+    - { by: lucius, text: "you're out of biscuits again." }
+    - { by: marigold, text: "i gave the last of them to a lad off the taxi. he'd been in the library. he needed a biscuit." }
+    - { by: lucius, text: "he needed a priest." }
+    - { by: marigold, text: "i'm the priest, dear. i'm also the biscuits. the Magic Library sends me out for twenty-five thousand, you know." }
+    - { by: lucius, text: "nobody knows that. you never tell anyone." }
+    - { by: marigold, text: "i'm telling you now. out loud, by the witch's spot. if anybody's listening and they've walked the halls with me, they can have me for that." }
+    - { by: lucius, text: "...and the biscuits?" }
+    - { by: marigold, text: "the biscuits are free. they always were." }

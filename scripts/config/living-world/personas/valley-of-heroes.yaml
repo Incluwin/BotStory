@@ -43,7 +43,7 @@
     questOffer.bertil-clear-the-ascent: ["the windraiders come down off the lower ascent and knock the top stones crooked. forty of them, please. i'll straighten the stones. there's something under the third one i lifted last week you might want."]
     questAccept.bertil-clear-the-ascent: ["the lower ascent, up the valley road past Valley of Heroes 2. the windraiders. they spin. don't spin back."]
     questWaiting.bertil-clear-the-ascent: ["forty. the stones lean when they're about."]
-    questComplete.bertil-clear-the-ascent: ["forty. they'll stand straight now. here. under the third stone, wrapped in oilcloth. old greaves, older than the keep. Barricade's smiths call them Ancient. i call them heavy. take them. the stone won't miss them. it's got a name."]
+    questComplete.bertil-clear-the-ascent: ["forty. they'll stand straight now. here. under the third stone, wrapped in oilcloth. old greaves, older than the keep. Barricade pays for these, i hear. i'd rather they went to someone who'll wear what they become. take them. the stone won't miss them. it's got a name."]
     questOffer.bertil-the-sixth-name: ["Aldwin wrote. 'the tassel's come home.' somebody went into the Council Hall and came out with Leofric's knot. that's seeing. that's enough for me. go up to the keep and ask him for the words. exactly the words. i'll carve them before the light goes."]
     questAccept.bertil-the-sixth-name: ["the keep, up the mountain. Aldwin, by the empty plinth, morning or dusk. ask him what goes on the stone. he's had forty years to choose."]
     questWaiting.bertil-the-sixth-name: ["the words. he'll have them. he's always had them."]
@@ -87,7 +87,7 @@
     - { persona: elspeth, kind: RIDES_BEHIND }
   giftItemIds: [4032003, 2022001]
   dialogue:
-    greetFirst: ["oh! you walked in so loud the spirits ran off. no, it's fine. they'll come back. they're curious. so am i. hello.", "a traveller. you've come up through the forest of trees that walk. did they talk to you? they talk to me. they're very rude."]
+    greetFirst: ["oh! you walked in so loud the spirits ran off. no, it's fine. they'll come back. they're curious. so am i. hello.", "a traveller. you've come up through the grumbling forest. did the trees talk to you? they talk to me. they're very rude."]
     greet: ["hello! the spirits are in today.", "you're back! i've been talking to a stone about you. good things."]
     idle: ["(sits cross-legged before a weathered stone and hums to it, a low wavering tune)", "(ties a small feather to a stem of crimson wood and holds it up to the wind)"]
     noWork: ["nothing today. i'm listening. it takes all day to listen properly."]
@@ -97,11 +97,11 @@
     thanks: ["oh, that's lovely."]
     smallTalk: ["the Taru make totems from wood that remembers. crimson wood remembers everything. you can hear it if you hold it to your ear. it remembers being a tree. it's very proud about it.", "Corine sends letters. she says the city's loud and the people are kind. i think it's the other way round here. the valley's quiet and the stones are kind."]
     speakPlainly: ["plainly: a Taru far from home, a lot of feathers, and a valley full of spirits."]
-    questOffer.kiri-a-spirit-garden: ["i'm planting a spirit garden by the stones, and the phantom trees in the forest below drop the only seeds that'll grow up here. eight seeds? the trees won't mind. well. they'll mind. they'll get over it."]
-    questAccept.kiri-a-spirit-garden: ["the Phantom Forest, by the Haunted House. the bent tree, the haunted hill, the swamp bog. the trees that walk. they drop seeds when they fall over."]
-    questWaiting.kiri-a-spirit-garden: ["eight seeds! the garden's a hole at the moment. it's a very hopeful hole."]
-    questComplete.kiri-a-spirit-garden: ["eight! they'll grow. ...oh. there's something following you. the orange one. it came down the valley road this morning and it's been sitting by the stones waiting. it's a little tiger. a spirit tiger, maybe. it's picked you. the Taru say you don't argue with a tiger that's picked you."]
-    questOffer.kiri-carve-a-totem: ["i'd like to carve a totem for the valley. a proper Taru one. it needs crimson wood, ten pieces, from the trees on the lower ascent. clear a few of the trees first, they get grabby. i'll carve two. one's for you."]
+    questOffer.kiri-a-spirit-garden: ["i'm planting a spirit garden by the stones, and the leprechauns in the forest below keep stealing my seedlings and selling them back to me. thirty of them taught a lesson? they'll mind. they'll get over it."]
+    questAccept.kiri-a-spirit-garden: ["the Phantom Forest, by the Haunted House. the bent tree, the haunted hill, the swamp bog. the leprechauns. little, green, very quick with their hands."]
+    questWaiting.kiri-a-spirit-garden: ["thirty! the garden's a hole at the moment. it's a very hopeful hole."]
+    questComplete.kiri-a-spirit-garden: ["thirty! my seedlings are safe. ...i've nothing to pay you with but him. the little orange tiger. he followed me up from the jungle, and he wants to walk further than i do. i walk a valley. you walk the world. take him. he'd like that."]
+    questOffer.kiri-carve-a-totem: ["i'd like to carve a totem for the valley. a proper Taru one. it needs crimson wood, ten pieces, from the trees on the lower ascent. clear thirty of the trees first, they get grabby. i'll carve two. one's for you."]
     questAccept.kiri-carve-a-totem: ["the lower ascent, up the road past Valley of Heroes 2. the crimson trees. they remember being hit. hit them anyway."]
     questWaiting.kiri-carve-a-totem: ["ten pieces. i've got my knife ready."]
     questComplete.kiri-carve-a-totem: ["ten. ...listen. you can hear it remembering. there. a Taru totem. the second one's for the valley. this one's for you. Barricade in Bigger Ben knows what a totem's for. he says it's for drawing a manual. i say it's for remembering. both, maybe."]
@@ -109,7 +109,7 @@
     questAccept.kiri-spirit-feathers: ["the lower ascent. the crimson trees."]
     questWaiting.kiri-spirit-feathers: ["fifteen."]
     questComplete.kiri-spirit-feathers: ["fifteen. here's a feather. take it to Corine. tell her i said hello. tell her the stones said hello too."]
-    about.bertil: ["Bertil carves the names. he dusts a blank stone every morning. the spirit in that stone isn't there. it's somewhere else. it's waiting to be let come home."]
+    about.bertil: ["Bertil carves the names. he dusts every stone every morning and listens to it ring. i've started listening with him."]
     about.elspeth: ["Elspeth gives me rides on her horse up and down the valley. she sings badly. the stones like it. i like it."]
     about.osgar: ["Osgar stands by his father's stone every morning. i've never heard the spirit say anything. i think it doesn't need to. they're saying it all just standing there."]
     aboutUnknown: ["the spirits don't know them yet."]
@@ -177,9 +177,9 @@
     questAccept.osgar-dragon-flame: ["the path of strength for the firebrands, the upper ascent for the nightshadows. hot, then cold. don't mix them up."]
     questWaiting.osgar-dragon-flame: ["thirty and twenty. hot, then cold."]
     questComplete.osgar-dragon-flame: ["hot and cold. good. Dragon Flame. seven sixties, every one took. it'll ring when it hits. listen for it."]
-    questOffer.osgar-reverse-bellocce: ["the Bellocce. reverse. my best. it wants crimson hearts for the weight, five of them, from the guardians in eternal vigilance. thirty guardians. my father fought them once. he lost. you won't."]
+    questOffer.osgar-reverse-bellocce: ["the Bellocce. reverse. my best. it wants crimson hearts for the weight, five of them, from the guardians in eternal vigilance. thirty guardians. my father fought them once. he lost, and walked away from it. you won't lose."]
     questAccept.osgar-reverse-bellocce: ["the keep. eternal vigilance, off the Hall of Mastery. the crimson guardians. they don't stop. neither do you."]
-    questWaiting.osgar-reverse-bellocce: ["five hearts. take your time. they take theirs."]
+    questWaiting.osgar-reverse-bellocce: ["five hearts. the guardians don't hurry. neither should you."]
     questComplete.osgar-reverse-bellocce: ["five. ...my father would have liked to see that. Reverse Bellocce. two tens and five sixties, every one took. i'm going to go and tell his stone. it won't say anything. it doesn't need to."]
     about.elspeth: ["Elspeth rides the road. we meet at noon. 'clear.' 'clear.' it's a good word. it means everyone's alive."]
     about.bertil: ["Bertil carved my father's stone. i told him what i saw. he got every letter right. i've never thanked him properly. i bring him crimson hearts. he uses them for grit. it's thanks."]
@@ -205,8 +205,8 @@
   home:
     town: valley-of-heroes
     routine:
-      - { from: 8, to: 13, spot: "venue:middle-west-street-2", activity: SHOW_OFF }
-      - { from: 13, to: 18, materialize: false }
+      - { from: 8, to: 11, spot: "venue:middle-west-street-2", activity: SHOW_OFF }
+      - { from: 11, to: 18, materialize: false }
       - { from: 18, to: 22, spot: "venue:upper-central-street", activity: LINGER }
       - { from: 22, to: 8, materialize: false }
   recruitable: true
@@ -229,7 +229,7 @@
     who: ["Elspeth. i ride the valley road, keep to Haunted House forest and back, twice a day. i carry letters, i carry Taru pilgrims, i carry news. and i read every stone in the valley, every time i pass. somebody should. they were all somebody."]
     bye: ["read a stone on your way. any one. they like it."]
     thanks: ["oh, thanks! really!"]
-    smallTalk: ["there are four hundred and twelve stones in the valley. i know three hundred and ninety of the names by heart. Bertil knows all of them. Osgar knows one. that's the one that matters to him.", "the crimson trees on the lower ascent grab at my horse's tail. i've started plaiting it. they can't get a grip on a plait. ha."]
+    smallTalk: ["there are three hundred and eighty stones in the valley. i know three hundred and sixty of the names by heart. Bertil knows all of them. Osgar knows one. that's the one that matters to him.", "the crimson trees on the lower ascent grab at my horse's tail. i've started plaiting it. they can't get a grip on a plait. ha."]
     speakPlainly: ["plainly: a horse, a road, a shield, and a lot of names."]
     offer: ["thirty-five thousand and your word. i only ride with people i trust. you've got that far. i'll come."]
     join: ["right! i'll take the left. sing if you like. i'm going to."]
@@ -241,7 +241,7 @@
     questOffer.elspeth-the-lower-ascent: ["ride the lower ascent with me? the crimson trees have crept onto the road. thirty of them. then go and stand at the second valley and read one stone. any stone. i found something on the verge you can have."]
     questAccept.elspeth-the-lower-ascent: ["the lower ascent, past Valley of Heroes 2. the crimson trees. then back to the second valley. read one. out loud."]
     questWaiting.elspeth-the-lower-ascent: ["thirty, and a stone. read it out loud."]
-    questComplete.elspeth-the-lower-ascent: ["you read one! which? ...oh, Gerolt the Lesser. he was very tall. it's a joke. here. this was on the verge, half in the mud. an old faceguard. older than the keep. Barricade's smiths want these. i want the mud off my saddlebag."]
+    questComplete.elspeth-the-lower-ascent: ["you read one! which? ...oh, Gerolt the Lesser. he was very tall. it's a joke. here. this was on the verge, half in the mud. an old faceguard. older than the road. Barricade's smiths want these. i want the mud off my saddlebag."]
     questOffer.elspeth-sparta: ["the Sparta. a good plain sword. it wants a stormbreaker's edge. forty stormbreakers, from the upper ascent or the cavern of valour. it's a long ride. i'll come."]
     questAccept.elspeth-sparta: ["the upper ascent, or the cavern of valour off it. the stormbreakers. they come in twos. so do we."]
     questWaiting.elspeth-sparta: ["forty! nearly there. probably."]

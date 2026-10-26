@@ -118,7 +118,8 @@ class AgentTownLifeProfileRepositoryTest {
         AgentTownLifeProfileRepository repository =
                 AgentTownLifeProfileRepository.defaultRepository();
 
-        assertEquals(30, repository.profiles().size());
+        // + haunted-house, bigger-ben, valley-of-heroes (docs/ITCG_MASTERIA_PLAN.md section 6)
+        assertEquals(33, repository.profiles().size());
         for (int mapId : new int[]{104000000, 100000000, 103000000, 102000000,
                 101000000, 120000000, 105040300}) {
             AgentTownLifeProfile profile = repository.require(mapId);
