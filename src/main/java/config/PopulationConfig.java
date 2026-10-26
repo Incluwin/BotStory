@@ -28,8 +28,19 @@ public class PopulationConfig {
     public double PRESENCE_MULTIPLIER = 1.0;
     /** How many maps away from a human a loaded citizen may be before it is unloaded to the ledger (0 = only human maps). */
     public int PERCEPTION_HOPS = 1;
-    /** Visible citizens cap on any single map instance a human is in. */
+    /**
+     * Visible citizens cap on any single map instance (docs/SCALE_PLATFORM_PLAN.md section 1): a login or move to a map
+     * holding this many goes elsewhere, waits, or logs in virtual; a map over it sends its excess on.
+     */
     public int MAP_VISIBLE_MAX = 40;
+    /** Kill switch for MAP_VISIBLE_MAX: false = no per-map cap (the behaviour before 2026-10-25). */
+    public boolean MAP_VISIBLE_CAP_ENABLED = true;
+    /** A move with a purpose (PQ lobby, instructor) to a full map asks again this often... */
+    public int MAP_VISIBLE_RETRY_MS = 5000;
+    /** ...this many times at most, then it is dropped. */
+    public int MAP_VISIBLE_RETRY_LIMIT = 36;
+    /** Citizens a sweep sends on from maps over the cap, at most. */
+    public int MAP_VISIBLE_TRIM_PER_SWEEP = 8;
     /** Fraction of a real casual player's leveling speed a citizen follows (1.0 = same). */
     public double LIFE_PACE = 1.0;
     /** Citizens born per daily churn tick when below target. */
@@ -146,6 +157,10 @@ public class PopulationConfig {
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
             throw new IllegalArgumentException("population.TARGET_CITIZENS/ONLINE_MAX must be >= 0 and MAP_VISIBLE_MAX >= 1");
+        }
+        if (MAP_VISIBLE_RETRY_MS < 1000 || MAP_VISIBLE_RETRY_LIMIT < 0 || MAP_VISIBLE_TRIM_PER_SWEEP < 0) {
+            throw new IllegalArgumentException("population.MAP_VISIBLE_RETRY_MS must be >= 1000, MAP_VISIBLE_RETRY_LIMIT"
+                    + " and MAP_VISIBLE_TRIM_PER_SWEEP >= 0");
         }
         if (PRESENCE_MULTIPLIER < 0 || LIFE_PACE <= 0) {
             throw new IllegalArgumentException("population.PRESENCE_MULTIPLIER must be >= 0 and LIFE_PACE > 0");

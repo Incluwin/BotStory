@@ -607,6 +607,7 @@ public final class AdminControlPort {
                 .raw("seedQueue", seedQueue(population))
                 .num("seedSkipped", population.churn().seedsSkipped())
                 .str("census", population.content().census())
+                .str("visibleCap", population.presence().visibleCapReport())
                 .str("conversation", population.conversation().report())
                 .str("market", population.market().report())
                 .str("partyQuests", population.partyQuests().status())
