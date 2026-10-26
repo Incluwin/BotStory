@@ -2511,7 +2511,8 @@ public class Character extends AbstractCharacterObject {
                         && this.needQuestItem(mapitem.getQuest(), mapitem.getItemId())
                         && storageBags.autoCollect(this, mItem)) {
                     this.getMap().pickItemDrop(pickupPacket, mapitem);
-                    server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0);
+                    server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0,
+                            mapitem.getOwnerId() == this.getId());
                     sendPacket(PacketCreator.enableActions());
                     return;
                 }
@@ -2574,12 +2575,14 @@ public class Character extends AbstractCharacterObject {
                             for (Character partymem : mpcs) {
                                 if (partymem.isLoggedinWorld()) {
                                     partymem.gainMeso(mesosamm, true, true, false);
-                                    server.living.LivingWorldHooks.looted(partymem, 0, 0, mesosamm);
+                                    server.living.LivingWorldHooks.looted(partymem, 0, 0, mesosamm,
+                                            mapitem.getOwnerId() == partymem.getId());
                                 }
                             }
                         } else {
                             this.gainMeso(mapitem.getMeso(), true, true, false);
-                            server.living.LivingWorldHooks.looted(this, 0, 0, mapitem.getMeso());
+                            server.living.LivingWorldHooks.looted(this, 0, 0, mapitem.getMeso(),
+                                    mapitem.getOwnerId() == this.getId());
                         }
                     } else if (mItem.getItemId() / 10000 == 243) {
                         ScriptedItem info = ii.getScriptedItemInfo(mItem.getItemId());
@@ -2591,7 +2594,8 @@ public class Character extends AbstractCharacterObject {
                                 return;
                             }
                             publishQuestItemProgress(mItem.getItemId(), previousItemQuantity);
-                            server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0);
+                            server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0,
+                                    mapitem.getOwnerId() == this.getId());
                         }
                     } else if (ItemId.isNxCard(mapitem.getItemId())) {
                         // Add NX to account, show effect and make item disappear
@@ -2604,7 +2608,8 @@ public class Character extends AbstractCharacterObject {
                     } else if (applyConsumeOnPickup(mItem.getItemId())) {
                     } else if (InventoryManipulator.addFromDrop(client, mItem, true)) {
                         publishQuestItemProgress(mItem.getItemId(), previousItemQuantity);
-                        server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0);
+                        server.living.LivingWorldHooks.looted(this, mItem.getItemId(), mItem.getQuantity(), 0,
+                                mapitem.getOwnerId() == this.getId());
                         if (mItem.getItemId() == ItemId.ARPQ_SPIRIT_JEWEL) {
                             updateAriantScore();
                         }

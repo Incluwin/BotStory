@@ -326,8 +326,10 @@ public final class CompanionSlots {
 
     /**
      * A committed party change, on companion-ops. A join uses up the joiner's reservation (a guest keeps its GUEST
-     * seat, which charges it to its host); a guest that leaves gives its seat back; an owner who leaves takes their
-     * leader cap along (a leader who invites them back starts them afresh), and a disband resets them all.
+     * seat, which charges it to its host); a guest that leaves its host's party gives its seat back; an owner who leaves
+     * takes their leader cap along (a leader who invites them back starts them afresh), and a disband resets them all.
+     * A guest leaving a party its host is not in keeps the seat it holds in the host's: a companion lent to a friend
+     * leaves its owner's party on its way to the friend's (CompanionLoans), and that leave arrives after it joined.
      */
     public void onPartyChanged(PartyChangeEvent event) {
         switch (event.op()) {
@@ -339,7 +341,7 @@ public final class CompanionSlots {
                 }
             }
             case LEAVE, EXPEL -> {
-                release(keyOf(event.targetId()), Kind.GUEST);
+                releaseGuestLeaving(event.targetId(), event.before().memberIds());
                 Map<Integer, Integer> caps = leaderCaps.get(event.partyId());
                 if (caps != null) {
                     caps.remove(event.targetId());
@@ -349,10 +351,19 @@ public final class CompanionSlots {
                 leaderCaps.remove(event.partyId());
                 waitingForRoom.replaceAll((key, blocked) -> blocked == event.partyId() ? 0 : blocked);
                 for (int memberId : event.before().memberIds()) {
-                    release(keyOf(memberId), Kind.GUEST);
+                    releaseGuestLeaving(memberId, event.before().memberIds());
                 }
             }
             default -> { }
+        }
+    }
+
+    /** The GUEST seat of a guest leaving a party, given back when its host was in that party. */
+    private void releaseGuestLeaving(int guestId, java.util.Collection<Integer> partyBefore) {
+        String key = keyOf(guestId);
+        Reservation held = reservation(key);
+        if (held != null && held.kind() == Kind.GUEST && partyBefore.contains(held.ownerId())) {
+            release(key, Kind.GUEST);
         }
     }
 

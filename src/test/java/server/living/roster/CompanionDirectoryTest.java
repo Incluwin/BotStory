@@ -391,6 +391,88 @@ class CompanionDirectoryTest {
         return character;
     }
 
+    // ---- lending: who may do what with a companion out on loan (COMPANION_LENDING_PLAN 3.3) ----
+
+    /** Alice's Olwen out on loan to Bob; Cato's id stands in for a third player who is no friend of theirs. */
+    private CompanionLoans lendOlwenToBob() {
+        CompanionLoans loans = mock(CompanionLoans.class);
+        CompanionLoans.Loan loan = new CompanionLoans.Loan(1L, ALICE, BOB, "olwen", OLWEN, 30, 0L, Long.MAX_VALUE,
+                CompanionLoans.Stage.OUT, 0L, 0);
+        when(loans.any()).thenReturn(true);
+        when(loans.onLoan(OLWEN)).thenReturn(true);
+        when(loans.loanOf(OLWEN)).thenReturn(loan);
+        when(loans.lentOut("olwen")).thenReturn(loan);
+        when(world.loans()).thenReturn(loans);
+        return loans;
+    }
+
+    @Test
+    void aCompanionOutOnLoanTakesOrdersFromNobodyButAnAdministrator() {
+        lendOlwenToBob();
+        Character stranger = character(40, "Stranger");
+
+        assertFalse(directory.mayControl(alice, OLWEN), "its owner directs it again once it is back");
+        assertFalse(directory.mayControl(bob, OLWEN), "the friend directs it from its card, never with control");
+        assertFalse(directory.mayControl(stranger, OLWEN));
+        assertTrue(directory.mayControl(admin, OLWEN));
+        assertFalse(directory.mayLoad(bob, OLWEN));
+        assertFalse(directory.mayLoad(stranger, OLWEN));
+        assertFalse(directory.mayLoad(admin, OLWEN));
+        assertTrue(directory.mayControl(bob, BRIN), "the friend's own companion is unaffected");
+    }
+
+    @Test
+    void noTypedLineReachesACompanionOutOnLoan() {
+        lendOlwenToBob();
+
+        assertTrue(directory.restrictsChat());
+        assertFalse(directory.mayCommandByChat(bob, OLWEN));
+        assertFalse(directory.mayCommandByChat(alice, OLWEN));
+        assertTrue(directory.mayCommandByChat(admin, OLWEN));
+        assertTrue(directory.mayCommandByChat(bob, BRIN));
+        assertTrue(directory.mayCommandByChat(alice, PROBE));
+    }
+
+    @Test
+    void withNoLoanOutChatIsNotFiltered() {
+        assertFalse(directory.restrictsChat()); // no loans service at all
+        CompanionLoans loans = mock(CompanionLoans.class);
+        when(world.loans()).thenReturn(loans);
+        assertFalse(directory.restrictsChat());
+        assertTrue(directory.mayCommandByChat(alice, OLWEN));
+        assertTrue(directory.mayControl(alice, OLWEN));
+    }
+
+    @Test
+    void onlyTheFriendItIsLentToSeesItAsBorrowed() {
+        lendOlwenToBob();
+        Character olwen = character(OLWEN, "Olwen");
+
+        assertEquals(new Relation.BorrowedCompanion(ALICE, "olwen"), directory.resolve(bob, olwen));
+        assertEquals(new Relation.OthersCompanion(ALICE, "olwen"), directory.resolve(character(40, "Stranger"), olwen));
+        assertEquals(new Relation.OthersCompanion(ALICE, "olwen"), directory.resolve(admin, olwen));
+        assertEquals(new Relation.OwnCompanion(olwenRow), directory.resolve(alice, olwen));
+    }
+
+    @Test
+    void aBorrowedCompanionCountsAsItsFriendsInTheirOwnParty() {
+        lendOlwenToBob();
+        Character olwen = character(OLWEN, "Olwen");
+
+        assertTrue(directory.isCompanionParty(party(member(bob), member(olwen), member(character(BRIN, "Brin")))));
+        assertFalse(directory.isCompanionParty(party(member(character(40, "Stranger")), member(olwen))));
+    }
+
+    @Test
+    void aWhisperTurnedAwayFromACompanionOnLoanIsAnsweredByTheLoan() {
+        CompanionLoans loans = lendOlwenToBob();
+        Character olwen = bot(OLWEN, "Olwen");
+
+        directory.refused(bob, olwen, AgentClaimGuard.Refusal.KEPT);
+
+        verify(loans).whisperRefused(bob, olwen);
+    }
+
     // ---- helpers -------------------------------------------------------------------------
 
     private void persona(int characterId, String id, String name) {

@@ -297,6 +297,9 @@ public final class KeystoneErrands {
         if (row == null || row.state() == RosterState.RELEASED) {
             return persona.name() + " is not with you.";
         }
+        if (CompanionLoans.lent(world, persona.id())) {
+            return persona.name() + " is out with a friend right now.";
+        }
         if (errands.containsKey(persona.id())) {
             return persona.name() + " is already working on a keystone.";
         }

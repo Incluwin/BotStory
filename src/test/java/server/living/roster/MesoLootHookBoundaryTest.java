@@ -36,6 +36,17 @@ class MesoLootHookBoundaryTest {
         assertEquals(2, count(meso, "LivingWorldHooks.looted("), meso);
     }
 
+    @Test
+    void theKillTimeMesoTellsTheHookWhoseKillItWas() throws IOException {
+        // contract loot terms (LootTerms): only the top damager's own share is its own kill's meso, never a party share
+        String block = between(read("server/maps/MapleMap.java"), "// Auto-pickup for top damager.", "} else {\r\n                    if (ItemConstants");
+        assertTrue(block.contains("LivingWorldHooks.looted(pm, 0, 0, share, pm == chr)"), block);
+        assertTrue(block.contains("LivingWorldHooks.looted(chr, 0, 0, mesos, true)"), block);
+        String pickup = between(read("client/Character.java"), "public final void pickupItem(MapObject ob, int petIndex)",
+                "public final void ");
+        assertEquals(count(pickup, "LivingWorldHooks.looted("), count(pickup, "mapitem.getOwnerId() == "), pickup);
+    }
+
     private static String read(String file) throws IOException {
         return Files.readString(MAIN.resolve(file)).replace("\r\n", "\n");
     }

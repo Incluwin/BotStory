@@ -446,14 +446,17 @@ public final class ContentLoader {
             leaves.add(LeaveRule.DISMISS);
             leaves.add(LeaveRule.LEADER_OFFLINE_20M);
         }
+        // no lootShare: no split (Terms.splitsLoot), as before the terms were enforced; no ownDropsPercent: -1, which
+        // OWN_DROPS reads as the authored default (Terms.keptPercent) and ContentLint tells apart from a written one
+        Node lootShare = termsNode.get("lootShare");
         Terms terms = new Terms(
                 termsNode.get("durationHours").integer(0),
                 termsNode.get("maxLevelGap").integer(0),
-                LootShare.valueOf(termsNode.get("lootShare").enumName("OWN_DROPS")),
+                lootShare.isMissing() ? null : LootShare.valueOf(lootShare.enumName("OWN_DROPS")),
                 leaves,
                 termsNode.get("cooldownHoursAfterLeave").integer(0),
                 termsNode.get("rejoinPrice").get("meso").longValue(price.meso()),
-                termsNode.get("ownDropsPercent").integer(10));
+                termsNode.get("ownDropsPercent").integer(-1));
         return new Contract(node.get("id").string(), offerWhen, price, terms, node.path());
     }
 

@@ -434,7 +434,7 @@ final class CompanionBossAllies {
         List<Row> rows = new ArrayList<>();
         CompanionViews views = world.views();
         for (CompanionView view : views == null ? List.<CompanionView>of() : views.crew(clicker)) {
-            if (view.state() != RosterState.BENCHED) {
+            if (view.state() != RosterState.BENCHED || CompanionLoans.lent(world, view.personaId())) {
                 continue;
             }
             Persona persona = world.content().persona(view.personaId());
@@ -504,7 +504,7 @@ final class CompanionBossAllies {
         }
         CompanionViews views = world.views();
         for (CompanionView view : views == null ? List.<CompanionView>of() : views.crew(clicker)) {
-            if (view.state() == RosterState.BENCHED && !onTrip(view.personaId())) {
+            if (view.state() == RosterState.BENCHED && !onTrip(view.personaId()) && !CompanionLoans.lent(world, view.personaId())) {
                 return true;
             }
         }
@@ -658,7 +658,7 @@ final class CompanionBossAllies {
         Persona persona = world.content().persona(trip.personaId);
         RosterEntry entry = persona == null ? null : world.store().rosterEntry(trip.ownerId, persona.id());
         if (context == null || context.expedition() != trip.expedition || entry == null
-                || entry.state() != RosterState.BENCHED || busy(entry, persona)) {
+                || entry.state() != RosterState.BENCHED || CompanionLoans.lent(world, persona.id()) || busy(entry, persona)) {
             log.info("boss ally call of {} for owner {} dropped: the offer is gone", trip.personaId, trip.ownerId);
             trips.remove(trip.personaId, trip);
             return;

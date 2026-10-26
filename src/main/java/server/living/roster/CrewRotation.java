@@ -236,6 +236,7 @@ public final class CrewRotation {
         int closest = Integer.MAX_VALUE;
         for (RosterEntry entry : rows) {
             Persona persona = entry.state() == RosterState.BENCHED && !cooling(entry.personaId(), now)
+                    && !CompanionLoans.lent(world, entry.personaId())
                     ? world.content().persona(entry.personaId()) : null;
             int level = persona == null ? 0 : restedLevel(owner, entry, persona);
             int off = Math.abs(level - owner.getLevel());

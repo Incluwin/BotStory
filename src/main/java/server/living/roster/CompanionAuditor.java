@@ -170,6 +170,9 @@ public final class CompanionAuditor {
                 if (world.roster().inFlight(ownerId, personaId)) {
                     continue; // a call, walk-out or trip under way: neither drift nor clean yet
                 }
+                if (CompanionLoans.lent(world, personaId)) {
+                    continue; // out on loan, BENCHED and loaded under the friend: the loan's, not drift (CompanionLoans)
+                }
                 List<Code> codes = new ArrayList<>();
                 for (Drift drift : drifting.getValue()) {
                     codes.add(drift.code());

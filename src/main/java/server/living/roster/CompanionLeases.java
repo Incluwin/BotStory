@@ -11,9 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CompanionLeases {
     /**
      * BENCH_LIVE, BENCH_TOWN and COMMERCE are a benched companion's live slice (P5, BenchDutyDispatcher): at its field
-     * camp, resting in town, or at a Free Market stall.
+     * camp, resting in town, or at a Free Market stall. LOAN is a companion its owner lent to a friend, charged to the
+     * friend (CompanionLoans).
      */
-    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION, BENCH_TOWN, COMMERCE }
+    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION, BENCH_TOWN, COMMERCE, LOAN }
 
     /** What a character is loaded for, and the owner it is charged to (0 = nobody). */
     public record Lease(Kind kind, int ownerId) { }
@@ -41,6 +42,14 @@ public final class CompanionLeases {
             return null;
         });
         return released[0];
+    }
+
+    /**
+     * Moves the character's lease from {@code from} to {@code to} in one step (a loan's hand-over and its return), so
+     * nothing can take the character in between. False, and nothing changes, unless {@code from} holds it.
+     */
+    public boolean transfer(int characterId, Lease from, Lease to) {
+        return from != null && to != null && leases.replace(characterId, from, to);
     }
 
     /** The lease holding the character, or null when it is free. */

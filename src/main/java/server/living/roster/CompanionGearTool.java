@@ -486,6 +486,7 @@ public final class CompanionGearTool {
         String whose = "; boss gear is for you ('me') and your own companions.";
         return switch (relation) {
             case Relation.OthersCompanion others -> name + " is another player's companion.";
+            case Relation.BorrowedCompanion borrowed -> name + " is another player's companion.";
             case Relation.Resident resident -> name + " is a Resident" + whose;
             case Relation.Citizen citizen -> name + " is a citizen" + whose;
             case Relation.HireOfferPending offer -> name + " is a citizen" + whose;

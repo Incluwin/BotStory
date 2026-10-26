@@ -202,6 +202,11 @@ final class LiveCrew implements CompanionPartySync.Crew {
 
     @Override
     public void guestLeaves(int hostId, int guestId, String line) {
+        CompanionLoans loans = world.loans();
+        if (loans != null && loans.onLoan(guestId)) {
+            loans.guestLeft(hostId, guestId); // a companion on loan rejoins its friend once this settles, or goes home
+            return;
+        }
         Character guest = online(guestId);
         Character host = online(hostId);
         if (guest != null) {

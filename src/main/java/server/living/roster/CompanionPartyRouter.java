@@ -57,6 +57,7 @@ public final class CompanionPartyRouter {
         return switch (relation) {
             case Relation.OwnCompanion own -> ownCompanion(inviter, invited, own.entry());
             case Relation.OthersCompanion others -> answer(inviter, PacketCreator.partyStatusMessage(23, shown));
+            case Relation.BorrowedCompanion borrowed -> borrowedCompanion(inviter, borrowed.personaId());
             case Relation.Resident resident -> answer(inviter, PacketCreator.partyStatusMessage(23, shown));
             case Relation.Citizen citizen -> citizen(inviter, invited);
             case Relation.HireOfferPending offer -> citizen(inviter, invited);
@@ -102,6 +103,26 @@ public final class CompanionPartyRouter {
         if (ownParty(owner)) {
             world.executor().submit("roster.call " + persona.id(), () -> world.roster().call(owner, persona));
         }
+        return Route.ANSWERED;
+    }
+
+    /**
+     * A companion out on loan to the inviter (CompanionLoans): one that stepped out of their party comes back on a GUEST
+     * seat, on companion-ops (CompanionLoans.reseat checks again that the inviter is the friend it is lent to). It answers
+     * for itself; nothing is printed but a refusal.
+     */
+    private Route borrowedCompanion(Character friend, String personaId) {
+        Persona persona = world.content().persona(personaId);
+        CompanionLoans loans = world.loans();
+        if (persona == null || loans == null) {
+            return notFound(friend);
+        }
+        world.executor().submit("loan.reseat " + personaId, () -> {
+            RosterResult result = loans.reseat(friend, persona);
+            if (!result.ok()) {
+                friend.dropMessage(5, RosterVoice.line(persona, result));
+            }
+        });
         return Route.ANSWERED;
     }
 

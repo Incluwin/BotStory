@@ -50,6 +50,10 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (roster != null && roster.heldAtTicketGate(agentCharacterId)) {
             return true; // APQ A2: on its way past Amos the Strong, on its own ticket, or waiting for want of one
         }
+        CompanionLoans loans = world.loans();
+        if (loans != null && loans.any() && loans.waitingOutside(agentCharacterId)) {
+            return true; // on loan: its friend went into a run without it, and it waits outside (D2 b)
+        }
         if (!roster.keepsAnyOffFollow()) {
             return false;
         }
@@ -61,6 +65,11 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
     @Override
     public AgentFollowGuard.Crossing crossing(int agentCharacterId, Character anchor) {
         RosterService roster = world.roster();
+        CompanionLoans loans = world.loans();
+        if (loans != null && loans.any() && loans.mayDirect(anchor, agentCharacterId)) {
+            // out on loan to the anchor: it comes in where its friend came in, as their own would
+            return roster.crossing(anchor, agentCharacterId, System.currentTimeMillis());
+        }
         if (!roster.hasCompanions(anchor)) {
             return null;
         }

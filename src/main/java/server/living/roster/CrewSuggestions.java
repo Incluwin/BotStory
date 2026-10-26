@@ -105,7 +105,8 @@ public final class CrewSuggestions {
         }
         Map<String, Persona> bench = new java.util.HashMap<>();
         for (RosterEntry entry : world.roster().roster(owner)) {
-            Persona persona = entry.state() == RosterState.BENCHED ? world.content().persona(entry.personaId()) : null;
+            Persona persona = entry.state() == RosterState.BENCHED && !CompanionLoans.lent(world, entry.personaId())
+                    ? world.content().persona(entry.personaId()) : null;
             JobErrands errands = world.jobErrands();
             KeystoneErrands keystones = world.keystoneErrands();
             TicketErrands tickets = world.ticketErrands();

@@ -93,7 +93,7 @@ public final class BenchLedger {
     }
 
     private void accrue(RosterEntry entry, long now) {
-        if (!BenchSessions.benchGoverned(entry)) {
+        if (!BenchSessions.benchGoverned(entry) || CompanionLoans.lent(world, entry.personaId())) { // out on loan: not at camp
             return;
         }
         Persona persona = world.content().persona(entry.personaId());
@@ -155,7 +155,13 @@ public final class BenchLedger {
             }
             case FARM_MESO -> {
                 if (withinDailyCap(entry, farmSecondsToday, hours)) {
-                    long gained = Math.round(predicted(key, mesoPrior(botLevel), false) * slowdown(haulMeso) * hours);
+                    long farmed = Math.round(predicted(key, mesoPrior(botLevel), false) * slowdown(haulMeso) * hours);
+                    // its contract's cut goes to its own purse; the rest is the haul's (LootTerms)
+                    LootTerms terms = world.lootTerms();
+                    long gained = terms == null ? farmed : terms.benchShare(entry.characterId(), persona.id(), farmed);
+                    if (gained < farmed) {
+                        terms.payCut(persona.id(), farmed - gained);
+                    }
                     haulMeso += gained;
                     report.haul(entry.characterId(), persona.id(), key.campMapId(), gained, 0, 0);
                     farmSecondsToday += (int) (hours * 3600);

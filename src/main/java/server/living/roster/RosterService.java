@@ -569,6 +569,10 @@ public final class RosterService {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return persona.name() + " is not in your roster.";
         }
+        CompanionLoans loans = world.loans();
+        if (loans != null) {
+            loans.releasing(persona.id()); // out on loan: it comes home first, then goes
+        }
         letGo(entry, reason);
         world.contracts().onReleased(ownerId, persona, reason);
         world.store().event(ownerId, persona.id(), "roster.release", reason);
@@ -784,6 +788,10 @@ public final class RosterService {
      */
     public void ownerDeleted(int ownerId) {
         Commitments commitments = world.commitments();
+        CompanionLoans loans = world.loans();
+        if (loans != null) {
+            loans.loggedOut(ownerId); // its companions out on loan come home, and what it borrowed goes back, first
+        }
         for (RosterEntry entry : world.store().roster(ownerId)) {
             int characterId = world.residents().characterIdOf(entry.personaId());
             if (handoff.finishing(characterId)) {
@@ -848,6 +856,10 @@ public final class RosterService {
      * with a boss run (its row stays BENCHED for the whole trip).
      */
     public RosterResult call(Character owner, Persona persona) {
+        RosterResult lentOut = onLoan(owner, persona);
+        if (lentOut != null) {
+            return lentOut;
+        }
         RosterResult result = call(owner, persona, null);
         if (result.ok()) {
             world.slots().stopWaiting(persona.id());
@@ -1663,6 +1675,10 @@ public final class RosterService {
         if (committed(out.id()) || committed(in.id())) {
             return afterTheRun(owner, committed(out.id()) ? out : in);
         }
+        RosterResult lentOut = onLoan(owner, in);
+        if (lentOut != null) {
+            return lentOut;
+        }
         RosterEntry leaving = world.store().rosterEntry(owner.getId(), out.id());
         RosterEntry coming = world.store().rosterEntry(owner.getId(), in.id());
         Character outBot = leaving == null ? null : companion(leaving);
@@ -1788,6 +1804,10 @@ public final class RosterService {
         if (entry == null) {
             return new RosterResult.NotOwned();
         }
+        RosterResult lentOut = onLoan(owner, persona);
+        if (lentOut != null) {
+            return lentOut;
+        }
         if (BenchDutyDispatcher.closed(mapId)) {
             return new RosterResult.Failed(persona.name() + ": " + CLOSED_CAMP_LINE);
         }
@@ -1851,6 +1871,10 @@ public final class RosterService {
         if (entry == null) {
             return new RosterResult.NotOwned();
         }
+        RosterResult lentOut = onLoan(owner, persona);
+        if (lentOut != null) {
+            return lentOut;
+        }
         if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
             return refuseOwnErrand(persona);
         }
@@ -1894,6 +1918,10 @@ public final class RosterService {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return new RosterResult.NotOwned();
+        }
+        RosterResult lentOut = onLoan(owner, persona);
+        if (lentOut != null) {
+            return lentOut;
         }
         if (committed(persona.id())) {
             return afterTheRun(owner, persona);
@@ -2050,8 +2078,12 @@ public final class RosterService {
         return lines;
     }
 
-    /** Moves the haul into the owner's inventory and purse; provenance is recorded per stack. */
+    /**
+     * Moves the haul into the owner's inventory and purse; provenance is recorded per stack. Its owner's share of what it
+     * still carries from the field goes into the haul first (LootTerms), and it says the cut it kept by its contract.
+     */
     public String handOver(Character owner, Persona persona) {
+        settleShare(persona);
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null) {
             return persona.name() + " is not in your roster.";
@@ -2084,7 +2116,24 @@ public final class RosterService {
         }
         String line = !given.isEmpty() ? persona.name() + " hands you " + String.join(" and ", given)
                 : skipped > 0 ? persona.name() + " has nothing that fits in your bag" : persona.name() + " has nothing to hand over";
-        return line + (skipped > 0 ? "; " + stacks(skipped) + (skipped == 1 ? " does" : " do") + " not fit in your bag." : ".");
+        return line + (skipped > 0 ? "; " + stacks(skipped) + (skipped == 1 ? " does" : " do") + " not fit in your bag." : ".")
+                + keptLine(owner, persona);
+    }
+
+    /** Its owner's share of what the loaded companion carries from the field, into its haul now (LootTerms.settle). */
+    private void settleShare(Persona persona) {
+        LootTerms terms = world.lootTerms();
+        int characterId = terms == null ? 0 : world.residents().characterIdOf(persona.id());
+        if (characterId != 0) {
+            terms.settle(characterId);
+        }
+    }
+
+    /** " It kept its cut, 1,830 meso, as its contract says." once per collection, or nothing (LootTerms.takeKept). */
+    private String keptLine(Character owner, Persona persona) {
+        LootTerms terms = world.lootTerms();
+        long kept = terms == null ? 0L : terms.takeKept(owner.getId(), persona.id());
+        return kept <= 0 ? "" : String.format(Locale.ROOT, " It kept its cut, %,d meso, as its contract says.", kept);
     }
 
     /** "1 stack", "4 stacks". */
@@ -2094,6 +2143,7 @@ public final class RosterService {
 
     /** Mails the haul through Duey, one package per stack, the meso in the first. */
     public String sendIt(Character owner, Persona persona) {
+        settleShare(persona);
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null) {
             return persona.name() + " is not in your roster.";
@@ -2886,6 +2936,10 @@ public final class RosterService {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return new RosterResult.NotOwned();
         }
+        RosterResult lentOut = onLoan(owner, persona);
+        if (lentOut != null) {
+            return lentOut;
+        }
         if (entry.state() == RosterState.HOLD) {
             return new RosterResult.Ok(persona.name() + " is waiting already.");
         }
@@ -3076,6 +3130,13 @@ public final class RosterService {
      * are reconciled (a friend who joined meanwhile may have shrunk their share: a hold past it goes to its duty).
      */
     public void ownerEnteredMap(Character owner, MapleMap map, Point at) {
+        CompanionLoans loans = world.loans();
+        if (loans != null && loans.any()) {
+            loans.enteredMap(owner, map.getEventInstance() != null); // a friend's borrowed companion waits out a run
+            if (!owners.contains(owner.getId()) && !loans.borrowedBy(owner.getId()).isEmpty()) {
+                portalFollow.entered(owner.getId(), map.getId(), at); // and follows them in where they came in
+            }
+        }
         if (!owners.contains(owner.getId())) {
             return;
         }
@@ -3193,14 +3254,84 @@ public final class RosterService {
         return true;
     }
 
+    // ---- lending (CompanionLoans, on companion-ops) --------------------------------------------
+
+    /**
+     * A loan's hand-over: the companion out with its owner goes to a friend where it stands, so its row goes ACTIVE to
+     * BENCHED with no walk-out and no unload, and nothing waits for room for it. Its owner's seat is free at once, and a
+     * restart finds it home. False, with nothing written, when the row is not ACTIVE.
+     */
+    boolean lendOut(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || entry.state() != RosterState.ACTIVE) {
+            return false;
+        }
+        world.slots().stopWaiting(persona.id());
+        if (!write(entry.with(RosterState.BENCHED, System.currentTimeMillis()))) {
+            return false;
+        }
+        world.store().event(owner.getId(), persona.id(), "roster.lend", null);
+        return true;
+    }
+
+    /**
+     * A loan's return where its owner stands: the companion, handed back to its owner's lead already, joins the owner's
+     * party on a seat held for the join and its row goes BENCHED to ACTIVE, with its owner's settings. False, with
+     * nothing written, when the row is not BENCHED, there is no seat, or the join fails.
+     */
+    boolean backFromLoan(Character owner, Persona persona, Character bot) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || entry.state() != RosterState.BENCHED || !canSeat(owner, entry) || !rejoin(owner, entry, bot)) {
+            return false;
+        }
+        if (!write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()))) {
+            leaveParty(bot, entry);
+            return false;
+        }
+        ownerByPersona.put(persona.id(), owner.getId());
+        settings.apply(owner, persona, bot);
+        walkToOwner(persona, bot);
+        world.store().event(owner.getId(), persona.id(), "roster.back_from_loan", null);
+        return true;
+    }
+
+    /**
+     * A loan ended away from its owner: its BENCHED row starts its bench afresh, so the ledger credits none of the time
+     * it spent out with the friend (BenchLedger skipped it meanwhile).
+     */
+    void loanEnded(int ownerId, String personaId) {
+        RosterEntry entry = world.store().rosterEntry(ownerId, personaId);
+        if (entry != null && entry.state() == RosterState.BENCHED) {
+            write(entry.with(RosterState.BENCHED, System.currentTimeMillis()));
+        }
+    }
+
+    /** True while the persona is out on loan to its owner's friend (CompanionLoans): only the loan moves its row. */
+    private boolean lent(String personaId) {
+        CompanionLoans loans = world.loans();
+        return loans != null && loans.lent(personaId);
+    }
+
+    /** What a companion out on loan says to its owner's verbs, null when it is not out on loan. */
+    private RosterResult onLoan(Character owner, Persona persona) {
+        CompanionLoans loans = world.loans();
+        CompanionLoans.Loan loan = loans == null || persona == null ? null : loans.lentOut(persona.id());
+        if (loan == null) {
+            return null;
+        }
+        Character friend = onlineCharacter(loan.borrowerId());
+        return new RosterResult.Failed(persona.name() + " is out with " + (friend == null ? "a friend" : friend.getName())
+                + ". Call " + persona.name() + " back from its card first.");
+    }
+
     /**
      * A BENCHED or AWAY row whose companion is still in the owner's party or still led by the owner: it leaves the
      * party, and is unloaded unless something else (a bench slice) leads it. An offline member is expelled. One
-     * committed to a run is the run's until it ends.
+     * committed to a run is the run's until it ends. One out on loan is the loan's.
      */
     public void unseat(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
-        if (entry == null || !BenchSessions.benchGoverned(entry) || inFlight(owner.getId(), persona.id())
+        if (entry == null || !BenchSessions.benchGoverned(entry) || lent(persona.id()) || inFlight(owner.getId(), persona.id())
                 || committed(persona.id())) {
             return;
         }
@@ -3243,6 +3374,10 @@ public final class RosterService {
         if (bot != null) {
             if (leaveParty) {
                 leaveParty(bot, entry);
+            }
+            LootTerms terms = world.lootTerms();
+            if (terms != null) {
+                terms.settle(bot.getId()); // what it owes of its loot goes to the haul before its purse is saved
             }
             bot.saveCharToDB();
         }
@@ -3396,6 +3531,13 @@ public final class RosterService {
         if (!CompanionSeatState.legal(from, next.state())) {
             log.warn("roster {} of {}: illegal move {} -> {} refused", next.personaId(), next.characterId(), from, next.state());
             world.store().event(next.characterId(), next.personaId(), "roster.illegal_transition", from + " -> " + next.state());
+            return false;
+        }
+        if (next.state() != from && next.state() != RosterState.BENCHED && lent(next.personaId())) {
+            // out on loan, its row stays BENCHED: the loan ends before anything else moves it (CompanionLoans)
+            log.warn("roster {} of {}: {} -> {} refused while it is out on loan", next.personaId(), next.characterId(),
+                    from, next.state());
+            world.store().event(next.characterId(), next.personaId(), "roster.lent_move_refused", from + " -> " + next.state());
             return false;
         }
         world.store().saveRoster(next);

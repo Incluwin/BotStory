@@ -529,6 +529,10 @@ public final class ResidentDialogue {
                 new CompanionMenus(world).card(clicker, own.entry());
                 return true;
             }
+            case CompanionDirectory.Relation.BorrowedCompanion borrowed -> {
+                // lent to you by its owner (CompanionLoans): its borrowed card, else the stock char info
+                return new CompanionMenus(world).borrowedCard(clicker, borrowed.personaId());
+            }
             case CompanionDirectory.Relation.HireOfferPending offer -> {
                 // its terms, or enableActions when no window may open now; char info's Party button is unaffected
                 new HireScreens(world).terms(clicker, offer.characterId(), HireScreens.Context.OFFER);

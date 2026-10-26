@@ -349,6 +349,7 @@ public final class CompanionLevelTool {
         }
         return switch (relation) {
             case Relation.OthersCompanion others -> name + " is another player's companion.";
+            case Relation.BorrowedCompanion borrowed -> name + " is another player's companion.";
             case Relation.Resident resident -> name + " is a Resident; only your own companions can be set.";
             case Relation.Citizen citizen -> name + " is a citizen; only your own companions can be set.";
             case Relation.HireOfferPending offer -> name + " is a citizen; only your own companions can be set.";

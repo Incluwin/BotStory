@@ -68,6 +68,7 @@ public final class CompanionMenus {
     final IntFunction<String> placeNames;
     private final CompanionCardScreens cards;
     private final CompanionCrewScreens crews;
+    private final LoanScreens loans;
 
     public CompanionMenus(LivingWorld world) {
         this(world, CompanionView::placeName);
@@ -78,6 +79,7 @@ public final class CompanionMenus {
         this.placeNames = placeNames;
         this.cards = new CompanionCardScreens(this);
         this.crews = new CompanionCrewScreens(this, this::pendingHireOffers);
+        this.loans = new LoanScreens(this);
     }
 
     // ---- entry points --------------------------------------------------------------------
@@ -100,6 +102,18 @@ public final class CompanionMenus {
             return;
         }
         cards.show(owner, persona, fromCrew, crewVoice);
+    }
+
+    /**
+     * Double-clicking a companion its owner lent you (CompanionLoans): its borrowed card. False, with nothing shown,
+     * when it is not out on loan to you any more (the stock character info then).
+     */
+    public boolean borrowedCard(Character friend, String personaId) {
+        if (!LivingTalk.mayShow(friend)) {
+            friend.sendPacket(PacketCreator.enableActions());
+            return true;
+        }
+        return loans.borrowedCard(friend, world.content().persona(personaId), "");
     }
 
     /**
@@ -161,6 +175,11 @@ public final class CompanionMenus {
     /** The crew-wide screens, for a card page that opens one of them. */
     CompanionCrewScreens crews() {
         return crews;
+    }
+
+    /** Lending's windows, for the card's "Lend to a friend..." and the card of a companion out on loan. */
+    LoanScreens loans() {
+        return loans;
     }
 
     // ---- shared by the screens ------------------------------------------------------------
@@ -291,6 +310,12 @@ public final class CompanionMenus {
      * Ellinia" for its next job, "at the store" on its own restock trip), or null. From memory.
      */
     String errand(CompanionView view) {
+        server.living.roster.CompanionLoans loans = world.loans();
+        server.living.roster.CompanionLoans.Loan loan = loans == null ? null : loans.lentOut(view.personaId());
+        if (loan != null) {
+            Character friend = world.roster().onlineCharacter(loan.borrowerId());
+            return "out with " + (friend == null ? "a friend" : friend.getName()); // lent to a friend (CompanionLoans)
+        }
         JobErrands errands = world.jobErrands();
         String instructor = errands == null ? null : errands.visiting(view.personaId());
         if (instructor != null) {

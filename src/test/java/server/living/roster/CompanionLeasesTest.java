@@ -50,6 +50,28 @@ class CompanionLeasesTest {
     }
 
     @Test
+    void aTransferMovesTheLeaseInOneStepOnlyFromItsHolder() {
+        Lease asCompanion = new Lease(Kind.COMPANION, ALICE);
+        Lease asLoan = new Lease(Kind.LOAN, BOB);
+        assertFalse(leases.transfer(OLWEN, asCompanion, asLoan)); // free: nothing to move
+        assertNull(leases.holder(OLWEN));
+
+        leases.tryAcquire(OLWEN, Kind.COMPANION, ALICE);
+        assertFalse(leases.transfer(OLWEN, new Lease(Kind.COMPANION, BOB), asLoan)); // not Bob's to move
+        assertFalse(leases.transfer(OLWEN, new Lease(Kind.BENCH_LIVE, ALICE), asLoan));
+        assertEquals(asCompanion, leases.holder(OLWEN));
+
+        assertTrue(leases.transfer(OLWEN, asCompanion, asLoan));
+        assertEquals(asLoan, leases.holder(OLWEN));
+        assertFalse(leases.tryAcquire(OLWEN, Kind.COMPANION, ALICE)); // no gap for anyone to load it in between
+        assertFalse(leases.release(OLWEN, Kind.COMPANION));
+
+        assertTrue(leases.transfer(OLWEN, asLoan, asCompanion)); // and back
+        assertEquals(asCompanion, leases.holder(OLWEN));
+        assertFalse(leases.transfer(OLWEN, asCompanion, null));
+    }
+
+    @Test
     void countsLeasesByKind() {
         leases.tryAcquire(900, Kind.EXPEDITION, ALICE);
         leases.tryAcquire(901, Kind.EXPEDITION, BOB);

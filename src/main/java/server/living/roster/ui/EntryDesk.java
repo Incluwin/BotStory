@@ -9,6 +9,7 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
+import server.living.roster.CompanionLoans;
 import server.living.roster.CompanionPartyQuestService;
 import server.living.roster.CompanionView;
 import server.living.roster.CrewSuggestions;
@@ -277,8 +278,8 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
     private List<Benched> benched(Character leader) {
         List<Benched> benched = new ArrayList<>();
         for (RosterEntry entry : menus.rows(leader)) {
-            Persona persona = entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY
-                    ? world.content().persona(entry.personaId()) : null;
+            Persona persona = (entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)
+                    && !CompanionLoans.lent(world, entry.personaId()) ? world.content().persona(entry.personaId()) : null;
             if (persona != null) {
                 benched.add(new Benched(persona, menus.view(leader, entry), entrance.definition()));
             }
