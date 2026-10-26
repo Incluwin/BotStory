@@ -1,5 +1,9 @@
 package server.agents.capabilities.expedition.balrog;
 
+import client.Character;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.Item;
 import server.agents.field.AgentBalrogTestFixtureService;
 
 import java.util.Comparator;
@@ -49,6 +53,16 @@ final class AgentEasyBalrogRewardPolicy {
             assignedCounts.merge(selected.characterId(), 1, Integer::sum);
         }
         return assignments;
+    }
+
+    /**
+     * The class of the weapon {@code member} wears (a citizen's own, with no fixture roster to read it from); null with
+     * none, or one no reward class names.
+     */
+    static AgentBalrogTestFixtureService.WeaponClass weaponClassOf(Character member) {
+        Inventory equipped = member == null ? null : member.getInventory(InventoryType.EQUIPPED);
+        Item weapon = equipped == null ? null : equipped.getItem((short) -11);
+        return weapon == null ? null : weaponClass(weapon.getItemId());
     }
 
     private static AgentBalrogTestFixtureService.WeaponClass weaponClass(int itemId) {

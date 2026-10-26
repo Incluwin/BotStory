@@ -21,6 +21,9 @@ regions:
     towns: [200000000]
     lobbies:
       - { id: opq, mapId: 200080101, levels: { min: 51, max: 70 }, name: "OPQ" }
+      # Mu Young's room in Sleepywood (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md): every region whose citizens
+      # reach Lv50 sends them down to her for the Balrog expedition; one fitting more than one lobby picks at random.
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 10
   - id: ludibrium
@@ -35,13 +38,15 @@ regions:
   - id: el-nath
     levels: { min: 45, max: 90 }
     towns: [211000000]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 6
   - id: aquarium
     levels: { min: 50, max: 80 }
     towns: [230000000]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 4
   - id: ariant
@@ -49,7 +54,8 @@ regions:
     levels: { min: 35, max: 85 }
     towns: [260000000, 261000000]
     townWeights: [50, 50]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 3
   - id: mu-lung
@@ -57,13 +63,15 @@ regions:
     levels: { min: 45, max: 90 }
     towns: [250000000, 251000000]
     townWeights: [70, 30]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 3
   - id: leafre
     levels: { min: 70, max: 120 }
     towns: [240000000]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 2
   - id: new-leaf-city
@@ -77,7 +85,8 @@ regions:
     # NLC taxi to the Haunted House, then on foot through Phantom Forest.
     levels: { min: 70, max: 110 }
     towns: [610030000]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 1
   - id: zipangu
@@ -101,7 +110,8 @@ regions:
     levels: { min: 45, max: 95 }
     towns: [550000000, 551000000]
     townWeights: [55, 45]
-    lobbies: []
+    lobbies:
+      - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 2
   - id: amoria

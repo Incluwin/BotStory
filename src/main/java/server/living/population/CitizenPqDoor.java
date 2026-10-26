@@ -27,6 +27,14 @@ interface CitizenPqDoor {
 
     String key();
 
+    /**
+     * A boss expedition's door (CitizenBossDoor): its run signs up and starts over several ticks, and its runs count
+     * against BOSS_RUNS_MAX instead of the party-quest caps.
+     */
+    default boolean expedition() {
+        return false;
+    }
+
     int minSeats();
 
     int maxSeats();
@@ -66,6 +74,50 @@ interface CitizenPqDoor {
     /** The doors that ship, by lobby id. */
     static Map<String, CitizenPqDoor> shipped() {
         return Map.of("kpq", new Kpq(), "hpq", new Hpq());
+    }
+
+    /**
+     * A boss expedition's door (docs/CITIZEN_EXPEDITIONS_PLAN.md, CitizenBossDoor): {@link #admit} opens the list and
+     * its run; the members sign up over the next ticks, and the population asks the run to start once {@link #ready}.
+     */
+    interface ExpeditionDoor extends CitizenPqDoor {
+        /** Where a citizen expedition's list stands, as the population reads it each tick. */
+        enum Stage {
+            /** Its list is open: members still walking up and signing up, or all listed and waiting for the Start. */
+            SIGNING_UP,
+            /** Its leader's Start went through: the fight, or after it. */
+            STARTED,
+            /** The run is gone (its end was told, or is about to be). */
+            GONE
+        }
+
+        @Override
+        default boolean expedition() {
+            return true;
+        }
+
+        /** True while citizens may run any boss here (the switch, its list, and the server moving the boss). */
+        boolean enabled();
+
+        Stage stage(String sessionId);
+
+        /**
+         * True when the run may start: its citizens listed and none still walking up, and its humans listed too or
+         * {@code waitedLong}.
+         */
+        boolean ready(String sessionId, Collection<Integer> citizens, Collection<Integer> humans, boolean waitedLong);
+
+        /** True when human {@code humanId} is on the run's list. */
+        boolean listed(String sessionId, int humanId);
+
+        /** Asks the run to start (its leader talks to the entry NPC); false once it is gone or past its list. */
+        boolean start(String sessionId);
+
+        /** A citizen arriving here buys what it lacks of the boss's potions; true when it then carries them. */
+        boolean provision(Character agent);
+
+        /** A boss key as players say it ("Easy Balrog"). */
+        String label(String bossKey);
     }
 
     /** What every door reads from its quest's companion entrance (PqEntrance). */

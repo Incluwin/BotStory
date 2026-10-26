@@ -5997,6 +5997,14 @@ tuning:
     # Purpose: How often a companion that walked back to the recruit NPC after a death (Aldol, for Scarlion and Targa) talks to it to get back into the fight.
     # Technical: AgentBossRunSession.tickReentering: a REENTERING member alive on the recruit map within EXIT_REACH_PX of the recruit NPC (AgentBossDeathWalk walks it there) runs that NPC's script (AgentBossRunPorts.runNpc, no selections), at most this often; the in-progress branch of the stock script registers a listed member while canJoin is 1. It is back INSIDE once it stands in the event again.
     server.agents.capabilities.expedition.boss.AgentBossRunSession.REENTER_TALK_EVERY_MS: '10000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 5000-20000; 10000 gives the entry NPC's Start time to warp everyone listed before the leader asks again.
+    # Purpose: How often the citizen who leads a citizen expedition (docs/CITIZEN_EXPEDITIONS_PLAN.md) talks to the entry NPC to start it, once the population asked for the Start.
+    # Technical: AgentBossRunSession.talkStart, on a registering tick of a citizen run whose Start was asked (AgentBossRunService.startCitizens): the leader, alive on the recruit map, runs the entry NPC's script with the boss's Start choices (AgentBossCitizenRuns, Mu Young's 1,2,0 for Easy Balrog), at most this often while the list stays open. A Start the NPC refuses (fewer listed than the expedition's minimum) is asked again after this long, until the list closes.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.CITIZEN_START_TALK_EVERY_MS: '10000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 60000-300000; 180000 leaves the reward room's box, the 7-second first pick of the humans and the citizens' own pick-up time.
+    # Purpose: How long citizens of a citizen expedition stay inside after the boss fell, for its reward room, before they head out by the stock ways.
+    # Technical: AgentBossRunSession.leaveAfterClear: in POST_CLEAR a citizen run drives its members by the fight's after-clear play (AgentEasyBalrogScenario.forCitizens: the battle exit NPC, the reward box, the reward assignments, the reward room's portal); a member still INSIDE this long after the clear leaves EXITED (walkOut, then moveOut after EXIT_TIMEOUT_MS).
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.CITIZEN_AFTER_CLEAR_MS: '180000'
     # Values: a positive integer. Recommended: 3-10; 5 tolerates a brief blip without letting a dead endpoint absorb a request per judgment.
     # Purpose: Number of consecutive failed System One requests after which the circuit breaker opens and requests are refused locally.
     # Technical: Any success resets the count; while the breaker is open every ask returns empty immediately so callers fall back to deterministic behaviour without network latency.

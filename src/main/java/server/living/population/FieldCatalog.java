@@ -92,18 +92,37 @@ public final class FieldCatalog {
         return region.townFor(citizen.characterId() * 31 + (random == null ? 0 : random.nextInt(7)));
     }
 
-    /** A lobby in the citizen's region whose level band fits, else null. */
+    /** A lobby in the citizen's region whose level band fits (the first listed), else null. */
     public Lobby lobbyFor(Citizen citizen, int level) {
+        List<Lobby> lobbies = lobbiesFor(citizen, level);
+        return lobbies.isEmpty() ? null : lobbies.getFirst();
+    }
+
+    /**
+     * Where a citizen out for a party quest goes: one of the lobbies of its region whose band fits, at random (an
+     * Orbis citizen of Lv51-70 waits for OPQ or goes down to Mu Young for Balrog, 2026-10-25); null when none fits.
+     */
+    public Lobby lobbyFor(Citizen citizen, int level, Random random) {
+        List<Lobby> lobbies = lobbiesFor(citizen, level);
+        if (lobbies.size() <= 1 || random == null) {
+            return lobbies.isEmpty() ? null : lobbies.getFirst();
+        }
+        return lobbies.get(random.nextInt(lobbies.size()));
+    }
+
+    /** Every lobby of the citizen's region whose level band fits, in regions.yaml order. */
+    public List<Lobby> lobbiesFor(Citizen citizen, int level) {
         Region region = regionOf(citizen);
         if (region == null) {
-            return null;
+            return List.of();
         }
+        List<Lobby> fitting = new ArrayList<>();
         for (Lobby lobby : region.lobbies()) {
             if (level >= lobby.levelMin() && level <= lobby.levelMax()) {
-                return lobby;
+                fitting.add(lobby);
             }
         }
-        return null;
+        return fitting;
     }
 
     /**

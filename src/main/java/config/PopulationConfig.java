@@ -1,5 +1,10 @@
 package config;
 
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Populated-server settings: generated citizens with schedules, progression, chatter, guilds,
  * grounded conversation and market participation. Requires {@code living_world.ENABLED}; the
@@ -143,6 +148,36 @@ public class PopulationConfig {
     /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
     public int PQ_CALLS_PER_PARTY = 4;
 
+    // Boss expeditions citizens run themselves (docs/CITIZEN_EXPEDITIONS_PLAN.md)
+    /**
+     * The bosses BOSS_RUN_BOSSES may name: only those the server moves itself once a bot signed up (Balrog,
+     * AgentBossCitizenRuns), so a run with no human in it is a real fight.
+     */
+    public static final Set<String> CITIZEN_BOSSES = Set.of("easy_balrog", "balrog_normal");
+    /** Kill switch: false = citizens at an expedition lobby only gather and invite. */
+    public boolean BOSS_RUNS_ENABLED = true;
+    /** Comma list of the bosses citizen parties sign up for (easy_balrog, balrog_normal). */
+    public String BOSS_RUN_BOSSES = "easy_balrog,balrog_normal";
+    /** Citizen expeditions at once in all. */
+    public int BOSS_RUNS_MAX = 1;
+    /** How many a citizen expedition's party fills to (citizens and the humans it invited; at most 6). */
+    public int BOSS_RUN_SEATS = 6;
+    /** A party of 6 whose citizens are all this level or more goes for Normal Balrog, else Easy. */
+    public int BOSS_NORMAL_MIN_LEVEL = 80;
+    /** No PQ or expedition plan for a citizen this long after its expedition ended. */
+    public int BOSS_RUN_COOLDOWN_MS = 3600000;
+    /** The leader waits this long for a human of its party to sign up with the entry NPC before it starts without. */
+    public int BOSS_SIGNUP_WAIT_MS = 120000;
+
+    /** The bosses BOSS_RUN_BOSSES lets citizens run, lower case; none while BOSS_RUNS_ENABLED is off. */
+    public Set<String> citizenBosses() {
+        if (!BOSS_RUNS_ENABLED || BOSS_RUN_BOSSES == null) {
+            return Set.of();
+        }
+        return Arrays.stream(BOSS_RUN_BOSSES.split(",")).map(key -> key.trim().toLowerCase(Locale.ROOT))
+                .filter(key -> !key.isEmpty()).collect(Collectors.toUnmodifiableSet());
+    }
+
     public void validate() {
         if (TARGET_CITIZENS < 0 || ONLINE_MAX < 0 || MAP_VISIBLE_MAX < 1) {
             throw new IllegalArgumentException("population.TARGET_CITIZENS/ONLINE_MAX must be >= 0 and MAP_VISIBLE_MAX >= 1");
@@ -174,6 +209,18 @@ public class PopulationConfig {
                 || PQ_RUN_COOLDOWN_MS < 0 || PQ_CALLS_PER_PARTY < 0) {
             throw new IllegalArgumentException(
                     "population.PQ_RUNS_PER_CHANNEL, PQ_RUNS_MAX, PQ_CALLS_PER_PARTY and the PQ_*_MS must be >= 0");
+        }
+        if (BOSS_RUNS_MAX < 0 || BOSS_RUN_SEATS < 3 || BOSS_RUN_SEATS > 6 || BOSS_NORMAL_MIN_LEVEL < 1
+                || BOSS_RUN_COOLDOWN_MS < 0 || BOSS_SIGNUP_WAIT_MS < 0) {
+            throw new IllegalArgumentException("population.BOSS_RUNS_MAX and the BOSS_*_MS must be >= 0,"
+                    + " BOSS_RUN_SEATS within 3..6 and BOSS_NORMAL_MIN_LEVEL >= 1");
+        }
+        for (String key : BOSS_RUN_BOSSES == null ? new String[0] : BOSS_RUN_BOSSES.split(",")) {
+            String boss = key.trim().toLowerCase(Locale.ROOT);
+            if (!boss.isEmpty() && !CITIZEN_BOSSES.contains(boss)) {
+                throw new IllegalArgumentException("population.BOSS_RUN_BOSSES may name only " + CITIZEN_BOSSES
+                        + " (bosses the server moves itself), not '" + boss + "'");
+            }
         }
     }
 }

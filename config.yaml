@@ -1179,6 +1179,26 @@ population:
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
     PQ_CALLS_PER_PARTY: 4
+    # Citizens run boss expeditions themselves (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md): citizens Lv50+ of the
+    # regions past Victoria go on outings to Mu Young (Sleepywood), form a party there as at a PQ lobby (inviting a
+    # human who fits first), and their leader makes the Balrog expedition with her window. The others sign up through
+    # it, a human of the party signs up by talking to her, and the leader starts it. The server moves Balrog, so they
+    # fight it with or without a human, then play the reward room as players do (a human gets the first 7 s), loot
+    # their share and go back to their day. Player first: never while a human leads a Balrog list or fight on that
+    # channel, nor while a human Lv50+ outside their party stands in her room; a human may sign up on their list.
+    # false = the kill switch: they only gather and invite there. BOSS_RUN_BOSSES: "easy_balrog", "balrog_normal"
+    # (only bosses the server moves itself; Zakum and up need a human's client to fight back). BOSS_RUNS_MAX: citizen
+    # expeditions at once in all (user 2026-10-25: 1). BOSS_RUN_SEATS: how many the party fills to (3..6).
+    # BOSS_NORMAL_MIN_LEVEL: a party of 6 whose citizens are all this level or more goes Normal, else Easy.
+    # BOSS_RUN_COOLDOWN_MS: no PQ or expedition plan for a citizen this long after its expedition.
+    # BOSS_SIGNUP_WAIT_MS: how long the leader waits for a human of its party to sign up before it starts without.
+    BOSS_RUNS_ENABLED: true
+    BOSS_RUN_BOSSES: "easy_balrog,balrog_normal"
+    BOSS_RUNS_MAX: 1
+    BOSS_RUN_SEATS: 6
+    BOSS_NORMAL_MIN_LEVEL: 80
+    BOSS_RUN_COOLDOWN_MS: 3600000
+    BOSS_SIGNUP_WAIT_MS: 120000
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

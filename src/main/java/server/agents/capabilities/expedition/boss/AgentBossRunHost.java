@@ -212,13 +212,23 @@ public final class AgentBossRunHost {
     }
 
     private static volatile Rule rule;
-    private static final Rule INSTALLED = new Guarded(null);
+    private static volatile Rule citizenRule;
+    private static final Rule INSTALLED = new Guarded(null, false);
+    private static final Rule CITIZENS = new Guarded(null, true);
 
     private AgentBossRunHost() {
     }
 
     public static void install(Rule installed) {
         rule = installed;
+    }
+
+    /**
+     * The rule of citizen runs (docs/CITIZEN_EXPEDITIONS_PLAN.md): the population hosts the expeditions its citizens
+     * lead, apart from the living world's companion runs. Null uninstalls it.
+     */
+    public static void installCitizens(Rule installed) {
+        citizenRule = installed;
     }
 
     /**
@@ -229,14 +239,19 @@ public final class AgentBossRunHost {
         return INSTALLED;
     }
 
-    /** {@code delegate} behind the same guard; null reads the installed rule at each call. */
-    static Rule guarded(Rule delegate) {
-        return new Guarded(delegate);
+    /** The citizen runs' rule ({@link #installCitizens}) behind the same guard. */
+    public static Rule citizens() {
+        return CITIZENS;
     }
 
-    private record Guarded(Rule fixed) implements Rule {
+    /** {@code delegate} behind the same guard; null reads the installed rule at each call. */
+    static Rule guarded(Rule delegate) {
+        return new Guarded(delegate, false);
+    }
+
+    private record Guarded(Rule fixed, boolean forCitizens) implements Rule {
         private Rule current() {
-            return fixed != null ? fixed : rule;
+            return fixed != null ? fixed : forCitizens ? citizenRule : rule;
         }
 
         @Override

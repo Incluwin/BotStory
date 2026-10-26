@@ -250,8 +250,8 @@ public final class ChatterEngine {
         int total = 0;
         int level = session.agent() == null ? 0 : session.agent().getLevel();
         // A party quest's own talk ("lf2m kpq" again, "gg") repeats as players repeat it: no memory of recent intents,
-        // the self cooldown on its channel, and each intent's own cooldown.
-        boolean partyQuest = trigger.startsWith("pq.");
+        // the self cooldown on its channel, and each intent's own cooldown. A boss expedition's talk too.
+        boolean partyQuest = trigger.startsWith("pq.") || trigger.startsWith("boss.");
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;

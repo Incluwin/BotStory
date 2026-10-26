@@ -73,6 +73,13 @@ public final class AgentBossRunService {
                 }
             }
             AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+            if (session != null && session.citizenRun()) {
+                // a citizen expedition's run is the population's: a player may sign up on its list, their companions not
+                refused.addAll(candidates);
+                log.info("Boss run enlist refused: session={} boss={} enlister={} (a citizen expedition)",
+                        session.sessionId(), definition.key(), human.getId());
+                return new Enlisted(session.sessionId(), accepted, refused);
+            }
             if (candidates.isEmpty()) {
                 return new Enlisted(session == null ? 0L : session.sessionId(), accepted, refused);
             }
@@ -97,6 +104,108 @@ public final class AgentBossRunService {
                     definition.key(), human.getId(), accepted, refused);
             return new Enlisted(session.sessionId(), accepted, refused);
         }
+    }
+
+    /**
+     * How a citizen expedition opened: its run and expedition, the citizens it took and turned away, in the given order;
+     * on failure a run id of 0 and why, in a few words.
+     */
+    public record CitizenOpened(long sessionId, Expedition expedition, List<Integer> accepted, List<Integer> refused,
+                                String problem) {
+        public CitizenOpened {
+            accepted = List.copyOf(accepted);
+            refused = List.copyOf(refused);
+            problem = problem == null ? "" : problem;
+        }
+
+        public boolean opened() {
+            return sessionId > 0L;
+        }
+
+        static CitizenOpened failed(List<Integer> ids, String problem) {
+            return new CitizenOpened(0L, null, List.of(), ids, problem);
+        }
+    }
+
+    /**
+     * A citizen expedition (docs/CITIZEN_EXPEDITIONS_PLAN.md): citizen {@code leader}, standing in the entry NPC's room,
+     * makes {@code boss}'s expedition with her own window, and the run of it opens with {@code citizenIds} (the leader
+     * first) as members that lead themselves, anchored to the leader. The run signs the others up through her window
+     * as it does bench allies, and its leader starts it once the population asks ({@link #startCitizens}). The
+     * population hosts it (AgentBossRunHost.citizens). A citizen is taken only while it is loaded, no companion, and in
+     * no other boss run or party quest. On the population's thread.
+     */
+    public static CitizenOpened openCitizenExpedition(Character leader, AgentBossCitizenRuns.Boss boss,
+                                                      List<Integer> citizenIds, boolean humanOptional, long nowMs) {
+        return openCitizenExpedition(AgentBossRunPorts.LIVE, leader, boss, citizenIds, humanOptional, nowMs);
+    }
+
+    static CitizenOpened openCitizenExpedition(AgentBossRunPorts ports, Character leader, AgentBossCitizenRuns.Boss boss,
+                                               List<Integer> citizenIds, boolean humanOptional, long nowMs) {
+        List<Integer> ids = citizenIds == null ? List.of() : List.copyOf(new LinkedHashSet<>(citizenIds));
+        if (leader == null || boss == null || !ids.contains(leader.getId())) {
+            return CitizenOpened.failed(ids, "no leader");
+        }
+        AgentBossRunDefinition definition = boss.definition();
+        if (leader.getMapId() != definition.recruitMapId()) {
+            return CitizenOpened.failed(ids, "the leader is not at the entry NPC");
+        }
+        synchronized (ENLIST) {
+            if (!adoptableCitizen(ports, leader.getId())) {
+                return CitizenOpened.failed(ids, "the leader is busy");
+            }
+            if (ports.expedition(leader, definition.type()) != null) {
+                return CitizenOpened.failed(ids, "an expedition is open");
+            }
+            boolean talked = false;
+            try {
+                talked = ports.runNpc(leader, definition.entryNpcId(), boss.createChoices());
+            } catch (RuntimeException failure) {
+                log.warn("Citizen expedition create conversation failed: boss={} leader={}", definition.key(),
+                        leader.getId(), failure);
+            }
+            Expedition expedition = ports.expedition(leader, definition.type());
+            if (expedition == null || !expedition.isLeader(leader) || !expedition.isRegistering()) {
+                log.info("Citizen expedition not made: boss={} leader={} talked={}", definition.key(), leader.getId(),
+                        talked);
+                return CitizenOpened.failed(ids, "the entry NPC made no expedition");
+            }
+            AgentBossRunSession session = new AgentBossRunSession(NEXT_SESSION_ID.incrementAndGet(), definition,
+                    expedition, boss.fight().get(), nowMs, leader.getId(), boss.startChoices(), humanOptional);
+            AgentBossRunRegistry.put(session);
+            ports.prepareScripts(definition.entryNpcId());
+            ports.schedule(() -> monitor(ports, session), monitorMs());
+            List<Integer> accepted = new ArrayList<>();
+            List<Integer> refused = new ArrayList<>();
+            for (int agentId : ids) {
+                if (adoptableCitizen(ports, agentId) && session.addMember(agentId, leader.getId(), nowMs,
+                        AgentBossRunMember.Kind.SELF_LED) != null) {
+                    accepted.add(agentId);
+                } else {
+                    refused.add(agentId);
+                }
+            }
+            log.info("Boss run opened: session={} boss={} citizen leader={} humanOptional={} accepted={} refused={}",
+                    session.sessionId(), definition.key(), leader.getId(), humanOptional, accepted, refused);
+            return new CitizenOpened(session.sessionId(), expedition, accepted, refused, "");
+        }
+    }
+
+    /**
+     * The population asks citizen run {@code sessionId} to start: its leader talks the entry NPC's Start on the run's
+     * next registering ticks. False when it is gone, no citizen run, or no longer registering. Memory only, any thread.
+     */
+    public static boolean startCitizens(long sessionId) {
+        AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+        return session != null && session.requestStart();
+    }
+
+    /** Loaded, no companion, and in no boss run and no party quest. */
+    private static boolean adoptableCitizen(AgentBossRunPorts ports, int agentId) {
+        return ports.agent(agentId) != null
+                && !AgentClaimGuard.isClaimed(agentId)
+                && AgentBossRunRegistry.forMember(agentId) == null
+                && !AgentPartyQuestRuntime.active(agentId);
     }
 
     /**
@@ -199,7 +308,8 @@ public final class AgentBossRunService {
             return;
         }
         long nowMs = System.currentTimeMillis();
-        AgentBossRunHost.Rule host = AgentBossRunHost.installed();
+        // a citizen expedition's run tells the population, every other one the living world
+        AgentBossRunHost.Rule host = session.citizenRun() ? AgentBossRunHost.citizens() : AgentBossRunHost.installed();
         try {
             session.tick(ports, host, nowMs);
         } catch (RuntimeException failure) {

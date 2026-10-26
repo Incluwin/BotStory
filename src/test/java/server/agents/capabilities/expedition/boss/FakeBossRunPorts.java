@@ -59,6 +59,13 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     RunNpc runNpc = (agent, npcId, selections) -> true;
     /** What a fake leave from the entry NPC's list does once the call is logged; nothing by default. */
     BiConsumer<Expedition, Character> leaveList = (expedition, agent) -> { };
+    /** Each type's expedition on the channel (a citizen leader's, once its create talk made it); none by default. */
+    final Map<server.expeditions.ExpeditionType, Expedition> expeditions = new HashMap<>();
+
+    @Override
+    public Expedition expedition(Character character, server.expeditions.ExpeditionType type) {
+        return expeditions.get(type);
+    }
 
     /**
      * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is logged in, in the event

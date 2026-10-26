@@ -47,7 +47,10 @@ public final class PopulationLoader {
             "smega", "party.forming", "party.invite", "price", "afk", "back", "lag",
             // party quests citizens run (CitizenPartyQuests)
             "pq.lf", "pq.join", "pq.go", "pq.clear", "pq.fail", "pq.down", "pq.giveup", "pq.call", "pq.call.answer",
-            "pq.thanks", "pq.wait");
+            "pq.thanks", "pq.wait",
+            // boss expeditions citizens run (CitizenPartyQuests with CitizenBossDoor)
+            "boss.lf", "boss.join", "boss.signup", "boss.go", "boss.clear", "boss.fail", "boss.down", "boss.giveup",
+            "boss.broke", "boss.call", "boss.call.answer", "boss.thanks", "boss.wait");
     private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
     private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega");
 

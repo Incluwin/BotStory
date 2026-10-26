@@ -4,6 +4,7 @@ import client.Character;
 import config.PopulationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
@@ -16,6 +17,7 @@ import server.agents.runtime.scheduler.AgentLoadSheddingState;
 import server.integration.AgentPresence;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Lobby;
+import server.living.roster.BossEntrances;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -110,11 +112,20 @@ public final class CitizenPartyQuests {
         final Map<Integer, String> citizens;
         final Map<Integer, String> humans;
         final long startedAtMs;
+        /** A boss expedition's (CitizenPqDoor.ExpeditionDoor): the boss ("easy_balrog"); null for a party quest. */
+        final String bossKey;
+        /** A boss run whose Start the population asked for. */
+        boolean startAsked;
         volatile boolean over;
         long lostSinceMs;
 
         Run(String questKey, String sessionId, int channel, int leaderId, Map<Integer, String> citizens,
             Map<Integer, String> humans, long startedAtMs) {
+            this(questKey, sessionId, channel, leaderId, citizens, humans, startedAtMs, null);
+        }
+
+        Run(String questKey, String sessionId, int channel, int leaderId, Map<Integer, String> citizens,
+            Map<Integer, String> humans, long startedAtMs, String bossKey) {
             this.questKey = questKey;
             this.sessionId = sessionId;
             this.channel = channel;
@@ -122,8 +133,19 @@ public final class CitizenPartyQuests {
             this.citizens = citizens;
             this.humans = humans;
             this.startedAtMs = startedAtMs;
+            this.bossKey = bossKey;
+        }
+
+        boolean boss() {
+            return bossKey != null;
         }
     }
+
+    /** A boss run's member left it (AgentBossRunHost.Rule.memberOut or refused), queued for the tick. */
+    record BossOut(String sessionId, int characterId, String how) { }
+
+    /** A boss run ended (AgentBossRunHost.Rule.runEnded), queued for the tick. */
+    record BossEnded(String sessionId, boolean started, boolean cleared, String reason) { }
 
     private final Population population;
     private final Map<String, CitizenPqDoor> doors;
@@ -140,12 +162,25 @@ public final class CitizenPartyQuests {
     private final Map<Integer, Long> humanInvitedAt = new HashMap<>();
     private final Queue<AgentPartyQuestHandback.RunEnded> ended = new ConcurrentLinkedQueue<>();
     private final Queue<Integer> tappingOut = new ConcurrentLinkedQueue<>();
+    private final Queue<BossOut> bossOuts = new ConcurrentLinkedQueue<>();
+    private final Queue<BossEnded> bossEnded = new ConcurrentLinkedQueue<>();
+    /** Citizens at an expedition lobby that bought their potions on arrival this outing; the tick's own. */
+    private final Set<Integer> provisioned = new HashSet<>();
+    /** The boss-run host (AgentBossRunHost.Rule) the population installs for its expeditions. */
+    private final BossHost bossHost = new BossHost();
     /** Quest key -> {runs, clears, failures} since boot. */
     private final Map<String, int[]> tally = new ConcurrentHashMap<>();
     private final Deque<String> recent = new ArrayDeque<>();
 
     CitizenPartyQuests(Population population) {
-        this(population, CitizenPqDoor.shipped(), new Random(population.config().SEED ^ 0x9a27e5L));
+        this(population, shippedDoors(population.config()), new Random(population.config().SEED ^ 0x9a27e5L));
+    }
+
+    /** The party-quest doors and Mu Young's for Balrog (docs/CITIZEN_EXPEDITIONS_PLAN.md). */
+    private static Map<String, CitizenPqDoor> shippedDoors(PopulationConfig config) {
+        Map<String, CitizenPqDoor> doors = new HashMap<>(CitizenPqDoor.shipped());
+        doors.put(CitizenBossDoor.KEY, new CitizenBossDoor(config, CitizenBossDoor.Engine.LIVE));
+        return Map.copyOf(doors);
     }
 
     /** Tests bring their own doors and draws. */
@@ -191,10 +226,27 @@ public final class CitizenPartyQuests {
         return door == null ? null : door.beside(map, Math.floorMod(session.characterId, 6));
     }
 
-    /** The door of the lobby on {@code mapId} when citizens may run its quest; else null. */
+    /**
+     * The door of the lobby on {@code mapId} when citizens may run its quest (PQ_RUN_QUESTS) or boss (an expedition
+     * door that is enabled: BOSS_RUNS_ENABLED, BOSS_RUN_BOSSES and the server moving the boss); else null.
+     */
     private CitizenPqDoor door(int mapId) {
         Lobby lobby = population.fields().lobbyAt(mapId);
-        return lobby == null || !quests(population.config()).contains(lobby.id()) ? null : doors.get(lobby.id());
+        CitizenPqDoor door = lobby == null ? null : doors.get(lobby.id());
+        if (door instanceof CitizenPqDoor.ExpeditionDoor expedition) {
+            return expedition.enabled() ? door : null;
+        }
+        return door == null || !quests(population.config()).contains(lobby.id()) ? null : door;
+    }
+
+    /** The chatter trigger {@code what} ("lf", "go", ...) of {@code door}'s kind: "boss.lf" or "pq.lf". */
+    private static String trigger(CitizenPqDoor door, String what) {
+        return (door != null && door.expedition() ? "boss." : "pq.") + what;
+    }
+
+    /** The host of the population's boss runs, for AgentBossRunHost.installCitizens. */
+    public AgentBossRunHost.Rule bossHost() {
+        return bossHost;
     }
 
     // ---- the Agent layer's seams (any thread, from memory) ----------------------------------
@@ -234,17 +286,24 @@ public final class CitizenPartyQuests {
     synchronized void tick(long nowMs) {
         try {
             finishEnded(nowMs);
+            finishBossEnded(nowMs);
             finishLost(nowMs);
             tapOuts(nowMs);
+            bossOutsOfRuns(nowMs);
             goBackToDay(nowMs);
             coolUntil.values().removeIf(until -> nowMs >= until);
             humanInvitedAt.values().removeIf(at -> nowMs - at >= HUMAN_INVITE_EVERY_MS);
-            if (!population.config().PQ_RUNS_ENABLED) {
+            advanceBossRuns(nowMs);
+            if (!population.config().PQ_RUNS_ENABLED && !population.config().BOSS_RUNS_ENABLED) {
                 forming.clear();
+                provisioned.clear();
                 return;
             }
             Map<String, List<CitizenSession>> lobbies = waitingAtLobbies(nowMs);
             forming.keySet().retainAll(lobbies.keySet());
+            Set<Integer> stillWaiting = new HashSet<>();
+            lobbies.values().forEach(waiting -> waiting.forEach(session -> stillWaiting.add(session.characterId)));
+            provisioned.retainAll(stillWaiting); // a citizen that left the lobby buys again on its next outing there
             for (Map.Entry<String, List<CitizenSession>> lobby : lobbies.entrySet()) {
                 step(lobby.getKey(), lobby.getValue(), nowMs);
             }
@@ -275,6 +334,13 @@ public final class CitizenPartyQuests {
         CitizenSession first = waiting.getFirst();
         Lobby lobby = population.fields().lobbyAt(first.mapId);
         CitizenPqDoor door = doors.get(lobby.id());
+        if (door instanceof CitizenPqDoor.ExpeditionDoor expedition) {
+            waiting = supplied(expedition, waiting, nowMs);
+            if (waiting.isEmpty()) {
+                forming.remove(key);
+                return;
+            }
+        }
         Map<Integer, CitizenSession> here = new LinkedHashMap<>();
         waiting.forEach(session -> here.put(session.characterId, session));
         Forming party = forming.get(key);
@@ -310,7 +376,7 @@ public final class CitizenPartyQuests {
             if (AgentPartyLifecycleService.joinAgentToLeaderParty(leaderChr, agent) == JoinOutcome.JOINED) {
                 open--;
                 loner.journal.add("party", "joined " + leader.name() + "'s " + lobby.name() + " party");
-                say("pq.join", loner, null, 0);
+                say(trigger(door, "join"), loner, null, 0);
             }
         }
         List<AgentPartyMemberSnapshot> members = members(leaderChr);
@@ -323,7 +389,7 @@ public final class CitizenPartyQuests {
             }
             if (nowMs - party.lastLfAtMs >= LF_EVERY_MS) {
                 party.lastLfAtMs = nowMs;
-                say("pq.lf", leader, null, door.minSeats() - size);
+                say(trigger(door, "lf"), leader, null, door.minSeats() - size);
             }
             callOver(party, leader, lobby, here, door.preferredSeats() - size, nowMs);
             return;
@@ -337,7 +403,7 @@ public final class CitizenPartyQuests {
         if (size < door.preferredSeats() && nowMs - party.minReachedAtMs < FILL_WAIT_MS) {
             if (nowMs - party.lastLfAtMs >= LF_EVERY_MS) {
                 party.lastLfAtMs = nowMs;
-                say("pq.lf", leader, null, door.preferredSeats() - size);
+                say(trigger(door, "lf"), leader, null, door.preferredSeats() - size);
             }
             callOver(party, leader, lobby, here, door.preferredSeats() - size, nowMs);
             return;
@@ -396,7 +462,7 @@ public final class CitizenPartyQuests {
         }
         Forming party = new Forming(lobby.id(), best.channel, best.mapId, best.characterId, nowMs);
         party.lastLfAtMs = nowMs;
-        say("pq.lf", best, null, door.minSeats() - Math.max(1, bestSize));
+        say(trigger(door, "lf"), best, null, door.minSeats() - Math.max(1, bestSize));
         return party;
     }
 
@@ -477,15 +543,20 @@ public final class CitizenPartyQuests {
         PopulationConfig config = population.config();
         int onChannel = 0;
         Set<String> live = new HashSet<>();
+        boolean boss = door.expedition();
         for (Run run : inRun.values()) {
-            if (live.add(run.sessionId) && run.channel == leader.channel) {
+            // party quests and boss expeditions have caps of their own
+            if (run.boss() == boss && live.add(run.sessionId) && run.channel == leader.channel) {
                 onChannel++;
             }
         }
-        if (onChannel >= config.PQ_RUNS_PER_CHANNEL) {
+        if (boss) {
+            if (live.size() >= config.BOSS_RUNS_MAX) {
+                return "boss cap " + config.BOSS_RUNS_MAX + " reached";
+            }
+        } else if (onChannel >= config.PQ_RUNS_PER_CHANNEL) {
             return "channel cap " + config.PQ_RUNS_PER_CHANNEL + " reached";
-        }
-        if (live.size() >= config.PQ_RUNS_MAX) {
+        } else if (live.size() >= config.PQ_RUNS_MAX) {
             return "cap " + config.PQ_RUNS_MAX + " reached";
         }
         if (!schedulerCalm()) {
@@ -566,6 +637,10 @@ public final class CitizenPartyQuests {
             return;
         }
         forming.remove(key);
+        if (door instanceof CitizenPqDoor.ExpeditionDoor expedition) {
+            openList(expedition, lobby, leader, entered, citizens, humans, here, nowMs);
+            return;
+        }
         Run run = new Run(lobby.id(), entered.sessionId(), leader.channel, leader.characterId, citizens, humans, nowMs);
         for (int id : citizens.keySet()) {
             inRun.put(id, run);
@@ -578,13 +653,40 @@ public final class CitizenPartyQuests {
         say("pq.go", leader, null, 0);
     }
 
+    /**
+     * A boss expedition's list is open (its leader made it, its run signs the citizens up): the run is the population's
+     * from here, and each human of the party hears once that they sign up with the entry NPC themselves.
+     */
+    private void openList(CitizenPqDoor.ExpeditionDoor door, Lobby lobby, CitizenSession leader,
+                          CitizenPqDoor.Entered entered, Map<Integer, String> citizens, Map<Integer, String> humans,
+                          Map<Integer, CitizenSession> here, long nowMs) {
+        String boss = entered.message();
+        Run run = new Run(lobby.id(), entered.sessionId(), leader.channel, leader.characterId, citizens, humans, nowMs,
+                boss);
+        for (int id : citizens.keySet()) {
+            inRun.put(id, run);
+            CitizenSession session = here.get(id);
+            session.journal.add("boss", "signed up for " + door.label(boss) + " with " + others(run, id));
+        }
+        tally.computeIfAbsent(boss, key -> new int[3])[0]++;
+        log.info("citizen boss run in: boss={} session={} channel={} leader={} members={}", boss, run.sessionId,
+                run.channel, leader.name(), names(citizens, humans));
+        Character leaderChr = leader.agent();
+        for (int humanId : humans.keySet()) {
+            Character human = memberCharacter(humanId, leaderChr == null ? null : leaderChr.getMap());
+            if (human != null && !door.listed(run.sessionId, humanId)) {
+                say("boss.signup", leader, human, 0);
+            }
+        }
+    }
+
     /** The citizens leave the party, say so, keep out of party quests a while, and plan something else. */
     private void giveUp(Forming party, Map<Integer, CitizenSession> here, List<AgentPartyMemberSnapshot> members,
                         String why, long nowMs) {
         forming.remove(party.channel + ":" + party.mapId);
         CitizenSession leader = here.get(party.leaderId);
         if (leader != null) {
-            say("pq.giveup", leader, null, 0);
+            say(trigger(doors.get(party.questKey), "giveup"), leader, null, 0);
         }
         log.info("citizen {} party at map {} gives up: {}", leader == null ? party.leaderId : leader.name(),
                 party.mapId, why);
@@ -630,8 +732,8 @@ public final class CitizenPartyQuests {
                     || leaderChr.getGuildId() > 0 && agent.getGuildId() == leaderChr.getGuildId();
             if (mate && (session.activity == Activity.TRAIN || session.activity == Activity.TOWN) && fits(agent, lobby)) {
                 mates.add(session);
-            } else if (session.activity == Activity.TOWN && lobby.equals(population.fields().lobbyFor(session.citizen,
-                    agent.getLevel()))) {
+            } else if (session.activity == Activity.TOWN && population.fields().lobbiesFor(session.citizen,
+                    agent.getLevel()).contains(lobby)) {
                 townsfolk.add(session);
             }
         }
@@ -645,8 +747,8 @@ public final class CitizenPartyQuests {
         party.lastCallAtMs = nowMs;
         party.coming.put(called.characterId, nowMs);
         if (mate) {
-            say("pq.call", leader, null, need);
-            say("pq.call.answer", called, leaderChr, 0);
+            say(trigger(doors.get(lobby.id()), "call"), leader, null, need);
+            say(trigger(doors.get(lobby.id()), "call.answer"), called, leaderChr, 0);
             called.journal.add("social", leader.name() + " called it to " + lobby.name());
         } else {
             called.journal.add("pq", "went to " + lobby.name() + " to find a party");
@@ -675,8 +777,8 @@ public final class CitizenPartyQuests {
         } else {
             return;
         }
-        population.chatter().event(ChatterEngine.Event.of("pq.wait", leader.mapId, leader.channel).self(leader)
-                .subject(human).withText(line));
+        population.chatter().event(ChatterEngine.Event.of(trigger(doors.get(lobby.id()), "wait"), leader.mapId,
+                leader.channel).self(leader).subject(human).withText(line));
     }
 
     // ---- after the run ----------------------------------------------------------------------
@@ -723,29 +825,38 @@ public final class CitizenPartyQuests {
         }
         run.over = true;
         boolean rerolled = "rerolled".equals(reason);
-        int[] counts = tally.computeIfAbsent(run.questKey, quest -> new int[3]);
+        String tallyKey = run.boss() ? run.bossKey : run.questKey;
+        int[] counts = tally.computeIfAbsent(tallyKey, quest -> new int[3]);
         if (cleared) {
             counts[1]++;
         } else if (!rerolled) {
             counts[2]++;
         }
-        String quest = run.questKey.toUpperCase(Locale.ROOT);
+        CitizenPqDoor door = doors.get(run.questKey);
+        String quest = run.boss() && door instanceof CitizenPqDoor.ExpeditionDoor expedition
+                ? expedition.label(run.bossKey) : run.questKey.toUpperCase(Locale.ROOT);
         String outcome = cleared ? "cleared" : rerolled ? "rerolled" : "failed";
         long minutes = Math.max(0L, (nowMs - run.startedAtMs) / 60_000L);
         remember(quest + " " + outcome + " in " + minutes + " min: " + names(run.citizens, run.humans)
                 + (cleared ? "" : " (" + reason + ")"));
-        log.info("citizen pq run: quest={} session={} outcome={} minutes={} members={} reason={}", run.questKey,
-                run.sessionId, outcome, minutes, names(run.citizens, run.humans), cleared ? "-" : reason);
+        if (run.boss()) {
+            log.info("citizen boss run: boss={} session={} outcome={} minutes={} members={} reason={}", run.bossKey,
+                    run.sessionId, outcome, minutes, names(run.citizens, run.humans), cleared ? "-" : reason);
+        } else {
+            log.info("citizen pq run: quest={} session={} outcome={} minutes={} members={} reason={}", run.questKey,
+                    run.sessionId, outcome, minutes, names(run.citizens, run.humans), cleared ? "-" : reason);
+        }
+        long cooldown = run.boss() ? population.config().BOSS_RUN_COOLDOWN_MS : population.config().PQ_RUN_COOLDOWN_MS;
         List<CitizenSession> stayed = new ArrayList<>();
         for (int id : run.citizens.keySet()) {
             if (inRun.remove(id, run)) {
                 returning.put(id, nowMs);
-                coolUntil.put(id, nowMs + population.config().PQ_RUN_COOLDOWN_MS);
+                coolUntil.put(id, nowMs + cooldown);
                 CitizenSession session = population.presence().session(id);
                 if (session != null) {
                     stayed.add(session);
-                    session.journal.add("pq", (cleared ? "cleared " : rerolled ? "left " : "failed ") + quest
-                            + " with " + others(run, id));
+                    session.journal.add(run.boss() ? "boss" : "pq", (cleared ? "cleared " : rerolled ? "left "
+                            : "failed ") + quest + " with " + others(run, id));
                 }
             }
         }
@@ -754,16 +865,17 @@ public final class CitizenPartyQuests {
         }
         Collections.shuffle(stayed, random);
         CitizenSession speaker = stayed.getFirst();
-        say(cleared ? "pq.clear" : "pq.fail", speaker, null, 0);
+        String kind = run.boss() ? "boss." : "pq.";
+        say(kind + (cleared ? "clear" : "fail"), speaker, null, 0);
         if (stayed.size() > 1 && random.nextInt(100) < 60) {
-            say(cleared ? "pq.clear" : "pq.fail", stayed.get(1), null, 0);
+            say(kind + (cleared ? "clear" : "fail"), stayed.get(1), null, 0);
         }
         if (cleared) {
             CitizenSession leader = population.presence().session(run.leaderId);
             for (int humanId : run.humans.keySet()) {
                 Character human = memberCharacter(humanId, null);
                 if (leader != null && human != null) {
-                    say("pq.thanks", leader, human, 0);
+                    say(kind + "thanks", leader, human, 0);
                 }
             }
         }
@@ -786,6 +898,162 @@ public final class CitizenPartyQuests {
                 session.journal.add("pq", "died in " + run.questKey.toUpperCase(Locale.ROOT) + " and left the party");
             }
             log.info("citizen pq run: {} taps out of {} ({})", run.citizens.get(id), run.sessionId, run.questKey);
+        }
+    }
+
+    // ---- boss expeditions (docs/CITIZEN_EXPEDITIONS_PLAN.md) --------------------------------------
+
+    /**
+     * The citizens waiting at an expedition lobby that carry the boss's potions: each one new there buys at the boss's
+     * approach store on arrival, once an outing (as a bench ally does); one that still lacks them says so and plans
+     * something else, out of party quests and expeditions for {@link #GAVE_UP_COOLDOWN_MS}.
+     */
+    private List<CitizenSession> supplied(CitizenPqDoor.ExpeditionDoor door, List<CitizenSession> waiting, long nowMs) {
+        List<CitizenSession> ready = new ArrayList<>();
+        for (CitizenSession session : waiting) {
+            if (provisioned.contains(session.characterId)) {
+                ready.add(session);
+                continue;
+            }
+            if (door.provision(session.agent())) {
+                provisioned.add(session.characterId);
+                ready.add(session);
+                continue;
+            }
+            log.info("citizen {} cannot afford the potions for {}; it goes", session.name(), door.key());
+            say("boss.broke", session, null, 0);
+            session.journal.add("boss", "could not afford potions for " + door.key());
+            coolUntil.put(session.characterId, nowMs + GAVE_UP_COOLDOWN_MS);
+            population.presence().replan(session, nowMs);
+        }
+        return ready;
+    }
+
+    /**
+     * Each boss run whose list is open: once its citizens are listed and its humans too (or BOSS_SIGNUP_WAIT_MS has
+     * passed since it opened), and the Agent scheduler is calm, the population asks it to start, once; its leader then
+     * talks the entry NPC's Start. A run past its list, or gone, is left to its end.
+     */
+    private void advanceBossRuns(long nowMs) {
+        for (Run run : new HashSet<>(inRun.values())) {
+            if (!run.boss() || run.over || run.startAsked
+                    || !(doors.get(run.questKey) instanceof CitizenPqDoor.ExpeditionDoor door)) {
+                continue;
+            }
+            if (door.stage(run.sessionId) != CitizenPqDoor.ExpeditionDoor.Stage.SIGNING_UP) {
+                continue;
+            }
+            boolean waitedLong = nowMs - run.startedAtMs >= population.config().BOSS_SIGNUP_WAIT_MS;
+            if (!door.ready(run.sessionId, run.citizens.keySet(), run.humans.keySet(), waitedLong) || !schedulerCalm()) {
+                continue;
+            }
+            if (door.start(run.sessionId)) {
+                run.startAsked = true;
+                List<String> unlisted = run.humans.entrySet().stream()
+                        .filter(human -> !door.listed(run.sessionId, human.getKey())).map(Map.Entry::getValue)
+                        .toList();
+                log.info("citizen boss run start: boss={} session={} leader={} humans not listed={}", run.bossKey,
+                        run.sessionId, run.citizens.get(run.leaderId), unlisted);
+                CitizenSession leader = population.presence().session(run.leaderId);
+                if (leader != null) {
+                    say("boss.go", leader, null, 0);
+                }
+            }
+        }
+    }
+
+    /**
+     * Citizens a boss run let go of (out of the fight, refused at its list, or it missed the start) go back to their
+     * day; one that went down says so first, and leaves the party.
+     */
+    private void bossOutsOfRuns(long nowMs) {
+        BossOut out;
+        while ((out = bossOuts.poll()) != null) {
+            Run run = inRun.get(out.characterId());
+            if (run == null || !run.sessionId.equals(out.sessionId()) || !inRun.remove(out.characterId(), run)) {
+                continue;
+            }
+            returning.put(out.characterId(), nowMs);
+            coolUntil.put(out.characterId(), nowMs + population.config().BOSS_RUN_COOLDOWN_MS);
+            CitizenSession session = population.presence().session(out.characterId());
+            String label = doors.get(run.questKey) instanceof CitizenPqDoor.ExpeditionDoor door ? door.label(run.bossKey)
+                    : run.bossKey;
+            if (session != null) {
+                if ("DIED".equals(out.how())) {
+                    say("boss.down", session, null, 0);
+                    AgentPartyLifecycleService.leaveAgentParty(session.agent());
+                    session.journal.add("boss", "went down fighting " + label);
+                } else if (out.how().startsWith("refused")) {
+                    session.journal.add("boss", "could not sign up for " + label);
+                }
+            }
+            log.info("citizen boss run: {} out of {} ({}, {})", run.citizens.get(out.characterId()), run.sessionId,
+                    run.bossKey, out.how());
+        }
+    }
+
+    private void finishBossEnded(long nowMs) {
+        BossEnded end;
+        while ((end = bossEnded.poll()) != null) {
+            Run run = runOf(end.sessionId());
+            if (run != null) {
+                finish(run, end.cleared(), end.started() ? end.reason() : "the list closed (" + end.reason() + ")",
+                        nowMs);
+            }
+        }
+    }
+
+    /**
+     * The population's answer to its boss runs (AgentBossRunHost.Rule, installed as the citizen rule): on the run's
+     * tick, from memory; every report is queued for the population's own tick. A seat is always granted (a citizen of
+     * a run is in no other), every one of the list's last COMPANION_BOSS_HUMAN_SEATS stays free for players, and a
+     * member waits at its own spot beside the entry NPC.
+     */
+    final class BossHost implements AgentBossRunHost.Rule {
+        /** The seats a companion list keeps for players when there is no living world to ask (its default). */
+        private static final int HUMAN_SEATS = 2;
+
+        @Override
+        public boolean seat(AgentBossRunHost.Seat seat) {
+            return true;
+        }
+
+        @Override
+        public boolean roomFor(AgentBossRunHost.Seat seat, int listed,
+                               int maxSize) {
+            return listed < maxSize - humanSeats();
+        }
+
+        private int humanSeats() {
+            server.living.LivingWorld world = server.living.LivingWorld.get();
+            config.LivingWorldConfig living = world == null ? null : world.config();
+            return living == null ? HUMAN_SEATS : living.COMPANION_BOSS_HUMAN_SEATS;
+        }
+
+        @Override
+        public void refused(AgentBossRunHost.Seat seat,
+                            AgentBossRunHost.Refusal refusal) {
+            bossOuts.add(new BossOut(CitizenBossDoor.sessionKey(seat.sessionId()), seat.agentCharacterId(),
+                    "refused " + refusal));
+        }
+
+        @Override
+        public void memberOut(AgentBossRunHost.Seat seat,
+                              AgentBossRunHost.Out out) {
+            bossOuts.add(new BossOut(CitizenBossDoor.sessionKey(seat.sessionId()), seat.agentCharacterId(),
+                    out.name()));
+        }
+
+        @Override
+        public void runEnded(AgentBossRunHost.RunEnded ended) {
+            bossEnded.add(new BossEnded(CitizenBossDoor.sessionKey(ended.sessionId()), ended.started(),
+                    ended.cleared(), ended.reason()));
+        }
+
+        @Override
+        public Point standAt(AgentBossRunHost.Seat seat, MapleMap map,
+                             int ordinal) {
+            return BossEntrances.spot(seat.bossKey(), map, ordinal);
         }
     }
 
@@ -825,6 +1093,14 @@ public final class CitizenPartyQuests {
      * quest, as its own PQ plan would send it. Says what happened.
      */
     public String send(CitizenSession session, long nowMs) {
+        return send(session, null, nowMs);
+    }
+
+    /**
+     * {@link #send(CitizenSession, long)} to the fitting lobby {@code lobbyId} names ("balrog"), for a citizen whose
+     * level fits more than one of its region's; null or blank takes the first that fits.
+     */
+    public String send(CitizenSession session, String lobbyId, long nowMs) {
         Character agent = session == null || session.virtual ? null : session.agent();
         if (agent == null) {
             return "not loaded";
@@ -832,9 +1108,13 @@ public final class CitizenPartyQuests {
         if (holds(session.characterId)) {
             return session.name() + " is in a party quest";
         }
-        Lobby lobby = population.fields().lobbyFor(session.citizen, agent.getLevel());
+        List<Lobby> fitting = population.fields().lobbiesFor(session.citizen, agent.getLevel());
+        Lobby lobby = lobbyId == null || lobbyId.isBlank() ? (fitting.isEmpty() ? null : fitting.getFirst())
+                : fitting.stream().filter(candidate -> candidate.id().equalsIgnoreCase(lobbyId)).findFirst()
+                        .orElse(null);
         if (lobby == null) {
-            return "no lobby of " + session.citizen.homeRegion() + " fits lv" + agent.getLevel();
+            return "no lobby" + (lobbyId == null || lobbyId.isBlank() ? "" : " " + lobbyId) + " of "
+                    + session.citizen.homeRegion() + " fits lv" + agent.getLevel();
         }
         coolUntil.remove(session.characterId);
         population.presence().travel(session, Activity.PQ, lobby.mapId(), nowMs);

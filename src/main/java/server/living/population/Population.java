@@ -8,6 +8,7 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.knowledge.ContentAnswers;
 import server.knowledge.ContentChat;
 import server.living.LivingWorld;
@@ -122,6 +123,8 @@ public final class Population {
         population.markJobBacklogOnce();
         population.social.installSeams();
         population.conversation.installSeams();
+        // the boss runs of the expeditions citizens lead report to the population (docs/CITIZEN_EXPEDITIONS_PLAN.md)
+        AgentBossRunHost.installCitizens(population.partyQuests.bossHost());
         ContentAnswers.installPrices(itemId -> {
             Population current = instance;
             return current == null ? null : current.market.known(itemId); // read-only: never seeds or saves
@@ -156,6 +159,7 @@ public final class Population {
             return;
         }
         instance = null;
+        AgentBossRunHost.installCitizens(null);
         for (ScheduledFuture<?> timer : population.timers) {
             timer.cancel(false);
         }

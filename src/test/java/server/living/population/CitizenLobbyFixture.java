@@ -91,6 +91,10 @@ final class CitizenLobbyFixture implements AutoCloseable {
             int level = call.getArgument(1);
             return level >= here.levelMin() && level <= here.levelMax() ? here : null;
         });
+        when(fields.lobbiesFor(any(), anyInt())).thenAnswer(call -> {
+            int level = call.getArgument(1);
+            return level >= here.levelMin() && level <= here.levelMax() ? List.of(here) : List.of();
+        });
         doAnswer(call -> said.add(call.getArgument(0))).when(chatter).event(any());
         World world = mock(World.class, withSettings().stubOnly());
         PlayerStorage storage = mock(PlayerStorage.class, withSettings().stubOnly());
