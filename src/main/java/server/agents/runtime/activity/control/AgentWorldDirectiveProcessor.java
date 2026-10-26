@@ -282,7 +282,7 @@ public final class AgentWorldDirectiveProcessor {
                     .restore(mode, directive.reason(), nowMs);
             AgentWorldDirectorObserveState observe = entry.capabilityStates()
                     .require(AgentWorldDirectorObserveState.STATE_KEY);
-            if (mode.isObservationOnly()) {
+            if (AgentWorldDirectorObserveState.samples(mode)) {
                 observe.configure(mode, config.AgentTuning.longValue(
                         "server.agents.runtime.AgentRegistrationCoordinator.WORLD_DIRECTOR_OBSERVE_INTERVAL_MS"));
             } else {

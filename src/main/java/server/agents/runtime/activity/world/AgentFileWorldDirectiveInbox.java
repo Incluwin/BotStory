@@ -129,6 +129,21 @@ public final class AgentFileWorldDirectiveInbox implements AgentWorldDirectiveIn
         }
     }
 
+    /**
+     * A cheap change stamp for one Agent's directives: the modification time of its directive folder, which every
+     * submit, claim and resolve (a temporary file renamed into place) moves. 0 when the Agent has no folder. Lets a
+     * poll that found nothing skip reading every directive file until something changed.
+     */
+    public long changeStamp(int agentId) {
+        try {
+            Path agentDirectory = agentDirectory(agentId);
+            return Files.isDirectory(agentDirectory)
+                    ? Files.getLastModifiedTime(agentDirectory).to(java.util.concurrent.TimeUnit.MICROSECONDS) : 0L;
+        } catch (IOException unreadable) {
+            return System.nanoTime(); // unknown: never equal to the last stamp, so the poll reads the files
+        }
+    }
+
     public synchronized void deleteAgent(int agentId) {
         Path target = agentDirectory(agentId);
         if (!Files.exists(target)) return;

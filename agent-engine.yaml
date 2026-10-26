@@ -333,7 +333,7 @@ agent:
     AGENT_WORLD_DIRECTOR_AUTONOMOUS_MAX_CONCURRENT_HANDOFFS: 0
     # Values: a finite non-negative integer. Recommended: at least 100 read-only samples before initial Autonomous eligibility.
     # Purpose: Requires enough prior Observe evidence to expose unstable proposals before automatic activity ownership is permitted.
-    # Technical: This threshold consumes session-local restored sample evidence and never grants authority by itself when other gates are closed.
+    # Technical: The session-local Observe sample count, seeded at login from the Agent's Observe evidence file (AgentWorldDirectorObserveRuntime.CHECKPOINT_SAMPLES), is compared with this; it never grants authority by itself when other gates are closed.
     AGENT_WORLD_DIRECTOR_AUTONOMOUS_MIN_OBSERVE_SAMPLES: 100
     # Values: a finite non-negative integer. Recommended: 0 during the first rollout and raise only after failure handling is validated.
     # Purpose: Blocks Autonomous execution when recent Director failures exceed the explicitly accepted deployment error budget.
@@ -5689,6 +5689,30 @@ tuning:
     # Purpose: Sets the durable deadline for releasing, transferring, admitting, or rolling back one World Director activity handoff.
     # Technical: The deadline is persisted with the handoff and survives restart; expiry enters rollback rather than hard-teleporting or discarding the source session.
     server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.HANDOFF_TIMEOUT_MS: '60000'
+    # Values: 5000-300000 milliseconds. Recommended: 30000; lower re-reads unchanged files more often, higher trusts the change stamp longer.
+    # Purpose: While an Agent's directive poll keeps finding nothing to do and its session and directive files are unchanged, the full file read happens only this often.
+    # Technical: AgentWorldDirectivePollState records the folder and session-file modification stamp of an idle poll; later polls compare two file timestamps instead of loading the session JSON and every directive (measured 1.8 ms a poll), and read in full again when the stamp moves or this time passes.
+    server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.IDLE_FULL_POLL_MS: '30000'
+    # Values: 1-120 samples. Recommended: 6 (30 s at the 5 s Observe interval); lower acts on choices that flicker, higher waits longer before a switch.
+    # Purpose: How many Observe samples running the World Director must choose the same activity switch before its policy proposes it (ASSISTED) or starts it (AUTONOMOUS).
+    # Technical: AgentWorldDirectorObserveState counts consecutive samples whose decision requires a switch to the same proposal id; AgentWorldDirectorPolicyRuntime acts only at this count, and only for an Agent inside the mode's rollout cohort with no directive in flight.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_STABLE_SAMPLES: '6'
+    # Values: 60000-3600000 milliseconds. Recommended: 300000 so an operator sees at most one policy proposal per Agent every five minutes.
+    # Purpose: After the Director's policy proposed, started or gave up on a choice, it stays quiet this long before acting for that Agent again.
+    # Technical: AgentWorldDirectorObserveState.policyActed resets the stable-sample run and sets a quiet deadline; the policy reads no directive, proposal or view file for the Agent until it passes and a fresh run of stable samples builds up.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_QUIET_MS: '300000'
+    # Values: 10000-600000 milliseconds. Recommended: 120000; a policy directive the gates keep blocking expires instead of waiting in the inbox.
+    # Purpose: How long a POLICY directive the Director issued on its own (AUTONOMOUS) may wait for its rollout gate before it expires unexecuted.
+    # Technical: AgentWorldDirectorExecutive.submit stores createdAtMs plus this as the directive expiry; AgentFileWorldDirectiveInbox.nextPending resolves an expired pending directive as EXPIRED, so a blocked policy choice never holds the inbox for that Agent.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.POLICY_DIRECTIVE_TTL_MS: '120000'
+    # Values: 60000-86400000 milliseconds. Recommended: 3600000 (one hour of Director history).
+    # Purpose: The window in which rejected or failed World Director directives count toward the autonomous rollout's AGENT_WORLD_DIRECTOR_AUTONOMOUS_MAX_RECENT_FAILURES.
+    # Technical: AgentWorldDirectorExecutionRuntime records a failure when the directive processor rejects a directive or its step throws; the autonomous gate counts those within this window (older ones are dropped) instead of the Agent's tick failures.
+    server.agents.runtime.activity.control.AgentWorldDirectorPolicyRuntime.FAILURE_WINDOW_MS: '3600000'
+    # Values: 1-1000 samples. Recommended: 60 (five minutes at the 5 s Observe interval); lower writes the evidence file more often.
+    # Purpose: How often an Agent's Observe sample count is written to disk, so the autonomous MIN_OBSERVE_SAMPLES evidence survives a relogin or a server restart.
+    # Technical: AgentWorldDirectorObserveRuntime writes .runtime/agents/world-director/observe-samples/<agent id>.samples from the Agent's own tick (one writer per file); restore seeds the session-local count from it, so at most this many samples are lost at logout.
+    server.agents.runtime.activity.control.AgentWorldDirectorObserveRuntime.CHECKPOINT_SAMPLES: '60'
     # Values: 15000-120000 milliseconds. Recommended: 60000 so graph warmup can finish before a suspended Agent retreats to the map return town.
     # Purpose: Bounds local spawn-free parking before suspension escalates to ordinary portal travel toward the map's safe return destination.
     # Technical: Expiry never hard-teleports the Agent; normal route travel remains authoritative and failure is reported explicitly.

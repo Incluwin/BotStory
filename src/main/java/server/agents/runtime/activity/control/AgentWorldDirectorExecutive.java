@@ -142,6 +142,26 @@ public final class AgentWorldDirectorExecutive {
             String reason,
             boolean confirmDestructive,
             long nowMs) {
+        return submit(entry, agent, actionId, expectedContextRevision, idempotencyKey, reason, confirmDestructive,
+                AgentWorldDirectiveSource.OPERATOR, 0L, nowMs);
+    }
+
+    /**
+     * As above, with the directive's source and expiry: OPERATOR for an operator's own choice, POLICY for the
+     * Director's own (AgentWorldDirectorPolicyRuntime, or an approved POLICY proposal), which the rollout gates then
+     * judge. {@code expiresAtMs} 0 = never; a POLICY directive the gates keep blocking expires instead of waiting.
+     */
+    public AgentWorldDirectiveEnvelope submit(
+            AgentRuntimeEntry entry,
+            Character agent,
+            String actionId,
+            String expectedContextRevision,
+            String idempotencyKey,
+            String reason,
+            boolean confirmDestructive,
+            AgentWorldDirectiveSource source,
+            long expiresAtMs,
+            long nowMs) {
         String directiveId = text(idempotencyKey);
         if (directiveId.isEmpty()) {
             throw new IllegalArgumentException("a stable idempotency key is required");
@@ -175,10 +195,10 @@ public final class AgentWorldDirectorExecutive {
         directiveParameters.put("directorActionId", action.actionId());
         AgentWorldDirective directive = new AgentWorldDirective(
                 1, directiveId, agent.getId(), action.directiveType(),
-                AgentWorldDirectiveSource.OPERATOR, null, action.targetActivityKind(),
+                source == null ? AgentWorldDirectiveSource.OPERATOR : source, null, action.targetActivityKind(),
                 action.requestType(), action.requestId(), directiveParameters,
                 action.interruptionPolicy(), action.completionPolicy(), action.priority(),
-                nowMs, 0L, text(reason).isEmpty() ? action.reason() : text(reason));
+                nowMs, expiresAtMs > nowMs ? expiresAtMs : 0L, text(reason).isEmpty() ? action.reason() : text(reason));
         AgentWorldDirectiveEnvelope submitted = control.submit(directive, nowMs);
         directiveJourney.submitted(submitted, nowMs);
         return submitted;

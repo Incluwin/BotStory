@@ -8,14 +8,22 @@ import server.agents.runtime.activity.world.AgentWorldDirectorSessionStore;
 public final class AgentWorldDirectorModeRestoreRuntime {
     private final AgentWorldDirectorSessionStore sessions;
     private final long observeIntervalMs;
+    private final AgentWorldDirectorObserveEvidenceStore evidence;
 
     public AgentWorldDirectorModeRestoreRuntime(
             AgentWorldDirectorSessionStore sessions, long observeIntervalMs) {
-        if (sessions == null || observeIntervalMs <= 0L) {
+        this(sessions, observeIntervalMs, AgentWorldDirectorObserveEvidenceStore.runtimeDefault());
+    }
+
+    public AgentWorldDirectorModeRestoreRuntime(
+            AgentWorldDirectorSessionStore sessions, long observeIntervalMs,
+            AgentWorldDirectorObserveEvidenceStore evidence) {
+        if (sessions == null || observeIntervalMs <= 0L || evidence == null) {
             throw new IllegalArgumentException("Director session store and observe interval are required");
         }
         this.sessions = sessions;
         this.observeIntervalMs = observeIntervalMs;
+        this.evidence = evidence;
     }
 
     public AgentWorldDirectorSession restore(AgentRuntimeEntry entry, int agentId, long nowMs) {
@@ -40,7 +48,9 @@ public final class AgentWorldDirectorModeRestoreRuntime {
             return;
         }
         runtime.restore(session.mode(), session.lastReason(), nowMs);
-        if (session.mode().isObservationOnly()) {
+        // Observe evidence carries over a relogin and a restart (the autonomous gate's MIN_OBSERVE_SAMPLES)
+        observe.seed(Math.max(session.observationCount(), evidence.load(session.agentId())));
+        if (AgentWorldDirectorObserveState.samples(session.mode())) {
             observe.configure(session.mode(), observeIntervalMs);
         } else {
             observe.disable();

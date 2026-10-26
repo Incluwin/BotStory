@@ -3,7 +3,6 @@ package server.agents.runtime.activity.control;
 import client.Character;
 import server.agents.integration.cosmic.CosmicAgentWorldContextFactory;
 import server.agents.runtime.AgentRuntimeEntry;
-import server.agents.runtime.AgentTickFailureStateRuntime;
 import server.agents.runtime.activity.AgentActivityOwnershipState;
 import server.agents.runtime.activity.control.binding.AgentStandardWorldActivityBindingResolver;
 import server.agents.runtime.activity.control.binding.AgentWorldDirectiveRequestCompiler;
@@ -36,6 +35,9 @@ public final class AgentWorldDirectorExecutionRuntime {
             "server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.POLL_INTERVAL_MS");
     private static final long HANDOFF_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.HANDOFF_TIMEOUT_MS");
+    private static final long IDLE_FULL_POLL_MS = config.AgentTuning.longValue(
+            "server.agents.runtime.activity.control.AgentWorldDirectorExecutionRuntime.IDLE_FULL_POLL_MS");
+    private static final AgentFileWorldDirectorSessionStore SESSIONS = AgentFileWorldDirectorSessionStore.runtimeDefault();
     private static final AgentFileActivityHandoffStore HANDOFF_STORE =
             AgentFileActivityHandoffStore.runtimeDefault();
     private static final AgentFileJourneyJournalStore JOURNEY_STORE =
@@ -53,7 +55,7 @@ public final class AgentWorldDirectorExecutionRuntime {
     private static final java.util.Set<String> PUBLISHED_TERMINAL_IDS =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static final AgentWorldDirectiveProcessor PROCESSOR = new AgentWorldDirectiveProcessor(
-            AgentFileWorldDirectorSessionStore.runtimeDefault(),
+            SESSIONS,
             DIRECTIVES,
             new AgentPersistentActivityHandoffCoordinator(HANDOFF_STORE,
                     new AgentActivityHandoffJourneyRecorder(JOURNEY_STORE)),
@@ -75,10 +77,22 @@ public final class AgentWorldDirectorExecutionRuntime {
         AgentWorldDirectivePollState poll = entry.capabilityStates()
                 .require(AgentWorldDirectivePollState.STATE_KEY);
         if (!poll.claim(nowMs, POLL_INTERVAL_MS)) return;
+        // nothing changed since a poll that found nothing: skip reading every session and directive file (they cost
+        // about 1.8 ms a poll, docs/SCALE_PLATFORM_PLAN.md section 6), but still publish finished activities
+        long stamp = 31L * DIRECTIVES.changeStamp(agent.getId()) + SESSIONS.changeStamp(agent.getId());
+        if (poll.unchanged(stamp, nowMs, IDLE_FULL_POLL_MS)) {
+            try {
+                publishTerminalOutcomes(entry, agent, nowMs);
+            } catch (RuntimeException failure) {
+                poll.result("FAILED: " + failure.getMessage());
+            }
+            return;
+        }
         if (emergencyHold && DIRECTIVES.list(agent.getId()).stream().noneMatch(envelope ->
                 !envelope.status().terminal()
                         && envelope.directive().type()
                         == server.agents.runtime.activity.world.AgentWorldDirectiveType.RESUME)) {
+            poll.idle(stamp, nowMs); // held with no release waiting: nothing to do until the files change
             return;
         }
         try {
@@ -86,6 +100,16 @@ public final class AgentWorldDirectorExecutionRuntime {
             AgentWorldDirectiveProcessor.Result result = PROCESSOR.tick(entry, agent,
                     context.currentActivityKind(), context.currentSessionId(), nowMs);
             poll.result(result.status() + ": " + result.reason());
+            if (result.status() == AgentWorldDirectiveProcessor.Result.Status.IDLE) {
+                poll.idle(stamp, nowMs);
+            } else {
+                poll.busy();
+            }
+            if (result.status() == AgentWorldDirectiveProcessor.Result.Status.REJECTED) {
+                // the autonomous gate's MAX_RECENT_FAILURES counts these, not the Agent's tick failures
+                entry.capabilityStates().require(AgentWorldDirectorObserveState.STATE_KEY)
+                        .directorFailed(nowMs, AgentWorldDirectorPolicyRuntime.FAILURE_WINDOW_MS);
+            }
             if (!result.directiveId().isEmpty()
                     && (result.status() == AgentWorldDirectiveProcessor.Result.Status.COMPLETED
                     || result.status() == AgentWorldDirectiveProcessor.Result.Status.REJECTED)) {
@@ -98,6 +122,8 @@ public final class AgentWorldDirectorExecutionRuntime {
             publishTerminalOutcomes(entry, agent, nowMs);
         } catch (RuntimeException failure) {
             poll.result("FAILED: " + failure.getMessage());
+            entry.capabilityStates().require(AgentWorldDirectorObserveState.STATE_KEY)
+                    .directorFailed(nowMs, AgentWorldDirectorPolicyRuntime.FAILURE_WINDOW_MS);
         }
     }
 
@@ -164,12 +190,13 @@ public final class AgentWorldDirectorExecutionRuntime {
                     session.mode(), directive, source, ownership, activeHandoffs);
         }
         if (session.mode() == AgentWorldDirectorMode.AUTONOMOUS) {
-            long samples = entry.capabilityStates()
-                    .require(AgentWorldDirectorObserveState.STATE_KEY).snapshot().sampleCount();
+            AgentWorldDirectorObserveState observe = entry.capabilityStates()
+                    .require(AgentWorldDirectorObserveState.STATE_KEY);
             return new AgentWorldDirectorAutonomousGate(
                     AgentWorldDirectorRolloutConfigLoader.autonomous()).inspect(
-                    session.mode(), directive, source, ownership, samples,
-                    AgentTickFailureStateRuntime.failureCount(entry), activeHandoffs);
+                    session.mode(), directive, source, ownership, observe.snapshot().sampleCount(),
+                    observe.recentDirectorFailures(nowMs, AgentWorldDirectorPolicyRuntime.FAILURE_WINDOW_MS),
+                    activeHandoffs);
         }
         return AgentWorldDirectorRolloutGateResult.block(
                 "Director mode does not authorize this directive source");

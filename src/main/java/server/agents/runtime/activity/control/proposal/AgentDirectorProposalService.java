@@ -5,6 +5,7 @@ import server.agents.runtime.activity.control.AgentDirectorActionAvailability;
 import server.agents.runtime.activity.control.AgentDirectorExecutiveView;
 import server.agents.runtime.activity.control.AgentWorldDirectorApplication;
 import server.agents.runtime.activity.world.AgentWorldDirectiveEnvelope;
+import server.agents.runtime.activity.world.AgentWorldDirectiveSource;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -88,8 +89,15 @@ public final class AgentDirectorProposalService {
             throw new StaleProposalException(stale);
         }
         String directiveId = "proposal:" + proposal.proposalId();
-        AgentWorldDirectiveEnvelope directive = application.execute(
-                agentId, proposal.actionId(), proposal.contextRevision(), directiveId,
+        // the Director's own choice stays POLICY while the Agent is ASSISTED or AUTONOMOUS, so the assisted gate judges it
+        // (docs/SCALE_PLATFORM_PLAN.md section 4); an operator's approval in any other mode makes it the operator's
+        boolean policy = proposal.source() == AgentDirectorProposalSource.POLICY
+                && view.directorSession().mode().allowsAutomaticProposals();
+        AgentWorldDirectiveEnvelope directive = policy
+                ? application.execute(agentId, proposal.actionId(), proposal.contextRevision(), directiveId,
+                proposal.rationale(), confirmDestructive, AgentWorldDirectiveSource.POLICY,
+                nowMs + PROPOSAL_TTL_MS, nowMs)
+                : application.execute(agentId, proposal.actionId(), proposal.contextRevision(), directiveId,
                 proposal.rationale(), confirmDestructive, nowMs);
         AgentDirectorProposal executed = store.save(proposal.resolve(
                 AgentDirectorProposalStatus.EXECUTED,

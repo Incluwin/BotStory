@@ -65,6 +65,17 @@ public final class AgentFileWorldDirectorSessionStore implements AgentWorldDirec
         }
     }
 
+    /** A cheap change stamp for one Agent's session: its file's modification time, 0 when it has none. */
+    public long changeStamp(int agentId) {
+        try {
+            Path source = path(agentId);
+            return Files.isRegularFile(source)
+                    ? Files.getLastModifiedTime(source).to(java.util.concurrent.TimeUnit.MICROSECONDS) : 0L;
+        } catch (IOException unreadable) {
+            return System.nanoTime(); // unknown: never equal to the last stamp, so the poll reads the file
+        }
+    }
+
     @Override
     public synchronized void delete(int agentId) {
         try {
