@@ -358,11 +358,14 @@ public final class CompanionSlots {
         }
     }
 
-    /** The GUEST seat of a guest leaving a party, given back when its host was in that party. */
+    /**
+     * The GUEST seat of a guest leaving a party, given back unless the party it left is known not to hold its host (an
+     * event with no members recorded says nothing, so the seat goes, as it always did).
+     */
     private void releaseGuestLeaving(int guestId, java.util.Collection<Integer> partyBefore) {
         String key = keyOf(guestId);
         Reservation held = reservation(key);
-        if (held != null && held.kind() == Kind.GUEST && partyBefore.contains(held.ownerId())) {
+        if (held != null && held.kind() == Kind.GUEST && (partyBefore.isEmpty() || partyBefore.contains(held.ownerId()))) {
             release(key, Kind.GUEST);
         }
     }
