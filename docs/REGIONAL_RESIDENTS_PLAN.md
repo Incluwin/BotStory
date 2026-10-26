@@ -566,5 +566,6 @@ content answers can route out of Zipangu; borrowed portraits for the nine town p
 potions (the town audit), and a Zipangu recruit's restock trip waits on the same route work. Kuala Lumpur and Kampung
 Village (Malaysia) belong to another session.
 
-Wave 1 and wave 2 are untouched apart from one Leafre quest (`hessa-carry-it-home` counts its Nest Golems in the
-Dangerous Dragon Nest below the peak, where there are enough of them, instead of on the peak the visit step needs).
+Wave 1 and wave 2 are untouched apart from one Leafre quest: `hessa-carry-it-home` counts its Nest Golems only in
+the Dangerous Dragon Nest below the peak. A `VISIT_MAP` step advances only when its map is entered while it is the
+current step, so golems killed on the peak itself left the player standing there with the visit still open.
