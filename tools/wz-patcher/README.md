@@ -79,6 +79,23 @@ files before restarting the server with new ids. Python standard library only, l
 the patcher. On the BotStory host, MapleEdit's `living_world_portraits.py` and
 `living_world_quests.py` do the same through this code (`residents.py`) for the live client.
 
+## Cryssea's look (Masteria client patch, held)
+
+Cryssea (NPC 9010018), who runs the iTCG card swap in New Leaf City, has a name in every base's String.wz but no
+Npc.wz image anywhere, and a client sent an NPC without an image closes. `masteria` gives her one in Custom.wz:
+`Npc/9010018.img` with an `info/link` to another NPC's image (default 1052122, Tina; `--look <npc id>` picks
+another), which kaentake's Custom.wz overlay serves where Npc.wz has nothing:
+
+```
+python tools/wz-patcher/botstory_wz.py masteria --client "<client folder>" [--out "<folder>"]
+```
+
+In place by default (the original goes to `botstory-wz-backup/`), idempotent. To ship it: run it on the live
+`Game Files` (and copy the result to kaentake's `src/Custom.wz`), rebuild the pack ("Rebuild the pack" below) so
+the launcher hands it out, and only then turn server mod `cryssea` on (`config.yaml` `mods.SWITCHES`, or
+`MOD_CRYSSEA=on`) and restart: the server places her when New Leaf City loads. See
+`docs/ITCG_MASTERIA_PLAN.md` section 5.
+
 ## Play through the friends' launcher
 
 `Launch Game.exe` keeps a client in sync with the host's patch server. A client on the clean

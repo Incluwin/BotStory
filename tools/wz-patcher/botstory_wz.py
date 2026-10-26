@@ -23,6 +23,7 @@ image, so the base keeps its own content.
     python botstory_wz.py residents --client "<client folder>"        # Resident portraits + quest log, made
                                                                       # from this client (see residents.py)
     python botstory_wz.py exe --exe "<client folder>/MapleStory.exe"  # large-address-aware flag only, no pack
+    python botstory_wz.py masteria --client "<client folder>"         # Cryssea's Custom.wz look (held patch)
     python botstory_wz.py build ...                                   # maintainers, see README
 
 Python 3.8+, standard library only.
@@ -444,6 +445,45 @@ def cmd_residents(args):
     print("done" if changed_any else "nothing to do: the client already has these Residents")
 
 
+# ---------------------------------------------------------------------------------- Masteria
+
+def cmd_masteria(args):
+    """Cryssea's Custom.wz look (masteria.py), for the held Masteria client patch."""
+    import masteria
+    client = Path(args.client)
+    out = Path(args.out) if args.out else None
+    look = int(args.look)
+    for name in ("Custom.wz", "Npc.wz"):
+        if not (client / name).is_file():
+            sys.exit(f"{client} lacks {name}")
+    with WzFile(client / "Npc.wz") as npc:
+        if f"{look:07d}.img" not in npc.index():
+            sys.exit(f"{client / 'Npc.wz'} has no image for NPC {look}: pick a look the client can draw (--look)")
+    src = client / "Custom.wz"
+    target = (out / src.name) if out else src.with_name(src.name + ".botstory-new")
+    if out:
+        out.mkdir(parents=True, exist_ok=True)
+    wz = WzFile(src)
+    try:
+        if masteria.linked(wz) == look:
+            print(f"  Custom.wz     up to date (Cryssea looks like NPC {look})")
+            return
+        path = masteria.patch_custom(wz, masteria.CRYSSEA, look)
+        save_wz_file(wz, target)
+    finally:
+        wz.close()
+    with WzFile(target) as written:
+        if masteria.linked(written) != look:
+            sys.exit(f"{target}: {path} did not come back as written")
+    if not out:
+        backup = client / "botstory-wz-backup" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(backup / src.name))
+        target.replace(src)
+        print(f"original moved to {backup}")
+    print(f"  Custom.wz     written ({path}: Cryssea looks like NPC {look})")
+
+
 # ---------------------------------------------------------------------------------- checking
 
 def server_imgs(server_wz):
@@ -748,6 +788,10 @@ def main():
     r.add_argument("--export", default=str(DEFAULT_EXPORT),
                    help=f"folder with the server's resident-portraits.json and living-quest-log.json (default {DEFAULT_EXPORT})")
     r.add_argument("--preview", help="also write each portrait as <persona>.png into this folder")
+    m = sub.add_parser("masteria", help="give Cryssea (NPC 9010018) a look in Custom.wz, for the Masteria client patch")
+    m.add_argument("--client", required=True, help="folder with the client's Custom.wz and Npc.wz")
+    m.add_argument("--out", help="write the patched Custom.wz here instead of patching in place")
+    m.add_argument("--look", default="1052122", help="the NPC whose image she wears (default 1052122, Tina)")
     e = sub.add_parser("exe", help="set the large-address-aware flag on a stock MapleStory.exe (no pack needed)")
     e.add_argument("--exe", required=True, help="the stock GMS v83 MapleStory.exe")
     b = sub.add_parser("build", help="maintainers: rebuild the pack from the live BotStory client")
@@ -767,6 +811,8 @@ def main():
         cmd_residents(args)
     elif args.cmd == "exe":
         cmd_exe(args)
+    elif args.cmd == "masteria":
+        cmd_masteria(args)
     else:
         cmd_build(args)
 

@@ -166,12 +166,17 @@ The recipe tables and the take-and-give step live in Java, `server.itcg.ItcgReci
 
 ## 5. Cryssea (held for the client patch)
 
-- **Client side, prepared and not run.** `tools/wz-patcher/botstory_wz.py` gains a `masteria` step that adds
-  `Npc/9010018.img` to a client's Custom.wz: an `info` node whose `link` names The Glimmer Man's image (9201083),
-  the same `link` 35 stock Npc.wz images use. kaentake's Custom.wz overlay already serves whole images the base WZ lacks
-  (`UI/UIWindowEx.img`, `resman.cpp` `raw__OnGetLocalObject_hook`), and String.wz already names her in every base.
-  Unit test in `tools/wz-patcher/tests`; it writes only to a temporary folder. Nothing in this branch runs it or touches
-  a client folder or Game Files.
+- **Client side, prepared and not run.** `tools/wz-patcher/botstory_wz.py masteria` (module `masteria.py`) adds
+  `Npc/9010018.img` to a client's Custom.wz: an `info` node whose `link` names another NPC's image, by default Tina
+  1052122, the Kerning Square store clerk (a shop look for the card-shop girl; `--look` picks another, and the step
+  refuses a look the client's Npc.wz cannot draw). That is the same `link` 35 stock Npc.wz images use. kaentake's
+  Custom.wz overlay already serves whole images the base WZ lacks (`UI/UIWindowEx.img`, `resman.cpp`
+  `raw__OnGetLocalObject_hook`), and String.wz already names her in every base. `tests/test_masteria.py` (3 tests)
+  builds throwaway WZ files in a temporary folder. Nothing in this branch runs it on a client folder or Game Files.
+- **To ship it (when the user releases the patch):** run the step on the live `Game Files`, keep kaentake's
+  `src/Custom.wz` in step, rebuild the pack (`tools/wz-patcher/README.md`), let the launcher hand it out, then turn
+  `cryssea` on and restart. The one thing not checked offline: that the v83 client follows the `link` for an image
+  that comes from the Custom.wz overlay (the overlay and Npc.wz `link` each work on their own); live check 10.11.
 - **Server side, off.** A new server mod `cryssea` (default off, boot only, `MOD_CRYSSEA` in .env): on, map 600000000
   gets Cryssea at the Town Center when it loads, and `scripts/npc/9010018.js` runs her card swap. Off (the shipped
   default), she is never sent to any client. Turn it on only after every client has the patch: a client without it
