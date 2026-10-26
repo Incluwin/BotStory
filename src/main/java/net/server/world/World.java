@@ -58,6 +58,7 @@ import net.server.task.MountTirednessTask;
 import net.server.task.PartySearchTask;
 import net.server.task.PetFullnessTask;
 import net.server.task.ServerMessageTask;
+import net.server.task.WeatherTask;
 import net.server.task.TimedMapObjectTask;
 import net.server.task.TimeoutTask;
 import net.server.task.WeddingReservationTask;
@@ -203,6 +204,7 @@ public class World {
     private ScheduledFuture<?> partySearchSchedule;
     private ScheduledFuture<?> timeoutSchedule;
     private ScheduledFuture<?> hpDecSchedule;
+    private ScheduledFuture<?> weatherSchedule; // day and night + weather (net.server.task.WeatherTask)
 
     public World(int world, int flag, String eventmsg, int exprate, int droprate, int bossdroprate, int mesorate,
                  int questrate, int travelrate, int fishingrate, float mobrate, int mobperspawnpoint) {
@@ -262,6 +264,11 @@ public class World {
         partySearchSchedule = tman.register(new PartySearchTask(this), SECONDS.toMillis(10), SECONDS.toMillis(10));
         timeoutSchedule = tman.register(new TimeoutTask(this), SECONDS.toMillis(10), SECONDS.toMillis(10));
         hpDecSchedule = tman.register(new CharacterHpDecreaseTask(this), YamlConfig.config.server.MAP_DAMAGE_OVERTIME_INTERVAL, YamlConfig.config.server.MAP_DAMAGE_OVERTIME_INTERVAL);
+        // The weather broadcast's first tick is a full period away: no channel exists yet, and map entry sends the sky
+        // anyway. The msPerGameMinute call runs WeatherService's class checks here on the boot thread, where a bad
+        // table refuses the boot, instead of inside a timer worker that swallows the error.
+        server.weather.WeatherService.msPerGameMinute();
+        weatherSchedule = tman.register(new WeatherTask(this), WeatherTask.INTERVAL_MS, WeatherTask.INTERVAL_MS);
 
         if (YamlConfig.config.server.USE_FAMILY_SYSTEM) {
             long timeLeft = Server.getTimeLeftForNextDay();
@@ -2354,6 +2361,11 @@ public class World {
         if(hpDecSchedule != null) {
             hpDecSchedule.cancel(false);
             hpDecSchedule = null;
+        }
+
+        if (weatherSchedule != null) {
+            weatherSchedule.cancel(false);
+            weatherSchedule = null;
         }
 
         if (players != null) {

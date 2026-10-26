@@ -10,6 +10,7 @@ import server.mods.features.FeatureHandshake;
 import server.mods.features.FeaturePackets;
 import server.monitoring.ThrottledLogger;
 import server.set.SetItemSync;
+import server.weather.WeatherPackets;
 
 /**
  * The kaentake client's feature list (Recv opcode CLIENT_FEATURES 0x118, docs/CLIENT_FEATURE_HANDSHAKE.md): decoded
@@ -33,6 +34,7 @@ public final class ClientFeaturesHandler extends AbstractPacketHandler {
         FeatureHandshake.get().receive(c, player, report);
         if (report.applied()) {
             SetItemSync.send(player); // the set tooltips need the worn sets before the first equip change
+            WeatherPackets.sendTo(player); // the first map's sky: its map entry came before the handshake
         }
     }
 }

@@ -51,6 +51,11 @@ may veto or require them at login.
   Requests are NPC shop modes 4 (the list) and 5 (the NPC's stock); a buy while the list shows is a row index the
   server prices; S->C 0x17F SHOP_BUYBACK says which list shows. The buy runs in one economy transaction
   (`SHOP_BUYBACK`). The list is memory only, cleared at login and logout; bots never fill it.
+- `weather` (default on, shipped on): day and night and the regional sky (`server.weather`, `docs/WEATHER.md`).
+  `WeatherTask` sends each client with the `weather` feature active its region's clock and sky once a minute, map
+  entry and the feature handshake send it at once (S->C 0x17C WEATHER_SYNC); `!lamp` previews use 0x17D. Cosmetic:
+  nothing on the server reads the sky, and bots are never sent it. The client's `weather_footing` (slippery snow) is
+  server gated with no `FEATURES` line, so it is denied. Off, nothing is sent and the clients render a plain noon.
 
 ## Feature policy (`mods.FEATURES`)
 

@@ -2792,6 +2792,9 @@ public class MapleMap {
 
         chr.receivePartyMemberHP();
         announcePlayerDiseases(chr.getClient());
+
+        // The arrival's sky, snapped: the client has already loaded the map, and everyone else here has it.
+        server.weather.WeatherPackets.sendTo(chr);
     }
 
     private static void announcePlayerDiseases(final Client c) {

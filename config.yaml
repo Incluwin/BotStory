@@ -1221,6 +1221,8 @@ mods:
     #                          dying with none left ends the run like its clock; companions never spend it
     #   shop_buyback           a client with shop_buyback active buys back its last 30 NPC shop sales of the session,
     #                          each for what its sale paid; off: the Buy Back button's requests are refused
+    #   weather                day and night and each region's sky, sent once a minute and on map entry to a client
+    #                          with weather active (docs/WEATHER.md); cosmetic; off: the clients render a plain noon
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1233,6 +1235,7 @@ mods:
         cash_item_trade: on
         death_count: on
         shop_buyback: on
+        weather: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays
@@ -1253,6 +1256,8 @@ mods:
         cash_item_trade: allow
     # The answer for a server_gated feature FEATURES does not name (allow or deny): a new gameplay mod waits for a
     # line here.
+    # weather_footing (slippery snow and ice, the weather module's physics) has no line, so it is denied: the weather
+    # ships cosmetic only.
     SERVER_GATED_DEFAULT: deny
     # The deaths one boss run may take while death_count is on, by expedition type (server.expeditions.ExpeditionType,
     # lower case). Only players count; a type with no line (or 0) is stock. Pink Bean keeps its own 5-deaths rule.

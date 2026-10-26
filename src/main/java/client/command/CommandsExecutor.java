@@ -65,6 +65,7 @@ import client.command.commands.gm2.BombCommand;
 import client.command.commands.gm2.BuffCommand;
 import client.command.commands.gm2.BuffMapCommand;
 import client.command.commands.gm2.ClearDropsCommand;
+import client.command.commands.gm2.WeatherCommand;
 import client.command.commands.gm2.ClearSavedLocationsCommand;
 import client.command.commands.gm2.ClearSlotCommand;
 import client.command.commands.gm2.DcCommand;
@@ -107,6 +108,7 @@ import client.command.commands.gm3.CheckDmgCommand;
 import client.command.commands.gm3.ClosePortalCommand;
 import client.command.commands.gm3.DebuffCommand;
 import client.command.commands.gm3.DeathCountCommand;
+import client.command.commands.gm3.LampCommand;
 import client.command.commands.gm3.EndEventCommand;
 import client.command.commands.gm3.ExpedsCommand;
 import client.command.commands.gm3.FaceCommand;
@@ -507,6 +509,7 @@ public class CommandsExecutor {
         addCommand("completequest", 2, QuestCompleteCommand.class);
         addCommand("resetquest", 2, QuestResetCommand.class);
         addCommand("meso", 2, MesoCommand.class);
+        addCommand("weather", 2, WeatherCommand.class);
 
         commandsNameDesc.add(levelCommandsCursor);
     }
@@ -540,6 +543,7 @@ public class CommandsExecutor {
         addCommand("startevent", 3, StartEventCommand.class);
         addCommand("endevent", 3, EndEventCommand.class);
         addCommand("deathcount", 3, DeathCountCommand.class);
+        addCommand("lamp", 3, LampCommand.class);
         addCommand("startmapevent", 3, StartMapEventCommand.class);
         addCommand("stopmapevent", 3, StopMapEventCommand.class);
         addCommand("ban", 3, BanCommand.class);

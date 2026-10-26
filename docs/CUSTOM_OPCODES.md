@@ -24,7 +24,11 @@ items or mesos).
 | 0x117 CREW_WINDOW | 0x17A CREW_WINDOW | native Crew window (`docs/BOT_MANAGEMENT_P10_PLAN.md`) |
 | 0x118 CLIENT_FEATURES | 0x17B CLIENT_FEATURES | login feature handshake (`docs/CLIENT_FEATURE_HANDSHAKE.md`) |
 | 0x119 BAG_WINDOW | 0x17E BAG_WINDOW | Storage Bag window (`docs/STORAGE_BAG.md`) |
+| — | 0x17C WEATHER_SYNC | day and night + the region's sky (`server.weather.WeatherPackets`, `docs/WEATHER.md`) |
+| — | 0x17D LAMP_PREVIEW | the `!lamp` placement preview (`server.lamp.LampPackets`) |
+| — | 0x17F SHOP_BUYBACK | Buy Back: which list the NPC shop shows (`server.ShopBuyback`) |
 | — | 0x186 SET_ITEM_SYNC | set item tooltips, pushed on equip change (`server.set.SetItemSync`) |
+| — | 0x187 DEATH_COUNT | boss run death count (`server.expeditions.ExpeditionDeathCount`) |
 
 ## Reserved for the community mod ports (2026-10-25)
 
@@ -34,7 +38,6 @@ merges.
 
 | Client → server | Server → client | Port |
 |---|---|---|
-| — | 0x17F SHOP_BUYBACK | Buy Back (theirs: 0x168; the requests are new modes of the NPC shop action) |
 | 0x11A CASHSHOP_WINDOW | 0x180 CASHSHOP_WINDOW_SYNC | in-game cash shop window (theirs: 0x3730 / 0x3731) |
 | 0x11B DAMAGE_RANK | 0x181 DAMAGE_RANK | DamageRank meter (theirs: 0x3713 / 0x3714) |
 | 0x11C DAMAGE_SKIN_APPLY | 0x182 DAMAGE_SKIN_CATALOG | damage skin (theirs: 0x110 / 0x170) |
@@ -43,8 +46,5 @@ merges.
 | — | 0x185 DAMAGE_SKIN_BROADCAST | damage skin (theirs: 0x173) |
 | 0x11E WORLD_MAP_TELEPORT | — | clickable world map (theirs: 0x995) |
 | 0x11F DAILY_CHECKIN | 0x188 DAILY_CHECKIN | daily check-in (theirs: 0x371A) |
-| — | 0x17C WEATHER_SYNC | weather / day-night (theirs: 0x373D) |
-| — | 0x17D LAMP_PREVIEW | weather lamps (theirs: 0x373F) |
-| — | 0x187 DEATH_COUNT | expedition death count (theirs: 0x3727) |
 
 The next free numbers after these are client → server 0x120 and server → client 0x189.

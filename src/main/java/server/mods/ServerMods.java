@@ -90,9 +90,17 @@ public final class ServerMods {
     public static final ServerMod SHOP_BUYBACK = new ServerMod("shop_buyback",
             "NPC shop Buy Back (client feature shop_buyback)", true);
 
+    /**
+     * Day and night and the regional sky (server.weather, docs/WEATHER.md): WeatherTask sends each client with the
+     * weather feature active its region's clock and sky once a minute and on map entry (S->C 0x17C WEATHER_SYNC).
+     * Cosmetic: nothing on the server reads the sky. Off, nothing is sent and the clients render a plain noon.
+     */
+    public static final ServerMod WEATHER = new ServerMod("weather",
+            "Day and night and weather (client feature weather)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER);
 
     private static volatile ServerMods instance;
 
