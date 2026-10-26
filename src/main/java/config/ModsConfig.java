@@ -1,10 +1,14 @@
 package config;
 
+import server.expeditions.ExpeditionType;
 import server.mods.ServerMods;
 import server.mods.features.FeaturePolicy;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * {@code mods:} in config.yaml (docs/CLIENT_FEATURE_HANDSHAKE.md; P5 of the mod intake plan): one switch per server mod,
@@ -22,9 +26,26 @@ public class ModsConfig {
     public Map<String, String> FEATURES = new LinkedHashMap<>();
     /** The answer for a server_gated (gameplay) feature that {@link #FEATURES} does not name: allow or deny. */
     public String SERVER_GATED_DEFAULT = "deny";
+    /**
+     * Expedition type (lower case, e.g. zakum) -> the deaths one boss run may take while the death_count mod is on.
+     * A missing line or 0 leaves that boss stock.
+     */
+    public Map<String, Integer> DEATH_COUNTS = new LinkedHashMap<>();
 
     public void validate() {
         ServerMods.parseSwitches(SWITCHES);
         FeaturePolicy.parse(FEATURES, SERVER_GATED_DEFAULT);
+        if (DEATH_COUNTS != null) {
+            Set<String> types = new HashSet<>();
+            for (ExpeditionType type : ExpeditionType.values()) {
+                types.add(type.name().toLowerCase(Locale.ROOT));
+            }
+            for (Map.Entry<String, Integer> entry : DEATH_COUNTS.entrySet()) {
+                if (!types.contains(entry.getKey()) || entry.getValue() == null || entry.getValue() < 0) {
+                    throw new IllegalArgumentException("mods.DEATH_COUNTS." + entry.getKey()
+                            + " must be an expedition type (lower case) with 0 or more deaths");
+                }
+            }
+        }
     }
 }

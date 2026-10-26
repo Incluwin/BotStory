@@ -4132,6 +4132,16 @@ public class PacketCreator {
         return p;
     }
 
+    /**
+     * The death count panel beside the boss clock (Kaentake client death_count): the deaths a boss run has left, or a
+     * negative value to hide it. The client hides it on every map change, so it is sent again on entering each map.
+     */
+    public static Packet deathCount(int left) {
+        OutPacket p = OutPacket.create(SendOpcode.DEATH_COUNT);
+        p.writeInt(left);
+        return p;
+    }
+
     public static Packet getClock(int time) { // time in seconds
         OutPacket p = OutPacket.create(SendOpcode.CLOCK);
         p.writeByte(2); // clock type. if you send 3 here you have to send another byte (which does not matter at all) before the timestamp

@@ -106,6 +106,7 @@ import client.command.commands.gm3.ChatCommand;
 import client.command.commands.gm3.CheckDmgCommand;
 import client.command.commands.gm3.ClosePortalCommand;
 import client.command.commands.gm3.DebuffCommand;
+import client.command.commands.gm3.DeathCountCommand;
 import client.command.commands.gm3.EndEventCommand;
 import client.command.commands.gm3.ExpedsCommand;
 import client.command.commands.gm3.FaceCommand;
@@ -538,6 +539,7 @@ public class CommandsExecutor {
         addCommand("closeportal", 3, ClosePortalCommand.class);
         addCommand("startevent", 3, StartEventCommand.class);
         addCommand("endevent", 3, EndEventCommand.class);
+        addCommand("deathcount", 3, DeathCountCommand.class);
         addCommand("startmapevent", 3, StartMapEventCommand.class);
         addCommand("stopmapevent", 3, StopMapEventCommand.class);
         addCommand("ban", 3, BanCommand.class);

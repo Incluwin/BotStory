@@ -40,6 +40,7 @@ import server.ThreadManager;
 import server.TimerManager;
 import server.monitoring.ThrottledLogger;
 import server.expeditions.Expedition;
+import server.expeditions.ExpeditionDeathCount;
 import server.expeditions.ExpeditionType;
 import server.life.LifeFactory;
 import server.life.Monster;
@@ -83,6 +84,7 @@ public class EventInstanceManager {
     private long timeStarted = 0;
     private long eventTime = 0;
     private volatile Expedition expedition = null;
+    private final ExpeditionDeathCount deathCount = new ExpeditionDeathCount();
     private final List<Integer> mapIds = new LinkedList<>();
 
     private final Lock readLock;
@@ -420,6 +422,12 @@ public class EventInstanceManager {
 
     public void registerExpedition(Expedition exped) {
         expedition = exped;
+        // The run's death budget (the death_count mod); the panel is sent on entering the run's maps.
+        int deaths = ExpeditionDeathCount.configuredFor(exped.getType());
+        if (deaths > 0) {
+            deathCount.arm(deaths);
+            log.info("Death count: {} deaths for this {} run", deaths, exped.getType());
+        }
         registerExpeditionTeam(exped, exped.getRecruitingMap().getId());
     }
 
@@ -483,6 +491,82 @@ public class EventInstanceManager {
         return expedition;
     }
 
+    /** This run's shared death budget (off unless mods.DEATH_COUNTS gives its expedition type one). */
+    public ExpeditionDeathCount getDeathCount() {
+        return deathCount;
+    }
+
+    /** Sends the death count panel's value (-1 hides it) to everyone on this run's maps. */
+    public void sendDeathCount() {
+        for (Character chr : getPlayers()) {
+            sendDeathCount(chr);
+        }
+    }
+
+    /** Hides the death count panel on this run's maps (a GM turned the count off). */
+    public void sendDeathCountHidden() {
+        for (Character chr : getPlayers()) {
+            if (chr.getMap() != null && chr.getMap().getEventInstance() == this) {
+                chr.sendPacket(PacketCreator.deathCount(-1));
+            }
+        }
+    }
+
+    private void sendDeathCount(Character chr) {
+        if (deathCount.isOn() && chr != null && chr.getMap() != null && chr.getMap().getEventInstance() == this) {
+            chr.sendPacket(PacketCreator.deathCount(deathCount.left()));
+        }
+    }
+
+    /**
+     * A player's death on this run's maps spends the shared budget; dying with none left ends the run 1.5 s later
+     * through the script's own scheduledTimeout, as if the clock ran out, so companion runs end the way they already
+     * handle. Companions and other bots never spend it.
+     */
+    private void chargeDeathCount(Character chr) {
+        if (!deathCount.isOn() || !ExpeditionDeathCount.counts(chr) || chr.getMap() == null
+                || chr.getMap().getEventInstance() != this) {
+            return;
+        }
+        switch (deathCount.charge()) {
+            case SPENT -> {
+                sendDeathCount();
+                log.info("Death count: {} died, {} left", chr.getName(), deathCount.left());
+            }
+            case EXHAUSTED -> {
+                String name = chr.getName();
+                log.info("Death count: {} died with none left; the run ends", name);
+                TimerManager.getInstance().schedule(() -> endForDeathCount(name), 1500);
+            }
+            default -> {
+            }
+        }
+    }
+
+    private void endForDeathCount(String name) {
+        if (disposed) {
+            return;
+        }
+        for (Character p : getPlayers()) {
+            p.dropMessage(1, "The expedition has failed: the death count has run out.");
+        }
+        dropMessage(5, "[Expedition] " + name + " fell with no deaths left. The expedition is over.");
+        try {
+            invokeScriptFunction("scheduledTimeout", EventInstanceManager.this);
+        } catch (ScriptException | NoSuchMethodException ex) {
+            log.warn("Event {} has no scheduledTimeout; the death count ends it directly", em.getName());
+            for (Character p : getPlayers()) {
+                MapleMap cur = p.getMap();
+                unregisterPlayer(p);
+                if (p.isLoggedinWorld() && cur != null) {
+                    MapleMap ret = p.getWarpMap(cur.getReturnMapId());
+                    p.changeMap(ret, ret.getPortal(0));
+                }
+            }
+            dispose();
+        }
+    }
+
     private List<Character> getPlayerList() {
         readLock.lock();
         try {
@@ -518,6 +602,8 @@ public class EventInstanceManager {
             invokeScriptFunction("afterChangedMap", EventInstanceManager.this, chr, mapId);
         } catch (ScriptException | NoSuchMethodException ex) {
         } // optional
+
+        sendDeathCount(chr);
     }
 
     public synchronized void changedLeader(final PartyCharacter ldr) {
@@ -587,6 +673,7 @@ public class EventInstanceManager {
     }
 
     public void playerKilled(final Character chr) {
+        chargeDeathCount(chr);
         ThreadManager.getInstance().newBlockingTask(() -> {
             try {
                 invokeScriptFunction("playerDead", EventInstanceManager.this, chr);

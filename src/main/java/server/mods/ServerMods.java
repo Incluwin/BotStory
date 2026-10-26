@@ -74,9 +74,17 @@ public final class ServerMods {
     public static final ServerMod CASH_ITEM_TRADE = new ServerMod("cash_item_trade",
             "Players trade cash items (client feature cash_item_trade)", true);
 
+    /**
+     * A boss run gets a shared death budget from mods.DEATH_COUNTS (server.expeditions.ExpeditionDeathCount): each
+     * player death spends one, and a player dying with none left ends the run as its clock would. Companions and other
+     * bots never spend it. The client's death_count panel shows what is left. Off, every run is stock.
+     */
+    public static final ServerMod DEATH_COUNT = new ServerMod("death_count",
+            "Boss run death count (client feature death_count shows it)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT);
 
     private static volatile ServerMods instance;
 

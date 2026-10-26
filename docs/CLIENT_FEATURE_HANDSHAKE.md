@@ -39,6 +39,12 @@ may veto or require them at login.
   own refusal. Pets and rings tied to a partner stay blocked, a companion or other bot never gives or takes one, and
   player stores, hired merchants, Duey and drops keep `USE_ENFORCE_UNMERCHABLE_CASH`. Off, trades refuse cash items
   again, as stock.
+- `death_count` (default on, shipped on): a boss run gets the shared death budget `mods.DEATH_COUNTS` gives its
+  expedition type (shipped: Zakum 10, Chaos Zakum 5; Pink Bean keeps its script's own 5-deaths rule).
+  `server.expeditions.ExpeditionDeathCount`: each player death on the run's maps spends one, and a player dying with
+  none left ends the run 1.5 s later through the script's own `scheduledTimeout`, as if the clock ran out. Companions
+  and other bots never spend it. The client's `death_count` panel (S->C 0x187 DEATH_COUNT) shows what is left;
+  `!deathcount [n]` shows or changes it for the run a GM is in.
 
 ## Feature policy (`mods.FEATURES`)
 
