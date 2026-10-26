@@ -482,11 +482,12 @@ daggers, wands and knuckles; no weapon or hat in this wave is on the Repack-only
   Crest, Stone Tiger Head, Crystal Shard, Taru Spirit Feather, Triferium Fuel Cell, Stone Denari), Jungle Juice, Taru
   Face Paint, Ridley's Scroll of Defense, Stirge Signal, the six Set 3 lv-10 spirit weapons, the Taru Spirit Cape, the
   Stirgeman cape, pants and Stirge-on-a-String, the Cloak of Corruption, the Crystal Blade and the Red Relaxer;
-- 26 forge results as friendship gear (the Glimmer Man weapons and other forged pieces in the gear column above),
-  because no forging NPC works on this server yet;
-- none of the five iTCG pets: `QuestLedger` grants rewards through `InventoryManipulator.addById`, which does not
-  create a pet, so they wait for the pet-aware reward path another session owns. The Maple Champion cash effects
-  are left out too.
+- 26 forge results as friendship gear (the Versal weapons and the other forged pieces in the gear column above). The
+  iTCG session's branch (`feat/itcg-masteria`, `docs/ITCG_MASTERIA_PLAN.md`) scripts the forging NPCs to the GMS
+  recipes, so once both are merged these pieces have two roads: Spindle's forge, and the friendship quests;
+- none of the five iTCG pets: on this branch `QuestLedger` grants rewards through `InventoryManipulator.addById`,
+  which does not create a pet. All five go to the iTCG session's Masteria casts, which carry the pet-aware reward
+  path. The Maple Champion cash effects are left out too.
 
 Of the three untradeable items on the list, Red Relaxer and Stone Denari are rewards and never hand-ins
 (`Friendship.giftable` skips untradeables); Gelt Chocolate is not used. The seven forging NPC scripts (Foxwit 9201052, Glimmer Man 9201083,
