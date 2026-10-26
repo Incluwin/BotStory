@@ -56,6 +56,11 @@ may veto or require them at login.
   entry and the feature handshake send it at once (S->C 0x17C WEATHER_SYNC); `!lamp` previews use 0x17D. Cosmetic:
   nothing on the server reads the sky, and bots are never sent it. The client's `weather_footing` (slippery snow) is
   server gated with no `FEATURES` line, so it is denied. Off, nothing is sent and the clients render a plain noon.
+- `cash_shop_window` (default on, shipped on): the Cash Shop window over the field (`server.cashshop`,
+  `docs/CASH_SHOP_WINDOW.md`). A client with the `cash_shop_window` feature active gets the window from the Cash Shop
+  button, after the stock entry refusals, instead of the stage; the window's own Cash Shop button enters the stage.
+  It sells the stock shop's on-sale offers at their prices and durations, for NX Credit or Maple Points, a cart in
+  one economy transaction (`CASH_SHOP_WINDOW`). Off, the button enters the stock Cash Shop for everyone.
 
 ## Feature policy (`mods.FEATURES`)
 

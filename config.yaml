@@ -1223,6 +1223,9 @@ mods:
     #                          each for what its sale paid; off: the Buy Back button's requests are refused
     #   weather                day and night and each region's sky, sent once a minute and on map entry to a client
     #                          with weather active (docs/WEATHER.md); cosmetic; off: the clients render a plain noon
+    #   cash_shop_window       a client with cash_shop_window active gets the Cash Shop window over the field from the
+    #                          Cash Shop button (docs/CASH_SHOP_WINDOW.md): the stock shop's offers, prices and
+    #                          durations, for NX Credit or Maple Points; its own button enters the stock Cash Shop
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1236,6 +1239,7 @@ mods:
         death_count: on
         shop_buyback: on
         weather: on
+        cash_shop_window: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays

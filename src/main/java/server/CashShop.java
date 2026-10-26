@@ -44,6 +44,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -169,6 +170,11 @@ public class CashShop {
 
         public short getCount() {
             return count;
+        }
+
+        /** Days, with the WZ's 0 already read as 90; 1 means hours for the 2- and 4-hour coupons (toItem). */
+        public long getPeriod() {
+            return period;
         }
 
         public boolean isOnSale() {
@@ -304,6 +310,11 @@ public class CashShop {
 
         public static CashItem getItem(int sn) {
             return items.get(sn);
+        }
+
+        /** Every commodity, on sale or not (the Cash Shop window's catalogue reads them). */
+        public static Collection<CashItem> allItems() {
+            return Collections.unmodifiableCollection(items.values());
         }
 
         public static List<Item> getPackage(int itemId) {

@@ -98,9 +98,18 @@ public final class ServerMods {
     public static final ServerMod WEATHER = new ServerMod("weather",
             "Day and night and weather (client feature weather)", true);
 
+    /**
+     * The Cash Shop window over the field (server.cashshop, docs/CASH_SHOP_WINDOW.md): a client with the
+     * cash_shop_window feature active gets the window from the Cash Shop button instead of the stock Cash Shop, which
+     * its own button still enters. It sells the stock shop's on-sale offers at their prices and durations, for NX
+     * Credit or Maple Points. Off, the button enters the stock Cash Shop for everyone.
+     */
+    public static final ServerMod CASH_SHOP_WINDOW = new ServerMod("cash_shop_window",
+            "Cash Shop window over the field (client feature cash_shop_window)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE, DEATH_COUNT, SHOP_BUYBACK, WEATHER, CASH_SHOP_WINDOW);
 
     private static volatile ServerMods instance;
 

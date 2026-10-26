@@ -36,7 +36,8 @@ public enum PacketFamily {
             value(RecvOpcode.FREDRICK_ACTION), value(RecvOpcode.DUEY_ACTION), value(RecvOpcode.OWL_ACTION),
             value(RecvOpcode.OWL_WARP), value(RecvOpcode.ITEM_MOVE), value(RecvOpcode.MESO_DROP),
             value(RecvOpcode.PLAYER_INTERACTION), value(RecvOpcode.ENTER_MTS), value(RecvOpcode.MTS_OPERATION),
-            value(RecvOpcode.CASHSHOP_OPERATION), value(RecvOpcode.ITEM_PICKUP), value(RecvOpcode.BAG_WINDOW));
+            value(RecvOpcode.CASHSHOP_OPERATION), value(RecvOpcode.ITEM_PICKUP), value(RecvOpcode.BAG_WINDOW),
+            value(RecvOpcode.CASHSHOP_WINDOW));
     private static final Set<Integer> CREW_OPCODES = Set.of(value(RecvOpcode.CREW_WINDOW));
 
     public static PacketFamily classify(short opcode) {

@@ -365,6 +365,7 @@ public enum SendOpcode {
     WEATHER_SYNC(0x17C),            // day and night + the region's sky (Kaentake client weather, server.weather.WeatherPackets)
     LAMP_PREVIEW(0x17D),            // the !lamp placement preview (Kaentake client lamps, server.lamp.LampPackets)
     BAG_WINDOW(0x17E),              // Storage Bag window (Kaentake client storagebag, docs/STORAGE_BAG.md)
+    CASHSHOP_WINDOW_SYNC(0x180),    // Cash Shop window (Kaentake client cashshopwnd, docs/CASH_SHOP_WINDOW.md)
     SET_ITEM_SYNC(0x186),           // set item tooltips (Kaentake client setitems, server.set.SetItemSync)
     DEATH_COUNT(0x187),             // boss run death count panel (Kaentake client deathcount, server.expeditions.ExpeditionDeathCount)
     SHOP_BUYBACK(0x17F);            // NPC shop Buy Back: which list shows (Kaentake client shopbuyback, server.ShopBuyback)

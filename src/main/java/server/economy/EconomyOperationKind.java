@@ -15,5 +15,7 @@ public enum EconomyOperationKind {
     /** A companion's owner gives it coin for its supplies (docs/BOT_MANAGEMENT_PLAN.md P3b). */
     COMPANION_GIFT,
     /** A player buys back what they sold to an NPC shop, for what the sale paid (server.ShopBuyback). */
-    SHOP_BUYBACK
+    SHOP_BUYBACK,
+    /** A Cash Shop window cart: the items go in and the NX or Maple Points come off together. */
+    CASH_SHOP_WINDOW
 }

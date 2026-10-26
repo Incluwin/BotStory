@@ -24,6 +24,7 @@ items or mesos).
 | 0x117 CREW_WINDOW | 0x17A CREW_WINDOW | native Crew window (`docs/BOT_MANAGEMENT_P10_PLAN.md`) |
 | 0x118 CLIENT_FEATURES | 0x17B CLIENT_FEATURES | login feature handshake (`docs/CLIENT_FEATURE_HANDSHAKE.md`) |
 | 0x119 BAG_WINDOW | 0x17E BAG_WINDOW | Storage Bag window (`docs/STORAGE_BAG.md`) |
+| 0x11A CASHSHOP_WINDOW | 0x180 CASHSHOP_WINDOW_SYNC | Cash Shop window (`docs/CASH_SHOP_WINDOW.md`) |
 | — | 0x17C WEATHER_SYNC | day and night + the region's sky (`server.weather.WeatherPackets`, `docs/WEATHER.md`) |
 | — | 0x17D LAMP_PREVIEW | the `!lamp` placement preview (`server.lamp.LampPackets`) |
 | — | 0x17F SHOP_BUYBACK | Buy Back: which list the NPC shop shows (`server.ShopBuyback`) |
@@ -38,7 +39,6 @@ merges.
 
 | Client → server | Server → client | Port |
 |---|---|---|
-| 0x11A CASHSHOP_WINDOW | 0x180 CASHSHOP_WINDOW_SYNC | in-game cash shop window (theirs: 0x3730 / 0x3731) |
 | 0x11B DAMAGE_RANK | 0x181 DAMAGE_RANK | DamageRank meter (theirs: 0x3713 / 0x3714) |
 | 0x11C DAMAGE_SKIN_APPLY | 0x182 DAMAGE_SKIN_CATALOG | damage skin (theirs: 0x110 / 0x170) |
 | 0x11D DAMAGE_SKIN_PURCHASE | 0x183 DAMAGE_SKIN_INVENTORY | damage skin (theirs: 0x111 / 0x171) |
