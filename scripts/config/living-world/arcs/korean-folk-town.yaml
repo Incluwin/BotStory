@@ -1,0 +1,53 @@
+# Korean Folk Town arc: a girl's father's radio, a gray receiver he found on Black Mountain, mended at the base under
+# the tower and answered from it (arcs/omega-sector.yaml). Its last beat happens once per server
+# (quests/korean-folk-town.yaml).
+- id: bomi-the-fathers-radio
+  persona: bomi
+  chapters:
+    - id: chapter-1
+      title: "The Radio That Hisses"
+    - id: chapter-2
+      title: "It Hums"
+      enterWhen: { flags: [kft.radio.mended] }
+      dialogueOverrides:
+        greet: ["it hums now! listen! it's like my dad humming.", "hello! i told the radio about you. it hummed."]
+        who: ["Bomi. my dad went up Black Mountain eight winters ago and didn't come down. his radio works now. it hums. i tell it about my day every night at nine. somebody's going to hear. i know it."]
+        smallTalk: ["Petra at the base fixed the radio. she said it's a gray thing. she said it can listen now, not just talk. i asked what it's listening for. she said, you.", "i talk to it every night at nine. Grandma Okja says nine's a lucky hour."]
+        speakPlainly: ["plainly: my dad's radio. it hums."]
+        questOffer.bomi-the-hissing-radio: ["the radio's coil burnt out again. Petra at the base fixes it. she grumbles. could you take it to her? and if she wants something for it, i'll find it. i promise."]
+        questComplete.bomi-the-hissing-radio: ["it hums again! thank you! i'm going to tell it about today."]
+        greetFirst: ["hello! do you want to see my radio? it's my dad's. it hums now. listen.", "you're new! i'm Bomi. i know everybody. now i know you."]
+        noWork: ["nothing today. the persimmons aren't ripe. the radio's humming. it's a good waiting day."]
+        idle: ["(holds the radio up to her ear, eyes shut, listening to the hum)", "(tells the radio something in a whisper, then nods as if it answered)"]
+        chapterEnter: ["(holds the radio up to her ear, eyes shut, and grins at the hum)"]
+    - id: chapter-3
+      title: "Somebody Answered"
+      enterWhen: { flags: [omega.channel.answered] }
+      dialogueOverrides:
+        greet: ["somebody answered! a lady! she knows about the persimmons!", "hello! guess what! no, guess. somebody answered!"]
+        who: ["Bomi. somebody answered my dad's radio. a lady at the base under the tower. she said she's been listening every night. she's not my dad. she said so. but she was listening."]
+        smallTalk: ["the lady on the radio said she wrote down everything i ever said. everything! even the rice cake. i want to see where she lives. i want to see the radio on her side.", "Grandma Okja says i've got a good fortune. i told her it came true. she said they always do."]
+        speakPlainly: ["plainly: somebody answered."]
+        about.lyra: ["there's a lady on the radio. she answers now. she told me her name but the radio crackled. i don't know it yet."]
+        questOffer.bomi-the-hissing-radio: ["the radio's coil burnt out again. Petra at the base fixes it. she grumbles. could you take it to her? and if she wants something for it, i'll find it. i promise."]
+        questComplete.bomi-the-hissing-radio: ["it hums again! thank you! i'm going to tell it about today."]
+        greetFirst: ["hello! do you want to see my radio? it's my dad's. it hums now. listen.", "you're new! i'm Bomi. i know everybody. now i know you."]
+        noWork: ["nothing today. the persimmons aren't ripe. the radio's humming. it's a good waiting day."]
+        idle: ["(holds the radio up to her ear, eyes shut, listening to the hum)", "(tells the radio something in a whisper, then nods as if it answered)"]
+        chapterEnter: ["(dances in a small circle holding the radio over her head, then stops and checks it's all right)"]
+    - id: chapter-4
+      title: "Two Radios"
+      enterWhen: { flags: [kft.answer.heard] }
+      dialogueOverrides:
+        greet: ["hi! i talked to Lyra last night! she has a cat! no she doesn't. she wants one.", "hello! i've saved up things to tell Lyra."]
+        who: ["Bomi. my dad's radio talks to Lyra at the base under the tower every night at nine. she tells me about her day. i tell her about mine. my dad's still on the mountain. i still tell him too. after Lyra."]
+        idle: ["(talks into the radio, then holds it up and laughs at the answer)", "(wraps a persimmon in a leaf to send up the Helios lift)"]
+        smallTalk: ["Lyra says the General thinks we're a security risk. i told her persimmons aren't secret. she laughed. she laughs a lot now.", "i sent Lyra a persimmon on the Helios lift. it got squashed. she said it was the best thing she ever ate. she's nice."]
+        speakPlainly: ["plainly: two radios, and nine o'clock."]
+        about.lyra: ["Lyra! she's at the base under the tower. she talks to me every night at nine. she writes everything down. she says i'm her best part of the day."]
+        friend.best: ["i tell the radio about you every night. Lyra hears it now. she says she likes you too."]
+        questOffer.bomi-the-hissing-radio: ["the radio's coil burnt out again. Petra at the base fixes it. she grumbles. could you take it to her? and if she wants something for it, i'll find it. i promise."]
+        questComplete.bomi-the-hissing-radio: ["it hums again! thank you! i'm going to tell it about today."]
+        greetFirst: ["hello! do you want to see my radio? it's my dad's. it hums now. listen.", "you're new! i'm Bomi. i know everybody. now i know you."]
+        noWork: ["nothing today. the persimmons aren't ripe. the radio's humming. it's a good waiting day."]
+        chapterEnter: ["(sets the radio down on the persimmon tree's roots, says 'goodnight, Dad', and then 'goodnight, Lyra')"]

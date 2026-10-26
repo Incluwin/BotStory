@@ -1,0 +1,30 @@
+# Korean Folk Town rumors (wave 3). Each pair is awake together at its spot in those hours
+# (personas/korean-folk-town.yaml).
+- id: kft-the-hunt
+  participants: [gwang, seori]
+  where: { town: korean-folk-town, spot: "venue:by-mr-noh" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+  setsFlagOnListeners: kft.heard-seori
+  lines:
+    - { by: seori, text: "you walked the mountain again, Gwang." }
+    - { by: gwang, text: "i walk it every winter." }
+    - { by: seori, text: "for Bomi's father." }
+    - { by: gwang, text: "...for both of them. don't tell her." }
+    - { by: seori, text: "i won't. and if anyone wants an archer behind them in the clock tower, i'll tell them you said i was quiet enough. you did say it." }
+    - { by: gwang, text: "i said it once." }
+
+- id: kft-the-mill
+  participants: [dalja, okja]
+  where: { town: korean-folk-town, spot: "venue:lower-west-street" }
+  when:
+    serverHours: [18]
+    everyDays: 1
+  lines:
+    - { by: dalja, text: "Byungho's drumming faster again." }
+    - { by: okja, text: "he's had your rice cakes." }
+    - { by: dalja, text: "i only gave him two." }
+    - { by: okja, text: "i saw it in the coins this morning. two rice cakes, and a very fast festival." }
+    - { by: dalja, text: "you saw that in the coins?" }
+    - { by: okja, text: "i saw it in his face. the coins agreed." }

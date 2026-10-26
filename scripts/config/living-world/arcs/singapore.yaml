@@ -1,0 +1,45 @@
+# Singapore arc: a widow on Boat Quay who lights a lantern every night for the ghost ship's crew, and her husband's own
+# lantern, raised from Aqua Road's Grave of a Wrecked Ship (arcs/aquarium.yaml). Its last beat happens once per server
+# (quests/singapore.yaml).
+- id: rosnah-the-lanterns
+  persona: rosnah
+  chapters:
+    - id: chapter-1
+      title: "Lanterns for the Crew"
+    - id: chapter-2
+      title: "The Ship That Waits"
+      enterWhen: { flags: [sg.ship.seen] }
+      dialogueOverrides:
+        greet: ["they're lit. every lantern on the ghost ship but one. you saw them.", "hello, dear. i lit two last night. one for the crew, one for you, for going."]
+        who: ["Rosnah. my Halim sailed on the ghost ship. its lanterns are all lit but one, after twenty years, as if they're waiting for someone. i light mine on the quay every night. we're both waiting, the ship and me."]
+        smallTalk: ["every lantern on that ship is lit except one. one hook's empty. Benedict says the third from the stern. that was Halim's post.", "Siti says i should stop. she makes my lantern paper anyway. she's a good girl."]
+        speakPlainly: ["plainly: lanterns, and an empty hook."]
+        questOffer.rosnah-the-ghost-ship: ["would you go and look at the ghost ship's lanterns for me, dear? i like to hear it from someone who's been. the pac pinkies crowd the first deck. twenty-five of them."]
+        questComplete.rosnah-the-ghost-ship: ["still lit, all but the one. thank you, dear. i like to hear it."]
+        chapterEnter: ["(lights a second small lantern beside the first and sets them side by side on the quay)"]
+    - id: chapter-3
+      title: "Halim's Lantern"
+      enterWhen: { flags: [aqua.lantern.raised] }
+      dialogueOverrides:
+        greet: ["dear, they say a diver in Aquarium has a lantern with Halim's name on it. is it true? is it?", "hello. i haven't slept. i don't need to. i'm waiting."]
+        who: ["Rosnah. my Halim's lantern has come up out of the sea, in Aquarium, still burning. an old diver has it on his bench. i've waited twenty years. i can wait a little longer. i can't."]
+        smallTalk: ["Benedict says the ship's manifest must still be aboard, and that Halim would have written it to the end. of course he would.", "they say it was hanging on the wreck's rail. straight. like a sentry. that's how he'd have hung it."]
+        speakPlainly: ["plainly: his lantern. it's coming home."]
+        about.delmar: ["a diver in Aquarium, they say. an old one. he has Halim's lantern. i don't know his name. i'll know it forever."]
+        questOffer.rosnah-the-ghost-ship: ["would you go and look at the ghost ship's lanterns for me, dear? i like to hear it from someone who's been. the pac pinkies crowd the first deck. twenty-five of them."]
+        questComplete.rosnah-the-ghost-ship: ["still lit, all but the one. thank you, dear. i like to hear it."]
+        chapterEnter: ["(clears a space on the quay beside her own lantern, and smooths the stone with her hand)"]
+    - id: chapter-4
+      title: "Two Lanterns on the River"
+      enterWhen: { flags: [sg.lantern.home] }
+      dialogueOverrides:
+        greet: ["it's home, dear. look. two lanterns on the river.", "hello. sit with us. with me. with us."]
+        who: ["Rosnah. my Halim's lantern burns on the quay now, beside mine. it burned twenty years at the bottom of the sea, and now it's home. i still light mine every night. i'll stop when it does."]
+        idle: ["(sits between two lanterns on the quay, one new, one old brass, and doesn't say anything for a long time)", "(trims both wicks, the old one more carefully)"]
+        smallTalk: ["i wrote to the diver. Delmar. i told him it's burning beside mine. i told him Siti cried. i didn't tell him i did.", "the ghost ship's still out there. its lanterns are still lit. i think they're waiting for the rest of the crew. i'll keep lighting mine for them."]
+        speakPlainly: ["plainly: two lanterns on the river."]
+        about.delmar: ["Delmar. the old diver in Aquarium. he watched Halim's lantern for twenty years. he sent it home. i'll light one for him too."]
+        friend.best: ["i lit a lantern for you last night. it's beside Halim's. he'd have liked you."]
+        questOffer.rosnah-the-ghost-ship: ["would you go and look at the ghost ship's lanterns for me, dear? i like to hear it from someone who's been. the pac pinkies crowd the first deck. twenty-five of them."]
+        questComplete.rosnah-the-ghost-ship: ["still lit, all but the one. thank you, dear. i like to hear it."]
+        chapterEnter: ["(hangs an old brass lantern on the quay rail, straight as a sentry, and lights her paper one beside it)"]

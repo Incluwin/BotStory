@@ -56,9 +56,9 @@ class ContentLintFriendshipTest {
                 weapons.merge(quest.persona(), owned, Integer::sum);
             }
         }
-        // sixteen in Victoria, one per weapon type, and sixteen regional ones: six in wave 1, ten in wave 2
-        // (docs/REGIONAL_RESIDENTS_PLAN.md)
-        assertEquals(32, weapons.size(), weapons.toString());
+        // sixteen in Victoria, one per weapon type, and twenty-eight regional ones: six in wave 1, ten in wave 2,
+        // twelve in wave 3 (docs/REGIONAL_RESIDENTS_PLAN.md)
+        assertEquals(44, weapons.size(), weapons.toString());
         assertTrue(weapons.values().stream().allMatch(tiers -> tiers == 3), "three weapon tiers each: " + weapons);
         assertEquals(List.of(1372014), content.quest("vesna-evil-tale").rewards().gear().get(0).pool());
         // an armourer: a glove for the player's class in three tiers, the final two 10% and the rest 60%

@@ -31,6 +31,9 @@ class OlwenClassPathTest {
         assertFalse(LivingContent.isHire(olwen.id()));
         assertEquals(Job.GUNSLINGER, JobErrands.personaJob(olwen));
         assertEquals(Job.GUNSLINGER, JobErrands.pathFor(Job.BEGINNER, JobErrands.personaJob(olwen)));
+        // the calls leave() and formFor() make after her first job, and after her second
+        assertEquals(Job.GUNSLINGER, JobErrands.pathFor(Job.PIRATE, Job.GUNSLINGER));
+        assertEquals(Job.CORSAIR, JobErrands.pathFor(Job.GUNSLINGER, Job.GUNSLINGER));
 
         assertEquals(Job.PIRATE, AgentJobPath.next(Job.BEGINNER, Job.GUNSLINGER, 29), "first job at Kyrin");
         assertNull(AgentJobPath.next(Job.PIRATE, Job.GUNSLINGER, 29), "second job waits for 30");

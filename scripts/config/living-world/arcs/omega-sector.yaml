@@ -1,0 +1,60 @@
+# Omega Sector arc: a child's voice on a dead channel at nine every night, and the radio operator who answers it. Its
+# third chapter waits on Korean Folk Town's mended radio (arcs/korean-folk-town.yaml); its last beat happens once per
+# server (quests/omega-sector.yaml).
+- id: lyra-the-quiet-channel
+  persona: lyra
+  chapters:
+    - id: chapter-1
+      title: "The Dead Channel"
+    - id: chapter-2
+      title: "A Voice at Nine"
+      enterWhen: { flags: [omega.channel.heard] }
+      dialogueOverrides:
+        greet: ["hello. it's nearly nine. i'm always nearly at nine now.", "hi. i heard her again last night. the persimmons are nearly ripe."]
+        who: ["Lyra. i run the signal hut. there's a little girl on the dead channel every night at nine, talking to her father. i don't know who she is. i've written down everything she's said."]
+        smallTalk: ["she talks about persimmons, and magpies, and a rice cake that broke. every night. she always says goodnight at the end. i say it back. she can't hear me. yet.", "the signal's weak. it comes from up a mountain somewhere. her side's broken, i think. it only sends. it doesn't listen."]
+        speakPlainly: ["plainly: a voice on the radio, and no way to answer it."]
+        about.bomi: ["i only know her voice. a little girl, every night at nine, telling her father about her day."]
+        questOffer.lyra-the-dead-channel: ["the channel's receivers burn out. every week. the ultra grays in Kulan Field carry new ones. twenty-five grays, ten receivers. keep the channel open for me."]
+        questComplete.lyra-the-dead-channel: ["ten. wired in. the channel's clear for tonight. here. thank you."]
+        chapterEnter: ["(writes 'persimmons nearly ripe' in a notebook full of small careful lines, and underlines it)"]
+    - id: chapter-3
+      title: "Somebody's Listening"
+      enterWhen: { flags: [kft.radio.mended] }
+      dialogueOverrides:
+        greet: ["it's two-way now! somebody fixed her radio. it listens. i haven't said anything yet. i don't know what to say.", "hello. i've written a speech. i've thrown it away. i've written another."]
+        who: ["Lyra. i run the signal hut. the girl on the dead channel can hear now. her radio's mended. i've got to answer her. i've got to get it right."]
+        smallTalk: ["Petra says the girl's radio is a gray receiver her father found on Black Mountain. Korean Folk Town. that's where she is. that's where he was.", "i don't want her to think i'm her father. i want her to know somebody heard. every night. that's all."]
+        speakPlainly: ["plainly: a speech i haven't made yet."]
+        about.bomi: ["Bomi. that's her name, Petra says. Korean Folk Town. her radio listens now. i haven't said a word to her yet."]
+        questOffer.lyra-the-dead-channel: ["the channel's receivers burn out. every week. the ultra grays in Kulan Field carry new ones. twenty-five grays, ten receivers. keep the channel open for me."]
+        questComplete.lyra-the-dead-channel: ["ten. wired in. the channel's clear for tonight. here. thank you."]
+        chapterEnter: ["(takes the headset off, holds it in both hands for a long moment, and puts it back on)"]
+    - id: chapter-4
+      title: "Over and Out"
+      enterWhen: { flags: [omega.channel.answered] }
+      dialogueOverrides:
+        greet: ["hello! i talked to her. her name's Bomi. she told me about the magpies.", "hi. nine o'clock's my favourite hour now."]
+        who: ["Lyra. i run the signal hut. every night at nine i talk to a little girl in Korean Folk Town called Bomi. she tells me about her day. i tell her about mine. the General thinks it's a security risk. it's persimmons."]
+        idle: ["(laughs at something on the headset, then quickly writes it down)", "(turns the dial to the old dead channel and waits, smiling)"]
+        smallTalk: ["Bomi asked if i was her dad. i said no. i said i was listening. she said that's nearly the same. it isn't. but it's something.", "i told her my name. the line crackles on names. she keeps calling me 'the lady'. somebody's going to have to tell her properly."]
+        speakPlainly: ["plainly: a radio, and a friend at nine."]
+        about.bomi: ["Bomi. Korean Folk Town. she talks to me every night at nine. her father's radio. she says goodnight. i say it back. she hears me now."]
+        friend.best: ["i keep a channel open for you. and one for Bomi. nobody else uses either."]
+        questOffer.lyra-the-dead-channel: ["the channel's receivers burn out. every week. the ultra grays in Kulan Field carry new ones. twenty-five grays, ten receivers. keep the channel open for me."]
+        questComplete.lyra-the-dead-channel: ["ten. wired in. the channel's clear for tonight. here. thank you."]
+        chapterEnter: ["(speaks into the headset very quietly, then sits back and lets out a long breath)"]
+    - id: chapter-5
+      title: "Persimmons by Lift"
+      enterWhen: { flags: [kft.answer.heard] }
+      dialogueOverrides:
+        greet: ["hello! Bomi knows my name now. she says it every night. twice.", "hi. nine o'clock's my favourite hour now."]
+        who: ["Lyra. i run the signal hut. every night at nine i talk to a little girl in Korean Folk Town called Bomi. she tells me about her day. i tell her about mine. the General thinks it's a security risk. it's persimmons."]
+        idle: ["(laughs at something on the headset, then quickly writes it down)", "(holds a squashed persimmon leaf up to the lamp and smiles at it)"]
+        smallTalk: ["Bomi asked if i was her dad. i said no. i said i was listening. she said that's nearly the same. it isn't. but it's something.", "she sent me a persimmon by the Helios lift. it was squashed. it was the best thing i've ever eaten."]
+        speakPlainly: ["plainly: a radio, and a friend at nine."]
+        about.bomi: ["Bomi. Korean Folk Town. she talks to me every night at nine. her father's radio. she knows my name now. she says goodnight. i say it back."]
+        friend.best: ["i keep a channel open for you. and one for Bomi. nobody else uses either."]
+        questOffer.lyra-the-dead-channel: ["the channel's receivers burn out. every week. the ultra grays in Kulan Field carry new ones. twenty-five grays, ten receivers. keep the channel open for me."]
+        questComplete.lyra-the-dead-channel: ["ten. wired in. the channel's clear for tonight. here. thank you."]
+        chapterEnter: ["(pins a small squashed persimmon leaf to the wall above the radio set)"]

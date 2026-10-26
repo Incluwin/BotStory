@@ -1,0 +1,295 @@
+# Singapore quests (wave 3). Fields: the central way 540000100-540000300 (biner 9420502 waste paper 4000366, batoo
+# 9420506 broken wing 4000368, stopnow 9420500 stop sign 4000369 / metal pole 4000370, nospeed 9420503 metal pole);
+# the suburban area 540020000 (freezer 9420501 fire extinguisher 4000372) and 540020100 (trucker 9420507 headlight
+# 4000374, tires 4000375, batteries 4000376, wires 4000364); the mysterious path 541000100 (tippo red 9420504 small
+# poop 4000377, tippo blue 9420505 big poop 4000378), 541000200 (octobunny 9420508 ink 4000373, pac pinky 9420509
+# pink essence 4000380), 541000300 (slimy 9420510 green essence 4000379, selkie jr. 9420511 blue essence 4000382);
+# the ghost ship 541010000 (pac pinky), 541010010 (slimy), 541010040 (selkie jr.), 541010050 (mr. anchor 9420512 red
+# essence 4000383). The recruits carry armour: earrings and capes in Singapore's band (55-75).
+
+# ---- Rosnah: lanterns for the crew (arcs/singapore.yaml) ----
+- id: rosnah-the-lantern-glass
+  persona: rosnah
+  title: "Glass for the Lanterns"
+  length: SHORT
+  requires: { level: { min: 46 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: truckers, type: KILL_MOBS, mobIds: [9420507], count: 25, mapIds: [540020100] }
+    - { id: headlights, type: COLLECT_ITEM, itemId: 4000374, count: 10 }
+    - { id: glass, type: DELIVER, to: rosnah, take: { itemId: 4000374, count: 10 } }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: rosnah-the-ghost-ship
+  persona: rosnah
+  title: "Are the Lanterns Lit?"
+  length: MEDIUM
+  requires: { level: { min: 56 }, questsCompleted: [rosnah-the-lantern-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: look, type: VISIT_MAP, mapIds: [541010000] }
+    - { id: pinkies, type: KILL_MOBS, mobIds: [9420509], count: 25, mapIds: [541010000] }
+    - { id: lit, type: DELIVER, to: rosnah }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [sg.ship.seen] }
+
+- id: rosnah-the-lantern-home
+  persona: rosnah
+  title: "Halim's Lantern"
+  length: MEDIUM
+  requires: { level: { min: 56 }, questsCompleted: [rosnah-the-ghost-ship], flags: [aqua.lantern.raised], notFlags: [sg.lantern.home] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: delmar, type: TALK_TO, persona: delmar, say: ["you know her? the lantern's on my bench. still lit. Halim's name on the handle. take it to her. carry it level. it's burned twenty years. it can burn a few more days."] }
+    - { id: home, type: DELIVER, to: rosnah }
+  rewards: { meso: 25000, exp: 26000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [sg.lantern.home] }
+
+# ---- Siti ----
+- id: siti-the-lantern-paper
+  persona: siti
+  title: "Paper for the Lanterns"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: biners, type: KILL_MOBS, mobIds: [9420502], count: 20, mapIds: [540000100, 540000200] }
+    - { id: paper, type: COLLECT_ITEM, itemId: 4000366, count: 10 }
+    - { id: sheets, type: DELIVER, to: siti, take: { itemId: 4000366, count: 10 } }
+  rewards: { meso: 3000, exp: 3000, bondPoints: 30, items: [{ itemId: 2000001, count: 15 }] }
+
+- id: siti-the-lantern-frames
+  persona: siti
+  title: "Forty-One Lanterns"
+  length: SHORT
+  requires: { level: { min: 22 }, questsCompleted: [siti-the-lantern-paper] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: batoos, type: KILL_MOBS, mobIds: [9420506], count: 20, mapIds: [540000200, 540000300] }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000368, count: 10 }
+    - { id: frames, type: DELIVER, to: siti, take: { itemId: 4000368, count: 10 } }
+  rewards: { meso: 4000, exp: 4000, bondPoints: 35, items: [{ itemId: 2020005, count: 5 }] }
+
+# ---- Benedict ----
+- id: benedict-the-ledger-ink
+  persona: benedict
+  title: "Ink That Lasts"
+  length: SHORT
+  requires: { level: { min: 42 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: octobunnies, type: KILL_MOBS, mobIds: [9420508], count: 25, mapIds: [541000200] }
+    - { id: ink, type: COLLECT_ITEM, itemId: 4000373, count: 10 }
+    - { id: ledger, type: DELIVER, to: benedict, take: { itemId: 4000373, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: benedict-the-ship-records
+  persona: benedict
+  title: "The Ghost Ship's Manifest"
+  length: MEDIUM
+  requires: { level: { min: 60 }, questsCompleted: [benedict-the-ledger-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hold, type: VISIT_MAP, mapIds: [541010010] }
+    - { id: slimies, type: KILL_MOBS, mobIds: [9420510], count: 25, mapIds: [541000300, 541010010] }
+    - { id: manifest, type: DELIVER, to: benedict }
+  rewards: { meso: 22000, exp: 24000, bondPoints: 40, items: [{ itemId: 2000004, count: 15 }] }
+
+# ---- Arjun (recruit; earrings in Singapore's band) ----
+- id: arjun-the-quay-run
+  persona: arjun
+  title: "Walking the Path"
+  length: SHORT
+  requires: { level: { min: 50 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: reds, type: KILL_MOBS, mobIds: [9420504], count: 30, mapIds: [541000100] }
+    - { id: blues, type: KILL_MOBS, mobIds: [9420505], count: 30, mapIds: [541000100] }
+    - { id: done, type: DELIVER, to: arjun }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 30, flags: [arjun.intro.done] }
+
+- id: arjun-crystal-flower-earrings
+  persona: arjun
+  title: "Crystal Flower Earrings"
+  length: MEDIUM
+  requires: { level: { min: 55 }, friendship: 5, questsCompleted: [arjun-the-quay-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pinkies, type: KILL_MOBS, mobIds: [9420509], count: 30, mapIds: [541000200, 541010000] }
+    - { id: essence, type: COLLECT_ITEM, itemId: 4000380, count: 10 }
+    - { id: setting, type: DELIVER, to: arjun, take: { itemId: 4000380, count: 10 } }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 35
+    gear:
+      - { pool: [1032019], scrolls: [{ success: 100 }] }
+
+- id: arjun-gold-drop-earrings
+  persona: arjun
+  title: "Gold Drop Earrings"
+  length: MEDIUM
+  requires: { level: { min: 63 }, friendship: 7, questsCompleted: [arjun-crystal-flower-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: selkies, type: KILL_MOBS, mobIds: [9420511], count: 30, mapIds: [541000300, 541010040] }
+    - { id: essence, type: COLLECT_ITEM, itemId: 4000382, count: 10 }
+    - { id: setting, type: DELIVER, to: arjun, take: { itemId: 4000382, count: 10 } }
+  rewards:
+    meso: 45000
+    exp: 45000
+    bondPoints: 50
+    gear:
+      - { pool: [1032020], scrolls: [{ success: 60 }] }
+
+- id: arjun-half-earrings
+  persona: arjun
+  title: "The Half Earrings"
+  length: LONG
+  requires: { level: { min: 73 }, friendship: 10, questsCompleted: [arjun-gold-drop-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: anchors, type: KILL_MOBS, mobIds: [9420512], count: 30, mapIds: [541010050] }
+    - { id: essence, type: COLLECT_ITEM, itemId: 4000383, count: 10 }
+    - { id: setting, type: DELIVER, to: arjun, take: { itemId: 4000383, count: 10 } }
+  rewards:
+    meso: 70000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { pool: [1032022], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: arjun-tippo-droppings
+  persona: arjun
+  title: "My Mother's Garden"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 50 }, questsCompleted: [arjun-the-quay-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: droppings, type: COLLECT_ITEM, itemId: 4000377, count: 10 }
+    - { id: garden, type: DELIVER, to: arjun, take: { itemId: 4000377, count: 10 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Priscilla (recruit; capes in Singapore's band) ----
+- id: priscilla-the-wire-run
+  persona: priscilla
+  title: "Wire for the Frames"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: truckers, type: KILL_MOBS, mobIds: [9420507], count: 25, mapIds: [540020100] }
+    - { id: wires, type: COLLECT_ITEM, itemId: 4000364, count: 10 }
+    - { id: frames, type: DELIVER, to: priscilla, take: { itemId: 4000364, count: 10 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 30 }
+
+- id: priscilla-gaia-cape
+  persona: priscilla
+  title: "The Gaia Cape"
+  length: MEDIUM
+  requires: { level: { min: 63 }, friendship: 5, questsCompleted: [priscilla-the-wire-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimies, type: KILL_MOBS, mobIds: [9420510], count: 30, mapIds: [541000300, 541010010] }
+    - { id: essence, type: COLLECT_ITEM, itemId: 4000379, count: 10 }
+    - { id: dye, type: DELIVER, to: priscilla, take: { itemId: 4000379, count: 10 } }
+  rewards:
+    meso: 40000
+    exp: 40000
+    bondPoints: 35
+    gear:
+      - { pool: [1102021], scrolls: [{ success: 100 }] }
+
+- id: priscilla-maple-cape
+  persona: priscilla
+  title: "The Maple Cape"
+  length: MEDIUM
+  requires: { level: { min: 68 }, friendship: 7, questsCompleted: [priscilla-gaia-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: anchors, type: KILL_MOBS, mobIds: [9420512], count: 30, mapIds: [541010050] }
+    - { id: sewn, type: DELIVER, to: priscilla }
+  rewards:
+    meso: 55000
+    exp: 55000
+    bondPoints: 50
+    gear:
+      - { pool: [1102168], scrolls: [{ success: 60 }] }
+
+- id: priscilla-eclipse-cloak
+  persona: priscilla
+  title: "The Eclipse Cloak"
+  length: LONG
+  requires: { level: { min: 73 }, friendship: 10, questsCompleted: [priscilla-maple-cape] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: anchors, type: KILL_MOBS, mobIds: [9420512], count: 40, mapIds: [541010050] }
+    - { id: selkies, type: KILL_MOBS, mobIds: [9420511], count: 30, mapIds: [541010040] }
+    - { id: made, type: DELIVER, to: priscilla }
+  rewards:
+    meso: 75000
+    exp: 75000
+    bondPoints: 60
+    gear:
+      - { pool: [1102078], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: priscilla-batteries
+  persona: priscilla
+  title: "The Machine Is Hungry"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 48 }, questsCompleted: [priscilla-the-wire-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: batteries, type: COLLECT_ITEM, itemId: 4000376, count: 10 }
+    - { id: machine, type: DELIVER, to: priscilla, take: { itemId: 4000376, count: 10 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Wei ----
+- id: wei-the-stall-sign
+  persona: wei
+  title: "Stop, and Eat"
+  length: SHORT
+  requires: { level: { min: 27 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stopnows, type: KILL_MOBS, mobIds: [9420500], count: 25, mapIds: [540000100, 540000200] }
+    - { id: signs, type: COLLECT_ITEM, itemId: 4000369, count: 10 }
+    - { id: painted, type: DELIVER, to: wei, take: { itemId: 4000369, count: 10 } }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2020004, count: 10 }] }
+
+- id: wei-the-awning-poles
+  persona: wei
+  title: "A Proper Awning"
+  length: SHORT
+  requires: { level: { min: 32 }, questsCompleted: [wei-the-stall-sign] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: nospeeds, type: KILL_MOBS, mobIds: [9420503], count: 25, mapIds: [540000200, 540000300] }
+    - { id: poles, type: COLLECT_ITEM, itemId: 4000370, count: 10 }
+    - { id: awning, type: DELIVER, to: wei, take: { itemId: 4000370, count: 10 } }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 35, items: [{ itemId: 2020004, count: 15 }] }
+
+# ---- Mei ----
+- id: mei-the-extinguishers
+  persona: mei
+  title: "One in Every Cab"
+  length: SHORT
+  requires: { level: { min: 37 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: freezers, type: KILL_MOBS, mobIds: [9420501], count: 25, mapIds: [540020000] }
+    - { id: extinguishers, type: COLLECT_ITEM, itemId: 4000372, count: 10 }
+    - { id: cabs, type: DELIVER, to: mei, take: { itemId: 4000372, count: 10 } }
+  rewards: { meso: 9000, exp: 10000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: mei-the-taxi-tyres
+  persona: mei
+  title: "Tread for the Cabs"
+  length: SHORT
+  requires: { level: { min: 47 }, questsCompleted: [mei-the-extinguishers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: truckers, type: KILL_MOBS, mobIds: [9420507], count: 25, mapIds: [540020100] }
+    - { id: tyres, type: COLLECT_ITEM, itemId: 4000375, count: 10 }
+    - { id: tread, type: DELIVER, to: mei, take: { itemId: 4000375, count: 10 } }
+  rewards: { meso: 13000, exp: 14000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }

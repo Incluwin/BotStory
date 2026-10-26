@@ -1,0 +1,33 @@
+# Aquarium contracts (wave 3): a tide mage's kill proof on her intro quest's squids, a harpooner's item price once the
+# player has heard Thalia on him.
+- id: thalia-the-tide-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [thalia.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [8141300], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: kael-the-deep-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [kael.intro.done, aqua.heard-kael]
+  price:
+    meso: 30000
+    items: [{ itemId: 4000182, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }

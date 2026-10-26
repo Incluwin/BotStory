@@ -1,0 +1,296 @@
+# Aquarium quests (wave 3). The Aqua Road fields are swim maps (players swim; Residents stay indoors): Ocean I.C
+# 230010000 and the penguin's playground 230010001 (scuba pepe 3210450 snorkle 4000153, jr. seal 3230405 toy baby seal
+# 4000154, poopa 4230200 egg 4000158), crystal gorge 230010100 (jr. seal), red coral forest 230010200 (freezer 4230124
+# seal skin 4000155), turban shell hill 230010300 and the west sea fork 230010400 (sparker 4230123), the East Sea fork
+# 230020000 and the seaweed tower 230020100 (mask fish 3230104 hard needle 4000167, krip 3000006 shrimp meat 4000166),
+# the hidden town 230020101 and sand castle playground 230020200 (flower fish 2230200 petal 4000165), big fish valley
+# 230020300 (bubble fish 2230109 thoughts 4000164), the blue seaweed road 230030000-230030100 (seacle 2230105, cico
+# 2230106). The deep: deep sea gorge 230040000/230040100 (bombing fish house 8140555, bone fish 8140600 lime powder
+# bottle 4000182), dangerous sea gorge 230040200/230040300 (squid 8141300 ink bottle 4000183, risell squid 8142100
+# butter-toasted squid 4000184), the Grave of a Wrecked Ship 230040400 (shark 8150100 denture 4000180, cold shark
+# 8150101 frozen fin 4000181), the cave of Pianus 230040420 (8510000, 8520000; miniature Pianus 4000175).
+
+# ---- Delmar: the lantern in the Grave (arcs/aquarium.yaml) ----
+- id: delmar-the-diving-suit
+  persona: delmar
+  title: "The Old Diving Suit"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: freezers, type: KILL_MOBS, mobIds: [4230124], count: 25, mapIds: [230010200] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000155, count: 10 }
+    - { id: suit, type: DELIVER, to: delmar, take: { itemId: 4000155, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: delmar-the-glass
+  persona: delmar
+  title: "A Light in the Deep"
+  length: SHORT
+  requires: { level: { min: 43 }, questsCompleted: [delmar-the-diving-suit], notFlags: [aqua.lantern.raised] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sparkers, type: KILL_MOBS, mobIds: [4230123], count: 20, mapIds: [230010300] }
+    - { id: look, type: VISIT_MAP, mapIds: [230010400] }
+    - { id: saw, type: DELIVER, to: delmar }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [aqua.light.seen] }
+
+- id: delmar-the-wreck-lantern
+  persona: delmar
+  title: "The Lantern in the Grave"
+  length: LONG
+  requires: { level: { min: 98 }, questsCompleted: [delmar-the-glass], flags: [aqua.light.seen], notFlags: [aqua.lantern.raised] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sharks, type: KILL_MOBS, mobIds: [8150100], count: 20, mapIds: [230040400] }
+    - { id: cold-sharks, type: KILL_MOBS, mobIds: [8150101], count: 10, mapIds: [230040400] }
+    - { id: lantern, type: DELIVER, to: delmar }
+  rewards: { meso: 150000, exp: 160000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [aqua.lantern.raised] }
+
+# ---- Thalia (recruit; staff line, third tier) ----
+- id: thalia-the-ink
+  persona: thalia
+  title: "Down to the Gorge"
+  length: SHORT
+  requires: { level: { min: 90 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: squids, type: KILL_MOBS, mobIds: [8141300], count: 30, mapIds: [230040200, 230040300] }
+    - { id: done, type: DELIVER, to: thalia }
+  rewards: { meso: 60000, exp: 60000, bondPoints: 30, flags: [thalia.intro.done] }
+
+- id: thalia-blue-marine
+  persona: thalia
+  title: "The Blue Marine"
+  length: MEDIUM
+  requires: { level: { min: 93 }, friendship: 5, questsCompleted: [thalia-the-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: risells, type: KILL_MOBS, mobIds: [8142100], count: 30, mapIds: [230040200, 230040300] }
+    - { id: polish, type: COLLECT_ITEM, itemId: 4000184, count: 15 }
+    - { id: staff, type: DELIVER, to: thalia, take: { itemId: 4000184, count: 15 } }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 35
+    gear:
+      - { itemId: 1382035, scrolls: [{ success: 100 }] }
+
+- id: thalia-dragon-staff
+  persona: thalia
+  title: "The Dragon Staff"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [thalia-blue-marine] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sharks, type: KILL_MOBS, mobIds: [8150101], count: 30, mapIds: [230040400] }
+    - { id: fins, type: COLLECT_ITEM, itemId: 4000181, count: 10 }
+    - { id: cold, type: DELIVER, to: thalia, take: { itemId: 4000181, count: 10 } }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 50
+    gear:
+      - { itemId: 1382036, scrolls: [{ success: 60 }] }
+
+- id: thalia-timeless-aeas-hand
+  persona: thalia
+  title: "The Timeless Aeas Hand"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [thalia-dragon-staff] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pianus-left, type: KILL_MOBS, mobIds: [8510000], count: 1, mapIds: [230040420] }
+    - { id: pianus-right, type: KILL_MOBS, mobIds: [8520000], count: 1, mapIds: [230040420] }
+    - { id: voice, type: DELIVER, to: thalia }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1382057, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: thalia-ink-bottles
+  persona: thalia
+  title: "Notes in Squid Ink"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 90 }, questsCompleted: [thalia-the-ink] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ink, type: COLLECT_ITEM, itemId: 4000183, count: 10 }
+    - { id: notes, type: DELIVER, to: thalia, take: { itemId: 4000183, count: 10 } }
+  rewards: { meso: 18000, exp: 15000, bondPoints: 10 }
+
+# ---- Kael (recruit; crossbow line, third tier) ----
+- id: kael-the-deep-line
+  persona: kael
+  title: "The Deep Line"
+  length: SHORT
+  requires: { level: { min: 86 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: houses, type: KILL_MOBS, mobIds: [8140555], count: 20, mapIds: [230040000, 230040100] }
+    - { id: done, type: DELIVER, to: kael }
+  rewards: { meso: 50000, exp: 50000, bondPoints: 30, flags: [kael.intro.done] }
+
+- id: kael-casa-crow
+  persona: kael
+  title: "The Casa Crow"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [kael-the-deep-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bone-fish, type: KILL_MOBS, mobIds: [8140600], count: 30, mapIds: [230040000, 230040100] }
+    - { id: between, type: DELIVER, to: kael }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 35
+    gear:
+      - { itemId: 1462018, scrolls: [{ success: 100 }] }
+
+- id: kael-white-neschere
+  persona: kael
+  title: "The White Neschere"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [kael-casa-crow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: sharks, type: KILL_MOBS, mobIds: [8150100], count: 30, mapIds: [230040400] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000180, count: 10 }
+    - { id: stock, type: DELIVER, to: kael, take: { itemId: 4000180, count: 10 } }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 50
+    gear:
+      - { itemId: 1462015, scrolls: [{ success: 60 }] }
+
+- id: kael-dragon-shiner-cross
+  persona: kael
+  title: "The Dragon Shiner Cross"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [kael-white-neschere] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pianus, type: KILL_MOBS, mobIds: [8510000, 8520000], count: 1, mapIds: [230040420] }
+    - { id: miniature, type: COLLECT_ITEM, itemId: 4000175, count: 1 }
+    - { id: grip, type: DELIVER, to: kael, take: { itemId: 4000175, count: 1 } }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1462039, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: kael-lime-bottles
+  persona: kael
+  title: "Uses for Lime Powder"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 88 }, questsCompleted: [kael-the-deep-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bottles, type: COLLECT_ITEM, itemId: 4000182, count: 10 }
+    - { id: uses, type: DELIVER, to: kael, take: { itemId: 4000182, count: 10 } }
+  rewards: { meso: 18000, exp: 15000, bondPoints: 10 }
+
+# ---- Oriel ----
+- id: oriel-the-dolphin-treats
+  persona: oriel
+  title: "The Dolphin Strike"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: krips, type: KILL_MOBS, mobIds: [3000006], count: 20, mapIds: [230020100, 230020101] }
+    - { id: shrimp, type: COLLECT_ITEM, itemId: 4000166, count: 10 }
+    - { id: treats, type: DELIVER, to: oriel, take: { itemId: 4000166, count: 10 } }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2000002, count: 10 }] }
+
+- id: oriel-the-sea-horses
+  persona: oriel
+  title: "No More Nipping"
+  length: SHORT
+  requires: { level: { min: 23 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seacles, type: KILL_MOBS, mobIds: [2230105], count: 25, mapIds: [230030001, 230030100] }
+    - { id: loops, type: DELIVER, to: oriel }
+  rewards: { meso: 4000, exp: 4000, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+# ---- Sunniva ----
+- id: sunniva-the-snorkels
+  persona: sunniva
+  title: "The Penguins' Snorkels"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [3210450], count: 25, mapIds: [230010000, 230010001] }
+    - { id: snorkels, type: COLLECT_ITEM, itemId: 4000153, count: 10 }
+    - { id: breath, type: DELIVER, to: sunniva, take: { itemId: 4000153, count: 10 } }
+  rewards: { meso: 8000, exp: 9000, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }] }
+
+- id: sunniva-the-poopa-eggs
+  persona: sunniva
+  title: "Eggs Are Warmer"
+  length: SHORT
+  requires: { level: { min: 40 }, questsCompleted: [sunniva-the-snorkels] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: poopas, type: KILL_MOBS, mobIds: [4230200], count: 25, mapIds: [230010000] }
+    - { id: eggs, type: COLLECT_ITEM, itemId: 4000158, count: 10 }
+    - { id: studied, type: DELIVER, to: sunniva, take: { itemId: 4000158, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Finn ----
+- id: finn-the-bubble-thoughts
+  persona: finn
+  title: "What Fish Think About"
+  length: SHORT
+  requires: { level: { min: 27 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubble-fish, type: KILL_MOBS, mobIds: [2230109], count: 20, mapIds: [230020200, 230020300] }
+    - { id: thoughts, type: COLLECT_ITEM, itemId: 4000164, count: 10 }
+    - { id: sharks, type: DELIVER, to: finn, take: { itemId: 4000164, count: 10 } }
+  rewards: { meso: 4500, exp: 5000, bondPoints: 30, items: [{ itemId: 2020005, count: 5 }] }
+
+- id: finn-the-seal-pup
+  persona: finn
+  title: "A Shelf of Seals"
+  length: SHORT
+  requires: { level: { min: 37 }, questsCompleted: [finn-the-bubble-thoughts] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seals, type: KILL_MOBS, mobIds: [3230405], count: 20, mapIds: [230010000, 230010100] }
+    - { id: toys, type: COLLECT_ITEM, itemId: 4000154, count: 5 }
+    - { id: shelf, type: DELIVER, to: finn, take: { itemId: 4000154, count: 5 } }
+  rewards: { meso: 8000, exp: 8500, bondPoints: 35, items: [{ itemId: 2020005, count: 5 }] }
+
+# ---- Ambrose ----
+- id: ambrose-the-coral-petals
+  persona: ambrose
+  title: "Petals Under the Sea"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: flower-fish, type: KILL_MOBS, mobIds: [2230200], count: 25, mapIds: [230020101, 230020200] }
+    - { id: petals, type: COLLECT_ITEM, itemId: 4000165, count: 10 }
+    - { id: paper, type: DELIVER, to: ambrose, take: { itemId: 4000165, count: 10 } }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2000006, count: 10 }] }
+
+- id: ambrose-the-hard-needles
+  persona: ambrose
+  title: "The Hardest Needles in the Sea"
+  length: SHORT
+  requires: { level: { min: 32 }, questsCompleted: [ambrose-the-coral-petals] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mask-fish, type: KILL_MOBS, mobIds: [3230104], count: 25, mapIds: [230020000, 230020100] }
+    - { id: needles, type: COLLECT_ITEM, itemId: 4000167, count: 10 }
+    - { id: bone, type: DELIVER, to: ambrose, take: { itemId: 4000167, count: 10 } }
+  rewards: { meso: 7000, exp: 7500, bondPoints: 35, items: [{ itemId: 2000006, count: 15 }] }

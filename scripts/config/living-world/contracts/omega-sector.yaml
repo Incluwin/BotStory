@@ -1,0 +1,33 @@
+# Omega Sector contracts (wave 3): a marksman's kill proof on her intro quest's buffoons, a trooper's item price once the
+# player has heard Vesper on him.
+- id: vesper-the-watch
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [vesper.intro.done]
+  price:
+    meso: 30000
+    proof: { killMobs: { mobIds: [6300100], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }
+
+- id: rourke-the-heavy-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [rourke.intro.done, omega.heard-rourke]
+  price:
+    meso: 30000
+    items: [{ itemId: 4000131, count: 20 }]
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 18000 }

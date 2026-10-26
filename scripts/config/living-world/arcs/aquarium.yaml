@@ -1,0 +1,42 @@
+# Aquarium arc: a light an old diver has watched in the Grave of a Wrecked Ship for twenty years, and the lantern
+# behind it, which belongs to a sailor from Boat Quay (arcs/singapore.yaml). Its last beat happens once per server
+# (quests/aquarium.yaml); its last chapter waits on the lantern reaching Boat Quay.
+- id: delmar-the-lantern-in-the-grave
+  persona: delmar
+  chapters:
+    - id: chapter-1
+      title: "The Diver's Glass"
+    - id: chapter-2
+      title: "A Light in the Grave"
+      enterWhen: { flags: [aqua.light.seen] }
+      dialogueOverrides:
+        greet: ["you saw it too. i keep saying that. it helps.", "sit. i've been looking at the floor again. there's a sea under it."]
+        who: ["Delmar. i dove the Aqua Road forty years. there's a light burning at the bottom, in the Grave, and it's been burning twenty years. somebody else has seen it now. i'm not mad."]
+        smallTalk: ["a light that doesn't go out under the sea. it's a lantern. it has to be. a ship's lantern. somebody lit it and somebody's still waiting for it.", "my knees won't take me to the Grave. somebody's will. i'm working up to asking."]
+        speakPlainly: ["plainly: a light at the bottom of the sea."]
+        questOffer.delmar-the-glass: ["there's a light at the bottom of the sea, and somebody's seen it with me. i'd like another pair of eyes on it. the sparkers on the turban shell hill get in the way. twenty of them. then the west sea fork. look down."]
+        questComplete.delmar-the-glass: ["you saw it too. good. i like hearing it from someone new. here."]
+        chapterEnter: ["(sets the old diving helmet on the bench beside him, faceplate toward the floor, as if it's looking down)"]
+    - id: chapter-3
+      title: "The Lantern Comes Up"
+      enterWhen: { flags: [aqua.lantern.raised] }
+      dialogueOverrides:
+        greet: ["it's on my bench. still lit. i can't stop looking at it.", "hello. mind the lantern. it's been through enough."]
+        who: ["Delmar. old diver. there's a ship's lantern on my bench that burned twenty years at the bottom of the sea. Halim, it says on the handle. Boat Quay. somebody there is going to want it."]
+        idle: ["(cups his hands round a small lantern on the bench as if to keep it warm)", "(reads a name scratched on a brass handle, slowly, as if it might have changed)"]
+        smallTalk: ["Boat Quay's in Singapore. i've never been. i'd go, if my knees would. somebody's been lighting lanterns there for twenty years, i'd bet the helmet on it.", "it was hanging on the wreck's rail, straight as a sentry. somebody hung it there on purpose."]
+        speakPlainly: ["plainly: a lantern, and a name."]
+        about.rosnah: ["Rosnah? i don't know her. i know whoever's waiting on Boat Quay for this lantern is waiting very hard."]
+        chapterEnter: ["(sets a small brass lantern on the bench, still burning, and moves his helmet aside to make room)"]
+    - id: chapter-4
+      title: "Home to Boat Quay"
+      enterWhen: { flags: [sg.lantern.home] }
+      dialogueOverrides:
+        greet: ["it's home. the lantern. it's on the quay, beside hers.", "hello. the bench looks bare. that's a good bare."]
+        who: ["Delmar. old diver. i watched a light in the Grave for twenty years, and it was a sailor's lantern, and it's home on Boat Quay now with his wife's. i did that. well. you did. i watched."]
+        idle: ["(polishes the brass faceplate of the old helmet and, for once, looks out at the door instead of down at the floor)", "(laughs quietly at something, then looks a little surprised at himself)"]
+        smallTalk: ["she wrote to me. Rosnah. the widow on Boat Quay. she said the lantern's burning beside hers on the river. she said her niece cried. she didn't say whether she did. i think she did.", "forty years i dove for salvage. the only thing i ever brought up that mattered, i didn't bring up myself. that's all right."]
+        speakPlainly: ["plainly: a lantern that went home."]
+        about.rosnah: ["Rosnah, on Boat Quay. Halim's widow. she lights a lantern on the river every night. now there are two."]
+        friend.best: ["if my knees ever let me down the road again, you're the one i'd dive with. we'd bring something else home."]
+        chapterEnter: ["(puts the old diving helmet back on its peg by the door, faceplate out, and sits down lighter)"]

@@ -1,0 +1,30 @@
+# Zipangu rumors (wave 3). Each pair is awake together at its spot in those hours (personas/zipangu.yaml).
+- id: zip-the-ronin-at-the-gate
+  participants: [chiyo, genzo]
+  where: { town: mushroom-shrine, spot: "venue:upper-central-benches" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  lines:
+    - { by: chiyo, text: "tea, Genzo." }
+    - { by: genzo, text: "i didn't ask for it." }
+    - { by: chiyo, text: "you never do. you're guarding the shrine again." }
+    - { by: genzo, text: "i'm not guarding the shrine." }
+    - { by: chiyo, text: "then what are you guarding?" }
+    - { by: genzo, text: "...the tea." }
+
+- id: zip-the-bathhouse-roof
+  participants: [okiku, rin]
+  where: { town: showa-town, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: zip.heard-rin
+  lines:
+    - { by: okiku, text: "off my roof, girl." }
+    - { by: rin, text: "i'm not on your roof. i'm on the street." }
+    - { by: okiku, text: "you'll be on my roof in an hour. i left tea up there." }
+    - { by: rin, text: "...thank you." }
+    - { by: okiku, text: "and anyone who walks Showa's streets with you comes home with all their fingers. i'll tell them that, if they ask me." }
+    - { by: rin, text: "you'd say that?" }
+    - { by: okiku, text: "i'd say it. drink your tea." }

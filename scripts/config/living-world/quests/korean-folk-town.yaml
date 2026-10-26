@@ -1,0 +1,293 @@
+# Korean Folk Town quests (wave 3). Fields: the foot of Black Mountain 222010000-222010002 (dark axe stump 2130100,
+# moon bunny 4230300 pounder 4000169); the pond and Tiger Forest 222010100-222010200 (hodori 5100003 tiger stamp
+# 4000170, hogul 5100005 tiger skin 4000171); the valley and Fox Ridge 222010201-222010310 (samiho 5100004 three-tailed
+# foxtail 4000172, scholar ghost 6090003 hat 4000416 on 222010300); the top of Black Mountain 222010400 (blin
+# 6130201) and the goblin house 222010402; the Helios Tower 222020100-222020300 (retz 3210208 sunflower seed 4000168).
+# The recruits' tiers are in Ludibrium's clock tower: dark klock 8140300 evil spirit 4000146 (220070100), ghost
+# pirate 7140000 key 4000132 (220060200), spirit viking 8141000 (220060300), death teddy 7130010 (220070200), phantom
+# watch 8142000 (220070300), grim phantom watch 8143000 (220070301), gatekeeper 8160000 (220060400), thanatos 8170000
+# (220070400).
+
+# ---- Bomi: her father's radio (arcs/korean-folk-town.yaml) ----
+- id: bomi-the-persimmon-tree
+  persona: bomi
+  title: "Luck for the Persimmon Tree"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [2130100], count: 20, mapIds: [222010000, 222010001] }
+    - { id: magpies, type: DELIVER, to: bomi }
+  rewards: { meso: 3500, exp: 3500, bondPoints: 30, items: [{ itemId: 2020005, count: 5 }] }
+
+- id: bomi-the-hissing-radio
+  persona: bomi
+  title: "The Radio That Hisses"
+  length: MEDIUM
+  requires: { level: { min: 42 }, questsCompleted: [bomi-the-persimmon-tree] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: petra, type: TALK_TO, persona: petra, say: ["a gray receiver for a radio, from Korean Folk Town. i'll keep it going as long as she needs it. the coil's burnt out, and only the zeta grays' little ships carry one. take her ten with it. the coil clicks in. she can do it herself and watch it hum."] }
+    - { id: grays, type: KILL_MOBS, mobIds: [4230117], count: 25, mapIds: [221040100, 221040200] }
+    - { id: ships, type: COLLECT_ITEM, itemId: 4000118, count: 10 }
+    - { id: mended, type: DELIVER, to: bomi, take: { itemId: 4000118, count: 10 } }
+  rewards: { meso: 12000, exp: 14000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [kft.radio.mended] }
+
+- id: bomi-the-first-answer
+  persona: bomi
+  title: "The Voice on the Radio"
+  length: MEDIUM
+  requires: { level: { min: 45 }, questsCompleted: [bomi-the-hissing-radio], flags: [omega.channel.answered], notFlags: [kft.answer.heard] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lyra, type: TALK_TO, persona: lyra, say: ["you're her friend? Bomi's? i know all about the persimmons. and the magpies. and her dad. tell her i'm Lyra. tell her i'll be on at nine. tell her i'm not her dad, but i'm listening, and i always will be."] }
+    - { id: told, type: DELIVER, to: bomi }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 50, items: [{ itemId: 2000005, count: 5 }], worldFlags: [kft.answer.heard] }
+
+# ---- Gwang (recruit; polearm line, third tier) ----
+- id: gwang-the-tiger-trail
+  persona: gwang
+  title: "The Hunter's Trail"
+  length: SHORT
+  requires: { level: { min: 78 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: klocks, type: KILL_MOBS, mobIds: [8140300], count: 30, mapIds: [220070100] }
+    - { id: ridge, type: VISIT_MAP, mapIds: [222010200] }
+    - { id: done, type: DELIVER, to: gwang }
+  rewards: { meso: 42000, exp: 42000, bondPoints: 30, flags: [gwang.intro.done] }
+
+- id: gwang-hellslayer
+  persona: gwang
+  title: "The Hellslayer"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [gwang-the-tiger-trail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vikings, type: KILL_MOBS, mobIds: [8141000], count: 30, mapIds: [220060300] }
+    - { id: sunk, type: DELIVER, to: gwang }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 35
+    gear:
+      - { itemId: 1442020, scrolls: [{ success: 100 }] }
+
+- id: gwang-zedbug
+  persona: gwang
+  title: "The Zedbug"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [gwang-hellslayer] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: watches, type: KILL_MOBS, mobIds: [8142000], count: 40, mapIds: [220070300] }
+    - { id: moving, type: DELIVER, to: gwang }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 50
+    gear:
+      - { itemId: 1442044, scrolls: [{ success: 60 }] }
+
+- id: gwang-dragon-chelbird
+  persona: gwang
+  title: "The Dragon Chelbird"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [gwang-zedbug] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: gatekeepers, type: KILL_MOBS, mobIds: [8160000], count: 2, mapIds: [220060400] }
+    - { id: thanatos, type: KILL_MOBS, mobIds: [8170000], count: 2, mapIds: [220070400] }
+    - { id: keepers, type: DELIVER, to: gwang }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1442045, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: gwang-evil-spirits
+  persona: gwang
+  title: "Quieter After"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 78 }, questsCompleted: [gwang-the-tiger-trail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spirits, type: COLLECT_ITEM, itemId: 4000146, count: 10 }
+    - { id: burned, type: DELIVER, to: gwang, take: { itemId: 4000146, count: 10 } }
+  rewards: { meso: 15000, exp: 12000, bondPoints: 10 }
+
+# ---- Seori (recruit; bow line, third tier) ----
+- id: seori-the-moon-ridge
+  persona: seori
+  title: "Look Up"
+  length: SHORT
+  requires: { level: { min: 80 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pirates, type: KILL_MOBS, mobIds: [7140000], count: 30, mapIds: [220060200] }
+    - { id: ridge, type: VISIT_MAP, mapIds: [222010310] }
+    - { id: done, type: DELIVER, to: seori }
+  rewards: { meso: 42000, exp: 42000, bondPoints: 30, flags: [seori.intro.done] }
+
+- id: seori-metus
+  persona: seori
+  title: "The Metus"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [seori-the-moon-ridge] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teddies, type: KILL_MOBS, mobIds: [7130010], count: 40, mapIds: [220070200] }
+    - { id: kindly, type: DELIVER, to: seori }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 35
+    gear:
+      - { itemId: 1452017, scrolls: [{ success: 100 }] }
+
+- id: seori-white-nisrock
+  persona: seori
+  title: "The White Nisrock"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [seori-metus] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: watches, type: KILL_MOBS, mobIds: [8143000], count: 40, mapIds: [220070301] }
+    - { id: steady, type: DELIVER, to: seori }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 50
+    gear:
+      - { itemId: 1452019, scrolls: [{ success: 60 }] }
+
+- id: seori-dragon-shiner-bow
+  persona: seori
+  title: "The Dragon Shiner Bow"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [seori-white-nisrock] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: watches, type: KILL_MOBS, mobIds: [8142000], count: 30, mapIds: [220070300] }
+    - { id: thanatos, type: KILL_MOBS, mobIds: [8170000], count: 2, mapIds: [220070400] }
+    - { id: moon, type: DELIVER, to: seori }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1452044, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: seori-ghost-keys
+  persona: seori
+  title: "Keys to Nothing"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 80 }, questsCompleted: [seori-the-moon-ridge] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: keys, type: COLLECT_ITEM, itemId: 4000132, count: 10 }
+    - { id: box, type: DELIVER, to: seori, take: { itemId: 4000132, count: 10 } }
+  rewards: { meso: 15000, exp: 12000, bondPoints: 10 }
+
+# ---- Dalja ----
+- id: dalja-the-moon-pounders
+  persona: dalja
+  title: "The Moon Bunnies' Pounders"
+  length: SHORT
+  requires: { level: { min: 43 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bunnies, type: KILL_MOBS, mobIds: [4230300], count: 25, mapIds: [222010000, 222010001, 222010002] }
+    - { id: pounders, type: COLLECT_ITEM, itemId: 4000169, count: 10 }
+    - { id: mill, type: DELIVER, to: dalja, take: { itemId: 4000169, count: 10 } }
+  rewards: { meso: 11000, exp: 12000, bondPoints: 30, items: [{ itemId: 2022037, count: 10 }] }
+
+- id: dalja-the-rice-cake-round
+  persona: dalja
+  title: "The Festival Round"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: okja, type: TALK_TO, persona: okja, say: ["Dalja's rice cakes. warm. give me your hand while i eat it. ...a long road, good friends, and a hot meal at the end. you'll get the meal first. she's waiting."] }
+    - { id: jiho, type: TALK_TO, persona: jiho, say: ["oh. a rice cake. from Dalja? she'll ask if i ate it. ...i'm eating it. look. i'm eating it. tell her chapter nine says thank you."] }
+    - { id: round, type: DELIVER, to: dalja }
+  rewards: { meso: 4000, exp: 4000, bondPoints: 30, items: [{ itemId: 2022037, count: 2 }] }
+
+# ---- Byungho ----
+- id: byungho-the-drum-skin
+  persona: byungho
+  title: "A Skin for the Festival Drum"
+  length: SHORT
+  requires: { level: { min: 51 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hoguls, type: KILL_MOBS, mobIds: [5100005], count: 25, mapIds: [222010101, 222010102, 222010201] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000171, count: 10 }
+    - { id: drum, type: DELIVER, to: byungho, take: { itemId: 4000171, count: 10 } }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 30, items: [{ itemId: 2000004, count: 10 }] }
+
+- id: byungho-the-big-drum
+  persona: byungho
+  title: "A Tiger's Stamp on Every Drum"
+  length: SHORT
+  requires: { level: { min: 51 }, questsCompleted: [byungho-the-drum-skin] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hodoris, type: KILL_MOBS, mobIds: [5100003], count: 25, mapIds: [222010100, 222010101] }
+    - { id: stamps, type: COLLECT_ITEM, itemId: 4000170, count: 10 }
+    - { id: drums, type: DELIVER, to: byungho, take: { itemId: 4000170, count: 10 } }
+  rewards: { meso: 15000, exp: 17000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Okja ----
+- id: okja-the-nine-tails
+  persona: okja
+  title: "Fortunes in Foxtails"
+  length: SHORT
+  requires: { level: { min: 54 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: foxes, type: KILL_MOBS, mobIds: [5100004], count: 25, mapIds: [222010201, 222010300] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000172, count: 10 }
+    - { id: read, type: DELIVER, to: okja, take: { itemId: 4000172, count: 10 } }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 30, items: [{ itemId: 2000004, count: 15 }] }
+
+- id: okja-the-goblin-house
+  persona: okja
+  title: "Okja Says Practise"
+  length: MEDIUM
+  requires: { level: { min: 58 }, questsCompleted: [okja-the-nine-tails] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: goblins, type: KILL_MOBS, mobIds: [6130201], count: 25, mapIds: [222010400] }
+    - { id: knock, type: VISIT_MAP, mapIds: [222010402] }
+    - { id: quiet, type: DELIVER, to: okja }
+  rewards: { meso: 22000, exp: 24000, bondPoints: 35, items: [{ itemId: 2000005, count: 5 }] }
+
+# ---- Jiho ----
+- id: jiho-the-lamp-oil
+  persona: jiho
+  title: "Oil for the Lamp"
+  length: SHORT
+  requires: { level: { min: 34 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: retz, type: KILL_MOBS, mobIds: [3210208], count: 25, mapIds: [222020100, 222020200] }
+    - { id: seeds, type: COLLECT_ITEM, itemId: 4000168, count: 10 }
+    - { id: lamp, type: DELIVER, to: jiho, take: { itemId: 4000168, count: 10 } }
+  rewards: { meso: 7000, exp: 8000, bondPoints: 30, items: [{ itemId: 2000006, count: 15 }] }
+
+- id: jiho-the-scholar-ghost
+  persona: jiho
+  title: "Somebody's Still Trying"
+  length: MEDIUM
+  requires: { level: { min: 60 }, questsCompleted: [jiho-the-lamp-oil] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghost, type: KILL_MOBS, mobIds: [6090003], count: 1, mapIds: [222010300] }
+    - { id: hat, type: COLLECT_ITEM, itemId: 4000416, count: 1 }
+    - { id: stone, type: DELIVER, to: jiho, take: { itemId: 4000416, count: 1 } }
+  rewards: { meso: 25000, exp: 26000, bondPoints: 45, items: [{ itemId: 2000006, count: 20 }] }

@@ -1,0 +1,30 @@
+# Singapore contracts (wave 3): a jeweller's day rate, a seamstress who asks only that the player has heard Wei on her.
+- id: arjun-the-jewel-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [arjun.intro.done]
+  price:
+    meso: 70000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 25000 }
+
+- id: priscilla-the-thread-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [sg.heard-priscilla]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 10
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 12000 }

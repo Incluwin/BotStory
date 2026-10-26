@@ -1,0 +1,432 @@
+# Zipangu cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 4 Residents at the Mushroom
+# Shrine (mushroom-shrine) and 3 in Showa Town (showa-town), 2 recruitable. The shrine bell has had no voice since its
+# clapper vanished; it sits on the Showa gang Boss's desk in the hideout (arcs/zipangu.yaml). Two recruits carry the
+# third tier of the one-handed sword and claw lines, earned in the haunted fields and the Showa hideout.
+- id: chiyo
+  name: Chiyo
+  look: { gender: female }
+  title: "Keeper of the Shrine Bell"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-shrine
+    routine:
+      - { from: 7, to: 17, spot: "venue:by-kino-konoko", activity: LINGER }
+      - { from: 17, to: 22, spot: "venue:upper-central-benches", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [paper lantern ghost, big cloud fox, crow forest]
+  questLines: [chiyo-the-shrine-lanterns, chiyo-the-silent-bell, chiyo-the-bell-rings]
+  arc: chiyo-the-shrine-bell
+  rumors: [zip-the-ronin-at-the-gate]
+  relationships:
+    - { persona: genzo, kind: BRINGS_TEA_TO }
+    - { persona: isamu, kind: SWEEPS_THE_STEPS_WITH }
+    - { persona: daichi, kind: HAS_NOT_MET }
+  giftItemIds: [2022023, 2020005]
+  dialogue:
+    greetFirst: ["welcome to the shrine. you came with Spinel? everyone does. mind the steps. they're older than they look.", "a traveller. please, come up. the shrine's for everyone. even the mushrooms."]
+    greet: ["welcome back.", "hello again.", "the steps are swept. come up."]
+    idle: ["(sweeps the shrine steps in long, even strokes, though they are already clean)", "(stands at the foot of the bell tower and looks up at it for a while)"]
+    noWork: ["nothing today. the shrine's quiet. it's supposed to be."]
+    nothingDue: ["nothing owed. the shrine keeps no accounts."]
+    who: ["Chiyo. i keep the shrine at Mushroom Shrine, and its bell, and its steps, and anything else nobody else wants to keep. my mother kept it before me."]
+    bye: ["walk gently."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the paper lantern ghosts in the forest at night carry the old shrine lanterns. nobody knows how they got them. i'd like them back. the ghosts can keep the night.", "Spinel brings travellers from Lith Harbor and takes them home again. if you get lost here, ask her. that's what she's for."]
+    speakPlainly: ["plainly: a shrine, a bell, and a lot of sweeping."]
+    questOffer.chiyo-the-shrine-lanterns: ["the old shrine lanterns. the paper lantern ghosts carry them in the forest at night. twenty-five ghosts, ten lanterns. they don't drop many. they're fond of them."]
+    questAccept.chiyo-the-shrine-lanterns: ["past the crow forest, into the night. A Night in the Forest, they call it. it's always night there."]
+    questWaiting.chiyo-the-shrine-lanterns: ["ten lanterns. the steps are dark at night."]
+    questComplete.chiyo-the-shrine-lanterns: ["ten. they still have our crest on them. look. i'll hang them on the steps tonight. here. for the walk."]
+    questOffer.chiyo-the-silent-bell: ["the shrine bell's had no voice for three years. somebody took the clapper. a boy from Showa was seen on the steps that night. his name's Daichi. would you ask him? kindly. i don't think he's a bad boy. i think he was a frightened one."]
+    questAccept.chiyo-the-silent-bell: ["Showa Town, down the road from the shrine. he works near the street market. ask him kindly."]
+    questWaiting.chiyo-the-silent-bell: ["did you find him? what did he say?"]
+    questComplete.chiyo-the-silent-bell: ["round the street Boss's neck, like a trophy. and Daichi was sent to take it, and he's been sorry ever since. thank you for asking him kindly. i'll think about what to do."]
+    questOffer.chiyo-the-bell-rings: ["they say Daichi has the clapper back. back off the Boss's own neck. would you bring it up the steps for him? i don't think he can face the shrine yet. i'd like him to know it's all right."]
+    questAccept.chiyo-the-bell-rings: ["Showa Town. tell him i'm not angry. i never was."]
+    questWaiting.chiyo-the-bell-rings: ["is it coming? i've swept the steps three times."]
+    questComplete.chiyo-the-bell-rings: ["it's whole. listen. no, wait, let me hang it. ...listen. there. there it is. thank you. and tell Daichi to come up the steps. tell him to come and hear it."]
+    about.genzo: ["Genzo sits by the gate every night with his sword across his knees. he says he isn't guarding the shrine. i bring him tea anyway."]
+    about.isamu: ["Isamu carves the fox masks for the festival. he's carved them for forty years. he still says every one's his worst."]
+    about.daichi: ["Daichi? a boy from Showa. i've only heard of him. people say he's trying to be better. that's the hardest thing there is."]
+    aboutUnknown: ["i don't know them. the shrine might."]
+    friend.close: ["you can sweep the steps with me any morning. it's very good for thinking."]
+    friend.best: ["i've written your name on a prayer board and hung it by the bell. it's for safe travels. you travel a lot."]
+    famed: ["people say your name on the shrine steps. kindly, always."]
+    defamed: ["the shrine hears worse. it forgives most of it."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["thank you. i'll have it on the steps with my tea."]
+    gift.again: ["one a day. the shrine teaches moderation. i'm still learning."]
+
+- id: genzo
+  name: Genzo
+  look: { gender: male }
+  title: "Ronin at the Shrine Gate"
+  job: CRUSADER
+  level: { min: 98, max: 100 }
+  strength: ELITE
+  loadout: zip-sword-l98
+  personality: efficient-v1
+  home:
+    town: mushroom-shrine
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-east-benches", activity: REST }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:upper-central-benches", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [bain, dreamy ghost, black crow]
+  contract: genzo-the-ronin-oath
+  questLines: [genzo-the-hot-spring, genzo-sparta, genzo-dragon-carabella, genzo-timeless-executioners, genzo-spiky-collars]
+  rumors: [zip-the-ronin-at-the-gate]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: chiyo, kind: IS_BROUGHT_TEA_BY }
+    - { persona: rin, kind: SPARS_WITH }
+  giftItemIds: [2022020, 2000004]
+  dialogue:
+    greetFirst: ["hm. a traveller. you carry yourself well. sit, if you like. i don't talk much.", "you came up the road alone. good. most come in threes."]
+    greet: ["hm.", "you.", "sit."]
+    idle: ["(sits with his sword across his knees, eyes half closed, perfectly still)", "(draws a hand's width of blade, looks at the edge, and sheathes it without a sound)"]
+    noWork: ["nothing today. the road is quiet. i don't trust it."]
+    nothingDue: ["nothing owed."]
+    who: ["Genzo. i have no master. i had one. now i have a gate and a cup of tea every evening that i didn't ask for. it's enough."]
+    bye: ["walk well."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the bains in the hot spring past the cemetery wear spiked collars. somebody put them there. i'd like to meet them.", "Rin in Showa throws stars like rain. we spar on the road between the towns. she wins more than she should."]
+    speakPlainly: ["plainly: a sword and a gate."]
+    offer: ["sixty bains at the spa, counted, and thirty thousand. a ronin doesn't swear to a sword he hasn't watched. then i'll walk beside you, wherever."]
+    join: ["hm. lead."]
+    bench: ["three days. then i go back to the gate."]
+    leave: ["the gate, then."]
+    refuse.bond: ["i don't walk with people i don't know."]
+    refuse.flags: ["come to the hot spring with me once. then ask."]
+    refuseOwnErrand: ["the hot spring first."]
+    questOffer.genzo-the-hot-spring: ["walk with me to the WanWan spa, past the cemetery. the bains. thirty of them. it's very hot. don't stand in the water."]
+    questAccept.genzo-the-hot-spring: ["the road to the cemetery, then the spa. you'll smell it first."]
+    questWaiting.genzo-the-hot-spring: ["thirty."]
+    questComplete.genzo-the-hot-spring: ["thirty. you didn't stand in the water. good. you can walk with me any time."]
+    questOffer.genzo-sparta: ["the Sparta. a plain blade, very good. a new blade should meet something sad before it meets something angry. the dreamy ghosts near the Buddha. thirty of them."]
+    questAccept.genzo-sparta: ["Encounter with the Buddha, past the vanished village. the ghosts are sad. be quick with them."]
+    questWaiting.genzo-sparta: ["thirty."]
+    questComplete.genzo-sparta: ["thirty. the Sparta. seven safe scrolls, every one took. a plain blade. the best kind."]
+    questOffer.genzo-dragon-carabella: ["the Dragon Carabella. it wants the black crow by the Buddha to have fallen to it. there's only one black crow. it comes back. slowly."]
+    questAccept.genzo-dragon-carabella: ["Encounter with the Buddha. it sits above the ghosts. it's patient. be more patient."]
+    questWaiting.genzo-dragon-carabella: ["one crow. wait for it."]
+    questComplete.genzo-dragon-carabella: ["the crow's down. the Dragon Carabella. seven sixties, every one took. that blade has a temper. so do you. you'll get on."]
+    questOffer.genzo-timeless-executioners: ["the Timeless Executioners. the best sword i know of. it wants the Showa gang's Lady Boss to have stopped. in the hideout's parlor. Konpei takes people in."]
+    questAccept.genzo-timeless-executioners: ["Showa Town. Konpei. the hideout, the parlor. she's stronger than the Boss. everyone knows that but the Boss."]
+    questWaiting.genzo-timeless-executioners: ["the Lady Boss. take friends."]
+    questComplete.genzo-timeless-executioners: ["she's stopped. the Timeless Executioners. two tens and five sixties, every one took. that is the last sword. carry it well."]
+    questOffer.genzo-spiky-collars: ["ten spiked collars off the bains? i'm studying who made them."]
+    questAccept.genzo-spiky-collars: ["the hot spring."]
+    questWaiting.genzo-spiky-collars: ["ten."]
+    questComplete.genzo-spiky-collars: ["ten. same smith. hm."]
+    about.chiyo: ["Chiyo brings me tea every evening. i said i don't need it. she brings it anyway. i drink it."]
+    about.rin: ["Rin, in Showa. she throws stars like rain. she'd beat me if she stopped showing off."]
+    aboutUnknown: ["i don't know them."]
+    friend.close: ["you can sit at the gate with me. we don't have to talk."]
+    friend.best: ["i had a master once. i have someone to walk beside now. it's better."]
+    famed: ["people say your name at the gate. well."]
+    defamed: ["talk. a sword doesn't."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["hm. good. the gate's a long night."]
+    gift.again: ["one a day."]
+
+- id: kaede
+  name: Kaede
+  look: { gender: female }
+  title: "Dango Cook's Apprentice"
+  job: BEGINNER
+  level: { min: 22, max: 24 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-shrine
+    routine:
+      - { from: 7, to: 14, spot: "venue:beside-bronze", activity: LINGER }
+      - { from: 14, to: 20, spot: "venue:lower-west-street", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [fire raccoon, crow, forest of animals]
+  questLines: [kaede-the-dango-fire, kaede-the-crow-fans]
+  relationships:
+    - { persona: isamu, kind: BRINGS_DANGO_TO }
+    - { persona: chiyo, kind: SWEEPS_FOR }
+  giftItemIds: [2022023, 2001001]
+  dialogue:
+    greetFirst: ["hi! dango? three colours, one stick. pink's the best. everyone says green. everyone's wrong.", "oh, hello! you look hungry. you look like a pink dango person."]
+    greet: ["hi!", "you're back! dango?", "pink today. always pink."]
+    idle: ["(turns three skewers of dango over a little grill, one, two, three)", "(fans the grill with a crow-feather fan that is missing most of its feathers)"]
+    noWork: ["nothing today. the dango's sold out. that's good. that's very good."]
+    nothingDue: ["you're paid up! in dango."]
+    who: ["Kaede. i'm learning dango from the dango chef here. i grill, i fan, i burn some. i burn fewer than i did."]
+    bye: ["come back hungry!"]
+    thanks: ["thank you!"]
+    smallTalk: ["the fire raccoons in the forest of animals carry firewood. the best firewood. it burns sweet. don't ask me how a raccoon knows that.", "my fan's lost all its feathers. the crows in the crow forest drop good ones. not often. crows are mean."]
+    speakPlainly: ["plainly: dango."]
+    questOffer.kaede-the-dango-fire: ["my grill wants sweet firewood. the fire raccoons in the forest of animals carry it. twenty-five raccoons, ten bundles."]
+    questAccept.kaede-the-dango-fire: ["the forest of animals, past the shrine. they're on fire. a bit. that's their name."]
+    questWaiting.kaede-the-dango-fire: ["ten bundles! the grill's cold."]
+    questComplete.kaede-the-dango-fire: ["ten! smell that. that's sweet. that's a raccoon's secret. here, a stick for you. pink first."]
+    questOffer.kaede-the-crow-fans: ["my fan's bald. the crows in the crow forest drop good feathers. twenty-five crows, ten feathers. they don't drop many. they're mean."]
+    questAccept.kaede-the-crow-fans: ["the crow forest, past the shrine. both of them. they caw at you. caw back."]
+    questWaiting.kaede-the-crow-fans: ["ten feathers. the grill's smoking."]
+    questComplete.kaede-the-crow-fans: ["ten! a real fan! look how it moves the smoke. here. thank you. pink, remember."]
+    about.isamu: ["Isamu carves the masks. i bring him dango. he says he isn't hungry. he eats four."]
+    about.chiyo: ["Chiyo keeps the shrine. i sweep for her sometimes. she sweeps better. she's had more practice."]
+    aboutUnknown: ["do they like dango?"]
+    friend.close: ["first stick off the grill is yours. every day."]
+    friend.best: ["i made a new dango. four colours. i've named it after you. it's very good. the green one's still wrong."]
+    famed: ["everyone at the grill says your name. between bites."]
+    defamed: ["whoever said that gets green dango."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh WOW. that's lovely. i'll have it after the lunch rush."]
+    gift.again: ["one a day! the chef says."]
+
+- id: isamu
+  name: Isamu
+  look: { gender: male }
+  title: "Fox-Mask Carver"
+  job: BEGINNER
+  level: { min: 48, max: 50 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: mushroom-shrine
+    routine:
+      - { from: 9, to: 17, spot: "venue:lower-west-benches", activity: REST }
+      - { from: 17, to: 21, spot: "venue:by-gachapon", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [cloud fox, big cloud fox, samiho]
+  questLines: [isamu-the-fox-masks, isamu-the-dark-foxtails, isamu-the-three-tails]
+  relationships:
+    - { persona: chiyo, kind: CARVES_FOR_THE_SHRINE_OF }
+    - { persona: kaede, kind: IS_FED_DANGO_BY }
+  giftItemIds: [2022024, 2000002]
+  dialogue:
+    greetFirst: ["mind the shavings. they get everywhere. welcome. you have a good face for a mask. that's a compliment.", "a visitor. sit. i'm carving. i'm always carving."]
+    greet: ["hm. hello.", "you. sit.", "mind the shavings."]
+    idle: ["(shaves a curl of pale wood off a half-finished fox mask and blows the dust away)", "(holds a mask up to his face, looks out through the eyes, and frowns)"]
+    noWork: ["nothing today. the masks are carved. they're all terrible. i'll start again."]
+    nothingDue: ["you owe me nothing. a mask, maybe. i owe you one."]
+    who: ["Isamu. i carve the fox masks for the shrine festival. forty years. every one's my worst. the next one will be better. it won't. i'll carve it anyway."]
+    bye: ["mind the shavings."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the cloud foxes on the mountain shed tails like smoke. i trim the masks with them. a fox mask with a real fox's tail. that's the trick.", "the samiho in the vanished village have three tails. i've only ever carved one. i'm working up to three."]
+    speakPlainly: ["plainly: masks. bad ones, i say."]
+    questOffer.isamu-the-fox-masks: ["the festival masks want trim. the cloud foxes on the mountain carry tails like smoke. twenty-five foxes, ten tails. they don't drop many."]
+    questAccept.isamu-the-fox-masks: ["The Mountain of Cloud Fox, straight off the shrine. they're quick. they're quicker than you."]
+    questWaiting.isamu-the-fox-masks: ["ten tails. the masks are bald."]
+    questComplete.isamu-the-fox-masks: ["ten. look at that. like smoke. the masks are less terrible now. here. thank you."]
+    questOffer.isamu-the-dark-foxtails: ["the elders' masks want darker trim. the big cloud foxes in the forest at night and the desolate cemetery carry it. twenty-five of them, ten dark tails."]
+    questAccept.isamu-the-dark-foxtails: ["A Night in the Forest, past the second crow forest, and the desolate cemetery down the road from the first. they're bigger. they're angrier."]
+    questWaiting.isamu-the-dark-foxtails: ["ten dark tails."]
+    questComplete.isamu-the-dark-foxtails: ["ten. dark as a temple at night. the elders will grumble. they'll wear them. here."]
+    questOffer.isamu-the-three-tails: ["i want to carve a three-tailed mask. once. before my hands stop. the samiho in the vanished village carry three tails each. twenty-five of them, ten tails."]
+    questAccept.isamu-the-three-tails: ["the vanished village, past A Night in the Forest. it's empty. it isn't. the samiho live there now."]
+    questWaiting.isamu-the-three-tails: ["ten. i've cut the wood already."]
+    questComplete.isamu-the-three-tails: ["ten. three tails. it's my best mask. no. it's still my worst. it's close. it's very close. thank you."]
+    about.chiyo: ["Chiyo keeps the shrine. her mother kept it before her. she sweeps like her mother. i don't tell her. she'd stop."]
+    about.kaede: ["Kaede brings me dango. i say i'm not hungry. i'm always hungry."]
+    aboutUnknown: ["never carved a mask for them."]
+    friend.close: ["you can have the next mask. it'll be terrible. it'll be yours."]
+    friend.best: ["i carved a mask of your face. it's my best mask. don't tell anyone. i'll deny it."]
+    famed: ["people say your name at the shrine. in a good way. like a festival."]
+    defamed: ["a mask hides most of it."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["hm. that'll see me through a long night with the knife."]
+    gift.again: ["one a day. my hands need to stay steady."]
+
+- id: daichi
+  name: Daichi
+  look: { gender: male }
+  title: "Bathhouse Hand of Showa"
+  job: BEGINNER
+  level: { min: 50, max: 52 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: showa-town
+    routine:
+      - { from: 9, to: 16, spot: "venue:showa-street-market-entrance", activity: LINGER }
+      - { from: 16, to: 22, spot: "venue:by-poni-chai", activity: SOCIALIZE }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [extra a, male boss, showa street 3]
+  questLines: [daichi-the-old-badges, daichi-the-hideout]
+  relationships:
+    - { persona: okiku, kind: SON_OF }
+    - { persona: rin, kind: IS_WATCHED_OVER_BY }
+    - { persona: chiyo, kind: OWES_AN_APOLOGY_TO }
+  giftItemIds: [2022024, 2000002]
+  dialogue:
+    greetFirst: ["hey. you're not from round here. good. people from round here look at me funny.", "hi. sorry. i'm on my break. i'm always on my break, says mum."]
+    greet: ["hey.", "you again. hi.", "hiya."]
+    idle: ["(scrubs a wooden bath bucket with a brush, harder than it needs)", "(touches the place on his jacket where a gang badge used to be, then stops himself)"]
+    noWork: ["nothing today. the bath's hot. mum's happy. that's a good day."]
+    nothingDue: ["we're good. honest."]
+    who: ["Daichi. i work at the bathhouse. mum's bathhouse. i ran with the street gang for two years. i don't now. people still look. that's fair."]
+    bye: ["see you round."]
+    thanks: ["thanks. really."]
+    smallTalk: ["the extras on the first street still wear the gang badges. i used to. i want to bury every one of them.", "Rin keeps an eye on me. from the rooftops. she thinks i don't know. i know. i don't mind."]
+    speakPlainly: ["plainly: i used to be in the gang. i'm not now."]
+    questOffer.daichi-the-old-badges: ["the extras on the first street still wear the gang badges. i want to bury them. all of them. twenty-five extras, ten badges. under the bathhouse floor. where they can't get out."]
+    questAccept.daichi-the-old-badges: ["Showa Street, the first one. they'll call you names. they called me worse."]
+    questWaiting.daichi-the-old-badges: ["ten badges."]
+    questComplete.daichi-the-old-badges: ["ten. i'll bury them tonight. thank you. i couldn't do it myself. they know my face."]
+    questOffer.daichi-the-hideout: ["the Boss wears something round his neck that isn't his. a bell clapper. from the shrine. i took it. he sent me. i want it back where it belongs. he walks the third street with it. the leaders guard him. twenty of leader A's lot, and him. please."]
+    questAccept.daichi-the-hideout: ["Showa Street, the third one, past the second. he walks it like he owns it. he doesn't."]
+    questWaiting.daichi-the-hideout: ["is it back? is he down?"]
+    questComplete.daichi-the-hideout: ["it's back. it's really back. i'll keep it safe. i can't take it up the shrine steps. not yet. i can't look at her."]
+    about.okiku: ["mum runs the bathhouse. she never said a word when i came home. she just put me to work. that was the best thing she could've done."]
+    about.rin: ["Rin watches the street from the roofs. she watches me most. i used to hate it. now i wave."]
+    about.chiyo: ["the shrine keeper. Chiyo. i owe her more than i can say."]
+    aboutUnknown: ["don't know them. that's probably good for them."]
+    friend.close: ["you can have the first bath of the day. mum's orders. well, mine. she agreed."]
+    friend.best: ["you're the first person who looked at me and didn't see the badge. i'll never forget that."]
+    famed: ["people say your name on the street. the good streets."]
+    defamed: ["i've heard worse said about me. most of it was true."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's good. that's lunch on a long shift."]
+    gift.again: ["one a day. mum's rules."]
+
+- id: okiku
+  name: Okiku
+  look: { gender: female }
+  title: "Keeper of the Showa Bathhouse"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: showa-town
+    routine:
+      - { from: 7, to: 15, spot: "venue:by-boss-kitty", activity: LINGER }
+      - { from: 15, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [firebomb, leader b, showa street 2]
+  questLines: [okiku-the-bath-fire, okiku-the-charms]
+  rumors: [zip-the-bathhouse-roof]
+  relationships:
+    - { persona: daichi, kind: MOTHER_OF }
+    - { persona: rin, kind: CHASES_OFF_THE_ROOF }
+  giftItemIds: [2020004, 2022020]
+  dialogue:
+    greetFirst: ["shoes off at the door. no, there's no door. shoes off anyway. welcome to Showa.", "a traveller. you need a bath. everyone who comes down that road needs a bath."]
+    greet: ["hello.", "you. bath?", "shoes."]
+    idle: ["(wipes down a bathhouse stool and stacks it neatly on the others)", "(looks up at the rooftops across the street, sighs, and shakes her head)"]
+    noWork: ["nothing today. the water's hot. the boy's working. sit down before i find you something."]
+    nothingDue: ["you're paid up. the bath's free anyway."]
+    who: ["Okiku. i keep the bathhouse. thirty years. the street gang came and went and came again, and the water stayed hot. my boy ran with them a while. he came home. the water was hot."]
+    bye: ["shoes on, then."]
+    thanks: ["thank you."]
+    smallTalk: ["the firebombs in the secret spa heat the water better than any furnace. i don't ask. a bath's a bath.", "there's a girl who sits on my roof every night. Rin. watching the street. i chase her off. she comes back. i've started leaving her tea."]
+    speakPlainly: ["plainly: hot water."]
+    questOffer.okiku-the-bath-fire: ["the bath furnace wants firebomb flame. the firebombs in the secret spas carry it. twenty-five of them, ten flames. men's side or women's, i don't mind."]
+    questAccept.okiku-the-bath-fire: ["the locker rooms, and the secret spa past them. they burn. that's the point."]
+    questWaiting.okiku-the-bath-fire: ["ten flames. the water's going lukewarm. i won't have lukewarm."]
+    questComplete.okiku-the-bath-fire: ["ten. hot again. here. and you bathe free on my side. forever."]
+    questOffer.okiku-the-charms: ["the leaders on the second street hand out charms to the boys they want. my boy had one. i want every one of them gone. twenty-five leader Bs, ten charms."]
+    questAccept.okiku-the-charms: ["Showa Street, the second one. they'll be on the corners. they always are."]
+    questWaiting.okiku-the-charms: ["ten charms."]
+    questComplete.okiku-the-charms: ["ten. i'll put them in the furnace. here. thank you. that's ten boys they won't have."]
+    about.daichi: ["my boy. he ran with the gang two years. he came home. i put him to work. he's a good boy. he always was."]
+    about.rin: ["Rin, on my roof. she watches the street. she watches my boy. i chase her off. i leave her tea. both."]
+    aboutUnknown: ["never had a bath here? they will."]
+    friend.close: ["you bathe free. you know that. tell no one."]
+    friend.best: ["you're family now. family gets the hot end of the bath."]
+    famed: ["people say your name in the bathhouse. that's where the truth gets told."]
+    defamed: ["whatever's said in the bath goes down the drain."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["now that's a good supper after the last bath."]
+    gift.again: ["one a day. i've a bathhouse to run."]
+
+- id: rin
+  name: Rin
+  look: { gender: female }
+  title: "Watcher on the Showa Rooftops"
+  job: HERMIT
+  level: { min: 88, max: 90 }
+  strength: ELITE
+  loadout: zip-claw-l88
+  personality: relaxed-v1
+  home:
+    town: showa-town
+    routine:
+      - { from: 6, to: 11, spot: "venue:by-hikari", activity: LINGER }
+      - { from: 11, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [leader a, bain, female boss]
+  contract: rin-the-rooftop-share
+  questLines: [rin-the-street-run, rin-casters, rin-red-craven, rin-dragon-green-sleve, rin-dark-glasses]
+  rumors: [zip-the-bathhouse-roof]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: daichi, kind: WATCHES_OVER }
+    - { persona: genzo, kind: SPARS_WITH }
+    - { persona: okiku, kind: IS_CHASED_OFF_THE_ROOF_BY }
+  giftItemIds: [2022024, 2000004]
+  dialogue:
+    greetFirst: ["you came down the road from the shrine. i saw. i see most things. hi.", "hey. don't look up so much. people notice."]
+    greet: ["hey.", "you. good.", "the street's quiet. for now."]
+    idle: ["(spins a throwing star on one fingertip, catches it, and tucks it away)", "(glances up at the rooftops, then at the street, then up again)"]
+    noWork: ["nothing today. the gang's lying low. i'm lying lower."]
+    nothingDue: ["even. i'd know if we weren't."]
+    who: ["Rin. i keep an eye on the street from the rooftops. somebody has to. the gang's been in Showa longer than the bathhouse. it won't be longer than me."]
+    bye: ["watch your back. i'll watch it too."]
+    thanks: ["thanks."]
+    smallTalk: ["the leader As on the second and third streets wear dark glasses, even at night. i collect them. a leader who can't see is a leader who can't see me.", "Genzo from the shrine and i spar on the road between the towns. he says i show off. i do. i still win."]
+    speakPlainly: ["plainly: stars, and rooftops."]
+    offer: ["thirty thousand, and twenty pairs of leader A's dark glasses. don't ask. i'll watch your back."]
+    join: ["let's go. i'll take the high ground."]
+    bench: ["four days. then the street needs me."]
+    leave: ["back to the roofs."]
+    refuse.bond: ["i don't work with strangers. strangers get followed home."]
+    refuse.flags: ["walk Showa's streets with me once. and come down the lower central street one evening to hear what Okiku says about me."]
+    refuseOwnErrand: ["the streets first."]
+    questOffer.rin-the-street-run: ["walk the gang's streets with me. the second and third. thirty of the leader As and thirty of the leader Bs. they stand on the corners. don't let them corner you."]
+    questAccept.rin-the-street-run: ["Showa Street, the second, then the third. keep moving. i'll be on the roofs."]
+    questWaiting.rin-the-street-run: ["thirty and thirty. keep moving."]
+    questComplete.rin-the-street-run: ["thirty and thirty. you kept moving. good. you can watch the street with me any time."]
+    questOffer.rin-casters: ["the Casters. a claw that bites. i want it broken in on the bains in the hot spring past the cemetery. thirty of them, fifteen spiked collars. i'm melting the spikes down for stars."]
+    questAccept.rin-casters: ["out through the forest of animals and the crow forest, down the cemetery road to the end. the WanWan spa. it's hot. don't sit in it."]
+    questWaiting.rin-casters: ["fifteen collars."]
+    questComplete.rin-casters: ["fifteen. the Casters. seven safe scrolls, every one took. listen to it. it sings when you throw."]
+    questOffer.rin-red-craven: ["the Red Craven. it wants the street Boss's pomade. i'm not joking. the oil's perfect for the hinges. he walks the third street. one Boss, one pomade, and twenty dreamy ghosts by the Buddha for the practice."]
+    questAccept.rin-red-craven: ["Showa Street, the third. then all the way back up to the Buddha. it's a long day. it's a good one."]
+    questWaiting.rin-red-craven: ["the pomade. and the ghosts."]
+    questComplete.rin-red-craven: ["the pomade! he'll be furious. the Red Craven. seven sixties, every one took. it's red. it's very red."]
+    questOffer.rin-dragon-green-sleve: ["the Dragon Green Sleve. the best claw there is. it wants the black crow by the Buddha. and forty of the dreamy ghosts round it. i want the whole forest to know."]
+    questAccept.rin-dragon-green-sleve: ["Encounter with the Buddha. the crow comes back. be there when it does."]
+    questWaiting.rin-dragon-green-sleve: ["the crow, and forty."]
+    questComplete.rin-dragon-green-sleve: ["you did it. the Dragon Green Sleve. two tens and five sixties, every one took. that's the best claw in the world. take care of it. take care of you."]
+    questOffer.rin-dark-glasses: ["ten pairs of leader A's dark glasses? the collection's growing. don't ask."]
+    questAccept.rin-dark-glasses: ["the second and third streets."]
+    questWaiting.rin-dark-glasses: ["ten."]
+    questComplete.rin-dark-glasses: ["ten. thanks. don't ask."]
+    about.daichi: ["Daichi, at the bathhouse. he ran with the gang. he's out now. i make sure he stays out. he waves at me. i don't wave back. i do."]
+    about.genzo: ["Genzo, at the shrine gate. he's very good. he'd be better if he stopped being so serious. he won't."]
+    about.okiku: ["Okiku chases me off her roof every night. she leaves tea up there. i drink it."]
+    aboutUnknown: ["never watched them. maybe i should."]
+    friend.close: ["you can sit on the roofs with me. Okiku will chase us both."]
+    friend.best: ["i've watched a lot of people from up there. you're the one i'd come down for."]
+    famed: ["people on the street say your name. i've heard it from the roofs."]
+    defamed: ["i hear it all from up there. none of it sticks."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["that'll keep me going on the roof tonight."]
+    gift.again: ["one a day. i've got to stay light."]

@@ -1,0 +1,307 @@
+# Zipangu quests (wave 3). Fields: Mountain of Cloud Fox 800010001 (cloud fox 9400002 cloud foxtail 4000066), Crow Forest
+# 800020000/800020101 (crow 9400000 crow feather 4000064), A Night in the Forest 800020110 (paper lantern ghost 9400011 worn
+# paper lantern 4000222, big cloud fox 9400004 dark cloud foxtail 4000077), A Desolate Cemetery 800020200 (big cloud fox),
+# Vanished Village 800020120 (samiho 5100004 three-tailed foxtail 4000172), Encounter with the Buddha 800020130 (dreamy
+# ghost 9400013 kimono piece 4000225, black crow 9400014 sabots 4000224), WanWan Spa of Hell 800020400 (bain 8140500 spiked
+# collar 4000080), Forest of Animals 800030000 (fire raccoon 9400001 raccoon firewood 4000065). Showa: the secret spas
+# 801000110/801000210 (firebomb 5100002 flame 4000081), Showa Street 1 801010000 (extra A 9400100 badge 4000089), Street 2
+# 801020000 (leader A 9400110, leader B 9400111 charm 4000093), Street 3 801030000 (leader A, male boss 9400120 pomade
+# 4000094); the hideout (Konpei, open to anyone; only the Boss's top room is once a day): parking lot 801040001 (extra D
+# 9400103), parlor 801040003 (female boss 9400121). Those two and the Buddha's clearing are forced-return maps the farm-site
+# picker skips, so steps there are kill-only; Leader A (9400110) wears the shades 4000092. The armory 801040004 is avoided.
+
+# ---- Chiyo: the shrine bell (arcs/zipangu.yaml) ----
+- id: chiyo-the-shrine-lanterns
+  persona: chiyo
+  title: "The Old Shrine Lanterns"
+  length: SHORT
+  requires: { level: { min: 40 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [9400011], count: 25, mapIds: [800020110] }
+    - { id: lanterns, type: COLLECT_ITEM, itemId: 4000222, count: 10 }
+    - { id: steps, type: DELIVER, to: chiyo, take: { itemId: 4000222, count: 10 } }
+  rewards: { meso: 9000, exp: 10000, bondPoints: 30, items: [{ itemId: 2022023, count: 10 }] }
+
+- id: chiyo-the-silent-bell
+  persona: chiyo
+  title: "The Bell Without a Voice"
+  length: SHORT
+  requires: { level: { min: 42 }, questsCompleted: [chiyo-the-shrine-lanterns], notFlags: [zip.clapper.traced] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: daichi, type: TALK_TO, persona: daichi, say: ["the shrine keeper sent you. she said kindly? she would. i took it. the clapper. the Boss sent me up the steps one night, my first job. he wears it round his neck like a trophy, walking the third street. i've been sorry every day since. tell her that. please."] }
+    - { id: told, type: DELIVER, to: chiyo }
+  rewards: { meso: 11000, exp: 12000, bondPoints: 40, items: [{ itemId: 2000002, count: 20 }], worldFlags: [zip.clapper.traced] }
+
+- id: chiyo-the-bell-rings
+  persona: chiyo
+  title: "The Bell Rings"
+  length: MEDIUM
+  requires: { level: { min: 42 }, questsCompleted: [chiyo-the-shrine-lanterns], flags: [zip.clapper.recovered], notFlags: [zip.bell.rings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: daichi, type: TALK_TO, persona: daichi, say: ["she's not angry? she said that? ...here. the clapper. carry it up for me. carry it level. and tell her... no. i'll tell her myself. one day. soon."] }
+    - { id: bell, type: DELIVER, to: chiyo }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 60, items: [{ itemId: 2000005, count: 10 }], worldFlags: [zip.bell.rings] }
+
+# ---- Genzo (recruit; one-handed sword line, third tier) ----
+- id: genzo-the-hot-spring
+  persona: genzo
+  title: "The Hot Spring Road"
+  length: SHORT
+  requires: { level: { min: 88 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bains, type: KILL_MOBS, mobIds: [8140500], count: 30, mapIds: [800020400] }
+    - { id: done, type: DELIVER, to: genzo }
+  rewards: { meso: 50000, exp: 50000, bondPoints: 30, flags: [genzo.intro.done] }
+
+- id: genzo-sparta
+  persona: genzo
+  title: "The Sparta"
+  length: MEDIUM
+  requires: { level: { min: 98 }, friendship: 5, questsCompleted: [genzo-the-hot-spring] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [9400013], count: 30, mapIds: [800020130] }
+    - { id: blooded, type: DELIVER, to: genzo }
+  rewards:
+    meso: 220000
+    exp: 220000
+    bondPoints: 35
+    gear:
+      - { itemId: 1302056, scrolls: [{ success: 100 }] }
+
+- id: genzo-dragon-carabella
+  persona: genzo
+  title: "The Dragon Carabella"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 7, questsCompleted: [genzo-sparta] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: crow, type: KILL_MOBS, mobIds: [9400014], count: 1, mapIds: [800020130] }
+    - { id: fallen, type: DELIVER, to: genzo }
+  rewards:
+    meso: 300000
+    exp: 300000
+    bondPoints: 50
+    gear:
+      - { itemId: 1302059, scrolls: [{ success: 60 }] }
+
+- id: genzo-timeless-executioners
+  persona: genzo
+  title: "The Timeless Executioners"
+  length: LONG
+  requires: { level: { min: 118 }, friendship: 10, questsCompleted: [genzo-dragon-carabella] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lady-boss, type: KILL_MOBS, mobIds: [9400121], count: 1, mapIds: [801040003] }
+    - { id: stopped, type: DELIVER, to: genzo }
+  rewards:
+    meso: 400000
+    exp: 400000
+    bondPoints: 60
+    gear:
+      - { itemId: 1302081, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: genzo-spiky-collars
+  persona: genzo
+  title: "Who Made the Collars"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 88 }, questsCompleted: [genzo-the-hot-spring] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: collars, type: COLLECT_ITEM, itemId: 4000080, count: 10 }
+    - { id: study, type: DELIVER, to: genzo, take: { itemId: 4000080, count: 10 } }
+  rewards: { meso: 18000, exp: 15000, bondPoints: 10 }
+
+# ---- Kaede ----
+- id: kaede-the-dango-fire
+  persona: kaede
+  title: "Sweet Firewood"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: raccoons, type: KILL_MOBS, mobIds: [9400001], count: 25, mapIds: [800030000] }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000065, count: 10 }
+    - { id: grill, type: DELIVER, to: kaede, take: { itemId: 4000065, count: 10 } }
+  rewards: { meso: 4500, exp: 5000, bondPoints: 30, items: [{ itemId: 2022023, count: 10 }] }
+
+- id: kaede-the-crow-fans
+  persona: kaede
+  title: "A Fan With Feathers"
+  length: SHORT
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: crows, type: KILL_MOBS, mobIds: [9400000], count: 25, mapIds: [800020000, 800020101] }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4000064, count: 10 }
+    - { id: fan, type: DELIVER, to: kaede, take: { itemId: 4000064, count: 10 } }
+  rewards: { meso: 4000, exp: 4500, bondPoints: 30, items: [{ itemId: 2022023, count: 5 }] }
+
+# ---- Isamu ----
+- id: isamu-the-fox-masks
+  persona: isamu
+  title: "Tails Like Smoke"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: foxes, type: KILL_MOBS, mobIds: [9400002], count: 25, mapIds: [800010001] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000066, count: 10 }
+    - { id: trim, type: DELIVER, to: isamu, take: { itemId: 4000066, count: 10 } }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2000002, count: 10 }] }
+
+- id: isamu-the-dark-foxtails
+  persona: isamu
+  title: "Masks for the Elders"
+  length: SHORT
+  requires: { level: { min: 43 }, questsCompleted: [isamu-the-fox-masks] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: foxes, type: KILL_MOBS, mobIds: [9400004], count: 25, mapIds: [800020110, 800020200] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000077, count: 10 }
+    - { id: trim, type: DELIVER, to: isamu, take: { itemId: 4000077, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: isamu-the-three-tails
+  persona: isamu
+  title: "The Three-Tailed Mask"
+  length: SHORT
+  requires: { level: { min: 53 }, questsCompleted: [isamu-the-dark-foxtails] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: samiho, type: KILL_MOBS, mobIds: [5100004], count: 25, mapIds: [800020120] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000172, count: 10 }
+    - { id: mask, type: DELIVER, to: isamu, take: { itemId: 4000172, count: 10 } }
+  rewards: { meso: 15000, exp: 16000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Daichi ----
+- id: daichi-the-old-badges
+  persona: daichi
+  title: "Under the Bathhouse Floor"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: extras, type: KILL_MOBS, mobIds: [9400100], count: 25, mapIds: [801010000] }
+    - { id: badges, type: COLLECT_ITEM, itemId: 4000089, count: 10 }
+    - { id: buried, type: DELIVER, to: daichi, take: { itemId: 4000089, count: 10 } }
+  rewards: { meso: 10000, exp: 11000, bondPoints: 30, items: [{ itemId: 2022024, count: 10 }] }
+
+- id: daichi-the-hideout
+  persona: daichi
+  title: "The Boss's Trophy"
+  length: LONG
+  requires: { level: { min: 92 }, flags: [zip.clapper.traced], notFlags: [zip.clapper.recovered] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leaders, type: KILL_MOBS, mobIds: [9400110], count: 20, mapIds: [801020000, 801030000] }
+    - { id: boss, type: KILL_MOBS, mobIds: [9400120], count: 1, mapIds: [801030000] }
+    - { id: back, type: DELIVER, to: daichi }
+  rewards: { meso: 120000, exp: 130000, bondPoints: 60, items: [{ itemId: 2000005, count: 20 }], worldFlags: [zip.clapper.recovered] }
+
+# ---- Okiku ----
+- id: okiku-the-bath-fire
+  persona: okiku
+  title: "Hot Water"
+  length: SHORT
+  requires: { level: { min: 48 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firebombs, type: KILL_MOBS, mobIds: [5100002], count: 25, mapIds: [801000110, 801000210] }
+    - { id: flames, type: COLLECT_ITEM, itemId: 4000081, count: 10 }
+    - { id: furnace, type: DELIVER, to: okiku, take: { itemId: 4000081, count: 10 } }
+  rewards: { meso: 11000, exp: 12000, bondPoints: 30, items: [{ itemId: 2020004, count: 10 }] }
+
+- id: okiku-the-charms
+  persona: okiku
+  title: "Ten Boys They Won't Have"
+  length: SHORT
+  requires: { level: { min: 61 }, questsCompleted: [okiku-the-bath-fire] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leaders, type: KILL_MOBS, mobIds: [9400111], count: 25, mapIds: [801020000] }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000093, count: 10 }
+    - { id: furnace, type: DELIVER, to: okiku, take: { itemId: 4000093, count: 10 } }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 35, items: [{ itemId: 2000004, count: 15 }] }
+
+# ---- Rin (recruit; claw line, third tier) ----
+- id: rin-the-street-run
+  persona: rin
+  title: "The Gang's Streets"
+  length: SHORT
+  requires: { level: { min: 62 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leaders-a, type: KILL_MOBS, mobIds: [9400110], count: 30, mapIds: [801020000, 801030000] }
+    - { id: leaders-b, type: KILL_MOBS, mobIds: [9400111], count: 30, mapIds: [801020000, 801030000] }
+    - { id: done, type: DELIVER, to: rin }
+  rewards: { meso: 35000, exp: 35000, bondPoints: 30, flags: [rin.intro.done] }
+
+- id: rin-casters
+  persona: rin
+  title: "The Casters"
+  length: MEDIUM
+  requires: { level: { min: 88 }, friendship: 5, questsCompleted: [rin-the-street-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bains, type: KILL_MOBS, mobIds: [8140500], count: 30, mapIds: [800020400] }
+    - { id: collars, type: COLLECT_ITEM, itemId: 4000080, count: 15 }
+    - { id: stars, type: DELIVER, to: rin, take: { itemId: 4000080, count: 15 } }
+  rewards:
+    meso: 200000
+    exp: 200000
+    bondPoints: 35
+    gear:
+      - { itemId: 1472033, scrolls: [{ success: 100 }] }
+
+- id: rin-red-craven
+  persona: rin
+  title: "The Red Craven"
+  length: LONG
+  requires: { level: { min: 98 }, friendship: 7, questsCompleted: [rin-casters] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boss, type: KILL_MOBS, mobIds: [9400120], count: 1, mapIds: [801030000] }
+    - { id: pomade, type: COLLECT_ITEM, itemId: 4000094, count: 1 }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [9400013], count: 20, mapIds: [800020130] }
+    - { id: hinges, type: DELIVER, to: rin, take: { itemId: 4000094, count: 1 } }
+  rewards:
+    meso: 260000
+    exp: 260000
+    bondPoints: 50
+    gear:
+      - { itemId: 1472053, scrolls: [{ success: 60 }] }
+
+- id: rin-dragon-green-sleve
+  persona: rin
+  title: "The Dragon Green Sleve"
+  length: LONG
+  requires: { level: { min: 108 }, friendship: 10, questsCompleted: [rin-red-craven] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: crow, type: KILL_MOBS, mobIds: [9400014], count: 1, mapIds: [800020130] }
+    - { id: ghosts, type: KILL_MOBS, mobIds: [9400013], count: 40, mapIds: [800020130] }
+    - { id: claw, type: DELIVER, to: rin }
+  rewards:
+    meso: 320000
+    exp: 320000
+    bondPoints: 60
+    gear:
+      - { itemId: 1472051, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: rin-dark-glasses
+  persona: rin
+  title: "Don't Ask"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 62 }, questsCompleted: [rin-the-street-run] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glasses, type: COLLECT_ITEM, itemId: 4000092, count: 10 }
+    - { id: collection, type: DELIVER, to: rin, take: { itemId: 4000092, count: 10 } }
+  rewards: { meso: 15000, exp: 12000, bondPoints: 10 }

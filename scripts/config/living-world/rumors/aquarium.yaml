@@ -1,0 +1,29 @@
+# Aquarium rumors (wave 3). Each pair is awake together at its spot in those hours (personas/aquarium.yaml).
+- id: aqua-the-deep
+  participants: [thalia, kael]
+  where: { town: aquarium-store, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  setsFlagOnListeners: aqua.heard-kael
+  lines:
+    - { by: kael, text: "you froze the whole gorge today, Thalia. i couldn't see a thing." }
+    - { by: thalia, text: "you shot it anyway." }
+    - { by: kael, text: "i hit something." }
+    - { by: thalia, text: "you hit a squid. it was a good shot. anyone who goes down the deep sea gorge with you comes back with all their fingers. i'd tell them that." }
+    - { by: kael, text: "...you'd tell them that?" }
+    - { by: thalia, text: "once. don't make me say it twice." }
+
+- id: aqua-the-benches
+  participants: [delmar, ambrose]
+  where: { town: aquarium-hall, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 2
+  lines:
+    - { by: ambrose, text: "the flower fish lives in the hidden town, Delmar. i've written it down." }
+    - { by: delmar, text: "the flower fish lives by the sand castle. i've swum it." }
+    - { by: ambrose, text: "it lives in both." }
+    - { by: delmar, text: "then we're both right." }
+    - { by: ambrose, text: "...that's not how science works." }
+    - { by: delmar, text: "it's how the sea works. same bench next time?" }

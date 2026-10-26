@@ -1,0 +1,425 @@
+# Singapore cast (Regional Residents wave 3, docs/REGIONAL_RESIDENTS_PLAN.md section 9): 7 Residents in CBD
+# (singapore-cbd) and Boat Quay Town (boat-quay-town), 2 recruitable. A widow on Boat Quay lights a lantern every night
+# for the ghost ship's crew (arcs/singapore.yaml); her husband's lantern lies in Aqua Road's Grave of a Wrecked Ship
+# (arcs/aquarium.yaml), and New Leaf City's paper wants her story (Ramona, personas/new-leaf-city.yaml). Singapore's
+# fields stop at 68, so its two recruits carry armour: a run of earrings and a run of capes in that band.
+- id: rosnah
+  name: Rosnah
+  look: { gender: female }
+  title: "Lantern Keeper of Boat Quay"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: boat-quay-town
+    routine:
+      - { from: 10, to: 17, spot: "venue:by-dave-iris", activity: LINGER }
+      - { from: 17, to: 23, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [trucker, pac pinky, ghost ship]
+  questLines: [rosnah-the-lantern-glass, rosnah-the-ghost-ship, rosnah-the-lantern-home]
+  arc: rosnah-the-lanterns
+  rumors: [sg-the-quay-lanterns]
+  relationships:
+    - { persona: siti, kind: AUNT_OF }
+    - { persona: benedict, kind: KEEPS_THE_SHIP_RECORDS_WITH }
+    - { persona: delmar, kind: NEVER_MET }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["selamat datang. welcome to Boat Quay. sit by the river. everyone does, in the end.", "hello, dear. you've come a long way. the river's good for long ways."]
+    greet: ["hello, dear.", "you came back. good.", "sit a minute."]
+    idle: ["(trims the wick of a small paper lantern and shields it from the wind with her hand)", "(watches the river as if she is waiting for a particular boat)"]
+    noWork: ["nothing today, dear. the lanterns are made. tonight i'll light them."]
+    nothingDue: ["you owe me nothing, dear. light a lantern sometime."]
+    who: ["Rosnah. my Halim sailed on the ship that went missing twenty years ago. it waits still, the ghost ship, off the end of the mysterious path, full of lanterns and no crew. every night i light a lantern on the quay for them. so they can see their way home."]
+    bye: ["walk safely, dear."]
+    thanks: ["terima kasih, dear."]
+    smallTalk: ["the truckers out in the suburban area carry headlights. the glass is just right for a lantern. Halim taught me that. he could make a lantern out of anything.", "Benedict keeps the harbour records. he's read me Halim's name off the old crew list so many times. he never minds."]
+    speakPlainly: ["plainly: lanterns, for the crew."]
+    questOffer.rosnah-the-lantern-glass: ["my lanterns want new glass. the truckers in the suburban area carry headlights, and the glass is just right. twenty-five truckers, ten headlights. Halim taught me that."]
+    questAccept.rosnah-the-lantern-glass: ["the suburban area, just past the quay. the second one, off the first. they're big. they don't stop for anyone."]
+    questWaiting.rosnah-the-lantern-glass: ["ten headlights, dear. the old glass is cracked."]
+    questComplete.rosnah-the-lantern-glass: ["ten. look how they'll shine. Halim would have laughed. lanterns from truck lights. here, dear. for your kindness."]
+    questOffer.rosnah-the-ghost-ship: ["i've never been aboard the ghost ship. i'm frightened to. would you go for me? the pac pinkies crowd the first deck. twenty-five of them. then look round. tell me if the lanterns are lit."]
+    questAccept.rosnah-the-ghost-ship: ["the mysterious path, past the quay, and on to the ship. it doesn't sail. it waits."]
+    questWaiting.rosnah-the-ghost-ship: ["are the lanterns lit, dear? are they?"]
+    questComplete.rosnah-the-ghost-ship: ["they're lit. all of them but one. one hook's empty, you say. after twenty years, every other one still burns. they're waiting for somebody. so am i. thank you, dear. thank you for going."]
+    questOffer.rosnah-the-lantern-home: ["dear. they say an old diver in Aquarium has Halim's lantern. still lit. i can't swim down there and i can't wait any longer. would you bring it home?"]
+    questAccept.rosnah-the-lantern-home: ["Aquarium, at the bottom of the Aqua Road. the Center Hall. an old diver. carry it level, dear. please."]
+    questWaiting.rosnah-the-lantern-home: ["is it coming? i've cleared a space for it on the rail."]
+    questComplete.rosnah-the-lantern-home: ["oh. it's warm. it's still warm. ...Halim. you're home. ...thank you, dear. help me hang it. on the rail. straight. there."]
+    about.siti: ["Siti's my sister's girl. she makes the lantern paper now. better than mine. don't tell her. she'll stop practising."]
+    about.benedict: ["Benedict keeps the harbour records. he's kind. he reads me the crew list when i ask."]
+    about.delmar: ["i don't know anyone by that name, dear."]
+    about.ramona: ["Ramona? a reporter from New Leaf City, they say. she writes about the ghost ship. everyone does, sooner or later."]
+    aboutUnknown: ["i don't know them, dear."]
+    friend.close: ["you can light a lantern with me on the quay. any night. it helps. i don't know why."]
+    friend.best: ["i lit a lantern for you last night. not for the crew. for you. so you'd always find your way back here."]
+    famed: ["people on the quay say your name. kindly. that's the best way."]
+    defamed: ["the river carries it off, dear."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["oh, that's lovely, dear. a long evening by the river, sorted."]
+    gift.again: ["one a day, dear. i'm not a wishing well."]
+
+- id: siti
+  name: Siti
+  look: { gender: female }
+  title: "Lantern Maker's Apprentice"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: boat-quay-town
+    routine:
+      - { from: 9, to: 15, spot: "venue:by-candy", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [biner, batoo, waste paper]
+  questLines: [siti-the-lantern-paper, siti-the-lantern-frames]
+  rumors: [sg-the-quay-lanterns]
+  relationships:
+    - { persona: rosnah, kind: NIECE_OF }
+    - { persona: wei, kind: EATS_AT_THE_STALL_OF }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["hi! do you want a lantern? i made it. it's a bit wonky. the next one won't be.", "oh, hello! welcome to the quay. mind the paper. it's drying."]
+    greet: ["hi!", "you're back! look, a new lantern!", "hello!"]
+    idle: ["(folds a square of paper into a lantern, unfolds it, and folds it again tighter)", "(holds a finished lantern up to the light and checks every seam)"]
+    noWork: ["nothing today. the paper's drying. i hate waiting. i'm waiting."]
+    nothingDue: ["you're paid up! in lanterns."]
+    who: ["Siti. my aunt Rosnah lights a lantern every night for the ghost ship's crew. i make the paper now. my uncle Halim was on that ship. i never met him. i make his lanterns anyway."]
+    bye: ["bye! take a lantern!"]
+    thanks: ["thank you!"]
+    smallTalk: ["the biners on the central way are bins that walk. they carry waste paper. waste paper makes the best lantern paper. nobody believes me. it does.", "the batoos drop broken wings. thin, and strong. they make lantern frames. i've made forty. aunty says forty-one."]
+    speakPlainly: ["plainly: lanterns. wonky ones."]
+    questOffer.siti-the-lantern-paper: ["aunty's lanterns need paper. the biners on the central way carry waste paper, and it's the best. twenty biners, ten sheets."]
+    questAccept.siti-the-lantern-paper: ["the central way, through the suburban area. the first and second stretches. they're bins. they walk. it's strange."]
+    questWaiting.siti-the-lantern-paper: ["ten sheets! the frames are waiting."]
+    questComplete.siti-the-lantern-paper: ["ten! aunty's going to say they're too good for waste paper. they're not. here, a lantern. it's only a bit wonky."]
+    questOffer.siti-the-lantern-frames: ["the frames want broken wings. the batoos on the central way drop them. twenty batoos, ten wings. thin and strong. like aunty."]
+    questAccept.siti-the-lantern-frames: ["the central way, the second and third. they flap. they're not good at it."]
+    questWaiting.siti-the-lantern-frames: ["ten wings. that's forty-one lanterns."]
+    questComplete.siti-the-lantern-frames: ["ten! forty-one! aunty's going to cry. she always does. it's good crying. here. thank you."]
+    about.rosnah: ["aunty Rosnah lights a lantern every night for uncle Halim's ship. she says it helps them find their way. i think it helps her."]
+    about.wei: ["Wei at the food centre gives me extra noodles. he says i'm too thin. i'm not. i eat them anyway."]
+    aboutUnknown: ["i don't know them. do they want a lantern?"]
+    friend.close: ["you can have the first lantern of every batch. it's always the wonkiest. it's always the best."]
+    friend.best: ["i made a lantern with your name on it. it's the straightest one i've ever made."]
+    famed: ["everyone on the quay says your name! i put it on a lantern!"]
+    defamed: ["i don't put those on lanterns."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh WOW. that's lovely. that's going next to the lanterns."]
+    gift.again: ["one a day! aunty says."]
+
+- id: benedict
+  name: Benedict
+  look: { gender: male }
+  title: "Harbour Clerk of the Quay"
+  job: BEGINNER
+  level: { min: 55, max: 57 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: boat-quay-town
+    routine:
+      - { from: 8, to: 16, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:by-ralph-the-wanderer", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [octobunny, slimy, ink]
+  questLines: [benedict-the-ledger-ink, benedict-the-ship-records]
+  relationships:
+    - { persona: rosnah, kind: READS_THE_CREW_LIST_TO }
+    - { persona: arjun, kind: WATCHED_GROW_UP }
+  giftItemIds: [2000002, 2001001]
+  dialogue:
+    greetFirst: ["name? no, sorry, habit. i log everyone who comes up the river. welcome to Boat Quay.", "hello. arrivals are logged, departures are logged, and visitors are welcomed. that's the third column."]
+    greet: ["hello.", "you again. logged.", "welcome back."]
+    idle: ["(writes a ship's name in a ledger in tidy capitals and blots it carefully)", "(turns the pages of a very old crew list, reading the names under his breath)"]
+    noWork: ["nothing today. the river's quiet. the ledger isn't. it never is."]
+    nothingDue: ["your line's ruled off. nothing outstanding."]
+    who: ["Benedict. i keep the harbour records for Boat Quay. every ship in, every ship out, for thirty years. one ship never came back. i keep that page open."]
+    bye: ["safe passage."]
+    thanks: ["logged, with thanks."]
+    smallTalk: ["the octobunnies on the mysterious path squirt the blackest ink there is. it doesn't fade. i write the ledger in it now. it's the only ink worth a ship's name.", "Rosnah asks me to read her the old crew list. i've read it so many times i know it by heart. i read it from the page anyway. it matters."]
+    speakPlainly: ["plainly: the harbour ledger."]
+    questOffer.benedict-the-ledger-ink: ["the ledger's ink fades. the octobunnies on the mysterious path squirt ink that doesn't. twenty-five of them, ten pots. a ship's name should last."]
+    questAccept.benedict-the-ledger-ink: ["the mysterious path, past the quay. the second stretch. they squirt. step aside."]
+    questWaiting.benedict-the-ledger-ink: ["ten pots. the page is waiting."]
+    questComplete.benedict-the-ledger-ink: ["ten. black as the deep. i'll write today's ships in it tonight. here. logged, with thanks."]
+    questOffer.benedict-the-ship-records: ["the ghost ship's manifest. it's still aboard, i'm sure of it, in the second hold. the slimies on the third stretch of the path and in the ship's second deck guard it. twenty-five of them. go and look. tell me if it's there."]
+    questAccept.benedict-the-ship-records: ["the mysterious path to the ship. the second deck. it's dark. take a lantern. take one of Siti's."]
+    questWaiting.benedict-the-ship-records: ["twenty-five, and the manifest. is it there?"]
+    questComplete.benedict-the-ship-records: ["it's there? and the last line's in Halim's hand? 'boat down to the wreck at the bottom of the Aqua Road. lantern lit. back by dark.' he wrote it to the end. i'll tell Rosnah. gently. here. thank you."]
+    about.rosnah: ["Rosnah lights a lantern every night. i read her the crew list when she asks. Halim's name is eleventh. she always stops me at eleven."]
+    about.arjun: ["Arjun used to sit on the quay steps and count boats for me. now he counts gems. he still counts boats when he thinks i'm not looking."]
+    aboutUnknown: ["not in the harbour ledger."]
+    friend.close: ["i've given you a line in the ledger. arrivals, departures, and you."]
+    friend.best: ["if you ever sail out, i'll keep your page open. as long as it takes."]
+    famed: ["your name's in the ledger more than any ship's."]
+    defamed: ["the ledger only takes facts."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["thank you. a long night with the ledger, improved."]
+    gift.again: ["one a day. it's in the harbour rules. i wrote them."]
+
+- id: arjun
+  name: Arjun
+  look: { gender: male }
+  title: "Jeweller-Adventurer of the Quay"
+  job: HUNTER
+  level: { min: 64, max: 66 }
+  strength: VETERAN
+  loadout: orbis-bow-l58
+  personality: relaxed-v1
+  home:
+    town: boat-quay-town
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [tippo red, tippo blue, selkie jr.]
+  contract: arjun-the-jewel-share
+  questLines: [arjun-the-quay-run, arjun-crystal-flower-earrings, arjun-gold-drop-earrings, arjun-half-earrings, arjun-tippo-droppings]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: benedict, kind: COUNTS_BOATS_FOR }
+    - { persona: priscilla, kind: TRADES_WITH }
+  giftItemIds: [2020004, 2000004]
+  dialogue:
+    greetFirst: ["hello, friend! you look like someone who'd wear a good earring. everyone does, once they've tried.", "welcome to the quay! sit. i'll show you a stone. no charge for looking."]
+    greet: ["friend!", "you're back! i've cut a new stone.", "hello hello."]
+    idle: ["(holds a small cut stone up to the light and turns it until it throws a bright spot)", "(counts the boats on the river under his breath, then pretends he wasn't)"]
+    noWork: ["nothing today. the stones are cut. the boats are counted. don't tell Benedict."]
+    nothingDue: ["we're even, friend. clear as a good stone."]
+    who: ["Arjun. i cut stones and i hunt for them. the essences off the ghost ship's crew dry into the finest settings in Singapore. i'll set them in earrings for anyone who walks the path with me."]
+    bye: ["shine bright, friend."]
+    thanks: ["thank you, friend!"]
+    smallTalk: ["the selkies on the ghost ship weep blue. dry it out and it's the best setting for a stone you'll ever see. sad, and very beautiful.", "Priscilla in the CBD sews capes. she wants my stones on her clasps. i want her silk on my boxes. we've been haggling for a year."]
+    speakPlainly: ["plainly: stones, and a bow for getting them."]
+    offer: ["seventy thousand for the day. it goes on my mother's garden, and her garden is very expensive. i'll walk with you all of it."]
+    join: ["let's go, friend. i'll keep an eye out for stones."]
+    bench: ["three days. then the stones want cutting."]
+    leave: ["back to the quay, friend."]
+    refuse.bond: ["i don't walk the path with strangers. the path doesn't like it either."]
+    refuse.flags: ["walk the mysterious path with me once. then ask."]
+    refuseOwnErrand: ["the path first. walk it with me."]
+    questOffer.arjun-the-quay-run: ["walk the path with me. the tippos on the mysterious path, red and blue, thirty of each. they're slow. they're very stubborn."]
+    questAccept.arjun-the-quay-run: ["the mysterious path, past the quay. the first stretch. they sit in the way."]
+    questWaiting.arjun-the-quay-run: ["thirty and thirty, friend."]
+    questComplete.arjun-the-quay-run: ["thirty and thirty. you walk the path well. come back any time. i'll have a stone ready."]
+    questOffer.arjun-crystal-flower-earrings: ["Crystal Flower Earrings, for you. the setting wants pink, the pac pinkies' essence. thirty of them on the path and the ship's first deck, ten essences."]
+    questAccept.arjun-crystal-flower-earrings: ["the mysterious path's second stretch, and the ghost ship's first deck. they're pink. they're angry."]
+    questWaiting.arjun-crystal-flower-earrings: ["ten essences. the stones are cut."]
+    questComplete.arjun-crystal-flower-earrings: ["ten. Crystal Flower Earrings. five safe scrolls, every one took. look how they throw the light. that's you, that is."]
+    questOffer.arjun-gold-drop-earrings: ["Gold Drop Earrings. the setting wants blue. thirty selkie jrs. on the path's third stretch and the ship's fifth deck, ten blue essences. they weep. let them."]
+    questAccept.arjun-gold-drop-earrings: ["the third stretch of the path, and the ship's fifth deck. they cry blue. it's sad. it's beautiful."]
+    questWaiting.arjun-gold-drop-earrings: ["ten blue. careful, they're slippery."]
+    questComplete.arjun-gold-drop-earrings: ["ten. Gold Drop Earrings. five sixties, every one took. they're the colour of the river at night."]
+    questOffer.arjun-half-earrings: ["the Half Earrings. the best i've ever set. they want red, from Mr. Anchor on the ghost ship's sixth deck. thirty of them, ten red essences. he's heavy. hit him anyway."]
+    questAccept.arjun-half-earrings: ["the ghost ship, all the way down to the sixth deck. he's an anchor. he's angry about it."]
+    questWaiting.arjun-half-earrings: ["ten red, friend."]
+    questComplete.arjun-half-earrings: ["ten. the Half Earrings. two tens and three sixties, every one took. one half for you, one half for the person you'd give the other half to. you know who."]
+    questOffer.arjun-tippo-droppings: ["ten tippo droppings? my mother's garden's hungry again."]
+    questAccept.arjun-tippo-droppings: ["the mysterious path."]
+    questWaiting.arjun-tippo-droppings: ["ten."]
+    questComplete.arjun-tippo-droppings: ["ten. my mother thanks you. so do her tomatoes."]
+    about.benedict: ["Benedict let me count boats on the quay steps when i was small. i still count them. he still pretends not to see."]
+    about.priscilla: ["Priscilla sews the best capes in the CBD. she wants my stones on her clasps. i want her silk. we haggle. we both win. we never admit it."]
+    aboutUnknown: ["never cut a stone for them."]
+    friend.close: ["any stone you find, bring it to me. i'll cut it first. free."]
+    friend.best: ["i cut a stone the shape of your face. it's terrible. i love it. it's yours."]
+    famed: ["people on the quay say your name like a good stone. clear, and worth something."]
+    defamed: ["a stone's a stone, whatever they say."]
+    gift: ["thank you, friend!"]
+    gift.favorite: ["a stone-cutter's lunch! thank you!"]
+    gift.again: ["one a day, friend. i've got to keep my hands steady."]
+
+- id: wei
+  name: Wei
+  look: { gender: male }
+  title: "Hawker of the Food Centre"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: singapore-cbd
+    routine:
+      - { from: 7, to: 14, spot: "venue:by-wendy", activity: LINGER }
+      - { from: 14, to: 21, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [stopnow, nospeed, stop sign]
+  questLines: [wei-the-stall-sign, wei-the-awning-poles]
+  rumors: [sg-the-hawker-stall]
+  relationships:
+    - { persona: siti, kind: FEEDS_EXTRA_NOODLES }
+    - { persona: priscilla, kind: KEEPS_A_TABLE_FOR }
+  giftItemIds: [2020004, 2020005]
+  dialogue:
+    greetFirst: ["eat already? no? sit! noodles, rice, or both? both. you look like both.", "welcome to Singapore! first thing, you eat. second thing, you eat again."]
+    greet: ["eat already?", "you're back! the usual?", "sit, sit."]
+    idle: ["(tosses noodles in a wok with one hand and waves to someone with the other)", "(wipes down a small table until it shines, then wipes it again)"]
+    noWork: ["nothing today. the stall's busy. busy is good. busy is nothing."]
+    nothingDue: ["nothing owed. eat."]
+    who: ["Wei. i run a stall at the food centre in the CBD. thirty years. my father before me. his noodles were better. don't tell anyone. i'm catching up."]
+    bye: ["come back hungry!"]
+    thanks: ["eat well!"]
+    smallTalk: ["the stopnows on the central way carry stop signs. my stall's sign blew away in the rain. you see where i'm going.", "the nospeeds carry metal poles. good poles. my awning's held up with a broom. a broom!"]
+    speakPlainly: ["plainly: noodles."]
+    questOffer.wei-the-stall-sign: ["my stall's sign blew away. the stopnows on the central way carry stop signs. twenty-five of them, ten signs. i'll paint them. 'stop, and eat'."]
+    questAccept.wei-the-stall-sign: ["the central way, just out of the CBD. the first and second. they stop you. that's their job."]
+    questWaiting.wei-the-stall-sign: ["ten signs. nobody can find my stall."]
+    questComplete.wei-the-stall-sign: ["ten! 'stop, and eat'. look. there's a queue already. here. and a bowl. two bowls."]
+    questOffer.wei-the-awning-poles: ["my awning's held up with a broom. the nospeeds on the central way carry metal poles. twenty-five of them, ten poles. a proper awning. for the rain."]
+    questAccept.wei-the-awning-poles: ["the central way, the second and third. they're slow. on purpose."]
+    questWaiting.wei-the-awning-poles: ["ten poles. it's going to rain."]
+    questComplete.wei-the-awning-poles: ["ten! a real awning. let it rain. here. and you eat free on rainy days. forever."]
+    about.siti: ["Siti from the quay eats at my stall. she's too thin. i give her extra. she says she isn't. she eats it."]
+    about.priscilla: ["Priscilla sews at the corner. she eats at my stall every day at four. i keep her table. she pretends she didn't ask."]
+    aboutUnknown: ["never ate at my stall? come and fix that."]
+    friend.close: ["your table's always free at my stall. always. even at lunch."]
+    friend.best: ["i've named a dish after you. it's the best one. it's not on the menu. you have to ask."]
+    famed: ["the whole food centre says your name. between mouthfuls."]
+    defamed: ["whoever said that gets more chilli. it shuts them up."]
+    gift: ["oh, for me? thank you!"]
+    gift.favorite: ["oh, for the pot! no. for me."]
+    gift.again: ["one a day! i'm a hawker, not a dustbin."]
+
+- id: mei
+  name: Mei
+  look: { gender: female }
+  title: "Mechanic of the Taxi Fleet"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: singapore-cbd
+    routine:
+      - { from: 8, to: 16, spot: "venue:by-mr-hwang", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [trucker, tires, fire extinguisher]
+  questLines: [mei-the-extinguishers, mei-the-taxi-tyres]
+  relationships:
+    - { persona: wei, kind: EATS_AT_THE_STALL_OF }
+    - { persona: priscilla, kind: FIXES_THE_SEWING_MACHINE_OF }
+  giftItemIds: [2000002, 2020004]
+  dialogue:
+    greetFirst: ["mind the oil. no, the other oil. hello. need a taxi? i don't drive them. i fix them.", "hello. you look like you walked here. the taxis are cheaper than your shoes."]
+    greet: ["hello.", "you. need anything fixed?", "need a lift?"]
+    idle: ["(lies under an imaginary engine with a spanner, muttering at it)", "(wipes grease off her hands with a rag that is greasier than her hands)"]
+    noWork: ["nothing today. every taxi in the city runs. i hate it. it won't last."]
+    nothingDue: ["nothing owed. all forty cabs are running."]
+    who: ["Mei. i keep the CBD's taxis running. forty cabs, one mechanic. every one of them has a name. i named them. the drivers don't know."]
+    bye: ["drive safe. or walk. walk safe."]
+    thanks: ["right. thanks."]
+    smallTalk: ["the freezers in the first suburban area carry fire extinguishers. every cab should carry one. they don't. they will.", "the truckers in the second suburban area are trucks. they've got better tyres than my cabs. it's insulting."]
+    speakPlainly: ["plainly: forty cabs and a spanner."]
+    questOffer.mei-the-extinguishers: ["every cab needs a fire extinguisher. the freezers in the first suburban area carry them. don't ask me why freezers. twenty-five of them, ten extinguishers."]
+    questAccept.mei-the-extinguishers: ["the suburban area, past the end of the central way. the first one. they're cold. that's the joke."]
+    questWaiting.mei-the-extinguishers: ["ten. cab nine's been on fire twice."]
+    questComplete.mei-the-extinguishers: ["ten. one in every cab that matters. here. and cab nine thanks you."]
+    questOffer.mei-the-taxi-tyres: ["the truckers in the second suburban area have the best tyres in Singapore. my cabs are on bald ones. twenty-five truckers, ten tyres."]
+    questAccept.mei-the-taxi-tyres: ["the second suburban area. they're trucks. they're big trucks."]
+    questWaiting.mei-the-taxi-tyres: ["ten tyres. the cabs are sliding."]
+    questComplete.mei-the-taxi-tyres: ["ten. look at the tread. cab nine's going to be insufferable. here."]
+    about.wei: ["Wei feeds me noodles while i fix his stall's gas line. he's been feeding me for six years. the gas line's been fine for five."]
+    about.priscilla: ["Priscilla's sewing machine breaks every week. i fix it every week. i think she breaks it so i'll come round. i think i let her."]
+    aboutUnknown: ["never fixed anything of theirs."]
+    friend.close: ["bring me anything with wheels. i'll fix it first."]
+    friend.best: ["i've named a cab after you. it's the best cab. it's never been on fire."]
+    famed: ["the drivers say your name on the radio. good things."]
+    defamed: ["drivers talk. i don't listen to drivers."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["good. that's a long night under a cab, sorted."]
+    gift.again: ["one a day. my hands are greasy enough."]
+
+- id: priscilla
+  name: Priscilla
+  look: { gender: female }
+  title: "Seamstress of the CBD Corner"
+  job: CLERIC
+  level: { min: 64, max: 66 }
+  strength: VETERAN
+  loadout: orbis-wand-l58
+  personality: efficient-v1
+  home:
+    town: singapore-cbd
+    routine:
+      - { from: 9, to: 15, spot: "venue:by-adrian", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: true
+  knows: [slimy, mr. anchor, batteries]
+  contract: priscilla-the-thread-share
+  questLines: [priscilla-the-wire-run, priscilla-gaia-cape, priscilla-maple-cape, priscilla-eclipse-cloak, priscilla-batteries]
+  rumors: [sg-the-hawker-stall]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: arjun, kind: HAGGLES_WITH }
+    - { persona: mei, kind: BREAKS_THE_SEWING_MACHINE_FOR }
+  giftItemIds: [2000006, 2020005]
+  dialogue:
+    greetFirst: ["stand still. i'm measuring you. no, that's fine, i measure everyone. you'd suit a cape.", "hello. that's a very tired coat. i could do something about that."]
+    greet: ["hello, dear.", "you. stand still a moment.", "stand up straight."]
+    idle: ["(holds a length of cloth up against the light and squints at the weave)", "(sews a tiny, perfect stitch, bites the thread, and looks satisfied)"]
+    noWork: ["nothing today. the capes are cut. tomorrow i sew."]
+    nothingDue: ["you're paid up, dear. stand up straight."]
+    who: ["Priscilla. i sew capes on the corner by Adrian's. good capes. the kind that keep a healer warm on the ghost ship. i've been down there myself. somebody has to know what a cape's for."]
+    bye: ["stand up straight."]
+    thanks: ["thank you, dear."]
+    smallTalk: ["the slimies on the ghost ship drip green essence. it dyes silk the colour of a forest. you'd never guess where it came from. good.", "Arjun on the quay wants my silk for his boxes. i want his stones for my clasps. we've been haggling for a year. it's my favourite argument."]
+    speakPlainly: ["plainly: capes."]
+    offer: ["forty thousand, dear. Wei will have told you i'm worth it. i'll heal you on the way, and mend anything that tears."]
+    join: ["let's go, dear. keep your cape out of the mud."]
+    bench: ["three days. then my machine wants me."]
+    leave: ["back to the corner, dear."]
+    refuse.bond: ["i don't travel with strangers, dear. i sew for them."]
+    refuse.flags: ["come by the CBD's middle street late in the afternoon, dear, and hear what Wei says about me. then ask."]
+    refuseOwnErrand: ["my wire run first, dear."]
+    questOffer.priscilla-the-wire-run: ["my cape frames want wire. the truckers in the second suburban area carry it. twenty-five of them, ten coils."]
+    questAccept.priscilla-the-wire-run: ["the second suburban area, past the central way. they're trucks. stand aside."]
+    questWaiting.priscilla-the-wire-run: ["ten coils, dear."]
+    questComplete.priscilla-the-wire-run: ["ten. good wire. here, dear. come back when you'd like a cape. you'd like a cape."]
+    questOffer.priscilla-gaia-cape: ["a Gaia Cape, for you. it wants green. thirty slimies on the path's third stretch and the ship's second deck, ten green essences."]
+    questAccept.priscilla-gaia-cape: ["the mysterious path, and the ghost ship's second deck. they drip. you'll drip."]
+    questWaiting.priscilla-gaia-cape: ["ten green, dear."]
+    questComplete.priscilla-gaia-cape: ["ten. the Gaia Cape. five safe scrolls, every one took. stand still. there. you look like a forest."]
+    questOffer.priscilla-maple-cape: ["a Maple Cape. it wants the ghost ship's heaviest crew to have stopped fussing. thirty Mr. Anchors on the sixth deck."]
+    questAccept.priscilla-maple-cape: ["the ghost ship, the sixth deck. he's heavy. stand wide."]
+    questWaiting.priscilla-maple-cape: ["thirty, dear."]
+    questComplete.priscilla-maple-cape: ["thirty. the Maple Cape. five sixties, every one took. that's a cape for somebody who goes places."]
+    questOffer.priscilla-eclipse-cloak: ["the Eclipse Cloak. the best i've ever sewn. forty Mr. Anchors on the sixth deck and thirty selkie jrs. on the fifth. i want the whole ship to know it was made."]
+    questAccept.priscilla-eclipse-cloak: ["the ghost ship, the fifth and sixth decks. take your time. take a healer."]
+    questWaiting.priscilla-eclipse-cloak: ["forty and thirty, dear."]
+    questComplete.priscilla-eclipse-cloak: ["there. the Eclipse Cloak. two tens and three sixties, every one took. it's the best thing i've made. it's yours. stand up straight in it."]
+    questOffer.priscilla-batteries: ["ten truck batteries? the machine's hungry."]
+    questAccept.priscilla-batteries: ["the second suburban area."]
+    questWaiting.priscilla-batteries: ["ten, dear."]
+    questComplete.priscilla-batteries: ["ten. it's sewing again."]
+    about.arjun: ["Arjun cuts stones on the quay. he wants my silk. i want his stones. we'll settle one day. not yet. i'm enjoying it."]
+    about.mei: ["Mei fixes my machine every week. it breaks every week. i don't know why. i've stopped asking."]
+    aboutUnknown: ["never sewn for them."]
+    friend.close: ["you can bring me any tear. any cape. i'll mend it first."]
+    friend.best: ["i've cut a cape for you. i haven't sewn it yet. i want it to be perfect. it will be."]
+    famed: ["people at the food centre say your name. Wei tells me. over lunch."]
+    defamed: ["a good cape hides a lot, dear."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["thank you, dear. an afternoon at the machine, improved."]
+    gift.again: ["one a day, dear. i'm watching my waist. for the fittings."]
