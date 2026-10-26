@@ -163,11 +163,18 @@ public final class LivingWorldHooks {
         }
     }
 
+    /** {@link #looted(Character, int, int, int, boolean)} of a drop not known to be its own kill's. */
+    public static void looted(Character chr, int itemId, int quantity, int meso) {
+        looted(chr, itemId, quantity, meso, false);
+    }
+
     /**
      * {@code chr} picked a drop up off the map: {@code quantity} of {@code itemId}, or {@code meso} (its own share of a
-     * party's). A companion on a live bench slice counts it as kill loot for its harvest (P5, HarvestDiff).
+     * party's). {@code ownKill}: the drop was its own (it was the monster's top damager). A companion on a live bench
+     * slice counts it as kill loot for its harvest (P5, HarvestDiff); a contracted companion out with its owner (or on
+     * loan) owes its owner a share of it by its contract's loot terms (LootTerms).
      */
-    public static void looted(Character chr, int itemId, int quantity, int meso) {
+    public static void looted(Character chr, int itemId, int quantity, int meso, boolean ownKill) {
         LivingWorld world = LivingWorld.get();
         if (world == null || chr == null) {
             return;
@@ -176,6 +183,10 @@ public final class LivingWorldHooks {
         try {
             if (itemId > 0 && AgentPresence.isAgent(chr)) {
                 PersonalKnowledge.shared().gained(chr.getId(), itemId);
+            }
+            server.living.roster.LootTerms terms = world.lootTerms();
+            if (terms != null) {
+                terms.looted(chr, itemId, quantity, meso, ownKill);
             }
         } catch (RuntimeException failure) {
             log.warn("living world looted hook failed", failure);
@@ -260,6 +271,10 @@ public final class LivingWorldHooks {
             server.living.resident.LivingTalk.forget(chr);
             server.living.resident.LivingTalk.endNative(chr); // its native Crew window page went with the connection
             scripting.event.EventInstanceManager instance = chr.getEventInstance(); // before the disconnect unregisters them
+            // what they borrowed goes back to its owner, and their companions out on loan come home (CompanionLoans)
+            if (world.loans() != null) {
+                world.executor().submit("loan.logout " + chr.getId(), () -> world.loans().loggedOut(chr.getId()));
+            }
             // on companion-ops ahead of the owner's LOG_ONOFF, which the logout publishes right after this hook
             world.executor().submit("roster.logout " + chr.getId(), () -> {
                 Character back = world.roster().onlineCharacter(chr.getId());
@@ -287,6 +302,10 @@ public final class LivingWorldHooks {
         }
         try {
             world.roster().ownerChangingChannel(chr, channel);
+            if (world.loans() != null && world.loans().any()) {
+                // a borrowed companion cannot follow its friend to another channel: it goes home
+                world.executor().submit("loan.channel " + chr.getId(), () -> world.loans().borrowerLeaving(chr.getId()));
+            }
         } catch (RuntimeException failure) {
             log.warn("living world channel change hook failed", failure);
         }
@@ -303,6 +322,10 @@ public final class LivingWorldHooks {
         }
         try {
             world.roster().ownerEnteredCashShop(chr);
+            if (world.loans() != null && world.loans().any()) {
+                // nor into the Cash Shop
+                world.executor().submit("loan.cash_shop " + chr.getId(), () -> world.loans().borrowerLeaving(chr.getId()));
+            }
         } catch (RuntimeException failure) {
             log.warn("living world cash shop hook failed", failure);
         }
@@ -626,6 +649,9 @@ public final class LivingWorldHooks {
                 }
                 world.slots().onPartyChanged(event);
                 world.partySync().onPartyChanged(event);
+                if (world.loans() != null) {
+                    world.loans().onPartyChanged(event); // a borrowed companion its friend expelled goes home
+                }
             });
         } catch (RuntimeException failure) {
             log.warn("living world partyChanged hook failed", failure);
@@ -661,6 +687,25 @@ public final class LivingWorldHooks {
         try {
             return world.benchDuty().sliceOf(characterId) != null;
         } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    /**
+     * Trade.inviteTrade and visitTrade: false when either side is a companion out on loan to its owner's friend
+     * (CompanionLoans). No trade opens with it either way, so nothing in its bag or purse moves between the players,
+     * whether a gear offer, a potion share, "give me mesos" or the friend's own invite; to the friend it says why, once a
+     * minute. Everyone else trades as stock.
+     */
+    public static boolean tradeAllowed(Character c1, Character c2) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || c1 == null || c2 == null || world.loans() == null || !world.loans().any()) {
+            return true;
+        }
+        try {
+            return !world.loans().blocksTrade(c1, c2);
+        } catch (RuntimeException failure) {
+            log.warn("living world tradeAllowed hook failed", failure);
             return false;
         }
     }

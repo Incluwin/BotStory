@@ -143,7 +143,7 @@ public final class PartySearchBench {
 
     /** The level of a benched companion that may answer this search now, else 0 (companion-ops: store reads). */
     private int level(Character owner, RosterEntry entry, Persona persona, PartySearchWant want) {
-        if (entry.state() != RosterState.BENCHED || passedOver(owner.getId(), persona.id())) {
+        if (entry.state() != RosterState.BENCHED || CompanionLoans.lent(world, persona.id()) || passedOver(owner.getId(), persona.id())) {
             return 0;
         }
         JobErrands errands = world.jobErrands();

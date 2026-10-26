@@ -42,6 +42,8 @@ class ClaimGuardBoundaryTest {
         ROUTES.put("messenger", Pattern.compile("\\bjoinMessenger\\("));
         ROUTES.put("chat", Pattern.compile("\\bAgentChatRouteCoordinator\\.handleChat\\b"));
         ROUTES.put("whisperchat", Pattern.compile("\\bAgentChatRouteCoordinator\\.handleWhisperChat\\b"));
+        // a leader change with no claim check of its own: only the loans' hand-over, after their lease transfer
+        ROUTES.put("handover", Pattern.compile("\\bhandOverAgent\\("));
     }
 
     private static final Set<String> REVIEWED = Set.of(
@@ -64,7 +66,8 @@ class ClaimGuardBoundaryTest {
             "server/agents/capabilities/party/AgentPartyLifecycleService.java gatewayjoin 1",
             // registration and loading plumbing: every caller is itself listed here (spawns after ensureCanControl,
             // chat recruit/transfer after ensureCanControl / the transfer claim check, a relogin keeps the leader)
-            "server/agents/runtime/AgentInteractionRuntime.java register 7",
+            // (8: handOverAgent's re-registration, below with its only caller)
+            "server/agents/runtime/AgentInteractionRuntime.java register 8",
             "server/agents/runtime/AgentRegistrationCoordinator.java register 9",
             "server/agents/runtime/AgentLifecycleService.java register 5",
             "server/agents/runtime/AgentLifecycleService.java load 3",
@@ -96,6 +99,12 @@ class ClaimGuardBoundaryTest {
             // and a human's routed accept (a merge or make-room) joins the party that invited them
             "server/living/roster/LiveCrew.java join 1",
             "server/living/roster/LiveCrew.java partyjoin 1",
+            // lending (docs/COMPANION_LENDING_PLAN.md 3.3): CompanionLoans hands a companion its owner leads (checked in
+            // refusalToLend) to the friend named in the offer, only after its lease moved (COMPANION, owner) -> (LOAN,
+            // friend), and back the same way; the friend never gets mayControl or mayLoad, and joins it to their party
+            "server/agents/runtime/AgentInteractionRuntime.java handover 1",
+            "server/living/roster/LiveLoanHands.java handover 1",
+            "server/living/roster/LiveLoanHands.java join 1",
             // P3: a menu order is the owner's whisper to their own companion out with them, after mayControl; the bridge
             // asks the claim guard again
             "server/living/roster/CompanionManager.java whisper 1",
@@ -206,9 +215,9 @@ class ClaimGuardBoundaryTest {
         assertContains("server/agents/auth/AgentControlService.java", "AgentClaimGuard.mayLoad(actor, agent.id())");
         assertContains("server/agents/integration/cosmic/CosmicAgentWhisperCommandBridge.java", "AgentClaimGuard.mayControl(leader, target.getId())");
         assertContains("server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java",
-                "refusedNamed(entriesByLeader, commandLeader, command.botName(), true)");
+                "refusedNamed(everyEntry, commandLeader, command.botName(), true)");
         assertContains("server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java",
-                "refusedNamed(entriesByLeader, commandLeader, agentName, false)");
+                "refusedNamed(everyEntry, commandLeader, agentName, false)");
         assertContains("server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java", "!mayFollow(leader, target, entry)");
         assertContains("server/agents/commands/AgentLeaderTransferCoordinator.java", "AgentClaimGuard.isClaimed(agent.id())");
         assertContains("server/living/LivingWorld.java", "AgentClaimGuard.install(world.directory)");
@@ -220,6 +229,12 @@ class ClaimGuardBoundaryTest {
         assertContains("server/living/resident/ResidentRuntime.java", "CompanionLeases.Kind.RESIDENT");
         assertContains("server/living/population/PresenceScheduler.java", "AgentRuntimeRegistry.hasActiveAgentCharacterId(existing)");
         assertContains("server/living/roster/RosterService.java", "AgentClaimGuard.mayLoad(owner, characterId)");
+        // lending: every chat route sees only the Agents the speaker may command by chat (never one lent to them), and
+        // a companion changes leader only once its lease moved from its owner to the friend named in the offer
+        assertContains("server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java",
+                "entriesByLeader = chatReach(leader, everyEntry);");
+        assertContains("server/living/roster/CompanionLoans.java", "world.leases().transfer(characterId, asCompanion, asLoan)");
+        assertContains("server/living/roster/CompanionDirectory.java", "&& !onLoan(agentCharacterId);");
     }
 
     private static int count(Pattern pattern, String source) {

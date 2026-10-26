@@ -118,7 +118,10 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
             return entry;
         }
         long haulMeso = entry.haulMeso();
-        long gainedMeso = slice.loot.takeMeso(agent.getMeso());
+        long pickedMeso = slice.loot.takeMeso(agent.getMeso());
+        // its contract's cut of that meso stays in its purse (LootTerms; all of it moves without authored terms)
+        LootTerms terms = world.lootTerms();
+        long gainedMeso = terms == null ? pickedMeso : terms.benchShare(entry.characterId(), entry.personaId(), pickedMeso);
         if (gainedMeso > 0) {
             agent.gainMeso((int) -gainedMeso, false);
             haulMeso += gainedMeso;

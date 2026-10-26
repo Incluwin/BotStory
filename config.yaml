@@ -874,6 +874,23 @@ living_world:
     # Decision 17: companions in your party earn their own kill EXP, but your share is computed as if they were
     # absent, so a full crew never slows you down. false = the stock split shares every kill with them.
     COMPANION_EXP_SHARE: true
+    # Lending (docs/COMPANION_LENDING_PLAN.md): an owner lends a companion out with them to a mutual buddy or guild
+    # mate on their map, from its card, for 30-120 minutes; the friend directs it from its card, and it comes home at
+    # the end, when called back, or when either of them logs off. COMPANION_LENDING_ENABLED is its kill switch (false:
+    # no new loans, and every loan out comes home within seconds). A friend holds at most PER_BORROWER loans, an owner
+    # lends at most PER_OWNER companions at once; the friend's Yes/No lapses after OFFER_MS.
+    COMPANION_LENDING_ENABLED: true
+    COMPANION_LOANS_PER_BORROWER: 1
+    COMPANION_LOANS_PER_OWNER: 2
+    COMPANION_LOAN_MAX_MINUTES: 120
+    COMPANION_LOAN_OFFER_MS: 60000
+    # Contract loot terms: a contracted companion's loot follows its contract's lootShare (OWN_DROPS keeps
+    # ownDropsPercent of its own kills' drops; NONE and LEADER keep no cut), after upkeep: it keeps loot meso until
+    # its purse holds UPKEEP_MESO_PER_LEVEL x its level. Your share goes into its haul every SETTLE_MS, for "Your
+    # haul...". A contract without lootShare splits nothing. COMPANION_LOOT_TERMS_ENABLED is its kill switch.
+    COMPANION_LOOT_TERMS_ENABLED: true
+    COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL: 1000
+    COMPANION_LOOT_SETTLE_MS: 60000
     # Hired hands (P4): citizens one friend may hire. They count toward ROSTER_MAX, so at most that; the default is
     # ROSTER_MAX, so a friend without Residents can still fill a party and a bench from the hire list. Then the
     # minutes a citizen guest spends in your party before it offers to stay on.

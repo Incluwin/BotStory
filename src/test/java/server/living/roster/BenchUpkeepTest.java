@@ -101,6 +101,49 @@ class BenchUpkeepTest {
     }
 
     @Test
+    void itsContractsCutOfAFarmedHourGoesToItsPurseNotTheHaul() {
+        // COMPANION_LENDING_PLAN 4.3: an OWN_DROPS 10 contract keeps 10% of the meso it farms at camp
+        LootTerms terms = mock(LootTerms.class);
+        when(terms.benchShare(org.mockito.ArgumentMatchers.eq(ANN), org.mockito.ArgumentMatchers.eq("brin"),
+                org.mockito.ArgumentMatchers.anyLong())).thenAnswer(inv -> Math.round(0.9d * (long) inv.getArgument(2)));
+        when(game.world.lootTerms()).thenReturn(terms);
+        game.companion(ANN, "brin", "Brin", 902, Assignment.FARM_MESO);
+        BenchYieldModel.Key key = BenchYieldModel.Key.of(-1, 10, FIELD);
+        for (int hunt = 0; hunt < 20; hunt++) {
+            game.yields.record(key, new BenchYieldModel.Sample(0.25d, 0L, 250L, 0L, 0)); // 1,000 meso/h measured
+        }
+        double predicted = game.yields.mesoPerHour(key, ledger.mesoPrior(10));
+        RosterEntry row = game.row(ANN, "brin");
+        long hourAgo = System.currentTimeMillis() - 3_600_000L;
+        game.store.seed(new RosterEntry(ANN, "brin", RosterState.BENCHED, Assignment.FARM_MESO, 0, 0, FIELD, 0L, 0L, 0L,
+                row.recruitedAtMs(), hourAgo, hourAgo, 0, null));
+
+        ledger.tick();
+
+        assertEquals(0.75d * predicted, game.row(ANN, "brin").haulMeso(), 3.0d, "90% farmed, less 15% upkeep");
+        org.mockito.ArgumentCaptor<Long> cut = org.mockito.ArgumentCaptor.forClass(Long.class);
+        org.mockito.Mockito.verify(terms).payCut(org.mockito.ArgumentMatchers.eq("brin"), cut.capture());
+        assertEquals(0.1d * predicted, cut.getValue(), 2.0d, "its cut, to its own purse");
+    }
+
+    @Test
+    void aCompanionOutOnLoanFarmsNothingAtCamp() {
+        CompanionLoans loans = mock(CompanionLoans.class);
+        when(loans.any()).thenReturn(true);
+        when(loans.lent("brin")).thenReturn(true);
+        when(game.world.loans()).thenReturn(loans);
+        game.companion(ANN, "brin", "Brin", 902, Assignment.FARM_MESO);
+        long hourAgo = System.currentTimeMillis() - 3_600_000L;
+        RosterEntry lent = new RosterEntry(ANN, "brin", RosterState.BENCHED, Assignment.FARM_MESO, 0, 0, FIELD, 0L, 0L, 0L,
+                game.row(ANN, "brin").recruitedAtMs(), hourAgo, hourAgo, 0, null);
+        game.store.seed(lent);
+
+        ledger.tick();
+
+        assertEquals(lent, game.row(ANN, "brin"), "no credit, no upkeep: it is out with its owner's friend");
+    }
+
+    @Test
     void aGatherItCanGetNothingForChargesNoUpkeep() throws Exception {
         game.companion(ANN, "brin", "Brin", 902, Assignment.GATHER);
         long hourAgo = System.currentTimeMillis() - 3_600_000L;

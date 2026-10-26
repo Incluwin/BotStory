@@ -39,6 +39,9 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         /** Another player's roster companion. */
         record OthersCompanion(int ownerId, String personaId) implements Relation { }
 
+        /** Another player's roster companion out on loan to the viewer (CompanionLoans). */
+        record BorrowedCompanion(int ownerId, String personaId) implements Relation { }
+
         /** A Persona nobody has recruited: it lives as a Resident of its town. */
         record Resident(String personaId) implements Relation { }
 
@@ -106,6 +109,11 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         }
     }
 
+    /** The persona id of this character (a hired citizen's {@code hire:<id>}), or null when it is none. */
+    public String personaIdOfCharacter(int characterId) {
+        return personaIdOf(characterId);
+    }
+
     /** The roster owner of this character, or 0 when it is nobody's companion. */
     public int ownerOfCharacter(int characterId) {
         String personaId = personaIdOf(characterId);
@@ -113,8 +121,8 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
     }
 
     /**
-     * True for an own party: exactly one human is in it and no member is another player's companion.
-     * An offline member counts as an Agent only when it is a persona or a citizen.
+     * True for an own party: exactly one human is in it and no member is another player's companion, except one out on
+     * loan to that human. An offline member counts as an Agent only when it is a persona or a citizen.
      */
     public boolean isCompanionParty(Party party) {
         if (party == null) {
@@ -139,7 +147,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         }
         for (int agentId : agents) {
             int owner = ownerOfCharacter(agentId);
-            if (owner != 0 && owner != human) {
+            if (owner != 0 && owner != human && borrowerOf(agentId) != human) {
                 return false;
             }
         }
@@ -150,8 +158,10 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
 
     /**
      * Administrators command any loaded Agent; an owner commands their companion unless it is on a live
-     * bench slice (the bench session owns it until a call ends the slice); the runtime leader
-     * commands a plain Agent it leads. Residents and citizens take orders from no player.
+     * bench slice (the bench session owns it until a call ends the slice) or out on loan to a friend (the friend
+     * directs it from its card, CompanionLoans.mayDirect, and nobody commands it besides); the runtime leader
+     * commands a plain Agent it leads. Residents and citizens take orders from no player. A friend it is lent to
+     * never controls it.
      */
     @Override
     public boolean mayControl(Character actor, int agentCharacterId) {
@@ -168,7 +178,8 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         if (personaId == null) {
             return AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == actor.getId();
         }
-        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchDuty().live(personaId);
+        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchDuty().live(personaId)
+                && !onLoan(agentCharacterId);
     }
 
     /**
@@ -197,17 +208,51 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         return isCitizen(agentCharacterId) || personaIdOf(agentCharacterId) != null;
     }
 
+    /** While any companion is offered or out on loan, the chat routes ask {@link #mayCommandByChat}. */
+    @Override
+    public boolean restrictsChat() {
+        CompanionLoans loans = world.loans();
+        return loans != null && loans.any();
+    }
+
+    /**
+     * A companion out on loan takes no typed line from anyone but an administrator: the friend leading it directs it from
+     * its card (CompanionLoans.direct), so a party line, a whisper or a pending offer of theirs never reaches its trade,
+     * equipment, build, job or supply flows. Every other Agent takes its leader's lines as before.
+     */
+    @Override
+    public boolean mayCommandByChat(Character actor, int agentCharacterId) {
+        return !onLoan(agentCharacterId) || actor != null && AgentAuthorityService.mayAdminister(actor);
+    }
+
     /**
      * An owner's whisper to their own companion reached no Agent: the companion whispers why
-     * ({@link CompanionWhisperRefusals}). Anyone else's refused whisper stays unanswered, as a stranger's always was.
+     * ({@link CompanionWhisperRefusals}). The friend a companion is out on loan to hears, once a minute, that it is
+     * directed from its card. Anyone else's refused whisper stays unanswered, as a stranger's always was.
      */
     @Override
     public void refused(Character actor, Character agent, AgentClaimGuard.Refusal refusal) {
+        if (onLoan(agent.getId())) {
+            world.loans().whisperRefused(actor, agent);
+            return;
+        }
         String personaId = personaIdOf(agent.getId());
         if (personaId == null || world.roster().cachedOwnerOf(personaId) != actor.getId()) {
             return;
         }
         refusals.refused(actor, agent, personaId, refusal);
+    }
+
+    private boolean onLoan(int characterId) {
+        CompanionLoans loans = world.loans();
+        return loans != null && loans.onLoan(characterId);
+    }
+
+    /** The friend a companion is out on loan to, else 0. */
+    private int borrowerOf(int characterId) {
+        CompanionLoans loans = world.loans();
+        CompanionLoans.Loan loan = loans == null ? null : loans.loanOf(characterId);
+        return loan != null && loan.out() ? loan.borrowerId() : 0;
     }
 
     // ---- lookups -------------------------------------------------------------------------
@@ -233,7 +278,10 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
             return new Relation.Resident(personaId);
         }
         if (owner != viewerId) {
-            return new Relation.OthersCompanion(owner, personaId);
+            CompanionLoans loans = world.loans();
+            CompanionLoans.Loan loan = loans == null || viewerId == 0 ? null : loans.lentOut(personaId);
+            return loan != null && loan.borrowerId() == viewerId ? new Relation.BorrowedCompanion(owner, personaId)
+                    : new Relation.OthersCompanion(owner, personaId);
         }
         RosterEntry entry = world.store().rosterEntry(owner, personaId);
         return entry == null ? new Relation.Resident(personaId) : new Relation.OwnCompanion(entry);

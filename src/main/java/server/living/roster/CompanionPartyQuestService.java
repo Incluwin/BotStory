@@ -716,6 +716,11 @@ public final class CompanionPartyQuestService {
         if (bot == null) {
             return blocks(id, name, DeskLines.NOT_UP, entrance);
         }
+        if (world.loans() != null && world.loans().onLoan(id)) {
+            // lent by its owner to someone in this party: never in a lineup, it waits outside the run (D2 b)
+            return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L, entrance),
+                    LineupPlan.Fit.WAITS, DeskLines.ON_LOAN, false);
+        }
         if (world.commitments().isCommitted(id) || AgentPartyQuestEngagementRegistry.forMember(id) != null) {
             return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L, entrance),
                     LineupPlan.Fit.BLOCKS, DeskLines.CATCHING_BREATH, false);
@@ -1045,6 +1050,9 @@ public final class CompanionPartyQuestService {
             PqEntrance entrance = PqEntrance.of(fresh.pqKey());
             int beside = 0;
             for (LineupPlan.Seat extra : fresh.extras()) {
+                if (world.loans() != null && world.loans().waitOutsideForRun(extra.characterId())) {
+                    continue; // on loan to someone here: it steps out to wait for its friend, not for its owner
+                }
                 Character owner = world.roster().onlineCharacter(extra.ownerId());
                 Persona persona = world.content().persona(extra.personaId());
                 // gone to the store: it waits beside her once back (RosterService.hold lets the trip finish)

@@ -188,8 +188,30 @@ public final class Content {
 
     public record Price(long meso, List<ContractItem> items, KillProof proof) { }
 
+    /**
+     * A contract's terms. {@code lootShare} is null when the contract does not author it: such a companion's loot is not
+     * split (LootTerms), as before the terms were enforced. {@code ownDropsPercent} is what an OWN_DROPS companion keeps
+     * of its own kills' drops, as written; -1 when the contract does not write it ({@link #keptPercent} then reads the
+     * authored default, 10).
+     */
     public record Terms(int durationHours, int maxLevelGap, LootShare lootShare, List<LeaveRule> leavesOn,
-                        int cooldownHoursAfterLeave, long rejoinMeso, int ownDropsPercent) { }
+                        int cooldownHoursAfterLeave, long rejoinMeso, int ownDropsPercent) {
+        /** The authored default of ownDropsPercent for OWN_DROPS (docs/LIVING_RPG_PLAN.md, 11.5). */
+        public static final int OWN_DROPS_DEFAULT_PERCENT = 10;
+
+        /** True when the contract authors its loot terms, so its companion's loot is split by them. */
+        public boolean splitsLoot() {
+            return lootShare != null;
+        }
+
+        /** The share of its own kills' drops the companion keeps, 0-100 (none for NONE and LEADER, or no terms). */
+        public int keptPercent() {
+            if (lootShare != LootShare.OWN_DROPS) {
+                return 0;
+            }
+            return ownDropsPercent < 0 ? OWN_DROPS_DEFAULT_PERCENT : Math.min(100, ownDropsPercent);
+        }
+    }
 
     public record Contract(String id, OfferWhen offerWhen, Price price, Terms terms, String file) { }
 

@@ -349,8 +349,8 @@ public final class CompanionPartySync {
         }
         String key = crew.keyOf(joiner);
         int owner = crew.ownerOf(key);
-        if (owner == 0 || crew.partyOf(joiner) != event.partyId() || crew.members(event.partyId()).contains(owner)
-                || busy(owner)) {
+        if (owner == 0 || crew.hostOf(joiner) != 0 || crew.partyOf(joiner) != event.partyId()
+                || crew.members(event.partyId()).contains(owner) || busy(owner)) {
             return false; // a guest, a citizen, an Agent, or a companion joining its owner
         }
         crew.drift(event.partyId(), key + " joined a party without its owner " + owner);

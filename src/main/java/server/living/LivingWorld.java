@@ -79,6 +79,8 @@ public final class LivingWorld {
     private final CompanionManager manager;
     private final CompanionLeases leases;
     private final CompanionDirectory directory;
+    private final server.living.roster.CompanionLoans loans;
+    private final server.living.roster.LootTerms lootTerms;
     private final CompanionBudget budget;
     private final CompanionChatVerbs chatVerbs;
     private final CompanionAuditor auditor;
@@ -127,6 +129,8 @@ public final class LivingWorld {
         this.manager = new CompanionManager(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
+        this.loans = new server.living.roster.CompanionLoans(this); // lending a companion to a friend
+        this.lootTerms = new server.living.roster.LootTerms(this); // the contracts' lootShare and ownDropsPercent
         this.budget = new CompanionBudget(this);
         this.chatVerbs = new CompanionChatVerbs(this);
         this.auditor = new CompanionAuditor(this);
@@ -304,6 +308,16 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.audit", world.auditor::run),
                 CompanionAuditor.INTERVAL_MS, CompanionAuditor.INTERVAL_MS));
+        // loans of companions to friends end on time, with their friend or owner gone, or with the switch off
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (world.loans.any()) {
+                world.executor.submit("companion.loans", world.loans::sweep);
+            }
+        }, server.living.roster.CompanionLoans.SWEEP_MS, server.living.roster.CompanionLoans.SWEEP_MS));
+        // a contracted companion's owed share of its loot goes from its purse and bag into its haul
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("companion.loot_share", world.lootTerms::settleAll),
+                config.COMPANION_LOOT_SETTLE_MS, config.COMPANION_LOOT_SETTLE_MS));
         if (config.QUEST_MARKER_PULSE_MS > 0) {
             world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::tick,
                     config.QUEST_MARKER_PULSE_MS, config.QUEST_MARKER_PULSE_MS));
@@ -536,6 +550,16 @@ public final class LivingWorld {
 
     public CompanionLeases leases() {
         return leases;
+    }
+
+    /** Companions lent to their owners' friends (docs/COMPANION_LENDING_PLAN.md). */
+    public server.living.roster.CompanionLoans loans() {
+        return loans;
+    }
+
+    /** The contracts' loot terms (docs/COMPANION_LENDING_PLAN.md, section 4). */
+    public server.living.roster.LootTerms lootTerms() {
+        return lootTerms;
     }
 
     public CompanionDirectory directory() {

@@ -77,6 +77,8 @@ public final class AgentChatRouteCoordinator {
                                   AgentFormationService.FormationState defaultFormation,
                                   int defaultFollowStaggerPx,
                                   int defaultSnapRangePx) {
+        Map<Integer, List<E>> everyEntry = entriesByLeader; // named verbs still find, and refuse, one kept from chat
+        entriesByLeader = chatReach(leader, everyEntry);
         List<E> interactionEntries = entriesByLeader.get(leader.getId());
         if (interactionEntries != null) {
             interactionEntries.forEach(entry -> setInteractionTarget(entry, leader));
@@ -86,6 +88,7 @@ public final class AgentChatRouteCoordinator {
                 message,
                 channel,
                 chatIngressHooks(
+                        everyEntry,
                         entriesByLeader,
                         recruitAction,
                         transferAction,
@@ -95,7 +98,36 @@ public final class AgentChatRouteCoordinator {
                         defaultSnapRangePx));
     }
 
+    /**
+     * The Agents a line may reach: all of them, unless the installed claim guard keeps the speaker's typed lines from
+     * some Agent (AgentClaimGuard.mayCommandByChat: a companion its owner lent to the speaker is directed through its
+     * card, never by chat). Those are left out of every list, so no route sees them: the speaker's own commands, the
+     * pending offers they would answer, the formations. Only the named transfer and dismiss verbs still look in the full
+     * lists, so such an Agent is found there and refuses (it is not the speaker's to control) instead of the stock verb
+     * finding it by its leader. Nothing is copied while the guard restricts no chat at all.
+     */
+    static <E extends AgentRuntimeEntry> Map<Integer, List<E>> chatReach(Character speaker,
+                                                                        Map<Integer, List<E>> entriesByLeader) {
+        if (!AgentClaimGuard.restrictsChat()) {
+            return entriesByLeader;
+        }
+        Map<Integer, List<E>> reach = new java.util.HashMap<>();
+        for (Map.Entry<Integer, List<E>> leaderEntries : entriesByLeader.entrySet()) {
+            List<E> kept = new java.util.ArrayList<>(leaderEntries.getValue().size());
+            for (E entry : leaderEntries.getValue()) {
+                if (AgentClaimGuard.mayCommandByChat(speaker, AgentRuntimeIdentityRuntime.botId(entry))) {
+                    kept.add(entry);
+                }
+            }
+            if (!kept.isEmpty()) {
+                reach.put(leaderEntries.getKey(), kept);
+            }
+        }
+        return reach;
+    }
+
     private static <E extends AgentRuntimeEntry> AgentChatIngressService.Hooks<E> chatIngressHooks(
+            Map<Integer, List<E>> everyEntry,
             Map<Integer, List<E>> entriesByLeader,
             AgentRecruitCommandService.RecruitAction recruitAction,
             AgentTransferCommandService.TransferAction transferAction,
@@ -115,7 +147,7 @@ public final class AgentChatRouteCoordinator {
                 (commandLeader, text) -> {
                     AgentTransferCommand command = AgentCommandTargetResolver.matchAgentTransferCommand(text);
                     E refused = command == null
-                            ? null : refusedNamed(entriesByLeader, commandLeader, command.botName(), true);
+                            ? null : refusedNamed(everyEntry, commandLeader, command.botName(), true);
                     return refused != null ? stayWithLeader(refused)
                             : AgentLifecycleCommandCoordinator.handleTransferCommand(commandLeader, text, transferAction);
                 },
@@ -135,7 +167,7 @@ public final class AgentChatRouteCoordinator {
                 (commandLeader, text) -> {
                     String agentName = AgentDismissCommandService.dismissTarget(text);
                     E refused = agentName == null
-                            ? null : refusedNamed(entriesByLeader, commandLeader, agentName, false);
+                            ? null : refusedNamed(everyEntry, commandLeader, agentName, false);
                     if (refused != null) {
                         return stayWithLeader(refused);
                     }

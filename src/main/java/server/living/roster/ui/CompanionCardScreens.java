@@ -35,11 +35,13 @@ import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionBossRuns;
 import server.living.roster.CompanionBudget;
+import server.living.roster.CompanionLoans;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionPartyQuestService;
 import server.living.roster.CompanionSettings;
 import server.living.roster.CompanionSettings.Support;
 import server.living.roster.CompanionView;
+import server.living.roster.LootTerms;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
@@ -229,6 +231,10 @@ final class CompanionCardScreens {
         options.add(new Option("The whole crew...", () -> menus.crews().show(owner, persona)));
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
+        if (here && menus.loans().offersLend(owner, persona)) {
+            options.add(new Option("Lend to a friend...", () -> menus.loans().lendPicker(owner, persona,
+                    () -> reopen(owner, persona, ""))));
+        }
         if (here) {
             options.add(new Option("Let me see your gear", () -> showGear(owner, persona)));
             options.add(new Option("Let's trade", () -> {
@@ -244,7 +250,7 @@ final class CompanionCardScreens {
             default -> errand == null ? "" : errand + "\r\n";
         };
         String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "")
-                + records(persona);
+                + records(persona) + terms(persona);
         LivingTalk.open(owner, portrait(persona)).menu(text, options).back(crewBack(owner)).show();
     }
 
@@ -260,6 +266,35 @@ final class CompanionCardScreens {
             lines.append(line).append("\r\n");
         }
         return lines.toString();
+    }
+
+    /**
+     * Its owner's share of what it looted out in the field that it still carries (LootTerms tallies it and moves it into
+     * the haul within a minute, and at a hand-over): "\r\nyours, still in my bag: 1,240 meso and 3 stacks", or nothing.
+     */
+    private String pendingShare(Persona persona) {
+        LootTerms terms = world.lootTerms();
+        int characterId = terms == null ? 0 : world.residents().characterIdOf(persona.id());
+        if (characterId == 0) {
+            return "";
+        }
+        long meso = terms.pendingMeso(characterId);
+        int stacks = terms.pendingItems(characterId).size();
+        List<String> parts = new ArrayList<>();
+        if (meso > 0) {
+            parts.add(String.format(Locale.ROOT, "%,d meso", meso));
+        }
+        if (stacks > 0) {
+            parts.add(stacks + (stacks == 1 ? " stack" : " stacks"));
+        }
+        return parts.isEmpty() ? "" : "\r\nyours, still in my bag: " + String.join(" and ", parts);
+    }
+
+    /** Its contract's loot terms, a line ("Terms: keeps 10%..."; LootTerms.describe), or nothing when it has none. */
+    private String terms(Persona persona) {
+        LootTerms terms = world.lootTerms();
+        String line = terms == null ? null : terms.describe(persona.id());
+        return line == null ? "" : line + "\r\n";
     }
 
     /** BENCHED, AWAY (on an errand, its seat kept) or PARKED; one already called shows its way and is not called twice. */
@@ -293,7 +328,7 @@ final class CompanionCardScreens {
         boolean marker = live.startsWith("(");
         String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
         String more = (marker || live.isEmpty() ? "" : live + "\r\n") + progress
-                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + records(persona);
+                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + records(persona) + terms(persona);
         String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();
@@ -1139,9 +1174,11 @@ final class CompanionCardScreens {
         if (items.isEmpty() && view.haulMeso() == 0) {
             text.append(" nothing yet.");
         }
+        String pending = pendingShare(persona);
+        text.append(pending);
         text.append("\r\n");
         List<Option> options = new ArrayList<>();
-        if (!items.isEmpty() || view.haulMeso() > 0) {
+        if (!items.isEmpty() || view.haulMeso() > 0 || !pending.isEmpty()) { // a hand-over settles what it carries first
             options.add(stamp.option("Hand it over", () -> menus.command(owner, persona, "menu.haul.hand_over",
                     () -> world.roster().handOver(owner, persona))));
             options.add(stamp.option("Send it by Duey", () -> menus.command(owner, persona, "menu.haul.duey",
@@ -1292,6 +1329,11 @@ final class CompanionCardScreens {
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
+            return;
+        }
+        CompanionLoans.Loan loan = world.loans() == null ? null : world.loans().lentOut(persona.id());
+        if (loan != null && loan.ownerId() == owner.getId()) {
+            menus.loans().lentCard(owner, persona, loan, note, crewBack(owner)); // out with a friend: call it back
             return;
         }
         switch (entry.state()) {

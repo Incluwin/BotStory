@@ -25,6 +25,23 @@ public final class AgentClaimGuard {
         boolean isClaimed(int agentCharacterId);
 
         /**
+         * True while some Agent may lead a character whose typed lines it must not take ({@link #mayCommandByChat}):
+         * the chat routes' fast path. False by default, so they never look further.
+         */
+        default boolean restrictsChat() {
+            return false;
+        }
+
+        /**
+         * True when the actor's typed lines (party, map or whisper chat) may reach this loaded Agent character it leads.
+         * A host may lend an Agent to a leader who directs it only through the host's own windows (a companion on loan
+         * to its owner's friend), so being its runtime leader is not enough there.
+         */
+        default boolean mayCommandByChat(Character actor, int agentCharacterId) {
+            return true;
+        }
+
+        /**
          * A whisper gate turned {@code actor} away from this loaded Agent character. The host may let the Agent say
          * why, to whom it chooses (its owner); by default nothing is said, as for a stranger.
          */
@@ -88,6 +105,18 @@ public final class AgentClaimGuard {
     public static boolean isClaimed(int agentCharacterId) {
         Rule current = rule;
         return current != null && current.isClaimed(agentCharacterId);
+    }
+
+    /** True when the installed host may keep some leader's typed lines from an Agent it leads; with nothing installed, false. */
+    public static boolean restrictsChat() {
+        Rule current = rule;
+        return current != null && current.restrictsChat();
+    }
+
+    /** True when the actor's typed lines may reach this Agent it leads; with nothing installed, always. */
+    public static boolean mayCommandByChat(Character actor, int agentCharacterId) {
+        Rule current = rule;
+        return current == null || current.mayCommandByChat(actor, agentCharacterId);
     }
 
     /** Tells the installed host that a whisper gate turned {@code actor} away; with nothing installed, nothing. */

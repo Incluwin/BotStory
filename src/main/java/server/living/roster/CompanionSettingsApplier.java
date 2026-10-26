@@ -402,9 +402,21 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         return at != null && AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == at.ownerId();
     }
 
+    /**
+     * Out with its owner, its owner's loot settings. Out on loan to a friend (CompanionLoans) it takes only what its own
+     * kills drop, never the friend's (its owner's NONE or QUEST_ONLY stays as strict), and leaves boss drops.
+     */
     @Override
     public AgentLootPolicy.Policy policy(int agentCharacterId) {
         Bound at = bound.get(agentCharacterId);
+        CompanionLoans loans = world.loans();
+        if (at != null && loans != null && loans.onLoan(agentCharacterId)) {
+            CompanionSettings owners = boundSettings(at, at.ownerId());
+            AgentLootPolicy.Mode mode = owners != null && (owners.loot() == AgentLootPolicy.Mode.NONE
+                    || owners.loot() == AgentLootPolicy.Mode.QUEST_ONLY) ? owners.loot() : AgentLootPolicy.Mode.OWN_KILLS;
+            int ownerId = at.ownerId();
+            return new AgentLootPolicy.Policy(mode, true, (agent, itemId) -> questNeeds(ownerId, agent, itemId));
+        }
         CompanionSettings own = outWithOwner(agentCharacterId, at);
         if (own == null || own.loot() == AgentLootPolicy.Mode.ALL && !own.leaveBossDrops()) {
             return null;
@@ -507,10 +519,19 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         return raced != null ? raced : read;
     }
 
-    /** The settings {@code at} binds the companion character to, while its roster owner leads it; else null. */
+    /**
+     * The settings {@code at} binds the companion character to, while its roster owner leads it, or the friend its owner
+     * lent it to (CompanionLoans: its potions and formation go with it); else null.
+     */
     private CompanionSettings outWithOwner(int agentCharacterId, Bound at) {
-        return at == null || AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) != at.ownerId() ? null
-                : boundSettings(at, at.ownerId());
+        if (at == null) {
+            return null;
+        }
+        int leader = AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId);
+        CompanionLoans loans = world.loans();
+        CompanionLoans.Loan loan = leader == at.ownerId() || loans == null ? null : loans.loanOf(agentCharacterId);
+        boolean lentToLeader = loan != null && loan.out() && loan.borrowerId() == leader;
+        return leader == at.ownerId() || lentToLeader ? boundSettings(at, at.ownerId()) : null;
     }
 
     /** The settings {@code at} binds, when it is one of {@code ownerId}'s companions; never read from the store here. */

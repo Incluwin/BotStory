@@ -299,7 +299,64 @@ class AgentClaimGuardTest {
         }
     }
 
+    // ---- chat kept from a lent Agent (docs/COMPANION_LENDING_PLAN.md 3.3) ----------------------
+
+    @Test
+    void withNothingInstalledEveryLeaderCommandsByChat() {
+        assertFalse(AgentClaimGuard.restrictsChat());
+        assertTrue(AgentClaimGuard.mayCommandByChat(kiwi, OLWEN));
+        install(Set.of(), Set.of()); // a rule that does not override them: chat as before
+        assertFalse(AgentClaimGuard.restrictsChat());
+        assertTrue(AgentClaimGuard.mayCommandByChat(kiwi, OLWEN));
+    }
+
+    @Test
+    void anAgentKeptFromItsLeadersChatIsReachedByNoRouteAndNamedVerbsRefuse() {
+        AgentRuntimeEntry lent = new AgentRuntimeEntry(olwen, kiwi, null);
+        AgentRuntimeEntry plain = new AgentRuntimeEntry(probe, kiwi, null);
+        installChatKept(Set.of(PROBE), Set.of(OLWEN));
+        List<String> calls = new ArrayList<>();
+        AgentChatIngressService.Hooks<AgentRuntimeEntry> hooks = chatHooks(Map.of(KIWI, List.of(lent, plain)), calls);
+
+        assertEquals(List.of(plain), hooks.entriesForLeader().entries(KIWI)); // list-driven routes see only the plain one
+        try (MockedStatic<AgentDialogueTransportRuntime> transport = mockStatic(AgentDialogueTransportRuntime.class)) {
+            // the named verbs still find it, and it refuses: never the stock verb finding it by its leader
+            assertTrue(hooks.transferRoute().handle(kiwi, "transfer Olwen to Bob"));
+            assertTrue(hooks.dismissRoute().handle(kiwi, "dismiss Olwen"));
+            hooks.transferRoute().handle(kiwi, "transfer Probe to Bob");
+            AgentMailboxRuntime.drain(lent);
+
+            transport.verify(() -> AgentDialogueTransportRuntime.queueReply(lent, "i'm sticking with you."), times(2));
+        }
+        assertEquals(List.of("transfer Probe->Bob"), calls);
+    }
+
     // ---- helpers -------------------------------------------------------------------------
+
+    /** Controls {@code controlled}; keeps the leader's typed lines from {@code keptFromChat} (a companion on loan). */
+    private static void installChatKept(Set<Integer> controlled, Set<Integer> keptFromChat) {
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return controlled.contains(agentCharacterId);
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return keptFromChat.contains(agentCharacterId);
+            }
+
+            @Override
+            public boolean restrictsChat() {
+                return true;
+            }
+
+            @Override
+            public boolean mayCommandByChat(Character actor, int agentCharacterId) {
+                return !keptFromChat.contains(agentCharacterId);
+            }
+        });
+    }
 
     private static void install(Set<Integer> controlled, Set<Integer> claimed) {
         AgentClaimGuard.install(new AgentClaimGuard.Rule() {

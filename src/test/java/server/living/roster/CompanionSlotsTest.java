@@ -510,6 +510,22 @@ class CompanionSlotsTest {
         return character;
     }
 
+    @Test
+    void aLentCompanionLeavingItsOwnersPartyKeepsTheSeatItsFriendGaveIt() {
+        // CompanionLoans: it joins Ben's party on a GUEST seat charged to Ben, and its leave of Ann's party arrives after
+        slots.reserve(BEN, CompanionSlots.characterKey(950), Kind.GUEST, FOREVER);
+        Snapshot annsParty = new Snapshot(List.of(ANN, 950), ANN);
+
+        slots.onPartyChanged(new PartyChangeEvent(1, PartyOperation.LEAVE, 950, 950, annsParty,
+                new Snapshot(List.of(ANN), ANN), null, true));
+        assertEquals(BEN, slots.reservation(CompanionSlots.characterKey(950)).ownerId());
+
+        Snapshot bensParty = new Snapshot(List.of(BEN, 950), BEN); // leaving Ben's own party gives it back
+        slots.onPartyChanged(new PartyChangeEvent(2, PartyOperation.EXPEL, 950, BEN, bensParty,
+                new Snapshot(List.of(BEN), BEN), null, true));
+        assertNull(slots.reservation(CompanionSlots.characterKey(950)));
+    }
+
     private static PartyChangeEvent event(Party party, PartyOperation op, int targetId) {
         Snapshot now = new Snapshot(List.of(), party.getLeaderId());
         return new PartyChangeEvent(party.getId(), op, targetId, 0, now, now, null, true);

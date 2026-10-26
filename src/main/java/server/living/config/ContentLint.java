@@ -206,6 +206,7 @@ public final class ContentLint {
             if (!priced) {
                 out.add("WARN " + where + ": contract has no price; the persona joins for free");
             }
+            lootTerms(contract, where, out);
             boolean used = LivingContent.HIRED_HAND_CONTRACT.equals(contract.id()) // every hired citizen's
                     || content.personas().values().stream().anyMatch(p -> contract.id().equals(p.contract()))
                     || content.arcs().values().stream().flatMap(a -> a.chapters().stream())
@@ -493,6 +494,21 @@ public final class ContentLint {
      */
     private static Persona authored(LivingContent content, String id) {
         return id == null || LivingContent.isHire(id) ? null : content.personas().get(id);
+    }
+
+    /**
+     * A contract's loot terms (LootTerms enforces them): ownDropsPercent within 0-100, and written only beside lootShare
+     * OWN_DROPS, the one share it means anything for. A contract without lootShare splits nothing, as before.
+     */
+    private static void lootTerms(Contract contract, String where, List<String> out) {
+        Content.Terms terms = contract.terms();
+        if (terms.ownDropsPercent() > 100 || terms.ownDropsPercent() < -1) { // -1: not written
+            out.add("ERROR " + where + ": ownDropsPercent " + terms.ownDropsPercent() + " is outside 0-100");
+        }
+        if (terms.ownDropsPercent() >= 0 && terms.lootShare() != Content.LootShare.OWN_DROPS) {
+            out.add("ERROR " + where + ": ownDropsPercent needs lootShare OWN_DROPS (it is "
+                    + (terms.lootShare() == null ? "not written" : terms.lootShare()) + ")");
+        }
     }
 
     /**

@@ -31,6 +31,27 @@ public final class AgentInteractionRuntime {
                 AgentInteractionRuntime::tick);
     }
 
+    /**
+     * Moves a loaded Agent to another runtime leader where it stands, with no despawn (a companion its owner lends to a
+     * friend, and its way back): the stock transfer's re-registration (AgentTransferService) without its chat lookup,
+     * claim check or greeting, which the host that asks has already answered. It then follows its new leader. False,
+     * and nothing changes, when the Agent is not loaded under {@code fromLeaderId}.
+     */
+    public static boolean handOverAgent(Character agent, int fromLeaderId, Character toLeader) {
+        AgentRuntimeEntry entry = agent == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
+        if (entry == null || toLeader == null || toLeader.getId() == fromLeaderId
+                || AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId()) != fromLeaderId) {
+            return false;
+        }
+        AgentRuntimeRegistry.unregisterEntry(fromLeaderId, entry);
+        AgentScheduledTaskRuntime.cancelScheduledTask(entry);
+        AgentMovementCommandRuntime.stop(entry);
+        AgentRuntimeEntry moved = AgentRegistrationCoordinator.registerManualAgent(
+                toLeader.getId(), toLeader, agent, AgentInteractionRuntime::tick);
+        AgentMovementCommandRuntime.follow(moved, toLeader);
+        return true;
+    }
+
     public static AgentRuntimeEntry registerSpawnedAgent(int leaderCharId, Character leader, Character agent) {
         return AgentRegistrationCoordinator.registerSpawnedAgent(
                 leaderCharId,

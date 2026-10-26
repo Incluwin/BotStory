@@ -511,6 +511,11 @@ public class Trade {
 
     public static void inviteTrade(Character c1, Character c2) {
 
+        if (!server.living.LivingWorldHooks.tradeAllowed(c1, c2)) { // a companion out on loan trades with nobody
+            cancelTrade(c1, TradeResult.NO_RESPONSE);
+            return;
+        }
+
         if ((c1.isGM() && !c2.isGM()) && c1.gmLevel() < YamlConfig.config.server.MINIMUM_GM_LEVEL_TO_TRADE) {
             c1.message("You cannot trade with non-GM characters.");
             log.info(String.format("GM %s blocked from trading with %s due to GM level.", c1.getName(), c2.getName()));
@@ -557,6 +562,10 @@ public class Trade {
     }
 
     public static void visitTrade(Character c1, Character c2) {
+        if (!server.living.LivingWorldHooks.tradeAllowed(c1, c2)) { // an invite made before the loan began
+            cancelTrade(c1, TradeResult.NO_RESPONSE);
+            return;
+        }
         InviteResult inviteRes = InviteCoordinator.answerInvite(InviteType.TRADE, c1.getId(), c2.getId(), true);
 
         InviteResultType res = inviteRes.result;

@@ -226,6 +226,30 @@ public class LivingWorldConfig {
      */
     public boolean COMPANION_EXP_SHARE = true;
 
+    // Lending a companion to a friend, and the contracts' loot terms (docs/COMPANION_LENDING_PLAN.md)
+    /**
+     * Kill switch for lending: an owner lends a companion out with them to a mutual buddy or guild mate on their map
+     * (CompanionLoans). false = nobody is offered "Lend to a friend...", and every loan out comes home on the next sweep.
+     */
+    public boolean COMPANION_LENDING_ENABLED = true;
+    /** Companions one friend may have on loan at once. */
+    public int COMPANION_LOANS_PER_BORROWER = 1;
+    /** Companions one owner may have out on loan at once. */
+    public int COMPANION_LOANS_PER_OWNER = 2;
+    /** The longest loan offered; the card offers 30, 60 and 120 minutes up to it. */
+    public int COMPANION_LOAN_MAX_MINUTES = 120;
+    /** How long the friend's Yes/No to a loan stays open before it lapses. */
+    public int COMPANION_LOAN_OFFER_MS = 60000;
+    /**
+     * Kill switch for the contracts' loot terms (lootShare, ownDropsPercent; LootTerms): what a contracted companion
+     * loots is split between its own purse and bag and its owner's share in its haul. false = no split, as before.
+     */
+    public boolean COMPANION_LOOT_TERMS_ENABLED = true;
+    /** Upkeep first: a companion keeps its loot meso until its purse holds this much per level, before any split. */
+    public int COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL = 1000;
+    /** How often a companion's owed share of its loot is moved from its bag and purse into its haul. */
+    public int COMPANION_LOOT_SETTLE_MS = 60000;
+
     // Hired hands and Resident allocation (P4, decisions 2 b, 4 b, 18 b, 19 b)
     /**
      * Hired citizens ({@code hire:<characterId>}) one owner may keep; they count toward ROSTER_MAX, so at most that. The
@@ -637,6 +661,15 @@ public class LivingWorldConfig {
         }
         if (ROSTER_MAX < 1 || ROSTER_MAX > 50) {
             throw new IllegalArgumentException("living_world.ROSTER_MAX must be within 1..50");
+        }
+        if (COMPANION_LOANS_PER_BORROWER < 1 || COMPANION_LOANS_PER_OWNER < 1 || COMPANION_LOAN_MAX_MINUTES < 30
+                || COMPANION_LOAN_OFFER_MS < 5000) {
+            throw new IllegalArgumentException("living_world.COMPANION_LOANS_PER_BORROWER and COMPANION_LOANS_PER_OWNER"
+                    + " must be >= 1, COMPANION_LOAN_MAX_MINUTES >= 30, COMPANION_LOAN_OFFER_MS >= 5000");
+        }
+        if (COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL < 0 || COMPANION_LOOT_SETTLE_MS < 1000) {
+            throw new IllegalArgumentException("living_world.COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL must be >= 0 and"
+                    + " COMPANION_LOOT_SETTLE_MS >= 1000");
         }
         if (RECALL_MAX_ETA_MS < 0) {
             throw new IllegalArgumentException("living_world.RECALL_MAX_ETA_MS must be >= 0");

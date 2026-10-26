@@ -174,7 +174,8 @@ public final class CompanionManager {
         String what = "";
         for (RosterEntry entry : world.roster().roster(owner)) {
             Persona persona = world.content().persona(entry.personaId());
-            if (persona == null || entry.state() != RosterState.BENCHED && entry.state() != RosterState.AWAY) {
+            if (persona == null || entry.state() != RosterState.BENCHED && entry.state() != RosterState.AWAY
+                    || CompanionLoans.lent(world, persona.id())) {
                 continue;
             }
             if (FIELD_DUTIES.contains(duty) && !movedToAField(owner, persona, entry)) {
@@ -366,7 +367,7 @@ public final class CompanionManager {
         }
         for (Persona persona : wanted) {
             RosterEntry entry = row(owner, persona);
-            if (entry != null && entry.state() == RosterState.BENCHED) {
+            if (entry != null && entry.state() == RosterState.BENCHED && !CompanionLoans.lent(world, persona.id())) {
                 coming.add(persona);
             }
         }
