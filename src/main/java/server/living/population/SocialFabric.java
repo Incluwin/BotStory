@@ -64,6 +64,7 @@ public final class SocialFabric {
     private final Map<Integer, GuildMeta> guilds = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastFameAtMs = new ConcurrentHashMap<>();
     private final Map<String, Long> acquaintanceTouchedAtMs = new ConcurrentHashMap<>();
+    private final CitizenAlliances alliances;
     private long lastPartyFormingMs;
     private boolean emblemsChecked;
 
@@ -73,6 +74,22 @@ public final class SocialFabric {
         for (GuildMeta meta : population.store().guilds()) {
             guilds.put(meta.guildId(), meta);
         }
+        this.alliances = new CitizenAlliances(population);
+    }
+
+    /** Bot guild alliances (docs/BOT_GUILD_ALLIANCES_PLAN.md), checked on this tick. */
+    public CitizenAlliances alliances() {
+        return alliances;
+    }
+
+    /** True for a bot guild (a living_guild row), one a citizen founded. */
+    public boolean isBotGuild(int guildId) {
+        return guilds.containsKey(guildId);
+    }
+
+    /** The bot guilds' meta rows, by guild id (a live view). */
+    Map<Integer, GuildMeta> guildMetas() {
+        return Collections.unmodifiableMap(guilds);
     }
 
     /**
@@ -130,22 +147,43 @@ public final class SocialFabric {
 
     // ---- lifecycle -----------------------------------------------------------------------
 
+    /**
+     * Its guild entry is bound to the loaded character, as the stock login binds a player's: the bot guilds are cached at
+     * boot (emblemOldGuilds), before any citizen loads, so without this a loaded master's entry has no character and a
+     * player's alliance invite reads it as "not online".
+     */
     public void onLogin(CitizenSession session) {
         Character agent = session.agent();
         if (agent == null || agent.getGuildId() <= 0) {
             return;
         }
         Guild guild = Server.getInstance().getGuild(agent.getGuildId(), population.world().config().WORLD, agent);
-        if (guild != null && guild.getMGC(agent.getId()) == null) {
+        if (guild == null) {
+            return;
+        }
+        GuildCharacter member = guild.getMGC(agent.getId());
+        if (member == null) {
             guild.addGuildMember(new GuildCharacter(agent), agent);
+        } else {
+            member.setCharacter(agent);
+            agent.setMGC(member);
         }
     }
 
+    /**
+     * Party membership is dropped with the character; its memories of people are written and leave the cache; its
+     * guild entry lets go of the unloaded character.
+     */
     public void onLogout(CitizenSession session) {
-        // party membership is dropped with the character; its memories of people are written and leave the cache
         PersonMemories memories = population.memories();
         if (memories != null) {
             memories.release(session.characterId);
+        }
+        Character agent = session.agent();
+        Guild guild = agent == null || agent.getGuildId() <= 0 ? null : Server.getInstance().getGuild(agent.getGuildId());
+        GuildCharacter member = guild == null ? null : guild.getMGC(agent.getId());
+        if (member != null && member.getCharacter() == agent) {
+            member.setCharacter(null);
         }
     }
 
@@ -173,6 +211,12 @@ public final class SocialFabric {
                 }
                 ensureGuilds();
                 recruitCitizens();
+                try {
+                    alliances.tick(guilds, now);
+                } catch (RuntimeException failure) {
+                    // the alliances wait for the next check; circles, parties and the rest of the tick go on
+                    log.warn("bot guild alliance check failed", failure);
+                }
             }
             formCircles();
             partyUp(now);

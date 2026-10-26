@@ -20,6 +20,39 @@ mottos:
   - "recruiting mages and clerics"
   - "old school players welcome back"
   - "help each other, that's it"
+# Bot guild alliances (docs/BOT_GUILD_ALLIANCES_PLAN.md): a name from these patterns over the lists above (no spaces and
+# at most 12 letters, as Lenario asks; a longer draw is drawn again), and what citizens say. Slots: {guild} the
+# speaker's guild, {other} the other guild, {alliance} the alliance. founded, welcome and leave go to alliance chat;
+# accept, decline and invite are whispers to a player guild's master.
+alliances:
+  patterns:
+    - { pattern: "{Adj}Pact", weight: 30 }
+    - { pattern: "{Adj}Union", weight: 30 }
+    - { pattern: "{Adj}Oath", weight: 15 }
+    - { pattern: "{Place}Pact", weight: 15 }
+    - { pattern: "{Word}Pact", weight: 10 }
+  lines:
+    founded:
+      - "{alliance} is official, {other} and {guild} stick together now"
+      - "welcome to {alliance} everyone! been running with {other} forever anyway"
+      - "{guild} + {other} = {alliance}. see u all in pqs"
+    welcome:
+      - "welcome to {alliance}, {other}!"
+      - "hey {other}, glad ur with us"
+      - "{other} joined, nice. ask in here if u need a party"
+    leave:
+      - "{guild} is heading its own way. good luck all"
+      - "we barely see anyone from {alliance} anymore, so {guild} is going solo. take care"
+      - "leaving {alliance}, no hard feelings. {guild} out"
+    accept:
+      - "sure, {guild} is in. we've had good runs with ur people"
+      - "accepted! {guild} is happy to join {alliance}"
+    decline:
+      - "sorry, {guild} doesn't really know {other} yet. run with us a while and ask again?"
+      - "we'd rather get to know {other} first. maybe later"
+    invite:
+      - "ur guild's been great to run with, sent {other} an invite to {alliance}"
+      - "{alliance} could use {other}. invite's in ur alliance window if u want it"
 # Emblems are real GuildMark.img art from the client's UI.wz: a background shape (1000-1029) in one of 16 colours under
 # a mark in another (animals 2000-2020, plants 3000-3006, patterns 4000-4021, letters A-Z 5000-5025, digits 5026-5035,
 # symbols 9000-9025). A bot guild reads its emblem off its own name (GuildEmblems): the head word with marks (the words

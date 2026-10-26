@@ -29,6 +29,35 @@ public final class PopulationHooks {
         return chr.getClient() == null ? 1 : chr.getClient().getChannel();
     }
 
+    /**
+     * A player's stock alliance invite reached {@code master}, a guild master who is a bot: a loaded citizen master
+     * answers it after a moment (CitizenAlliances.invited); anyone else leaves it to expire as stock.
+     */
+    public static void allianceInvited(Character inviter, Character master, int allianceId) {
+        Population population = Population.get();
+        if (population == null || inviter == null || master == null) {
+            return;
+        }
+        try {
+            population.social().alliances().invited(inviter, master, allianceId);
+        } catch (RuntimeException failure) {
+            log.debug("population allianceInvited hook failed", failure);
+        }
+    }
+
+    /** A guild joined an alliance through the stock accept: a citizen of a bot guild in it welcomes them. */
+    public static void allianceJoined(int allianceId, int guildId) {
+        Population population = Population.get();
+        if (population == null) {
+            return;
+        }
+        try {
+            population.social().alliances().joined(allianceId, guildId);
+        } catch (RuntimeException failure) {
+            log.debug("population allianceJoined hook failed", failure);
+        }
+    }
+
     public static void levelUp(Character chr) {
         Population population = Population.get();
         if (population == null || chr == null || chr.getMap() == null || server.living.resident.ResidentShaper.shaping()) {

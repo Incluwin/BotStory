@@ -449,6 +449,8 @@ public class Alliance {
                 } else {
                     if (InviteCoordinator.createInvite(InviteType.ALLIANCE, c.getPlayer(), allianceId, victim.getId())) {
                         victim.sendPacket(GuildPackets.allianceInvite(allianceId, c.getPlayer()));
+                        // a bot guild's master answers it like a player (docs/BOT_GUILD_ALLIANCES_PLAN.md)
+                        server.living.LivingWorldHooks.allianceInvited(c.getPlayer(), victim, allianceId);
                     } else {
                         c.getPlayer().dropMessage(5, "The master of the guild that you offered an invitation is currently managing another invite.");
                     }

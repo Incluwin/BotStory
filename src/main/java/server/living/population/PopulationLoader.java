@@ -11,6 +11,7 @@ import server.living.population.PopulationContent.Career;
 import server.living.population.PopulationContent.Cohort;
 import server.living.population.PopulationContent.EmblemColor;
 import server.living.population.PopulationContent.EmblemWord;
+import server.living.population.PopulationContent.Alliances;
 import server.living.population.PopulationContent.Emblems;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.GuildNames;
@@ -321,11 +322,18 @@ public final class PopulationLoader {
 
     private static GuildNames guildNames(Path file) {
         if (!Files.exists(file)) {
-            return new GuildNames(List.of(), Map.of(), List.of(), Emblems.none());
+            return new GuildNames(List.of(), Map.of(), List.of(), Emblems.none(), Alliances.none());
         }
         Node root = ContentLoader.read(file);
         return new GuildNames(patterns(root.get("patterns")), stringLists(root.get("lists")), root.get("mottos").strings(),
-                emblems(root.get("emblems")));
+                emblems(root.get("emblems")), alliances(root.get("alliances")));
+    }
+
+    private static Alliances alliances(Node node) {
+        if (node.isMissing()) {
+            return Alliances.none();
+        }
+        return new Alliances(patterns(node.get("patterns")), stringLists(node.get("lines")));
     }
 
     private static Emblems emblems(Node node) {

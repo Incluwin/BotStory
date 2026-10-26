@@ -1162,6 +1162,19 @@ population:
     # party minutes twice, as its guild invite counts them), so they can register the guild for the Guild Quest at
     # Shuang (2026-10-25, docs/APQ_GPQ_COMPANION_PLAN.md decision 8). 0 = never.
     GUILD_PROMOTE_AFTER_MINUTES: 180
+    # Bot guild alliances (2026-10-25, docs/BOT_GUILD_ALLIANCES_PLAN.md): citizen guilds found, join and leave stock
+    # alliances by how close they are (shared circles, cohort, home regions, level ranges), pay Lenario's fees from the
+    # founding master's purse, invite a player's guild whose players spent ALLIANCE_PLAYER_MINUTES with their citizens,
+    # and answer a player's invite when their master is online. false = the kill switch: no new alliance, invite or
+    # leaving; alliances already formed stay. Needs GUILDS_ENABLED.
+    ALLIANCES_ENABLED: true
+    ALLIANCE_TARGET: 4
+    ALLIANCE_CHECK_MINUTES: 30
+    ALLIANCE_FOUND_TIE: 0.5
+    ALLIANCE_LEAVE_TIE: 0.2
+    ALLIANCE_LEAVE_AFTER_DAYS: 3
+    ALLIANCE_PLAYER_MINUTES: 240
+    ALLIANCE_REASK_DAYS: 7
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true

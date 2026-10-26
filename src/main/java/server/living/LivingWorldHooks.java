@@ -122,6 +122,33 @@ public final class LivingWorldHooks {
         server.living.population.PopulationHooks.jobAdvanced(chr);
     }
 
+    /**
+     * A player's guild alliance invite went out to {@code master} (Alliance.sendInvitation): a bot guild master who is a
+     * loaded citizen answers it like a player (docs/BOT_GUILD_ALLIANCES_PLAN.md). Anyone else: nothing, as stock.
+     */
+    public static void allianceInvited(Character inviter, Character master, int allianceId) {
+        if (LivingWorld.get() == null || master == null || !AgentPresence.isAgent(master)) {
+            return;
+        }
+        try {
+            server.living.population.PopulationHooks.allianceInvited(inviter, master, allianceId);
+        } catch (RuntimeException failure) {
+            log.warn("living world allianceInvited hook failed", failure);
+        }
+    }
+
+    /** A guild joined an alliance through the stock accept (op 4): a citizen of a bot guild in it welcomes them. */
+    public static void allianceJoined(int allianceId, int guildId) {
+        if (LivingWorld.get() == null) {
+            return;
+        }
+        try {
+            server.living.population.PopulationHooks.allianceJoined(allianceId, guildId);
+        } catch (RuntimeException failure) {
+            log.warn("living world allianceJoined hook failed", failure);
+        }
+    }
+
     public static void itemGained(Character chr, int itemId, int quantity) {
         LivingWorld world = LivingWorld.get();
         if (world == null || chr == null || quantity <= 0) {

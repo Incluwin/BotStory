@@ -119,6 +119,28 @@ public class PopulationConfig {
      * register the guild for the Guild Quest at Shuang. 0 = never.
      */
     public int GUILD_PROMOTE_AFTER_MINUTES = 180;
+    /**
+     * Bot guild alliances (docs/BOT_GUILD_ALLIANCES_PLAN.md): citizen guilds found, join and leave stock alliances by
+     * how close they are, invite a player's guild they know, and answer a player's invite. Off: no new alliance, invite
+     * or leaving; the alliances already formed stay as they are. Needs GUILDS_ENABLED.
+     */
+    public boolean ALLIANCES_ENABLED = true;
+    /** Citizen-led alliances to keep standing; past this the closest pairs wait. */
+    public int ALLIANCE_TARGET = 4;
+    /** Minutes between alliance checks on the social tick. */
+    public int ALLIANCE_CHECK_MINUTES = 30;
+    /** The tie (0..1, GuildTies) at which two citizen guilds found an alliance, or a guild joins one. */
+    public double ALLIANCE_FOUND_TIE = 0.5d;
+    /** A citizen guild whose mean tie to the rest of its alliance stays under this for ALLIANCE_LEAVE_AFTER_DAYS leaves. */
+    public double ALLIANCE_LEAVE_TIE = 0.2d;
+    public int ALLIANCE_LEAVE_AFTER_DAYS = 3;
+    /**
+     * Shared minutes (map minutes plus party minutes twice, living_acquaintance) between a player guild's players and an
+     * alliance's citizens before the alliance invites that guild, or a citizen guild takes that guild's invite.
+     */
+    public int ALLIANCE_PLAYER_MINUTES = 240;
+    /** Days before a citizen alliance asks the same player guild again. */
+    public int ALLIANCE_REASK_DAYS = 7;
     public boolean BUDDIES_ENABLED = true;
     /** Shared party minutes with a human before a citizen sends one buddy request. */
     public int BUDDY_REQUEST_AFTER_MINUTES = 30;
