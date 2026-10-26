@@ -114,7 +114,8 @@ class ServerModsTest {
         assertFalse(shippedMods.isOn(ServerMods.BOTSTORY_WZ));
         FeaturePolicy shipped = FeaturePolicy.parse(YamlConfig.config.mods.FEATURES, YamlConfig.config.mods.SERVER_GATED_DEFAULT);
         assertEquals(Map.of("free_addy", new Rule(Decision.ALLOW, 0), "ext_chain_lightning", new Rule(Decision.ALLOW, 0),
-                "beginner_ap", new Rule(Decision.ALLOW, 0), "storage_bag", new Rule(Decision.ALLOW, 0)), shipped.rules());
+                "beginner_ap", new Rule(Decision.ALLOW, 0), "storage_bag", new Rule(Decision.ALLOW, 0),
+                "crit_damage_mul", new Rule(Decision.ALLOW, 0)), shipped.rules());
         assertEquals(Decision.DENY, shipped.gatedDefault());
         ServerMods mods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertTrue(mods.isOn(ServerMods.CLIENT_FEATURE_POLICY));

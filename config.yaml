@@ -1232,12 +1232,14 @@ mods:
     # where the line allows it and counts as lacking where it requires it. "!mods feature <id> ..." changes a line
     # until the next restart. Gameplay features (free_addy: damage cap 999,999 and speed cap 250;
     # ext_chain_lightning: Chain Lightning range and no damage dropoff; beginner_ap: the stat window lets Beginners
-    # place AP at level 10 and below, given AP by the beginner_ap switch above) are server_gated in the client.
+    # place AP at level 10 and below, given AP by the beginner_ap switch above; crit_damage_mul: a critical hit
+    # multiplies the damage line by the critical damage %, as companions crit) are server_gated in the client.
     FEATURES:
         free_addy: allow
         ext_chain_lightning: allow
         beginner_ap: allow
         storage_bag: allow
+        crit_damage_mul: allow
     # The answer for a server_gated feature FEATURES does not name (allow or deny): a new gameplay mod waits for a
     # line here.
     SERVER_GATED_DEFAULT: deny
