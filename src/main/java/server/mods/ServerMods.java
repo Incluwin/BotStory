@@ -66,9 +66,18 @@ public final class ServerMods {
     public static final ServerMod STORAGE_BAG = new ServerMod("storage_bag",
             "Storage Bags (client feature storage_bag)", true);
 
+    /**
+     * The maps only the Community Repack client has ({@link RepackMaps}, docs/REPACK_IMPORT_PLAN.md): a client known to
+     * have the Repack files may enter them, through the entry NPCs or any warp; any other is refused. Off, nobody
+     * enters, the entry NPCs are not spawned on maps loaded after the flip, and a character inside starts outside at
+     * its next login.
+     */
+    public static final ServerMod REPACK_MAPS = new ServerMod("repack_maps",
+            "Repack-only maps for clients on the Community Repack files", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG);
+            SET_ITEMS, STORAGE_BAG, REPACK_MAPS);
 
     private static volatile ServerMods instance;
 

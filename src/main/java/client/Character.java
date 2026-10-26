@@ -2082,6 +2082,9 @@ public class Character extends AbstractCharacterObject {
         if (!canWarpMap) {
             return;
         }
+        if (server.mods.RepackMaps.listed(to.getId()) && !server.mods.RepackMaps.get().beforeWarp(this, to.getId())) {
+            return; // a map only the Repack client has: refused, with a line, unless this client has the Repack files
+        }
         server.living.LivingWorldHooks.mapEntered(this, to, pos);
 
         this.mapTransitioning.set(true);
@@ -8286,6 +8289,13 @@ public class Character extends AbstractCharacterObject {
 
                     if (channelserver) {
                         MapManager mapManager = client.getChannelServer().getMapFactory();
+                        if (server.mods.RepackMaps.listed(ret.mapid)) {
+                            int start = server.mods.RepackMaps.get().loginMap(client, ret.mapid);
+                            if (start != ret.mapid) { // saved in a Repack-only map this client may not be in now
+                                ret.mapid = start;
+                                ret.initialSpawnPoint = 0;
+                            }
+                        }
                         ret.map = mapManager.getMap(ret.mapid);
 
                         if (ret.map == null) {

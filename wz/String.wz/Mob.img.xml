@@ -186,6 +186,9 @@
   <imgdir name="8610014">
     <string name="name" value="Advanced Knight E"/>
   </imgdir>
+  <imgdir name="8610015">
+    <string name="name" value="Ifrit"/>
+  </imgdir>
   <imgdir name="8620000">
     <string name="name" value="Swollen Stump"/>
   </imgdir>

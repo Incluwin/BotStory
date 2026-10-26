@@ -88,7 +88,7 @@ class ServerModsTest {
     @Test
     void theRegistryHoldsThePolicyOnAndTheOtherModsOff() {
         assertEquals(List.of(ServerMods.CLIENT_FEATURE_POLICY, ServerMods.FUSION_ANVIL, ServerMods.BOTSTORY_WZ,
-                ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG), ServerMods.ALL);
+                ServerMods.BEGINNER_AP, ServerMods.SET_ITEMS, ServerMods.STORAGE_BAG, ServerMods.REPACK_MAPS), ServerMods.ALL);
         assertTrue(ServerMods.CLIENT_FEATURE_POLICY.defaultOn());
         assertEquals("client_feature_policy", ServerMods.CLIENT_FEATURE_POLICY.id());
         assertFalse(ServerMods.FUSION_ANVIL.defaultOn());
@@ -103,12 +103,16 @@ class ServerModsTest {
         assertEquals("set_items", ServerMods.SET_ITEMS.id());
         assertTrue(ServerMods.STORAGE_BAG.defaultOn(), "inert until a client with storage_bag active opens the window");
         assertEquals("storage_bag", ServerMods.STORAGE_BAG.id());
+        assertTrue(ServerMods.REPACK_MAPS.defaultOn(), "only accounts known to be on the Repack files go in");
+        assertFalse(ServerMods.REPACK_MAPS.bootOnly());
+        assertEquals("repack_maps", ServerMods.REPACK_MAPS.id());
     }
 
     @Test
     void configYamlShipsThePolicyOnWithTheGameplayFeaturesAllowedAndBeginnerApOff() {
         assertEquals(Map.of("client_feature_policy", "on", "fusion_anvil", "off", "botstory_wz", "off",
-                "beginner_ap", "off", "set_items", "on", "storage_bag", "on"), YamlConfig.config.mods.SWITCHES);
+                "beginner_ap", "off", "set_items", "on", "storage_bag", "on", "repack_maps", "on"),
+                YamlConfig.config.mods.SWITCHES);
         ServerMods shippedMods = new ServerMods(ServerMods.ALL, YamlConfig.config.mods.SWITCHES);
         assertFalse(shippedMods.isOn(ServerMods.FUSION_ANVIL), "a client made from public files enters the game");
         assertFalse(shippedMods.isOn(ServerMods.BOTSTORY_WZ));

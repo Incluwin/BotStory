@@ -211,13 +211,70 @@ const npcs = importAll('npcs', needNpcs, serverNpcs, wz.Npc, img => {
   const link = linkOf(img);
   return link ? [link] : [];
 });
+// Mob skills: LifeFactory throws on a (skill, level) the server's Skill.wz/MobSkill.img lacks, so a level the Repack
+// has is imported into it (a summon's mobs join the import) and a skill id the server does not know at all is taken
+// off the mob (info/skill renumbered, the skillN animations renamed to match).
+const mobSkillFile = path.join(WZ, 'Skill.wz', 'MobSkill.img.xml');
+const serverMobSkills = new Map();
+{
+  let skill = null;
+  let inLevel = false;
+  for (const line of fs.readFileSync(mobSkillFile, 'utf8').split('\n')) {
+    let m;
+    if ((m = /^  <imgdir name="(\d+)">$/.exec(line))) { skill = Number(m[1]); inLevel = false; serverMobSkills.set(skill, new Set()); }
+    else if (line === '    <imgdir name="level">') inLevel = true;
+    else if (line === '    </imgdir>') inLevel = false;
+    else if (inLevel && (m = /^      <imgdir name="(\d+)">$/.exec(line))) serverMobSkills.get(skill).add(Number(m[1]));
+  }
+}
+const previousLevels = new Set(fs.existsSync(REPORT) ? JSON.parse(fs.readFileSync(REPORT, 'utf8')).mobSkillLevels || [] : []);
+wz.Skill = new WzFile(path.join(REPACK, 'Skill.wz'));
+const repackMobSkills = wz.Skill.image('MobSkill.img');
+const mobSkillLevels = new Map(); // "skill/level" -> level node
+report.mobSkillsDropped = [];
+
+function mobSkills(id, img) {
+  const out = [];
+  const skills = child(child(img, 'info'), 'skill');
+  if (!skills) return out;
+  const kept = [];
+  const animations = [];
+  skills.children.sort((a, b) => Number(a.name) - Number(b.name));
+  for (const entry of skills.children) {
+    const skill = value(entry, 'skill');
+    const level = value(entry, 'level');
+    const key = `${skill}/${level}`;
+    const onServer = serverMobSkills.has(skill) && serverMobSkills.get(skill).has(level) && !previousLevels.has(key);
+    const repackLevel = child(child(child(repackMobSkills, String(skill)), 'level'), String(level));
+    const animation = child(img, 'skill' + (Number(entry.name) + 1));
+    if (!serverMobSkills.has(skill) || (!onServer && !repackLevel)) {
+      report.mobSkillsDropped.push(`${id} ${key}`);
+      if (animation) img.children.splice(img.children.indexOf(animation), 1);
+      continue;
+    }
+    if (!onServer) mobSkillLevels.set(key, repackLevel);
+    const levelNode = onServer ? null : repackLevel;
+    if (levelNode) for (const c of levelNode.children) if (/^\d+$/.test(c.name)) out.push(Number(c.value));
+    kept.push(entry);
+    animations.push(animation);
+  }
+  kept.forEach((entry, i) => {
+    entry.name = String(i);
+    if (animations[i]) animations[i].name = 'skill' + (i + 1);
+  });
+  skills.children = kept;
+  return out;
+}
+
 const mobs = importAll('mobs', needMobs, serverMobs, wz.Mob, img => {
   const out = [];
   const link = linkOf(img);
   if (link) out.push(link);
   for (const r of (child(child(img, 'info'), 'revive') || { children: [] }).children) out.push(Number(r.value));
+  out.push(...mobSkills(img.name.replace('.img', ''), img));
   return out;
 });
+report.mobSkillLevels = [...mobSkillLevels.keys()].sort();
 const reactors = importAll('reactors', needReactors, serverReactors, wz.Reactor, img => {
   const link = linkOf(img);
   return link ? [link] : [];
@@ -263,38 +320,39 @@ function repackMapName(id) {
 }
 
 /**
- * Puts entries (id -> imgdir node) into an existing String.wz file: inside the group's imgdir when group is set,
- * else at the root. An entry replaces the block with its id, or goes before the first block with a higher id, so
- * the existing blocks keep their order.
+ * Puts entries (id -> imgdir node) into an existing XML image under the imgdir path (names below the root; [] = the
+ * root itself), whose children must all be numbered imgdirs. An entry replaces the block with its id, or goes before
+ * the first block with a higher id, so the existing blocks keep their order.
  */
-function splice(text, group, entries) {
+function spliceAt(text, names, entries) {
   const lines = text.split('\n');
-  let start;
-  let end;
-  let indent;
-  if (group) {
-    start = lines.indexOf(`  <imgdir name="${group}">`);
-    if (start < 0) throw new Error('no String group ' + group);
-    end = lines.indexOf('  </imgdir>', start);
-    indent = '    ';
-  } else {
-    start = 1;
-    end = lines.lastIndexOf('</imgdir>');
-    indent = '  ';
+  let start = 1;
+  let end = lines.lastIndexOf('</imgdir>');
+  let depth = 1;
+  for (const name of names) {
+    const indent = '  '.repeat(depth);
+    let found = -1;
+    for (let i = start + 1; i < end; i++) {
+      if (lines[i] === `${indent}<imgdir name="${name}">`) { found = i; break; }
+    }
+    if (found < 0) throw new Error('no imgdir ' + names.join('/'));
+    start = found;
+    end = lines.indexOf(`${indent}</imgdir>`, found);
+    depth++;
   }
+  const indent = '  '.repeat(depth);
   const head = lines.slice(0, start + 1);
   const tail = lines.slice(end);
   const blocks = [];
   const open = new RegExp(`^${indent}<imgdir name="(\\d+)">$`);
   for (let i = start + 1; i < end;) {
     const m = open.exec(lines[i]);
-    if (!m) throw new Error(`unexpected line ${i + 1} in String ${group || 'root'}: ${lines[i]}`);
+    if (!m) throw new Error(`unexpected line ${i + 1} under ${names.join('/') || 'the root'}: ${lines[i]}`);
     let j = lines.indexOf(`${indent}</imgdir>`, i);
     if (j < 0) throw new Error('unclosed block at line ' + (i + 1));
     blocks.push({ id: Number(m[1]), lines: lines.slice(i, j + 1) });
     i = j + 1;
   }
-  const depth = indent.length / 2;
   for (const id of [...entries.keys()].sort((a, b) => a - b)) {
     const block = { id, lines: nodeLines(entries.get(id), depth, stats) };
     const at = blocks.findIndex(b => b.id === id);
@@ -326,7 +384,7 @@ const stringDir = path.join(WZ, 'String.wz');
   }
   const file = path.join(stringDir, 'Map.img.xml');
   let text = fs.readFileSync(file, 'utf8');
-  for (const [group, entries] of [...byGroup.entries()].sort()) text = splice(text, group, entries);
+  for (const [group, entries] of [...byGroup.entries()].sort()) text = spliceAt(text, [group], entries);
   writeFile(file, text);
 }
 for (const [kind, ids] of [['Mob', mobs], ['Npc', npcs]]) {
@@ -336,7 +394,21 @@ for (const [kind, ids] of [['Mob', mobs], ['Npc', npcs]]) {
     if (entry) entries.set(id, entry); else report.missingStrings[kind.toLowerCase() + 's'].push(id);
   }
   const file = path.join(stringDir, kind + '.img.xml');
-  writeFile(file, splice(fs.readFileSync(file, 'utf8'), null, entries));
+  writeFile(file, spliceAt(fs.readFileSync(file, 'utf8'), [], entries));
+}
+report.unnamedNpcs = npcs.filter(id => !value(child(repackStrings.Npc, String(id)), 'name'));
+{
+  let text = fs.readFileSync(mobSkillFile, 'utf8');
+  const bySkill = new Map();
+  for (const [key, node] of mobSkillLevels) {
+    const [skill, level] = key.split('/').map(Number);
+    if (!bySkill.has(skill)) bySkill.set(skill, new Map());
+    bySkill.get(skill).set(level, { ...node, name: String(level) });
+  }
+  for (const [skill, levels] of [...bySkill.entries()].sort((a, b) => a[0] - b[0])) {
+    text = spliceAt(text, [String(skill), 'level'], levels);
+  }
+  writeFile(mobSkillFile, text);
 }
 
 // ---------------------------------------------------------------- the gate's list and the report

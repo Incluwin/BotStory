@@ -1,0 +1,58 @@
+/*
+    This file is part of the HeavenMS MapleStory Server
+    Copyleft (L) 2016 - 2019 RonanLana
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation version 3 as published by
+    the Free Software Foundation. You may not use, modify or distribute
+    this program under any other version of the GNU Affero General Public
+    License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/*
+MiniDungeon - Long Kiss Duku Good Night (Ulu City, a Community Repack map: server.mods.RepackMaps)
+*/
+var baseid = 541020610;
+var dungeonid = 541020620;
+var dungeons = 20;
+
+function enter(pi) {
+    if (pi.getMapId() == baseid) {
+        if (pi.getParty() != null) {
+            if (pi.isLeader()) {
+                for (var i = 0; i < dungeons; i++) {
+                    if (pi.startDungeonInstance(dungeonid + i)) {
+                        pi.playPortalSound();
+                        pi.warpParty(dungeonid + i, "out00");
+                        return true;
+                    }
+                }
+            } else {
+                pi.playerMessage(5, "Only solo or party leaders are supposed to enter the Mini-Dungeon.");
+                return false;
+            }
+        } else {
+            for (var i = 0; i < dungeons; i++) {
+                if (pi.startDungeonInstance(dungeonid + i)) {
+                    pi.playPortalSound();
+                    pi.warp(dungeonid + i, "out00");
+                    return true;
+                }
+            }
+        }
+        pi.playerMessage(5, "All of the Mini-Dungeons are in use right now, please try again later.");
+        return false;
+    } else {
+        pi.playPortalSound();
+        pi.warp(baseid, "MD00");
+        return true;
+    }
+}

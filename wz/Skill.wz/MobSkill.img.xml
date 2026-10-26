@@ -517,6 +517,27 @@
           <int name="icon" value="1"/>
         </imgdir>
       </imgdir>
+      <imgdir name="30">
+        <string name="info" value="Ancient Golem"/>
+        <int name="x" value="150"/>
+        <int name="time" value="20"/>
+        <int name="mpCon" value="5"/>
+        <int name="interval" value="20"/>
+        <int name="hp" value="90"/>
+        <imgdir name="effect">
+          <canvas name="0" width="10" height="10">
+            <vector name="origin" x="-2" y="32"/>
+          </canvas>
+          <int name="pos" value="3"/>
+        </imgdir>
+        <imgdir name="mob">
+          <canvas name="0" width="19" height="23">
+            <vector name="origin" x="9" y="44"/>
+          </canvas>
+          <int name="pos" value="2"/>
+          <int name="icon" value="1"/>
+        </imgdir>
+      </imgdir>
     </imgdir>
   </imgdir>
   <imgdir name="101">
@@ -1166,6 +1187,31 @@
         <imgdir name="mob">
           <canvas name="0" width="19" height="20">
             <vector name="origin" x="9" y="42"/>
+          </canvas>
+          <int name="pos" value="2"/>
+          <int name="icon" value="1"/>
+        </imgdir>
+      </imgdir>
+      <imgdir name="10">
+        <string name="info" value="Ancient Golem"/>
+        <int name="x" value="150"/>
+        <int name="time" value="20"/>
+        <int name="mpCon" value="5"/>
+        <int name="interval" value="20"/>
+        <int name="hp" value="100"/>
+        <imgdir name="effect">
+          <canvas name="0" width="1" height="1">
+            <vector name="origin" x="15" y="25"/>
+            <imgdir name="map">
+              <vector name="brow" x="-14" y="-42"/>
+            </imgdir>
+            <string name="z" value="accessoryFace"/>
+          </canvas>
+          <int name="pos" value="3"/>
+        </imgdir>
+        <imgdir name="mob">
+          <canvas name="0" width="19" height="23">
+            <vector name="origin" x="9" y="44"/>
           </canvas>
           <int name="pos" value="2"/>
           <int name="icon" value="1"/>
@@ -6581,6 +6627,30 @@
         <int name="prop" value="50"/>
         <vector name="lt" x="-130" y="-74"/>
         <vector name="rb" x="10" y="10"/>
+        <imgdir name="affected">
+          <canvas name="0" width="66" height="18">
+            <vector name="origin" x="30" y="9"/>
+            <int name="delay" value="100"/>
+          </canvas>
+          <canvas name="1" width="58" height="17">
+            <vector name="origin" x="26" y="9"/>
+            <int name="delay" value="100"/>
+          </canvas>
+          <canvas name="2" width="58" height="17">
+            <vector name="origin" x="25" y="9"/>
+            <int name="delay" value="100"/>
+          </canvas>
+          <int name="pos" value="1"/>
+          <int name="repeat" value="1"/>
+        </imgdir>
+      </imgdir>
+      <imgdir name="35">
+        <int name="mpCon" value="5"/>
+        <int name="interval" value="10"/>
+        <int name="time" value="3"/>
+        <int name="prop" value="60"/>
+        <vector name="lt" x="-300" y="-120"/>
+        <vector name="rb" x="300" y="120"/>
         <imgdir name="affected">
           <canvas name="0" width="66" height="18">
             <vector name="origin" x="30" y="9"/>
@@ -12469,6 +12539,20 @@
           <int name="pos" value="2"/>
         </imgdir>
       </imgdir>
+      <imgdir name="7">
+        <int name="x" value="1"/>
+        <int name="hp" value="100"/>
+        <int name="mpCon" value="1"/>
+        <int name="interval" value="30"/>
+        <int name="time" value="5"/>
+        <imgdir name="mob">
+          <canvas name="0" width="40" height="39">
+            <vector name="origin" x="20" y="48"/>
+          </canvas>
+          <int name="repeat" value="1"/>
+          <int name="pos" value="2"/>
+        </imgdir>
+      </imgdir>
     </imgdir>
   </imgdir>
   <imgdir name="143">
@@ -14607,6 +14691,14 @@
         <int name="interval" value="60"/>
         <int name="0" value="8120107"/>
         <int name="1" value="8120107"/>
+      </imgdir>
+      <imgdir name="224">
+        <int name="interval" value="5"/>
+        <int name="hp" value="90"/>
+        <int name="limit" value="1"/>
+        <string name="0" value="8610015"/>
+        <int name="summonEffect" value="33"/>
+        <int name="summonOnce" value="1"/>
       </imgdir>
     </imgdir>
   </imgdir>
