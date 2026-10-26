@@ -34,6 +34,11 @@ may veto or require them at login.
   each level-up's AP to place (`Character.levelUp`); everyone else, bots included, still has it spent by
   `USE_AUTOASSIGN_STARTERS_AP`. `FeatureHandshake.isActive(client, id)` is the check: the client's last report has
   the feature active and the policy does not deny it.
+- `cash_item_trade` (default on, shipped on): two players may put cash items in a trade window
+  (`server.CashItemTradePolicy`); the client feature `cash_item_trade` (server_gated, `allow`) lifts the client's
+  own refusal. Pets and rings tied to a partner stay blocked, a companion or other bot never gives or takes one, and
+  player stores, hired merchants, Duey and drops keep `USE_ENFORCE_UNMERCHABLE_CASH`. Off, trades refuse cash items
+  again, as stock.
 
 ## Feature policy (`mods.FEATURES`)
 
@@ -57,8 +62,9 @@ One line per kaentake feature id: `allow` (the player's own switch decides), `de
 Core modules (`FEATURE_CORE`) never change, whatever the line says. Shipped lines: `free_addy` and
 `ext_chain_lightning` (both server_gated: damage/speed caps, Chain Lightning range) `allow`, matching what the shipped
 client does today, and `beginner_ap` (server_gated: the stat window's Beginner lock off) `allow`, which gives the
-player AP to place only while the `beginner_ap` switch is on; any other server_gated feature `deny` until a line
-names it. `stat_all_ap` (the all-AP buttons) is not server_gated: it sends the stock auto-assign packet. `!mods feature <id>
+player AP to place only while the `beginner_ap` switch is on, `crit_damage_mul` (server_gated: a critical hit
+multiplies the damage line by the critical damage %, as companions crit) `allow`, and `cash_item_trade` `allow`; any
+other server_gated feature `deny` until a line names it. `stat_all_ap` (the all-AP buttons) is not server_gated: it sends the stock auto-assign packet. `!mods feature <id>
 allow|deny|require [version]|unset` changes a line until the next restart and every online client that reported
 hears its new answer at once. `!mods client <player>` shows what that client reported and the answer it gets now.
 

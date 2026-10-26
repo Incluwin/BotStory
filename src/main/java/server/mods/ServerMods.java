@@ -66,9 +66,17 @@ public final class ServerMods {
     public static final ServerMod STORAGE_BAG = new ServerMod("storage_bag",
             "Storage Bags (client feature storage_bag)", true);
 
+    /**
+     * Two players may trade cash items (server.CashItemTradePolicy; the client's cash_item_trade feature lifts its own
+     * refusal). Pets and rings tied to a partner stay blocked, companions are never handed one, and player stores,
+     * hired merchants, Duey and drops keep USE_ENFORCE_UNMERCHABLE_CASH. Off, the trade window refuses cash items.
+     */
+    public static final ServerMod CASH_ITEM_TRADE = new ServerMod("cash_item_trade",
+            "Players trade cash items (client feature cash_item_trade)", true);
+
     /** Every server mod, one line each; a ported mod adds its line here. */
     public static final List<ServerMod> ALL = List.of(CLIENT_FEATURE_POLICY, FUSION_ANVIL, BOTSTORY_WZ, BEGINNER_AP,
-            SET_ITEMS, STORAGE_BAG);
+            SET_ITEMS, STORAGE_BAG, CASH_ITEM_TRADE);
 
     private static volatile ServerMods instance;
 

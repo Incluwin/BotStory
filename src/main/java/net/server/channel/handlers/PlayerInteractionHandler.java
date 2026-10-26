@@ -38,6 +38,7 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.CashItemTradePolicy;
 import server.ItemRestrictionPolicy;
 import server.Trade;
 import server.agents.auth.AgentAuthorityService;
@@ -548,14 +549,14 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                 }
 
                 if (ii.isUnmerchable(item.getItemId())) {
-                    if (ItemConstants.isPet(item.getItemId())) {
-                        c.sendPacket(PacketCreator.serverNotice(1, "Pets are not allowed to be traded."));
-                    } else {
-                        c.sendPacket(PacketCreator.serverNotice(1, "Cash items are not allowed to be traded."));
+                    Trade open = chr.getTrade();
+                    Character partner = open == null || open.getPartner() == null ? null : open.getPartner().getChr();
+                    String refusal = CashItemTradePolicy.refusal(chr, partner, item, ii.isCash(item.getItemId()));
+                    if (refusal != null) {
+                        c.sendPacket(PacketCreator.serverNotice(1, refusal));
+                        c.sendPacket(PacketCreator.enableActions());
+                        return;
                     }
-
-                    c.sendPacket(PacketCreator.enableActions());
-                    return;
                 }
 
                 if (quantity < 1 || quantity > item.getQuantity()) {

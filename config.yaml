@@ -1214,6 +1214,9 @@ mods:
     #                          the equip tooltip; display only
     #   storage_bag            the Storage Bags (ores, scrolls, chairs, mounts) behind the client's storage_bag
     #                          window, allowed under FEATURES below; off: the window's requests are ignored
+    #   cash_item_trade        two players may trade cash items (not pets or partner rings, never to a companion);
+    #                          the client's cash_item_trade feature, allowed under FEATURES below, lifts its own
+    #                          refusal; stores, merchants, Duey and drops still refuse cash items; off: trades too
     # fusion_anvil and botstory_wz ship off, for a client made from public files (docs/SETUP.md); the BotStory client
     # needs both on.
     SWITCHES:
@@ -1223,6 +1226,7 @@ mods:
         beginner_ap: off
         set_items: on
         storage_bag: on
+        cash_item_trade: on
     # What the server answers a client's feature list at login, by kaentake feature_list.h id:
     #   allow     the player's own switch decides
     #   deny      the client makes the feature inert (a feature that cannot go inert while the game runs stays
@@ -1240,6 +1244,7 @@ mods:
         beginner_ap: allow
         storage_bag: allow
         crit_damage_mul: allow
+        cash_item_trade: allow
     # The answer for a server_gated feature FEATURES does not name (allow or deny): a new gameplay mod waits for a
     # line here.
     SERVER_GATED_DEFAULT: deny
