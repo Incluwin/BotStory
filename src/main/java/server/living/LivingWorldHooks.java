@@ -326,7 +326,7 @@ public final class LivingWorldHooks {
             world.partyQuests().cleared(players);
             for (Character chr : players) {
                 if (chr != null) {
-                    world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
+                    world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName, scriptName);
                 }
             }
             java.util.List<Character> cleared = new java.util.ArrayList<>(players);

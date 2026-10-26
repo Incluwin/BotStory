@@ -68,7 +68,7 @@ class BossClearsNotPartyQuestsTest {
                     lines.startingWith("Boss event cleared"));
         }
         verify(partyQuests, never()).cleared(anyList());
-        verify(quests, never()).onPartyQuestCleared(any(), anyString());
+        verify(quests, never()).onPartyQuestCleared(any(), anyString(), any());
         verify(friendship, never()).onPartyQuestCleared(anyList());
     }
 
@@ -80,7 +80,7 @@ class BossClearsNotPartyQuestsTest {
             LivingWorldHooks.partyQuestCleared(List.of(ann), script, script + "0");
         }
         verify(partyQuests, never()).cleared(anyList());
-        verify(quests, never()).onPartyQuestCleared(any(), anyString());
+        verify(quests, never()).onPartyQuestCleared(any(), anyString(), any());
         verify(friendship, never()).onPartyQuestCleared(anyList());
     }
 
@@ -92,8 +92,8 @@ class BossClearsNotPartyQuestsTest {
             assertEquals(List.of(), lines.startingWith("Boss event cleared"));
         }
         verify(partyQuests).cleared(List.of(ann, thane));
-        verify(quests).onPartyQuestCleared(ann, "Kerning0");
-        verify(quests).onPartyQuestCleared(thane, "Kerning0");
+        verify(quests).onPartyQuestCleared(ann, "Kerning0", "KerningPQ");
+        verify(quests).onPartyQuestCleared(thane, "Kerning0", "KerningPQ");
         verify(friendship).onPartyQuestCleared(List.of(ann, thane));
     }
 
@@ -105,7 +105,7 @@ class BossClearsNotPartyQuestsTest {
             LivingWorldHooks.partyQuestCleared(List.of(ann), script, script + "1");
         }
         for (String script : scripts) {
-            verify(quests).onPartyQuestCleared(ann, script + "1");
+            verify(quests).onPartyQuestCleared(ann, script + "1", script);
         }
         verify(partyQuests, org.mockito.Mockito.times(scripts.length)).cleared(List.of(ann));
         verify(friendship, org.mockito.Mockito.times(scripts.length)).onPartyQuestCleared(List.of(ann));
@@ -117,9 +117,9 @@ class BossClearsNotPartyQuestsTest {
         LivingWorldHooks.partyQuestCleared(List.of(ann), null, "Zakum1");
         LivingWorldHooks.partyQuestCleared(List.of(ann), "KerningPQ");
 
-        verify(quests).onPartyQuestCleared(ann, "SomeNewEvent3");
-        verify(quests).onPartyQuestCleared(ann, "Zakum1");
-        verify(quests).onPartyQuestCleared(ann, "KerningPQ");
+        verify(quests).onPartyQuestCleared(ann, "SomeNewEvent3", "SomeNewEvent");
+        verify(quests).onPartyQuestCleared(ann, "Zakum1", null);
+        verify(quests).onPartyQuestCleared(ann, "KerningPQ", null);
         verify(partyQuests, org.mockito.Mockito.times(3)).cleared(List.of(ann));
         verify(friendship, org.mockito.Mockito.times(3)).onPartyQuestCleared(List.of(ann));
     }
@@ -131,7 +131,7 @@ class BossClearsNotPartyQuestsTest {
         LivingWorldHooks.partyQuestCleared(List.of(ann), "ZakumBattle", "Zakum1");
 
         verify(partyQuests).cleared(List.of(ann));
-        verify(quests).onPartyQuestCleared(ann, "Zakum1");
+        verify(quests).onPartyQuestCleared(ann, "Zakum1", "ZakumBattle");
         verify(friendship).onPartyQuestCleared(List.of(ann));
     }
 
@@ -141,7 +141,7 @@ class BossClearsNotPartyQuestsTest {
 
         LivingWorldHooks.partyQuestCleared(List.of(ann), "ZakumBattle", "Zakum1");
 
-        verify(quests).onPartyQuestCleared(ann, "Zakum1");
+        verify(quests).onPartyQuestCleared(ann, "Zakum1", "ZakumBattle");
     }
 
     private static Character character(int id, String name) {
