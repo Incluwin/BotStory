@@ -130,6 +130,8 @@ class RepackMapsTest {
         Character botChr = mock(Character.class);
         when(botChr.getClient()).thenReturn(bot);
         assertTrue(maps.beforeWarp(botChr, COKE_TOWN));
+        assertEquals("repack", maps.filesWord(bot), "the travel NPCs take a bot in without the question");
+        maps.clientClosed(bot, false);
         mods.set(ServerMods.REPACK_MAPS, false);
         assertFalse(maps.beforeWarp(botChr, COKE_TOWN));
     }

@@ -26,15 +26,21 @@ node tools/repack-import/export.js --check    # exit 1 when the tree differs fro
   Npc.wz and String.wz carry BotStory's patches). Sizes and SHA-256 are in `tools/repack-import/export-report.json`.
 - Writer check: shared images (Henesys, Ludibrium, a mob, an NPC, a reactor) written from the Repack binary are
   byte-identical to the server's existing XML.
-- Written: 579 maps (`wz/Map.wz/Map/Map0,2,4,5,8`; Map4 is new), 339 NPCs, 64 mobs, 2 reactors, and their String.wz
+- Written: 579 maps (`wz/Map.wz/Map/Map0,2,4,5,8`; Map4 is new), 339 NPCs, 65 mobs, 2 reactors, and their String.wz
   Map/Mob/Npc entries. A map name goes into the String.wz group `MapFactory.getMapStringName` reads (Arcane River:
-  `etc`). 28 maps have no name in the Repack either; they get their area's name.
+  `etc`). 28 maps have no name in the Repack either; they get their area's name. 19 Coke Town names were already
+  there (identical); no existing String entry changed.
 - Changed on the way, all listed in the report:
   - Arcane River (and the unnamed Maple Island ship map): the 5,802 mob spawns are left out and the Arcane mobs are not
     imported, so those maps are scenery.
   - 26 spawns whose template is in neither WZ set (NPCs 1540941-1540944 on the 5th-job maps, reactors 2112018,
     2708001-2708004, 2709001-2709002 in Lion King's Castle and Arcarium's altar) are left out: the server's map load
     would fail on them and the Repack client lacks them too.
+  - Mob skills: `LifeFactory` throws on a (skill, level) that `Skill.wz/MobSkill.img` lacks, which would fail the map
+    load. The five levels the imported mobs use (100/30, 102/10, 123/35, 142/7, 200/224) are imported from the
+    Repack's MobSkill.img, and the one mob the summon level calls (8610015) with them. A skill id the server does not
+    know at all would be taken off the mob; there was none.
+  - Lachelein's five Dream Defender boards (9010101-9010105) have no name in the Repack's String.wz either.
 - `src/main/resources/mods/repack-maps.txt`: the 579 map ids and their area, which the gate reads.
 - `/wz/` is in `.gitignore` as a guard (every base file is tracked), so the new files are added with `git add -f`.
 - Size: 984 new files, 53 MiB of XML (about 3 MiB compressed); String.wz grows by about 4,500 lines. The scrub push
@@ -61,22 +67,25 @@ node tools/repack-import/export.js --check    # exit 1 when the tree differs fro
 - What a player's client has, first answer wins:
   1. A Kaentake.dll report (P5 handshake) of an active feature `repack_wz`. No DLL sends it yet: the client patch is
      held. When it ships, it replaces the question.
-  2. The account's answer, table `account_client_files` (changeset `48-account-client-files`): `repack` or `cosmic`,
-     with where it came from (`player`, `gm`, `crash`).
-  3. None: unknown.
+  2. The account's answer, table `account_client_files` (changeset `48-account-client-files`, file 039): `repack` or
+     `cosmic`, with where it came from (`player`, `gm`, `crash`, `client`). A DLL report is kept there as `client`, so
+     the next login (before the report arrives) knows it too.
+  3. None: unknown. A bot (BotClient) has no game files and counts as Repack.
 - Every warp goes through `Character.changeMapInternal`; a listed map is refused there unless the client is known to be
   Repack (bots always pass while the switch is on). A refusal is a chat line and enableActions, never a warp:
   - cosmic: the place is only in the full Community Repack game files;
-  - unknown: talk to the area's guide, or use `@gamefiles repack` once you know which files you installed.
+  - unknown: talk to the guide who knows the way, or type `@gamefiles repack` once you know which files you installed.
 - The question: an entry NPC asks an unknown account once ("full Community Repack set" / "smaller Cosmic set" / "not
   sure", which explains the check: a `base=cosmic` line in the game folder's `config.ini` means Cosmic, no such line
-  means the Repack set). `@gamefiles [repack|cosmic]` lets a player answer or change it; `!gamefiles <player>
-  repack|cosmic|forget` (GM) sets it for them.
+  means the Repack set). `@gamefiles [repack|cosmic]` lets a player say or change it (no word: what the server
+  knows); `!setgamefiles <player> [repack|cosmic|forget]` (GM 3) shows or sets it for an online player.
 - Safety net: a warp into a listed map made on an account's answer (not a DLL report) is pending until the client's
-  PLAYER_MAP_TRANSFER says the field loaded. A disconnect while it is pending marks the account `cosmic` (source
-  `crash`).
-- Login: a character saved in a listed map whose client is not known to be Repack (or with the switch off) starts in
-  its area's way-out map instead (`returnMap` chain to the first map outside the list, else the entry map).
+  PLAYER_MAP_TRANSFER says the field loaded. A close (not a channel change or cash shop visit) within 60 s while it
+  is pending marks the account `cosmic` (source `crash`); a later close says nothing, so a lost acknowledgement never
+  marks a Repack player at a logout hours later.
+- Login (`Character.loadCharFromDB`): a character saved in a listed map whose client may not be there now (the account
+  is not Repack, or the switch is off) starts at its area's way out: the entry map (Henesys, Mushroom Shrine,
+  Suburban Area 2, Wolf Territory II, Three Doors), or the boss maps' town (Leafre, El Nath, Lith Harbor for the ship).
 
 ## 3. Entries
 
@@ -90,28 +99,43 @@ client patch.
 | Ninja Castle 800040000 | Mushroom Shrine 800000000 (GMS: an NPC at Zipangu) | Perry 9110000 | Perry in Outside Ninja Castle |
 | Ulu City 541020000 | Suburban Area 2 540020100 (GMS: a portal top right) | Ralph the wanderer 9270030 | the map's own portal west00 |
 | Lion King's Castle 211060000 | Wolf Territory II 211040600 (GMS: a portal) | Spirit of Snow Statue 2020012 | the map's own portal out00 |
-| Gate to the Future, Crack in Time, Dimensional Schism, Twilight Perion, Arcane River towns | Three Doors 270000000 | Temple Keeper 2140000 (already there) | the maps' own exits to 270000000; elsewhere a town NPC |
+| Gate to the Future, Crack in Time, Dimensional Schism, Twilight Perion, Arcane River towns | Three Doors 270000000 | Temple Keeper 2140000 (already there) | the maps' own exits to 270000000; elsewhere a town guide |
+
+Scripts: `scripts/npc/9001000.js`, `9110000.js`, `9270030.js`, `2020012.js` (each: ask an unknown account, refuse a
+Cosmic one, offer the trip to a Repack one; the Cokebear operator and Perry also take you home from inside; away from
+their entry map they only talk), `2140000.js` (the Temple Keeper's menu: Gate to the Future, Crack in Time,
+Dimensional Schism, Twilight Perion around level 160-190, and the nine Arcane River towns, "nothing hunts there now").
 
 ## 4. Scripts, drops
 
-- Imported NPCs without a script talk with their own String.wz lines (one shared script, `npc/repack_talk.js`), so
-  none of them is mute and none starts a post-v83 quest. The travel NPCs have their own scripts.
+- Imported NPCs without a script talk with their own String.wz lines (`NPCTalkHandler` runs `npc/repack_talk.js` for
+  an uncoded NPC on a listed map; `server.mods.RepackGuide` reads the lines), so none of them is mute and none starts
+  a post-v83 quest. In a town with no road back, its guide also offers Three Doors: Claudine (Twilight Perion), Legato
+  (Nameless Town), Lyon (Chu Chu Village), Protective Mask (Lachelein), Spirit of Harmony (Arcana), Beatrice
+  (Trueffet Square), Gate (Esfera Base Camp), the Temple Keepers (Moonbridge Outpost, Labyrinth Crash Site), Mask
+  (World's Sorrow).
 - Missing map scripts are harmless (the server skips a map script it does not have). Portal scripts only matter where
   the walkable part of an area uses them: Ulu City's mini dungeon `MD_longkiss` (Long Kiss Duku Good Night,
-  541020620-541020639) goes through `MiniDungeonInfo`. The rest guard boss and quest maps (Cygnus, Arkarium, Von
-  Leon): left for the boss work.
-- Drops: every mob that spawns in a huntable area gets drop rows (changeset under `db/extensions`), copied from the
-  closest stock mob by level that has drops, without quest items and the donor's own monster etc.; generated by
-  `tools/repack-import/drops.js`, so it is repeatable. Coke Town's mobs had no rows either.
+  541020620-541020639, entered from Destroyed Park II 541020610) goes through `MiniDungeonInfo`. The rest guard boss
+  and quest maps (Cygnus, Arkarium, Von Leon): left for the boss work.
+- Drops: `tools/repack-import/drops.js` writes `db/extensions/2026-10-26-repack-import-drops.xml`: 1,384 rows for the
+  55 mobs of the huntable areas that had none, each copied from the stock field mob closest in level (a boss from a
+  boss), without quest items and the donor's own monster etc. Coke Town's mobs had no rows either. The Future mobs
+  (lv 162-198) borrow from the highest stock field mob, Temple of Time's lv 131. The 93xxxxx mobs in Arkarium's maze
+  (party-quest style gimmicks) get none.
 
 ## 5. The rest of BotStory
 
-- TownLife profiles for the 16 player-facing towns, appended to `agents/town-life/index.json` (generated with
-  `tools/town-life-profiles.bat generate`).
+- TownLife: 15 profiles appended to `agents/town-life/index.json` (`TownLifeProfileMain generate ... --index
+  --admission MANUAL_ONLY`): coke-town, ninja-castle, henesys-ruins, crack-in-time, twilight-perion,
+  tribal-refugee-camp, nameless-town, chu-chu-village, lachelein, arcana, morass, esfera, moonbridge,
+  labyrinth-of-suffering, limina. MANUAL_ONLY until the routes session gives the towns travel legs (then AMBIENT).
+  Gate to the Future 271000000 is a swim map, which the nav graph does not model, so it has none (like Aquarium).
 - `KnowledgeExportMain.region()`: 219 coke-town, 271-273 future, 450 arcane-river (211 and 541 and 800 already map to
-  el-nath, singapore, zipangu).
-- For the routes session (via the coordinator, not built here): route graph and travel legs for the five entries,
-  citizen regions, shops (none of these towns has a shop row), `fields.yaml`.
+  el-nath, singapore, zipangu); `server-knowledge.json` re-exported (5,841 maps, 1,629 mobs).
+- For the routes session (via the coordinator, not built here): the hand-over note `repack-import.md` in the side
+  session notes folder lists the legs (NPC, selections, landing portal), the ways back, shop candidates and region
+  notes for route graph, travel legs, citizen regions, shops and `fields.yaml`.
 
 ## 6. Out of scope, listed for later
 
@@ -125,11 +149,21 @@ client patch.
 
 ## 7. Checks
 
-Tests: the list matches the XML (every listed map has a file and a String name; every spawn's template is on the
-server); every imported map loads through `MapFactory`; every imported mob and NPC loads through `LifeFactory`; the
-gate decisions (switch, DLL report, answer, unknown, bots); the safety net; login relocation; export `--check`.
+Tests:
 
-GM live checks (scratch server or live after deploy, both client bases):
+- `server.mods.RepackImportDataTest`: every listed map has its XML and a String name where MapFactory reads it, spawns
+  only templates the server has, no mob in Arcane River; all 579 load through `MapFactory.loadMapFromWz` (about 5 s);
+  every imported mob and NPC loads through `LifeFactory`; Ulu's mini dungeon.
+- `server.mods.RepackMapsTest`: the list and areas, unknown/cosmic/repack answers, the store cache, a DLL report,
+  bots, the switch, the safety net (and what is not a crash), ways out, the entry NPCs standing on their foothold.
+- `scripting.npc.RepackTravelScriptTest`: every travel script run in Graal (question, Cosmic refusal, unsure, the
+  trips in and back, the Temple Keeper's menus, repack_talk's lines and way back).
+- `node tools/repack-import/export.js --check` and `drops.js --check` (need the Repack files, so not a JUnit test).
+- Moved pins: `ServerModsTest` (repack_maps), `AgentTownLifeProfileRepositoryTest` (45 profiles),
+  `KnowledgeFileGoldenTest` (5,841 maps, 1,629 mobs), `SeedDataTest` (the drops changeset, +1,384 rows).
+
+GM live checks (they need the game client, so they run after the deploy, by the session that drives the client; this
+branch's session did not run them):
 
 1. Repack client, account unknown: `!warp 219000000` is refused with the unknown line; Cokebear operator in Henesys asks
    the question; answer Repack; warped to Coke Town.
@@ -143,3 +177,4 @@ GM live checks (scratch server or live after deploy, both client bases):
    the account says cosmic.
 6. `!mods repack_maps off`: entry NPCs gone after a map reload, warps refused, a character inside starts outside at
    its next login.
+7. Ulu City: Destroyed Park II's MD00 portal opens a Long Kiss room; its out00 portal leads back.

@@ -10,6 +10,7 @@ import server.life.Monster;
 import server.life.NPC;
 import server.maps.MapFactory;
 import server.maps.MapleMap;
+import server.maps.MiniDungeonInfo;
 import tools.DatabaseConnection;
 
 import java.io.IOException;
@@ -162,6 +163,18 @@ class RepackImportDataTest {
         assertTrue(report.contains("\"maps\": 579"));
         assertFalse(ids(report, "reactors").isEmpty());
         assertNotNull(RepackMaps.area(219000000));
+    }
+
+    @Test
+    void ulusLongKissIsAMiniDungeonOfTwentyRooms() {
+        assertEquals(MiniDungeonInfo.LONG_KISS_DUKU_GOOD_NIGHT, MiniDungeonInfo.getDungeon(541020620));
+        assertEquals(MiniDungeonInfo.LONG_KISS_DUKU_GOOD_NIGHT, MiniDungeonInfo.getDungeon(541020639));
+        assertEquals(541020610, MiniDungeonInfo.LONG_KISS_DUKU_GOOD_NIGHT.getBase());
+        assertFalse(MiniDungeonInfo.isDungeonMap(541020610), "the base map is the field before it");
+        assertTrue(Files.isRegularFile(Path.of("scripts", "portal", "MD_longkiss.js")));
+        for (int room = 541020620; room <= 541020639; room++) {
+            assertTrue(RepackMaps.listed(room), room + " is a Repack map");
+        }
     }
 
     /** The ids of a list in export-report.json: under "imported" for npcs/mobs/reactors, else at the top. */

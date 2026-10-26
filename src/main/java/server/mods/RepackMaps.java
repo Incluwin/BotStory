@@ -209,11 +209,12 @@ public final class RepackMaps {
 
     /**
      * What the client has: a Kaentake report first (kept as the account's answer, so the next login, before the
-     * report arrives, knows it too), then its account's answer.
+     * report arrives, knows it too), then its account's answer. A bot has no game files to close on: the travel NPCs
+     * take it in like a Repack client.
      */
     public Files files(Client client) {
         if (isBot(client)) {
-            return Files.UNKNOWN;
+            return Files.REPACK;
         }
         Optional<Answer> answer = answer(client.getAccID());
         if (clientReportsRepack.test(client)) {
