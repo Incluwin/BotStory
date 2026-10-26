@@ -20,8 +20,9 @@ line per persona per tick when a Resident does not show up.
 
 ## What players do
 
-Residents stand in their home towns (all seven Victoria towns have a cast, and Orbis, El Nath, Ludibrium,
-Leafre, Mu Lung, Herb Town, Ariant and Magatia have seven each: `docs/REGIONAL_RESIDENTS_PLAN.md`). Talk to them in map
+Residents stand in their home towns (all seven Victoria towns have a cast; Orbis, El Nath, Ludibrium, Leafre, Mu Lung,
+Herb Town, Ariant, Magatia, Omega Sector, Korean Folk Town, Aquarium, Singapore and Zipangu have seven each, and New
+Leaf City 25: `docs/REGIONAL_RESIDENTS_PLAN.md`). Talk to them in map
 chat with their name anywhere in the line, or stand next to one and speak, or whisper them.
 
 | Say | Effect |
@@ -113,13 +114,18 @@ offered to those classes. The weapon Residents are recruitable (a contract once 
 and have done their intro quest), so party quests and bosses with them count toward friendship;
 the armourers are townsfolk, befriended through their quests, gifts and fame.
 
-Off Victoria the same recipes continue one tier up (`docs/REGIONAL_RESIDENTS_PLAN.md` sections 4 and 5): Orbis's Vesna (wands)
+Off Victoria the same recipes continue one tier up (`docs/REGIONAL_RESIDENTS_PLAN.md` sections 4, 5 and 9): Orbis's Vesna (wands)
 and Ansel (bows), El Nath's Sigrun (two-handed swords) and Bjarke (spears) and Ludibrium's Saskia (claws) and Jasper
 (guns) give weapons at L58-90 and are recruitable; the armourers Aster (hats) and Perrin (earrings) in Orbis, Ulla
 (gloves) and Oskar (shoes) in El Nath, and Della (coats) and Marlow (capes, up to the Ludibrium Cape) in Ludibrium
 give pieces at L60-100. Wave 2 adds the other ten weapon lines, one recruit each (Bastian and Runa in Leafre, Baojun
 and Suyin in Mu Lung, Taejin and Maren in Herb Town, Sefa and Harun in Ariant, Vael and Kipp in Magatia; L50-100),
-and the next hat, glove and shoe tiers (Mirelle and Dovan in Leafre, Fengzi in Mu Lung; L90-120).
+and the next hat, glove and shoe tiers (Mirelle and Dovan in Leafre, Fengzi in Mu Lung; L90-120). Wave 3 gives
+twelve of the lines a third regional tier (L88-120: Vesper and Rourke in Omega Sector, Gwang and Seori in Korean Folk
+Town, Thalia and Kael in Aquarium, Genzo and Rin in Zipangu, Brody, Vance, Delphine and Duke in New Leaf City),
+Singapore's Arjun and Priscilla give earrings and capes, and New Leaf City's other Residents hand out the iTCG
+items. Quest rewards are added with `InventoryManipulator.addById`, which does not create a pet: never reward a pet
+item until a pet-aware reward path exists, and never ask for an untradeable item as a hand-in.
 
 The armour piece:
 
@@ -344,7 +350,7 @@ Persona dialogue intents the runtime looks up (chapter overrides first, then the
 Once-per-server beats: a quest whose `rewards.worldFlags` turns an arc for everyone can name that flag in
 `requires.notFlags` (flags and notFlags read world flags as well as the player's). It is then offered only until someone
 on the server has done it; a player already on it when that happens can still finish. The regional arcs' last beats
-work this way (docs/REGIONAL_RESIDENTS_PLAN.md section 5).
+work this way (docs/REGIONAL_RESIDENTS_PLAN.md sections 5 and 9).
 
 Friendship quests: `requires: { friendship: 4 }` gates on the giver's friendship level (0-10). A
 `rewards.gear` entry is one scrolled piece (see Friendship above), in one of two forms:

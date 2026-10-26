@@ -742,7 +742,9 @@ Live checks for the deploy session (not run here: no server restart, no game log
 6. A restart mid-errand: the flag carries it on to its instructor (or, advanced already, back to its owner).
 
 Open:
-- Olwen (Beginner persona, Lv29) stays owner-chooses; authoring her a class is a content decision.
+- Olwen (Beginner persona, Lv29) stayed owner-chooses until 2026-10-25, when her persona was authored GUNSLINGER
+  (the user's choice; `docs/REGIONAL_RESIDENTS_PLAN.md` section 9): as a companion she now walks to Kyrin in Nautilus
+  for Pirate, and again at 30 for Gunslinger.
 - The crew window shows an errand as "away" with its old duty; no "gone to see Grendel" status yet (Lakelis/Tory desks neither).
 - Owner chat ("casse fp") still advances in place at once, as before.
 
