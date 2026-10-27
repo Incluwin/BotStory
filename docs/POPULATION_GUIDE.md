@@ -33,11 +33,18 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `NEEDS_EXPIRE_MIN_HOURS`/`MAX_HOURS`, `NEEDS_REPOST_HOURS`, `NEEDS_SCROLL_CHANCE`, `NEEDS_SUPPLY_PREMIUM` | a potion or scroll request ends after; the same one is not asked again for; chance a derivation asks for a scroll; a potion's offer over its shop price |
 | `NEEDS_GEAR_WANT_SHARE`, `NEEDS_GEAR_DEADLINE_HOURS` | decision D4: share of free gear upgrades held back as a want, and how long until it gets the piece anyway |
 | `NEEDS_CLAIMS_PER_PLAYER`, `NEEDS_CLAIM_MINUTES`, `NEEDS_WHISPER_GAP_MINUTES` | requests a player holds at once and for how long; one request whisper per player this often |
+| `CLEAR_RECORDS_ENABLED` | every listed PQ and boss clear is booked in `living_clear` ("Rival crew and records" below; on: it only measures) |
+| `RIVALS_ENABLED`, `RIVALS_MIN_LEVEL`, `RIVALS_CREW_MIN`/`MAX` | rival crews, the records page and `@records` (kill switch, off by default); the main's level from which it gets a crew; crew size |
+| `RIVALS_JOIN_BAND`, `RIVALS_LEAVE_BAND`, `RIVALS_REFRESH_MINUTES` | levels from the main to join (D12: 5) and to leave (7); how often a crew is checked while its player is online |
+| `RIVALS_BANTER_GAP_MINUTES`, `RIVALS_HELP_GAP_HOURS`, `RIVALS_HELP_OPEN_MINUTES` | banter at most this often; a Zakum help request at most this often, open this long |
+| `RIVAL_HELP_REQUESTS_ENABLED` | the crew's Zakum help requests (needs `RIVALS_ENABLED`; off until the citizen Zakum run, F7.4b, exists) |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
 `living_guild`, `living_price_index`, `living_acquaintance`). Changeset `49-citizen-person-memory` adds the memory columns to
 `living_acquaintance`. Changeset `51-living-need` adds `living_need` (the needs board's requests); a board hand-in for a
-citizen who is away waits in `inventoryitems` as type 14 (`ItemFactory.NEED_ESCROW`) under its character id. Generated replies use the existing
+citizen who is away waits in `inventoryitems` as type 14 (`ItemFactory.NEED_ESCROW`) under its character id. Changeset
+`53-rival-crew` adds `living_clear`, `living_clear_member` (every recorded clear and who was in it) and `living_rival`
+(each player account's rival crew). Generated replies use the existing
 social dialogue runtime: Ollama at `SOCIAL_OLLAMA_ENDPOINT` / `SOCIAL_OLLAMA_MODEL` (env), mode
 `SOCIAL_DIALOGUE_MODE` (`DIALOGUE_ONLY` = model with deterministic fallback, `DETERMINISTIC_ONLY`
 = templates only, free).
@@ -249,7 +256,8 @@ towns) on every population channel and re-checked every minute; the Guild PQ map
 (only the spawned objects open the needs board). A board's menu lists the requests sorted by distance from the board,
 then by how well the citizen knows you, with each one's details (who, what, how many, price, where they are, deadline),
 Claim (held for you `NEEDS_CLAIM_MINUTES`, at most `NEEDS_CLAIMS_PER_PLAYER` at once) and "Hand it over here"; "Your
-requests" lists what you hold; room is left for F7's Records. `@requests` (everyone) is the same in chat:
+requests" lists what you hold; "Records" (F7, while `RIVALS_ENABLED`) is the clear records page. A rival crew's
+invitation is listed only for the player it invites. `@requests` (everyone) is the same in chat:
 `@requests claim <n>`, `@requests drop <n>`. To hand over in person, double-click the citizen while carrying what it asked
 for (tradeable; an equip base or better) and pick how many. Either way one `NEED_FULFILLED` economy transaction moves the
 items from your bag into the citizen's (or its escrow while it is away), the offer from its purse (its stored row while
@@ -259,6 +267,88 @@ you are both online. Warmth: a `FULFILLED` episode, +8 in person, `FULFILLED_BOA
 per citizen; it greets you with it later. Logs: `citizen <id> needs SUPPLY white potion x100 at 345 ea
 (easy_balrog)`, `citizen <id> need ... ended: EXPIRED`, `needs board: N requests live`; the journal says `asked for 100
 white potion (345 ea)`.
+
+### Rival crew and records
+
+2026-10-27, docs/BOT_CONCEPT_PLAN.md F7, decisions D12 and D13. Code: `server.living.population.records` and `.rivals`.
+
+**Clear records** (`CLEAR_RECORDS_ENABLED`, on: measuring only).
+- Every cleared event instance of a quest that `rivals.yaml` lists is one `living_clear` row, whoever cleared it: players,
+  their companions, citizens. The members go in `living_clear_member`.
+- `EventInstanceManager.clearPQ` calls `LivingWorldHooks.eventCleared`, once an instance. That is a party quest's end and
+  a boss body's death alike: boss scripts call `clearPQ` when the boss dies.
+- The row keeps:
+  - each member: H player, P companion (a Resident or a hired citizen), C citizen, B another bot;
+  - the clear's kind: HUMAN if any player was in it, else COMPANION, CITIZEN or BOT;
+  - when it started: the instance's first event timer (a restarted timer keeps it), else its creation;
+  - how long it took (untimed when under a second);
+  - the rival crew credited with it.
+- A script the file does not list (a job instance, a wedding, a boat) is no record.
+- The row is written on companion-ops, never on the script's thread. The log line is
+  `clear booked: quest= kind= time= crew= members=`.
+
+**Records page** (`RIVALS_ENABLED`).
+- A Bulletin Board's menu gains "Records": each quest or boss with a clear, its first clear (who, the UTC date), its
+  fastest (m:ss and who), and your own best.
+- `@records` (everyone) is the same in chat, one line a quest; `@records <quest>` gives one quest. Players type the
+  aliases in `rivals.yaml`: kpq, balrog, zakum, ...
+- "First" means first since recording began; nothing older was recorded anywhere.
+
+**The crew** (`RIVALS_ENABLED`). Each player account gets one crew, racing its main: the account's highest-level
+character from `RIVALS_MIN_LEVEL` (20); one of its characters online that overtakes it becomes the main at once.
+- **Forming.** The crew has `RIVALS_CREW_MIN`..`MAX` (3..5; it takes 4 or 5) citizens within `RIVALS_JOIN_BAND` (5)
+  levels of the main.
+  - Never picked: a hire, a member of another crew, another guild's master or jr. master, anyone under Lv10.
+  - The first pick's cohort is preferred, so they share hours.
+  - The crew's name comes from the bot-guild name generator. Its first member founds a real guild under that name, with
+    the name's emblem, and the others quit their old bot guild and join it.
+  - The crew is also one circle (`living_circle`). They log in together (presence's circle boost) and party up on the
+    same map, and their PQ lobby calls go to circle and guild mates first. So the crew runs together without any steering.
+  - Crew guilds are kept in `living_rival`, not `living_guild`, so `GUILD_TARGET`, recruiters and alliances leave them
+    alone. `isBotGuild` still says yes.
+- **Drifting (D12).** Nobody's EXP, level or gear is touched. While the player is online the crew is checked every
+  `RIVALS_REFRESH_MINUTES` (30):
+  - A member more than `RIVALS_LEAVE_BAND` (7) levels from the main leaves. The band is wider than the join band, so one
+    level-up at the edge does not churn.
+  - A loaded member says why in guild chat ("u guys level too fast for me lol") and whispers the player, then quits the
+    guild half a minute later. An away member quits silently (the guild's own "left the guild" notice).
+  - A leaving master first hands the guild to the highest member. A crew left empty has its guild disbanded and
+    founds it again later, under the same name if it is free.
+  - Citizens in band take the free seats (up to 4), saying hi in guild chat when they are loaded.
+  - The crew keeps its name and its records while its members change.
+- **Credit.** A clear counts for a crew when two or more of its members are in it and its player is not (a shared run
+  is no race). The crew's best per quest comes from those clears.
+- **Contact.**
+  - Banter: a loaded member on the player's map (not in an instance) says something to them, once every
+    `RIVALS_BANTER_GAP_MINUTES` (45).
+  - The crew beats one of the player's times while the player is online: one megaphone from a member who was in the run.
+    The run must set the crew's own new best. The megaphone is a slot of `CHATTER_SMEGA_PER_HOUR` with the 10-minute gap
+    (`ChatterEngine.megaphone(from, text, consumeItem)`, the one megaphone entry point outside the cadence, shared with
+    the LF party megaphones of F5c; the crew passes `consumeItem` false, carrying no megaphones in v1). With the cap
+    spent, it is a whisper.
+  - The player beats the crew's best with a new personal best: a loaded member whispers congratulations. With nobody
+    loaded, it is owed for up to a day and said once a member is on while the player is.
+  - While the player is away, each crew clear is a `rival.news` row on the main. Their next letters (F3,
+    `LETTERS_ENABLED`) bring one note signed by the crew's leader ("hey Ann, Ironclads here. while u were gone we did easy
+    balrog in 14:20 (beat ur 16:05 :P)..."). It counts in `LETTERS_MAX_NOTES` and is named in the pink line.
+- **Help requests (F7.4, `RIVAL_HELP_REQUESTS_ENABLED`, off: an invitation to a run that does not exist yet would be a
+  tell).** The crew asks the player along when all of these hold: 3+ members loaded, their median level in Zakum's band,
+  and the main online and in the band.
+  - The leader posts a PARTY need on the needs board with the player as the guest (`zakum|guest:<id>`): only that player
+    sees it, as "wants you along for zakum", meet at the Door to Zakum (211042300).
+  - The leader also whispers the invitation.
+  - It happens once per `RIVALS_HELP_GAP_HOURS` (12, stored, so a restart does not ask again) and stays up
+    `RIVALS_HELP_OPEN_MINUTES` (30).
+  - Whispered replies go to `RivalCrews.replied` once the whisper intake (F5c) routes them (topic "rival", wired at
+    integration): while the request is open the first yes word ("ya omw") gets "see u there" and a no word ("nah
+    busy") ends the request on the board; anything else, or any reply to a boast or a congratulation, gets a short
+    answer.
+  - The citizen Zakum run itself is not built (F7.4b, below): the request is the invitation.
+
+The lines are in `chatter/rivals.yaml`; no Jev. Logs: `rival crew '<name>' (<id>) formed for account ...`,
+`rival crew '<name>': X joined / is leaving / left`, `rival crew '<name>' beat character N's <quest> time: ...
+(megaphone|whisper|letters)`, `rival crew '<name>' asked X along for Zakum`. A member's journal says `joined the
+<crew>` / `left the <crew>`.
 
 ## Ops
 
@@ -274,6 +364,19 @@ lobby id such as `balrog` picks one of several that fit).
 `!needs` (GM 5): the board's counts; `!needs <citizen>` every request of one citizen with its state, hold and deadline;
 `!needs map` the open requests of the citizens on your map. `@requests` (everyone): the requests you hold and the nearest
 open ones, numbered; `claim <n>`, `drop <n>`.
+
+`!rivals` (GM 5): every crew, one line each. `!rivals <player>` shows that player's crew: members with level, leader,
+online or leaving, and its bests beside the player's. `!rivals clears` shows the last 20 clears booked since the boot.
+`@records [quest]` (everyone) is the records page in chat while `RIVALS_ENABLED` is on.
+
+**Testing the rival crew live** (switch on; a Lv20+ test character):
+1. Log in and wait a minute. `!rivals <you>` shows a crew of 4-5 within five levels, and their guild tag is over their
+   heads.
+2. `!citizens level <member> <your level + 10>` (offline), or level yourself up past the band. At the next refresh
+   (`RIVALS_REFRESH_MINUTES`; lower it to test) it leaves, with lines if it is loaded, and another citizen joins.
+3. Clear Easy Balrog. `@records balrog` lists it as first, fastest and yours.
+4. `!rivals clears` shows the crew's citizen runs. A faster one while you are online brings a megaphone.
+5. Log out. The crew clears something. Log in: a note from the crew's leader arrives.
 
 **Testing job errands live.**
 1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
@@ -331,6 +434,8 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
 | `needs.yaml` | where the needs board's Bulletin Boards stand (map, x, y above the ground); `NeedBoardsPlacementTest` checks each against the map's WZ footholds and stock NPCs |
+| `rivals.yaml` | the quests whose clears are records: event script, label, `pq` or `boss`, aliases for `@records`; `RivalsContentTest` checks every `BOSS_EVENT_SCRIPTS` entry and the citizens' own PQs are listed and every script exists |
+| `chatter/rivals.yaml` | the rival crew's lines: `rival.banter` (map), `rival.beat` (smega only, a slot of the hourly cap), `rival.beat.whisper`, `rival.congrats`, `rival.help`, `rival.leave.behind/ahead(.whisper)` (whispers), `rival.join` and `rival.leave.*` (guild); slots `{name} {crew} {quest} {time} {theirs}` |
 | `chatter/needs.yaml` | the needs board's lines: `dwell` and `smega` intents named `need.<kind>.*` (only that kind's request fills them), and the triggers `need.whisper`, `need.thanks`, `need.got`, `need.scroll.pass`, `need.scroll.fail`; slots `{item} {what} {count} {price} {total} {for}` |
 | `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait; the minigame ones in `chatter/minigames.yaml`: game.lf, game.title.omok, game.title.cards, game.hi, game.nice, game.win, game.loss, game.tie, game.bye), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega, room = a minigame room's chat), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
 
@@ -364,6 +469,13 @@ OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ l
 invite you); expeditions are Easy and Normal Balrog only (docs/CITIZEN_EXPEDITIONS_PLAN.md); travel on foot ends on
 the first map nobody watches (no citizen walks a whole multi-map trip unseen) and rides no real ship; citizens remember
 players (each other only through circles, guilds and gossip) but answer no whispers, and the weekly life summary of
-plan 6.4 is never written. The needs board asks for no quest items (decision D4b), its board menu has
-no Records entry yet (F7), and it sorts by warmth until Standing (C1) lands; a whisper to a citizen about its request
-goes unanswered (F5c).
+plan 6.4 is never written. The needs board asks for no quest items (decision D4b) and sorts by warmth until Standing
+(C1) lands; a whisper to a citizen about its request goes unanswered (F5c).
+
+The rival crew's help request is only an invitation (F7.4b is not built). The run itself would need these:
+- citizens running Zakum through the expedition engine (`AgentBossCitizenRuns` and `CITIZEN_BOSSES` know only Balrog);
+- the crew leader's trials quest 100201 for the `Zakum05` portal and an Eye of Fire for Adobis's list, both off-screen;
+- a `CitizenZakumDoor`, with its lobby in `rivals.yaml`;
+- the guest signing up at Adobis, with `humanOptional` false, since Zakum needs a player's client;
+- the leader dropping the Eye on the altar once the guest is inside.
+Zakum is the only boss crews ask about.

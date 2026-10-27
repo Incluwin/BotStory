@@ -1447,6 +1447,34 @@ population:
     BOSS_NORMAL_MIN_LEVEL: 80
     BOSS_RUN_COOLDOWN_MS: 3600000
     BOSS_SIGNUP_WAIT_MS: 120000
+    # Clear records and the rival crew (docs/BOT_CONCEPT_PLAN.md F7). CLEAR_RECORDS_ENABLED books every party quest or
+    # boss clear that scripts/config/population/rivals.yaml lists, by anyone (players, their companions, citizens): who,
+    # when, how long. It only measures, so it is on: when the rivals go on there are times to race already. false = no
+    # new rows. RIVALS_ENABLED (off until its live checks) gives each player account a crew of citizens near its main's
+    # level (the account's highest character, from RIVALS_MIN_LEVEL): RIVALS_CREW_MIN..MAX of them within
+    # RIVALS_JOIN_BAND levels (decision D12) under one name, their own guild and circle. Nobody's EXP is steered: every
+    # RIVALS_REFRESH_MINUTES while the player is online a member more than RIVALS_LEAVE_BAND levels away leaves (a loaded
+    # one says it fell behind or got ahead) and a citizen in band joins. They banter on the player's map (once per
+    # RIVALS_BANTER_GAP_MINUTES), megaphone when they beat one of the player's times (a slot of CHATTER_SMEGA_PER_HOUR),
+    # whisper congratulations when the player beats theirs, and write in the player's letters while they are away.
+    # RIVALS_ENABLED also opens the records page (a Bulletin Board's "Records", @records: first and fastest clears,
+    # decision D13). false = the kill switch: no crew changes, lines, records page or requests; recording goes on.
+    # RIVAL_HELP_REQUESTS_ENABLED (needs RIVALS_ENABLED; off until the citizen Zakum run, F7.4b, is built, since an
+    # invitation to a run that cannot happen is a tell): a crew at Zakum's level asks its player along on the needs
+    # board and by whisper, once per RIVALS_HELP_GAP_HOURS, open RIVALS_HELP_OPEN_MINUTES.
+    # Technical: EventInstanceManager.clearPQ (once an instance) -> LivingWorldHooks.eventCleared -> records.ClearLog, which writes living_clear and living_clear_member on companion-ops; rivals.RivalCrews rides the 60 s social lane and keeps crews in living_rival.
+    CLEAR_RECORDS_ENABLED: true
+    RIVALS_ENABLED: false
+    RIVALS_MIN_LEVEL: 20
+    RIVALS_CREW_MIN: 3
+    RIVALS_CREW_MAX: 5
+    RIVALS_JOIN_BAND: 5
+    RIVALS_LEAVE_BAND: 7
+    RIVALS_REFRESH_MINUTES: 30
+    RIVALS_BANTER_GAP_MINUTES: 45
+    RIVAL_HELP_REQUESTS_ENABLED: false
+    RIVALS_HELP_GAP_HOURS: 12
+    RIVALS_HELP_OPEN_MINUTES: 30
 
 # Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
 # from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live

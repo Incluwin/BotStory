@@ -55,7 +55,10 @@ public final class CompanionLetters {
     static final String AWAY_EVENT = "letters.away";
     /** Written by a digest: what is logged after it is not told yet. */
     static final String TOLD_EVENT = "letters.told";
-    private static final List<String> NEWS = List.of(BenchLedger.REPORT_EVENT, JOB_ADVANCED_EVENT, GIFT_EVENT, ASKED_EVENT);
+    /** A rival crew's clear while its player was away (RivalCrews, docs/BOT_CONCEPT_PLAN.md F7.3). */
+    static final String RIVAL_NEWS_EVENT = "rival.news";
+    private static final List<String> NEWS = List.of(BenchLedger.REPORT_EVENT, JOB_ADVANCED_EVENT, GIFT_EVENT, ASKED_EVENT,
+            RIVAL_NEWS_EVENT);
     private static final List<String> MARKERS = List.of(AWAY_EVENT, TOLD_EVENT);
     /**
      * Rows one digest reads at most, the newest: about two weeks of a full bench's (ten companions, a row each a ledger
@@ -282,6 +285,12 @@ public final class CompanionLetters {
         }
         int sent = send(owner, writers);
         String summary = summary(writers.keySet(), sent, wentHome, askers);
+        String rival = rivalNote(owner, window, sent);
+        if (rival != null) {
+            summary = summary == null ? "While you were away, " + rival + " wrote to you."
+                    : summary.substring(0, summary.length() - 1) + "; " + rival + " wrote to you.";
+            sent++;
+        }
         if (summary != null) {
             owner.dropMessage(5, summary);
         }
@@ -294,6 +303,28 @@ public final class CompanionLetters {
                 ledger.takeReport(ownerId, entry.personaId(), 0); // the letters told it: no call-back says it again
             }
         }
+    }
+
+    /**
+     * The rival crew's news over the window (F7.3): one note signed by its leader, inside LETTERS_MAX_NOTES and the
+     * inbox's room. Who signed it, or null when there was none or no room.
+     */
+    private String rivalNote(Character owner, List<CharacterEvent> window, int sent) {
+        List<String> details = new ArrayList<>();
+        for (CharacterEvent event : window) {
+            if (RIVAL_NEWS_EVENT.equals(event.kind()) && event.detail() != null) {
+                details.add(event.detail());
+            }
+        }
+        Population population = details.isEmpty() ? null : Population.get();
+        var letter = population == null || population.rivals() == null ? null
+                : population.rivals().letter(owner.getId(), owner.getName(), details);
+        if (letter == null || sent >= world.config().LETTERS_MAX_NOTES || notes.room(owner.getName()) <= 0
+                || !notes.send(letter.text(), letter.sender(), owner.getName())) {
+            return null;
+        }
+        notes.show(owner);
+        return letter.sender();
     }
 
     /** Each companion's news over the window, by persona id; a camp move it made counts too. */

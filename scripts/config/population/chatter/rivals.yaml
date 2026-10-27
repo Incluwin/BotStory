@@ -1,0 +1,165 @@
+# The rival crew (docs/BOT_CONCEPT_PLAN.md F7, server.living.population.rivals.RivalCrews): a player's crew of citizens
+# near their main's level. Said only while population.RIVALS_ENABLED is on. Slots: {name} the player, {crew} the crew's
+# name (also its guild's), {quest} a party quest or boss as the records page names it, {time} the crew's or the
+# player's new time, {theirs} the other side's best it beat (m:ss). rival.beat is a megaphone (one slot of the shared
+# hourly cap): every rival.beat intent must be on the smega channel (RivalsContentTest). Whisper lines are only ever
+# composed for a whisper.
+intents:
+  # a crew member on the player's map, once every RIVALS_BANTER_GAP_MINUTES
+  - id: rival.banter.map
+    trigger: rival.banter
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 600000
+    lines:
+      - "oh look its {name} again"
+      - "{name}! still chasing us? :P"
+      - "hey {name}, {crew} says hi lol"
+      - "{name} ur getting close to us, gotta go grind"
+      - "lol {name} we keep running into u"
+      - "sup {name}. done any {quest} lately?"
+      - "{name} race u to the next level"
+    styles:
+      quiet-practical-v1:
+        - "hey {name}"
+        - "{name}. back again"
+      playful-social-v1:
+        - "{name}!!! we meet again :D"
+        - "oh noo its {name} lol"
+        - "{name} hiii, {crew} is gonna win this race :P"
+  # the crew beat one of the player's times: a megaphone while the player is online
+  - id: rival.beat.smega
+    trigger: rival.beat
+    where: any
+    channel: smega
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{crew} just did {quest} in {time}!! ur move {name} :P"
+      - "{quest} in {time}, gg {crew}. beat that {name}"
+      - "new {crew} record: {quest} {time}. sorry {name} lol"
+      - "{name} ur {quest} time ({theirs}) is history, {time} now :)"
+  # the megaphone cap was full: the same news, whispered
+  - id: rival.beat.whisper
+    trigger: rival.beat.whisper
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} we just did {quest} in {time} :P ur {theirs} is beat"
+      - "guess who beat ur {quest} time lol. {time}"
+      - "{quest} {time}! ur turn {name}"
+  # the player beat the crew's time
+  - id: rival.congrats.whisper
+    trigger: rival.congrats
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{time} on {quest}?? ok {name} that was fast, gg"
+      - "gz {name}, {time} beats our {theirs}. we'll get it back"
+      - "{name} nice {quest} time lol. {crew} is not happy"
+      - "wow {time}. gg {name}"
+    styles:
+      quiet-practical-v1:
+        - "gg on {quest}. {time} is good"
+  # a member who joins the crew, in its guild chat
+  - id: rival.join.guild
+    trigger: rival.join
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey all, thx for the invite"
+      - "hi guys :)"
+      - "yo {crew}"
+      - "hey! happy to be here"
+  # a member now too far below the player's main leaves, in guild chat first
+  - id: rival.leave.behind.guild
+    trigger: rival.leave.behind
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "u guys level too fast for me lol, gonna do my own thing"
+      - "cant keep up anymore, gl guys"
+      - "im too far behind now, gonna go grind solo for a while"
+      - "gonna leave the guild, ur all way ahead of me. cya around"
+  # a member now too far above the player's main leaves
+  - id: rival.leave.ahead.guild
+    trigger: rival.leave.ahead
+    where: any
+    channel: guild
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "gonna head off and train somewhere else, gl all"
+      - "time for new places, thx for the runs guys"
+      - "leaving the guild, gonna find ppl my level. cya"
+  - id: rival.leave.behind.whisper
+    trigger: rival.leave.behind.whisper
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} im out of {crew}, too slow for u guys lol. gl"
+      - "hey {name}, left {crew}. u level way too fast"
+  - id: rival.leave.ahead.whisper
+    trigger: rival.leave.ahead.whisper
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} im leaving {crew}, gonna train elsewhere. gl catching up"
+      - "hey {name}, left {crew}. cya at the top lol"
+  # the player whispered back to a crew member (a boast, a congratulation, a help request)
+  - id: rival.reply.whisper
+    trigger: rival.reply
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "lol"
+      - "hehe we'll see {name}"
+      - ":P"
+      - "gl {name}, ur gonna need it lol"
+      - "haha ya"
+  - id: rival.reply.yes.whisper
+    trigger: rival.reply.yes
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "nice! see u at the door to zakum"
+      - "sweet, we'll wait at el nath"
+      - "yay ok, meet at the zakum door"
+  - id: rival.reply.no.whisper
+    trigger: rival.reply.no
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "np, next time"
+      - "aw ok, another day then"
+      - "all good {name}, gl"
+  # the crew reached Zakum and needs a player's client to fight it (F7.4)
+  - id: rival.help.whisper
+    trigger: rival.help
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name}, {crew} wants to try {quest}. come with us? meet at the door to zakum"
+      - "{name} wanna do {quest} with us? cant do it without u lol. door to zakum in el nath"
+      - "{name}! we're doing {quest}, need u along. el nath, zakum door"

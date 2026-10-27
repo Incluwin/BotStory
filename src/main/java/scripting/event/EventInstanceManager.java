@@ -83,6 +83,11 @@ public class EventInstanceManager {
     private final Map<String, Object> objectProps = new HashMap<>();
     private long timeStarted = 0;
     private long eventTime = 0;
+    /** When the instance was made, and when its first event timer started (a restart keeps it): a clear's time. */
+    private final long createdAt = System.currentTimeMillis();
+    private volatile long firstTimerStarted = 0;
+    /** A clear is recorded once an instance, however often a script calls clearPQ (F7 clear records). */
+    private final java.util.concurrent.atomic.AtomicBoolean clearRecorded = new java.util.concurrent.atomic.AtomicBoolean();
     private volatile Expedition expedition = null;
     private final ExpeditionDeathCount deathCount = new ExpeditionDeathCount();
     private final List<Integer> mapIds = new LinkedList<>();
@@ -301,6 +306,9 @@ public class EventInstanceManager {
     public void startEventTimer(long time) {
         timeStarted = System.currentTimeMillis();
         eventTime = time;
+        if (firstTimerStarted == 0) {
+            firstTimerStarted = timeStarted;
+        }
 
         for (Character chr : getPlayers()) {
             chr.sendPacket(PacketCreator.getClock((int) (time / 1000)));
@@ -372,6 +380,15 @@ public class EventInstanceManager {
      */
     public long getTimeStarted() {
         return timeStarted;
+    }
+
+    /**
+     * When the run being cleared started: its first event timer (restartEventTimer and the clear's stopEventTimer keep
+     * it), else the instance's creation. The start of a clear's time on the records page (F7).
+     */
+    public long getClearStartedAt() {
+        long first = firstTimerStarted;
+        return first > 0 ? first : createdAt;
     }
 
     /**
@@ -956,6 +973,9 @@ public class EventInstanceManager {
     public void clearPQ() {
         EventManager manager = em; // let go a minute after dispose: no script name then
         String script = manager == null ? null : manager.getName();
+        if (clearRecorded.compareAndSet(false, true)) {
+            server.living.LivingWorldHooks.eventCleared(getPlayers(), script, getName(), getClearStartedAt());
+        }
         server.living.LivingWorldHooks.partyQuestCleared(getPlayers(), script, getName());
         try {
             invokeScriptFunction("clearPQ", EventInstanceManager.this);

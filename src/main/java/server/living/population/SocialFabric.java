@@ -82,9 +82,9 @@ public final class SocialFabric {
         return alliances;
     }
 
-    /** True for a bot guild (a living_guild row), one a citizen founded. */
+    /** True for a bot guild (a living_guild row), one a citizen founded; a rival crew's guild too (F7, not a row here). */
     public boolean isBotGuild(int guildId) {
-        return guilds.containsKey(guildId);
+        return guilds.containsKey(guildId) || population.rivals() != null && population.rivals().isCrewGuild(guildId);
     }
 
     /** The bot guilds' meta rows, by guild id (a live view). */

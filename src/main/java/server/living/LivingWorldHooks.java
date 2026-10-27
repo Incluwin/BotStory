@@ -367,6 +367,23 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * Event instance {@code eventName} of {@code scriptName} was cleared (EventInstanceManager.clearPQ, once an instance,
+     * a party quest's end or a boss's death), its run started at {@code startedAtMs}: a clear record (F7.1,
+     * population.CLEAR_RECORDS_ENABLED). Memory only on this thread.
+     */
+    public static void eventCleared(java.util.List<Character> players, String scriptName, String eventName,
+                                    long startedAtMs) {
+        if (LivingWorld.get() == null || players == null) {
+            return;
+        }
+        try {
+            server.living.population.PopulationHooks.eventCleared(players, scriptName, eventName, startedAtMs);
+        } catch (RuntimeException failure) {
+            log.warn("living world eventCleared hook failed", failure);
+        }
+    }
+
     /** A party quest instance was cleared by these players; its event script is not known. */
     public static void partyQuestCleared(java.util.List<Character> players, String eventName) {
         partyQuestCleared(players, null, eventName);
