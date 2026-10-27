@@ -505,9 +505,25 @@ public class DueyProcessor {
     }
 
     public static void dueyCreatePackage(Item item, int mesos, String sender, int recipientCid) {
-        int packageId = createPackage(mesos, null, sender, recipientCid, false);
-        if (packageId != -1) {
-            insertPackageItem(packageId, item);
+        dueyCreatePackage(item, mesos, null, sender, recipientCid);
+    }
+
+    /**
+     * A package from {@code sender} with a {@code message} (null for none; cut to the 200 characters the column and
+     * the Duey window hold) and, when {@code item} is null, the mesos alone, as a player's Duey sends them. False when
+     * it was not written.
+     */
+    public static boolean dueyCreatePackage(Item item, int mesos, String message, String sender, int recipientCid) {
+        String kept = message == null || message.length() <= 200 ? message : message.substring(0, 200);
+        int packageId = createPackage(mesos, kept, sender, recipientCid, false);
+        return packageId != -1 && (item == null || insertPackageItem(packageId, item));
+    }
+
+    /** The "a package has arrived" notice a player's Duey send gives its recipient while they are online. */
+    public static void dueyNotify(Character recipient) {
+        Client client = recipient == null ? null : recipient.getClient();
+        if (client != null && client.isLoggedIn() && !recipient.isAwayFromWorld()) {
+            showDueyNotification(client, recipient);
         }
     }
 
