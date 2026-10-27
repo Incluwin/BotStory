@@ -9,8 +9,9 @@
 # 4300013 is a boss (250,000 HP, one per room): the area D rooms 103040430-103040439 and the VIP area C rooms
 # 103040460-103040469 are the RockSpirit event's copies, opened by June only while Blake's quests 2286-2288 run, so no
 # quest here needs it: Bao's sign is behind the records of the open area A. The recruits give armour made for the
-# player's class: Zara tops, Felix bottoms (an overall where the class has neither), L35 / L40 / L50 (nothing exists
-# at L41-47).
+# player's class: Zara tops L35 / L40 / L50 (nothing exists at L41-47); Felix, whose intro is L44, bottoms L40 / L50 /
+# L60 (an overall where the class has none: magicians L38 / L48 / L58; pirates the same L40 and L50 overalls as Zara,
+# the only ones v83 has, and the Black Royal Barone at L60).
 
 # ---- Bao: the night market (arcs/kerning-square.yaml) ----
 - id: bao-the-noodle-cart
@@ -174,7 +175,7 @@
   persona: felix
   title: "First Pressing"
   length: SHORT
-  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [felix-the-record-floor] }
+  requires: { level: { min: 44 }, friendship: 5, questsCompleted: [felix-the-record-floor] }
   steps:
     - { id: talk, type: TALK }
     - { id: teas, type: KILL_MOBS, mobIds: [3400000], count: 30, mapIds: [103040100, 103040101, 103040103] }
@@ -184,13 +185,13 @@
     exp: 14000
     bondPoints: 35
     gear:
-      - { pool: [1060020, 1051015, 1050030, 1061048, 1060061, 1061060, 1060050, 1051008, 1052110], scrolls: [{ success: 100 }] }
+      - { pool: [1060074, 1061084, 1050037, 1051025, 1060069, 1061081, 1060072, 1061070, 1052113], scrolls: [{ success: 100 }] }
 
 - id: felix-the-b-side
   persona: felix
   title: "The B-Side"
   length: MEDIUM
-  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [felix-the-first-pressing] }
+  requires: { level: { min: 50 }, friendship: 7, questsCompleted: [felix-the-first-pressing] }
   steps:
     - { id: talk, type: TALK }
     - { id: mannequins, type: KILL_MOBS, mobIds: [4300006], count: 30, mapIds: [103040300, 103040301, 103040303] }
@@ -200,13 +201,13 @@
     exp: 22000
     bondPoints: 50
     gear:
-      - { pool: [1060074, 1061084, 1050037, 1051025, 1060069, 1061081, 1060072, 1061070, 1052113], scrolls: [{ success: 60 }] }
+      - { pool: [1060077, 1061087, 1050047, 1051032, 1050051, 1051039, 1060084, 1061078, 1052116], scrolls: [{ success: 60 }] }
 
 - id: felix-the-master-tape
   persona: felix
   title: "The Master Tape"
   length: LONG
-  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [felix-the-b-side] }
+  requires: { level: { min: 60 }, friendship: 10, questsCompleted: [felix-the-b-side] }
   steps:
     - { id: talk, type: TALK }
     - { id: oldies, type: KILL_MOBS, mobIds: [4300010], count: 40, mapIds: [103040400, 103040410, 103040411, 103040412, 103040413, 103040414, 103040415, 103040416, 103040417, 103040418, 103040419, 103040420, 103040421, 103040422, 103040423, 103040424, 103040425, 103040426, 103040427, 103040428, 103040429] }
@@ -217,7 +218,7 @@
     exp: 40000
     bondPoints: 60
     gear:
-      - { pool: [1060077, 1061087, 1050047, 1051032, 1050052, 1051039, 1060084, 1061078, 1052116], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+      - { pool: [1060080, 1061091, 1050054, 1051045, 1050059, 1051042, 1060088, 1061094, 1052119], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
 
 - id: felix-restock
   persona: felix

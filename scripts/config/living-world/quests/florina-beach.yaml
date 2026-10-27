@@ -24,8 +24,7 @@
   requires: { level: { min: 35 }, questsCompleted: [marisol-the-sealed-bottle] }
   steps:
     - { id: talk, type: TALK }
-    - { id: pernille, type: TALK_TO, persona: pernille, say: ["read it to me, would you, dear? my eyes aren't what they were. ...'Pernille. the storm's on us and i'm late. i meant to ask you on the chapel steps this spring. i'm asking now. lay a flower there if it's yes. Aurelio.' ...he wrote. forty springs, and he wrote. tell the girl on the beach thank you."] }
-    - { id: back, type: DELIVER, to: marisol }
+    - { id: pernille, type: TALK_TO, persona: pernille, say: ["read it to me, would you, dear? my eyes aren't what they were. ...'Pernille. the storm's on us and i'm late. i meant to ask you on the chapel steps this spring. i'm asking now. lay a flower there if it's yes. Aurelio.' ...he wrote. forty springs, and he wrote. bless whoever found it."] }
   rewards: { meso: 10000, exp: 10000, bondPoints: 40, items: [{ itemId: 2000002, count: 20 }], worldFlags: [amoria.letter.read] }
 
 - id: marisol-what-the-clangs-dig-up
@@ -68,7 +67,7 @@
   persona: nerys
   title: "The Hot Sand"
   length: SHORT
-  requires: { level: { min: 42 } }
+  requires: { level: { min: 40 } }
   steps:
     - { id: talk, type: TALK }
     - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 40, mapIds: [110040000] }

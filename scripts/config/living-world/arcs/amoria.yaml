@@ -12,7 +12,7 @@
       enterWhen: { flags: [amoria.letter.read] }
       dialogueOverrides:
         greet: ["hello, dear. he wrote. did you know? he wrote.", "good morning. i've read it again. i read it every morning before the lilies."]
-        who: ["Pernille. i keep the chapel flowers. a sailor told me forty springs ago he'd write, and i thought he never did. he did. it came up from the sea in a bottle. he asked me to lay a flower on the chapel steps if it was yes. i've laid one every spring for forty years. i didn't know there was a question."]
+        who: ["Pernille, keeper of the chapel flowers. forty springs ago a sailor wrote asking me to lay a flower on these steps if it was yes, and the sea kept the letter till now. i'd laid one every spring anyway, not knowing there was a question."]
         idle: ["(takes a folded, water-stained letter from her apron, reads it with her lips moving, and puts it back)", "(sets a single white flower on the chapel step, straightens it, and smiles at it)"]
         noWork: ["nothing today, dear. the flowers are done. i've a letter to read."]
         smallTalk: ["Aurelio. bosun of the Silver Gull. i hadn't said his name out loud in thirty years. i say it to the lilies now. they don't mind.", "i ask everyone up from the beach to read it to me. my eyes aren't what they were. i like hearing it in new voices. it makes it new."]
@@ -24,10 +24,10 @@
       enterWhen: { flags: [amoria.gull.remembered] }
       dialogueOverrides:
         greet: ["hello, dear. i know what happened now.", "good morning. he went in after a boy. of course he did."]
-        who: ["Pernille. i keep the chapel flowers. forty springs ago a bosun called Aurelio wrote to ask me to marry him, and then his ship went down off Florina, and he went over the side after a boy who fell. the boy lived. he's an old sailor in Lith Harbor now. that's where my forty years went. into a boy who got to grow up."]
+        who: ["Pernille, keeper of the chapel flowers. my Aurelio went over the side of the Silver Gull after a boy, and the boy lived to be an old sailor in Lith Harbor. that's where my forty years went, into a boy who got to grow up."]
         idle: ["(writes a single word on a card, looks at it for a long time, and tucks it into the letter)", "(sets a single white flower on the chapel step and doesn't straighten it this time)"]
         noWork: ["nothing yet, dear. come and sit with Clotilde and me by the chapel steps some evening, after six. listen. then you'll know what i want carried."]
-        smallTalk: ["i'm writing my answer. it's taken me forty years and three days. it's one word. i keep crossing it out because my hand shakes. not because it's wrong.", "Clotilde and i sit by the chapel steps in the evenings. she says the spring cakes were practice. i've told her about him now. all of it."]
+        smallTalk: ["i wrote my answer. it took me forty years and three days. it's one word. i crossed it out twice because my hand shook. not because it was wrong.", "Clotilde and i sit by the chapel steps in the evenings. she says the spring cakes were practice. i've told her about him now. all of it."]
         speakPlainly: ["plainly: an answer, forty years late."]
         about.marisol: ["Marisol, on Florina beach. she found his bottle in the shallows. she'll know how to send a letter back the way it came."]
         about.hadrik: ["the old first mate in Lith Harbor. he was the boy. Aurelio went over the side for him. i'd like to sit with him one day. i don't think he'd like it. i'd like it anyway."]
@@ -37,7 +37,7 @@
       enterWhen: { flags: [florina.answer.sent] }
       dialogueOverrides:
         greet: ["hello, dear. it's gone. my answer. out on the tide.", "good morning. i slept all night. i haven't done that in a while."]
-        who: ["Pernille. i keep the chapel flowers. forty springs ago a bosun called Aurelio asked me to marry him, in a letter the sea kept. i said yes. i'd been saying it every spring. this year i wrote it down, and Marisol sent it out on the tide from Florina, past the point where the Gull went down."]
+        who: ["Pernille, keeper of the chapel flowers. a bosun called Aurelio asked me to marry him forty springs ago, in a letter the sea kept. i wrote my yes at last, and Marisol sent it out on the tide from Florina."]
         idle: ["(sets a single white flower on the chapel step and hums something old and slow)", "(reads the letter one more time, smiling, then tucks it away in her apron for good)"]
         noWork: ["nothing today, dear. the flowers are watered. the steps are swept. the answer's sent."]
         smallTalk: ["i'll still lay a flower on the steps every first morning of spring. not for waiting. for remembering. it's a different flower. it looks the same.", "Clotilde baked the spring cake anyway. she said it was practice for forty years and now it's just cake. we ate it on the steps."]

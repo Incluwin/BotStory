@@ -39,7 +39,7 @@
   requires: { level: { min: 50 }, questsCompleted: [edmund-the-chisel-marks], notFlags: [excav.name.found] }
   steps:
     - { id: talk, type: TALK }
-    - { id: ossa, type: TALK_TO, persona: ossa, say: ["the stone with the scratches on it? came up face-down in the third site last spring. it's been holding my office door open since. ...take it. tell your scholar he owes me a door wedge. and get a hard hat."] }
+    - { id: ossa, type: TALK_TO, persona: ossa, say: ["no. ...the stone with the scratches? why didn't you say so. came up face-down in the third site last spring. been holding my office door open since. take it. tell your scholar he owes me a door wedge. and get a hard hat."] }
     - { id: stone, type: DELIVER, to: edmund }
   rewards: { meso: 18000, exp: 20000, bondPoints: 45, items: [{ itemId: 2000004, count: 10 }], worldFlags: [excav.name.found] }
 
@@ -55,7 +55,7 @@
     - { id: board, type: DELIVER, to: edmund }
   rewards: { meso: 30000, exp: 35000, bondPoints: 60, items: [{ itemId: 2000005, count: 5 }], worldFlags: [excav.name.restored] }
 
-# ---- Halla (recruit; helmets for the player's class, L45-55) ----
+# ---- Halla (recruit; helmets for the player's class, gates 45 / 50 / 60) ----
 - id: halla-the-tomb-road
   persona: halla
   title: "The Tomb Road"
@@ -105,7 +105,7 @@
   persona: halla
   title: "The Officer's Helm"
   length: LONG
-  requires: { level: { min: 55 }, friendship: 10, questsCompleted: [halla-the-soldiers-ribs] }
+  requires: { level: { min: 60 }, friendship: 10, questsCompleted: [halla-the-soldiers-ribs] }
   steps:
     - { id: talk, type: TALK }
     - { id: officers, type: KILL_MOBS, mobIds: [6230602], count: 30, mapIds: [101030110, 101030111, 101030112] }

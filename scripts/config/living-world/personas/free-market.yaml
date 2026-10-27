@@ -28,7 +28,7 @@
     - { persona: basil, kind: PLAYS_CHECKERS_WITH }
   giftItemIds: [2020009, 2000002]
   dialogue:
-    greetFirst: ["welcome, welcome. the Free Market. i kept a stall here forty-one years. ask me what anything costs. go on. anything.", "a new face. good. a red potion was twenty mesos when i started. it's twenty-five now. shocking."]
+    greetFirst: ["welcome, welcome. the Free Market. i kept a stall here forty-one years. ask me what anything costs. go on. anything.", "a new face. good. a red potion was forty mesos when i started. it's fifty now. shocking."]
     greet: ["ah, you.", "hello, hello. prices are steady today.", "you again. good. sit with an old man a minute."]
     idle: ["(watches a trade across the room, mouths a number, and nods to himself)", "(polishes a brass shop scale he no longer uses and sets it down very square)"]
     noWork: ["nothing today. the market's honest this morning. i'd hate to interrupt it."]
@@ -36,7 +36,7 @@
     who: ["Gilbert. i kept a stall in room three for forty-one years. hides, skins, the odd skull. i've retired. i still come every morning. somebody has to remember what things are worth, or the market forgets."]
     bye: ["mind your purse. not because of anyone here. just mind it."]
     thanks: ["much obliged."]
-    smallTalk: ["a white potion is a hundred and sixty mesos at any shop on Victoria. if someone sells you one for three hundred in here, come and tell me. i'll have a word.", "Marguerite out front calls the pitches. i taught her: never lie about the goods, only about how much you love them. she's very good. she loves everything."]
+    smallTalk: ["a white potion is three hundred and twenty mesos at any shop on Victoria. if someone sells you one for six hundred in here, come and tell me. i'll go and talk prices with them.", "Marguerite out front calls the pitches. i taught her: never lie about the goods, only about how much you love them. she's very good. she loves everything."]
     speakPlainly: ["plainly: prices, and the memory of prices."]
     questOffer.gilbert-the-real-thing: ["a stall in room nine is selling pig hide as ligator skin. i can tell from the door. the buyers can't. bring me the real thing and i'll lay it beside theirs. the ligators in the Swamp of Despair, past Kerning City. twenty-five of them, fifteen skins."]
     questAccept.gilbert-the-real-thing: ["Kerning City, then out to the swamp. the first three stretches of it. they snap. stand off to the side."]
@@ -216,7 +216,7 @@
     aboutUnknown: ["nothing of theirs on my shelf."]
     friend.close: ["if you ever lose anything, anywhere on Victoria, tell me. i'll find it. i usually do."]
     friend.best: ["i've written a tag with your name on it. it says 'never lost'. i keep it on the counter."]
-    famed: ["your name's on everyone's lips. i'd tag it 'found'."]
+    famed: ["your name keeps turning up at my counter. i'd tag it 'found'."]
     defamed: ["what people say is like what people drop. most of it, nobody comes back for."]
     gift: ["oh. thank you. i'll tag it. no, i won't. it's mine."]
     gift.favorite: ["oh, that's lovely. that one doesn't go on the shelf."]

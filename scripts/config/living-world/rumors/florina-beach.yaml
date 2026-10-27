@@ -7,11 +7,11 @@
     everyDays: 1
     requiresArc: { arc: marisol-the-sealed-bottle, chapterAtLeast: chapter-2 }
   lines:
-    - { by: abel, text: "that bottle of yours. the silver gull in the wax." }
+    - { by: abel, text: "that bottle you found. the silver gull in the wax." }
     - { by: marisol, text: "you went quiet when you saw it." }
-    - { by: abel, text: "the Silver Gull went down off the point forty springs back. a spring storm. i was mending nets in this shed the night she went." }
+    - { by: abel, text: "the Silver Gull went down off the point forty springs back. a spring storm. i was mending nets in that shed the night she went." }
     - { by: marisol, text: "you never told me." }
-    - { by: abel, text: "you never brought me a bottle before. we found spars for a month after. nothing else. the sea keeps what it likes and gives back what it likes." }
+    - { by: abel, text: "you never brought me a bottle before. spars washed in for a month after. the sea keeps what it likes and gives back what it likes." }
     - { by: marisol, text: "it gave that one back to me." }
     - { by: abel, text: "then it meant to." }
 

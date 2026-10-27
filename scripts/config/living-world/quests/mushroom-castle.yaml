@@ -4,9 +4,11 @@
 # downhill 106020401/106020402 (intoxicated pig 3300002 pig tail 4000501); the castle towers, past the thorns (stock
 # quest 2324): helmet pepe 3300003 destroyed helmet 4000502 on skyscrapers 1-4 106020700/106020800/106021000/106021100
 # and the security room copies 106021001-106021010, royal guard pepe 3300004 broken spear 4000503 on skyscrapers 4-6
-# 106021100/106021200/106021300; the castle wall edge 106020500/106020501 and On the Watch 106020601. The recruits give
-# armour in the castle's band: Percival shoes for the player's class (the King Pepe boots at L35, then L40 and L50),
-# Fern no-job earrings (L25 / L30 / L35).
+# 106021100/106021200/106021300; the castle wall edge 106020501 and On the Watch 106020601 (106020500 has no way in).
+# gotocastle.js lets only a player with stock quest 2324 done (the Secretaries' chain, the court's Thorn Remover) past
+# the thorns, so every tower or wall errand says so in its offer and accept lines. The recruits give armour in the
+# castle's band: Percival shoes for the player's class (the King Pepe boots at L35, then L40 and L50), Fern no-job
+# earrings (L30 / L35 / L40).
 
 # ---- Wilmot: the kingdom's cake (arcs/mushroom-castle.yaml) ----
 - id: wilmot-a-cake-for-no-one
@@ -40,7 +42,7 @@
   steps:
     - { id: talk, type: TALK }
     - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 20, mapIds: [106020700, 106020800] }
-    - { id: wall, type: VISIT_MAP, mapIds: [106020500, 106020501, 106020601] }
+    - { id: wall, type: VISIT_MAP, mapIds: [106020501, 106020601] }
     - { id: faces, type: DELIVER, to: wilmot }
   rewards: { meso: 12000, exp: 14000, bondPoints: 60, items: [{ itemId: 2020002, count: 10 }], worldFlags: [mc.cake.served] }
 
@@ -159,9 +161,9 @@
 
 - id: fern-red-cross-earrings
   persona: fern
-  title: "Red Cross Earrings"
+  title: "Emerald Earrings"
   length: SHORT
-  requires: { level: { min: 25 }, friendship: 5, questsCompleted: [fern-the-first-lesson] }
+  requires: { level: { min: 30 }, friendship: 5, questsCompleted: [fern-the-first-lesson] }
   steps:
     - { id: talk, type: TALK }
     - { id: spores, type: KILL_MOBS, mobIds: [3300000], count: 20, mapIds: [106020100, 106020200, 106020300] }
@@ -172,13 +174,13 @@
     exp: 5000
     bondPoints: 35
     gear:
-      - { pool: [1032005], scrolls: [{ success: 100 }] }
+      - { pool: [1032007], scrolls: [{ success: 100 }] }
 
 - id: fern-emerald-earrings
   persona: fern
-  title: "Emerald Earrings"
+  title: "The Cat's Eye"
   length: MEDIUM
-  requires: { level: { min: 30 }, friendship: 7, questsCompleted: [fern-red-cross-earrings] }
+  requires: { level: { min: 35 }, friendship: 7, questsCompleted: [fern-red-cross-earrings] }
   steps:
     - { id: talk, type: TALK }
     - { id: pigs, type: KILL_MOBS, mobIds: [3300002], count: 25, mapIds: [106020401, 106020402] }
@@ -189,13 +191,13 @@
     exp: 9000
     bondPoints: 50
     gear:
-      - { pool: [1032007], scrolls: [{ success: 60 }] }
+      - { pool: [1032008], scrolls: [{ success: 60 }] }
 
 - id: fern-cats-eye
   persona: fern
-  title: "The Cat's Eye"
+  title: "Eclipse Earrings"
   length: LONG
-  requires: { level: { min: 35 }, friendship: 10, questsCompleted: [fern-emerald-earrings] }
+  requires: { level: { min: 40 }, friendship: 10, questsCompleted: [fern-emerald-earrings] }
   steps:
     - { id: talk, type: TALK }
     - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 30, mapIds: [106020700, 106020800, 106021000, 106021001, 106021002, 106021003, 106021004, 106021005, 106021006, 106021007, 106021008, 106021009, 106021010, 106021100] }
@@ -206,7 +208,7 @@
     exp: 15000
     bondPoints: 60
     gear:
-      - { pool: [1032008], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+      - { pool: [1032039], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
 
 - id: fern-poison-caps
   persona: fern

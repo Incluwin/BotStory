@@ -216,7 +216,7 @@
   requires: { level: { min: 6 } }
   steps:
     - { id: talk, type: TALK }
-    - { id: sunny, type: TALK_TO, persona: sunny, say: ["for Elodie? that'll be the fifth. tell her i'll draw her as many as she likes. and tell her what i always tell her: the map's the easy part. the walking's the brave part. she's braver than she knows."] }
+    - { id: sunny, type: TALK_TO, persona: sunny, say: ["for Elodie? another one for the stack. tell her i'll draw her as many as she likes. and tell her what i always tell her: the map's the easy part. the walking's the brave part. she's braver than she knows."] }
     - { id: report, type: DELIVER, to: elodie }
   rewards: { meso: 500, exp: 150, bondPoints: 25, items: [{ itemId: 2000000, count: 5 }, { itemId: 2000003, count: 5 }] }
 

@@ -73,7 +73,7 @@
     - { id: pigs, type: KILL_MOBS, mobIds: [1210101], count: 20, mapIds: [104040001, 104040002] }
     - { id: ribbons, type: COLLECT_ITEM, itemId: 4000002, count: 15 }
     - { id: trim, type: DELIVER, to: ingeborg, take: { itemId: 4000002, count: 15 } }
-  rewards: { meso: 1500, exp: 1200, bondPoints: 30, items: [{ itemId: 1122018, count: 1 }] }
+  rewards: { meso: 1500, exp: 1200, bondPoints: 30, items: [{ itemId: 2022006, count: 10 }] }
 
 - id: ingeborg-down-for-the-lining
   persona: ingeborg

@@ -619,7 +619,7 @@ Marta's leaving list, which goes to Olwen in Lith Harbor.
 | Florina Beach | Abel | old fisherman of the look-out shed | - | - |
 | Florina Beach | Tansy | a girl who builds a sandcastle every day | - | - |
 | Amoria | Pernille | keeper of the chapel flowers, arc owner | - | - |
-| Amoria | Rafael | newlywed, met his wife in the Amorian Challenge (Fighter 40) | items: 20 cellion tails + 15k | gloves for the player's class L30 / L40 / L50 |
+| Amoria | Rafael | newlywed; Liesel healed him in Purplewood Forest, the Challenge was their first run married (Fighter 40) | items: 20 cellion tails + 15k | gloves for the player's class L30 / L40 / L50 |
 | Amoria | Liesel | newlywed, Rafael's wife (Cleric 40) | rumor only: hear the newlyweds + 30k | hats for the player's class L35 / L40 / L50 |
 | Amoria | Clotilde | wedding-cake baker | - | - |
 | Amoria | Lorenzo | waits at the Challenge door for someone to marry | - | - |
@@ -628,19 +628,19 @@ Marta's leaving list, which goes to Olwen in Lith Harbor.
 | Kerning Square | Bao | noodle-cart keeper of the old night market, arc owner | - | - |
 | Kerning Square | Juno | night janitor of the mall | - | - |
 | Kerning Square | Zara | mall security (Bandit 46) | intro and rumor, items: hear Juno on her, 20 mannequin wigs + 20k | tops for the player's class L35 / L40 / L50 |
-| Kerning Square | Felix | record-shop clerk (Hunter 46) | kill proof: 50 records (Latest Hits, Greatest Oldies) + 20k | bottoms for the player's class L35 / L40 / L50 |
+| Kerning Square | Felix | record-shop clerk (Hunter 46) | kill proof: 50 records (Latest Hits, Greatest Oldies) + 20k | bottoms for the player's class L40 / L50 / L60 |
 | Kerning Square | Kiko | bubble-tea boy, Bao's grandson | - | - |
 | Mushroom Castle | Wilmot | royal baker, a Henesys boy who came through the Empty House, arc owner | - | - |
 | Mushroom Castle | Primrose | lady-in-waiting to Princess Violetta | - | - |
 | Mushroom Castle | Percival | the one human knight of the mushroom guard (Page 34) | intro + day rate 25k | shoes for the player's class L35 (King Pepe) / L40 / L50 |
-| Mushroom Castle | Fern | pupil of the Secretary of Magic (Cleric 33) | items: 30 poison mushroom caps + 10k | earrings L25 / L30 / L35 |
+| Mushroom Castle | Fern | pupil of the Secretary of Magic (Cleric 33) | items: 30 poison mushroom caps + 10k | earrings L30 / L35 / L40 |
 | Mushroom Castle | Barley | swineherd of the intoxicated pigs | - | - |
 | Free Market | Gilbert | retired merchant who remembers every price | - | - |
 | Free Market | Sofie | runner between the market rooms | - | - |
 | Free Market | Marguerite | pitch-caller at the entrance | - | - |
 | Free Market | Basil | lost-and-found keeper | - | - |
 | Excavation Site | Edmund | camp archaeologist of Sharenian, arc owner | - | - |
-| Excavation Site | Halla | guard of the tomb road (Spearman 55) | kill proof: 60 mummydogs + 25k | helmets for the player's class L45 / L50 / L55 |
+| Excavation Site | Halla | guard of the tomb road (Spearman 55) | kill proof: 60 mummydogs + 25k | helmets for the player's class L45 / L50 / L60 |
 | Excavation Site | Wick | night watch of the dig sites (Rogue 24) | rumor only: hear Nell on him + 15k | shoes for the player's class L20 / L25 / L30 |
 | Excavation Site | Nell | camp cook | - | - |
 | Amherst | Bettina | baker of Rainbow Street | - | - |
@@ -752,9 +752,19 @@ What the server's own data changed while writing:
 - **Felix's kill proof** counts 50 records (Latest Hits Compilation, Greatest Oldies), not Spirits of Rock: the Spirit
   of Rock is a 250,000 HP boss, one per room, in event copies June opens only while Blake's stock quests 2286-2288
   run. No quest needs those rooms; Bao's sign is behind the record racks of the open area A (103040400).
-- **Tops and bottoms** (Zara, Felix) go L35 / L40 / L50: no top, bottom or overall exists at L41-47. Halla's helmets
-  are gated L45 / L50 / L55 but give the L40-42, L50 and L60 pieces where a class has none at 45 or 55; pirates get a
-  no-job hat where every pirate hat is already some armourer's.
+- **Tops and bottoms**: Zara's go L35 / L40 / L50 (no top, bottom or overall exists at L41-47); Felix's go L40 / L50 /
+  L60, above his L44 intro. Halla's helmets are gated L45 / L50 / L60 and give the L40-42, L50 and L60 pieces (only
+  warriors have helmets at 45 and 55); pirates get a no-job hat where every pirate hat is already some armourer's.
+  Fern's earrings go L30 / L35 / L40, above her L30 intro.
+- **The Amorian Challenge admits only married players** (`AmoriaPQ.js`, `onlyMarriedPlayers`): Rafael and Liesel met
+  in Purplewood Forest on the road to Amos, married at the cathedral, and the Challenge was their first run as a
+  couple; Lorenzo wants a spouse because the door will not open for him alone.
+- **Closing lines** (engine, `QuestLedger.complete`): a quest's `questComplete` line is read before its world flag
+  moves the giver's arc, so the player who opens a chapter hears the base line and the new chapter's override is for
+  the players who come after (`QuestClosingLineTest`). Seven wave-3 beats had the same shape and are fixed with it.
+- **Mushroom Castle's door** checks quest 2260 (10.6, `ResidentHomeGates`), and its towers and wall need stock quest
+  2324, the end of the Secretaries' chain (`gotocastle.js`), and the steep downhill a poison spore at the vines; every
+  quest that goes there says so.
 - **Maple Island's road is one-way** (Mushroom Town -> Amherst -> Southperry, no portal back from 20000-50000) and most
   island fields have no way in: Snail Hunting Grounds II/III, the Tomato Field, the Snail Gardens and the field west of
   Southperry are islands, and the Adventurer Training Center opens only during Mai's stock quests 1041-1044. Island
@@ -762,8 +772,6 @@ What the server's own data changed while writing:
   quests are all level 1, unchained, and finish in Amherst (a kill, a visit or an introduction).
 - **The Hill of Christmas** copies 209000004-209000015 have no way in; Happyville's visits list 209000001-209000003,
   which the three snowmen open.
-- **Gated maps the lines name:** Mushroom Castle's towers and wall need stock quest 2324 (the Thorn Remover), the steep
-  downhill a poison spore at the vines; the dialogue says so.
 
 ### 10.8 Live checks after deploy
 

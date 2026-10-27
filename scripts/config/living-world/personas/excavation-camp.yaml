@@ -3,7 +3,7 @@
 # Sharenian. Every Sharenian stone in the tombs has its king's name chiselled off; the camp archaeologist reads the
 # chisel marks, Ossa's Perion diggers turn out to have the one stone that kept the name, and it goes back on the camp's
 # board after a night at the Remains <Cliff> (arcs/excavation-camp.yaml). Two recruits give armour made for the
-# player's class: the tomb-road guard's helmets (L45-55, the Remains <Tomb>) and the night watchman's shoes (L20-30, the
+# player's class: the tomb-road guard's helmets (L40-60, the Remains <Tomb>) and the night watchman's shoes (L20-30, the
 # dig sites back along the road toward Perion).
 - id: edmund
   name: Edmund
@@ -43,16 +43,16 @@
     smallTalk: ["the masks out in the dig sites are Sharenian funeral masks. wooden ones for the servants, stone ones for the stewards. nobody ever told them they were buried.", "Shuang wants to know what's past the gate. i want to know what was written on it. we get on. we just don't have the same questions."]
     speakPlainly: ["plainly: old stones, and what they used to say."]
     questOffer.edmund-slate-for-the-board: ["the excavator board beside Shuang is slate. we chalk up everything the dig turns over. the rain washes it and the slate cracks in the cold. the rocky masks in the second and third excavation sites carry slates. twenty masks, ten slates, and i'll have a board again."]
-    questAccept.edmund-slate-for-the-board: ["back down the road toward Perion. the second site and the third. the stone masks. they're slow, but they hit like a wall."]
+    questAccept.edmund-slate-for-the-board: ["back down the road toward Perion. the second site and the third. the stone masks. they're slow, but they're stone. don't trade blows with them."]
     questWaiting.edmund-slate-for-the-board: ["ten slates. the board's down to chalk dust."]
     questComplete.edmund-slate-for-the-board: ["ten. good slate, too. look, it takes the chalk. here, a pair of the camp's spare glasses. everything looks older through them. that's the point."]
     questOffer.edmund-the-chisel-marks: ["every stone in the tombs had a king's name cut into it, and every one has been chiselled off. i don't want the name. i want the chisel marks. the mummydogs down in the Remains <Tomb> wrap themselves in old linen, and linen takes a rubbing better than paper. fifteen bandages. and go all the way down to the third tomb and look at the big stone yourself."]
     questAccept.edmund-the-chisel-marks: ["on past the camp, the Remains <Tomb>, the first, second and third. the dogs that are only bones don't wear bandages. the other ones do."]
     questWaiting.edmund-the-chisel-marks: ["fifteen bandages. and did you see the big stone?"]
     questComplete.edmund-the-chisel-marks: ["fifteen. look at the rubbings. look. same chisel, same hand, same height on every stone, and nothing else touched. nobody vandalises that carefully. they weren't erasing him. they were hiding him."]
-    questOffer.edmund-ossas-stone: ["one hand, one chisel, every stone. a careful man misses one in the end. careful men always do. Ossa runs the diggers in the excavation sites from Perion, and her people turn up every loose stone between here and the cliff. ask her if any of them had letters on. she'll say no first. ask twice."]
-    questAccept.edmund-ossas-stone: ["Perion, up the road west. she stands in the square with a schedule. she'll tell you to wear a hard hat."]
-    questWaiting.edmund-ossas-stone: ["did Ossa have it? did she say no twice?"]
+    questOffer.edmund-ossas-stone: ["one hand, one chisel, every stone. a careful man misses one in the end. careful men always do. Ossa runs the diggers in the excavation sites from Perion, and those diggers turn up every loose stone between here and the cliff. ask Ossa if any of them had letters on. the first answer will be no. ask twice."]
+    questAccept.edmund-ossas-stone: ["Perion, up the road west. Ossa stands in the square with a schedule, and will tell you to wear a hard hat."]
+    questWaiting.edmund-ossas-stone: ["did Ossa have it? was the first answer no?"]
     questComplete.edmund-ossas-stone: ["it's... it's him. the name. the chisel missed one, face-down in the third site, and it's been propping a door in Perion all spring. thank you. i'm not going to read it out. not here. there's a way it should be done."]
     questOffer.edmund-the-name-said-aloud: ["in Sharenian a name went on stone only after somebody had said it aloud where the king's road ends. at night, so the dead could hear it. the road ends at the Remains <Cliff>. i've written the name on this card. take it up there, hold the cliff through the night, and when it's quiet, say it. then come back and we'll cut it into the board. not chalk. cut."]
     questAccept.edmund-the-name-said-aloud: ["past the tombs, past the old camps, to the cliff. stand at the edge. the officer skeletons don't sleep. thirty of them, and then it'll be quiet enough."]
@@ -60,7 +60,7 @@
     questComplete.edmund-the-name-said-aloud: ["you said it? out loud, at the edge? good. good. then hold the chisel with me. there. it's on the board, cut in, the first thing on it the rain can't take. thank you. he has his name back."]
     about.halla: ["Halla keeps the tomb road. she walks in front of me when i go down and won't let me read anything until she's looked at it first. she's usually right. it's usually a mummydog."]
     about.nell: ["Nell feeds me. i forget. she doesn't. she brings the bowl to the string and stands there until it's empty."]
-    about.ossa: ["Ossa runs the diggers in the excavation sites from Perion. she writes to me once a month. two lines, both about the drakes."]
+    about.ossa: ["Ossa runs the diggers in the excavation sites from Perion. a letter comes once a month. two lines, both about the drakes."]
     about.wick: ["Wick walks the dig sites at night with a lamp. i asked him if the masks ever take their faces off. he said no. he said it too quickly."]
     aboutUnknown: ["never found them in a dig."]
     friend.close: ["you can step inside the string any time. nobody else is allowed inside the string."]
@@ -197,7 +197,7 @@
     questWaiting.wick-the-night-round: ["twenty and ten. keep the lamp on your left."]
     questComplete.wick-the-night-round: ["twenty and ten. you walk quiet. i like that. come by any evening. i'll show you the round in the dark."]
     questOffer.wick-quiet-soles: ["your boots are loud. on the round, loud is how you get smirked at. the wooden masks in the dig sites carry boards, old wood, soft. twenty-five masks, ten boards, and i'll have quiet soles made up for you. for your class."]
-    questAccept.wick-quiet-soles: ["the excavation sites, all three. the wooden ones. they knock when you hit them."]
+    questAccept.wick-quiet-soles: ["the excavation sites, all three. the wooden ones. they sound hollow. they don't hit hollow."]
     questWaiting.wick-quiet-soles: ["ten boards. walk soft till then."]
     questComplete.wick-quiet-soles: ["ten. here. shoes for you. every slot scrolled safe, every one took. go on, walk. ...see? i can't hear you. perfect."]
     questOffer.wick-slate-heels: ["better shoes. the rocky masks in the second and third sites carry slate, and slate heels don't slip on wet stone. thirty masks, fifteen slates."]
@@ -271,7 +271,7 @@
     about.wick: ["Wick eats standing up. he says the round won't wait. the round's a lot of stumps. they'll wait."]
     about.halla: ["Halla gets thirds. she's never once asked. i'd be frightened if she did."]
     about.edmund: ["Edmund thanks me for the stew and then asks how old the pot is. it's a pot. it's my pot."]
-    about.ossa: ["Ossa, the foreman up in Perion? she sends her diggers out here with no lunch. i feed them and send her the bill. she doesn't pay it. we're both very stubborn."]
+    about.ossa: ["Ossa, the foreman up in Perion? the Perion diggers come out here with no lunch. i feed them and send the bill to Perion. it never gets paid. we're both very stubborn."]
     aboutUnknown: ["never fed them. send them to me."]
     friend.close: ["you can have the first bowl. that's the cook's bowl. nobody gets the cook's bowl."]
     friend.best: ["i've named a stew after you. the diggers ask for it by name. it's the good one."]

@@ -26,10 +26,9 @@
         idle: ["(lifts the corner of a cloth over a flat stone, looks under it, and lays it down again)", "(pushes his glasses up his nose with the back of a dusty wrist and writes in a small notebook)"]
         smallTalk: ["i read it once, quietly, with my hand over my mouth. i don't know why i did that. it felt right.", "a name put back in chalk is only borrowed. i want it cut into the board. but it has to be said first. that's the old way."]
         speakPlainly: ["plainly: a name i've read and haven't said."]
-        about.ossa: ["Ossa's diggers had the stone. face-down in the third site, then under her door all spring. she wants a wedge for it. i've sent her three. she says they're the wrong shape."]
+        about.ossa: ["Ossa's diggers had the stone. face-down in the third site, then propping the office door in Perion all spring. Ossa wants a wedge for it. i've sent three. all the wrong shape, apparently."]
         questOffer.edmund-the-chisel-marks: ["i'm taking a rubbing of every stone in the tombs now, for the record. the linen wears through. the mummydogs down in the Remains <Tomb> wrap themselves in more. fifteen bandages, and go down to the third tomb and see the big stone. everyone should see it once."]
         questComplete.edmund-the-chisel-marks: ["fifteen. another stone on the record. same chisel, same hand. here. thank you."]
-        questComplete.edmund-ossas-stone: ["Ossa sent you up too? she'd already given the stone over. ...still. you went all that way looking for him. two people went looking. that matters. thank you."]
         chapterEnter: ["(sets a flat stone on the table under a clean cloth, and does not lift the cloth)"]
     - id: chapter-4
       title: "Said Aloud"
@@ -40,9 +39,8 @@
         idle: ["(runs a thumb along the cut letters on the board's top line, and smiles)", "(brushes the dust off a flat stone with a paintbrush, very slowly, and leans close to read it)"]
         smallTalk: ["the guilds read the board before they go down into Sharenian now. some of them say his name at the gate. i never asked them to.", "i still don't know what they hid him from. maybe it's gone. maybe it's down there past Shuang's gate. either way, it can hear his name now."]
         speakPlainly: ["plainly: a king, and his name, back where it belongs."]
-        about.ossa: ["Ossa's diggers had the stone all along. i sent her a proper wedge in the end, cut from slate, with his name on the bottom. she says it's the best door wedge in Perion."]
+        about.ossa: ["Ossa's diggers had the stone all along. i sent a proper wedge in the end, cut from slate, with his name on the bottom. word from Perion is it's the best door wedge in town."]
         questOffer.edmund-the-chisel-marks: ["i'm taking a rubbing of every stone in the tombs now, for the record. the linen wears through. the mummydogs down in the Remains <Tomb> wrap themselves in more. fifteen bandages, and go down to the third tomb and see the big stone. everyone should see it once."]
         questComplete.edmund-the-chisel-marks: ["fifteen. another stone on the record. same chisel, same hand. his name's on the board now, and his stones are on the record. here. thank you."]
-        questComplete.edmund-the-name-said-aloud: ["you said it too, up at the edge? good. it's already on the board, but the dead like to hear a name more than once. thank you."]
         friend.best: ["your name's in my notebook, on the same page as his. i thought you should know."]
         chapterEnter: ["(cuts the last stroke of a letter into the board, blows the dust off, and steps back)"]
