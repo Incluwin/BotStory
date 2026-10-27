@@ -110,7 +110,7 @@ to Singapore by gossip), finales once per server (`requires.notFlags`, pinned in
 rumors at venues where their cast is awake, quests on Malaysia's own fields (Muddy Banks 46-65, Hibiscus Road 59-63,
 Fantasy Theme Park 70-87, Spooky World 94+). The recruits carry the third regional tier of the four weapon lines that
 still stop at waves 1 and 2 (two-handed swords, spears, one-handed axes, two-handed blunts).
-Quest-log ids 31600-31749, appended to `quest-log-ids.yaml`. The cast table goes in section 8 once authored.
+Quest-log ids 32000-32149, appended to `quest-log-ids.yaml`. The cast table goes in section 8 once authored.
 
 Shared Resident files are append-only: `loadouts.yaml` (one section "# Malaysia Residents (docs/ROUTES_MALAYSIA_PLAN.md)"),
 `ResidentDialogue.PORTRAITS` (`kuala-lumpur`, `kampung-village`), `quest-log-ids.yaml`. Pinned counts that move here
@@ -163,4 +163,84 @@ GM commands are fine for setup (`!warp`, `!level`, `!item`, `!world`); the behav
 
 ## 8. Malaysia cast
 
-(Filled in when the content lands.)
+14 Residents (7 in Kuala Lumpur, 7 in Kampung Village), 4 recruitable, 43 quests (quest-log ids 32000-32042), 4
+contracts, 2 arcs, 4 rumors, 4 loadouts. Files: `personas|quests|contracts|arcs|rumors/malaysia.yaml` (both towns in
+one file each, as Singapore and Zipangu), the "Malaysia Residents" section at the end of `loadouts.yaml`, the
+`kuala-lumpur` and `kampung-village` entries of `ResidentDialogue.PORTRAITS`. The kit and the gear rules are wave 3's;
+each recruit carries the tier below what it gives.
+
+| Town | Resident | Role (job, level) | Recruit (how earned) | Friendship gear |
+|---|---|---|---|---|
+| Kuala Lumpur | Farah | producer for MY Maple TV, the Trend Zone's big screen (townsfolk), arc owner | - | - |
+| Kuala Lumpur | Lim | repairman of the middle street, built the park's ride motors | - | - |
+| Kuala Lumpur | Ravi | teh tarik man of the mamak stall | - | - |
+| Kuala Lumpur | Hafiz | despatch rider of the kampung road | - | - |
+| Kuala Lumpur | Cheryl | stylist of the Trend Zone | - | - |
+| Kuala Lumpur | Iskandar | night guard of the east road, once the park's security chief (Crusader 98) | kill proof: 60 Galloperas + 30k | two-handed swords The Beheader L100 / Dragon Claymore L110 / Timeless Nibleheim L120 |
+| Kuala Lumpur | Devi | bodyguard for hire (Dragon Knight 98) | day rate: 130k | spears Stormshear L100 / Dragon Faltizan L110 / Timeless Alchupiz L120 |
+| Kampung Village | Awang | Tok Awang, woodcarver who carved the carousel's forty horses, arc owner | - | - |
+| Kampung Village | Zara | Awang's granddaughter, wants to be on the big screen | - | - |
+| Kampung Village | Hamid | fisherman of the muddy banks | - | - |
+| Kampung Village | Rohani | batik painter by Ali's stall | - | - |
+| Kampung Village | Meera | teacher of the kampung school | - | - |
+| Kampung Village | Kamal | boat-builder, once the park's high-striker strongman (White Knight 103) | rumor and intro quest: ring the bell with him, hear Rohani on him, 60k | two-handed blunts Blue Seal Cushion L105 / Dragon Flame L110 / Timeless Bellocce L120 |
+| Kampung Village | Bayu | ranger of Hibiscus Road (Crusader 105) | items: 20 Viking Helmets + 30k | one-handed axes Dragon Axe L110 / Reverse Bardiche L120 / Timeless Bardiche L120 |
+
+**Recruits.** Four of wave 3's five ways, one each: a kill proof counted after the offer against the monster of the
+intro quest (Iskandar), a day rate (Devi), an item price (Bayu), a rumor on top of the intro quest with meso only
+(Kamal). Day-rate, item and kill-proof recruits need their intro quest (`<id>.intro.done`); every `refuse.flags` line
+names what the contract still needs. They carry Berzerker, Fairfrozen, Leomite and Tomahawk with a Gold Kalkan.
+
+**Gear.** The four lines that stopped at waves 1 and 2 (Sigrun, Bjarke, Runa, Maren). Masteria (merged before this
+branch) had already given the two-handed sword, spear and two-handed blunt lines an L100-120 tier (Ragna's Stonetooth
+Sword / Dragon Claymore / Reverse Nibleheim, Ivor's Pinaka / Dragon Faltizan / Reverse Alchupiz, Osgar's Golden Smith
+Hammer / Dragon Flame / Reverse Bellocce), so Malaysia gives the other v83 pieces at those levels (The Beheader,
+Stormshear, the Blue Seal Cushion, the Timeless pieces) and shares only the L110 ones, of which v83 has one each.
+Runa's one-handed axes ended at Tomahawk L100, so Bayu's tier starts at L110 and both its upper pieces are L120 (the
+Timeless Bardiche hits harder than the Reverse). No piece is on the Repack-only list; `ContentLintFriendshipTest` counts
+53 weapon Residents.
+
+**Fields.** Every quest is on Malaysia's own maps, levels 45-94: the Outskirts and the three Muddy Banks (45-65),
+Hibiscus Road (59-65), the three Fantasy Theme Parks (68-87), the Entrance to the Spooky World (94), and the Longest
+Ride on ByeBye Station (the third park's mini-dungeon; its steps list all twenty copies). Collect steps use each mob's
+own 30% etc drop. Scarlion and Targa are script-spawned boss-event mobs (ScargaBattle's clear is a boss clear, not a
+party-quest clear), so the L118 tiers are long kill runs through the park instead. Errands cross the two towns on foot
+(Ravi to Hamid, Hafiz to Zara, Cheryl to Rohani, Zara to Farah, Meera to Hafiz, and the finale's Awang and Lim).
+
+**The regional thread.** Thirty years ago the city built the Fantasy Theme Park on the kampung's rubber land; Tok
+Awang carved the forty horses of its carousel, Lim built its motor, and the kampung's children rode free on opening
+night. Two years later the park went wild (the carousel horses are the Galloperas at the Spooky World's gate) and the
+city closed its gates. Farah finds the opening-night tape in MY Maple TV's archive; Lim mends it and it plays on the
+big screen every night (`farah-the-opening-night`, `kl.tape.mended`). Awang's lead horse, Bintang, the one with the
+star, comes home from the Galloperas (`awang-bintang`, L90, `kampung.bintang.home`), and Farah's finale clears the
+park's road, asks Awang, and tells Lim (`farah-the-carousel-turns`, L80, `my.carousel.turns`): the carousel turns once,
+the kampung's children ride free, and Awang goes to the city for the first time in thirty years. Singapore is touched
+only by gossip (Ravi on Wei, Hamid on Rosnah, Hafiz and Farah on Spinel's and Audrey's flights).
+
+| Arc | Chapters (gate) |
+|---|---|
+| `farah-the-big-screen` | The Tape in the Archive / Opening Night (`kl.tape.mended`) / Bintang (`kampung.bintang.home`) / The Carousel Turns (`my.carousel.turns`) |
+| `awang-the-carousel-horses` | Forty Horses / On the Big Screen (`kl.tape.mended`) / Bintang Comes Home (`kampung.bintang.home`) / One More Turn (`my.carousel.turns`) |
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `kl-the-big-screen` | Farah, Lim on KL's lower east street, 20-21, from Farah's chapter 2 | - |
+| `kl-the-mamak-stall` | Ravi, Hafiz on KL's lower central street, 17-18, every 2 days | - |
+| `kampung-on-the-big-screen` | Awang, Zara by Audrey in the kampung, 19-20, from Awang's chapter 2 | - |
+| `kampung-the-strongman` | Rohani, Kamal on the kampung's middle east street, 18-19 | `kampung.heard-kamal` (Kamal's contract) |
+
+**Once per server.** `farah-the-opening-night`, `awang-bintang` and `farah-the-carousel-turns` name the world flag they
+set in `requires.notFlags` (pinned in `ArcFinalBeatOncePerServerTest`). No later quest lists them in
+`questsCompleted` (the finale needs Farah's first quest and the Bintang flag), so nobody is cut off; `zara-on-the-big-screen`
+is offered between the tape and the finale only (`notFlags: [my.carousel.turns]`).
+
+**Portraits.** Borrowed until the portrait tool runs: Encik Musa, Chiang, Riduan and Kok Hua in Kuala Lumpur; Lam, Ali
+and Village Chief Malek (9270061, who stands on Muddy Banks 2) for the kampung, which has only two townspeople of its
+own. All have their own standing image in Npc.wz.
+
+**Live checks** (section 7 item 10): `!world census` shows kuala-lumpur=7 and kampung-village=7; wake both towns at the
+routine hours, `!world residents`; `hi Farah`, double-click Awang; level 58 in KL: `farah-the-opening-night` (Lim, the
+Scaredy Scarlions on Hibiscus Road 2, the first park's gates), then a second character is no longer offered it; at
+19-20 by Audrey in the kampung `kampung-on-the-big-screen` plays; level 90 `awang-bintang`, then level 80
+`farah-the-carousel-turns` (both chapters 4 open together). Recruits: Iskandar (60 Galloperas counted after the offer),
+Devi (130,000 for 24 hours), Bayu (20 Viking Helmets), Kamal (hear `kampung-the-strongman`, middle east street 18-19).

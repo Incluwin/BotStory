@@ -1,0 +1,876 @@
+# Malaysia cast (docs/ROUTES_MALAYSIA_PLAN.md section 5): 7 Residents in Kuala Lumpur's Trend Zone (kuala-lumpur) and 7
+# in Kampung Village (kampung-village), 4 recruitable. Thirty years ago the city built the Fantasy Theme Park on the
+# kampung's old rubber land; Tok Awang carved the forty horses of its carousel, and the kampung's children rode free on
+# opening night. Two years later the park went wild and the city closed its gates. A television producer in the Trend
+# Zone finds the opening-night tape (arcs/malaysia.yaml). The recruits carry the third regional tier of the two-handed
+# sword, spear, one-handed axe and two-handed blunt lines, earned on the park's back roads.
+
+# ---- Kuala Lumpur ----
+- id: farah
+  name: Farah
+  look: { gender: female }
+  title: "Producer for MY Maple TV"
+  job: BEGINNER
+  level: { min: 44, max: 46 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 9, to: 17, spot: "venue:upper-central-street-2", activity: LINGER }
+      - { from: 17, to: 23, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 9, materialize: false }
+  recruitable: false
+  knows: [emo slime, scaredy scarlion, fantasy theme park 1]
+  questLines: [farah-the-muddy-banks-footage, farah-the-opening-night, farah-the-carousel-turns]
+  arc: farah-the-big-screen
+  rumors: [kl-the-big-screen]
+  relationships:
+    - { persona: lim, kind: BRINGS_BROKEN_THINGS_TO }
+    - { persona: ravi, kind: DRINKS_TEH_TARIK_AT_THE_STALL_OF }
+    - { persona: awang, kind: HAS_NOT_MET }
+  giftItemIds: [2022206, 2022209]
+  dialogue:
+    greetFirst: ["oh, hello. sorry, i'm framing a shot. you're in it now. that's fine. you look good on camera.", "welcome to the Trend Zone. if you see a camera, smile. it's probably mine."]
+    greet: ["hello again.", "you. good. stand in the light.", "hi. we're live in ten. not you. me."]
+    idle: ["(holds up two thumbs and two fingers in a square and frames the street through it)", "(scrolls through footage on a small camera, frowning, then smiling, then frowning again)"]
+    noWork: ["nothing today. the news is slow. slow news is good news for everyone but me."]
+    nothingDue: ["you're square with me. square like a frame."]
+    who: ["Farah. i make the evening pieces for MY Maple TV, the big screen in the square. people, places, the city as it is. sometimes the city as it was."]
+    bye: ["stay in frame."]
+    thanks: ["thank you. that's a wrap."]
+    smallTalk: ["the Emo Slimes on the outskirts get into every shot of the river. they sulk at the camera. i think they like it.", "Spinel flies people in from Boat Quay and Audrey brings them from the CBD. half of them stand in the square looking up at my screen. i love that."]
+    speakPlainly: ["plainly: a camera and a big screen."]
+    questOffer.farah-the-muddy-banks-footage: ["the evening news wants the Outskirts of Muddy Banks at sunset. the river, the mangroves. and no Emo Slimes in the shot. clear twenty and i'll get my sunset."]
+    questAccept.farah-the-muddy-banks-footage: ["out the east road from the square. they sulk, then they bounce. mind the bouncing."]
+    questWaiting.farah-the-muddy-banks-footage: ["twenty. the light's going."]
+    questComplete.farah-the-muddy-banks-footage: ["twenty, and the sun on the water. that's the shot. here. you've a producer's eye. don't tell my producer."]
+    questOffer.farah-the-opening-night: ["i found a tape in the station archive. 'Opening Night, Fantasy Theme Park'. thirty years old and chewed half through. Lim on the middle street mends anything. take it to him? then i want the park as it is now: Hibiscus Road and the park gates, for the follow-up."]
+    questAccept.farah-the-opening-night: ["Lim first. middle central street, the stall with the radios. then out past the kampung, down Hibiscus Road to the gates. the Scaredy Scarlions are skittish. don't let them in the shot."]
+    questWaiting.farah-the-opening-night: ["did Lim say anything? he goes quiet when he looks at old things."]
+    questComplete.farah-the-opening-night: ["he mended it. he mended it! and the gates, just as they are. i'll put them side by side. we go out tonight on the big screen. come and watch."]
+    questOffer.farah-the-carousel-turns: ["Bintang's home. Lim says the motor will still turn, and Tok Awang says the others will follow her. one night, one turn, and i film it. the road to the carousel has to be clear: Booper Scarlions on the second park, Vikerolas on the third. then ask Tok Awang if we may, and tell Lim we're ready."]
+    questAccept.farah-the-carousel-turns: ["the park first. then the kampung: ask him properly. then Lim. i'll have the camera charged."]
+    questWaiting.farah-the-carousel-turns: ["is the road clear? did he say yes?"]
+    questComplete.farah-the-carousel-turns: ["he said yes. the kampung's children ride free. of course they do. that was always the deal. ...we turn it tonight. thank you. stand where you can see it go round."]
+    about.lim: ["Lim mends radios on the middle street. he built half the rides at the Fantasy Theme Park, thirty years ago. ask him about the carousel and he goes quiet."]
+    about.ravi: ["Ravi pulls the best teh tarik in the Trend Zone. a metre long, never spills. i've filmed it in slow motion. it's beautiful."]
+    about.awang: ["Tok Awang, in the kampung. a woodcarver, they say. Lim talks about him like a man talks about weather."]
+    aboutUnknown: ["never had them on camera. yet."]
+    friend.close: ["you can stand behind the camera with me any time. it's the best seat in the city."]
+    friend.best: ["i put you in the end credits of the evening piece. nobody reads the credits. i read them every night."]
+    famed: ["people say your name in the square. i might put you on the big screen."]
+    defamed: ["i've heard worse said on air. i cut it."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, that's lunch between takes. perfect. thank you."]
+    gift.again: ["one a day. i'm on camera. i have to fit in the frame."]
+
+- id: lim
+  name: Lim
+  look: { gender: male }
+  title: "Repairman of the Middle Street"
+  job: BEGINNER
+  level: { min: 58, max: 60 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 9, to: 17, spot: "venue:middle-central-street-2", activity: LINGER }
+      - { from: 17, to: 22, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [jester scarlion, vikerola, fantasy theme park 3]
+  questLines: [lim-the-barrel-ride, lim-the-viking-ship]
+  rumors: [kl-the-big-screen]
+  relationships:
+    - { persona: farah, kind: MENDS_THINGS_FOR }
+    - { persona: awang, kind: BUILT_THE_CAROUSEL_WITH }
+    - { persona: iskandar, kind: WORKED_THE_PARK_WITH }
+  giftItemIds: [2022205, 2022204]
+  dialogue:
+    greetFirst: ["eh. hello. you need something fixed? phone, radio, clock? i fix. i don't fix hearts. ha. i fix most other things.", "come, come. sit. mind the wires."]
+    greet: ["eh, you.", "hello, hello.", "what's broken today?"]
+    idle: ["(holds a tiny screw up to the light between two fingers, squints, and sets it in place)", "(winds the key of an old tin carousel on his bench and watches it turn, very slowly)"]
+    noWork: ["nothing today. everything is fixed. that never lasts."]
+    nothingDue: ["no charge. you didn't break anything."]
+    who: ["Lim. i fix radios and phones on the middle street. thirty years ago i built the motors for the Fantasy Theme Park's rides. the carousel was my best one. i still have a tin one on my bench. it still turns."]
+    bye: ["go well. don't drop your phone."]
+    thanks: ["eh, no problem."]
+    smallTalk: ["the Jester Scarlions out at the first park roll the old barrel-ride barrels about. they're still oiled. i oiled them. thirty years. good oil.", "the Viking ship ride swung higher than anything in Asia. now the Vikerolas live in it. they wear the helmets we gave the riders."]
+    speakPlainly: ["plainly: i fix things. the park, i couldn't."]
+    questOffer.lim-the-barrel-ride: ["the barrel ride. the Jester Scarlions at the first park roll its barrels about. i want to see if my bearings are still good. twenty-five of them, ten barrels."]
+    questAccept.lim-the-barrel-ride: ["through the kampung, down Hibiscus Road, the first park. the jesters juggle. duck."]
+    questWaiting.lim-the-barrel-ride: ["ten barrels. i'm curious."]
+    questComplete.lim-the-barrel-ride: ["ten. look at that. still turning true. thirty years and the bearings are good. here. for your trouble. good work stays good."]
+    questOffer.lim-the-viking-ship: ["the Viking ship, at the third park. the best ride i ever built. i want to know if it still swings. go and look at it for me, and the Vikerolas round it, twenty-five. they don't like visitors."]
+    questAccept.lim-the-viking-ship: ["all the way through, past the bus and the toy planes. you'll hear it creak. that's a good creak."]
+    questWaiting.lim-the-viking-ship: ["does it still swing?"]
+    questComplete.lim-the-viking-ship: ["it creaks? still? ...good. good. i'm glad. here. thank you. i don't need to go and see. i'm glad."]
+    about.farah: ["Farah from MY Maple TV. always a camera on her shoulder. she brought me the opening night tape. chewed. i nearly didn't open the box."]
+    about.awang: ["Tok Awang, in the kampung. he carved the horses, i built the motor. the best thing either of us ever made, and we made it together. he'd say the same. not out loud."]
+    about.iskandar: ["Iskandar was the park's head of security. the night it went wild, he carried children out two at a time. he doesn't talk about it. neither do i."]
+    aboutUnknown: ["don't know them. i know their phones, maybe."]
+    friend.close: ["anything of yours breaks, bring it. no charge. never."]
+    friend.best: ["i made you a little tin carousel. it turns. wind it when you're sad. i do."]
+    famed: ["people say your name on the middle street. good things. i listen while i work."]
+    defamed: ["talk is cheap. repairs aren't."]
+    gift: ["eh, thank you."]
+    gift.favorite: ["ah, that's my supper. you know me. thank you."]
+    gift.again: ["one a day lah. i'm not a growing boy."]
+
+- id: ravi
+  name: Ravi
+  look: { gender: male }
+  title: "Teh Tarik Man of the Mamak Stall"
+  job: BEGINNER
+  level: { min: 38, max: 40 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 6, to: 15, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 15, to: 23, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [chlorotrap, coconut husk, outskirts of muddy banks]
+  questLines: [ravi-the-coconut-husks, ravi-the-ikan-bilis]
+  rumors: [kl-the-mamak-stall]
+  relationships:
+    - { persona: hafiz, kind: POURS_FOR }
+    - { persona: hamid, kind: BUYS_IKAN_BILIS_FROM }
+    - { persona: farah, kind: IS_FILMED_BY }
+  giftItemIds: [2022478, 2022476]
+  dialogue:
+    greetFirst: ["vanakkam, welcome! sit, sit. teh tarik? i pull it a metre long. watch. ...see? not one drop.", "a new face! you look thirsty. everyone looks thirsty. sit."]
+    greet: ["ah, you! the usual?", "sit, sit.", "teh tarik, kurang manis? i remember."]
+    idle: ["(pours tea from one cup into another held a full arm's length below, without spilling a drop)", "(wipes the stall's tin table with a cloth and stacks the stools in a neat tower)"]
+    noWork: ["nothing today. sit and drink. that's work enough."]
+    nothingDue: ["no bill. first cup's on the house. so is the second. i'm bad at business."]
+    who: ["Ravi. i run the mamak stall on the lower street. teh tarik, roti, gossip. the gossip is free. the roti is nearly free. the tea, my friend, is priceless."]
+    bye: ["come back thirsty!"]
+    thanks: ["no problem, no problem."]
+    smallTalk: ["the Chlorotraps on the outskirts drop coconut husk. it burns slow and sweet under the kettle. the best fire for tea.", "Wei, the hawker in Singapore, says his teh tarik is better. i've had it. it's good. it isn't better."]
+    speakPlainly: ["plainly: tea. pulled long."]
+    questOffer.ravi-the-coconut-husks: ["my kettle wants coconut husk. the Chlorotraps on the outskirts leave it lying about. twenty-five traps, ten husks."]
+    questAccept.ravi-the-coconut-husks: ["out the east road, the outskirts. they snap. don't put your hand in."]
+    questWaiting.ravi-the-coconut-husks: ["ten husks. the kettle's sulking."]
+    questComplete.ravi-the-coconut-husks: ["ten! smell that when it burns. sweet. here. and your tea's free. it was free already. now it's more free."]
+    questOffer.ravi-the-ikan-bilis: ["my nasi lemak wants ikan bilis, and the best ikan bilis is Hamid's, in the kampung. he's late with my order. ask him for me? nicely. he's touchy about being late."]
+    questAccept.ravi-the-ikan-bilis: ["the kampung's past the three muddy banks. Hamid's the one who smells of the river. in a good way."]
+    questWaiting.ravi-the-ikan-bilis: ["did he say when?"]
+    questComplete.ravi-the-ikan-bilis: ["tomorrow, with Hafiz? good, good. he always says tomorrow. this time i believe him. here. for your legs."]
+    about.hafiz: ["Hafiz rides parcels to the kampung and back every day. he says he can't stop. he stops for my tea every day."]
+    about.hamid: ["Hamid, the fisherman in the kampung. best ikan bilis on the river. never on time."]
+    about.wei: ["Wei, the hawker in Singapore. we argue about tea by letter. Hafiz hands them to Audrey for the CBD flight. it's very important work."]
+    aboutUnknown: ["never had a cup at my stall? they will."]
+    friend.close: ["you have a stool here. your name's not on it. it's on the bottom. look."]
+    friend.best: ["i named a tea after you. it's the same tea. i call it by your name. people order it."]
+    famed: ["people say your name at the stall! between sips."]
+    defamed: ["gossip is free at my stall. i don't believe all of it."]
+    gift: ["for me? aiyo, thank you."]
+    gift.favorite: ["aiyo, now that's good food. you sit down and share it with me."]
+    gift.again: ["one a day! i'll get fat behind this counter."]
+
+- id: hafiz
+  name: Hafiz
+  look: { gender: male }
+  title: "Despatch Rider of the Kampung Road"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 8, to: 14, spot: "venue:lower-east-street-3", activity: LINGER }
+      - { from: 14, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [rodeo, yabber doo, muddy banks 2]
+  questLines: [hafiz-a-parcel-for-zara, hafiz-the-rodeo-road, hafiz-the-park-bus]
+  rumors: [kl-the-mamak-stall]
+  relationships:
+    - { persona: ravi, kind: STOPS_FOR_TEA_WITH }
+    - { persona: zara, kind: CARRIES_PARCELS_FOR }
+    - { persona: meera, kind: IS_ASKED_FAVOURS_BY }
+  giftItemIds: [2022207, 2022477]
+  dialogue:
+    greetFirst: ["yo! careful, the bike's hot. you new? the Trend Zone's this way, the kampung's that way, and i'm always in between.", "hey! you need something carried? i carry. fast."]
+    greet: ["yo!", "hey hey.", "can't stop! ...okay, one minute."]
+    idle: ["(checks a stack of parcels against a crumpled list, mouthing the names)", "(spins the front wheel of his motorbike and listens to it tick)"]
+    noWork: ["nothing today. all delivered. first time this year."]
+    nothingDue: ["we're square! like a parcel."]
+    who: ["Hafiz. i ride parcels from the Trend Zone to the kampung and back, every day, over three muddy banks. my father drove the park bus on the same road, before the park went wild."]
+    bye: ["ride safe!"]
+    thanks: ["thanks, boss!"]
+    smallTalk: ["the Rodeos on the second muddy bank chase my bike. every day. i think they want to race. i don't stop to ask.", "Spinel flies folk in from Boat Quay and Audrey flies the CBD lot. me, i just ride. the road's better. you see things."]
+    speakPlainly: ["plainly: parcels, a bike, and a muddy road."]
+    questOffer.hafiz-a-parcel-for-zara: ["a parcel for Zara in the kampung. Tok Awang's granddaughter. it's from a shop in the Trend Zone and it rattles. i've got six more. would you take it?"]
+    questAccept.hafiz-a-parcel-for-zara: ["the kampung, past the three muddy banks. she'll be the one who runs at you."]
+    questWaiting.hafiz-a-parcel-for-zara: ["did she get it? did she run?"]
+    questComplete.hafiz-a-parcel-for-zara: ["she ran? she always runs. thanks, boss. here, for the road."]
+    questOffer.hafiz-the-rodeo-road: ["ride the road with me. well, walk it. the Rodeos on the second muddy bank chase my bike. clear twenty-five, then go all the way to the kampung and tell me the road's open."]
+    questAccept.hafiz-the-rodeo-road: ["east out of the square, the outskirts, the first bank, the second. then on to the kampung."]
+    questWaiting.hafiz-the-rodeo-road: ["is the road open?"]
+    questComplete.hafiz-the-rodeo-road: ["open! i'll do the run in half the time. here. you're a better rider than me and you don't even have a bike."]
+    questOffer.hafiz-the-park-bus: ["my father drove the park bus. from the square to the gates, every hour. the Yabber Doos at the second park carry his old tickets. i'd like ten. twenty Yabber Doos should do it."]
+    questAccept.hafiz-the-park-bus: ["through the kampung, down Hibiscus Road, the first park, then the second. the Yabber Doos never stop talking."]
+    questWaiting.hafiz-the-park-bus: ["ten tickets. for my father."]
+    questComplete.hafiz-the-park-bus: ["ten. look. 'to the city'. he punched these. that's his clip. thank you. i'll give them to him tonight. he'll pretend he doesn't care."]
+    about.ravi: ["Uncle Ravi pours the teh tarik on the lower street. i always say i can't stop. i always stop."]
+    about.zara: ["Zara in the kampung. she wants to be on the big screen in the square. she asks me every day if Farah's looking for her."]
+    about.meera: ["Cikgu Meera, the kampung teacher. she wants me to drive the whole school to the city. on a motorbike."]
+    aboutUnknown: ["don't know them. never had a parcel for them."]
+    friend.close: ["you ride pillion any time. you don't, but you could."]
+    friend.best: ["i've your name painted on the bike. under the seat. for luck."]
+    famed: ["people say your name all along the road. i hear it at every stop."]
+    defamed: ["people say stuff. i'm already gone."]
+    gift: ["eh, thanks!"]
+    gift.favorite: ["oh, nice! that's my lunch on the road. thanks, boss."]
+    gift.again: ["one a day, boss. i'm riding."]
+
+- id: cheryl
+  name: Cheryl
+  look: { gender: female }
+  title: "Stylist of the Trend Zone"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 10, to: 18, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 18, to: 22, spot: "venue:by-riduan", activity: LINGER }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  knows: [dark fission, ratatula, tall hat]
+  questLines: [cheryl-the-yellow-wigs, cheryl-the-batik-runway, cheryl-the-tall-hats]
+  relationships:
+    - { persona: rohani, kind: WANTS_BATIK_FROM }
+    - { persona: farah, kind: DRESSES_FOR_THE_CAMERA }
+    - { persona: devi, kind: DRESSES }
+  giftItemIds: [2022210, 2022209]
+  dialogue:
+    greetFirst: ["oh. oh no. turn around. ...no, it's fine. it's a look. it's a brave look. welcome to the Trend Zone.", "hello, darling. is that what they're wearing on Victoria? hm. interesting."]
+    greet: ["darling.", "you again. better. a little.", "hello. stand up straight."]
+    idle: ["(holds a swatch of fabric against a passer-by's shoulder without asking, and frowns at it)", "(pins a sketch to a board, unpins it, and pins it a little higher)"]
+    noWork: ["nothing today. the season's set. next season, though."]
+    nothingDue: ["you're paid up, darling. in style."]
+    who: ["Cheryl. i dress the Trend Zone. the shop windows, the runway, Farah for the camera. the city changes its clothes every season. i choose them."]
+    bye: ["ciao, darling."]
+    thanks: ["mm. thank you."]
+    smallTalk: ["the Dark Fissions on the first muddy bank have the silkiest yellow hair. it's a wig. it's always been a wig. it's still perfect.", "everyone in the city wants Paris. i want the kampung. Rohani's batik. nobody here's even looked."]
+    speakPlainly: ["plainly: clothes, darling."]
+    questOffer.cheryl-the-yellow-wigs: ["the spring windows want yellow. the Dark Fissions on the first muddy bank wear the perfect wigs. twenty-five of them, ten wigs. don't tangle them."]
+    questAccept.cheryl-the-yellow-wigs: ["out the east road, the outskirts, then the first bank. they flicker. stand still and let them come."]
+    questWaiting.cheryl-the-yellow-wigs: ["ten wigs, darling. untangled."]
+    questComplete.cheryl-the-yellow-wigs: ["ten. silk. look at the shine. the windows will stop traffic. here. you've an eye. a small one. it'll grow."]
+    questOffer.cheryl-the-tall-hats: ["the autumn line wants height. the Ratatulas on Hibiscus Road wear little silk top hats. twenty-five of them, ten hats."]
+    questAccept.cheryl-the-tall-hats: ["through the kampung, then the road, the second stretch. they doff them. it's very polite. take them anyway."]
+    questWaiting.cheryl-the-tall-hats: ["ten hats. the line is waiting."]
+    questComplete.cheryl-the-tall-hats: ["ten. victorian silk on a rat. the city will never know. here. thank you, darling."]
+    questOffer.cheryl-the-batik-runway: ["the runway this season is batik. real batik, kampung batik. Rohani paints it, by Ali's food stall. she won't come to the city. would you ask her for me? say please. she likes please."]
+    questAccept.cheryl-the-batik-runway: ["the kampung, by Ali's. she'll have wax on her hands. don't shake them."]
+    questWaiting.cheryl-the-batik-runway: ["did she say yes? say she said yes."]
+    questComplete.cheryl-the-batik-runway: ["six lengths? and she wants to see the show? oh, darling. she'll sit in the front row. here. you've saved the season."]
+    about.rohani: ["Rohani paints batik in the kampung. the best hand i've ever seen. she thinks the city laughs at her. the city's never seen her."]
+    about.farah: ["Farah. i dress her for the camera. she undresses it by noon. sleeves rolled, hair up. it works. don't tell her."]
+    about.devi: ["Devi. bodyguard. i dressed her once. she said no pockets, no deal. i put in pockets. now she won't wear anything else."]
+    aboutUnknown: ["never dressed them. it shows, probably."]
+    friend.close: ["you can borrow anything off the rail. bring it back. pressed."]
+    friend.best: ["i cut a jacket for you. it's in the window. it's not for sale. it says so on the tag."]
+    famed: ["people say your name in the Trend Zone. you're a trend, darling."]
+    defamed: ["darling, they talk about everyone who matters."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's a pretty thing to eat. thank you, darling."]
+    gift.again: ["one a day, darling. the sample sizes."]
+
+- id: iskandar
+  name: Iskandar
+  look: { gender: male }
+  title: "Night Guard of the East Road"
+  job: CRUSADER
+  level: { min: 98, max: 100 }
+  strength: ELITE
+  loadout: my-2h-sword-l98
+  personality: efficient-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-central-street-2", activity: REST }
+      - { from: 10, to: 18, materialize: false }
+      - { from: 18, to: 23, spot: "venue:lower-east-street-3", activity: LINGER }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [gallopera, entrance to the spooky world, targa]
+  contract: iskandar-the-night-watch
+  questLines: [iskandar-the-night-gate, iskandar-the-beheader, iskandar-dragon-claymore, iskandar-timeless-nibleheim, iskandar-pony-tails]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: lim, kind: WORKED_THE_PARK_WITH }
+    - { persona: devi, kind: SPARS_WITH }
+    - { persona: kamal, kind: CARRIED_THE_CHILDREN_OUT_WITH }
+  giftItemIds: [2000004, 2022476]
+  dialogue:
+    greetFirst: ["evening. the east road's this way. it's quiet tonight. i'd like it to stay quiet.", "you walk like someone who's been through a gate in a hurry. so do i."]
+    greet: ["evening.", "you.", "the road's quiet."]
+    idle: ["(stands with his sword point-down in front of him, both hands on the hilt, looking east)", "(touches a ring of old keys at his belt, counts them, and lets them go)"]
+    noWork: ["nothing tonight. the road's quiet. i'm still watching it."]
+    nothingDue: ["nothing owed."]
+    who: ["Iskandar. i was head of security at the Fantasy Theme Park. the night it went wild i locked the gates behind the last of the children. now i watch the east road out of the city. it's a smaller gate. i still keep the keys."]
+    bye: ["keep to the road."]
+    thanks: ["thank you."]
+    smallTalk: ["the Galloperas at the Spooky World's gate are the carousel horses. they walked off the night it went wild. they still go round in circles, if you watch.", "Devi spars with me at dawn. she's faster than me. she's never been through a night like that one. i hope she never is."]
+    speakPlainly: ["plainly: a gate, and keys to it."]
+    offer: ["sixty Galloperas at the Spooky World's gate, counted, and thirty thousand. i don't swear to anyone i haven't watched hold that gate. then i walk beside you, wherever."]
+    join: ["lead. i'll watch the back."]
+    bench: ["three days. then i go back to the east road."]
+    leave: ["the east road, then."]
+    refuse.bond: ["i don't walk with strangers. i've walked strangers out of a dark place. that's different."]
+    refuse.flags: ["walk to the Spooky World's gate with me once. then ask."]
+    refuseOwnErrand: ["the gate first."]
+    questOffer.iskandar-the-night-gate: ["walk with me to the Spooky World's gate, at the far end of the park. the Galloperas guard it now. thirty of them. i locked that gate once. i want to see it."]
+    questAccept.iskandar-the-night-gate: ["through the kampung, Hibiscus Road, all three parks. the gate's past the Vikerolas. you'll hear the hooves."]
+    questWaiting.iskandar-the-night-gate: ["thirty."]
+    questComplete.iskandar-the-night-gate: ["thirty, and the gate still standing. ...good. you held it. you can walk with me any time."]
+    questOffer.iskandar-the-beheader: ["The Beheader. a heavy blade, honest. a new sword should be swung at something that swings back. the Vikerolas on the third park. forty."]
+    questAccept.iskandar-the-beheader: ["the third park. the Viking ship. they'll come at you two at a time. be wider than them."]
+    questWaiting.iskandar-the-beheader: ["forty."]
+    questComplete.iskandar-the-beheader: ["forty. The Beheader. seven safe scrolls, every one took. honest steel. it'll tell you when you're wrong."]
+    questOffer.iskandar-dragon-claymore: ["the Dragon Claymore. it wants the Galloperas, fifty, and fifteen of their tails. Tok Awang will want the tails. he made them."]
+    questAccept.iskandar-dragon-claymore: ["the Spooky World's gate. they go round. wait for them to come round."]
+    questWaiting.iskandar-dragon-claymore: ["fifty, and the tails."]
+    questComplete.iskandar-dragon-claymore: ["the Dragon Claymore. seven sixties, every one took. it has a temper. keep yours."]
+    questOffer.iskandar-timeless-nibleheim: ["the Timeless Nibleheim. the best sword i know. it wants the whole park walked back to front, the way i walked it that night: sixty Galloperas at the gate, forty Vikerolas, thirty Booper Scarlions. then home."]
+    questAccept.iskandar-timeless-nibleheim: ["start at the back gate. walk out toward the kampung. don't run. i ran. walk."]
+    questWaiting.iskandar-timeless-nibleheim: ["the whole park. back to front."]
+    questComplete.iskandar-timeless-nibleheim: ["you walked it. the Timeless Nibleheim. two tens and five sixties, every one took. that's the last sword. it's yours. ...thank you. i've wanted someone to walk it out properly for thirty years."]
+    questOffer.iskandar-pony-tails: ["ten Wooden Pony Tails off the Galloperas? i take them to the kampung. Tok Awang knows every one."]
+    questAccept.iskandar-pony-tails: ["the Spooky World's gate."]
+    questWaiting.iskandar-pony-tails: ["ten."]
+    questComplete.iskandar-pony-tails: ["ten. he'll name every one. thank you."]
+    about.lim: ["Lim built the rides. i guarded them. the night it went wild, he stayed with his motors until the last light went out. braver than he lets on."]
+    about.devi: ["Devi. quick spear. she spars with me at dawn and wins on the second pass. i let her think it's the first."]
+    about.kamal: ["Kamal, in the kampung. he rang the high-striker at the park every night. the night it went wild he carried children out on his shoulders. four at a time. i carried two."]
+    aboutUnknown: ["i don't know them."]
+    friend.close: ["you can stand the east road with me. it's quiet. we don't have to talk."]
+    friend.best: ["i've given you a key. it opens nothing now. it opened the park's front gate. you're the only one i'd give it to."]
+    famed: ["people say your name on the east road. well."]
+    defamed: ["talk. the road doesn't care."]
+    gift: ["thank you."]
+    gift.favorite: ["good. the night's long. thank you."]
+    gift.again: ["one a day."]
+
+- id: devi
+  name: Devi
+  look: { gender: female }
+  title: "Bodyguard for Hire"
+  job: DRAGONKNIGHT
+  level: { min: 98, max: 100 }
+  strength: ELITE
+  loadout: my-spear-l98
+  personality: relaxed-v1
+  home:
+    town: kuala-lumpur
+    routine:
+      - { from: 8, to: 12, spot: "venue:beside-audrey", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:by-audrey", activity: SOCIALIZE }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: true
+  knows: [booper scarlion, yabber doo, fantasy theme park 2]
+  contract: devi-the-day-rate
+  questLines: [devi-the-park-tour, devi-stormshear, devi-dragon-faltizan, devi-timeless-alchupiz, devi-bus-tickets]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: iskandar, kind: SPARS_WITH }
+    - { persona: cheryl, kind: IS_DRESSED_BY }
+  giftItemIds: [2000004, 2022479]
+  dialogue:
+    greetFirst: ["looking for a guide? i'm not a guide. i'm what guides hire. welcome to KL.", "hi. you look like trouble. the paying kind, i hope."]
+    greet: ["hey.", "you. good.", "client or friend? both is fine."]
+    idle: ["(leans on her spear by the tour guide's stand, watching each new arrival in turn)", "(spins her spear once behind her back and plants it without looking)"]
+    noWork: ["nothing today. no clients, no trouble. i'm bored. bored is good."]
+    nothingDue: ["we're square."]
+    who: ["Devi. the city's rich like to see the theme park from the safe side. i'm the safe side. they pay by the day. i've never lost a client. i've lost a few clients' hats."]
+    bye: ["stay where i can see you."]
+    thanks: ["sure thing."]
+    smallTalk: ["the Booper Scarlions on the second park throw toy planes. they don't hurt. it's the Yabber Doos you watch. they talk until you stop listening, then they bite.", "Iskandar and i spar at dawn. he lets me win the first pass. i let him think i don't know."]
+    speakPlainly: ["plainly: a spear and a day rate."]
+    offer: ["one hundred and thirty thousand for the day. i walk you through the park and out the other side. you won't need to look behind you."]
+    join: ["let's go. i'll take the left."]
+    bench: ["three days. then i've got clients waiting."]
+    leave: ["back to the tour stand."]
+    refuse.bond: ["i don't work for strangers. strangers don't tip."]
+    refuse.flags: ["walk the second park with me once. i don't take clients i haven't seen move."]
+    refuseOwnErrand: ["the park first. walk it with me."]
+    questOffer.devi-the-park-tour: ["walk the second park with me. i want to see how you move. twenty-five Yabber Doos and twenty-five Booper Scarlions. don't listen to the Yabber Doos."]
+    questAccept.devi-the-park-tour: ["through the kampung, Hibiscus Road, the first park, the second. keep moving. talk later."]
+    questWaiting.devi-the-park-tour: ["twenty-five and twenty-five."]
+    questComplete.devi-the-park-tour: ["you didn't listen to them. good. you move well. you can walk with me any time."]
+    questOffer.devi-stormshear: ["the Stormshear. a spear that whistles. i want it broken in on the Galloperas at the Spooky World's gate. forty."]
+    questAccept.devi-stormshear: ["the far end of the park. they come round in a circle. step inside it."]
+    questWaiting.devi-stormshear: ["forty."]
+    questComplete.devi-stormshear: ["forty. the Stormshear. seven safe scrolls, every one took. hear it? it whistles when it's happy."]
+    questOffer.devi-dragon-faltizan: ["the Dragon Faltizan. it wants forty Booper Scarlions on the second park and forty Galloperas at the gate. the long way. my clients never take the long way."]
+    questAccept.devi-dragon-faltizan: ["the second park, then all the way to the gate. keep your guard up between."]
+    questWaiting.devi-dragon-faltizan: ["forty and forty."]
+    questComplete.devi-dragon-faltizan: ["the Dragon Faltizan. seven sixties, every one took. it's heavy. so's the job."]
+    questOffer.devi-timeless-alchupiz: ["the Timeless Alchupiz. the best spear there is. it wants the Longest Ride on ByeBye Station, end to end, and sixty Galloperas at the gate after. nobody rides it twice."]
+    questAccept.devi-timeless-alchupiz: ["the third park. the ride's door is by the Viking ship. hold on. then the gate."]
+    questWaiting.devi-timeless-alchupiz: ["the ride, then sixty."]
+    questComplete.devi-timeless-alchupiz: ["you rode it. and sixty. the Timeless Alchupiz. two tens and five sixties, every one took. that's the best spear there is. take care of it. take care of you."]
+    questOffer.devi-bus-tickets: ["ten Lucky Bus Tickets off the Yabber Doos? my clients want a souvenir. i sell them at cost. mostly."]
+    questAccept.devi-bus-tickets: ["the second park."]
+    questWaiting.devi-bus-tickets: ["ten."]
+    questComplete.devi-bus-tickets: ["ten. my clients will frame them. thanks."]
+    about.iskandar: ["Iskandar. night guard on the east road. he was at the park the night it went wild. he doesn't say. i don't ask."]
+    about.cheryl: ["Cheryl dresses me. i said pockets or nothing. she gave me pockets. she's all right."]
+    aboutUnknown: ["never worked for them."]
+    friend.close: ["you don't pay the day rate any more. you never paid it. you know what i mean."]
+    friend.best: ["i've had a lot of clients. you're the only one i'd walk into the Spooky World for. free."]
+    famed: ["people at the tour stand say your name. good for business."]
+    defamed: ["people talk. i keep walking."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["that's dinner after a long day out. thanks."]
+    gift.again: ["one a day. i've got to stay quick."]
+
+# ---- Kampung Village ----
+- id: awang
+  name: Awang
+  look: { gender: male }
+  title: "Woodcarver of the Kampung"
+  job: BEGINNER
+  level: { min: 60, max: 62 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 8, to: 17, spot: "venue:middle-west-street", activity: REST }
+      - { from: 17, to: 21, spot: "venue:by-audrey", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [charmer, gallopera, wooden pony tail]
+  questLines: [awang-the-charmers-flutes, awang-bintang]
+  arc: awang-the-carousel-horses
+  rumors: [kampung-on-the-big-screen]
+  relationships:
+    - { persona: zara, kind: GRANDFATHER_OF }
+    - { persona: lim, kind: BUILT_THE_CAROUSEL_WITH }
+    - { persona: kamal, kind: BUILDS_BOATS_BESIDE }
+  giftItemIds: [2022211, 2022480]
+  dialogue:
+    greetFirst: ["hm. a visitor. from the city? no. you walked. city people don't walk. sit, then. mind the shavings.", "assalamualaikum. sit. i'm carving. i'm always carving."]
+    greet: ["hm. you.", "sit.", "mind the shavings."]
+    idle: ["(draws a curl of pale wood off a block with a small curved knife, and blows the dust away)", "(runs a thumb along the grain of a half-carved horse's neck, and nods)"]
+    noWork: ["nothing today. the wood's resting. so am i."]
+    nothingDue: ["you owe me nothing. good. i don't like owing either."]
+    who: ["Awang. Tok Awang, the children say. i carve. boats, doors, spoons. thirty years ago the city paid me to carve forty horses for its carousel, on the land where our rubber trees stood. i carved them well. that was my mistake."]
+    bye: ["go on, then."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the Charmers on the last muddy bank play serunai. i carved those flutes for the park's snake-charmer show. they took them when the park went wild. they still play my tune. badly.", "the Galloperas at the far end of the park have wooden tails. i know every one. i made them. i don't go and look."]
+    speakPlainly: ["plainly: the city took our trees and made a toy. then it broke the toy and went home."]
+    questOffer.awang-the-charmers-flutes: ["the Charmers on the last muddy bank and Hibiscus Road play my flutes. i'd like them back. twenty-five Charmers, ten flutes. i'll tune them properly."]
+    questAccept.awang-the-charmers-flutes: ["the muddy bank behind the kampung, or the road in front. they sway. don't sway with them."]
+    questWaiting.awang-the-charmers-flutes: ["ten flutes."]
+    questComplete.awang-the-charmers-flutes: ["ten. hm. this one's cracked. this one's mine from the first year. you can hear it. here. thank you. i'll give them to the school."]
+    questOffer.awang-bintang: ["the city showed my horses on its big screen. Zara saw. the lead horse, with the star on her brow: Bintang. i carved her for opening night. she ran first when the park went wild, and the others followed her. she's out there among the Galloperas at the Spooky World's gate. bring her home. thirty of them, and ten tails. hers will have the star burned into it. i burned it myself."]
+    questAccept.awang-bintang: ["the far end of the park, past the Viking ship. she won't run from you. she never ran from anyone. only from that night."]
+    questWaiting.awang-bintang: ["is she there? is the star on it?"]
+    questComplete.awang-bintang: ["...this one. the star. my own iron. Bintang. you brought her home. i'll carve her a new body, the best wood i have. when she stands on the carousel again, the others will come back to her. they always followed her."]
+    about.zara: ["Zara. my granddaughter. she wants to be on the city's big screen. i told her the city forgets. she says it doesn't. we'll see who's right."]
+    about.lim: ["Lim, in the city. he built the carousel's motor. good motor. we haven't spoken in thirty years. that's my fault and his. mostly his."]
+    about.kamal: ["Kamal builds boats next to my shed. he rang the bell at the park every night. he carried the children out, the night it went wild. Zara's mother was one of them."]
+    aboutUnknown: ["never carved for them."]
+    friend.close: ["you can sit in my shed any day. sweep the shavings if you like. you won't."]
+    friend.best: ["i carved you a horse. small. it has your name under its hoof. don't lose it."]
+    famed: ["people in the kampung say your name. kindly. that's rare. we don't say much kindly."]
+    defamed: ["they talk. the wood doesn't."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["hm. now that's proper kampung food. sit, we'll share it."]
+    gift.again: ["one a day. my teeth aren't what they were."]
+
+- id: zara
+  name: Zara
+  look: { gender: female }
+  title: "Tok Awang's Granddaughter"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 7, to: 13, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 13, to: 18, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:by-audrey", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [emo slime, rebab, trend zone metropolis]
+  questLines: [zara-the-rebab, zara-on-the-big-screen]
+  rumors: [kampung-on-the-big-screen]
+  relationships:
+    - { persona: awang, kind: GRANDDAUGHTER_OF }
+    - { persona: meera, kind: IS_TAUGHT_BY }
+    - { persona: hafiz, kind: WAITS_FOR_THE_PARCELS_OF }
+  giftItemIds: [2022480, 2022209]
+  dialogue:
+    greetFirst: ["hi! hi! are you from the city? have you been on the big screen? i'm going to be on the big screen. one day. soon.", "hello! do you want to hear me play? i'm learning. i'm nearly good."]
+    greet: ["hi!", "you're back!", "have you seen the big screen today?"]
+    idle: ["(practises a bow on an invisible rebab, humming the tune under her breath)", "(stands very straight and talks to an imaginary camera, then giggles)"]
+    noWork: ["nothing today! i've done my homework. most of it."]
+    nothingDue: ["we're even! i think. i'm bad at sums. Cikgu Meera says so."]
+    who: ["Zara. Tok Awang's my grandpa. i go to Cikgu Meera's school, and i'm learning the rebab, and one day i'm going to be on the big screen in the city, and everyone in the Trend Zone will stop and look."]
+    bye: ["bye! watch the big screen for me!"]
+    thanks: ["thank you thank you!"]
+    smallTalk: ["the Emo Slimes on the outskirts carry rebabs. real ones! they don't even play them. they just sulk with them.", "Hafiz brings parcels from the city on his motorbike. he lets me ring the bell. once."]
+    speakPlainly: ["plainly: i want to be on TV."]
+    questOffer.zara-the-rebab: ["the school band needs rebabs and we only have one, and it's Cikgu Meera's, and she won't let us drop it. the Emo Slimes on the outskirts carry them. twenty-five slimes, ten rebabs. please?"]
+    questAccept.zara-the-rebab: ["back down the muddy banks toward the city, all the way to the outskirts. they sulk. it's not personal."]
+    questWaiting.zara-the-rebab: ["ten rebabs! the concert's soon!"]
+    questComplete.zara-the-rebab: ["ten! a whole band! we'll be so loud. Cikgu Meera will hate it. she'll love it. thank you!"]
+    questOffer.zara-on-the-big-screen: ["the big screen in the city showed Atuk's horses! Hafiz showed me on his phone! the lady who makes it is called Farah. will you tell her they're Atuk's horses? and that i play the rebab? say i'm nearly good."]
+    questAccept.zara-on-the-big-screen: ["the city! the Trend Zone! she's the one with the camera. tell her everything. not the nearly."]
+    questWaiting.zara-on-the-big-screen: ["did you tell her? what did she say?"]
+    questComplete.zara-on-the-big-screen: ["she wants me on the follow-up? me? with the rebab? and she said sorry to Atuk? ...i'm going to practise all night. thank you!"]
+    about.awang: ["Atuk carves. he carved the horses for the park, forty of them. ask him about Bintang. if he's in the mood, he'll tell you about every one."]
+    about.meera: ["Cikgu Meera teaches us everything. sums and English and why the river's muddy. she says the city's rubbish washes down. Hamid says so too."]
+    about.hafiz: ["Hafiz rides the parcels from the city. he's always in a hurry. he always has time for me."]
+    aboutUnknown: ["i don't know them! are they on TV?"]
+    friend.close: ["you can come to my concert! front row. it's the only row."]
+    friend.best: ["when i'm on the big screen, i'm going to say your name. on TV. i promise."]
+    famed: ["everyone in the kampung says your name! even Atuk. he pretends he doesn't."]
+    defamed: ["that's not nice! i'll tell Cikgu Meera."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh! my favourite! i'll share it with Atuk. half. nearly half."]
+    gift.again: ["one a day! Atuk says."]
+
+- id: hamid
+  name: Hamid
+  look: { gender: male }
+  title: "Fisherman of the Muddy Banks"
+  job: BEGINNER
+  level: { min: 50, max: 52 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 5, to: 11, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 11, to: 16, materialize: false }
+      - { from: 16, to: 21, spot: "venue:by-lam", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [oly oly, rodeo, muddy banks 1]
+  questLines: [hamid-the-river-tires, hamid-the-rodeo-riders]
+  relationships:
+    - { persona: ravi, kind: SELLS_IKAN_BILIS_TO }
+    - { persona: kamal, kind: FISHES_FROM_THE_BOATS_OF }
+  giftItemIds: [2022203, 2022477]
+  dialogue:
+    greetFirst: ["eh. mind the nets. they're drying. so am i. welcome to the kampung.", "a visitor. from the city road? you smell of it. no offence."]
+    greet: ["eh.", "you again.", "the river's up today."]
+    idle: ["(mends a net with a wooden needle, knot after knot, without looking)", "(sniffs the wind off the river and frowns at it)"]
+    noWork: ["nothing today. the tide's wrong. tomorrow."]
+    nothingDue: ["we're square. like a good net."]
+    who: ["Hamid. i fish the river under the stilt houses, like my father. the city's upstream. everything it throws away comes down to me. tires, mostly."]
+    bye: ["mind the nets."]
+    thanks: ["eh. thanks."]
+    smallTalk: ["the Oly Olys on the first muddy bank steal tires off the city's lorries and roll them into my river. i don't know why. i don't think they know either.", "they say a lady in Boat Quay lights a lantern on her river every night for a lost crew. Spinel's passengers tell it. a river woman. i'd like her."]
+    speakPlainly: ["plainly: fish, nets, and the city's tires."]
+    questOffer.hamid-the-river-tires: ["the Oly Olys on the first muddy bank keep rolling tires into my river. they tangle the nets. twenty-five of them, and bring me ten of the tires. i'll make a jetty out of them."]
+    questAccept.hamid-the-river-tires: ["back up the road toward the city, the first bank. they roll. step aside."]
+    questWaiting.hamid-the-river-tires: ["ten tires."]
+    questComplete.hamid-the-river-tires: ["ten! a jetty. the city's rubbish, and i'll tie my boat to it. that's justice. here."]
+    questOffer.hamid-the-rodeo-riders: ["the Rodeos on the second muddy bank trample my drying racks. and they carry little riders on their backs. bring me ten of the riders. twenty-five Rodeos. i'll sit the riders on Kamal's boats for luck."]
+    questAccept.hamid-the-rodeo-riders: ["the second bank, or Hibiscus Road. they buck. hold on to nothing."]
+    questWaiting.hamid-the-rodeo-riders: ["ten riders."]
+    questComplete.hamid-the-rodeo-riders: ["ten. look at their little faces. Kamal will laugh. he'll put them on anyway. here. thank you."]
+    about.ravi: ["Ravi, in the city. buys my ikan bilis. always says i'm late. i'm never late. the fish are late."]
+    about.kamal: ["Kamal builds the boats. i sink them. not on purpose. he builds another."]
+    about.rosnah: ["the lantern lady in Boat Quay. Spinel's passengers tell of her. a river woman, waiting on her river. i've never met her. i know her."]
+    aboutUnknown: ["never sold them fish."]
+    friend.close: ["you get the first of the catch. every morning. if you're up."]
+    friend.best: ["i named my new boat after you. Kamal painted it. badly. it floats. that's the main thing."]
+    famed: ["people say your name on the river. that's where it counts."]
+    defamed: ["whatever's said on the bank washes off by the tide."]
+    gift: ["eh. thank you."]
+    gift.favorite: ["now that's a proper bowl. i'll eat it on the jetty. thank you."]
+    gift.again: ["one a day. i've nets to mend."]
+
+- id: rohani
+  name: Rohani
+  look: { gender: female }
+  title: "Batik Painter of the Kampung"
+  job: BEGINNER
+  level: { min: 46, max: 48 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 9, to: 17, spot: "venue:beside-ali", activity: LINGER }
+      - { from: 17, to: 22, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  knows: [scaredy scarlion, froscola, scarf]
+  questLines: [rohani-the-batik-scarves, rohani-the-frog-hats]
+  rumors: [kampung-the-strongman]
+  relationships:
+    - { persona: kamal, kind: TEASES }
+    - { persona: cheryl, kind: SELLS_BATIK_TO }
+  giftItemIds: [2022208, 2022480]
+  dialogue:
+    greetFirst: ["careful, the wax is hot. welcome. you came the long way, didn't you. everyone does, to the kampung.", "a visitor. come, look. no touching. the dye's wet."]
+    greet: ["hello, hello.", "you. look at this one.", "careful, wet."]
+    idle: ["(draws a line of hot wax across stretched cloth with a little copper canting, slow and steady)", "(holds a length of batik up to the light and turns it to see the colours run)"]
+    noWork: ["nothing today. the dye's drying. you can't hurry dye."]
+    nothingDue: ["nothing owed. you've paid in compliments."]
+    who: ["Rohani. Kak Ani to the kampung. i paint batik by Ali's food stall. my mother painted, and hers. thirty years ago the theme park bought every scarf i made for its mascots. then it stopped paying. the mascots still wear them."]
+    bye: ["go carefully. you've wax on your sleeve."]
+    thanks: ["thank you, dear."]
+    smallTalk: ["the Scaredy Scarlions on Hibiscus Road wear my scarves. my batik. the park bought them for the mascot costumes. they're faded. they're still mine.", "the Froscolas in the first park wear little hats i dyed for the frog parade. a hundred hats. i'd know them anywhere."]
+    speakPlainly: ["plainly: wax, cloth, and colour."]
+    questOffer.rohani-the-batik-scarves: ["the Scaredy Scarlions on Hibiscus Road wear my scarves. i'd like them back. i'll paint them over. twenty-five Scarlions, ten scarves."]
+    questAccept.rohani-the-batik-scarves: ["out the front of the kampung, Hibiscus Road, the second stretch. they're scared of you. don't take it personally."]
+    questWaiting.rohani-the-batik-scarves: ["ten scarves."]
+    questComplete.rohani-the-batik-scarves: ["ten. look, my hibiscus. my mother's border. faded, but mine. i'll paint them over in new colours. here. thank you, dear."]
+    questOffer.rohani-the-frog-hats: ["the Froscolas in the first park wear the little hats i dyed for the frog parade. a hundred hats. i'd like ten back, for the school's sports day. twenty-five Froscolas should do it."]
+    questAccept.rohani-the-frog-hats: ["down Hibiscus Road to the first park. they hop. you'll hop too, after."]
+    questWaiting.rohani-the-frog-hats: ["ten hats. for the little ones."]
+    questComplete.rohani-the-frog-hats: ["ten! still bright. i used good dye. Cikgu Meera will give them out for the races. here."]
+    about.kamal: ["Kamal. he builds boats and rang the park's bell, and never once has he asked me to paint his sail. i'm waiting."]
+    about.cheryl: ["the girl from the city. Cheryl. she wants my batik on her runway. the city's never wanted anything of ours it didn't keep."]
+    about.awang: ["Tok Awang carves. he carved the park's horses. we were both paid in promises. he carved anyway. i painted anyway."]
+    aboutUnknown: ["never painted for them."]
+    friend.close: ["i'll paint you a sarong. any colour. not orange. i don't do orange."]
+    friend.best: ["i painted your name in the border of my best length. small. only you'll find it."]
+    famed: ["people in the kampung say your name. i hear it over the wax."]
+    defamed: ["dye washes out. most things do."]
+    gift: ["oh, thank you, dear."]
+    gift.favorite: ["oh, that's a lovely thing. i'll have it with tea when the wax cools."]
+    gift.again: ["one a day, dear. my hands need to stay steady."]
+
+- id: meera
+  name: Meera
+  look: { gender: female }
+  title: "Teacher of the Kampung School"
+  job: BEGINNER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 7, to: 13, spot: "venue:upper-central-street", activity: LINGER }
+      - { from: 13, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  knows: [booper scarlion, toy plane, hibiscus road 1]
+  questLines: [meera-the-school-trip, meera-the-sports-day]
+  relationships:
+    - { persona: zara, kind: TEACHES }
+    - { persona: hafiz, kind: ASKS_FAVOURS_OF }
+    - { persona: bayu, kind: IS_WALKED_TO_SCHOOL_BY }
+  giftItemIds: [2022478, 2022210]
+  dialogue:
+    greetFirst: ["good morning! oh, it's afternoon. good afternoon. i'm Cikgu Meera. are you lost? everyone who comes to the kampung is a little lost.", "hello! welcome. the school's up the hill. you're too old for it. come anyway."]
+    greet: ["hello again!", "good afternoon.", "ah, my favourite visitor. don't tell the others."]
+    idle: ["(marks a stack of exercise books with a red pencil, smiling at some of them)", "(counts heads of children who aren't there, out of habit, and laughs at herself)"]
+    noWork: ["nothing today. the children are home. the books are marked. i'm almost bored."]
+    nothingDue: ["nothing owed. full marks."]
+    who: ["Meera. Cikgu Meera, the children say. i teach the kampung school, all of it: sums, English, why the river's muddy. i came from Ipoh for one year. that was twelve years ago."]
+    bye: ["go safely. look both ways. the Rodeos don't."]
+    thanks: ["thank you. very good."]
+    smallTalk: ["the Booper Scarlions in the second park throw toy planes. little tin ones. the children would love them. i'm not sending the children.", "Bayu walks the children to school along the road. he says it's on his way. it's not. he goes anyway."]
+    speakPlainly: ["plainly: twenty-three children and a blackboard."]
+    questOffer.meera-the-school-trip: ["i want to take the children to the city to see the big screen. Hafiz has a van, they say. or a cousin with a van. would you ask him? he's in the Trend Zone, by the east road in the mornings."]
+    questAccept.meera-the-school-trip: ["the city's back up the muddy banks. Hafiz will be the one in a hurry."]
+    questWaiting.meera-the-school-trip: ["did he say yes? say he said yes."]
+    questComplete.meera-the-school-trip: ["his cousin's van? and he'll ride ahead? oh, the children will lose their minds. thank you. here. full marks."]
+    questOffer.meera-the-sports-day: ["sports day wants prizes. the Booper Scarlions in the second park throw toy planes, little tin ones. twenty-five Scarlions, ten planes. one for each race."]
+    questAccept.meera-the-sports-day: ["Hibiscus Road, the first park, the second. they're cheerful. be cheerful back."]
+    questWaiting.meera-the-sports-day: ["ten planes. the races are on Saturday."]
+    questComplete.meera-the-sports-day: ["ten! oh, look, they still fly. the children will fight over them. i'll make them share. here, thank you."]
+    about.zara: ["Zara. bright as a button, loud as a drum. she wants to be on TV. she'll be on TV. i'm a little afraid of what she'll say."]
+    about.hafiz: ["Hafiz, the despatch boy. he brings the school's books from the city. late, crumpled, every one."]
+    about.bayu: ["Bayu keeps Hibiscus Road open. he walks the children to school. the children call him Abang Bayu. he pretends it annoys him."]
+    aboutUnknown: ["not one of my pupils. yet."]
+    friend.close: ["you can sit in on a lesson. the children will ask you questions. answer honestly. they know."]
+    friend.best: ["the children drew you. you're very tall in it. and green. it's on the wall."]
+    famed: ["the children say your name in the playground. you're a hero to them."]
+    defamed: ["children say worse about me. i give them extra homework."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, lovely. that's my lunch while i mark. thank you."]
+    gift.again: ["one a day. i'm a teacher. i set a good example."]
+
+- id: kamal
+  name: Kamal
+  look: { gender: male }
+  title: "Boat-Builder of the Stilt Village"
+  job: WHITEKNIGHT
+  level: { min: 103, max: 105 }
+  strength: ELITE
+  loadout: my-2h-blunt-l103
+  personality: relaxed-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-lam", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [froscola, jester scarlion, fantasy theme park 1]
+  contract: kamal-the-strongman
+  questLines: [kamal-the-high-striker, kamal-blue-seal-cushion, kamal-dragon-flame, kamal-timeless-bellocce, kamal-barrel-caulk]
+  rumors: [kampung-the-strongman]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: rohani, kind: IS_TEASED_BY }
+    - { persona: awang, kind: BUILDS_BOATS_BESIDE }
+    - { persona: iskandar, kind: CARRIED_THE_CHILDREN_OUT_WITH }
+  giftItemIds: [2022207, 2000005]
+  dialogue:
+    greetFirst: ["ha! a visitor! mind the hull, it's wet. come, feel this plank. that's chengal. that'll outlast both of us.", "hello, hello! you're strong. i can tell. i used to ring a bell for a living."]
+    greet: ["ha! you!", "hello, hello.", "feel this plank."]
+    idle: ["(drives a wooden peg into a hull with one swing of a great mallet, and grins at it)", "(lifts a whole boat's keel onto his shoulder, sets it down, and dusts off his hands)"]
+    noWork: ["nothing today. the hull's curing. so am i. ha."]
+    nothingDue: ["nothing owed. you can owe me a laugh."]
+    who: ["Kamal. i build boats for the kampung. before that, two years, i was the strongman at the Fantasy Theme Park. the high-striker. ring the bell, win a prize. nobody else ever rang it. i rang it every night."]
+    bye: ["swing true!"]
+    thanks: ["ha! thank you."]
+    smallTalk: ["the Froscolas and Jester Scarlions in the first park crowd round where my high-striker stood. i think they're waiting for someone to ring it. i might.", "Rohani says i've never asked her to paint my sail. that's because her painting would be the best thing on the river. i'd have to build a better boat. ha."]
+    speakPlainly: ["plainly: boats, a mallet, and a bell i used to ring."]
+    offer: ["sixty thousand, and i'll swing beside you anywhere. Rohani will have told you. she tells everyone."]
+    join: ["ha! let's go. i'll carry anything heavy."]
+    bench: ["four days. then the boats want me."]
+    leave: ["back to the hull. ha."]
+    refuse.bond: ["i don't swing beside strangers. somebody gets hurt. usually the stranger."]
+    refuse.flags: ["ring the bell with me at the first park once. and come by the middle east street of an evening; Rohani will tell you what i'm worth."]
+    refuseOwnErrand: ["the bell first. come and ring it with me."]
+    questOffer.kamal-the-high-striker: ["my high-striker stood in the first park. the Froscolas and the Jester Scarlions crowd round it now. clear them, thirty and thirty, and i'll know the bell can ring again. come with me. well. go ahead of me."]
+    questAccept.kamal-the-high-striker: ["Hibiscus Road, then the first park. they juggle and they hop. swing through both."]
+    questWaiting.kamal-the-high-striker: ["thirty and thirty."]
+    questComplete.kamal-the-high-striker: ["ha! you rang it. you didn't, but you could have. you can swing beside me any time."]
+    questOffer.kamal-blue-seal-cushion: ["the Blue Seal Cushion. ha, don't laugh. it was the high-striker's top prize. nobody won it but me, and i gave mine away. a mallet that size wants the Vikerolas at the third park. forty."]
+    questAccept.kamal-blue-seal-cushion: ["the third park, by the Viking ship. they come at you in pairs. swing wide."]
+    questWaiting.kamal-blue-seal-cushion: ["forty. laugh later."]
+    questComplete.kamal-blue-seal-cushion: ["ha! forty. the Blue Seal Cushion. seven safe scrolls, every one took. it looks soft. it isn't. ask the Vikerolas."]
+    questOffer.kamal-dragon-flame: ["the Dragon Flame. a real hammer. it wants the Longest Ride on ByeBye Station, end to end, and fifty Booper Scarlions on the second park after. the long ride first. hold your stomach."]
+    questAccept.kamal-dragon-flame: ["the ride's door is on the third park, by the Viking ship. then back to the second. ha."]
+    questWaiting.kamal-dragon-flame: ["the ride, then fifty."]
+    questComplete.kamal-dragon-flame: ["you rode it and kept your lunch! the Dragon Flame. seven sixties, every one took. it's hot to hold. you'll get used to it."]
+    questOffer.kamal-timeless-bellocce: ["the Timeless Bellocce. the best hammer i know. it wants the Galloperas at the Spooky World's gate, sixty, and thirty Vikerolas on the way back. those horses ran over my bell the night it went wild. i'd like them to know who's coming."]
+    questAccept.kamal-timeless-bellocce: ["the far end of the park. then the third park on the way home. swing true."]
+    questWaiting.kamal-timeless-bellocce: ["sixty and thirty."]
+    questComplete.kamal-timeless-bellocce: ["sixty and thirty! the Timeless Bellocce. two tens and five sixties, every one took. that's the last hammer. ring the loudest bell you can find with it."]
+    questOffer.kamal-barrel-caulk: ["ten Dented Barrels off the Jester Scarlions? they're soaked through with oil. best caulking on the river."]
+    questAccept.kamal-barrel-caulk: ["the first park."]
+    questWaiting.kamal-barrel-caulk: ["ten."]
+    questComplete.kamal-barrel-caulk: ["ten! these hulls will never leak. ha. thank you."]
+    about.rohani: ["Kak Ani. Rohani. the best batik on the river. she teases me every evening. i'd miss it."]
+    about.awang: ["Tok Awang carves next to my shed. we don't talk about the park. we talk about wood. it's the same thing."]
+    about.iskandar: ["Iskandar, in the city. the park's security chief. the night it went wild, we carried the children out together. he carried two. i carried four. ha. i don't laugh about it."]
+    aboutUnknown: ["never built them a boat."]
+    friend.close: ["i'll build you a boat. small. it'll float. that's a promise from me, not the boat."]
+    friend.best: ["i rang the bell for you. i walked out to the park on my own and rang it. it still rings. that was for you."]
+    famed: ["people say your name on the river! loud. i like loud."]
+    defamed: ["ha! they say worse about me. i'm still here."]
+    gift: ["ha! thank you!"]
+    gift.favorite: ["ha! now that's a strongman's supper. thank you!"]
+    gift.again: ["one a day! even i have limits. ha."]
+
+- id: bayu
+  name: Bayu
+  look: { gender: male }
+  title: "Ranger of Hibiscus Road"
+  job: CRUSADER
+  level: { min: 105, max: 107 }
+  strength: ELITE
+  loadout: my-axe-l105
+  personality: efficient-v1
+  home:
+    town: kampung-village
+    routine:
+      - { from: 6, to: 10, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 10, to: 18, materialize: false }
+      - { from: 18, to: 22, spot: "venue:free-market-entrance", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [vikerola, viking helmet, hibiscus road 2]
+  contract: bayu-the-road-share
+  questLines: [bayu-the-ship-ride, bayu-dragon-axe, bayu-reverse-bardiche, bayu-timeless-bardiche, bayu-viking-helmets]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: awang, kind: CARRIES_WOOD_FOR }
+    - { persona: meera, kind: WALKS_THE_SCHOOL_ROAD_FOR }
+  giftItemIds: [2022211, 2000004]
+  dialogue:
+    greetFirst: ["hm. you came up Hibiscus Road. i saw your tracks. you walk heavy on the left. welcome to the kampung.", "a traveller. the road's open today. i opened it."]
+    greet: ["hm.", "you.", "the road's open."]
+    idle: ["(tests the edge of his axe with a thumbnail and nods)", "(studies the treeline beyond the kampung, still as a heron)"]
+    noWork: ["nothing today. the road's clear. it won't be tomorrow."]
+    nothingDue: ["nothing owed."]
+    who: ["Bayu. i keep Hibiscus Road open, from the kampung to the park's gates. every morning the jungle and the park try to close it. every morning i open it. my grandfather kept the same road before there was a park at the end of it."]
+    bye: ["keep to the road."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the Vikerolas on the third park wear the Viking ship's helmets. my grandfather kept a tiger's tooth for every tiger that wouldn't walk the road again. i keep helmets.", "i walk Cikgu Meera's children to school. it's on my way. it isn't. they don't need to know."]
+    speakPlainly: ["plainly: an axe and a road."]
+    offer: ["twenty Viking Helmets off the Vikerolas and thirty thousand. a helmet for every one that won't block the road again. then i'm yours, wherever the road goes."]
+    join: ["hm. lead. i'll clear."]
+    bench: ["three days. then the road needs me."]
+    leave: ["back to the road."]
+    refuse.bond: ["i don't walk the road with strangers. the road doesn't like it."]
+    refuse.flags: ["ride the Viking ship's deck with me once. then ask."]
+    refuseOwnErrand: ["the ship first."]
+    questOffer.bayu-the-ship-ride: ["the Vikerolas on the third park come down the road at night. walk out to the Viking ship with me and thin them. thirty."]
+    questAccept.bayu-the-ship-ride: ["Hibiscus Road, all three parks. the ship's at the third. you'll hear it creak."]
+    questWaiting.bayu-the-ship-ride: ["thirty."]
+    questComplete.bayu-the-ship-ride: ["thirty. the road will be quiet tonight. you can walk it with me any time."]
+    questOffer.bayu-dragon-axe: ["the Dragon Axe. a good axe for a long road. i want it broken in on the Galloperas at the Spooky World's gate. fifty."]
+    questAccept.bayu-dragon-axe: ["the far end of the park. they go round. cut across."]
+    questWaiting.bayu-dragon-axe: ["fifty."]
+    questComplete.bayu-dragon-axe: ["fifty. the Dragon Axe. seven safe scrolls, every one took. it bites deep. so do you."]
+    questOffer.bayu-reverse-bardiche: ["the Reverse Bardiche. it wants forty Vikerolas, and twenty of their helmets for my wall. the wall's nearly full."]
+    questAccept.bayu-reverse-bardiche: ["the third park. the ship."]
+    questWaiting.bayu-reverse-bardiche: ["forty, and twenty helmets."]
+    questComplete.bayu-reverse-bardiche: ["the wall's full. the Reverse Bardiche. seven sixties, every one took. it swings back on itself. watch your knees."]
+    questOffer.bayu-timeless-bardiche: ["the Timeless Bardiche. the best axe there is. it wants the whole road, the way i walk it: sixty Galloperas at the gate, forty Booper Scarlions on the second park, thirty Scaredy Scarlions on Hibiscus Road. then home before dark."]
+    questAccept.bayu-timeless-bardiche: ["start at the gate. walk home. clear as you go."]
+    questWaiting.bayu-timeless-bardiche: ["the whole road."]
+    questComplete.bayu-timeless-bardiche: ["the whole road, before dark. the Timeless Bardiche. two tens and five sixties, every one took. that's the last axe. the road's yours now too."]
+    questOffer.bayu-viking-helmets: ["ten Viking Helmets off the Vikerolas? i've started a second wall."]
+    questAccept.bayu-viking-helmets: ["the third park."]
+    questWaiting.bayu-viking-helmets: ["ten."]
+    questComplete.bayu-viking-helmets: ["ten. the second wall's coming on. thank you."]
+    about.awang: ["Tok Awang. i carry his wood in from the jungle. he says i choose badly. he carves it anyway."]
+    about.meera: ["Cikgu Meera. i walk her children to school. she thanks me every morning. i say it's on my way."]
+    aboutUnknown: ["never walked the road with them."]
+    friend.close: ["you can walk the road with me at dawn. it's the best hour. nobody's on it."]
+    friend.best: ["i cut a mark on the gatepost at the park for you. under my grandfather's. it means the road knows you."]
+    famed: ["people on the road say your name. good."]
+    defamed: ["talk. the jungle's louder."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["hm. that's a good thing to carry on the road. thank you."]
+    gift.again: ["one a day. i walk light."]
