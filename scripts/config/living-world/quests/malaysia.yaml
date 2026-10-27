@@ -7,9 +7,9 @@
 # barrel 4000473, froscola 9420536 lucky hat 4000474), 2 551020000 (yabber doo 9420537 lucky bus ticket 4000475,
 # booper scarlion 9420538 toy plane 4000476), 3 551030000 (vikerola 9420539 viking helmet 4000477); the Entrance to the
 # Spooky World 551030100 (gallopera 9420540 wooden pony tail 4000478). Every drop above is the mob's own 30% etc item.
-# The Longest Ride on ByeBye Station (551030001-551030020) is the third park's mini-dungeon (scripts/portal/MD_high.js
-# opens the first free copy), so its steps list all twenty copies. Scarlion and Targa (Aldol's expedition in the
-# Spooky World) are script-spawned boss-event mobs, so no quest counts them.
+# The Longest Ride on ByeBye Station (551030001-551030019) is the third park's mini-dungeon (scripts/portal/MD_high.js
+# opens the first free of its 19 copies; 551030020 is never used), so its steps list all nineteen. Scarlion and Targa
+# (Aldol's expedition in the Spooky World) are script-spawned boss-event mobs, so no quest counts them.
 
 # ---- Farah: the opening-night tape (arcs/malaysia.yaml) ----
 - id: farah-the-muddy-banks-footage
@@ -300,7 +300,7 @@
   requires: { level: { min: 118 }, friendship: 10, questsCompleted: [devi-dragon-faltizan] }
   steps:
     - { id: talk, type: TALK }
-    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019, 551030020] }
+    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019] }
     - { id: galloperas, type: KILL_MOBS, mobIds: [9420540], count: 60, mapIds: [551030100] }
     - { id: spear, type: DELIVER, to: devi }
   rewards:
@@ -481,7 +481,7 @@
   requires: { level: { min: 108 }, friendship: 7, questsCompleted: [kamal-blue-seal-cushion] }
   steps:
     - { id: talk, type: TALK }
-    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019, 551030020] }
+    - { id: ride, type: VISIT_MAP, mapIds: [551030001, 551030002, 551030003, 551030004, 551030005, 551030006, 551030007, 551030008, 551030009, 551030010, 551030011, 551030012, 551030013, 551030014, 551030015, 551030016, 551030017, 551030018, 551030019] }
     - { id: boopers, type: KILL_MOBS, mobIds: [9420538], count: 50, mapIds: [551020000] }
     - { id: hot, type: DELIVER, to: kamal }
   rewards:

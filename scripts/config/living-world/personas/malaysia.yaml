@@ -109,7 +109,7 @@
     questAccept.lim-the-viking-ship: ["all the way through, past the bus and the toy planes. you'll hear it creak. that's a good creak."]
     questWaiting.lim-the-viking-ship: ["does it still swing?"]
     questComplete.lim-the-viking-ship: ["it creaks? still? ...good. good. i'm glad. here. thank you. i don't need to go and see. i'm glad."]
-    about.farah: ["Farah from MY Maple TV. always a camera on her shoulder. she brought me the opening night tape. chewed. i nearly didn't open the box."]
+    about.farah: ["Farah from MY Maple TV. always a camera on her shoulder, and always one that needs fixing. every camera she owns has been open on this bench."]
     about.awang: ["Tok Awang, in the kampung. he carved the horses, i built the motor. the best thing either of us ever made, and we made it together. he'd say the same. not out loud."]
     about.iskandar: ["Iskandar was the park's head of security. the night it went wild, he carried children out two at a time. he doesn't talk about it. neither do i."]
     aboutUnknown: ["don't know them. i know their phones, maybe."]
@@ -443,7 +443,7 @@
     famed: ["people at the tour stand say your name. good for business."]
     defamed: ["people talk. i keep walking."]
     gift: ["oh. thanks."]
-    gift.favorite: ["that's dinner after a long day out. thanks."]
+    gift.favorite: ["that'll keep me on my feet. thanks."]
     gift.again: ["one a day. i've got to stay quick."]
 
 # ---- Kampung Village ----
@@ -797,7 +797,7 @@
     famed: ["people say your name on the river! loud. i like loud."]
     defamed: ["ha! they say worse about me. i'm still here."]
     gift: ["ha! thank you!"]
-    gift.favorite: ["ha! now that's a strongman's supper. thank you!"]
+    gift.favorite: ["ha! now that's what keeps a strongman going. thank you!"]
     gift.again: ["one a day! even i have limits. ha."]
 
 - id: bayu

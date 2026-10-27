@@ -42,8 +42,6 @@
     - { by: awang, text: "again." }
     - { by: zara, text: "every night! the whole Trend Zone stops to watch them go round." }
     - { by: awang, text: "...they go round very well. i carved them to." }
-    - { by: zara, text: "will you go and see?" }
-    - { by: awang, text: "the city knows where i am." }
 
 - id: kampung-the-strongman
   participants: [rohani, kamal]

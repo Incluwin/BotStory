@@ -107,8 +107,8 @@ items, or riding for supplies, is outside this branch.
 Wave 3's rules (`docs/REGIONAL_RESIDENTS_PLAN.md` sections 2, 8 and 9): 7 Residents a town, about a third
 recruitable, each recruit earned a different way, one regional arc tying Kuala Lumpur and Kampung Village (lightly
 to Singapore by gossip), finales once per server (`requires.notFlags`, pinned in `ArcFinalBeatOncePerServerTest`),
-rumors at venues where their cast is awake, quests on Malaysia's own fields (Muddy Banks 46-65, Hibiscus Road 59-63,
-Fantasy Theme Park 70-87, Spooky World 94+). The recruits give an L100-120 tier of the four weapon lines that stopped
+rumors at venues where their cast is awake, quests on Malaysia's own fields (Muddy Banks 45-65, Hibiscus Road 59-65,
+Fantasy Theme Park 68-87, Spooky World 94+). The recruits give an L100-120 tier of the four weapon lines that stopped
 at waves 1 and 2 (two-handed swords, spears, one-handed axes, two-handed blunts; section 8 says how they sit beside
 Masteria's). Quest-log ids 32000-32149 (32000-32042 used), appended to `quest-log-ids.yaml`. The cast is in section 8.
 
@@ -207,7 +207,7 @@ Timeless Bardiche hits harder than the Reverse). No piece is on the Repack-only 
 
 **Fields.** Every quest is on Malaysia's own maps, levels 45-94: the Outskirts and the three Muddy Banks (45-65),
 Hibiscus Road (59-65), the three Fantasy Theme Parks (68-87), the Entrance to the Spooky World (94), and the Longest
-Ride on ByeBye Station (the third park's mini-dungeon; its steps list all twenty copies). Collect steps use each mob's
+Ride on ByeBye Station (the third park's mini-dungeon; its steps list the nineteen copies MD_high.js opens). Collect steps use each mob's
 own 30% etc drop. Scarlion and Targa are script-spawned boss-event mobs (ScargaBattle's clear is a boss clear, not a
 party-quest clear), so the L118 tiers are long kill runs through the park instead. Errands cross the two towns on foot
 (Ravi to Hamid, Hafiz to Zara, Cheryl to Rohani, Zara to Farah, Meera to Hafiz, and the finale's Awang and Lim).
@@ -243,9 +243,9 @@ is offered between the tape and the finale only (`notFlags: [my.carousel.turns]`
 and Village Chief Malek (9270061, who stands on Muddy Banks 2) for the kampung, which has only two townspeople of its
 own. All have their own standing image in Npc.wz.
 
-**Live checks** (section 7 item 10): `!world census` shows kuala-lumpur=7 and kampung-village=7; wake both towns at the
-routine hours, `!world residents`; `hi Farah`, double-click Awang; level 58 in KL: `farah-the-opening-night` (Lim, the
+**Live checks** (section 7 item 11): `!world census` shows kuala-lumpur=7 and kampung-village=7; wake both towns at the
+routine hours, `!world residents`; `hi Farah`, double-click Awang; level 58 in KL, after `farah-the-muddy-banks-footage`: `farah-the-opening-night` (Lim, the
 Scaredy Scarlions on Hibiscus Road 2, the first park's gates), then a second character is no longer offered it; at
-19-20 by Audrey in the kampung `kampung-on-the-big-screen` plays; level 90 `awang-bintang`, then level 80
+19-20 by Audrey in the kampung `kampung-on-the-big-screen` plays; level 90, after `awang-the-charmers-flutes`: `awang-bintang`, then level 80
 `farah-the-carousel-turns` (both chapters 4 open together). Recruits: Iskandar (60 Galloperas counted after the offer),
 Devi (130,000 for 24 hours), Bayu (20 Viking Helmets), Kamal (hear `kampung-the-strongman`, middle east street 18-19).
