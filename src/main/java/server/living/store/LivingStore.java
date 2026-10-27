@@ -893,25 +893,44 @@ public final class LivingStore {
     public record YieldRow(String jobBranch, int levelBand, int campMapId, double samples, double expPerHour,
                            double mesoPerHour, double itemsPerHour, double deathsPerHour) { }
 
+    /** companion_yield.source (changeset 52): the live bench slices' rows, and the loaded citizens' TRAIN stints'. */
+    public static final String YIELD_COMPANION = "companion";
+    public static final String YIELD_CITIZEN = "citizen";
+
     /**
-     * Every companion_yield row (one per job branch, level band and camp: a small table).
+     * Every companion_yield row the live bench slices measured (one per job branch, level band and camp: a small table).
      *
      * @throws ReadFailed when the read failed (not the same as nothing measured: the model must not start over)
      */
     public List<YieldRow> companionYields() {
+        return yields(YIELD_COMPANION);
+    }
+
+    /**
+     * Every companion_yield row loaded citizens' TRAIN stints measured (source 'citizen', F2.1).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public List<YieldRow> citizenYields() {
+        return yields(YIELD_CITIZEN);
+    }
+
+    private List<YieldRow> yields(String source) {
         List<YieldRow> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT job_branch, level_band, camp_map_id, samples, exp_per_hour,"
-                     + " meso_per_hour, items_per_hour, deaths_per_hour FROM companion_yield");
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                out.add(new YieldRow(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDouble(4), rs.getDouble(5),
-                        rs.getDouble(6), rs.getDouble(7), rs.getDouble(8)));
+                     + " meso_per_hour, items_per_hour, deaths_per_hour FROM companion_yield WHERE source = ?")) {
+            ps.setString(1, source);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new YieldRow(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDouble(4), rs.getDouble(5),
+                            rs.getDouble(6), rs.getDouble(7), rs.getDouble(8)));
+                }
             }
             return out;
         } catch (SQLException failure) {
-            log.warn("companion_yield read failed", failure);
-            throw new ReadFailed("companion_yield", failure);
+            log.warn("companion_yield read failed ({})", source, failure);
+            throw new ReadFailed("companion_yield " + source, failure);
         }
     }
 
@@ -1336,23 +1355,83 @@ public final class LivingStore {
 
     /** Keeps one companion_yield row (an upsert); false when the write failed. */
     public boolean saveCompanionYield(YieldRow row) {
+        return saveYield(row, YIELD_COMPANION);
+    }
+
+    /** Upserts one companion_yield row a loaded citizen's TRAIN stints measured (source 'citizen'). */
+    public boolean saveCitizenYield(YieldRow row) {
+        return saveYield(row, YIELD_CITIZEN);
+    }
+
+    private boolean saveYield(YieldRow row, String source) {
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO companion_yield (job_branch, level_band, camp_map_id, samples, exp_per_hour, meso_per_hour,"
-                        + " items_per_hour, deaths_per_hour) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE"
-                        + " samples = VALUES(samples), exp_per_hour = VALUES(exp_per_hour), meso_per_hour = VALUES(meso_per_hour),"
-                        + " items_per_hour = VALUES(items_per_hour), deaths_per_hour = VALUES(deaths_per_hour)")) {
+                "INSERT INTO companion_yield (job_branch, level_band, camp_map_id, source, samples, exp_per_hour,"
+                        + " meso_per_hour, items_per_hour, deaths_per_hour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        + " ON DUPLICATE KEY UPDATE samples = VALUES(samples), exp_per_hour = VALUES(exp_per_hour),"
+                        + " meso_per_hour = VALUES(meso_per_hour), items_per_hour = VALUES(items_per_hour),"
+                        + " deaths_per_hour = VALUES(deaths_per_hour)")) {
             ps.setString(1, row.jobBranch());
             ps.setInt(2, row.levelBand());
             ps.setInt(3, row.campMapId());
-            ps.setDouble(4, row.samples());
-            ps.setDouble(5, row.expPerHour());
-            ps.setDouble(6, row.mesoPerHour());
-            ps.setDouble(7, row.itemsPerHour());
-            ps.setDouble(8, row.deathsPerHour());
+            ps.setString(4, source);
+            ps.setDouble(5, row.samples());
+            ps.setDouble(6, row.expPerHour());
+            ps.setDouble(7, row.mesoPerHour());
+            ps.setDouble(8, row.itemsPerHour());
+            ps.setDouble(9, row.deathsPerHour());
             ps.executeUpdate();
             return true;
         } catch (SQLException failure) {
-            log.warn("companion_yield write failed for {}/{}/{}", row.jobBranch(), row.levelBand(), row.campMapId(), failure);
+            log.warn("companion_yield write failed for {}/{}/{} ({})", row.jobBranch(), row.levelBand(), row.campMapId(),
+                    source, failure);
+            return false;
+        }
+    }
+
+    // ---- owner habits (F2) --------------------------------------------------------------------
+
+    /**
+     * One human's living_owner_habit document (changeset 52, the OwnerHabits JSON), or null when nothing is kept yet.
+     *
+     * @throws ReadFailed when the read failed (not the same as no habits: the model must not start over)
+     */
+    public String ownerHabits(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT habits FROM living_owner_habit WHERE character_id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_owner_habit read failed for {}", characterId, failure);
+            throw new ReadFailed("living_owner_habit of " + characterId, failure);
+        }
+    }
+
+    /** Upserts one human's habits document; false when the write failed. */
+    public boolean saveOwnerHabits(int characterId, String json) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO living_owner_habit (character_id, habits) VALUES (?, ?)"
+                        + " ON DUPLICATE KEY UPDATE habits = VALUES(habits)")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, json);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_owner_habit write failed for {}", characterId, failure);
+            return false;
+        }
+    }
+
+    /** Forgets one human's habits ("forget my habits", a deleted character); false when the delete failed. */
+    public boolean deleteOwnerHabits(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "DELETE FROM living_owner_habit WHERE character_id = ?")) {
+            ps.setInt(1, characterId);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_owner_habit delete failed for {}", characterId, failure);
             return false;
         }
     }
@@ -1714,6 +1793,33 @@ public final class LivingStore {
         }
     }
 
+    /** A living_event_log row written for no character (an hourly audit row): when, and its detail. */
+    public record WorldEvent(long atMs, String detail) {
+    }
+
+    /**
+     * The newest {@code limit} rows of {@code kind} written for no character, oldest first (the tell audit's history);
+     * empty when the read fails. character_id NULL leads idx_living_event_character, so this reads only those rows.
+     */
+    public List<WorldEvent> worldEvents(String kind, int limit) {
+        String sql = SqlTime.utc("SELECT at, detail FROM living_event_log WHERE character_id IS NULL AND kind = ?"
+                + " ORDER BY id DESC LIMIT ?");
+        List<WorldEvent> rows = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, kind);
+            ps.setInt(2, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new WorldEvent(SqlTime.get(rs, 1), rs.getString(2)));
+                }
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("living_event_log read of {} failed", kind, failure);
+        }
+        java.util.Collections.reverse(rows);
+        return rows;
+    }
+
     /**
      * One living_event_log row's kind and detail; read as a GM level record ({@link #latestGmLevel}), {@code kept} is
      * true when any release of that record was a keep (a {@code gm.level.release} row with the detail {@code keep}).
@@ -1910,6 +2016,44 @@ public final class LivingStore {
         } catch (SQLException failure) {
             log.warn("living_event_log scan failed for {}", characterId, failure);
         }
+        return out;
+    }
+
+    /** One living_event_log row of a character's: the persona it names (null for none), its kind and its detail. */
+    public record CharacterEvent(String personaId, String kind, String detail) { }
+
+    /**
+     * The character's events of these {@code kinds} since their newest event of one of the {@code markers} (all of them
+     * when there is none), oldest first: the newest {@code limit} of them, what the letters have not told them yet
+     * (CompanionLetters). Null when the read fails.
+     */
+    public List<CharacterEvent> eventsAfterMarker(int characterId, List<String> kinds, List<String> markers, int limit) {
+        String sql = "SELECT persona_id, kind, detail FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ")"
+                + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(markers.size(), "?")) + ")), 0) ORDER BY id DESC LIMIT ?";
+        List<CharacterEvent> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            ps.setInt(at++, characterId);
+            for (String marker : markers) {
+                ps.setString(at++, marker);
+            }
+            ps.setInt(at, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new CharacterEvent(rs.getString(1), rs.getString(2), rs.getString(3)));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {} {}", characterId, kinds, failure);
+            return null;
+        }
+        java.util.Collections.reverse(out);
         return out;
     }
 

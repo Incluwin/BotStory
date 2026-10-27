@@ -72,6 +72,19 @@ public class NoteService {
     }
 
     /**
+     * How many more notes {@code receiverName} can get before their inbox holds the {@link #MAX_UNREAD_PLAYER_NOTES}
+     * unread notes a player's note respects; 0 when the count cannot be read.
+     */
+    public int inboxRoom(String receiverName) {
+        try {
+            return Math.max(0, MAX_UNREAD_PLAYER_NOTES - noteDao.countUnreadByTo(receiverName));
+        } catch (DaoException e) {
+            log.error("Failed to count unread notes of {}", receiverName, e);
+            return 0;
+        }
+    }
+
+    /**
      * Send note which will increase the receiver's fame by one.
      *
      * @return Send success

@@ -220,6 +220,61 @@ toward `ownerLevel - paceGap` (banked, granted when called), or meso/items into 
 bench efficiency factor and the daily farming cap; a persona never farms its own quests from
 the bench (24 h haul provenance is checked at turn-in).
 
+### Letters
+
+Off by default: `living_world.LETTERS_ENABLED` (docs/BOT_CONCEPT_PLAN.md F3, `CompanionLetters`). A few seconds
+(`LETTERS_DELAY_MS`) after you log in from a real logout, or for the first time since a restart, each companion that did
+something while you were away writes you a normal note (the memo window), sent as itself and in its voice: the level
+its banked EXP is ready for (or one it reached out there), what it found by the rarity rule (an equip within
+`LETTERS_EQUIP_LEVEL_SPAN` levels of yours, an equip scroll, or an item in the top tenth of the citizens' price index),
+job advances, a camp move from a rough camp, gifts it sent, deaths as a soft count ("took a tumble twice") and the meso
+it put in the haul. At most `LETTERS_MAX_NOTES` notes a login, and never past the 100-unread cap: the companions past
+the first ones share one crew letter, written by the first of them. One pink line sums it up in place of the old
+"While you were away" lines: who wrote, who went home, and which citizens asked after you.
+
+- **The news survives a restart.** Bench work (the ledger's credit, live slices' harvests and ends) is written as
+  `bench.report` rows (JSON) to `living_event_log` at each ledger tick and slice end. The digest reads the rows,
+  `job.advanced`, `letters.gift` and `citizen.asked` after your newest `letters.away` (written at a logout) or
+  `letters.told` (written by a digest) marker, so it tells only the time you were away, once. A companion the letters
+  told about has no call-back report to repeat.
+- **Gifts.** A Resident (hires keep no friendship yet) at friendship `LETTERS_GIFT_FRIENDSHIP_LEVEL` or more sometimes
+  (`LETTERS_GIFT_CHANCE` a ledger tick, `LETTERS_GIFTS_PER_WEEK` each) mails you one such find from its haul by Duey,
+  with a message. It is taken from the haul, never minted; you get Duey's live notice when you are online.
+- **Asking after you.** A citizen with warmth `LETTERS_ASK_WARMTH` or more toward you (its person memory) sometimes
+  says "anyone seen Ann?" in place of an idle line while you are offline (`memory.asked` in `chatter/memory.yaml`; at
+  most once per `LETTERS_ASK_GAP_HOURS` for you); your next login's pink line says who asked.
+- **Voice.** `letters.yaml` in the content directory: per part of a letter, its lines and each dialogue style's own (the
+  style a persona's personality resolves to). Templated: no Jev calls.
+
+Always on, as the fix of two tells: "send it" mails an equip with drop-like random stats (a piece a package), and meso
+alone in a package with no item, as a player's meso-only Duey package; you get Duey's live notice.
+
+### Habits and learned spots
+
+Companions pick up how their owner plays (`living_world.OWNER_HABITS_ENABLED`, off until its live checks pass; plan
+F2.2-F2.4). Only humans who own companions are watched, only while online: the HP/MP they drink at, what they pick up,
+drop or leave on the ground until it expires (with room in their bag), what they sell to shops, the fields they train on
+per level band (EXP, kills, deaths) and the skills that land their damage. Only the best of it is learned: a drink in the
+`OWNER_HABIT_DEATH_WINDOW_MS` before a death came too late; a category is skipped only when nearly all of it is left and
+its drops are cheap (never quest items, scrolls or books, never more than `OWNER_HABIT_LOOT_MAX_SKIPS` categories, so it
+never comes to picking up nothing); an item is vendored only when sold on separate visits; a map counts for its EXP an
+hour against the owner's best in the band, never one that keeps killing them; a skill for its share of the damage. Boss
+content (an event instance, a field boss on the map) is neither watched nor ever uses a habit.
+
+What it changes: a companion whose potions were never set drinks at the owner's median HP point (never below
+`OWNER_HABIT_HP_FLOOR`) outside boss content; the default loot mode becomes "What you pick up" (`LIKE_OWNER`), which
+leaves the categories the owner always leaves; a bench farmer holds what the owner sells and sells it at its resupply
+instead of hauling it; Your call weighs the owner's best maps at its level band; a companion of the owner's job starts
+those skills a little higher in its combat learner (measured values still win). Each habit is mentioned once, in voice
+(`owner-habits.yaml`); the card's **Learned from you...** page lists them, with **Forget my habits** (D7). GM:
+`!habits <player>` (GM 6) shows what is learned and how much it rests on. Stored in `living_owner_habit` (changeset 52).
+
+Citizens learn where to train (`population.CITIZEN_SPOT_LEARNING_ENABLED`, plan F2.1): a loaded citizen's TRAIN stint is
+booked when it leaves its field (EXP and deaths an hour per class line, band and field, `companion_yield` rows of source
+`citizen`; AFK time, stints under `CITIZEN_SPOT_MIN_MS` and shop walks are not). Among the fields that fit, it picks by
+what citizens measured, a UCB bonus for fields measured less and a crowding cost for fields already full of citizens,
+drawn by weight so they spread. The same rows sharpen companions' EXP and death priors (`CITIZEN_YIELD_WEIGHT`).
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and
@@ -331,6 +386,28 @@ It also carries the auditor's status, which `GET /runtime/companions/audit` retu
 the roster row (ACTIVE: seated again; BENCHED/AWAY: taken out of the party), logs `companion.drift` to
 `living_event_log`, and tries once per episode (a repair that does not hold is logged once more as stuck).
 
+## Tell audit
+
+How bot-like the bots look, per build (docs/BOT_CONCEPT_PLAN.md C2). Off unless `living_world.TELL_AUDIT_ENABLED`
+(read at boot). It measures from the boot on, from where bots already act: the reaction to a new set of mobs
+(`AgentCombatBehaviorRuntime.responseReady`; a bot with no behaviour calibration, which only the Maple Island cohort
+configures, acts on the tick it first sees them and is timed at 0 ms) and a content chat reply's delay
+(`ContentChat.timed`), each citizen's gaps
+between chatter lines and a line said again on one map within 10 min (`ChatterEngine`), idle bots standing 3 or more
+within 30 px (a minute sample of every loaded bot), each citizen's share of the last 7 days online and AFK spells by
+map kind (`PresenceScheduler`), the route of each host-started walk (`AgentMapWalk`, hashed per bot, from and to map),
+the HP point autopot drinks at and how far through a buff it is recast, and bot deaths per class and activity with the
+bot-hours behind them. Deaths are not a tell: they are the guard the imperfections work (F8) is held to.
+
+`GET /runtime/tells` gives each measure's value, its "looks human" band and a verdict (`GREEN`, `AMBER`, `RED`,
+`NO_DATA` until it has enough samples, `INFO`). The red lines are the plan's (per-bot reaction CV under 0.25, 5th
+percentile under 150 ms, over 60% of repeat walks retraced, over 80% of drinks or recasts at one value, a citizen
+online over 20 h a day, any AFK over 2 min on a field); the amber margins are priors for the 24 h baseline to settle
+(`server.living.audit.TellBands`). Every hour an `audit.tells` row (no character) goes to `living_event_log`:
+`b=<build> h=<hours> <code>=<value>:<G|A|R|-|i> ... d=<class>:<deaths>/<botHours>,... da=field:n,boss:n,instance:n`.
+The build is the checkout's HEAD at boot. `tools\tells-report.ps1` compares two builds from those rows
+(`GET /runtime/tells/history`), or two saved `/runtime/tells` JSON files; with no arguments, the two newest builds.
+
 ## Authoring
 
 MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
@@ -435,6 +512,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `tools/wz-patcher/residents.py`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
+| tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
 
 ## Not done yet (from the plan)
 

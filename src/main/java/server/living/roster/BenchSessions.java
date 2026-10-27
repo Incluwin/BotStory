@@ -6,9 +6,11 @@ import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
+import server.ItemInformationProvider;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.habits.OwnerHabitBook;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -31,6 +33,9 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
             InventoryType.SETUP, InventoryType.ETC);
 
     private final LivingWorld world;
+    /** What an NPC shop pays for {@code quantity} of an item (the stock price; a test gives its own). */
+    java.util.function.IntBinaryOperator vendorPrice = (itemId, quantity) ->
+            ItemInformationProvider.getInstance().getPrice(itemId, quantity);
 
     public BenchSessions(LivingWorld world) {
         this.world = world;
@@ -81,7 +86,7 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
         if (agent.getMap() == null || agent.getMap().isTown()) {
             return "back in town"; // died and respawned, or wandered off the field
         }
-        roster = harvest(slice, agent, roster);
+        roster = harvest(slice, agent, roster, Sold.HOLD);
         int ownerLevel = world.store().characterLevel(slice.ownerId());
         Persona persona = world.content().persona(slice.personaId());
         int paceGap = persona != null && persona.paceGap() >= 0 ? persona.paceGap() : world.config().PACE_GAP;
@@ -104,16 +109,29 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
     public void finish(BenchDutyDispatcher.Slice slice, Character agent, String reason) {
         RosterEntry roster = agent == null ? null : world.store().rosterEntry(slice.ownerId(), slice.personaId());
         if (roster != null) {
-            harvest(slice, agent, roster);
+            harvest(slice, agent, roster, BenchDutyDispatcher.RESUPPLIED.equals(reason) ? Sold.VENDOR : Sold.HAUL);
         }
+    }
+
+    /**
+     * What a harvest does with the items its owner sells at shops (OwnerHabitBook.sells, F2.4): HOLD them in its bag
+     * while it hunts, VENDOR them at its resupply (the slice ends at the shop: their NPC price goes into the haul), HAUL
+     * them like the rest when the slice ends anywhere else.
+     */
+    enum Sold { HOLD, VENDOR, HAUL }
+
+    /** {@link #harvest(BenchDutyDispatcher.Slice, Character, RosterEntry, Sold)} hauling everything (a GATHER visit's). */
+    public RosterEntry harvest(BenchDutyDispatcher.Slice slice, Character agent, RosterEntry entry) {
+        return harvest(slice, agent, entry, Sold.HAUL);
     }
 
     /**
      * Moves what the slice picked up since the last look into the haul: the meso it picked up (never more than its purse
      * holds) and each item stack it picked up and still holds. Coin its owner gave it, potions it bought and gear it
-     * wears were never picked up, so they stay its own. A trainee keeps everything: only EXP is the point.
+     * wears were never picked up, so they stay its own. A trainee keeps everything: only EXP is the point. What its
+     * owner sells at shops goes as {@code sold} says.
      */
-    public RosterEntry harvest(BenchDutyDispatcher.Slice slice, Character agent, RosterEntry entry) {
+    RosterEntry harvest(BenchDutyDispatcher.Slice slice, Character agent, RosterEntry entry, Sold sold) {
         if (slice.duty() == Assignment.TRAIN) {
             return entry;
         }
@@ -128,8 +146,25 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
             world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), gainedMeso, 0, 0);
         }
         int gainedStacks = 0;
+        OwnerHabitBook habits = world.ownerHabits();
         for (Map.Entry<Integer, Integer> taken : slice.loot.takeItems(itemId -> held(agent, itemId)).entrySet()) {
             int itemId = taken.getKey();
+            if (sold != Sold.HAUL && habits != null && habits.sells(entry.characterId(), itemId)) {
+                if (sold == Sold.HOLD) {
+                    slice.loot.keep(itemId, taken.getValue()); // sold at its resupply, like its owner does
+                    continue;
+                }
+                int vended = takeFromBag(agent, itemId, taken.getValue());
+                long meso = vended <= 0 ? 0L : Math.max(0, vendorPrice.applyAsInt(itemId, vended));
+                if (meso > 0) {
+                    haulMeso += meso;
+                    gainedMeso += meso;
+                    world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), meso, 0, 0);
+                    world.store().event(entry.characterId(), entry.personaId(), "bench.vendor", vended + " x " + itemId
+                            + " for " + meso + " meso");
+                }
+                continue;
+            }
             if (world.bench().haulStacks(entry) >= world.config().HAUL_MAX_STACKS && world.bench().haulCount(entry, itemId) == 0) {
                 continue; // bag is full; the companion keeps it
             }

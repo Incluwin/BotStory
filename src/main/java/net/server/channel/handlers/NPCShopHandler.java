@@ -84,7 +84,11 @@ public final class NPCShopHandler extends AbstractPacketHandler {
                 reject(c, bmode, "sale-item-mismatch");
                 return;
             }
+            short held = item.getQuantity();
             shop.sell(c, type, slot, quantity);
+            if (inventory.getItem(slot) != item || item.getQuantity() < held) {
+                server.living.LivingWorldHooks.npcSold(c.getPlayer(), itemId); // a companion owner's selling (F2)
+            }
             ShopBuyback.afterSale(c);
             break;
         }

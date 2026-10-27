@@ -868,6 +868,38 @@ living_world:
     # death an hour costs BENCH_CHOOSER_DEATH_COST of a camp's hourly score.
     BENCH_CHOOSER_EXPLORE: 0.3
     BENCH_CHOOSER_DEATH_COST: 0.5
+    # F2.1: citizens' TRAIN stints are booked beside the bench slices (companion_yield.source = 'citizen'), and a
+    # companion's EXP and death priors are first shrunk toward what citizens measured at its camp, one citizen slice
+    # counting for CITIZEN_YIELD_WEIGHT of its own (0 = citizen data never touches companions).
+    # Technical: BenchYieldModel.sharpened shrinks the prior by citizenSamples x CITIZEN_YIELD_WEIGHT against BENCH_YIELD_PRIOR_SLICES; meso and items keep the ledger prior.
+    CITIZEN_YIELD_WEIGHT: 0.5
+    # Owner habits (docs/BOT_CONCEPT_PLAN.md F2.2-F2.4): companions pick up how their owner plays, and only the best of
+    # it. OWNER_HABITS_ENABLED is the kill switch (false: nothing watched, kept or used). A companion whose owner never
+    # set its potion percentages drinks at the owner's median point once MIN_DRINKS were kept (HP never below HP_FLOOR,
+    # never in boss content); a drink within DEATH_WINDOW_MS before the owner died came too late and is never kept.
+    # "What you pick up" loot (the default while on) skips at most LOOT_MAX_SKIPS categories the owner leaves at least
+    # LOOT_SKIP_SHARE of over LOOT_MIN_SEEN drops, whose left drops sell for at most LOOT_MAX_PRICE: never a quest item.
+    # An item sold on SELL_MIN_VISITS separate visits is vendored at a bench resupply instead of hauled. A map with
+    # MAP_MIN_KILLS kills in a band, within MAP_BEST_SHARE of the owner's best EXP an hour there and at most MAP_MAX_DEATHS
+    # deaths an hour, joins Your call with a CAMP_BONUS higher prior. A skill used SKILL_MIN_USES times that lands
+    # SKILL_MIN_SHARE of the owner's damage in a job starts SKILL_PRIOR_BUMP higher in a companion's combat learner.
+    # Technical: OwnerHabitBook watches online owners from memory (LivingWorldHooks), learns each minute on the contracts timer and writes living_owner_habit behind; OwnerHabits.Rules holds these gates.
+    OWNER_HABITS_ENABLED: false
+    OWNER_HABIT_MIN_DRINKS: 8
+    OWNER_HABIT_HP_FLOOR: 0.45
+    OWNER_HABIT_DEATH_WINDOW_MS: 30000
+    OWNER_HABIT_LOOT_MIN_SEEN: 10
+    OWNER_HABIT_LOOT_SKIP_SHARE: 0.9
+    OWNER_HABIT_LOOT_MAX_PRICE: 1000
+    OWNER_HABIT_LOOT_MAX_SKIPS: 4
+    OWNER_HABIT_SELL_MIN_VISITS: 2
+    OWNER_HABIT_MAP_MIN_KILLS: 30
+    OWNER_HABIT_MAP_BEST_SHARE: 0.8
+    OWNER_HABIT_MAP_MAX_DEATHS: 1.0
+    OWNER_HABIT_CAMP_BONUS: 0.15
+    OWNER_HABIT_SKILL_MIN_USES: 30
+    OWNER_HABIT_SKILL_MIN_SHARE: 0.25
+    OWNER_HABIT_SKILL_PRIOR_BUMP: 0.1
     # A citizen answers a party invite after a random delay in this range, like a player would.
     CITIZEN_INVITE_REPLY_MIN_MS: 900
     CITIZEN_INVITE_REPLY_MAX_MS: 1800
@@ -891,6 +923,28 @@ living_world:
     COMPANION_LOOT_TERMS_ENABLED: true
     COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL: 1000
     COMPANION_LOOT_SETTLE_MS: 60000
+    # Letters (docs/BOT_CONCEPT_PLAN.md F3): a few seconds after you log in from a real logout, each companion that did
+    # something while you were away writes you a note in its own voice (letters.yaml), sent as itself: the level its
+    # banked EXP is ready for, what it found (an equip within EQUIP_LEVEL_SPAN levels of you, a scroll, or an item in the
+    # price index's top tenth), job advances, camp moves, gifts, deaths as a soft count. At most MAX_NOTES a login; the
+    # rest share one crew letter. One pink line sums it up, with who went home and which citizens asked after you. A
+    # Resident at friendship GIFT_FRIENDSHIP_LEVEL or more sometimes mails you one such find from its haul by Duey, with
+    # a message (GIFT_CHANCE a ledger tick, GIFTS_PER_WEEK each). A citizen with WARMTH toward a friend who is offline
+    # sometimes asks after them in its idle chatter (ASK_CHANCE, once per ASK_GAP_HOURS a friend). LETTERS_ENABLED is
+    # the kill switch (false: none of it; the login lines are as before).
+    # Technical: bench work is written as bench.report rows (JSON) to living_event_log at each ledger tick and slice end,
+    # so a restart loses nothing; the digest reads the rows after the owner's newest letters.away (logout) or
+    # letters.told (digest) marker, sends normal notes through NoteService within the 100-unread cap, then shows them.
+    LETTERS_ENABLED: false
+    LETTERS_DELAY_MS: 6000
+    LETTERS_MAX_NOTES: 5
+    LETTERS_EQUIP_LEVEL_SPAN: 10
+    LETTERS_GIFT_FRIENDSHIP_LEVEL: 4
+    LETTERS_GIFT_CHANCE: 0.03
+    LETTERS_GIFTS_PER_WEEK: 1
+    LETTERS_ASK_WARMTH: 40
+    LETTERS_ASK_CHANCE: 0.1
+    LETTERS_ASK_GAP_HOURS: 6
     # Hired hands (P4): citizens one friend may hire. They count toward ROSTER_MAX, so at most that; the default is
     # ROSTER_MAX, so a friend without Residents can still fill a party and a bench from the hire list. Then the
     # minutes a citizen guest spends in your party before it offers to stay on.
@@ -1099,6 +1153,16 @@ living_world:
     BOSS_EVENT_SCRIPTS: "BalrogBattle,BalrogBattle_Easy,ZakumBattle,HorntailBattle,PinkBeanBattle,ScargaBattle,ShowaBattle,PapulatusBattle,LatanicaBattle,TD_Battle1,TD_Battle2,TD_Battle3,TD_Battle4,TD_Battle5"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
+    # Tell audit (2026-10-26, docs/BOT_CONCEPT_PLAN.md C2): measures how bot-like the bots look - reaction times to
+    # new mobs and chat questions, each citizen's chat cadence and repeated lines, idle bots stacked on one spot, time
+    # online and AFK on fields, repeated walk routes, the HP point bots drink at, when they recast buffs, and deaths per
+    # class. GET /runtime/tells shows each value with its "looks human" band and a red/amber/green verdict; every hour
+    # an audit.tells row goes to living_event_log with the build sha; tools\tells-report.ps1 compares two builds.
+    # Technical: collectors sit at existing chokepoints (AgentTellProbe for the Agent engine; ChatterEngine,
+    # PresenceScheduler and the death hook), add to bounded running totals, and ride the population social tick for the
+    # minute sample and the hourly fold. Read at boot. false = the kill switch: nothing is measured or written.
+    # On since 2026-10-27 (user): it only measures, and its 24 h baseline is what F8 (imperfections) is judged against.
+    TELL_AUDIT_ENABLED: true
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
@@ -1221,6 +1285,31 @@ population:
     PQ_HUMAN_SEAT_HOLD_MS: 60000
     PQ_RUN_COOLDOWN_MS: 1800000
     PQ_CALLS_PER_PARTY: 4
+    # Citizens play omok and match cards in towns (2026-10-26, docs/BOT_CONCEPT_PLAN.md F5a): a citizen on a PLAY session
+    # walks to a bench of a town that allows minigames, sits down in an open room near it (a player's first) or says it
+    # wants a game and opens its own with the set it carries, plays a few matches and goes on with its day. A player can
+    # sit down in a citizen's room or open one near PLAY citizens; one comes over. Records are the stock columns.
+    # false = the kill switch: no PLAY plan (cohorts.yaml PLAY weights count for nothing), nobody opens or joins a room.
+    # Technical: CitizenMiniGames rides the 20 s chatter tick; MiniGameTable plays each room through MiniGameRules and the MiniGame observer, one timer step per move.
+    MINIGAMES_ENABLED: false
+    # Technical: comma list of town map ids; CitizenMiniGames skips one outside the citizen's region or whose fieldLimit has CANNOTMINIGAME (0x80, the Free Market).
+    MINIGAME_TOWNS: "100000000,101000000,102000000,103000000,220000000"
+    # Technical: MiniGameTable think time per move, drawn as min + (max - min) * u^2 so most moves are quick; the first omok stones use at most three times the minimum.
+    MINIGAME_THINK_MIN_MS: 1000
+    # Technical: upper end of that draw, 1000-8000 ms recommended; a card's second pick and the ready/start answers use their own short ranges in MiniGameTable.
+    MINIGAME_THINK_MAX_MS: 8000
+    # Technical: matches per PLAY session, drawn uniformly in MIN..MAX when it arrives; a forfeit or a tie counts as a match, and the seat leaves at zero.
+    MINIGAME_GAMES_MIN: 2
+    # Technical: upper end of the matches drawn per PLAY session (>= MINIGAME_GAMES_MIN); the session also ends when its second room closes with nobody in it.
+    MINIGAME_GAMES_MAX: 5
+    # Technical: an owner citizen's room with no visitor and no event this long closes (>= 10000 ms); two such rooms end the PLAY session and plan its next activity.
+    MINIGAME_ROOM_WAIT_MS: 180000
+    # Technical: a room with a visitor where no ready, move or card happened this long (>= 10000 ms): the citizen gets up, a visitor forfeiting a match on.
+    MINIGAME_IDLE_MS: 150000
+    # Technical: percent of citizens whose innate strength is 0.8-1.0 (seeded by character id); the rest draw 0.1-0.65 skewed low, plus up to 0.15 from their stock record.
+    MINIGAME_STRONG_PERCENT: 5
+    # Technical: after a PLAY session ends, CitizenMiniGames.plays is false for this long (ms), so a re-plan right after it never rolls PLAY again.
+    MINIGAME_COOLDOWN_MS: 1800000
     # Citizens remember the people they meet (2026-10-25, docs/CITIZEN_PERSON_MEMORY_PLAN.md): what happened between a
     # citizen and a player (talked, answered a question, partied, ran a party quest, traded at a shop, famed), when and
     # where, and how it feels about them, in the pair's living_acquaintance row. Met again after RETURN_AFTER_MINUTES it
@@ -1240,6 +1329,19 @@ population:
     MEMORY_WARMTH_HALF_LIFE_DAYS: 14.0
     MEMORY_RETURN_AFTER_MINUTES: 180
     MEMORY_GREET_GAP_MS: 300000
+    # Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1). A loaded citizen's TRAIN stint on a field is booked
+    # (EXP and deaths an hour per class line, level band and field) when it moves on, goes AFK, logs off or dies; one
+    # shorter than SPOT_MIN_MS, one it left another way (its own shop trip) or an abstract one is not. Among the fields
+    # that fit (mob level, room, the healer rule, the 60% human-map preference first) it then picks by what citizens
+    # measured, plus a UCB bonus of SPOT_EXPLORE for fields measured less, less SPOT_CROWDING for a field full of loaded
+    # citizens; drawn with weight exp((ucb - best) / SPOT_TEMPERATURE), never all to one map. false = the kill switch:
+    # no stint booked and the uniform random pick, as before.
+    # Technical: CitizenSpots.arms scores each field with BenchYieldModel citizen rows shrunk by BENCH_YIELD_PRIOR_SLICES toward BenchDutyChooser.fit; draw() samples by softmax.
+    CITIZEN_SPOT_LEARNING_ENABLED: false
+    CITIZEN_SPOT_EXPLORE: 0.3
+    CITIZEN_SPOT_CROWDING: 0.5
+    CITIZEN_SPOT_TEMPERATURE: 0.15
+    CITIZEN_SPOT_MIN_MS: 300000
     # Citizens run boss expeditions themselves (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md): citizens Lv50+ of the
     # regions past Victoria go on outings to Mu Young (Sleepywood), form a party there as at a PQ lobby (inviting a
     # human who fits first), and their leader makes the Balrog expedition with her window. The others sign up through

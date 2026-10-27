@@ -11,9 +11,11 @@ import server.agents.capabilities.dialogue.AgentChatTextSanitizer;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.integration.AgentPresence;
+import server.living.audit.TellAudit;
 import server.living.population.PopulationContent.Intent;
 import server.living.population.PopulationContent.Lobby;
 import server.maps.MapleMap;
+import server.maps.MiniGameRules;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
@@ -208,6 +210,9 @@ public final class ChatterEngine {
                 if (random.nextDouble() >= DWELL_BASE_CHANCE * (0.4d + sociability)) {
                     continue;
                 }
+                if (population.memories() != null && population.memories().askAfter(session, now)) {
+                    continue; // asked after a friend who is away instead (the letters)
+                }
                 speakSelf(Event.of("dwell", session.mapId, session.channel).self(session), true);
             }
             smegaCadence(now);
@@ -281,7 +286,8 @@ public final class ChatterEngine {
         // the self cooldown on its channel, and each intent's own cooldown. So do the words for someone it remembers
         // ("Ann! that kpq yesterday was fun"): said to a person who just walked up, each person gets them. A boss
         // expedition's talk too.
-        boolean partyQuest = trigger.startsWith("pq.") || trigger.startsWith("memory.") || trigger.startsWith("boss.");
+        boolean partyQuest = trigger.startsWith("pq.") || trigger.startsWith("memory.") || trigger.startsWith("boss.")
+                || trigger.startsWith("game."); // a minigame's gg, every game
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;
@@ -374,7 +380,8 @@ public final class ChatterEngine {
             return false;
         }
         return switch (channel) {
-            case "map" -> true;
+            case "map" -> agent.getMiniGame() == null; // in a minigame room it types in the room
+            case "room" -> agent.getMiniGame() != null;
             case "party" -> agent.getParty() != null;
             case "guild" -> agent.getGuildId() > 0;
             case "buddy" -> population.social().onlineBuddyIds(agent).length > 0;
@@ -459,11 +466,15 @@ public final class ChatterEngine {
                     return;
                 }
                 String clean = AgentChatTextSanitizer.sanitize(sent);
+                if ("map".equals(channel) && agent.getMiniGame() != null) {
+                    return; // seated in a minigame room, a player can only type in the room
+                }
                 if (channel.startsWith(ALLIANCE_CHANNEL)) {
                     int allianceId = Integer.parseInt(channel.substring(ALLIANCE_CHANNEL.length()));
                     Server.getInstance().allianceMessage(allianceId, PacketCreator.multiChat(agent.getName(), clean, 3),
                             agent.getId(), -1);
                 } else switch (channel) {
+                    case "room" -> MiniGameRules.chat(agent, clean);
                     case "party" -> AgentDialogueTransportRuntime.sayPartyNow(agent, clean);
                     case "guild" -> {
                         Guild guild = Server.getInstance().getGuild(agent.getGuildId());
@@ -486,6 +497,7 @@ public final class ChatterEngine {
                     default -> AgentDialogueTransportRuntime.sayMapNow(agent, clean);
                 }
                 linesSpoken.incrementAndGet();
+                TellAudit.chatLine(session.characterId, session.mapId, channel, clean, System.currentTimeMillis());
                 session.journal.add("said", "said \"" + clean + "\"");
                 remember(session.name() + " [" + channel + " " + population.fields().name(session.mapId) + "]: " + clean);
                 log.debug("[chatter] {} ({}) @{}: {}", session.name(), channel, session.mapId, clean);

@@ -105,6 +105,10 @@ public final class PopulationHooks {
         try {
             CitizenSession self = population.presence().sessionOf(chr);
             if (self != null) {
+                CitizenSpots spots = population.fields().spots();
+                if (spots != null) {
+                    spots.died(self, System.currentTimeMillis()); // its TRAIN stint is booked with the death (F2.1)
+                }
                 self.journal.add("death", "died at " + population.fields().name(chr.getMapId()).toLowerCase(java.util.Locale.ROOT));
                 int avoidMs = population.config().FIELD_BOSS_AVOID_MS;
                 if (avoidMs > 0 && AgentBossField.near(chr.getMap())) {

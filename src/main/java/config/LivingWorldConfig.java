@@ -217,6 +217,45 @@ public class LivingWorldConfig {
     public double BENCH_CHOOSER_EXPLORE = 0.3;
     /** "Your call": the share of an hour's work one death an hour costs a camp's score (1 death/h at 0.5 halves it). */
     public double BENCH_CHOOSER_DEATH_COST = 0.5;
+    /**
+     * F2.1: what one citizen-measured slice counts for, against a companion's own, when citizen data sharpens a
+     * companion's EXP and death priors (BenchYieldModel; 0 = citizen data never touches companions).
+     */
+    public double CITIZEN_YIELD_WEIGHT = 0.5;
+
+    // Owner habits (docs/BOT_CONCEPT_PLAN.md F2.2-F2.4, OwnerHabits). Only the best of what is observed is learned.
+    /** Kill switch: false = nothing noticed, kept or used; companions drink, loot, sell, camp and fight as before. */
+    public boolean OWNER_HABITS_ENABLED = false;
+    /** Kept drinks needed before the median HP or MP point stands in for an unset potion percentage. */
+    public int OWNER_HABIT_MIN_DRINKS = 8;
+    /** A learned HP point is never below this: a companion drinking later dies. */
+    public double OWNER_HABIT_HP_FLOOR = 0.45;
+    /** A drink this long or less before the owner died is not learned: it came too late. */
+    public int OWNER_HABIT_DEATH_WINDOW_MS = 30000;
+    /** A loot category is judged once the owner picked up or left this many of its drops. */
+    public int OWNER_HABIT_LOOT_MIN_SEEN = 10;
+    /** The share of a category's drops the owner must leave for it to be skipped like they do. */
+    public double OWNER_HABIT_LOOT_SKIP_SHARE = 0.9;
+    /** A category whose left drops sell for more than this (mean NPC price) is never learned as a skip. */
+    public int OWNER_HABIT_LOOT_MAX_PRICE = 1000;
+    /** At most this many categories are skipped, so LIKE_OWNER never comes to pick up nothing. */
+    public int OWNER_HABIT_LOOT_MAX_SKIPS = 4;
+    /** An item the owner sold at shops on this many separate visits is vendored instead of hauled. */
+    public int OWNER_HABIT_SELL_MIN_VISITS = 2;
+    /** A training map is judged once the owner killed this many monsters there in the level band. */
+    public int OWNER_HABIT_MAP_MIN_KILLS = 30;
+    /** A map is learned when its EXP an hour is at least this share of the owner's best map in that band. */
+    public double OWNER_HABIT_MAP_BEST_SHARE = 0.8;
+    /** A map where the owner died more often than this an hour is never learned. */
+    public double OWNER_HABIT_MAP_MAX_DEATHS = 1.0;
+    /** "I'll camp where you train": the owner's learned maps' prior EXP is this much higher on Your call. */
+    public double OWNER_HABIT_CAMP_BONUS = 0.15;
+    /** A skill is judged once the owner used it this many times in one job. */
+    public int OWNER_HABIT_SKILL_MIN_USES = 30;
+    /** A skill is learned when it lands at least this share of the owner's attack damage in that job. */
+    public double OWNER_HABIT_SKILL_MIN_SHARE = 0.25;
+    /** The combat learner's prior for a learned skill is this much higher (its measured value still wins). */
+    public double OWNER_HABIT_SKILL_PRIOR_BUMP = 0.1;
     /** A citizen answers a party invite after a random delay in MIN..MAX, like a player would. */
     public int CITIZEN_INVITE_REPLY_MIN_MS = 900;
     public int CITIZEN_INVITE_REPLY_MAX_MS = 1800;
@@ -249,6 +288,32 @@ public class LivingWorldConfig {
     public int COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL = 1000;
     /** How often a companion's owed share of its loot is moved from its bag and purse into its haul. */
     public int COMPANION_LOOT_SETTLE_MS = 60000;
+
+    // Letters: what happened while you were away (docs/BOT_CONCEPT_PLAN.md F3, CompanionLetters)
+    /**
+     * Kill switch for letters: the bench's news kept across a restart (bench.report rows), citizens asking after an
+     * absent friend, the login digest by note with its one pink line, and gifts by Duey. false = none of it, and the
+     * login says what it said before.
+     */
+    public boolean LETTERS_ENABLED = false;
+    /** How long after a login the letters arrive: after the login's own note show, so they are shown once. */
+    public int LETTERS_DELAY_MS = 6000;
+    /** Notes one login may bring; the companions past the first ones share one crew letter. */
+    public int LETTERS_MAX_NOTES = 5;
+    /** The rarity rule: a found equip is news when its required level is within this many levels of its owner's. */
+    public int LETTERS_EQUIP_LEVEL_SPAN = 10;
+    /** The friendship level a Resident needs before it mails its owner a gift from what it found. */
+    public int LETTERS_GIFT_FRIENDSHIP_LEVEL = 4;
+    /** The chance, each bench ledger tick, that a Resident with something worth giving mails it. */
+    public double LETTERS_GIFT_CHANCE = 0.03;
+    /** Gifts one companion mails its owner in seven days. */
+    public int LETTERS_GIFTS_PER_WEEK = 1;
+    /** The warmth (PersonMemory, 0-100) a citizen needs before it asks after someone who is not around. */
+    public int LETTERS_ASK_WARMTH = 40;
+    /** The chance that an idle line of a citizen with such a friend offline is asking after them instead. */
+    public double LETTERS_ASK_CHANCE = 0.1;
+    /** Hours before any citizen asks after the same person again. */
+    public int LETTERS_ASK_GAP_HOURS = 6;
 
     // Hired hands and Resident allocation (P4, decisions 2 b, 4 b, 18 b, 19 b)
     /**
@@ -476,6 +541,14 @@ public class LivingWorldConfig {
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
 
+    // The tell audit (2026-10-26, docs/BOT_CONCEPT_PLAN.md C2)
+    /**
+     * Measures how bot-like the bots look (reaction times, chat cadence, stacking, presence, walked routes, potion and
+     * buff points, deaths) for GET /runtime/tells and an hourly audit.tells row in living_event_log. false = nothing is
+     * measured and every report is one volatile read.
+     */
+    public boolean TELL_AUDIT_ENABLED = false;
+
     // A companion says why its owner's whisper reached no Agent (2026-10-10)
     /**
      * Least time between two of one companion's whispered "can't right now" lines (a live bench slice keeps it, or its
@@ -671,6 +744,13 @@ public class LivingWorldConfig {
             throw new IllegalArgumentException("living_world.COMPANION_LOOT_UPKEEP_MESO_PER_LEVEL must be >= 0 and"
                     + " COMPANION_LOOT_SETTLE_MS >= 1000");
         }
+        if (LETTERS_MAX_NOTES < 1 || LETTERS_MAX_NOTES > 100 || LETTERS_DELAY_MS < 0 || LETTERS_EQUIP_LEVEL_SPAN < 0
+                || LETTERS_GIFT_FRIENDSHIP_LEVEL < 1 || LETTERS_GIFT_FRIENDSHIP_LEVEL > 10 || LETTERS_GIFTS_PER_WEEK < 0
+                || LETTERS_GIFT_CHANCE < 0 || LETTERS_GIFT_CHANCE > 1 || LETTERS_ASK_CHANCE < 0 || LETTERS_ASK_CHANCE > 1
+                || LETTERS_ASK_WARMTH < 0 || LETTERS_ASK_WARMTH > 100 || LETTERS_ASK_GAP_HOURS < 0) {
+            throw new IllegalArgumentException("living_world.LETTERS_MAX_NOTES must be within 1..100,"
+                    + " LETTERS_GIFT_FRIENDSHIP_LEVEL 1..10, LETTERS_ASK_WARMTH 0..100, the chances 0..1, the rest >= 0");
+        }
         if (RECALL_MAX_ETA_MS < 0) {
             throw new IllegalArgumentException("living_world.RECALL_MAX_ETA_MS must be >= 0");
         }
@@ -734,6 +814,19 @@ public class LivingWorldConfig {
         }
         if (BENCH_CHOOSER_EXPLORE < 0 || BENCH_CHOOSER_DEATH_COST < 0) {
             throw new IllegalArgumentException("living_world.BENCH_CHOOSER_EXPLORE and BENCH_CHOOSER_DEATH_COST must be >= 0");
+        }
+        if (CITIZEN_YIELD_WEIGHT < 0) {
+            throw new IllegalArgumentException("living_world.CITIZEN_YIELD_WEIGHT must be >= 0");
+        }
+        if (OWNER_HABIT_MIN_DRINKS < 1 || OWNER_HABIT_HP_FLOOR < 0 || OWNER_HABIT_HP_FLOOR > 0.9
+                || OWNER_HABIT_DEATH_WINDOW_MS < 0 || OWNER_HABIT_LOOT_MIN_SEEN < 1 || OWNER_HABIT_LOOT_SKIP_SHARE <= 0
+                || OWNER_HABIT_LOOT_SKIP_SHARE > 1 || OWNER_HABIT_LOOT_MAX_PRICE < 0 || OWNER_HABIT_LOOT_MAX_SKIPS < 0
+                || OWNER_HABIT_SELL_MIN_VISITS < 1 || OWNER_HABIT_MAP_MIN_KILLS < 1 || OWNER_HABIT_MAP_BEST_SHARE <= 0
+                || OWNER_HABIT_MAP_BEST_SHARE > 1 || OWNER_HABIT_MAP_MAX_DEATHS < 0 || OWNER_HABIT_CAMP_BONUS < 0
+                || OWNER_HABIT_SKILL_MIN_USES < 1 || OWNER_HABIT_SKILL_MIN_SHARE <= 0 || OWNER_HABIT_SKILL_MIN_SHARE > 1
+                || OWNER_HABIT_SKILL_PRIOR_BUMP < 0) {
+            throw new IllegalArgumentException("living_world.OWNER_HABIT_*: the MIN_* counts must be >= 1, the shares"
+                    + " within (0, 1], HP_FLOOR within 0..0.9, and the rest >= 0");
         }
         if (CITIZEN_INVITE_REPLY_MIN_MS < 0 || CITIZEN_INVITE_REPLY_MAX_MS < CITIZEN_INVITE_REPLY_MIN_MS) {
             throw new IllegalArgumentException(

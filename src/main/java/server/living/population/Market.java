@@ -90,6 +90,19 @@ public final class Market {
     }
 
     /**
+     * True when the index prices the item in its top tenth (a companion's letter calls such a find news). Reads the
+     * index only: an item it has no row for is not, and no row is seeded.
+     */
+    public boolean topDecile(int itemId) {
+        long[] row = index.get(itemId);
+        if (row == null || index.size() < 10) {
+            return false;
+        }
+        long[] prices = index.values().stream().mapToLong(known -> known[0]).sorted().toArray();
+        return row[0] >= prices[prices.length * 9 / 10];
+    }
+
+    /**
      * What the index knows without guessing, for content PRICE answers: a quote only for an item a sale has
      * nudged (observations &gt; 0) or a basket good (its basket price until a sale moves it: a seed row nobody
      * bought at is not an observation); null otherwise. Unlike {@link #price} it never seeds a row and never

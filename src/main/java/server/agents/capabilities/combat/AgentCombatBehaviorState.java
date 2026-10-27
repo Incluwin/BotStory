@@ -12,14 +12,29 @@ public final class AgentCombatBehaviorState {
     private long readyAtMs;
     private boolean responseDeferred;
     private boolean candidateOpportunity;
+    private long waitStartedAtMs;
+    private boolean reactionTaken;
 
     public synchronized boolean ready(long newStimulus, long nowMs, int delayMs) {
         if (newStimulus != stimulus) {
+            if (stimulus == 0L) { // a new wait for a target: mobs changing during it do not restart the reaction
+                waitStartedAtMs = nowMs;
+                reactionTaken = false;
+            }
             stimulus = newStimulus;
             readyAtMs = nowMs + Math.max(0, delayMs);
         }
         responseDeferred = nowMs < readyAtMs;
         return !responseDeferred;
+    }
+
+    /** Once a wait, when it first ends ready: how long since the wait began (the tell audit); else -1. */
+    public synchronized long takeReactionMs(long nowMs) {
+        if (responseDeferred || reactionTaken || stimulus == 0L) {
+            return -1L;
+        }
+        reactionTaken = true;
+        return nowMs - waitStartedAtMs;
     }
 
     public synchronized void clearStimulus() {

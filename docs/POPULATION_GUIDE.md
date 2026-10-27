@@ -27,6 +27,8 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `SHUTDOWN_LOGOUT_THREADS`, `SHUTDOWN_LOGOUT_BUDGET_MS` | server shutdown: loaded citizens unload (a full save each) on this many threads for at most this long; the rest unload with their channel |
 | `MEMORY_ENABLED`, `MEMORY_PEOPLE_MAX`, `MEMORY_EPISODES_MAX`, `MEMORY_TOTAL_MAX`, `MEMORY_FORGET_DAYS` | citizens remember the people they meet (kill switch; people per citizen, things per person, remembered pairs server-wide, forgotten when unchanged this long) |
 | `MEMORY_HALF_LIFE_DAYS`, `MEMORY_WARMTH_HALF_LIFE_DAYS`, `MEMORY_RETURN_AFTER_MINUTES`, `MEMORY_GREET_GAP_MS` | how fast episodes and warmth fade; apart this long is a reunion; one reunion greeting per player this often |
+| `MINIGAMES_ENABLED`, `MINIGAME_TOWNS`, `MINIGAME_THINK_MIN_MS`/`MAX_MS`, `MINIGAME_GAMES_MIN`/`MAX` | citizens play omok and match cards (kill switch, off by default; the towns; think time per move; matches a session) |
+| `MINIGAME_ROOM_WAIT_MS`, `MINIGAME_IDLE_MS`, `MINIGAME_STRONG_PERCENT`, `MINIGAME_COOLDOWN_MS` | an empty room closes after; a room where nothing happens is left after; citizens who play well; no PLAY plan after one for |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
 `living_guild`, `living_price_index`, `living_acquaintance`). Changeset `49-citizen-person-memory` adds the memory columns to
@@ -54,7 +56,8 @@ cohort's hour weight, so the online fraction follows the curve (evenings busy, 4
 different). A session lasts a cohort-typical time and picks an activity by cohort weights:
 `TRAIN` at a field in its region whose mob level fits (capacity-aware, biased to maps humans are
 on), `TOWN` (town-life visit where a profile exists, standing spots otherwise), `PQ` at the
-region's lobby if the level fits, `MARKET` (Free Market), `AFK`. Every 25-45 minutes it re-plans;
+region's lobby if the level fits, `MARKET` (Free Market), `AFK`, `PLAY` (omok and match cards, "Minigames" below, while
+`MINIGAMES_ENABLED`). Every 25-45 minutes it re-plans;
 15% of the time it goes AFK for 5-15 minutes ("afk"/"back").
 
 **Travel** (docs/CITIZEN_PORTAL_TRAVEL_PLAN.md, `PORTAL_TRAVEL_*`). A citizen on a map a player is on goes to
@@ -186,6 +189,26 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 90% of the index from human shops within `MARKET_BUY_BUDGET_PER_DAY`. Chatter reads the index for
 `S> {item} {price}`.
 
+**Minigames (2026-10-26, docs/BOT_CONCEPT_PLAN.md F5a).** A cohort weight `PLAY` sends a citizen to a town of its region
+in `MINIGAME_TOWNS` whose map allows minigames (Henesys, Ellinia, Perion, Kerning, Ludibrium; the Free Market's
+fieldLimit forbids them). It carries an omok set (4080000-4080011, one per citizen) and the match cards, walks to a
+bench, and sits down in an open room near it, a player's first (once it has been open about 15 s), else a citizen's;
+with none, it sometimes says "omok anyone?" and opens its own, and the balloon shows over its head. A citizen whose room
+stays empty 30 s goes over to a player's room that opens nearby. It plays `MINIGAME_GAMES_MIN`-`MAX` matches with 1-8 s
+think times and leaves; a room nobody joins closes after `MINIGAME_ROOM_WAIT_MS`, and the second ends the session.
+Omok is `OmokAi`: threat-based (finish a five, block one, make or stop a double threat, else the cell that builds the
+most five-cell windows), with a per-citizen strength (`MINIGAME_STRONG_PERCENT` play well, the rest casually, plus a
+little for every match on their record) that sets how often it notices a threat and how noisy its judgement is. Match
+cards is `MatchCardMemory`: it knows only cards turned face up, recalls each with a chance that fades with the turns
+since, and forgets what it fails to recall. Its room lines (`chatter/minigames.yaml`: hi, nice, gg, bye) go to the
+room's chat on the `room` channel, only with a player across the table; seated in a room it says nothing on the map and
+answers no map chat. Records are the stock `omokwins`/`matchcardwins` columns. The rules themselves are
+`server.maps.MiniGameRules`, which the packet handler calls too, and the citizen plays through the room's
+`MiniGameObserver` (its client drops every packet). Turn order follows the client's: a room's first game opens with its
+owner, later ones with the last loser; the opener plays stone 1, corrected by what the other side places. The omok
+win scan covers the whole board and every finished game clears it (Cosmic PR #294, for everyone). Log lines
+`citizen X plays minigames at <map>`; the journal says `beat Bo at omok`.
+
 ## Ops
 
 `!citizens` (GM 5): `status`, `online`, `cohorts`, `who <name>` (card, targets, journal),
@@ -252,7 +275,7 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
 | `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
-| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
+| `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait; the minigame ones in `chatter/minigames.yaml`: game.lf, game.title.omok, game.title.cards, game.hi, game.nice, game.win, game.loss, game.tie, game.bye), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega, room = a minigame room's chat), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
 
 Lines are ASCII; `{slots}` that cannot be filled drop the line. The lint refuses unknown
 triggers, channels and jobs, loadouts that do not exist, and non-ASCII.

@@ -1,6 +1,7 @@
 package server.agents.capabilities.navigation;
 
 import client.Character;
+import server.agents.capabilities.behavior.AgentTellProbe;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -56,6 +57,11 @@ public final class AgentMapWalk {
         private volatile Status status = Status.WALKING;
         private volatile int lastMapId;
         private volatile long sinceMs;
+        // the route it walked, for the tell audit (AgentTellProbe); the Agent's tick only
+        private final int fromMapId;
+        private long routeHash;
+        private int tracedMapId;
+        private AgentNavigationGraph.Edge tracedEdge;
 
         private Walk(AgentRuntimeEntry entry, Target target, long hopTimeoutMs, int mapId, long nowMs) {
             this.entry = entry;
@@ -63,6 +69,22 @@ public final class AgentMapWalk {
             this.hopTimeoutMs = hopTimeoutMs;
             this.lastMapId = mapId;
             this.sinceMs = nowMs;
+            this.fromMapId = mapId;
+            this.routeHash = mapId;
+            this.tracedMapId = mapId;
+        }
+
+        /** Folds the map it stands on and the graph edge it walks into its route, when either changed. */
+        private void trace(int mapId) {
+            AgentNavigationGraph.Edge edge = entry.navigationEdgeState().activeEdge();
+            if (mapId != tracedMapId) {
+                routeHash = routeHash * 31 + mapId;
+            }
+            if (edge != null && edge != tracedEdge) {
+                routeHash = ((routeHash * 31 + edge.type.ordinal()) * 31 + edge.fromRegionId) * 31 + edge.toRegionId;
+            }
+            tracedMapId = mapId;
+            tracedEdge = edge;
         }
 
         public Target target() {
@@ -134,6 +156,9 @@ public final class AgentMapWalk {
             walk.status = Status.STALLED;
             return false;
         }
+        if (AgentTellProbe.on()) {
+            walk.trace(mapId);
+        }
         Target target = walk.target;
         if (mapId == target.mapId()) {
             return finish(entry, agent, walk, gateway);
@@ -150,7 +175,7 @@ public final class AgentMapWalk {
     private static boolean finish(AgentRuntimeEntry entry, Character agent, Walk walk, PrimitiveCapabilityGateway gateway) {
         Target target = walk.target;
         if (target.finish() == Finish.MAP) {
-            walk.status = Status.ARRIVED;
+            arrived(agent, walk);
             return false;
         }
         boolean npc = target.finish() == Finish.NPC;
@@ -172,8 +197,13 @@ public final class AgentMapWalk {
             walk.status = Status.NO_ROUTE; // the portal refused it (closed, or its script said no)
             return false;
         }
-        walk.status = Status.ARRIVED;
+        arrived(agent, walk);
         return false;
+    }
+
+    private static void arrived(Character agent, Walk walk) {
+        walk.status = Status.ARRIVED;
+        AgentTellProbe.routeWalked(agent.getId(), walk.fromMapId, walk.target.mapId(), walk.routeHash);
     }
 
     static void resetForTest() {

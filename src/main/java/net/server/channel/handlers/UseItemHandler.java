@@ -89,6 +89,7 @@ public final class UseItemHandler extends AbstractPacketHandler {
             remove(c, slot);
 
             if (toUse.getItemId() != ItemId.HAPPY_BIRTHDAY) {
+                server.living.LivingWorldHooks.potionUsed(chr, itemId); // HP/MP at the drink, before it works (F2)
                 ii.getItemEffect(toUse.getItemId()).applyTo(chr);
             } else {
                 StatEffect mse = ii.getItemEffect(toUse.getItemId());

@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import server.agents.capabilities.behavior.AgentBehaviorTelemetry;
+import server.agents.capabilities.behavior.AgentTellProbe;
 
 /** Combat adapter for response latency, claim tolerance, and profile target diversity. */
 public final class AgentCombatBehaviorRuntime {
@@ -28,7 +29,15 @@ public final class AgentCombatBehaviorRuntime {
 
     public static boolean responseReady(
             AgentRuntimeEntry entry, Character agent, List<Monster> candidates, long nowMs) {
-        if (!AgentBehaviorRuntime.enabled(entry) || !AgentBehaviorFeatureProfile.current().enabled()) return true;
+        if (!AgentBehaviorRuntime.enabled(entry) || !AgentBehaviorFeatureProfile.current().enabled()) {
+            if (AgentTellProbe.on() && entry != null && candidates != null && !candidates.isEmpty()) {
+                // no response delay: it acts on the tick it first sees them, which the tell audit times as 0 ms
+                AgentCombatBehaviorState state = entry.capabilityStates().require(AgentCombatBehaviorState.STATE_KEY);
+                state.ready(1L, nowMs, 0);
+                tellReaction(state, agent, nowMs);
+            }
+            return true;
+        }
         if (candidates == null || candidates.isEmpty()) {
             entry.capabilityStates().require(AgentCombatBehaviorState.STATE_KEY).clearStimulus();
             return false;
@@ -45,10 +54,18 @@ public final class AgentCombatBehaviorRuntime {
                 jitterPercent,
                 AgentCrowdScalingPolicy.totalCharacters(perception));
         responseDelayMs = Math.min(responseDelayMs, AVAILABLE_MOB_RESPONSE_MAX_MS);
-        boolean ready = entry.capabilityStates().require(AgentCombatBehaviorState.STATE_KEY)
-                .ready(stimulus, nowMs, responseDelayMs);
+        AgentCombatBehaviorState state = entry.capabilityStates().require(AgentCombatBehaviorState.STATE_KEY);
+        boolean ready = state.ready(stimulus, nowMs, responseDelayMs);
         if (!ready) AgentBehaviorTelemetry.responseDeferred();
+        else tellReaction(state, agent, nowMs);
         return ready;
+    }
+
+    /** The tell audit times the first ready tick of each wait for a target, from the wait's start. */
+    private static void tellReaction(AgentCombatBehaviorState state, Character agent, long nowMs) {
+        if (!AgentTellProbe.on() || agent == null) return;
+        long reactionMs = state.takeReactionMs(nowMs);
+        if (reactionMs >= 0) AgentTellProbe.combatReaction(agent.getId(), reactionMs);
     }
 
     public static List<Monster> respectClaims(AgentRuntimeEntry entry,

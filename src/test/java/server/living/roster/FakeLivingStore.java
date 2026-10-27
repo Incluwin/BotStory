@@ -44,7 +44,8 @@ import static org.mockito.Mockito.when;
  * {@link #pacesUnwritable}. dropStoredItems takes the items its predicate picks out of {@link #storedItems} (a position
  * below 0 is worn, above 0 in the Equip tab) and lets its redress move carried ones onto worn slots first. latestEvent
  * reads the newest of {@link #events} with that owner, persona and one of the kinds; latestPersonaEvent the newest
- * with that persona and one of the kinds, under any owner.
+ * with that persona and one of the kinds, under any owner; eventsAfterMarker the owner's events of the kinds after their
+ * newest event of one of the markers.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -73,6 +74,8 @@ final class FakeLivingStore {
     final Set<Integer> keptFresh = new java.util.LinkedHashSet<>();
     /** "branch:band:camp" -> companion_yield row. */
     final Map<String, YieldRow> yields = new LinkedHashMap<>();
+    /** "branch:band:camp" -> companion_yield row of source 'citizen' (F2.1). */
+    final Map<String, YieldRow> citizenYields = new LinkedHashMap<>();
     /** companion_performance, in the order the rows were added. */
     final List<CompanionRunRow> performance = new ArrayList<>();
     boolean performanceUnreadable;
@@ -195,6 +198,7 @@ final class FakeLivingStore {
             return true;
         });
         when(store.companionYields()).thenAnswer(inv -> List.copyOf(yields.values()));
+        when(store.citizenYields()).thenAnswer(inv -> List.copyOf(citizenYields.values()));
         when(store.stallStock(anyInt(), anyString())).thenAnswer(inv ->
                 new LinkedHashMap<>(stallStock.getOrDefault(key(inv.getArgument(0), inv.getArgument(1)), Map.of())));
         when(store.saveStallStock(anyInt(), anyString(), any())).thenAnswer(inv -> {
@@ -272,6 +276,11 @@ final class FakeLivingStore {
             yields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);
             return true;
         });
+        when(store.saveCitizenYield(any())).thenAnswer(inv -> {
+            YieldRow row = inv.getArgument(0);
+            citizenYields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);
+            return true;
+        });
         doAnswer(inv -> {
             RosterEntry entry = asStored(inv.getArgument(0));
             rows.put(key(entry.characterId(), entry.personaId()), entry);
@@ -339,6 +348,27 @@ final class FakeLivingStore {
                 }
             }
             return java.util.Optional.empty();
+        });
+        when(store.eventsAfterMarker(anyInt(), any(), any(), anyInt())).thenAnswer(inv -> {
+            String owner = String.valueOf((int) inv.getArgument(0));
+            List<String> kinds = inv.getArgument(1);
+            List<String> markers = inv.getArgument(2);
+            int from = 0;
+            for (int i = 0; i < events.size(); i++) {
+                String[] row = events.get(i).split(" ", 4);
+                if (row[0].equals(owner) && markers.contains(row[2])) {
+                    from = i + 1;
+                }
+            }
+            List<LivingStore.CharacterEvent> out = new ArrayList<>();
+            for (String line : events.subList(from, events.size())) {
+                String[] row = line.split(" ", 4);
+                if (row[0].equals(owner) && kinds.contains(row[2])) {
+                    out.add(new LivingStore.CharacterEvent("null".equals(row[1]) ? null : row[1], row[2],
+                            row.length > 3 ? row[3] : null));
+                }
+            }
+            return out.subList(Math.max(0, out.size() - (int) inv.getArgument(3)), out.size()); // the newest
         });
         when(store.characterLevel(anyInt())).thenAnswer(inv -> levels.getOrDefault((int) inv.getArgument(0), 0));
         when(store.personaState(anyString())).thenAnswer(inv -> personaStates.getOrDefault((String) inv.getArgument(0),

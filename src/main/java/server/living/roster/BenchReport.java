@@ -1,12 +1,17 @@
 package server.living.roster;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import constants.game.ExpTable;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
 
 /**
@@ -15,10 +20,17 @@ import java.util.function.IntFunction;
  * and said once, in one short whisper, when its owner calls it back ("farmed 143 stolen fences and 12k meso at Ant
  * Tunnel I. died once."), lowercase like its voice but for the place's own name. Taking the report forgets the tally, so a second call tells nothing new twice; a seat taken
  * without a word (a login's restore) takes it too. Only what reached the haul counts as farmed (never a trainee's own
- * pickups), and nothing here moves an item or a meso. Kept in memory: a restart starts every tally afresh.
+ * pickups), and nothing here moves an item or a meso. Kept in memory: a restart starts every tally afresh. While the
+ * letters are on (docs/BOT_CONCEPT_PLAN.md F3), what the tallies gain is also kept until it is {@link #drain drained}
+ * into bench.report rows, which outlive a restart for the login digest (CompanionLetters).
  * Thread-safe: the ledger, the harvest and the call run on companion-ops, a stall's sales may come from elsewhere.
  */
 final class BenchReport {
+    /** living_event_log.detail's length: a row's JSON stays within it. */
+    static final int DETAIL_MAX = 512;
+    /** Item stacks one row carries: 15 of the longest ids and counts with the rest of the row stay under DETAIL_MAX. */
+    private static final int ITEMS_PER_ROW = 15;
+    private static final ObjectMapper JSON = new ObjectMapper();
     /** Plurals of the kill loot's words that do not take an s. */
     private static final Map<String, String> IRREGULAR = Map.of("tooth", "teeth", "foot", "feet", "leaf", "leaves",
             "knife", "knives", "wolf", "wolves", "mouse", "mice", "goose", "geese");
@@ -57,7 +69,28 @@ final class BenchReport {
         }
     }
 
+    /**
+     * One bench.report row: what one companion's bench work gained since the row before, last at the field {@code camp}
+     * (0: none), from {@code level} (its level at its first EXP credit; 0: none). Its JSON is the row's detail.
+     */
+    record Row(int camp, long exp, int level, long meso, long sold, int deaths, Map<Integer, Integer> items) { }
+
+    /** A row to write: its owner, its persona and its detail. */
+    record Unwritten(int ownerId, String personaId, String detail) { }
+
     private final Map<String, Tally> tallies = new ConcurrentHashMap<>();
+    /** What the tallies gained since the last {@link #drain}, kept while {@link #persisting}. */
+    private final Map<String, Tally> unwritten = new ConcurrentHashMap<>();
+    private final BooleanSupplier persisting;
+
+    BenchReport() {
+        this(() -> false);
+    }
+
+    /** {@code persisting}: whether what the tallies gain is kept for bench.report rows too (the letters are on). */
+    BenchReport(BooleanSupplier persisting) {
+        this.persisting = persisting;
+    }
 
     private static String key(int ownerId, String personaId) {
         return ownerId + ":" + personaId;
@@ -67,11 +100,69 @@ final class BenchReport {
         if (personaId == null) {
             return;
         }
-        tallies.compute(key(ownerId, personaId), (key, tally) -> {
+        apply(tallies, key(ownerId, personaId), change);
+        if (persisting.getAsBoolean()) {
+            apply(unwritten, key(ownerId, personaId), change);
+        }
+    }
+
+    private static void apply(Map<String, Tally> into, String key, java.util.function.Consumer<Tally> change) {
+        into.compute(key, (k, tally) -> {
             Tally out = tally == null ? new Tally() : tally;
             change.accept(out);
             return out;
         });
+    }
+
+    /**
+     * Takes what the companions of {@code ownerId} (0: everyone's) gained since the last drain, as bench.report rows to
+     * write, a companion's item stacks spread over more rows when there are many ({@link #ITEMS_PER_ROW}).
+     */
+    List<Unwritten> drain(int ownerId) {
+        List<Unwritten> out = new ArrayList<>();
+        for (String key : List.copyOf(unwritten.keySet())) {
+            int colon = key.indexOf(':');
+            int owner = Integer.parseInt(key.substring(0, colon));
+            Tally tally = ownerId != 0 && owner != ownerId ? null : unwritten.remove(key);
+            if (tally != null) {
+                for (String detail : encode(tally)) {
+                    out.add(new Unwritten(owner, key.substring(colon + 1), detail));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The rows' details of one tally: its totals and first stacks in one, the stacks past them in the next. */
+    static List<String> encode(Tally tally) {
+        List<String> out = new ArrayList<>();
+        List<Map.Entry<Integer, Integer>> stacks = new ArrayList<>(tally.items.entrySet());
+        int from = 0;
+        do {
+            Map<Integer, Integer> items = new LinkedHashMap<>();
+            for (Map.Entry<Integer, Integer> stack : stacks.subList(from, Math.min(stacks.size(), from + ITEMS_PER_ROW))) {
+                items.put(stack.getKey(), stack.getValue());
+            }
+            Row row = from == 0
+                    ? new Row(tally.campMapId, tally.exp, tally.startLevel, tally.meso, tally.sold, tally.deaths, items)
+                    : new Row(tally.campMapId, 0L, 0, 0L, 0L, 0, items);
+            try {
+                out.add(JSON.writeValueAsString(row));
+            } catch (JsonProcessingException failure) {
+                throw new IllegalStateException("bench report row not written", failure);
+            }
+            from += ITEMS_PER_ROW;
+        } while (from < stacks.size());
+        return out;
+    }
+
+    /** A bench.report row's detail read back; null when it is not one. */
+    static Row decode(String detail) {
+        try {
+            return detail == null ? null : JSON.readValue(detail, Row.class);
+        } catch (JsonProcessingException failure) {
+            return null;
+        }
     }
 
     /** EXP credited at {@code level} (banked by the ledger, or gained on a live slice) at the field {@code campMapId}. */

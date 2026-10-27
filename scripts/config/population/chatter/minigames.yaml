@@ -1,0 +1,131 @@
+# Omok and match cards citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a, CitizenMiniGames). game.lf is said on the
+# map before a citizen opens a room; {game} is "omok" or "match cards". game.title.* are room titles (the balloon over
+# its head; at most 24 characters), never said. The room lines (channel room) go to the room's chat, and only while a
+# human sits across the table: {name} is that human. Like party-quest talk they repeat game after game (each intent's
+# cooldownMs, no recent-intent memory). Per-style lines (`styles`) override `lines` for that voice style.
+intents:
+  - id: game.lf.map
+    trigger: game.lf
+    where: town
+    channel: map
+    weight: 10
+    cooldownMs: 120000
+    lines:
+      - "{game} anyone?"
+      - "anyone wanna play {game}"
+      - "opening a {game} room"
+      - "{game}? come"
+      - "bored.. {game} anyone"
+      - "who wants {game}"
+      - "1v1 {game} me"
+    styles:
+      quiet-practical-v1:
+        - "{game}?"
+        - "{game} room open"
+      playful-social-v1:
+        - "{game} time!! who's in"
+        - "come play {game} with me :D"
+  - id: game.title.omok
+    trigger: game.title.omok
+    where: any
+    channel: room
+    weight: 10
+    lines:
+      - "omok"
+      - "omok~"
+      - "come play"
+      - "omok 1v1"
+      - "beginners ok"
+      - "just for fun"
+      - "omok anyone"
+      - "play me"
+      - "chill omok"
+  - id: game.title.cards
+    trigger: game.title.cards
+    where: any
+    channel: room
+    weight: 10
+    lines:
+      - "match cards"
+      - "cards~"
+      - "match cards 1v1"
+      - "memory game"
+      - "come play"
+      - "just for fun"
+  - id: game.hi.room
+    trigger: game.hi
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "hi"
+      - "hey"
+      - "hii"
+      - "gl"
+      - "hf"
+      - "hey {name}"
+      - "yo"
+  - id: game.nice.room
+    trigger: game.nice
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "nice"
+      - "oh nice"
+      - "dang"
+      - "ooh"
+      - "nice one"
+      - "hmm"
+  - id: game.win.room
+    trigger: game.win
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 20000
+    lines:
+      - "gg"
+      - "gg"
+      - "ggs"
+      - "gg wp"
+      - "close one"
+      - "yay"
+      - "gg again?"
+  - id: game.loss.room
+    trigger: game.loss
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 20000
+    lines:
+      - "gg"
+      - "gg"
+      - "gg wp"
+      - "nice"
+      - "argh"
+      - "i didnt see that lol"
+      - "gg u got me"
+  - id: game.tie.room
+    trigger: game.tie
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 20000
+    lines:
+      - "tie lol"
+      - "gg"
+      - "ok tie"
+  - id: game.bye.room
+    trigger: game.bye
+    where: any
+    channel: room
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "ty for the games"
+      - "gtg, gg"
+      - "ok im done, ty"
+      - "thx for games"
+      - "gg ty {name}"

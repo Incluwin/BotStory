@@ -298,6 +298,8 @@ public final class BenchDutyDispatcher {
      * bought and walks back, gets none.
      */
     static final String RESUPPLY_TOO_LONG = "resupply took too long";
+    /** A slice whose own shop visit is over: it stands at the shop (BenchSessions vendors there, F2.4). */
+    static final String RESUPPLIED = "resupplied";
     /** persona id -> the shop map its last field slice set off for: its next field slice is a shop slice there. */
     private final Map<String, Integer> shopTrips = new ConcurrentHashMap<>();
     /**
@@ -480,7 +482,7 @@ public final class BenchDutyDispatcher {
     }
 
     /** EXP gained from {@code fromExp} at {@code fromLevel} to {@code toExp} at {@code toLevel} (0 for a loss). */
-    static long expGained(int fromLevel, long fromExp, int toLevel, long toExp) {
+    public static long expGained(int fromLevel, long fromExp, int toLevel, long toExp) {
         if (toLevel <= fromLevel) {
             return Math.max(0L, toExp - fromExp);
         }
@@ -881,7 +883,7 @@ public final class BenchDutyDispatcher {
             }
             // a shop slice is over once a shop visit of its own there is, not before it began (it asks its party first)
             if (!resupplying(entry) && (!slice.shop || tripEndedSince(entry, slice.startedAtMs))) {
-                return "resupplied";
+                return RESUPPLIED;
             }
             if (!slice.shop && setOffForAFarShop(slice, entry, agent, now)) {
                 return SHOP_TOO_FAR;

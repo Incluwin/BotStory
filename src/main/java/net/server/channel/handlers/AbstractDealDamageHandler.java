@@ -247,6 +247,19 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 && (ServerMobAutonomyService.isActiveInstance(monster) || AgentBossScope.guards(monster));
     }
 
+    /** The damage every line of {@code attack} reports, summed over its targets. */
+    private static long landed(AttackInfo attack) {
+        long total = 0L;
+        if (attack.targets != null) {
+            for (AttackTarget target : attack.targets.values()) {
+                for (int line : target.damageLines()) {
+                    total += Math.max(0, line);
+                }
+            }
+        }
+        return total;
+    }
+
     public static boolean applyAttack(AttackInfo attack, final Character player, int attackCount) {
         final MapleMap map = player.getMap();
         if (map.isOwnershipRestricted(player)) {
@@ -274,6 +287,9 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     }
                     player.sendPacket(PacketCreator.enableActions());
                     return false;
+                }
+                if (server.living.LivingWorldHooks.watchesHabits(player)) { // a companion owner's skill mix (F2)
+                    server.living.LivingWorldHooks.skillUsed(player, attack.skill, landed(attack));
                 }
 
                 int mobCount = attackEffect.getMobCount();

@@ -181,6 +181,26 @@ public class PopulationConfig {
     /** A lobby party short of its seats calls at most this many citizens over, one a minute, never more than it needs. */
     public int PQ_CALLS_PER_PARTY = 4;
 
+    // Minigames citizens play in towns (docs/BOT_CONCEPT_PLAN.md F5a)
+    /** Kill switch: false = no PLAY plan; citizens never open, join or play an omok or match-card room. */
+    public boolean MINIGAMES_ENABLED = false;
+    /** Comma list of the town maps citizens play in; a map whose fieldLimit forbids minigames is skipped. */
+    public String MINIGAME_TOWNS = "100000000,101000000,102000000,103000000,220000000";
+    /** A citizen's usual think time per move, mostly near the short end. */
+    public int MINIGAME_THINK_MIN_MS = 1000;
+    public int MINIGAME_THINK_MAX_MS = 8000;
+    /** Matches a citizen plays on a PLAY session before it goes on with its day. */
+    public int MINIGAME_GAMES_MIN = 2;
+    public int MINIGAME_GAMES_MAX = 5;
+    /** A room nobody sits down in closes after this; a citizen's second such room ends its PLAY session. */
+    public int MINIGAME_ROOM_WAIT_MS = 180000;
+    /** Nothing happened in a room this long (a player who never readies or moves): the citizen gets up. */
+    public int MINIGAME_IDLE_MS = 150000;
+    /** Percent of citizens who play well; the rest play casually and improve slowly with their record. */
+    public int MINIGAME_STRONG_PERCENT = 5;
+    /** No PLAY plan for a citizen this long after its PLAY session. */
+    public int MINIGAME_COOLDOWN_MS = 1800000;
+
     // Citizens remember the people they meet (docs/CITIZEN_PERSON_MEMORY_PLAN.md)
     /** Kill switch: false = no memory read or written; greetings, invites and grounding as before. */
     public boolean MEMORY_ENABLED = true;
@@ -200,6 +220,18 @@ public class PopulationConfig {
     public int MEMORY_RETURN_AFTER_MINUTES = 180;
     /** One reunion greeting per player from all citizens this often. */
     public int MEMORY_GREET_GAP_MS = 300000;
+
+    // Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1, CitizenSpots)
+    /** Kill switch: false = no stint booked and the uniform random pick among the fitting training fields, as before. */
+    public boolean CITIZEN_SPOT_LEARNING_ENABLED = false;
+    /** The UCB weight: how much a field citizens measured less often is tried anyway (0 = never). */
+    public double CITIZEN_SPOT_EXPLORE = 0.3;
+    /** What a field full to its capacity with loaded citizens costs its score (0 = crowds do not matter). */
+    public double CITIZEN_SPOT_CROWDING = 0.5;
+    /** How sharp the weighted draw is: lower picks the best field more often (0 = always the best). */
+    public double CITIZEN_SPOT_TEMPERATURE = 0.15;
+    /** A TRAIN stint shorter than this is not booked: too short to say what the field pays. */
+    public int CITIZEN_SPOT_MIN_MS = 300000;
 
     // Boss expeditions citizens run themselves (docs/CITIZEN_EXPEDITIONS_PLAN.md)
     /**
@@ -253,6 +285,14 @@ public class PopulationConfig {
             throw new IllegalArgumentException("population.PORTAL_TRAVEL_CHECK_MS must be >= 100, PORTAL_TRAVEL_HOP_TIMEOUT_MS"
                     + " and PORTAL_TRAVEL_MAX_MS >= 1000, PORTAL_TRAVEL_TOWNLIFE_GRACE_MS and PORTAL_TRAVEL_BOARD_MS >= 0");
         }
+        if (MINIGAME_THINK_MIN_MS < 0 || MINIGAME_THINK_MAX_MS < MINIGAME_THINK_MIN_MS || MINIGAME_GAMES_MIN < 1
+                || MINIGAME_GAMES_MAX < MINIGAME_GAMES_MIN || MINIGAME_ROOM_WAIT_MS < 10000 || MINIGAME_IDLE_MS < 10000
+                || MINIGAME_STRONG_PERCENT < 0 || MINIGAME_STRONG_PERCENT > 100 || MINIGAME_COOLDOWN_MS < 0
+                || MINIGAME_TOWNS == null) {
+            throw new IllegalArgumentException("population.MINIGAME_THINK_MIN_MS..MAX_MS and MINIGAME_GAMES_MIN..MAX must be"
+                    + " ranges (games >= 1), MINIGAME_ROOM_WAIT_MS and MINIGAME_IDLE_MS >= 10000, MINIGAME_STRONG_PERCENT"
+                    + " 0-100, MINIGAME_COOLDOWN_MS >= 0 and MINIGAME_TOWNS set");
+        }
         if (CHANNELS == null || CHANNELS.isBlank()) {
             throw new IllegalArgumentException("population.CHANNELS must name at least one channel");
         }
@@ -285,6 +325,10 @@ public class PopulationConfig {
                 throw new IllegalArgumentException("population.BOSS_RUN_BOSSES may name only " + CITIZEN_BOSSES
                         + " (bosses the server moves itself), not '" + boss + "'");
             }
+        }
+        if (CITIZEN_SPOT_EXPLORE < 0 || CITIZEN_SPOT_CROWDING < 0 || CITIZEN_SPOT_TEMPERATURE < 0 || CITIZEN_SPOT_MIN_MS < 0) {
+            throw new IllegalArgumentException("population.CITIZEN_SPOT_EXPLORE, CITIZEN_SPOT_CROWDING,"
+                    + " CITIZEN_SPOT_TEMPERATURE and CITIZEN_SPOT_MIN_MS must be >= 0");
         }
     }
 }
