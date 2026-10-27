@@ -105,6 +105,7 @@ public final class SpecialMoveHandler extends AbstractPacketHandler {
                 chr.addCooldown(skillid, currentServerTime(), SECONDS.toMillis(cooldownTime));
             }
         }
+        server.living.LivingWorldHooks.skillUsed(chr, skillid, 0L); // a companion owner's skill mix (F2)
         if (skillid == Hero.MONSTER_MAGNET || skillid == Paladin.MONSTER_MAGNET || skillid == DarkKnight.MONSTER_MAGNET) { // Monster Magnet
             int num = p.readInt();
             for (int i = 0; i < num; i++) {

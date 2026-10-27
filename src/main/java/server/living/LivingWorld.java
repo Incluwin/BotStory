@@ -88,6 +88,7 @@ public final class LivingWorld {
     private final server.living.roster.BenchSessions benchSessions;
     private final server.living.roster.BenchDutyDispatcher benchDuty;
     private final server.living.roster.BenchYieldModel benchYields;
+    private final server.living.habits.OwnerHabitBook ownerHabits;
     private final ResidentRuntime residents;
     private final ResidentDialogue dialogue;
     private final RumorScheduler rumors;
@@ -140,6 +141,7 @@ public final class LivingWorld {
         // the one place a benched companion goes live (P5): the field form above, and the forms the other duties register
         this.benchDuty = new server.living.roster.BenchDutyDispatcher(this, benchSessions);
         this.benchYields = new server.living.roster.BenchYieldModel(this);
+        this.ownerHabits = new server.living.habits.OwnerHabitBook(this); // F2: what companions learn of their owners
         // the visible forms of the other duties (P5): GATHER at its camp, STALL and SELL in the Free Market, REST in town
         server.living.roster.BenchStallForm stall = new server.living.roster.BenchStallForm(this);
         this.benchDuty.register(LivingStore.Assignment.GATHER, new server.living.roster.BenchGatherForm(this));
@@ -286,6 +288,9 @@ public final class LivingWorld {
                 config.RUMOR_TICK_MS, config.RUMOR_TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("contracts.tick", world.contracts::tick), 60_000L, 60_000L));
+        // owner habits (F2): drinks kept, what is learned read again, a habit mentioned, changed documents written
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("owner_habits.tick", world.ownerHabits::tick), 60_000L, 60_000L));
         // a citizen guest's party minutes, its offer to stay on and the offer's expiry (P4)
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("hire.offers", world.hireOffers::tick), HireOffers.TICK_MS, HireOffers.TICK_MS));
@@ -596,6 +601,11 @@ public final class LivingWorld {
     /** The bench yields measured on live slices (companion_yield, P5). */
     public server.living.roster.BenchYieldModel benchYields() {
         return benchYields;
+    }
+
+    /** What companions learned of their owners' habits (living_owner_habit, F2). */
+    public server.living.habits.OwnerHabitBook ownerHabits() {
+        return ownerHabits;
     }
 
     /** "Keep my crew fresh" (P5, decision 15 b): each owner's opt-in and the swaps it makes. */

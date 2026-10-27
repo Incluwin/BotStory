@@ -655,4 +655,15 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="52-owner-habits" author="ganre">
+        <!-- Owner habits and learned spots (F2): living_owner_habit, what the living world noticed of each human who
+             owns companions; companion_yield.source, so citizens' TRAIN stints are booked beside the bench slices.
+             Ships behind living_world.OWNER_HABITS_ENABLED and population.CITIZEN_SPOT_LEARNING_ENABLED.
+             See docs/BOT_CONCEPT_PLAN.md F2. Ids 51 / 042 are F1's (wave B): renumber at the merge if needed. -->
+        <sqlFile path="db/tables/043-owner-habits.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/043-owner-habits-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

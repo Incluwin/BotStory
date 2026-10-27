@@ -49,6 +49,8 @@ public final class CitizenSession {
     /** The field it died on beside a field boss (PopulationHooks.died), avoided until {@link #avoidUntilMs}; 0: none. */
     volatile int avoidMapId;
     volatile long avoidUntilMs;
+    /** Its open TRAIN stint on a field (CitizenSpots, F2.1), booked when it ends; null when none. */
+    volatile CitizenSpots.Stint stint;
 
     /** A move to another map and the activity it starts there. */
     record Move(Activity activity, int mapId) {

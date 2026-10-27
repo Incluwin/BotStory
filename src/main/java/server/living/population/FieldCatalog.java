@@ -26,9 +26,16 @@ public final class FieldCatalog {
     private static final Set<String> HEALERS = Set.of("CLERIC", "PRIEST", "BISHOP");
 
     private final Population population;
+    private final CitizenSpots spots;
 
     FieldCatalog(Population population) {
         this.population = population;
+        this.spots = new CitizenSpots(population);
+    }
+
+    /** Where citizens learn to train (F2.1): the stint book and the learned pick. */
+    public CitizenSpots spots() {
+        return spots;
     }
 
     public static boolean isFreeMarket(int mapId) {
@@ -129,13 +136,20 @@ public final class FieldCatalog {
      * Picks a training field: in the citizen's region, mob level within [level-6, level+3], with
      * free capacity given citizens already there; a healer of level 30+ mostly picks among the
      * undead-majority ones (docs/SERVER_KNOWLEDGE_PLAN.md 8.5); prefers maps humans are on when {@code social}.
+     * Among the rest it picks at random, or, with population.CITIZEN_SPOT_LEARNING_ENABLED, by what citizens of its
+     * class line and level band measured there with fewer bots on the map scoring higher (CitizenSpots).
      */
     public Field trainingField(Citizen citizen, int level, Random random, boolean social) {
-        return trainingField(citizen, level, random, social, mapId -> false);
+        return trainingField(citizen, level, -1, random, social, mapId -> false);
     }
 
     /** As above, never on a map {@code avoided} names (one it died on beside a field boss that still stands). */
     public Field trainingField(Citizen citizen, int level, Random random, boolean social, IntPredicate avoided) {
+        return trainingField(citizen, level, -1, random, social, avoided);
+    }
+
+    /** As above for a citizen of job {@code jobId} (-1: unknown, the random pick), which the learned pick needs. */
+    public Field trainingField(Citizen citizen, int level, int jobId, Random random, boolean social, IntPredicate avoided) {
         List<Field> candidates = new ArrayList<>();
         String region = citizen.homeRegion();
         for (Field field : population.content().fields().values()) {
@@ -177,7 +191,8 @@ public final class FieldCatalog {
                 }
             }
         }
-        return candidates.get(random.nextInt(candidates.size()));
+        Field learned = spots.pick(candidates, level, jobId, random);
+        return learned != null ? learned : candidates.get(random.nextInt(candidates.size()));
     }
 
     /** The candidates whose spawn points are mostly undead monsters (server knowledge); none without knowledge. */

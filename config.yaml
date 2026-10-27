@@ -868,6 +868,38 @@ living_world:
     # death an hour costs BENCH_CHOOSER_DEATH_COST of a camp's hourly score.
     BENCH_CHOOSER_EXPLORE: 0.3
     BENCH_CHOOSER_DEATH_COST: 0.5
+    # F2.1: citizens' TRAIN stints are booked beside the bench slices (companion_yield.source = 'citizen'), and a
+    # companion's EXP and death priors are first shrunk toward what citizens measured at its camp, one citizen slice
+    # counting for CITIZEN_YIELD_WEIGHT of its own (0 = citizen data never touches companions).
+    # Technical: BenchYieldModel.sharpened shrinks the prior by citizenSamples x CITIZEN_YIELD_WEIGHT against BENCH_YIELD_PRIOR_SLICES; meso and items keep the ledger prior.
+    CITIZEN_YIELD_WEIGHT: 0.5
+    # Owner habits (docs/BOT_CONCEPT_PLAN.md F2.2-F2.4): companions pick up how their owner plays, and only the best of
+    # it. OWNER_HABITS_ENABLED is the kill switch (false: nothing watched, kept or used). A companion whose owner never
+    # set its potion percentages drinks at the owner's median point once MIN_DRINKS were kept (HP never below HP_FLOOR,
+    # never in boss content); a drink within DEATH_WINDOW_MS before the owner died came too late and is never kept.
+    # "What you pick up" loot (the default while on) skips at most LOOT_MAX_SKIPS categories the owner leaves at least
+    # LOOT_SKIP_SHARE of over LOOT_MIN_SEEN drops, whose left drops sell for at most LOOT_MAX_PRICE: never a quest item.
+    # An item sold on SELL_MIN_VISITS separate visits is vendored at a bench resupply instead of hauled. A map with
+    # MAP_MIN_KILLS kills in a band, within MAP_BEST_SHARE of the owner's best EXP an hour there and at most MAP_MAX_DEATHS
+    # deaths an hour, joins Your call with a CAMP_BONUS higher prior. A skill used SKILL_MIN_USES times that lands
+    # SKILL_MIN_SHARE of the owner's damage in a job starts SKILL_PRIOR_BUMP higher in a companion's combat learner.
+    # Technical: OwnerHabitBook watches online owners from memory (LivingWorldHooks), learns each minute on the contracts timer and writes living_owner_habit behind; OwnerHabits.Rules holds these gates.
+    OWNER_HABITS_ENABLED: false
+    OWNER_HABIT_MIN_DRINKS: 8
+    OWNER_HABIT_HP_FLOOR: 0.45
+    OWNER_HABIT_DEATH_WINDOW_MS: 30000
+    OWNER_HABIT_LOOT_MIN_SEEN: 10
+    OWNER_HABIT_LOOT_SKIP_SHARE: 0.9
+    OWNER_HABIT_LOOT_MAX_PRICE: 1000
+    OWNER_HABIT_LOOT_MAX_SKIPS: 4
+    OWNER_HABIT_SELL_MIN_VISITS: 2
+    OWNER_HABIT_MAP_MIN_KILLS: 30
+    OWNER_HABIT_MAP_BEST_SHARE: 0.8
+    OWNER_HABIT_MAP_MAX_DEATHS: 1.0
+    OWNER_HABIT_CAMP_BONUS: 0.15
+    OWNER_HABIT_SKILL_MIN_USES: 30
+    OWNER_HABIT_SKILL_MIN_SHARE: 0.25
+    OWNER_HABIT_SKILL_PRIOR_BUMP: 0.1
     # A citizen answers a party invite after a random delay in this range, like a player would.
     CITIZEN_INVITE_REPLY_MIN_MS: 900
     CITIZEN_INVITE_REPLY_MAX_MS: 1800
@@ -1240,6 +1272,19 @@ population:
     MEMORY_WARMTH_HALF_LIFE_DAYS: 14.0
     MEMORY_RETURN_AFTER_MINUTES: 180
     MEMORY_GREET_GAP_MS: 300000
+    # Citizens learn where to train (docs/BOT_CONCEPT_PLAN.md F2.1). A loaded citizen's TRAIN stint on a field is booked
+    # (EXP and deaths an hour per class line, level band and field) when it moves on, goes AFK, logs off or dies; one
+    # shorter than SPOT_MIN_MS, one it left another way (its own shop trip) or an abstract one is not. Among the fields
+    # that fit (mob level, room, the healer rule, the 60% human-map preference first) it then picks by what citizens
+    # measured, plus a UCB bonus of SPOT_EXPLORE for fields measured less, less SPOT_CROWDING for a field full of loaded
+    # citizens; drawn with weight exp((ucb - best) / SPOT_TEMPERATURE), never all to one map. false = the kill switch:
+    # no stint booked and the uniform random pick, as before.
+    # Technical: CitizenSpots.arms scores each field with BenchYieldModel citizen rows shrunk by BENCH_YIELD_PRIOR_SLICES toward BenchDutyChooser.fit; draw() samples by softmax.
+    CITIZEN_SPOT_LEARNING_ENABLED: false
+    CITIZEN_SPOT_EXPLORE: 0.3
+    CITIZEN_SPOT_CROWDING: 0.5
+    CITIZEN_SPOT_TEMPERATURE: 0.15
+    CITIZEN_SPOT_MIN_MS: 300000
     # Citizens run boss expeditions themselves (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md): citizens Lv50+ of the
     # regions past Victoria go on outings to Mu Young (Sleepywood), form a party there as at a PQ lobby (inviting a
     # human who fits first), and their leader makes the Balrog expedition with her window. The others sign up through

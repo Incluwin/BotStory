@@ -511,6 +511,7 @@ public final class PresenceScheduler {
             return null;
         }
         try {
+            endStint(session, System.currentTimeMillis()); // before it unloads (F2.1)
             population.chatter().onLogout(session);
             population.social().onLogout(session);
             population.market().onLogout(session);
@@ -747,7 +748,7 @@ public final class PresenceScheduler {
         switch (activity) {
             case TRAIN -> {
                 long now = System.currentTimeMillis();
-                Field field = population.fields().trainingField(citizen, level, random, true,
+                Field field = population.fields().trainingField(citizen, level, jobOf(session), random, true,
                         mapId -> avoiding(session, mapId, now));
                 return field == null ? population.fields().homeTown(citizen, random) : field.mapId();
             }
@@ -775,7 +776,10 @@ public final class PresenceScheduler {
             return;
         }
         switch (session.activity) {
-            case TRAIN -> AgentMovementCommandRuntime.grind(entry);
+            case TRAIN -> {
+                AgentMovementCommandRuntime.grind(entry);
+                beginStint(session, now); // its stint here is booked when it ends (F2.1)
+            }
             case MARKET -> population.market().onArrive(session);
             case PQ -> waitAtLobby(session, map, now);
             case JOB -> {
@@ -919,6 +923,7 @@ public final class PresenceScheduler {
         }
         session.lastPlanAtMs = now;
         if (random.nextInt(100) < 15) {
+            endStint(session, now); // time spent AFK is never booked as hunting
             session.afkUntilMs = now + (5 + random.nextInt(11)) * 60_000L;
             population.chatter().event(ChatterEngine.Event.of("afk", session.mapId, session.channel).self(session));
             if (session.entry != null) {
@@ -973,6 +978,33 @@ public final class PresenceScheduler {
         return true;
     }
 
+    /** Its TRAIN stint on the field it grinds now begins (CitizenSpots, F2.1); none without a stint book. */
+    private void beginStint(CitizenSession session, long now) {
+        CitizenSpots spots = spots();
+        if (spots != null) {
+            spots.begin(session, now);
+        }
+    }
+
+    /** Its open TRAIN stint ends and is booked when it was a clean one (CitizenSpots, F2.1). */
+    private void endStint(CitizenSession session, long now) {
+        CitizenSpots spots = spots();
+        if (spots != null) {
+            spots.end(session, now);
+        }
+    }
+
+    private CitizenSpots spots() {
+        FieldCatalog fields = population.fields();
+        return fields == null ? null : fields.spots();
+    }
+
+    /** Its loaded character's job id, for the learned training pick (CitizenSpots); -1 when it has none loaded. */
+    private static int jobOf(CitizenSession session) {
+        Character agent = session.agent();
+        return agent == null || agent.getJob() == null ? -1 : agent.getJob().getId();
+    }
+
     /** True while {@code session} avoids {@code mapId}: it died there beside a field boss that still stands. */
     boolean avoiding(CitizenSession session, int mapId, long now) {
         if (mapId == 0 || mapId != session.avoidMapId) {
@@ -1016,6 +1048,7 @@ public final class PresenceScheduler {
             refused(session, next, target, now, waited); // it has not moved, so nobody sees anything happen
             return;
         }
+        endStint(session, now); // its stint on the field it leaves is booked (F2.1)
         CitizenSession.Move asked = new CitizenSession.Move(next, mapId);
         session.latestMove = asked;
         onFoot.cancel(session); // a newer move replaces the walk of an older one
@@ -1344,7 +1377,7 @@ public final class PresenceScheduler {
                 || cap.full(population.map(channel, mapId), channel, session.characterId, now);
         if (activity == Activity.TRAIN) {
             int level = Math.max(1, population.store().characterProgress(citizen.characterId())[0]);
-            Field field = population.fields().trainingField(citizen, level, random, true,
+            Field field = population.fields().trainingField(citizen, level, jobOf(session), random, true,
                     mapId -> avoiding(session, mapId, now) || unusable.test(mapId));
             if (field != null) {
                 return new Placement(Activity.TRAIN, population.map(channel, field.mapId()));

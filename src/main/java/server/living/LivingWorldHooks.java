@@ -64,6 +64,9 @@ public final class LivingWorldHooks {
                 world.bossRuns().bossKilledInRun(map, attackerIds);
             }
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().killed(attackerIds); // an owner's training stint counts its kills (F2)
+            }
             PersonalKnowledge personal = PersonalKnowledge.shared();
             if (personal.on()) {
                 for (int attackerId : attackerIds) { // every bot that fought it lived it (plan 7.4)
@@ -188,6 +191,9 @@ public final class LivingWorldHooks {
             if (terms != null) {
                 terms.looted(chr, itemId, quantity, meso, ownKill);
             }
+            if (itemId > 0 && world.ownerHabits() != null) {
+                world.ownerHabits().looted(chr, itemId); // an owner's loot taste (F2)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world looted hook failed", failure);
         }
@@ -211,6 +217,9 @@ public final class LivingWorldHooks {
             }
             if (world.weddings() != null) {
                 world.weddings().enteredMap(chr, map.getId()); // an engaged companion dresses for its wedding
+            }
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().mapEntered(chr, map); // an owner's training stints per field (F2)
             }
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
@@ -257,6 +266,9 @@ public final class LivingWorldHooks {
             // on companion-ops behind any logout still queued (a channel change), so the restore sees it done
             world.executor().submit("roster.login " + chr.getId(), () -> world.roster().onOwnerLogin(chr));
             world.questLog().reconcile(chr);
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().loggedIn(chr); // an owner's habits are read (F2)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);
         }
@@ -285,6 +297,9 @@ public final class LivingWorldHooks {
                 }
             });
             world.markers().loggedOut(chr);
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().loggedOut(chr); // an owner's habits are written and dropped (F2)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
         }
@@ -344,6 +359,9 @@ public final class LivingWorldHooks {
         try {
             PersonalKnowledge.shared().forget(characterId);
             world.executor().submit("roster.owner_deleted " + characterId, () -> world.roster().ownerDeleted(characterId));
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().deleted(characterId); // its habits go with it (F2)
+            }
         } catch (RuntimeException failure) {
             log.warn("living world characterDeleted hook failed", failure);
         }
@@ -539,6 +557,9 @@ public final class LivingWorldHooks {
             world.partyQuests().died(chr); // a death inside a companion run counts for its record
             if (world.bossRuns() != null) {
                 world.bossRuns().died(chr); // beside a field boss, a companion rests in town first (P13)
+            }
+            if (world.ownerHabits() != null) {
+                world.ownerHabits().died(chr); // an owner's drinks just before it came too late (F2)
             }
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
@@ -1108,6 +1129,91 @@ public final class LivingWorldHooks {
         } catch (RuntimeException failure) {
             log.warn("living world bossQuota hook failed", failure);
             return null;
+        }
+    }
+
+    // ---- owner habits (docs/BOT_CONCEPT_PLAN.md F2.2): only humans who own companions are watched, from memory -----
+
+    /** The habit book while owner habits are on, else null. */
+    private static server.living.habits.OwnerHabitBook habits() {
+        LivingWorld world = LivingWorld.get();
+        server.living.habits.OwnerHabitBook book = world == null ? null : world.ownerHabits();
+        return book == null || !world.config().OWNER_HABITS_ENABLED ? null : book;
+    }
+
+    /** True while {@code chr} is a human whose habits are watched (an attack's damage is summed only then). */
+    public static boolean watchesHabits(Character chr) {
+        server.living.habits.OwnerHabitBook book = habits();
+        try {
+            return book != null && book.watches(chr);
+        } catch (RuntimeException failure) {
+            log.warn("living world watchesHabits hook failed", failure);
+            return false;
+        }
+    }
+
+    /** {@code chr} is about to drink {@code itemId} (a Use item or the pet's autopot), its HP and MP not changed yet. */
+    public static void potionUsed(Character chr, int itemId) {
+        server.living.habits.OwnerHabitBook book = habits();
+        if (book == null || chr == null) {
+            return;
+        }
+        try {
+            book.potionUsed(chr, itemId);
+        } catch (RuntimeException failure) {
+            log.warn("living world potionUsed hook failed", failure);
+        }
+    }
+
+    /** {@code chr} sold {@code itemId} to an NPC shop. */
+    public static void npcSold(Character chr, int itemId) {
+        server.living.habits.OwnerHabitBook book = habits();
+        if (book == null || chr == null) {
+            return;
+        }
+        try {
+            book.sold(chr, itemId);
+        } catch (RuntimeException failure) {
+            log.warn("living world npcSold hook failed", failure);
+        }
+    }
+
+    /** {@code chr} dropped {@code itemId} out of its bag onto the map. */
+    public static void itemDropped(Character chr, int itemId) {
+        server.living.habits.OwnerHabitBook book = habits();
+        if (book == null || chr == null) {
+            return;
+        }
+        try {
+            book.dropped(chr, itemId);
+        } catch (RuntimeException failure) {
+            log.warn("living world itemDropped hook failed", failure);
+        }
+    }
+
+    /** These drops expired on {@code map} untouched (MapleMap's expiry sweep, before they disappear). */
+    public static void dropsExpired(MapleMap map, java.util.Collection<server.maps.MapItem> drops) {
+        server.living.habits.OwnerHabitBook book = habits();
+        if (book == null || map == null || drops == null || drops.isEmpty()) {
+            return;
+        }
+        try {
+            book.dropsExpired(map, drops);
+        } catch (RuntimeException failure) {
+            log.warn("living world dropsExpired hook failed", failure);
+        }
+    }
+
+    /** {@code chr} used {@code skillId} (a special move: 0 damage; an attack: what it landed). */
+    public static void skillUsed(Character chr, int skillId, long damage) {
+        server.living.habits.OwnerHabitBook book = habits();
+        if (book == null || chr == null || skillId <= 0) {
+            return;
+        }
+        try {
+            book.skillUsed(chr, skillId, damage);
+        } catch (RuntimeException failure) {
+            log.warn("living world skillUsed hook failed", failure);
         }
     }
 }

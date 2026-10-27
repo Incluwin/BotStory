@@ -212,6 +212,32 @@ toward `ownerLevel - paceGap` (banked, granted when called), or meso/items into 
 bench efficiency factor and the daily farming cap; a persona never farms its own quests from
 the bench (24 h haul provenance is checked at turn-in).
 
+### Habits and learned spots
+
+Companions pick up how their owner plays (`living_world.OWNER_HABITS_ENABLED`, off until its live checks pass; plan
+F2.2-F2.4). Only humans who own companions are watched, only while online: the HP/MP they drink at, what they pick up,
+drop or leave on the ground until it expires (with room in their bag), what they sell to shops, the fields they train on
+per level band (EXP, kills, deaths) and the skills that land their damage. Only the best of it is learned: a drink in the
+`OWNER_HABIT_DEATH_WINDOW_MS` before a death came too late; a category is skipped only when nearly all of it is left and
+its drops are cheap (never quest items, scrolls or books, never more than `OWNER_HABIT_LOOT_MAX_SKIPS` categories, so it
+never comes to picking up nothing); an item is vendored only when sold on separate visits; a map counts for its EXP an
+hour against the owner's best in the band, never one that keeps killing them; a skill for its share of the damage. Boss
+content (an event instance, a field boss on the map) is neither watched nor ever uses a habit.
+
+What it changes: a companion whose potions were never set drinks at the owner's median HP point (never below
+`OWNER_HABIT_HP_FLOOR`) outside boss content; the default loot mode becomes "What you pick up" (`LIKE_OWNER`), which
+leaves the categories the owner always leaves; a bench farmer holds what the owner sells and sells it at its resupply
+instead of hauling it; Your call weighs the owner's best maps at its level band; a companion of the owner's job starts
+those skills a little higher in its combat learner (measured values still win). Each habit is mentioned once, in voice
+(`owner-habits.yaml`); the card's **Learned from you...** page lists them, with **Forget my habits** (D7). GM:
+`!habits <player>` (GM 6) shows what is learned and how much it rests on. Stored in `living_owner_habit` (changeset 52).
+
+Citizens learn where to train (`population.CITIZEN_SPOT_LEARNING_ENABLED`, plan F2.1): a loaded citizen's TRAIN stint is
+booked when it leaves its field (EXP and deaths an hour per class line, band and field, `companion_yield` rows of source
+`citizen`; AFK time, stints under `CITIZEN_SPOT_MIN_MS` and shop walks are not). Among the fields that fit, it picks by
+what citizens measured, a UCB bonus for fields measured less and a crowding cost for fields already full of citizens,
+drawn by weight so they spread. The same rows sharpen companions' EXP and death priors (`CITIZEN_YIELD_WEIGHT`).
+
 ### The in-game quest log
 
 Living quests can appear in the client's quest log next to the stock quests (In Progress and

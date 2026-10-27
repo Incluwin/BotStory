@@ -56,6 +56,13 @@ final class HarvestDiff {
         return out;
     }
 
+    /** Puts back what a take did not move (held for a vendor at the resupply, F2.4): still to take, counted once. */
+    void keep(int itemId, int quantity) {
+        if (itemId > 0 && quantity > 0) {
+            items.merge(itemId, quantity, Integer::sum);
+        }
+    }
+
     /** Items picked up over the whole slice (a count), taken or not. */
     long itemsTotal() {
         return itemsTotal.get();

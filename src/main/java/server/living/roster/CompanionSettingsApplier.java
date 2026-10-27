@@ -5,6 +5,7 @@ import client.QuestStatus;
 import server.agents.capabilities.build.AgentBookSpeech;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatBuffStateRuntime;
+import server.agents.capabilities.combat.learning.AgentCombatPriorHint;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
 import server.agents.capabilities.inventory.AgentBagFullSpeech;
 import server.agents.capabilities.looting.AgentLootPolicy;
@@ -23,6 +24,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.habits.OwnerHabitBook;
 import server.living.store.LivingStore;
 import server.quest.Quest;
 
@@ -92,6 +94,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentFormationHook.install(this);
         AgentBagFullSpeech.install(this);
         AgentBookSpeech.install(this);
+        AgentCombatPriorHint.install(this::priorBump);
     }
 
     /** Takes the seams out again (LivingWorld.stop): every Agent drinks and loots as configured. */
@@ -103,6 +106,20 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         AgentFormationHook.install(null);
         AgentBagFullSpeech.install(null);
         AgentBookSpeech.install(null);
+        AgentCombatPriorHint.install(null);
+    }
+
+    /**
+     * The combat prior seam (F2.4): a companion whose owner fought as its own job starts the skills that land the
+     * owner's damage OWNER_HABIT_SKILL_PRIOR_BUMP higher; every other Agent and skill keeps the scorer's prior.
+     */
+    double priorBump(int agentCharacterId, int skillId) {
+        Bound at = bound.get(agentCharacterId);
+        OwnerHabitBook habits = at == null ? null : world.ownerHabits();
+        AgentRuntimeEntry runtime = habits == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId);
+        Character bot = runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
+        return bot != null && bot.getJob() != null && habits.favorite(at.ownerId(), bot.getJob().getId(), skillId)
+                ? world.config().OWNER_HABIT_SKILL_PRIOR_BUMP : 0.0d;
     }
 
     /**
@@ -383,12 +400,31 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         return bound.get(agentCharacterId);
     }
 
+    /**
+     * The owner's percentages once set. Unset, while owner habits are on (F2.4), the owner's own learned potion point
+     * (OwnerHabitBook.potionThresholds: never below OWNER_HABIT_HP_FLOOR), except in boss content
+     * (OwnerHabitBook.bossContent: an event instance, a field boss on the map), where it drinks as configured.
+     */
     @Override
     public AgentPotionThresholds.Thresholds thresholds(int agentCharacterId) {
         Bound at = bound.get(agentCharacterId);
         CompanionSettings own = at == null ? null : boundSettings(at, at.ownerId());
-        return own == null || own.potionsAsConfigured() ? null
-                : new AgentPotionThresholds.Thresholds(own.hpPercent() / 100f, own.mpPercent() / 100f);
+        if (own == null) {
+            return null;
+        }
+        if (!own.potionsAsConfigured()) {
+            return new AgentPotionThresholds.Thresholds(own.hpPercent() / 100f, own.mpPercent() / 100f);
+        }
+        OwnerHabitBook habits = world.ownerHabits();
+        float[] learned = habits == null ? null : habits.potionThresholds(at.ownerId(),
+                AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH,
+                AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH);
+        if (learned == null) {
+            return null;
+        }
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId);
+        Character bot = runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
+        return OwnerHabitBook.bossContent(bot) ? null : new AgentPotionThresholds.Thresholds(learned[0], learned[1]);
     }
 
     /**
@@ -422,8 +458,12 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
             return null;
         }
         int ownerId = at.ownerId();
+        OwnerHabitBook habits = world.ownerHabits();
+        // LIKE_OWNER (F2.4): what its owner always leaves, never a quest item or what the owner's quests need
+        AgentLootPolicy.QuestNeeds skips = own.loot() != AgentLootPolicy.Mode.LIKE_OWNER || habits == null ? null
+                : (agent, itemId) -> habits.skips(ownerId, itemId);
         return new AgentLootPolicy.Policy(own.loot(), own.leaveBossDrops(),
-                (agent, itemId) -> questNeeds(ownerId, agent, itemId));
+                (agent, itemId) -> questNeeds(ownerId, agent, itemId), skips);
     }
 
     /**

@@ -597,6 +597,7 @@ public final class CompanionManager {
             case OWN_KILLS -> " leaves the loot of your kills to you.";
             case QUEST_ONLY -> " picks up only meso and what your quests need.";
             case NONE -> " leaves all the loot to you.";
+            case LIKE_OWNER -> " picks up what you pick up and leaves what you always leave.";
         });
     }
 
