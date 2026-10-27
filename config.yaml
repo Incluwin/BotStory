@@ -1161,7 +1161,8 @@ living_world:
     # Technical: collectors sit at existing chokepoints (AgentTellProbe for the Agent engine; ChatterEngine,
     # PresenceScheduler and the death hook), add to bounded running totals, and ride the population social tick for the
     # minute sample and the hourly fold. Read at boot. false = the kill switch: nothing is measured or written.
-    TELL_AUDIT_ENABLED: false
+    # On since 2026-10-27 (user): it only measures, and its 24 h baseline is what F8 (imperfections) is judged against.
+    TELL_AUDIT_ENABLED: true
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
