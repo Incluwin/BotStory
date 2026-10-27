@@ -1,7 +1,13 @@
 package server.agents.progression;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import server.mods.RepackMaps;
+import server.mods.ServerMods;
 
 import javax.script.Bindings;
 import javax.script.Invocable;
@@ -14,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,12 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 /**
  * Every travel leg does what its NPC scripts do when the headless gateway answers them with the catalog's
  * selections: the seller hands over the ticket for its price, and the boarding NPC takes the ticket and the fare
  * and sends the rider to the leg's destination or onto its ride. The scripts run in Graal against a recording
- * conversation, as NPCScriptManager runs them for an Agent.
+ * conversation, as NPCScriptManager runs them for an Agent. The Community Repack areas' guides find their gate open,
+ * and a bot (no client) counts as having the Repack files, as RepackMaps lets it in live.
  */
 public class AgentTravelLegScriptTest {
     private static final int PURSE = 100_000;
@@ -38,11 +47,37 @@ public class AgentTravelLegScriptTest {
     private static final Pattern FIELD = Pattern.compile("name=\"(\\w+)\" value=\"([^\"]*)\"");
 
     private static ScriptEngineManager engines;
+    private MockedStatic<RepackMaps> repack;
 
     @BeforeAll
     static void graal() {
         System.setProperty("polyglot.engine.WarnInterpreterOnly", "false");
         engines = new ScriptEngineManager();
+    }
+
+    @BeforeEach
+    void openTheRepackGate() {
+        RepackMaps gate = new RepackMaps(new ServerMods(ServerMods.ALL, Map.of()), new RepackMaps.Store() {
+            @Override
+            public Optional<RepackMaps.Answer> load(int accountId) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void save(int accountId, RepackMaps.Answer answer) {
+            }
+
+            @Override
+            public void forget(int accountId) {
+            }
+        }, client -> false);
+        repack = mockStatic(RepackMaps.class, Mockito.CALLS_REAL_METHODS);
+        repack.when(RepackMaps::get).thenReturn(gate);
+    }
+
+    @AfterEach
+    void closeTheRepackGate() {
+        repack.close();
     }
 
     @Test
@@ -236,7 +271,11 @@ public class AgentTravelLegScriptTest {
         assertTrue(cm.disposed, () -> "NPC " + npcId + " never ended its conversation");
     }
 
+    /** In the map's life, or spawned there by RepackMaps.ENTRIES (the Community Repack areas' guides on shared maps). */
     private static boolean placed(int mapId, int npcId) throws Exception {
+        if (RepackMaps.ENTRIES.stream().anyMatch(entry -> entry.fromMap() == mapId && entry.npcId() == npcId)) {
+            return true;
+        }
         Path file = Path.of("wz", "Map.wz", "Map", "Map" + mapId / 100_000_000, String.format("%09d.img.xml", mapId));
         Matcher life = LIFE_BLOCK.matcher(Files.readString(file));
         if (!life.find()) {

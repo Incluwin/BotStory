@@ -745,6 +745,23 @@ fields:
   - { mapId: 261020500, name: "Lab - Area C-3", street: "Alcadno Research Institute", region: ariant, town: false, mobs: 28, mobLevel: 59, capacity: 6 }
   - { mapId: 261020600, name: "Lab - Area B-3", street: "Alcadno Research Institute", region: ariant, town: false, mobs: 14, mobLevel: 44, capacity: 3 }
   - { mapId: 261020700, name: "Lab - Area A-3", street: "Alcadno Research Institute", region: ariant, town: false, mobs: 27, mobLevel: 44, capacity: 0 }
+  - { mapId: 270000000, name: "Three Doors", street: "Time Lane", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 270000100, name: "Temple of Time", street: "Time Lane", region: temple-of-time, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 270010100, name: "Memory Lane1", street: "Time Lane", region: temple-of-time, town: false, mobs: 21, mobLevel: 89, capacity: 5 }
+  - { mapId: 270010200, name: "Memory Lane2", street: "Time Lane", region: temple-of-time, town: false, mobs: 23, mobLevel: 92, capacity: 5 }
+  - { mapId: 270010300, name: "Memory Lane3", street: "Time Lane", region: temple-of-time, town: false, mobs: 21, mobLevel: 95, capacity: 5 }
+  - { mapId: 270010400, name: "Memory Lane4", street: "Time Lane", region: temple-of-time, town: false, mobs: 18, mobLevel: 96, capacity: 4 }
+  - { mapId: 270010500, name: "Memory Lane5", street: "Time Lane", region: temple-of-time, town: false, mobs: 19, mobLevel: 98, capacity: 4 }
+  - { mapId: 270020100, name: "Road of Regrets1", street: "Time Lane", region: temple-of-time, town: false, mobs: 23, mobLevel: 103, capacity: 5 }
+  - { mapId: 270020200, name: "Road of Regrets2", street: "Time Lane", region: temple-of-time, town: false, mobs: 23, mobLevel: 105, capacity: 5 }
+  - { mapId: 270020300, name: "Road of Regrets3", street: "Time Lane", region: temple-of-time, town: false, mobs: 20, mobLevel: 108, capacity: 5 }
+  - { mapId: 270020400, name: "Road of Regrets4", street: "Time Lane", region: temple-of-time, town: false, mobs: 22, mobLevel: 111, capacity: 5 }
+  - { mapId: 270020500, name: "Road of Regrets5", street: "Time Lane", region: temple-of-time, town: false, mobs: 18, mobLevel: 111, capacity: 4 }
+  - { mapId: 270030100, name: "Road to Oblivion1", street: "Time Lane", region: temple-of-time, town: false, mobs: 24, mobLevel: 118, capacity: 6 }
+  - { mapId: 270030200, name: "Road to Oblivion2", street: "Time Lane", region: temple-of-time, town: false, mobs: 24, mobLevel: 120, capacity: 6 }
+  - { mapId: 270030300, name: "Road to Oblivion3", street: "Time Lane", region: temple-of-time, town: false, mobs: 17, mobLevel: 122, capacity: 4 }
+  - { mapId: 270030400, name: "Road to Oblivion4", street: "Time Lane", region: temple-of-time, town: false, mobs: 18, mobLevel: 128, capacity: 4 }
+  - { mapId: 270030500, name: "Road to Oblivion5", street: "Time Lane", region: temple-of-time, town: false, mobs: 16, mobLevel: 132, capacity: 4 }
   - { mapId: 300000000, name: "Altaire Camp", street: "Ellin Forest", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 300000001, name: "Tent House 1", street: "Altaire Camp", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 300000002, name: "Tent House 2", street: "Altaire Camp", region: ellin-forest, town: true, mobs: 0, mobLevel: 0, capacity: 0 }

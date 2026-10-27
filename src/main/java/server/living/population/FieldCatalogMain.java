@@ -1,5 +1,7 @@
 package server.living.population;
 
+import server.mods.RepackMaps;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -18,7 +20,8 @@ import java.util.stream.Stream;
  * every open-world map whose id prefix maps to a regions.yaml id (see {@link #region}) with its name, region,
  * town flag, mob spawn count, average mob level and a grinder capacity ({@code spawn entries / 4}, clamped 1..6),
  * with the Victoria field-capacity catalog's recommended maxima layered on top.
- * Instanced maps (a {@code forcedReturn}) and maps with fewer than four spawns are skipped.
+ * Instanced maps (a {@code forcedReturn}), maps with fewer than four spawns and the Community Repack maps
+ * ({@link server.mods.RepackMaps}: a stock-client player can never see who stands in them) are skipped.
  * A map already in the output file keeps the capacity it has there, so hand edits survive; the estimate and the
  * Victoria catalog therefore only seed maps that are not listed yet.
  *
@@ -68,7 +71,7 @@ public final class FieldCatalogMain {
                 int town = intOf(xml, "town", 0);
                 int forcedReturn = intOf(xml, "forcedReturn", 999999999);
                 String region = region(mapId);
-                if (region == null) {
+                if (region == null || RepackMaps.listed(mapId)) {
                     continue;
                 }
                 List<Integer> mobs = new ArrayList<>();
@@ -121,7 +124,8 @@ public final class FieldCatalogMain {
     /**
      * regions.yaml id by map id prefix; null for maps citizens should not consider (events, PQs, GM maps). The ids are
      * KnowledgeExportMain.region's, except that side towns join a hub's region (Florina, Nautilus, Omega Sector,
-     * Korean Folk Town, Herb Town, Magatia, Showa) and Amoria takes its 670 Purplewood fields.
+     * Korean Folk Town, Herb Town, Magatia, Showa) and Amoria takes its 670 Purplewood fields. The Temple of Time's
+     * roads (Memory Lane, Road of Regrets, Road to Oblivion) are its own region.
      */
     static String region(int mapId) {
         int prefix = mapId / 1_000_000;
@@ -136,6 +140,7 @@ public final class FieldCatalogMain {
             case 240 -> "leafre";
             case 250, 251 -> "mu-lung";
             case 260, 261 -> "ariant";
+            case 270 -> "temple-of-time";
             case 300 -> "ellin-forest";
             case 540, 541 -> "singapore";
             case 550, 551 -> "malaysia";

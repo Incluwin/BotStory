@@ -74,10 +74,20 @@ regions:
       - { id: balrog, mapId: 105100100, levels: { min: 50, max: 120 }, name: "Balrog" }
     fm: 910000000
     weight: 2
+  - id: temple-of-time
+    # The dragon flight from Leafre Station (the Halfling 2082003). Its roads, Memory Lane, the Road of Regrets and the
+    # Road to Oblivion (mobs 80-141), open one by one with the Temple's own quests, so citizens reach the far roads only
+    # while nobody watches them pass the gates.
+    levels: { min: 79, max: 140 }
+    towns: [270000100]
+    lobbies: []
+    fm: 910000000
+    weight: 1
   - id: new-leaf-city
-    # The subway from Kerning City.
+    # The subway from Kerning City; the NLC taxi to the Haunted House, the Phantom Forest's door.
     levels: { min: 20, max: 55 }
-    towns: [600000000]
+    towns: [600000000, 682000000]
+    townWeights: [90, 10]
     lobbies: []
     fm: 910000000
     weight: 4

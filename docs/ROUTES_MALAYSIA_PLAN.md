@@ -27,9 +27,9 @@ From Henesys the agent graph reached 721 of 1,157 graph maps; the knowledge grap
 | Kerning Square | the `KerningTrain` event: ticket reader 1052007 option 0 at the subway (103000100) rides 103000301 to Kerning Square Station (103000310); back through the station's `out00` portal (`Depart_ToKerning`), riding 103000302 | legs both ways; the way back boards **through a portal** (new leg field `portal`, `npcId` 0) | `subway` legs |
 | Mushroom Castle | scripted portal `TD_MC_first` in An Empty House (100000002), open only after quest 2260 (completed) or any of 2300-2310 (started or completed) | **scripted portal** 100000002 -> 106020000 with that **quest gate**; the way back is a plain portal | already there (map exits) |
 | Altaire Camp (Ellin Forest) | scripted portal `move_elin` in the Time Control Room (222020400), no condition | scripted portal 222020400 -> 300000100 | already there |
-| Temple of Time | Leafre Station's Halfling (2082003) turns the rider into a dragon and drops it on the flight map 200090500; the rider flies east into 200090510 and through `in00` (`templeenter`) to the Temple (270000100). Back: the Temple's `out00` (`outTemple`) to 200090510, west to 200090500, `minar00` (`undodraco`) to Leafre Station. Both flight maps are `fly=1`, which bots could not move on, and sat in the graph's excluded ride range | leg `leafre-station-to-the-flight`; the two flight maps leave the excluded range (their east/west portals become graph edges); scripted portals `templeenter`, `outTemple`, `undodraco`; **agents move on `fly=1` maps as on swim maps** (MapleMap learns `fly`) | `guide` leg Leafre Station -> 200090500 (the flight maps' exits are already in `server-knowledge.json`) |
+| Temple of Time | Leafre Station's Halfling (2082003) turns the rider into a dragon and drops it on the flight map 200090500; the rider flies east into 200090510 and through `in00` (`templeenter`) to the Temple (270000100). Back: the Temple's `out00` (`outTemple`) to 200090510, west to 200090500, `minar00` (`undodraco`) to Leafre Station, whose own exit `west00` is scripted too (`dracoout`). Both flight maps are `fly=1`, which bots could not move on, and sat in the graph's excluded ride range | leg `leafre-station-to-the-temple-flight`; the two flight maps leave the excluded range (their east/west portals become graph edges); scripted portals `templeenter`, `outTemple`, `undodraco`, `dracoout`; **agents move on `fly=1` maps as on swim maps** (MapleMap learns `fly`) | `guide` leg Leafre Station -> 200090500 (the flight maps' exits are already in `server-knowledge.json`) |
 | Amoria in knowledge | Thomas Swift (9201022) was only in `npc-travel-legs.json`; `region()` null for the 670 fields | already there | `guide` legs; `region()` 670 -> `amoria` |
-| Community Repack towns | entry NPCs spawned by `RepackMaps.ENTRIES` (Cokebear operator, Perry, Ralph, Spirit of Snow Statue) and the Temple Keeper's menu in Three Doors (`docs/REPACK_IMPORT_PLAN.md`); their portals were never exported to the world graph | world graph re-exported with the Repack maps' portals (356 edges in the ossyria, singapore and zipangu groups); legs for the four entry NPCs both ways and the Temple Keeper's Future towns (bots pass the files gate; only stock-client humans are kept out). Arcane River (450) is in no group, so no agent leg | `guide` legs for every entry, Arcane River included |
+| Community Repack towns | entry NPCs spawned by `RepackMaps.ENTRIES` (Cokebear operator, Perry, Ralph, Spirit of Snow Statue) and the Temple Keeper's menu in Three Doors (`docs/REPACK_IMPORT_PLAN.md`); their portals were never exported to the world graph | world graph re-exported with the Repack maps' portals (356 edges in the ossyria, singapore and zipangu groups); 9 legs: Coke Town and Ninja Castle both ways, Ulu City and Lion King's Castle in (out by plain portals), Gate to the Future, Crack in Time and Dimensional Schism from the Temple Keeper (out by plain portals). Bots pass the files gate (a bot counts as a Repack client); only stock-client humans are kept out. Left out for agents: Twilight Perion (its guide back answers only through `repack_talk.js`, which the bot gateway does not open) and Arcane River (in no graph group) | `guide` legs for every entry and every guide back, Twilight Perion and Arcane River included |
 
 The Temple of Time's own roads stay as they are for agents: each road's forward portal (`timeQuest`) opens only
 with that road's quest (3500-3522) done, and no bot does those quests. Memory Lane 1 is open from the Temple.
@@ -54,23 +54,37 @@ with that road's quest (3500-3522) done, and no bot does those quests. Memory La
   set down at the far end, as they are after an NPC ride) and honours `minLevel` and the quest gates for the citizen
   it plans for.
 
+### 2.2 Still out of reach for agents (not in this branch)
+
+| Where | Why |
+|---|---|
+| The Temple of Time's far roads | every road's forward portal (`timeQuest`) needs that road's quest (3500-3522); no bot does them, so routes stop at Memory Lane 1 |
+| Mushroom Castle past Mushroom Forest Field | inner gates `obstacle.js` (quest 30000 or a Poison Spore) and `gotocastle.js` (quest 2324); `fields.yaml` keeps capacity 0 there (user decision 2026-10-10) |
+| Cave of Life (Horntail) | `hontale_morph` scripted portals at 240040700 (the bossing work enters its own way) |
+| Twilight Perion, Arcane River | the guides back answer only through `repack_talk.js`; Arcane River is in no graph group |
+| Mu Lung Dojo, Happyville, Maple Island | NPC warps into instances or event maps, and the one-way ship from Maple Island |
+| Ereve, Rien | unchanged: their docks are not joined to their towns by plain portals |
+
 ## 3. Regions and fields
 
 `FieldCatalogMain.region()` and `regions.yaml`:
 
 | Change | Why |
 |---|---|
-| new region `temple-of-time`, levels 80-140, town 270000100, no lobby | the audit's gap 8; its 15 road maps (Memory Lane, Road of Regrets, Road to Oblivion; mobs 80-141) become citizen fields. Citizens reach the gated roads only while unwatched, like any field the walking graph does not reach |
-| Kerning Square (103040000) joins Victoria's towns (small weight) | reachable now by the train |
-| Tera Forest Time Gate (240070000) joins Leafre's towns (small weight) | a town map on foot from Minar Forest; Neo City's year maps stay out (quest gated) |
-| Haunted House (682000000) joins New Leaf City's towns (small weight) | the NLC taxi (a `cab`) lands there; the Phantom Forest starts behind it |
+| new region `temple-of-time`, levels 79-140, town 270000100 (Temple of Time), no lobby | the audit's gap 8; its 15 road maps (Memory Lane 89-98, Road of Regrets 103-111, Road to Oblivion 118-132) become citizen fields. Citizens reach the gated roads only while unwatched, like any field the walking graph does not reach; the way back from every road to the Temple is plain portals, and the flight back to Leafre (its potion shop) is walkable, so no citizen is stranded the way the Mushroom Castle ones were (the 2026-10-10 decision in `fields.yaml`). The floor is 79, not 80: seeding tops out near lv86 (`CitizenSeedPlanTest`'s seed ceiling), and the band needs enough settled citizens to seed from; below 86 they train in the nearest fitting field elsewhere until they grow into Memory Lane |
+| Haunted House (682000000) joins New Leaf City's towns (90/10) | the NLC taxi (a `cab`) lands there; the Phantom Forest starts behind it; its `haunted-house` profile came with the Masteria merge |
+| TownLife profile `temple-of-time` (generated, appended to `index.json`; `AgentTownLifeProfileRepositoryTest` 50 -> 51) | `RegionFieldConsistencyTest`: every region town but the Aquarium has a profile |
+| **At the merge** (not on this branch): add Three Doors 270000000 to `temple-of-time`'s towns, Tera Forest Time Gate 240070000 to `leafre`'s and Kerning Square 103040000 to `victoria`'s | their profiles belong to the Resident sessions (`three-doors`, `tera-forest-time-gate` on feat/ossyria-remainder; `kerning-square` on feat/victoria-remainder), whose Residents use their venues; a copy here would collide. Suggested weights: Temple 50/50, Leafre 85/15, Kerning Square 2 |
 | Community Repack maps never become citizen fields | `FieldCatalogMain` skips every `RepackMaps.listed` map (Lion King's Castle, Ulu City and Ninja Castle carry existing region prefixes): a stock-client player can never see them, so citizens there would be invisible to most players. **Open for the user**: citizens in Repack areas for Repack players |
 
 Mushroom Castle (106020000) stays out of the town lists: its door is quest gated. Mu Lung Dojo, the Free Market,
 Happyville, the Internet Cafe and the Exclusive Training Center are instances or hubs, not homes.
 
-`KnowledgeExportMain.region()`: 670 -> `amoria`, 925 -> `mu-lung` (Dojo), 926 -> `ariant` (Pyramid), 930 ->
-`ellin-forest` (Ellin PQ), 809 -> `ludibrium` (the Maze), 910 -> `free-market`. Then `tools\knowledge-export.bat`.
+`KnowledgeExportMain.region()`: 670 -> `amoria` (Purplewood Forest, Amos' Training Ground), 809 -> `zipangu` (the
+spas, below 809050000) or `ludibrium` (the Maze), 926 -> `ariant` (Nett's Pyramid), 930 -> `ellin-forest` (the Forest of
+Poison Haze). None of the 809/926/930 maps that lack a forced return has a mob spawn, so none turns into a training
+suggestion. 910 (the Free Market and its hub maps, HPQ's Primrose Hill) and 925 (Mu Lung Dojo, three of whose maps
+have mobs and no forced return) stay null. Then `tools\knowledge-export.bat`.
 
 ## 4. Shops and potions
 
@@ -140,9 +154,12 @@ GM commands are fine for setup (`!warp`, `!level`, `!item`, `!world`); the behav
    flight maps are the first `fly=1` maps agents move on.
 8. **Citizens.** `!citizens seed temple-of-time 3`: they live on the Temple roads (unwatched placement past the
    quest gates). Kerning Square, Tera Forest Time Gate and the Haunted House get a little citizen town life.
-9. **Knowledge.** Ask a Resident in Henesys the way to Kuala Lumpur, to the Temple of Time and to Sharp Cliff;
-   Amoria's fields show up in training suggestions for levels 30-50.
-10. **Malaysia's Residents.** As wave 3's checks 1-4, 6 and 7 for `kuala-lumpur` and `kampung-village` (section 8).
+9. **Repack areas (a Repack-files client).** Owner in Coke Town, companion in Kerning City, `call <name>`: it walks to
+   the Cokebear operator in Henesys and lands in Coke Town; the same into Ninja Castle from the Shrine (Perry) and
+   Ulu City from Suburban Area 2 (Ralph). A stock-client owner's companion is never asked to (the owner cannot go).
+10. **Knowledge.** Ask a Resident in Henesys the way to Kuala Lumpur, to the Temple of Time and to Sharp Cliff;
+    Amoria's fields show up in training suggestions for levels 30-50.
+11. **Malaysia's Residents.** As wave 3's checks 1-4, 6 and 7 for `kuala-lumpur` and `kampung-village` (section 8).
 
 ## 8. Malaysia cast
 
