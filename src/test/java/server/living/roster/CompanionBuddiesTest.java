@@ -208,4 +208,31 @@ class CompanionBuddiesTest {
         game.config.COMPANION_BUDDY_REQUESTS = false;
         assertEquals("Default Group", buddies.groupFor(game.ann, CASSE));
     }
+
+    @Test
+    void aHiredHandAtFriendshipLvFourAsksWithoutTheHalfHour() {
+        game.config.HIRE_FRIENDSHIP_ENABLED = true; // docs/BOT_CONCEPT_PLAN.md C1.4: Lv 4 is a buddy
+        game.companion("hire:" + HIRE, "Pip", HIRE, RosterState.BENCHED, LITH);
+        Character pip = inTheWorld(HIRE, "Pip");
+        when(bonds.peek(ANN, "hire:" + HIRE)).thenReturn(new Bond(ANN, "hire:" + HIRE, null, 75, new LinkedHashSet<>(), null,
+                0L, 0L, 0, 0L, 0, 0L, 0L));
+
+        buddies.sweep(List.of(game.ann));
+
+        assertTrue(annList.contains(HIRE), "seeded at Lv 4 from its warmth: no 30 party minutes needed");
+        assertTrue(acquaintances.get(HIRE).buddyAsked());
+        assertTrue(pip.getBuddylist().containsVisible(ANN));
+    }
+
+    @Test
+    void withHireFriendshipOffAHiredHandStillWaitsForItsHalfHour() {
+        game.companion("hire:" + HIRE, "Pip", HIRE, RosterState.BENCHED, LITH);
+        inTheWorld(HIRE, "Pip");
+        when(bonds.peek(ANN, "hire:" + HIRE)).thenReturn(new Bond(ANN, "hire:" + HIRE, null, 400, new LinkedHashSet<>(), null,
+                0L, 0L, 0, 0L, 0, 0L, 0L));
+
+        buddies.sweep(List.of(game.ann));
+
+        assertFalse(annList.contains(HIRE));
+    }
 }

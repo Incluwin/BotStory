@@ -107,7 +107,23 @@ public final class PersonMemories {
         }
         long nowMs = System.currentTimeMillis();
         PopulationConfig config = config();
-        UnaryOperator<PersonMemory> change = memory -> memory.with(kind, mapId, detail, count, nowMs, config);
+        change(citizenId, playerId, memory -> memory.with(kind, mapId, detail, count, nowMs, config), kind.name());
+    }
+
+    /**
+     * The citizen feels at least {@code warmth} toward the player from now on (a warmer memory stays as it is); memory
+     * only. A hired citizen let go keeps the warmth of the friendship it had with its owner (docs/BOT_CONCEPT_PLAN.md C1.3).
+     */
+    public void warmAtLeast(int citizenId, int playerId, int warmth) {
+        if (!on() || citizenId <= 0 || playerId <= 0 || citizenId == playerId) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        PopulationConfig config = config();
+        change(citizenId, playerId, memory -> memory.warmedTo(warmth, nowMs, config), "warmth");
+    }
+
+    private void change(int citizenId, int playerId, UnaryOperator<PersonMemory> change, String what) {
         for (int attempt = 0; attempt < 3; attempt++) {
             Entry entry = entry(citizenId, playerId);
             if (entry == null) {
@@ -128,7 +144,7 @@ public final class PersonMemories {
             return;
         }
         lost.incrementAndGet();
-        log.debug("person memory cache full: {} of citizen {} with {} not kept", kind, citizenId, playerId);
+        log.debug("person memory cache full: {} of citizen {} with {} not kept", what, citizenId, playerId);
     }
 
     /** Takes the entry out of the cache; the caller holds its lock. */

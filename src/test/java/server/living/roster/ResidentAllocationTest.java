@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.living.bond.BondService;
 import server.living.bond.ContractService;
+import server.living.bond.Friendship;
 import server.living.config.Content;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Look;
@@ -234,6 +235,23 @@ class ResidentAllocationTest {
         game.commitments.commit("kpq-1", BOB, 777);
 
         assertEquals(3, allocation.sweep());
+
+        assertNotNull(game.store.row(ANN, "hire:777"));
+    }
+
+    @Test
+    void aHireAtFriendshipLvTenStaysThroughItsOwnersAbsence() {
+        game.config.HIRE_FRIENDSHIP_ENABLED = true; // docs/BOT_CONCEPT_PLAN.md C1.4: Best friend is permanent
+        hirePersona("hire:777", "Mira");
+        Friendship friendship = new Friendship(game.world); // reads the config: not inside a stubbing
+        when(game.world.friendship()).thenReturn(friendship);
+        when(bonds.peek(ANN, "hire:777")).thenReturn(new Bond(ANN, "hire:777", BondStage.SWORN, 400, new LinkedHashSet<>(),
+                ContractState.NONE, 0L, 0L, 0, 0L, 0, 0L, 0L));
+        game.roster();
+        game.annOnline = false;
+        when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(20));
+
+        assertEquals(3, allocation.sweep(), "its Residents go home; the hire at Lv 10 waits for Ann");
 
         assertNotNull(game.store.row(ANN, "hire:777"));
     }

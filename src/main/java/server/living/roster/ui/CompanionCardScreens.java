@@ -45,6 +45,7 @@ import server.living.roster.LootTerms;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.QuestState;
@@ -253,8 +254,21 @@ final class CompanionCardScreens {
             default -> errand == null ? "" : errand + "\r\n";
         };
         String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "")
-                + records(persona) + terms(persona);
+                + friendship(owner, persona) + records(persona) + terms(persona);
         LivingTalk.open(owner, portrait(persona)).menu(text, options).back(crewBack(owner)).show();
+    }
+
+    /**
+     * A hire's friendship with its owner, a line ("Friendship Lv 4 Friend (35 points to Lv 5)"; C1.4), while
+     * HIRE_FRIENDSHIP_ENABLED; nothing for a Resident (its own window shows it) or before the first point.
+     */
+    String friendship(Character owner, Persona persona) {
+        if (!LivingContent.isHire(persona.id()) || !HireStanding.on(world) || world.bonds() == null) {
+            return "";
+        }
+        var bond = world.bonds().peek(owner.getId(), persona.id());
+        return bond == null || bond.points() <= 0 ? ""
+                : "Friendship " + world.friendship().describe(bond.points()) + "\r\n";
     }
 
     /** Its party-quest records, a line each ("KPQ: cleared 4 of 5"; CompanionRunRecorder.recordLines), or nothing. */
@@ -334,7 +348,8 @@ final class CompanionCardScreens {
         boolean marker = live.startsWith("(");
         String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
         String more = (marker || live.isEmpty() ? "" : live + "\r\n") + progress
-                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + records(persona) + terms(persona);
+                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + friendship(owner, persona)
+                + records(persona) + terms(persona);
         String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();
@@ -1060,7 +1075,7 @@ final class CompanionCardScreens {
         } else {
             options.add(Option.heading("(you have no meso to give)"));
         }
-        if (!LivingContent.isHire(persona.id())) { // a hired citizen keeps no friendship
+        if (!LivingContent.isHire(persona.id()) || HireStanding.on(world)) { // a hire keeps friendship only with C1 on
             options.add(stamp.option("I brought you something...",
                     () -> world.dialogue().giftMenu(owner, persona, () -> supplies(owner, persona, ""))));
         }
@@ -1258,9 +1273,10 @@ final class CompanionCardScreens {
         CompanionView view = menus.view(owner, entry);
         int level = view.level() > 0 ? view.level() : 1;
         BenchLedger bench = world.bench();
-        // its upkeep at its camp (decision 19 b): what an hour of wages costs
-        long upkeep = Math.max(1L, Math.round(bench == null ? BenchLedger.upkeepPerHour(level)
-                : bench.upkeepPerHour(level, view.jobId(), fieldCampOf(entry, persona, level))));
+        // its upkeep at its camp (decision 19 b): what an hour of wages costs, less for a hire at Lv 7+ (C1.4)
+        long upkeep = Math.max(1L, Math.round((bench == null ? BenchLedger.upkeepPerHour(level)
+                : bench.upkeepPerHour(level, view.jobId(), fieldCampOf(entry, persona, level)))
+                * HireStanding.wageFactor(world, owner.getId(), persona.id())));
         long affordable = Math.min(WAGE_HOURS_MAX, owner.getMeso() / upkeep);
         List<Option> options = new ArrayList<>();
         if (affordable >= 1) {

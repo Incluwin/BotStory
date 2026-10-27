@@ -10,6 +10,9 @@ import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.living.population.PersonMemory;
+import server.living.roster.HiredHands;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Bond;
 import server.maps.MapleMap;
 
@@ -23,7 +26,8 @@ import java.util.Set;
  * Friendship: a 1-10 meter over the bond points a player has with one Resident (docs/LIVING_WORLD_GUIDE.md,
  * "Friendship"). Quests award points as before; fame, gifts, and party quests and bosses cleared with the Resident in
  * the party add more, gifts, party quests and bosses up to a daily count kept in living_event_log. BondService
- * announces level changes. Hired citizens are not Residents and keep no friendship.
+ * announces level changes. Hired citizens keep no friendship, unless HIRE_FRIENDSHIP_ENABLED (docs/BOT_CONCEPT_PLAN.md
+ * C1.2): then a hire earns points, gifts and level changes like a Resident; its authored content stays Residents-only.
  */
 public final class Friendship {
     public static final int MAX_LEVEL = 10;
@@ -80,13 +84,16 @@ public final class Friendship {
         return level >= MAX_LEVEL ? out : out + " (" + (levelPoints[level] - points) + " points to Lv " + (level + 1) + ")";
     }
 
-    /** The Resident this character plays, or null for players, citizens and hired hands. */
+    /**
+     * The Resident this character plays, or null for players and citizens; a hired hand's persona only while
+     * HIRE_FRIENDSHIP_ENABLED (C1.2: points, gifts and announcements, nothing authored).
+     */
     public Persona residentOf(Character chr) {
         if (chr == null || !AgentPresence.isAgent(chr)) {
             return null;
         }
         Persona persona = world.residents().personaOf(chr);
-        return persona == null || LivingContent.isHire(persona.id()) ? null : persona;
+        return persona == null || LivingContent.isHire(persona.id()) && !HireStanding.on(world) ? null : persona;
     }
 
     // ---- fame -----------------------------------------------------------------------------
@@ -100,7 +107,8 @@ public final class Friendship {
         world.bonds().addPoints(giver, persona, world.config().FRIENDSHIP_FAME_POINTS * Integer.signum(delta),
                 delta > 0 ? "fame" : "defame");
         List<String> lines = world.arcs().lines(persona, delta > 0 ? "famed" : "defamed");
-        world.residents().reply(persona, giver, lines.isEmpty() ? (delta > 0 ? "oh. thanks." : "...noted.") : pick(lines, giver));
+        world.residents().reply(persona, giver, voiced(persona,
+                lines.isEmpty() ? (delta > 0 ? "oh. thanks." : "...noted.") : pick(lines, giver)));
     }
 
     // ---- gifts ----------------------------------------------------------------------------
@@ -207,6 +215,10 @@ public final class Friendship {
         for (Persona persona : companions) {
             together(player, persona, BOSS, world.config().FRIENDSHIP_BOSS_POINTS,
                     world.config().FRIENDSHIP_BOSS_PER_DAY, "boss run " + bossKey);
+            if (LivingContent.isHire(persona.id())) { // the citizen remembers the fight too (C1.2)
+                HireStanding.remember(LivingContent.hireCharacterId(persona.id()), player.getId(),
+                        PersonMemory.Kind.PQ_CLEAR, 0, HireStanding.runName(bossKey));
+            }
         }
     }
 
@@ -221,7 +233,13 @@ public final class Friendship {
 
     private void say(Character chr, Persona persona, String intent, String fallback) {
         List<String> lines = world.arcs().lines(persona, intent);
-        world.residents().reply(persona, chr, lines.isEmpty() ? fallback : pick(lines, chr));
+        world.residents().reply(persona, chr, voiced(persona, lines.isEmpty() ? fallback : pick(lines, chr)));
+    }
+
+    /** A hire's line in its own typing (its voice pack); a Resident's as written. */
+    private String voiced(Persona persona, String line) {
+        HiredHands hands = LivingContent.isHire(persona.id()) ? world.hiredHands() : null;
+        return hands == null ? line : hands.voice(LivingContent.hireCharacterId(persona.id()), line);
     }
 
     private static boolean sameParty(Character player, Character member) {

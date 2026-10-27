@@ -16,6 +16,7 @@ import server.living.population.Citizen;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
 import server.living.resident.ResidentSpots;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.CharacterRow;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -164,9 +165,11 @@ public final class HiredHands {
     /**
      * The citizen's terms now: the hired-hand contract's price.meso per level as the fee, and the bench upkeep of its
      * level for an hour as its wages: 30 meso per level, capped by what the camp it would keep pays (decision 19 b,
-     * BenchLedger), the same number its Wages page shows once hired. Null when its level is unknown.
+     * BenchLedger), the same number its Wages page shows once hired. A citizen that is {@code owner}'s FRIEND (warmth
+     * 40+) asks HIRE_FRIEND_FEE_DISCOUNT_PERCENT less while HIRE_FRIENDSHIP_ENABLED (C1.3). Null when its level is
+     * unknown.
      */
-    public Terms terms(int citizenCharacterId) {
+    public Terms terms(Character owner, int citizenCharacterId) {
         Character live = loaded(citizenCharacterId);
         int level;
         int jobId;
@@ -190,7 +193,9 @@ public final class HiredHands {
         int stood = live != null ? live.getMapId() : rowMap(citizenCharacterId);
         int camp = citizen == null ? stood : camp(population, citizen, stood);
         double wage = ledger == null ? BenchLedger.upkeepPerHour(level) : ledger.upkeepPerHour(level, jobId, camp);
-        return new Terms(level, CompanionView.jobName(jobId), perLevel * level, Math.round(wage));
+        int warmth = HireStanding.on(world) ? HireStanding.warmth(citizenCharacterId, owner.getId()) : 0;
+        return new Terms(level, CompanionView.jobName(jobId), HireStanding.fee(world, perLevel * level, warmth),
+                Math.round(wage));
     }
 
     /** Hired hands on the owner's roster. */
@@ -256,7 +261,7 @@ public final class HiredHands {
         if (hiresOf(owner) >= world.config().HIRE_MAX_PER_OWNER) {
             return refused(Result.HIRE_CAP, characterId, "you've got plenty of hired hands already.");
         }
-        Terms terms = terms(characterId);
+        Terms terms = terms(owner, characterId);
         if (terms == null) {
             return new Outcome(Result.GONE, "", citizen.name() + " is not around any more.");
         }
@@ -289,6 +294,8 @@ public final class HiredHands {
         if (!owner.tryPayMeso(fee, true)) {
             return cannotPay(characterId, terms); // spent meanwhile
         }
+        // how it feels about them before its population life ends: the friendship it starts with (C1.2)
+        int warmth = HireStanding.on(world) ? HireStanding.warmth(characterId, owner.getId()) : 0;
         boolean hired = false;
         try {
             world.residents().whisper(persona, owner, voice(characterId, "deal. let's go.")); // before the roster's lines
@@ -305,6 +312,11 @@ public final class HiredHands {
             world.store().event(owner.getId(), hireId, EVENT_ACCEPT, "fee " + terms.fee() + ", lv" + terms.level()
                     + (adopt ? ", adopted where it stood" : walkOut ? ", walked out to camp" : ", called from map " + camp));
             log.info("{} hired {} ({}) for {} meso", owner.getName(), citizen.name(), hireId, terms.fee());
+            try {
+                HireStanding.seed(world, owner, persona, warmth);
+            } catch (RuntimeException failure) {
+                log.warn("friendship seed of {} for {} failed", hireId, owner.getName(), failure); // the hire stands
+            }
             return new Outcome(Result.HIRED, "", adopt ? "" : RosterVoice.line(persona, result));
         } finally {
             if (!hired && world.roster().entry(owner.getId(), hireId) == null) {
@@ -371,10 +383,12 @@ public final class HiredHands {
      * The roster let the hired citizen go (installed as RosterService's hired-hand release): by its owner, a contract end
      * or its owner's deletion. The roster's release already cleared employed_by and unloads it (a walk to the nearest
      * portal on its owner's map); here its hired flag goes, so the population logs it in again in time and Churn counts it
-     * again, and its persona is forgotten.
+     * again, and its persona is forgotten. While HIRE_FRIENDSHIP_ENABLED it keeps the warmth of its friendship with its
+     * old owner (C1.3), so it greets them as a friend when they meet again.
      */
     public void onReleased(int ownerId, String personaId, String reason) {
         personas.remove(personaId);
+        HireStanding.released(world, ownerId, personaId);
         giveBack(LivingContent.hireCharacterId(personaId));
         log.info("hired hand {} of {} let go: {}", personaId, ownerId, reason);
     }

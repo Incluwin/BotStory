@@ -1,12 +1,14 @@
 package server.living.population;
 
 import client.Character;
+import config.LivingWorldConfig;
 import net.server.world.Party;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.integration.AgentPresence;
+import server.living.LivingWorld;
 import server.living.config.ContentLoader;
 import server.living.population.PersonMemory.Kind;
 
@@ -99,6 +101,34 @@ class PersonMemoryHooksTest {
         PopulationHooks.partyQuestCleared(List.of(ann, pip), "HenesysPQ");
         verify(memories, never()).record(PIP, ANN, Kind.PQ_CLEAR, 0, "hpq", 1);
         verify(memories, times(1)).record(anyInt(), anyInt(), any(), anyInt(), anyString(), anyInt());
+    }
+
+    @Test
+    void aHiredCitizenRemembersItsRunsAndFamesWhileHiredWithHireFriendshipOn() {
+        LivingWorldConfig config = new LivingWorldConfig();
+        LivingWorld world = mock(LivingWorld.class);
+        when(world.config()).thenReturn(config);
+        Citizen hired = mock(Citizen.class);
+        when(hired.hired()).thenReturn(true);
+        when(population.citizen(PIP)).thenReturn(hired); // no session: the population left it to its owner
+        Party party = mock(Party.class);
+        when(party.getId()).thenReturn(5);
+        when(pip.getParty()).thenReturn(party);
+        when(ann.getParty()).thenReturn(party);
+        try (MockedStatic<LivingWorld> worlds = mockStatic(LivingWorld.class)) {
+            worlds.when(LivingWorld::get).thenReturn(world);
+
+            PopulationHooks.partyQuestCleared(List.of(ann, pip), "KerningPQ");
+            PopulationHooks.famed(ann, pip, 1);
+            verify(memories, never()).record(anyInt(), anyInt(), any(), anyInt(), anyString(), anyInt()); // switch off
+
+            config.HIRE_FRIENDSHIP_ENABLED = true; // docs/BOT_CONCEPT_PLAN.md C1.2
+            PopulationHooks.partyQuestCleared(List.of(ann, pip), "KerningPQ");
+            PopulationHooks.famed(ann, pip, 1);
+        }
+
+        verify(memories).record(PIP, ANN, Kind.PQ_CLEAR, 0, "kpq", 1);
+        verify(memories).record(PIP, ANN, Kind.FAMED, KERNING, "", 1);
     }
 
     @Test

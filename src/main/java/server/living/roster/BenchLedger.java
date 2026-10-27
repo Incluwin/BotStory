@@ -20,6 +20,7 @@ import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.HaulItem;
@@ -216,7 +217,9 @@ public final class BenchLedger {
             case REST -> { }
         }
         if (assignment != Assignment.REST && !stalled && entry.wagesPaidUntilMs() < now) {
-            long upkeep = Math.round(upkeepPerHour(botLevel, key) * hours);
+            // a hire at Lv 7+ costs less (C1.4)
+            double factor = HireStanding.wageFactor(world, entry.characterId(), entry.personaId());
+            long upkeep = Math.round(upkeepPerHour(botLevel, key) * factor * hours);
             haulMeso -= upkeep; // prepaid wages cover upkeep; otherwise the haul pays, and an unpaid haul slows the work
         }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
@@ -306,7 +309,9 @@ public final class BenchLedger {
         }
         int botCharacterId = world.residents().characterIdOf(persona.id());
         int botLevel = Math.max(1, world.store().characterLevel(botCharacterId));
-        return upkeepPerHour(botLevel, key(entry, persona, botCharacterId, botLevel));
+        // a hire at Lv 7+ costs less (C1.4)
+        return upkeepPerHour(botLevel, key(entry, persona, botCharacterId, botLevel))
+                * HireStanding.wageFactor(world, entry.characterId(), entry.personaId());
     }
 
     private double upkeepPerHour(int level, BenchYieldModel.Key key) {

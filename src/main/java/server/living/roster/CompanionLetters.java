@@ -15,6 +15,7 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.population.Population;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.CharacterEvent;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
@@ -578,16 +579,17 @@ public final class CompanionLetters {
     // ---- gifts by Duey ------------------------------------------------------------------
 
     /**
-     * Each ledger tick (BenchLedger.tick, companion-ops): a benched Resident (hires keep no friendship) at friendship
-     * LETTERS_GIFT_FRIENDSHIP_LEVEL or more sometimes ({@code LETTERS_GIFT_CHANCE}) mails its owner one find from its
-     * haul by Duey, with a message in its voice, LETTERS_GIFTS_PER_WEEK at most each.
+     * Each ledger tick (BenchLedger.tick, companion-ops): a benched Resident (or hire, while HIRE_FRIENDSHIP_ENABLED; else
+     * hires keep no friendship) at friendship LETTERS_GIFT_FRIENDSHIP_LEVEL or more sometimes ({@code LETTERS_GIFT_CHANCE})
+     * mails its owner one find from its haul by Duey, with a message in its voice, LETTERS_GIFTS_PER_WEEK at most each.
      */
     void mailGifts(List<RosterEntry> benched, long nowMs) {
         if (!on()) {
             return;
         }
         for (RosterEntry entry : benched) {
-            if (LivingContent.isHire(entry.personaId()) || random.nextDouble() >= world.config().LETTERS_GIFT_CHANCE) {
+            if (LivingContent.isHire(entry.personaId()) && !HireStanding.on(world)
+                    || random.nextDouble() >= world.config().LETTERS_GIFT_CHANCE) {
                 continue;
             }
             try {
@@ -607,7 +609,7 @@ public final class CompanionLetters {
         LivingWorldConfig config = world.config();
         int ownerId = entry.characterId();
         Persona persona = world.content().persona(entry.personaId());
-        if (persona == null || LivingContent.isHire(persona.id())
+        if (persona == null || LivingContent.isHire(persona.id()) && !HireStanding.on(world)
                 || world.friendship().level(ownerId, persona.id()) < config.LETTERS_GIFT_FRIENDSHIP_LEVEL
                 || world.store().countEvents(ownerId, persona.id(), GIFT_EVENT, nowMs - WEEK_MS) >= config.LETTERS_GIFTS_PER_WEEK) {
             return false;

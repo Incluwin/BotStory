@@ -1330,6 +1330,25 @@ class CompanionCardScreensTest {
         return List.of(tail.getInt(), tail.getInt(), tail.getInt());
     }
 
+    @Test
+    void aHiresCardShowsItsFriendshipWithItsOwner() {
+        Persona pip = persona("hire:950", "Pip");
+        BondService bonds = mock(BondService.class);
+        when(world.bonds()).thenReturn(bonds);
+        server.living.bond.Friendship friendship = new server.living.bond.Friendship(world); // reads the config first
+        when(world.friendship()).thenReturn(friendship);
+        when(bonds.peek(ANN, "hire:950")).thenReturn(new Bond(ANN, "hire:950", BondStage.TRUSTED, 75, new LinkedHashSet<>(),
+                ContractState.NONE, 0L, 0L, 0, 0L, 0, 0L, 0L));
+        when(bonds.peek(ANN, "hadrik")).thenReturn(new Bond(ANN, "hadrik", BondStage.TRUSTED, 75, new LinkedHashSet<>(),
+                ContractState.ACTIVE, 0L, 0L, 0, 0L, 0, 0L, 0L));
+
+        assertEquals("", menus.cards().friendship(owner, pip), "HIRE_FRIENDSHIP_ENABLED off: no friendship kept");
+        world.config().HIRE_FRIENDSHIP_ENABLED = true; // docs/BOT_CONCEPT_PLAN.md C1.4
+
+        assertEquals("Friendship Lv 4 Friend (35 points to Lv 5)\r\n", menus.cards().friendship(owner, pip));
+        assertEquals("", menus.cards().friendship(owner, hadrik), "a Resident's own window shows its friendship");
+    }
+
     private Persona persona(String id, String name) {
         Persona persona = mock(Persona.class);
         when(persona.id()).thenReturn(id);

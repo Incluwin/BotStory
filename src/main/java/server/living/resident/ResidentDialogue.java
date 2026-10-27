@@ -38,6 +38,7 @@ import server.living.roster.RosterResult;
 import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus;
 import server.living.roster.ui.HireScreens;
+import server.living.standing.HireStanding;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -598,7 +599,7 @@ public final class ResidentDialogue {
             options.add(new LivingTalk.Option("Would you travel with me?", () ->
                     world.residents().reply(persona, speaker, world.contracts().askToJoin(speaker, persona))));
         }
-        if (!LivingContent.isHire(persona.id())) { // a hired citizen keeps no friendship
+        if (!LivingContent.isHire(persona.id()) || HireStanding.on(world)) { // a hire keeps friendship only with C1 on
             options.add(new LivingTalk.Option("I brought you something.", () -> giftMenu(speaker, persona, null)));
         }
         options.add(new LivingTalk.Option("Who are you?", () -> sayLine(speaker, persona, "who",

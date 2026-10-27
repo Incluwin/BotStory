@@ -325,6 +325,16 @@ public class LivingWorldConfig {
     public int HIRE_OFFER_PARTY_MINUTES = 10;
     /** Minutes a citizen whose offer was declined or went unanswered waits before it asks that player again. */
     public int HIRE_OFFER_COOLDOWN_MINUTES = 720;
+    /**
+     * Standing (docs/BOT_CONCEPT_PLAN.md C1): hires join the friendship meter (a {@code hire:<characterId>} bond seeded
+     * from the citizen's warmth), offers to stay on follow the citizen's warmth, a hire let go keeps warmth from its
+     * friendship, and the rung perks apply. False: hires keep no friendship and offers go by party time, as before.
+     */
+    public boolean HIRE_FRIENDSHIP_ENABLED = false;
+    /** Percent off a citizen's hiring fee when it is your FRIEND (warmth 40+); at most 90, so a hire is never free. */
+    public int HIRE_FRIEND_FEE_DISCOUNT_PERCENT = 25;
+    /** Percent off a hire's wages once its friendship with you reaches Lv 7 (Close friend); at most 90. */
+    public int HIRE_CLOSE_WAGE_DISCOUNT_PERCENT = 25;
     /** Decision 18: Residents one friend may keep on their roster at once (0 = none). */
     public int RESIDENT_CAP_PER_OWNER = 5;
     /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
@@ -840,6 +850,13 @@ public class LivingWorldConfig {
         }
         if (HIRE_OFFER_COOLDOWN_MINUTES < 0) {
             throw new IllegalArgumentException("living_world.HIRE_OFFER_COOLDOWN_MINUTES must be >= 0");
+        }
+        if (HIRE_FRIEND_FEE_DISCOUNT_PERCENT < 0 || HIRE_FRIEND_FEE_DISCOUNT_PERCENT > 90) {
+            throw new IllegalArgumentException(
+                    "living_world.HIRE_FRIEND_FEE_DISCOUNT_PERCENT must be within 0..90 (never free)");
+        }
+        if (HIRE_CLOSE_WAGE_DISCOUNT_PERCENT < 0 || HIRE_CLOSE_WAGE_DISCOUNT_PERCENT > 90) {
+            throw new IllegalArgumentException("living_world.HIRE_CLOSE_WAGE_DISCOUNT_PERCENT must be within 0..90");
         }
         if (RESIDENT_CAP_PER_OWNER < 0 || RESIDENT_CAP_PER_OWNER > ROSTER_MAX) {
             throw new IllegalArgumentException("living_world.RESIDENT_CAP_PER_OWNER must be within 0..ROSTER_MAX");

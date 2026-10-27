@@ -48,7 +48,7 @@ public final class HireScreens {
     private void terms(Character owner, int citizenCharacterId, Context context, String top, Runnable backToList) {
         HiredHands hands = world.hiredHands();
         Persona persona = hands == null || !LivingTalk.mayShow(owner) ? null : hands.persona(HiredHands.hireId(citizenCharacterId));
-        HiredHands.Terms terms = persona == null ? null : hands.terms(citizenCharacterId);
+        HiredHands.Terms terms = persona == null ? null : hands.terms(owner, citizenCharacterId);
         if (terms == null) {
             owner.sendPacket(PacketCreator.enableActions());
             return;

@@ -71,15 +71,16 @@ public final class BondService {
                 bond.contractStartedAtMs(), bond.offerExpiresAtMs(), bond.proofProgress(), bond.paidMeso(),
                 bond.partySeconds(), bond.leftAtMs(), System.currentTimeMillis());
         world.store().saveBond(updated);
-        if (stage != bond.stage()) {
-            server.living.roster.CompanionViews.invalidate(world, chr.getId(), bond.personaId()); // a card shows the bond
+        Friendship friendship = world.friendship();
+        int level = friendship.levelFor(points);
+        int was = friendship.levelFor(bond.points());
+        if (stage != bond.stage() || level != was) {
+            // a card shows the bond, and a hire's Crew row its friendship level (C1.4)
+            server.living.roster.CompanionViews.invalidate(world, chr.getId(), bond.personaId());
         }
         if (delta != 0) {
             world.store().event(chr.getId(), persona.id(), "bond.points", delta + " (" + reason + ") -> " + points);
         }
-        Friendship friendship = world.friendship();
-        int level = friendship.levelFor(points);
-        int was = friendship.levelFor(bond.points());
         if (level > was && level > 1) {
             chr.dropMessage(5, "Friendship with " + persona.name() + ": Lv " + level + " " + Friendship.label(level) + ".");
         } else if (level < was) {

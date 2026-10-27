@@ -7,6 +7,7 @@ import server.ItemInformationProvider;
 import server.integration.AgentPresence;
 import server.agents.capabilities.expedition.boss.AgentBossField;
 import server.life.Monster;
+import server.living.standing.HireStanding;
 import server.maps.MapleMap;
 
 import java.util.List;
@@ -177,9 +178,11 @@ public final class PopulationHooks {
         }
         try {
             CitizenSession self = population.presence().sessionOf(target);
+            PersonMemory.Kind kind = delta > 0 ? PersonMemory.Kind.FAMED : PersonMemory.Kind.DEFAMED;
             if (self != null) {
-                population.memories().record(self.characterId, giver.getId(),
-                        delta > 0 ? PersonMemory.Kind.FAMED : PersonMemory.Kind.DEFAMED, target.getMapId(), "", 1);
+                population.memories().record(self.characterId, giver.getId(), kind, target.getMapId(), "", 1);
+            } else {
+                HireStanding.remember(target.getId(), giver.getId(), kind, target.getMapId(), ""); // a hired one (C1.2)
             }
         } catch (RuntimeException failure) {
             log.debug("population famed hook failed", failure);
@@ -188,8 +191,8 @@ public final class PopulationHooks {
 
     /**
      * A party quest cleared ({@code scriptName}, e.g. KerningPQ): a citizen in a player's party (a guest) remembers
-     * clearing it with each player of that party. A run citizens lead themselves is CitizenPartyQuests' to remember,
-     * with how each player left it.
+     * clearing it with each player of that party, and so does a hired one while HIRE_FRIENDSHIP_ENABLED (it has no
+     * session). A run citizens lead themselves is CitizenPartyQuests' to remember, with how each player left it.
      */
     public static void partyQuestCleared(List<Character> players, String scriptName) {
         Population population = Population.get();
@@ -201,13 +204,19 @@ public final class PopulationHooks {
             String quest = questName(scriptName);
             for (Character member : players) {
                 CitizenSession self = member == null ? null : population.presence().sessionOf(member);
-                if (self == null || member.getParty() == null || runs != null && runs.holds(self.characterId)) {
+                if (member == null || member.getParty() == null
+                        || self != null && runs != null && runs.holds(self.characterId)) {
                     continue;
                 }
                 for (Character player : players) {
                     if (player != null && !AgentPresence.isAgent(player) && player.getParty() != null
                             && player.getParty().getId() == member.getParty().getId()) {
-                        population.memories().record(self.characterId, player.getId(), PersonMemory.Kind.PQ_CLEAR, 0, quest, 1);
+                        if (self != null) {
+                            population.memories().record(self.characterId, player.getId(), PersonMemory.Kind.PQ_CLEAR, 0,
+                                    quest, 1);
+                        } else { // a hired citizen has no session, and remembers its runs all the same (C1.2)
+                            HireStanding.remember(member.getId(), player.getId(), PersonMemory.Kind.PQ_CLEAR, 0, quest);
+                        }
                     }
                 }
             }
