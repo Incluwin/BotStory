@@ -50,7 +50,8 @@ public enum ItemFactory {
     ORE_BAG(10, false),        // the Storage Bags (server.bag.StorageBagKind), per character
     SCROLL_BAG(11, false),
     CHAIR_BAG(12, false),
-    MOUNT_BAG(13, false);
+    MOUNT_BAG(13, false),
+    NEED_ESCROW(14, false);    // a citizen's needs-board hand-ins while it was away, by its id (server.living.population.needs)
     private final int value;
     private final boolean account;
 

@@ -1071,6 +1071,10 @@ public final class LivingWorldHooks {
             return false;
         }
         try {
+            server.living.population.Population population = server.living.population.Population.get();
+            if (population != null && population.needs() != null && population.needs().boards().clicked(clicker, objectId)) {
+                return true; // a needs board (docs/BOT_CONCEPT_PLAN.md F1), not the Guild PQ board's script
+            }
             if (!world.markers().isHitbox(clicker, objectId)) {
                 return false;
             }

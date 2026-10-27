@@ -1354,6 +1354,29 @@ population:
     CITIZEN_SPOT_CROWDING: 0.5
     CITIZEN_SPOT_TEMPERATURE: 0.15
     CITIZEN_SPOT_MIN_MS: 300000
+    # The needs board (docs/BOT_CONCEPT_PLAN.md F1): citizens ask for real things they lack and pay from their own
+    # purse. SUPPLY: the potion it would buy for Balrog, short of the standard; SCROLL: a basket scroll for a piece it
+    # wears, when it can pay the index price; GEAR (decision D4): GEAR_WANT_SHARE of its free gear upgrades become a want,
+    # granted as before after GEAR_DEADLINE_HOURS; PARTY: its forming party is short. At most PER_CITIZEN item needs each;
+    # SUPPLY and SCROLL end after EXPIRE_MIN..MAX_HOURS, and the same one is not asked again for REPOST_HOURS. It names the
+    # real item, count and price in map chat (the random "B>" lines go), a share of the megaphones, and a whisper to a
+    # player it likes on its map (one per WHISPER_GAP_MINUTES a player). Bulletin Boards in the FM and the main towns list
+    # them; a player holds CLAIMS_PER_PLAYER requests for CLAIM_MINUTES each and hands the item over in person (double
+    # click the citizen) or at a board (escrow until its next load). false = the kill switch: none of it.
+    # Technical: NeedLedger keeps the open living_need rows in memory, derives at each citizen load and every REFRESH_MINUTES on the 60 s social lane, and moves item and mesos in one NEED_FULFILLED economy transaction.
+    NEEDS_ENABLED: false
+    NEEDS_PER_CITIZEN: 2
+    NEEDS_EXPIRE_MIN_HOURS: 24
+    NEEDS_EXPIRE_MAX_HOURS: 48
+    NEEDS_GEAR_WANT_SHARE: 0.3
+    NEEDS_GEAR_DEADLINE_HOURS: 48
+    NEEDS_SCROLL_CHANCE: 0.15
+    NEEDS_SUPPLY_PREMIUM: 1.15
+    NEEDS_CLAIMS_PER_PLAYER: 3
+    NEEDS_CLAIM_MINUTES: 60
+    NEEDS_WHISPER_GAP_MINUTES: 60
+    NEEDS_REFRESH_MINUTES: 15
+    NEEDS_REPOST_HOURS: 12
     # Citizens run boss expeditions themselves (2026-10-25, docs/CITIZEN_EXPEDITIONS_PLAN.md): citizens Lv50+ of the
     # regions past Victoria go on outings to Mu Young (Sleepywood), form a party there as at a PQ lobby (inviting a
     # human who fits first), and their leader makes the Balrog expedition with her window. The others sign up through

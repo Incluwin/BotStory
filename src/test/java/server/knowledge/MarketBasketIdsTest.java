@@ -60,7 +60,7 @@ class MarketBasketIdsTest {
                 wrong.add(id + " '" + label + "' succeeds " + item.success() + "%");
             }
         }
-        assertEquals(24, rows, "every basket row was read");
+        assertEquals(37, rows, "every basket row was read"); // 24, and 13 weapon scrolls for the needs board (F1)
         assertEquals(List.of(), wrong);
     }
 }

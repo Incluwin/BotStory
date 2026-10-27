@@ -45,8 +45,23 @@ final class CitizenGear {
     private CitizenGear() {
     }
 
+    /**
+     * Decision D4 (the needs board): whether the citizen holds a pick back as a want instead of being handed it now
+     * ({@code NeedLedger.gearWant}). A pick it owns already is worn whatever this says.
+     */
+    interface Wants {
+        Wants NONE = (agent, slot, pick) -> false;
+
+        boolean holdBack(Character agent, String slot, int pick);
+    }
+
     /** Upgrades each worn slot to a better-levelled pick; true when it changed anything (the character is then saved). */
     static boolean upgrade(Character agent, Job job, Loadout loadout) {
+        return upgrade(agent, job, loadout, Wants.NONE);
+    }
+
+    /** As {@link #upgrade(Character, Job, Loadout)}, with picks {@code wants} holds back left unworn (a want on the board). */
+    static boolean upgrade(Character agent, Job job, Loadout loadout, Wants wants) {
         if (!Decisions.citizenGear() || agent.getLevel() < MIN_LEVEL || job == Job.BEGINNER) {
             return false;
         }
@@ -70,6 +85,9 @@ final class CitizenGear {
                 continue;
             }
             boolean added = agent.getInventory(InventoryType.EQUIP).countById(pick) == 0; // an owned copy is worn, not a new one
+            if (added && wants.holdBack(agent, slot.name(), pick)) {
+                continue; // it asks for this one on the board instead (until its deadline)
+            }
             if (added && !InventoryManipulator.addById(agent.getClient(), pick, (short) 1)) {
                 continue;
             }

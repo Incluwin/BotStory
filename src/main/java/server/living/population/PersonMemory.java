@@ -70,7 +70,14 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
         SOLD(5, 5, HOUR_MS),
         FAMED(5, 8, 0L),
         /** A let-down like {@link #PQ_LEFT}. */
-        DEFAMED(7, -60, 0L);
+        DEFAMED(7, -60, 0L),
+        /**
+         * They handed it what its request on the needs board asked for, in person; the detail is the item. Warms once a
+         * (UTC) day whatever they brought (the fold ignores the detail), more than HELPED.
+         */
+        FULFILLED(6, 8, DAY_MS),
+        /** The same, left at a board while it was away: it warms less. */
+        FULFILLED_BOARD(4, 4, DAY_MS);
 
         final double weight;
         final int warmth;
@@ -160,7 +167,11 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
         int folded = -1;
         for (int i = next.size() - 1; i >= 0; i--) {
             Episode episode = next.get(i);
-            if (episode.kind() == kind && episode.detail().equalsIgnoreCase(what) && nowMs - episode.atMs() <= kind.foldMs
+            boolean needs = kind == Kind.FULFILLED || kind == Kind.FULFILLED_BOARD;
+            boolean sameDetail = needs || episode.detail().equalsIgnoreCase(what);
+            boolean inWindow = needs ? nowMs / DAY_MS == episode.atMs() / DAY_MS // once a (UTC) day, however often
+                    : nowMs - episode.atMs() <= kind.foldMs;
+            if (episode.kind() == kind && sameDetail && inWindow
                     && (kind != Kind.PARTY || episode.mapId() == mapId)) {
                 folded = i;
                 break;
@@ -171,7 +182,8 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             next.add(new Episode(kind, nowMs, mapId, times, what));
         } else {
             Episode old = next.remove(folded);
-            next.add(new Episode(kind, nowMs, mapId == 0 ? old.mapId() : mapId, old.count() + times, what));
+            next.add(new Episode(kind, nowMs, mapId == 0 ? old.mapId() : mapId, old.count() + times,
+                    what.isEmpty() ? old.detail() : what));
         }
         int delta;
         if (kind == Kind.PARTY) {
@@ -264,6 +276,7 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
                 case SOLD -> "memory.greet.sold";
                 case FAMED -> "memory.greet.famed";
                 case HELPED -> "memory.greet.helped";
+                case FULFILLED, FULFILLED_BOARD -> "memory.greet.fulfilled";
                 case TALK, THANKED -> "memory.greet.talk";
                 case PQ_LEFT, DEFAMED -> null;
             };
@@ -353,6 +366,8 @@ public record PersonMemory(int warmth, long memoryAtMs, long firstMetAtMs, List<
             case SOLD -> "they bought " + (what.isEmpty() ? "something" : what) + " at my stall";
             case FAMED -> "they famed me";
             case DEFAMED -> "they defamed me";
+            case FULFILLED -> "they brought me " + (what.isEmpty() ? "what i needed" : what);
+            case FULFILLED_BOARD -> "they left " + (what.isEmpty() ? "what i needed" : what) + " for me at the board";
         };
     }
 

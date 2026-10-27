@@ -457,6 +457,9 @@ public final class PresenceScheduler {
                 return false;
             }
             Job offScreen = population.ledger().catchUp(agent, citizen);
+            if (population.needs() != null) {
+                population.needs().onLoad(session, agent, now); // the needs board: escrow picked up, requests derived
+            }
             boolean replanSoon = false;
             if (activity == Activity.JOB && jobs.due(citizen, agent.getJob(), agent.getLevel()) != session.errandJob) {
                 session.errandJob = null; // the catch-up settled it after all: an ordinary visit, re-planned soon
@@ -721,6 +724,10 @@ public final class PresenceScheduler {
             }
             if (activity == Activity.MARKET && (!population.config().MARKET_ENABLED || !citizen.has(Citizen.FLAG_MERCHANT))) {
                 weight = weight / 3;
+            }
+            if (activity == Activity.MARKET && population.config().MARKET_ENABLED && population.needs() != null
+                    && population.needs().wantsFromMarket(citizen.characterId())) {
+                weight = Math.max(weight * 3, 10); // it wants gear or a scroll a player might sell (the needs board)
             }
             if (activity == Activity.AFK && citizen.has(Citizen.FLAG_AFK_TOWNIE)) {
                 weight *= 3;

@@ -1,0 +1,169 @@
+# The needs board (docs/BOT_CONCEPT_PLAN.md F1, server.living.population.needs). A citizen with a request names the
+# real item, count and price; while population.NEEDS_ENABLED is off none of this is said, and while it is on the
+# random-basket buy lines (fm.buy, town.buy) go. An intent id "need.<kind>.*" is said only by a citizen with an open
+# request of that kind (supply = potions for a boss, scroll = a scroll for a piece it wears, gear = an upgrade it wants).
+# Slots: {item} the item as players type it ("claw att 60%", "white potion"), {what} with its count when more than one
+# ("120 white potion"), {count}, {price} what it pays a unit, {total}, {for} what for ("balrog", "my red katana",
+# "an upgrade"), {map}, {name}. Human whispers to citizens go unanswered (F5c), so no line asks to be whispered: people
+# find the citizen, or a Bulletin Board. Reaction ids are "needs.*" (not "need."): said whatever its requests are now.
+intents:
+  - id: need.supply.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 8
+    cooldownMs: 300000
+    lines:
+      - "B> {count} {item} {price} ea"
+      - "B> {item} x{count} @ {price}"
+      - "buying {count} {item} for {for}, {price} each"
+      - "anyone selling {item}? need {count}, paying {price}"
+    styles:
+      quiet-practical-v1:
+        - "B> {item} x{count} {price}"
+  - id: need.supply.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 400000
+    lines:
+      - "B> {count} {item} {price} ea"
+      - "anyone have {count} {item}? going {for} later, paying {price} ea"
+      - "need {count} {item} for {for} lol, {price} each"
+      - "buying {item} x{count}"
+  - id: need.scroll.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 8
+    cooldownMs: 300000
+    lines:
+      - "B> {item} {price}"
+      - "buying {item} for {for}, {price}"
+      - "anyone selling {item}? paying {price}"
+      - "B> {item}, {price} offer"
+  - id: need.scroll.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 4
+    cooldownMs: 500000
+    lines:
+      - "B> {item} {price}"
+      - "anyone got a {item}? want to scroll {for}"
+      - "buying {item} {price}"
+  - id: need.gear.fm
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 8
+    cooldownMs: 300000
+    lines:
+      - "B> {item} {price}"
+      - "looking for a {item}, paying {price}"
+      - "anyone selling {item}? clean is fine"
+      - "B> {item} pls, {price}"
+  - id: need.gear.town
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 4
+    cooldownMs: 500000
+    lines:
+      - "B> {item} {price}"
+      - "anyone have a {item}? ill pay {price}"
+      - "need a {item} so bad"
+  - id: need.supply.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 3
+    cooldownMs: 0
+    lines:
+      - "B> {count} {item} @ {price} ea for {for}, im in {map}"
+      - "B> {item} x{count} paying {price} each, {map}"
+  - id: need.scroll.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 3
+    cooldownMs: 0
+    lines:
+      - "B> {item} paying {price}, im in {map}"
+      - "B> {item} {price} come find me in {map}"
+  - id: need.gear.smega
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 3
+    cooldownMs: 0
+    lines:
+      - "B> {item} {price} im at {map}"
+      - "B> {item} paying {price}! {map}"
+  # said to one player it likes, on its map (NeedLedger.whisper); "whisper" lines are only ever composed, never picked
+  - id: needs.whisper
+    trigger: need.whisper
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "hey {name} u wouldnt have {what} would u? paying {price} ea"
+      - "{name} do u have {what}? ill pay {price} each"
+      - "yo {name}, looking for {what} for {for}. {price} if u have it"
+    styles:
+      quiet-practical-v1:
+        - "{name}, got {what}? {price} ea"
+  # thanks for a hand-in left at a board, whispered once it picked it up and both are online
+  - id: needs.thanks
+    trigger: need.thanks
+    where: any
+    channel: whisper
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "thx for leaving the {item} at the board {name}!!"
+      - "{name} got ur {item}, thanks a lot"
+      - "ty for the {item} :) exactly what i needed"
+    styles:
+      quiet-practical-v1:
+        - "got the {item}. thx {name}"
+  # handed over in person
+  - id: needs.got
+    trigger: need.got
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "omg ty {name}!!"
+      - "thx {name} :D"
+      - "perfect, thanks {name}"
+      - "ty ty"
+    styles:
+      quiet-practical-v1:
+        - "thx {name}"
+      playful-social-v1:
+        - "{name} ur the best!!"
+  - id: needs.scroll.pass
+    trigger: need.scroll.pass
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "it passed!!"
+      - "omg 60% passed"
+      - "yesss it worked"
+  - id: needs.scroll.fail
+    trigger: need.scroll.fail
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "failed lol"
+      - "nooo it failed"
+      - "rip scroll"
+      - "of course it failed"

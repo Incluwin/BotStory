@@ -29,10 +29,15 @@ Implementation of `docs/POPULATED_SERVER_PLAN.md` (first cut, 2026-09-21). Code 
 | `MEMORY_HALF_LIFE_DAYS`, `MEMORY_WARMTH_HALF_LIFE_DAYS`, `MEMORY_RETURN_AFTER_MINUTES`, `MEMORY_GREET_GAP_MS` | how fast episodes and warmth fade; apart this long is a reunion; one reunion greeting per player this often |
 | `MINIGAMES_ENABLED`, `MINIGAME_TOWNS`, `MINIGAME_THINK_MIN_MS`/`MAX_MS`, `MINIGAME_GAMES_MIN`/`MAX` | citizens play omok and match cards (kill switch, off by default; the towns; think time per move; matches a session) |
 | `MINIGAME_ROOM_WAIT_MS`, `MINIGAME_IDLE_MS`, `MINIGAME_STRONG_PERCENT`, `MINIGAME_COOLDOWN_MS` | an empty room closes after; a room where nothing happens is left after; citizens who play well; no PLAY plan after one for |
+| `NEEDS_ENABLED`, `NEEDS_PER_CITIZEN`, `NEEDS_REFRESH_MINUTES` | the needs board ("Needs board" below; kill switch, off by default); item requests a citizen keeps open at once; how often a loaded citizen's are derived again |
+| `NEEDS_EXPIRE_MIN_HOURS`/`MAX_HOURS`, `NEEDS_REPOST_HOURS`, `NEEDS_SCROLL_CHANCE`, `NEEDS_SUPPLY_PREMIUM` | a potion or scroll request ends after; the same one is not asked again for; chance a derivation asks for a scroll; a potion's offer over its shop price |
+| `NEEDS_GEAR_WANT_SHARE`, `NEEDS_GEAR_DEADLINE_HOURS` | decision D4: share of free gear upgrades held back as a want, and how long until it gets the piece anyway |
+| `NEEDS_CLAIMS_PER_PLAYER`, `NEEDS_CLAIM_MINUTES`, `NEEDS_WHISPER_GAP_MINUTES` | requests a player holds at once and for how long; one request whisper per player this often |
 
 Tables come from Liquibase changeset `30-population` (`living_citizen`, `living_circle`,
 `living_guild`, `living_price_index`, `living_acquaintance`). Changeset `49-citizen-person-memory` adds the memory columns to
-`living_acquaintance`. Generated replies use the existing
+`living_acquaintance`. Changeset `51-living-need` adds `living_need` (the needs board's requests); a board hand-in for a
+citizen who is away waits in `inventoryitems` as type 14 (`ItemFactory.NEED_ESCROW`) under its character id. Generated replies use the existing
 social dialogue runtime: Ollama at `SOCIAL_OLLAMA_ENDPOINT` / `SOCIAL_OLLAMA_MODEL` (env), mode
 `SOCIAL_DIALOGUE_MODE` (`DIALOGUE_ONLY` = model with deterministic fallback, `DETERMINISTIC_ONLY`
 = templates only, free).
@@ -209,6 +214,49 @@ owner, later ones with the last loser; the opener plays stone 1, corrected by wh
 win scan covers the whole board and every finished game clears it (Cosmic PR #294, for everyone). Log lines
 `citizen X plays minigames at <map>`; the journal says `beat Bo at omok`.
 
+**Needs board (2026-10-27, docs/BOT_CONCEPT_PLAN.md F1, `NEEDS_ENABLED`, off by default).** Citizens ask for what they
+really lack and pay from their own purse (`server.living.population.needs`, `NeedLedger`). At each load (after its
+catch-up and its escrow pickup) and every `NEEDS_REFRESH_MINUTES` while loaded, a citizen's requests are derived from
+its real state, at most `NEEDS_PER_CITIZEN` item requests each:
+- *SUPPLY*: short of its Easy Balrog standard (`AgentSupplyReadiness.shortfall`), the potion the Ant Tunnel Park store
+  would sell it (`AgentShopPotionPolicy`), as many as the missing points take and its purse pays, at the shop price
+  times `NEEDS_SUPPLY_PREMIUM` (the price index seeds potions at about 10 meso, so it is not used here). The request
+  shrinks as the citizen buys some itself and ends when it carries enough or buys at the store before an expedition.
+  Only boss expeditions provision potions; citizens in KPQ/HPQ never restock, so they never ask for party-quest potions.
+- *SCROLL*: with chance `NEEDS_SCROLL_CHANCE` a derivation asks for a `market.yaml` basket scroll (never Chaos or Clean
+  Slate) for a worn piece that still has slots, weapon first, at its index price when the purse covers it. It ends when
+  the piece is gone or full, or the citizen holds that scroll.
+- *GEAR* (decision D4): `NEEDS_GEAR_WANT_SHARE` of the free upgrades `CitizenGear.upgrade` would hand it are held back
+  and asked for at the index price instead; after `NEEDS_GEAR_DEADLINE_HOURS` it gets the piece as before ("bought it
+  elsewhere") and never asks for it again. Stable per citizen and item: every load decides the same way.
+- *PARTY*: a citizen party forming at a lobby past its call delay lists itself (a boss party without a cleric asks for
+  one, else "N more") until it goes in, gives up or breaks up. It is apart from the cap and cannot be claimed.
+
+Potion and scroll requests end after `NEEDS_EXPIRE_MIN_HOURS`..`MAX_HOURS`, the same request is not asked again for
+`NEEDS_REPOST_HOURS`, and a hired citizen's requests end. While the switch is on the random "B> {item}" lines are gone: a
+citizen with an open request names it (item, count, price, what for) in FM and town chat and some megaphones, and
+whispers it to a player it likes (`WARM` or more) on its map, once a player per `NEEDS_WHISPER_GAP_MINUTES`; it never
+says "whisper me" (citizens ignore player whispers until F5c). The market follows needs: a citizen with an open GEAR or
+SCROLL want goes to the FM three times as often, walks to the room whose player shop sells that item at its offer or
+less, and buys it up to its offer (above the 90%-of-index rule, outside the browse budget; single pieces; equips base or
+better: weapon and magic attack at least the base's, weighted stats at least the base's). The request is then met.
+
+Stock Bulletin Boards (NPC 9040011) are spawned server-side at the places `needs.yaml` lists (the FM entrance and eleven
+towns) on every population channel and re-checked every minute; the Guild PQ maps' own 9040011 keeps its stock script
+(only the spawned objects open the needs board). A board's menu lists the requests sorted by distance from the board,
+then by how well the citizen knows you, with each one's details (who, what, how many, price, where they are, deadline),
+Claim (held for you `NEEDS_CLAIM_MINUTES`, at most `NEEDS_CLAIMS_PER_PLAYER` at once) and "Hand it over here"; "Your
+requests" lists what you hold; room is left for F7's Records. `@requests` (everyone) is the same in chat:
+`@requests claim <n>`, `@requests drop <n>`. To hand over in person, double-click the citizen while carrying what it asked
+for (tradeable; an equip base or better) and pick how many. Either way one `NEED_FULFILLED` economy transaction moves the
+items from your bag into the citizen's (or its escrow while it is away), the offer from its purse (its stored row while
+away) to yours, and the request's row. It then uses what it got: its potions go on autopot, gear is worn in its slot, a
+scroll is applied (a pass or fail line). Its next load takes the escrow, and thanks for a board hand-in are whispered once
+you are both online. Warmth: a `FULFILLED` episode, +8 in person, `FULFILLED_BOARD` +4 at a board, each once a UTC day
+per citizen; it greets you with it later. Logs: `citizen <id> needs SUPPLY white potion x100 at 345 ea
+(easy_balrog)`, `citizen <id> need ... ended: EXPIRED`, `needs board: N requests live`; the journal says `asked for 100
+white potion (345 ea)`.
+
 ## Ops
 
 `!citizens` (GM 5): `status`, `online`, `cohorts`, `who <name>` (card, targets, journal),
@@ -219,6 +267,10 @@ lowers), `login <name>` (load that citizen now, replacing a ledger-only session)
 `memory` (the memory cache and table counts), `memory <name>` (who that citizen remembers, warmth, what happened).
 the last ten), `pq send <name> [lobby]` (a loaded citizen goes to the lobby its level fits, out for a party quest; a
 lobby id such as `balrog` picks one of several that fit).
+
+`!needs` (GM 5): the board's counts; `!needs <citizen>` every request of one citizen with its state, hold and deadline;
+`!needs map` the open requests of the citizens on your map. `@requests` (everyone): the requests you hold and the nearest
+open ones, numbered; `claim <n>`, `drop <n>`.
 
 **Testing job errands live.**
 1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
@@ -275,6 +327,8 @@ capacity, so the estimate and the Victoria capacity catalog only seed new maps).
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
 | `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
+| `needs.yaml` | where the needs board's Bulletin Boards stand (map, x, y above the ground); `NeedBoardsPlacementTest` checks each against the map's WZ footholds and stock NPCs |
+| `chatter/needs.yaml` | the needs board's lines: `dwell` and `smega` intents named `need.<kind>.*` (only that kind's request fills them), and the triggers `need.whisper`, `need.thanks`, `need.got`, `need.scroll.pass`, `need.scroll.fail`; slots `{item} {what} {count} {price} {total} {for}` |
 | `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag, and the party-quest ones in `chatter/pq.yaml`: pq.lf, pq.join, pq.go, pq.clear, pq.fail, pq.down, pq.giveup, pq.call, pq.call.answer, pq.thanks, pq.wait; the minigame ones in `chatter/minigames.yaml`: game.lf, game.title.omok, game.title.cards, game.hi, game.nice, game.win, game.loss, game.tie, game.bye), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega, room = a minigame room's chat), `weight`, `cooldownMs`, `lines`, optional per-style `styles`; `{need}` is how many more a PQ party wants. Party-quest lines repeat as players repeat them: no recent-intent memory, only each intent's own `cooldownMs` |
 
 Lines are ASCII; `{slots}` that cannot be filled drop the line. The lint refuses unknown
@@ -307,4 +361,6 @@ OPQ live work; docs/CITIZEN_PARTY_QUESTS_PLAN.md "Round 2"; at the LPQ and OPQ l
 invite you); expeditions are Easy and Normal Balrog only (docs/CITIZEN_EXPEDITIONS_PLAN.md); travel on foot ends on
 the first map nobody watches (no citizen walks a whole multi-map trip unseen) and rides no real ship; citizens remember
 players (each other only through circles, guilds and gossip) but answer no whispers, and the weekly life summary of
-plan 6.4 is never written.
+plan 6.4 is never written. The needs board asks for no quest items (decision D4b), its board menu has
+no Records entry yet (F7), and it sorts by warmth until Standing (C1) lands; a whisper to a citizen about its request
+goes unanswered (F5c).

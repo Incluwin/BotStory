@@ -211,3 +211,20 @@ intents:
       playful-social-v1:
         - "i miss {name} :( anyone seen them?"
         - "where did {name} go!!"
+  # The needs board (docs/BOT_CONCEPT_PLAN.md F1): someone who brought it what it asked for, met again. {item} is it.
+  - id: memory.greet.fulfilled.map
+    trigger: memory.greet.fulfilled
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 1000
+    lines:
+      - "{name}! thx again for the {item}"
+      - "oh hey {name}, still got the {item} u brought me"
+      - "hey {name}! that {item} {when} saved me"
+      - "{name} :D ty again for the {item}"
+    styles:
+      quiet-practical-v1:
+        - "{name}. thx for the {item}"
+      playful-social-v1:
+        - "{name}!!! my {item} hero"

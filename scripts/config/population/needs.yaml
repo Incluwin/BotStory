@@ -1,0 +1,17 @@
+# Request boards of the needs board (docs/BOT_CONCEPT_PLAN.md F1): stock Bulletin Board NPCs (9040011) the server puts
+# up on every population channel while population.NEEDS_ENABLED is on (NeedBoards); no client change. Clicking one lists
+# what citizens ask for. x/y is a point just above the ground the board stands on (it drops to the foothold below),
+# between the stock NPCs, near where people arrive. Checked by NeedBoardsPlacementTest against the maps' WZ footholds.
+boards:
+  - { map: 910000000, x: -330, y: -90 }     # Free Market Entrance, beside the arrival point
+  - { map: 100000000, x: 2165, y: 300 }     # Henesys, town square between the shops
+  - { map: 101000000, x: 450, y: 230 }      # Ellinia, the ground floor
+  - { map: 102000000, x: 1100, y: 1840 }    # Perion, the lower street
+  - { map: 103000000, x: 940, y: 120 }      # Kerning City, the main street
+  - { map: 104000000, x: 1480, y: -170 }    # Lith Harbor, the upper street
+  - { map: 105040300, x: 1240, y: 220 }     # Sleepywood, on the way to Balrog
+  - { map: 200000000, x: 1090, y: 110 }     # Orbis
+  - { map: 211000000, x: -600, y: 60 }      # El Nath
+  - { map: 220000000, x: 1580, y: 70 }      # Ludibrium
+  - { map: 240000000, x: 240, y: 230 }      # Leafre, beside the arrival point (the Leafre region, Tera Forest Time Gate too)
+  - { map: 270000000, x: 200, y: 120 }      # Three Doors, the Temple of Time's hub

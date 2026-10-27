@@ -17,6 +17,7 @@ import server.agents.runtime.scheduler.AgentLoadSheddingState;
 import server.integration.AgentPresence;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Lobby;
+import server.living.population.needs.NeedLedger;
 import server.living.roster.BossEntrances;
 import server.maps.MapleMap;
 
@@ -337,7 +338,7 @@ public final class CitizenPartyQuests {
         if (door instanceof CitizenPqDoor.ExpeditionDoor expedition) {
             waiting = supplied(expedition, waiting, nowMs);
             if (waiting.isEmpty()) {
-                forming.remove(key);
+                formed(forming.remove(key), nowMs);
                 return;
             }
         }
@@ -345,7 +346,7 @@ public final class CitizenPartyQuests {
         waiting.forEach(session -> here.put(session.characterId, session));
         Forming party = forming.get(key);
         if (party != null && !leadsCitizenParty(here.get(party.leaderId), here)) {
-            forming.remove(key);
+            formed(forming.remove(key), nowMs);
             party = null;
         }
         if (party == null) {
@@ -636,7 +637,7 @@ public final class CitizenPartyQuests {
             }
             return;
         }
-        forming.remove(key);
+        formed(forming.remove(key), nowMs);
         if (door instanceof CitizenPqDoor.ExpeditionDoor expedition) {
             openList(expedition, lobby, leader, entered, citizens, humans, here, nowMs);
             return;
@@ -683,7 +684,7 @@ public final class CitizenPartyQuests {
     /** The citizens leave the party, say so, keep out of party quests a while, and plan something else. */
     private void giveUp(Forming party, Map<Integer, CitizenSession> here, List<AgentPartyMemberSnapshot> members,
                         String why, long nowMs) {
-        forming.remove(party.channel + ":" + party.mapId);
+        formed(forming.remove(party.channel + ":" + party.mapId), nowMs);
         CitizenSession leader = here.get(party.leaderId);
         if (leader != null) {
             say(trigger(doors.get(party.questKey), "giveup"), leader, null, 0);
@@ -715,6 +716,9 @@ public final class CitizenPartyQuests {
                           long nowMs) {
         party.coming.entrySet().removeIf(called -> here.containsKey(called.getKey())
                 || nowMs - called.getValue() >= COMING_MS);
+        if (nowMs - party.formedAtMs >= CALL_AFTER_MS && population.needs() != null) { // the needs board lists it
+            population.needs().partyShort(leader, lobby.name(), lobby.mapId(), need, role(party, leader, here), nowMs);
+        }
         if (nowMs - party.formedAtMs < CALL_AFTER_MS || nowMs - party.lastCallAtMs < CALL_EVERY_MS
                 || party.calls >= population.config().PQ_CALLS_PER_PARTY || party.coming.size() >= need) {
             return;
@@ -756,6 +760,28 @@ public final class CitizenPartyQuests {
         log.info("citizen {} party at {} calls {} ({})", leader.name(), lobby.name(), called.name(),
                 mate ? "mate" : "townsfolk");
         population.presence().travel(called, Activity.PQ, lobby.mapId(), nowMs);
+    }
+
+    /** A forming party is done forming (in, given up, broken up): its PARTY request on the needs board ends. */
+    private void formed(Forming party, long nowMs) {
+        if (party != null && population.needs() != null) {
+            population.needs().partyOver(party.leaderId, nowMs);
+        }
+    }
+
+    /** The role a forming party lacks, for the needs board: a boss party without a cleric asks for one. */
+    private String role(Forming party, CitizenSession leader, Map<Integer, CitizenSession> here) {
+        List<Integer> jobs = new ArrayList<>();
+        net.server.world.World world = population.gameWorld();
+        for (AgentPartyMemberSnapshot member : members(leader.agent())) {
+            CitizenSession session = here.get(member.id());
+            Character chr = session != null ? session.agent()
+                    : world == null ? null : world.getPlayerStorage().getCharacterById(member.id());
+            if (chr != null) {
+                jobs.add(chr.getJob().getId());
+            }
+        }
+        return NeedLedger.role(jobs, doors.get(party.questKey) instanceof CitizenPqDoor.ExpeditionDoor);
     }
 
     /** A loaded citizen on the leader's channel with nothing else on: no run, cooldown, AFK, party or supply trip. */
@@ -959,6 +985,9 @@ public final class CitizenPartyQuests {
             }
             if (door.provision(session.agent())) {
                 provisioned.add(session.characterId);
+                if (population.needs() != null) {
+                    population.needs().suppliedForBoss(session.characterId, nowMs); // bought at the store: no more asking
+                }
                 ready.add(session);
                 continue;
             }

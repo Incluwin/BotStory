@@ -17,5 +17,7 @@ public enum EconomyOperationKind {
     /** A player buys back what they sold to an NPC shop, for what the sale paid (server.ShopBuyback). */
     SHOP_BUYBACK,
     /** A Cash Shop window cart: the items go in and the NX or Maple Points come off together. */
-    CASH_SHOP_WINDOW
+    CASH_SHOP_WINDOW,
+    /** A player hands a citizen what its request on the needs board asks for, and it pays (docs/BOT_CONCEPT_PLAN.md F1). */
+    NEED_FULFILLED
 }
