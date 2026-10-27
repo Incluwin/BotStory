@@ -112,7 +112,9 @@ public final class ResidentDialogue {
             Map.entry("singapore-cbd", new int[] {9270019, 9270020, 9270021, 9270023}),
             Map.entry("boat-quay-town", new int[] {9270022, 9270030}),
             Map.entry("mushroom-shrine", new int[] {9110002, 9110003, 9110004, 9110005, 9110006}),
-            Map.entry("showa-town", new int[] {9120001, 9120003, 9120011, 9120017, 9120018}));
+            Map.entry("showa-town", new int[] {9120001, 9120003, 9120011, 9120017, 9120018}),
+            Map.entry("kuala-lumpur", new int[] {9270054, 9270055, 9270056, 9270057}),
+            Map.entry("kampung-village", new int[] {9270061, 9270062, 9270065}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

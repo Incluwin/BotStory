@@ -1,0 +1,62 @@
+# Malaysia rumors (docs/ROUTES_MALAYSIA_PLAN.md section 5). Each cast is awake together at its spot in those hours
+# (personas/malaysia.yaml); a rumor has no end gate, so every line holds before and after the beats it follows.
+- id: kl-the-big-screen
+  participants: [farah, lim]
+  where: { town: kuala-lumpur, spot: "venue:lower-east-street" }
+  when:
+    serverHours: [20, 21]
+    everyDays: 1
+    requiresArc: { arc: farah-the-big-screen, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: farah, text: "there. opening night. watch the carousel." }
+    - { by: lim, text: "listen to it. that hum is my motor. thirty years, and it still hums on tape." }
+    - { by: farah, text: "the whole Trend Zone stops for it. every night." }
+    - { by: lim, text: "the horses are Tok Awang's. forty of them. the one in front, with the star, is Bintang." }
+    - { by: farah, text: "and the kampung children rode free that night." }
+    - { by: lim, text: "they always should have." }
+
+- id: kl-the-mamak-stall
+  participants: [ravi, hafiz]
+  where: { town: kuala-lumpur, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [17, 18]
+    everyDays: 2
+  lines:
+    - { by: ravi, text: "teh tarik, Hafiz. pulled long, the way you like." }
+    - { by: hafiz, text: "can't stop, uncle. three parcels for the kampung, and the Rodeos are out on the second bank." }
+    - { by: ravi, text: "you always say can't stop. you always stop." }
+    - { by: hafiz, text: "...one cup." }
+    - { by: ravi, text: "and tell Hamid his ikan bilis was salty." }
+    - { by: hafiz, text: "i'll tell him you said it was perfect." }
+    - { by: ravi, text: "that also." }
+
+- id: kampung-on-the-big-screen
+  participants: [awang, zara]
+  where: { town: kampung-village, spot: "venue:by-audrey" }
+  when:
+    serverHours: [19, 20]
+    everyDays: 1
+    requiresArc: { arc: awang-the-carousel-horses, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: zara, text: "Atuk, Hafiz showed me on his phone. your horses were on the big screen in the city again." }
+    - { by: awang, text: "again." }
+    - { by: zara, text: "every night! the whole Trend Zone stops to watch them go round." }
+    - { by: awang, text: "...they go round very well. i carved them to." }
+    - { by: zara, text: "will you go and see?" }
+    - { by: awang, text: "the city knows where i am." }
+
+- id: kampung-the-strongman
+  participants: [rohani, kamal]
+  where: { town: kampung-village, spot: "venue:middle-east-street" }
+  when:
+    serverHours: [18, 19]
+    everyDays: 1
+  setsFlagOnListeners: kampung.heard-kamal
+  lines:
+    - { by: rohani, text: "Kamal, you've been hammering that hull since dawn." }
+    - { by: kamal, text: "a boat doesn't build itself, Kak Ani." }
+    - { by: rohani, text: "you rang that bell at the park every night. the whole kampung could hear it." }
+    - { by: kamal, text: "the high-striker. two years. nobody else ever rang it." }
+    - { by: rohani, text: "and anyone who's rung it beside you once, you'd go out on the road with, for sixty thousand. i've heard you say so." }
+    - { by: kamal, text: "...i'd say it again. ha." }
+    - { by: rohani, text: "and you still haven't asked me to paint your sail." }

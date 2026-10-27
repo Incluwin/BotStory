@@ -1,0 +1,82 @@
+# Malaysia arcs (docs/ROUTES_MALAYSIA_PLAN.md section 5): a television producer in Kuala Lumpur's Trend Zone finds the
+# Fantasy Theme Park's opening-night tape, and the kampung woodcarver who carved its carousel horses gets his lead horse
+# back. Both arcs turn on the same three world flags (kl.tape.mended, kampung.bintang.home, my.carousel.turns); the
+# beats that set them happen once per server (quests/malaysia.yaml).
+- id: farah-the-big-screen
+  persona: farah
+  chapters:
+    - id: chapter-1
+      title: "The Tape in the Archive"
+    - id: chapter-2
+      title: "Opening Night"
+      enterWhen: { flags: [kl.tape.mended] }
+      dialogueOverrides:
+        greet: ["did you see it last night? the whole square stopped.", "hello. we're on again tonight. opening night, every night."]
+        who: ["Farah. MY Maple TV. i found the Fantasy Theme Park's opening-night tape in our archive; Lim mended it, and now it plays on the big screen every night. the whole Trend Zone stops for the carousel. i want the rest of the story."]
+        smallTalk: ["the horses on the tape were carved in the kampung, by a Tok Awang. forty of them. the lead horse has a star on her brow. Lim calls her Bintang.", "people stop in the square to watch the carousel go round. businessmen. aunties. a man cried yesterday. he said he rode it as a boy."]
+        speakPlainly: ["plainly: an old tape, and a story with no ending yet."]
+        about.awang: ["Tok Awang carved the horses on my tape. Lim says he hasn't been to the city in thirty years. i'd like to ask him why. i think i know."]
+        chapterEnter: ["(watches the opening-night tape on her camera's little screen, rewinds it, and watches the carousel go round again)"]
+    - id: chapter-3
+      title: "Bintang"
+      enterWhen: { flags: [kampung.bintang.home] }
+      dialogueOverrides:
+        greet: ["they found Bintang! the lead horse. Tok Awang's carving her a new body.", "hello. Lim's oiling the motor. i didn't ask him to."]
+        who: ["Farah. MY Maple TV. my opening-night tape brought the kampung's lead horse home: Bintang, out of the Spooky World's gate. Tok Awang is carving her a new body, and Lim says the motor still turns. i want to film it turn. once."]
+        smallTalk: ["Lim says the carousel only needs Bintang. the others always followed her. i'd like to see that. the whole city would.", "i keep thinking about the kampung children on the tape, riding free. they're grown now. some of them still live there."]
+        speakPlainly: ["plainly: one more turn, on camera."]
+        about.awang: ["Tok Awang has Bintang back. he's carving her a new body. i'd like to ask him if we may turn the carousel. i'm a little afraid of him."]
+        chapterEnter: ["(checks the charge on her camera battery, then checks it again)"]
+    - id: chapter-4
+      title: "The Carousel Turns"
+      enterWhen: { flags: [my.carousel.turns] }
+      dialogueOverrides:
+        greet: ["you were there. you saw it go round.", "hello. we play both tapes now. then and now."]
+        who: ["Farah. MY Maple TV. the big screen plays two tapes now, one after the other: the Fantasy Theme Park's opening night, and the night the carousel turned again with the kampung's children on it, riding free. same horses, same motor, thirty years between."]
+        idle: ["(watches two tapes side by side on her camera, smiling at the same moment in each)", "(frames the square through her fingers and, for once, doesn't take the shot)"]
+        smallTalk: ["Tok Awang came to the city. the first time in thirty years. he stood in the square, watched his horses on the big screen, said they went round very well, and went home.", "Lim stood by the motor all night with the key in his hand. he wouldn't let anyone else touch it."]
+        speakPlainly: ["plainly: two tapes, and an ending."]
+        about.awang: ["Tok Awang gave us one turn of his carousel, on one condition: the kampung's children ride free. they did. he came to the square to see it on the big screen. he said nothing. he stayed until the end."]
+        about.lim: ["Lim built the motor and kept the key for thirty years. the night it turned, he and Tok Awang shook hands by it. i got it on camera. i'll never air it. some things are theirs."]
+        friend.best: ["you're in the second tape. the night it turned. front row, by the motor. i'll never cut you."]
+        chapterEnter: ["(slides two tapes into a case side by side, and writes 'then' on one and 'now' on the other)"]
+
+- id: awang-the-carousel-horses
+  persona: awang
+  chapters:
+    - id: chapter-1
+      title: "Forty Horses"
+    - id: chapter-2
+      title: "On the Big Screen"
+      enterWhen: { flags: [kl.tape.mended] }
+      dialogueOverrides:
+        greet: ["hm. you. Zara says my horses are on the city's big screen. every night.", "sit. mind the shavings. i'm carving a horse. don't ask."]
+        who: ["Awang. Tok Awang. i carved the forty horses of the city's carousel, thirty years ago. now the city shows them on its big screen every night, Zara says. thirty years of nothing, and now every night. hm."]
+        smallTalk: ["the lead horse on the tape is Bintang. she ran first when the park went wild. she's still out at the Spooky World's gate with the others, i'd wager. they always followed her.", "Zara wants to go to the city and see the screen. i said the city can come and see me. she said that's what i'd say. she's right. i hate it."]
+        speakPlainly: ["plainly: the city remembered. i don't know what to do with that."]
+        about.zara: ["Zara. she saw my horses on Hafiz's telephone and ran the length of the kampung shouting. i pretended not to hear."]
+        chapterEnter: ["(sets down his knife, picks up a block of the best wood in the shed, turns it over, and puts it back very carefully)"]
+    - id: chapter-3
+      title: "Bintang Comes Home"
+      enterWhen: { flags: [kampung.bintang.home] }
+      dialogueOverrides:
+        greet: ["hm. sit. look. that's Bintang's new neck. don't touch.", "you. i'm carving. i'm always carving. this time it matters."]
+        who: ["Awang. i carved the forty horses of the city's carousel. Bintang, the lead horse, came home from the Spooky World's gate: her tail, with my star burned in it. i'm carving her a new body from the best wood i have. when she stands on the carousel again, the others will follow her."]
+        idle: ["(carves along the arched neck of a wooden horse with long, slow strokes)", "(fits a wooden tail with a star burned into it against a half-finished horse, and holds it there, not breathing)"]
+        smallTalk: ["the city girl wants to film the carousel turning. once. Lim says the motor's ready. i haven't said yes. i haven't said no.", "Kamal says he'll carry Bintang to the park on his shoulders. he would. he carried four children out of it."]
+        speakPlainly: ["plainly: a horse's new body, and a question i haven't answered."]
+        about.lim: ["Lim says the motor's ready. he sent word with Hafiz. he didn't write my name on it. he didn't need to."]
+        chapterEnter: ["(lays a star-burned wooden tail on his workbench beside a block of pale wood, and starts to draw a horse on the block in charcoal)"]
+    - id: chapter-4
+      title: "One More Turn"
+      enterWhen: { flags: [my.carousel.turns] }
+      dialogueOverrides:
+        greet: ["hm. you. you were there. you saw them go round.", "sit. the shavings are from a spoon. only a spoon. for now."]
+        who: ["Awang. Tok Awang. i carved the forty horses of the carousel at the Fantasy Theme Park. one night Bintang led them round once more, and the kampung's children rode free, the way the city promised thirty years ago. then i went to the city and saw it on the big screen. once was enough."]
+        idle: ["(carves a small wooden horse with a star on its brow and sets it on the windowsill beside the others)", "(sits with his hands in his lap, which he never does, and watches the kampung children run past)"]
+        smallTalk: ["i went to the city. the first time in thirty years. i stood in the square and watched my horses go round on the big screen. they went round very well. i carved them to.", "Lim and i shook hands by the motor. thirty years. he's still wrong about the city. so am i, a little."]
+        speakPlainly: ["plainly: they went round. the children rode free."]
+        about.lim: ["Lim built the motor. we shook hands by it, the night it turned. we're going to argue about the city again next week. i'm looking forward to it."]
+        about.zara: ["Zara was right. the city doesn't forget. i'll never tell her."]
+        friend.best: ["i carved you a horse. small. it has a star on its brow, like Bintang's. you brought her home. she's yours too."]
+        chapterEnter: ["(sets a tiny carved horse with a star on its brow on the windowsill, and for a long moment just looks at it)"]
