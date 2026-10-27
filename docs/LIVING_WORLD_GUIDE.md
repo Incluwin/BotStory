@@ -475,6 +475,36 @@ online over 20 h a day, any AFK over 2 min on a field); the amber margins are pr
 The build is the checkout's HEAD at boot. `tools\tells-report.ps1` compares two builds from those rows
 (`GET /runtime/tells/history`), or two saved `/runtime/tells` JSON files; with no arguments, the two newest builds.
 
+## Imperfections
+
+Small human slips with hard caps (docs/BOT_CONCEPT_PLAN.md F8). The user's rule: no severe mistakes, so no extra
+deaths and no long idling. Off unless `living_world.IMPERFECTIONS_ENABLED` (read at boot); off, every Agent acts exactly
+as before. Only citizens and companions slip (not Residents, the Maple Island cohort or any other Agent).
+
+| Slip | What a player sees | Cap |
+|---|---|---|
+| Own potion point | each bot drinks at its own HP point, 0.60-0.75 at the configured 0.70 (by its id) | never under `IMPERFECTIONS_POTION_FLOOR` (0.45); the owner's percentages and a learned habit (F2) come first; boss content keeps the configured point |
+| Reaction | a beat (180-500 ms, each bot its own typical time) before it goes for a new set of mobs | never after a hit; heals, potions and survival buffs never wait |
+| Late potion | now and then (`IMPERFECTIONS_LATE_POTION_CHANCE`) a drink goes down 0.3-1.5 s late | only while HP stays at 50%+ and no mob in reach could hit it under 40%; asked again at every hit; the 1 s low top-up stays |
+| Buff timing | recast anywhere in 85-100% of the duration; rarely (`IMPERFECTIONS_BUFF_LAPSE_CHANCE`) an attack or speed buff lapses | survival buffs (Magic Guard, guards, defence, Hyper Body...) never later than 90%; a lapse is 2-10 s |
+| Loot slip | a cheap drop left on the ground | never meso, equips, cash or quest items, a player's drop, what the owner's quests need, or above the price-index median |
+| Town fumbles | a jump beside a rope that misses it, then the grab; a walk 80-150 px past the NPC it went to, then back | town maps only, no hostile mob within 500 px; the walk past gives up after 6 s |
+| Typo | a citizen's town line with two letters swapped, then "*word" | town, Free Market and lobby maps only |
+| Companion AFK | while its owner has stood still in town for a minute, a companion may stand AFK 30-90 s ("brb") | town only, at most once an hour, ends at once when the owner moves 200 px or leaves |
+| "rez pls?" | a bot dying beside a party member who has Resurrection ready lies there and asks; a bishop bot casts it for real on a dead party member inside its box | the corpse waits at most 10 s from death, then respawns as always |
+| Field AFK (D6) | a citizen going AFK on a training field only pauses 30 s to 2 min ("brb water") | starts only at HP 80%+ with no mob within 400 px, ends early under 60% HP or a mob within 150 px; not behind the switch (population `FIELD_AFK_MAX_MS`, 0 = the old 5-15 min) |
+
+One gate owns them (`server.living.imperfections.Imperfections`): nothing slips in party content (a citizen's party
+quest or expedition, a companion's run), under `IMPERFECTIONS_HP_GUARD` HP, or while its owner or a human of its party
+on its map is dead or under half HP; each bot has a sliding-hour budget (`IMPERFECTIONS_SLIPS_PER_HOUR`, and each
+kind's own cap in `Imperfections.Kind`). The Agent engine asks it through `AgentImperfections` and keeps its own
+exclusions (an event instance, a map with a boss, a party quest) and caps whatever the gate says.
+`GET /runtime/imperfections` counts what fired (`fired.<kind>`) and what was held back (`blocked.<reason>`); one INFO
+line an hour too. Acceptance (decision D16): bot deaths per class per bot-hour with the switch on stay within noise of
+the same build with it off (D6 is in both). Both phases run one sha, so save `/runtime/tells` at the end of each 24 h
+phase and compare the files (`tools\tells-report.ps1 -Before off.json -After on.json`, its "Deaths per bot-hour"
+table); anything that raises deaths is cut. Engine numbers live in `agent-engine.yaml` (`AgentImperfectionPolicy.*`, `AgentFumbles.*`).
+
 ## Authoring
 
 MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
@@ -580,6 +610,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
 | tell audit | `server.living.audit.*`, Agent seam `AgentTellProbe`, `AdminTellsReader` (`/runtime/tells`), `tools\tells-report.ps1` |
+| imperfections | `server.living.imperfections.*`, Agent seam `AgentImperfections` (+ `AgentImperfectionPolicy`, `AgentFumbles`, `AgentLateDrinkRuntime`, `AgentRezWaitRuntime`), `AdminImperfectionsReader` (`/runtime/imperfections`), field AFK `population.FieldPause` |
 
 ## Not done yet (from the plan)
 

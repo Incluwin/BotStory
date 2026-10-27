@@ -6,6 +6,8 @@ import server.agents.capabilities.movement.AgentMovementTimers;
 
 import server.agents.capabilities.dialogue.AgentEmote;
 
+import server.agents.capabilities.behavior.AgentImperfections;
+
 import server.agents.monitoring.AgentPerformanceMonitor;
 
 import client.Character;
@@ -122,7 +124,9 @@ public final class AgentPotionService {
      * (AgentPotionThresholds), else the configured AUTOPOT_HP_THRESH.
      */
     public static float hpThreshold(Character bot) {
-        return AgentPotionThresholds.hp(bot.getId(), AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
+        // F8.2: with no owner's or learned point, a citizen or companion drinks at its own point near the configured one
+        float configured = AgentImperfections.hpAlert(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
+        return AgentPotionThresholds.hp(bot.getId(), configured);
     }
 
     /** The MP fraction this Agent drinks below: its host's own value, else the configured AUTOPOT_MP_THRESH. */
@@ -347,6 +351,13 @@ public final class AgentPotionService {
                 && bot.getHp() <= bot.getAutopotHpAlert() * bot.getCurrentMaxHp();
         boolean lowMp = bot.getKeymap().get(92) != null
                 && bot.getMp() <= bot.getAutopotMpAlert() * bot.getCurrentMaxMp();
+        if (AgentLateDrinkRuntime.dueNow(entry, nowMs)) { // F8.2: a drink that waited a beat goes down on this tick
+            if (lowHp) {
+                bot.triggerAutopotWhileLow(true, false);
+                return;
+            }
+            AgentLateDrinkRuntime.cancel(entry);
+        }
         if (!lowHp && !lowMp || nowMs < AgentPotionStateRuntime.lowTopUpDueAtMs(entry)) {
             return;
         }

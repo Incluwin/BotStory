@@ -46,6 +46,9 @@ public final class AgentDeathTickService {
         if (!AgentDeathStateRuntime.isDead(entry)) {
             return false;
         }
+        if (AgentRezWaitRuntime.revivedInPlace(entry, agent)) {
+            return false; // F8.6: a Resurrection stood it up where it lay
+        }
         if (AgentDeathStateRuntime.isRespawnDue(entry, nowMs)) {
             respawnAction.run();
         }

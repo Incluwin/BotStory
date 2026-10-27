@@ -11,9 +11,19 @@ public final class AgentDeathState {
                     AgentDeathState.class, AgentDeathState::new);
 
     private long deadUntilMs = 0L;
+    /** F8.6: this death waits for a Resurrection ("rez pls?"); a revive in place ends it (AgentRezWaitRuntime). */
+    private boolean rezWaiting = false;
 
     public long deadUntilMs() {
         return deadUntilMs;
+    }
+
+    public boolean rezWaiting() {
+        return rezWaiting;
+    }
+
+    public void setRezWaiting(boolean rezWaiting) {
+        this.rezWaiting = rezWaiting;
     }
 
     public boolean isDead() {
@@ -38,5 +48,6 @@ public final class AgentDeathState {
 
     public void clear() {
         deadUntilMs = 0L;
+        rezWaiting = false;
     }
 }

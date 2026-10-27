@@ -21,6 +21,8 @@ public final class AgentCombatDeathRuntime {
         AgentMovementBroadcastService.broadcastMovement(entry);
         AgentDeathStateRuntime.enterDeadState(
                 entry, System.currentTimeMillis(), AgentDeathConfig.cfg.RESPAWN_DELAY_MS);
+        // F8.6: beside a party member with Resurrection it may lie a little longer and ask (at most 10 s from now)
+        AgentRezWaitRuntime.begin(entry, bot, System.currentTimeMillis(), AgentDeathConfig.cfg.RESPAWN_DELAY_MS);
         AgentOperationalEventPublisher.publish(entry,
                 objectiveId -> new AgentLifeStateChangedEvent(
                         bot.getId(), System.currentTimeMillis(), "ALIVE", "DEAD",

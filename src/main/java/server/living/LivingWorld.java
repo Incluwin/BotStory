@@ -235,6 +235,8 @@ public final class LivingWorld {
         world.roster.settings().install();
         // how bot-like the bots look, measured where they act (docs/BOT_CONCEPT_PLAN.md C2): GET /runtime/tells
         server.living.audit.TellAudit.install(world.store, config.TELL_AUDIT_ENABLED);
+        // small human slips with hard caps, citizens and companions only (docs/BOT_CONCEPT_PLAN.md F8)
+        server.living.imperfections.Imperfections.install(world);
         // and keeps the party-quest potion standard by itself, walking to a nearby shop when short (2026-10-02)
         world.restock.install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
@@ -392,6 +394,7 @@ public final class LivingWorld {
         server.living.roster.JobErrands.uninstall();
         HiredHands.uninstall();
         server.living.audit.TellAudit.uninstall();
+        server.living.imperfections.Imperfections.uninstall();
         server.living.population.Population.stop();
         server.knowledge.PersonalKnowledge.shared().stop(); // the citizens logged out: their worlds are written now, DB still up
         for (ScheduledFuture<?> timer : world.timers) {

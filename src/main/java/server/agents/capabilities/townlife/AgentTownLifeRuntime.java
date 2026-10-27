@@ -2,6 +2,7 @@ package server.agents.capabilities.townlife;
 
 import client.Character;
 import constants.id.ItemId;
+import server.agents.capabilities.behavior.AgentFumbles;
 import server.agents.capabilities.dialogue.AgentEmote;
 import server.agents.capabilities.movement.AgentChairService;
 import server.agents.capabilities.movement.fidget.AgentFidgetMode;
@@ -337,6 +338,10 @@ public final class AgentTownLifeRuntime {
                 destination.key(), destination.venueId(),
                 decision.source(), decision.correlationId(), nowMs);
         state.memory().remember(destination.activity(), destination.key(), nowMs);
+        if (destination.activity() == AgentTownLifeState.Activity.LINGER
+                && AgentTownLifeFidelityPolicy.usesPhysicalNavigation(state.fidelity())) {
+            AgentFumbles.armOvershoot(entry, agent, destination.point(), nowMs); // F8.5: may walk past the NPC first
+        }
         entry.capabilityStates().require(AgentTownLifeActivitySequenceState.STATE_KEY).clear();
         AgentTownLifeActivityExtensionRuntime.clear(entry);
         AgentTownLifeEventPublisher.activity(
@@ -373,6 +378,11 @@ public final class AgentTownLifeRuntime {
                     entry, agent, state, AgentTownLifeActivityEvent.Phase.ABANDONED, nowMs);
             state.transition(AgentTownLifeState.Stage.CHOOSE_ACTIVITY, nowMs);
             return true;
+        }
+        Point past = AgentFumbles.overshoot(entry, agent, nowMs);
+        if (past != null) {
+            gateway.navigate(entry, past, false); // walking past the NPC (at most 6 s), then back to the target
+            return false;
         }
         int arrivalDistance = state.activity() == AgentTownLifeState.Activity.REST
                 && townProfile(state).mapSeatId(target) >= 0

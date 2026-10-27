@@ -622,6 +622,70 @@ tuning:
     # Purpose: Controls the visible strength or frequency of wait fidget. Higher values make the effect stronger or more common; lower values make it weaker or rarer.
     # Technical: the "crowd respite runtime" component consumes this as an integer. Domain: percentage from 0 to 100 inclusive.
     server.agents.capabilities.behavior.AgentCrowdRespiteRuntime.WAIT_FIDGET_PERCENT: '65'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 30000-300000 around the baseline 60000.
+    # Purpose: After a citizen or companion misses a rope grab in town (F8 imperfections), how long before the same rope may be missed again, so one rope never costs two misses in a row.
+    # Technical: AgentFumbles.missesRope, from AgentNavigationClimbEntryExecutionService before the grab-in-place and ground rope-jump branches: a miss is keyed by map and rope, and a second miss on that key inside this window is refused, so the climb entry grabs on its next try.
+    server.agents.capabilities.behavior.AgentFumbles.ROPE_AGAIN_MS: '60000'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 60-120 around the baseline 80.
+    # Purpose: The shortest distance a citizen or companion walks past the NPC it went to in town before it turns back (F8 imperfections), far enough to read as a walk-past rather than a stop.
+    # Technical: AgentFumbles.armOvershoot, from AgentTownLifeRuntime when a LINGER destination is selected with physical navigation: the turn-back point is this many pixels plus a draw below OVERSHOOT_SPAN_PX beyond the target, grounded on the same level.
+    server.agents.capabilities.behavior.AgentFumbles.OVERSHOOT_MIN_PX: '80'
+    # Values: a positive integer; unit: pixels. Recommended: 40-100 around the baseline 71.
+    # Purpose: How much farther than OVERSHOOT_MIN_PX a walk past an NPC may go, so the turn-back points differ from one walk to the next (F8 imperfections).
+    # Technical: AgentFumbles.armOvershoot draws a uniform extra distance in [0, this) pixels on top of OVERSHOOT_MIN_PX; 71 gives the plan's 80-150 px. Must be at least 1 because it bounds ThreadLocalRandom.nextInt.
+    server.agents.capabilities.behavior.AgentFumbles.OVERSHOOT_SPAN_PX: '71'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 20-50 around the baseline 30.
+    # Purpose: How close a citizen or companion must come to its turn-back point past an NPC before it turns round and walks back to its real spot (F8 imperfections).
+    # Technical: AgentFumbles.overshoot, on every town-life move tick: within this many pixels horizontally (and OVERSHOOT_SAME_LEVEL_PX vertically) of the point the detour ends and AgentTownLifeRuntime.moveToActivity resumes its normal approach and arrival check.
+    server.agents.capabilities.behavior.AgentFumbles.OVERSHOOT_REACHED_PX: '30'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 3000-10000 around the baseline 6000.
+    # Purpose: The longest a walk past an NPC may take before it is given up and the Agent heads for its real spot, so a detour can never stall a town visit (F8 imperfections).
+    # Technical: AgentFumbles keeps the turn-back point with this deadline in its per-Agent state; past it AgentFumbles.overshoot drops the point and returns null, and the town-life progress watchdog (8 s stall, 60 s total) is never reached by the detour itself.
+    server.agents.capabilities.behavior.AgentFumbles.OVERSHOOT_MAX_MS: '6000'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 8-20 around the baseline 12.
+    # Purpose: How far up or down the ground past an NPC may be from the NPC spot for a walk past to happen, so the detour stays on the same platform (F8 imperfections).
+    # Technical: AgentFumbles.armOvershoot refuses a turn-back point whose grounded y differs from the target's by more than this, and AgentFumbles.overshoot uses it as the vertical reach of the turn-back point; the same 12 px the town-life arrival check allows.
+    server.agents.capabilities.behavior.AgentFumbles.OVERSHOOT_SAME_LEVEL_PX: '12'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 300-800 around the baseline 500.
+    # Purpose: No town fumble (a missed rope grab, a walk past an NPC, a companion AFK, a citizen's typo) happens with a hostile mob this close, so a slip never happens in combat (F8 imperfections).
+    # Technical: AgentFumbles.calmTown: the Agent's map must be a town (MapleMap.isTown) and no hostile living monster from AgentMapPerception may stand within this straight-line distance; the living Imperfections gate uses the same test for companion AFKs and typos.
+    server.agents.capabilities.behavior.AgentFumbles.CALM_RANGE_PX: '500'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 250-2000 around the baseline 1000.
+    # Purpose: How long the imperfections seam keeps its answer to "is a boss on this map, or is this Agent in a party quest" before it looks again, so the loot check asking per drop stays cheap (F8 imperfections).
+    # Technical: AgentImperfections.excluded caches the boss scan (any living boss or AgentBossField.near) and AgentPartyQuestRuntime.active per Agent id and map instance for this long; an event instance on the Agent or its map is checked live every time and never cached. 0 checks on every call.
+    server.agents.capabilities.behavior.AgentImperfections.CONTENT_CHECK_CACHE_MS: '1000'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 200-300 around the baseline 230.
+    # Purpose: The quickest typical reaction a calibrated citizen or companion has to a new set of mobs; each one's own typical time lies between this and this plus REACTION_BASE_SPAN_MS (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.reactionDelayMs, from AgentCombatBehaviorRuntime.responseReady's uncalibrated branch: the per-Agent base is this plus floorMod(hash(agent id), REACTION_BASE_SPAN_MS), spread log-normally per sighting and clamped to [180 ms, AVAILABLE_MOB_RESPONSE_MAX_MS].
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.REACTION_BASE_MIN_MS: '230'
+    # Values: a positive integer; unit: milliseconds. Recommended: 100-200 around the baseline 151.
+    # Purpose: How far apart the typical reaction times of different citizens and companions lie, so no two react alike (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.reactionDelayMs takes floorMod(hash(agent id), this) on top of REACTION_BASE_MIN_MS; 151 gives typical reactions of 230-380 ms. Must be at least 1 (a floorMod divisor).
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.REACTION_BASE_SPAN_MS: '151'
+    # Values: a finite non-negative decimal. Recommended: 0.30-0.45 around the baseline 0.35.
+    # Purpose: How much one citizen's or companion's reaction to new mobs varies from one sighting to the next; the tell audit reads a per-bot spread under 0.25 as a bot tell (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.reactionDelayMs multiplies the per-Agent base by exp(this * N(0,1)), the Gaussian seeded by the agent id and the sighting's mob set so a sighting gives one answer, before the clamp to [180 ms, AVAILABLE_MOB_RESPONSE_MAX_MS].
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.REACTION_SIGMA: '0.35'
+    # Values: a decimal from 0 to 0.25. Recommended: 0.05-0.15 around the baseline 0.10.
+    # Purpose: How far below the configured autopot HP point a calibrated citizen's or companion's own potion point may lie (F8 imperfections: 0.60 at the configured 0.70).
+    # Technical: AgentImperfectionPolicy.personalHpAlert, via AgentImperfections.hpAlert in AgentPotionService.hpThreshold when neither the owner nor a learned habit sets one: base minus this up to base plus POTION_BAND_ABOVE in 16 steps by agent id, never under the IMPERFECTIONS_POTION_FLOOR / 0.45 floor.
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.POTION_BAND_BELOW: '0.10'
+    # Values: a decimal from 0 to 0.25. Recommended: 0.03-0.10 around the baseline 0.05.
+    # Purpose: How far above the configured autopot HP point a calibrated citizen's or companion's own potion point may lie (F8 imperfections: 0.75 at the configured 0.70).
+    # Technical: AgentImperfectionPolicy.personalHpAlert: the top of the per-Agent band; the result is capped at 1.0 and boss content, event instances and party quests keep the configured base (AgentImperfections.excluded).
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.POTION_BAND_ABOVE: '0.05'
+    # Values: a finite decimal of 1.0 or more. Recommended: 1.25-2.0 around the baseline 1.5.
+    # Purpose: Safety margin on a mob's worst single hit when deciding whether a citizen's or companion's potion may come a beat late: no late drink if any mob in reach could take HP under 40% (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.lateDrinkSafe multiplies AgentDefenseDataProvider.maxIncomingHit (touch at PADamage or magic at MADamage, at MAX_DAMAGE_FACTOR) by this and compares it with HP minus 40% of max HP, for every hostile mob within DANGER_RANGE_X_PX / DANGER_RANGE_Y_PX.
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.WORST_HIT_MARGIN: '1.5'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 400-900 around the baseline 600.
+    # Purpose: How far sideways a mob may stand and still count as able to hit a citizen or companion before its delayed potion goes down (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.lateDrinkSafe considers every hostile living monster within this horizontal distance (and DANGER_RANGE_Y_PX vertically) of the Agent; any boss on the map refuses a late drink outright.
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.DANGER_RANGE_X_PX: '600'
+    # Values: a finite non-negative integer; unit: pixels. Recommended: 250-600 around the baseline 400.
+    # Purpose: How far above or below a mob may stand and still count as able to hit a citizen or companion before its delayed potion goes down (F8 imperfections).
+    # Technical: AgentImperfectionPolicy.lateDrinkSafe: the vertical half of the danger box around the Agent, with DANGER_RANGE_X_PX the horizontal one; a mob outside the box is not weighed.
+    server.agents.capabilities.behavior.AgentImperfectionPolicy.DANGER_RANGE_Y_PX: '400'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 250-1000 around the tested baseline 500; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for decision cache. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "map activity policy" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.

@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import server.agents.capabilities.behavior.AgentBehaviorTelemetry;
+import server.agents.capabilities.behavior.AgentImperfectionPolicy;
+import server.agents.capabilities.behavior.AgentImperfections;
 import server.agents.capabilities.behavior.AgentTellProbe;
 
 /** Combat adapter for response latency, claim tolerance, and profile target diversity. */
@@ -30,10 +32,20 @@ public final class AgentCombatBehaviorRuntime {
     public static boolean responseReady(
             AgentRuntimeEntry entry, Character agent, List<Monster> candidates, long nowMs) {
         if (!AgentBehaviorRuntime.enabled(entry) || !AgentBehaviorFeatureProfile.current().enabled()) {
-            if (AgentTellProbe.on() && entry != null && candidates != null && !candidates.isEmpty()) {
-                // no response delay: it acts on the tick it first sees them, which the tell audit times as 0 ms
+            if ((AgentTellProbe.on() || AgentImperfections.on()) && entry != null && candidates != null
+                    && !candidates.isEmpty()) {
+                // no calibration: it acts on the tick it first sees them (0 ms in the tell audit), unless it is a
+                // citizen or companion the imperfections gate calibrates (F8.1): then a human reaction time first
                 AgentCombatBehaviorState state = entry.capabilityStates().require(AgentCombatBehaviorState.STATE_KEY);
-                state.ready(1L, nowMs, 0);
+                boolean hit = AgentCombatCooldownStateRuntime.hasMobHitCooldown(entry);
+                int delayMs = state.waiting() || hit ? 0 : humanReactionMs(agent, candidates);
+                if (hit) {
+                    state.respondNow(nowMs); // being hit is answered at once
+                }
+                if (!state.ready(1L, nowMs, delayMs)) {
+                    AgentBehaviorTelemetry.responseDeferred();
+                    return false;
+                }
                 tellReaction(state, agent, nowMs);
             }
             return true;
@@ -59,6 +71,20 @@ public final class AgentCombatBehaviorRuntime {
         if (!ready) AgentBehaviorTelemetry.responseDeferred();
         else tellReaction(state, agent, nowMs);
         return ready;
+    }
+
+    /**
+     * F8.1: a calibrated citizen's or companion's time to go for a new set of mobs (AgentImperfectionPolicy), within
+     * AVAILABLE_MOB_RESPONSE_MAX_MS; 0 for every other Agent and in excluded content. Only new targets wait: a hit
+     * Agent answers at once, and heals, potions and survival buffs never come through here.
+     */
+    private static int humanReactionMs(Character agent, List<Monster> candidates) {
+        if (agent == null || !AgentImperfections.calibrated(agent)) {
+            return 0;
+        }
+        long sighting = candidates.stream().mapToLong(Monster::getObjectId).sorted()
+                .reduce(candidates.size(), (left, right) -> left * 31L + right);
+        return AgentImperfectionPolicy.reactionDelayMs(agent.getId(), sighting, AVAILABLE_MOB_RESPONSE_MAX_MS);
     }
 
     /** The tell audit times the first ready tick of each wait for a target, from the wait's start. */

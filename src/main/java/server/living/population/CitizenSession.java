@@ -26,6 +26,8 @@ public final class CitizenSession {
     public volatile long endsAtMs;
     public volatile long lastPlanAtMs;
     public volatile long afkUntilMs;
+    /** Its AFK is a field's short pause (FieldPause, decision D6): the sweep ends it early when it gets unsafe. */
+    public volatile boolean fieldPause;
     public volatile long ledgerAtMs;
     public volatile boolean stallOpen;
     /** Sales of its open stall it has remembered the buyers of (Market.rememberSales); 0 when the stall opens. */

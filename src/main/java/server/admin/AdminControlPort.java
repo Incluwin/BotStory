@@ -213,6 +213,7 @@ public final class AdminControlPort {
                 case "/runtime/companions/audit":        return AdminCompanionsReader.audit();
                 case "/runtime/tells":                   return AdminTellsReader.now();
                 case "/runtime/tells/history":           return AdminTellsReader.history();
+                case "/runtime/imperfections":           return AdminImperfectionsReader.now();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {

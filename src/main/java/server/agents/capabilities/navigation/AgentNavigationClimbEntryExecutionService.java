@@ -1,6 +1,7 @@
 package server.agents.capabilities.navigation;
 
 import client.Character;
+import server.agents.capabilities.behavior.AgentFumbles;
 import server.agents.capabilities.movement.AgentJumpActionService;
 import server.agents.capabilities.movement.AgentMovementBroadcastService;
 import server.agents.capabilities.movement.AgentQueuedMovementActionService;
@@ -36,6 +37,9 @@ public final class AgentNavigationClimbEntryExecutionService {
 
         if (AgentNavigationRopeEdgeService.canGrabRopeAtCurrentPosition(agentPos, rope)) {
             AgentNavigationDebugStateRuntime.clearLastEdgeBlockReason(entry);
+            if (AgentFumbles.missesRope(entry, agent, rope, System.currentTimeMillis())) {
+                return true; // F8.5: a jump beside the rope that misses it; the next try grabs
+            }
             AgentNavigationClimbExecutionService.startClimbing(entry, agent, rope, agentPos.y, climbDirection);
             return true;
         }
@@ -55,6 +59,9 @@ public final class AgentNavigationClimbEntryExecutionService {
 
         if (AgentNavigationRopeEdgeService.canExecuteGroundRopeJumpEntryFromCurrentPosition(agentPos, edge)) {
             AgentNavigationDebugStateRuntime.clearLastEdgeBlockReason(entry);
+            if (AgentFumbles.missesRope(entry, agent, rope, System.currentTimeMillis())) {
+                return true; // F8.5: a jump that falls short of the rope; the next try grabs
+            }
             AgentJumpActionService.initiateRopeJump(entry, agent, edge.launchStepX);
             return true;
         }

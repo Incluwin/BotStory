@@ -63,7 +63,10 @@ different). A session lasts a cohort-typical time and picks an activity by cohor
 on), `TOWN` (town-life visit where a profile exists, standing spots otherwise), `PQ` at the
 region's lobby if the level fits, `MARKET` (Free Market), `AFK`, `PLAY` (omok and match cards, "Minigames" below, while
 `MINIGAMES_ENABLED`). Every 25-45 minutes it re-plans;
-15% of the time it goes AFK for 5-15 minutes ("afk"/"back").
+15% of the time it goes AFK: 5-15 minutes in a town, Free Market room or lobby ("afk"/"back"), but on a training
+field only a pause of 30 s to `FIELD_AFK_MAX_MS` (at most 2 min, decision D6, "brb water"/"back"), started only at
+80%+ HP with no mob within 400 px and ended early under 60% HP or with a mob within 150 px (`FieldPause`; see
+"Imperfections" in docs/LIVING_WORLD_GUIDE.md).
 
 **Travel** (docs/CITIZEN_PORTAL_TRAVEL_PLAN.md, `PORTAL_TRAVEL_*`). A citizen on a map a player is on goes to
 another map on foot. It walks to the right portal and goes through it, map to map along the route graphs. At a dock it

@@ -1,6 +1,8 @@
 package server.agents.integration.cosmic;
 
 import client.Character;
+import server.agents.capabilities.behavior.AgentImperfections;
+import server.agents.capabilities.supplies.AgentLateDrinkRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.capabilities.supplies.AgentPotionCheckRequestService;
 import server.agents.capabilities.supplies.AgentPotionService;
@@ -30,6 +32,15 @@ public final class CosmicAgentPotionCheckRequestBridge {
         return choice == null
                 ? null
                 : new AutopotSelection(choice.position(), choice.itemId());
+    }
+
+    /** F8.2: true while this Agent's autopot HP drink waits a beat (AgentLateDrinkRuntime); false = drink now. */
+    public static boolean holdsHpDrink(Character agent) {
+        if (!AgentImperfections.on()) {
+            return false;
+        }
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
+        return entry != null && AgentLateDrinkRuntime.holds(entry, agent, System.currentTimeMillis());
     }
 
     private static AgentPotionCheckRequestService.Hooks<AgentRuntimeEntry> hooks() {

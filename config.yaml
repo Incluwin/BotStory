@@ -1175,6 +1175,49 @@ living_world:
     # minute sample and the hourly fold. Read at boot. false = the kill switch: nothing is measured or written.
     # On since 2026-10-27 (user): it only measures, and its 24 h baseline is what F8 (imperfections) is judged against.
     TELL_AUDIT_ENABLED: true
+    # Small imperfections (2026-10-27, docs/BOT_CONCEPT_PLAN.md F8): citizens and companions slip now and then the way
+    # players do - their own potion point (60-75%), a drink a beat late, a buff recast early or late, a short reaction
+    # before a new mob, a cheap drop left, a missed rope grab or a walk past an NPC in town, a typo and "*fix", a short
+    # companion AFK while its owner idles in town, "rez pls?" beside a party member who has Resurrection (and bishops
+    # cast it). The user's rule: no severe mistakes - no extra deaths, no long idling. GET /runtime/imperfections counts
+    # what fired and what was held back; tools\tells-report.ps1 compares deaths per class before and after.
+    # Technical: one gate (server.living.imperfections.Imperfections) answers the engine seam AgentImperfections; the
+    # engine never slips in an event instance, on a boss map or in a party quest, and keeps its own caps (no late drink
+    # under 50% HP, survival buffs never later than 90%, a Resurrection wait at most 10 s). Read at boot.
+    # false = the kill switch: every Agent behaves exactly as before.
+    IMPERFECTIONS_ENABLED: false
+    # Technical: each bot's sliding-hour budget for slips, all kinds together; each kind also has its own hourly cap in
+    # Imperfections.Kind (late potion 6, buff lapse 2, rope miss 2, NPC walk-past 2, loot 4, rez wait 2, typo 3, AFK 1).
+    IMPERFECTIONS_SLIPS_PER_HOUR: 10
+    # Technical: Imperfections.slip refuses every slip but a Resurrection wait while the bot's HP is under this share of
+    # its maximum (and while its owner or a human of its party on its map is dead or under half HP).
+    IMPERFECTIONS_HP_GUARD: 0.6
+    # Technical: AgentImperfectionPolicy.personalHpAlert never puts a bot's own potion point under this (0.45 at least,
+    # the same floor as OWNER_HABIT_HP_FLOOR); the owner's own percentages and a learned habit come first anyway.
+    IMPERFECTIONS_POTION_FLOOR: 0.45
+    # Technical: chance an autopot HP drink waits 0.3-1.5 s (AgentLateDrinkRuntime): asked only while
+    # AgentImperfectionPolicy.lateDrinkSafe holds, and again at every hit; due drinks go down on the Agent's next tick.
+    IMPERFECTIONS_LATE_POTION_CHANCE: 0.15
+    # Technical: chance a buff whose every stat is offensive or utility (AgentImperfectionPolicy.LAPSABLE) is recast 2-10
+    # s after it ran out instead of in 85-100% of its duration; survival buffs are never recast later than 90%.
+    IMPERFECTIONS_BUFF_LAPSE_CHANCE: 0.05
+    # Technical: chance a monster drop that is no meso, equip, cash or quest item, nothing the owner's quests need and at
+    # or under the Free Market price index median is left on the ground (AgentLootPolicy.slipsPast); one answer per drop.
+    IMPERFECTIONS_LOOT_SLIP_CHANCE: 0.05
+    # Technical: chance, at each rope grab and each walk to an NPC in a calm town, of a missed grab (one plain jump, then
+    # the real grab) or a walk 80-150 px past the NPC and back (AgentFumbles; at most 6 s).
+    IMPERFECTIONS_FUMBLE_CHANCE: 0.1
+    # Technical: chance a citizen's chat line on a town, Free Market or lobby map gets two letters of one word swapped
+    # and a "*word" line 1.5-3 s later (ChatterEngine.speakSelf through Imperfections.typoFix).
+    IMPERFECTIONS_TYPO_FIX_CHANCE: 0.04
+    # Technical: once its owner has stood within 40 px for IMPERFECTIONS_OWNER_IDLE_MS in a calm town, each companion
+    # there rolls once with this chance to go AFK (CompanionFollowGuard.waitsAt holds it on its spot; ends when the
+    # owner moves 200 px or leaves the map), for 30 s to IMPERFECTIONS_COMPANION_AFK_MAX_MS (code cap 90000), at most
+    # once per IMPERFECTIONS_COMPANION_AFK_GAP_MS.
+    IMPERFECTIONS_COMPANION_AFK_CHANCE: 0.3
+    IMPERFECTIONS_OWNER_IDLE_MS: 60000
+    IMPERFECTIONS_COMPANION_AFK_MAX_MS: 90000
+    IMPERFECTIONS_COMPANION_AFK_GAP_MS: 3600000
     # An owner's whisper to a companion that reaches no Agent (2026-10-10): on a live bench slice it whispers back
     # that it is off on its own and to call it back first; loaded with no running Agent yet, to try again in a sec.
     # At most one such line per companion per COMPANION_WHISPER_REFUSAL_GAP_MS, so spam gets one answer. Strangers,
@@ -1191,6 +1234,13 @@ population:
     ONLINE_MAX: 240
     CHANNELS: "1"
     SWEEP_MS: 60000
+    # A citizen going AFK on a training field (decision D6, docs/BOT_CONCEPT_PLAN.md F8): a pause of 30 s up to this
+    # ("brb water"), only with HP 80%+ and no hostile mob within 400 px, ended early ("back") on the next sweep at HP
+    # under 60% or a mob within 150 px. Towns, Free Market rooms and lobbies keep the 5-15 min AFK.
+    # Technical: PresenceScheduler.maybeReplan's AFK branch with FieldPause; FieldCatalog.kind "field" maps only. Not
+    # behind IMPERFECTIONS_ENABLED (the old 5-15 min field AFK broke the no-long-idling rule). Within 30000..120000;
+    # 0 = the old rule.
+    FIELD_AFK_MAX_MS: 110000
     LEDGER_MS: 600000
     PRESENCE_MULTIPLIER: 1.5
     PERCEPTION_HOPS: 1

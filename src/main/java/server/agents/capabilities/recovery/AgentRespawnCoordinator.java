@@ -32,6 +32,16 @@ public final class AgentRespawnCoordinator {
         AgentDeathTickService.respawnAt(entry, agent, AgentDeathConfig.cfg.RESPAWN_HP_PERCENT, map, liveHooks());
     }
 
+    /**
+     * F8.6: a Resurrection stood the Agent up where it lay (AgentRezWaitRuntime): it stands on the ground there, its
+     * movement state starts afresh as after a respawn, and the map sees it.
+     */
+    public static void standUpWhereItLay(AgentRuntimeEntry entry, Character agent) {
+        AgentMovementPoseService.idleOnGround(entry, agent);
+        AgentMovementStateResetService.resetEntryStateAfterTeleport(entry);
+        AgentMovementBroadcastService.broadcastMovement(entry);
+    }
+
     private static AgentDeathTickService.RespawnHooks liveHooks() {
         return new AgentDeathTickService.RespawnHooks(
                 AgentMapGatewayRuntime.map()::changeMapNear,

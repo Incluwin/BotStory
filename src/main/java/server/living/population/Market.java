@@ -52,6 +52,9 @@ public final class Market {
     private final AgentFreeMarketStallService stalls = new AgentFreeMarketStallService();
     private final AgentFreeMarketBuyerService buyers;
     private volatile int stallsOpen;
+    /** {median index price, when it was worked out} for atOrUnderMedian. */
+    private volatile long[] medianCache;
+    private static final long MEDIAN_REFRESH_MS = 60_000L;
     private volatile long purchasesFromHumans;
 
     Market(Population population) {
@@ -88,6 +91,27 @@ public final class Market {
         index.put(itemId, new long[]{seed, 0});
         population.store().savePrice(itemId, seed, 0);
         return seed;
+    }
+
+    /**
+     * True when the index has a row for the item at or under the median of its prices: what a citizen or companion may
+     * leave on the ground (F8 loot slip). Reads the index only (an item it has no row for is not cheap, and no row is
+     * seeded, so it is safe on any thread); the median is worked out again at most once a minute.
+     */
+    public boolean atOrUnderMedian(int itemId) {
+        long[] row = index.get(itemId);
+        return row != null && row[0] <= median(System.currentTimeMillis());
+    }
+
+    private long median(long nowMs) {
+        long[] cached = medianCache;
+        if (cached != null && nowMs - cached[1] < MEDIAN_REFRESH_MS) {
+            return cached[0];
+        }
+        long[] prices = index.values().stream().mapToLong(known -> known[0]).sorted().toArray();
+        long median = prices.length == 0 ? 0L : prices[prices.length / 2];
+        medianCache = new long[]{median, nowMs};
+        return median;
     }
 
     /**
