@@ -108,15 +108,16 @@ Wave 3's rules (`docs/REGIONAL_RESIDENTS_PLAN.md` sections 2, 8 and 9): 7 Reside
 recruitable, each recruit earned a different way, one regional arc tying Kuala Lumpur and Kampung Village (lightly
 to Singapore by gossip), finales once per server (`requires.notFlags`, pinned in `ArcFinalBeatOncePerServerTest`),
 rumors at venues where their cast is awake, quests on Malaysia's own fields (Muddy Banks 46-65, Hibiscus Road 59-63,
-Fantasy Theme Park 70-87, Spooky World 94+). The recruits carry the third regional tier of the four weapon lines that
-still stop at waves 1 and 2 (two-handed swords, spears, one-handed axes, two-handed blunts).
-Quest-log ids 32000-32149, appended to `quest-log-ids.yaml`. The cast table goes in section 8 once authored.
+Fantasy Theme Park 70-87, Spooky World 94+). The recruits give an L100-120 tier of the four weapon lines that stopped
+at waves 1 and 2 (two-handed swords, spears, one-handed axes, two-handed blunts; section 8 says how they sit beside
+Masteria's). Quest-log ids 32000-32149 (32000-32042 used), appended to `quest-log-ids.yaml`. The cast is in section 8.
 
 Shared Resident files are append-only: `loadouts.yaml` (one section "# Malaysia Residents (docs/ROUTES_MALAYSIA_PLAN.md)"),
 `ResidentDialogue.PORTRAITS` (`kuala-lumpur`, `kampung-village`), `quest-log-ids.yaml`. Pinned counts that move here
 (and will conflict with the parallel Resident sessions at the merge): `ContentLintFriendshipTest` (weapon Residents),
-`ContentLintLootTermsTest` (contracts, 69 before), `ArcFinalBeatOncePerServerTest`. No new TownLife profile (both
-exist), so `AgentTownLifeProfileRepositoryTest` (50) does not move. No database changeset.
+`ContentLintLootTermsTest` (contracts, 69 before), `ArcFinalBeatOncePerServerTest`. Malaysia needs no new TownLife
+profile (both exist); `AgentTownLifeProfileRepositoryTest` moves 50 -> 51 for the Temple of Time's (section 3). No
+database changeset.
 
 ## 6. Tests
 
@@ -125,6 +126,10 @@ exist), so `AgentTownLifeProfileRepositoryTest` (50) does not move. No database 
 - `AgentTravelLegRouteTest` / a new route test: Henesys reaches Kuala Lumpur, Kampung Village, Mushroom Shrine, Showa
   Town, Florina Beach, Kerning Square, Altaire Camp, the Temple of Time and Sharp Cliff I with rides; a level 49 agent
   does not get the dungeon leg; an agent without the Mushroom Castle quests is routed around An Empty House's portal.
+- `AgentVictoriaRouteRuntimeTest`: Kerning Square's way back boards by walking into the station exit; Spinel's way
+  back landing in Henesys (where the tour began) counts as the ride done, not a refusal; Jeff's leg is no way below
+  level 50. `AgentRideTravelRuntimeTest`: a ticketless rider on Leafre Station's platform now walks out (dracoout) to
+  Mue instead of finding no route.
 - `AgentWorldPortalRouteGraphFreshnessTest`: standard edges (now with the Repack maps and the flight maps) and the
   scripted portals match WZ.
 - Knowledge: `KnowledgeLintTest`, the travel-leg loader keeps every new leg (no unknown map or NPC), and routes to the
