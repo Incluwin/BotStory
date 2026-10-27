@@ -1,0 +1,48 @@
+# Amoria arc: forty springs of a flower on the chapel steps, the letter the sea kept, what the sea said, and the answer.
+# It shares its flags with Florina Beach's arc (arcs/florina-beach.yaml): its second chapter waits on the bottle's
+# letter read on the steps, its last on the answer sent from Florina's look-out shed. The errand to Lith Harbor and the
+# answer each happen once per server (quests/amoria.yaml).
+- id: pernille-forty-springs
+  persona: pernille
+  chapters:
+    - id: chapter-1
+      title: "Forty Springs"
+    - id: chapter-2
+      title: "He Wrote"
+      enterWhen: { flags: [amoria.letter.read] }
+      dialogueOverrides:
+        greet: ["hello, dear. he wrote. did you know? he wrote.", "good morning. i've read it again. i read it every morning before the lilies."]
+        who: ["Pernille, keeper of the chapel flowers. forty springs ago a sailor wrote asking me to lay a flower on these steps if it was yes, and the sea kept the letter till now. i'd laid one every spring anyway, not knowing there was a question."]
+        idle: ["(takes a folded, water-stained letter from her apron, reads it with her lips moving, and puts it back)", "(sets a single white flower on the chapel step, straightens it, and smiles at it)"]
+        noWork: ["nothing today, dear. the flowers are done. i've a letter to read."]
+        smallTalk: ["Aurelio. bosun of the Silver Gull. i hadn't said his name out loud in thirty years. i say it to the lilies now. they don't mind.", "i ask everyone up from the beach to read it to me. my eyes aren't what they were. i like hearing it in new voices. it makes it new."]
+        speakPlainly: ["plainly: he wrote."]
+        about.marisol: ["a girl on Florina beach found his bottle in the shallows and sent it up the hill to me. Marisol. i've never met her. i'll never be able to thank her enough."]
+        chapterEnter: ["(reads a water-stained letter on the chapel steps, folds it very carefully, and holds it against her chest)"]
+    - id: chapter-3
+      title: "What the Sea Said"
+      enterWhen: { flags: [amoria.gull.remembered] }
+      dialogueOverrides:
+        greet: ["hello, dear. i know what happened now.", "good morning. he went in after a boy. of course he did."]
+        who: ["Pernille, keeper of the chapel flowers. my Aurelio went over the side of the Silver Gull after a boy, and the boy lived to be an old sailor in Lith Harbor. that's where my forty years went, into a boy who got to grow up."]
+        idle: ["(writes a single word on a card, looks at it for a long time, and tucks it into the letter)", "(sets a single white flower on the chapel step and doesn't straighten it this time)"]
+        noWork: ["nothing yet, dear. come and sit with Clotilde and me by the chapel steps some evening, after six. listen. then you'll know what i want carried."]
+        smallTalk: ["i wrote my answer. it took me forty years and three days. it's one word. i crossed it out twice because my hand shook. not because it was wrong.", "Clotilde and i sit by the chapel steps in the evenings. she says the spring cakes were practice. i've told her about him now. all of it."]
+        speakPlainly: ["plainly: an answer, forty years late."]
+        about.marisol: ["Marisol, on Florina beach. she found his bottle in the shallows. she'll know how to send a letter back the way it came."]
+        about.hadrik: ["the old first mate in Lith Harbor. he was the boy. Aurelio went over the side for him. i'd like to sit with him one day. i don't think he'd like it. i'd like it anyway."]
+        chapterEnter: ["(sits very still on the chapel steps with the letter in her lap, then gets up and waters every flower, one by one)"]
+    - id: chapter-4
+      title: "Yes"
+      enterWhen: { flags: [florina.answer.sent] }
+      dialogueOverrides:
+        greet: ["hello, dear. it's gone. my answer. out on the tide.", "good morning. i slept all night. i haven't done that in a while."]
+        who: ["Pernille, keeper of the chapel flowers. a bosun called Aurelio asked me to marry him forty springs ago, in a letter the sea kept. i wrote my yes at last, and Marisol sent it out on the tide from Florina."]
+        idle: ["(sets a single white flower on the chapel step and hums something old and slow)", "(reads the letter one more time, smiling, then tucks it away in her apron for good)"]
+        noWork: ["nothing today, dear. the flowers are watered. the steps are swept. the answer's sent."]
+        smallTalk: ["i'll still lay a flower on the steps every first morning of spring. not for waiting. for remembering. it's a different flower. it looks the same.", "Clotilde baked the spring cake anyway. she said it was practice for forty years and now it's just cake. we ate it on the steps."]
+        speakPlainly: ["plainly: yes."]
+        about.marisol: ["Marisol, on Florina beach. she found his bottle and she sent my answer back the way it came. i'll go down to the beach one day. i haven't seen the sea in forty years. i think i'm ready."]
+        about.hadrik: ["the old first mate in Lith Harbor. he was the boy Aurelio went in for. i hope he knows it was worth it. i'd tell him so."]
+        friend.best: ["if you ever come up those steps with someone, i'll do the flowers. all of them. and if you lose your voice, i'll say yes for you. i know how."]
+        chapterEnter: ["(lays a white flower on the chapel step, straightens it, and for the first time doesn't look down the road)"]

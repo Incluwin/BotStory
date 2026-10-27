@@ -1,0 +1,570 @@
+# Maple Island cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 3 Residents in Mushroom
+# Town (mushroom-town), 4 in Amherst (amherst) and 3 in Southperry (southperry), none recruitable, no arc. They are the
+# first faces a new Explorer meets (levels 1-10) and explain the island the way locals would: Sera and Heena on the
+# hill, Lucas the chief, Sid's and Lucy's shops, Mai's training center, the job instructors on the Split Road of
+# Destiny, and Shanks's ship to Lith Harbor, which only goes one way. The road out of Mushroom Town only goes one way
+# too (the server's portals: 10000 -> 20000 -> 30000 -> 40000 -> 50000 -> Amherst, none back), so the Mushroom Town
+# three hand each newcomer on to a friend in Amherst. Marta's leaving list is the island's one Victoria tie (Olwen,
+# Lith Harbor). Moe and Sunny argue about a signpost at the east gate (rumors/maple-island.yaml).
+
+# ---- Mushroom Town ----
+- id: tilly
+  name: Tilly
+  look: { gender: female }
+  title: "Everyone's First Friend"
+  job: BEGINNER
+  level: { min: 3, max: 5 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-town
+    routine:
+      - { from: 6, to: 14, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 18, to: 23, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  knows: [snail, dangerous forest, amherst]
+  questLines: [tilly-a-friend-in-amherst, tilly-ten-snails]
+  relationships:
+    - { persona: rufus, kind: BRINGS_LUNCH_TO }
+    - { persona: wynn, kind: LOOKS_AFTER }
+    - { persona: bettina, kind: SENDS_NEW_FACES_TO }
+  giftItemIds: [2020002, 2001001]
+  dialogue:
+    greetFirst: ["oh! you're new! everybody's new here once. i'm Tilly. welcome to Mushroom Town. it's small. that's the nice thing about it.", "hello, hello! you've just woken up here, haven't you? everyone does. don't worry. i'll tell you which way is which."]
+    greet: ["hi again!", "you're still here! good.", "hello, friend."]
+    idle: ["(waves at somebody coming down the hill, then at somebody else, then at a snail)", "(writes a note in round, careful letters, folds it twice and tucks it into her apron)"]
+    noWork: ["nothing more from me. i'm all out of notes. that's a first."]
+    nothingDue: ["you don't owe me anything. friends don't keep count."]
+    who: ["Tilly. i say hello to everyone who wakes up in Mushroom Town. somebody has to be the first friend. i like it being me."]
+    bye: ["the road's that way. you'll do fine. i mean it."]
+    thanks: ["oh, thank you!"]
+    smallTalk: ["Sera up on the hill tells everyone how the island works. Heena will tell you again if you forget. i forgot twice. it's allowed.", "the road out of town only goes one way: the snail garden, the field of flowers, the little forest, the dangerous forest, then Amherst. you can't walk back. that's why i say a proper goodbye.", "past Amherst there's Southperry, and a ship, and past the ship there's Victoria Island. it's enormous. whole towns of people who woke up here once, like you."]
+    speakPlainly: ["plainly: i'm your first friend. that's the whole job."]
+    questOffer.tilly-a-friend-in-amherst: ["when you get to Amherst, will you say hello to Bettina for me? she bakes on Rainbow Street. tell her Tilly sent you. she'll know what that means."]
+    questAccept.tilly-a-friend-in-amherst: ["here, take this note. read it after you've met her, not before. Amherst's at the end of the road. you can't miss it. well, you can. but you won't."]
+    questWaiting.tilly-a-friend-in-amherst: ["Bettina's in Amherst, at the end of the road. the note's for after."]
+    questComplete.tilly-a-friend-in-amherst: ["(Tilly's note, in round careful letters) 'you've met Bettina! now you've got two friends on the island. that's how it starts. there are potions at the bottom of your pack. love, Tilly.'"]
+    questOffer.tilly-ten-snails: ["snails are the first thing everybody fights. they're slow and grumpy and nearly harmless. beat ten on your way? the first one's the hardest. after that it's just snails."]
+    questAccept.tilly-ten-snails: ["they're in the dangerous forest, right before Amherst. don't let the name scare you. it's mostly snails. i've written you another note. after the tenth, all right?"]
+    questWaiting.tilly-ten-snails: ["ten snails, in the dangerous forest. the note's for after."]
+    questComplete.tilly-ten-snails: ["(Tilly's second note) 'ten! i knew it. when you're tired, sit down. it helps more than you'd think. potions help too. i packed you some, and apples. love, Tilly.'"]
+    about.rufus: ["Rufus grows cabbages behind the houses. he grumbles at the snails all day. he's the gentlest man on the island. don't tell him i said so."]
+    about.wynn: ["Wynn's going to be a magician. he says so every morning. so far he's made one snail sneeze. it was a very good sneeze."]
+    about.bettina: ["Bettina bakes in Amherst. i send her every new face. she says they all arrive smiling and leave full. that's a good trade, i think."]
+    aboutUnknown: ["i don't know them yet. i'd like to!"]
+    friend.close: ["you're my friend now. a real one. not a first one. a real one."]
+    friend.best: ["i keep a list of everyone i've ever said hello to. you're at the top now. i moved you."]
+    famed: ["people are saying nice things about you. i always knew they would."]
+    defamed: ["somebody's being unkind about you. they're wrong. i'll tell them."]
+    gift: ["for me? oh, thank you!"]
+    gift.favorite: ["oh! that's exactly what i'd have picked. we're going to get on."]
+    gift.again: ["one's plenty! save the rest for the road."]
+
+- id: rufus
+  name: Rufus
+  look: { gender: male }
+  title: "Cabbage Farmer"
+  job: BEGINNER
+  level: { min: 10, max: 12 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: mushroom-town
+    routine:
+      - { from: 5, to: 12, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 12, to: 14, spot: "venue:lower-west-street", activity: REST }
+      - { from: 14, to: 20, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  knows: [snail, snail shell, dangerous forest]
+  questLines: [rufus-snails-in-the-cabbages, rufus-a-word-for-moe]
+  relationships:
+    - { persona: tilly, kind: IS_BROUGHT_LUNCH_BY }
+    - { persona: wynn, kind: SHOOS_OFF_HIS_ROWS }
+    - { persona: moe, kind: SENDS_A_CABBAGE_TO }
+  giftItemIds: [2010001, 2020001]
+  dialogue:
+    greetFirst: ["hm. new one. mind the cabbages. everybody steps on the cabbages their first day.", "you're new. welcome. don't touch the cabbages. that's the whole welcome."]
+    greet: ["hm. you.", "still here? so are the cabbages.", "mind the rows."]
+    idle: ["(kneels in the cabbage rows and flicks a snail off a leaf, gently, back towards the road)", "(holds a cabbage up to the light, turns it, frowns, and puts it back exactly where it was)"]
+    noWork: ["nothing else. the cabbages don't need you. they need rain."]
+    nothingDue: ["you owe me nothing. a cabbage, maybe. no. keep it."]
+    who: ["Rufus. i grow cabbages. thirty years of cabbages, and snails eating them. never once left this town. never needed to."]
+    bye: ["mind the rows on your way."]
+    thanks: ["hm. thank you."]
+    smallTalk: ["the snails come up from the dangerous forest at night and eat the outside leaves. i let them have the outside leaves. the hearts are mine.", "Sera on the hill tells you how to fight. i'll tell you how to eat. potions keep you standing. supper keeps you going.", "Amherst buys my cabbages. Bettina bakes them into something. i don't ask what. it sells."]
+    speakPlainly: ["plainly: cabbages."]
+    questOffer.rufus-snails-in-the-cabbages: ["snails. up from the dangerous forest every night, into my rows. you're headed that way. thin them out for me. fifteen. that'll buy the cabbages a week."]
+    questAccept.rufus-snails-in-the-cabbages: ["down the road, the last forest before Amherst. i've stuck something in your pack for after. don't look yet."]
+    questWaiting.rufus-snails-in-the-cabbages: ["fifteen snails. the dangerous forest. the rows can't wait."]
+    questComplete.rufus-snails-in-the-cabbages: ["(a cabbage leaf at the bottom of your pack, scratched with a thumbnail) 'fifteen. good. the hearts are safe. there's a salad in there. my cabbages. don't let Bettina say she made it. R.'"]
+    questOffer.rufus-a-word-for-moe: ["you'll pass through Amherst. there's an old fellow there, Moe. kept the town gate till his knees gave out. tell him Rufus says the cabbages are coming. he'll understand."]
+    questAccept.rufus-a-word-for-moe: ["Moe. big moustache. stands by the east gate out of habit. the cabbages are coming. that's all. i've put a leaf in your pack for after."]
+    questWaiting.rufus-a-word-for-moe: ["Moe, in Amherst. the cabbages are coming. off you go."]
+    questComplete.rufus-a-word-for-moe: ["(another cabbage leaf, folded small) 'he laughed, didn't he. he always laughs. thirty springs i've sent him a cabbage. thank you for carrying the word. R.'"]
+    about.tilly: ["Tilly brings me lunch. i say i'm not hungry. she brings it anyway. she's like that with everybody."]
+    about.wynn: ["the boy practises spells on the snails in my rows. so far he's turned one of them slightly greener. i've stopped shooing him off. mostly."]
+    about.moe: ["Moe and i were boys here. he walked the road at sixteen. nobody walks it back. so i send a cabbage."]
+    aboutUnknown: ["never met them. i don't get out."]
+    friend.close: ["you can have the first cabbage of the year. nobody gets the first cabbage."]
+    friend.best: ["i've named a row after you. the best row. the snails stay off it. i don't know why. i think they know."]
+    famed: ["people say your name. even the snails have heard."]
+    defamed: ["somebody's talking. let them. snails talk too."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["now that's proper food. thank you."]
+    gift.again: ["one's enough. i'm a simple man."]
+
+- id: wynn
+  name: Wynn
+  look: { gender: male }
+  title: "Practises Magic on Snails"
+  job: BEGINNER
+  level: { min: 2, max: 4 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: mushroom-town
+    routine:
+      - { from: 9, to: 15, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 15, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [snail, split road of destiny, ellinia]
+  questLines: [wynn-the-message-spell, wynn-a-spell-for-sunny]
+  relationships:
+    - { persona: sunny, kind: WANTS_LESSONS_FROM }
+    - { persona: rufus, kind: PRACTISES_IN_THE_ROWS_OF }
+    - { persona: tilly, kind: IS_LOOKED_AFTER_BY }
+  giftItemIds: [2001001, 2000003]
+  dialogue:
+    greetFirst: ["stand back! i'm doing a spell. ...okay, it didn't work. hi. i'm Wynn. i'm going to be a magician.", "oh, a new one! do you want to see a spell? it's mostly sparkles. one day it'll be fire."]
+    greet: ["hi! watch this! ...okay, don't watch this.", "you're back! i nearly did it this time.", "hi!"]
+    idle: ["(points a twig at a snail and says a long word very seriously; the snail keeps going)", "(shakes the twig, blows on the end of it, and peers down it like a telescope)"]
+    noWork: ["nothing else. i'm saving my spells. i've only got about one."]
+    nothingDue: ["you don't owe me anything! magicians don't charge. well. Grendel probably does."]
+    who: ["Wynn. i'm going to be a magician. magicians get their job at level eight, everyone else waits till ten. then i'm taking the ship to Victoria, then the road to Ellinia, to find Grendel the Really Old."]
+    bye: ["bye! i'll wave a spell at you. ...that was the spell."]
+    thanks: ["thanks!"]
+    smallTalk: ["Grendel the Really Old gives magicians their job, in Ellinia, over on Victoria. he's so old he's got moss. that's what everyone says.", "past Amherst there's the Split Road of Destiny, where all five job instructors stand and tell you what they do. i'd only listen to one. guess which.", "i practise on snails because they're slow. if i practised on something fast i'd never hit it."]
+    speakPlainly: ["plainly: i can make sparkles. sometimes."]
+    questOffer.wynn-the-message-spell: ["i've got a spell that works! it's a message spell. it finds you when you get somewhere and says something. beat five snails on the way so i know you're tough, and when you reach Amherst, it'll find you. promise."]
+    questAccept.wynn-the-message-spell: ["five snails in the dangerous forest, then Amherst. hold still. ...there. you've got a spell on you. you can't feel it. that means it's a good one."]
+    questWaiting.wynn-the-message-spell: ["five snails, then Amherst. the spell's waiting. it's very patient."]
+    questComplete.wynn-the-message-spell: ["(a pop of sparkles beside your ear, and Wynn's voice, very small) 'it worked! you're in Amherst! say hi to everyone! i put potions in your pack before you left. that part wasn't magic.'"]
+    questOffer.wynn-a-spell-for-sunny: ["in Amherst there's a teacher called Sunny. she teaches the map and the signposts and everything. tell her a magician called Wynn is coming one day, and he can already do sparkles. so she can get ready."]
+    questAccept.wynn-a-spell-for-sunny: ["Sunny. she's in Amherst, probably pointing at something. tell her Wynn. W-Y-N-N. two n's. i've put the spell on you again. it'll know when you've told her."]
+    questWaiting.wynn-a-spell-for-sunny: ["Sunny, in Amherst. two n's!"]
+    questComplete.wynn-a-spell-for-sunny: ["(sparkles again, and Wynn's small voice) 'did she say she'd get ready? she did, didn't she! two n's! you're the best person who ever walked down that road.'"]
+    about.sunny: ["Sunny teaches the map in Amherst. i haven't met her yet. everyone who walks the road learns the signposts from her, so she must be good."]
+    about.rufus: ["Rufus lets me practise in his cabbages. he says he doesn't. he does."]
+    about.tilly: ["Tilly says i'll be a magician. she says it every day. i think she's practising too. for when it's true."]
+    aboutUnknown: ["i don't know them. i could do a spell on them! ...no. that's rude."]
+    friend.close: ["you can hold the twig. nobody holds the twig."]
+    friend.best: ["when i'm a real magician, my first real spell's going to be for you. i haven't decided what. something with fire. a nice fire."]
+    famed: ["everybody's saying your name! is that a spell? can you teach me?"]
+    defamed: ["someone said something mean about you. i'll make their snail sneeze."]
+    gift: ["for me? thanks!"]
+    gift.favorite: ["wow. that's going in my spell pocket. the special one."]
+    gift.again: ["one a day! Tilly says too many presents spoil you. i'd like to be spoiled. but okay."]
+
+# ---- Amherst ----
+- id: bettina
+  name: Bettina
+  look: { gender: female }
+  title: "Baker of Rainbow Street"
+  job: BEGINNER
+  level: { min: 9, max: 11 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: amherst
+    routine:
+      - { from: 5, to: 13, spot: "venue:by-maria", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:by-pio", activity: SOCIALIZE }
+      - { from: 19, to: 5, materialize: false }
+  recruitable: false
+  knows: [shroom, mushroom spore, southperry]
+  questLines: [bettina-spores-for-the-starter, bettina-rolls-for-the-road]
+  relationships:
+    - { persona: tilly, kind: GETS_NEW_FACES_FROM }
+    - { persona: marta, kind: SENDS_ROLLS_TO }
+    - { persona: pockets, kind: FEEDS }
+    - { persona: moe, kind: KEEPS_A_STOOL_FOR }
+  giftItemIds: [2010002, 2010005]
+  dialogue:
+    greetFirst: ["you've come down the road! you look hungry. everyone does. have a roll. no, take two. welcome to Amherst.", "a new face! sit, sit. the rolls are warm. this is Rainbow Street. it's not very rainbow. the rolls make up for it."]
+    greet: ["hello, love.", "back again? there's a roll with your name on it.", "warm ones just out."]
+    idle: ["(sets a tray of rolls cooling on the step and shoos a passing snail away from it)", "(dusts flour off her hands onto her apron, which is by now more flour than apron)"]
+    noWork: ["nothing more today, love. the oven's having a rest. so am i."]
+    nothingDue: ["you owe me nothing. eat something."]
+    who: ["Bettina. i bake for Amherst, and for everyone passing through it, which is everyone on the island sooner or later. you all come down the same road, hungry."]
+    bye: ["take a roll for the road."]
+    thanks: ["thank you, love."]
+    smallTalk: ["Lucas is our chief. go and say hello, he likes to know who's arrived. Sid sells weapons and Lucy sells everything else. buy potions before swords. trust a baker.", "the training center's out the east gate, on the road to Southperry. Mai sends new ones in there to learn. they come out hungry. i know because they come here.", "Southperry's at the end of the road. Shanks's ship goes over to Lith Harbor on Victoria Island from there. one way. i pack everybody a roll for the crossing."]
+    speakPlainly: ["plainly: bread. and making sure you've eaten."]
+    questOffer.bettina-spores-for-the-starter: ["i'll tell you a secret. a pinch of mushroom spores makes dough rise like nothing else. the shrooms by the training center carry them. ten spores, love? my starter's sulking."]
+    questAccept.bettina-spores-for-the-starter: ["out the east gate, by the entrance to the training center. little brown mushrooms. they look grumpy. they are."]
+    questWaiting.bettina-spores-for-the-starter: ["ten spores. the starter's still sulking."]
+    questComplete.bettina-spores-for-the-starter: ["ten! smell that. tomorrow's bread will rise to the rafters. here. potions, and something to eat that isn't bread, for once."]
+    questOffer.bettina-rolls-for-the-road: ["every week i send rolls down to Marta in Southperry. she's Shanks's clerk. she hands them out to everyone getting on the ship. would you carry this week's? they're still warm. mostly."]
+    questAccept.bettina-rolls-for-the-road: ["out the east gate, through the Split Road, and on to the sea. Marta stands by Shanks. tell her they're from me, then come back and tell me she got them."]
+    questWaiting.bettina-rolls-for-the-road: ["Marta, in Southperry, by Shanks. did she get them?"]
+    questComplete.bettina-rolls-for-the-road: ["she got them? and she said the crying thing, didn't she. she always says the crying thing. thank you, love. here. for your own crossing, when it's time."]
+    about.tilly: ["Tilly in Mushroom Town sends me every new face. i've never met her. i'd know her anywhere. everyone she sends arrives smiling."]
+    about.marta: ["Marta keeps Shanks's list down in Southperry. i send her rolls, she sends me word of who's gone over. it's a fair trade."]
+    about.pockets: ["Pockets trades snail shells for anything. i trade him a roll for nothing. don't tell him it's nothing. he thinks he's winning."]
+    about.moe: ["Moe kept the east gate forty years. now he keeps a stool by my window. i don't charge him for the stool."]
+    about.sunny: ["Sunny teaches the map. she eats standing up, pointing at things. i've given up."]
+    aboutUnknown: ["never baked for them. yet."]
+    friend.close: ["you get the first tray now. Moe gets the first tray. you get it before Moe."]
+    friend.best: ["i've named a loaf after you. it sells better than anything. i don't know what that says about you. something nice."]
+    famed: ["half of Amherst is talking about you over my counter. the nice half."]
+    defamed: ["somebody said something sour about you. sour's for dough. not people."]
+    gift: ["for me? you're a love."]
+    gift.favorite: ["oh, that's going straight into tomorrow's dough. thank you, love."]
+    gift.again: ["one's lovely. two would spoil you. or me."]
+
+- id: moe
+  name: Moe
+  look: { gender: male }
+  title: "Retired Gate Guard"
+  job: BEGINNER
+  level: { min: 13, max: 15 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: amherst
+    routine:
+      - { from: 7, to: 12, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 12, to: 15, spot: "venue:department-store-door", activity: REST }
+      - { from: 15, to: 18, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 18, to: 21, spot: "venue:by-pio", activity: REST }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [blue snail, orange mushroom, split road of destiny]
+  questLines: [moe-the-east-road, moe-nothing-orange]
+  rumors: [amherst-the-gate]
+  relationships:
+    - { persona: sunny, kind: ARGUES_SIGNPOSTS_WITH }
+    - { persona: rufus, kind: GETS_A_CABBAGE_FROM }
+    - { persona: bettina, kind: KEEPS_A_STOOL_AT }
+  giftItemIds: [2020001, 2020005]
+  dialogue:
+    greetFirst: ["halt! ...ha. sorry. forty years of saying it. i don't keep the gate anymore. welcome to Amherst, all the same.", "new arrival. come up through the dangerous forest, have you? everyone does. welcome. the east gate was my post. i still stand by it."]
+    greet: ["halt. ...ha. hello.", "back again, are you.", "all quiet on the east road."]
+    idle: ["(stands by the east gate with his hands behind his back, the way he did for forty years)", "(squints down the east road, nods at nothing in particular, and smooths his moustache)"]
+    noWork: ["nothing for you. the road's quiet. it's been quiet since i retired. i like to think that's a coincidence."]
+    nothingDue: ["you owe me nothing. pass, friend."]
+    who: ["Moe. i kept Amherst's east gate forty years. then my knees retired and the rest of me had to go with them. i still come and stand here. habit."]
+    bye: ["pass, friend."]
+    thanks: ["thank you kindly."]
+    smallTalk: ["the east gate leads to the training center, then the Split Road of Destiny, then Southperry and the sea. the west road goes back to the dangerous forest. that's the island, near enough.", "Lucas is the chief. good man. if he likes the look of you he'll write you a letter for Shanks, and Shanks takes you over for free.", "blue snails on the east road, shrooms by the training center, and the orange mushrooms, which i never trusted. that's all the danger there is. i still kept the gate."]
+    speakPlainly: ["plainly: an old guard with nothing left to guard but habits."]
+    questOffer.moe-the-east-road: ["the blue snails have got thick on the east road since i stopped walking it. fifteen of them, round the training center entrance. for an old man's peace of mind."]
+    questAccept.moe-the-east-road: ["east gate, then straight on to the training center entrance. they're the blue ones. you'll know."]
+    questWaiting.moe-the-east-road: ["fifteen blue snails. the road's still thick with them."]
+    questComplete.moe-the-east-road: ["fifteen. that's the east road clear, like it was in my day. here. a guard's pay, near enough."]
+    questOffer.moe-nothing-orange: ["one more thing. in forty years, nothing orange came through my gate. now the orange mushrooms sit by the training center like they own it. six of them. for the gate."]
+    questAccept.moe-nothing-orange: ["same road, same place. the orange ones. they hop. don't let them."]
+    questWaiting.moe-nothing-orange: ["six orange mushrooms. nothing orange through my gate."]
+    questComplete.moe-nothing-orange: ["six. the gate's clean. i'll sleep tonight. you'd have made a fine gate guard, you know. don't. there's no money in it."]
+    about.sunny: ["Sunny repainted my signpost. it was a perfectly good signpost. it pointed the right way. mostly."]
+    about.rufus: ["Rufus in Mushroom Town sends me a cabbage every spring, by whoever's walking the road. thirty years. i've eaten every one. they're terrible. that's friendship."]
+    about.bettina: ["Bettina keeps a stool by her window for me. i keep it warm. we have an arrangement."]
+    about.pockets: ["Pockets tried to trade me a shell for my old helmet. i nearly did it. it was a very good shell."]
+    aboutUnknown: ["never came through my gate."]
+    friend.close: ["if i still kept the gate, i'd wave you through without asking. that was the highest honour i had."]
+    friend.best: ["i've told Lucas: if they ever put a guard back on the east gate, it should be you. he laughed. i didn't."]
+    famed: ["people speak well of you. a guard notices these things."]
+    defamed: ["somebody's grumbling about you. grumbling never got past my gate."]
+    gift: ["much obliged."]
+    gift.favorite: ["now that's a proper guard's supper. thank you."]
+    gift.again: ["one's plenty. a guard keeps lean."]
+
+- id: sunny
+  name: Sunny
+  look: { gender: female }
+  title: "Teacher of the Map and the Signposts"
+  job: BEGINNER
+  level: { min: 11, max: 13 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: amherst
+    routine:
+      - { from: 8, to: 15, spot: "venue:weapon-store-door", activity: LINGER }
+      - { from: 15, to: 18, spot: "venue:lower-east-street", activity: SOCIALIZE }
+      - { from: 18, to: 22, spot: "venue:by-maria", activity: REST }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  knows: [split road of destiny, southperry, lith harbor]
+  questLines: [sunny-where-the-roads-split, sunny-the-sea-on-the-map]
+  rumors: [amherst-the-gate]
+  relationships:
+    - { persona: moe, kind: REPAINTED_THE_SIGNPOST_OF }
+    - { persona: ned, kind: GETS_THE_SEA_FROM }
+    - { persona: elodie, kind: DRAWS_MAPS_FOR }
+  giftItemIds: [2010003, 2010004]
+  dialogue:
+    greetFirst: ["a new arrival! good. lesson one: you are here. lesson two: so is everything else, just further away. welcome to Amherst.", "ah, a fresh face. do you know where you are? that's lesson one. Amherst. the middle of the island. everything's either this way or that way."]
+    greet: ["lesson three today.", "back for more? good.", "ah. my best pupil. today."]
+    idle: ["(holds a hand-drawn map against the wall and points at it with a stick, though nobody is there)", "(redraws a signpost on her map with a stub of chalk, then adds a small, firm arrow)"]
+    noWork: ["no lesson today. you know the island now. go and learn the rest of the world."]
+    nothingDue: ["you owe me nothing. pass it on."]
+    who: ["Sunny. i teach the map, and the signposts, and which way is east, to everyone who comes down the road. most of them knew which way was east. some of them didn't. those are my favourites."]
+    bye: ["east is that way. always."]
+    thanks: ["thank you. noted."]
+    smallTalk: ["the whole island in one breath: Mushroom Town, the road, Amherst, the training center, the Split Road of Destiny, Southperry, the sea. the sea's the big part.", "at the Split Road of Destiny the five job instructors stand and tell you about their trades: warrior, magician, bowman, thief, pirate. you choose on Victoria. the Split Road just helps you think.", "Victoria Island has a town for each job and Lith Harbor where the ship comes in. i've drawn every one of them. i've seen none of them. a teacher doesn't have to."]
+    speakPlainly: ["plainly: you are here. everything else is that way."]
+    questOffer.sunny-where-the-roads-split: ["lesson two is a walk. out the east gate, past the training center, to the Split Road of Destiny. all five job instructors stand there. go and hear them out, then come and tell me which one you listened to longest."]
+    questAccept.sunny-where-the-roads-split: ["east gate, the training center entrance, then keep going east. you'll know it. it's where the road gets ideas."]
+    questWaiting.sunny-where-the-roads-split: ["the Split Road of Destiny. east, past the training center. then come back and tell me."]
+    questComplete.sunny-where-the-roads-split: ["you listened to one longer than the others. everyone does. don't tell me which. keep it. you'll need it on Victoria. here. lesson two's prize."]
+    questOffer.sunny-the-sea-on-the-map: ["my map has a hole in it: the sea. i've never been on it. Ned in Southperry fishes further out than anyone. would you ask him what's out there, so i can draw it right?"]
+    questAccept.sunny-the-sea-on-the-map: ["Ned, on the pier at Southperry, past the Split Road. ask him what's between here and Lith Harbor. exactly. i'll want details."]
+    questWaiting.sunny-the-sea-on-the-map: ["what did Ned say? exactly?"]
+    questComplete.sunny-the-sea-on-the-map: ["east, a day's sail, gulls, then green cliffs. that's all? that's perfect. that's exactly how the sea goes on a map. here. you've earned it. so has Ned."]
+    about.moe: ["Moe's signpost said 'sea' and pointed at the training center. the sea is past the training center. so is everything. i repainted it. he's still cross."]
+    about.ned: ["Ned fishes further out than anyone on the island. on a clear morning he can see Victoria from his boat. he's the best source i've got for the sea."]
+    about.elodie: ["i've drawn Elodie a stack of maps of Victoria. she keeps them under her pillow. the map's the easy part."]
+    about.bettina: ["Bettina feeds me between lessons. i eat standing up. she sighs. it's our arrangement."]
+    aboutUnknown: ["not on my map."]
+    friend.close: ["i've put you on my map. a small dot. it means 'a friend came through here'."]
+    friend.best: ["i'm drawing a new map with your route on it, every road you walked on the island, in red. i'll show it to every new pupil. 'this one made it,' i'll say."]
+    famed: ["people are talking about you. i've marked it on the map."]
+    defamed: ["someone's being unkind about you. i've crossed it off the map."]
+    gift: ["oh, thank you."]
+    gift.favorite: ["oh, lovely. that'll see me through the afternoon lesson."]
+    gift.again: ["one's plenty. a teacher shouldn't take more than one of anything."]
+
+- id: pockets
+  name: Pockets
+  look: { gender: male }
+  title: "Snail-Shell Trader"
+  job: BEGINNER
+  level: { min: 4, max: 6 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: amherst
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-pio", activity: LINGER }
+      - { from: 13, to: 17, spot: "venue:weapon-store-door", activity: STROLL }
+      - { from: 17, to: 20, spot: "venue:by-pio", activity: SOCIALIZE }
+      - { from: 20, to: 9, materialize: false }
+  recruitable: false
+  knows: [snail shell, blue snail shell, red snail shell]
+  questLines: [pockets-a-fair-trade, pockets-the-blue-ones]
+  relationships:
+    - { persona: bettina, kind: TRADES_WITH }
+    - { persona: moe, kind: WANTS_THE_HELMET_OF }
+    - { persona: elodie, kind: SOLD_A_LUCKY_SHELL_TO }
+  giftItemIds: [2001001, 2010009]
+  dialogue:
+    greetFirst: ["psst. you came through the dangerous forest? got any snail shells? i trade. i trade anything. ask anyone. well, ask Bettina.", "hey! new face! new faces always have shells. want to trade? i'm Pockets. on account of the pockets."]
+    greet: ["got shells?", "hey! trade?", "you again! good. i like regulars."]
+    idle: ["(empties a pocket onto the step, counts snail shells into neat piles of ten, and puts them back in a different pocket)", "(holds a blue snail shell up to one eye and looks at the sky through it)"]
+    noWork: ["nothing to trade right now. i'm all traded out. come back when i've got pockets again."]
+    nothingDue: ["you don't owe me! i owe you. no, wait. we're square."]
+    who: ["Pockets. my real name's something else. nobody uses it. i trade snail shells. i've got four hundred and twelve. and one with a crack, which is worth more."]
+    bye: ["come back with shells!"]
+    thanks: ["thanks! pleasure doing business."]
+    smallTalk: ["plain snail shells come from the dangerous forest. blue ones from the east road by the training center. red ones you only get in Mai's training. i haven't got a red one. yet.", "everyone takes a shell when they leave on the ship. for luck. i sell them. well, i give them. well, i sell them cheap.", "Sid in the weapon store won't take shells. Lucy won't either. grown-ups don't understand money."]
+    speakPlainly: ["plainly: shells."]
+    questOffer.pockets-a-fair-trade: ["okay, here's the deal. ten snail shells, the plain ones, from the dangerous forest. i give you potions and something good. that's a fair trade. ask anyone."]
+    questAccept.pockets-a-fair-trade: ["out the west road, the dangerous forest. the snails there have the plain ones. ten. no cracked ones. unless they're nice cracks."]
+    questWaiting.pockets-a-fair-trade: ["ten plain shells. deal's still on."]
+    questComplete.pockets-a-fair-trade: ["ten! nice ones too. here, like i said. potions, and an apple. a green one. green's rarer. that's a fair trade."]
+    questOffer.pockets-the-blue-ones: ["you're good at this. okay, big deal. fifteen blue snail shells, from the east road. the leavers like the blue ones best. i'll make it worth it."]
+    questAccept.pockets-the-blue-ones: ["out the east gate, by the training center. the blue snails. fifteen shells. don't tell anybody what i'm paying. it's too much. i'm generous."]
+    questWaiting.pockets-the-blue-ones: ["fifteen blue ones. still waiting. patiently. mostly."]
+    questComplete.pockets-the-blue-ones: ["fifteen blue! that's the biggest trade i've ever done. here. that's more than they're worth. don't tell Bettina. she'll say i've gone soft."]
+    about.bettina: ["Bettina gives me a roll for nothing. i let her think i'm winning. we're both winning. that's a good trade."]
+    about.moe: ["Moe's still got his old guard helmet. i offered him a cracked shell for it. he nearly said yes. i could tell."]
+    about.elodie: ["Elodie in Southperry bought a lucky shell off me for the ship. two years ago. she hasn't gone yet. i don't do refunds."]
+    aboutUnknown: ["never traded with them."]
+    friend.close: ["you can see the cracked one. nobody sees the cracked one."]
+    friend.best: ["you get first pick of every shell i get. forever. that's a lifetime deal. no take-backs."]
+    famed: ["everyone's talking about you! your price just went up."]
+    defamed: ["someone's bad-mouthing you. bad for business. i'll talk to them."]
+    gift: ["for me? deal!"]
+    gift.favorite: ["that's worth at least three shells. i'm keeping it."]
+    gift.again: ["one a day. any more and i'd owe you."]
+
+# ---- Southperry ----
+- id: marta
+  name: Marta
+  look: { gender: female }
+  title: "Shanks's Clerk, Keeper of the Leaving List"
+  job: BEGINNER
+  level: { min: 12, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: southperry
+    routine:
+      - { from: 7, to: 19, spot: "venue:by-shanks", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:lower-central-street-2", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [lith harbor, maple island]
+  questLines: [marta-pencil-names, marta-the-leaving-list]
+  relationships:
+    - { persona: elodie, kind: KEEPS_IN_PENCIL }
+    - { persona: olwen, kind: SENDS_THE_LIST_TO }
+    - { persona: bettina, kind: HANDS_OUT_ROLLS_FOR }
+    - { persona: ned, kind: SHARES_THE_PIER_WITH }
+  giftItemIds: [2020009, 2020010]
+  dialogue:
+    greetFirst: ["name? ...sorry. habit. everyone who gets this far wants the ship. i'm Marta. i keep Shanks's list. welcome to Southperry. this is where the island ends.", "you've walked the whole road. well done. that's Shanks, with the ship. i'm his clerk. i write down everyone who goes."]
+    greet: ["hello again.", "not on the ship yet?", "still here. good. the ship'll wait."]
+    idle: ["(writes a name in a long ledger, blots it, and looks out at the ship)", "(runs a finger down a column of names, pauses at one written in pencil, and moves on)"]
+    noWork: ["nothing more. the list's up to date. it's never up to date. it's up to date right now."]
+    nothingDue: ["you owe me nothing. Shanks wants his 150 mesos. i just write things down."]
+    who: ["Marta. Shanks's clerk. i keep the leaving list: every name that's gone over on his ship to Lith Harbor. it goes with every sailing, and Olwen on the other side ticks them off as they land. nobody's ever gone missing. i check."]
+    bye: ["safe crossing, whenever it is."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["Shanks's ship goes to Lith Harbor on Victoria Island. it doesn't bring passengers back. nobody's ever asked to come back. that's a good sign, i think.", "Lucas in Amherst writes a letter for the new ones he likes. show it to Shanks and you cross for free. otherwise it's 150 mesos. either way i write your name down.", "most go over around level ten. that's when the instructors on Victoria take you. magicians at eight. Shanks won't take anyone under level seven without Lucas's letter. good. i'd worry."]
+    speakPlainly: ["plainly: names, in a book, and a ship."]
+    questOffer.marta-pencil-names: ["most names on my list are in ink. one's in pencil. Elodie's. she's put her name down three times and rubbed it out three times. would you go and talk to her? not to talk her into anything. just talk."]
+    questAccept.marta-pencil-names: ["mornings and evenings she's on the east side, watching the ship like it might bite. afternoons she sits with Biggs. be kind. you will be. then come and tell me how she is."]
+    questWaiting.marta-pencil-names: ["did you find Elodie? how is she?"]
+    questComplete.marta-pencil-names: ["'nobody comes back to tell you it's all right.' ...she's not wrong. but you walked the whole road anyway, and she watched you do it. maybe that's what she needed. thank you. here."]
+    questOffer.marta-the-leaving-list: ["you're nearly ready, aren't you. i can always tell. when you're level ten, go over. i'll put your name on the list now, in ink, and it'll be in Olwen's hands at Lith Harbor before you are. find Olwen when you land, and get ticked off the list."]
+    questAccept.marta-the-leaving-list: ["there. in ink. reach level ten, then take Shanks's ship. Olwen keeps the harbormaster's ledger at Lith Harbor; ask anyone on the dock. dry as a biscuit. you'll get on. i've written something on the back of the list for you. read it over there."]
+    questWaiting.marta-the-leaving-list: ["level ten, then the ship, then Olwen at Lith Harbor. your name's in ink. it isn't going anywhere. you are."]
+    questComplete.marta-the-leaving-list: ["(on the back of the leaving list, in Marta's neat hand) 'if Olwen's ticked you off, you made it. i've sent a great many names across. i've never gone myself. so go far, for me. M.'"]
+    about.elodie: ["Elodie's is the only name i keep in pencil. i'll keep it that way as long as she needs. pencil means 'not yet', not 'never'."]
+    about.olwen: ["Olwen keeps the harbormaster's ledger at Lith Harbor. we've never met. we've sent the list back and forth twenty years. not one name wrong, ever."]
+    about.bettina: ["Bettina in Amherst sends rolls every week for the crossing. i hand them out at the gangplank. people cry less with bread in their hands."]
+    about.ned: ["Ned fishes off the end of our pier. he's the last thing every passenger sees of the island. he waves at all of them."]
+    aboutUnknown: ["not on my list."]
+    friend.close: ["i've underlined your name. i don't underline names."]
+    friend.best: ["i've written your name inside the front cover. that's where i keep the ones i'll remember. there are four. you're the fifth."]
+    famed: ["your name keeps coming up at the gangplank. kindly. i'd have written it down anyway."]
+    defamed: ["somebody's said something unkind. i don't write that sort of thing down."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["that's kind. i'll have it at the rail once the ship's gone."]
+    gift.again: ["one's plenty. i'd only have to write it down."]
+
+- id: ned
+  name: Ned
+  look: { gender: male }
+  title: "Fisherman of the Pier"
+  job: BEGINNER
+  level: { min: 14, max: 15 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: southperry
+    routine:
+      - { from: 4, to: 11, spot: "venue:upper-east-street-3", activity: LINGER }
+      - { from: 11, to: 15, spot: "venue:middle-east-street-2", activity: REST }
+      - { from: 15, to: 20, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 20, to: 4, materialize: false }
+  recruitable: false
+  knows: [shroom, orange mushroom, lith harbor]
+  questLines: [ned-spores-on-the-water, ned-mushroom-bobbers]
+  relationships:
+    - { persona: sunny, kind: TELLS_THE_SEA_TO }
+    - { persona: marta, kind: WAVES_THE_SHIP_OFF_WITH }
+    - { persona: elodie, kind: TAKES_OUT_IN_THE_BOAT }
+  giftItemIds: [2022003, 2020007]
+  dialogue:
+    greetFirst: ["mind the nets. new, are you? walked the whole road? sit a minute. the sea's not going anywhere. that's the best thing about it.", "ahoy. no, i've never been a sailor. i just like saying it. welcome to Southperry."]
+    greet: ["ahoy.", "the fish aren't biting. sit anyway.", "back on the pier, are you."]
+    idle: ["(casts a line off the end of the pier, watches the float, and doesn't seem to mind that nothing happens)", "(mends a net with a wooden needle, humming something without a tune)"]
+    noWork: ["nothing more. sit and fish, if you like. that's not work. that's the point."]
+    nothingDue: ["you owe me nothing. a fish, if you catch one."]
+    who: ["Ned. i fish off the end of the pier, and out past it in my little boat, further than anyone. on a clear morning you can see Victoria's cliffs from out there. green on top."]
+    bye: ["fair winds."]
+    thanks: ["thank you kindly."]
+    smallTalk: ["i wave at every ship that goes. everybody on it waves back. you will too. you won't be able to help it.", "the shrooms by the training center shed spores like dust. the wind brings them all the way down here and the fish won't touch the water. not the shrooms' fault. it's mine for fishing downwind.", "Pan sells armour, Biggs gives advice, Shanks sells the crossing. i sell nothing. i'm the only one here who's rich."]
+    speakPlainly: ["plainly: an old man, a pier, and some fish that won't bite."]
+    questOffer.ned-spores-on-the-water: ["the shrooms by the training center are at it again. spores on the wind, all the way to the pier, and the fish won't bite. twenty shrooms, and the air clears for a week."]
+    questAccept.ned-spores-on-the-water: ["back up the road, past the Split Road, at the training center entrance. little brown mushrooms. they won't mind. they don't mind much."]
+    questWaiting.ned-spores-on-the-water: ["twenty shrooms. the water's still dusty."]
+    questComplete.ned-spores-on-the-water: ["twenty? look at that. the water's gone clear already. that's a fisherman's thanks, and here's the rest of it."]
+    questOffer.ned-mushroom-bobbers: ["a fisherman's secret: orange mushroom caps float better than any cork. five of them and i'll have bobbers for a year. the orange ones up by the training center."]
+    questAccept.ned-mushroom-bobbers: ["same place as the shrooms. the orange ones. they're tougher. take a potion along."]
+    questWaiting.ned-mushroom-bobbers: ["five caps. orange ones. my float's a cork and the cork's sinking."]
+    questComplete.ned-mushroom-bobbers: ["five! look how they sit on the water. like little suns. here. and when you're on the ship, look out for my boat. i'll be the one waving."]
+    about.sunny: ["Sunny in Amherst asks me what the sea looks like, for her map. i tell her water. she draws gulls. she's not wrong."]
+    about.marta: ["Marta writes them down, i wave them off. between us, nobody leaves Southperry unnoticed."]
+    about.elodie: ["i take Elodie out in the boat sometimes, far enough to see Victoria. she always asks to go back. one day she won't."]
+    aboutUnknown: ["never fished with them."]
+    friend.close: ["you can borrow my second-best rod. nobody borrows my second-best rod."]
+    friend.best: ["when your ship goes, i'll row out after it as far as i can. i don't do that for anybody. i'll do it for you."]
+    famed: ["word's come down the road about you. good word."]
+    defamed: ["somebody's muttering about you. the sea's heard worse."]
+    gift: ["ha. thank you."]
+    gift.favorite: ["now that's a fisherman's supper. thank you kindly."]
+    gift.again: ["one's enough. any more and i'd have to share with the gulls."]
+
+- id: elodie
+  name: Elodie
+  look: { gender: female }
+  title: "Wants to Leave"
+  job: BEGINNER
+  level: { min: 6, max: 8 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: southperry
+    routine:
+      - { from: 9, to: 13, spot: "venue:middle-east-street", activity: LINGER }
+      - { from: 13, to: 18, spot: "venue:by-biggs", activity: SOCIALIZE }
+      - { from: 18, to: 21, spot: "venue:upper-east-street-2", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [blue snail shell, ellinia, lith harbor]
+  questLines: [elodie-a-map-of-victoria, elodie-a-shell-bracelet]
+  relationships:
+    - { persona: marta, kind: IS_KEPT_IN_PENCIL_BY }
+    - { persona: ned, kind: IS_TAKEN_OUT_IN_THE_BOAT_BY }
+    - { persona: sunny, kind: KEEPS_THE_MAPS_OF }
+    - { persona: pockets, kind: BOUGHT_A_LUCKY_SHELL_FROM }
+  giftItemIds: [2020002, 2001001]
+  dialogue:
+    greetFirst: ["oh. hi. you're going on the ship, aren't you. everyone who gets this far does. ...i'm Elodie. i'm not going. not yet.", "you came down the whole road? on your own? ...that's brave. i'm Elodie. i've lived here all my life. i've never been past the Split Road."]
+    greet: ["oh. hi again.", "you're still here.", "hi. the ship's still there. i checked."]
+    idle: ["(watches the ship from a little way off, takes one step towards it, and then takes it back)", "(unfolds a worn map of Victoria Island, traces a road with one finger, and folds it up very small)"]
+    noWork: ["nothing else. you've done so much already. more than me."]
+    nothingDue: ["you don't owe me anything. i owe you, i think."]
+    who: ["Elodie. i want to go to Victoria. i've wanted to since i was small. i've put my name on Marta's list three times and rubbed it out three times. i'm not scared of the sea. i'm scared of the other side."]
+    bye: ["bye. ...be careful. you will be. bye."]
+    thanks: ["thank you. really."]
+    smallTalk: ["there's a town on Victoria called Ellinia that's all trees. Sunny drew it for me. i've looked at it so long i could walk it with my eyes shut.", "everyone says 'it's only a boat'. it's not the boat. it's that you can't come back. once you're gone, you're gone. that's what everybody's so brave about.", "Pockets sold me a lucky shell for the crossing two years ago. i still carry it. it must be very full of luck by now."]
+    speakPlainly: ["plainly: i want to go, and i haven't."]
+    questOffer.elodie-a-map-of-victoria: ["Sunny in Amherst drew me a map of Victoria, but i've worn the fold right through Ellinia. would you ask her for another? she always says the same thing. i want to hear what she says to you."]
+    questAccept.elodie-a-map-of-victoria: ["Sunny teaches the map in Amherst, back up the road. tell her it's for me. she'll sigh. she sighs nicely."]
+    questWaiting.elodie-a-map-of-victoria: ["did Sunny say anything? what did she say?"]
+    questComplete.elodie-a-map-of-victoria: ["'the map's the easy part.' she says it every time. she's right every time. ...thank you for asking her. here. i was saving these for the crossing. you'll get there before me."]
+    questOffer.elodie-a-shell-bracelet: ["Pockets says leavers carry a blue snail shell for luck. i want to make a bracelet. five shells. but i want them from someone who's really going. would you? it's silly. it's not silly."]
+    questAccept.elodie-a-shell-bracelet: ["the blue snails, by the training center, back up the road. five shells. i'll have the string ready."]
+    questWaiting.elodie-a-shell-bracelet: ["five blue shells. the string's ready. so am i. nearly."]
+    questComplete.elodie-a-shell-bracelet: ["five. ...look. it fits. it doesn't mean i'm going. it means i could. that's new. thank you. take these. you'll need them more than i do. for now."]
+    about.marta: ["Marta keeps my name in pencil. she's never once asked me why. she just keeps the pencil sharp."]
+    about.ned: ["Ned takes me out in his boat, far enough to see the cliffs of Victoria. i always ask to go back. he always says 'right you are'. he never says anything else."]
+    about.sunny: ["Sunny draws me maps of Victoria. i've got a stack of them. the next one will be the one i take."]
+    about.pockets: ["Pockets in Amherst sold me a lucky shell two years ago. i still haven't used it. he says it doesn't go off."]
+    aboutUnknown: ["i don't know them. i don't know many people. i'd like to."]
+    friend.close: ["when i go, if i go, you're the first person i'll look for over there."]
+    friend.best: ["i asked Marta for her pen today. i didn't write anything. i just held it for a while. that's a start, isn't it? i think it's a start."]
+    famed: ["people are saying such nice things about you. i'd like people to say things about me one day. nice things. or any things."]
+    defamed: ["someone said something unkind about you. i don't believe it. you walked the whole road."]
+    gift: ["for me? ...thank you."]
+    gift.favorite: ["oh. that's my favourite. how did you know? ...thank you."]
+    gift.again: ["one's plenty. really. you're very kind."]

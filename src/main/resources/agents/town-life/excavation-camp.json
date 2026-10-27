@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "profileId": "excavation-camp",
+  "mapId": 101030104,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 807,
+    "middleMaxY": 1295,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 30 },
+    { "name": "east00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -1785, "y": 1365, "seatId": -1 },
+    { "x": -1275, "y": 1365, "seatId": -1 },
+    { "x": -943, "y": 811, "seatId": -1 },
+    { "x": -850, "y": 1365, "seatId": -1 },
+    { "x": 100, "y": 1305, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1551, "y": 1093 },
+    { "x": -1340, "y": 1147 },
+    { "x": -1105, "y": 1365 },
+    { "x": -680, "y": 1365 },
+    { "x": -595, "y": 1365 },
+    { "x": -510, "y": 1365 },
+    { "x": -387, "y": 1253 }
+  ],
+  "npcSpots": [
+    { "npcId": 9040008, "offsetX": -140 },
+    { "npcId": 9040011, "offsetX": -87 },
+    { "npcId": 9040000, "offsetX": -85 },
+    { "npcId": 1022102, "offsetX": 108 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": -2066, "minY": 633, "maxX": -1926, "maxY": 758, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": -185, "minY": 730, "maxX": -45, "maxY": 855, "excludesOccupancy": true },
+    { "id": "portal-pt00", "type": "PORTAL", "minX": -1592, "minY": 1309, "maxX": -1482, "maxY": 1419, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -1131, "minY": 563, "maxX": -1041, "maxY": 878, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -1533, "minY": 946, "maxX": -1443, "maxY": 1157, "excludesOccupancy": true },
+    { "id": "ladder-2", "type": "LADDER", "minX": -1317, "minY": 547, "maxX": -1227, "maxY": 946, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": -807, "minY": 745, "maxX": -717, "maxY": 1215, "excludesOccupancy": true },
+    { "id": "ladder-4", "type": "LADDER", "minX": -481, "minY": 1101, "maxX": -391, "maxY": 1366, "excludesOccupancy": true },
+    { "id": "ladder-5", "type": "LADDER", "minX": -356, "minY": 888, "maxX": -266, "maxY": 1047, "excludesOccupancy": true },
+    { "id": "ladder-6", "type": "LADDER", "minX": -1650, "minY": 1030, "maxX": -1560, "maxY": 1375, "excludesOccupancy": true },
+    { "id": "ladder-7", "type": "LADDER", "minX": -1767, "minY": 634, "maxX": -1677, "maxY": 973, "excludesOccupancy": true },
+    { "id": "ladder-8", "type": "LADDER", "minX": -550, "minY": 1011, "maxX": -460, "maxY": 1275, "excludesOccupancy": true },
+    { "id": "ladder-9", "type": "LADDER", "minX": -351, "minY": 608, "maxX": -261, "maxY": 884, "excludesOccupancy": true },
+    { "id": "npc-9040008", "type": "NPC_LANE", "minX": -1125, "minY": 1108, "maxX": -755, "maxY": 1238, "excludesOccupancy": true },
+    { "id": "npc-1022102", "type": "NPC_LANE", "minX": -660, "minY": 704, "maxX": -484, "maxY": 834, "excludesOccupancy": true },
+    { "id": "npc-9040011", "type": "NPC_LANE", "minX": -311, "minY": 1215, "maxX": -177, "maxY": 1345, "excludesOccupancy": true },
+    { "id": "npc-9040000", "type": "NPC_LANE", "minX": -123, "minY": 1215, "maxX": 7, "maxY": 1345, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "upper-west-street", "label": "Upper west street", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -1870, "y": 707, "seatId": -1 }, { "x": -1785, "y": 697, "seatId": -1 }] },
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1870, "y": 1365, "seatId": -1 }, { "x": -1785, "y": 1365, "seatId": -1 }, { "x": -1700, "y": 1365, "seatId": -1 }] },
+    { "id": "upper-west-street-2", "label": "Upper west street 2", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -1441, "y": 605, "seatId": -1 }, { "x": -1356, "y": 605, "seatId": -1 }] },
+    { "id": "lower-west-street-2", "label": "Lower west street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1445, "y": 1365, "seatId": -1 }, { "x": -1360, "y": 1365, "seatId": -1 }, { "x": -1275, "y": 1365, "seatId": -1 }, { "x": -1190, "y": 1365, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1028, "y": 819, "seatId": -1 }, { "x": -943, "y": 811, "seatId": -1 }, { "x": -858, "y": 805, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1020, "y": 1365, "seatId": -1 }, { "x": -935, "y": 1365, "seatId": -1 }, { "x": -850, "y": 1365, "seatId": -1 }, { "x": -765, "y": 1365, "seatId": -1 }] },
+    { "id": "by-shuang", "label": "By Shuang", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 15, "y": 1305, "seatId": -1 }, { "x": 100, "y": 1305, "seatId": -1 }, { "x": 185, "y": 1305, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

@@ -24,7 +24,8 @@ Residents stand in their home towns (all seven Victoria towns have a cast; Orbis
 Herb Town, Ariant, Magatia, Omega Sector, Korean Folk Town, Aquarium, Singapore, Zipangu, Kuala Lumpur and Kampung
 Village have seven each, and New Leaf City 25; wave 4 adds the Temple of Time, Neo City at the Time Gate, Altaire Camp,
 more of Ereve and Rien, and two or three each on the Ossyria outposts such as Orbis Park, the Town of Ariant and the Door
-to Zakum: `docs/REGIONAL_RESIDENTS_PLAN.md`, `docs/ROUTES_MALAYSIA_PLAN.md`). Talk to them in map
+to Zakum, and in Victoria Florina Beach, Amoria, Kerning Square, Mushroom Castle, the Free Market, the Excavation
+Site camp, the three Maple Island towns and Happyville: `docs/REGIONAL_RESIDENTS_PLAN.md`, `docs/ROUTES_MALAYSIA_PLAN.md`). Talk to them in map
 chat with their name anywhere in the line, or stand next to one and speak, or whisper them.
 
 | Say | Effect |
@@ -130,7 +131,8 @@ items. Malaysia's Iskandar, Devi, Kamal and Bayu (`docs/ROUTES_MALAYSIA_PLAN.md`
 stopped at waves 1 and 2 (two-handed swords, spears, two-handed blunts, one-handed axes) an L100-120 tier beside
 Masteria's. Wave 4 gives armour and accessories only: the Temple of Time's Caedmon and Liesl carry Della's coats and
 Perrin's earrings past L100 (to the Timeless suits and earrings), and the outposts give their places' own pieces (the
-Dojo's belts, Zakum's helmet and capes, the Altaire earrings, the Icarus capes, the Pharaoh belts, the society capes). Quest rewards are added with `InventoryManipulator.addById`, which does not create a pet: never reward a pet
+Dojo's belts, Zakum's helmet and capes, the Altaire earrings, the Icarus capes, the Pharaoh belts, the society capes). Wave 4's ten Victoria recruits (Florina Beach, Amoria, Kerning Square, Mushroom Castle, the Excavation Site) give
+armour and accessories for the player's class in their places' bands, L20-55. Quest rewards are added with `InventoryManipulator.addById`, which does not create a pet: never reward a pet
 item until a pet-aware reward path exists, and never ask for an untradeable item as a hand-in.
 
 The armour piece:

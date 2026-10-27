@@ -1,0 +1,36 @@
+# Kerning Square rumors (wave 4). Each pair is awake together at its spot in those hours (personas/kerning-square.yaml).
+- id: ksq-the-night-shift
+  participants: [juno, zara]
+  where: { town: kerning-square, spot: "venue:upper-central-street" }
+  when:
+    serverHours: [21, 22, 23]
+    everyDays: 1
+  setsFlagOnListeners: ksq.heard-zara
+  lines:
+    - { by: juno, text: "you've walked past this spot four times, Zara." }
+    - { by: zara, text: "five. you missed one. you were under the escalator." }
+    - { by: juno, text: "getting Kiko's coin. same coin as last week." }
+    - { by: zara, text: "he drops it so you'll find it." }
+    - { by: juno, text: "i know. and you check every door twice so you've got something to do with your hands." }
+    - { by: zara, text: "...somebody has to." }
+    - { by: juno, text: "anybody who's walked the claw-game round with you, Zara, you'd walk theirs. anywhere. for a few wigs for Tina and a bit of pay." }
+    - { by: zara, text: "don't tell people that." }
+    - { by: juno, text: "i'm telling the floor. the floor doesn't gossip." }
+
+- id: ksq-the-cart
+  participants: [bao, kiko]
+  where: { town: kerning-square, spot: "venue:by-robby-fray" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+    requiresArc: { arc: bao-the-night-market, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: ksq.heard-cart
+  lines:
+    - { by: kiko, text: "grandma, tell the one about the bell." }
+    - { by: bao, text: "you've heard it four hundred times." }
+    - { by: kiko, text: "four hundred and one." }
+    - { by: bao, text: "...at dusk somebody rang the bell, and every stall on the street lit its lantern at once. and the whole street came out with a bowl." }
+    - { by: kiko, text: "and you had the best cart." }
+    - { by: bao, text: "i had the loudest cart. it's not the same. eat your noodles." }
+    - { by: kiko, text: "i tell everyone who buys a tea. about the cart, and the bell, and the street." }
+    - { by: bao, text: "tell them, then. a market's just people who stay out late together. anybody who's heard it can stay out late with us." }

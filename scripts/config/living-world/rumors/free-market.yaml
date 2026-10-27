@@ -1,0 +1,16 @@
+# Free Market rumor (wave 4). The pair is awake together at the entrance in those hours (personas/free-market.yaml).
+- id: fm-the-price-of-things
+  participants: [gilbert, marguerite]
+  where: { town: free-market, spot: "venue:entrance" }
+  when:
+    serverHours: [15, 16, 17]
+    everyDays: 2
+  lines:
+    - { by: marguerite, text: "fresh caps in room five! the finest in Victoria!" }
+    - { by: gilbert, text: "the finest? they're green mushroom caps, Marguerite." }
+    - { by: marguerite, text: "the finest green mushroom caps in Victoria, then." }
+    - { by: gilbert, text: "fair. and the price?" }
+    - { by: marguerite, text: "whatever room five asks." }
+    - { by: gilbert, text: "room five asks double. a cap is a cap. never lie about the goods." }
+    - { by: marguerite, text: "...honest caps in room five! at a fair price, or Gilbert will know about it!" }
+    - { by: gilbert, text: "better. much better." }

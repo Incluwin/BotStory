@@ -128,7 +128,17 @@ public final class ResidentDialogue {
             Map.entry("tent-of-the-entertainers", new int[] {2101013, 2100005, 2100006}),
             Map.entry("zenumist-society", new int[] {2111000, 2111002, 2110000}),
             Map.entry("alcadno-society", new int[] {2111001, 2110001}),
-            Map.entry("pier-on-the-beach", new int[] {2093003, 2092000, 2093000, 2093001}));
+            Map.entry("pier-on-the-beach", new int[] {2093003, 2092000, 2093000, 2093001}),
+            Map.entry("florina-beach", new int[] {1081000, 1081001}),
+            Map.entry("amoria", new int[] {9201034, 9201035, 9201036, 9201085, 9201089}),
+            Map.entry("kerning-square", new int[] {1052116, 1052119, 1052122, 1052123, 1052124}),
+            Map.entry("mushroom-castle", new int[] {1010100, 1012003, 1012106, 1012108, 1012109}), // Henesys folk
+            Map.entry("free-market", new int[] {9201060, 9030000, 9030100}),
+            Map.entry("excavation-camp", new int[] {9040000, 9040002}),
+            Map.entry("amherst", new int[] {2103, 10000, 12000, 12101}),
+            Map.entry("southperry", new int[] {20002, 22000}),
+            Map.entry("mushroom-town", new int[] {2100, 2101}),
+            Map.entry("happyville", new int[] {2001000, 2002000, 2002001}));
 
     public static int portraitOf(Persona persona) {
         int ownLook = renderedPortraitOf(persona);

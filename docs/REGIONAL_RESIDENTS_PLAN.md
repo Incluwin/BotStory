@@ -816,3 +816,238 @@ everything works. Adding Three Doors and the Time Gate to the citizen regions' t
    `pier-on-the-beach-the-tide` at their hours (or `!world rumor play <id>`); listeners get the flags above.
 9. **Hrafn's Shroud.** With a Zakum expedition (companions or humans), `hrafn-shroud-of-zakum`'s kill step completes
    when Zakum's last body dies for everyone in the party who hit it.
+
+
+## 11. Wave 4: Victoria and Maple Island remainder
+
+Asked for 2026-10-25 (the coordinator's town audit, section 1.3): Residents in every town and sub-area, sub-areas only
+on safe outpost maps (a camp or hub map with NPCs and few or no mobs). Waves 1-3 covered the seven Victoria towns and
+Ossyria, Masteria and the World Tour; this wave takes what is left on Victoria Island and Maple Island. Branch
+`feat/victoria-remainder` (off a435dc14b); quest-log id block 30800-31099.
+
+### 11.1 Places
+
+| Place | Profile (map) | Fields and levels | Residents | Note |
+|---|---|---|---|---|
+| Florina Beach | `florina-beach` (110000000), existing | Lupin, Lorang 37, Tortie 46, Clang 48 (110010000-110040000) | 7, 2 recruits | bots cannot route here yet (11.6) |
+| Amoria | `amoria` (680000000), existing | Purple Plains 2-15, Purplewood Forest: Sakura Cellion 33, Indigo Eye 38, Crystal Boar 40 | 7, 2 recruits (a married couple) | the Amorian Challenge needs married players |
+| Kerning Square | `kerning-square` (103040000), new | bubble teas 35-37, claw games and perfumes 38-42, mannequins 43-45, records and amplifiers 46-49, Spirit of Rock 49 | 5, 2 recruits | the KerningTrain ride, in no route catalog (11.6) |
+| Mushroom Castle | `mushroom-castle` (106020000 Mushroom Forest Field), new | Renegade Spores, Poison Mushroom 30, Intoxicated Pig 31, Helmet Pepe 32, Royal Guard Pepe 33 | 5, 2 recruits | the scripted portal in Henesys's Empty House (11.6) |
+| Free Market | `free-market` (910000000, the entrance), new | none (a hub every town opens onto); quests send players across Victoria, L15-60 | 4 | knowledge routes only |
+| Excavation Site | `excavation-camp` (101030104 Excavation Site <Camp>), new | Ghost Stumps and masks 19-24, Remains <Tomb> 44-57, Officer and Commander Skeletons 63-73 | 4, 2 recruits | Shuang's Sharenian (Guild PQ) gate stands here |
+| Amherst | `amherst` (1000000), new | snails, shrooms, slimes, Orange Mushroom 1-8 | 4 | Maple Island: no recruits, L1-10 |
+| Southperry | `southperry` (2000000), new | the field west of Southperry 2-8 | 3 | Shanks's ship to Lith Harbor |
+| Mushroom Town | `mushroom-town` (10000), new | Snail Hunting Grounds 1-2 | 3 | the first town a new Explorer sees |
+| Happyville | `happyville` (209000000), new | none (an event town; Rooney in every Victoria town takes players there all year) | 3 | seasonal flavour, no recruits, no arc |
+
+**Left out.** Ant Tunnel Park (105070001) has 58 mob spawns: it is a field, not an outpost, so it gets no Residents
+(Sleepywood's cast already covers the tunnel). The audit's other Victoria sub-areas have no outpost map. The eight new
+profiles were generated with `tools\town-life-profiles.bat generate` (each checks 0 errors, 0 warnings); none is in
+`ambient-deployment.json`, so citizen traffic is unchanged, as with the Aquarium interiors.
+
+### 11.2 Decisions
+
+Wave 3's conventions hold: about a third recruitable (none on Maple Island or in Happyville), regional arcs whose last
+beats happen once per server (`requires.notFlags`), and friendship gear in each place's level band. Every weapon line
+already has three regional tiers, so this wave's recruits give armour and accessories made for the player's class
+(`pool`, never the giver's own piece, so `ContentLintFriendshipTest` still counts 49 weapon Residents). Recruits reuse
+existing loadouts. Maple Island Residents greet new players with L1-10 errands; the island's one Victoria tie is
+Marta's leaving list, which goes to Olwen in Lith Harbor.
+
+### 11.3 Cast
+
+| Place | Resident | Role (job, level) | Recruit (how earned) | Friendship gear |
+|---|---|---|---|---|
+| Florina Beach | Marisol | beachcomber, arc owner | - | - |
+| Florina Beach | Teodor | lifeguard who counts the swimmers in and out | - | - |
+| Florina Beach | Nerys | clears the clangs off the Hot Sand (Bandit 42) | kill proof: 60 clangs + 20k | earrings L40 / L45 / L50 |
+| Florina Beach | Ronan | ex-deckhand of the Florina ferry (Brawler 44) | day rate: 40k | capes L35 / L42 / L50 |
+| Florina Beach | Lulu | sunshade renter | - | - |
+| Florina Beach | Abel | old fisherman of the look-out shed | - | - |
+| Florina Beach | Tansy | a girl who builds a sandcastle every day | - | - |
+| Amoria | Pernille | keeper of the chapel flowers, arc owner | - | - |
+| Amoria | Rafael | newlywed; Liesel healed him in Purplewood Forest, the Challenge was their first run married (Fighter 40) | items: 20 cellion tails + 15k | gloves for the player's class L30 / L40 / L50 |
+| Amoria | Liesel | newlywed, Rafael's wife (Cleric 40) | rumor only: hear the newlyweds + 30k | hats for the player's class L35 / L40 / L50 |
+| Amoria | Clotilde | wedding-cake baker | - | - |
+| Amoria | Lorenzo | waits at the Challenge door for someone to marry | - | - |
+| Amoria | Ines | Moony's apprentice ring-polisher | - | - |
+| Amoria | Valentin | a poet who writes other people's vows | - | - |
+| Kerning Square | Bao | noodle-cart keeper of the old night market, arc owner | - | - |
+| Kerning Square | Juno | night janitor of the mall | - | - |
+| Kerning Square | Zara | mall security (Bandit 46) | intro and rumor, items: hear Juno on her, 20 mannequin wigs + 20k | tops for the player's class L35 / L40 / L50 |
+| Kerning Square | Felix | record-shop clerk (Hunter 46) | kill proof: 50 records (Latest Hits, Greatest Oldies) + 20k | bottoms for the player's class L40 / L50 / L60 |
+| Kerning Square | Kiko | bubble-tea boy, Bao's grandson | - | - |
+| Mushroom Castle | Wilmot | royal baker, a Henesys boy who came through the Empty House, arc owner | - | - |
+| Mushroom Castle | Primrose | lady-in-waiting to Princess Violetta | - | - |
+| Mushroom Castle | Percival | the one human knight of the mushroom guard (Page 34) | intro + day rate 25k | shoes for the player's class L35 (King Pepe) / L40 / L50 |
+| Mushroom Castle | Fern | pupil of the Secretary of Magic (Cleric 33) | items: 30 poison mushroom caps + 10k | earrings L30 / L35 / L40 |
+| Mushroom Castle | Barley | swineherd of the intoxicated pigs | - | - |
+| Free Market | Gilbert | retired merchant who remembers every price | - | - |
+| Free Market | Sofie | runner between the market rooms | - | - |
+| Free Market | Marguerite | pitch-caller at the entrance | - | - |
+| Free Market | Basil | lost-and-found keeper | - | - |
+| Excavation Site | Edmund | camp archaeologist of Sharenian, arc owner | - | - |
+| Excavation Site | Halla | guard of the tomb road (Spearman 55) | kill proof: 60 mummydogs + 25k | helmets for the player's class L45 / L50 / L60 |
+| Excavation Site | Wick | night watch of the dig sites (Rogue 24) | rumor only: hear Nell on him + 15k | shoes for the player's class L20 / L25 / L30 |
+| Excavation Site | Nell | camp cook | - | - |
+| Amherst | Bettina | baker of Rainbow Street | - | - |
+| Amherst | Moe | retired gate guard | - | - |
+| Amherst | Sunny | teacher of the map and the signposts | - | - |
+| Amherst | Pockets | a boy who trades snail shells | - | - |
+| Southperry | Marta | Shanks's clerk, keeps the leaving list | - | - |
+| Southperry | Ned | fisherman of the pier | - | - |
+| Southperry | Elodie | a girl who wants to leave and is afraid to | - | - |
+| Mushroom Town | Tilly | everyone's first friend | - | - |
+| Mushroom Town | Rufus | cabbage farmer | - | - |
+| Mushroom Town | Wynn | a boy practising magic on snails | - | - |
+| Happyville | Noelle | Rudi's niece, hangs the ornaments | - | - |
+| Happyville | Kris | sled-maker | - | - |
+| Happyville | Ingeborg | knits mufflers for travellers | - | - |
+
+45 Residents, 10 recruitable (of the 35 off Maple Island). Rafael and Liesel are a lore couple (`spouse:`, both
+recruitable), so an owner can field a fourth married pair for the Amorian Challenge. Each recruit is earned a
+different way: an item price (Rafael, Fern), a kill proof on its intro quest's monster (Nerys, Felix, Halla), a day
+rate (Ronan, Percival after his intro), a rumor alone (Liesel, Wick), or a rumor on top of the intro quest with an item
+price (Zara).
+
+### 11.4 Threads
+
+- *Florina Beach and Amoria: the Silver Gull's letter.* Marisol finds a sealed bottle in the lorangs' shallows, forty
+  years at sea, addressed to "Pernille, the chapel steps, Amoria" (`marisol-the-sealed-bottle`, world flag
+  `florina.bottle.found`). Pernille has laid a flower on the chapel steps every first morning of spring for forty
+  years for a sailor who said he would write and never did; the letter says he did (`marisol-to-the-chapel-steps`,
+  `amoria.letter.read`). She asks the sea what happened: Hadrik in Lith Harbor was a boy on the Silver Gull's deck
+  when it went down off Florina, and its bosun went over the side after him (`pernille-what-the-sea-said`, the one
+  Victoria errand, `amoria.gull.remembered`). Pernille writes her answer forty years late and Marisol sends it out on
+  the tide from the look-out shed (`pernille-forty-years-late`, `florina.answer.sent`).
+- *Kerning Square: the night market.* The mall stands where Kerning's night market was. Bao kept her noodle cart in the
+  lobby when the stalls were moved out; the market's sign was walled into the eighth floor (`bao-the-old-sign`,
+  `ksq.sign.found`), and Sadie, Kerning's foreman, poured that floor and kept the market's bell
+  (`bao-the-poured-floor`, the Victoria errand, `ksq.bell.found`). With both, the market opens one night a week in
+  the lobby (`bao-the-lobby-corner`, `ksq.market.back`).
+- *Mushroom Castle: the cake.* Wilmot came through the Empty House in Henesys as a boy and never went back. He has been
+  ordered to bake a wedding cake nobody wants (`wilmot-a-cake-for-no-one`, `mc.cake.refused`); he bakes one for the
+  kingdom instead, with the Henesys caps Brisa still sends him (`wilmot-caps-from-home`, the Victoria errand,
+  `mc.caps.sent`), and serves it to the guards on the castle wall (`wilmot-the-kingdoms-cake`, `mc.cake.served`).
+- *Excavation Site: the buried name.* Every Sharenian stone in the tombs has its king's name chiselled off. Edmund
+  traces the chisel marks (`edmund-the-chisel-marks`, `excav.marks.read`); Ossa's Perion diggers turned up the one
+  stone that kept it (`edmund-ossas-stone`, the Victoria errand, `excav.name.found`); and the name goes back on the
+  camp's board after a night at the Remains <Cliff> (`edmund-the-name-said-aloud`, `excav.name.restored`).
+
+| Arc | Chapters (gate) |
+|---|---|
+| `marisol-the-sealed-bottle` | Bottles / The Sealed One (`florina.bottle.found`) / Read on the Steps (`amoria.letter.read`) / Out on the Tide (`florina.answer.sent`) |
+| `pernille-forty-springs` | Forty Springs / He Wrote (`amoria.letter.read`) / What the Sea Said (`amoria.gull.remembered`) / Yes (`florina.answer.sent`) |
+| `bao-the-night-market` | The Cart / The Sign (`ksq.sign.found`) / The Bell (`ksq.bell.found`) / Market Night (`ksq.market.back`) |
+| `wilmot-the-kingdoms-cake` | Ordered / Refused (`mc.cake.refused`) / Caps From Home (`mc.caps.sent`) / Served (`mc.cake.served`) |
+| `edmund-the-buried-name` | Chisel Marks / Read (`excav.marks.read`) / Found (`excav.name.found`) / Said Aloud (`excav.name.restored`) |
+
+Once per server (`ArcFinalBeatOncePerServerTest`): the finales `pernille-forty-years-late`, `bao-the-lobby-corner`,
+`wilmot-the-kingdoms-cake` and `edmund-the-name-said-aloud`, and the middle beats whose lines would be wrong on a
+second run (`pernille-what-the-sea-said`, `bao-the-poured-floor`, `wilmot-caps-from-home`, `edmund-ossas-stone`).
+The first beat of each thread, which a later quest lists in `questsCompleted`, stays open to every player.
+
+| Rumor | Cast, spot, hours | Sets on listeners |
+|---|---|---|
+| `florina-the-tide-line` | Marisol, Abel, from Marisol's chapter 2 | - |
+| `florina-the-hot-sand` | Nerys, Ronan, every 2 days | - |
+| `amoria-the-chapel-steps` | Pernille, Clotilde, from Pernille's chapter 2 | `amoria.heard-steps` (Pernille's last quest) |
+| `amoria-the-newlyweds` | Rafael, Liesel | `amoria.heard-liesel` (Liesel's contract) |
+| `ksq-the-night-shift` | Juno, Zara | `ksq.heard-zara` (Zara's contract) |
+| `ksq-the-cart` | Bao, Kiko, from Bao's chapter 2 | `ksq.heard-cart` (Bao's last quest) |
+| `mc-the-kitchen` | Wilmot, Primrose, from Wilmot's chapter 2 | `mc.heard-kitchen` (Wilmot's last quest) |
+| `excav-the-cookfire` | Nell, Wick | `excav.heard-wick` (Wick's contract) |
+| `excav-the-board` | Edmund, Halla, from Edmund's chapter 2 | `excav.heard-board` (Edmund's last quest) |
+| `fm-the-price-of-things` | Gilbert, Marguerite, every 2 days | - |
+| `amherst-the-gate` | Moe, Sunny, every 2 days | - |
+
+### 11.5 Victoria and wave 1-3 touch points
+
+No existing persona changes. The four Victoria errands (Hadrik, Sadie, Brisa, Ossa) and Marta's leaving list (Olwen)
+are `TALK_TO` steps whose lines live in the quest's `say`.
+
+### 11.6 Route needs (the routes session's files)
+
+Agents cannot route to Florina Beach, Kerning Square or Mushroom Castle today (town audit 1.2); Maple Island and
+Happyville are in neither graph. Until the routes session adds those legs, `call <name>` from elsewhere finds no way
+for Nerys and Ronan (Florina), Zara and Felix (Kerning Square) or Percival and Fern (Mushroom Castle); inside their
+towns they work, and a recruit follows its owner through the portals and rides the owner takes. Amoria (Thomas
+Swift's leg) and the Excavation Site are already in the agent graph. Asked of the routes session, not edited here:
+the Pason/Pison boat Lith Harbor <-> Florina Beach, the KerningTrain ride 103000100 <-> 103000310 and the scripted
+portal `TD_MC_first` in 100000002 for the agent graph and `travel.yaml`, and Amoria's Thomas Swift leg for
+`travel.yaml`. All four are on `feat/routes-malaysia` (c3d8ce3ca, 2026-10-26), not merged yet.
+
+Mushroom Castle's door checks stock quest 2260 (or 2300-2310 under way), and the router takes a bot through it only
+when the bot passes that check. A Resident who lives behind it has been through it: `ResidentHomeGates` marks its home
+town's gate quest completed on its character (no actions, no rewards) when it is dressed and whenever the roster or
+bench loads it as a companion, so Percival and Fern can be routed home. Kerning Square joins Victoria's citizen towns
+in `regions.yaml` after both branches merge (the routes session noted it for the coordinator).
+
+### 11.7 As built
+
+45 Residents, 10 recruitable, 127 quests (quest-log ids 30800-30926 of the block 30800-31099), 10 contracts, 5 arcs,
+11 rumors, no new loadouts. Content files: `{personas,quests,contracts,arcs,rumors}/` `florina-beach.yaml`,
+`amoria.yaml`, `kerning-square.yaml`, `mushroom-castle.yaml`, `excavation-camp.yaml`; `{personas,quests,rumors}/`
+`free-market.yaml`, `maple-island.yaml` (Amherst, Southperry and Mushroom Town); `{personas,quests}/happyville.yaml`.
+Outside the content: the eight TownLife profiles and their `index.json` lines, borrowed portraits for the ten places in
+`ResidentDialogue.PORTRAITS` (Mushroom Castle borrows Henesys folk: its townspeople are mushrooms), and the pinned
+counts (`AgentTownLifeProfileRepositoryTest` 58 profiles, `ContentLintLootTermsTest` 79 contracts,
+`ArcFinalBeatOncePerServerTest` the eight beats in 11.4).
+
+What the server's own data changed while writing:
+
+- **Felix's kill proof** counts 50 records (Latest Hits Compilation, Greatest Oldies), not Spirits of Rock: the Spirit
+  of Rock is a 250,000 HP boss, one per room, in event copies June opens only while Blake's stock quests 2286-2288
+  run. No quest needs those rooms; Bao's sign is behind the record racks of the open area A (103040400).
+- **Tops and bottoms**: Zara's go L35 / L40 / L50 (no top, bottom or overall exists at L41-47); Felix's go L40 / L50 /
+  L60, above his L44 intro. Halla's helmets are gated L45 / L50 / L60 and give the L40-42, L50 and L60 pieces (only
+  warriors have helmets at 45 and 55); pirates get a no-job hat where every pirate hat is already some armourer's.
+  Fern's earrings go L30 / L35 / L40, above her L30 intro.
+- **The Amorian Challenge admits only married players** (`AmoriaPQ.js`, `onlyMarriedPlayers`): Rafael and Liesel met
+  in Purplewood Forest on the road to Amos, married at the cathedral, and the Challenge was their first run as a
+  couple; Lorenzo wants a spouse because the door will not open for him alone.
+- **Closing lines** (engine, `QuestLedger.complete`): a quest's `questComplete` line is read before its world flag
+  moves the giver's arc, so the player who opens a chapter hears the base line and the new chapter's override is for
+  the players who come after (`QuestClosingLineTest`). Seven wave-3 beats had the same shape and are fixed with it.
+- **Mushroom Castle's door** checks quest 2260 (11.6, `ResidentHomeGates`), and its towers and wall need stock quest
+  2324, the end of the Secretaries' chain (`gotocastle.js`), and the steep downhill a poison spore at the vines; every
+  quest that goes there says so.
+- **Maple Island's road is one-way** (Mushroom Town -> Amherst -> Southperry, no portal back from 20000-50000) and most
+  island fields have no way in: Snail Hunting Grounds II/III, the Tomato Field, the Snail Gardens and the field west of
+  Southperry are islands, and the Adventurer Training Center opens only during Mai's stock quests 1041-1044. Island
+  quests use Dangerous Forest 50000 (snails) and 1010000 (blue snails, shrooms, orange mushrooms); Mushroom Town's
+  quests are all level 1, unchained, and finish in Amherst (a kill, a visit or an introduction).
+- **The Hill of Christmas** copies 209000004-209000015 have no way in; Happyville's visits list 209000001-209000003,
+  which the three snowmen open.
+
+### 11.8 Live checks after deploy
+
+1. **Boot.** `!world census`: 45 personas more than before the merge; towns include florina-beach=7, amoria=7,
+   kerning-square=5, mushroom-castle=5, free-market=4, excavation-camp=4, amherst=4, southperry=3, mushroom-town=3,
+   happyville=3; no living-world lint errors in the boot log.
+2. **They live there.** `!world wake <town>` for the ten profiles at 18 server time, `!world residents`: each Resident
+   materializes at its venue, never at the profile's fallback spot. Nerys, Ronan, Rafael, Liesel, Zara, Felix,
+   Percival, Fern, Halla and Wick wear their loadouts. Nobody stands in Ant Tunnel Park.
+3. **Talk.** `hi Marisol`, `who are you`, `tell me about Abel`, double-click Wilmot: the NPC window shows the name, a
+   borrowed townsperson portrait and the menu.
+4. **Maple Island, a new character.** Create an Explorer: Tilly greets it in Mushroom Town, her quest finishes in
+   Amherst; at level 8 in Southperry `marta-the-leaving-list`, reach 10, take Shanks's ship, talk to Olwen in Lith
+   Harbor: the quest completes there with Marta's note (never needs the island again).
+5. **The Silver Gull thread.** Level 40: `marisol-the-sealed-bottle` (lorangs at Florina), `marisol-to-the-chapel-steps`
+   (Pernille in Amoria reads it), Pernille's `pernille-what-the-sea-said` (Hadrik in Lith Harbor), stand by the chapel
+   steps for `amoria-the-chapel-steps`, then `pernille-forty-years-late` (Marisol, the look-out shed, back to
+   Pernille): both arcs' last chapters open together; a second character is offered neither Pernille quest again.
+   Bao's (Sadie in Kerning City), Wilmot's (Brisa in Henesys) and Edmund's (Ossa in Perion) threads are the same shape.
+6. **A recruit of each kind.** Kill proof: Halla (`halla-the-tomb-road`, then 60 mummydogs counted after the offer).
+   Day rate: Ronan, 40,000. Rumor only: stand by Moony in Amoria at 19-21 until `amoria-the-newlyweds` plays, then
+   `Liesel join me`, 30,000. Items: Fern (30 poison mushroom caps). Rumor on top of the intro, with items: Zara.
+7. **The couple.** Recruit Rafael and Liesel together: both show as married (`Character.isMarried()`), and a party
+   with them can enter the Amorian Challenge.
+8. **Friendship gear.** `!world bond <player> percival 110`, level 35, `percival-king-pepe-shoes`: the hand-in gives the
+   class's King Pepe shoes with every 100% scroll taken; `!world bond <player> nerys 110`, level 40: Blue Moon earrings.
+9. **Rumors** at their hours (or `!world rumor play <id>`): `florina-the-hot-sand`, `ksq-the-night-shift`,
+   `excav-the-cookfire`, `fm-the-price-of-things`, `amherst-the-gate`; listeners get the flags in 11.4.
+10. **Recall.** `call Halla` from Henesys works; `call Nerys`, `call Zara`, `call Percival` from another town find no
+    way until the routes session's legs land (11.6). After that merge: recruit Percival, walk out to Henesys with him, `Percival
+    go train` at a Mushroom Castle field: he walks back in through the Empty House (log: his gate quest marked
+    completed on first load), where a character without quest 2260 is told "A strange force is blocking you".

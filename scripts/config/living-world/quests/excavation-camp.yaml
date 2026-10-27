@@ -1,0 +1,232 @@
+# Excavation Site quests (wave 4). The dig sites back along the road toward Perion: Ghost Stump 1140100 and Smirking
+# Ghost Stump 1140130 (Seedling 4000195) on Excavation Site I-II 101030101/101030102, Wooden Mask 2230110 (Wooden Board
+# 4000196) on 101030101-101030103, Rocky Mask 2230111 (Slate 4000197) on 101030102/101030103. On past the camp
+# (101030104), the Remains <Tomb>: Skeledog 4230125 (Skeledog's Bone 4000204) and Mummydog 4230126 (Dirty Bandage
+# 4000205) on 101030105-101030107, Skeleton Soldier 5150001 (Rib 4000206) on 101030106/101030107 and Camp 1-3
+# 101030110-101030112, Officer Skeleton 6230602 (Pelvic Bone 4000207) on 101030108, the Remains <Cliff> 101030109 and
+# the camps (Commander Skeleton 7130103 on 101030108/101030109). Nell's bananas: Lupin 3210800 (Lupin's Banana 4000029)
+# on Sleepy Dungeon I 105040301 and Tree Dungeon, Monkey Forest I 100040102. Ossa (Perion) answers the Victoria errand.
+
+# ---- Edmund: the buried name (arcs/excavation-camp.yaml) ----
+- id: edmund-slate-for-the-board
+  persona: edmund
+  title: "Slate for the Board"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230111], count: 20, mapIds: [101030102, 101030103] }
+    - { id: slate, type: COLLECT_ITEM, itemId: 4000197, count: 10 }
+    - { id: board, type: DELIVER, to: edmund, take: { itemId: 4000197, count: 10 } }
+  rewards: { meso: 4000, exp: 4000, bondPoints: 30, items: [{ itemId: 1022088, count: 1 }, { itemId: 2000002, count: 15 }] }
+
+- id: edmund-the-chisel-marks
+  persona: edmund
+  title: "The Chisel Marks"
+  length: MEDIUM
+  requires: { level: { min: 48 }, questsCompleted: [edmund-slate-for-the-board] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stone, type: VISIT_MAP, mapIds: [101030107] }
+    - { id: bandages, type: COLLECT_ITEM, itemId: 4000205, count: 15 }
+    - { id: rubbings, type: DELIVER, to: edmund, take: { itemId: 4000205, count: 15 } }
+  rewards: { meso: 14000, exp: 15000, bondPoints: 40, items: [{ itemId: 2000004, count: 10 }], worldFlags: [excav.marks.read] }
+
+- id: edmund-ossas-stone
+  persona: edmund
+  title: "Ossa's Stone"
+  length: MEDIUM
+  requires: { level: { min: 50 }, questsCompleted: [edmund-the-chisel-marks], notFlags: [excav.name.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ossa, type: TALK_TO, persona: ossa, say: ["no. ...the stone with the scratches? why didn't you say so. came up face-down in the third site last spring. been holding my office door open since. take it. tell your scholar he owes me a door wedge. and get a hard hat."] }
+    - { id: stone, type: DELIVER, to: edmund }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 45, items: [{ itemId: 2000004, count: 10 }], worldFlags: [excav.name.found] }
+
+- id: edmund-the-name-said-aloud
+  persona: edmund
+  title: "The Name Said Aloud"
+  length: LONG
+  requires: { level: { min: 60 }, questsCompleted: [edmund-the-chisel-marks], flags: [excav.name.found, excav.heard-board], notFlags: [excav.name.restored] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cliff, type: VISIT_MAP, mapIds: [101030109] }
+    - { id: officers, type: KILL_MOBS, mobIds: [6230602], count: 30, mapIds: [101030109] }
+    - { id: board, type: DELIVER, to: edmund }
+  rewards: { meso: 30000, exp: 35000, bondPoints: 60, items: [{ itemId: 2000005, count: 5 }], worldFlags: [excav.name.restored] }
+
+# ---- Halla (recruit; helmets for the player's class, gates 45 / 50 / 60) ----
+- id: halla-the-tomb-road
+  persona: halla
+  title: "The Tomb Road"
+  length: SHORT
+  requires: { level: { min: 45 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mummydogs, type: KILL_MOBS, mobIds: [4230126], count: 30, mapIds: [101030105, 101030106, 101030107] }
+    - { id: done, type: DELIVER, to: halla }
+  rewards: { meso: 12000, exp: 13000, bondPoints: 30, flags: [halla.intro.done] }
+
+- id: halla-a-helm-for-the-road
+  persona: halla
+  title: "A Helm for the Road"
+  length: MEDIUM
+  requires: { level: { min: 45 }, friendship: 5, questsCompleted: [halla-the-tomb-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skeledogs, type: KILL_MOBS, mobIds: [4230125], count: 30, mapIds: [101030105, 101030106, 101030107] }
+    - { id: bones, type: COLLECT_ITEM, itemId: 4000204, count: 15 }
+    - { id: fitting, type: DELIVER, to: halla, take: { itemId: 4000204, count: 15 } }
+  rewards:
+    meso: 25000
+    exp: 25000
+    bondPoints: 35
+    gear:
+      - { pool: [1002045, 1002152, 1002167, 1002182, 1002677], scrolls: [{ success: 100 }] }
+
+- id: halla-the-soldiers-ribs
+  persona: halla
+  title: "The Soldiers' Ribs"
+  length: MEDIUM
+  requires: { level: { min: 50 }, friendship: 7, questsCompleted: [halla-a-helm-for-the-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: soldiers, type: KILL_MOBS, mobIds: [5150001], count: 30, mapIds: [101030106, 101030107, 101030110, 101030111, 101030112] }
+    - { id: ribs, type: COLLECT_ITEM, itemId: 4000206, count: 15 }
+    - { id: crest, type: DELIVER, to: halla, take: { itemId: 4000206, count: 15 } }
+  rewards:
+    meso: 35000
+    exp: 35000
+    bondPoints: 50
+    gear:
+      - { pool: [1002085, 1002216, 1002214, 1002208, 1002006], scrolls: [{ success: 60 }] }
+
+- id: halla-the-officers-helm
+  persona: halla
+  title: "The Officer's Helm"
+  length: LONG
+  requires: { level: { min: 60 }, friendship: 10, questsCompleted: [halla-the-soldiers-ribs] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: officers, type: KILL_MOBS, mobIds: [6230602], count: 30, mapIds: [101030110, 101030111, 101030112] }
+    - { id: bones, type: COLLECT_ITEM, itemId: 4000207, count: 15 }
+    - { id: helm, type: DELIVER, to: halla, take: { itemId: 4000207, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 50000
+    bondPoints: 60
+    gear:
+      - { pool: [1002022, 1002243, 1002268, 1002248, 1002801], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: halla-road-markers
+  persona: halla
+  title: "Road Markers"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 45 }, questsCompleted: [halla-the-tomb-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bones, type: COLLECT_ITEM, itemId: 4000204, count: 10 }
+    - { id: markers, type: DELIVER, to: halla, take: { itemId: 4000204, count: 10 } }
+  rewards: { meso: 8000, exp: 7000, bondPoints: 10 }
+
+# ---- Wick (recruit; shoes for the player's class, L20-30) ----
+- id: wick-the-night-round
+  persona: wick
+  title: "The Night Round"
+  length: SHORT
+  requires: { level: { min: 19 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1140100], count: 20, mapIds: [101030101, 101030102] }
+    - { id: smirking, type: KILL_MOBS, mobIds: [1140130], count: 10, mapIds: [101030101] }
+    - { id: done, type: DELIVER, to: wick }
+  rewards: { meso: 3000, exp: 3000, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: wick-quiet-soles
+  persona: wick
+  title: "Quiet Soles"
+  length: MEDIUM
+  requires: { level: { min: 20 }, friendship: 5, questsCompleted: [wick-the-night-round] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230110], count: 25, mapIds: [101030101, 101030102, 101030103] }
+    - { id: boards, type: COLLECT_ITEM, itemId: 4000196, count: 10 }
+    - { id: soles, type: DELIVER, to: wick, take: { itemId: 4000196, count: 10 } }
+  rewards:
+    meso: 6000
+    exp: 6000
+    bondPoints: 35
+    gear:
+      - { pool: [1072007, 1072019, 1072025, 1072022, 1072288], scrolls: [{ success: 100 }] }
+
+- id: wick-slate-heels
+  persona: wick
+  title: "Slate Heels"
+  length: MEDIUM
+  requires: { level: { min: 25 }, friendship: 7, questsCompleted: [wick-quiet-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230111], count: 30, mapIds: [101030102, 101030103] }
+    - { id: slate, type: COLLECT_ITEM, itemId: 4000197, count: 15 }
+    - { id: heels, type: DELIVER, to: wick, take: { itemId: 4000197, count: 15 } }
+  rewards:
+    meso: 9000
+    exp: 9000
+    bondPoints: 50
+    gear:
+      - { pool: [1072052, 1072074, 1072034, 1072084, 1072291], scrolls: [{ success: 60 }] }
+
+- id: wick-the-whole-round
+  persona: wick
+  title: "The Whole Round"
+  length: LONG
+  requires: { level: { min: 30 }, friendship: 10, questsCompleted: [wick-slate-heels] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: smirking, type: KILL_MOBS, mobIds: [1140130], count: 20, mapIds: [101030101] }
+    - { id: wooden, type: KILL_MOBS, mobIds: [2230110], count: 25, mapIds: [101030103] }
+    - { id: rocky, type: KILL_MOBS, mobIds: [2230111], count: 25, mapIds: [101030103] }
+    - { id: dawn, type: DELIVER, to: wick }
+  rewards:
+    meso: 14000
+    exp: 14000
+    bondPoints: 60
+    gear:
+      - { pool: [1072039, 1072076, 1072080, 1072033, 1072338], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: wick-lamp-boards
+  persona: wick
+  title: "Boards for the Watch Fire"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 19 }, questsCompleted: [wick-the-night-round] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boards, type: COLLECT_ITEM, itemId: 4000196, count: 10 }
+    - { id: fire, type: DELIVER, to: wick, take: { itemId: 4000196, count: 10 } }
+  rewards: { meso: 3000, exp: 2500, bondPoints: 10 }
+
+# ---- Nell ----
+- id: nell-sprouts-for-the-pot
+  persona: nell
+  title: "Sprouts for the Pot"
+  length: SHORT
+  requires: { level: { min: 19 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: seedlings, type: COLLECT_ITEM, itemId: 4000195, count: 10 }
+    - { id: pot, type: DELIVER, to: nell, take: { itemId: 4000195, count: 10 } }
+  rewards: { meso: 3000, exp: 3000, bondPoints: 30, items: [{ itemId: 2020001, count: 10 }] }
+
+- id: nell-bananas-for-the-crew
+  persona: nell
+  title: "Bananas for the Crew"
+  length: SHORT
+  requires: { level: { min: 36 }, questsCompleted: [nell-sprouts-for-the-pot] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 25, mapIds: [105040301, 100040102] }
+    - { id: bananas, type: COLLECT_ITEM, itemId: 4000029, count: 15 }
+    - { id: pudding, type: DELIVER, to: nell, take: { itemId: 4000029, count: 15 } }
+  rewards: { meso: 9000, exp: 9500, bondPoints: 35, items: [{ itemId: 2020004, count: 10 }] }

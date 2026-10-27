@@ -46,7 +46,10 @@ class ArcFinalBeatOncePerServerTest {
             "solveig-the-girl-at-the-gate", "calla-grans-name", "isaura-in-her-words", "eira-the-copy-from-ereve",
             "eira-on-rien-shelf", "ottavia-a-name-on-the-map", "yusra-the-silk-ledger", "zahra-red-under-the-lanterns",
             "ferro-in-daylight", "oriane-one-page-two-names", "brenna-tempered-in-the-breath", "hrafn-the-first-call",
-            "shen-a-note-for-the-top-floor", "guo-the-bow");
+            "shen-a-note-for-the-top-floor", "guo-the-bow",
+            // wave 4, Victoria and Maple Island (docs/REGIONAL_RESIDENTS_PLAN.md section 11)
+            "pernille-what-the-sea-said", "pernille-forty-years-late", "bao-the-poured-floor", "bao-the-lobby-corner",
+            "wilmot-caps-from-home", "wilmot-the-kingdoms-cake", "edmund-ossas-stone", "edmund-the-name-said-aloud");
 
     @Test
     void eachFinalBeatIsBarredByTheWorldFlagItSets() {
