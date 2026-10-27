@@ -162,6 +162,7 @@ public class MapFactory {
 
         map.setFieldLimit(DataTool.getInt(infoData.getChildByPath("fieldLimit"), 0));
         map.setSwim(DataTool.getInt(infoData.getChildByPath("swim"), 0) != 0);
+        map.setFly(DataTool.getInt(infoData.getChildByPath("fly"), 0) != 0);
         map.setMobInterval((short) DataTool.getInt(infoData.getChildByPath("createMobInterval"), 2000)); // FriendServer: faster default respawn (upstream 5000)
         PortalFactory portalFactory = new PortalFactory();
         for (Data portal : mapData.getChildByPath("portal")) {

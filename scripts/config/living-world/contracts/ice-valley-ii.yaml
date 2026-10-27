@@ -1,0 +1,16 @@
+# Ice Valley II contracts (wave 4): the relief guard's kill proof on the dark pepes of his intro quest.
+- id: torsten-the-gate-proof
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [torsten.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [6230200], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }

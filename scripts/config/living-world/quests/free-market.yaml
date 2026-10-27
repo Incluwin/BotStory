@@ -1,0 +1,109 @@
+# Free Market quests (wave 4). The entrance (910000000) has no monsters, so every errand goes out across Victoria for
+# honest trade goods, L15-60: Green Mushroom 1110100 (Green Mushroom Cap 4000012) on Henesys Hunting Ground II-III
+# 104040001/104040002; Stirge 2300100 (Stirge Wing 4000042) on the Kerning City Subway Transfer Area 103000102 and Line 1
+# <Area 2> 103000103; Zombie Mushroom 2230101 (Charm of the Undead 4000008) on Ant Tunnel I-II 105050000/105050100;
+# Ligator 3110100 (Ligator Skin 4000032) on the Swamp of Despair I-III 107000000-107000200; Jr. Wraith 3230101
+# (Tablecloth 4000035) on Line 1 <Area 2-3> 103000103/103000104 and Line 2 <Area 1-2> 103000200/103000201; Lupin
+# 3210800 (Lupin Doll 4000026) on Monkey Forest I-II 100040101/100040103; Drake 5130100 (Drake Skull 4000014) on the
+# Drake Hunting Ground 105080000 and the Tunnel That Lost Light I-II 105090000/105090100; Shade 5090000 (Someone's Hat
+# 4000413) on Line 1 <Area 4> 103000105 and Line 2 <Area 3> 103000202.
+
+# ---- Gilbert ----
+- id: gilbert-the-real-thing
+  persona: gilbert
+  title: "The Real Thing"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ligators, type: KILL_MOBS, mobIds: [3110100], count: 25, mapIds: [107000000, 107000100, 107000200] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000032, count: 15 }
+    - { id: cloth, type: DELIVER, to: gilbert, take: { itemId: 4000032, count: 15 } }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 30, items: [{ itemId: 2000002, count: 20 }] }
+
+- id: gilbert-what-a-skull-was-worth
+  persona: gilbert
+  title: "What a Skull Was Worth"
+  length: MEDIUM
+  requires: { level: { min: 52 }, questsCompleted: [gilbert-the-real-thing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100], count: 25, mapIds: [105080000, 105090000, 105090100] }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 15 }
+    - { id: market, type: DELIVER, to: gilbert, take: { itemId: 4000014, count: 15 } }
+  rewards: { meso: 18000, exp: 20000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }
+
+# ---- Sofie ----
+- id: sofie-the-hat-stall
+  persona: sofie
+  title: "The Hat Stall in Room Five"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [1110100], count: 20, mapIds: [104040001, 104040002] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000012, count: 10 }
+    - { id: stall, type: DELIVER, to: sofie, take: { itemId: 4000012, count: 10 } }
+  rewards: { meso: 2500, exp: 2500, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: sofie-tablecloths
+  persona: sofie
+  title: "Tablecloths for Room Six"
+  length: SHORT
+  requires: { level: { min: 35 }, questsCompleted: [sofie-the-hat-stall] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 25, mapIds: [103000103, 103000104, 103000200, 103000201] }
+    - { id: cloths, type: COLLECT_ITEM, itemId: 4000035, count: 15 }
+    - { id: stalls, type: DELIVER, to: sofie, take: { itemId: 4000035, count: 15 } }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Marguerite ----
+- id: marguerite-a-hat-that-catches-the-light
+  persona: marguerite
+  title: "A Hat That Catches the Light"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stirges, type: KILL_MOBS, mobIds: [2300100], count: 25, mapIds: [103000102, 103000103] }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000042, count: 12 }
+    - { id: hat, type: DELIVER, to: marguerite, take: { itemId: 4000042, count: 12 } }
+  rewards: { meso: 4500, exp: 4500, bondPoints: 30, items: [{ itemId: 2000001, count: 25 }] }
+
+- id: marguerite-lupin-dolls
+  persona: marguerite
+  title: "A Pitch That Sells Itself"
+  length: SHORT
+  requires: { level: { min: 38 }, questsCompleted: [marguerite-a-hat-that-catches-the-light] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 25, mapIds: [100040101, 100040103] }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000026, count: 15 }
+    - { id: pitch, type: DELIVER, to: marguerite, take: { itemId: 4000026, count: 15 } }
+  rewards: { meso: 11000, exp: 11000, bondPoints: 35, items: [{ itemId: 2000002, count: 20 }] }
+
+# ---- Basil ----
+- id: basil-spare-charms
+  persona: basil
+  title: "The Jar of Spare Charms"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [2230101], count: 25, mapIds: [105050000, 105050100] }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000008, count: 12 }
+    - { id: jar, type: DELIVER, to: basil, take: { itemId: 4000008, count: 12 } }
+  rewards: { meso: 5000, exp: 5000, bondPoints: 30, items: [{ itemId: 2000001, count: 25 }] }
+
+- id: basil-someones-hat
+  persona: basil
+  title: "Someone's Hat"
+  length: MEDIUM
+  requires: { level: { min: 56 }, questsCompleted: [basil-spare-charms] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shades, type: KILL_MOBS, mobIds: [5090000], count: 30, mapIds: [103000105, 103000202] }
+    - { id: hats, type: COLLECT_ITEM, itemId: 4000413, count: 10 }
+    - { id: shelf, type: DELIVER, to: basil, take: { itemId: 4000413, count: 10 } }
+  rewards: { meso: 20000, exp: 22000, bondPoints: 35, items: [{ itemId: 2000004, count: 10 }] }

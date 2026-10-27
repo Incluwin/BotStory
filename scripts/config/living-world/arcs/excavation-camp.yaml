@@ -1,0 +1,46 @@
+# Excavation Site arc: every Sharenian stone in the tombs has its king's name chiselled off, and the camp archaeologist
+# puts it back. Its third chapter waits on the stone Ossa's Perion diggers turned up (the Victoria errand); its last
+# beat happens once per server, after a night at the Remains <Cliff> (quests/excavation-camp.yaml).
+- id: edmund-the-buried-name
+  persona: edmund
+  chapters:
+    - id: chapter-1
+      title: "Chisel Marks"
+    - id: chapter-2
+      title: "Read"
+      enterWhen: { flags: [excav.marks.read] }
+      dialogueOverrides:
+        greet: ["hello. one hand, one chisel. i keep saying it.", "you. good. i've been thinking about careful men."]
+        who: ["Edmund. camp archaeologist. somebody chiselled the king's name off every stone in the tombs, and it wasn't vandals. one hand, one chisel, very carefully. his own people hid his name. i want to know what from."]
+        smallTalk: ["you don't hide a king's name from the living. they already know it. you hide it from whatever comes after. i don't like what that says about what came after.", "a careful man always misses one. it's always the careful ones. i've seen it on every dig i've ever worked."]
+        speakPlainly: ["plainly: a hidden name, and one stone somewhere that might have kept it."]
+        questOffer.edmund-the-chisel-marks: ["i'm taking a rubbing of every stone in the tombs now, for the record. the linen wears through. the mummydogs down in the Remains <Tomb> wrap themselves in more. fifteen bandages, and go down to the third tomb and see the big stone. everyone should see it once."]
+        questComplete.edmund-the-chisel-marks: ["fifteen. another stone on the record. same chisel, same hand. here. thank you."]
+        chapterEnter: ["(lays the rubbings side by side on a flat rock and weighs each corner down with a pebble)"]
+    - id: chapter-3
+      title: "Found"
+      enterWhen: { flags: [excav.name.found] }
+      dialogueOverrides:
+        greet: ["hello. i've got the stone. i haven't read it out. i won't.", "you. good. it's under the cloth. don't lift it."]
+        who: ["Edmund. camp archaeologist. the king's name was chiselled off every stone in the tombs but one, and Ossa's diggers had that one propping a door in Perion. it's here now. i haven't said the name. in Sharenian you didn't, not just anywhere."]
+        idle: ["(lifts the corner of a cloth over a flat stone, looks under it, and lays it down again)", "(pushes his glasses up his nose with the back of a dusty wrist and writes in a small notebook)"]
+        smallTalk: ["i read it once, quietly, with my hand over my mouth. i don't know why i did that. it felt right.", "a name put back in chalk is only borrowed. i want it cut into the board. but it has to be said first. that's the old way."]
+        speakPlainly: ["plainly: a name i've read and haven't said."]
+        about.ossa: ["Ossa's diggers had the stone. face-down in the third site, then propping the office door in Perion all spring. Ossa wants a wedge for it. i've sent three. all the wrong shape, apparently."]
+        questOffer.edmund-the-chisel-marks: ["i'm taking a rubbing of every stone in the tombs now, for the record. the linen wears through. the mummydogs down in the Remains <Tomb> wrap themselves in more. fifteen bandages, and go down to the third tomb and see the big stone. everyone should see it once."]
+        questComplete.edmund-the-chisel-marks: ["fifteen. another stone on the record. same chisel, same hand. here. thank you."]
+        chapterEnter: ["(sets a flat stone on the table under a clean cloth, and does not lift the cloth)"]
+    - id: chapter-4
+      title: "Said Aloud"
+      enterWhen: { flags: [excav.name.restored] }
+      dialogueOverrides:
+        greet: ["hello! go and look at the board. the top line.", "you. good. it's still there. i check every morning."]
+        who: ["Edmund. camp archaeologist. the king's name is back on the excavator board by Shuang, cut in, the first thing on it the rain can't take. somebody said it aloud at the cliff, the old way. he isn't hidden any more."]
+        idle: ["(runs a thumb along the cut letters on the board's top line, and smiles)", "(brushes the dust off a flat stone with a paintbrush, very slowly, and leans close to read it)"]
+        smallTalk: ["the guilds read the board before they go down into Sharenian now. some of them say his name at the gate. i never asked them to.", "i still don't know what they hid him from. maybe it's gone. maybe it's down there past Shuang's gate. either way, it can hear his name now."]
+        speakPlainly: ["plainly: a king, and his name, back where it belongs."]
+        about.ossa: ["Ossa's diggers had the stone all along. i sent a proper wedge in the end, cut from slate, with his name on the bottom. word from Perion is it's the best door wedge in town."]
+        questOffer.edmund-the-chisel-marks: ["i'm taking a rubbing of every stone in the tombs now, for the record. the linen wears through. the mummydogs down in the Remains <Tomb> wrap themselves in more. fifteen bandages, and go down to the third tomb and see the big stone. everyone should see it once."]
+        questComplete.edmund-the-chisel-marks: ["fifteen. another stone on the record. same chisel, same hand. his name's on the board now, and his stones are on the record. here. thank you."]
+        friend.best: ["your name's in my notebook, on the same page as his. i thought you should know."]
+        chapterEnter: ["(cuts the last stroke of a letter into the board, blows the dust off, and steps back)"]

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "profileId": "temple-of-time",
+  "mapId": 270000100,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 35,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -189,
+    "middleMaxY": 161,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "sp", "weight": 100 }
+  ],
+  "restSpots": [
+    { "x": -1510, "y": 172, "seatId": -1 },
+    { "x": -830, "y": 172, "seatId": -1 },
+    { "x": -405, "y": 172, "seatId": -1 },
+    { "x": 20, "y": 172, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1850, "y": 172 },
+    { "x": -1340, "y": 172 },
+    { "x": -1255, "y": 172 },
+    { "x": -1170, "y": 172 },
+    { "x": -1085, "y": 172 },
+    { "x": -660, "y": 172 },
+    { "x": -235, "y": 172 }
+  ],
+  "npcSpots": [],
+  "trafficZones": [
+    { "id": "door-in00", "type": "DOOR", "minX": -69, "minY": -401, "maxX": 51, "maxY": -286, "excludesOccupancy": true },
+    { "id": "portal-out00", "type": "PORTAL", "minX": -1835, "minY": 110, "maxX": -1725, "maxY": 220, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "lower-west-street", "label": "Lower west street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -1680, "y": 172, "seatId": -1 }, { "x": -1595, "y": 172, "seatId": -1 }, { "x": -1510, "y": 172, "seatId": -1 }, { "x": -1425, "y": 172, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -1000, "y": 172, "seatId": -1 }, { "x": -915, "y": 172, "seatId": -1 }, { "x": -830, "y": 172, "seatId": -1 }, { "x": -745, "y": 172, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -575, "y": 172, "seatId": -1 }, { "x": -490, "y": 172, "seatId": -1 }, { "x": -405, "y": 172, "seatId": -1 }, { "x": -320, "y": 172, "seatId": -1 }] },
+    { "id": "three-doors-door", "label": "Three Doors door", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -401, "y": -333, "seatId": -1 }, { "x": -316, "y": -333, "seatId": -1 }, { "x": -231, "y": -333, "seatId": -1 }, { "x": -161, "y": -333, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -150, "y": 172, "seatId": -1 }, { "x": -65, "y": 172, "seatId": -1 }, { "x": 20, "y": 172, "seatId": -1 }, { "x": 105, "y": 172, "seatId": -1 }] },
+    { "id": "three-doors-entrance", "label": "Three Doors entrance", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -109, "y": -333, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "temple-of-time-three-doors", "type": "OTHER", "npcId": 0, "destinationMapId": 270000000,
+      "approachPoints": [{ "x": -109, "y": -333 }],
+      "services": ["enter"] }
+  ],
+  "hotspots": [
+    { "id": "lower-west-street-crowd", "venueId": "lower-west-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

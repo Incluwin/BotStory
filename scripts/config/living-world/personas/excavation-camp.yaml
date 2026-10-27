@@ -1,0 +1,282 @@
+# Excavation Site cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 4 Residents, 2 recruitable.
+# The archaeologists' camp at Excavation Site <Camp> (101030104), east of Perion, where Shuang sends guilds down into
+# Sharenian. Every Sharenian stone in the tombs has its king's name chiselled off; the camp archaeologist reads the
+# chisel marks, Ossa's Perion diggers turn out to have the one stone that kept the name, and it goes back on the camp's
+# board after a night at the Remains <Cliff> (arcs/excavation-camp.yaml). Two recruits give armour made for the
+# player's class: the tomb-road guard's helmets (L40-60, the Remains <Tomb>) and the night watchman's shoes (L20-30, the
+# dig sites back along the road toward Perion).
+- id: edmund
+  name: Edmund
+  look: { gender: male }
+  title: "Camp Archaeologist of Sharenian"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: excavation-camp
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-shuang", activity: LINGER }
+      - { from: 12, to: 18, spot: "venue:upper-west-street", activity: LINGER }
+      - { from: 18, to: 23, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  knows: [sharenian, wooden mask, rocky mask]
+  questLines: [edmund-slate-for-the-board, edmund-the-chisel-marks, edmund-ossas-stone, edmund-the-name-said-aloud]
+  arc: edmund-the-buried-name
+  rumors: [excav-the-board]
+  relationships:
+    - { persona: halla, kind: IS_GUARDED_BY }
+    - { persona: nell, kind: FORGETS_SUPPER_FOR }
+    - { persona: ossa, kind: WRITES_TO }
+  giftItemIds: [2020009, 2000002]
+  dialogue:
+    greetFirst: ["oh! hello. mind the string, it's a grid. everything inside the string is very old. you're new. that's nice.", "a visitor. good. hold this end of the tape. no, the other end. thank you. i'm Edmund."]
+    greet: ["hello again. careful of the string.", "you. good. i've found the corner of something.", "hm? oh. hello."]
+    idle: ["(brushes the dust off a flat stone with a paintbrush, very slowly, and leans close to read it)", "(pushes his glasses up his nose with the back of a dusty wrist and writes in a small notebook)"]
+    noWork: ["nothing today. the dig's resting. so is the dust. mostly."]
+    nothingDue: ["nothing owed. we're square, as the surveyors say."]
+    who: ["Edmund. i'm the camp's archaeologist. Shuang sends guilds down into Sharenian to fight what's down there. i go down after them and read the walls. every stone in the tombs had a king's name on it, once. somebody chiselled every one of them off."]
+    bye: ["mind the string on your way out."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the masks out in the dig sites are Sharenian funeral masks. wooden ones for the servants, stone ones for the stewards. nobody ever told them they were buried.", "Shuang wants to know what's past the gate. i want to know what was written on it. we get on. we just don't have the same questions."]
+    speakPlainly: ["plainly: old stones, and what they used to say."]
+    questOffer.edmund-slate-for-the-board: ["the excavator board beside Shuang is slate. we chalk up everything the dig turns over. the rain washes it and the slate cracks in the cold. the rocky masks in the second and third excavation sites carry slates. twenty masks, ten slates, and i'll have a board again."]
+    questAccept.edmund-slate-for-the-board: ["back down the road toward Perion. the second site and the third. the stone masks. they're slow, but they're stone. don't trade blows with them."]
+    questWaiting.edmund-slate-for-the-board: ["ten slates. the board's down to chalk dust."]
+    questComplete.edmund-slate-for-the-board: ["ten. good slate, too. look, it takes the chalk. here, a pair of the camp's spare glasses. everything looks older through them. that's the point."]
+    questOffer.edmund-the-chisel-marks: ["every stone in the tombs had a king's name cut into it, and every one has been chiselled off. i don't want the name. i want the chisel marks. the mummydogs down in the Remains <Tomb> wrap themselves in old linen, and linen takes a rubbing better than paper. fifteen bandages. and go all the way down to the third tomb and look at the big stone yourself."]
+    questAccept.edmund-the-chisel-marks: ["on past the camp, the Remains <Tomb>, the first, second and third. the dogs that are only bones don't wear bandages. the other ones do."]
+    questWaiting.edmund-the-chisel-marks: ["fifteen bandages. and did you see the big stone?"]
+    questComplete.edmund-the-chisel-marks: ["fifteen. look at the rubbings. look. same chisel, same hand, same height on every stone, and nothing else touched. nobody vandalises that carefully. they weren't erasing him. they were hiding him."]
+    questOffer.edmund-ossas-stone: ["one hand, one chisel, every stone. a careful man misses one in the end. careful men always do. Ossa runs the diggers in the excavation sites from Perion, and those diggers turn up every loose stone between here and the cliff. ask Ossa if any of them had letters on. the first answer will be no. ask twice."]
+    questAccept.edmund-ossas-stone: ["Perion, up the road west. Ossa stands in the square with a schedule, and will tell you to wear a hard hat."]
+    questWaiting.edmund-ossas-stone: ["did Ossa have it? was the first answer no?"]
+    questComplete.edmund-ossas-stone: ["it's... it's him. the name. the chisel missed one, face-down in the third site, and it's been propping a door in Perion all spring. thank you. i'm not going to read it out. not here. there's a way it should be done."]
+    questOffer.edmund-the-name-said-aloud: ["in Sharenian a name went on stone only after somebody had said it aloud where the king's road ends. at night, so the dead could hear it. the road ends at the Remains <Cliff>. i've written the name on this card. take it up there, hold the cliff through the night, and when it's quiet, say it. then come back and we'll cut it into the board. not chalk. cut."]
+    questAccept.edmund-the-name-said-aloud: ["past the tombs, past the old camps, to the cliff. stand at the edge. the officer skeletons don't sleep. thirty of them, and then it'll be quiet enough."]
+    questWaiting.edmund-the-name-said-aloud: ["have you said it yet? out loud. they have to hear it."]
+    questComplete.edmund-the-name-said-aloud: ["you said it? out loud, at the edge? good. good. then hold the chisel with me. there. it's on the board, cut in, the first thing on it the rain can't take. thank you. he has his name back."]
+    about.halla: ["Halla keeps the tomb road. she walks in front of me when i go down and won't let me read anything until she's looked at it first. she's usually right. it's usually a mummydog."]
+    about.nell: ["Nell feeds me. i forget. she doesn't. she brings the bowl to the string and stands there until it's empty."]
+    about.ossa: ["Ossa runs the diggers in the excavation sites from Perion. a letter comes once a month. two lines, both about the drakes."]
+    about.wick: ["Wick walks the dig sites at night with a lamp. i asked him if the masks ever take their faces off. he said no. he said it too quickly."]
+    aboutUnknown: ["never found them in a dig."]
+    friend.close: ["you can step inside the string any time. nobody else is allowed inside the string."]
+    friend.best: ["if i ever find anything with your name on it, i'll leave it exactly where it lies and fetch you first."]
+    famed: ["people at the camp say your name the way a name ought to be said. clearly, and often."]
+    defamed: ["what people say about you isn't carved in anything. it's chalk. it washes."]
+    gift: ["oh. thank you. i'll put it somewhere safe. i'll forget where. it'll be very safe."]
+    gift.favorite: ["oh, that's a long evening at the board, that is. thank you."]
+    gift.again: ["one a day. Nell says i forget to eat. she's right. but one a day."]
+
+- id: halla
+  name: Halla
+  look: { gender: female }
+  title: "Guard of the Tomb Road"
+  job: SPEARMAN
+  level: { min: 55, max: 57 }
+  strength: VETERAN
+  loadout: perion-spear-l35
+  personality: efficient-v1
+  home:
+    town: excavation-camp
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-west-street", activity: LINGER }
+      - { from: 12, to: 19, materialize: false }
+      - { from: 19, to: 23, spot: "venue:middle-central-street", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  knows: [mummydog, skeledog, officer skeleton]
+  contract: halla-the-tomb-road-share
+  questLines: [halla-the-tomb-road, halla-a-helm-for-the-road, halla-the-soldiers-ribs, halla-the-officers-helm, halla-road-markers]
+  rumors: [excav-the-board]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: edmund, kind: GUARDS }
+    - { persona: wick, kind: TAUGHT_THE_LAMP_TO }
+  giftItemIds: [2000004, 2020004]
+  dialogue:
+    greetFirst: ["stop there. ...all right. you can come in. the tomb road's that way. don't go down it alone.", "new face. the tombs are past me. so is everything that comes up out of them."]
+    greet: ["you.", "back. good.", "hm. the road's quiet. for now."]
+    idle: ["(leans on her spear and watches the tomb road without blinking)", "(rewraps the grip of her spear with a strip of linen and pulls it tight with her teeth)"]
+    noWork: ["nothing today. the road's held. it's always held."]
+    nothingDue: ["we're even."]
+    who: ["Halla. i keep the tomb road. the dogs come up out of the Remains <Tomb> at dusk and i put them back down. nine years. Edmund says that makes me part of the dig. i said i'm not that old. he said nobody is."]
+    bye: ["mind the road."]
+    thanks: ["good."]
+    smallTalk: ["the mummydogs were somebody's dogs once. Sharenian dogs. they still come when you whistle. that's the worst of it.", "Edmund goes down to read the walls and i go down in front of him. he reads. i watch. we've never once agreed on what's interesting."]
+    speakPlainly: ["plainly: a road, and a spear across it."]
+    offer: ["sixty mummydogs off the road, counted, and twenty-five thousand. then i'll hold the road in front of you instead."]
+    join: ["let's go. i'm in front."]
+    bench: ["three days. then the road wants me back."]
+    leave: ["back to the road."]
+    refuse.bond: ["i don't hold the road for strangers. i hold it against them."]
+    refuse.flags: ["walk the tomb road with me first. thirty mummydogs in the Remains <Tomb>. then come back and ask."]
+    refuseOwnErrand: ["the road first. thirty mummydogs. then ask."]
+    questOffer.halla-the-tomb-road: ["walk the road with me. the mummydogs in the Remains <Tomb>, the first three. thirty of them. they come when you whistle. don't whistle."]
+    questAccept.halla-the-tomb-road: ["on past the camp. the tombs. they're slow till they're not."]
+    questWaiting.halla-the-tomb-road: ["thirty. don't whistle."]
+    questComplete.halla-the-tomb-road: ["thirty. you held your ground. come back when you want the road. you know where i am."]
+    questOffer.halla-a-helm-for-the-road: ["your head's bare. on my road that's a short career. the skeledogs in the tombs have the hardest bones i've ever broken. thirty of them, fifteen bones, and i'll have a helm made up for you. for your class, not mine."]
+    questAccept.halla-a-helm-for-the-road: ["the Remains <Tomb>, the first three. the dogs that are only bones. they don't bark. listen for the rattle."]
+    questWaiting.halla-a-helm-for-the-road: ["fifteen bones. keep your head down till then."]
+    questComplete.halla-a-helm-for-the-road: ["fifteen. here. a helm for you. seven safe scrolls, every one took. now you've got a head on the road. keep it."]
+    questOffer.halla-the-soldiers-ribs: ["a better helm. the skeleton soldiers still stand their posts in the deeper tombs and the old camps past them. thirty soldiers, fifteen ribs. they're for the crest. don't ask."]
+    questAccept.halla-the-soldiers-ribs: ["the second and third tombs, and the three camps past the tombs. they stand in rows. break the row."]
+    questWaiting.halla-the-soldiers-ribs: ["fifteen ribs."]
+    questComplete.halla-the-soldiers-ribs: ["fifteen. your helm. seven sixties, every one took. you look like you belong on the road now."]
+    questOffer.halla-the-officers-helm: ["the best helm i can get made. the officer skeletons hold the three camps at the end of my road, behind the soldiers. thirty officers, fifteen pelvic bones. they give the orders. they're the ones you hit first."]
+    questAccept.halla-the-officers-helm: ["the old camps past the tombs, the first, second and third. you'll hear the officers shouting. bones don't shout. these do."]
+    questWaiting.halla-the-officers-helm: ["fifteen. hit the one giving orders."]
+    questComplete.halla-the-officers-helm: ["fifteen. here. two tens and five sixties, every one took. that's an officer's helm. you've earned it. don't tell the officers."]
+    questOffer.halla-road-markers: ["ten skeledog bones? the road markers keep walking off."]
+    questAccept.halla-road-markers: ["the tombs."]
+    questWaiting.halla-road-markers: ["ten."]
+    questComplete.halla-road-markers: ["ten. the markers stay put. for a week."]
+    about.edmund: ["Edmund reads walls. i stand in front of him while he does it. he'd walk into a mummydog with his nose in a notebook. he has. twice."]
+    about.wick: ["Wick takes the night watch on the dig sites. i taught him to hold the lamp in his off hand. he holds it in his good one. he's alive. it's working."]
+    about.nell: ["Nell gives me thirds. i've never asked. i'd never refuse."]
+    aboutUnknown: ["never came down my road."]
+    friend.close: ["you can walk my road any time. i'll hear you coming and i won't throw the spear."]
+    friend.best: ["if you ever need a road held, anywhere, send for me. i'll come and stand across it."]
+    famed: ["the camp says your name. i heard. i agreed."]
+    defamed: ["people talk. it doesn't come down my road."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["that's a good one. that's a whole night on the road, that is."]
+    gift.again: ["one a day. i keep my hands free."]
+
+- id: wick
+  name: Wick
+  look: { gender: male }
+  title: "Night Watch of the Dig Sites"
+  job: THIEF
+  level: { min: 24, max: 26 }
+  strength: SEASONED
+  loadout: kerning-thief-l28
+  personality: relaxed-v1
+  home:
+    town: excavation-camp
+    routine:
+      - { from: 12, to: 17, spot: "venue:upper-west-street-2", activity: REST }
+      - { from: 17, to: 21, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 21, to: 12, materialize: false }
+  recruitable: true
+  knows: [ghost stump, smirking ghost stump, wooden mask]
+  contract: wick-the-lamp-oil
+  questLines: [wick-the-night-round, wick-quiet-soles, wick-slate-heels, wick-the-whole-round, wick-lamp-boards]
+  rumors: [excav-the-cookfire]
+  benchToleranceDays: 2
+  paceGap: 2
+  relationships:
+    - { persona: nell, kind: IS_FED_BY }
+    - { persona: halla, kind: WAS_TAUGHT_THE_LAMP_BY }
+  giftItemIds: [2020005, 2000001]
+  dialogue:
+    greetFirst: ["oh. hi. sorry, i'm usually asleep about now. i'm Wick. i'm the night.", "you're up early. or late. i can never tell any more. hello."]
+    greet: ["hey.", "hi. is it evening yet?", "oh. you. good."]
+    idle: ["(trims a lamp wick with a small knife, holds it up, and trims it again)", "(yawns enormously, catches himself, and pretends it was a stretch)"]
+    noWork: ["nothing today. i'm resting up for the round. this is resting."]
+    nothingDue: ["we're square."]
+    who: ["Wick. i walk the dig sites at night with a lamp, so the diggers' tools are still there in the morning. the ghost stumps come out after dark. so do i. we have an understanding. it's mostly me hitting them."]
+    bye: ["mind your lamp."]
+    thanks: ["thanks. really."]
+    smallTalk: ["the smirking ghost stumps follow me on the round. not close. just far enough to smirk. you get used to it. i haven't.", "the masks in the third site turn to watch my lamp go by. Edmund says they're only funeral masks. he's never walked past them at two in the morning."]
+    speakPlainly: ["plainly: a lamp, a round, and a claw for the bits that move."]
+    offer: ["fifteen thousand. it's for lamp oil. i'll walk with you anywhere, and i'll carry the lamp."]
+    join: ["all right. i'll go first. i've got the lamp."]
+    bench: ["two days. then i'm back on the round."]
+    leave: ["back on the round, then."]
+    refuse.bond: ["i don't walk the round with people i don't know. the lamp only lights one."]
+    refuse.flags: ["you haven't heard what Nell says about me. come by her cookfire in the evening, six to nine, while i'm eating. i'm the one eating standing up. she always says it."]
+    refuseOwnErrand: ["my round first. walk it with me."]
+    questOffer.wick-the-night-round: ["walk the round with me. the ghost stumps in the first and second excavation sites, twenty, and ten of the smirking ones in the first. it's easier with two. everything is."]
+    questAccept.wick-the-night-round: ["back down the road toward Perion. the first site, then the second. the smirking ones are the ones smirking."]
+    questWaiting.wick-the-night-round: ["twenty and ten. keep the lamp on your left."]
+    questComplete.wick-the-night-round: ["twenty and ten. you walk quiet. i like that. come by any evening. i'll show you the round in the dark."]
+    questOffer.wick-quiet-soles: ["your boots are loud. on the round, loud is how you get smirked at. the wooden masks in the dig sites carry boards, old wood, soft. twenty-five masks, ten boards, and i'll have quiet soles made up for you. for your class."]
+    questAccept.wick-quiet-soles: ["the excavation sites, all three. the wooden ones. they sound hollow. they don't hit hollow."]
+    questWaiting.wick-quiet-soles: ["ten boards. walk soft till then."]
+    questComplete.wick-quiet-soles: ["ten. here. shoes for you. every slot scrolled safe, every one took. go on, walk. ...see? i can't hear you. perfect."]
+    questOffer.wick-slate-heels: ["better shoes. the rocky masks in the second and third sites carry slate, and slate heels don't slip on wet stone. thirty masks, fifteen slates."]
+    questAccept.wick-slate-heels: ["the second and third sites. the stone ones. they hit like a wall. don't be the wall."]
+    questWaiting.wick-slate-heels: ["fifteen slates."]
+    questComplete.wick-slate-heels: ["fifteen. your shoes. sixties in every slot, every one took. they grip. you could walk up a tomb wall in those. don't."]
+    questOffer.wick-the-whole-round: ["the best shoes i know how to get made. walk the whole round with me, end to end. twenty smirking ghost stumps in the first site, then twenty-five wooden masks and twenty-five rocky masks at the far end of the third. all night. then they're yours."]
+    questAccept.wick-the-whole-round: ["the first site, then all the way to the far end of the third. the lamp's yours tonight."]
+    questWaiting.wick-the-whole-round: ["the whole round. keep going."]
+    questComplete.wick-the-whole-round: ["the whole round. here. two tens and sixties in the rest, every one took. those are a night watchman's shoes. you could walk past Halla in those. nobody walks past Halla."]
+    questOffer.wick-lamp-boards: ["ten wooden boards? the watch fire's low."]
+    questAccept.wick-lamp-boards: ["the dig sites. the wooden masks."]
+    questWaiting.wick-lamp-boards: ["ten."]
+    questComplete.wick-lamp-boards: ["ten. the fire's lit. sit a minute."]
+    about.nell: ["Nell feeds me before the round. she says sit. i don't sit. she waits. i sit."]
+    about.halla: ["Halla taught me to hold the lamp in my off hand. i hold it in my good hand. she sighs. i'm still alive. we call it even."]
+    about.edmund: ["Edmund asks me what the masks do at night. i tell him they don't do anything. he writes that down. i wish he wouldn't."]
+    aboutUnknown: ["never seen them on the round."]
+    friend.close: ["you can walk the round with me any night. i'll give you the good side of the lamp."]
+    friend.best: ["i've got a second lamp. it's yours. it's always lit. that's the rule."]
+    famed: ["the diggers say your name in the morning. i hear it going to bed. it's a good way to fall asleep."]
+    defamed: ["people say things in the dark. you can't see their faces. i don't listen."]
+    gift: ["oh. thanks."]
+    gift.favorite: ["oh, that's a whole round's worth, that is. thank you."]
+    gift.again: ["one a day. i'll fall asleep on the round."]
+
+- id: nell
+  name: Nell
+  look: { gender: female }
+  title: "Cook of the Camp Fire"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: excavation-camp
+    routine:
+      - { from: 5, to: 11, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 11, to: 16, spot: "venue:lower-west-street-2", activity: LINGER }
+      - { from: 16, to: 22, spot: "venue:lower-central-street", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  knows: [seedling, lupin, excavation site]
+  questLines: [nell-sprouts-for-the-pot, nell-bananas-for-the-crew]
+  rumors: [excav-the-cookfire]
+  relationships:
+    - { persona: wick, kind: FEEDS }
+    - { persona: halla, kind: GIVES_THIRDS_TO }
+    - { persona: edmund, kind: BRINGS_THE_BOWL_TO }
+  giftItemIds: [2020001, 2020004]
+  dialogue:
+    greetFirst: ["sit. you've walked from Perion, you'll sit. i'll bring you something. don't argue, nobody wins.", "a new face at the fire. good. there's stew. there's always stew."]
+    greet: ["sit.", "you again. hungry? you're hungry.", "there's stew."]
+    idle: ["(stirs a black pot over the cookfire, tastes, frowns, and adds something from a twist of paper)", "(counts bowls on a plank, counts heads around the camp, and fills one more bowl)"]
+    noWork: ["nothing today. the stew's on. sit down and be useful by eating."]
+    nothingDue: ["nothing owed. you ate. that's the bill."]
+    who: ["Nell. i cook for the camp. the diggers, the archaeologist, the guard, the night watch, and whatever guild Shuang's about to send down. nobody goes into Sharenian on an empty stomach. not while i'm here."]
+    bye: ["take bread. it's for later. it's not for later, eat it now."]
+    thanks: ["eat well."]
+    smallTalk: ["the ghost stumps out in the dig sites shed seedlings. sprouts, really. lovely in a broth. the diggers don't know. don't tell them.", "Edmund forgets to eat. i take the bowl to his string and stand there. he eats. he doesn't notice. that's fine. it's still in him."]
+    speakPlainly: ["plainly: a pot, a fire, and everybody fed."]
+    questOffer.nell-sprouts-for-the-pot: ["i want sprouts for the broth. the ghost stumps back in the first and second excavation sites shed seedlings. ten seedlings. don't let the diggers see what you're bringing."]
+    questAccept.nell-sprouts-for-the-pot: ["back down the road toward Perion. the first and second sites. stumps with faces. they're slow."]
+    questWaiting.nell-sprouts-for-the-pot: ["ten seedlings. the broth's waiting. so am i."]
+    questComplete.nell-sprouts-for-the-pot: ["ten. look at that. fresh. here, take these. you'll want them on the road."]
+    questOffer.nell-bananas-for-the-crew: ["the crew wants pudding. i want bananas. the lupins throw them, in the Sleepy Dungeon past Sleepywood and the tree dungeon in the monkey forest. twenty-five lupins, fifteen bananas. duck."]
+    questAccept.nell-bananas-for-the-crew: ["Sleepywood and down the Sleepy Dungeon, or the monkey forest's tree dungeon south of Ellinia. they throw. they've got good arms."]
+    questWaiting.nell-bananas-for-the-crew: ["fifteen bananas. the crew keeps asking."]
+    questComplete.nell-bananas-for-the-crew: ["fifteen! pudding tonight. Halla's going to have three. here. for all the throwing you dodged."]
+    about.wick: ["Wick eats standing up. he says the round won't wait. the round's a lot of stumps. they'll wait."]
+    about.halla: ["Halla gets thirds. she's never once asked. i'd be frightened if she did."]
+    about.edmund: ["Edmund thanks me for the stew and then asks how old the pot is. it's a pot. it's my pot."]
+    about.ossa: ["Ossa, the foreman up in Perion? the Perion diggers come out here with no lunch. i feed them and send the bill to Perion. it never gets paid. we're both very stubborn."]
+    aboutUnknown: ["never fed them. send them to me."]
+    friend.close: ["you can have the first bowl. that's the cook's bowl. nobody gets the cook's bowl."]
+    friend.best: ["i've named a stew after you. the diggers ask for it by name. it's the good one."]
+    famed: ["the whole fire talks about you. with their mouths full. that's how you know they mean it."]
+    defamed: ["whoever said that is getting the burnt bit."]
+    gift: ["oh, for the cook? thank you."]
+    gift.favorite: ["oh, now that's proper food. that's going in the pot. no it isn't. that's mine."]
+    gift.again: ["one a day. leave room for stew."]

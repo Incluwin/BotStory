@@ -1,0 +1,194 @@
+# Tent of the Entertainers cast (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10): the performers' camp east of
+# Ariant. Desert rabbits spawn on the ground (y 275), so the cast keeps to the upper boards (middle-west-street,
+# by-karcasa, upper-central-street, upper-east-street). 3 residents, 1 recruitable (Rafi the fire-eater, for black sand
+# and a fee). Ids in quests/tent-of-the-entertainers.yaml.
+- id: pepita
+  name: Pepita
+  look: { gender: female }
+  title: "Juggler of the Tent"
+  job: BEGINNER
+  level: { min: 19, max: 19 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tent-of-the-entertainers
+    routine:
+      - { from: 8, to: 12, spot: "venue:upper-east-street", activity: SHOW_OFF }
+      - { from: 12, to: 14, spot: "venue:by-karcasa", activity: REST }
+      - { from: 14, to: 18, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 18, to: 21, spot: "venue:upper-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [ear plug plead, royal cactus, tent of the entertainers]
+  questLines: [pepita-soft-things-to-juggle, pepita-the-smiling-mask, pepita-the-crying-mask]
+  rumors: [ariant-tent-the-old-show]
+  relationships:
+    - { persona: zarek, kind: APPRENTICED_TO }
+    - { persona: rafi, kind: PERFORMS_WITH }
+  giftItemIds: [4000324, 2010003]
+  dialogue:
+    greetFirst: ["catch! no, don't. it's an orange. sorry. hello! i'm Pepita. i throw things.", "oh, a new face! hold out your hands. no, flat. like that. now don't move. ...that's the trick. you were the trick."]
+    greet: ["hello! seven today. i dropped two. that's five!", "you're back! watch. no, watch the top one. the top one's the interesting one."]
+    idle: ["(juggles three small oranges in a lazy loop, and a fourth appears from nowhere)", "(balances on one foot at the edge of the boards and grins down at the rabbits below)"]
+    noWork: ["nothing today! i'm practising. i'm always practising. i dropped the orange. that was practice too."]
+    nothingDue: ["we're even! i counted. i count everything. it's a juggling thing."]
+    who: ["Pepita! i juggle for the Tent of the Entertainers. Zarek taught me with eggs, so i'd learn to be careful. i learned to be fast. he says it's not the same. i'm still working out why."]
+    bye: ["catch you later! that's a juggling joke. it's the only one."]
+    thanks: ["thank you! that's a five-ball thank you."]
+    smallTalk: ["the show has a funny part and a sad part. i'm wonderful at the funny part. Zarek does the sad part. he says when i can do the sad part, the show's mine. i don't want the show. i want the sad part.", "the rabbits down there steal anything round. i've lost forty oranges this year. one rabbit's got eleven. i know which one. he knows i know."]
+    speakPlainly: ["plainly: a girl who can't stop throwing things."]
+    questOffer.pepita-soft-things-to-juggle: ["i'm learning ten. ten's too many oranges. they bruise, i bruise. the ear plug pleads out west wear earmuffs. soft. bouncy. twenty of them, twelve earmuffs? i'll juggle them at you. gently."]
+    questAccept.pepita-soft-things-to-juggle: ["through the middle of the tent to the Dry Desert, then west: the Scorching Desert, and the White Rock Desert past it. the pleads with the big ears. don't laugh at the ears. they hear you laugh."]
+    questWaiting.pepita-soft-things-to-juggle: ["twelve earmuffs! i'm practising with socks. socks are terrible."]
+    questComplete.pepita-soft-things-to-juggle: ["twelve! one, two, three, ...watch. ten! i did ten! i dropped nine. that's one more than yesterday."]
+    questOffer.pepita-the-smiling-mask: ["there are two masks in Zarek's trunk. the smiling one and the crying one. i want to give you the smiling one. they're his, though. would you ask him? he likes you. he says you've got the face for it."]
+    questAccept.pepita-the-smiling-mask: ["Zarek. up by Karcasa in the mornings, the middle boards after lunch, the top boards of an evening. he'll make you sit through a story. sit through it. it's the price."]
+    questWaiting.pepita-the-smiling-mask: ["did he say yes? he says yes slowly."]
+    questComplete.pepita-the-smiling-mask: ["he said yes! here. the smiling mask. it's old and it's always smiling. wear it on bad days. it doesn't mind."]
+    questOffer.pepita-the-crying-mask: ["i've been practising the sad part. i need red for the tear under the eye, and the royal cactus flowers make a red that runs. twenty royal cacti, ten flowers? if i can do the sad part, the crying mask's yours. you were here for the smiling one."]
+    questAccept.pepita-the-crying-mask: ["the second cactus desert and the royal catthus desert off it. the royal cacti wear crowns. the crowns are the flowers. be polite. they're royalty."]
+    questWaiting.pepita-the-crying-mask: ["ten flowers. the tear keeps coming out orange."]
+    questComplete.pepita-the-crying-mask: ["...i did the sad part. last night. Zarek cried. he says it was the smoke. there wasn't any smoke. here. the crying mask. you've got both now. you saw both halves of me. that's the whole show."]
+    about.zarek: ["Zarek runs the tent. he used to run it louder. he taught me everything except the sad part. he says the sad part can't be taught. he's wrong. he's been teaching it to me for years without noticing."]
+    about.rafi: ["Rafi eats fire. he lets me juggle the unlit torches. he says when i'm older i can juggle the lit ones. i'm older every day. he hasn't noticed."]
+    about.zahra: ["there's a seamstress in the quarter who sewed for the tent before i was born. Zarek goes quiet when he says her name. Zarek doesn't go quiet."]
+    about.farid: ["there's a boy in Ariant's market who runs jars. he's fast. i threw him an orange once and he caught it without looking. i've been trying to throw one he can't catch ever since."]
+    aboutUnknown: ["never juggled for them. i'd remember the faces. i always look at the faces."]
+    friend.close: ["i've named a ball after you. it's the blue one. i drop it less."]
+    friend.best: ["when i do the show, the first ball goes up for you. every night. you won't see it. i'll know."]
+    famed: ["everyone's talking about you! even the rabbits look interested."]
+    defamed: ["people are saying things. i'll juggle louder. that helps."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["oh, that's perfect! that's going in my lucky pocket."]
+    gift.again: ["you already gave me something! i can only juggle so many presents."]
+
+- id: rafi
+  name: Rafi
+  look: { gender: male }
+  title: "Fire-Eater of the Tent"
+  job: FP_WIZARD
+  level: { min: 28, max: 30 }
+  strength: SEASONED
+  loadout: tent-staff-l28
+  personality: relaxed-v1
+  home:
+    town: tent-of-the-entertainers
+    routine:
+      - { from: 7, to: 10, spot: "venue:middle-west-street", activity: REST }
+      - { from: 10, to: 17, materialize: false }
+      - { from: 17, to: 18, spot: "venue:by-karcasa", activity: SOCIALIZE }
+      - { from: 18, to: 22, spot: "venue:upper-central-street", activity: SHOW_OFF }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: true
+  knows: [scarf plead, dark sand dwarf, flaming desert]
+  contract: rafi-black-sand-fee
+  questLines: [rafi-rags-for-the-torches, rafi-a-pinch-never-two, rafi-black-sand]
+  benchToleranceDays: 1
+  paceGap: 3
+  relationships:
+    - { persona: zarek, kind: WORKS_FOR }
+    - { persona: pepita, kind: PERFORMS_WITH }
+    - { persona: vael, kind: ADMIRES }
+  giftItemIds: [4000352, 2002023]
+  dialogue:
+    greetFirst: ["stand back. further. there. no, you're fine, it's the wind i'm worried about. hello! Rafi. i eat fire. you'll want to stand upwind.", "a new face! do you like fire? everyone says no. everyone stays to watch."]
+    greet: ["hello! eyebrows still on. a good day.", "you're back! the torches are lit. so am i."]
+    idle: ["(rolls an unlit torch across his knuckles, sniffs the rag, and frowns at it)", "(breathes a long, slow plume of flame at the sky and watches it curl away)"]
+    noWork: ["nothing today. the torches are soaking. i'm soaking too. in the shade."]
+    nothingDue: ["we're square. i don't owe anyone. i owe the fire a little."]
+    who: ["Rafi. i eat fire for the tent. i'm a wizard, sort of. the Ellinia kind of wizard would be appalled. i learned fire from a book, then from a torch, then from my own eyebrows. they grew back. mostly."]
+    bye: ["mind your sleeves out there. fire likes a loose sleeve."]
+    thanks: ["thank you! warmly. that's a fire joke."]
+    smallTalk: ["the trick to eating fire is you don't. you breathe out. the fire thinks it's being eaten. it's being argued with. you have to win the argument every time.", "the black sand on the Sahel road burns blue in a flame. getting the amount right is the whole trick. too much burns everything. i found that out with a tent. not this tent. a smaller tent."]
+    speakPlainly: ["plainly: a staff, a mouthful of fire, and no eyebrows to spare."]
+    offer: ["twelve thousand, and twenty handfuls of that black sand off the Sahel. the fire eats the sand, i eat the fire, and i'm yours till the torches burn down. stand upwind."]
+    join: ["right! you lead. i'll light the way. literally. stand back."]
+    bench: ["a day. then i get restless, and restless fire-eaters set things alight."]
+    leave: ["that's me back to the tent. the torches will have missed me."]
+    refuse.bond: ["i don't breathe fire near people i don't know. it's a safety thing. mostly yours."]
+    refuse.flags: ["bring me rags for the torches first. the scarf pleads in the Dry Desert wear the best. then we'll talk about the sand."]
+    refuseOwnErrand: ["that's my fire. you can hold the bucket."]
+    questOffer.rafi-rags-for-the-torches: ["my torch rags burn through in a week. the scarf pleads in the Dry Desert and the frilled field are wrapped in the best rags in Nihal. old, dry, good for a slow burn. twenty-five pleads, twelve scarves?"]
+    questAccept.rafi-rags-for-the-torches: ["the Dry Desert's straight through the middle of the tent and out the far side, and the frilled field's off it. the pleads with the scarves. they're attached to the scarves. sentimentally."]
+    questWaiting.rafi-rags-for-the-torches: ["twelve scarves. tonight's show is on the last rag."]
+    questComplete.rafi-rags-for-the-torches: ["twelve. dry, old, frayed at the ends. perfect. they'll burn slow and smell terrible. that's how you know it's a good torch."]
+    questOffer.rafi-a-pinch-never-two: ["there's an alchemist in Magatia who makes things burn that shouldn't. a Zenumist. Vael. i want her secret for the blue flame. she won't tell a fire-eater. she might tell you. you look like you'd keep a secret."]
+    questAccept.rafi-a-pinch-never-two: ["Magatia, up the Sahel road. Vael's by the Zenumist door in the mornings, down the west street of an evening. she smells faintly of smoke. you'll feel at home."]
+    questWaiting.rafi-a-pinch-never-two: ["did she tell you? is it the black sand? it's the black sand, isn't it."]
+    questComplete.rafi-a-pinch-never-two: ["a pinch, never two, and keep my mouth shut while it's lit? ...that's the best advice i've ever had. i'm going to ignore half of it. the second half."]
+    questOffer.rafi-black-sand: ["ten handfuls of black sand from the dark dwarves? the blue flame eats it."]
+    questAccept.rafi-black-sand: ["the desert of serenity and the desert of dreams, off the Sahel."]
+    questWaiting.rafi-black-sand: ["ten. a pinch at a time."]
+    questComplete.rafi-black-sand: ["ten. blue tonight. come and watch."]
+    about.zarek: ["Zarek runs the tent. he dropped a torch in Ariant's town square forty years ago. nobody was hurt. he still counts the torches twice before every show. i count them once, and then i eat one."]
+    about.pepita: ["Pepita juggles my unlit torches. she wants to juggle the lit ones. when she can do it with her eyes shut, i'll let her. she practises with her eyes shut. it's going to be soon."]
+    about.vael: ["Vael's a Zenumist alchemist in Magatia. she makes things burn that shouldn't. i've never met her. i've read everything anyone ever wrote about her. it was mostly complaints."]
+    about.zahra: ["the seamstress in the quarter sews like she's angry at the cloth. Zarek says she sewed for the tent once. he says it like it's a secret. it's not a secret. everyone knows."]
+    aboutUnknown: ["never set fire to anything of theirs. that i know of."]
+    friend.close: ["i'll light your way any night. ask. i'll even keep my eyebrows on for it."]
+    friend.best: ["i've named a flame after you. the blue one. it's the hardest to keep lit. it's worth it."]
+    famed: ["they're talking about you. warmly. that's my department."]
+    defamed: ["they're talking about you. hotly. that's also my department. let it burn out."]
+    gift: ["oh! thanks."]
+    gift.favorite: ["oh, that's useful. that's going straight into the act. carefully."]
+    gift.again: ["one's plenty. i've only got so many pockets that don't scorch."]
+
+- id: zarek
+  name: Zarek
+  look: { gender: male }
+  title: "Old Ringmaster"
+  job: BEGINNER
+  level: { min: 48, max: 48 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: tent-of-the-entertainers
+    routine:
+      - { from: 9, to: 13, spot: "venue:by-karcasa", activity: REST }
+      - { from: 13, to: 16, spot: "venue:middle-west-street", activity: REST }
+      - { from: 16, to: 18, materialize: false }
+      - { from: 18, to: 21, spot: "venue:upper-east-street", activity: SOCIALIZE }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  knows: [cactus, tent of the entertainers, ariant]
+  questLines: [zarek-needles-for-the-big-top, zarek-a-piece-of-blue]
+  rumors: [ariant-tent-the-old-show]
+  relationships:
+    - { persona: pepita, kind: TEACHES }
+    - { persona: rafi, kind: EMPLOYS }
+    - { persona: zahra, kind: WAS_SEWN_FOR_BY }
+    - { persona: mott, kind: REMEMBERS }
+  giftItemIds: [4000330, 2010004]
+  dialogue:
+    greetFirst: ["ladies and gentlemen! ...and you. welcome, welcome, to the Tent of the Entertainers. the show's at dusk. the rabbits are free.", "a visitor! sit, sit. the boards are warm. i'm Zarek. i used to be loud. i'm still loud. i used to be young."]
+    greet: ["welcome back, welcome back! the show goes on. slowly, these days.", "ah! my favourite audience. you're the only one who comes back without being paid."]
+    idle: ["(sweeps off a battered top hat to an empty stretch of desert, then sets it back on with great dignity)", "(counts the torches stacked by the tent, slowly, and counts them again)"]
+    noWork: ["nothing today. the tent's standing. so am i, just. that's the whole programme."]
+    nothingDue: ["you owe me nothing. the first show's always free. so are the others. that's my business plan."]
+    who: ["Zarek. ringmaster of the Tent of the Entertainers, forty-odd years and counting. Pepita juggles, Rafi eats fire, and i talk. talking's the hardest part. nobody claps for it."]
+    bye: ["exit, stage left! that's the rabbit side. mind the rabbits."]
+    thanks: ["oh, thank you! a bow. a small one. my back."]
+    smallTalk: ["forty years ago the tent played Ariant's town square on lantern night. i juggled seven torches for the whole city. i dropped one. nobody was hurt. the palace remembers everything.", "Karcasa takes travellers from here to Victoria and back. he's never once asked to see the show. i've never once asked to see Victoria. we're even."]
+    speakPlainly: ["plainly: an old man, a tent, and a voice that won't retire."]
+    questOffer.zarek-needles-for-the-big-top: ["the big top's canvas is going at the seams, and a needle won't go through it. a cactus thorn will. twenty-five cacti, fifteen thorns? that canvas has kept the sun off three generations of clowns."]
+    questAccept.zarek-needles-for-the-big-top: ["outside Ariant's west entrance and the cactus deserts past it. the plain cacti, not the royal ones. the royal ones hold grudges."]
+    questWaiting.zarek-needles-for-the-big-top: ["fifteen thorns. the canvas is whistling in the wind. it's not a good whistle."]
+    questComplete.zarek-needles-for-the-big-top: ["fifteen. sharp as a critic. the big top will hold another season. so will i."]
+    questOffer.zarek-a-piece-of-blue: ["forty years ago the tent played Ariant's town square, and a boy swept up after us in the morning. confetti everywhere. i've wondered ever since if anyone kept a piece. he sweeps in Magatia now, they say. Mott. would you ask him?"]
+    questAccept.zarek-a-piece-of-blue: ["Magatia, up the Sahel road. Mott sweeps both societies. you'll find him with a broom on the lower east streets, morning and evening. ask about the confetti."]
+    questWaiting.zarek-a-piece-of-blue: ["did he keep one? it doesn't matter. it matters."]
+    questComplete.zarek-a-piece-of-blue: ["he kept a piece. blue. in his good pocket. ...i dropped a torch that night and i've thought about nothing else for forty years. he kept the confetti. that's what he remembers. i'll try to remember that instead."]
+    about.pepita: ["Pepita! the best juggler i ever taught, and i taught her with eggs. she can do anything but the sad part. the sad part comes. it comes for everyone. i hope it comes for her gently."]
+    about.rafi: ["Rafi eats fire for the tent. he thinks i hired him for his talent. i did. i also hired him because he laughs when a torch falls. after forty years, i needed somebody who laughs."]
+    about.zahra: ["Zahra sewed my coats when she was a girl. she left the tent for a man in the quarter and a needle in every doorway. i never blamed her. i blamed the man. he was very nice. i blamed him anyway."]
+    about.mott: ["a boy swept the town square the morning after our lantern-night show, forty years ago. Mott. he's in Magatia now, sweeping two houses. i only learned his name lately. i'd have given him a free seat for life."]
+    aboutUnknown: ["never in my audience. yet."]
+    friend.close: ["you've a seat in the front row for life. the front row's a plank. it's the best plank."]
+    friend.best: ["when i retire, i'll leave you the hat. not the tent. the hat. the hat's the important part."]
+    famed: ["they're talking about you, out on the road! good reviews. i'd know a good review."]
+    defamed: ["bad reviews. i've had worse. i once had a review that was just a rabbit, eating my programme."]
+    gift: ["oh! for me? a bow. a small one."]
+    gift.favorite: ["oh, that's thoughtful. that goes in the hat. everything good goes in the hat."]
+    gift.again: ["one's plenty! the hat's only so deep."]

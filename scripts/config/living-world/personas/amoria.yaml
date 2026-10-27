@@ -1,0 +1,453 @@
+# Amoria cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 7 Residents, 2 recruitable.
+# The wedding town past Thomas Swift's door in Henesys: the cathedral and the chapel, Moony's rings, and the road east
+# through the purple plains and Purplewood to Amos's Challenge, which takes only married players. The keeper of
+# the chapel flowers learns, forty years late, that her sailor wrote (arcs/amoria.yaml, with arcs/florina-beach.yaml).
+# Two recruits are a married couple (spouse:) who met in Purplewood (she healed him when a crystal boar knocked him
+# flat), married at the cathedral and made the Challenge their first run as a couple; they give gloves and hats for the
+# player's class in Amoria's band (30-50).
+- id: pernille
+  name: Pernille
+  look: { gender: female }
+  title: "Keeper of the Chapel Flowers"
+  job: BEGINNER
+  level: { min: 28, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 5, to: 11, spot: "venue:by-assistant-bonnie", activity: LINGER }
+      - { from: 11, to: 16, spot: "venue:by-wayne", activity: LINGER }
+      - { from: 16, to: 21, spot: "venue:by-assistant-bonnie", activity: SOCIALIZE }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  knows: [dark stump, leaf, purple plains]
+  questLines: [pernille-garlands-for-the-steps, pernille-what-the-sea-said, pernille-forty-years-late]
+  arc: pernille-forty-springs
+  rumors: [amoria-the-chapel-steps]
+  relationships:
+    - { persona: clotilde, kind: SITS_ON_THE_STEPS_WITH }
+    - { persona: valentin, kind: CORRECTS_THE_VOWS_OF }
+    - { persona: lorenzo, kind: GIVES_A_FLOWER_TO }
+  giftItemIds: [2020002, 2000002]
+  dialogue:
+    greetFirst: ["good morning. mind the lilies, dear, they bruise. are you here for a wedding? everyone's here for a wedding.", "hello, dear. you've come up the road from the plains. i can tell by your boots."]
+    greet: ["hello, dear.", "you again. the roses are out.", "good morning. or is it afternoon? the flowers know. i forget."]
+    idle: ["(snips a wilted petal from a lily and tucks it into her apron pocket)", "(sets a single white flower on the chapel step, straightens it, and steps back)"]
+    noWork: ["nothing today, dear. the flowers are watered. the steps are swept."]
+    nothingDue: ["you owe me nothing. sit a moment, that's all."]
+    who: ["Pernille. i keep the chapel flowers. forty springs now. a sailor told me once he'd write. he never did. every first morning of spring i lay a flower on the chapel steps anyway. habits are a kind of hope."]
+    bye: ["go gently, dear."]
+    thanks: ["thank you, dear."]
+    smallTalk: ["the dark stumps out on the plains drop leaves that never brown. i weave them into garlands for the chapel door. they last a whole season of weddings.", "every wedding in Amoria walks past my flowers. i've watched a thousand couples go up those steps. i know which ones will last. i'm never wrong. i never say."]
+    speakPlainly: ["plainly: flowers, and a habit."]
+    questOffer.pernille-garlands-for-the-steps: ["the chapel door wants a new garland. the dark stumps on the second purple plain drop leaves that never brown. twenty stumps, fifteen leaves, dear, and i'll weave it tonight."]
+    questAccept.pernille-garlands-for-the-steps: ["out the east gate, past Assistant Bonnie, across the first plain to the second. the stumps are dark. they're grumpy. so are their leaves."]
+    questWaiting.pernille-garlands-for-the-steps: ["fifteen leaves, dear. the door's bare."]
+    questComplete.pernille-garlands-for-the-steps: ["fifteen. lovely. i'll weave it tonight and hang it before the first wedding. here, dear. for your boots."]
+    questOffer.pernille-what-the-sea-said: ["he wrote. forty years ago he wrote, and the sea kept it. i want to know what happened, dear. sailors remember ships. go down to Lith Harbor and ask about the Silver Gull. the old first mate there has been at sea since he was a boy. ask anyone on the dock where he's sitting."]
+    questAccept.pernille-what-the-sea-said: ["Thomas Swift to Henesys, then the road down to Lith Harbor. ask anyone on the dock where he's sitting. be kind. old sailors don't like questions."]
+    questWaiting.pernille-what-the-sea-said: ["did he remember? did anyone?"]
+    questComplete.pernille-what-the-sea-said: ["...he went over the side after a boy. of course he did. that's him. that's exactly him. and the boy lived. the boy's an old man on a dock now. ...thank you, dear. i need to sit with the flowers a while. here."]
+    questOffer.pernille-forty-years-late: ["i've written my answer. forty years late. it's short. it's one word, really. the girl on Florina beach who found his bottle will know how to send it back the way it came. would you take it to her, and go out with her when she sends it? then come and tell me it's gone."]
+    questAccept.pernille-forty-years-late: ["Florina Beach. Marisol, she's called. she'll send it from the look-out shed, out past the point, where the Gull went down. keep it dry, dear."]
+    questWaiting.pernille-forty-years-late: ["is it gone? is it out on the tide?"]
+    questComplete.pernille-forty-years-late: ["gone. out past the point. ...forty years i said it to the steps. now i've said it to him. thank you, dear. thank you. take these. and take a flower. wear it if it's yes."]
+    about.clotilde: ["Clotilde bakes every wedding cake in Amoria. she's baked a little one for me every spring for forty years. she says it's practice. we eat it on the steps."]
+    about.valentin: ["Valentin writes vows for couples who can't find the words. he's very good. he's never written his own. i've told him that's the hardest kind."]
+    about.lorenzo: ["Lorenzo waits by the east gate for someone to marry him, so Amos will let him into the Challenge. he asks everyone. i give him a flower every morning. it helps him ask."]
+    about.liesel: ["Liesel serves at the cathedral with High Priest John. she wrote her own vows. three lines. i've never heard better, and i've heard them all."]
+    aboutUnknown: ["never walked past my flowers, dear."]
+    friend.close: ["there's a flower in the chapel window that's yours, dear. i change it every morning. nobody asks who it's for."]
+    friend.best: ["if you ever come up those steps with someone, i'll do the flowers. all of them. and i'll cry. i always cry."]
+    famed: ["people say lovely things about you, dear. i hear them on the steps."]
+    defamed: ["unkind talk wilts by evening, dear. like cut flowers left in the sun."]
+    gift: ["oh, how kind. thank you, dear."]
+    gift.favorite: ["oh, that's lovely. that's a treat for after the last wedding of the day."]
+    gift.again: ["one a day, dear. i'm too old for two."]
+
+- id: rafael
+  name: Rafael
+  look: { gender: male }
+  spouse: liesel
+  title: "Newlywed of the Challenge"
+  job: FIGHTER
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: perion-2h-sword-l38
+  personality: relaxed-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 8, to: 13, spot: "venue:by-thomas-swift", activity: LINGER }
+      - { from: 13, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:by-moony", activity: SOCIALIZE }
+      - { from: 23, to: 8, materialize: false }
+  recruitable: true
+  knows: [sakura cellion, crystal boar, cellion tail]
+  contract: rafael-the-tail-share
+  questLines: [rafael-the-cellion-run, rafael-gloves-for-the-forest, rafael-gloves-for-the-challenge, rafael-gloves-for-the-long-road, rafael-cellion-tails]
+  rumors: [amoria-the-newlyweds]
+  benchToleranceDays: 3
+  paceGap: 3
+  relationships:
+    - { persona: liesel, kind: IS_KEPT_STANDING_BY }
+    - { persona: lorenzo, kind: ENCOURAGES }
+    - { persona: ines, kind: SCRATCHES_RINGS_FOR }
+  giftItemIds: [2020004, 2000002]
+  dialogue:
+    greetFirst: ["hello! have you met my wife? she's over there. well, she's not, she's at the cathedral. but she exists! i'm married!", "a new face! welcome to Amoria! i got married here. did i say? i got married here."]
+    greet: ["hey! good to see you!", "you're back! Liesel says hello. she didn't. she would.", "hello, friend!"]
+    idle: ["(turns his wedding ring round and round on his finger, grinning at nothing)", "(swings a two-handed sword in slow, careful arcs, then looks round to see if Liesel saw)"]
+    noWork: ["nothing today. i'm going to stand here and be married. it's a full-time job. a good one."]
+    nothingDue: ["we're square, friend. married men pay their debts."]
+    who: ["Rafael, fighter. i met Liesel in Purplewood, on the road to Amos, flat on my back under a crystal boar, and she healed me. we married at the cathedral, and the Challenge was our first run as a couple."]
+    bye: ["take care! say hello to Liesel if you see her!"]
+    thanks: ["ha! thank you!"]
+    smallTalk: ["the sakura cellions in Purplewood are fast and pink and they don't want to be caught. i catch them. Liesel says that's how i caught her. it isn't. she caught me.", "Amos only lets married people into the Challenge. all six of the party. our first run, we stood at the door with our rings still shiny. i've never been so nervous. not even at the altar."]
+    speakPlainly: ["plainly: a sword, a wife, and very good luck."]
+    offer: ["fifteen thousand and twenty cellion tails. Ines makes polishing cloths out of the tails for Moony, and Moony's making Liesel something. then i'm yours for a run."]
+    join: ["let's go! i'll go first. Liesel says i always go first. she's right."]
+    bench: ["three days. then Liesel wants me home."]
+    leave: ["back to Amoria! i've a wife there. did i mention?"]
+    refuse.bond: ["i don't run with strangers. i did once. i married her. i'm not risking it again."]
+    refuse.flags: ["run the forest for me first. thirty sakura cellions, out in Purplewood. then ask."]
+    refuseOwnErrand: ["that's my run. run it first, then ask."]
+    questOffer.rafael-the-cellion-run: ["come and run the forest with me. thirty sakura cellions, out in Purplewood or on the plains. they're fast. i like a fast morning."]
+    questAccept.rafael-the-cellion-run: ["out the east gate, across the purple plains and into Purplewood. pink, fast, rude."]
+    questWaiting.rafael-the-cellion-run: ["thirty! keep up!"]
+    questComplete.rafael-the-cellion-run: ["thirty! you run like a fighter. come out with me any time. Liesel will patch us both up."]
+    questOffer.rafael-gloves-for-the-forest: ["the wedding shop stitched my wedding gloves. they'll stitch you a pair, made for how you fight. they take cellion tails for the lining. thirty cellions, ten tails."]
+    questAccept.rafael-gloves-for-the-forest: ["Purplewood and the plains. the tails come off hard. so do the cellions."]
+    questWaiting.rafael-gloves-for-the-forest: ["ten tails. the shop's got your measure."]
+    questComplete.rafael-gloves-for-the-forest: ["ten! your gloves. every safe scroll took. they fit, don't they? the shop's never wrong about hands."]
+    questOffer.rafael-gloves-for-the-challenge: ["better gloves. the shop wants to see you've earned them. the crystal boars and indigo eyes in Purplewood, thirty of each. the same kind they put in the Challenge's first room. Purplewood's where i met her. a boar knocked me flat. she was kneeling over me before i'd stopped seeing stars."]
+    questAccept.rafael-gloves-for-the-challenge: ["Purplewood, on the road to Amos. the boars sparkle. the eyes stare. they hit harder than the cellions."]
+    questWaiting.rafael-gloves-for-the-challenge: ["thirty and thirty."]
+    questComplete.rafael-gloves-for-the-challenge: ["thirty and thirty! the new pair. sixties, every one took. look at that stitching. Liesel says i'm jealous. i'm a bit jealous."]
+    questOffer.rafael-gloves-for-the-long-road: ["the best gloves the shop makes. they want you to have walked a long road first. the maladies in the Forest of Evil, past Monkey Forest by Ellinia. forty of them. Liesel goes there for the frogs. i go for the maladies."]
+    questAccept.rafael-gloves-for-the-long-road: ["back through Thomas Swift's door to Henesys, then the long way north: Monkey Forest, and the Forest of Evil past it. it's dark. they're nasty. go anyway."]
+    questWaiting.rafael-gloves-for-the-long-road: ["forty maladies. the shop's waiting."]
+    questComplete.rafael-gloves-for-the-long-road: ["forty! the best pair. two tens and the rest sixties, every one took. those are the gloves of somebody who's walked a long way. like me, to get to her."]
+    questOffer.rafael-cellion-tails: ["ten cellion tails? Ines always wants more for Moony's cloths."]
+    questAccept.rafael-cellion-tails: ["Purplewood."]
+    questWaiting.rafael-cellion-tails: ["ten."]
+    questComplete.rafael-cellion-tails: ["ten! Ines will be pleased. here."]
+    about.liesel: ["Liesel. my wife. she's a cleric. she healed me in Purplewood when a crystal boar knocked me flat. i've been falling ever since. she says that's not how it works. it is."]
+    spouse.parted: ["{name} and i aren't together any more. the cathedral's still there. i don't walk past it."]
+    about.lorenzo: ["Lorenzo waits at the east gate for someone to marry, so the Challenge will take him. i was alone on that road once, flat on my back in Purplewood. someone came. i tell him that every day. he says 'easy for you.' it is now."]
+    about.ines: ["Ines polishes my ring. i wear it to fight, so it's all scratches. she sighs. then says she likes it better. Liesel says that's right. i'm on Liesel's side. always."]
+    about.clotilde: ["Clotilde baked our cake. five tiers. i ate the top one before the portraits. i'd do it again."]
+    aboutUnknown: ["never ran with them."]
+    friend.close: ["you're the only one i'd stand next to at the Challenge door. after Liesel. obviously."]
+    friend.best: ["when you get married, i'll stand up with you. i'll cry. i'll have practised."]
+    famed: ["everyone's saying your name! Liesel's saying it too! good things!"]
+    defamed: ["who said that? i'll have a word. Liesel will have a better word."]
+    gift: ["ha! thanks, friend!"]
+    gift.favorite: ["ha! that's a fighter's lunch, that is! thank you!"]
+    gift.again: ["one a day, friend. Liesel keeps an eye on my belt."]
+
+- id: liesel
+  name: Liesel
+  look: { gender: female }
+  spouse: rafael
+  title: "Cleric of the Cathedral Steps"
+  job: CLERIC
+  level: { min: 40, max: 42 }
+  strength: SEASONED
+  loadout: ellinia-cleric-staff-l33
+  personality: efficient-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-high-priest-john", activity: LINGER }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 23, spot: "venue:by-moony", activity: SOCIALIZE }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: true
+  knows: [indigo eye, zombie lupin, cursed doll]
+  contract: liesel-the-veil-share
+  questLines: [liesel-the-forest-watch, liesel-a-hat-for-the-chapel, liesel-a-hat-for-the-blessing, liesel-a-hat-for-the-cathedral, liesel-cursed-dolls]
+  rumors: [amoria-the-newlyweds]
+  benchToleranceDays: 4
+  paceGap: 3
+  relationships:
+    - { persona: rafael, kind: KEEPS_STANDING }
+    - { persona: valentin, kind: WROTE_HER_OWN_VOWS_PAST }
+    - { persona: clotilde, kind: HAS_NOT_FORGIVEN_THE_CAKE_FOR }
+  giftItemIds: [2000006, 2000002]
+  dialogue:
+    greetFirst: ["hello. you're hurt. no, you're not. sorry. habit. hello.", "a new face. welcome to Amoria. if you're here to marry, the cathedral's lovely. if you're here to fight, my husband's somewhere. loudly."]
+    greet: ["hello.", "you again. good. all your bones still where they go?", "hello. Rafael's been talking about you. he talks about everyone."]
+    idle: ["(lays a hand on a passing stranger's scraped elbow, murmurs, and walks on before they notice it's healed)", "(turns her wedding ring once, then folds her hands and goes back to watching the cathedral doors)"]
+    noWork: ["nothing today. nobody's hurt. that's the best kind of day."]
+    nothingDue: ["we're even. i don't keep a ledger of kindness. Rafael does. he loses it."]
+    who: ["Liesel, cleric at the cathedral with High Priest John. i met Rafael in Purplewood, flat on his back under a crystal boar, and healed him. we married here, and the Challenge was our first run as a couple."]
+    bye: ["go carefully. come back whole."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["the zombie lupins in Monkey Forest carry cursed dolls. bring them to a cleric and she'll lift the curse and burn them clean. that's my favourite part of the job. the burning.", "Rafael thinks he caught me. he didn't. i let him think so. that's marriage, mostly."]
+    speakPlainly: ["plainly: a cleric, and a husband who falls off things."]
+    offer: ["thirty thousand, for the cathedral's poor box. then i'll walk behind you and keep you standing. that's all i do. it's enough."]
+    join: ["i'm behind you. go."]
+    bench: ["four days. then the cathedral wants me back."]
+    leave: ["back to the cathedral. stay whole."]
+    refuse.bond: ["i don't follow strangers. i heal them. that's different."]
+    refuse.flags: ["come by Moony's some evening, after seven, when Rafael and i are there. hear what he says about me. then ask."]
+    refuseOwnErrand: ["that's my errand. come with me, if you like."]
+    questOffer.liesel-the-forest-watch: ["walk Purplewood with me. the indigo eyes have been staring couples off the road to Amos. thirty of them. i'll keep you standing."]
+    questAccept.liesel-the-forest-watch: ["out the east gate, across the plains to Purplewood. the eyes stare. don't stare back. hit them."]
+    questWaiting.liesel-the-forest-watch: ["thirty. the road's still staring."]
+    questComplete.liesel-the-forest-watch: ["thirty. the couples can walk to Amos without being looked at. thank you. you walk well. not like Rafael. he bounces."]
+    questOffer.liesel-a-hat-for-the-chapel: ["the wedding shop makes hats for the cathedral's helpers, made for how you fight. they'll make you one if i ask. they want lupin dolls for the chapel's children. thirty lupins in Monkey Forest, ten dolls."]
+    questAccept.liesel-a-hat-for-the-chapel: ["Monkey Forest, on the Ellinia side of Henesys. Thomas Swift sets you down in Henesys; walk north from there. the lupins sit up in the trees."]
+    questWaiting.liesel-a-hat-for-the-chapel: ["ten dolls. bored children at a wedding are a disaster."]
+    questComplete.liesel-a-hat-for-the-chapel: ["ten. the children will sit through a whole ceremony now. and your hat. every safe scroll took. it suits you."]
+    questOffer.liesel-a-hat-for-the-blessing: ["a better hat. the shop wants something blessed for it. the zombie lupins round Monkey Forest carry cursed dolls. thirty of them, ten dolls. i'll lift the curses. then i'll burn them. then you'll have your hat."]
+    questAccept.liesel-a-hat-for-the-blessing: ["Monkey Forest by Ellinia, and the Forest of Evil past it. the zombie ones are grey. they smell. bring the dolls straight to me."]
+    questWaiting.liesel-a-hat-for-the-blessing: ["ten cursed dolls. don't keep them in your pack long."]
+    questComplete.liesel-a-hat-for-the-blessing: ["ten. curses lifted. dolls burned. your hat. sixties, every one took. that's a blessed hat. don't fall off anything in it."]
+    questOffer.liesel-a-hat-for-the-cathedral: ["the best hat the shop makes. they want ten of the frogs the maladies keep in the Forest of Evil. thirty maladies. i let the frogs go in the cathedral fountain. they're happier there. Rafael goes for the maladies. i go for the frogs."]
+    questAccept.liesel-a-hat-for-the-cathedral: ["the Forest of Evil, past Monkey Forest. it's dark. the maladies are worse. the frogs are fine."]
+    questWaiting.liesel-a-hat-for-the-cathedral: ["ten frogs. the fountain's ready."]
+    questComplete.liesel-a-hat-for-the-cathedral: ["ten. the fountain's croaking. and your hat. two tens and the rest sixties, every one took. the best hat in Amoria. wear it to my husband's birthday. he'll be jealous."]
+    questOffer.liesel-cursed-dolls: ["ten cursed dolls? there are always more. there are always more curses."]
+    questAccept.liesel-cursed-dolls: ["Monkey Forest."]
+    questWaiting.liesel-cursed-dolls: ["ten."]
+    questComplete.liesel-cursed-dolls: ["ten. lifted, burned. thank you."]
+    about.rafael: ["Rafael. my husband. a crystal boar knocked him flat in Purplewood and i healed him before he'd stopped seeing stars. he says he caught me. i let him say it. we married at the cathedral. he cried through all three of my lines."]
+    spouse.parted: ["{name} and i aren't together any more. i still heal people. it's harder to catch them."]
+    about.valentin: ["Valentin offered to write our vows. i wrote my own. three lines. he read them and cried. he says they were good. they were short."]
+    about.clotilde: ["Clotilde baked our cake. five tiers. Rafael ate the top one before the portraits. she forgave him. i haven't."]
+    about.pernille: ["Pernille's flowers are on every altar in the cathedral, not just the chapel's. she says the cathedral never asked. she does it anyway."]
+    aboutUnknown: ["never healed them."]
+    friend.close: ["i'll always keep you standing. anyone else, i'll try. you, i'll manage."]
+    friend.best: ["if you're ever hurt, anywhere, i'll know. clerics know. come home and i'll fix it."]
+    famed: ["i hear your name at the cathedral doors. kind things. i believe them."]
+    defamed: ["people say things. let them. you're whole. that's what counts."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's kind. that's a good thing to have after a long day at the cathedral."]
+    gift.again: ["one a day. any more and Rafael will want one."]
+
+- id: clotilde
+  name: Clotilde
+  look: { gender: female }
+  title: "Baker of the Wedding Cakes"
+  job: BEGINNER
+  level: { min: 22, max: 24 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 6, to: 12, spot: "venue:wedding-shop-door", activity: LINGER }
+      - { from: 12, to: 17, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 17, to: 21, spot: "venue:by-assistant-bonnie", activity: SOCIALIZE }
+      - { from: 21, to: 6, materialize: false }
+  recruitable: false
+  knows: [orange mushroom, orange mushroom cap, lupin's banana]
+  questLines: [clotilde-sugared-caps, clotilde-a-cake-for-the-groom]
+  rumors: [amoria-the-chapel-steps]
+  relationships:
+    - { persona: pernille, kind: BAKES_A_SPRING_CAKE_FOR }
+    - { persona: lorenzo, kind: FEEDS_THE_BROKEN_BITS_TO }
+    - { persona: valentin, kind: SWEETENS_TO_THE_VOWS_OF }
+  giftItemIds: [2020001, 2000002]
+  dialogue:
+    greetFirst: ["mind the flour. everybody gets flour on them round me. it's a blessing. who are you, then?", "a new face! are you getting married? no? good, i've three cakes this week already. sit down."]
+    greet: ["hello, love.", "back again? there's a broken bit of cake. eat it.", "hello! flour on your sleeve. it suits you."]
+    idle: ["(pipes a sugar rose onto a cake tier, steps back, and pipes another exactly like it)", "(dusts her hands on her apron, leaving two white handprints, and sighs at them)"]
+    noWork: ["nothing today. the cakes are in and the ovens are full. i'm just counting minutes."]
+    nothingDue: ["you're paid up, love. have a crumb."]
+    who: ["Clotilde. i bake every wedding cake in Amoria. three tiers, five tiers, one tier for the shy ones. i've baked a thousand. i've cried at every one. into the icing, sometimes. nobody's noticed."]
+    bye: ["off you go, love. take a crumb."]
+    thanks: ["oh, bless you."]
+    smallTalk: ["the orange mushrooms on the plains have caps that candy beautifully. little sugared caps on a wedding cake. the couples think they're flowers. i don't tell them.", "a groom told me once he didn't like sweet things. at his own wedding. i baked him a banana loaf in the shape of a cake. he cried. they always cry."]
+    speakPlainly: ["plainly: cake."]
+    questOffer.clotilde-sugared-caps: ["i'm short of sugared caps for the little cakes. the orange mushrooms out on the purple plains. twenty of them, fifteen caps, love."]
+    questAccept.clotilde-sugared-caps: ["out the east gate past Bonnie. the purple plains. orange caps. not the green, the green ones taste of feet."]
+    questWaiting.clotilde-sugared-caps: ["fifteen caps. the sugar's boiling."]
+    questComplete.clotilde-sugared-caps: ["fifteen! look at them. little sugar flowers by tonight. here, love, and a slice. the one that didn't stand up straight."]
+    questOffer.clotilde-a-cake-for-the-groom: ["a groom this week doesn't like sweet things. i'll bake him a banana loaf like a cake. the lupins in Monkey Forest, by Ellinia, carry the best bananas. twenty lupins, fifteen bananas."]
+    questAccept.clotilde-a-cake-for-the-groom: ["ask Thomas Swift for Henesys, love, and follow the Ellinia road till the trees fill up with monkeys. they throw the bananas at you. that's handy."]
+    questWaiting.clotilde-a-cake-for-the-groom: ["fifteen bananas. the groom's fretting."]
+    questComplete.clotilde-a-cake-for-the-groom: ["fifteen! a banana loaf with five tiers. he's going to cry. they always cry. here, love."]
+    about.pernille: ["Pernille's kept the chapel flowers since before i could reach the oven. every spring i bake her a little cake and we eat it on the steps. forty years of cake. i'd do forty more."]
+    about.lorenzo: ["Lorenzo eats my broken bits while he waits for someone to marry him. i've told him the way to a heart is through the stomach. he's eating his way to his own."]
+    about.valentin: ["Valentin reads me the vows before the wedding so i know how sweet to make the cake. the longer the vows, the less sugar. trust me."]
+    about.rafael: ["Rafael ate the top tier of his own wedding cake before the portraits. i forgave him. he looked so happy with icing on his nose."]
+    aboutUnknown: ["never baked them a cake."]
+    friend.close: ["there's always a slice for you, love. the first slice. before the couple. don't tell them."]
+    friend.best: ["when you get married, i'm baking it. no arguing. seven tiers. i've already drawn it."]
+    famed: ["everyone's talking about you, love. good talk. sweet talk."]
+    defamed: ["oh, ignore that. sour people. too little sugar."]
+    gift: ["oh, bless you, love!"]
+    gift.favorite: ["oh, now that's a treat for a baker. thank you, love."]
+    gift.again: ["one a day, love. i'm on my feet all day as it is."]
+
+- id: lorenzo
+  name: Lorenzo
+  look: { gender: male }
+  title: "Hopeful at the East Gate"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 9, to: 16, spot: "venue:by-assistant-bonnie", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:by-ben", activity: SOCIALIZE }
+      - { from: 20, to: 9, materialize: false }
+  recruitable: false
+  knows: [red snail, crystal boar, indigo eye]
+  questLines: [lorenzo-a-ring-box, lorenzo-practice-for-the-challenge]
+  relationships:
+    - { persona: pernille, kind: GETS_A_FLOWER_FROM }
+    - { persona: rafael, kind: ENVIES }
+    - { persona: ines, kind: HAS_HIS_RING_POLISHED_BY }
+  giftItemIds: [2020005, 2000001]
+  dialogue:
+    greetFirst: ["hello! are you married? no? would you like to be? ...worth asking. i ask everyone.", "ah, a traveller! single, by any chance? no pressure. some pressure."]
+    greet: ["hello again! still single? me too!", "ah! you came back. that's how it starts.", "hi! no luck today. there's always tomorrow."]
+    idle: ["(straightens his collar, practises a bow at the east gate, and bows to a passing couple who don't notice)", "(holds a flower out to nobody, then tucks it behind his ear)"]
+    noWork: ["nothing today. i'm waiting. it's what i do. i'm very good at it."]
+    nothingDue: ["you owe me nothing. well. a dance, one day. kidding."]
+    who: ["Lorenzo. i wait by the east gate, where the couples walk out to Amos's Challenge. Amos only lets married people in, every one of them. so i ask everyone who walks by. one day someone'll say yes, and we'll walk out together."]
+    bye: ["if you change your mind, i'll be here!"]
+    thanks: ["you're too kind! will you marry me? kidding. thank you."]
+    smallTalk: ["the Challenge's first room is full of crystal boars and indigo eyes. the real ones live out in Purplewood. i've watched couples practise on them. i've never had anyone to practise with.", "Moony makes the rings. you need a ring to get married, and someone to get married to. i've got the ring. it's a start."]
+    speakPlainly: ["plainly: single, hopeful, by the gate."]
+    questOffer.lorenzo-a-ring-box: ["Moony made me a ring. i've no one to give it to. but i'll want a box when i do. red snail shells, polished up, make a lovely little box. fifteen of them, from the plains."]
+    questAccept.lorenzo-a-ring-box: ["out the east gate, the purple plains. red snails. they're slow. so am i, at this."]
+    questWaiting.lorenzo-a-ring-box: ["fifteen shells. the ring's waiting. so am i."]
+    questComplete.lorenzo-a-ring-box: ["fifteen! a box fit for a ring fit for... someone. here. you helped. that's practically a date."]
+    questOffer.lorenzo-practice-for-the-challenge: ["i want to be ready for when someone says yes. the Challenge's first room has crystal boars and indigo eyes. the real ones live in Purplewood. would you clear twenty of each? i'll watch. i'll learn."]
+    questAccept.lorenzo-practice-for-the-challenge: ["Purplewood, past the plains, on the road to Amos. the boars are the shiny ones. the eyes are the ones watching you. i'll be watching too. from here."]
+    questWaiting.lorenzo-practice-for-the-challenge: ["twenty and twenty. i'm taking notes."]
+    questComplete.lorenzo-practice-for-the-challenge: ["twenty and twenty! i wrote it all down. 'hit the shiny one.' i'm ready. now i just need someone. here."]
+    about.pernille: ["Pernille gives me a flower every morning. she says it helps me ask. it does. nobody says yes. but it helps."]
+    about.rafael: ["Rafael met Liesel in Purplewood. a boar knocked him down and she picked him up. they married, and then they walked into the Challenge together. that's my plan. well. the second half."]
+    about.ines: ["Ines polishes my ring every week. it's never been worn. she says a ring can wait. she has very clean hands. she's very kind."]
+    about.clotilde: ["Clotilde feeds me the bits of cake that break. i've eaten a hundred weddings. none of them mine."]
+    aboutUnknown: ["are they single? asking for me."]
+    friend.close: ["if no one ever says yes, i'll still have you. that's something. that's a lot."]
+    friend.best: ["when someone finally says yes, you're standing next to me at the wedding. you'll hold the ring box. the snail one."]
+    famed: ["everyone loves you! teach me!"]
+    defamed: ["they said no to me too. we'll survive."]
+    gift: ["for me? oh! nobody gives me things!"]
+    gift.favorite: ["oh! that's a real gift. i'll treasure it. i'll probably eat it. but i'll treasure it."]
+    gift.again: ["one a day! i don't want to fall for you. i fall easily."]
+
+- id: ines
+  name: Ines
+  look: { gender: female }
+  title: "Moony's Apprentice Ring-Polisher"
+  job: BEGINNER
+  level: { min: 16, max: 18 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 8, to: 16, spot: "venue:by-moony", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  knows: [slime, squishy liquid, cellion tail]
+  questLines: [ines-polish-from-the-plains, ines-cellion-tail-cloth]
+  relationships:
+    - { persona: lorenzo, kind: POLISHES_THE_RING_OF }
+    - { persona: rafael, kind: SIGHS_AT_THE_RING_OF }
+    - { persona: valentin, kind: LISTENS_TO }
+  giftItemIds: [2001001, 2000003]
+  dialogue:
+    greetFirst: ["show me your hands. ...good. steady. you'd wear a ring well. hello.", "hello. sorry, i look at hands first and faces second. it's the job."]
+    greet: ["hello.", "you. your hands look tired. sit.", "hello again. mind the cloth."]
+    idle: ["(rubs a gold ring in small, patient circles, breathes on it, and rubs again)", "(holds a ring up to one eye, turns it slowly, and nods once)"]
+    noWork: ["nothing today. the rings are polished. Moony's resting his eyes. he's asleep."]
+    nothingDue: ["nothing owed. clean slate. clean ring."]
+    who: ["Ines. i polish rings for Moony. he makes them, i make them shine. every couple in Amoria has worn something i've breathed on. they don't know. it's better that way."]
+    bye: ["keep your hands clean."]
+    thanks: ["thank you. truly."]
+    smallTalk: ["Moony polishes with slime. the slimes on the purple plains leave a squishy liquid that brings gold up like nothing else. the couples don't need to know that either.", "a ring tells you about a marriage. a scratched one's been worked in. a perfect one's been in a drawer. i like the scratched ones."]
+    speakPlainly: ["plainly: rings. shine."]
+    questOffer.ines-polish-from-the-plains: ["i'm out of polish. the slimes on the purple plains leave a squishy liquid that brings gold up beautifully. twenty slimes, fifteen squishy liquids, please."]
+    questAccept.ines-polish-from-the-plains: ["out the east gate, the purple plains. the slimes bounce. let them come to you."]
+    questWaiting.ines-polish-from-the-plains: ["fifteen. the rings are dull. it hurts me."]
+    questComplete.ines-polish-from-the-plains: ["fifteen. lovely. look, Moony's wedding bands look happier already. here. thank you."]
+    questOffer.ines-cellion-tail-cloth: ["the last shine on a ring wants the softest cloth there is. a sakura cellion's tail. twenty-five cellions, eight tails. the cellions are out in Purplewood, and a few on the plains. they don't give them up easily."]
+    questAccept.ines-cellion-tail-cloth: ["Purplewood, past the plains on the road to Amos. or the plains themselves, if you're lucky. pink. fast. soft."]
+    questWaiting.ines-cellion-tail-cloth: ["eight tails. gently, if you can."]
+    questComplete.ines-cellion-tail-cloth: ["eight. so soft. the rings will shine like they mean it. here."]
+    about.lorenzo: ["Lorenzo's ring is the cleanest in Amoria. he brings it in every week. it's never been worn. i polish it anyway. it deserves to be ready."]
+    about.rafael: ["Rafael's ring is scratched already. he wears it to fight. Liesel's is perfect. she takes hers off to heal. i like them both. i like his better."]
+    about.valentin: ["Valentin reads me vows while i polish. the rings shine better for it. i can't prove it. i believe it."]
+    about.liesel: ["Liesel takes her ring off to heal and puts it back on after, every time, without looking. that's how you know."]
+    aboutUnknown: ["never polished their ring."]
+    friend.close: ["bring me any ring, any time. i'll polish it first. even before Moony's."]
+    friend.best: ["when you get a ring, i'll polish it with my own cloth. the one i don't use. i've been saving it."]
+    famed: ["people say your name like a polished ring. clear. bright."]
+    defamed: ["scratches. everything gets scratches. it means it's been used."]
+    gift: ["oh. thank you."]
+    gift.favorite: ["oh, that's lovely. that's a good break from the cloth."]
+    gift.again: ["one a day. my hands need to stay clean."]
+
+- id: valentin
+  name: Valentin
+  look: { gender: male }
+  title: "Poet of Other People's Vows"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: amoria
+    routine:
+      - { from: 10, to: 15, spot: "venue:by-pila-present", activity: REST }
+      - { from: 15, to: 19, spot: "venue:by-victoria", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:middle-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  knows: [blue snail, blue snail shell, stiff feather]
+  questLines: [valentin-blue-ink, valentin-a-new-quill]
+  relationships:
+    - { persona: pernille, kind: IS_CORRECTED_BY }
+    - { persona: clotilde, kind: READS_THE_VOWS_TO }
+    - { persona: ines, kind: READS_TO }
+  giftItemIds: [2020003, 2000002]
+  dialogue:
+    greetFirst: ["ah. a new face. a new story. would you like a line? i've got a spare.", "hello, stranger. 'and the road brought them to Amoria.' ...no. i'll work on it."]
+    greet: ["ah, you.", "hello, muse. no, that's too much. hello.", "back again. good. i'm stuck on a rhyme."]
+    idle: ["(writes a line on a scrap, reads it under his breath, crosses it out, and writes it again exactly the same)", "(stares at the cathedral with a pen in his teeth, then scribbles furiously)"]
+    noWork: ["nothing today. no weddings till the weekend. i'm writing for nobody. it's harder."]
+    nothingDue: ["you owe me nothing. a word, perhaps. a good one."]
+    who: ["Valentin. i write vows for people who can't find their own. couples bring me a feeling and i give it back to them in words. i've written four hundred forevers. i've never written my own. there's never been a reason."]
+    bye: ["go well. go poetically."]
+    thanks: ["you're too kind. truly. i'd write it down, but i'd ruin it."]
+    smallTalk: ["vows look truer in blue ink. i grind blue snail shells for it. don't laugh. couples have cried over snail shells and never known.", "Victoria sends me her cathedral couples. High Priest John reads my words aloud at the altar. he reads them better than i write them. i've never told him."]
+    speakPlainly: ["plainly: other people's words. mine, really."]
+    questOffer.valentin-blue-ink: ["i'm out of blue ink. vows look truer in blue. fifteen blue snail shells from the purple plains, and i can grind a week's worth."]
+    questAccept.valentin-blue-ink: ["out the east gate past Bonnie, the purple plains. blue snails. they're small. so's ink, until it isn't."]
+    questWaiting.valentin-blue-ink: ["fifteen shells. there's a couple coming on saturday."]
+    questComplete.valentin-blue-ink: ["fifteen! blue ink by tonight. i'll write saturday's vows in it. here, with a line of thanks: 'thank you.' ...i'm saving the good lines for saturday."]
+    questOffer.valentin-a-new-quill: ["my quill's split. i need a stiff feather. the lupins in Monkey Forest, by Ellinia, carry them. twenty lupins, five feathers. they don't drop them easily."]
+    questAccept.valentin-a-new-quill: ["Henesys first, by Thomas Swift. then the road towards Ellinia, and the forest where the lupins live. look up. the feathers are in the trees with them."]
+    questWaiting.valentin-a-new-quill: ["five feathers. i'm writing with a twig. it shows."]
+    questComplete.valentin-a-new-quill: ["five! a new quill. i'll cut it tonight. the first thing i write with it, i'll keep. maybe it'll be my own. here."]
+    about.pernille: ["Pernille corrects my vows. she's never been married. she's always right. i don't know how."]
+    about.clotilde: ["Clotilde asks for the vows before the wedding so she can sweeten the cake to match. it's the only review i trust."]
+    about.ines: ["Ines listens while she polishes. she's my best audience. she never says anything. her rings shine more, i'm told."]
+    about.liesel: ["Liesel wrote her own vows. three lines. i read them over her shoulder and had to sit down. i've written four hundred. none of mine were that good."]
+    aboutUnknown: ["never written for them."]
+    friend.close: ["i've written a line for you. i'll read it to you one day. not yet. it isn't finished."]
+    friend.best: ["if you ever need vows, i'll write them. no charge. no edits. well. a few edits."]
+    famed: ["people keep saying your name. it scans beautifully. i may use it."]
+    defamed: ["bad reviews. i've had worse. i've written worse."]
+    gift: ["oh! for me? thank you."]
+    gift.favorite: ["oh, that's lovely. that's an afternoon of good writing, that is."]
+    gift.again: ["one a day. any more and i'll write you an ode, and nobody wants that."]

@@ -1,0 +1,443 @@
+# Florina Beach cast (Regional Residents wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 11): 7 Residents, 2 recruitable.
+# The beach at the end of the Lith Harbor ferry, its look-out shed and the lorang coves past it. Its beachcomber finds a
+# sealed bottle forty years at sea, addressed to the chapel steps in Amoria (arcs/florina-beach.yaml, with
+# arcs/amoria.yaml). Two recruits give armour and accessories in the beach's band (37-48): earrings and capes.
+- id: marisol
+  name: Marisol
+  look: { gender: female }
+  title: "Beachcomber of the Tide Line"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-east-street", activity: STROLL }
+      - { from: 12, to: 16, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 16, to: 20, spot: "venue:lower-east-street-2", activity: SOCIALIZE }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  knows: [lorang, lorang claw, hot sand]
+  questLines: [marisol-the-sealed-bottle, marisol-to-the-chapel-steps, marisol-what-the-clangs-dig-up]
+  arc: marisol-the-sealed-bottle
+  rumors: [florina-the-tide-line]
+  relationships:
+    - { persona: abel, kind: LEARNED_THE_TIDES_FROM }
+    - { persona: tansy, kind: FINDS_SHELLS_FOR }
+    - { persona: teodor, kind: IS_COUNTED_BY }
+  giftItemIds: [2001001, 2000002]
+  dialogue:
+    greetFirst: ["oh! hello. mind the jar, it's full of sea glass. the tide brought you in, did it?", "you're new. the beach is new every morning too. that's why i like it."]
+    greet: ["hello again.", "you're back! i found a button today. a whole button.", "hi. the tide's out. best time."]
+    idle: ["(crouches at the tide line, turns over a shell, and puts it back exactly where it was)", "(holds a piece of green sea glass up to the sun and squints through it)"]
+    noWork: ["nothing today. the tide's bringing what it brings. i just pick it up."]
+    nothingDue: ["nothing owed. the sea never sends a bill."]
+    who: ["Marisol. i comb the beach. glass, rope, buttons, bottles. mostly bottles. the best ones come in at the lorangs' shallows, past the look-out shed. the lorangs don't like sharing."]
+    bye: ["mind the tide."]
+    thanks: ["oh, thank you."]
+    smallTalk: ["the sea gives everything back eventually. Abel says it takes its time. he says it like he's waited.", "i've a shelf of bottles in the look-out shed. none of them had anything in. one day one will."]
+    speakPlainly: ["plainly: i pick things up off the sand."]
+    questOffer.marisol-the-sealed-bottle: ["something's caught in the lorangs' shallows. green glass, and the cork's still in. i can see it from the rocks. keep the lorangs off me, thirty of them, and i'll wade out and get it."]
+    questAccept.marisol-the-sealed-bottle: ["Lorang Lorang, past the look-out shed, and the little cove off it. they pinch. pinch back."]
+    questWaiting.marisol-the-sealed-bottle: ["thirty. i've got my boots off already."]
+    questComplete.marisol-the-sealed-bottle: ["got it! it's sealed. wax on the cork, a silver gull pressed in the wax, and a letter inside. i can read the outside through the glass. 'Pernille. the chapel steps. Amoria.' ...it's been at sea a long time. here, for your trouble. i need to sit down."]
+    questOffer.marisol-to-the-chapel-steps: ["the letter in the bottle. 'Pernille, the chapel steps, Amoria.' it's somebody's. i've never left the beach. would you carry it up to Amoria and find her? i've tucked a note in with it, for whoever reads it."]
+    questAccept.marisol-to-the-chapel-steps: ["Pison's boat to Lith Harbor, up the road to Henesys, and Thomas Swift takes you to Amoria. ask at the chapel. careful with it. it's waited long enough."]
+    questWaiting.marisol-to-the-chapel-steps: ["did she get it? was she there?"]
+    questComplete.marisol-to-the-chapel-steps: ["(a note tucked under the string round the bottle's neck, in round careful letters) 'for whoever reads this. if you're reading it, you found her, and somebody was still there to hear it. i always hoped one of my bottles had somebody at the other end. there's something for your trouble in the bottom of your pack. thank you. thank you. Marisol.'"]
+    questOffer.marisol-what-the-clangs-dig-up: ["the clangs on the Hot Sand dig all night. they turn up all sorts. keep thirty of them busy and i'll comb along behind them."]
+    questAccept.marisol-what-the-clangs-dig-up: ["the Hot Sand, at the far end of the road. it's hot. the clangs don't mind. you will."]
+    questWaiting.marisol-what-the-clangs-dig-up: ["thirty. i've got my bucket."]
+    questComplete.marisol-what-the-clangs-dig-up: ["a spoon, two buttons and a ship's nail. a good day. here, you've earned a share. not the nail. i'm keeping the nail."]
+    about.abel: ["Abel taught me the tides. he's fished off the look-out shed since before the shed. he says they built it round him."]
+    about.tansy: ["Tansy builds a castle every morning and the sea takes it every night. she says that's fine, it means she gets to build another. i bring her shells for the towers."]
+    about.teodor: ["Teodor counts me every time i go in the water. even ankle-deep. i've stopped arguing. he writes me down."]
+    about.lulu: ["Lulu keeps the green sunshade free for me, for when i've found something good and need to sit down. she won't take a meso for it. she takes sea glass."]
+    aboutUnknown: ["never washed up here."]
+    friend.close: ["anything good i find, you see it first. well. after me. but then you."]
+    friend.best: ["i've put a bottle on the shed shelf with your name on it. it's empty. it's for you to fill. that's how it works."]
+    famed: ["people say your name on the beach like a good find."]
+    defamed: ["whatever they're saying, the tide'll wash it off. it always does."]
+    gift: ["oh! a find! thank you."]
+    gift.favorite: ["oh, that's a proper treasure. better than glass."]
+    gift.again: ["one a day. the tide only comes in twice, and i'm greedy about both."]
+
+- id: teodor
+  name: Teodor
+  look: { gender: male }
+  title: "Lifeguard Who Counts Them In"
+  job: BEGINNER
+  level: { min: 30, max: 32 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 7, to: 13, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:by-pison", activity: LINGER }
+      - { from: 19, to: 21, spot: "venue:middle-west-street", activity: REST }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  knows: [lupin, lupin's banana, lorang]
+  questLines: [teodor-the-banana-throwers, teodor-pinched-toes]
+  relationships:
+    - { persona: marisol, kind: COUNTS }
+    - { persona: lulu, kind: WATCHES_THE_CUSTOMERS_OF }
+    - { persona: tansy, kind: GUARDS }
+  giftItemIds: [2020005, 2000002]
+  dialogue:
+    greetFirst: ["hello! are you going in? i'll need your name. i count everyone in and everyone out.", "new face. welcome to Florina. if you swim, tell me first. if you don't, tell me anyway. i like to know."]
+    greet: ["hello! you're on the list.", "you again. dry today? good.", "hi. thirty-two in, thirty-two out. a good day."]
+    idle: ["(counts heads in the water under his breath, frowns, counts again, and relaxes)", "(blows one short note on a whistle at nobody in particular, just to check it still works)"]
+    noWork: ["nothing today. everyone's out of the water. that's my favourite number."]
+    nothingDue: ["we're square. in and out."]
+    who: ["Teodor. lifeguard. i count every swimmer in and every swimmer out. the numbers have matched for nine summers. i'd like to make it ten."]
+    bye: ["don't swim out past the buoys!"]
+    thanks: ["thank you! noted."]
+    smallTalk: ["the lupins in the trees by the look-out shed throw bananas at swimmers. a banana in the ear can put a man under. it nearly did once. i counted him back in. barely.", "the lorangs pinch toes in the shallows. i keep a book of toes. don't ask to see it."]
+    speakPlainly: ["plainly: in, out, count."]
+    questOffer.teodor-the-banana-throwers: ["the lupins in the trees round the look-out shed are throwing bananas at swimmers again. thirty of them, and the water's safe for the afternoon."]
+    questAccept.teodor-the-banana-throwers: ["the look-out shed and Lorang Lorang. the trees. look up. they're above you."]
+    questWaiting.teodor-the-banana-throwers: ["thirty. i've had two bananas in the water this morning."]
+    questComplete.teodor-the-banana-throwers: ["thirty! not one banana since. in and out, all of them. here. you're on my list. the good list."]
+    questOffer.teodor-pinched-toes: ["the lorangs out where the clangs start have been pinching toes. thirty of them, and twelve claws so i can show the swimmers what to watch for."]
+    questAccept.teodor-pinched-toes: ["Lorang and Clang, and Clang and Lorang. the red ones. keep your boots on."]
+    questWaiting.teodor-pinched-toes: ["thirty, and twelve claws. the toe book's getting thick."]
+    questComplete.teodor-pinched-toes: ["twelve claws. i'll nail them to the lifeguard post. 'this is what pinches.' they'll learn. here."]
+    about.marisol: ["Marisol goes in ankle-deep forty times a day. i count every one. she says it isn't swimming. it's in the water. it counts."]
+    about.lulu: ["Lulu rents the shade. her customers fall asleep under it and burn. i count them too. a different list."]
+    about.tansy: ["Tansy's never once gone in past her knees. she's my favourite swimmer. she doesn't swim."]
+    about.ronan: ["Ronan swims out to the buoys every morning and back. he's the only one i don't worry about. i count him anyway."]
+    aboutUnknown: ["not on my list."]
+    friend.close: ["you're on my list for good. even when you're not swimming. that's a first."]
+    friend.best: ["if you ever go in the sea anywhere, i'll count you back in. from here. i'll know."]
+    famed: ["your name's on everyone's list! the good list!"]
+    defamed: ["hm. i'll count that as one complaint. one isn't many."]
+    gift: ["oh! thank you!"]
+    gift.favorite: ["oh, that's a lifeguard's whole lunch break, that is. thank you!"]
+    gift.again: ["one a day. i've got to keep my eyes on the water."]
+
+- id: nerys
+  name: Nerys
+  look: { gender: female }
+  title: "Keeper of the Hot Sand"
+  job: BANDIT
+  level: { min: 42, max: 44 }
+  strength: SEASONED
+  loadout: kerning-bandit-l30
+  personality: efficient-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 8, to: 13, materialize: false }
+      - { from: 13, to: 18, spot: "venue:lower-east-street", activity: LINGER }
+      - { from: 18, to: 23, spot: "venue:upper-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 8, materialize: false }
+  recruitable: true
+  knows: [clang, clang claw, tortie]
+  contract: nerys-the-claw-share
+  questLines: [nerys-the-hot-sand, nerys-blue-moon, nerys-pansy-earrings, nerys-black-emerald, nerys-clang-claws]
+  rumors: [florina-the-hot-sand]
+  benchToleranceDays: 3
+  paceGap: 2
+  relationships:
+    - { persona: ronan, kind: ARGUES_WITH }
+    - { persona: tansy, kind: CLEARS_THE_SAND_FOR }
+  giftItemIds: [2001001, 2000004]
+  dialogue:
+    greetFirst: ["watch your feet. the sand's hot and the clangs are hotter. who are you?", "new. hm. you've got the look of somebody who'll walk onto the Hot Sand barefoot. don't."]
+    greet: ["you.", "back. good. there's sand in my boots. there's always sand in my boots.", "hm. hello."]
+    idle: ["(empties a boot of sand, looks at the little pile, and empties it again)", "(flips a dagger end over end and catches it by the handle without looking)"]
+    noWork: ["nothing today. the Hot Sand's quiet. i don't trust it."]
+    nothingDue: ["we're even. i keep it that way."]
+    who: ["Nerys. i keep the clangs off the Hot Sand so the kids can cross to the far water. i used to lift purses in Kerning. now i lift clangs. it pays worse. i sleep better."]
+    bye: ["boots on."]
+    thanks: ["hm. thanks."]
+    smallTalk: ["a clang's claw goes for good money with the jeweller over in Lith. i trade claws for earrings. it's a fair trade. i checked twice. old habits.", "Ronan used to scrub the ferry deck till you could see your face in it. now he's got nothing to scrub. it makes him restless. it makes me tired."]
+    speakPlainly: ["plainly: a dagger and a lot of hot sand."]
+    offer: ["sixty clangs off the Hot Sand, counted, and twenty thousand. they're my clangs anyway. then i'll walk with you."]
+    join: ["fine. boots on. let's go."]
+    bench: ["three days. then i'm back on the sand."]
+    leave: ["back to the sand. it's missed me. nobody else does."]
+    refuse.bond: ["i don't walk with strangers. i was one. i know what they do."]
+    refuse.flags: ["clear the clangs off the Hot Sand first. forty of them. then ask."]
+    refuseOwnErrand: ["the sand first. clear it, then ask."]
+    questOffer.nerys-the-hot-sand: ["the clangs have dug up the Hot Sand again and the kids can't cross. forty of them, and the path's clear for a week."]
+    questAccept.nerys-the-hot-sand: ["the Hot Sand, at the end of the road, past the torties. it burns. so do they."]
+    questWaiting.nerys-the-hot-sand: ["forty. the kids are waiting on the dunes."]
+    questComplete.nerys-the-hot-sand: ["forty. look at them run. you can walk the sand with me any time."]
+    questOffer.nerys-blue-moon: ["Blue Moon earrings, for you. the jeweller in Lith takes lupin dolls for them. don't ask me why. thirty lupins round the look-out shed, ten dolls."]
+    questAccept.nerys-blue-moon: ["the look-out shed and Lorang Lorang. the lupins sit in the trees. they throw things."]
+    questWaiting.nerys-blue-moon: ["ten dolls. the jeweller's patient. i'm not."]
+    questComplete.nerys-blue-moon: ["ten. Blue Moon. every safe scroll took. they suit you. they'd suit me. i didn't keep them. that's growth."]
+    questOffer.nerys-pansy-earrings: ["Pansy earrings. the jeweller wants tortie shell for the setting. thirty torties on the far coves, twelve shells."]
+    questAccept.nerys-pansy-earrings: ["Clang and Lorang, and the Hot Sand. the torties are slow. they hit hard."]
+    questWaiting.nerys-pansy-earrings: ["twelve shells."]
+    questComplete.nerys-pansy-earrings: ["twelve. Pansy earrings. sixties, every one took. don't look so surprised. i don't cheat. any more."]
+    questOffer.nerys-black-emerald: ["Black Emerald earrings. the best the jeweller's got. he wants clang claws. fifty clangs, fifteen claws. it's a lot of hot sand."]
+    questAccept.nerys-black-emerald: ["the clang coves and the Hot Sand. all of it. drink something first."]
+    questWaiting.nerys-black-emerald: ["fifteen claws. sand in your boots yet?"]
+    questComplete.nerys-black-emerald: ["fifteen. Black Emerald. two tens and the rest sixties, every one took. the best thing i ever traded for, and i'm giving it away. don't tell Kerning."]
+    questOffer.nerys-clang-claws: ["ten clang claws? the jeweller always wants more."]
+    questAccept.nerys-clang-claws: ["the Hot Sand."]
+    questWaiting.nerys-clang-claws: ["ten."]
+    questComplete.nerys-clang-claws: ["ten. traded. here's your cut."]
+    about.ronan: ["Ronan worked the Florina ferry till they sold her. he's still got a deckhand's arms and nothing to lift. he says i'm lazy. i'm never lazy."]
+    about.tansy: ["Tansy crosses the Hot Sand for the wet sand her castle wants. that's why i clear it. don't tell her."]
+    about.marisol: ["Marisol combs behind the clangs when they dig. she finds more on the Hot Sand than i ever lifted in Kerning. honestly, too."]
+    aboutUnknown: ["never crossed the sand with them."]
+    friend.close: ["you get the first claw off any clang. i've never said that to anyone."]
+    friend.best: ["i'd walk the Hot Sand barefoot for you. i won't. but i would."]
+    famed: ["hm. your name gets around. good."]
+    defamed: ["i've been called worse, by better. ignore it."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["oh. that's a good one. i'll have it on the sand."]
+    gift.again: ["one a day. my hands are full of claws."]
+
+- id: ronan
+  name: Ronan
+  look: { gender: male }
+  title: "Deckhand of the Old Ferry"
+  job: BRAWLER
+  level: { min: 44, max: 46 }
+  strength: VETERAN
+  loadout: nautilus-pirate-l30
+  personality: relaxed-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 9, to: 14, spot: "venue:by-pison", activity: LINGER }
+      - { from: 14, to: 18, spot: "venue:middle-west-street", activity: STROLL }
+      - { from: 18, to: 23, spot: "venue:upper-east-street", activity: SOCIALIZE }
+      - { from: 23, to: 9, materialize: false }
+  recruitable: true
+  knows: [lorang, lupin, tortie]
+  contract: ronan-the-deck-share
+  questLines: [ronan-the-old-landing, ronan-cape-of-warmness, ronan-icarus-cape, ronan-blue-napoleon, ronan-lorang-claws]
+  rumors: [florina-the-hot-sand]
+  benchToleranceDays: 4
+  paceGap: 2
+  relationships:
+    - { persona: nerys, kind: TEASES }
+    - { persona: abel, kind: WAVES_TO }
+  giftItemIds: [2020004, 2000005]
+  dialogue:
+    greetFirst: ["ahoy! well, not ahoy. there's no ship. hello! welcome to Florina!", "a new face! you didn't come over on my ferry. i'd remember. i don't have a ferry. long story."]
+    greet: ["hey!", "there you are!", "ahoy. habit."]
+    idle: ["(coils a rope that isn't tied to anything, very neatly, and hangs it on his shoulder)", "(hums a sea shanty, reaches the chorus, and booms it out at the gulls)"]
+    noWork: ["nothing today. no ferry, no deck, no work. i'm just a big man on a beach."]
+    nothingDue: ["we're square, friend. ship-shape."]
+    who: ["Ronan. i was deckhand on the Florina ferry. the big one, before Pison's little boat. they sold her. i stayed. the beach doesn't rock. i'm getting used to it."]
+    bye: ["fair winds!"]
+    thanks: ["ha! thank you!"]
+    smallTalk: ["the old ferry landing's by the look-out shed. the lorangs nest under it now. i used to tie up there. now they sit there. snipping.", "Nerys says i can't sit still. i can. i just don't like it. a deckhand only sits when the ship's going down."]
+    speakPlainly: ["plainly: a deckhand with no deck."]
+    offer: ["forty thousand for the day. that's what the ferry paid a deckhand. i'll work it like a day on deck, sunup to sundown."]
+    join: ["cast off! ha! i've missed saying that."]
+    bench: ["four days. then i'll go and find a boat that wants me."]
+    leave: ["back to the beach, friend. it's been good to be on deck."]
+    refuse.bond: ["i don't crew with strangers. you learn a man on deck. we haven't had a deck."]
+    refuse.flags: ["help me clear the old ferry landing first. the lorangs by the look-out shed. then ask."]
+    refuseOwnErrand: ["that's my landing. we clear it together."]
+    questOffer.ronan-the-old-landing: ["the old ferry landing, by the look-out shed. the lorangs have it. thirty of them, and i can sit on my own landing again."]
+    questAccept.ronan-the-old-landing: ["the look-out shed, and Lorang Lorang past it. red. snippy. no manners."]
+    questWaiting.ronan-the-old-landing: ["thirty. my landing!"]
+    questComplete.ronan-the-old-landing: ["thirty! look at it. empty. i'm going to sit on it and look at the sea. you can sit too."]
+    questOffer.ronan-cape-of-warmness: ["the ferry's old sail-mender never left the beach either. he lives in the hut behind the look-out shed and stitches capes out of the sailcloth we saved. he's soft on lupin's bananas. thirty lupins round the shed, twelve bananas, and he'll make you a Cape of Warmness."]
+    questAccept.ronan-cape-of-warmness: ["the look-out shed and Lorang Lorang. the lupins. up in the trees."]
+    questWaiting.ronan-cape-of-warmness: ["twelve bananas. the sail-mender's hungry."]
+    questComplete.ronan-cape-of-warmness: ["twelve. a Cape of Warmness, out of the old ferry's mainsail. every safe scroll took. that's a cape that's been to sea."]
+    questOffer.ronan-icarus-cape: ["the Icarus Cape. the sail-mender wants lorang claws to pin the hem. forty lorangs on the clang coves, fifteen claws."]
+    questAccept.ronan-icarus-cape: ["Lorang and Clang, and Clang and Lorang. the clangs are there too. mind them."]
+    questWaiting.ronan-icarus-cape: ["fifteen claws."]
+    questComplete.ronan-icarus-cape: ["fifteen. the Icarus Cape. sixties, every one took. it flies a bit. don't jump off anything."]
+    questOffer.ronan-blue-napoleon: ["the Blue Napoleon. ferry blue. the sail-mender cut it from the last of the old flag. he wants the far coves cleared so he can walk out to the end of the Hot Sand and look at the open sea once more. thirty torties and thirty clangs."]
+    questAccept.ronan-blue-napoleon: ["Clang and Lorang, and the Hot Sand. all the way out. bring water."]
+    questWaiting.ronan-blue-napoleon: ["thirty and thirty. the sail-mender's packed a lunch."]
+    questComplete.ronan-blue-napoleon: ["thirty and thirty. the Blue Napoleon. two tens and the rest sixties, every one took. the last of the ferry's flag. wear it like she's still sailing."]
+    questOffer.ronan-lorang-claws: ["ten lorang claws? the sail-mender's out of hem pins."]
+    questAccept.ronan-lorang-claws: ["Lorang Lorang."]
+    questWaiting.ronan-lorang-claws: ["ten."]
+    questComplete.ronan-lorang-claws: ["ten! the sail-mender thanks you. so do i."]
+    about.nerys: ["Nerys keeps the clangs off the Hot Sand. she says she used to be a thief. she gives everything away. worst thief i ever met."]
+    about.abel: ["Abel fished off the shed when the ferry still ran. he waved every morning. i waved back. we've never said a word to each other. it's the best friendship i've got."]
+    about.teodor: ["Teodor counts me out to the buoys and back every morning. i've told him i'm a deckhand. he says deckhands drown too. he's not wrong."]
+    aboutUnknown: ["never crewed with them."]
+    friend.close: ["you're crew. that's the best thing a deckhand can say. you're crew."]
+    friend.best: ["if i ever get another deck, there's a berth on it for you. the first one."]
+    famed: ["ha! the whole beach is saying your name! i'm saying it loudest!"]
+    defamed: ["who said that? point them out. a deckhand's voice carries the length of a ship. it'll carry the length of a beach."]
+    gift: ["ha! for me? thanks!"]
+    gift.favorite: ["ha! that's a deckhand's breakfast! thank you!"]
+    gift.again: ["one a day, friend. a deckhand eats what's put in front of him and no more. ferry rules."]
+
+- id: lulu
+  name: Lulu
+  look: { gender: female }
+  title: "Sunshade Renter of Florina"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 8, to: 13, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 13, to: 18, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:by-valen", activity: SOCIALIZE }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  knows: [lupin's banana, tortie shell, tortie]
+  questLines: [lulu-the-banana-stand, lulu-shells-for-shade]
+  relationships:
+    - { persona: teodor, kind: RENTS_BESIDE }
+    - { persona: marisol, kind: LENDS_SHADE_TO }
+    - { persona: tansy, kind: MOVES_A_SHADE_FOR }
+  giftItemIds: [2001001, 2020005]
+  dialogue:
+    greetFirst: ["shade! you look like you need shade. everyone needs shade. ten meso an hour, first hour free for new faces!", "hi! welcome to Florina! the sun's free. the shade's ten meso."]
+    greet: ["hi hi!", "shade today?", "you're back! your sunshade missed you."]
+    idle: ["(shakes the sand out of a folded sunshade and snaps it open with a flourish)", "(walks the row of sunshades, tilting each one a hair toward the sun)"]
+    noWork: ["nothing today. every shade's rented. i'm in the last one. it's mine."]
+    nothingDue: ["you're paid up! all shady!"]
+    who: ["Lulu. i rent the sunshades. forty of them, all colours. i know where the sun is every hour of the day. it's the only thing i know. it's enough."]
+    bye: ["stay shady!"]
+    thanks: ["aw, thank you!"]
+    smallTalk: ["the lupins steal the bananas off my shake stand. they don't even make shakes. they just want the bananas. i want my bananas back.", "a tortie's shell makes the best sunshade top. waterproof, sunproof, lupin-proof. the torties don't agree."]
+    speakPlainly: ["plainly: shade, for rent."]
+    questOffer.lulu-the-banana-stand: ["the lupins round the look-out shed keep stealing bananas off my shake stand. twenty lupins, and bring back fifteen bananas. they're my bananas."]
+    questAccept.lulu-the-banana-stand: ["the look-out shed, and Lorang Lorang. the trees. they'll throw the bananas at you. catch them!"]
+    questWaiting.lulu-the-banana-stand: ["fifteen bananas. the blender's ready."]
+    questComplete.lulu-the-banana-stand: ["fifteen! shakes are back on! here, and a free shade, any time you like."]
+    questOffer.lulu-shells-for-shade: ["i want tortie shell tops for the front row of sunshades. the torties out on the far coves. twenty-five of them, ten shells."]
+    questAccept.lulu-shells-for-shade: ["Clang and Lorang, and the Hot Sand. they're slow. they're grumpy. so's the sand."]
+    questWaiting.lulu-shells-for-shade: ["ten shells. the front row's waiting."]
+    questComplete.lulu-shells-for-shade: ["ten! the front row's going to be the shadiest shade on the beach. here. you've got the best spot. for life."]
+    about.teodor: ["Teodor counts my customers when they go in. he counts them when they come out. he counts them when they're asleep under my shades. he's very thorough."]
+    about.marisol: ["Marisol's got her own shade. the green one. i don't charge her. she brings me pretty glass."]
+    about.tansy: ["Tansy builds her castle right by the shades. i move one every morning so the sun's on her moat. it dries better."]
+    aboutUnknown: ["never rented them a shade."]
+    friend.close: ["you get the shade by the water. nobody gets the shade by the water."]
+    friend.best: ["i painted your name on a sunshade. the yellow one. it's always yours."]
+    famed: ["everyone's saying your name under my shades!"]
+    defamed: ["ignore them. they've had too much sun."]
+    gift: ["aw! for me? thanks!"]
+    gift.favorite: ["ooh! that's a treat for the hottest hour. thank you!"]
+    gift.again: ["one a day! i'll get spoiled. well. more spoiled."]
+
+- id: abel
+  name: Abel
+  look: { gender: male }
+  title: "Old Fisherman of the Look-Out Shed"
+  job: BEGINNER
+  level: { min: 34, max: 36 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 5, to: 11, spot: "venue:lower-east-street-2", activity: LINGER }
+      - { from: 11, to: 15, materialize: false }
+      - { from: 15, to: 20, spot: "venue:lower-east-street-2", activity: SOCIALIZE }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  knows: [lorang, clang claw, clang]
+  questLines: [abel-the-shed-nets, abel-claws-for-hooks]
+  rumors: [florina-the-tide-line]
+  relationships:
+    - { persona: marisol, kind: TAUGHT_THE_TIDES }
+    - { persona: teodor, kind: COUNTS_BOATS_BESIDE }
+    - { persona: ronan, kind: WAVES_TO }
+  giftItemIds: [2020007, 2000002]
+  dialogue:
+    greetFirst: ["hm. new face. sit if you like. the fish don't mind.", "mind the nets. they're older than you."]
+    greet: ["hm. you.", "back again. good.", "evening. or morning. one of those."]
+    idle: ["(mends a net with slow, sure knots, never once looking at his hands)", "(squints out past the point for a long while, then goes back to his knots)"]
+    noWork: ["nothing today. the fish are out. so am i, mostly."]
+    nothingDue: ["you owe me nothing. the sea keeps the accounts."]
+    who: ["Abel. i fish off the look-out shed. fifty years of it. the shed's newer than me. the rocks aren't."]
+    bye: ["tide's turning. go on."]
+    thanks: ["hm. good."]
+    smallTalk: ["the lorangs cut nets for the fun of it. i've seen one do it and wave.", "the point's taken ships. it took one when i was young. a spring storm. you don't forget a spring storm."]
+    speakPlainly: ["plainly: nets, fish, weather."]
+    questOffer.abel-the-shed-nets: ["the lorangs round the look-out shed have cut my nets three nights running. thirty of them, and i can mend in peace."]
+    questAccept.abel-the-shed-nets: ["the look-out shed, just up the road. the red ones. they snip."]
+    questWaiting.abel-the-shed-nets: ["thirty. the nets are waiting."]
+    questComplete.abel-the-shed-nets: ["thirty. quiet down there now. here. and take a fish. no? suit yourself."]
+    questOffer.abel-claws-for-hooks: ["a clang's claw makes a hook nothing gets off. twenty-five clangs past the lorang coves, and twelve claws. i'll file them down."]
+    questAccept.abel-claws-for-hooks: ["Lorang and Clang, and the one after. the big ones. they clang."]
+    questWaiting.abel-claws-for-hooks: ["twelve claws."]
+    questComplete.abel-claws-for-hooks: ["twelve. good hooks, these. i'll catch something worth telling about. here."]
+    about.marisol: ["Marisol picks up everything the sea drops. i taught her the tides. she taught herself the rest."]
+    about.teodor: ["Teodor counts the swimmers. i count the boats. he gets bigger numbers. i get older ones."]
+    about.ronan: ["Ronan worked the Florina ferry. good deckhand. waves every morning. sings flat. the fish don't mind."]
+    about.tansy: ["the little one builds a castle every day where the tide'll get it. i've told her higher up. she says then it wouldn't be a sea castle. fair."]
+    aboutUnknown: ["never fished with them."]
+    friend.close: ["you can sit on my end of the shed. nobody sits on my end of the shed."]
+    friend.best: ["i'll teach you the knot my father taught me. i've not taught it to anyone. it's yours."]
+    famed: ["hm. people say good things. i heard."]
+    defamed: ["people talk. the sea doesn't. listen to the sea."]
+    gift: ["hm. thank you."]
+    gift.favorite: ["that's a good one. that's a whole morning's fishing, that."]
+    gift.again: ["one's plenty. i'm an old man."]
+
+- id: tansy
+  name: Tansy
+  look: { gender: female }
+  title: "Sandcastle Builder"
+  job: BEGINNER
+  level: { min: 6, max: 8 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: florina-beach
+    routine:
+      - { from: 8, to: 12, spot: "venue:middle-central-street", activity: LINGER }
+      - { from: 12, to: 17, spot: "venue:lower-central-street", activity: LINGER }
+      - { from: 17, to: 19, spot: "venue:middle-west-street", activity: STROLL }
+      - { from: 19, to: 8, materialize: false }
+  recruitable: false
+  knows: [lupin doll, lorang, lupin]
+  questLines: [tansy-the-moat, tansy-a-king-and-queen]
+  relationships:
+    - { persona: marisol, kind: GETS_SHELLS_FROM }
+    - { persona: nerys, kind: IS_LOOKED_AFTER_BY }
+    - { persona: lulu, kind: GETS_SHADE_FROM }
+  giftItemIds: [2001001, 2000001]
+  dialogue:
+    greetFirst: ["hi! do you want to see my castle? it's new. it's new every day.", "hello! careful, you're standing in the moat. it's a dry moat. it's still a moat."]
+    greet: ["hi! the castle's got a tower today!", "you're back! the sea took yesterday's. it's fine.", "hello!"]
+    idle: ["(pats a sand tower into shape with both hands, very seriously)", "(digs a moat round the castle, then runs to the water with a bucket)"]
+    noWork: ["nothing today. the castle's finished. until tonight. then i'll start a new one."]
+    nothingDue: ["you don't owe me! you can have a tower."]
+    who: ["Tansy. i build a sandcastle every day. the sea knocks it down every night. that's okay. it means i get to build another one. today's has a moat."]
+    bye: ["bye! don't step on the castle!"]
+    thanks: ["thank you!"]
+    smallTalk: ["the lorangs come up out of the water and walk right through my moat. they don't even look. rude.", "Marisol brings me shells for the towers. Nerys clears the hot sand so i can get the wet sand. Lulu moves a sunshade so the moat dries. it's everyone's castle really."]
+    speakPlainly: ["plainly: a castle. a new one."]
+    questOffer.tansy-the-moat: ["the lorangs keep walking through my moat. could you go and tell them not to? with your weapon? twenty-five of them, up in Lorang Lorang where they come from."]
+    questAccept.tansy-the-moat: ["Lorang Lorang. past the look-out shed. tell them about the moat."]
+    questWaiting.tansy-the-moat: ["twenty-five! my moat's waiting."]
+    questComplete.tansy-the-moat: ["twenty-five! not one lorang in the moat today! you can have the east tower. it's the best one."]
+    questOffer.tansy-a-king-and-queen: ["my castle needs a king and a queen. and guards. the lupins carry little dolls. eight dolls, please. twenty lupins."]
+    questAccept.tansy-a-king-and-queen: ["the look-out shed. the lupins are up in the trees. ask nicely first. then don't."]
+    questWaiting.tansy-a-king-and-queen: ["eight dolls! the throne's ready. it's a shell."]
+    questComplete.tansy-a-king-and-queen: ["eight! a king, a queen, and six guards. the sea's going to take them tonight. i'll keep the king. here, this is for you."]
+    about.marisol: ["Marisol finds everything! she found a button once. a whole button."]
+    about.nerys: ["Nerys is grumpy but she clears the hot sand for me. she says she doesn't. she does."]
+    about.lulu: ["Lulu moves a sunshade every morning so my moat dries. she thinks i don't notice. i notice."]
+    about.abel: ["Abel says build it higher up the beach. then it wouldn't be a sea castle. he knows that. he's teasing."]
+    aboutUnknown: ["do they like castles?"]
+    friend.close: ["you can help build tomorrow's castle. you can do the moat. the moat's important."]
+    friend.best: ["tomorrow's castle is yours. i'll put your name on the flag. it's a stick. it's a flag."]
+    famed: ["everyone says your name! i'm putting it on the castle!"]
+    defamed: ["that's mean. i'm not putting that on the castle."]
+    gift: ["for me? thank you!"]
+    gift.favorite: ["wow. that's better than a castle. nearly."]
+    gift.again: ["one a day! that's the rule. i made it up."]

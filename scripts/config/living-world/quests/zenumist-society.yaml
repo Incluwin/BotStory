@@ -1,0 +1,77 @@
+# Zenumist Society quest lines (wave 4, docs/REGIONAL_RESIDENTS_PLAN.md section 10). Every id is from the server's own
+# data: triple rumo 3110303 (flask 4000356; units 102/103 261010002/261010003), cube slime 3110300 (gelatin 4000353;
+# units 101/102 261010001/261010002), rumo 3110302 (units 101/103 261010001/261010003), the Zenumist hidden room
+# 261000011 (behind the society hall).
+# Gear: Oriane's Zenumist's Cape 1102135 L35.
+# The arc's last beat (oriane-one-page-two-names) happens once per server; its middle beat is Ferro's
+# (quests/alcadno-society.yaml).
+
+# ---- Oriane, apprentice alchemist of the Zenumist (recruitable; her arc) ----------------------------------------------
+
+- id: oriane-the-cracking-glass
+  persona: oriane
+  title: "Glass That Cracks"
+  length: SHORT
+  requires: { level: { min: 35 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: triples, type: KILL_MOBS, mobIds: [3110303], count: 25, mapIds: [261010002, 261010003] }
+    - { id: flasks, type: COLLECT_ITEM, itemId: 4000356, count: 12 }
+    - { id: glass, type: DELIVER, to: oriane, take: { itemId: 4000356, count: 12 } }
+  rewards: { meso: 10000, exp: 10000, bondPoints: 40, flags: [oriane.intro.done] }
+  onComplete: { arcAdvance: { arc: oriane-the-shared-proving, to: chapter-2 } }
+
+- id: oriane-the-zenumist-cape
+  persona: oriane
+  title: "Sparks Slide Off"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [oriane-the-cracking-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [3110300], count: 25, mapIds: [261010001, 261010002] }
+    - { id: gelatin, type: COLLECT_ITEM, itemId: 4000353, count: 12 }
+    - { id: seal, type: DELIVER, to: oriane, take: { itemId: 4000353, count: 12 } }
+  rewards:
+    meso: 30000
+    exp: 30000
+    bondPoints: 35
+    gear:
+      - { pool: [1102135], scrolls: [{ success: 100 }] }
+
+- id: oriane-one-page-two-names
+  persona: oriane
+  title: "One Page, Two Names"
+  length: MEDIUM
+  requires: { level: { min: 42 }, flags: [magatia.heard-proving], notFlags: [magatia.proving.shared], questsCompleted: [oriane-the-cracking-glass] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ferro, type: TALK_TO, persona: ferro, say: ["noon, in the square, both pieces on one table? ...my hand's ready. it held an egg this morning. then i ate the egg. tell her i'm ready."] }
+    - { id: mathilde, type: TALK_TO, persona: mathilde, say: ["one proving, two houses, both names on one page? the record takes what happens. if it happens at noon, it's written by one minute past. tell her to spell her name clearly. Zenumists loop their letters."] }
+    - { id: aurel, type: TALK_TO, persona: aurel, say: ["both names in the archive, on the same page? ...i've kept a page empty for something like this for a long time. tell her i'll write it in green. tell her i'll write it large."] }
+    - { id: proving, type: DELIVER, to: oriane }
+  rewards: { meso: 16000, exp: 18000, bondPoints: 60, items: [{ itemId: 2000006, count: 20 }], worldFlags: [magatia.proving.shared] }
+
+# ---- Phineas, doorkeeper of the Zenumist ----------------------------------------------------------------------------
+
+- id: phineas-the-squeaking-door
+  persona: phineas
+  title: "The Squeaking Door"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mott, type: TALK_TO, persona: mott, say: ["the Zenumist door squeaks? i oil it every morning. both doors. thirty years. ...tell Phineas i'll oil his slower from now on, so he hears me do it."] }
+    - { id: report, type: DELIVER, to: phineas }
+  rewards: { meso: 7000, exp: 6000, bondPoints: 30 }
+
+- id: phineas-the-boy-in-the-hidden-room
+  persona: phineas
+  title: "The Boy in the Hidden Room"
+  length: SHORT
+  requires: { level: { min: 33 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rumos, type: KILL_MOBS, mobIds: [3110302], count: 25, mapIds: [261010001, 261010003] }
+    - { id: room, type: VISIT_MAP, mapIds: [261000011] }
+    - { id: report, type: DELIVER, to: phineas }
+  rewards: { meso: 9000, exp: 9000, bondPoints: 35 }

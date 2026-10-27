@@ -1,0 +1,32 @@
+# Florina Beach contracts (wave 4): a sand-keeper's kill proof on her intro quest's clangs, and a deckhand's day rate
+# once the player has cleared his old ferry landing.
+- id: nerys-the-claw-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [nerys.intro.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [4230104], count: 60 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 12000 }
+
+- id: ronan-the-deck-share
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ronan.intro.done]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 24
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 15000 }

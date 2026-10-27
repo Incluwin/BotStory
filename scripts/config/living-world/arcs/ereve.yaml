@@ -1,0 +1,54 @@
+# Ereve arc (wave 4): the Empress's record of the five heroes, whose last leaf is blank, and the archivist who fills it
+# in Rien's words. Its chapters move with Rien's (arcs/rien.yaml) on shared world flags; the leaf is written once per
+# server (isaura-in-her-words, quests/ereve.yaml), and Rien's last beat happens once per server (quests/rien.yaml).
+- id: isaura-the-record-of-the-five
+  persona: isaura
+  chapters:
+    - id: chapter-1
+      title: "The Record of the Five"
+    - id: chapter-2
+      title: "Pointing North"
+      enterWhen: { flags: [ereve.record.searched] }
+      dialogueOverrides:
+        greet: ["hello. i've been reading everything we have about Snow Island. it isn't much.", "hello. north. everything points north."]
+        who: ["Isaura. i keep the Empress's library. the record of the five ends on a blank leaf, and everything Ereve remembers about it points north, to Snow Island. somebody there must know the rest."]
+        smallTalk: ["Celandine's fifth emblem is a polearm on snow. Fintan's egg-book says they went by sea from the island of snow. two threads, one direction.", "they say Rien doesn't write things down. they tell them. i've never trusted anything i couldn't read. i may have to start."]
+        chapterEnter: ["(pins a small sketch of a polearm on a field of snow to the edge of the blank leaf)"]
+    - id: chapter-3
+      title: "Somebody in Rien"
+      enterWhen: { flags: [rien.copy.read] }
+      dialogueOverrides:
+        greet: ["hello. an old woman in Rien has heard my copy read. she says the end is wrong. i've never been so glad to be wrong.", "hello. somebody remembers."]
+        who: ["Isaura. i keep the Empress's library. the record of the five ends on a blank leaf, and Eira, the oldest in Rien, says that isn't where it stops. she won't write it down. somebody has to go and hear it."]
+        smallTalk: ["Eira says a story isn't kept on a shelf, it's kept in the telling. i keep things on shelves. we'll see who's right. probably both of us.", "i've cut a fresh leaf and mixed fresh ink. i haven't touched either. i'm waiting for her words."]
+        about.eira: ["Eira of Rien, the oldest there. she heard my copy read and sent back word: that's not where it stops. i'd give the whole shelf to hear what she knows."]
+        questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
+        chapterEnter: ["(lays a fresh leaf and a full inkwell beside the record of the five, and does not touch either)"]
+    - id: chapter-4
+      title: "In Her Words"
+      enterWhen: { flags: [ereve.page.written] }
+      dialogueOverrides:
+        greet: ["hello. the record of the five has an ending now. come and read it, if you like. it's in Eira's words.", "hello. i've read the last leaf forty times. it's still there."]
+        who: ["Isaura. i keep the Empress's library. the record of the five used to end on a blank leaf. now it ends in Eira's words: four went down to the shore, and one went up into the ice, and looked back once."]
+        idle: ["(reads the last leaf of an old record, mouthing the words, and smiles at the end of it)", "(binds a thin new copy of a book in blue cloth, pulling each stitch tight)"]
+        smallTalk: ["i'm binding a copy for Rien, in blue cloth. Celandine chose it. she says it's the colour of the fifth emblem's thread.", "i used to think a record was a thing you keep. Eira says it's a thing you give. i'm giving one."]
+        speakPlainly: ["plainly: a book with an ending."]
+        about.eira: ["Eira of Rien. her grandmother's words are on the Empress's last leaf now. i didn't change one. i wanted to fix a comma. i didn't."]
+        questOffer.isaura-the-blank-page: ["the record of the five has its last leaf now, but the margins never fill. ask Celandine about her pattern book and Fintan about the egg-book again. everything Ereve remembers goes in."]
+        questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
+        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. small. it belongs there."]
+        chapterEnter: ["(writes the last line on the blank leaf in a slow, careful hand, then sits back and blows on the ink)"]
+    - id: chapter-5
+      title: "A Copy for Rien"
+      enterWhen: { flags: [rien.book.shelved] }
+      dialogueOverrides:
+        greet: ["hello. there's a copy of the record of the five on Rien's shelf now. i'd like to see it there one day.", "hello. two shelves, one story."]
+        who: ["Isaura. i keep the Empress's library. the record of the five ends in Eira's words now, and a copy sits in Rien's library, where the story came from. it went home."]
+        idle: ["(reads the last leaf of an old record, mouthing the words, and smiles at the end of it)", "(writes a letter to Rien, reads it over, and adds a postscript longer than the letter)"]
+        smallTalk: ["Eira sends word with travellers now and then. never a letter. she has them tell me things. i write them down. she knows i do. she pretends she doesn't.", "i used to think a record was a thing you keep. Eira says it's a thing you give. she was right. don't tell her."]
+        speakPlainly: ["plainly: a book with an ending, and a copy where it belongs."]
+        about.eira: ["Eira of Rien. her grandmother's words are on the Empress's last leaf, and a copy sits on Rien's shelf. she sends word with travellers. i write it all down."]
+        questOffer.isaura-the-blank-page: ["the record of the five has its last leaf now, but the margins never fill. ask Celandine about her pattern book and Fintan about the egg-book again. everything Ereve remembers goes in."]
+        questComplete.isaura-the-blank-page: ["into the margins it goes. the record grows a little every time somebody asks. thank you."]
+        friend.best: ["your name's in the margin of the record of the five, beside the last leaf. small. it belongs there."]
+        chapterEnter: ["(writes 'sent to Rien' on the library card of a small blue-bound book, and files the card with care)"]

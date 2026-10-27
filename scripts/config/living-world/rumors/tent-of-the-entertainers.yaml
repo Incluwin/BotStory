@@ -1,0 +1,15 @@
+# Tent of the Entertainers rumors (wave 4). The pair is awake together on the upper boards in those hours
+# (personas/tent-of-the-entertainers.yaml); the ground floor belongs to the rabbits.
+- id: ariant-tent-the-old-show
+  participants: [pepita, zarek]
+  where: { town: tent-of-the-entertainers, spot: "venue:upper-east-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 2
+  lines:
+    - { by: pepita, text: "Zarek. tell the one about the square." }
+    - { by: zarek, text: "which square? i've played a hundred squares." }
+    - { by: pepita, text: "Ariant's. the town square. lantern night. the whole city watching." }
+    - { by: zarek, text: "...forty years ago. seven torches. i dropped one. nobody was hurt. the palace remembers everything." }
+    - { by: pepita, text: "you always say you dropped one. you never say what happened next." }
+    - { by: zarek, text: "a boy swept up the confetti in the morning. that's what happened next. the rest is the palace's story. i only tell mine." }

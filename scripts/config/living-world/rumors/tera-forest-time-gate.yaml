@@ -1,0 +1,29 @@
+# Tera Forest Time Gate rumors (wave 4). Each pair is awake together at its spot in those hours
+# (personas/tera-forest-time-gate.yaml).
+- id: time-gate-the-sack
+  participants: [tobiah, dashiell]
+  where: { town: tera-forest-time-gate, spot: "venue:by-time-gate" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+  lines:
+    - { by: dashiell, text: "what's in the sack tonight, Tobiah?" }
+    - { by: tobiah, text: "a booster, two tires, and a bolt off a 2099 ferry." }
+    - { by: dashiell, text: "the bolt's for Calla." }
+    - { by: tobiah, text: "the bolt's for sale." }
+    - { by: dashiell, text: "to Calla. for nothing." }
+    - { by: tobiah, text: "...it's a very small bolt. don't tell anyone." }
+
+- id: time-gate-the-casing
+  participants: [augustin, bettany]
+  where: { town: tera-forest-time-gate, spot: "venue:by-andy" }
+  when:
+    serverHours: [13]
+    everyDays: 1
+  lines:
+    - { by: bettany, text: "Augustin, i'm opening the casing today." }
+    - { by: augustin, text: "nobody's ever opened the casing." }
+    - { by: bettany, text: "that's a terrible reason not to." }
+    - { by: augustin, text: "it's an excellent reason to write it down if you do. i've the page ready." }
+    - { by: bettany, text: "...you've had that page ready for a month." }
+    - { by: augustin, text: "i've had it ready for fifty years. you're only the first to make me turn to it." }

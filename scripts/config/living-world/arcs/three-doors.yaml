@@ -1,0 +1,52 @@
+# Temple of Time arc: a pilgrim whose daughter went through the Tera Forest Time Gate forty years ago finds her own
+# lullaby in an Eye of Time's hourglass, sung by somebody old beside a sea. Its third chapter waits on the girl at the
+# gate's harbor listener (arcs/tera-forest-time-gate.yaml) and its last on the girl getting her gran's name back; both
+# beats happen once per server (quests/three-doors.yaml, quests/tera-forest-time-gate.yaml).
+- id: solveig-the-road-of-regrets
+  persona: solveig
+  chapters:
+    - id: chapter-1
+      title: "The Road of Regrets"
+    - id: chapter-2
+      title: "A Song by the Sea"
+      enterWhen: { flags: [temple.song.found] }
+      dialogueOverrides:
+        greet: ["hello. i've had a glass by my bed all week. i hold it to my ear at night.", "you. good. sit. you heard it too. i need somebody else to have heard it."]
+        who: ["Solveig. i walk the Road of Regrets. there's a glass by my bed with my own lullaby in it, sung by somebody old, beside a sea. i don't know whose voice it is. i don't know whose sea."]
+        idle: ["(holds a cracked hourglass to her ear, eyes shut, and does not move for a long time)", "(hums three notes, then stops and listens to the glass as if it might answer)"]
+        smallTalk: ["i made that song up for Liv. three lines. she wouldn't sleep without it. nobody else ever heard it but the two of us. and an Eye of Time had it in a glass.", "there's no sea by the temple. there's no sea in Leafre. where does a glass get a harbor from?"]
+        speakPlainly: ["plainly: my song, in somebody else's voice."]
+        questOffer.solveig-the-song-in-the-glass: ["the Eyes keep cracking new glasses. thirty Eyes on Memory Lane's first stretch, twelve glasses. i listen to every one now. for other songs."]
+        chapterEnter: ["(sets a cracked hourglass on the bench beside her, very carefully, and sits with one hand around it)"]
+    - id: chapter-3
+      title: "The Girl at the Gate"
+      enterWhen: { flags: [temple.song.traced] }
+      dialogueOverrides:
+        greet: ["hello. a girl at the gate knows my song. i keep saying it out loud to make sure it's true.", "you. sit. i haven't slept. it isn't the knees."]
+        who: ["Solveig. i walk the Road of Regrets. a girl came through the Tera Forest gate from a harbor a hundred years on, and she knows the song i made up for my Liv. she says it was her gran's."]
+        idle: ["(holds a cracked hourglass to her ear, eyes shut, and does not move for a long time)", "(starts down the street toward the way out, stops after three steps, and comes back to the bench)"]
+        smallTalk: ["Liv went through that gate at seventeen. a girl comes back through it a hundred years on, singing Liv's song. i'm an old woman. i know better than to hope. i'm hoping.", "the records could tell me. they keep everything. i've asked Osmund for that line every week for years. this week i'm frightened to ask."]
+        speakPlainly: ["plainly: a song, a girl, and a hope i don't trust."]
+        about.calla: ["Calla. the girl at the gate. she knew the next line of my song. she says her gran sang it. she can't remember her gran's face. the gate took it. i know a little of what a road costs."]
+        questOffer.solveig-the-song-in-the-glass: ["the Eyes keep cracking new glasses. thirty Eyes on Memory Lane's first stretch, twelve glasses. i listen to every one now. for other songs."]
+        questComplete.solveig-the-song-in-the-glass: ["twelve. i'll listen to them all tonight. somebody's moments. somebody should hear them. thank you."]
+        chapterEnter: ["(stands, sits down, stands again, and at last just holds the hourglass in both hands and laughs a little at herself)"]
+    - id: chapter-4
+      title: "Set Down"
+      enterWhen: { flags: [neo.gran.home] }
+      dialogueOverrides:
+        greet: ["hello, dear. i didn't walk the road this morning. i sat in the sun.", "you. come and sit. i've a letter from the gate. she spells badly. so did Liv."]
+        who: ["Solveig. i used to walk the Road of Regrets. my Liv went through the Tera Forest gate at seventeen and lived a whole life by a sea, a hundred years on. she kept a lamp lit and sang my song to her granddaughter. her granddaughter is at the gate. her name is Calla."]
+        idle: ["(writes a letter in large careful letters, reads it back, and adds a line at the bottom)", "(hums the whole song through, all three lines, and smiles at the end)"]
+        smallTalk: ["i laid my last stone on the cairn and said goodbye to Liv there. a hundred years late. it counted. i felt it count.", "Calla writes to me with anybody coming up from the gate. she tells me about the gate, and Augustin's book, and a man who brings her bits of her own year. i tell her about Liv when she was small. we're both learning her."]
+        speakPlainly: ["plainly: a regret, set down. a great-granddaughter, picked up."]
+        noWork: ["nothing today. sit with me. i've stopped being in a hurry."]
+        about.calla: ["Calla. Liv's granddaughter. she writes with anybody coming up from the gate, and i write back. she has Liv's way of starting a letter in the middle. i'd know it anywhere."]
+        about.osmund: ["Osmund writes for the Record Keeper. i asked him for one line every week for years. in the end he read it to somebody else, and they brought it to me. that was the right way round."]
+        friend.close: ["sit with me some evening. you don't have to say anything. that's the best part."]
+        friend.best: ["i finished the road. i said i'd tell you first. i'm telling you again. it's worth saying twice."]
+        questOffer.solveig-the-pilgrims-cairn: ["the Eyes of Time crowd the first stretch of Memory Lane, and the pilgrims can't get by. clear twenty-five, and lay a stone on the cairn in the Past of the Verdure. not for me. i don't need one any more. somebody walking it does."]
+        questComplete.solveig-the-pilgrims-cairn: ["you laid it? good. somebody's a little lighter tonight. it isn't me. that's the best part."]
+        questOffer.solveig-the-song-in-the-glass: ["the Eyes keep cracking new glasses. thirty Eyes on Memory Lane's first stretch, twelve glasses. i listen to every one now. for other songs."]
+        questComplete.solveig-the-song-in-the-glass: ["twelve. i'll listen to them all tonight. somebody's moments. somebody should hear them. thank you."]
+        chapterEnter: ["(unlaces her walking boots, sets them side by side under the bench, and leaves them there)"]

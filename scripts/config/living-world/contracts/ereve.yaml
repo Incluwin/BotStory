@@ -13,3 +13,20 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
     cooldownHoursAfterLeave: 2
     rejoinPrice: { meso: 6000 }
+
+# Wave 4: a Night Walker's kill proof on his intro quest's bubblings.
+- id: caius-the-night-shift
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [caius.intro.done]
+  price:
+    meso: 6000
+    proof: { killMobs: { mobIds: [1210103], count: 50 } }
+  terms:
+    durationHours: 6
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 5000 }

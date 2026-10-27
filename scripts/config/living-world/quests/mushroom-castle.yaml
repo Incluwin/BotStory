@@ -1,0 +1,246 @@
+# Mushroom Castle quests (wave 4). Fields: the forest 106020100-106020300 (renegade spores 3300000 mutated spore 4000499,
+# poison mushroom 3300001 poison mushroom cap 4000500 / poison spore 4000507 10%; poison mushrooms also on the split road
+# 106020400 and steep downhill 1 106020401, past the vines, which open for a poison spore or quest 30000); the steep
+# downhill 106020401/106020402 (intoxicated pig 3300002 pig tail 4000501); the castle towers, past the thorns (stock
+# quest 2324): helmet pepe 3300003 destroyed helmet 4000502 on skyscrapers 1-4 106020700/106020800/106021000/106021100
+# and the security room copies 106021001-106021010, royal guard pepe 3300004 broken spear 4000503 on skyscrapers 4-6
+# 106021100/106021200/106021300; the castle wall edge 106020501 and On the Watch 106020601 (106020500 has no way in).
+# gotocastle.js lets only a player with stock quest 2324 done (the Secretaries' chain, the court's Thorn Remover) past
+# the thorns, so every tower or wall errand says so in its offer and accept lines. The recruits give armour in the
+# castle's band: Percival shoes for the player's class (the King Pepe boots at L35, then L40 and L50), Fern no-job
+# earrings (L30 / L35 / L40).
+
+# ---- Wilmot: the kingdom's cake (arcs/mushroom-castle.yaml) ----
+- id: wilmot-a-cake-for-no-one
+  persona: wilmot
+  title: "A Cake for No One"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: KILL_MOBS, mobIds: [3300000], count: 25, mapIds: [106020100, 106020200, 106020300] }
+    - { id: icing, type: COLLECT_ITEM, itemId: 4000499, count: 10 }
+    - { id: oven, type: DELIVER, to: wilmot, take: { itemId: 4000499, count: 10 } }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2000002, count: 15 }], worldFlags: [mc.cake.refused] }
+
+- id: wilmot-caps-from-home
+  persona: wilmot
+  title: "Caps From Home"
+  length: MEDIUM
+  requires: { level: { min: 30 }, questsCompleted: [wilmot-a-cake-for-no-one], notFlags: [mc.caps.sent] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: brisa, type: TALK_TO, persona: brisa, say: ["Wilmot? the baker at the mushroom castle? i send him caps every spring! orange ones, the squeaky ones, from the field behind the Empty House. he says they taste like being nine. here, the whole basket. tell him they squeaked the whole way. kidding. maybe."] }
+    - { id: basket, type: DELIVER, to: wilmot }
+  rewards: { meso: 8000, exp: 8000, bondPoints: 50, items: [{ itemId: 2000002, count: 20 }], worldFlags: [mc.caps.sent] }
+
+- id: wilmot-the-kingdoms-cake
+  persona: wilmot
+  title: "The Kingdom's Cake"
+  length: MEDIUM
+  requires: { level: { min: 32 }, questsCompleted: [wilmot-a-cake-for-no-one], flags: [mc.caps.sent, mc.heard-kitchen], notFlags: [mc.cake.served] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 20, mapIds: [106020700, 106020800] }
+    - { id: wall, type: VISIT_MAP, mapIds: [106020501, 106020601] }
+    - { id: faces, type: DELIVER, to: wilmot }
+  rewards: { meso: 12000, exp: 14000, bondPoints: 60, items: [{ itemId: 2020002, count: 10 }], worldFlags: [mc.cake.served] }
+
+# ---- Primrose ----
+- id: primrose-spores-for-the-dish
+  persona: primrose
+  title: "Spores for the Dish"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [3300001], count: 20, mapIds: [106020100, 106020200, 106020300] }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000507, count: 3 }
+    - { id: dish, type: DELIVER, to: primrose, take: { itemId: 4000507, count: 3 } }
+  rewards: { meso: 4500, exp: 5000, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: primrose-the-pennants
+  persona: primrose
+  title: "Gold Thread"
+  length: SHORT
+  requires: { level: { min: 33 }, questsCompleted: [primrose-spores-for-the-dish] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [3300004], count: 20, mapIds: [106021100, 106021200, 106021300] }
+    - { id: spears, type: COLLECT_ITEM, itemId: 4000503, count: 10 }
+    - { id: thread, type: DELIVER, to: primrose, take: { itemId: 4000503, count: 10 } }
+  rewards: { meso: 7000, exp: 8000, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }
+
+# ---- Percival (recruit; shoes for the player's class) ----
+- id: percival-the-forest-patrol
+  persona: percival
+  title: "The Forest Patrol"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: KILL_MOBS, mobIds: [3300000], count: 30, mapIds: [106020100, 106020200, 106020300] }
+    - { id: done, type: DELIVER, to: percival }
+  rewards: { meso: 6000, exp: 6000, bondPoints: 30, flags: [percival.intro.done] }
+
+- id: percival-king-pepe-shoes
+  persona: percival
+  title: "The King Pepe Boots"
+  length: SHORT
+  requires: { level: { min: 35 }, friendship: 5, questsCompleted: [percival-the-forest-patrol] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 30, mapIds: [106020700, 106020800, 106021000, 106021001, 106021002, 106021003, 106021004, 106021005, 106021006, 106021007, 106021008, 106021009, 106021010, 106021100] }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000502, count: 10 }
+    - { id: caps, type: DELIVER, to: percival, take: { itemId: 4000502, count: 10 } }
+  rewards:
+    meso: 12000
+    exp: 12000
+    bondPoints: 35
+    gear:
+      - { pool: [1072399, 1072400, 1072401, 1072402, 1072403], scrolls: [{ success: 100 }] }
+
+- id: percival-the-tower-boots
+  persona: percival
+  title: "Tower Boots"
+  length: MEDIUM
+  requires: { level: { min: 40 }, friendship: 7, questsCompleted: [percival-king-pepe-shoes] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [3300004], count: 40, mapIds: [106021100, 106021200, 106021300] }
+    - { id: spears, type: COLLECT_ITEM, itemId: 4000503, count: 15 }
+    - { id: hobnails, type: DELIVER, to: percival, take: { itemId: 4000503, count: 15 } }
+  rewards:
+    meso: 22000
+    exp: 20000
+    bondPoints: 50
+    gear:
+      - { pool: [1072126, 1072115, 1072119, 1072108, 1072300], scrolls: [{ success: 60 }] }
+
+- id: percival-the-long-watch
+  persona: percival
+  title: "The Long Watch"
+  length: LONG
+  requires: { level: { min: 50 }, friendship: 10, questsCompleted: [percival-the-tower-boots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: guards, type: KILL_MOBS, mobIds: [3300004], count: 60, mapIds: [106021100, 106021200, 106021300] }
+    - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 60, mapIds: [106020700, 106020800, 106021000, 106021001, 106021002, 106021003, 106021004, 106021005, 106021006, 106021007, 106021008, 106021009, 106021010, 106021100] }
+    - { id: quiet, type: DELIVER, to: percival }
+  rewards:
+    meso: 40000
+    exp: 38000
+    bondPoints: 60
+    gear:
+      - { pool: [1072132, 1072141, 1072122, 1072128, 1072303], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: percival-helmets-for-the-forge
+  persona: percival
+  title: "Helmets for the Forge"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 32 }, questsCompleted: [percival-the-forest-patrol] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: helmets, type: COLLECT_ITEM, itemId: 4000502, count: 10 }
+    - { id: forge, type: DELIVER, to: percival, take: { itemId: 4000502, count: 10 } }
+  rewards: { meso: 4000, exp: 3500, bondPoints: 10 }
+
+# ---- Fern (recruit; earrings) ----
+- id: fern-the-first-lesson
+  persona: fern
+  title: "The First Lesson"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [3300001], count: 25, mapIds: [106020100, 106020200, 106020300] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000500, count: 10 }
+    - { id: brewed, type: DELIVER, to: fern, take: { itemId: 4000500, count: 10 } }
+  rewards: { meso: 5500, exp: 6000, bondPoints: 30, flags: [fern.intro.done] }
+
+- id: fern-red-cross-earrings
+  persona: fern
+  title: "Emerald Earrings"
+  length: SHORT
+  requires: { level: { min: 30 }, friendship: 5, questsCompleted: [fern-the-first-lesson] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: KILL_MOBS, mobIds: [3300000], count: 20, mapIds: [106020100, 106020200, 106020300] }
+    - { id: setting, type: COLLECT_ITEM, itemId: 4000499, count: 10 }
+    - { id: blessed, type: DELIVER, to: fern, take: { itemId: 4000499, count: 10 } }
+  rewards:
+    meso: 6000
+    exp: 5000
+    bondPoints: 35
+    gear:
+      - { pool: [1032007], scrolls: [{ success: 100 }] }
+
+- id: fern-emerald-earrings
+  persona: fern
+  title: "The Cat's Eye"
+  length: MEDIUM
+  requires: { level: { min: 35 }, friendship: 7, questsCompleted: [fern-red-cross-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [3300002], count: 25, mapIds: [106020401, 106020402] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000501, count: 10 }
+    - { id: draught, type: DELIVER, to: fern, take: { itemId: 4000501, count: 10 } }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 50
+    gear:
+      - { pool: [1032008], scrolls: [{ success: 60 }] }
+
+- id: fern-cats-eye
+  persona: fern
+  title: "Eclipse Earrings"
+  length: LONG
+  requires: { level: { min: 40 }, friendship: 10, questsCompleted: [fern-emerald-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pepes, type: KILL_MOBS, mobIds: [3300003], count: 30, mapIds: [106020700, 106020800, 106021000, 106021001, 106021002, 106021003, 106021004, 106021005, 106021006, 106021007, 106021008, 106021009, 106021010, 106021100] }
+    - { id: guards, type: KILL_MOBS, mobIds: [3300004], count: 30, mapIds: [106021100, 106021200, 106021300] }
+    - { id: stone, type: DELIVER, to: fern }
+  rewards:
+    meso: 16000
+    exp: 15000
+    bondPoints: 60
+    gear:
+      - { pool: [1032039], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: fern-poison-caps
+  persona: fern
+  title: "The Antidote Shelf"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 }, questsCompleted: [fern-the-first-lesson] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000500, count: 10 }
+    - { id: shelf, type: DELIVER, to: fern, take: { itemId: 4000500, count: 10 } }
+  rewards: { meso: 3500, exp: 3000, bondPoints: 10 }
+
+# ---- Barley ----
+- id: barley-sobering-up
+  persona: barley
+  title: "Sleeping It Off"
+  length: SHORT
+  requires: { level: { min: 31 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [3300002], count: 25, mapIds: [106020401, 106020402] }
+    - { id: snoring, type: DELIVER, to: barley }
+  rewards: { meso: 5000, exp: 5500, bondPoints: 30, items: [{ itemId: 2000001, count: 20 }] }
+
+- id: barley-the-trough
+  persona: barley
+  title: "A Clean Trough"
+  length: SHORT
+  requires: { level: { min: 31 }, questsCompleted: [barley-sobering-up] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [3300001], count: 25, mapIds: [106020400, 106020401] }
+    - { id: trough, type: DELIVER, to: barley }
+  rewards: { meso: 6000, exp: 6500, bondPoints: 35, items: [{ itemId: 2000002, count: 15 }] }

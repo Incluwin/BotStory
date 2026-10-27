@@ -1,0 +1,33 @@
+# Excavation Site rumors (wave 4). Each pair is awake together at its spot in those hours (personas/excavation-camp.yaml).
+- id: excav-the-cookfire
+  participants: [nell, wick]
+  where: { town: excavation-camp, spot: "venue:lower-central-street" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+  setsFlagOnListeners: excav.heard-wick
+  lines:
+    - { by: nell, text: "sit down, Wick. you're going out on the round. you'll eat first." }
+    - { by: wick, text: "i ate." }
+    - { by: nell, text: "you ate a heel of bread standing up. sit." }
+    - { by: wick, text: "the ghost stumps don't wait for supper, Nell." }
+    - { by: nell, text: "you'd walk anybody through those dig sites in the dark and see them home. you just never ask anybody to come along." }
+    - { by: wick, text: "...if somebody asked, i'd go. they'd have to pay for the lamp oil." }
+    - { by: nell, text: "fifteen thousand buys a lot of lamp oil. now sit." }
+
+- id: excav-the-board
+  participants: [edmund, halla]
+  where: { town: excavation-camp, spot: "venue:middle-central-street" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: edmund-the-buried-name, chapterAtLeast: chapter-2 }
+  setsFlagOnListeners: excav.heard-board
+  lines:
+    - { by: halla, text: "you read those old stones more than you read your letters, Edmund." }
+    - { by: edmund, text: "listen to this one. in Sharenian a name went on stone only after somebody had said it aloud where the king's road ends. at night, so the dead could hear it." }
+    - { by: halla, text: "the king's road ends at the cliff, past my tombs. there are officers up there all night." }
+    - { by: edmund, text: "that's why they did it at night. you don't say a name like that somewhere safe." }
+    - { by: halla, text: "and a name nobody says?" }
+    - { by: edmund, text: "is only letters. you can chisel letters off anything." }
+    - { by: halla, text: "...then anybody who goes up there to say a name, now or any night after, i'll hold the road behind them." }

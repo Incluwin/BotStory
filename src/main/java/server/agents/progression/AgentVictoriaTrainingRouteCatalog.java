@@ -13,9 +13,13 @@ import java.util.function.Predicate;
 
 /**
  * WZ-verified standard portal graph (Victoria Island plus the continents outside it, which no portal joins to
- * Victoria) and the scripted edges used by the level-15 slice.
+ * Victoria), the scripted portals of the level-15 slice and of the world graph (the Time Gate, An Empty House's door,
+ * the dragon flights to the Temple of Time), and the scripted edges used by the level-15 slice.
  */
 final class AgentVictoriaTrainingRouteCatalog {
+    private static final List<AgentVictoriaPortalRouteGraph.ScriptedPortal> SCRIPTED = scripted();
+    private static final List<AgentVictoriaPortalRouteGraph.ScriptedPortal> GATED =
+            SCRIPTED.stream().filter(portal -> portal.gate() != null).toList();
     private static final Map<Integer, Set<Integer>> EDGES = edges();
     /** Maps joined by portals in either direction share a landmass id; no route ever leaves its landmass. */
     private static final Map<Integer, Integer> LANDMASS = landmasses(EDGES);
@@ -194,7 +198,27 @@ final class AgentVictoriaTrainingRouteCatalog {
                 return portal.portalId();
             }
         }
+        for (AgentVictoriaPortalRouteGraph.ScriptedPortal portal : SCRIPTED) {
+            if (portal.sourceMapId() == source && portal.destinationMapId() == destination) {
+                return portal.portalId();
+            }
+        }
         return null;
+    }
+
+    /** The route graphs' scripted portals that only let some travellers through (the script's own quest gate). */
+    static List<AgentVictoriaPortalRouteGraph.ScriptedPortal> gatedPortals() {
+        return GATED;
+    }
+
+    private static List<AgentVictoriaPortalRouteGraph.ScriptedPortal> scripted() {
+        List<AgentVictoriaPortalRouteGraph.ScriptedPortal> portals = new java.util.ArrayList<>();
+        for (AgentVictoriaPortalRouteGraphRepository repository : List.of(
+                AgentVictoriaPortalRouteGraphRepository.defaultRepository(),
+                AgentVictoriaPortalRouteGraphRepository.worldRepository())) {
+            portals.addAll(repository.graph().scriptedPortals());
+        }
+        return List.copyOf(portals);
     }
 
     private static Map<Integer, Set<Integer>> edges() {
@@ -214,6 +238,10 @@ final class AgentVictoriaTrainingRouteCatalog {
             for (AgentVictoriaPortalRouteGraph.Edge edge : repository.graph().edges()) {
                 mutable.computeIfAbsent(edge.fromMapId(), ignored -> new java.util.LinkedHashSet<>())
                         .add(edge.toMapId());
+            }
+            for (AgentVictoriaPortalRouteGraph.ScriptedPortal portal : repository.graph().scriptedPortals()) {
+                mutable.computeIfAbsent(portal.sourceMapId(), ignored -> new java.util.LinkedHashSet<>())
+                        .add(portal.destinationMapId());
             }
         }
         for (AgentVictoriaLevel15Catalog.Career career : catalog().careers()) {

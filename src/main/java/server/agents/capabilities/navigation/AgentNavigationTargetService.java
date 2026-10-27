@@ -41,7 +41,7 @@ public final class AgentNavigationTargetService {
                 AgentMovementStateResetService.clearNavigationState(entry);
                 return new NavigationDirective(rawTargetPos, false);
             }
-            if (bot.getMap().isSwim()) {
+            if (server.agents.capabilities.movement.AgentMapEnvironmentService.swims(bot.getMap())) {
                 // Swim maps don't use a swim-aware nav graph. Airborne motion is handled
                 // by the swim integrator (tickSwimming); on platforms we still need
                 // ledge-drops, ropes, and ground jumps. Engage the heuristic fallback -

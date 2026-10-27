@@ -1,0 +1,201 @@
+# Ludibrium Village cast (wave 4): the houses west of Ludibrium, on the way to the top of Eos Tower. 3 residents,
+# 1 recruitable (Rollo, for a price in toy drums). No arc; gossip ties to Ludibrium's wave-1 cast (personas/ludibrium.yaml)
+# and to Orbis Park. Ids in quests/ludibrium-village.yaml.
+- id: alder
+  name: Alder
+  look: { gender: male }
+  title: "Toymaker of the Village"
+  job: BEGINNER
+  level: { min: 47, max: 47 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ludibrium-village
+    routine:
+      - { from: 7, to: 12, spot: "venue:by-pi", activity: SOCIALIZE }
+      - { from: 12, to: 17, materialize: false }
+      - { from: 17, to: 22, spot: "venue:lower-central-benches", activity: REST }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [helly, propelly, bloctopus]
+  questLines: [alder-propellers-for-the-planes, alder-the-toymakers-cap, alder-the-toymakers-cape]
+  rumors: [ludibrium-village-the-parade]
+  relationships:
+    - { persona: rollo, kind: MADE_THE_FIRST_SOLDIER_OF }
+    - { persona: winifred, kind: MENDS_TOYS_FOR_THE_CLASS_OF }
+    - { persona: prue, kind: OLD_RIVAL_OF }
+    - { persona: della, kind: BUYS_CLOTH_FROM }
+  giftItemIds: [4000103, 4000104]
+  dialogue:
+    greetFirst: ["mind the spring. no, that one. it's under tension. so am i. you're a stranger. come in, then, but don't touch.", "a visitor. you've come down off the tower or up off the ship. either way you've walked past a thousand of Prue's toys to get here. this is where the other kind gets made."]
+    greet: ["hello. i've a duck that walks backwards. it's meant to. i think.", "you again. good. hold this. don't wind it."]
+    idle: ["(fits a tiny brass key into the back of a wooden bird, gives it half a turn, and listens)", "(squints at a propeller against the light, files one blade a hair thinner, and squints again)"]
+    noWork: ["nothing today. everything's wound. that never lasts."]
+    nothingDue: ["you owe me nothing. toys don't keep accounts. toymakers shouldn't."]
+    who: ["Alder. i make toys. by hand, one at a time, in a village next to a city that makes a thousand a day by machine. mine are slower. mine are better. mine say goodnight when you wind them down."]
+    bye: ["mind the step. it squeaks. i made it squeak."]
+    thanks: ["mm. good. that's well wound."]
+    smallTalk: ["the hellies up the tower wear propellers on their heads. finest little propellers in Ludibrium. i've asked Prue where she gets hers. she won't say. i know where she gets hers.", "a toy that's made by hand remembers the hand. the ones off the line don't remember anything. that's why they wander off up the tower and start fighting people."]
+    speakPlainly: ["plainly: an old man, a workbench, and a duck that walks backwards."]
+    questOffer.alder-propellers-for-the-planes: ["the school's toy planes need propellers and mine keep coming out lopsided. the hellies up Eos Tower wear perfect ones. twenty-five hellies, twelve propellers? i'll copy them till i get it right."]
+    questAccept.alder-propellers-for-the-planes: ["out the west door, up to the top of Eos Tower, then down. the hellies are on the seventy-fourth and seventy-fifth, and the ninety-first and ninety-second. little round things with propellers on top. they bounce."]
+    questWaiting.alder-propellers-for-the-planes: ["twelve propellers. the planes are going round in circles. they're meant to. not that tightly."]
+    questComplete.alder-propellers-for-the-planes: ["twelve. ...oh, look at the pitch on that. that's why. it's the pitch. forty years and it's the pitch. the class will have planes by Friday."]
+    questOffer.alder-the-toymakers-cap: ["you've wound enough of my toys to count as a toymaker. a toymaker wants a cap with pockets for screws. i've one put by. the propellys on the fifty-seventh to fifty-ninth floors carry little motors. twenty-five of them, twelve motors, and the cap's yours."]
+    questAccept.alder-the-toymakers-cap: ["Eos Tower, the fifty-seventh, fifty-eighth and fifty-ninth floors. the propellys. they've a motor in their bellies. careful with the motors. careful with your fingers."]
+    questWaiting.alder-the-toymakers-cap: ["twelve motors. the cap's waiting on a hook. it's a patient cap."]
+    questComplete.alder-the-toymakers-cap: ["twelve motors. lovely. here. the toymaker's cap. i put every good charm i know into it and every one took. there's a pocket for screws, a pocket for keys, and a pocket i've never found a use for. you'll find one."]
+    questOffer.alder-the-toymakers-cape: ["a toymaker's cape, so the sawdust slides off. Della cut it for me a year ago and i never went for it. would you? and on the way, the bloctopuses on the forty-first to forty-fourth floors carry wind-up keys on their chains. twenty-five of them, twelve key chains. i'm always short of keys."]
+    questAccept.alder-the-toymakers-cape: ["Eos Tower, the forty-first to the forty-fourth floors. the bloctopuses. then over to Ludibrium for Della. by the skin-care door in the mornings, by Robert Holly in the afternoon. she'll pretend she forgot. she didn't."]
+    questWaiting.alder-the-toymakers-cape: ["twelve key chains, and the cape from Della. both. the keys are for the toys. the cape's for you."]
+    questComplete.alder-the-toymakers-cape: ["teddy cotton in the lining. she would. ...here. it took more than half the charms i tried and held anyway. a toymaker's cape. sawdust slides off it. so does trouble. mostly."]
+    about.rollo: ["Rollo. i made him his first tin soldier when he was five. he's thirty now and he salutes the toy soldiers on the hundredth floor every morning. i feel responsible. i feel proud. i feel both."]
+    about.winifred: ["Winifred brings me the class's broken toys every Friday. i mend them over the weekend. the children think the toys heal on their own. i've never corrected them."]
+    about.prue: ["Prue runs the factory in Ludibrium. a thousand toys a day. i make one. we've argued about which is better for forty years. hers sell. mine say goodnight."]
+    about.della: ["Della sews my dolls' clothes and charges me in teddy stuffing. she cut me a cape a year ago. i keep meaning to go for it. i keep meaning to."]
+    aboutUnknown: ["never mended anything of theirs."]
+    friend.close: ["i've made a little wooden one of you. it's on the shelf by the window. it waves when the door opens."]
+    friend.best: ["when i put my tools down for good, the bench is yours. you'll make something better than i did. that's what benches are for."]
+    famed: ["they're saying good things about you. wind them up, they keep going."]
+    defamed: ["they're saying hard things about you. they'll run down. everything does."]
+    gift: ["oh. thank you. that'll go on the bench."]
+    gift.favorite: ["oh, that's useful. that's going straight into a toy."]
+    gift.again: ["one a day. the bench is full of thank-yous already."]
+
+- id: winifred
+  name: Winifred
+  look: { gender: female }
+  title: "Schoolteacher of the Village"
+  job: BEGINNER
+  level: { min: 38, max: 38 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ludibrium-village
+    routine:
+      - { from: 7, to: 9, spot: "venue:tara-and-sarahs-house-door", activity: LINGER }
+      - { from: 9, to: 15, materialize: false }
+      - { from: 15, to: 18, spot: "venue:by-chico", activity: SOCIALIZE }
+      - { from: 18, to: 22, spot: "venue:lower-central-benches", activity: SOCIALIZE }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  knows: [king bloctopus, plastic crown, ludibrium]
+  questLines: [winifred-crowns-for-the-play, winifred-a-lesson-on-time, winifred-a-day-in-the-park]
+  rumors: [ludibrium-village-the-parade]
+  relationships:
+    - { persona: alder, kind: BRINGS_BROKEN_TOYS_TO }
+    - { persona: rollo, kind: TAUGHT }
+    - { persona: ignatz, kind: BORROWS_LESSONS_FROM }
+    - { persona: odalys, kind: WRITES_TO }
+  giftItemIds: [4000107, 4000108]
+  dialogue:
+    greetFirst: ["good afternoon. you're new. stand up straight, please. sorry. habit. forty years of habit.", "hello. are you lost? no. you're early. school's out. you're welcome anyway."]
+    greet: ["good afternoon. and how are we today? no, i'm asking you. not the class.", "you're back. you've grown. no, you haven't. i say it to everyone. it helps."]
+    idle: ["(marks a small stack of slates with a stub of chalk, sighing at one and smiling at the next)", "(counts heads along an empty street out of habit, gets to nine, and stops)"]
+    noWork: ["nothing today. the slates are marked. the children are home. it's very quiet. i don't care for it."]
+    nothingDue: ["you owe me nothing. homework, perhaps. no. nothing."]
+    who: ["Winifred. i teach the village school. nine children, twelve desks, one window that won't shut. they ask me forty questions a day and thirty-nine of them are 'why'. i answer every one. that's the job."]
+    bye: ["walk, don't run. it applies to grown-ups too."]
+    thanks: ["thank you. very good. full marks."]
+    smallTalk: ["the children want to know why the tower clock is the most important clock in the world. i told them because Ignatz winds it. they wanted to know who winds Ignatz. i'm working on that one.", "Chico makes the children little game boards out of whatever they bring him. they bring him everything. last week it was a shoe."]
+    speakPlainly: ["plainly: nine children, one schoolroom, a great many questions."]
+    questOffer.winifred-crowns-for-the-play: ["the school play is 'The King of the Tower' and i have nine kings and no crowns. the king bloctopuses on the twenty-second and twenty-third floors wear plastic ones. twenty of them, ten crowns? the queens can share."]
+    questAccept.winifred-crowns-for-the-play: ["Eos Tower, the twenty-second and twenty-third floors. the king bloctopuses. the big ones with the crowns. don't let them see you coming. kings never like that."]
+    questWaiting.winifred-crowns-for-the-play: ["ten crowns. there's been a coup in the schoolroom. please hurry."]
+    questComplete.winifred-crowns-for-the-play: ["ten crowns. ...that's every king crowned and one spare for the dog. you'll come to the play. you'll sit at the front. you'll clap at the end even though it's very long."]
+    questOffer.winifred-a-lesson-on-time: ["the children are learning about clocks. they want to know why Ludibrium's tower matters. i'd like the answer from the man who winds it. would you ask Ignatz for me? word for word, please."]
+    questAccept.winifred-a-lesson-on-time: ["Ignatz, in Ludibrium. by the ticketing place in the afternoons, on the central benches at night. he's the one with the key and the look of a man who hasn't slept."]
+    questWaiting.winifred-a-lesson-on-time: ["what did he say? word for word, please. the children will check."]
+    questComplete.winifred-a-lesson-on-time: ["'a clock is a promise somebody keeps every night.' ...oh, that's going on the board. in big letters. and 'don't climb it', underneath. smaller."]
+    questOffer.winifred-a-day-in-the-park: ["i want to take the class to the park in Orbis. a whole day out, on the ship and back. the woman who keeps the park is Odalys. would you ask her if nine children would be welcome? be honest about the children."]
+    questAccept.winifred-a-day-in-the-park: ["the ship from Ludibrium to Orbis, then through the town to the park on its west side. Odalys. she'll be up on the park paths in the morning, east in the afternoon, by the west street at night. tell her nine. tell her loud."]
+    questWaiting.winifred-a-day-in-the-park: ["did she say yes? did you tell her nine?"]
+    questComplete.winifred-a-day-in-the-park: ["yes? ...and keep them off the blue beds. right. i'll write it on their hands. a day in the clouds. they'll never stop talking about it. neither will i."]
+    about.alder: ["Alder mends the class's toys every weekend and never takes a coin. the children think the toys get better on their own. i've let them."]
+    about.rollo: ["Rollo was in my class. he drew soldiers in the margins of every lesson. he still does. now they're real ones. well. toy ones. you know what i mean."]
+    about.ignatz: ["Ignatz winds the tower every night. the children set their bedtimes by him. he's never once been late. the tower has. he hasn't."]
+    about.odalys: ["Odalys keeps the park in Orbis. we write. she sends me pressed flowers for the nature lessons. i send her the children's drawings of her. they draw her very tall."]
+    about.tibalt: ["Tibalt sailed the sky ships for forty years. he sends the children stories in his own hand. they've drawn his ship. it has nine sails and a cat. it didn't have a cat. it does now."]
+    aboutUnknown: ["not one of mine. i'd remember."]
+    friend.close: ["you've got a desk in the schoolroom now. at the back, by the window. nobody else sits there."]
+    friend.best: ["if the children ever ask me who the best person i know is, i'll say you. then they'll ask why. i'll have an answer."]
+    famed: ["they're saying good things about you. full marks."]
+    defamed: ["they're saying hard things about you. see me after class."]
+    gift: ["oh, how kind. thank you."]
+    gift.favorite: ["oh, that's perfect. that's going on the nature table."]
+    gift.again: ["one a day, please. the nature table's full."]
+
+- id: rollo
+  name: Rollo
+  look: { gender: male }
+  title: "Drillmaster of the Toy Parade"
+  job: FIGHTER
+  level: { min: 43, max: 45 }
+  strength: SEASONED
+  loadout: ludibrium-village-sword-l43
+  personality: efficient-v1
+  home:
+    town: ludibrium-village
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-west-street", activity: SHOW_OFF }
+      - { from: 10, to: 17, materialize: false }
+      - { from: 17, to: 19, spot: "venue:lower-west-benches", activity: SOCIALIZE }
+      - { from: 19, to: 22, spot: "venue:lower-central-benches", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  knows: [drumming bunny, toy drum, eos tower]
+  contract: rollo-the-drum-price
+  questLines: [rollo-the-drummers-desertion, rollo-the-old-guards-step, rollo-the-drum-line]
+  rumors: [ludibrium-village-the-parade]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: alder, kind: GOT_HIS_FIRST_SOLDIER_FROM }
+    - { persona: winifred, kind: TAUGHT_BY }
+    - { persona: benno, kind: LEARNS_THE_STEP_FROM }
+    - { persona: marlow, kind: ASKS_FOR_THE_BANNER_OF }
+  giftItemIds: [4000127, 4000110]
+  dialogue:
+    greetFirst: ["a new face! have you seen the parade? nobody has. it's tin and it's eleven inches tall. it's very good.", "hello. mind your feet, the second rank's on the cobbles. no, they're fine. they're tin. they're braver than they look."]
+    greet: ["hello! the parade's in good order this morning. the colonel's found his drum.", "you're back. the drummers are in step today. mostly. the one at the end's thinking about it."]
+    idle: ["(lines up a row of tin soldiers along the bench by height, swaps two, and swaps them back)", "(paints a tiny moustache on a tin soldier with a single-hair brush, holding his breath)"]
+    noWork: ["nothing today. the parade's resting. even tin needs a day off."]
+    nothingDue: ["we're square. otherwise the parade would have drummed you out."]
+    who: ["Rollo. i drill the toy parade. Alder makes the soldiers, i teach them to march. there are real toy soldiers on the hundredth floor of the tower, Delv and Olson, who guard the door at the top. i salute them every morning. they've never saluted back. they're on duty. i understand."]
+    bye: ["chin up. the parade's watching. it's always watching."]
+    thanks: ["thank you! very smart of you."]
+    smallTalk: ["the drumming bunnies up the tower are deserters. every one of them was meant for a parade. they drum out of step on purpose. i've heard them.", "the toy soldiers on the hundredth floor don't take people. i've asked. eleven times. they're very polite about it."]
+    speakPlainly: ["plainly: a sword, a shield, and a parade made of tin."]
+    offer: ["twenty-five thousand, and thirty toy drums off the bunnies. every soldier in the parade marches to his own drum. it's not tidy. it's tradition."]
+    join: ["yes! i'll go in front with the colonel in my pocket. you go wherever you like. he won't mind. he's tin."]
+    bench: ["two days. after that the parade starts marching without me. it's very disloyal."]
+    leave: ["that's my watch done. back to the parade."]
+    refuse.bond: ["i don't march with strangers. it throws the step off."]
+    refuse.flags: ["clear the deserters out of the tower with me first. thirty drumming bunnies, and salute Delv and Olson on the hundredth floor. then we'll talk."]
+    refuseOwnErrand: ["my parade. you can carry the flag."]
+    questOffer.rollo-the-drummers-desertion: ["the drumming bunnies have deserted again. they're all over Eos Tower drumming out of step. thirty of them. and on your way back, stop on the hundredth floor and salute Delv and Olson for me. they're on duty. they'd appreciate it."]
+    questAccept.rollo-the-drummers-desertion: ["Eos Tower, the fifty-seventh to the sixtieth floors, and the seventy-fourth and seventy-fifth. the bunnies with the drums. then the hundredth floor, by the door at the top. salute. smartly."]
+    questWaiting.rollo-the-drummers-desertion: ["thirty, and the salute. did you salute? smartly?"]
+    questComplete.rollo-the-drummers-desertion: ["thirty deserters back in step, and a salute on the hundredth floor. ...did they salute back? no. they never do. they're on duty. you did well."]
+    questOffer.rollo-the-old-guards-step: ["the old Ludibrium guard had a step. a proper one. Benno marched it on the terraces for thirty years. would you ask him to teach it? he won't come to the village. his knees. he'll tell you if you ask nicely."]
+    questAccept.rollo-the-old-guards-step: ["Benno, in Ludibrium. on the lower west street in the mornings, by Spiegelmann in the afternoon. he's the one who stands like a gate."]
+    questWaiting.rollo-the-old-guards-step: ["what's the step? i've been practising the wrong one for twenty years. i can feel it."]
+    questComplete.rollo-the-old-guards-step: ["left on the tick, right on the tock, and never look at the tower. ...and he said they're less sloppy than Prue's. he said that? i'm going to march about it."]
+    questOffer.rollo-the-drum-line: ["fifteen toy drums for the parade? the soldiers keep losing them."]
+    questAccept.rollo-the-drum-line: ["the drumming bunnies, up the tower."]
+    questWaiting.rollo-the-drum-line: ["fifteen. the parade's out of step."]
+    questComplete.rollo-the-drum-line: ["fifteen! the parade's in step. for a day. thank you."]
+    about.alder: ["Alder made me my first tin soldier when i was five. i've still got it. it's the colonel now."]
+    about.winifred: ["Miss Winifred taught me my letters. i drew soldiers in the margins of every lesson. she never once told me to stop. she gave me better pencils."]
+    about.benno: ["Benno guarded the cloud terraces for thirty years. he says i march like i'm late. everyone in Ludibrium marches like they're late. he says that too."]
+    about.marlow: ["Marlow keeps the old guard's banner. i've asked to carry it in the parade. he says it marches when the old guard marches. i'm working on it."]
+    aboutUnknown: ["not on my roll."]
+    friend.close: ["you've got a soldier in the parade now. third from the front. he's got your walk. i painted it."]
+    friend.best: ["if the parade ever marches through Ludibrium proper, you're at the front. with me. in step."]
+    famed: ["they're saying good things about you! i'll have the parade march past you. slowly."]
+    defamed: ["they're saying hard things about you. the parade doesn't listen. it hasn't got ears. well. painted ones."]
+    gift: ["oh! thank you. very smart."]
+    gift.favorite: ["oh, that's useful. that's going straight to the parade."]
+    gift.again: ["one a day! the parade's very well supplied."]
